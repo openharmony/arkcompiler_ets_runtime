@@ -1665,7 +1665,7 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
             Bind(&next);
 #if ENABLE_NEXT_OPTIMIZATION
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
-                                             { glue, thisValue, IntToTaggedPtr(*i) });
+                                             { glue, thisValue, IntToTaggedPtr(*i), GetCurrentGlobalEnv() });
 #else
             GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
                 RTSTUB_ID(HasProperty), {thisValue, IntToTaggedInt(*i)});

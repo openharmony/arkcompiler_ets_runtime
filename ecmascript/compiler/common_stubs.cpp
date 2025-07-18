@@ -821,7 +821,8 @@ void JSTaggedValueHasPropertyStubBuilder::GenerateCircuit()
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef key = TaggedArgument(2);      // 2 : 3rd para
-    SetCurrentGlobalEnv(GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(3);  // 3: 4th parameter is globalEnv
+    SetCurrentGlobalEnv(globalEnv);
     Return(HasProperty(glue, obj, key));
 }
 
@@ -899,6 +900,8 @@ void DeprecatedSetPropertyByNameStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th para
+    SetCurrentGlobalEnv(globalEnv);
     Return(SetPropertyByName(glue, receiver, key, value, false, True()));
 }
 
@@ -908,6 +911,8 @@ void SetPropertyByNameWithOwnStubBuilder::GenerateCircuit()
     GateRef receiver = TaggedArgument(1);
     GateRef key = TaggedArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
+    GateRef globalEnv = TaggedArgument(4);  // 4: 5th para
+    SetCurrentGlobalEnv(globalEnv);
     Return(SetPropertyByName(glue, receiver, key, value, true, True()));
 }
 
@@ -1717,7 +1722,8 @@ void JSProxyGetPropertyStubBuilder::GenerateCircuit()
     GateRef holder = TaggedArgument(1);
     GateRef key = TaggedArgument(2U);
     GateRef receiver = TaggedArgument(3U);
-    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(4U);
+    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue, globalEnv);
     GateRef result = proxyStubBuilder.GetProperty(holder, key, receiver);
     Return(result);
 }
@@ -1729,7 +1735,8 @@ void JSProxySetPropertyStubBuilder::GenerateCircuit()
     GateRef key = TaggedArgument(2U);
     GateRef value = TaggedArgument(3U);
     GateRef receiver = TaggedArgument(4U);
-    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(5U);
+    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue, globalEnv);
     GateRef result = proxyStubBuilder.SetProperty(holder, key, value, receiver, true);
     Return(result);
 }
@@ -1741,7 +1748,8 @@ void JSProxySetPropertyNoThrowStubBuilder::GenerateCircuit()
     GateRef key = TaggedArgument(2U);
     GateRef value = TaggedArgument(3U);
     GateRef receiver = TaggedArgument(4U);
-    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue, GetGlobalEnv(glue));
+    GateRef globalEnv = TaggedArgument(5U);
+    BuiltinsProxyStubBuilder proxyStubBuilder(this, glue, globalEnv);
     GateRef result = proxyStubBuilder.SetProperty(holder, key, value, receiver, false);
     Return(result);
 }
@@ -1839,9 +1847,10 @@ void GrowElementsCapacityStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef thisValue = TaggedArgument(1);
-    GateRef newLength = Int32Argument(2U);
+    GateRef globalEnv = TaggedArgument(2U);
+    GateRef newLength = Int32Argument(3U);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    BuiltinsArrayStubBuilder builder(this, GetGlobalEnv(glue));
+    BuiltinsArrayStubBuilder builder(this, globalEnv);
     result = builder.GrowElementsCapacity(glue, thisValue, newLength);
     Return(*result);
 }

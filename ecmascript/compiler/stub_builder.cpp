@@ -4041,7 +4041,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                 Bind(&isJsProxy);
                 {
                     result = CallCommonStub(glue, CommonStubCSigns::JSProxyGetProperty,
-                                            {glue, *holder, propKey, target}, hir);
+                                            {glue, *holder, propKey, target, GetCurrentGlobalEnv()}, hir);
                     Label isPendingException(env);
                     Label noPendingException(env);
                     BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
@@ -5257,10 +5257,10 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
                     Label noPendingException(env);
                     if (mayThrow) {
                         result = CallCommonStub(glue, CommonStubCSigns::JSProxySetProperty,
-                                                {glue, *holder, key, value, receiver});
+                                                {glue, *holder, key, value, receiver, GetCurrentGlobalEnv()});
                     } else {
                         result = CallCommonStub(glue, CommonStubCSigns::JSProxySetPropertyNoThrow,
-                                                {glue, *holder, key, value, receiver});
+                                                {glue, *holder, key, value, receiver, GetCurrentGlobalEnv()});
                     }
                     BRANCH(HasPendingException(glue), &returnException, &exit);
                     Bind(&returnException);
@@ -8977,7 +8977,7 @@ GateRef StubBuilder::DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef va
     Label isNotExceptiont(env);
     Label objectIsEcmaObject(env);
     Label objectIsHeapObject(env);
-    GateRef object = ToObject(glue, obj);
+    GateRef object = ToObject(glue, GetCurrentGlobalEnv(), obj);
     BRANCH(TaggedIsException(object), &exit, &isNotExceptiont);
     Bind(&isNotExceptiont);
     {
@@ -9233,7 +9233,7 @@ GateRef StubBuilder::IsIn(GateRef glue, GateRef prop, GateRef obj)
     Bind(&checkProperty);
     {
         result = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
-                                { glue, obj, *propKey });
+                                { glue, obj, *propKey, GetCurrentGlobalEnv() });
         BRANCH(HasPendingException(glue), &isPendingException, &exit);
     }
 

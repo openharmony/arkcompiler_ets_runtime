@@ -259,16 +259,16 @@ DEF_CALL_SIGNATURE(SetPropertyByName)
 
 DEF_CALL_SIGNATURE(DeprecatedSetPropertyByName)
 {
-    // 4 : 4 input parameters
-    CallSignature setPropertyByName("DeprecatedSetPropertyByName", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+    constexpr size_t paramCount = 5;
+    CallSignature setPropertyByName("DeprecatedSetPropertyByName", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
         VariableType::JS_ANY());
     *callSign = setPropertyByName;
-    // 4 : 4 input parameters
-    std::array<VariableType, 4> params = {
+    std::array<VariableType, paramCount> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
-        VariableType::JS_ANY()
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -318,16 +318,16 @@ DEF_CALL_SIGNATURE(SetPropertyByNameWithMega)
 
 DEF_CALL_SIGNATURE(SetPropertyByNameWithOwn)
 {
-    // 4 : 4 input parameters
-    CallSignature setPropertyByNameWithOwn("SetPropertyByNameWithOwn", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+    constexpr size_t paramCount = 5;
+    CallSignature setPropertyByNameWithOwn("SetPropertyByNameWithOwn", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
         VariableType::JS_ANY());
     *callSign = setPropertyByNameWithOwn;
-    // 4 : 4 input parameters
-    std::array<VariableType, 4> params = {
+    std::array<VariableType, paramCount> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
         VariableType::JS_POINTER(),
-        VariableType::JS_ANY()
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -3650,14 +3650,14 @@ DEF_CALL_SIGNATURE(CreateJSTypedArrayValues)
 
 DEF_CALL_SIGNATURE(GrowElementsCapacity)
 {
-    // 6 : 6 input parameters
-    CallSignature growElementsCapacity("GrowElementsCapacity", 0, 3, ArgumentsOrder::DEFAULT_ORDER,
+    constexpr size_t paramCount = 4;
+    CallSignature growElementsCapacity("GrowElementsCapacity", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
         VariableType::JS_ANY());
     *callSign = growElementsCapacity;
-    // 6 : 6 input parameters
-    std::array<VariableType, 3> params = {     // 3 : 3 input parameters
+    std::array<VariableType, paramCount> params = {
         VariableType::NATIVE_POINTER(),    // glue
         VariableType::JS_ANY(),            // thisValue
+        VariableType::JS_ANY(),            // globalEnv
         VariableType::INT32(),             // newlength
     };
     callSign->SetParameters(params.data());
@@ -3824,7 +3824,7 @@ DEF_CALL_SIGNATURE(ComputeStringHashcode)
 
 DEF_CALL_SIGNATURE(JSProxyGetProperty)
 {
-    constexpr size_t paramCount = 4;
+    constexpr size_t paramCount = 5;
     CallSignature signature("JSProxyGetProperty", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
                             VariableType::JS_ANY());
     *callSign = signature;
@@ -3833,6 +3833,7 @@ DEF_CALL_SIGNATURE(JSProxyGetProperty)
         VariableType::JS_ANY(),          // holder
         VariableType::JS_ANY(),          // key
         VariableType::JS_ANY(),          // receiver
+        VariableType::JS_ANY(),          // globalEnv
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
@@ -3840,7 +3841,7 @@ DEF_CALL_SIGNATURE(JSProxyGetProperty)
 
 DEF_CALL_SIGNATURE(JSProxySetProperty)
 {
-    constexpr size_t paramCount = 5;
+    constexpr size_t paramCount = 6;
     CallSignature signature("JSProxySetProperty", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
                             VariableType::JS_ANY());
     *callSign = signature;
@@ -3850,6 +3851,7 @@ DEF_CALL_SIGNATURE(JSProxySetProperty)
         VariableType::JS_ANY(),          // key
         VariableType::JS_ANY(),          // value
         VariableType::JS_ANY(),          // receiver
+        VariableType::JS_ANY(),          // globalEnv
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
@@ -3857,7 +3859,7 @@ DEF_CALL_SIGNATURE(JSProxySetProperty)
 
 DEF_CALL_SIGNATURE(JSProxySetPropertyNoThrow)
 {
-    constexpr size_t paramCount = 5;
+    constexpr size_t paramCount = 6;
     CallSignature signature("JSProxySetPropertyNoThrow", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
                             VariableType::JS_ANY());
     *callSign = signature;
@@ -3867,6 +3869,7 @@ DEF_CALL_SIGNATURE(JSProxySetPropertyNoThrow)
         VariableType::JS_ANY(),          // key
         VariableType::JS_ANY(),          // value
         VariableType::JS_ANY(),          // receiver
+        VariableType::JS_ANY(),          // globalEnv
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

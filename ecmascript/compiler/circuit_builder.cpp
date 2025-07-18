@@ -1293,9 +1293,8 @@ GateRef CircuitBuilder::GetPropertiesFromLexicalEnv(GateRef glue, GateRef object
     return GetValueFromTaggedArray(glue, object, valueIndex);
 }
 
-GateRef CircuitBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
+GateRef CircuitBuilder::NewJSPrimitiveRef(GateRef glue, GateRef globalEnv, size_t index, GateRef obj)
 {
-    GateRef globalEnv = GetGlobalEnv(glue);
     GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, index);
     GateRef protoOrHclass = Load(VariableType::JS_ANY(), glue, func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     NewObjectStubBuilder newBuilder(env_);
@@ -1305,7 +1304,7 @@ GateRef CircuitBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef ob
     return newObj;
 }
 
-GateRef CircuitBuilder::ToObject(GateRef glue, GateRef obj)
+GateRef CircuitBuilder::ToObject(GateRef glue, GateRef globalEnv, GateRef obj)
 {
     Label entry(env_);
     env_->SubCfgEntry(&entry);
@@ -1341,28 +1340,28 @@ GateRef CircuitBuilder::ToObject(GateRef glue, GateRef obj)
     BRANCH(TaggedIsNumber(obj), &isNumber, &notNumber);
     Bind(&isNumber);
     {
-        result = NewJSPrimitiveRef(glue, GlobalEnv::NUMBER_FUNCTION_INDEX, obj);
+        result = NewJSPrimitiveRef(glue, globalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notNumber);
     BRANCH(TaggedIsBoolean(obj), &isBoolean, &notBoolean);
     Bind(&isBoolean);
     {
-        result = NewJSPrimitiveRef(glue, GlobalEnv::BOOLEAN_FUNCTION_INDEX, obj);
+        result = NewJSPrimitiveRef(glue, globalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notBoolean);
     BRANCH(TaggedIsString(glue, obj), &isString, &notString);
     Bind(&isString);
     {
-        result = NewJSPrimitiveRef(glue, GlobalEnv::STRING_FUNCTION_INDEX, obj);
+        result = NewJSPrimitiveRef(glue, globalEnv, GlobalEnv::STRING_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notString);
     BRANCH(TaggedIsSymbol(glue, obj), &isSymbol, &notSymbol);
     Bind(&isSymbol);
     {
-        result = NewJSPrimitiveRef(glue, GlobalEnv::SYMBOL_FUNCTION_INDEX, obj);
+        result = NewJSPrimitiveRef(glue, globalEnv, GlobalEnv::SYMBOL_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notSymbol);
@@ -1390,7 +1389,7 @@ GateRef CircuitBuilder::ToObject(GateRef glue, GateRef obj)
     BRANCH(TaggedIsBigInt(glue, obj), &isBigInt, &notIsBigInt);
     Bind(&isBigInt);
     {
-        result = NewJSPrimitiveRef(glue, GlobalEnv::BIGINT_FUNCTION_INDEX, obj);
+        result = NewJSPrimitiveRef(glue, globalEnv, GlobalEnv::BIGINT_FUNCTION_INDEX, obj);
         Jump(&exit);
     }
     Bind(&notIsBigInt);

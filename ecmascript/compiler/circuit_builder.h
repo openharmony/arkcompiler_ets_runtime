@@ -780,8 +780,8 @@ public:
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);
     GateRef BuildBigIntAsIntN(const GateMetaData* op, std::vector<GateRef> &&args);
-    GateRef NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj);
-    GateRef ToObject(GateRef glue, GateRef obj);
+    GateRef NewJSPrimitiveRef(GateRef glue, GateRef globalEnv, size_t index, GateRef obj);
+    GateRef ToObject(GateRef glue, GateRef globalEnv, GateRef obj);
     GateRef GetPrototype(GateRef glue, GateRef object);
 
     GateRef GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index);

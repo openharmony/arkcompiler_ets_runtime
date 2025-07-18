@@ -2462,9 +2462,9 @@ void TypedNativeInlineLowering::LowerObjectGetPrototypeOf(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 0);
     GateRef result = Circuit::NullGate();
 
+    GateRef globalEnv = circuit_->GetGlobalEnvCache();
     // fast handle some primitive types
     if (TypeInfoAccessor::IsTrustedBooleanOrNumberOrStringType(compilationEnv_, circuit_, chunk_, acc_, value)) {
-        GateRef globalEnv = circuit_->GetGlobalEnvCache();
         size_t index = -1;
         if (TypeInfoAccessor::IsTrustedBooleanType(acc_, value)) {
             index = GlobalEnv::BOOLEAN_PROTOTYPE_INDEX;
@@ -2476,7 +2476,7 @@ void TypedNativeInlineLowering::LowerObjectGetPrototypeOf(GateRef gate)
         }
         result = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, index);
     } else {
-        GateRef object = builder_.ToObject(glue, value);
+        GateRef object = builder_.ToObject(glue, globalEnv, value);
         result = builder_.GetPrototype(glue, object);
     }
 
@@ -2533,7 +2533,7 @@ void TypedNativeInlineLowering::LowerObjectIsPrototypeOf(GateRef gate)
     builder_.Bind(&ecmaObject);
     {
         // 2. Let O be ? ToObject(this value).
-        GateRef obj = builder_.ToObject(glue, thisValue);
+        GateRef obj = builder_.ToObject(glue, circuit_->GetGlobalEnvCache(), thisValue);
         Label noPendingException(&builder_);
         BRANCH_CIR(builder_.HasPendingException(glue, compilationEnv_), &returnException, &noPendingException);
         builder_.Bind(&noPendingException);
@@ -3425,7 +3425,8 @@ void TypedNativeInlineLowering::LowerArrayPush(GateRef gate)
     BRANCH_CIR(builder_.Int32GreaterThan(newLength, capacity), &grow, &setValue);
     builder_.Bind(&grow);
     {
-        elements = builder_.CallStub(glue, gate, CommonStubCSigns::GrowElementsCapacity, {glue, thisValue, newLength});
+        elements = builder_.CallStub(glue, gate, CommonStubCSigns::GrowElementsCapacity,
+            {glue, thisValue, circuit_->GetGlobalEnvCache(), newLength});
         builder_.Jump(&setValue);
     }
     builder_.Bind(&setValue);

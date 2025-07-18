@@ -2656,7 +2656,8 @@ void BuiltinsArrayStubBuilder::Push(GateRef glue, GateRef thisValue,
     BRANCH_UNLIKELY(Int32GreaterThan(newLength, capacity), &grow, &setValue);
     Bind(&grow);
     {
-        elements = CallCommonStub(glue, CommonStubCSigns::GrowElementsCapacity, {glue, thisValue, newLength});
+        elements = CallCommonStub(glue, CommonStubCSigns::GrowElementsCapacity,
+            {glue, thisValue, GetCurrentGlobalEnv(), newLength});
         Jump(&setValue);
     }
     Bind(&setValue);
@@ -4457,7 +4458,7 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
             {
 #if ENABLE_NEXT_OPTIMIZATION
                 GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
-                                                 { glue, thisValue, IntToTaggedPtr(*k) });
+                                                 { glue, thisValue, IntToTaggedPtr(*k), GetCurrentGlobalEnv() });
 #else
                 GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                     {thisValue, IntToTaggedInt(*k)});
@@ -4533,7 +4534,7 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
             Bind(&next);
 #if ENABLE_NEXT_OPTIMIZATION
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
-                                             { glue, thisValue, IntToTaggedPtr(*k) });
+                                             { glue, thisValue, IntToTaggedPtr(*k), GetCurrentGlobalEnv() });
 #else
             GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                 {thisValue, IntToTaggedInt(*k)});
@@ -4646,7 +4647,7 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
             {
 #if ENABLE_NEXT_OPTIMIZATION
                 GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
-                                                 { glue, thisValue, IntToTaggedPtr(*i) });
+                                                 { glue, thisValue, IntToTaggedPtr(*i), GetCurrentGlobalEnv() });
 #else
                 GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                     {thisValue, IntToTaggedInt(*i)});
@@ -4726,7 +4727,7 @@ void BuiltinsArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValue, Ga
             Bind(&next);
 #if ENABLE_NEXT_OPTIMIZATION
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
-                                             { glue, thisValue, IntToTaggedPtr(*i) });
+                                             { glue, thisValue, IntToTaggedPtr(*i), GetCurrentGlobalEnv() });
 #else
             GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                 {thisValue, IntToTaggedInt(*i)});
@@ -4839,7 +4840,7 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
             {
 #if ENABLE_NEXT_OPTIMIZATION
                 GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
-                                                 { glue, thisValue, IntToTaggedPtr(*i) });
+                                                 { glue, thisValue, IntToTaggedPtr(*i), GetCurrentGlobalEnv() });
 #else
                 GateRef hasProp = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                     {thisValue, IntToTaggedInt(*i)});
@@ -4918,7 +4919,7 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
             Bind(&next);
 #if ENABLE_NEXT_OPTIMIZATION
             GateRef hasProp = CallCommonStub(glue, CommonStubCSigns::JSTaggedValueHasProperty,
-                                             { glue, thisValue, IntToTaggedPtr(*i) });
+                                             { glue, thisValue, IntToTaggedPtr(*i), GetCurrentGlobalEnv() });
 #else
             GateRef hasProp = CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(HasProperty),
                 {thisValue, IntToTaggedInt(*i)});
