@@ -1260,13 +1260,9 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
     ASSERT(newHclass->IsPrototype());
     bool onceRegistered = UnregisterOnProtoChain(thread, oldHclass);
 
-    // oldHclass is already marked. Only update newHclass.protoChangeDetails if it doesn't exist for further use.
-    if (!newHclass->GetProtoChangeDetails(thread).IsProtoChangeDetails()) {
-        newHclass->SetProtoChangeDetails(thread, oldHclass->GetProtoChangeDetails(thread));
-    }
+    newHclass->SetProtoChangeDetails(thread, oldHclass->GetProtoChangeDetails(thread));
+    oldHclass->SetProtoChangeDetails(thread, JSTaggedValue::Null());
     if (onceRegistered) {
-        ProtoChangeDetails::Cast(oldHclass->GetProtoChangeDetails(thread).GetTaggedObject())
-            ->SetRegisterIndex(ProtoChangeDetails::UNREGISTERED);
         if (newHclass->GetProtoChangeDetails(thread).IsProtoChangeDetails()) {
             ProtoChangeDetails::Cast(newHclass->GetProtoChangeDetails(thread).GetTaggedObject())
                 ->SetRegisterIndex(ProtoChangeDetails::UNREGISTERED);
