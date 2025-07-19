@@ -663,16 +663,6 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     }
 }
 
-void SharedHeap::SetGCThreadRssPriority(common::RssPriorityType type)
-{
-#ifdef ENABLE_RSS
-    if (Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->IsPostForked()) {
-        dThread_->SetRssPriority(type);
-        common::Taskpool::GetCurrentTaskpool()->SetThreadRssPriority(type);
-    }
-#endif
-}
-
 void SharedHeap::SetGCThreadQosPriority(common::PriorityMode mode)
 {
     dThread_->SetQosPriority(mode);

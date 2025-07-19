@@ -24,9 +24,6 @@
 #include "common_components/objects/string_table_internal.h"
 #include "common_components/heap/allocator/fix_heap.h"
 
-#ifdef ENABLE_RSS
-#include "res_sched_client.h"
-#endif
 #ifdef ENABLE_QOS
 #include "qos.h"
 #endif
@@ -1088,21 +1085,6 @@ void WCollector::CollectSmallSpace()
                 ).c_str());
 
     collectorResources_.GetFinalizerProcessor().NotifyToReclaimGarbage();
-}
-
-void WCollector::SetGCThreadRssPriority(common::RssPriorityType type)
-{
-#ifdef ENABLE_RSS
-    if (IsPostForked()) {
-        LOG_COMMON(DEBUG) << "SetGCThreadRssPriority gettid " << gettid();
-        std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(getpid()) },
-                                                    { "tid", std::to_string(gettid()) } };
-        OHOS::ResourceSchedule::ResSchedClient::GetInstance()
-            .ReportData(OHOS::ResourceSchedule::ResType::RES_TYPE_GC_THREAD_QOS_STATUS_CHANGE,
-            static_cast<int64_t>(type), payLoad);
-        common::Taskpool::GetCurrentTaskpool()->SetThreadRssPriority(type);
-    }
-#endif
 }
 
 void WCollector::SetGCThreadQosPriority(common::PriorityMode mode)

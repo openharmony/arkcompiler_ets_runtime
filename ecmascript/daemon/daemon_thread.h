@@ -76,7 +76,6 @@ public:
         return GetSharedMarkStatus() == SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
     }
 
-    void SetRssPriority(common::RssPriorityType type);
     void SetQosPriority(common::PriorityMode mode);
 #ifndef NDEBUG
     MutatorLock::MutatorLockState GetMutatorLockState() const;

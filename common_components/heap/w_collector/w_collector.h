@@ -132,7 +132,6 @@ public:
         return const_cast<WCollector*>(this)->fwdTable_.GetForwardingPointer(obj);
     }
 
-    void SetGCThreadRssPriority(common::RssPriorityType type);
     void SetGCThreadQosPriority(common::PriorityMode mode);
 
     BaseObject* CopyObjectImpl(BaseObject* obj);
