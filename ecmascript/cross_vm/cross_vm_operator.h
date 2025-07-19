@@ -18,9 +18,10 @@
 
 #include <memory>
 
+#include "libpandabase/macros.h"
+
 #include "hybrid/ecma_vm_interface.h"
 #include "hybrid/sts_vm_interface.h"
-#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 

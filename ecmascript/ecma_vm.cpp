@@ -339,7 +339,10 @@ bool EcmaVM::Initialize()
     heap_ = new Heap(this);
     heap_->Initialize();
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    crossVMOperator_ = new CrossVMOperator(this);
+    if (Runtime::GetInstance()->IsHybridVm()) {
+        crossVMOperator_ = new CrossVMOperator(this);
+    }
+    
 #endif // PANDA_JS_ETS_HYBRID_MODE
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
     gcKeyStats_ = chunk_.New<GCKeyStats>(heap_, gcStats_);
@@ -501,7 +504,7 @@ EcmaVM::~EcmaVM()
     }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    if (crossVMOperator_ != nullptr) {
+    if (Runtime::GetInstance()->IsHybridVm() && crossVMOperator_ != nullptr) {
         delete crossVMOperator_;
         crossVMOperator_ = nullptr;
     }

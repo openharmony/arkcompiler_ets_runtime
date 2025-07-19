@@ -29,6 +29,7 @@
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+#include "ecmascript/cross_vm/jsnapi_expo_hybrid.h"
 #include "ecmascript/module/js_module_execute_type.h"
 #include "ecmascript/napi/include/jsnapi_internals.h"
 
@@ -473,16 +474,6 @@ public:
         address_ = 0;
     }
 
-    template<typename S>
-    void CreateXRefGloablReference(const EcmaVM *vm, const Local<S> &current);
-
-    // This method must be called before Global is released.
-    void FreeGlobalHandleAddr();
-    void FreeXRefGlobalHandleAddr();
-    void MarkFromObject();
-    bool IsObjectAlive() const;
-    bool IsValidHeapObject() const;
-
     inline T *operator*() const
     {
         return GetAddress();
@@ -512,6 +503,8 @@ public:
         return vm_;
     }
 
+    // This method must be called before Global is released.
+    GLOBAL_PUBLIC_HYBRID_EXTENSION();
 private:
     inline T *GetAddress() const
     {
@@ -844,7 +837,6 @@ public:
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
     static uintptr_t NewObject(const EcmaVM *vm);
-    static Local<ObjectRef> NewJSXRefObject(const EcmaVM *vm);
     static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes);
@@ -900,6 +892,7 @@ public:
                                          void *nativePointer = nullptr,
                                          NativePointerCallback callBack = nullptr,
                                          void *data = nullptr, size_t nativeBindingsize = 0);
+    OBJECTREF_PUBLIC_HYBRID_EXTENSION();
 };
 
 using FunctionCallback = Local<JSValueRef>(*)(JsiRuntimeCallInfo*);
@@ -1061,8 +1054,8 @@ public:
     uint32_t WriteLatin1(const EcmaVM *vm, char *buffer, uint32_t length);
     uint32_t WriteLatin1WithoutSwitchState(const EcmaVM *vm, char *buffer, uint32_t length);
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
-    static Local<StringRef> GetProxyNapiWrapperString(const EcmaVM *vm);
     Local<TypedArrayRef> EncodeIntoUint8Array(const EcmaVM *vm);
+    STRINGREF_PUBLIC_HYBRID_EXTENSION();
 };
 
 class PUBLIC_API PromiseRejectInfo {
@@ -1689,8 +1682,6 @@ public:
 
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
-    static void SetStackInfo(const EcmaVM *vm, const panda::StackInfo &info);
-    static panda::StackInfo GetStackInfo(const EcmaVM *vm);
     static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
 
     // aot load
@@ -1730,8 +1721,6 @@ public:
                                                              const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm, const std::string &file,
                                                              const std::string &module_path);
-    static Local<ObjectRef> GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path);
-    static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
 
     /*
      * Execute panda file from secure mem. secure memory lifecycle managed externally.
@@ -1823,8 +1812,6 @@ public:
     static void SetCancelTimerCallback(EcmaVM *vm, CancelTimerCallback callback);
     static void NotifyEnvInitialized(EcmaVM *vm);
     static void SetReleaseSecureMemCallback(ReleaseSecureMemCallback releaseSecureMemFunc);
-    static void SetHostResolveBufferTracker(EcmaVM *vm, std::function<bool(std::string dirPath,
-                                            uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void PandaFileSerialize(const EcmaVM *vm);
     static void ModuleSerialize(const EcmaVM *vm);
     static void ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion);
@@ -1922,8 +1909,6 @@ public:
     static void NotifyTaskFinished(const EcmaVM *vm);
     static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
     static uint32_t GetCurrentThreadId();
-    static bool IsObjectAlive(const EcmaVM *vm, uintptr_t addr);
-    static bool IsValidHeapObject(const EcmaVM *vm, uintptr_t addr);
 
     //set VM apiVersion
     static void SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion);
@@ -1938,8 +1923,8 @@ public:
     static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
     // 1.2runtime interface info
     static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
-    static void InitHybridVMEnv(const EcmaVM *vm);
-
+    
+    JSNAPI_PUBLIC_HYBRID_EXTENSION();
 private:
     static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);
@@ -1948,7 +1933,6 @@ private:
 
     static uintptr_t GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
-    static uintptr_t GetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeak(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t SetWeakCallback(const EcmaVM *vm, uintptr_t localAddress, void *ref,
                                      WeakRefClearCallBack freeGlobalCallBack,
@@ -1956,10 +1940,6 @@ private:
     static uintptr_t ClearWeak(const EcmaVM *vm, uintptr_t localAddress);
     static bool IsWeak(const EcmaVM *vm, uintptr_t localAddress);
     static void DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
-    static void DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    static void MarkFromObject(const EcmaVM *vm, uintptr_t addr);
-#endif // PANDA_JS_ETS_HYBRID_MODE
 
     static bool IsSerializationTimeoutCheckEnabled(const EcmaVM *vm);
     static void GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
@@ -1972,6 +1952,10 @@ private:
     template<typename T>
     friend class Local;
     friend class test::JSNApiTests;
+    JSNAPI_PRIVATE_HYBRID_EXTENSION();
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    JSNAPI_PRIVATE_HYBRID_MODE_EXTENSION();
+#endif // PANDA_JS_ETS_HYBRID_MODE
 };
 
 class PUBLIC_API ProxyRef : public ObjectRef {
@@ -2189,61 +2173,9 @@ Local<T>::Local(const EcmaVM *vm, const Global<T> &current)
 {
     address_ = JSNApi::GetHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
 }
-
+GLOBAL_PUBLIC_DEF_HYBRID_EXTENSION();
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-class PUBLIC_API HandshakeHelper final {
-   public:
-    static void DoHandshake(EcmaVM *vm, void *stsiface, void **ecmaiface);
-};
-#endif  // PANDA_JS_ETS_HYBRID_MODE
-
-template<typename T>
-template<typename S>
-void Global<T>::CreateXRefGloablReference(const EcmaVM *vm, const Local<S> &current)
-{
-    vm_ = vm;
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetXRefGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-void Global<T>::FreeXRefGlobalHandleAddr()
-{
-    if (address_ == 0) {
-        return;
-    }
-    JSNApi::DisposeXRefGlobalHandleAddr(vm_, address_);
-    address_ = 0;
-}
-
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    template<typename T>
-    void Global<T>::MarkFromObject()
-    {
-        if (address_ == 0) {
-            return;
-        }
-        JSNApi::MarkFromObject(vm_, address_);
-    }
-
-    template<typename T>
-    bool Global<T>::IsObjectAlive() const
-    {
-        if (address_ == 0) {
-            return false ;
-        }
-        return JSNApi::IsObjectAlive(vm_, address_);
-    }
-
-    template<typename T>
-    bool Global<T>::IsValidHeapObject() const
-    {
-        if (address_ == 0) {
-            return false;
-        }
-        return JSNApi::IsValidHeapObject(vm_, address_);
-    }
+    GLOBAL_PUBLIC_DEF_HYBRID_MODE_EXTENSION();
 #endif // PANDA_JS_ETS_HYBRID_MODE
 }  // namespace panda
 #endif

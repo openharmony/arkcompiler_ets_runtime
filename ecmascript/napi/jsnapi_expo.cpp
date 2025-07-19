@@ -2382,17 +2382,6 @@ Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(napiWrapperString);
 }
 
-Local<StringRef> StringRef::GetProxyNapiWrapperString(const EcmaVM *vm)
-{
-    // Omit exception check because ark calls here may not
-    // cause side effect even pending exception exists.
-    CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(thread);
-    JSHandle<JSTaggedValue> proxyNapiWapperString = thread->GlobalConstants()->GetHandledProxyNapiWrapperString();
-    return JSNApiHelper::ToLocal<StringRef>(proxyNapiWapperString);
-}
-
-
 Local<TypedArrayRef> StringRef::EncodeIntoUint8Array(const EcmaVM *vm)
 {
     CROSS_THREAD_CHECK(vm);
@@ -2637,15 +2626,6 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> object(factory->CreateNapiObject());
-    return JSNApiHelper::ToLocal<ObjectRef>(object);
-}
-
-Local<ObjectRef> ObjectRef::NewJSXRefObject(const EcmaVM *vm)
-{
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    ecmascript::ThreadManagedScope managedScope(thread);
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> object(factory->NewJSXRefObject());
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
@@ -2903,23 +2883,6 @@ Local<JSValueRef> JSNApi::GetImplements(const EcmaVM *vm, Local<JSValueRef> inst
     }
     JSHandle<JSTaggedValue> implementRet(thread, result);
     return JSNApiHelper::ToLocal<JSValueRef>(implementRet);
-}
-
-void JSNApi::InitHybridVMEnv(const EcmaVM *vm)
-{
-    auto instance = ecmascript::Runtime::GetInstance();
-    ASSERT(instance != nullptr);
-
-    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(thread);
-
-    instance->SetHybridVm(true);
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    if (env->GetInterfaceTypeSymbol().GetTaggedValue().IsUndefined()) {
-        JSHandle<JSTaggedValue> interfaceTypeSymbol(factory->NewPrivateNameSymbolWithChar("interfaceType"));
-        env->SetInterfaceTypeSymbol(thread, interfaceTypeSymbol.GetTaggedValue());
-    }
 }
 
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
@@ -4889,21 +4852,6 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
     EcmaVM::Destroy(ecmaVm);
 }
 
-void JSNApi::SetStackInfo(const EcmaVM *vm, const panda::StackInfo &info)
-{
-    JSThread *thread = vm->GetJSThread();
-    thread->SetStackStart(info.stackStart);
-    thread->SetStackLimit(info.stackStart - info.stackSize);
-}
-
-panda::StackInfo JSNApi::GetStackInfo(const EcmaVM *vm)
-{
-    JSThread *thread = vm->GetJSThread();
-    size_t stackStart = thread->GetStackStart();
-    size_t stackSize = stackStart - thread->GetStackLimit();
-    return {stackStart, stackSize};
-}
-
 void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler)
 {
     ecmaVm->RegisterUncatchableErrorHandler(handler);
@@ -5958,17 +5906,6 @@ uintptr_t JSNApi::GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
     return thread->NewGlobalHandle(value);
 }
 
-uintptr_t JSNApi::GetXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
-{
-    CROSS_THREAD_CHECK(vm);
-    if (localAddress == 0) {
-        return 0;
-    }
-    ecmascript::ThreadManagedScope scope(thread);
-    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(localAddress));
-    return thread->NewXRefGlobalHandle(value);
-}
-
 int JSNApi::GetStartRealTime(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
@@ -6090,47 +6027,9 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     thread->DisposeGlobalHandle(addr);
 }
 
-void JSNApi::DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
-{
-    CROSS_THREAD_CHECK(vm);
-    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
-        return;
-    }
-    thread->DisposeXRefGlobalHandle(addr);
-}
-
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr)
-{
-    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
-        return;
-    }
-    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
-    vm->GetCrossVMOperator()->MarkFromObject(value);
-}
-
-bool JSNApi::IsObjectAlive(const EcmaVM *vm, uintptr_t addr)
-{
-    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
-        return false;
-    }
-    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
-    return vm->GetCrossVMOperator()->IsObjectAlive(value);
-}
-
-bool JSNApi::IsValidHeapObject(const EcmaVM *vm, uintptr_t addr)
-{
-    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
-        return false;
-    }
-    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
-    return vm->GetCrossVMOperator()->IsValidHeapObject(value);
-}
-#endif // PANDA_JS_ETS_HYBRID_MODE
-
-void *JSNApi::InterOpSerializeValue([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] Local<JSValueRef> value,
-    [[maybe_unused]] Local<JSValueRef> transfer, [[maybe_unused]] Local<JSValueRef> cloneList,
-    [[maybe_unused]] bool defaultTransfer, [[maybe_unused]] bool defaultCloneShared)
+void *JSNApi::InterOpSerializeValue(const EcmaVM *vm, Local<JSValueRef> value,
+    Local<JSValueRef> transfer, Local<JSValueRef> cloneList,
+    bool defaultTransfer, bool defaultCloneShared)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
 #ifdef PANDA_JS_ETS_HYBRID_MODE
@@ -6710,21 +6609,6 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm
     return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(vm, file, module_path);
 }
 
-Local<ObjectRef> JSNApi::GetModuleNameSpaceWithPath(const EcmaVM *vm, const char *path)
-{
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
-    auto [filePath, recordName] = ModulePathHelper::ResolvePath(path);
-    ecmascript::ThreadManagedScope managedScope(thread);
-    JSHandle<JSTaggedValue> moduleNamespace =
-        ecmascript::NapiModuleLoader::LoadModuleNameSpaceFromFile(thread, recordName, filePath);
-    return JSNApiHelper::ToLocal<ObjectRef>(moduleNamespace);
-}
-
-std::pair<std::string, std::string> JSNApi::ResolveOhmUrl(std::string ohmUrl)
-{
-    return ModulePathHelper::ResolveOhmUrl(ohmUrl);
-}
-
 // ---------------------------------- Promise -------------------------------------
 Local<PromiseRef> PromiseRef::Catch(const EcmaVM *vm, Local<FunctionRef> handler)
 {
@@ -7137,13 +7021,5 @@ bool ExternalStringCache::HasCachedString([[maybe_unused]] const EcmaVM *vm, uin
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return instance->HasCachedString(propertyIndex);
 }
-
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-void HandshakeHelper::DoHandshake([[maybe_unused]] EcmaVM *vm, void *stsIface, void **ecmaIface)
-{
-    ecmascript::CrossVMOperator::DoHandshake(vm, stsIface, ecmaIface);
-}
-#endif  // PANDA_JS_ETS_HYBRID_MODE
-
 
 } // namespace panda

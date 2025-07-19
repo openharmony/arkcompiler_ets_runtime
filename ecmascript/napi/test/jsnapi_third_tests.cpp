@@ -1705,6 +1705,7 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SwitchContext001)
 
 HWTEST_F_L0(JSNApiTests, XRefGlobalHandleAddr)
 {
+    JSNApi::InitHybridVMEnv(vm_);
     JSHandle<TaggedArray> weakRefArray = vm_->GetFactory()->NewTaggedArray(2, JSTaggedValue::Hole());
     uintptr_t xRefArrayAddress;
     vm_->SetEnableForceGC(false);

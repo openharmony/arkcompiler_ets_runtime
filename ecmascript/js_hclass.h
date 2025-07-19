@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_JS_HCLASS_H
 #define ECMASCRIPT_JS_HCLASS_H
 
+#include "ecmascript/cross_vm/js_hclass_hybrid.h"
+
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/js_tagged_value.h"
@@ -1657,11 +1659,6 @@ public:
         return GetObjectType() == JSType::JS_PROMISE;
     }
 
-    inline bool IsJSXRefObject() const
-    {
-        return GetObjectType() == JSType::JS_XREF_OBJECT;
-    }
-
     inline bool IsResolvingFunctionsRecord() const
     {
         return GetObjectType() == JSType::RESOLVING_FUNCTIONS_RECORD;
@@ -2172,6 +2169,7 @@ public:
                                             bool isFunction = false);
     static JSHandle<JSHClass> CreateSConstructorHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
     static JSHandle<JSHClass> CreateSPrototypeHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+    JSHCLASS_PUBLIC_HYBRID_EXTENSION()
 
 private:
 

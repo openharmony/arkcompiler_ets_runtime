@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_DYNAMIC_TYPE_CONVERTER_H
-#define ECMASCRIPT_DYNAMIC_TYPE_CONVERTER_H
+#ifndef ECMASCRIPT_CROSS_VM_DYNAMIC_TYPE_CONVERTER_H
+#define ECMASCRIPT_CROSS_VM_DYNAMIC_TYPE_CONVERTER_H
 
 #include "common_interfaces/objects/base_object.h"
 #include "common_interfaces/objects/base_type_converter.h"
@@ -35,4 +35,4 @@ private:
     static DynamicTypeConverter dynTypeConverter_;
 };
 } // namespace panda::ecmascript
-#endif // ECMASCRIPT_MEM_DYNAMIC_TYPE_CONVERTER_H
+#endif // ECMASCRIPT_CROSS_VM_DYNAMIC_TYPE_CONVERTER_H

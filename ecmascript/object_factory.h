@@ -19,6 +19,7 @@
 #include "common_interfaces/objects/base_class.h"
 #include "ecmascript/base/error_type.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/cross_vm/object_factory_hybrid.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/enum_cache.h"
@@ -667,7 +668,7 @@ public:
     JSHandle<JSObject> PUBLIC_API NewJSObject(const JSHandle<JSHClass> &jshclass);
 
     // used for creating JSXRefObject
-    JSHandle<JSObject> PUBLIC_API NewJSXRefObject();
+    OBJECTFACTORY_PUBLIC_HYBRID_EXTENSION();
 
     // used for creating jshclass in Builtins, Function, Class_Linker
     JSHandle<JSHClass> NewEcmaHClass(uint32_t size, JSType type, const JSHandle<JSTaggedValue> &prototype);

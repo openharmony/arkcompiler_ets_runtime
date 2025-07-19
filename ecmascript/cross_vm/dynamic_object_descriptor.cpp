@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
+#include "ecmascript/cross_vm/dynamic_object_descriptor.h"
+
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/dynamic_object_descriptor.h"
 #include "common_interfaces/objects/base_object_dispatcher.h"
 
 namespace panda::ecmascript {

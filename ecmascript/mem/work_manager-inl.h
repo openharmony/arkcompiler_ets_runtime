@@ -222,21 +222,6 @@ WorkManager::~WorkManager()
     }
 }
 
-// PushObjectToGlobal should be called by MarkFromObejct in STS GC thread. To avoid data race with ArkTS GC
-// thread(DaemonThread), new a WorkNode and push it to global work stack. Other GC thread(in Taskpool) and
-// DaemonThread will get node from global work stack and continue mark. Global work stack have mutex in push
-// and pop, so it will not have data race.
-void WorkManager::PushObjectToGlobal(TaggedObject *object)
-{
-    WorkNode *tempNode = AllocateWorkNode();
-    ASSERT(tempNode != nullptr);
-    tempNode->PushObject(ToUintPtr(object));
-    workStack_.Push(tempNode);
-    if (heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() && !heap_->IsMarking()) {
-        heap_->PostParallelGCTask(parallelGCTaskPhase_);
-    }
-}
-
 size_t WorkManager::Finish()
 {
     size_t aliveSize = 0;

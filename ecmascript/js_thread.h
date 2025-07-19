@@ -41,6 +41,7 @@
 #include "common_interfaces/base_runtime.h"
 #include "common_interfaces/thread/base_thread.h"
 #include "common_interfaces/thread/thread_holder.h"
+#include "ecmascript/cross_vm/js_thread_hybrid.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "ffrt.h"
@@ -923,19 +924,9 @@ public:
         return newGlobalHandle_(value);
     }
 
-    inline uintptr_t NewXRefGlobalHandle(JSTaggedType value)
-    {
-        return newXRefGlobalHandle_(value);
-    }
-
     inline void DisposeGlobalHandle(uintptr_t nodeAddr)
     {
         disposeGlobalHandle_(nodeAddr);
-    }
-
-    inline void DisposeXRefGlobalHandle(uintptr_t nodeAddr)
-    {
-        disposeXRefGlobalHandle_(nodeAddr);
     }
 
     inline uintptr_t SetWeak(uintptr_t nodeAddr, void *ref = nullptr, WeakClearCallback freeGlobalCallBack = nullptr,
@@ -952,11 +943,6 @@ public:
     inline bool IsWeak(uintptr_t addr) const
     {
         return isWeak_(addr);
-    }
-
-    inline void SetNodeKind(NodeKind nodeKind)
-    {
-        setNodeKind_(nodeKind);
     }
 
     void EnableCrossThreadExecution()
@@ -1592,16 +1578,6 @@ public:
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
-    void SetStackStart(uint64_t stackStart)
-    {
-        glueData_.stackStart_ = stackStart;
-    }
-
-    void SetStackLimit(uint64_t stackLimit)
-    {
-        glueData_.stackLimit_ = stackLimit;
-    }
-
     JSTaggedValue GetSingleCharTable() const
     {
         ASSERT(glueData_.globalConst_->GetSingleCharTable() != JSTaggedValue::Hole());
@@ -1989,7 +1965,7 @@ public:
             << "---------------------------------------------------------";
         ClearMegaStat();
     }
-
+    JSTHREAD_PUBLIC_HYBRID_EXTENSION();
 protected:
     void SetThreadId()
     {
@@ -2062,14 +2038,11 @@ private:
     EcmaGlobalStorage<DebugNode> *globalDebugStorage_ {nullptr};
     int32_t stackTraceFd_ {-1};
     std::function<uintptr_t(JSTaggedType value)> newGlobalHandle_;
-    std::function<uintptr_t(JSTaggedType value)> newXRefGlobalHandle_;
     std::function<void(uintptr_t nodeAddr)> disposeGlobalHandle_;
-    std::function<void(uintptr_t nodeAddr)> disposeXRefGlobalHandle_;
     std::function<uintptr_t(uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack_,
          WeakClearCallback nativeFinalizeCallBack)> setWeak_;
     std::function<uintptr_t(uintptr_t nodeAddr)> clearWeak_;
     std::function<bool(uintptr_t addr)> isWeak_;
-    std::function<void(NodeKind nodeKind)> setNodeKind_;
     NativePointerTaskCallback asyncCleanTaskCb_ {nullptr};
     WeakFinalizeTaskCallback finalizeTaskCallback_ {nullptr};
     uint32_t globalNumberCount_ {0};
@@ -2133,6 +2106,7 @@ private:
 
     bool isInConcurrentScope_ {false};
     JSTaggedValue hotReloadDependInfo_ {JSTaggedValue::Undefined()};
+    JSTHREAD_PRIVATE_HYBRID_EXTENSION();
 
     friend class GlobalHandleCollection;
     friend class EcmaVM;

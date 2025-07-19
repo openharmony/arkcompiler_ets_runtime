@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
 #include "ecmascript/tests/unified_gc_test_helper.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/region-inl.h"
-#include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 
 using namespace panda::ecmascript;
 

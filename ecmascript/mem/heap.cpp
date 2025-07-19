@@ -19,6 +19,8 @@
 #endif
 
 #include "common_components/taskpool/taskpool.h"
+#include "ecmascript/cross_vm/unified_gc/unified_gc.h"
+#include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
 #include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/partial_gc.h"
@@ -30,8 +32,6 @@
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
-#include "ecmascript/mem/unified_gc/unified_gc.h"
-#include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/jit/jit.h"
@@ -310,7 +310,7 @@ void SharedHeap::Destroy()
         delete sharedMemController_;
         sharedMemController_ = nullptr;
     }
-    if (unifiedGC_ != nullptr) {
+    if (Runtime::GetInstance()->IsHybridVm() && unifiedGC_ != nullptr) {
         delete unifiedGC_;
         unifiedGC_ = nullptr;
     }
@@ -333,7 +333,9 @@ void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants
     sharedGC_ = new SharedGC(this);
     sEvacuator_ = new SharedGCEvacuator(this);
     sharedFullGC_ = new SharedFullGC(this);
-    unifiedGC_ = new UnifiedGC();
+    if (Runtime::GetInstance()->IsHybridVm()) {
+        unifiedGC_ = new UnifiedGC();
+    }
 }
 
 void SharedHeap::PostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase)
@@ -836,54 +838,6 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
 }
 
-void SharedHeap::StartUnifiedGCMark([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason gcReason)
-{
-    ASSERT(gcType == TriggerGCType::UNIFIED_GC && gcReason == GCReason::CROSSREF_CAUSE);
-    ASSERT(JSThread::GetCurrent() == dThread_);
-    {
-        ThreadManagedScope runningScope(dThread_);
-        SuspendAllScope scope(dThread_);
-        Runtime *runtime = Runtime::GetInstance();
-        std::vector<RecursionScope> recurScopes;
-        // The approximate size is enough, because even if some thread creates and registers after here, it will keep
-        // waiting in transition to RUNNING state before JSThread::SetReadyForGCIterating.
-        recurScopes.reserve(runtime->ApproximateThreadListSize());
-        runtime->GCIterateThreadList([&recurScopes](JSThread *thread) {
-            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            recurScopes.emplace_back(heap, HeapType::LOCAL_HEAP);
-        });
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-        if (!unifiedGC_->StartXGCBarrier()) {
-            unifiedGC_->SetInterruptUnifiedGC(false);
-            dThread_->FinishRunningTask();
-            return;
-        }
-#endif // PANDA_JS_ETS_HYBRID_MODE
-        runtime->GCIterateThreadList([gcType](JSThread *thread) {
-            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            if (UNLIKELY(heap->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-                // pre unified gc heap verify
-                LOG_ECMA(DEBUG) << "pre unified gc heap verify";
-                heap->ProcessSharedGCRSetWorkList();
-                Verification(heap, VerifyKind::VERIFY_PRE_GC).VerifyAll();
-            }
-            heap->SetGCType(gcType);
-        });
-        unifiedGC_->RunPhases();
-        runtime->GCIterateThreadList([](JSThread *thread) {
-            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            if (UNLIKELY(heap->ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-                // post unified gc heap verify
-                LOG_ECMA(DEBUG) << "post unified gc heap verify";
-                Verification(heap, VerifyKind::VERIFY_POST_GC).VerifyAll();
-            }
-        });
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-        unifiedGC_->FinishXGCBarrier();
-#endif // PANDA_JS_ETS_HYBRID_MODE
-    }
-}
-
 Heap::Heap(EcmaVM *ecmaVm)
     : BaseHeap(ecmaVm->GetEcmaParamConfiguration()),
       ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()), sHeap_(SharedHeap::GetInstance()) {}
@@ -973,7 +927,9 @@ void Heap::Initialize()
         EnableConcurrentMarkType::CONFIG_DISABLE);
     nonMovableMarker_ = new NonMovableMarker(this);
     compressGCMarker_ = new CompressGCMarker(this);
-    unifiedGCMarker_ = new UnifiedGCMarker(this);
+    if (Runtime::GetInstance()->IsHybridVm()) {
+        unifiedGCMarker_ = new UnifiedGCMarker(this);
+    }
     evacuator_ = new ParallelEvacuator(this);
     incrementalMarker_ = new IncrementalMarker(this);
     gcListeners_.reserve(16U);
@@ -1176,7 +1132,7 @@ void Heap::Destroy()
         delete compressGCMarker_;
         compressGCMarker_ = nullptr;
     }
-    if (unifiedGCMarker_ != nullptr) {
+    if (Runtime::GetInstance()->IsHybridVm() && unifiedGCMarker_ != nullptr) {
         delete unifiedGCMarker_;
         unifiedGCMarker_ = nullptr;
     }
@@ -1189,13 +1145,6 @@ void Heap::Destroy()
 void Heap::Prepare()
 {
     MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, HeapPrepare);
-    WaitRunningTaskFinished();
-    sweeper_->EnsureAllTaskFinished();
-    WaitClearTaskFinished();
-}
-
-void Heap::UnifiedGCPrepare()
-{
     WaitRunningTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
@@ -2914,7 +2863,9 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     incrementalMarker_->workManager_ = workManager;
     nonMovableMarker_->workManager_ = workManager;
     compressGCMarker_->workManager_ = workManager;
-    unifiedGCMarker_->workManager_ = workManager;
+    if (Runtime::GetInstance()->IsHybridVm()) {
+        unifiedGCMarker_->workManager_ = workManager;
+    }
     partialGC_->workManager_ = workManager;
 }
 
@@ -3068,12 +3019,6 @@ void BaseHeap::WaitRunningTaskFinished()
     while (runningTaskCount_ > 0) {
         waitTaskFinishedCV_.Wait(&waitTaskFinishedMutex_);
     }
-}
-
-uint32_t BaseHeap::GetRunningTaskCount()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    return runningTaskCount_;
 }
 
 bool BaseHeap::CheckCanDistributeTask()

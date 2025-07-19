@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/cross_vm/dynamic_object_accessor.h"
+
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/dynamic_object_accessor.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/object_factory.h"
 #include "common_interfaces/objects/base_object_dispatcher.h"

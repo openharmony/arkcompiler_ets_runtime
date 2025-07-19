@@ -15,10 +15,11 @@
 
 #include "ecmascript/cross_vm/cross_vm_operator.h"
 
+#include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
+#include "ecmascript/cross_vm/heap_hybrid-inl.h"
+#include "ecmascript/cross_vm/unified_gc/unified_gc.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/mem/unified_gc/unified_gc.h"
-#include "ecmascript/mem/unified_gc/unified_gc_marker.h"
 
 namespace panda::ecmascript {
 
