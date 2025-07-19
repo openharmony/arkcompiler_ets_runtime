@@ -25,7 +25,6 @@ namespace common {
 class StringHashInternal {
 friend class StringHashHelper;
 private:
-#if ENABLE_NEXT_OPTIMIZATION
     template <typename T>
     static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
                                                    uint32_t hashSeed)
@@ -60,31 +59,6 @@ private:
         }
         return hashTotal;
     }
-#else
-    template <typename T>
-    static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
-                                                   uint32_t hashSeed)
-    {
-        constexpr uint32_t hashShift = static_cast<uint32_t>(StringHash::HASH_SHIFT);
-        constexpr uint32_t blockSize = static_cast<size_t>(StringHash::BLOCK_SIZE);
-        uint32_t hash[blockSize] = {0};
-        uint32_t index = 0;
-        for (; index + blockSize <= size; index += blockSize) {
-            hash[0] = (hash[0] << hashShift) - hash[0] + data[index];
-            hash[1] = (hash[1] << hashShift) - hash[1] + data[index + 1]; // 1: the second element of the block
-            hash[2] = (hash[2] << hashShift) - hash[2] + data[index + 2]; // 2: the third element of the block
-            hash[3] = (hash[3] << hashShift) - hash[3] + data[index + 3]; // 3: the fourth element of the block
-        }
-        for (; index < size; ++index) {
-            hash[0] = (hash[0] << hashShift) - hash[0] + data[index];
-        }
-        uint32_t totalHash = hashSeed;
-        for (uint32_t i = 0; i < blockSize; ++i) {
-            totalHash = (totalHash << hashShift) - totalHash + hash[i];
-        }
-        return totalHash;
-    }
-#endif
 };
 }  // namespace common
 #endif  // COMMON_COMPONENTS_PLATFORM_STRING_HASH_COMMON_H

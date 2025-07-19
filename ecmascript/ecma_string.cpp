@@ -406,21 +406,12 @@ std::u16string EcmaString::ToU16String(const JSThread *thread, uint32_t len)
 }
 
 // static
-#if ENABLE_NEXT_OPTIMIZATION
 template<typename T1, typename T2>
 uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
                                                  const T2 *dataSecond, size_t sizeSecond)
 {
     return BaseString::CalculateDataConcatHashCode(dataFirst, sizeFirst, dataSecond, sizeSecond);
 }
-#else
-template<typename T1, typename T2>
-uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
-                                                 const T2 *dataSecond, size_t sizeSecond)
-{
-    return BaseString::CalculateDataConcatHashCode(dataFirst, sizeFirst, dataSecond, sizeSecond);
-}
-#endif
 
 // static
 uint32_t EcmaString::CalculateConcatHashCode(const JSThread *thread, const JSHandle<EcmaString> &firstString,
