@@ -29,6 +29,7 @@
 #include "common_components/log/log_base.h"
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/cross_vm/jsnapi_hybrid.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #ifndef NDEBUG
 #include "libpandabase/utils/debug.h"
@@ -473,63 +474,9 @@ private:
     bool enableWarmStartupSmartGC_ {false};
     friend JSNApi;
 };
-
-template<typename T>
-template<typename S>
-void Global<T>::CreateXRefGloablReference(const EcmaVM *vm, const Local<S> &current)
-{
-    vm_ = vm;
-    if (!current.IsEmpty()) {
-        address_ = JSNApi::GetXRefGlobalHandleAddr(vm_, reinterpret_cast<uintptr_t>(*current));
-    }
-}
-
-template<typename T>
-void Global<T>::FreeXRefGlobalHandleAddr()
-{
-    if (address_ == 0) {
-        return;
-    }
-    JSNApi::DisposeXRefGlobalHandleAddr(vm_, address_);
-    address_ = 0;
-}
-
+GLOBAL_PUBLIC_DEF_HYBRID_EXTENSION();
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    template<typename T>
-    void Global<T>::MarkFromObject(std::function<void(uintptr_t)> &visitor)
-    {
-        if (address_ == 0) {
-            return;
-        }
-        JSNApi::MarkFromObject(vm_, address_, visitor);
-    }
-
-    template<typename T>
-    void Global<T>::MarkFromObject()
-    {
-        if (address_ == 0) {
-            return;
-        }
-        JSNApi::MarkFromObject(vm_, address_);
-    }
-
-    template<typename T>
-    bool Global<T>::IsObjectAlive() const
-    {
-        if (address_ == 0) {
-            return false ;
-        }
-        return JSNApi::IsObjectAlive(vm_, address_);
-    }
-
-    template<typename T>
-    bool Global<T>::IsValidHeapObject() const
-    {
-        if (address_ == 0) {
-            return false;
-        }
-        return JSNApi::IsValidHeapObject(vm_, address_);
-    }
+    GLOBAL_PUBLIC_DEF_HYBRID_MODE_EXTENSION();
 #endif // PANDA_JS_ETS_HYBRID_MODE
 }  // namespace panda
 

@@ -204,6 +204,7 @@ public:
             thread->ManagedCodeBegin();
             scope = new EcmaHandleScope(thread);
         }
+        JSNApi::InitHybridVMEnv(thread->GetEcmaVM());
     }
 
     void TearDown() override

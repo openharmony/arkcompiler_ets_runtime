@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-#include "ecmascript/dynamic_type_converter.h"
+#include "ecmascript/cross_vm/dynamic_type_converter.h"
+
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"

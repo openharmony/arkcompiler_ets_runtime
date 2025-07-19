@@ -16,8 +16,11 @@
 #ifndef ECMASCRIPT_MEM_UNIFIED_GC_UNIFIED_GC_MARKER_INL_H
 #define ECMASCRIPT_MEM_UNIFIED_GC_UNIFIED_GC_MARKER_INL_H
 
-#include "ecmascript/mem/unified_gc/unified_gc_marker.h"
+#include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
 
+#include "ecmascript/cross_vm/daemon_task_hybrid-inl.h"
+#include "ecmascript/cross_vm/js_tagged_value_hybrid-inl.h"
+#include "ecmascript/cross_vm/work_manager_hybrid-inl.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/mem/work_manager-inl.h"
 

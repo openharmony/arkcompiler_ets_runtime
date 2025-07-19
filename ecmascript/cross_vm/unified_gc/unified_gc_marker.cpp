@@ -14,8 +14,8 @@
 */
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/cross_vm/unified_gc/unified_gc_marker-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/unified_gc/unified_gc_marker-inl.h"
 #include "ecmascript/mem/verification.h"
 
 namespace panda::ecmascript {
