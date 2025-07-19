@@ -82,7 +82,7 @@ public:
     }
 
     bool ShouldIgnoreRequest(GCRequest& request) override;
-    bool MarkObject(BaseObject* obj, size_t cellCount = 0) const override;
+    bool MarkObject(BaseObject* obj) const override;
 
     TraceRefFieldVisitor CreateTraceObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) override;
     void TraceObjectRefFields(BaseObject *obj, TraceRefFieldVisitor *data) override;

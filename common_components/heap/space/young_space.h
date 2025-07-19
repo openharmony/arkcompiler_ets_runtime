@@ -80,7 +80,7 @@ public:
 
     size_t GetAllocatedSize() const
     {
-        return tlRegionList_.GetAllocatedSize() + recentFullRegionList_.GetAllocatedSize();
+        return tlRegionList_.GetAllocatedSize(false) + recentFullRegionList_.GetAllocatedSize();
     }
 
     size_t GetRecentAllocatedSize() const

@@ -32,9 +32,9 @@ void YoungSpace::DumpRegionStats() const
     size_t allocRecentFullSize = recentFullRegionList_.GetAllocatedSize();
 
     size_t units = tlUnits + recentFullUnits;
-    VLOG(DEBUG, "young space units: %zu (%zu B)", units, units * RegionDesc::UNIT_SIZE);
-    VLOG(DEBUG, "\ttl-regions %zu: %zu units (%zu B, alloc %zu)", tlRegions,  tlUnits, tlSize, allocTLSize);
-    VLOG(DEBUG, "\trecent-full regions %zu: %zu units (%zu B, alloc %zu)",
+    VLOG(DEBUG, "\tyoung space units: %zu (%zu B)", units, units * RegionDesc::UNIT_SIZE);
+    VLOG(DEBUG, "\t  tl-regions %zu: %zu units (%zu B, alloc %zu)", tlRegions,  tlUnits, tlSize, allocTLSize);
+    VLOG(DEBUG, "\t  recent-full regions %zu: %zu units (%zu B, alloc %zu)",
         recentFullRegions, recentFullUnits, recentFullSize, allocRecentFullSize);
 }
 } // namespace common

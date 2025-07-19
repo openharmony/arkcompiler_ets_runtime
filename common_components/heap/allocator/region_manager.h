@@ -320,8 +320,6 @@ public:
     void ForEachObjectSafe(const std::function<void(BaseObject*)>& visitor) const;
     void ForEachAwaitingJitFortUnsafe(const std::function<void(BaseObject*)>& visitor) const;
 
-    size_t GetUsedRegionSize() const { return GetUsedUnitCount() * RegionDesc::UNIT_SIZE; }
-
     size_t GetRecentAllocatedSize() const
     {
         return recentLargeRegionList_.GetAllocatedSize() + recentPinnedRegionList_.GetAllocatedSize();

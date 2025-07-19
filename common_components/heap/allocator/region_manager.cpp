@@ -823,7 +823,7 @@ void RegionManager::RequestForRegion(size_t size)
 
     Heap& heap = Heap::GetHeap();
     GCStats& gcstats = heap.GetCollector().GetGCStats();
-    size_t allocatedBytes = GetAllocatedSize() - gcstats.liveBytesAfterGC;
+    size_t allocatedBytes = heap.GetAllocatedSize() - gcstats.liveBytesAfterGC;
     constexpr double pi = 3.14;
     size_t availableBytesAfterGC = heap.GetMaxCapacity() - gcstats.liveBytesAfterGC;
     double heuAllocRate = std::cos((pi / 2.0) * allocatedBytes / availableBytesAfterGC) * gcstats.collectionRate;
@@ -863,8 +863,11 @@ uintptr_t RegionManager::AllocPinnedFromFreeList(size_t cellCount)
     }
 
     // Mark new allocated pinned object.
+    RegionDesc* regionDesc = RegionDesc::GetRegionDescAt(allocPtr);
     BaseObject* object = reinterpret_cast<BaseObject*>(allocPtr);
-    (reinterpret_cast<TraceCollector*>(&Heap::GetHeap().GetCollector()))->MarkObject(object, cellCount);
+    regionDesc->MarkObject(object);
+    size_t size = (cellCount + 1) * sizeof(uint64_t);
+    regionDesc->AddLiveByteCount(size);
     return allocPtr;
 }
 
