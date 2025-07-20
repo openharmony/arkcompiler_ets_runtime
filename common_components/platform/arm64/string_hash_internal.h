@@ -31,23 +31,8 @@ private:
     static uint32_t ComputeHashForDataOfLongString(const T *data, size_t size,
                                                    uint32_t hashSeed)
     {
-        /**
-         *  process the first {remainder} items of data[] and hashSeed
-         *  for example, if remainder = 2,
-         *  then hash[2] = data[0] * 31^1, hash[3] = data[1] * 31^0;
-         *  hash[0] = hashSeed * 31^{remainder}
-         *
-         *  the rest elements in data[] will be processed with for loop as follows
-         *  hash[0]: hash[0] * 31^4 + data[i] * 31^3
-         *  hash[1]: hash[1] * 31^4 + data[i+1] * 31^2
-         *  hash[2]: hash[2] * 31^4 + data[i+2] * 31^1
-         *  hash[3]: hash[3] * 31^4 + data[i+3] * 31^0
-         *  i starts at {remainder} and every time += 4,
-         *  at last, totolHash = hash[0] + hash[1] + hash[2] + hash[3];
-         */
-        static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t>);
-        constexpr size_t blockSize = StringHash::BLOCK_SIZE;
-        constexpr size_t loopSize = StringHash::SIMD_U8_LOOP_SIZE;
+        constexpr uint32_t blockSize = StringHash::BLOCK_SIZE;
+        constexpr uint32_t scale = StringHash::BLOCK_MULTIPLY;
         uint32_t hash[blockSize] = {};
         uint32_t index = 0;
         uint32_t remainder = size & (blockSize - 1);
@@ -63,35 +48,87 @@ private:
         }
         hash[0] += hashSeed * StringHash::MULTIPLIER[blockSize - 1 - remainder];
 
-        uint32x4_t dataVec;
-        uint32x4_t hashVec;
-        uint32x4_t multiplierVec = vld1q_u32(StringHash::MULTIPLIER);
-        uint32x4_t scaleVec = vdupq_n_u32(StringHash::BLOCK_MULTIPLY);
-
-        if constexpr (std::is_same_v<T, uint8_t>) {
-            // process 4 elements with for loop if (size-index) % 8 = 4
-            if ((size - index) % loopSize == blockSize) {
-                for (size_t i = 0; i < blockSize; i++) {
-                    hash[i] = hash[i] * StringHash::BLOCK_MULTIPLY + data[index++] * StringHash::MULTIPLIER[i];
-                }
-            }
-            hashVec = vld1q_u32(hash);
-            for (; index < size; index += loopSize) {
-                uint8x8_t dataVec8 = vld1_u8(data + index);
-                uint16x8_t dataVec16 = vmovl_u8(dataVec8);
-                dataVec = vmovl_u16(vget_low_u16(dataVec16));
-                hashVec = vaddq_u32(vmulq_u32(hashVec, scaleVec), vmulq_u32(dataVec, multiplierVec));
-                dataVec = vmovl_u16(vget_high_u16(dataVec16));
-                hashVec = vaddq_u32(vmulq_u32(hashVec, scaleVec), vmulq_u32(dataVec, multiplierVec));
-            }
-        } else {
-            hashVec = vld1q_u32(hash);
-            for (; index < size; index += blockSize) {
-                dataVec = vmovl_u16(vld1_u16(data + index));
-                hashVec = vaddq_u32(vmulq_u32(hashVec, scaleVec), vmulq_u32(dataVec, multiplierVec));
+        uint32_t dataMul[blockSize] = {};
+        for (; index < size; index += blockSize) {
+            for (size_t i = 0; i < blockSize; i++) {
+                dataMul[i] = data[index + i] * StringHash::MULTIPLIER[i];
+                hash[i] = hash[i] * scale + dataMul[i];
             }
         }
-        return vaddvq_u32(hashVec);
+        uint32_t hashTotal = 0;
+        for (size_t i = 0; i < blockSize; i++) {
+            hashTotal += hash[i];
+        }
+        return hashTotal;
+    }
+
+    template <>
+    uint32_t ComputeHashForDataOfLongString<uint8_t>(const uint8_t *data,
+        size_t size, uint32_t hashSeed)
+    {
+        const uint32x4_t multiplierVec = vld1q_u32(StringHash::MULTIPLIER);
+        constexpr uint32_t multiplierHash = StringHash::MULTIPLIER[0] * StringHash::MULTIPLIER[2];
+
+        uint32_t hash = hashSeed;
+        const uint8_t *dataEnd = data + size;
+        const uint8_t *vecEnd = data + (size & (~15));
+        const uint8_t *p = data;
+        constexpr size_t UINT8_LOOP_SIZE = 16; // neon 128bit / uint8_t 8bit = 16
+        for (; p < vecEnd; p += UINT8_LOOP_SIZE) {
+            uint8x16_t dataVec8 = vld1q_u8(p);
+            uint16x8_t dataVec16_1 = vmovl_u8(vget_low_u16(dataVec8));
+            uint16x8_t dataVec16_2 = vmovl_u8(vget_high_u16(dataVec8));
+            uint32x4_t dataVec32_1 = vmovl_u16(vget_low_u16(dataVec16_1));
+            uint32x4_t dataVec32_3 = vmovl_u16(vget_low_u16(dataVec16_2));
+            uint32x4_t dataVec32_2 = vmovl_u16(vget_high_u16(dataVec16_1));
+            uint32x4_t dataVec32_4 = vmovl_u16(vget_high_u16(dataVec16_2));
+
+            dataVec32_1 = vmulq_u32(dataVec32_1, multiplierVec);
+            hash = hash * multiplierHash + vaddvq_u32(dataVec32_1);
+
+            dataVec32_2 = vmulq_u32(dataVec32_2, multiplierVec);
+            hash = hash * multiplierHash + vaddvq_u32(dataVec32_2);
+
+            dataVec32_3 = vmulq_u32(dataVec32_3, multiplierVec);
+            hash = hash * multiplierHash + vaddvq_u32(dataVec32_3);
+
+            dataVec32_4 = vmulq_u32(dataVec32_4, multiplierVec);
+            hash = hash * multiplierHash + vaddvq_u32(dataVec32_4);
+        }
+
+        for (; p < dataEnd; p++) {
+            hash = (hash << static_cast<uint32_t>(StringHash::HASH_SHIFT)) - hash + *p;
+        }
+        return hash;
+    }
+
+    template <>
+    uint32_t ComputeHashForDataOfLongString<uint16_t>(const uint16_t *data,
+        size_t size, uint32_t hashSeed)
+    {
+        const uint32x4_t multiplierVec = vld1q_u32(StringHash::MULTIPLIER);
+        constexpr uint32_t multiplierHash = StringHash::MULTIPLIER[0] * StringHash::MULTIPLIER[2];
+
+        uint32_t hash = hashSeed;
+        const uint16_t *dataEnd = data + size;
+        const uint16_t *vecEnd = data + (size & (~7));
+        const uint16_t *p = data;
+        constexpr size_t UINT16_LOOP_SIZE = 8; // neon 128bit / uint16_t 16bit = 8
+        for (; p < vecEnd; p += UINT16_LOOP_SIZE) {
+            uint16x8_t dataVec16 = vld1q_u16(p);
+            uint32x4_t dataVec32_1 = vmovl_u16(vget_low_u16(dataVec16));
+            dataVec32_1 = vmulq_u32(dataVec32_1, multiplierVec);
+            hash = hash * multiplierHash + vaddvq_u32(dataVec32_1);
+
+            uint32x4_t dataVec32_2 = vmovl_u16(vget_high_u16(dataVec16));
+            dataVec32_2 = vmulq_u32(dataVec32_2, multiplierVec);
+            hash = hash * multiplierHash + vaddvq_u32(dataVec32_2);
+        }
+
+        for (; p < dataEnd; p++) {
+            hash = (hash << static_cast<uint32_t>(StringHash::HASH_SHIFT)) - hash + *p;
+        }
+        return hash;
     }
 };
 }  // namespace common
