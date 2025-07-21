@@ -15,6 +15,16 @@
 
 #include "ecmascript/ic/proto_change_details.h"
 namespace panda::ecmascript {
+
+static uint32_t CalcNewCapacity(uint32_t oldCapacity)
+{
+    uint32_t initNewCap = oldCapacity + 1;
+    // 2: make sure we have at least 2 buffer to use.
+    uint32_t minGrowthBuffer = 2;
+    // 2: grow up by 50% each time.
+    return initNewCap + std::max(minGrowthBuffer, initNewCap / 2);
+}
+
 JSHandle<ChangeListener> ChangeListener::Add(const JSThread *thread, const JSHandle<ChangeListener> &array,
                                              const JSHandle<JSHClass> &value, uint32_t *index)
 {
@@ -42,7 +52,8 @@ JSHandle<ChangeListener> ChangeListener::Add(const JSThread *thread, const JSHan
         return array;
     }
     // the vector is full and no hole exists.
-    JSHandle<WeakVector> newArray = WeakVector::Grow(thread, JSHandle<WeakVector>(array), array->GetCapacity() + 1);
+    uint32_t newCapacity = CalcNewCapacity(array->GetCapacity());
+    JSHandle<WeakVector> newArray = WeakVector::Grow(thread, JSHandle<WeakVector>(array), newCapacity);
     weakValue = JSTaggedValue(value.GetTaggedValue().CreateAndGetWeakRef());
     uint32_t arrayIndex = newArray->PushBack(thread, weakValue);
     ASSERT(arrayIndex != TaggedArray::MAX_ARRAY_INDEX);
