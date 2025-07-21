@@ -249,3 +249,19 @@ HWTEST_F_L0(BarrierTest, ReadStruct_ReadsCorrectly) {
 
     delete initValue;
 }
+
+HWTEST_F_L0(BarrierTest, AtomicWriteStaticRef_NonConcurrent)
+{
+    DummyObject* targetObj = new DummyObject();
+    DummyObject* initialObj = new DummyObject();
+
+    RefField<true> field(reinterpret_cast<BaseObject*>(0x1));
+    field.SetTargetObject(initialObj);
+
+    MockCollector collector;
+    Barrier barrier(collector);
+
+    barrier.AtomicWriteRefField(nullptr, field, targetObj, std::memory_order_relaxed);
+
+    EXPECT_EQ(field.GetTargetObject(std::memory_order_relaxed), targetObj);
+}

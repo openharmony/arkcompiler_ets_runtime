@@ -184,6 +184,28 @@ HWTEST_F_L0(EnumBarrierTest, WriteBarrier_TEST2)
 #endif
 }
 
+HWTEST_F_L0(EnumBarrierTest, WriteBarrier_TEST3)
+{
+    MockCollector collector;
+    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
+    ASSERT_TRUE(enumBarrier != nullptr);
+
+#ifndef ARK_USE_SATB_BARRIER
+    constexpr uint64_t TAG_BITS_SHIFT = 48;
+    constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
+    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
+    constexpr uint64_t TAG_BOOLEAN = 0x04ULL;
+    constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<> field(obj);
+    Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
+    enumBarrier->WriteBarrier(obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+#endif
+}
+
 HWTEST_F_L0(EnumBarrierTest, ReadStruct_TEST1)
 {
     MockCollector collector;
@@ -192,15 +214,15 @@ HWTEST_F_L0(EnumBarrierTest, ReadStruct_TEST1)
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    constexpr size_t size = 16;
-    uint8_t srcBuffer[size] = {};
-    uint8_t dstBuffer[size] = {};
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
-    enumBarrier->ReadStruct(dst, obj, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    enumBarrier->ReadStruct(dst, obj, src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(EnumBarrierTest, WriteStruct_TEST1)
@@ -209,16 +231,17 @@ HWTEST_F_L0(EnumBarrierTest, WriteStruct_TEST1)
     auto enumBarrier = std::make_unique<EnumBarrier>(collector);
     ASSERT_TRUE(enumBarrier != nullptr);
 
-    auto objPtr = std::make_unique<BaseObject>();
-    constexpr size_t size = 16;
-    auto srcBuffer = std::make_unique<uint8_t[]>(size);
-    auto dstBuffer = std::make_unique<uint8_t[]>(size);
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer.get());
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer.get());
-    enumBarrier->WriteStruct(objPtr.get(), dst, size, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    enumBarrier->WriteStruct(obj, dst, sizeof(BaseObject), src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(EnumBarrierTest, WriteStruct_TEST2)
@@ -227,15 +250,15 @@ HWTEST_F_L0(EnumBarrierTest, WriteStruct_TEST2)
     auto enumBarrier = std::make_unique<EnumBarrier>(collector);
     ASSERT_TRUE(enumBarrier != nullptr);
 
-    constexpr size_t size = 16;
-    auto srcBuffer = std::make_unique<uint8_t[]>(size);
-    auto dstBuffer = std::make_unique<uint8_t[]>(size);
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer.get());
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer.get());
-    enumBarrier->WriteStruct(nullptr, dst, size, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    enumBarrier->WriteStruct(nullptr, dst, sizeof(BaseObject), src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(EnumBarrierTest, AtomicReadRefField_TEST1)

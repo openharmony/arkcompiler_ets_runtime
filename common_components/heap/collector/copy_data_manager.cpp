@@ -37,13 +37,13 @@ void HeapBitmapManager::InitializeHeapBitmap()
 
 #ifdef _WIN64
     void* startAddress = VirtualAlloc(NULL, allHeapBitmapSize_, MEM_RESERVE, PAGE_READWRITE);
-    if (startAddress == NULL) {
+    if (startAddress == NULL) { //LCOV_EXCL_BR_LINE
         LOG_COMMON(FATAL) << "failed to initialize HeapBitmapManager";
         UNREACHABLE_CC();
     }
 #else
     void* startAddress = mmap(nullptr, allHeapBitmapSize_, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    if (startAddress == MAP_FAILED) {
+    if (startAddress == MAP_FAILED) { //LCOV_EXCL_BR_LINE
         LOG_COMMON(FATAL) << "failed to initialize HeapBitmapManager";
         UNREACHABLE_CC();
     } else {

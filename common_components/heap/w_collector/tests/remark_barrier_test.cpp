@@ -97,6 +97,54 @@ HWTEST_F_L0(RemarkBarrierTest, ReadStringTableStaticRef_TEST1)
     ASSERT_TRUE(resultObj == nullptr);
 }
 
+HWTEST_F_L0(RemarkBarrierTest, ReadStringTableStaticRef_TEST2)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(addr);
+    regionInfo->SetRegionAllocPtr(addr - 1);
+    regionInfo->SetTraceLine();
+    RefField<false> field(obj);
+
+    BaseObject* resultObj = remarkBarrier->ReadStringTableStaticRef(field);
+    ASSERT_TRUE(resultObj != nullptr);
+}
+
+HWTEST_F_L0(RemarkBarrierTest, ReadStringTableStaticRef_TEST3)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(addr);
+    regionInfo->SetRegionType(RegionDesc::RegionType::ALIVE_REGION_FIRST);
+    RefField<false> field(obj);
+
+    BaseObject* resultObj = remarkBarrier->ReadStringTableStaticRef(field);
+    ASSERT_TRUE(resultObj == nullptr);
+}
+
+HWTEST_F_L0(RemarkBarrierTest, ReadStringTableStaticRef_TEST4)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
+
+    Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
+    BaseObject* resultObj = remarkBarrier->ReadStringTableStaticRef(field);
+    ASSERT_TRUE(resultObj != nullptr);
+}
+
 HWTEST_F_L0(RemarkBarrierTest, ReadStruct_TEST1)
 {
     MockCollector collector;
@@ -105,15 +153,15 @@ HWTEST_F_L0(RemarkBarrierTest, ReadStruct_TEST1)
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    constexpr size_t size = 16;
-    uint8_t srcBuffer[size] = {};
-    uint8_t dstBuffer[size] = {};
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
-    remarkBarrier->ReadStruct(dst, obj, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    remarkBarrier->ReadStruct(dst, obj, src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(RemarkBarrierTest, WriteRefField_TEST1)
@@ -221,22 +269,61 @@ HWTEST_F_L0(RemarkBarrierTest, WriteBarrier_TEST2)
 #endif
 }
 
+HWTEST_F_L0(RemarkBarrierTest, WriteBarrier_TEST3)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+#ifndef ARK_USE_SATB_BARRIER
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<> field(obj);
+    remarkBarrier->WriteBarrier(obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+#endif
+}
+
 HWTEST_F_L0(RemarkBarrierTest, WriteStruct_TEST1)
 {
     MockCollector collector;
     auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
     ASSERT_TRUE(remarkBarrier != nullptr);
 
-    auto objPtr = std::make_unique<BaseObject>();
-    constexpr size_t size = 16;
-    auto srcBuffer = std::make_unique<uint8_t[]>(size);
-    auto dstBuffer = std::make_unique<uint8_t[]>(size);
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer.get());
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer.get());
-    remarkBarrier->WriteStruct(objPtr.get(), dst, size, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    remarkBarrier->WriteStruct(obj, dst, sizeof(BaseObject), src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
+}
+
+HWTEST_F_L0(RemarkBarrierTest, WriteStruct_TEST2)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+
+    auto mutator = ThreadLocal::GetMutator();
+    ThreadLocal::SetMutator(nullptr);
+    remarkBarrier->WriteStruct(obj, dst, sizeof(BaseObject), src, sizeof(BaseObject));
+    ThreadLocal::SetMutator(mutator);
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(RemarkBarrierTest, AtomicReadRefField_TEST1)

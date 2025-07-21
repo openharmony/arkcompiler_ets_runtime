@@ -55,6 +55,11 @@ HWTEST_F_L0(LogTest, ConvertFromRuntime_Default_ReturnsDebug) {
     Level result = Log::ConvertFromRuntime(static_cast<LOG_LEVEL>(999));
     EXPECT_EQ(result, Level::DEBUG);
 }
+
+HWTEST_F_L0(LogTest, PrettyOrderMathNano) {
+    std::string result = PrettyOrderMathNano(1000000000000, "s");
+    EXPECT_EQ(result, "1000s");
+}
 }
 
 namespace common {

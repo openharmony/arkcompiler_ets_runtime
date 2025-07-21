@@ -144,7 +144,7 @@ bool IsValidUTF8(const std::vector<uint8_t> &data)
                 return false;
             }
             break;
-        default:
+        default: //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "this branch is unreachable";
             UNREACHABLE_CC();
             break;

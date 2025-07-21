@@ -51,15 +51,15 @@ HWTEST_F_L0(IdleBarrierTest, ReadStruct_TEST0)
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    constexpr size_t size = 16;
-    uint8_t srcBuffer[size] = {};
-    uint8_t dstBuffer[size] = {};
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
-    idleBarrier->ReadStruct(dst, obj, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    idleBarrier->ReadStruct(dst, obj, src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(IdleBarrierTest, AtomicWriteRefField_TEST0)
@@ -217,6 +217,55 @@ HWTEST_F_L0(IdleBarrierTest, WriteRefField_TEST0)
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
+HWTEST_F_L0(IdleBarrierTest, WriteRefField_TEST1)
+{
+    MockCollector collector;
+    auto idleBarrier = std::make_unique<IdleBarrier>(collector);
+    ASSERT_TRUE(idleBarrier != nullptr);
+
+    constexpr uint64_t TAG_BITS_SHIFT = 48;
+    constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
+    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
+    constexpr uint64_t TAG_BOOLEAN = 0x04ULL;
+    constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
+
+    RefField<> field(MAddress(0));
+    BaseObject *obj = reinterpret_cast<BaseObject *>(TAG_HEAP_OBJECT_MASK);
+    idleBarrier->WriteRefField(obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+}
+
+HWTEST_F_L0(IdleBarrierTest, WriteBarrier_TEST1)
+{
+    MockCollector collector;
+    auto idleBarrier = std::make_unique<IdleBarrier>(collector);
+    ASSERT_TRUE(idleBarrier != nullptr);
+
+    constexpr uint64_t TAG_BITS_SHIFT = 48;
+    constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
+    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
+    constexpr uint64_t TAG_BOOLEAN = 0x04ULL;
+    constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
+
+    RefField<> field(MAddress(0));
+    BaseObject *obj = reinterpret_cast<BaseObject *>(TAG_HEAP_OBJECT_MASK);
+    idleBarrier->WriteBarrier(obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+}
+
+HWTEST_F_L0(IdleBarrierTest, WriteBarrier_TEST2)
+{
+    MockCollector collector;
+    auto idleBarrier = std::make_unique<IdleBarrier>(collector);
+    ASSERT_TRUE(idleBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<> field(obj);
+    idleBarrier->WriteBarrier(obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+}
+
 HWTEST_F_L0(IdleBarrierTest, WriteStruct_TEST0)
 {
     MockCollector collector;
@@ -225,16 +274,15 @@ HWTEST_F_L0(IdleBarrierTest, WriteStruct_TEST0)
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    constexpr size_t size = 16;
-    uint8_t srcBuffer[size] = {};
-    uint8_t dstBuffer[size] = {};
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
-
-    idleBarrier->WriteStruct(obj, dst, size, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    idleBarrier->WriteStruct(obj, dst, sizeof(BaseObject), src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(IdleBarrierTest, CopyStructArray_TEST0)
@@ -243,27 +291,16 @@ HWTEST_F_L0(IdleBarrierTest, CopyStructArray_TEST0)
     auto idleBarrier = std::make_unique<IdleBarrier>(collector);
     ASSERT_TRUE(idleBarrier != nullptr);
 
-    HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
-    constexpr size_t oldSize = 100;
-    oldObj->SetSizeForwarded(oldSize);
-    EXPECT_EQ(oldObj->GetSizeForwarded(), oldSize);
-
-    HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
-    constexpr size_t newSize = 200;
-    newObj->SetSizeForwarded(newSize);
-    EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
-
-    constexpr size_t size = 16;
-    uint8_t srcBuffer[size] = {};
-    uint8_t dstBuffer[size] = {};
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
-
-    idleBarrier->CopyStructArray(oldObj, dst, size, newObj, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    idleBarrier->CopyStructArray(obj, dst, sizeof(BaseObject), obj, src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 }  // namespace common::test

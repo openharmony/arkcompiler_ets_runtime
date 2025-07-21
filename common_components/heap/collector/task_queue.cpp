@@ -33,18 +33,18 @@ bool GCRunner::Execute(void* owner)
             GCStats::SetPrevGCFinishTime(TimeUtil::NanoSeconds());
             break;
         }
-        case GCTask::GCTaskType::GC_TASK_DUMP_HEAP: {
+        case GCTask::GCTaskType::GC_TASK_DUMP_HEAP: { //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "Don't know how to dump heap";
             UNREACHABLE_CC();
             break;
         }
-        case GCTask::GCTaskType::GC_TASK_DUMP_HEAP_IDE: {
+        case GCTask::GCTaskType::GC_TASK_DUMP_HEAP_IDE: { //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "Don't know how to dump heap OOM";
             UNREACHABLE_CC();
             break;
         }
 
-        case GCTask::GCTaskType::GC_TASK_DUMP_HEAP_OOM: {
+        case GCTask::GCTaskType::GC_TASK_DUMP_HEAP_OOM: { //LCOV_EXCL_BR_LINE
             LOG_COMMON(FATAL) << "Don't know how to dump heap OOM";
             UNREACHABLE_CC();
             break;

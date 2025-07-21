@@ -33,9 +33,56 @@ host_unittest_action("Collector_Test") {
 
   # hiviewdfx libraries
   external_deps = [
+    "bounds_checking_function:libsec_shared",
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "zlib:libz",
+  ]
+}
+
+host_unittest_action("Heuristic_Gc_Policy_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "heuristic_gc_policy_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+}
+
+host_unittest_action("Collector_Proxy_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "collector_proxy_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
   ]
 }
 
@@ -114,6 +161,8 @@ group("unittest") {
   # deps file
   deps = [
     ":Collector_Test",
+    ":Heuristic_Gc_Policy_Test",
+    ":Collector_Proxy_Test",
     ":Trace_Collector_Test",
     ":Task_Queue_Test",
     ":Gc_Request_Test",
@@ -126,6 +175,8 @@ group("host_unittest") {
   # deps file
   deps = [
     ":Collector_TestAction",
+    ":Heuristic_Gc_Policy_TestAction",
+    ":Collector_Proxy_TestAction",
     ":Trace_Collector_TestAction",
     ":Task_Queue_TestAction",
     ":Gc_Request_TestAction",

@@ -38,6 +38,29 @@ host_unittest_action("Mutator_Manager_Test") {
   ]
 }
 
+host_unittest_action("Mutator_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "mutator_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+}
+
 host_unittest_action("Satb_Buffer_Test") {
   module_out_path = module_output_path
 
@@ -61,12 +84,38 @@ host_unittest_action("Satb_Buffer_Test") {
   ]
 }
 
+host_unittest_action("Thread_Local_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "thread_local_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
 group("unittest") {
   testonly = true
 
   # deps file
   deps = [
     ":Mutator_Manager_Test",
+    ":Mutator_Test",
+    ":Satb_Buffer_Test",
+    ":Thread_Local_Test",
   ]
 }
 
@@ -76,5 +125,8 @@ group("host_unittest") {
   # deps file
   deps = [
     ":Mutator_Manager_TestAction",
+    ":Mutator_TestAction",
+    ":Satb_Buffer_TestAction",
+    ":Thread_Local_TestAction",
   ]
 }

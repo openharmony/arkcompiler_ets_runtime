@@ -54,6 +54,10 @@ protected:
         table.VisitRoots(visitor);
         return found;
     }
+    class TableTraceCollctor : public TraceCollector {
+    public:
+        using TraceCollector::UpdateNativeThreshold;
+    };
 };
 
 std::unique_ptr<TestWCollector> GetWCollector()
@@ -63,4 +67,35 @@ std::unique_ptr<TestWCollector> GetWCollector()
     return std::make_unique<TestWCollector>(allocator, resources);
 }
 
+HWTEST_F_L0(TraceCollectorTest, RunGarbageCollection)
+{
+    TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
+    Heap::GetHeap().SetGCReason(GCReason::GC_REASON_YOUNG);
+    collector.RunGarbageCollection(0, GCReason::GC_REASON_USER, common::GC_TYPE_FULL);
+    ASSERT_FALSE(Heap::GetHeap().GetCollector().GetGCStats().isYoungGC());
+
+    Heap::GetHeap().SetGCReason(GCReason::GC_REASON_BACKUP);
+    collector.RunGarbageCollection(0, GCReason::GC_REASON_OOM, common::GC_TYPE_FULL);
+    ASSERT_FALSE(Heap::GetHeap().GetCollector().GetGCStats().isYoungGC());
+}
+
+HWTEST_F_L0(TraceCollectorTest, RunGarbageCollectionTest2)
+{
+    TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
+    Heap::GetHeap().SetGCReason(GCReason::GC_REASON_YOUNG);
+    collector.RunGarbageCollection(0, GCReason::GC_REASON_YOUNG, common::GC_TYPE_FULL);
+    ASSERT_TRUE(Heap::GetHeap().GetCollector().GetGCStats().isYoungGC());
+}
+
+HWTEST_F_L0(TraceCollectorTest, UpdateNativeThresholdTest)
+{
+    TableTraceCollctor& collector = reinterpret_cast<TableTraceCollctor&>(Heap::GetHeap().GetCollector());
+    GCParam gcParam;
+    gcParam.minGrowBytes = 1024;
+    Heap::GetHeap().SetNativeHeapThreshold(512);
+    auto oldThreshold = Heap::GetHeap().GetNativeHeapThreshold();
+    collector.UpdateNativeThreshold(gcParam);
+    auto newThreshold = Heap::GetHeap().GetNativeHeapThreshold();
+    EXPECT_NE(newThreshold, oldThreshold);
+}
 }

@@ -93,15 +93,15 @@ HWTEST_F_L0(TraceBarrierTest, ReadStruct_TEST1)
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    constexpr size_t size = 16;
-    uint8_t srcBuffer[size] = {};
-    uint8_t dstBuffer[size] = {};
-    srcBuffer[0] = 1;
-    HeapAddress src = reinterpret_cast<HeapAddress>(srcBuffer);
-    HeapAddress dst = reinterpret_cast<HeapAddress>(dstBuffer);
-    traceBarrier->ReadStruct(dst, obj, src, size);
-    EXPECT_EQ(dstBuffer[0], 1);
-    EXPECT_EQ(srcBuffer[0], dstBuffer[0]);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    traceBarrier->ReadStruct(dst, obj, src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(TraceBarrierTest, WriteRefField_TEST1)
@@ -206,6 +206,64 @@ HWTEST_F_L0(TraceBarrierTest, WriteBarrier_TEST2)
     traceBarrier->WriteBarrier(nullptr, nonTaggedField, &nonTaggedObj);
     EXPECT_TRUE(nonTaggedObj != nullptr);
 #endif
+}
+
+HWTEST_F_L0(TraceBarrierTest, WriteBarrier_TEST3)
+{
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
+
+#ifndef ARK_USE_SATB_BARRIER
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<> field(obj);
+    Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
+    traceBarrier->WriteBarrier(obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+#endif
+}
+
+HWTEST_F_L0(TraceBarrierTest, WriteStruct_TEST1)
+{
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+    traceBarrier->WriteStruct(obj, dst, sizeof(BaseObject), src, sizeof(BaseObject));
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
+}
+
+HWTEST_F_L0(TraceBarrierTest, WriteStruct_TEST2)
+{
+    MockCollector collector;
+    auto traceBarrier = std::make_unique<TraceBarrier>(collector);
+    ASSERT_TRUE(traceBarrier != nullptr);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    HeapAddress src = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* srcObj = reinterpret_cast<BaseObject*>(src);
+    srcObj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    HeapAddress dst = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
+    dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
+    EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
+
+    auto mutator = ThreadLocal::GetMutator();
+    ThreadLocal::SetMutator(nullptr);
+    traceBarrier->WriteStruct(obj, dst, sizeof(BaseObject), src, sizeof(BaseObject));
+    ThreadLocal::SetMutator(mutator);
+    EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
 HWTEST_F_L0(TraceBarrierTest, AtomicReadRefField_TEST1)

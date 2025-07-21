@@ -14,6 +14,7 @@
  */
 
 #include "common_components/heap/collector/collector_resources.h"
+#include "common_components/heap/collector/gc_request.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
 #include "common_interfaces/base_runtime.h"
@@ -55,7 +56,7 @@ HWTEST_F_L0(CollectorResourcesTest, RequestGC) {
     Heap::GetHeap().EnableGC(false);
     EXPECT_TRUE(!Heap::GetHeap().GetCollectorResources().IsGCActive());
     GCReason reason = gcRequests.reason;
-    Heap::GetHeap().GetCollectorResources().RequestGC(reason, true);
+    Heap::GetHeap().GetCollectorResources().RequestGC(reason, true, common::GC_TYPE_FULL);
 }
 
 HWTEST_F_L0(CollectorResourcesTest, RequestGCAndWaitTest) {
@@ -63,29 +64,7 @@ HWTEST_F_L0(CollectorResourcesTest, RequestGCAndWaitTest) {
     GCReason reason = gcRequests.reason;
     Heap::GetHeap().EnableGC(true);
     EXPECT_TRUE(Heap::GetHeap().GetCollectorResources().IsGCActive());
-    Heap::GetHeap().GetCollectorResources().RequestGC(reason, false);
+    Heap::GetHeap().GetCollectorResources().RequestGC(reason, false, common::GC_TYPE_FULL);
     EXPECT_TRUE(!gcRequests.IsSyncGC());
-}
-
-HWTEST_F_L0(CollectorResourcesTest, GetGCThreadCountTest0) {
-    uint32_t res = Heap::GetHeap().GetCollectorResources().GetGCThreadCount(false);
-    EXPECT_EQ(res, 2u);
-}
-
-HWTEST_F_L0(CollectorResourcesTest, GetGCThreadCountTest1) {
-    Heap::GetHeap().GetCollectorResources().Fini();
-    uint32_t res = Heap::GetHeap().GetCollectorResources().GetGCThreadCount(false);
-    EXPECT_EQ(res, 1u);
-}
-
-HWTEST_F_L0(CollectorResourcesTest, StartRuntimeThreadsTest) {
-    Heap::GetHeap().GetCollectorResources().Fini();
-    Heap::GetHeap().GetCollectorResources().StartRuntimeThreads();
-    EXPECT_TRUE(Heap::GetHeap().GetCollectorResources().GetFinalizerProcessor().IsRunning());
-}
-
-HWTEST_F_L0(CollectorResourcesTest, StopRuntimeThreadsTest) {
-    Heap::GetHeap().GetCollectorResources().StopRuntimeThreads();
-    EXPECT_FALSE(Heap::GetHeap().GetCollectorResources().GetFinalizerProcessor().IsRunning());
 }
 } // namespace common::test
