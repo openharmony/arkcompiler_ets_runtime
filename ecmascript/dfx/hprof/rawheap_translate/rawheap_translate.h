@@ -35,7 +35,7 @@ public:
     virtual ~RawHeap();
 
     virtual bool Parse(FileReader &file, uint32_t rawheapFileSize) = 0;
-    virtual void Translate() = 0;
+    virtual bool Translate() = 0;
 
     static bool TranslateRawheap(const std::string &inputPath, const std::string &outputPath);
     static bool ParseMetaData(FileReader &file, MetaParser *parser);
@@ -71,7 +71,7 @@ public:
     ~RawHeapTranslateV1();
 
     bool Parse(FileReader &file, uint32_t rawheapFileSize) override;
-    void Translate() override;
+    bool Translate() override;
 
 private:
     struct AddrTableItem {
@@ -120,7 +120,7 @@ public:
     ~RawHeapTranslateV2();
 
     bool Parse(FileReader &file, uint32_t rawheapFileSize) override;
-    void Translate() override;
+    bool Translate() override;
 
 private:
     struct AddrTableItemV2 {
