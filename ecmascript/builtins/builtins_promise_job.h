@@ -26,10 +26,10 @@ public:
     static JSTaggedValue DynamicImportJob(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject);
 
-    static JSTaggedValue HandelModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
+    static JSTaggedValue HandleModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
                                                JSHandle<JSPromiseReactionsFunction> reject,
                                                JSHandle<EcmaString> specifierString);
-    static JSTaggedValue HandelModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
+    static JSTaggedValue HandleModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
                                                JSHandle<JSPromiseReactionsFunction> reject,
                                                const CString &requestPath);
 };

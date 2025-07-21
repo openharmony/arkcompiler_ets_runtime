@@ -42,7 +42,7 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
             moduleManager->HostGetImportedModule(specifierString);
         moduleRecord->CheckAndThrowModuleError(thread);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
-            BuiltinsPromiseJob::HandelModuleException(thread, resolve, reject, specifierString));
+            BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
         requiredModule.Update(moduleRecord);
     } else {
         JSHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
@@ -60,7 +60,7 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
                 thread, jsPandaFile, jsPandaFile->GetJSPandaFileDesc(), specifierString));
             SourceTextModule::RecordEvaluatedOrError(thread, moduleRecord);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
-                BuiltinsPromiseJob::HandelModuleException(thread, resolve, reject, specifierString));
+                BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
         }
         moduleManager->AddResolveImportedModule(specifierString, moduleRecord.GetTaggedValue());
         moduleRecord->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
@@ -72,14 +72,14 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread,
         JSHandle<SourceTextModule>::Cast(requiredModule));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
-        BuiltinsPromiseJob::HandelModuleException(thread, resolve, reject, specifierString));
+        BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread,
                                             JSHandle<JSTaggedValue>(resolve),
                                             undefined, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
-        BuiltinsPromiseJob::HandelModuleException(thread, resolve, reject, specifierString));
+        BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     return JSFunction::Call(info);
 }

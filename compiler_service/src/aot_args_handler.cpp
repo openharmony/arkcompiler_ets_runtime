@@ -41,8 +41,6 @@ const std::string STATIC_BOOT_PATH = "/system/framework/bootpath.json";
 const std::string ARKTS_DYNAMIC = "dynamic";
 const std::string ARKTS_STATIC = "static";
 const std::string AN_FILE_NAME = "anFileName";
-const std::string ARKTS_1_1 = "1.1";
-const std::string ARKTS_1_2 = "1.2";
 const std::string ARKTS_HYBRID = "hybrid";
 
 const std::string AN_SUFFIX = ".an";
