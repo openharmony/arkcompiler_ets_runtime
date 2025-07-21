@@ -96,6 +96,7 @@ enum CommandValues {
     OPTION_STUB_FILE,
     OPTION_ENABLE_FORCE_GC,
     OPTION_ENABLE_CMC_GC,
+    OPTION_MAX_GARBAGE_CACHE_SIZE,
     OPTION_ENABLE_CMC_GC_CONCURRENT_ROOT_MARKING,
     OPTION_FORCE_FULL_GC,
     OPTION_ENABLE_FORCE_SHARED_GC_FREQUENCY,
@@ -294,6 +295,7 @@ public:
 
     bool ParseCommand(const int argc, const char** argv);
     bool SetDefaultValue(char* argv);
+    void SetConfigMaxGarbageCacheSize(uint64_t maxGarbageCacheSize);
 
     bool EnableArkTools() const
     {
@@ -2185,6 +2187,16 @@ public:
         return CompilerAnFileMaxByteSize_;
     }
 
+    void SetCMCMaxGarbageCacheSize(uint64_t value)
+    {
+        cmcMaxGarbageCacheSize_ = value;
+    }
+
+    uint64_t GetCMCMaxGarbageCacheSize() const
+    {
+        return cmcMaxGarbageCacheSize_;
+    }
+
     bool IsCompilerAnFileMaxByteSizeDefault() const
     {
         return CompilerAnFileMaxByteSize_ == 0;
@@ -2571,6 +2583,7 @@ private:
     bool enableCMCGCConcurrentRootMarking_ {true};
     bool storeBarrierOpt_ {true};
     uint64_t CompilerAnFileMaxByteSize_ {0_MB};
+    uint64_t cmcMaxGarbageCacheSize_ {16_MB};
     bool enableJitVerifyPass_ {true};
     bool enableMergePoly_ {true};
     bool multiContext_ {false};

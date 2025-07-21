@@ -47,4 +47,13 @@ namespace panda::ecmascript {
         return defaultValue;
 #endif
     }
+
+    uint64_t GetCMCMaxGarbageCacheSize(uint64_t defaultSize)
+    {
+#if !defined(STANDALONE_MODE)
+        return OHOS::system::GetUintParameter<uint64_t>("persist.ark.cmc.max.garbage.cache.size", defaultSize);
+#else
+        return defaultSize;
+#endif
+    }
 }  // namespace panda::ecmascript

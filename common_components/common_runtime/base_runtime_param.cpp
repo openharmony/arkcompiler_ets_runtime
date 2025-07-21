@@ -32,6 +32,10 @@ void BaseRuntimeParam::SetConfigHeapSize(RuntimeParam &param, size_t configHeapS
     param.heapParam.heapSize = std::min(configHeapSize, MAX_HEAP_POOL_SIZE) / KB;
 }
 
+void BaseRuntimeParam::SetMaxGarbageCacheSize(RuntimeParam &param, uint64_t maxGarbageCacheSize)
+{
+    param.gcParam.maxGarbageCacheSize = maxGarbageCacheSize;
+}
 /**
  * Determine the default stack size and heap size according to system memory.
  * If system memory size is less then 1GB, heap size is 64MB and stack size is 64KB.
