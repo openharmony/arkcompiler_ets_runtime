@@ -3131,6 +3131,24 @@ bool ECMAObject::HasHash(const JSThread *thread) const
     return true;
 }
 
+JSTaggedValue ECMAObject::GetNativePointerByIndex(const JSThread *thread, int32_t index) const
+{
+    JSTaggedType hashField = Barriers::GetTaggedValue(thread, this, HASH_OFFSET);
+    JSTaggedValue value(hashField);
+    if (value.IsTaggedArray()) {
+        auto array = TaggedArray::Cast(value);
+        if (static_cast<int32_t>(array->GetExtraLength()) > index) {
+            auto jsValue = array->Get(thread, index);
+            if (UNLIKELY(!jsValue.IsJSNativePointer())) {
+                LOG_FULL(ERROR) << "jsValue is not js native pointer";
+                return JSTaggedValue::Undefined();
+            }
+            return jsValue;
+        }
+    }
+    return JSTaggedValue::Undefined();
+}
+
 void *ECMAObject::GetNativePointerField(const JSThread *thread, int32_t index) const
 {
     JSTaggedType hashField = Barriers::GetTaggedValue(thread, this, HASH_OFFSET);
