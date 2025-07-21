@@ -392,6 +392,7 @@ public:
     GateRef IsEcmaObject(GateRef glue, GateRef obj);
     GateRef GetStageOfHotReload(GateRef glue);
     GateRef IsNotLdEndExecPatchMain(GateRef glue);
+    GateRef FloatArrayElementConvert(GateRef value, bool isFloat32);
 
     // Set
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);

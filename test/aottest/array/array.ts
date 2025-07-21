@@ -58,3 +58,27 @@ declare function print(arg:any):string;
   result = array.sort();
   print(result);
 }
+
+{
+  const o24 = {
+    "mmaxByteLength": 268435456,
+  };
+  const v25 = new SharedArrayBuffer(4, o24);
+  const v27 = new Uint32Array(v25);
+  v27[0] = 2051996997;
+  const v30 = v27.fill(o24, 4, 4);
+  v30[0] = -36814;
+  const v32 = new Float32Array(v25);
+  let v33 = v32[0];
+  print(v33);
+}
+
+{
+  const BASE_NAN_VALUE = NaN;
+  function simulateFloatConvert(value, isFloat32) {
+    const float64Value = isFloat32 ?
+      new Float64Array(Float64Array.from(Float32Array.of(value)).buffer)[0] : value;
+    return isNaN(float64Value) ? BASE_NAN_VALUE : float64Value;
+  }
+  print(simulateFloatConvert(NaN, false));
+}

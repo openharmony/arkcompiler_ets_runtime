@@ -1302,7 +1302,10 @@ void TypedHCRLowering::LowerTypedArrayLoadElement(GateRef gate, BuiltinTypeId id
             result = builder_.ZExtInt16ToInt32(result);
             break;
         case BuiltinTypeId::FLOAT32_ARRAY:
-            result = builder_.ExtFloat32ToDouble(result);
+            result = builder_.FloatArrayElementConvert(result, true);
+            break;
+        case BuiltinTypeId::FLOAT64_ARRAY:
+            result = builder_.FloatArrayElementConvert(result, false);
             break;
         default:
             break;
