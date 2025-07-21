@@ -6394,6 +6394,26 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
     return true;
 }
 
+JSNApi::PandaFileType JSNApi::GetFileType(const std::string &filename)
+{
+    panda::ecmascript::CString normalFilename = PathHelper::NormalizePath(filename.c_str());
+    panda_file::PandaFileType fileType = panda_file::GetFileType(normalFilename);
+    switch (fileType) {
+        case panda_file::PandaFileType::FILE_FORMAT_INVALID: {
+            return JSNApi::PandaFileType::FILE_FORMAT_INVALID;
+        }
+        case panda_file::PandaFileType::FILE_DYNAMIC: {
+            return JSNApi::PandaFileType::FILE_DYNAMIC;
+        }
+        case panda_file::PandaFileType::FILE_STATIC: {
+            return JSNApi::PandaFileType::FILE_STATIC;
+        }
+        default: {
+            UNREACHABLE();
+        }
+    }
+}
+
 Local<JSValueRef>  JSNApi::NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
