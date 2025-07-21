@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,6 +20,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/class_literal.h"
 #include "ecmascript/method.h"
 #include "ecmascript/mem/c_containers.h"
@@ -569,6 +570,22 @@ private:
     static inline RememberedSet* CreateOldToNew(Region *region);
     static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind);
     static inline bool IsTargetBundleName(uintptr_t argGlue);
+    static inline bool MaybeHasInterfacesType(JSThread *thread, const JSHandle<TaggedArray> &arrayHandle);
+    static inline JSHandle<JSFunction> EntranceForDefineClass(JSThread *thread,
+                                                              const JSHandle<JSTaggedValue> &base,
+                                                              const JSHandle<JSTaggedValue> &lexenv,
+                                                              JSHandle<ClassInfoExtractor> &extractor,
+                                                              const JSHandle<JSTaggedValue> &ihc,
+                                                              const JSHandle<JSTaggedValue> &chc,
+                                                              const JSHandle<ClassLiteral> &classLiteral);
+    static inline void DefineInterfaceTypeOwnProperty(JSThread *thread, JSHandle<JSFunction> &cls,
+                                                      const JSHandle<JSTaggedValue> &base,
+                                                      const JSHandle<JSTaggedValue> &lexenv,
+                                                      JSHandle<ClassInfoExtractor> &extractor,
+                                                      const JSHandle<JSTaggedValue> &ihc,
+                                                      const JSHandle<JSTaggedValue> &chc,
+                                                      const JSHandle<TaggedArray> &arrayHandle,
+                                                      const JSHandle<ClassLiteral> &classLiteral);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript

@@ -71,6 +71,15 @@ ohos_shared_library("libcompiler_service") {
       "${js_root}/ecmascript/platform/unix/linux/os.cpp",
     ]
   }
+  if (is_mingw) {
+    sources += [
+      "${js_root}/ecmascript/platform/windows/file.cpp",
+    ]
+  } else {
+    sources += [
+      "${js_root}/ecmascript/platform/unix/file.cpp",
+    ]
+  }
   external_deps = [
     "ability_base:want",
     "access_token:libaccesstoken_sdk",
@@ -118,6 +127,15 @@ ohos_prebuilt_etc("compiler_service_cfg") {
 ohos_prebuilt_etc("ark_aot_compiler.cfg") {
   source = "ark_aot_compiler.cfg"
   relative_install_dir = "init"
+
+  # Set the subsystem name
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_prebuilt_etc("system_framework_aot_enable_list.conf") {
+  relative_install_dir = "ark"
+  source = "system_framework_aot_enable_list.conf"
 
   # Set the subsystem name
   part_name = "ets_runtime"

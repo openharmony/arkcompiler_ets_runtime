@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -926,6 +926,49 @@ bool RuntimeStubs::ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
     // Therefore, there is no need to check for the existence of both at this point.
     return (!ihc->IsUndefined() || !chc->IsUndefined()) && !classLiteral->GetIsAOTUsed();
 }
+
+bool RuntimeStubs::MaybeHasInterfacesType(JSThread *thread, const JSHandle<TaggedArray> &arrayHandle)
+{
+    // this interface is one of the conditions for determining whether it is an interop scenario.
+    return arrayHandle->GetLength() != 0 && arrayHandle->Get(thread, arrayHandle->GetLength() - 1).IsString();
+}
+
+void RuntimeStubs::DefineInterfaceTypeOwnProperty(JSThread *thread, JSHandle<JSFunction> &cls,
+                                                  const JSHandle<JSTaggedValue> &base,
+                                                  const JSHandle<JSTaggedValue> &lexenv,
+                                                  JSHandle<ClassInfoExtractor> &extractor,
+                                                  const JSHandle<JSTaggedValue> &ihc,
+                                                  const JSHandle<JSTaggedValue> &chc,
+                                                  const JSHandle<TaggedArray> &arrayHandle,
+                                                  const JSHandle<ClassLiteral> &classLiteral)
+{
+    // set 1.2runtie interfaceType no property.
+    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(
+        thread, extractor, arrayHandle, arrayHandle->GetLength(), ClassKind::NON_SENDABLE, 1);
+    cls = EntranceForDefineClass(thread, base, lexenv, extractor, ihc, chc, classLiteral);
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> interfaceTypeSymbol = env->GetInterfaceTypeSymbol();
+    JSHandle<JSTaggedValue> interfaceTypeValue(thread, arrayHandle->Get(thread, arrayHandle->GetLength() - 1));
+    PropertyDescriptor desc(thread, interfaceTypeValue, false, false, false);
+    JSObject::DefineOwnProperty(
+        thread, JSHandle<JSObject>::Cast(cls), interfaceTypeSymbol, desc);
+}
+
+JSHandle<JSFunction> RuntimeStubs::EntranceForDefineClass(JSThread *thread,
+                                                          const JSHandle<JSTaggedValue> &base,
+                                                          const JSHandle<JSTaggedValue> &lexenv,
+                                                          JSHandle<ClassInfoExtractor> &extractor,
+                                                          const JSHandle<JSTaggedValue> &ihc,
+                                                          const JSHandle<JSTaggedValue> &chc,
+                                                          const JSHandle<ClassLiteral> &classLiteral)
+{
+    if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
+        classLiteral->SetIsAOTUsed(true);
+        return ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihc, chc);
+    } else {
+        return ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
+    }
+}
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
@@ -964,14 +1007,20 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     JSHandle<ClassLiteral> classLiteral(thread, literalObj);
     JSHandle<TaggedArray> arrayHandle(thread, classLiteral->GetArray(thread));
     JSHandle<ClassInfoExtractor> extractor = factory->NewClassInfoExtractor(method);
-    auto literalLength = arrayHandle->GetLength();
-    ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle, literalLength);
-
-    if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
-        classLiteral->SetIsAOTUsed(true);
-        cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihc, chc);
+    auto instance = ecmascript::Runtime::GetInstance();
+    ASSERT(instance != nullptr);
+    if (instance->IsHybridVm() && MaybeHasInterfacesType(thread, arrayHandle)) {
+        DefineInterfaceTypeOwnProperty(thread, cls, base, lexenv, extractor, ihc, chc, arrayHandle, classLiteral);
     } else {
-        cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
+        auto literalLength = arrayHandle->GetLength();
+        ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread, extractor, arrayHandle, literalLength);
+
+        if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
+            classLiteral->SetIsAOTUsed(true);
+            cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihc, chc);
+        } else {
+            cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
+        }
     }
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

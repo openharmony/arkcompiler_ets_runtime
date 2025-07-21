@@ -12,17 +12,52 @@
 # limitations under the License.
 
 import("../../compiler_service_test.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 config("module_private_config") {
   visibility = [ ":*" ]
-  include_dirs = compiler_service_include_dirs
-  cflags = [ "-Wno-error=keyword-macro" ]
+  include_dirs = [
+    "${compiler_service_root}/include",
+    "${compiler_service_root}/interface",
+  ]
+  cflags = [
+    "-Wno-error=keyword-macro",
+    "-Wno-nested-anon-types",
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-variadic-macros",
+  ]
 }
 
 ohos_unittest("AotCompilerStubUnitTest") {
   module_out_path = module_output_path
-  sources = aot_compiler_service_sources
-  configs = [ ":module_private_config" ]
+  configs = [ 
+    ":module_private_config",
+    "$js_root:ark_jsruntime_public_config",
+  ]
+  version_script = "${compiler_service_root}/libaot_compiler_service.map"
+  sources = [
+    "${js_root}/common_components/log/log.cpp",
+    "${compiler_service_root}/interface/aot_compiler_interface_proxy.cpp",
+    "${compiler_service_root}/interface/aot_compiler_interface_stub.cpp",
+    "${compiler_service_root}/src/aot_args_handler.cpp",
+    "${compiler_service_root}/src/aot_compiler_client.cpp",
+    "${compiler_service_root}/src/aot_compiler_error_utils.cpp",
+    "${compiler_service_root}/src/aot_compiler_impl.cpp",
+    "${compiler_service_root}/src/aot_compiler_load_callback.cpp",
+    "${compiler_service_root}/src/aot_compiler_service.cpp",
+    "${compiler_service_root}/src/power_disconnected_listener.cpp",
+    "${compiler_service_root}/src/screen_status_listener.cpp",
+    "${compiler_service_root}/src/thermal_mgr_listener.cpp",
+  ]
+  if (is_mingw) {
+    sources += [
+      "${js_root}/ecmascript/platform/windows/file.cpp",
+    ]
+  } else {
+    sources += [
+      "${js_root}/ecmascript/platform/unix/file.cpp",
+    ]
+  }
   deps = [
     "${compiler_service_root}:libcompiler_service",
   ]

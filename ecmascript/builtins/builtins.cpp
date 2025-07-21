@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -812,6 +812,12 @@ BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
     env->SetHoleySymbol(thread_, holeySymbol.GetTaggedValue());
     JSHandle<JSTaggedValue> elementIcSymbol(factory_->NewPrivateNameSymbolWithChar("element-ic"));
     env->SetElementICSymbol(thread_, elementIcSymbol.GetTaggedValue());
+    if (Runtime::GetInstance()->IsHybridVm() && env->GetInterfaceTypeSymbol().GetTaggedValue().IsUndefined()) {
+        JSHandle<JSTaggedValue> interfaceTypeSymbol(factory_->NewPrivateNameSymbolWithChar("interfaceType"));
+        env->SetInterfaceTypeSymbol(thread_, interfaceTypeSymbol.GetTaggedValue());
+    } else {
+        env->SetInterfaceTypeSymbol(thread_, JSTaggedValue::Undefined());
+    }
 }
 
 void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
@@ -875,6 +881,12 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     realm->SetHoleySymbol(thread_, holeySymbol.GetTaggedValue());
     JSHandle<JSTaggedValue> elementIcSymbol(factory_->NewPrivateNameSymbolWithChar("element-ic"));
     realm->SetElementICSymbol(thread_, elementIcSymbol.GetTaggedValue());
+    if (Runtime::GetInstance()->IsHybridVm() && env->GetInterfaceTypeSymbol().GetTaggedValue().IsUndefined()) {
+        JSHandle<JSTaggedValue> interfaceTypeSymbol(factory_->NewPrivateNameSymbolWithChar("interfaceType"));
+        realm->SetInterfaceTypeSymbol(thread_, interfaceTypeSymbol.GetTaggedValue());
+    } else {
+        realm->SetInterfaceTypeSymbol(thread_, JSTaggedValue::Undefined());
+    }
 }
 #undef BUILTIN_SYMBOL_CREATE_WITH_REALM
 

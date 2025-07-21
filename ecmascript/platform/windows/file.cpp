@@ -193,11 +193,6 @@ int Unlink(const char *filename)
     return _unlink(filename);
 }
 
-bool TryToRemoveSO([[maybe_unused]] JSThread *thread, [[maybe_unused]] JSHandle<SourceTextModule> module)
-{
-    return false;
-}
-
 void *LoadLib([[maybe_unused]] const std::string &liname)
 {
     LOG_ECMA(INFO) << "Unsupport LoadLib";

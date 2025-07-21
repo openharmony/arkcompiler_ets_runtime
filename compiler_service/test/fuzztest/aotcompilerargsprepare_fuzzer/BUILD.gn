@@ -13,6 +13,7 @@
 
 import(
     "//arkcompiler/ets_runtime/compiler_service/test/compiler_service_test.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 ohos_fuzztest("AotCompilerArgsPrepareFuzzTest") {
   module_out_path = module_output_path
@@ -21,11 +22,43 @@ ohos_fuzztest("AotCompilerArgsPrepareFuzzTest") {
   cflags = [
     "-g",
     "-O0",
+    "-Wno-nested-anon-types",
+    "-Wno-gnu-anonymous-struct",
     "-Wno-unused-variable",
     "-fno-omit-frame-pointer",
+    "-Wno-variadic-macros",
   ]
-  include_dirs = compiler_service_include_dirs
-  sources = aot_compiler_service_sources
+  include_dirs = [
+    "${compiler_service_root}/include",
+    "${compiler_service_root}/interface",
+  ]
+  configs = [
+    "$js_root:ark_jsruntime_public_config",
+  ]
+  version_script = "${compiler_service_root}/libaot_compiler_service.map"
+  sources = [
+    "${js_root}/common_components/log/log.cpp",
+    "${compiler_service_root}/interface/aot_compiler_interface_proxy.cpp",
+    "${compiler_service_root}/interface/aot_compiler_interface_stub.cpp",
+    "${compiler_service_root}/src/aot_args_handler.cpp",
+    "${compiler_service_root}/src/aot_compiler_client.cpp",
+    "${compiler_service_root}/src/aot_compiler_error_utils.cpp",
+    "${compiler_service_root}/src/aot_compiler_impl.cpp",
+    "${compiler_service_root}/src/aot_compiler_load_callback.cpp",
+    "${compiler_service_root}/src/aot_compiler_service.cpp",
+    "${compiler_service_root}/src/power_disconnected_listener.cpp",
+    "${compiler_service_root}/src/screen_status_listener.cpp",
+    "${compiler_service_root}/src/thermal_mgr_listener.cpp",
+  ]
+  if (is_mingw) {
+    sources += [
+      "${js_root}/ecmascript/platform/windows/file.cpp",
+    ]
+  } else {
+    sources += [
+      "${js_root}/ecmascript/platform/unix/file.cpp",
+    ]
+  }
   external_deps = [
     "ability_base:want",
     "access_token:libaccesstoken_sdk",

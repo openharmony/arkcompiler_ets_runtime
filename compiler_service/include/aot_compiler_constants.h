@@ -17,6 +17,7 @@
 #define OHOS_ARKCOMPILER_AOTCOMPILER_CONSTANTS_H
 
 #include <string>
+#include <sys/types.h>
 #include <unordered_map>
 
 #include "aot_compiler_error_utils.h"
@@ -34,9 +35,16 @@ const std::string COMPILER_ENABLE_AOT_CODE_COMMENT = "compiler-enable-aot-code-c
 const std::string COMPILER_LOG_OPT = "compiler-log";
 const std::string COMPILER_AN_FILE_MAX_SIZE = "compiler-an-file-max-size";
 const std::string AOT_FILE = "aot-file";
+const std::string IS_SYSTEM_COMPONENT = "isSysComp";
+
 
 const std::string ARKTS_MODE = "moduleArkTSMode";
 } // namespace ArgsIdx
+
+// UID and GID of system users
+constexpr uid_t OID_SYSTEM = 1000;
+
+constexpr const char* BOOLEAN_FALSE = "0";
 
 namespace Symbols {
 constexpr const char* PREFIX = "--";
@@ -81,4 +89,4 @@ const std::unordered_map<int, InfoOfCompiler> RetInfoOfCompiler {
 
 const InfoOfCompiler OtherInfoOfCompiler = {ERR_AOT_COMPILER_CALL_FAILED, "AOT compiler fail: other error"};
 } // namespace OHOS::ArkCompiler
-#endif  // OHOS_ARKCOMPILER_AOTCOMPILER_CONSTANTS_H
+#endif

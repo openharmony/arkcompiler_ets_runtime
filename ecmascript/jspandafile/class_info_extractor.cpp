@@ -25,8 +25,8 @@
 namespace panda::ecmascript {
 void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
                                                             const JSHandle<TaggedArray> &literal,
-                                                            uint32_t length,
-                                                            ClassKind kind)
+                                                            uint32_t length, ClassKind kind,
+                                                            uint32_t implementLength)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -35,8 +35,10 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     ASSERT(length <= literal->GetLength());
     // non static properties number is hidden in the last index of Literal buffer
     uint32_t nonStaticNum = 0;
+    // The effective data length of taggedarray(valueLength) is equal to length - implementationLength -1
+    uint32_t valueLength = length - implementLength - 1;
     if (length != 0) {
-        nonStaticNum = static_cast<uint32_t>(literal->Get(thread, length - 1).GetInt());
+        nonStaticNum = static_cast<uint32_t>(literal->Get(thread, valueLength).GetInt());
     }
 
     // Reserve sufficient length to prevent frequent creation.
@@ -71,7 +73,7 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
     extractor->SetNonStaticKeys(thread, nonStaticKeys);
     extractor->SetNonStaticProperties(thread, nonStaticProperties);
 
-    uint32_t staticNum = length == 0 ? 0 : (length - 1) / 2 - nonStaticNum;
+    uint32_t staticNum = length == 0 ? 0 : (valueLength) / 2 - nonStaticNum;
 
     // Reserve sufficient length to prevent frequent creation.
     JSHandle<TaggedArray> staticKeys;
@@ -97,9 +99,10 @@ void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JS
         ExtractContentsDetail staticDetail {};
 
         if (kind == ClassKind::SENDABLE) {
-            staticDetail = { nonStaticNum * 2, length - 1, SENDABLE_STATIC_RESERVED_LENGTH, methodLiteral };
+            staticDetail = {
+                nonStaticNum * 2, valueLength, SENDABLE_STATIC_RESERVED_LENGTH, methodLiteral };
         } else {
-            staticDetail = { nonStaticNum * 2, length - 1, STATIC_RESERVED_LENGTH, methodLiteral };
+            staticDetail = { nonStaticNum * 2, valueLength, STATIC_RESERVED_LENGTH, methodLiteral };
         }
 
         if (UNLIKELY(ExtractAndReturnWhetherWithElements(thread, literal, staticDetail, staticKeys,

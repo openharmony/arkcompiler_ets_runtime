@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1936,6 +1936,9 @@ public:
     static Local<JSValueRef> GetCurrentContext(const EcmaVM *vm);
 
     static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
+    // 1.2runtime interface info
+    static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
+    static void InitHybridVMEnv(const EcmaVM *vm);
 
 private:
     static bool isForked_;

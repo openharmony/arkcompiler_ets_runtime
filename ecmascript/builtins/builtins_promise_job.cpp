@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,11 +24,13 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_tools.h"
+#include "ecmascript/module/static/static_module_loader.h"
 
 namespace panda::ecmascript::builtins {
 using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
 using ModulePathHelper = ecmascript::ModulePathHelper;
 using PathHelper = ecmascript::base::PathHelper;
+using StaticModuleLoader = ecmascript::StaticModuleLoader;
 
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
@@ -154,7 +156,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         recordNameStr = ModulePathHelper::Utf8ConvertToString(thread, recordName.GetTaggedValue());
         curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
             thread, fileName, recordNameStr.c_str(), false, ExecuteTypes::STATIC);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+            HandleModuleException(thread, resolve, reject, specifierString));
         if (curJsPandaFile == nullptr) {
             LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << recordNameStr;
         }
@@ -163,7 +166,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
             ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), fileName, recordNameStr,
                 requestPath);
             LOG_ECMA(DEBUG) << "Exit Translate Normalized OhmUrl for DynamicImport, resultPath: " << requestPath;
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+                HandleModuleException(thread, resolve, reject, specifierString));
         } else if (ModulePathHelper::NeedTranstale(requestPath)) {
             ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
             LOG_ECMA(DEBUG) << "Exit Translate OhmUrl for DynamicImport, resultPath: " << requestPath;
@@ -179,18 +183,21 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     CString moduleName;
     if (recordName->IsUndefined()) {
         fileName = ResolveFilenameFromNative(thread, fileName, requestPath);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+            HandleModuleException(thread, resolve, reject, specifierString));
         moduleName = fileName;
     } else {
         entryPoint =
             ModulePathHelper::ConcatFileNameWithMerge(thread, curJsPandaFile.get(),
                 fileName, recordNameStr, requestPath);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+            HandleModuleException(thread, resolve, reject, specifierString));
         moduleName = entryPoint;
     }
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
         thread, fileName, entryPoint, false, ExecuteTypes::STATIC);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+        HandleModuleException(thread, resolve, reject, specifierString));
     if (jsPandaFile == nullptr) {
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileName;
     }
@@ -199,7 +206,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     if (recordInfo == nullptr) {
         CString normalizeStr = ModulePathHelper::ReformatPath(entryPoint);
         CString msg = "Cannot find dynamic-import module '" + normalizeStr;
-        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(),
+            HandleModuleException(thread, resolve, reject, specifierString));
     }
 
     if (jsPandaFile->IsJson(recordInfo)) {
@@ -213,13 +221,15 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(
             thread, fileName.c_str(), entryPoint.c_str(), false, ExecuteTypes::DYNAMIC)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
-            THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), CatchException(thread, reject));
+            THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(),
+                HandleModuleException(thread, resolve, reject, specifierString));
         }
     } else {
         ModuleDeregister::ReviseLoadedModuleCount(thread, moduleName);
     }
 
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+        HandleModuleException(thread, resolve, reject, specifierString));
     JSMutableHandle<JSTaggedValue> moduleNamespace(thread, JSTaggedValue::Undefined());
     // only support importing es module, or return a default object.
     if (!jsPandaFile->IsModule(recordInfo)) {
@@ -229,9 +239,11 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->GetImportedModule(moduleName);
         moduleRecord->CheckAndThrowModuleError(thread);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+            HandleModuleException(thread, resolve, reject, specifierString));
         JSHandle<JSTaggedValue> nameSp = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+            HandleModuleException(thread, resolve, reject, specifierString));
         // d. Let namespace be ? GetModuleNamespace(moduleRecord).
         moduleNamespace.Update(nameSp);
     }
@@ -240,7 +252,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         EcmaInterpreter::NewRuntimeCallInfo(thread,
                                             JSHandle<JSTaggedValue>(resolve),
                                             undefined, undefined, 1);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+        HandleModuleException(thread, resolve, reject, specifierString));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSFunction::Call(info);
@@ -260,4 +273,48 @@ JSTaggedValue BuiltinsPromiseJob::CatchException(JSThread *thread, JSHandle<JSPr
     runtimeInfo->SetCallArg(thenResult.GetTaggedValue());
     return JSFunction::Call(runtimeInfo);
 }
+
+JSTaggedValue BuiltinsPromiseJob::HandleModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
+    JSHandle<JSPromiseReactionsFunction> reject, JSHandle<EcmaString> specifierString)
+{
+    CString requestPath = ModulePathHelper::Utf8ConvertToString(thread, specifierString.GetTaggedValue());
+    return HandleModuleException(thread, resolve, reject, requestPath);
+}
+
+JSTaggedValue BuiltinsPromiseJob::HandleModuleException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> resolve,
+    JSHandle<JSPromiseReactionsFunction> reject, const CString &requestPath)
+{
+    ASSERT(thread->HasPendingException());
+    LOG_ECMA(DEBUG) << "start handle module exception " << requestPath;
+    // If the ohmurl is detected to be in compliance with the 1.0 prefix rule, then throw an exception directly
+    if (!StaticModuleLoader::CanTryLoadStaticModulePath(requestPath)) {
+        LOG_ECMA(DEBUG) << "handle dynamic module exception " << requestPath;
+        return CatchException(thread, reject);
+    }
+    LOG_ECMA(DEBUG) << "try to start load static module: " << requestPath;
+    JSHandle<JSTaggedValue> errorReuslt = JSPromise::IfThrowGetThrowValue(thread);
+    thread->ClearException();
+    EcmaVM *vm = thread->GetEcmaVM();
+    Local<JSValueRef> getEsModule = StaticModuleLoader::GetStaticModuleLoadFunc(vm);
+    if (!getEsModule->IsFunction(vm)) {
+        LOG_ECMA(DEBUG) << "napi static module function not found " << requestPath;
+        thread->SetException(errorReuslt.GetTaggedValue());
+        return CatchException(thread, reject);
+    }
+    // try load 1.2 module;
+    Local<FunctionRef> getEsModuleFunc = getEsModule;
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<JSTaggedValue> exportObject = StaticModuleLoader::LoadStaticModule(thread, getEsModuleFunc, requestPath);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    LOG_ECMA(DEBUG) << "load static module successfull, requestPath: " << requestPath;
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info =
+        EcmaInterpreter::NewRuntimeCallInfo(thread,
+                                            JSHandle<JSTaggedValue>(resolve),
+                                            undefined, undefined, 1);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    info->SetCallArg(exportObject.GetTaggedValue());
+    return JSFunction::Call(info);
+}
+
 }  // namespace panda::ecmascript::builtins

@@ -2874,6 +2874,54 @@ bool ObjectRef::SetWithoutSwitchState(const EcmaVM *vm, const char *utf8, Local<
                                                       val.GetTaggedValue());
 }
 
+Local<JSValueRef> JSNApi::GetImplements(const EcmaVM *vm, Local<JSValueRef> instance)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    JSTaggedValue result;
+    {
+        LocalScope scope(vm);
+        if (!instance->IsObject(vm)) {
+            return JSValueRef::Undefined(vm);
+        }
+        JSHandle<JSTaggedValue> obj(JSNApiHelper::ToJSHandle(instance));
+        OperationResult constructorValue = JSTaggedValue::GetProperty(
+            thread, obj, thread->GlobalConstants()->GetHandledConstructorString());
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        result = constructorValue.GetValue().GetTaggedValue();
+        if (!result.IsJSFunction()) {
+            return JSValueRef::Undefined(vm);
+        }
+        JSHandle<JSTaggedValue> resultValue(thread, result);
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        JSHandle<JSTaggedValue> interfaceTypeSymbol = env->GetInterfaceTypeSymbol();
+        OperationResult interfaceTypeValue = JSObject::GetProperty(thread, resultValue, interfaceTypeSymbol);
+        result = interfaceTypeValue.GetValue().GetTaggedValue();
+        if (result.IsUndefined()) {
+            return JSValueRef::Undefined(vm);
+        }
+    }
+    JSHandle<JSTaggedValue> implementRet(thread, result);
+    return JSNApiHelper::ToLocal<JSValueRef>(implementRet);
+}
+
+void JSNApi::InitHybridVMEnv(const EcmaVM *vm)
+{
+    auto instance = ecmascript::Runtime::GetInstance();
+    ASSERT(instance != nullptr);
+
+    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+
+    instance->SetHybridVm(true);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    if (env->GetInterfaceTypeSymbol().GetTaggedValue().IsUndefined()) {
+        JSHandle<JSTaggedValue> interfaceTypeSymbol(factory->NewPrivateNameSymbolWithChar("interfaceType"));
+        env->SetInterfaceTypeSymbol(thread, interfaceTypeSymbol.GetTaggedValue());
+    }
+}
+
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);

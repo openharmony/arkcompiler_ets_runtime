@@ -29,7 +29,7 @@ void DynamicObjectAccessor::Initialize()
     common::BaseObjectDispatcher::GetDispatcher().RegisterDynamicObjectAccessor(&dynObjectAccessor_);
 }
 
-bool DynamicObjectAccessor::HasProperty(ThreadHolder *thread, BaseObject *obj, char *name)
+bool DynamicObjectAccessor::HasProperty(ThreadHolder *thread, const BaseObject *obj, const char *name) const
 {
     JSThread *jsThread = thread->GetJSThread();
     ObjectFactory *factory = jsThread->GetEcmaVM()->GetFactory();
@@ -39,7 +39,7 @@ bool DynamicObjectAccessor::HasProperty(ThreadHolder *thread, BaseObject *obj, c
     return JSTaggedValue::HasProperty(jsThread, holderHandle, keyHandle);
 }
 
-JSTaggedValue DynamicObjectAccessor::GetProperty(ThreadHolder *thread, BaseObject *obj, char *name)
+JSTaggedValue DynamicObjectAccessor::GetProperty(ThreadHolder *thread, const BaseObject *obj, const char *name) const
 {
     JSThread *jsThread = thread->GetJSThread();
     ObjectFactory *factory = jsThread->GetEcmaVM()->GetFactory();
@@ -49,7 +49,7 @@ JSTaggedValue DynamicObjectAccessor::GetProperty(ThreadHolder *thread, BaseObjec
     return JSTaggedValue::GetProperty(jsThread, holderHandle, keyHandle).GetValue().GetTaggedValue();
 }
 
-bool DynamicObjectAccessor::SetProperty(ThreadHolder *thread, BaseObject *obj, char *name, JSTaggedValue value)
+bool DynamicObjectAccessor::SetProperty(ThreadHolder *thread, BaseObject *obj, const char *name, JSTaggedValue value)
 {
     JSThread *jsThread = thread->GetJSThread();
     ObjectFactory *factory = jsThread->GetEcmaVM()->GetFactory();
@@ -60,7 +60,7 @@ bool DynamicObjectAccessor::SetProperty(ThreadHolder *thread, BaseObject *obj, c
     return JSTaggedValue::SetProperty(jsThread, holderHandle, keyHandle, valueHandle);
 }
 
-bool DynamicObjectAccessor::HasElementByIdx(ThreadHolder *thread, BaseObject *obj, uint32_t index)
+bool DynamicObjectAccessor::HasElementByIdx(ThreadHolder *thread, const BaseObject *obj, const uint32_t index) const
 {
     JSThread *jsThread = thread->GetJSThread();
     [[maybe_unused]] EcmaHandleScope handleScope(jsThread);
@@ -68,7 +68,8 @@ bool DynamicObjectAccessor::HasElementByIdx(ThreadHolder *thread, BaseObject *ob
     return JSTaggedValue::HasProperty(jsThread, holderHandle, index);
 }
 
-JSTaggedValue DynamicObjectAccessor::GetElementByIdx(ThreadHolder *thread, BaseObject *obj, uint32_t index)
+JSTaggedValue DynamicObjectAccessor::GetElementByIdx(ThreadHolder *thread, const BaseObject *obj,
+                                                     const uint32_t index) const
 {
     JSThread *jsThread = thread->GetJSThread();
     [[maybe_unused]] EcmaHandleScope handleScope(jsThread);
@@ -76,7 +77,8 @@ JSTaggedValue DynamicObjectAccessor::GetElementByIdx(ThreadHolder *thread, BaseO
     return JSTaggedValue::GetProperty(jsThread, holderHandle, index).GetValue().GetTaggedValue();
 }
 
-bool DynamicObjectAccessor::SetElementByIdx(ThreadHolder *thread, BaseObject *obj, uint32_t index, JSTaggedValue value)
+bool DynamicObjectAccessor::SetElementByIdx(ThreadHolder *thread, BaseObject *obj, const uint32_t index,
+                                            JSTaggedValue value)
 {
     JSThread *jsThread = thread->GetJSThread();
     [[maybe_unused]] EcmaHandleScope handleScope(jsThread);

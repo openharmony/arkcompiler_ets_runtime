@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,6 +20,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_resolver.h"
+#include "ecmascript/builtins/builtins_promise_job.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
@@ -40,7 +41,8 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->HostGetImportedModule(specifierString);
         moduleRecord->CheckAndThrowModuleError(thread);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+            BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
         requiredModule.Update(moduleRecord);
     } else {
         JSHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
@@ -57,7 +59,8 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
             moduleRecord = JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseJsonModule(
                 thread, jsPandaFile, jsPandaFile->GetJSPandaFileDesc(), specifierString));
             SourceTextModule::RecordEvaluatedOrError(thread, moduleRecord);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+                BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
         }
         moduleManager->AddResolveImportedModule(specifierString, moduleRecord.GetTaggedValue());
         moduleRecord->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
@@ -68,13 +71,15 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
 
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread,
         JSHandle<SourceTextModule>::Cast(requiredModule));
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+        BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread,
                                             JSHandle<JSTaggedValue>(resolve),
                                             undefined, undefined, 1);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, BuiltinsPromiseJob::CatchException(thread, reject));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+        BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
     info->SetCallArg(moduleNamespace.GetTaggedValue());
     return JSFunction::Call(info);
 }

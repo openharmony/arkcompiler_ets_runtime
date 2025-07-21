@@ -14,8 +14,10 @@
  */
 #include "ecmascript/module/js_module_deregister.h"
 
+#include "ecmascript/base/path_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_resolver.h"
 
@@ -173,5 +175,17 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         RemoveModule(thread, module);
     }
     module->SetRegisterCounts(registerNum);
+}
+
+bool ModuleDeregister::TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module)
+{
+    UnloadNativeModuleCallback unloadNativeModuleCallback = thread->GetEcmaVM()->GetUnloadNativeModuleCallback();
+    if (unloadNativeModuleCallback == nullptr) {
+        LOG_ECMA(ERROR) << "unloadNativeModuleCallback is nullptr";
+        return false;
+    }
+
+    CString soName = base::PathHelper::GetStrippedModuleName(module->GetEcmaModuleRecordNameString());
+    return unloadNativeModuleCallback(soName.c_str());
 }
 } // namespace panda::ecmascript

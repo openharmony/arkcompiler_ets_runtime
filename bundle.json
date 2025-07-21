@@ -67,7 +67,8 @@
                 "//arkcompiler/ets_runtime:ark_js_host_linux_tools_packages",
                 "//arkcompiler/ets_runtime/etc:arkcompiler.para.dac",
                 "//arkcompiler/ets_runtime/compiler_service:ark_aot_compiler.cfg",
-                "//arkcompiler/ets_runtime/compiler_service:compiler_service"
+                "//arkcompiler/ets_runtime/compiler_service:compiler_service",
+                "//arkcompiler/ets_runtime/compiler_service:system_framework_aot_enable_list.conf"
             ],
             "inner_kits": [
                 {
