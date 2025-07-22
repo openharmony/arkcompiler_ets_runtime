@@ -666,6 +666,7 @@ public:
     static RegionType GetAliveRegionType(uintptr_t allocAddr)
     {
         // only alive region have `InlinedRegionMetaData`.
+        DCHECK_CC(IsAliveRegionType(GetRegionDescAt(allocAddr)->GetRegionType()));
         InlinedRegionMetaData *metaData = InlinedRegionMetaData::GetInlinedRegionMetaData(allocAddr);
         return metaData->GetRegionType();
     }
