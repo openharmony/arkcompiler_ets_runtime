@@ -284,10 +284,10 @@ public:
              region->GetLiveByteCount(), region->GetRegionType());
 
 #ifdef USE_HWASAN
-        ASAN_POISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(region->GetRegionStart()),
-            region->GetRegionSize());
-        const uintptr_t p_addr = region->GetRegionStart();
-        const uintptr_t p_size = region->GetRegionSize();
+        ASAN_POISON_MEMORY_REGION(reinterpret_cast<const volatile void *>(region->GetRegionBase()),
+            region->GetRegionBaseSize());
+        const uintptr_t p_addr = region->GetRegionBase();
+        const uintptr_t p_size = region->GetRegionBaseSize();
         LOG_COMMON(DEBUG) << std::hex << "set [" << p_addr <<
                              std::hex << ", " << p_addr + p_size << ") poisoned\n";
 #endif
