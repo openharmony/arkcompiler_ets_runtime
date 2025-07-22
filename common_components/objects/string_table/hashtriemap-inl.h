@@ -101,6 +101,9 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBarrier&& re
                 valuesEqual = true;
             }
             if constexpr (IsCheck) {
+                if (oldValue->GetMixHashcode() != value->GetMixHashcode()) {
+                    continue;
+                }
                 if (!valuesEqual) {
                     return oldValue;
                 }
@@ -208,8 +211,8 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStore(ThreadHol
             if (IsNull(oldValue)) {
                 continue;
             }
-            if (currentEntry->Key<SlotBarrier>() != key) {
-                oldHash = currentEntry->Key<SlotBarrier>();
+            if (oldValue->GetMixHashcode() != key) {
+                oldHash = oldValue->GetMixHashcode();
                 continue;
             }
             if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
@@ -323,8 +326,8 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::LoadOrStoreForJit(Thr
             if (IsNull(oldValue)) {
                 continue;
             }
-            if (currentEntry->Key<SlotBarrier>() != key) {
-                oldHash = currentEntry->Key<SlotBarrier>();
+            if (oldValue->GetMixHashcode() != key) {
+                oldHash = oldValue->GetMixHashcode();
                 continue;
             }
             if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
@@ -433,8 +436,8 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
             if (IsNull(oldValue)) {
                 continue;
             }
-            if (currentEntry->Key<SlotBarrier>() != key) {
-                oldHash = currentEntry->Key<SlotBarrier>();
+            if (oldValue->GetMixHashcode() != key) {
+                oldHash = oldValue->GetMixHashcode();
                 continue;
             }
             if (std::invoke(std::forward<EqualsCallback>(equalsCallback), oldValue)) {
@@ -632,8 +635,8 @@ BaseString* HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::StoreOrLoad(ThreadHol
             if (IsNull(oldValue)) {
                 continue;
             }
-            if (currentEntry->Key<SlotBarrier>() != key) {
-                oldHash = currentEntry->Key<SlotBarrier>();
+            if (oldValue->GetMixHashcode() != key) {
+                oldHash = oldValue->GetMixHashcode();
                 continue;
             }
             if (BaseString::StringsAreEqual(std::forward<ReadBarrier>(readBarrier), oldValue, *str)) {
@@ -697,33 +700,36 @@ bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::CheckValidity(ReadBarrier&& 
     return true;
 }
 
-template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
-template <typename ReadBarrier>
-void HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Iter(ReadBarrier&& readBarrier, Indirect* node, bool& isValid)
+template<typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+template<typename ReadBarrier>
+bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Iter(ReadBarrier &&readBarrier, Indirect *node,
+                                                         std::function<bool(Node *)> &iter)
 {
-    if (node == nullptr)
-        return;
-
-    for (std::atomic<uint64_t>& temp : node->children_) {
-        auto &child = reinterpret_cast<std::atomic<HashTrieMapNode*>&>(temp);
-        Node* childNode = child.load(std::memory_order_relaxed);
+    if (node == nullptr) {
+        return true;
+    }
+    if (!iter(node)) {
+        return false;
+    }
+    for (std::atomic<uint64_t> &temp: node->children_) {
+        auto &child = reinterpret_cast<std::atomic<HashTrieMapNode *> &>(temp);
+        Node *childNode = child.load(std::memory_order_acquire);
         if (childNode == nullptr)
             continue;
 
         if (!(childNode->IsEntry())) {
             // Recursive traversal of indirect nodes
-            Iter(std::forward<ReadBarrier>(readBarrier), childNode->AsIndirect(), isValid);
+            Iter(std::forward<ReadBarrier>(readBarrier), childNode->AsIndirect(), iter);
             continue;
         }
 
-        for (Entry* e = childNode->AsEntry(); e != nullptr; e = e->Overflow().load(std::memory_order_relaxed)) {
-            auto value = e->Value<SlotBarrier>();
-            if (!IsNull(value) &&
-                !CheckValidity(std::forward<ReadBarrier>(readBarrier), value, isValid)) {
-                return;
+        for (Entry *e = childNode->AsEntry(); e != nullptr; e = e->Overflow().load(std::memory_order_acquire)) {
+            if (!iter(e)) {
+                return false;
             }
         }
     }
+    return true;
 }
 
 template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>

@@ -85,12 +85,6 @@ public:
     }
 
     template <TrieMapConfig::SlotBarrier SlotBarrier>
-    uint32_t Key() const
-    {
-        return Value<SlotBarrier>()->GetRawHashcode();
-    }
-
-    template <TrieMapConfig::SlotBarrier SlotBarrier>
     BaseString* Value() const
     {
         uint64_t value = Pointer::Decode(bitField_);
@@ -336,12 +330,28 @@ public:
     template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
               std::enable_if_t<Barrier == TrieMapConfig::NoSlotBarrier, int>  = 0>
     bool ClearNodeFromGC(Indirect* parent, int index, const WeakRootVisitor& visitor);
+
     // Iterator
+    template<typename ReadBarrier>
+    void Range(ReadBarrier &&readBarrier, bool &isValid)
+    {
+        std::function<bool(Node *)> iter = [readBarrier, &isValid, this](Node *node) {
+            if (node->IsEntry()) {
+                BaseString *value = node->AsEntry()->Value<SlotBarrier>();
+                if (!IsNull(value) && !this->CheckValidity(readBarrier, value, isValid)) {
+                    return false;
+                }
+            }
+            return true;
+        };
+        Range(readBarrier, iter);
+    }
+
     template <typename ReadBarrier>
-    void Range(ReadBarrier&& readBarrier, bool& isValid)
+    void Range(ReadBarrier&& readBarrier, std::function<bool(Node*)> &iter)
     {
         for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
-            Iter(std::forward<ReadBarrier>(readBarrier), root_[i].load(std::memory_order_relaxed), isValid);
+            Iter(std::forward<ReadBarrier>(readBarrier), root_[i].load(std::memory_order_acquire), iter);
         }
     }
 
@@ -411,8 +421,10 @@ private:
     template <bool IsLock>
     Node* Expand(Entry* oldEntry, Entry* newEntry,
         uint32_t oldHash, uint32_t newHash, uint32_t hashShift, Indirect* parent);
-    template <typename ReadBarrier>
-    void Iter(ReadBarrier&& readBarrier, Indirect* node, bool& isValid);
+
+    template<class ReadBarrier>
+    bool Iter(ReadBarrier &&readBarrier, Indirect *node, std::function<bool(Node *)> &iter);
+
     bool CheckWeakRef(const WeakRefFieldVisitor& visitor, Entry* entry);
     bool CheckWeakRef(const WeakRootVisitor& visitor, Entry* entry);
 

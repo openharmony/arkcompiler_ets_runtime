@@ -4436,7 +4436,7 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTable(std::string_vi
     EcmaString *str =
         EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    str->SetRawHashcode(hashCode);
+    str->SetMixHashcode(hashCode);
     return JSHandle<EcmaString>(thread_, str);
 }
 
@@ -4473,7 +4473,7 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf16WithoutStringTable(std::u16strin
     EcmaString *str =
         EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
-    str->SetRawHashcode(hashCode);
+    str->SetMixHashcode(hashCode);
     return JSHandle<EcmaString>(thread_, str);
 }
 
@@ -4502,7 +4502,7 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTable(const uint8_t 
     EcmaString *str =
         EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
-    str->SetRawHashcode(hashCode);
+    str->SetMixHashcode(hashCode);
     return JSHandle<EcmaString>(thread_, str);
 }
 
@@ -4522,7 +4522,7 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf16WithoutStringTable(const uint16_
     EcmaString *str =
         EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data, utf16Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
-    str->SetRawHashcode(hashCode);
+    str->SetMixHashcode(hashCode);
     return JSHandle<EcmaString>(thread_, str);
 }
 

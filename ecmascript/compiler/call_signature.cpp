@@ -3808,20 +3808,6 @@ DEF_CALL_SIGNATURE(FindEntryFromNameDictionary)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
 }
 
-DEF_CALL_SIGNATURE(ComputeStringHashcode)
-{
-    constexpr size_t paramCount = 2;
-    CallSignature ComputeStringHashcode("ComputeStringHashcode", 0, paramCount, ArgumentsOrder::DEFAULT_ORDER,
-                                         VariableType::INT32());
-    *callSign = ComputeStringHashcode;
-    std::array<VariableType, paramCount> params = {
-        VariableType::NATIVE_POINTER(), // glue
-        VariableType::JS_ANY(), // string
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);;
-}
-
 DEF_CALL_SIGNATURE(JSProxyGetProperty)
 {
     constexpr size_t paramCount = 5;

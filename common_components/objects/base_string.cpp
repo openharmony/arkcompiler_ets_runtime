@@ -75,9 +75,8 @@ namespace common {
 
     // To change the hash algorithm of BaseString, please modify BaseString::CalculateConcatHashCode
     // and BaseStringHashHelper::ComputeHashForDataPlatform simultaneously!!
-    template <typename T>
-    uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
-                                            uint32_t hashSeed)
+    template<typename T>
+    uint32_t ComputeHashForDataInternal(const T *data, size_t size, uint32_t hashSeed)
     {
         if (size <= static_cast<size_t>(StringHash::MIN_SIZE_FOR_UNROLLING)) {
             uint32_t hash = hashSeed;
@@ -89,30 +88,46 @@ namespace common {
         return StringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
     }
 
-    template
-    uint32_t BaseString::ComputeHashForData<uint8_t>(const uint8_t*, size_t, uint32_t);
-    template
-    uint32_t BaseString::ComputeHashForData<uint16_t>(const uint16_t*, size_t, uint32_t);
+    PUBLIC_API uint32_t BaseString::ComputeHashForData(const uint8_t *data, size_t size, uint32_t hashSeed)
+    {
+        return ComputeHashForDataInternal(data, size, hashSeed);
+    }
 
+    PUBLIC_API uint32_t BaseString::ComputeHashForData(const uint16_t *data, size_t size, uint32_t hashSeed)
+    {
+        return ComputeHashForDataInternal(data, size, hashSeed);
+    }
 
-    /* static */
-    uint32_t BaseString::ComputeHashcodeUtf8(const uint8_t* utf8Data, size_t utf8Len, bool canBeCompress)
+    uint32_t BaseString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)
     {
         if (canBeCompress) {
-            return ComputeHashForData(utf8Data, utf8Len, 0);
+            uint32_t mixHash = 0;
+            // String using UTF8 encoding, and length smaller than 10, try to compute integer hash.
+            if (utf8Len < MAX_ELEMENT_INDEX_LEN && HashIntegerString(utf8Data, utf8Len, &mixHash, 0)) {
+                return mixHash;
+            }
+            uint32_t hash = ComputeHashForData(utf8Data, utf8Len, 0);
+            return MixHashcode(hash, NOT_INTEGER);
         }
         auto utf16Len = UtfUtils::Utf8ToUtf16Size(utf8Data, utf8Len);
         std::vector<uint16_t> tmpBuffer(utf16Len);
         [[maybe_unused]] auto len = UtfUtils::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(), utf8Len,
                                                                        utf16Len);
         DCHECK_CC(len == utf16Len);
-        return ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
+        uint32_t hash = ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
+        return MixHashcode(hash, NOT_INTEGER);
     }
 
     /* static */
-    uint32_t BaseString::ComputeHashcodeUtf16(const uint16_t* utf16Data, uint32_t length)
+    uint32_t BaseString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length)
     {
-        return ComputeHashForData(utf16Data, length, 0);
+        uint32_t mixHash = 0;
+        // String length smaller than 10, try to compute integer hash.
+        if (length < MAX_ELEMENT_INDEX_LEN && HashIntegerString(utf16Data, length, &mixHash, 0)) {
+            return mixHash;
+        }
+        uint32_t hash = ComputeHashForData(utf16Data, length, 0);
+        return MixHashcode(hash, NOT_INTEGER);
     }
 
 
@@ -223,7 +238,7 @@ namespace common {
     {
         uint32_t totalHash = ComputeHashForData(dataFirst, sizeFirst, 0);
         totalHash = ComputeHashForData(dataSecond, sizeSecond, totalHash);
-        return totalHash;
+        return MixHashcode(totalHash, NOT_INTEGER);
     }
 
     template

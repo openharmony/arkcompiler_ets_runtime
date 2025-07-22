@@ -170,7 +170,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringFromCompressedSubStrin
         [vm, string, offset, utf8Len, hashcode]() -> common::ReadOnlyHandle<BaseString> {
             EcmaString* str = EcmaStringAccessor::CreateFromUtf8CompressedSubString(vm, string, offset, utf8Len,
                 MemSpaceType::SHARED_OLD_SPACE);
-            str->SetRawHashcode(hashcode);
+            str->SetMixHashcode(hashcode);
             ASSERT(!EcmaStringAccessor(str).IsInternString());
             ASSERT(EcmaStringAccessor(str).NotTreeString());
             // Strings in string table should not be in the young space.
@@ -244,7 +244,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const JSH
             JSHandle<EcmaString> concatHandle(
                 thread, EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
             EcmaString *value = EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE);
-            value->SetRawHashcode(hashcode);
+            value->SetMixHashcode(hashcode);
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
             // Strings in string table should not be in the young space.
@@ -281,7 +281,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const uin
         holder, hashcode,
         [vm, hashcode, utf8Data, utf8Len, canBeCompress, type]() {
             EcmaString* value = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
-            value->SetRawHashcode(hashcode);
+            value->SetMixHashcode(hashcode);
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
             // Strings in string table should not be in the young space.
@@ -339,7 +339,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const uin
         [vm, utf16Data, utf16Len, canBeCompress, hashcode]() {
             EcmaString* value = EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress,
                                                                     MemSpaceType::SHARED_OLD_SPACE);
-            value->SetRawHashcode(hashcode);
+            value->SetMixHashcode(hashcode);
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
             // Strings in string table should not be in the young space.
@@ -387,7 +387,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringWithoutJSHandleForJit(
         [vm, utf8Data, utf8Len, canBeCompress, type, hashcode]() {
             EcmaString *value = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, type);
 
-            value->SetRawHashcode(hashcode);
+            value->SetMixHashcode(hashcode);
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
             // Strings in string table should not be in the young space.
@@ -424,7 +424,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringWithoutJSHandleForJit(
         holder, hashcode,
         [vm, u16Buffer, utf16Len, hashcode, type]() {
             EcmaString *value = EcmaStringAccessor::CreateFromUtf16(vm, u16Buffer.data(), utf16Len, false, type);
-            value->SetRawHashcode(hashcode);
+            value->SetMixHashcode(hashcode);
             ASSERT(!EcmaStringAccessor(value).IsInternString());
             ASSERT(EcmaStringAccessor(value).NotTreeString());
             // Strings in string table should not be in the young space.
@@ -500,7 +500,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringThreadUnsafe(
             JSHandle<EcmaString> concatHandle(
                 thread, EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
             EcmaString *concatString = EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE);
-            concatString->SetRawHashcode(hashcode);
+            concatString->SetMixHashcode(hashcode);
             ASSERT(!EcmaStringAccessor(concatString).IsInternString());
             ASSERT(EcmaStringAccessor(concatString).NotTreeString());
             // Strings in string table should not be in the young space.
@@ -536,7 +536,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringThreadUnsafe(EcmaVM* v
         [vm, utf8Data, utf8Len, canBeCompress, hashcode]() {
             EcmaString *value = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress,
                                                                    MemSpaceType::SHARED_OLD_SPACE);
-            value->SetRawHashcode(hashcode);
+            value->SetMixHashcode(hashcode);
             JSThread *thread = vm->GetJSThread();
             JSHandle<EcmaString> stringHandle(thread, value);
             return stringHandle;

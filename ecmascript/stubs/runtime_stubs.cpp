@@ -5034,6 +5034,15 @@ void RuntimeStubs::BatchMarkInBuffer(void* src, size_t count)
     }
 }
 
+DEF_RUNTIME_STUBS(ComputeHashcode)
+{
+    RUNTIME_STUBS_HEADER(ComputeHashcode);
+    JSTaggedValue ecmaString = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto string = EcmaString::Cast(ecmaString);
+    uint32_t result = EcmaStringAccessor(string).ComputeHashcode(thread);
+    return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name

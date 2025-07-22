@@ -92,7 +92,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternStringFromCompr
         [holder, string, offset, utf8Len, hashcode, handleCreator, allocator]() {
             BaseString* str = BaseString::CreateFromUtf8CompressedSubString(
                 std::move(allocator), string, offset, utf8Len);
-            str->SetRawHashcode(hashcode);
+            str->SetMixHashcode(hashcode);
             ASSERT(!str->IsInternString());
             ASSERT(str->NotTreeString());
             // Strings in string table should not be in the young space.
@@ -128,7 +128,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternString(ThreadHo
         holder, hashcode,
         [holder, hashcode, utf8Data, utf8Len, canBeCompress, handleCreator, allocator]() {
             BaseString* value = BaseString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
-            value->SetRawHashcode(hashcode);
+            value->SetMixHashcode(hashcode);
             ASSERT(!value->IsInternString());
             ASSERT(value->NotTreeString());
             ReadOnlyHandle<BaseString> stringHandle = handleCreator(holder, value);
@@ -163,7 +163,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternString(
         [holder, utf16Data, utf16Len, canBeCompress, hashcode, handleCreator, allocator]() {
             BaseString* value = BaseString::CreateFromUtf16(std::move(allocator), utf16Data, utf16Len,
                                                             canBeCompress);
-            value->SetRawHashcode(hashcode);
+            value->SetMixHashcode(hashcode);
             ASSERT(!value->IsInternString());
             ASSERT(value->NotTreeString());
             // Strings in string table should not be in the young space.

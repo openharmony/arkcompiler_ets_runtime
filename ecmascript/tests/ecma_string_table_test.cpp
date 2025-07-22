@@ -159,44 +159,76 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
 template<common::TrieMapConfig::SlotBarrier barrier>
 void EcmaStringTableTest::TestLoadOrStoreConcurrentAccess()
 {
-    auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
+    for (uint32_t i = 0; i < 20; i++) {
+        auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
 
-    const int thread_count = 8;
-    std::atomic<int> counter {0};
-    JSRuntimeOptions options;
-    auto thread_proc = [&]() {
-        EcmaVM *ecmaVm1 {nullptr};
-        EcmaHandleScope *scope {nullptr};
-        JSThread *thread {nullptr};
-        TestHelper::CreateEcmaVMWithScope(ecmaVm1, thread, scope);
-        JSHandle<EcmaString> value = ecmaVm1->GetFactory()->NewFromASCII("value");
-        for (int i = 0; i < 1000; ++i) {
-            map->template LoadOrStore<true>(
-                ecmaVm1->GetJSThread(), counter.fetch_add(1), [value]() { return value; },
-                [](BaseString* v) { return false; });
+        EcmaVM *vm = thread->GetEcmaVM();
+        [[maybe_unused]] JSHandle<EcmaString> values[] = {
+            vm->GetFactory()->NewFromASCII("581610154"),
+            vm->GetFactory()->NewFromASCII("648719018"),
+            vm->GetFactory()->NewFromASCII("715827882"),
+            vm->GetFactory()->NewFromASCII("782936746"),
+            vm->GetFactory()->NewFromASCII("850045610"),
+            vm->GetFactory()->NewFromASCII("917154474"),
+            vm->GetFactory()->NewFromASCII("984263338"),
+        };
+        constexpr int string_count = 7;
+        constexpr int thread_count = 8;
+        JSRuntimeOptions options;
+        auto thread_proc = [&]() {
+            EcmaVM *ecmaVm1{nullptr};
+            EcmaHandleScope *scope{nullptr};
+            JSThread *thread{nullptr};
+            TestHelper::CreateEcmaVMWithScope(ecmaVm1, thread, scope);
+            JSHandle<EcmaString> value[] = {
+                ecmaVm1->GetFactory()->NewFromASCII("581610154"),
+                ecmaVm1->GetFactory()->NewFromASCII("648719018"),
+                ecmaVm1->GetFactory()->NewFromASCII("715827882"),
+                ecmaVm1->GetFactory()->NewFromASCII("782936746"),
+                ecmaVm1->GetFactory()->NewFromASCII("850045610"),
+                ecmaVm1->GetFactory()->NewFromASCII("917154474"),
+                ecmaVm1->GetFactory()->NewFromASCII("984263338"),
+            };
+            for (int i = 0; i < 1000; ++i) {
+                auto readBarrier = [ecmaVm1](const void *obj, size_t offset) -> TaggedObject * {
+                    return Barriers::GetTaggedObject(ecmaVm1->GetAssociatedJSThread(), obj, offset);
+                };
+                map->template LoadOrStore<true>(
+                    ecmaVm1->GetJSThread(), value[i % string_count]->ToBaseString()->GetHashcode(readBarrier),
+                    [value, i]() {
+                        return value[i % string_count];
+                    },
+                    [ecmaVm1, &value, i](BaseString *v) {
+                        return EcmaStringAccessor::StringsAreEqual(ecmaVm1->GetJSThread(),
+                                                                   EcmaString::FromBaseString(v),
+                                                                   *value[i % string_count]);
+                    });
+            }
+            TestHelper::DestroyEcmaVMWithScope(ecmaVm1, scope);
+            return nullptr;
+        };
+        std::vector<std::thread> threads;
+        for (int i = 0; i < thread_count; ++i) {
+            threads.emplace_back(thread_proc);
         }
-        TestHelper::DestroyEcmaVMWithScope(ecmaVm1, scope);
-        return nullptr;
-    };
-    std::vector<std::thread> threads;
-    for (int i = 0; i < thread_count; ++i) {
-        threads.emplace_back(thread_proc);
-    }
-    for (auto &t : threads) {
-        ecmascript::ThreadSuspensionScope suspensionScope(thread);
-        t.join();
-    }
-
-    EcmaVM *vm = thread->GetEcmaVM();
-    JSHandle<EcmaString> value1 = vm->GetFactory()->NewFromASCII("value");
-    for (int i = 0; i < 8000; ++i) {  // check 8000 store operations
+        for (auto &t: threads) {
+            ecmascript::ThreadSuspensionScope suspensionScope(thread);
+            t.join();
+        }
         auto readBarrier = [vm](const void *obj, size_t offset) -> TaggedObject * {
             return Barriers::GetTaggedObject(vm->GetAssociatedJSThread(), obj, offset);
         };
-        uint32_t key = value1->ToBaseString()->GetRawHashcode();
-        ASSERT_TRUE(map->template Load<false>(std::move(readBarrier), key, value1->ToBaseString()) != nullptr);
+        uint32_t count = 0;
+        std::function<bool(common::HashTrieMapNode *)> iter = [&count](common::HashTrieMapNode *node) {
+            if (node->IsEntry()) {
+                count++;
+            }
+            return true;
+        };
+        map->Range(readBarrier, iter);
+        ASSERT_PRINT(count == string_count, count);
+        delete map;
     }
-    delete map;
 }
 /**
  * @tc.name: LoadOrStore_InsertNewKey
@@ -216,7 +248,7 @@ void EcmaStringTableTest::TestLoadOrStoreInsertNewKey()
     EcmaVM* vm = thread->GetEcmaVM();
     auto* map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
     JSHandle<EcmaString> value(thread, *vm->GetFactory()->NewFromASCII("test_value"));
-    uint32_t key = value->ToBaseString()->GetRawHashcode();
+    uint32_t key = value->ToBaseString()->GetMixHashcode();
     auto readBarrier = [vm](const void *obj, size_t offset) -> TaggedObject * {
         return Barriers::GetTaggedObject(vm->GetAssociatedJSThread(), obj, offset);
     };
@@ -256,8 +288,8 @@ void EcmaStringTableTest::TestLoadOrStoreStoreExistingKey()
     JSHandle<EcmaString> original(thread, *vm->GetFactory()->NewFromASCII("Aa1"));
     JSHandle<EcmaString> origina2(thread, *vm->GetFactory()->NewFromASCII("BB1"));
     // key1 = key2 = 0x0000FFF1
-    uint32_t key1 = original->ToBaseString()->GetRawHashcode();
-    uint32_t key2 = origina2->ToBaseString()->GetRawHashcode();
+    uint32_t key1 = original->ToBaseString()->GetMixHashcode();
+    uint32_t key2 = origina2->ToBaseString()->GetMixHashcode();
 
     // Initial insertion
     map->template LoadOrStore<true>(
@@ -305,10 +337,10 @@ void EcmaStringTableTest::TestExpandHashCollisionHandling()
     JSHandle<EcmaString> value2(thread, *vm->GetFactory()->NewFromASCII("A ?0"));
     JSHandle<EcmaString> value3(thread, *vm->GetFactory()->NewFromASCII("AAa1"));
     JSHandle<EcmaString> value4(thread, *vm->GetFactory()->NewFromASCII("ABB1"));
-    uint32_t key1 = value1->ToBaseString()->GetRawHashcode();
-    uint32_t key2 = value2->ToBaseString()->GetRawHashcode();
-    uint32_t key3 = value3->ToBaseString()->GetRawHashcode();
-    uint32_t key4 = value4->ToBaseString()->GetRawHashcode();
+    uint32_t key1 = value1->ToBaseString()->GetMixHashcode();
+    uint32_t key2 = value2->ToBaseString()->GetMixHashcode();
+    uint32_t key3 = value3->ToBaseString()->GetMixHashcode();
+    uint32_t key4 = value4->ToBaseString()->GetMixHashcode();
     uint32_t ROOT_ID = key1 & common::TrieMapConfig::ROOT_BIT_MASK;
     // Insert first key
     map->template LoadOrStore<true>(

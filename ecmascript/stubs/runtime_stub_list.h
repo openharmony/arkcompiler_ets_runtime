@@ -547,7 +547,8 @@ namespace panda::ecmascript {
     V(SlowSharedObjectStoreBarrier)                            \
     V(GetNativePcOfstForBaseline)                              \
     V(AotCallBuiltinTrace)                                     \
-    V(NumberBigIntNativePointerToString)
+    V(NumberBigIntNativePointerToString)                       \
+    V(ComputeHashcode)
 
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)               \
