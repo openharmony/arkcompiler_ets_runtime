@@ -87,6 +87,7 @@ group("ark_jit_ts_test") {
     "stack_overflow",
     "module",
     "mega_ic_test",
+    "mega_ic_test_timeout",
     "ldobjbyvalue_mono_opt",
     "ldobjbyvalue_mono_proto",
     "ldobjbyvalue_mono_proto_getter",
