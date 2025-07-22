@@ -37,7 +37,7 @@ const std::string COMPILER_AN_FILE_MAX_SIZE = "compiler-an-file-max-size";
 const std::string AOT_FILE = "aot-file";
 const std::string IS_SYSTEM_COMPONENT = "isSysComp";
 
-const std::string CODE_LANGUAGE = "codeLanguage";
+const std::string ARKTS_MODE = "moduleArkTSMode";
 } // namespace ArgsIdx
 
 // UID and GID of system users

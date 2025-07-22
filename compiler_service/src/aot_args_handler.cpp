@@ -44,8 +44,8 @@ const std::string STATIC_PAOC_USE_PROFILE = "paoc-use-profile";
 const std::string STATIC_BOOT_PATH = "/system/framework/bootpath.json";
 
 const std::string AN_FILE_NAME = "anFileName";
-const std::string ARKTS_1_1 = "1.1";
-const std::string ARKTS_1_2 = "1.2";
+const std::string ARKTS_DYNAMIC = "dynamic";
+const std::string ARKTS_STATIC = "static";
 const std::string ARKTS_HYBRID = "hybrid";
 
 const std::string AN_SUFFIX = ".an";
@@ -332,15 +332,15 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
     if (isSystemComponent) {
         return std::make_unique<StaticFrameworkAOTArgsParser>();
     }
-    std::string codeLanguage = ARKTS_1_1;
-    if (AOTArgsParserBase::FindArgsIdxToString(argsMap, ArgsIdx::CODE_LANGUAGE, codeLanguage) != ERR_OK) {
+    std::string codeLanguage = ARKTS_DYNAMIC;
+    if (AOTArgsParserBase::FindArgsIdxToString(argsMap, ArgsIdx::ARKTS_MODE, codeLanguage) != ERR_OK) {
         LOG_SA(INFO) << "aot sa failed to get language version";
     }
 
-    if (codeLanguage == ARKTS_1_1) {
+    if (codeLanguage == ARKTS_DYNAMIC) {
         LOG_SA(INFO) << "aot sa use default compiler";
         return std::make_unique<AOTArgsParser>();
-    } else if (codeLanguage == ARKTS_1_2 || codeLanguage == ARKTS_HYBRID) {
+    } else if (codeLanguage == ARKTS_STATIC || codeLanguage == ARKTS_HYBRID) {
         LOG_SA(INFO) << "aot sa use static compiler";
         return std::make_unique<StaticAOTArgsParser>();
     }
