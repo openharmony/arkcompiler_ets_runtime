@@ -645,6 +645,7 @@ public:
     inline GateRef TypedCallBuiltin(GateRef hirGate, const std::vector<GateRef> &args,
                                     BuiltinsStubCSigns::ID id, bool isSideEffect);
     GateRef TypeConvert(MachineType type, ParamType typeFrom, GateType typeTo, const std::vector<GateRef>& inList);
+    GateRef ProductIsNegativeZero(GateRef result, GateRef left, GateRef right);
     GateRef Int32CheckRightIsZero(GateRef right);
     GateRef RemainderIsNegativeZero(GateRef left, GateRef right);
     GateRef Float64CheckRightIsZero(GateRef right);

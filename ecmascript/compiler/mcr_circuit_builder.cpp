@@ -785,6 +785,20 @@ GateRef CircuitBuilder::TypedSuperAllocateThis(GateRef superCtor, GateRef newTar
     return ret;
 }
 
+GateRef CircuitBuilder::ProductIsNegativeZero(GateRef result, GateRef left, GateRef right)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->ProductIsNegativeZero(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, result, left, right, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
 
 GateRef CircuitBuilder::Int32CheckRightIsZero(GateRef right)
 {

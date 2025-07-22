@@ -69,6 +69,7 @@ private:
     template<TypedUnOp Op>
     void VisitNumberMonocular(GateRef gate);
     void VisitNumberDiv(GateRef gate);
+    void VisitNumberMultiply(GateRef gate);
     template<TypedBinOp Op>
     void VisitNumberMod(GateRef gate);
     void VisitBooleanJump(GateRef gate);

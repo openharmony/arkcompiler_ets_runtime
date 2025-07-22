@@ -104,6 +104,7 @@ group("ark_jit_ts_test") {
     "intrinsic_test",
     "intrinsic_test2",
     "ldobjbyvalue_load_element",
+    "negative_zero",
   ]
 
   # Until we support barriers for HeapConstant table
