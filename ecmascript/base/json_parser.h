@@ -122,6 +122,7 @@ protected:
         return proto;
     }
 
+    template<bool isEnableCMCGC>
     JSTaggedValue ParseJSONText();
 
     JSHandle<JSTaggedValue> CreateJsonArray(JsonContinuation continuation,
@@ -130,9 +131,11 @@ protected:
     JSHandle<JSTaggedValue> CreateSJsonArray([[maybe_unused]] JsonContinuation continuation,
                                              [[maybe_unused]] std::vector<JSHandle<JSTaggedValue>> &elementsList);
 
+    template<bool isEnableCMCGC>
     JSHandle<JSTaggedValue> CreateJsonObject(JsonContinuation continuation,
                                              std::vector<JSHandle<JSTaggedValue>> &propertyList);
 
+    template<bool isEnableCMCGC>
     JSHandle<JSTaggedValue> CreateSJsonObject(JsonContinuation continuation,
                                               std::vector<JSHandle<JSTaggedValue>> &propertyList);
     

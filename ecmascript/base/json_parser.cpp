@@ -47,12 +47,13 @@ JSHandle<JSTaggedValue> JsonParser<T>::Launch(Text begin, Text end)
     initialJSObjectClass_ =
         JSHandle<JSHClass>(thread_, JSFunction::GetOrCreateInitialJSHClass(thread_, objectFunc));
 
-    JSTaggedValue result = ParseJSONText();
+    JSTaggedValue result = g_isEnableCMCGC ? ParseJSONText<true>() : ParseJSONText<false>();
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
     return JSHandle<JSTaggedValue>(thread_, result);
 }
 
 template<typename T>
+template<bool isEnableCMCGC>
 JSTaggedValue JsonParser<T>::ParseJSONText()
 {
     JSHandle<JSTaggedValue> parseValue;
@@ -225,9 +226,9 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                         break;
                     }
                     if (UNLIKELY(transformType_ == TransformType::SENDABLE)) {
-                        parseValue = CreateSJsonObject(continuation, propertyList);
+                        parseValue = CreateSJsonObject<isEnableCMCGC>(continuation, propertyList);
                     } else {
-                        parseValue = CreateJsonObject(continuation, propertyList);
+                        parseValue = CreateJsonObject<isEnableCMCGC>(continuation, propertyList);
                     }
                     if (UNLIKELY(*current_ != '}')) {
                         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
@@ -276,6 +277,9 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
             }
             break;
         }
+        if constexpr (isEnableCMCGC) {
+            thread_->CheckSafepointIfSuspended();
+        }
     }
 }
 
@@ -307,6 +311,7 @@ JSHandle<JSTaggedValue> JsonParser<T>::CreateSJsonArray([[maybe_unused]] JsonCon
 }
 
 template<typename T>
+template<bool isEnableCMCGC>
 JSHandle<JSTaggedValue> JsonParser<T>::CreateJsonObject(JsonContinuation continuation,
     std::vector<JSHandle<JSTaggedValue>> &propertyList)
 {
@@ -323,11 +328,15 @@ JSHandle<JSTaggedValue> JsonParser<T>::CreateJsonObject(JsonContinuation continu
             JSTaggedValue::SetProperty(thread_, obj, keyHandle, valueHandle, true);
             RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
         }
+        if constexpr (isEnableCMCGC) {
+            thread_->CheckSafepointIfSuspended();
+        }
     }
     return obj;
 }
 
 template<typename T>
+template<bool isEnableCMCGC>
 JSHandle<JSTaggedValue> JsonParser<T>::CreateSJsonObject(JsonContinuation continuation,
     std::vector<JSHandle<JSTaggedValue>> &propertyList)
 {
@@ -355,6 +364,9 @@ JSHandle<JSTaggedValue> JsonParser<T>::CreateSJsonObject(JsonContinuation contin
             }
             propertyArray->Set(thread_, i, newKey);
             propertyArray->Set(thread_, i + 1, JSTaggedValue(int(FieldType::NONE)));
+            if constexpr (isEnableCMCGC) {
+                thread_->CheckSafepointIfSuspended();
+            }
         }
         hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
             JSHandle<JSTaggedValue>(jsonPrototype), JSHandle<JSTaggedValue>(layout));
