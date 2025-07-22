@@ -23,11 +23,6 @@
 using namespace common;
 
 namespace common::test {
-class TestWCollector : public WCollector {
-public:
-    using WCollector::WCollector;
-};
-
 class TraceCollectorTest : public common::test::BaseTestWithScope {
 protected:
     static void SetUpTestCase()
@@ -39,6 +34,16 @@ protected:
     {
         BaseRuntime::GetInstance()->Fini();
     }
+    void SetUp() override
+    {
+        MutatorManager::Instance().CreateRuntimeMutator(ThreadType::ARK_PROCESSOR);
+    }
+
+    void TearDown() override
+    {
+        MutatorManager::Instance().DestroyRuntimeMutator(ThreadType::ARK_PROCESSOR);
+    }
+
     StaticRootTable rootTable_;
     bool ContainsRoot(StaticRootTable& table, const StaticRootTable::StaticRootArray* array, uint32_t size)
     {
@@ -56,16 +61,12 @@ protected:
     }
     class TableTraceCollctor : public TraceCollector {
     public:
+        using TraceCollector::SetGCReason;
+        using TraceCollector::TraceRoots;
+        using TraceCollector::PushRootToWorkStack;
         using TraceCollector::UpdateNativeThreshold;
     };
 };
-
-std::unique_ptr<TestWCollector> GetWCollector()
-{
-    CollectorResources& resources = Heap::GetHeap().GetCollectorResources();
-    Allocator& allocator = Heap::GetHeap().GetAllocator();
-    return std::make_unique<TestWCollector>(allocator, resources);
-}
 
 HWTEST_F_L0(TraceCollectorTest, RunGarbageCollection)
 {
@@ -97,5 +98,59 @@ HWTEST_F_L0(TraceCollectorTest, UpdateNativeThresholdTest)
     collector.UpdateNativeThreshold(gcParam);
     auto newThreshold = Heap::GetHeap().GetNativeHeapThreshold();
     EXPECT_NE(newThreshold, oldThreshold);
+}
+
+HWTEST_F_L0(TraceCollectorTest, UpdateNativeThresholdTest2)
+{
+    TableTraceCollctor& collector = reinterpret_cast<TableTraceCollctor&>(Heap::GetHeap().GetCollector());
+    Heap::GetHeap().NotifyNativeAllocation(1100 * MB);
+
+    GCParam param;
+    collector.UpdateNativeThreshold(param);
+    ASSERT_TRUE(Heap::GetHeap().GetNotifiedNativeSize() > MAX_NATIVE_SIZE_INC);
+}
+
+HWTEST_F_L0(TraceCollectorTest, TraceRootsTest)
+{
+    TableTraceCollctor& collector = reinterpret_cast<TableTraceCollctor&>(Heap::GetHeap().GetCollector());
+    CArrayList<BaseObject *> roots;
+    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    uintptr_t addr = theAllocator.AllocOldRegion();
+    ASSERT_NE(addr, 0);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    region->SetRegionType(RegionDesc::RegionType::OLD_REGION);
+    Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
+    collector.SetGCReason(GC_REASON_YOUNG);
+
+    roots.push_back(obj);
+    collector.TraceRoots(roots);
+    ASSERT_TRUE(region->IsInOldSpace());
+}
+
+HWTEST_F_L0(TraceCollectorTest, PushRootToWorkStackTest)
+{
+    TableTraceCollctor& collector = reinterpret_cast<TableTraceCollctor&>(Heap::GetHeap().GetCollector());
+    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    uintptr_t addr = theAllocator.AllocOldRegion();
+    ASSERT_NE(addr, 0);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RootSet roots;
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    region->SetRegionType(RegionDesc::RegionType::RECENT_LARGE_REGION);
+    collector.SetGCReason(GC_REASON_NATIVE);
+    region->MarkObject(obj);
+    bool result = collector.PushRootToWorkStack(&roots, obj);
+    ASSERT_FALSE(result);
+
+    region->SetRegionType(RegionDesc::RegionType::RECENT_LARGE_REGION);
+    collector.SetGCReason(GC_REASON_YOUNG);
+    result = collector.PushRootToWorkStack(&roots, obj);
+    ASSERT_FALSE(result);
+
+    region->SetRegionType(RegionDesc::RegionType::OLD_REGION);
+    collector.SetGCReason(GC_REASON_NATIVE);
+    result = collector.PushRootToWorkStack(&roots, obj);
+    ASSERT_FALSE(result);
 }
 }
