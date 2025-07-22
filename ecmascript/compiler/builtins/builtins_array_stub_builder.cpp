@@ -1945,7 +1945,6 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                         Label notHole(env);
                         Label changeThisLen(env);
                         Label updateCallResult(env);
-                        GateRef elements = GetElementsArray(glue, thisValue);
                         GateRef kValue = GetTaggedValueWithElementsKind(glue, thisValue, *k);
                         BRANCH(TaggedIsHole(kValue), &loopEnd, &notHole);
                         Bind(&notHole);
@@ -1971,6 +1970,7 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                                 Jump(exit);
                             }
                             Bind(&notHasException1);
+                            GateRef elements = GetElementsArray(glue, thisValue);
                             GateRef newLen = GetLengthOfTaggedArray(elements);
                             BRANCH(Int32LessThan(newLen, *thisLen), &changeThisLen, &updateCallResult);
                             Bind(&changeThisLen);
