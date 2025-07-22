@@ -954,6 +954,8 @@ void ObjectOperator::DeleteElementInHolder() const
             JSArray::CheckAndCopyArray(thread_, JSHandle<JSArray>(obj));
         }
         ElementAccessor::Set(thread_, obj, index_, holeHandle, true, ElementsKind::HOLE);
+        JSObject::ElementsToDictionary(thread_, JSHandle<JSObject>(holder_));
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
     } else {
         TaggedArray *elements = TaggedArray::Cast(obj->GetElements(thread_).GetTaggedObject());
         JSHandle<NumberDictionary> dictHandle(thread_, elements);
