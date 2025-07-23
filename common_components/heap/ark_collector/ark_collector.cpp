@@ -229,18 +229,26 @@ void ArkCollector::FixRefField(BaseObject* obj, RefField<>& field) const
         return;
     }
 
+    RegionDesc::InlinedRegionMetaData *refRegion =  RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(
+        reinterpret_cast<uintptr_t>(targetObj));
+    bool isFrom = refRegion->IsFromRegion();
+    bool isInRcent = refRegion->IsInRecentSpace();
+    if (isInRcent) {
+        RegionDesc::InlinedRegionMetaData *objRegion =  RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(
+            reinterpret_cast<uintptr_t>(obj));
+        if (!objRegion->IsInRecentSpace() &&
+            objRegion->MarkRSetCardTable(obj)) {
+            DLOG(TRACE,
+                 "fix phase update point-out remember set of region %p, obj "
+                 "%p, ref: <%p>",
+                 objRegion, obj, targetObj->GetTypeInfo());
+        }
+        return;
+    } else if (!isFrom) {
+        return;
+    }
     BaseObject* latest = FindToVersion(targetObj);
 
-    // update remember set
-    BaseObject* toObj = latest == nullptr ? targetObj : latest;
-    RegionDesc* objRegion = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void*)obj));
-    RegionDesc* refRegion = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void*)toObj));
-    if (!objRegion->IsInRecentSpace() && refRegion->IsInRecentSpace()) {
-        if (objRegion->MarkRSetCardTable(obj)) {
-            DLOG(TRACE, "fix phase update point-out remember set of region %p, obj %p, ref: %p<%p>",
-                objRegion, obj, toObj, toObj->GetTypeInfo());
-        }
-    }
     if (latest == nullptr) { return; }
 
     CHECK_CC(latest->IsValidObject());
