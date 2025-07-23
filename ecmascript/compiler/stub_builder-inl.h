@@ -4358,6 +4358,11 @@ inline void StubBuilder::SetToPropertiesCache(GateRef glue, GateRef cache, GateR
     StoreWithoutBarrier(VariableType::INT32(), prop, IntPtr(PropertiesCache::PropertyKey::GetResultsOffset()), result);
 }
 
+inline GateRef StubBuilder::NeedSkipReadBarrier(GateRef glue)
+{
+    return env_->GetBuilder()->NeedSkipReadBarrier(glue);
+}
+
 inline void StubBuilder::StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
 {
     GateRef addr = PtrAdd(base, offset);

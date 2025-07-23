@@ -734,7 +734,7 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
     // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
-    if (g_isEnableCMCGC) {
+    if (g_isEnableCMCGC && thread_->NeedReadBarrier()) {
         base::GCHelper::CopyCallTarget(thread_, (void *)args[0]);
     }
     auto res = reinterpret_cast<FastCallAotEntryType>(entry)(thread_->GetGlueAddr(),

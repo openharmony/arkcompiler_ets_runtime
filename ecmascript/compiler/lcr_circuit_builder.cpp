@@ -209,6 +209,15 @@ GateRef CircuitBuilder::LoadFromAddressWithoutBarrier(VariableType type, GateRef
     return result;
 }
 
+GateRef CircuitBuilder::NeedSkipReadBarrier(GateRef glue)
+{
+    GateRef gcStateBitField = LoadWithoutBarrier(VariableType::INT64(), glue,
+        IntPtr(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+    GateRef readBarrierStateBit = Int64And(gcStateBitField, Int64(JSThread::READ_BARRIER_STATE_BITFIELD_MASK));
+    GateRef ret = Int64Equal(readBarrierStateBit, Int64(0));
+    return ret;
+}
+
 GateRef CircuitBuilder::DoubleTrunc(GateRef glue, GateRef gate, GateRef value, const char* comment)
 {
     if (GetCompilationConfig()->IsAArch64()) {
