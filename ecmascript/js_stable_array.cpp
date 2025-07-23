@@ -849,7 +849,7 @@ JSTaggedValue JSStableArray::HandleFindLastIndexOfStable(JSThread *thread, JSHan
             return callResult;
         }
         k--;
-        if (base::ArrayHelper::GetArrayLength(thread, thisObjVal) - 1 < k) {
+        if (base::ArrayHelper::GetArrayLength(thread, thisObjVal) <= k) {
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             return callResult;
         }
@@ -1894,8 +1894,7 @@ JSTaggedValue JSStableArray::HandleFindLastOfStable(JSThread *thread, JSHandle<J
             return callResult;
         }
         k--;
-        ASSERT(ElementAccessor::GetElementsLength(thread, thisObjHandle) > 0);
-        if (ElementAccessor::GetElementsLength(thread, thisObjHandle) - 1 < k) {
+        if (base::ArrayHelper::GetArrayLength(thread, thisObjVal) <= k) {
             break;
         }
         if (!thisObjVal->IsStableJSArray(thread)) {

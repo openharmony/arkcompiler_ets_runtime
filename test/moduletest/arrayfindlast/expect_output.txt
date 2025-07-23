@@ -23,3 +23,4 @@ undefined
 1
 6
 undefined
+test findeLast & pop success
