@@ -68,8 +68,6 @@ source_Mutator = [
   "mutator/thread_local.cpp",
 ]
 
-source_Profiler = [ "profiler/common_profiler_interface.cpp" ]
-
 ohos_source_set("libarkcommon-runtime") {
   configs = [
     "..:ark_jsruntime_public_config",
@@ -83,7 +81,6 @@ ohos_source_set("libarkcommon-runtime") {
   sources += source_Common
   sources += source_Heap
   sources += source_Mutator
-  sources += source_Profiler
 
   include_dirs = []
   include_dirs += [ "./" ]

@@ -22,6 +22,7 @@
 #include "ecmascript/dynamic_object_accessor.h"
 #include "ecmascript/dynamic_object_descriptor.h"
 #include "ecmascript/dynamic_type_converter.h"
+#include "common_interfaces/profiler/heap_profiler_listener.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_runtime_options.h"
@@ -90,6 +91,10 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
             const_cast<JSRuntimeOptions &>(options).SetConfigMaxGarbageCacheSize(g_maxGarbageCacheSize);
             common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
             common::g_enableGCTimeoutCheck = options.IsEnableGCTimeoutCheck();
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+            common::HeapProfilerListener::GetInstance().RegisterOutOfMemoryEventCb(
+                HeapProfilerInterface::DumpHeapSnapshotForCMCOOM);
+#endif
         }
         DaemonThread::CreateNewInstance();
         firstVmCreated_ = true;
@@ -121,11 +126,6 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
             Jit::GetInstance()->SetEnableOrDisable(vm->GetJSOptions(), isEnableFastJit, isEnableBaselineJit);
             vm->Initialize();
             PostInitialization(vm);
-#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-            if (g_isEnableCMCGC) {
-                common::CommonHeapProfilerInterface::SetSingleInstance(vm->GetOrNewHeapProfile());
-            }
-#endif
         }
     }
     if (!vm->IsInitialized()) {
@@ -146,7 +146,7 @@ void Runtime::PreInitialization(const EcmaVM *vm)
     mainThread_->SetMainThread();
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
-    
+
 #if ENABLE_NEXT_OPTIMIZATION
     if (g_isEnableCMCGC) {
         auto& baseStringTable = common::BaseRuntime::GetInstance()->GetStringTable();

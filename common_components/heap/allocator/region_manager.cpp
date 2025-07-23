@@ -22,6 +22,7 @@
 
 #include "common_components/common_runtime/hooks.h"
 #include "common_components/heap/allocator/region_desc.h"
+#include "common_components/heap/allocator/region_list.h"
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/base/c_string.h"
 #include "common_components/heap/collector/collector.h"
@@ -353,6 +354,12 @@ void RegionList::DeleteRegionLocked(RegionDesc* del)
     } else {
         next->SetPrevRegion(pre);
     }
+}
+
+void RegionList::DumpRegionSummary() const
+{
+    VLOG(DEBUG, "\t%s %zu: %zu units (%zu B, alloc %zu)", listName_,
+         regionCount_, unitCount_, GetAllocatedSize(true), GetAllocatedSize(false));
 }
 
 #ifndef NDEBUG
@@ -767,49 +774,20 @@ void RegionManager::DumpRegionStats() const
     size_t totalUnits = totalSize / RegionDesc::UNIT_SIZE;
     size_t activeSize = inactiveZone_ - regionHeapStart_;
     size_t activeUnits = activeSize / RegionDesc::UNIT_SIZE;
-
-    size_t garbageRegions = garbageRegionList_.GetRegionCount();
-    size_t garbageUnits = garbageRegionList_.GetUnitCount();
-    size_t garbageSize = garbageUnits * RegionDesc::UNIT_SIZE;
-    size_t allocGarbageSize = garbageRegionList_.GetAllocatedSize();
-
-    size_t pinnedRegions = pinnedRegionList_.GetRegionCount();
-    size_t pinnedUnits = pinnedRegionList_.GetUnitCount();
-    size_t pinnedSize = pinnedUnits * RegionDesc::UNIT_SIZE;
-    size_t allocPinnedSize = pinnedRegionList_.GetAllocatedSize();
-
-    size_t recentPinnedRegions = recentPinnedRegionList_.GetRegionCount();
-    size_t recentPinnedUnits = recentPinnedRegionList_.GetUnitCount();
-    size_t recentPinnedSize = recentPinnedUnits * RegionDesc::UNIT_SIZE;
-    size_t allocRecentPinnedSize = recentPinnedRegionList_.GetAllocatedSize();
-
-    size_t largeRegions = largeRegionList_.GetRegionCount();
-    size_t largeUnits = largeRegionList_.GetUnitCount();
-    size_t largeSize = largeUnits * RegionDesc::UNIT_SIZE;
-    size_t allocLargeSize = largeRegionList_.GetAllocatedSize();
-
-    size_t recentlargeRegions = recentLargeRegionList_.GetRegionCount();
-    size_t recentlargeUnits = recentLargeRegionList_.GetUnitCount();
-    size_t recentLargeSize = recentlargeUnits * RegionDesc::UNIT_SIZE;
-    size_t allocRecentLargeSize = recentLargeRegionList_.GetAllocatedSize();
-
-    size_t releasedUnits = freeRegionManager_.GetReleasedUnitCount();
-    size_t dirtyUnits = freeRegionManager_.GetDirtyUnitCount();
-
     VLOG(DEBUG, "\ttotal units: %zu (%zu B)", totalUnits, totalSize);
     VLOG(DEBUG, "\tactive units: %zu (%zu B)", activeUnits, activeSize);
 
-    VLOG(DEBUG, "\tgarbage regions %zu: %zu units (%zu B, alloc %zu)",
-         garbageRegions, garbageUnits, garbageSize, allocGarbageSize);
-    VLOG(DEBUG, "\tpinned regions %zu: %zu units (%zu B, alloc %zu)",
-         pinnedRegions, pinnedUnits, pinnedSize, allocPinnedSize);
-    VLOG(DEBUG, "\trecent pinned regions %zu: %zu units (%zu B, alloc %zu)",
-         recentPinnedRegions, recentPinnedUnits, recentPinnedSize, allocRecentPinnedSize);
-    VLOG(DEBUG, "\tlarge-object regions %zu: %zu units (%zu B, alloc %zu)",
-         largeRegions, largeUnits, largeSize, allocLargeSize);
-    VLOG(DEBUG, "\trecent large-object regions %zu: %zu units (%zu B, alloc %zu)",
-         recentlargeRegions, recentlargeUnits, recentLargeSize, allocRecentLargeSize);
+    garbageRegionList_.DumpRegionSummary();
+    pinnedRegionList_.DumpRegionSummary();
+    recentPinnedRegionList_.DumpRegionSummary();
+    rawPointerRegionList_.DumpRegionSummary();
+    largeRegionList_.DumpRegionSummary();
+    recentLargeRegionList_.DumpRegionSummary();
+    readOnlyRegionList_.DumpRegionSummary();
+    appSpawnRegionList_.DumpRegionSummary();
 
+    size_t releasedUnits = freeRegionManager_.GetReleasedUnitCount();
+    size_t dirtyUnits = freeRegionManager_.GetDirtyUnitCount();
     VLOG(DEBUG, "\treleased units: %zu (%zu B)", releasedUnits, releasedUnits * RegionDesc::UNIT_SIZE);
     VLOG(DEBUG, "\tdirty units: %zu (%zu B)", dirtyUnits, dirtyUnits * RegionDesc::UNIT_SIZE);
 }

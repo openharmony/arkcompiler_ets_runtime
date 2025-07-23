@@ -25,9 +25,9 @@
 #include "common_components/heap/barrier/barrier.h"
 #include "common_components/heap/collector/collector.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"
-#include "common_components/profiler/common_profiler_interface.h"
 #include "common_interfaces/base/runtime_param.h"
 #include "common_interfaces/base_runtime.h"
+#include "common_interfaces/profiler/heap_profiler_listener.h"
 
 namespace common {
 class Allocator;
@@ -61,7 +61,7 @@ public:
     static void throwOOM()
     {
         // Maybe we need to add heapdump logic here
-        CommonHeapProfilerInterface::DumpHeapSnapshotBeforeOOM();
+        HeapProfilerListener::GetInstance().OnOutOfMemoryEventCb();
         LOG_COMMON(FATAL) << "Out of Memory, abort.";
         UNREACHABLE_CC();
     }

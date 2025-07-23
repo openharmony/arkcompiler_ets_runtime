@@ -14,6 +14,7 @@
  */
 
 #include "common_components/log/log.h"
+#include "common_components/mutator/mutator_manager.h"
 #include "common_interfaces/profiler/heap_profiler_listener.h"
 
 namespace common {
@@ -44,5 +45,18 @@ void HeapProfilerListener::OnMoveEvent(uintptr_t fromObj, uintptr_t toObj, size_
             pair.second(fromObj, toObj, size);
         }
     }
+}
+
+void HeapProfilerListener::RegisterOutOfMemoryEventCb(const std::function<void(void *thread)> &cb)
+{
+    outOfMemoryEventCb_ = cb;
+}
+void HeapProfilerListener::OnOutOfMemoryEventCb()
+{
+    void *thread = nullptr;
+    if (!IsGcThread()) {
+        thread = Mutator::GetMutator()->GetThreadHolder()->GetJSThread();
+    }
+    outOfMemoryEventCb_(thread);
 }
 }  // namespace common

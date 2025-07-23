@@ -102,7 +102,8 @@ static constexpr size_t URGENCY_NATIVE_LIMIT = MAX_NATIVE_SIZE_INC + MAX_NATIVE_
 
 class HeuristicGCPolicy {
 public:
-    static constexpr double COLD_STARTUP_GC_THRESHOLD_RATIO = 0.25;
+    static constexpr double COLD_STARTUP_PHASE1_GC_THRESHOLD_RATIO = 0.3;
+    static constexpr double COLD_STARTUP_PHASE2_GC_THRESHOLD_RATIO = 0.125;
     void Init();
 
     bool ShouldRestrainGCOnStartupOrSensitive();
