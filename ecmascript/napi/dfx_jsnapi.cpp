@@ -361,14 +361,14 @@ bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackT
 
 bool DFXJSNApi::BuildJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
-    JSThread *thread = vm->GetJSThread();
+    JSThread *thread = vm->GetAssociatedJSThread();
     ecmascript::ThreadManagedScope managedScope(thread);
     bool needUnbindMutator = false;
     if (g_isEnableCMCGC) {
         common::Mutator *mutator = reinterpret_cast<common::Mutator *>(thread->GetThreadHolder()->GetMutator());
         needUnbindMutator = common::BaseRuntime::GetInstance()->GetMutatorManager().BindMutatorOnly(mutator);
     }
-    stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), false);
+    stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(thread, false);
     if (needUnbindMutator) {
         common::BaseRuntime::GetInstance()->GetMutatorManager().UnbindMutatorOnly();
     }
