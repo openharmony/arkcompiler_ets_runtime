@@ -45,6 +45,8 @@ CString JSHClass::DumpJSType(JSType type)
     switch (type) {
         case JSType::HCLASS:
             return "JSHClass";
+        case JSType::COMPOSITE_BASE_CLASS:
+            return "CompositeBaseClass";
         case JSType::TAGGED_ARRAY:
             return "TaggedArray";
         case JSType::LEXICAL_ENV:
@@ -193,6 +195,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Proxy";
         case JSType::JS_PRIMITIVE_REF:
             return "Primitive";
+        case JSType::JS_MODULE_NAMESPACE:
+            return "ModuleNamespace";
         case JSType::JS_DATA_VIEW:
             return "DataView";
         case JSType::JS_ITERATOR:
@@ -261,6 +265,10 @@ CString JSHClass::DumpJSType(JSType type)
             return "PromiseFinallyFunction";
         case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
             return "PromiseValueThunkOrThrowerFunction";
+        case JSType::JS_GENERATOR_FUNCTION:
+            return "GeneratorFunction";
+        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
+            return "AsyncGeneratorFunction";
         case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
             return "AsyncGeneratorResumeNextReturnProcessorRstFtn";
         case JSType::MICRO_JOB_QUEUE:
@@ -283,6 +291,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "AsyncFunction";
         case JSType::JS_SHARED_ASYNC_FUNCTION:
             return "SharedAsyncFunction";
+        case JSType::JS_INTL_BOUND_FUNCTION:
+            return "IntlBoundFunction";
         case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION:
             return "AsyncAwaitStatusFunction";
         case JSType::JS_ASYNC_FUNC_OBJECT:
@@ -321,14 +331,26 @@ CString JSHClass::DumpJSType(JSType type)
             return "JSAsyncGeneratorObject";
         case JSType::JS_GENERATOR_CONTEXT:
             return "JSGeneratorContext";
+        case JSType::PROTOTYPE_HANDLER:
+            return "PrototypeHandler";
+        case JSType::TRANSITION_HANDLER:
+            return "TransitionHandler";
+        case JSType::TRANS_WITH_PROTO_HANDLER:
+            return "TransWithProtoHandler";
+        case JSType::STORE_TS_HANDLER:
+            return "StoreTSHandler";
         case JSType::ENUM_CACHE:
             return "EnumCache";
         case JSType::PROTO_CHANGE_MARKER:
             return "ProtoChangeMarker";
         case JSType::MARKER_CELL:
             return "MarkerCell";
+        case JSType::TRACK_INFO:
+            return "TrackInfo";
         case JSType::PROTOTYPE_INFO:
             return "PrototypeInfo";
+        case JSType::TEMPLATE_MAP:
+            return "TemplateMap";
         case JSType::PROGRAM:
             return "program";
         case JSType::MACHINE_CODE_OBJECT:
@@ -343,6 +365,12 @@ CString JSHClass::DumpJSType(JSType type)
             return "LinkedNode";
         case JSType::RB_TREENODE:
              return "RBTreeNode";
+        case JSType::FREE_OBJECT_WITH_ONE_FIELD:
+            return "FreeObjectWithOneField";
+        case JSType::FREE_OBJECT_WITH_NONE_FIELD:
+            return "FreeObjectWithNoneField";
+        case JSType::FREE_OBJECT_WITH_TWO_FIELD:
+            return "FreeObjectWithTwoField";
         case JSType::JS_API_HASH_MAP:
             return "HashMap";
         case JSType::JS_API_HASH_SET:
@@ -423,6 +451,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "VTable";
         case JSType::EXTRA_PROFILE_TYPE_INFO:
             return "ExtraProfileTypeInfo";
+        case JSType::MODULE_RECORD:
+            return "ModuleRecord";
         case JSType::SOURCE_TEXT_MODULE_RECORD:
             return "SourceTextModuleRecord";
         case JSType::RESOLVEDBINDING_RECORD:
@@ -437,6 +467,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ImportEntry";
         case JSType::LOCAL_EXPORTENTRY_RECORD:
             return "LocalExportEntry";
+        case JSType::INDIRECT_EXPORTENTRY_RECORD:
+            return "IndirectExportEntry";
         case JSType::STAR_EXPORTENTRY_RECORD:
             return "StarExportEntry";
         default: {
