@@ -510,7 +510,7 @@ config("ark_jsruntime_common_config") {
     defines += [ "ANDROID_PLATFORM" ]
   }
 
-  if (is_ohos && is_standard_system && !is_arkui_x &&
+  if (is_ohos && is_standard_system && !is_arkui_x && !is_qemu_runtime &&
       defined(global_parts_info) &&
       defined(global_parts_info.resourceschedule_qos_manager)) {
     defines += [ "ENABLE_QOS" ]
