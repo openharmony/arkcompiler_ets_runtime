@@ -22,7 +22,7 @@ namespace panda::ecmascript::kungfu {
     V(NumberToString, NUMBER_TO_STRING, GateFlags::NONE_FLAG, 1, 1, 1)                          \
     V(ToLength, TO_LENGTH, GateFlags::NONE_FLAG, 1, 1, 1)                                       \
     V(StoreModuleVar, STORE_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 3)                          \
-    V(OrdinaryHasInstance, ORDINARY_HAS_INSTANCE, GateFlags::CHECKABLE, 1, 1, 2)                \
+    V(OrdinaryHasInstance, ORDINARY_HAS_INSTANCE, GateFlags::HAS_FRAME_STATE, 1, 1, 2)          \
     V(MigrateArrayWithKind, MIGRATE_ARRAY_WITH_KIND, GateFlags::NONE_FLAG, 1, 1, 3)             \
     V(LdLocalModuleVar, LD_LOCAL_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 2)                     \
     V(LdExternalModuleVar, LD_EXTERNAL_MODULE_VAR, GateFlags::NONE_FLAG, 1, 1, 2)

@@ -277,6 +277,7 @@ group("ark_aot_ts_test") {
     "pgo_extrainfomap_expand",
     "pgo_extrainfomap_gc",
     "pgo_inherited_function_operation",
+    "pgo_instanceof_proxy",
     "pgo_ldobjbyvalue_array",
     "pgo_ldobjbyvalue_string",
     "pgo_retype",
