@@ -192,7 +192,7 @@ if (enable_hisysevent) {
     "faultloggerd:dfx_signalhandler",
   ]
 }
-if (is_ohos && is_standard_system && !is_arkui_x &&
+if (is_ohos && is_standard_system && !is_arkui_x && !is_qemu_runtime &&
     defined(global_parts_info) &&
     defined(global_parts_info.resourceschedule_qos_manager)) {
   hiviewdfx_ext_deps += [ "qos_manager:qos" ]
