@@ -177,7 +177,7 @@ static inline uint32_t CombineTwoU16(uint16_t d0, uint16_t d1)
     return codePoint;
 }
 
-std::pair<int32_t, size_t> ConvertUtf8ToUnicodeChar(const uint8_t *utf8, size_t maxLen);
+std::pair<int32_t, size_t> PUBLIC_API ConvertUtf8ToUnicodeChar(const uint8_t *utf8, size_t maxLen);
 
 static inline bool IsHexDigits(uint16_t ch)
 {

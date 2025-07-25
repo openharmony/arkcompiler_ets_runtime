@@ -301,7 +301,7 @@ public:
 
     JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(const JSHandle<JSFunction> &function,
                                                const JSHandle<JSTaggedValue> &object);
-    JSHandle<JSPrimitiveRef> NewJSPrimitiveRef(PrimitiveType type, const JSHandle<JSTaggedValue> &object);
+    JSHandle<JSPrimitiveRef> PUBLIC_API NewJSPrimitiveRef(PrimitiveType type, const JSHandle<JSTaggedValue> &object);
 
     JSHandle<GlobalEnv> NewGlobalEnv(bool lazyInit = false, bool isRealm = false);
 
