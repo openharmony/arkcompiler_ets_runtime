@@ -384,8 +384,8 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
                     result = builder.CreateStringBySingleCharCode(glue, value);
                 }
             } else if (dstType == ValueType::INT32) {
-                result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToInt32,
-                                           {glue, value, circuit_->GetGlobalEnvCache()});
+                // Extend ASCII to int32
+                result = builder_.ZExtInt8ToInt32(value);
             } else {
                 ASSERT((dstType == ValueType::FLOAT64));
                 result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToDouble,
