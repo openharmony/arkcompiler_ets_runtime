@@ -170,6 +170,12 @@ void VisitDynamicWeakGlobalRootsOld(const common::WeakRefFieldVisitor &visitorFu
     runtime->IteratorNativeDeleteInSharedGC(visitor);
 }
 
+void InvokeSharedNativePointerCallbacks()
+{
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
+    runtime->InvokeSharedNativePointerCallbacks();
+}
+
 void VisitDynamicWeakLocalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakLocalRoots", "");

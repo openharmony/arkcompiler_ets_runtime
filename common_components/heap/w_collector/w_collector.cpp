@@ -450,6 +450,7 @@ void WCollector::PreforwardStaticWeakRoots()
 
     WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
     VisitWeakRoots(weakVisitor);
+    InvokeSharedNativePointerCallbacks();
     MutatorManager::Instance().VisitAllMutators([](Mutator& mutator) {
         // Request finalize callback in each vm-thread when gc finished.
         mutator.SetFinalizeRequest();
@@ -639,6 +640,7 @@ void WCollector::PreforwardFlip()
     };
     STWParam stwParam{"final-mark"};
     MutatorManager::Instance().FlipMutators(stwParam, remarkAndForwardGlobalRoot, &forwardMutatorRoot);
+    InvokeSharedNativePointerCallbacks();
     GetGCStats().recordSTWTime(stwParam.GetElapsedNs());
     AllocationBuffer* allocBuffer = AllocationBuffer::GetAllocBuffer();
     if (LIKELY_CC(allocBuffer != nullptr)) {
