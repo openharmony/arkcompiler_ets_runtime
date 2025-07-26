@@ -247,4 +247,85 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
     rmdir(systemFrameworkDir);
     rmdir(systemDir);
 }
+
+/**
+ * @tc.name: AotArgsHandlerTest_011
+ * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_011, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_012
+ * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_012, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_013
+ * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_013, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_014
+ * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_014, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap);
+    EXPECT_NE(result, nullptr);
+    EXPECT_NE(result.value(), nullptr);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_015
+ * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_015, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
 } // namespace OHOS::ArkCompiler

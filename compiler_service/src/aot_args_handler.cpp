@@ -296,15 +296,16 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
     if (isSystemComponent) {
         return std::make_unique<StaticFrameworkAOTArgsParser>();
     }
-    std::string codeLanguage = ARKTS_DYNAMIC;
-    if (AOTArgsParserBase::FindArgsIdxToString(argsMap, ArgsIdx::ARKTS_MODE, codeLanguage) != ERR_OK) {
+    std::string arkTsMode;
+    if (AOTArgsParserBase::FindArgsIdxToString(argsMap, ArgsIdx::ARKTS_MODE, arkTsMode) != ERR_OK) {
         LOG_SA(INFO) << "aot sa failed to get language version";
+        arkTsMode = ARKTS_DYNAMIC;
     }
 
-    if (codeLanguage == ARKTS_DYNAMIC) {
+    if (arkTsMode == ARKTS_DYNAMIC) {
         LOG_SA(INFO) << "aot sa use default compiler";
         return std::make_unique<AOTArgsParser>();
-    } else if (codeLanguage == ARKTS_STATIC || codeLanguage == ARKTS_HYBRID) {
+    } else if (arkTsMode == ARKTS_STATIC || arkTsMode == ARKTS_HYBRID) {
         LOG_SA(INFO) << "aot sa use static compiler";
         return std::make_unique<StaticAOTArgsParser>();
     }
