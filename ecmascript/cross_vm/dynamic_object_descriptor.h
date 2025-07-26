@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_DYNAMIC_OBJECT_DESCRIPTOR_H
-#define ECMASCRIPT_DYNAMIC_OBJECT_DESCRIPTOR_H
+#ifndef ECMASCRIPT_CROSS_VM_DYNAMIC_OBJECT_DESCRIPTOR_H
+#define ECMASCRIPT_CROSS_VM_DYNAMIC_OBJECT_DESCRIPTOR_H
 
 #include "common_interfaces/objects/base_object.h"
 #include "common_interfaces/objects/base_object_descriptor.h"
@@ -42,4 +42,4 @@ private:
     static DynamicObjectDescriptor dynObjectDescriptor_;
 };
 } // namespace panda::ecmascript
-#endif // ECMASCRIPT_MEM_DYNAMIC_OBJECT_DESCRIPTOR_H
+#endif // ECMASCRIPT_CROSS_VM_DYNAMIC_OBJECT_DESCRIPTOR_H

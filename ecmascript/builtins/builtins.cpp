@@ -3720,6 +3720,12 @@ JSHandle<JSObject> Builtins::InitializeGcBuiltins(const JSHandle<GlobalEnv> &env
         SetFunction(env, builtins, entry.GetName(), entry.GetEntrypoint(),
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
+
+    for (const base::BuiltinFunctionEntry &entry: builtins::BuiltinsGc::GetGcFunctionsHybrid()) {
+        SetFunction(env, builtins, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+
     return builtins;
 }
 

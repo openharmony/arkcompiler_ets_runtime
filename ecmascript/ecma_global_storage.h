@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_ECMA_GLOBAL_STORAGE_H
 #define ECMASCRIPT_ECMA_GLOBAL_STORAGE_H
 
+#include "ecmascript/cross_vm/ecma_global_storage_hybrid.h"
+
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/c_containers.h"
@@ -511,20 +513,10 @@ public:
         IterateNodeList<Callback, WeakNode>(callback, topWeakGlobalNodes_);
     }
 
-    void SetNodeKind(NodeKind nodeKind)
-    {
-        nodeKind_ = nodeKind;
-    }
-
-    NodeKind GetNodeKind()
-    {
-        return nodeKind_;
-    }
-
+    ECMAGLOBALSTORAGE_PUBLIC_HYBRID_EXTENSION()
 private:
     NO_COPY_SEMANTIC(EcmaGlobalStorage);
     NO_MOVE_SEMANTIC(EcmaGlobalStorage);
-
     template<typename S>
     inline void DisposeGlobalHandleInner(S *node, NodeList<S> **freeList, NodeList<S> **topNodes,
                                     NodeList<S> **lastNodes)
@@ -598,19 +590,15 @@ private:
     }
 
     [[maybe_unused]] JSThread *thread_ {nullptr};
-    NodeKind nodeKind_ {NodeKind::NORMAL_NODE};
     NativeAreaAllocator *allocator_ {nullptr};
     NodeList<T> *topGlobalNodes_ {nullptr};
     NodeList<T> *lastGlobalNodes_ {nullptr};
     NodeList<T> *freeListNodes_ {nullptr};
 
-    NodeList<T> *topXRefGlobalNodes_ {nullptr};
-    NodeList<T> *lastXRefGlobalNodes_ {nullptr};
-    NodeList<T> *xRefFreeListNodes_ {nullptr};
-
     NodeList<WeakNode> *topWeakGlobalNodes_ {nullptr};
     NodeList<WeakNode> *lastWeakGlobalNodes_ {nullptr};
     NodeList<WeakNode> *weakFreeListNodes_ {nullptr};
+    ECMAGLOBALSTORAGE_PRIVATE_HYBRID_EXTENSION();
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_ECMA_GLOBAL_STORAGE_H

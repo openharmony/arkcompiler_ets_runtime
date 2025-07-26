@@ -89,7 +89,6 @@ class TriggerCollectGarbageTask : public DaemonTask {
 public:
     explicit TriggerCollectGarbageTask(JSThread *thread);
 };
-
 template<TriggerGCType gcType, GCReason gcReason>
 class TriggerUnifiedGCMarkTask : public DaemonTask {
 public:

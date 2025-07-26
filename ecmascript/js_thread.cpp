@@ -166,35 +166,31 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
         newGlobalHandle_ = [this](JSTaggedType value) {
             return globalStorage_->NewGlobalHandle<NodeKind::NORMAL_NODE>(value);
         };
-        newXRefGlobalHandle_ = [this](JSTaggedType value) {
-            return globalStorage_->NewGlobalHandle<NodeKind::UNIFIED_NODE>(value);
-        };
         disposeGlobalHandle_ = [this](uintptr_t nodeAddr) {
             globalStorage_->DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
         };
-        disposeXRefGlobalHandle_ = [this](uintptr_t nodeAddr) {
-            globalStorage_->DisposeGlobalHandle<NodeKind::UNIFIED_NODE>(nodeAddr);
-        };
+        if (Runtime::GetInstance()->IsHybridVm()) {
+            newXRefGlobalHandle_ = [this](JSTaggedType value) {
+                return globalStorage_->NewGlobalHandle<NodeKind::UNIFIED_NODE>(value);
+            };
+            disposeXRefGlobalHandle_ = [this](uintptr_t nodeAddr) {
+                globalStorage_->DisposeGlobalHandle<NodeKind::UNIFIED_NODE>(nodeAddr);
+            };
+            setNodeKind_ = [this](NodeKind nodeKind) { globalStorage_->SetNodeKind(nodeKind); };
+        }
         setWeak_ = [this](uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack,
                         WeakClearCallback nativeFinalizeCallBack) {
             return globalStorage_->SetWeak(nodeAddr, ref, freeGlobalCallBack, nativeFinalizeCallBack);
         };
         clearWeak_ = [this](uintptr_t nodeAddr) { return globalStorage_->ClearWeak(nodeAddr); };
         isWeak_ = [this](uintptr_t addr) { return globalStorage_->IsWeak(addr); };
-        setNodeKind_ = [this](NodeKind nodeKind) { globalStorage_->SetNodeKind(nodeKind); };
     } else {
         globalDebugStorage_ = chunk->New<EcmaGlobalStorage<DebugNode>>(this, vm->GetNativeAreaAllocator());
         newGlobalHandle_ = [this](JSTaggedType value) {
             return globalDebugStorage_->NewGlobalHandle<NodeKind::NORMAL_NODE>(value);
         };
-        newXRefGlobalHandle_ = [this](JSTaggedType value) {
-            return globalDebugStorage_->NewGlobalHandle<NodeKind::UNIFIED_NODE>(value);
-        };
         disposeGlobalHandle_ = [this](uintptr_t nodeAddr) {
             globalDebugStorage_->DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
-        };
-        disposeXRefGlobalHandle_ = [this](uintptr_t nodeAddr) {
-            globalDebugStorage_->DisposeGlobalHandle<NodeKind::UNIFIED_NODE>(nodeAddr);
         };
         setWeak_ = [this](uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack,
                         WeakClearCallback nativeFinalizeCallBack) {
@@ -202,7 +198,15 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
         };
         clearWeak_ = [this](uintptr_t nodeAddr) { return globalDebugStorage_->ClearWeak(nodeAddr); };
         isWeak_ = [this](uintptr_t addr) { return globalDebugStorage_->IsWeak(addr); };
-        setNodeKind_ = [this](NodeKind nodeKind) { globalDebugStorage_->SetNodeKind(nodeKind); };
+        if (Runtime::GetInstance()->IsHybridVm()) {
+            newXRefGlobalHandle_ = [this](JSTaggedType value) {
+                return globalDebugStorage_->NewGlobalHandle<NodeKind::UNIFIED_NODE>(value);
+            };
+            disposeXRefGlobalHandle_ = [this](uintptr_t nodeAddr) {
+                globalDebugStorage_->DisposeGlobalHandle<NodeKind::UNIFIED_NODE>(nodeAddr);
+            };
+            setNodeKind_ = [this](NodeKind nodeKind) { globalDebugStorage_->SetNodeKind(nodeKind); };
+        }
     }
     vmThreadControl_ = new VmThreadControl(this);
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);

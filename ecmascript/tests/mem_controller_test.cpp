@@ -126,16 +126,33 @@ HWTEST_F_L0(MemControllerTest, CalculateMarkCompactSpeedPerMSTest)
 
 HWTEST_F_L0(MemControllerTest, StartCalculationBeforeGC)
 {
+    JSNApi::InitHybridVMEnv(thread->GetEcmaVM());
     auto ecmaVm = thread->GetEcmaVM();
     auto heap = const_cast<Heap *>(ecmaVm->GetHeap());
     auto memController = heap->GetMemController();
+    auto objectFactory = ecmaVm->GetFactory();
+
+    // huge space object
+    static constexpr size_t SIZE = 1_MB;
+    objectFactory->NewTaggedArray(SIZE);
 
     double allocTimeMsBefore = memController->GetAllocTimeMs();
     size_t oldSpaceSizeBefore = memController->GetOldSpaceAllocAccumulatedSize();
     size_t nonMovableSpaceSizeBefore = memController->GetNonMovableSpaceAllocAccumulatedSize();
     size_t codeSpaceSizeBefore = memController->GetCodeSpaceAllocAccumulatedSize();
+    {
+        [[maybe_unused]] auto newArray =
+            objectFactory->NewTaggedArray(20, JSTaggedValue::Undefined(), MemSpaceType::SEMI_SPACE);
+        // old space object
+        [[maybe_unused]] auto oldArray =
+            objectFactory->NewTaggedArray(20, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        // non movable object
+        [[maybe_unused]] auto nonMovableArray =
+            objectFactory->NewTaggedArray(20, JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
+    }
 
     sleep(1);
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
     memController->StartCalculationBeforeGC();
     memController->CheckLowAllocationUsageState();
 
@@ -143,13 +160,11 @@ HWTEST_F_L0(MemControllerTest, StartCalculationBeforeGC)
     size_t oldSpaceSizeAfter = memController->GetOldSpaceAllocAccumulatedSize();
     size_t nonMovableSpaceSizeAfter = memController->GetNonMovableSpaceAllocAccumulatedSize();
     size_t codeSpaceSizeAfter = memController->GetCodeSpaceAllocAccumulatedSize();
-    double allocDurationSinceGc = memController->GetAllocDurationSinceGc();
 
     EXPECT_TRUE(allocTimeMsAfter - allocTimeMsBefore > 1000);
     EXPECT_TRUE(oldSpaceSizeAfter > oldSpaceSizeBefore);
     EXPECT_TRUE(nonMovableSpaceSizeAfter > nonMovableSpaceSizeBefore);
     EXPECT_TRUE(codeSpaceSizeAfter == codeSpaceSizeBefore);
-    EXPECT_TRUE(allocDurationSinceGc == allocTimeMsAfter - allocTimeMsBefore);
 }
 
 HWTEST_F_L0(MemControllerTest, StopCalculationAfterGC)

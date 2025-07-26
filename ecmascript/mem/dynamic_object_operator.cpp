@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/dynamic_object_operator.h"
 
+#include "ecmascript/cross_vm/js_tagged_value_hybrid-inl.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/runtime.h"
 

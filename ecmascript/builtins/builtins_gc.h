@@ -17,6 +17,7 @@
 #define ECMASCRIPT_BUILTINS_BUILTINS_GC_H
 
 #include "ecmascript/base/builtins_base.h"
+#include "ecmascript/cross_vm/builtins_gc_hybrid.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::builtins {
@@ -38,8 +39,6 @@ public:
 
     static JSTaggedValue WaitForFinishGC(EcmaRuntimeCallInfo *info);
 
-    static JSTaggedValue ClearWeakRefForTest(EcmaRuntimeCallInfo *info);
-
     static JSTaggedValue StartGC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue AllocateArrayObject(EcmaRuntimeCallInfo *info);
@@ -48,6 +47,8 @@ public:
     {
         return Span<const base::BuiltinFunctionEntry>(GC_FUNCTIONS);
     }
+
+    BUILDINSGC_PUBLIC_HYBRID_EXTENSION()
 
 private:
 #define BUILTINS_GC_FUNCTION_ENTRY(name, method, length, id) \
@@ -68,8 +69,9 @@ private:
         BUILTINS_GC_FUNCTION_ENTRY("waitForFinishGC",             WaitForFinishGC,               1, INVALID)
         BUILTINS_GC_FUNCTION_ENTRY("startGC",                     StartGC,                       3, INVALID)
         BUILTINS_GC_FUNCTION_ENTRY("allocateArrayObject",         AllocateArrayObject,           1, INVALID)
-        BUILTINS_GC_FUNCTION_ENTRY("clearWeakRefForTest",         ClearWeakRefForTest,           1, INVALID)
     };
+
+    BUILTINSGC_PUBLIC_FUNCTION_ENTRY_HYBRID_EXTENSION();
 #undef BUILTINS_GC_FUNCTION_ENTRY
 
     static void WaitAndHandleConcurrentMarkingFinished(Heap *heap);
