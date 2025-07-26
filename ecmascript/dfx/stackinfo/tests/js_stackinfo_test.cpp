@@ -1505,6 +1505,17 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_026)
     free(ctx);
 }
 
+HWTEST_F_L0(JsStackInfoTest, TestStepArk_027)
+{
+    unsigned int type = static_cast<unsigned int>(arkts_frame_type::FRAME_TYPE_MAX) + 1;
+    bool ret = is_entry_frame(type);
+    EXPECT_TRUE(ret == false);
+    ret = is_js_function_frame(type);
+    EXPECT_TRUE(ret == false);
+    ret = is_native_function_frame(type);
+    EXPECT_TRUE(ret == false);
+}
+
 HWTEST_F_L0(JsStackInfoTest, TestUnwindArkts_001)
 {
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
@@ -1579,5 +1590,19 @@ HWTEST_F_L0(JsStackInfoTest, TestUnwindArkts_004)
 
     EXPECT_TRUE(pre_frame.fp == 0);
     EXPECT_TRUE(pre_frame.pc == 0);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestNextArkFrame)
+{
+    unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
+    ctx->count = 0;
+    uintptr_t fp = 0;
+    unsigned int type = 0;
+    unwind_stack_frame_s frame = UNWIND_FRAME_EMPTY;
+    bool retFrameAvail = false;
+    int ret = next_ark_frame(ctx, fp, type, &frame, &retFrameAvail);
+    EXPECT_TRUE(ret == -1);
+
+    free(ctx);
 }
 }  // namespace panda::test

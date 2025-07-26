@@ -22,6 +22,7 @@ host_unittest_action("JsStackInfoTest") {
   sources = [
     # test file
     "js_stackinfo_test.cpp",
+    "js_stackinfo_test2.cpp",
   ]
 
   configs = [
