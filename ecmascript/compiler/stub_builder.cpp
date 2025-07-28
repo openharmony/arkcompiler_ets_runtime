@@ -2139,17 +2139,20 @@ void StubBuilder::CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj
     Bind(&notIdlePhase);
     {
         Label checkOldToYoung(env);
-        BRANCH(CMCIsInYoungSpace(objRegionType), &notMarkRSet, &checkOldToYoung);
+        BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &checkOldToYoung, &notMarkRSet);
         Bind(&checkOldToYoung);
-        BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &loopHead, &notMarkRSet);
+        Jump(&loopHead);
         LoopBegin(&loopHead);
         {
-            BRANCH_UNLIKELY(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
+            BRANCH(Int32UnsignedLessThan(*i, count), &iLessLength, &notMarkRSet);
             Bind(&iLessLength);
             GateRef offset = PtrMul(ZExtInt32ToPtr(*i), IntPtr(JSTaggedValue::TaggedTypeSize()));
             GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
             BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
             Bind(&isTaggedObject);
+            GateRef isOldToYoung = IsOldToYoung(objRegionType, GetCMCRegionType(ref));
+            BRANCH_UNLIKELY(isOldToYoung, &markRSet, &loopEnd);
+            Bind(&markRSet);
             MarkRSetCardTable(dstObj, &notMarkRSet);
             Bind(&loopEnd);
             i = Int32Add(*i, Int32(1));
