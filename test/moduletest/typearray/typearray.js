@@ -1689,4 +1689,20 @@ assert_equal(typedArrEleAssertLengthRes,typedArrEleAssertLengthEqual);
     assert_equal(Number.isNaN(v2[0]), false);
 }
 
+{
+    var v0 = new ArrayBuffer(16);
+    var v1 = new Int32Array(v0);
+    v1[1] = 0xfff7ffff;
+    let v2 = new Float64Array(v0);
+    v2[0]++;
+    v2[0]--;
+    assert_equal(Number.isNaN(v2[0]), true);
+    let v3 = Infinity;
+    v3++;
+    let v4 = -Infinity;
+    v4--;
+    assert_equal(v3, Infinity);
+    assert_equal(v4, -Infinity);
+}
+
 test_end();
