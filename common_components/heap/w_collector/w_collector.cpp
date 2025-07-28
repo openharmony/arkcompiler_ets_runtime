@@ -241,12 +241,7 @@ void WCollector::TraceObjectRefFields(BaseObject* obj, WorkStack& workStack, Wea
     auto refFunc = [this, obj, &workStack, &weakStack] (RefField<>& field) {
         TraceRefField(obj, field, workStack, weakStack);
     };
-
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    obj->ForEachRefFieldSkipReferent(refFunc);
-#else
     obj->ForEachRefField(refFunc);
-#endif
 }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE

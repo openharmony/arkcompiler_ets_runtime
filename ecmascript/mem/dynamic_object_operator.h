@@ -80,12 +80,6 @@ public:
         return hclass->GetClass()->IsHClass();
     }
 
-    void ForEachRefFieldSkipReferent(const BaseObject *object, const common::RefFieldVisitor &visitor) const override
-    {
-        // Referent is only used in static
-        ForEachRefField(object, visitor);
-    }
-
     void ForEachRefField(const BaseObject *object, const common::RefFieldVisitor &visitor) const override
     {
         auto freeObject = FreeObject::Cast(reinterpret_cast<uintptr_t>(object));
