@@ -63,7 +63,7 @@ private:
         return moduleInfoSize / sizeof(ModuleSectionDes::ModuleRegionInfo);
     }
 
-    static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
+    static constexpr uint32_t ASMSTUB_MODULE_NUM = 5;
     ExecutedMemoryAllocator::ExeMem stubsMem_ {};
     MemMap fileMapMem_ {};
     std::vector<ModuleSectionDes::ModuleRegionInfo> moduleInfo_;

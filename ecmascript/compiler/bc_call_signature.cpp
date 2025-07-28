@@ -79,4 +79,18 @@ void BytecodeStubCSigns::GetCSigns(std::vector<const CallSignature*>& outCSigns)
         outCSigns.push_back(&callSigns_[i]);
     }
 }
+
+void BytecodeStubCSigns::GetNormalCSigns(std::vector<const CallSignature*>& outCSigns)
+{
+    for (size_t i = VID_NORMAL_START; i < VID_NORMAL_END; i++) {
+        outCSigns.push_back(&callSigns_[i]);
+    }
+}
+
+void BytecodeStubCSigns::GetStwCopyCSigns(std::vector<const CallSignature*>& outCSigns)
+{
+    for (size_t i = VID_STW_COPY_START; i < VID_STW_COPY_END; i++) {
+        outCSigns.push_back(&callSigns_[i]);
+    }
+}
 }  // namespace panda::ecmascript::kungfu

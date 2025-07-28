@@ -270,7 +270,8 @@ enum class StubFileKind {
     BC,
     COM,
     BUILTIN,
-    BASELINE
+    BASELINE,
+    BC_STW_COPY
 };
 
 class StubFileGenerator : public FileGenerator {

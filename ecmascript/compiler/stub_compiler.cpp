@@ -136,6 +136,16 @@ bool StubCompiler::BuildStubModuleAndSave() const
     }
     RunPipeline(static_cast<LLVMModule*>(stubM->GetModule()), &allocator);
 
+    LOG_COMPILER(INFO) << "=============== compiling bytecode stwcopy handler stubs ===============";
+    LOptions stubStwCopyOp(optLevel_, FPFlag::ELIM_FP, relocMode_);
+    Module* stubStwCopyM = generator.AddModule(&allocator, "bc_stub_stw_copy", triple_, stubStwCopyOp,
+                                               log->OutputASM(), StubFileKind::BC_STW_COPY);
+    if (!stubStwCopyM->IsLLVM()) {
+        LOG_COMPILER(FATAL) << " Stub compiler is not supported for litecg ===============";
+        return false;
+    }
+    RunPipeline(static_cast<LLVMModule*>(stubStwCopyM->GetModule()), &allocator);
+
     LOG_COMPILER(INFO) << "=============== compiling common stubs ===============";
     LOptions comOp(optLevel_, FPFlag::RESERVE_FP, relocMode_);
     Module* comM = generator.AddModule(&allocator, "com_stub", triple_, comOp, log->OutputASM(), StubFileKind::COM);
