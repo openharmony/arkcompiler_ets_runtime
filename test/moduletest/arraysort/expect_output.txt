@@ -54,3 +54,7 @@ This is not a TypedArray.
 [{"name":"Eagle","grade":13},{"name":"Sam","grade":14},{"name":"Alex","grade":15},{"name":"Devlin","grade":15}]
 1.67,2.63
 sort Test Success!
+---------------test for stable array sort where arr changeto dictionary array during sorting-----------
+---------------test for stable array sort where arr changeto dictionary array during sorting end-------
+---------------test for stable array sort where elements length change---------------------------------
+---------------test for stable array sort where elements length change end-----------------------------

@@ -647,10 +647,10 @@ void JSArray::SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &t
     for (uint32_t i = 1; i < len; i++) {
         uint32_t beginIndex = 0;
         uint32_t endIndex = i;
-        presentValue.Update(ElementAccessor::Get(thisObjHandle, i));
+        presentValue.Update(CheckStableArrayAndGet(thread, thisObjHandle, i));
         while (beginIndex < endIndex) {
             uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
-            middleValue.Update(ElementAccessor::Get(thisObjHandle, middleIndex));
+            middleValue.Update(CheckStableArrayAndGet(thread, thisObjHandle, middleIndex));
             int32_t compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             if (compareResult > 0) {
@@ -662,11 +662,33 @@ void JSArray::SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &t
 
         if (endIndex >= 0 && endIndex < i) {
             for (uint32_t j = i; j > endIndex; j--) {
-                previousValue.Update(ElementAccessor::Get(thisObjHandle, j - 1));
-                ElementAccessor::Set(thread, thisObjHandle, j, previousValue, false);
+                previousValue.Update(CheckStableArrayAndGet(thread, thisObjHandle, j - 1));
+                CheckStableArrayAndSet(thread, thisObjHandle, j, previousValue);
             }
-            ElementAccessor::Set(thread, thisObjHandle, endIndex, presentValue, false);
+            CheckStableArrayAndSet(thread, thisObjHandle, endIndex, presentValue);
         }
+    }
+}
+
+void JSArray::CheckStableArrayAndSet(JSThread *thread, const JSHandle<JSObject> &thisObjHandle, uint32_t index,
+    JSMutableHandle<JSTaggedValue> &value)
+{
+    if (thisObjHandle.GetTaggedValue().IsStableJSArray(thread) &&
+        index < ElementAccessor::GetElementsLength(thisObjHandle)) {
+        return ElementAccessor::Set(thread, thisObjHandle, index, value, false);
+    } else {
+        ObjectFastOperator::FastSetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), index,
+            value.GetTaggedValue());
+    }
+}
+
+JSTaggedValue JSArray::CheckStableArrayAndGet(JSThread *thread, const JSHandle<JSObject> &thisObjHandle, uint32_t index)
+{
+    if (thisObjHandle.GetTaggedValue().IsStableJSArray(thread) &&
+        index < ElementAccessor::GetElementsLength(thisObjHandle)) {
+        return ElementAccessor::Get(thisObjHandle, index);
+    } else {
+        return ObjectFastOperator::FastGetPropertyByIndex(thread, thisObjHandle.GetTaggedValue(), index);
     }
 }
 

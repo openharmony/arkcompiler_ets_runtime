@@ -31,6 +31,11 @@ public:
 
     CAST_CHECK(JSArray, IsJSArray);
 
+    static JSTaggedValue CheckStableArrayAndGet(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
+                                                uint32_t index);
+    static void CheckStableArrayAndSet(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
+                                       uint32_t index, JSMutableHandle<JSTaggedValue> &value);
+
     static PUBLIC_API JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
                                                           ArrayMode mode = ArrayMode::UNDEFINED);
     static JSHandle<JSTaggedValue> ArrayCreate(JSThread *thread, JSTaggedNumber length,
