@@ -177,19 +177,19 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     common::GCPhase gcPhase = thread->GetCMCGCPhase();
     // 1. update Rememberset
     if (ShouldUpdateRememberSet(gcPhase)) {
-        auto checkReference = [&](BaseObject* ref) {
+        auto checkReference = [&](BaseObject *ref) {
             common::RegionDesc::InlinedRegionMetaData *refMetaRegion =
                 common::RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(reinterpret_cast<uintptr_t>(ref));
             return (!objMetaRegion->IsInYoungSpaceForWB() && refMetaRegion->IsInYoungSpaceForWB());
         };
 
         for (size_t i = 0; i < count; i++) {
-            BaseObject* ref = *reinterpret_cast<BaseObject**>(ToUintPtr(srcPtr) + i * sizeof(JSTaggedType));
+            JSTaggedType ref = *reinterpret_cast<JSTaggedType *>(ToUintPtr(srcPtr) + i * sizeof(JSTaggedType));
             if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {
                 continue;
             }
             ASSERT(common::Heap::IsHeapAddress(ref));
-            if (checkReference(ref)) {
+            if (checkReference(reinterpret_cast<BaseObject *>(ref))) {
                 objMetaRegion->MarkRSetCardTable(object);
                 break;
             }
@@ -200,12 +200,12 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     if (ShouldProcessSATB(gcPhase)) {
         common::Mutator* mutator = common::Mutator::GetMutator();
         for (size_t i = 0; i < count; i++) {
-            BaseObject* ref = *reinterpret_cast<BaseObject**>(ToUintPtr(srcPtr) + i * sizeof(JSTaggedType));
+            JSTaggedType ref = *reinterpret_cast<JSTaggedType *>(ToUintPtr(srcPtr) + i * sizeof(JSTaggedType));
             if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {
                 continue;
             }
-            ref = reinterpret_cast<BaseObject*>((uintptr_t)ref & ~(common::Barrier::TAG_WEAK));
-            mutator->RememberObjectInSatbBuffer(ref);
+            ref = ref & ~(common::Barrier::TAG_WEAK);
+            mutator->RememberObjectInSatbBuffer(reinterpret_cast<BaseObject *>(ref));
         }
     }
 }
