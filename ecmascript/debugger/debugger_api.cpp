@@ -727,7 +727,7 @@ void DebuggerApi::GetLocalExportVariables(const EcmaVM *ecmaVm, Local<ObjectRef>
                 key = ee->GetLocalName(thread);
             }
             name.Update(key);
-            JSTaggedValue moduleValue = dict->Get(thread, idx);
+            JSTaggedValue moduleValue = dict->Get(thread, ee->GetLocalIndex());
             if (moduleValue.IsHole()) {
                 moduleValue = JSTaggedValue::Undefined();
             }
