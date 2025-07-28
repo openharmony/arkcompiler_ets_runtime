@@ -68,6 +68,9 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
     TaggedObject *header = heap->AllocateYoungOrHugeObject(*objectClass, size);
     JSHandle<TaggedArray> array(thread, header);
     array->SetLength(length);
+    for (int i = 0; i < length; ++i) {
+        array->Set(thread, i, JSTaggedValue::Null());
+    }
     objectSize = array->GetClass()->SizeFromJSHClass(header);
     EXPECT_EQ(objectSize, 96U);
     EcmaString *string = EcmaStringAccessor::CreateEmptyString(vm);

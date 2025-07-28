@@ -50,6 +50,7 @@ public:
 HWTEST_F_L0(EcmaGlobalStorageTest, XRefGlobalNodes)
 {
     EcmaVM *vm = thread->GetEcmaVM();
+    JSNApi::InitHybridVMEnv(vm);
     JSHandle<TaggedArray> weakRefArray = vm->GetFactory()->NewTaggedArray(INT_VALUE_2, JSTaggedValue::Hole());
     uintptr_t xRefArrayAddress;
     vm->SetEnableForceGC(false);
@@ -74,17 +75,20 @@ HWTEST_F_L0(EcmaGlobalStorageTest, XRefGlobalNodes)
 HWTEST_F_L0(EcmaGlobalStorageTest, SetNodeKind)
 {
     EcmaVM *vm = thread->GetEcmaVM();
+    JSNApi::InitHybridVMEnv(vm);
     JSHandle<TaggedArray> weakRefArray = vm->GetFactory()->NewTaggedArray(INT_VALUE_1, JSTaggedValue::Hole());
     vm->SetEnableForceGC(false);
+    uintptr_t xrefAddr = 0;
     {
         [[maybe_unused]] EcmaHandleScope scope(thread);
         JSHandle<JSTaggedValue> xRefArray = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
-        thread->NewXRefGlobalHandle(xRefArray.GetTaggedType());
+        xrefAddr = thread->NewXRefGlobalHandle(xRefArray.GetTaggedType());
         weakRefArray->Set(thread, INT_VALUE_0, xRefArray.GetTaggedValue().CreateAndGetWeakRef());
     }
     thread->SetNodeKind(NodeKind::UNIFIED_NODE);
     vm->CollectGarbage(TriggerGCType::FULL_GC);
     thread->SetNodeKind(NodeKind::NORMAL_NODE);
+    thread->DisposeXRefGlobalHandle(xrefAddr);
     vm->SetEnableForceGC(true);
     EXPECT_TRUE(weakRefArray->Get(thread, INT_VALUE_0).IsUndefined());
 }

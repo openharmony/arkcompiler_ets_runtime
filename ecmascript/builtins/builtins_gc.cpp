@@ -100,18 +100,6 @@ JSTaggedValue BuiltinsGc::RegisterNativeFree(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
-JSTaggedValue BuiltinsGc::ClearWeakRefForTest(EcmaRuntimeCallInfo *info)
-{
-    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
-    ASSERT(info);
-    JSThread *thread = info->GetThread();
-    if (!((thread)->GetEcmaVM()->GetJSOptions().IsOpenArkTools())) {
-        return JSTaggedValue::Undefined();
-    }
-    EcmaVM::ClearKeptObjects(thread);
-    return JSTaggedValue::Undefined();
-}
-
 JSTaggedValue BuiltinsGc::WaitForFinishGC(EcmaRuntimeCallInfo *info)
 {
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
@@ -270,7 +258,8 @@ TriggerGCType BuiltinsGc::StringToGcType(JSThread *thread, JSTaggedValue cause)
     if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetAppSpawnSharedFullGcCause(), cause)) {
         return APPSPAWN_SHARED_FULL_GC;
     }
-    if (JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetUnifiedGcCause(), cause)) {
+    if (Runtime::GetInstance()->IsHybridVm() &&
+        JSTaggedValue::StrictEqual(thread, thread->GlobalConstants()->GetUnifiedGcCause(), cause)) {
         return UNIFIED_GC;
     }
     return GC_TYPE_LAST;

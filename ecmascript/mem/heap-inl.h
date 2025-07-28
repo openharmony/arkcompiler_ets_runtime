@@ -23,6 +23,7 @@
 #include "ecmascript/mem/heap.h"
 
 #include "ecmascript/base/block_hook_scope.h"
+#include "ecmascript/cross_vm/daemon_task_hybrid-inl.h"
 #include "ecmascript/daemon/daemon_task-inl.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 #include "ecmascript/ecma_vm.h"
@@ -1285,13 +1286,6 @@ void SharedHeap::PostGCTaskForTest(JSThread *thread)
         }
         ASSERT(!gcFinished_);
     }
-}
-
-template<TriggerGCType gcType, GCReason gcReason>
-bool SharedHeap::TriggerUnifiedGCMark(JSThread *thread) const
-{
-    ASSERT(gcType == TriggerGCType::UNIFIED_GC && gcReason == GCReason::CROSSREF_CAUSE);
-    return DaemonThread::GetInstance()->CheckAndPostTask(TriggerUnifiedGCMarkTask<gcType, gcReason>(thread));
 }
 
 static void SwapBackAndPop(NativePointerList &vec, NativePointerList::iterator &iter)

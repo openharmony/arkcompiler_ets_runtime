@@ -18,6 +18,7 @@
 
 #include <cstdint>
 
+#include "ecmascript/cross_vm/verification_hybrid.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/object_xray.h"
@@ -69,13 +70,13 @@ public:
     }
 
 private:
+    VERIFYOBJECTVISITOR_PRIVATE_HYBRID_EXTENSION();
     void VisitAllObjects(TaggedObject *obj);
     void VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *obj) const;
     void VerifyHeapObjectSlotLegal(ObjectSlot slot, JSTaggedValue value, TaggedObject *obj) const;
     void VerifyMarkYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyMarkUnified(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateOld(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifySharedRSetPostFullGC(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;

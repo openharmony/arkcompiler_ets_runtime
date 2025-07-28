@@ -21,6 +21,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/js_tagged_value_internals.h"
+#include "ecmascript/cross_vm/js_tagged_value_hybrid.h"
 
 namespace panda::ecmascript {
 class JSArray;
@@ -640,7 +641,6 @@ public:
     bool IsAsyncGeneratorObject() const;
     bool IsAsyncFuncObject() const;
     bool IsJSPromise() const;
-    bool IsJSXRefObject() const;
     bool IsRecord() const;
     bool IsPromiseReaction() const;
     bool IsProgram() const;
@@ -786,7 +786,7 @@ public:
         value.Dump(THREAD_ARG_PLACEHOLDER, os);  // Dump() will handle nullptr as current thread
         return os;
     }
-
+    JSTAGGEDVALUE_PUBLIC_HYBRID_EXTENSION();
 private:
     JSTaggedType value_;
 

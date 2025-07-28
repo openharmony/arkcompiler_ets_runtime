@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/cross_vm/js_tagged_value_hybrid-inl.h"
 #include "ecmascript/mem/dynamic_object_operator.h"
 #include "ecmascript/mem/object_xray.h"
 

@@ -1029,8 +1029,6 @@ ecma_source = [
   "ecmascript/mem/shared_heap/shared_full_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_marker.cpp",
   "ecmascript/mem/shared_heap/shared_space.cpp",
-  "ecmascript/mem/unified_gc/unified_gc.cpp",
-  "ecmascript/mem/unified_gc/unified_gc_marker.cpp",
   "ecmascript/mem/space.cpp",
   "ecmascript/mem/sparse_space.cpp",
   "ecmascript/mem/tagged_object.cpp",
@@ -1166,6 +1164,18 @@ if (enable_next_optimization) {
 } else {
   ecma_source += [ "ecmascript/base/json_stringifier.cpp" ]
 }
+
+# supported for hybrid
+ecma_source += [
+  "ecmascript/cross_vm/unified_gc/unified_gc.cpp",
+  "ecmascript/cross_vm/unified_gc/unified_gc_marker.cpp",
+  "ecmascript/cross_vm/builtins_gc_hybrid.cpp",
+  "ecmascript/cross_vm/heap_hybrid.cpp",
+  "ecmascript/cross_vm/jsnapi_expo_hybrid.cpp",
+  "ecmascript/cross_vm/object_factory_hybrid.cpp",
+  "ecmascript/cross_vm/ecma_vm_hybrid.cpp",
+  "ecmascript/cross_vm/js_thread_hybrid.cpp"
+]
 
 hitrace_scope_source = []
 if (is_ohos && is_standard_system && enable_hitrace) {
@@ -1424,9 +1434,9 @@ ohos_source_set("libcommon_components_set") {
     "common_components/serialize/serialize_utils.cpp",
     "common_components/thread/thread_holder.cpp",
     "common_components/thread/thread_holder_manager.cpp",
-    "ecmascript/dynamic_object_accessor.cpp",
-    "ecmascript/dynamic_object_descriptor.cpp",
-    "ecmascript/dynamic_type_converter.cpp",
+    "ecmascript/cross_vm/dynamic_object_accessor.cpp",
+    "ecmascript/cross_vm/dynamic_object_descriptor.cpp",
+    "ecmascript/cross_vm/dynamic_type_converter.cpp",
   ]
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]

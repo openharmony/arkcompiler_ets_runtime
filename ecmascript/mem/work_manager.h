@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_WORK_MANAGER_H
 
 #include "common_components/taskpool/runner.h"
+#include "ecmascript/cross_vm/work_manager_hybrid.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/work_space_chunk.h"
@@ -263,8 +264,6 @@ public:
     inline size_t Finish() override;
     inline void Finish(size_t &aliveSize, size_t &promotedSize);
 
-    inline void PushObjectToGlobal(TaggedObject *object);
-
     inline uint32_t GetTotalThreadNum()
     {
         return threadNum_;
@@ -279,7 +278,7 @@ public:
     {
         return &works_.at(threadId);
     }
-
+    WORKMANAGER_PUBLIC_HYBRID_EXTENSION();
 private:
     NO_COPY_SEMANTIC(WorkManager);
     NO_MOVE_SEMANTIC(WorkManager);

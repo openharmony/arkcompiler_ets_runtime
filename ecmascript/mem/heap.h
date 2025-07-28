@@ -18,6 +18,7 @@
 
 #include "common_components/taskpool/task.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/cross_vm/heap_hybrid.h"
 #include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_object_resizing_strategy.h"
@@ -220,11 +221,6 @@ public:
         return markType_ == MarkType::MARK_FULL;
     }
 
-    void SetGCType(TriggerGCType gcType)
-    {
-        gcType_ = gcType;
-    }
-
     TriggerGCType GetGCType() const
     {
         return gcType_;
@@ -357,7 +353,6 @@ public:
     void IncreaseTaskCount();
     void ReduceTaskCount();
     void WaitRunningTaskFinished();
-    uint32_t GetRunningTaskCount();
     void WaitClearTaskFinished();
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
@@ -379,6 +374,8 @@ public:
         triggerCollectionOnNewObject_ = false;
     }
 #endif
+
+    BASEHEAP_PUBLIC_HYBRID_EXTENSION();
 
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
@@ -663,11 +660,6 @@ public:
         return sSweeper_;
     }
 
-    UnifiedGC *GetUnifiedGC() const
-    {
-        return unifiedGC_;
-    }
-
     bool IsParallelGCEnabled() const
     {
         return parallelGC_;
@@ -920,11 +912,9 @@ public:
     }
 
     void CheckInHeapProfiler();
-
-    void StartUnifiedGCMark(TriggerGCType gcType, GCReason gcReason);
-    template<TriggerGCType gcType, GCReason gcReason>
-    bool TriggerUnifiedGCMark(JSThread *thread) const;
     void SetGCThreadQosPriority(common::PriorityMode mode);
+
+    SHAREDHEAP_PUBLIC_HYBRID_EXTENSION();
 
 private:
     void ProcessAllGCListeners();
@@ -987,7 +977,6 @@ private:
     SharedGCMarker *sharedGCMarker_ {nullptr};
     SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
     SharedMemController *sharedMemController_ {nullptr};
-    UnifiedGC *unifiedGC_ {nullptr};
     size_t growingFactor_ {0};
     size_t growingStep_ {0};
     size_t incNativeSizeTriggerSharedCM_ {0};
@@ -998,6 +987,7 @@ private:
     bool inHeapProfiler_ {false};
     NativePointerList sharedNativePointerList_;
     std::mutex sNativePointerListMutex_;
+    SHAREDHEAP_PRIVATE_HYBRID_EXTENSION();
 };
 
 class Heap : public BaseHeap {
@@ -1009,7 +999,6 @@ public:
     void Initialize();
     void Destroy() override;
     void Prepare();
-    void UnifiedGCPrepare();
     void GetHeapPrepare();
     void ResetLargeCapacity();
     void Resume(TriggerGCType gcType);
@@ -1138,11 +1127,6 @@ public:
     Marker *GetCompressGCMarker() const
     {
         return compressGCMarker_;
-    }
-
-    UnifiedGCMarker *GetUnifiedGCMarker() const
-    {
-        return unifiedGCMarker_;
     }
 
     EcmaVM *GetEcmaVM() const
@@ -1685,11 +1669,6 @@ public:
         return gcType_ == TriggerGCType::YOUNG_GC;
     }
 
-    bool IsUnifiedGC() const
-    {
-        return gcType_ == TriggerGCType::UNIFIED_GC;
-    }
-
     void CheckNonMovableSpaceOOM();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
@@ -1718,6 +1697,7 @@ public:
     }
 
     void UpdateHeapStatsAfterGC(TriggerGCType gcType) override;
+    HEAP_PUBLIC_HYBRID_EXTENSION();
 
 private:
     void CollectGarbageImpl(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
@@ -1918,7 +1898,6 @@ private:
      */
     Marker *nonMovableMarker_ {nullptr};
     Marker *compressGCMarker_ {nullptr};
-    UnifiedGCMarker *unifiedGCMarker_ {nullptr};
 
     // Work manager managing the tasks mostly generated in the GC mark phase.
     WorkManager *workManager_ {nullptr};
@@ -1988,6 +1967,7 @@ private:
 
     NativePointerList nativePointerList_;
     NativePointerList concurrentNativePointerList_;
+    HEAP_PRIVATE_HYBRID_EXTENSION();
 
     friend panda::test::HProfTestHelper;
     friend panda::test::GCTest_CallbackTask_Test;

@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_ECMA_VM_H
 #define ECMASCRIPT_ECMA_VM_H
 
+#include "ecmascript/cross_vm/ecma_vm_hybrid.h"
+
 #include <mutex>
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
@@ -1331,15 +1333,12 @@ public:
     }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
-    CrossVMOperator* GetCrossVMOperator() const
-    {
-        return crossVMOperator_;
-    }
-#endif  // PANDA_JS_ETS_HYBRID_MODE
+    ECMAVM_PUBLIC_HYBRID_MODE_EXTENSION()
+#endif  /* PANDA_JS_ETS_HYBRID_MODE */
+    ECMAVM_PUBLIC_HYBRID_EXTENSION();
 
 protected:
-
-    void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
+    ECMAVM_PROTECTED_HYBRID_EXTENSION();
 
 private:
     void ClearBufferData();
@@ -1552,11 +1551,6 @@ private:
     std::atomic<bool> isProcessingPendingJob_{false};
 
     std::unordered_map<JSTaggedType, int8_t> dataViewTypeTable_;
-
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    CrossVMOperator* crossVMOperator_ {nullptr};
-#endif // PANDA_JS_ETS_HYBRID_MODE
-
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks
     bool isCollectingScopeLockStats_ = false;
@@ -1622,6 +1616,9 @@ private:
 
     // store Application versionCode
     uint32_t applicationVersionCode_ {0};
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    ECMAVM_PRIVATE_HYBRID_EXTENSION();
+#endif /* PANDA_JS_ETS_HYBRID_MODE */
 };
 }  // namespace ecmascript
 }  // namespace panda

@@ -15,12 +15,12 @@
 
 #ifndef ECMASCRIPT_GLOBAL_ENV_CONSTANTS_H
 #define ECMASCRIPT_GLOBAL_ENV_CONSTANTS_H
-
 #include <cstdint>
 #include "ecmascript/compiler/builtins/builtins_call_signature_list.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/visitor.h"
 #include "libpandabase/macros.h"
+#include "ecmascript/cross_vm/global_env_constants_hybrid.h"
 
 namespace panda::ecmascript {
 // Forward Declaration
@@ -143,9 +143,9 @@ class ObjectFactory;
     V(JSTaggedValue, JSAPITreeMapIteratorClass, JS_API_TREE_MAP_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, JSAPITreeSetIteratorClass, JS_API_TREE_SET_ITERATOR_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, ObjectClass, OBJECT_HCLASS_INDEX, initial_object_hclass)                                         \
-    V(JSTaggedValue, XRefObjectClass, XREF_OBJECT_HCLASS_INDEX, ecma_roots_class)                                     \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
-    V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)
+    V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
+    GLOBAL_ENV_CONSTANT_CLASS_HYBRID(V)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GLOBAL_ENV_CONSTANT_SPECIAL(V)                                                                 \
@@ -461,7 +461,6 @@ class ObjectFactory;
     V(CjsExportsString,               CJS_EXPORTS_INDEX,                     "exports")                     \
     V(CjsCacheString,                 CJS_CACHE_INDEX,                       "_cache")                      \
     V(NapiWrapperString,              NAPI_WRAPPER_INDEX,                    "_napiwrapper")                \
-    V(ProxyNapiWrapperString,         PROXY_NAPI_WRAPPER_INDEX,              "_proxynapiwrapper")           \
     /* for require native module */                                                                         \
     V(RequireNativeModuleString,      REQUIRE_NATIVE_MOUDULE_FUNC_INDEX,     "requireNativeModule")         \
     V(RequireNapiString,              REQUIRE_NAPI_FUNC_INDEX,               "requireNapi")                 \
@@ -497,10 +496,10 @@ class ObjectFactory;
     V(SharedPartialGcCause,           SHARED_PARTIAL_GC_CAUSE,               "shared_partial")              \
     V(SharedFullGcCause,              SHARED_FULL_GC_CAUSE,                  "shared_full")                 \
     V(AppSpawnSharedFullGcCause,      APP_SPAWN_SHARED_FULL_GC_CAUSE,        "app_spawn_shared_full")       \
-    V(UnifiedGcCause,                 UNIFIED_GC_CAUSE,                      "unified")                     \
     V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")                     \
     V(InteropJsNapiString,            INTEROP_JS_NAPI,                       "ets_interop_js_napi")         \
-    V(GetModuleString,                GET_MODULE,                            "getModule")
+    V(GetModuleString,                GET_MODULE,                            "getModule")                   \
+    SHARED_GLOBAL_ENV_CONSTANT_STRING_HYBRID(V)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                    \
