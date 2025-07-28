@@ -105,7 +105,6 @@
             ],
             "test": [
                 "//arkcompiler/ets_runtime:ark_js_unittest",
-                "//arkcompiler/ets_runtime:common_components_js_unittest",
                 "//arkcompiler/ets_runtime/compiler_service/test:compiler_service_unittest",
                 "//arkcompiler/ets_runtime/compiler_service/test:compiler_service_fuzztest"
             ]

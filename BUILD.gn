@@ -136,6 +136,22 @@ group("ark_js_unittest_suit") {
     "ecmascript/serializer/tests:unittest",
     "ecmascript/snapshot/tests:unittest",
     "ecmascript/tests:unittest",
+    "common_components/base/tests:unittest",
+    "common_components/common_runtime/tests:unittest",
+    "common_components/common/tests:unittest",
+    "common_components/heap/allocator/tests:unittest",
+    "common_components/heap/barrier/tests:unittest",
+    "common_components/heap/collector/tests:unittest",
+    "common_components/heap/space/tests:unittest",
+    "common_components/heap/w_collector/tests:unittest",
+    "common_components/heap/tests:unittest",
+    "common_components/mutator/tests:unittest",
+    "common_components/objects/tests:unittest",
+    "common_components/serialize/tests:unittest",
+    "common_components/thread/tests:unittest",
+    "common_components/log/tests:unittest",
+    "common_components/platform/unix/tests:unittest",
+    "common_components/taskpool/tests:unittest",
   ]
   if (is_ohos && is_standard_system) {
     deps += [ "test/fuzztest:fuzztest" ]
@@ -148,58 +164,6 @@ group("ark_js_unittest_suit") {
   }
   if (current_cpu == "arm64" || current_cpu == "amd64") {
     deps += [ "ecmascript/jit/tests:unittest" ]
-  }
-}
-
-group("common_components_js_unittest") {
-  testonly = true
-  deps = []
-
-  if (ets_runtime_enable_cmc_gc) {
-    deps += [
-      "common_components/base/tests:unittest",
-      "common_components/common_runtime/tests:unittest",
-      "common_components/common/tests:unittest",
-      "common_components/heap/allocator/tests:unittest",
-      "common_components/heap/barrier/tests:unittest",
-      "common_components/heap/collector/tests:unittest",
-      "common_components/heap/space/tests:unittest",
-      "common_components/heap/w_collector/tests:unittest",
-      "common_components/heap/tests:unittest",
-      "common_components/mutator/tests:unittest",
-      "common_components/objects/tests:unittest",
-      "common_components/serialize/tests:unittest",
-      "common_components/thread/tests:unittest",
-      "common_components/log/tests:unittest",
-      "common_components/platform/unix/tests:unittest",
-      "common_components/taskpool/tests:unittest",
-    ]
-  }
-}
-
-group("common_components_unittest") {
-  testonly = true
-  deps = []
-
-  if (ets_runtime_enable_cmc_gc) {
-    deps += [
-      "common_components/base/tests:host_unittest",
-      "common_components/common_runtime/tests:host_unittest",
-      "common_components/common/tests:host_unittest",
-      "common_components/heap/allocator/tests:host_unittest",
-      "common_components/heap/barrier/tests:host_unittest",
-      "common_components/heap/collector/tests:host_unittest",
-      "common_components/heap/space/tests:host_unittest",
-      "common_components/heap/w_collector/tests:host_unittest",
-      "common_components/heap/tests:host_unittest",
-      "common_components/mutator/tests:host_unittest",
-      "common_components/objects/tests:host_unittest",
-      "common_components/serialize/tests:host_unittest",
-      "common_components/thread/tests:host_unittest",
-      "common_components/log/tests:host_unittest",
-      "common_components/platform/unix/tests:host_unittest",
-      "common_components/taskpool/tests:host_unittest",
-    ]
   }
 }
 
@@ -237,7 +201,24 @@ group("ark_unittest") {
     "ecmascript/serializer/tests:host_unittest",
     "ecmascript/snapshot/tests:host_unittest",
     "ecmascript/tests:host_unittest",
+    "common_components/base/tests:host_unittest",
+    "common_components/common_runtime/tests:host_unittest",
+    "common_components/common/tests:host_unittest",
+    "common_components/heap/allocator/tests:host_unittest",
+    "common_components/heap/barrier/tests:host_unittest",
+    "common_components/heap/collector/tests:host_unittest",
+    "common_components/heap/space/tests:host_unittest",
+    "common_components/heap/w_collector/tests:host_unittest",
+    "common_components/heap/tests:host_unittest",
+    "common_components/mutator/tests:host_unittest",
+    "common_components/objects/tests:host_unittest",
+    "common_components/serialize/tests:host_unittest",
+    "common_components/thread/tests:host_unittest",
+    "common_components/log/tests:host_unittest",
+    "common_components/platform/unix/tests:host_unittest",
+    "common_components/taskpool/tests:host_unittest",
   ]
+
   if (!run_with_asan) {
     if (!(ark_standalone_build && current_os == "ohos")) {
       deps += [
@@ -245,9 +226,6 @@ group("ark_unittest") {
         "ecmascript/ohos/tests:host_unittest",
       ]
     }
-  }
-  if (ets_runtime_enable_cmc_gc) {
-    deps += [ ":common_components_unittest" ]
   }
 }
 
