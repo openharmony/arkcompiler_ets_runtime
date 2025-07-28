@@ -95,10 +95,18 @@ private:
     GateRef GetNextTable(GateRef iteratedLinkedObj)
     {
         if constexpr (std::is_same_v<IteratorType, JSMapIterator>) {
-            LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+            LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+                this,
+                glue_,
+                GetCurrentGlobalEnv()
+            );
             return linkedHashTableStubBuilder.GetNextTable(iteratedLinkedObj);
         } else {
-            LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+            LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+                this,
+                glue_,
+                GetCurrentGlobalEnv()
+            );
             return linkedHashTableStubBuilder.GetNextTable(iteratedLinkedObj);
         }
     }
