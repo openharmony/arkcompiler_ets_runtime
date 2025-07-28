@@ -557,6 +557,112 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
 
+    {
+        let size = 10;
+        let buf = new FastBuffer(size);
+        map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0001 failed, buffer length:" + buf.length, buf.length === 10);
+    }
+
+    {
+        try {
+            let size = 4294967296;
+            let buf = new FastBuffer(size);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0002 failed", false);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0002 failed, error code:" + e.code, e.code === 10200001);
+        }
+    }
+
+    {
+        try {
+            let buf = new FastBuffer(null);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0003 failed", false);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0003 failed, error code:" + e.code, e.code === 401);
+        }
+    }
+
+    {
+        try {
+            let buf = new FastBuffer(10);
+            buf.fill(' ');
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0004 failed, buffer length:" + buf.length, buf.length === 10);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0004 failed, error code:" + e.code, false);
+        }
+    }
+
+    {
+        try {
+            let buf = new FastBuffer(10);
+            buf.fill(null);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0005 failed, buffer length:" + buf.length, buf.length === 10);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0005 failed, error code:" + e.code, false);
+        }
+    }
+
+    {
+        try {
+            let buf1 = new FastBuffer(10);
+            let buf = new FastBuffer(10);
+            buf.fill(buf1);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0006 failed, buffer length:" + buf.length, buf.length === 10);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0006 failed, error code:" + e.code, false);
+        }
+    }
+
+    {
+        try {
+            let buf = new FastBuffer(10);
+            buf.fill("ab$#", 0, 10, null);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0007 failed, buffer length:" + buf.length, buf.length === 10);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0007 failed, error code:" + e.code, false);
+        }
+    }
+
+    {
+        try {
+            let buf = new FastBuffer(0);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0008 failed, buffer length:" + buf.length, buf.length === 0);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0008 failed, error code:" + e.code, false);
+        }
+    }
+
+    {
+        try {
+            let buf1 = new FastBuffer(10);
+            let buf = new FastBuffer(0);
+            buf.fill(buf1);
+            let flag = new FastBuffer(0);
+            flag.fill(buf);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0009 failed, flag length:" + flag.length, flag.length === 0);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0009 failed, error code:" + e.code, false);
+        }
+    }
+
+    {
+        try {
+            let buf = new FastBuffer(-5);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0010 failed", false);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0010 failed, error code:" + e.code, e.code === 10200001);
+        }
+    }
+
+    {
+        try {
+            let buf = new FastBuffer(5.5);
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0011 failed, buffer length:", buf.length === 5);
+        } catch (e) {
+            map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0011 failed, error code:" + e.code, false);
+        }
+    }
+
     let flag = undefined;
     function elements(value, key, map) {
         if (!value) {
