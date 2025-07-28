@@ -31,5 +31,30 @@ JSHandle<BigInt> BigInt::CreateBigint(JSThread *thread, uint32_t length)
     JSHandle<BigInt> bigint = factory->NewBigInt<type>(length);
     return bigint;
 }
+
+// Create a bigint without data initialization, additional SetSign and SetData are required
+template <MemSpaceType type>
+JSHandle<BigInt> BigInt::CreateRawBigInt(JSThread *thread, uint32_t length)
+{
+    if (length > MAXSIZE) {
+        JSHandle<BigInt> bigint(thread, JSTaggedValue::Exception());
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Maximum BigInt size exceeded", bigint);
+    }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<BigInt> bigint = factory->NewBigIntWithoutInitData<type>(length);
+    return bigint;
+}
+
+template <MemSpaceType type>
+JSHandle<BigInt> BigInt::CreateSubBigInt(JSThread *thread, const JSHandle<BigInt>& x, uint32_t length)
+{
+    if (length > MAXSIZE) {
+        JSHandle<BigInt> bigint(thread, JSTaggedValue::Exception());
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Maximum BigInt size exceeded", bigint);
+    }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<BigInt> bigint = factory->NewSubBigInt<type>(x, length);
+    return bigint;
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_BIGINT_INL_H
