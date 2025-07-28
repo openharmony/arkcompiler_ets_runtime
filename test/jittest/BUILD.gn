@@ -30,6 +30,8 @@ group("ark_jit_ts_test") {
     "intern_string_strict_equal_2",
     "isin",
     "try_catch_empty",
+    "try_catch_throw",
+    "try_catch_throw2",
     "ldobjbyname",
     "lazy_deopt_1",
     "lazy_deopt_2",

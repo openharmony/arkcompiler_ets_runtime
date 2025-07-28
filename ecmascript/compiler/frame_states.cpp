@@ -168,6 +168,27 @@ void FrameStateBuilder::DoBytecodeAnalysis()
     ComputeLoopInfo();
 }
 
+void FrameStateBuilder::UpdateCatchState(uint32_t bcId, FrameLiveOut* liveout)
+{
+    GateRef state = GetCurrentState();
+    GateRef depend = GetCurrentDepend();
+    auto getException = circuit_->NewGate(circuit_->GetException(),
+        MachineType::I64, {state, depend}, GateType::AnyType());
+    UpdateAccumulator(getException);
+    UpdateStateDepend(state, getException);
+    BuildStateSplitBeforeCatch(bcId, liveout);
+}
+
+void FrameStateBuilder::BuildStateSplitBeforeCatch(uint32_t bcId, FrameLiveOut* liveout)
+{
+    auto stateSplit = BuildStateSplit(liveContext_, liveout, bcId);
+    auto frameState = acc_.GetFrameState(stateSplit);
+    auto frameValues = acc_.GetFrameValue(frameState);
+    // in catch bb, we def exception as acc, we should add exception to frameValues.
+    acc_.ReplaceValueIn(frameValues, liveContext_->ValuesAt(accumulatorIndex_), accumulatorIndex_);
+    liveContext_->currentDepend_ = stateSplit;
+}
+
 void FrameStateBuilder::AnalyzeLiveness()
 {
     auto bcSize = bcBuilder_->GetLastBcIndex() + 1; // 1: +1 pcOffsets size
@@ -854,6 +875,10 @@ void FrameStateBuilder::AdvanceToNextBB(const BytecodeRegion &bb, bool isOsrLoop
         auto liveout = GetOrOCreateBBLiveOut(bb.id);
         auto stateSplit = BuildStateSplit(liveContext_, liveout, bb.start);
         liveContext_->currentDepend_ = stateSplit;
+    }
+    if (!bb.trys.empty()) {
+        auto liveout = GetOrOCreateBBLiveOut(bb.id);
+        UpdateCatchState(bb.start, liveout);
     }
 }
 
