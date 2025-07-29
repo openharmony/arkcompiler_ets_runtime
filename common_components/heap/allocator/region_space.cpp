@@ -25,12 +25,11 @@
 #include "common_components/heap/heap.h"
 
 namespace common {
-
 template <AllocBufferType type>
 RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
 {
-    RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, true);
     if constexpr (type == AllocBufferType::TO) {
+        RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, false, true);
         if (region != nullptr) {
             toSpace_.AddThreadLocalRegion(region);
         }
@@ -38,6 +37,7 @@ RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
     }
 
     ASSERT_LOGF(!IsGcThread(), "GC thread cannot take tlRegion/tlOldRegion");
+    RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, true);
     if (region != nullptr) {
         GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
         if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
@@ -289,6 +289,13 @@ void RegionSpace::Init(const RuntimeParam& param)
     opt.tag = "region_heap";
     size_t heapSize = param.heapParam.heapSize * KB;
     maxGarbageCacheSize_ = param.gcParam.maxGarbageCacheSize;
+
+#ifndef PANDA_TARGET_32
+    static constexpr uint64_t MAX_SUPPORT_CAPACITY = 4ULL * GB;
+    // 2: double heap size
+    LOGF_CHECK((heapSize / 2)<= MAX_SUPPORT_CAPACITY) << "Max support capacity 4G";
+#endif
+
     size_t totalSize = RegionManager::GetHeapMemorySize(heapSize);
     size_t regionNum = RegionManager::GetHeapUnitCount(heapSize);
 #if defined(COMMON_ASAN_SUPPORT)

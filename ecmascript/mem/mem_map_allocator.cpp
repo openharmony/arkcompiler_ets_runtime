@@ -343,7 +343,17 @@ void MemMapAllocator::AdapterSuitablePoolCapacity(bool isLargeHeap)
     } else {
         poolSize = GetPoolSize(MAX_MEM_POOL_CAPACITY);
     }
-    capacity_ = std::min<size_t>(physicalSize * DEFAULT_CAPACITY_RATE, poolSize);
+    if (g_isEnableCMCGC) {
+        constexpr double capacityRate = DEFAULT_CAPACITY_RATE;
+        capacity_ = std::min<size_t>(physicalSize * capacityRate, poolSize);
+#ifndef PANDA_TARGET_32
+        // 2: double size, for cmc copy
+        capacity_ *= 2;
+#endif
+    } else {
+        capacity_ = std::min<size_t>(physicalSize * DEFAULT_CAPACITY_RATE, poolSize);
+    }
+
     LOG_GC(INFO) << "Ark Auto adapter memory pool capacity:" << capacity_;
 }
 

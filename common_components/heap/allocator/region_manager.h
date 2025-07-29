@@ -130,11 +130,12 @@ public:
         }
     }
     // take a region with *num* units for allocation
-    RegionDesc* TakeRegion(size_t num, RegionDesc::UnitRole, bool expectPhysicalMem = false, bool allowgc = true);
+    RegionDesc* TakeRegion(size_t num, RegionDesc::UnitRole, bool expectPhysicalMem = false, bool allowgc = true,
+        bool isCopy = false);
 
-    RegionDesc* TakeRegion(bool expectPhysicalMem, bool allowgc)
+    RegionDesc* TakeRegion(bool expectPhysicalMem, bool allowgc, bool isCopy = false)
     {
-        return TakeRegion(1, RegionDesc::UnitRole::SMALL_SIZED_UNITS, expectPhysicalMem, allowgc);
+        return TakeRegion(1, RegionDesc::UnitRole::SMALL_SIZED_UNITS, expectPhysicalMem, allowgc, isCopy);
     }
 
     void AddRecentPinnedRegion(RegionDesc* region)
@@ -342,6 +343,7 @@ public:
     size_t GetDirtyUnitCount() const { return freeRegionManager_.GetDirtyUnitCount(); }
 
     size_t GetInactiveUnitCount() const { return (regionHeapEnd_ - inactiveZone_) / RegionDesc::UNIT_SIZE; }
+    size_t GetActiveSize() const { return inactiveZone_ - regionHeapStart_; }
 
     inline size_t GetLargeObjectSize() const
     {

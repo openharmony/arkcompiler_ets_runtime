@@ -559,7 +559,8 @@ void RegionManager::ForEachAwaitingJitFortUnsafe(const std::function<void(BaseOb
     }
 }
 
-RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, bool expectPhysicalMem, bool allowGC)
+RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, bool expectPhysicalMem, bool allowGC,
+    bool isCopy)
 {
     // a chance to invoke heuristic gc.
     if (allowGC && !Heap::GetHeap().IsGcStarted()) {
@@ -601,6 +602,20 @@ RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
     // when free regions are not enough for allocation
     if (num <= GetInactiveUnitCount()) {
         uintptr_t addr = inactiveZone_.fetch_add(size);
+
+#ifndef PANDA_TARGET_32
+        size_t totalHeapSize = regionHeapEnd_ - regionHeapStart_;
+        // 2: half space reserved for forward copy. throw oom when gc finish.
+        if (GetActiveSize() * 2 > totalHeapSize) {
+            if (!isCopy) {
+                (void)inactiveZone_.fetch_sub(size);
+                return nullptr;
+            } else {
+                Heap::GetHeap().SetForceThrowOOM(true);
+            }
+        }
+#endif
+
         if (addr < regionHeapEnd_ - size) {
             region = RegionDesc::InitRegionAt(addr, num, type);
             size_t idx = region->GetUnitIdx();

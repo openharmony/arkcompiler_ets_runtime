@@ -795,6 +795,10 @@ void MarkingCollector::RunGarbageCollection(uint64_t gcIndex, GCReason reason, G
     }
 
     UpdateGCStats();
+
+    if (Heap::GetHeap().GetForceThrowOOM()) {
+        Heap::throwOOM();
+    }
 }
 
 void MarkingCollector::CopyFromSpace()

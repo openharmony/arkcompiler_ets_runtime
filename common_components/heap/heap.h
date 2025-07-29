@@ -188,6 +188,8 @@ public:
     virtual void SetGCReason(GCReason reason) = 0;
 
     virtual bool InRecentSpace(const void *addr) = 0;
+    virtual bool GetForceThrowOOM() const = 0;
+    virtual void SetForceThrowOOM(bool val) = 0;
 
     static void OnHeapCreated(HeapAddress startAddr)
     {

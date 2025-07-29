@@ -33,7 +33,11 @@ void StartupStatusManager::OnAppStartup()
 void HeuristicGCPolicy::Init()
 {
     HeapParam &heapParam = BaseRuntime::GetInstance()->GetHeapParam();
+#ifndef PANDA_TARGET_32
     heapSize_ = heapParam.heapSize * KB;
+    // 2: only half heapSize used allocate
+    heapSize_ = heapSize_ / 2;
+#endif
 }
 
 bool HeuristicGCPolicy::ShouldRestrainGCOnStartupOrSensitive()

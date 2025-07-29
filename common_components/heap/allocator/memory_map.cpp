@@ -81,7 +81,6 @@ MemoryMap* MemoryMap::MapMemory(size_t reqSize, size_t initSize, const Option& o
 MemoryMap* MemoryMap::MapMemoryAlignInner4G(uint64_t reqSize, uint64_t initSize, const Option& opt)
 {
     static constexpr uint64_t MAX_SUPPORT_CAPACITY = 4ULL * GB;
-    LOGF_CHECK(reqSize <= MAX_SUPPORT_CAPACITY) << "Max support capacity 4G";
 
     void* mappedAddr = nullptr;
     reqSize = AllocUtilRndUp<size_t>(reqSize, ALLOC_UTIL_PAGE_SIZE);
