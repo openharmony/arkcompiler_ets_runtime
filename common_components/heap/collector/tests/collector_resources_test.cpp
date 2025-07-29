@@ -67,4 +67,9 @@ HWTEST_F_L0(CollectorResourcesTest, RequestGCAndWaitTest) {
     Heap::GetHeap().GetCollectorResources().RequestGC(reason, false, common::GC_TYPE_FULL);
     EXPECT_TRUE(!gcRequests.IsSyncGC());
 }
+
+HWTEST_F_L0(CollectorResourcesTest, GetGCThreadCountTest) {
+    uint32_t res = Heap::GetHeap().GetCollectorResources().GetGCThreadCount(false);
+    EXPECT_EQ(res, 2u);
+}
 } // namespace common::test

@@ -212,6 +212,97 @@ HWTEST_F_L0(WCollectorTest, ForwardObject_WithUnmovedObject_ReturnsSameAddress)
     testableCollector->SetCurrentGCPhaseForTest(GCPhase::GC_PHASE_COPY);
     EXPECT_EQ(testableCollector->GetCurrentGCPhaseForTest(), GCPhase::GC_PHASE_COPY);
 }
+
+HWTEST_F_L0(WCollectorTest, TraceRefField_TEST1)
+{
+    constexpr uint64_t TAG_BITS_SHIFT = 48;
+    constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
+    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
+    constexpr uint64_t TAG_BOOLEAN = 0x04ULL;
+    constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject *obj = reinterpret_cast<BaseObject *>(addr | TAG_HEAP_OBJECT_MASK);
+    RefField<> field(obj);
+
+    MarkStack<BaseObject*> workStack;
+    WeakStack weakStack;
+    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    EXPECT_FALSE(Heap::IsTaggedObject(field.GetFieldValue()));
+}
+
+HWTEST_F_L0(WCollectorTest, TraceRefField_TEST2)
+{
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    region->SetRegionType(RegionDesc::RegionType::ALIVE_REGION_FIRST);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
+
+    MarkStack<BaseObject*> workStack;
+    WeakStack weakStack;
+    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_APPSPAWN);
+    EXPECT_FALSE(region->IsInOldSpace());
+    workStack.pop_back();
+}
+
+HWTEST_F_L0(WCollectorTest, TraceRefField_TEST3)
+{
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    region->SetRegionType(RegionDesc::RegionType::OLD_REGION);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
+
+    MarkStack<BaseObject*> workStack;
+    WeakStack weakStack;
+    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_APPSPAWN);
+    EXPECT_TRUE(region->IsInOldSpace());
+    workStack.pop_back();
+}
+
+HWTEST_F_L0(WCollectorTest, TraceRefField_TEST4)
+{
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    region->SetRegionType(RegionDesc::RegionType::ALIVE_REGION_FIRST);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
+
+    MarkStack<BaseObject*> workStack;
+    WeakStack weakStack;
+    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    EXPECT_FALSE(region->IsInOldSpace());
+    workStack.pop_back();
+}
+
+HWTEST_F_L0(WCollectorTest, TraceRefField_TEST5)
+{
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    region->SetRegionType(RegionDesc::RegionType::OLD_REGION);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
+
+    MarkStack<BaseObject*> workStack;
+    WeakStack weakStack;
+    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    EXPECT_TRUE(region->IsInOldSpace());
+}
+
+HWTEST_F_L0(WCollectorTest, TraceRefField_TEST6)
+{
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
+    region->SetRegionAllocPtr(addr - 1);
+    region->SetTraceLine();
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<false> field(obj);
+
+    MarkStack<BaseObject*> workStack;
+    TraceRefField(obj, obj, field, workStack, region);
+    EXPECT_TRUE(region->IsNewObjectSinceTrace(obj));
+}
+
 class TestCreateTraceWCollector : public TraceCollector {
 public:
     using TraceCollector::SetGCReason;
@@ -238,6 +329,19 @@ public:
         return TraceRefFieldVisitor();
     }
 };
+
+HWTEST_F_L0(WCollectorTest, CreateTraceObjectRefFieldsVisitor_TEST1)
+{
+    std::unique_ptr<WCollector> wcollector = GetWCollector();
+    ASSERT_TRUE(wcollector != nullptr);
+
+    MarkStack<BaseObject*> workStack;
+    WeakStack weakStack;
+    TestCreateTraceWCollector* collector = reinterpret_cast<TestCreateTraceWCollector*>(wcollector.get());
+    collector->SetGCReason(GCReason::GC_REASON_YOUNG);
+    auto visitor = wcollector->CreateTraceObjectRefFieldsVisitor(&workStack, &weakStack);
+    EXPECT_TRUE(visitor.GetRefFieldVisitor() != nullptr);
+}
 
 HWTEST_F_L0(WCollectorTest, FixRefField_TEST1)
 {

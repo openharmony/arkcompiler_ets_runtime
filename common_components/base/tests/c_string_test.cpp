@@ -394,7 +394,7 @@ HWTEST_F_L0(CStringTest, EnsureMultipleCalls_CapacityGrowsCorrectly)
 
     EXPECT_NE(secondPtr, thirdPtr);
     EXPECT_EQ(str.Length(), strlen("initial"));
-    EXPECT_STREQ(str.Str(), "initial");
+    EXPECT_STREQ(str.SubStr(0, str.Length()).Str(), "initial");
 }
 
 HWTEST_F_L0(CStringTest, CStringSubscriptOperatorTest)

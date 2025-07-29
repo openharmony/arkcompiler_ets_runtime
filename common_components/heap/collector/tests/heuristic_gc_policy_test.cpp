@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+#include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"
+#include "common_components/heap/heap.h"
 #include "common_components/tests/test_helper.h"
 
 using namespace common;
@@ -110,11 +112,64 @@ HWTEST_F_L0(HeuristicGCPolicyTest, NotifyNativeAllocation)
     EXPECT_NE(gcPolicy.GetNativeHeapThreshold(), initialObjects + 1);
 }
 
-HWTEST_F_L0(HeuristicGCPolicyTest, NotifyNativeAllocation_TriggerByBytes) {
+HWTEST_F_L0(HeuristicGCPolicyTest, NotifyNativeAllocation_TriggerByBytes)
+{
     HeuristicGCPolicy gcPolicy;
     size_t initialNotified = gcPolicy.GetNotifiedNativeSize();
     size_t initialObjects = gcPolicy.GetNativeHeapThreshold();
 
+    gcPolicy.NotifyNativeAllocation(NATIVE_IMMEDIATE_THRESHOLD + 1);
+
+    EXPECT_EQ(gcPolicy.GetNotifiedNativeSize(), initialNotified + NATIVE_IMMEDIATE_THRESHOLD + 1);
+    EXPECT_NE(gcPolicy.GetNativeHeapThreshold(), initialObjects + 1);
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, TryHeuristicGC)
+{
+    HeuristicGCPolicy gcPolicy;
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_FINISH);
+    Heap::GetHeap().GetCollector().GetGCStats().heapThreshold = 0;
+    gcPolicy.TryHeuristicGC();
+    Heap::GetHeap().GetCollector().GetGCStats().shouldRequestYoung = true;
+    gcPolicy.TryHeuristicGC();
+    EXPECT_EQ(Heap::GetHeap().GetAllocator().GetAllocatedBytes(),
+        Heap::GetHeap().GetCollector().GetGCStats().GetThreshold());
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, ChangeGCParams)
+{
+    HeuristicGCPolicy gcPolicy;
+    gcPolicy.RecordAliveSizeAfterLastGC(1);
+    gcPolicy.ChangeGCParams(true);
+    EXPECT_EQ(Heap::GetHeap().GetAllocator().GetAllocatedBytes(), 0);
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, CheckAndTriggerHintGC)
+{
+    HeuristicGCPolicy gcPolicy;
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP);
+    bool result = gcPolicy.CheckAndTriggerHintGC(MemoryReduceDegree::HIGH);
+    ASSERT_FALSE(result);
+
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_FINISH);
+    result = gcPolicy.CheckAndTriggerHintGC(MemoryReduceDegree::HIGH);
+    ASSERT_FALSE(result);
+
+    gcPolicy.RecordAliveSizeAfterLastGC(1);
+    result = gcPolicy.CheckAndTriggerHintGC(MemoryReduceDegree::HIGH);
+    ASSERT_FALSE(result);
+
+    result = gcPolicy.CheckAndTriggerHintGC(MemoryReduceDegree::LOW);
+    ASSERT_FALSE(result);
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, NotifyNativeAllocation_TriggerByBytes1)
+{
+    HeuristicGCPolicy gcPolicy;
+    size_t initialNotified = gcPolicy.GetNotifiedNativeSize();
+    size_t initialObjects = gcPolicy.GetNativeHeapThreshold();
+
+    gcPolicy.SetNativeHeapThreshold(1);
     gcPolicy.NotifyNativeAllocation(NATIVE_IMMEDIATE_THRESHOLD + 1);
 
     EXPECT_EQ(gcPolicy.GetNotifiedNativeSize(), initialNotified + NATIVE_IMMEDIATE_THRESHOLD + 1);

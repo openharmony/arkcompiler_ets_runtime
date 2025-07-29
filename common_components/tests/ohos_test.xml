@@ -38,6 +38,11 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="Finalizer_Processor_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="Common_Profiler_Interface_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>

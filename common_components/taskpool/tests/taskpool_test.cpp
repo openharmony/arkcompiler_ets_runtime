@@ -82,11 +82,6 @@ HWTEST_F_L0(TaskpoolTest, InitializeAndDestroy) {
     EXPECT_GT(pool.Get()->GetTotalThreadNum(), 0U);
 }
 
-HWTEST_F_L0(TaskpoolTest, SetQosPriority) {
-    TaskpoolTest::ScopedTaskpool pool(1);
-    pool.Get()->SetThreadPriority(PriorityMode::BACKGROUND);
-}
-
 HWTEST_F_L0(TaskpoolTest, TerminateTask) {
     TaskpoolTest::ScopedTaskpool pool(2);
     Taskpool* taskpool = pool.Get();

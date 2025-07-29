@@ -23,6 +23,7 @@ using namespace common;
 namespace common::test {
 const uint32_t TWO_SECONDS = 2;
 const uint32_t HUNDRED_MILLISECONDS = 100;
+constexpr uint64_t TAG_BOOLEAN = 0x04ULL;
 
 class FinalizerProcessorTest : public common::test::BaseTestWithScope {
 protected:
@@ -48,7 +49,7 @@ HWTEST_F_L0(FinalizerProcessorTest, RegisterFinalizer_TEST1)
 {
     FinalizerProcessor finalizerProcessor;
     HeapAddress addr = common::HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
+    BaseObject *obj = reinterpret_cast<BaseObject*>(addr | TAG_BOOLEAN);
     new (obj) BaseObject(); // Construct BaseObject
     finalizerProcessor.RegisterFinalizer(obj);
     bool flag = common::RegionSpace::IsMarkedObject(obj);
@@ -59,7 +60,7 @@ HWTEST_F_L0(FinalizerProcessorTest, EnqueueFinalizables_TEST1)
 {
     FinalizerProcessor finalizerProcessor;
     HeapAddress addr = common::HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
+    BaseObject *obj = reinterpret_cast<BaseObject*>(addr | TAG_BOOLEAN);
     new (obj) BaseObject(); // Construct BaseObject
     finalizerProcessor.RegisterFinalizer(obj);
     std::function<bool(BaseObject*)> finalizable = [](BaseObject* obj) {
@@ -74,7 +75,7 @@ HWTEST_F_L0(FinalizerProcessorTest, EnqueueFinalizables_TEST2)
 {
     FinalizerProcessor finalizerProcessor;
     HeapAddress addr = common::HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
+    BaseObject *obj = reinterpret_cast<BaseObject*>(addr | TAG_BOOLEAN);
     new (obj) BaseObject();
     finalizerProcessor.RegisterFinalizer(obj);
     RootVisitor visitor = [](ObjectRef&) {
@@ -107,7 +108,7 @@ HWTEST_F_L0(FinalizerProcessorTest, EnqueueFinalizables_TEST3)
     finalizerProcessor.EnqueueFinalizables(finalizable, 1);
     EXPECT_EQ(num2, 0);
     HeapAddress addr = common::HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
+    BaseObject *obj = reinterpret_cast<BaseObject*>(addr | TAG_BOOLEAN);
     new (obj) BaseObject();
     finalizerProcessor.RegisterFinalizer(obj);
     auto num3 = finalizerProcessor.VisitFinalizers(visitor);
@@ -121,7 +122,7 @@ HWTEST_F_L0(FinalizerProcessorTest, Run_TEST1)
 {
     FinalizerProcessor finalizerProcessor;
     HeapAddress addr = common::HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
-    BaseObject *obj = reinterpret_cast<BaseObject*>(addr);
+    BaseObject *obj = reinterpret_cast<BaseObject*>(addr | TAG_BOOLEAN);
     new (obj) BaseObject();
     AllocationBuffer* buffer = new (std::nothrow) AllocationBuffer();
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
