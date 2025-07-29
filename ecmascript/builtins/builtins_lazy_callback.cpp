@@ -61,6 +61,7 @@ JSTaggedValue BuiltinsLazyCallback::Map(JSThread *thread, const JSHandle<JSObjec
     Builtins builtin(thread, factory, vm);
     JSHandle<JSTaggedValue> objFuncPrototypeVal = env->GetObjectFunctionPrototype();
     builtin.InitializeMap(env, objFuncPrototypeVal);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return env->GetBuiltinsMapFunction().GetTaggedValue();
 }
 
@@ -75,6 +76,7 @@ JSTaggedValue BuiltinsLazyCallback::WeakMap(JSThread *thread, const JSHandle<JSO
     Builtins builtin(thread, factory, vm);
     JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
     builtin.InitializeWeakMap(env, objFuncClass);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return env->GetBuiltinsWeakMapFunction().GetTaggedValue();
 }
 
@@ -89,6 +91,7 @@ JSTaggedValue BuiltinsLazyCallback::WeakSet(JSThread *thread, const JSHandle<JSO
     Builtins builtin(thread, factory, vm);
     JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
     builtin.InitializeWeakSet(env, objFuncClass);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return env->GetBuiltinsWeakSetFunction().GetTaggedValue();
 }
 
@@ -103,6 +106,7 @@ JSTaggedValue BuiltinsLazyCallback::WeakRef(JSThread *thread, const JSHandle<JSO
     Builtins builtin(thread, factory, vm);
     JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
     builtin.InitializeWeakRef(env, objFuncClass);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return env->GetBuiltinsWeakRefFunction().GetTaggedValue();
 }
 
@@ -117,6 +121,7 @@ JSTaggedValue BuiltinsLazyCallback::FinalizationRegistry(JSThread *thread, const
     Builtins builtin(thread, factory, vm);
     JSHandle<JSHClass> objFuncClass(env->GetObjectFunctionClass());
     builtin.InitializeFinalizationRegistry(env, objFuncClass);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return env->GetBuiltinsFinalizationRegistryFunction().GetTaggedValue();
 }
 
@@ -138,6 +143,7 @@ ITERATE_TYPED_ARRAY(RESET_TYPED_ARRAY_INTERNAL_ATTR)
     Builtins builtin(thread, factory, vm);
     JSHandle<JSTaggedValue> objFuncPrototypeVal = env->GetObjectFunctionPrototype();
     builtin.InitializeTypedArray(env, objFuncPrototypeVal);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return env->GetTypedArrayFunction().GetTaggedValue();
 }
 
