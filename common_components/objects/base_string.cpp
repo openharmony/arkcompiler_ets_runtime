@@ -100,6 +100,9 @@ namespace common {
 
     uint32_t BaseString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len, bool canBeCompress)
     {
+        if (utf8Len == 0) {
+            return MixHashcode(0, NOT_INTEGER);
+        }
         if (canBeCompress) {
             uint32_t mixHash = 0;
             // String using UTF8 encoding, and length smaller than 10, try to compute integer hash.
@@ -121,6 +124,9 @@ namespace common {
     /* static */
     uint32_t BaseString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t length)
     {
+        if (length == 0) {
+            return MixHashcode(0, NOT_INTEGER);
+        }
         uint32_t mixHash = 0;
         // String length smaller than 10, try to compute integer hash.
         if (length < MAX_ELEMENT_INDEX_LEN && HashIntegerString(utf16Data, length, &mixHash, 0)) {

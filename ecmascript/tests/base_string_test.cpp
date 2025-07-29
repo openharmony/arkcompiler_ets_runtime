@@ -1689,4 +1689,28 @@ namespace panda::test {
         CString str = ConvertToString(thread, *testString);
         EXPECT_EQ(str, CString("test"));
     }
+
+    /*
+     * @tc.name: ComputeHashcodeUtf8Nullptr
+     * @tc.desc: Check whether the value returned through calling ComputeHashcodeUtf8 function with an Array(uint8_t) is
+     * within expectations for nullptr.
+     * @tc.type: FUNC
+     * @tc.require:
+     */
+    HWTEST_F_L0(BaseStringTest, ComputeHashcodeUtf8Nullptr)
+    {
+        EXPECT_EQ(BaseString::ComputeHashcodeUtf8(nullptr, 0, true), 0);
+    }
+
+    /*
+     * @tc.name: ComputeHashcodeUtf16Nullptr
+     * @tc.desc: Check whether the value returned through calling ComputeHashcodeUtf16 function with an Array(uint16_t)
+     * is within expectations for nullptr.
+     * @tc.type: FUNC
+     * @tc.require:
+     */
+    HWTEST_F_L0(BaseStringTest, ComputeHashcodeUtf16Nullptr)
+    {
+        EXPECT_EQ(BaseString::ComputeHashcodeUtf16(nullptr, 0), 0);
+    }
 } // namespace panda::test
