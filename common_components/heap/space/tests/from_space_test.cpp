@@ -13,7 +13,7 @@
 * limitations under the License.
 */
 
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/heap/space/from_space.h"
 #include "common_components/mutator/thread_local.h"
 #include "common_components/tests/test_helper.h"
@@ -44,7 +44,7 @@ protected:
 HWTEST_F_L0(FromSpaceTest, CopyFromRegions)
 {
     RegionManager regionManager;
-    RegionSpace heap;
+    RegionalHeap heap;
     FromSpace fromSpace(regionManager, heap);
     ThreadLocal::SetAllocBuffer(nullptr);
     fromSpace.CopyFromRegions(nullptr);
@@ -60,7 +60,7 @@ HWTEST_F_L0(FromSpaceTest, CopyFromRegionsTest)
     list.setHeadRegion(region);
     ASSERT_TRUE(list.GetHeadRegion() != nullptr);
 
-    RegionSpace heap;
+    RegionalHeap heap;
     RegionManager manager;
     FromSpace fromSpace(manager, heap);
     fromSpace.AssembleGarbageCandidates(list);
@@ -75,7 +75,7 @@ HWTEST_F_L0(FromSpaceTest, CopyFromRegionsTest)
 HWTEST_F_L0(FromSpaceTest, ParallelCopyFromRegions)
 {
     RegionManager regionManager;
-    RegionSpace heap;
+    RegionalHeap heap;
     FromSpace fromSpace(regionManager, heap);
     AllocationBuffer* buffer1 = new (std::nothrow) AllocationBuffer();
     ThreadLocal::SetAllocBuffer(buffer1);

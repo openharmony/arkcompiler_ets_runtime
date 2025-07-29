@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/heap/space/from_space.h"
 #include "common_components/heap/space/old_space.h"
 #include "common_components/heap/collector/collector_resources.h"

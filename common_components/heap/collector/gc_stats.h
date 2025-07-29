@@ -82,8 +82,8 @@ public:
     size_t fromSpaceSize;
     size_t smallGarbageSize;
 
-    size_t pinnedSpaceSize;
-    size_t pinnedGarbageSize;
+    size_t nonMovableSpaceSize;
+    size_t nonMovableGarbageSize;
 
     size_t largeSpaceSize;
     size_t largeGarbageSize;

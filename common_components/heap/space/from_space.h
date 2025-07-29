@@ -27,19 +27,20 @@
 #include "common_components/heap/allocator/region_manager.h"
 #include "common_components/mutator/mutator.h"
 #include "common_components/heap/allocator/fix_heap.h"
+#include "common_components/heap/space/regional_space.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/base/asan_interface.h"
 #endif
 
 namespace common {
-class RegionSpace;
+class RegionalHeap;
 class OldSpace;
 class Taskpool;
 
 // regions for small-sized movable objects, which may be moved during gc.
 class FromSpace : public RegionalSpace {
 public:
-    FromSpace(RegionManager& regionManager, RegionSpace& heap) : RegionalSpace(regionManager),
+    FromSpace(RegionManager& regionManager, RegionalHeap& heap) : RegionalSpace(regionManager),
         fromRegionList_("from-regions"),
         exemptedFromRegionList_("exempted from-regions"), heap_(heap), exemptedRegionThreshold_(0) {}
 
@@ -94,7 +95,7 @@ public:
         return exemptedFromRegionList_.GetAllocatedSize();
     }
 
-    RegionSpace& GetHeap() { return heap_; }
+    RegionalHeap& GetHeap() { return heap_; }
 
     void ParallelCopyFromRegions(RegionDesc* startRegion, size_t regionCnt);
     void CopyFromRegions(Taskpool* threadPool);
@@ -137,7 +138,7 @@ private:
     // regions exempted by ExemptFromRegions, which will not be moved during current GC.
     RegionList exemptedFromRegionList_;
 
-    RegionSpace& heap_;
+    RegionalHeap& heap_;
 
     double exemptedRegionThreshold_;
 };

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 #include "common_components/heap/ark_collector/remark_barrier.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/mutator/mutator.h"
 #if defined(ARKCOMMON_TSAN_SUPPORT)
 #include "common_components/sanitizer/sanitizer_interface.h"

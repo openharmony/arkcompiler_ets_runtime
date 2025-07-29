@@ -37,11 +37,6 @@ public:
 
     void DumpRegionStats() const;
 
-    void AddThreadLocalRegion(RegionDesc* region)
-    {
-        tlOldRegionList_.PrependRegion(region, RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION);
-    }
-
     void CollectFixTasks(FixHeapTaskList &taskList)
     {
         if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
@@ -115,6 +110,27 @@ public:
         oldRegionList_.VisitAllRegions(visitFunc);
     }
 
+    uintptr_t AllocFullRegion()
+    {
+        RegionDesc* region = regionManager_.TakeRegion(false, false);
+        ASSERT(region != nullptr);
+
+        InitRegionPhaseLine(region);
+
+        DLOG(REGION, "alloc small object region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u",
+            region, region->GetRegionStart(), region->GetRegionSize(),
+            region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
+            region->GetRegionType());
+        AddFullRegion(region);
+
+        uintptr_t start = region->GetRegionStart();
+        uintptr_t addr = region->Alloc(region->GetRegionEnd() - region->GetRegionAllocPtr());
+        (void)addr;
+        ASSERT(addr != 0);
+
+        return start;
+    }
+
     void AddFullRegion(RegionDesc *region)
     {
         recentFullOldRegionList_.PrependRegion(region, RegionDesc::RegionType::OLD_REGION);
@@ -128,6 +144,8 @@ public:
         tlOldRegionList_.DeleteRegion(region);
         recentFullOldRegionList_.PrependRegion(region, RegionDesc::RegionType::OLD_REGION);
     }
+
+    RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem);
 
 private:
     void ClearGCInfo(RegionList& list)

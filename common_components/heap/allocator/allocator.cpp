@@ -19,7 +19,7 @@
 
 #include "common_components/base/immortal_wrapper.h"
 #include "common_components/common/base_object.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/mutator/thread_local.h"
 
 namespace common {
@@ -80,8 +80,8 @@ PagePool& PagePool::Instance() noexcept
 
 Allocator* Allocator::CreateAllocator()
 {
-    RegionSpace* heapSpace = new (std::nothrow) RegionSpace();
-    LOGF_CHECK(heapSpace != nullptr) << "New RegionSpace failed";
+    RegionalHeap* heapSpace = new (std::nothrow) RegionalHeap();
+    LOGF_CHECK(heapSpace != nullptr) << "New RegionalHeap failed";
     return heapSpace;
 }
 } // namespace common

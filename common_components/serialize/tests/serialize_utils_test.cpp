@@ -14,7 +14,7 @@
  */
 
 #include "common_components/heap/allocator/region_desc.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/serialize/serialize_utils.h"
 #include "common_components/serialize/serialize_utils.cpp"
 #include "common_components/tests/test_helper.h"
@@ -46,7 +46,7 @@ protected:
 
 HWTEST_F_L0(SerializeUtilsTest, GetSerializeObjectSpace)
 {
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);

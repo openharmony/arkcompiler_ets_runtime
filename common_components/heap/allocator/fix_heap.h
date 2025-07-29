@@ -68,8 +68,8 @@ public:
      * Result structure containing the collected garbages and stats of heap fixing operations
      */
     struct Result {
-        std::vector<std::tuple<RegionDesc *, BaseObject *, size_t>> fixedPinnedGarbages;
-        std::vector<std::pair<BaseObject *, size_t>> pinnedGarbages;
+        std::vector<std::tuple<RegionDesc *, BaseObject *, size_t>> monoSizeNonMovableGarbages;
+        std::vector<std::pair<BaseObject *, size_t>> polySizeNonMovableGarbages;
         size_t numProcessedRegions = 0;
     };
 
@@ -97,8 +97,8 @@ private:
      */
     enum DeadObjectHandlerType {
         FILL_FREE,             // Fill in free object immediately
-        COLLECT_FIXED_PINNED,  // Collect fixed pinned objects (to be added to freelist)
-        COLLECT_PINNED,        // Collect pinned objects (to be filled free later)
+        COLLECT_MONOSIZE_NONMOVABLE,  // Collect mono size non-movable objects (to be added to freelist)
+        COLLECT_POLYSIZE_NONMOVABLE,        // Collect non-movable objects (to be filled free later)
         IGNORED,               // Ignore dead objects
     };
 
@@ -134,8 +134,8 @@ public:
      */
     void PostClearTask();
 
-    // During fix phase we also collect the entire empty regions into garbage list from fixedPinned and pinned region.
-    // However, we can only do it during post-fix beaause those region can contains metadata for getObjectSize
+    // During fix phase we also collect the entire empty regions into garbage list from non-movable region.
+    // However, we can only do it during post-fix because those region can contains metadata for getObjectSize
     // Hence we cache empty regions in those two stack and duirng post fix we collect the region as garbage,
     static std::stack<std::pair<RegionList*, RegionDesc *>> emptyRegionsToCollect;
     static void AddEmptyRegionToCollectDuringPostFix(RegionList *list, RegionDesc *region);

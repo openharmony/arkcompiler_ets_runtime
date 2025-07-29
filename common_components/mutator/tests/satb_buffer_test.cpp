@@ -14,7 +14,7 @@
  */
 
 #include "common_components/heap/allocator/region_desc.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/mutator/satb_buffer.h"
 #include "common_components/tests/test_helper.h"
 #include "common_interfaces/base_runtime.h"
@@ -61,7 +61,7 @@ HWTEST_F_L0(SatbBufferTest, IsYoungSpaceObject1)
 {
     auto* mutator = common::Mutator::GetMutator();
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -76,7 +76,7 @@ HWTEST_F_L0(SatbBufferTest, IsYoungSpaceObject2)
 {
     auto* mutator = common::Mutator::GetMutator();
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -91,7 +91,7 @@ HWTEST_F_L0(SatbBufferTest, IsYoungSpaceObject3)
 {
     auto* mutator = common::Mutator::GetMutator();
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -106,7 +106,7 @@ HWTEST_F_L0(SatbBufferTest, IsYoungSpaceObject4)
 {
     auto* mutator = common::Mutator::GetMutator();
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -118,7 +118,7 @@ HWTEST_F_L0(SatbBufferTest, IsYoungSpaceObject4)
 
 HWTEST_F_L0(SatbBufferTest, IsMarkedObject)
 {
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0U);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -159,7 +159,7 @@ void ClearMarkBit(RegionBitmap* bitmap, size_t offset)
 
 HWTEST_F_L0(SatbBufferTest, EnqueueObject)
 {
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0U);
 

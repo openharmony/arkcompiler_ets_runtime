@@ -44,7 +44,7 @@ using MIndex = uint64_t;  // index of array
 enum class AllocType {
     MOVEABLE_OBJECT = 0,
     MOVEABLE_OLD_OBJECT,
-    PINNED_OBJECT,
+    NONMOVABLE_OBJECT,
     RAW_POINTER_OBJECT,
     READ_ONLY_OBJECT,
 };

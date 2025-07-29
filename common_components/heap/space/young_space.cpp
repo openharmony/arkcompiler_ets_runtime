@@ -37,4 +37,18 @@ void YoungSpace::DumpRegionStats() const
     VLOG(DEBUG, "\t  recent-full regions %zu: %zu units (%zu B, alloc %zu)",
         recentFullRegions, recentFullUnits, recentFullSize, allocRecentFullSize);
 }
+
+RegionDesc* YoungSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
+{
+    RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, true);
+    ASSERT_LOGF(!IsGcThread(), "GC thread cannot take tlRegion");
+    if (region != nullptr) {
+        DLOG(REGION, "alloc thread local young region @0x%zx+%zu type %u", region->GetRegionStart(),
+             region->GetRegionAllocatedSize(),
+             region->GetRegionType());
+        InitRegionPhaseLine(region);
+        tlRegionList_.PrependRegion(region, RegionDesc::RegionType::THREAD_LOCAL_REGION);
+    }
+    return region;
+}
 } // namespace common

@@ -709,7 +709,7 @@ void BaseDeserializer::AllocateToRegularSpace(size_t regularSpaceSize)
 void BaseDeserializer::AllocateToPinSpace(size_t pinSpaceSize)
 {
     if (pinSpaceSize <= common::Heap::GetNormalRegionAvailableSize()) {
-        currentPinObjectAddr_ = common::HeapAllocator::AllocatePinNoGC(pinSpaceSize);
+        currentPinObjectAddr_ = common::HeapAllocator::AllocateNonmoveNoGC(pinSpaceSize);
     } else {
         currentPinObjectAddr_ = AllocateMultiCMCRegion(pinSpaceSize, pinRegionIndex_, RegionType::PinRegion);
     }
@@ -741,7 +741,7 @@ uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &
         if (regionType == RegionType::RegularRegion) {
             regionAddr = common::HeapAllocator::AllocateOldRegion();
         } else {
-            regionAddr = common::HeapAllocator::AllocatePinnedRegion();
+            regionAddr = common::HeapAllocator::AllocateNonMovableRegion();
         }
         if (regionAddr == 0U) {
             LOG_ECMA(FATAL) << "Deserialize allocate multi cmc region fail";

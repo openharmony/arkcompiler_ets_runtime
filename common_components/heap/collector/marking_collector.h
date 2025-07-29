@@ -22,7 +22,7 @@
 #include "common_components/heap/collector/collector.h"
 #include "common_components/heap/collector/collector_resources.h"
 #include "common_components/common/mark_work_stack.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/heap/collector/copy_data_manager.h"
 #include "common_components/mutator/mutator_manager.h"
 
@@ -171,12 +171,12 @@ public:
     void TryForkTask(Taskpool *threadPool, WorkStack &workStack, GlobalWorkStackQueue &globalQueue);
 
     // live but not resurrected object.
-    bool IsMarkedObject(const BaseObject* obj) const { return RegionSpace::IsMarkedObject(obj); }
+    bool IsMarkedObject(const BaseObject* obj) const { return RegionalHeap::IsMarkedObject(obj); }
 
     // live or resurrected object.
     inline bool IsSurvivedObject(const BaseObject* obj) const
     {
-        return RegionSpace::IsMarkedObject(obj) || RegionSpace::IsResurrectedObject(obj);
+        return RegionalHeap::IsMarkedObject(obj) || RegionalHeap::IsResurrectedObject(obj);
     }
 
     inline bool IsToObject(const BaseObject* obj) const
@@ -207,7 +207,7 @@ public:
     virtual MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) = 0;
     virtual void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) = 0;
 
-    inline bool IsResurrectedObject(const BaseObject* obj) const { return RegionSpace::IsResurrectedObject(obj); }
+    inline bool IsResurrectedObject(const BaseObject* obj) const { return RegionalHeap::IsResurrectedObject(obj); }
 
     Allocator& GetAllocator() const { return theAllocator_; }
 

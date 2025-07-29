@@ -82,7 +82,7 @@ HWTEST_F_L0(ArkCollectorTest, IsUnmovableFromObjectTest2)
     std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
     ASSERT_TRUE(arkCollector != nullptr);
 
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::PINNED_OBJECT, true);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::NONMOVABLE_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
 
     new (obj) BaseObject();

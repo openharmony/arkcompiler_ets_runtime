@@ -17,7 +17,7 @@
 #include "common_components/heap/heap.h"
 #include "common_components/heap/collector/collector.h"
 #include "common_components/heap/allocator/region_manager.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 
 namespace common {
 HeapManager::HeapManager() {}
@@ -45,24 +45,24 @@ void HeapManager::StopRuntimeThreads() { Heap::GetHeap().StopRuntimeThreads(); }
 
 void HeapManager::MarkJitFortMemInstalled(void *vm, void *obj)
 {
-    RegionManager &manager = reinterpret_cast<RegionSpace &>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-    manager.MarkJitFortMemInstalled(vm, reinterpret_cast<BaseObject *>(obj));
+    RegionalHeap& regionalHeap = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    regionalHeap.MarkJitFortMemInstalled(vm, reinterpret_cast<BaseObject*>(obj));
 }
 
 void HeapManager::SetReadOnlyToROSpace()
 {
-    RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-    manager.SetReadOnlyToRORegionList();
+    RegionalHeap& regionalHeap = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    regionalHeap.SetReadOnlyToROSpace();
 }
 
 void HeapManager::ClearReadOnlyFromROSpace()
 {
-    RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-    manager.ClearReadOnlyFromRORegionList();
+    RegionalHeap& regionalHeap = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    regionalHeap.ClearReadOnlyFromROSpace();
 }
 
 bool HeapManager::IsInROSpace(BaseObject *obj)
 {
-    return RegionSpace::IsReadOnlyObject(obj);
+    return RegionalHeap::IsReadOnlyObject(obj);
 }
 } // namespace common

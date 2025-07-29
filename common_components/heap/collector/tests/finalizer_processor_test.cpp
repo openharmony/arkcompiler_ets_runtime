@@ -52,7 +52,7 @@ HWTEST_F_L0(FinalizerProcessorTest, RegisterFinalizer_TEST1)
     BaseObject *obj = reinterpret_cast<BaseObject*>(addr | TAG_BOOLEAN);
     new (obj) BaseObject(); // Construct BaseObject
     finalizerProcessor.RegisterFinalizer(obj);
-    bool flag = common::RegionSpace::IsMarkedObject(obj);
+    bool flag = common::RegionalHeap::IsMarkedObject(obj);
     EXPECT_FALSE(flag);
 }
 
@@ -64,7 +64,7 @@ HWTEST_F_L0(FinalizerProcessorTest, EnqueueFinalizables_TEST1)
     new (obj) BaseObject(); // Construct BaseObject
     finalizerProcessor.RegisterFinalizer(obj);
     std::function<bool(BaseObject*)> finalizable = [](BaseObject* obj) {
-        return !common::RegionSpace::IsMarkedObject(obj);
+        return !common::RegionalHeap::IsMarkedObject(obj);
     };
     finalizerProcessor.EnqueueFinalizables(finalizable, 1);
     bool flag = finalizable(obj);
@@ -82,7 +82,7 @@ HWTEST_F_L0(FinalizerProcessorTest, EnqueueFinalizables_TEST2)
         return;
     };
     std::function<bool(BaseObject*)> finalizable = [this](BaseObject* obj) {
-        return common::RegionSpace::IsMarkedObject(obj);
+        return common::RegionalHeap::IsMarkedObject(obj);
     };
     auto before = finalizerProcessor.VisitFinalizers(visitor);
     finalizerProcessor.EnqueueFinalizables(finalizable, 1);
@@ -99,7 +99,7 @@ HWTEST_F_L0(FinalizerProcessorTest, EnqueueFinalizables_TEST3)
         return;
     };
     std::function<bool(BaseObject*)> finalizable = [this](BaseObject* obj) {
-        return common::RegionSpace::IsMarkedObject(obj);
+        return common::RegionalHeap::IsMarkedObject(obj);
     };
     auto num1 = finalizerProcessor.VisitFinalizers(visitor);
     finalizerProcessor.EnqueueFinalizables(finalizable, 0);

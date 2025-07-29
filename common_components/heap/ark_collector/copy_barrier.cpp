@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/heap/ark_collector/copy_barrier.h"
 #include "common_components/base/sys_call.h"
 #include "common_components/common/scoped_object_lock.h"

@@ -87,7 +87,7 @@ HWTEST_F_L0(VerificationTest, GetRefInfoTest)
 
 HWTEST_F_L0(VerificationTest, VerifyRefImplTest2)
 {
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0U);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -100,19 +100,19 @@ HWTEST_F_L0(VerificationTest, VerifyRefImplTest2)
 
     AfterForwardVisitor visitor;
     visitor.VerifyRefImpl(obj, field);
-    ASSERT_FALSE(RegionSpace::IsMarkedObject(refObj));
-    ASSERT_FALSE(RegionSpace::IsResurrectedObject(refObj));
+    ASSERT_FALSE(RegionalHeap::IsMarkedObject(refObj));
+    ASSERT_FALSE(RegionalHeap::IsResurrectedObject(refObj));
 }
 
 HWTEST_F_L0(VerificationTest, VerifyRefImplTest3)
 {
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0U);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(obj));
     ASSERT_NE(region, nullptr);
-    region->SetRegionType(RegionDesc::RegionType::FULL_PINNED_REGION);
+    region->SetRegionType(RegionDesc::RegionType::FULL_POLYSIZE_NONMOVABLE_REGION);
     RefField<false> field(obj);
 
     auto refObj = field.GetTargetObject();
@@ -120,22 +120,22 @@ HWTEST_F_L0(VerificationTest, VerifyRefImplTest3)
     ReadBarrierSetter visitor;
     visitor.VerifyRefImpl(nullptr, field);
     visitor.VerifyRefImpl(obj, field);
-    EXPECT_EQ(RegionDesc::RegionType::FULL_PINNED_REGION,
+    EXPECT_EQ(RegionDesc::RegionType::FULL_POLYSIZE_NONMOVABLE_REGION,
         RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(field.GetTargetObject()))->GetRegionType());
 
-    region->SetRegionType(RegionDesc::RegionType::RECENT_PINNED_REGION);
+    region->SetRegionType(RegionDesc::RegionType::RECENT_POLYSIZE_NONMOVABLE_REGION);
     visitor.VerifyRefImpl(obj, field);
-    EXPECT_EQ(RegionDesc::RegionType::RECENT_PINNED_REGION,
+    EXPECT_EQ(RegionDesc::RegionType::RECENT_POLYSIZE_NONMOVABLE_REGION,
         RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(field.GetTargetObject()))->GetRegionType());
 
-    region->SetRegionType(RegionDesc::RegionType::FIXED_PINNED_REGION);
+    region->SetRegionType(RegionDesc::RegionType::MONOSIZE_NONMOVABLE_REGION);
     visitor.VerifyRefImpl(obj, field);
-    EXPECT_EQ(RegionDesc::RegionType::FIXED_PINNED_REGION,
+    EXPECT_EQ(RegionDesc::RegionType::MONOSIZE_NONMOVABLE_REGION,
         RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(field.GetTargetObject()))->GetRegionType());
 
-    region->SetRegionType(RegionDesc::RegionType::FULL_FIXED_PINNED_REGION);
+    region->SetRegionType(RegionDesc::RegionType::FULL_MONOSIZE_NONMOVABLE_REGION);
     visitor.VerifyRefImpl(obj, field);
-    EXPECT_EQ(RegionDesc::RegionType::FULL_FIXED_PINNED_REGION,
+    EXPECT_EQ(RegionDesc::RegionType::FULL_MONOSIZE_NONMOVABLE_REGION,
         RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(field.GetTargetObject()))->GetRegionType());
 
     region->SetRegionType(RegionDesc::RegionType::READ_ONLY_REGION);
@@ -203,7 +203,7 @@ HWTEST_F_L0(VerificationTest, DisableReadBarrierDFXTest1)
 
 HWTEST_F_L0(VerificationTest, GetObjectInfoTest3)
 {
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::PINNED_OBJECT, true);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::NONMOVABLE_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
     std::string result = GetObjectInfo(obj);
     EXPECT_NE(result.find("address: 0x"), std::string::npos);
@@ -228,7 +228,7 @@ HWTEST_F_L0(VerificationTest, GetRefInfoTest2)
 
 HWTEST_F_L0(VerificationTest, VerifyRefImplTest)
 {
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::PINNED_OBJECT, true);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::NONMOVABLE_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
     RefField<false> oldField(obj);
     TestBaseObjectOperator operatorImpl;
@@ -248,7 +248,7 @@ HWTEST_F_L0(VerificationTest, VerifyRefImplTest)
 
 HWTEST_F_L0(VerificationTest, VerifyRefImplTest1)
 {
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::PINNED_OBJECT, true);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::NONMOVABLE_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
     RefField<false> oldField(obj);
     TestBaseObjectOperator operatorImpl;
@@ -270,11 +270,11 @@ static void CustomVisitRoot(const RefFieldVisitor& visitorFunc)
 }
 HWTEST_F_L0(VerificationTest, IterateRemarked_VerifyAllRefs)
 {
-    RegionSpace regionSpace;
-    VerifyIterator verify(regionSpace);
+    RegionalHeap regionalHeap;
+    VerifyIterator verify(regionalHeap);
     AfterForwardVisitor visitor;
     std::unordered_set<BaseObject*> markSet;
-    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::PINNED_OBJECT, true);
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::NONMOVABLE_OBJECT, true);
     testObj = reinterpret_cast<BaseObject*>(addr);
     markSet.insert(testObj);
 

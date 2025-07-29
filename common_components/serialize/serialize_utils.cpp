@@ -32,10 +32,10 @@ SerializedBaseObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)
         case RegionDesc::RegionType::TO_REGION:
         case RegionDesc::RegionType::OLD_REGION:
             return SerializedBaseObjectSpace::REGULAR_SPACE;
-        case RegionDesc::RegionType::FULL_PINNED_REGION:
-        case RegionDesc::RegionType::RECENT_PINNED_REGION:
-        case RegionDesc::RegionType::FIXED_PINNED_REGION:
-        case RegionDesc::RegionType::FULL_FIXED_PINNED_REGION:
+        case RegionDesc::RegionType::FULL_POLYSIZE_NONMOVABLE_REGION:
+        case RegionDesc::RegionType::RECENT_POLYSIZE_NONMOVABLE_REGION:
+        case RegionDesc::RegionType::MONOSIZE_NONMOVABLE_REGION:
+        case RegionDesc::RegionType::FULL_MONOSIZE_NONMOVABLE_REGION:
         case RegionDesc::RegionType::READ_ONLY_REGION:
         case RegionDesc::RegionType::APPSPAWN_REGION:
             return SerializedBaseObjectSpace::PIN_SPACE;

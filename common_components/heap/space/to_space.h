@@ -56,10 +56,7 @@ public:
         fullToRegionList_.PrependRegion(region, RegionDesc::RegionType::TO_REGION);
     }
 
-    void AddThreadLocalRegion(RegionDesc* region)
-    {
-        tlToRegionList_.PrependRegion(region, RegionDesc::RegionType::TO_REGION);
-    }
+    RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem);
 
     void HandleFullThreadLocalRegion(RegionDesc* region)
     {

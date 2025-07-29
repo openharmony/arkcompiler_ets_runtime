@@ -23,7 +23,7 @@
 #include "common_components/common_runtime/hooks.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/heap/allocator/region_list.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/base/c_string.h"
 #include "common_components/heap/collector/collector.h"
 #include "common_components/heap/collector/marking_collector.h"
@@ -92,9 +92,9 @@ const char* RegionDesc::GetTypeName() const
         "from region",
         "unmovable from region",
         "to region",
-        "full pinned region",
-        "recent pinned region",
-        "raw pointer pinned region",
+        "full non-movable region",
+        "recent non-movable region",
+        "raw pointer non-movable region",
         "tl raw pointer region",
         "large region",
         "recent large region",
@@ -114,7 +114,7 @@ void RegionDesc::VisitAllObjectsBefore(const std::function<void(BaseObject *)> &
 {
     uintptr_t position = GetRegionStart();
 
-    if (IsFixedRegion()) {
+    if (IsMonoSizeNonMovableRegion()) {
         size_t size = static_cast<size_t>(GetRegionCellCount() + 1) * sizeof(uint64_t);
         while (position < end) {
             BaseObject *obj = reinterpret_cast<BaseObject *>(position);
@@ -122,7 +122,7 @@ void RegionDesc::VisitAllObjectsBefore(const std::function<void(BaseObject *)> &
             if (position > end) {
                 break;
             }
-            if (IsFreePinnedObject(obj)) {
+            if (IsFreeNonMovableObject(obj)) {
                 continue;
             }
             func(obj);
@@ -137,27 +137,9 @@ void RegionDesc::VisitAllObjectsBefore(const std::function<void(BaseObject *)> &
         while (position < end) {
             // GetAllocSize should before call func, because object maybe destroy in compact gc.
             func(reinterpret_cast<BaseObject *>(position));
-            size_t size = RegionSpace::GetAllocSize(*reinterpret_cast<BaseObject *>(position));
+            size_t size = RegionalHeap::GetAllocSize(*reinterpret_cast<BaseObject *>(position));
             position += size;
         }
-    }
-}
-
-void RegionDesc::VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func)
-{
-    CHECK_CC(GetRegionType() == RegionType::FIXED_PINNED_REGION ||
-        GetRegionType() == RegionType::FULL_FIXED_PINNED_REGION);
-    size_t size = (cellCount + 1) * sizeof(uint64_t);
-    uintptr_t position = GetRegionStart();
-    uintptr_t end = GetRegionAllocPtr();
-    while (position < end) {
-        // GetAllocSize should before call func, because object maybe destroy in compact gc.
-        BaseObject* obj = reinterpret_cast<BaseObject*>(position);
-        position += size;
-        if (position > end) {
-            break;
-        }
-        func(obj);
     }
 }
 
@@ -189,7 +171,7 @@ bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*
         while (position < allocPtr) {
             BaseObject* obj = reinterpret_cast<BaseObject*>(position);
             if (collector.IsSurvivedObject(obj) && !func(obj)) { return false; }
-            position += RegionSpace::GetAllocSize(*obj);
+            position += RegionalHeap::GetAllocSize(*obj);
         }
     }
     return true;
@@ -268,10 +250,13 @@ static const char *RegionDescRegionTypeToString(RegionDesc::RegionType type)
         [static_cast<uint8_t>(RegionDesc::RegionType::EXEMPTED_FROM_REGION)] = "EXEMPTED_FROM_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::TO_REGION)] = "TO_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::OLD_REGION)] = "OLD_REGION",
-        [static_cast<uint8_t>(RegionDesc::RegionType::FULL_PINNED_REGION)] = "FULL_PINNED_REGION",
-        [static_cast<uint8_t>(RegionDesc::RegionType::RECENT_PINNED_REGION)] = "RECENT_PINNED_REGION",
-        [static_cast<uint8_t>(RegionDesc::RegionType::FIXED_PINNED_REGION)] = "FIXED_PINNED_REGION",
-        [static_cast<uint8_t>(RegionDesc::RegionType::FULL_FIXED_PINNED_REGION)] = "FULL_FIXED_PINNED_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::FULL_POLYSIZE_NONMOVABLE_REGION)] =
+                                                            "FULL_POLYSIZE_NONMOVABLE_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::RECENT_POLYSIZE_NONMOVABLE_REGION)] =
+                                                            "RECENT_POLYSIZE_NONMOVABLE_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::MONOSIZE_NONMOVABLE_REGION)] = "MONOSIZE_NONMOVABLE_REGION",
+        [static_cast<uint8_t>(RegionDesc::RegionType::FULL_MONOSIZE_NONMOVABLE_REGION)] =
+                                                            "FULL_MONOSIZE_NONMOVABLE_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::RAW_POINTER_REGION)] = "RAW_POINTER_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::TL_RAW_POINTER_REGION)] = "TL_RAW_POINTER_REGION",
         [static_cast<uint8_t>(RegionDesc::RegionType::RECENT_LARGE_REGION)] = "RECENT_LARGE_REGION",
@@ -498,38 +483,6 @@ void RegionManager::CountLiveObject(const BaseObject* obj)
     region->AddLiveByteCount(obj->GetSize());
 }
 
-void RegionManager::AssembleLargeGarbageCandidates()
-{
-    largeRegionList_.MergeRegionList(recentLargeRegionList_, RegionDesc::RegionType::LARGE_REGION);
-}
-
-void RegionManager::AssemblePinnedGarbageCandidates()
-{
-    pinnedRegionList_.MergeRegionListWithoutHead(recentPinnedRegionList_, RegionDesc::RegionType::FULL_PINNED_REGION);
-    RegionDesc* region = pinnedRegionList_.GetHeadRegion();
-    for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-        fixedPinnedRegionList_[i]->MergeRegionListWithoutHead(*recentFixedPinnedRegionList_[i],
-            RegionDesc::RegionType::FULL_FIXED_PINNED_REGION);
-    }
-}
-
-void RegionManager::ClearRSet()
-{
-    auto clearFunc = [](RegionDesc* region) {
-        region->ClearRSet();
-    };
-    recentPinnedRegionList_.VisitAllRegions(clearFunc);
-    pinnedRegionList_.VisitAllRegions(clearFunc);
-    recentLargeRegionList_.VisitAllRegions(clearFunc);
-    largeRegionList_.VisitAllRegions(clearFunc);
-    rawPointerRegionList_.VisitAllRegions(clearFunc);
-    appSpawnRegionList_.VisitAllRegions(clearFunc);
-    for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-        recentFixedPinnedRegionList_[i]->VisitAllRegions(clearFunc);
-        fixedPinnedRegionList_[i]->VisitAllRegions(clearFunc);
-    }
-}
-
 void RegionManager::ForEachObjectUnsafe(const std::function<void(BaseObject*)>& visitor) const
 {
     for (uintptr_t regionAddr = regionHeapStart_; regionAddr < inactiveZone_;) {
@@ -549,14 +502,6 @@ void RegionManager::ForEachObjectSafe(const std::function<void(BaseObject*)>& vi
     STWParam stwParam{"visit-all-objects"};
     ScopedStopTheWorld stw(stwParam);
     ForEachObjectUnsafe(visitor);
-}
-
-void RegionManager::ForEachAwaitingJitFortUnsafe(const std::function<void(BaseObject*)>& visitor) const
-{
-    ASSERT(BaseRuntime::GetInstance()->GetMutatorManager().WorldStopped());
-    for (const auto jitFort : awaitingJitFort_) {
-        visitor(jitFort);
-    }
 }
 
 RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, bool expectPhysicalMem, bool allowGC,
@@ -641,132 +586,6 @@ RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
     return nullptr;
 }
 
-
-void RegionManager::FixFixedRegionList(MarkingCollector& collector, RegionList& list, size_t cellCount, GCStats& stats)
-{
-    size_t garbageSize = 0;
-    RegionDesc* region = list.GetHeadRegion();
-    while (region != nullptr) {
-        auto liveBytes = region->GetLiveByteCount();
-        if (liveBytes == 0) {
-            RegionDesc* del = region;
-            region = region->GetNextRegion();
-            list.DeleteRegion(del);
-
-            garbageSize += CollectRegion(del);
-            continue;
-        }
-        region->VisitAllObjectsWithFixedSize(cellCount,
-            [&collector, &region, &cellCount, &garbageSize](BaseObject* object) {
-            if (collector.IsSurvivedObject(object)) {
-                collector.FixObjectRefFields(object);
-            } else {
-                DLOG(ALLOC, "reclaim pinned obj %p", object);
-                garbageSize += (cellCount + 1) * sizeof(uint64_t);
-                region->CollectPinnedGarbage(object, cellCount);
-            }
-        });
-        region = region->GetNextRegion();
-    }
-    stats.pinnedGarbageSize += garbageSize;
-}
-
-void RegionManager::CollectFixHeapTaskForPinnedRegion(MarkingCollector &collector, RegionList &list,
-                                                      FixHeapTaskList &taskList)
-{
-    RegionDesc *region = list.GetHeadRegion();
-    while (region != nullptr) {
-        auto liveBytes = region->GetLiveByteCount();
-        if (liveBytes == 0) {
-            PostFixHeapWorker::AddEmptyRegionToCollectDuringPostFix(&list, region);
-            region = region->GetNextRegion();
-            continue;
-        }
-        taskList.push_back({region, FIX_REGION});
-        region = region->GetNextRegion();
-    }
-}
-
-void RegionManager::CollectFixTasks(FixHeapTaskList& taskList)
-{
-    // fix all objects.
-    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-        FixHeapWorker::CollectFixHeapTasks(taskList, largeRegionList_, FIX_OLD_REGION);
-        FixHeapWorker::CollectFixHeapTasks(taskList, appSpawnRegionList_, FIX_OLD_REGION);
-
-        FixHeapWorker::CollectFixHeapTasks(taskList, recentLargeRegionList_, FIX_RECENT_OLD_REGION);
-        FixHeapWorker::CollectFixHeapTasks(taskList, recentPinnedRegionList_, FIX_RECENT_OLD_REGION);
-        FixHeapWorker::CollectFixHeapTasks(taskList, rawPointerRegionList_, FIX_RECENT_OLD_REGION);
-        FixHeapWorker::CollectFixHeapTasks(taskList, pinnedRegionList_, FIX_OLD_REGION);
-
-        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-            FixHeapWorker::CollectFixHeapTasks(taskList, *recentFixedPinnedRegionList_[i], FIX_RECENT_OLD_REGION);
-            FixHeapWorker::CollectFixHeapTasks(taskList, *fixedPinnedRegionList_[i], FIX_OLD_REGION);
-        }
-    } else {
-        // fix only survived objects.
-        FixHeapWorker::CollectFixHeapTasks(taskList, largeRegionList_, FIX_REGION);
-        FixHeapWorker::CollectFixHeapTasks(taskList, appSpawnRegionList_, FIX_REGION);
-
-        // fix survived object but should be with line judgement.
-        FixHeapWorker::CollectFixHeapTasks(taskList, recentLargeRegionList_, FIX_RECENT_REGION);
-        FixHeapWorker::CollectFixHeapTasks(taskList, rawPointerRegionList_, FIX_RECENT_REGION);
-
-        FixHeapWorker::CollectFixHeapTasks(taskList, recentPinnedRegionList_, FIX_RECENT_REGION);
-        MarkingCollector &collector = reinterpret_cast<MarkingCollector &>(Heap::GetHeap().GetCollector());
-        CollectFixHeapTaskForPinnedRegion(collector, pinnedRegionList_, taskList);
-        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-            FixHeapWorker::CollectFixHeapTasks(taskList, *recentFixedPinnedRegionList_[i], FIX_RECENT_REGION);
-            CollectFixHeapTaskForPinnedRegion(collector, *fixedPinnedRegionList_[i], taskList);
-        }
-    }
-}
-
-
-size_t RegionManager::CollectLargeGarbage()
-{
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectLargeGarbage", "");
-    size_t garbageSize = 0;
-    MarkingCollector& collector = reinterpret_cast<MarkingCollector&>(Heap::GetHeap().GetCollector());
-    RegionDesc* region = largeRegionList_.GetHeadRegion();
-    while (region != nullptr) {
-        HeapAddress addr = region->GetRegionStart();
-        BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
-
-        if (region->IsJitFortAwaitInstallFlag()) {
-                region = region->GetNextRegion();
-                continue;
-        }
-        if (!collector.IsSurvivedObject(obj) && !region->IsNewObjectSinceMarking(obj)) {
-            DLOG(REGION, "reclaim large region %p@0x%zx+%zu type %u", region, region->GetRegionStart(),
-                 region->GetRegionAllocatedSize(), region->GetRegionType());
-
-            RegionDesc* del = region;
-            region = region->GetNextRegion();
-            largeRegionList_.DeleteRegion(del);
-            if (IsMachineCodeObject(reinterpret_cast<HeapAddress>(obj))) {
-                JitFortUnProt(del->GetRegionBaseSize(), reinterpret_cast<void*>(del->GetRegionBaseFast()));
-            }
-            if (del->GetRegionSize() > RegionDesc::LARGE_OBJECT_RELEASE_THRESHOLD) {
-                garbageSize += ReleaseRegion(del);
-            } else {
-                garbageSize += CollectRegion(del);
-            }
-        } else {
-            DLOG(REGION, "clear mark-bit for large region %p@0x%zx+%zu type %u", region, region->GetRegionStart(),
-                 region->GetRegionAllocatedSize(), region->GetRegionType());
-            region = region->GetNextRegion();
-        }
-    }
-
-    region = recentLargeRegionList_.GetHeadRegion();
-    while (region != nullptr) {
-        region = region->GetNextRegion();
-    }
-
-    return garbageSize;
-}
-
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
 void RegionManager::DumpRegionDesc() const
 {
@@ -793,13 +612,6 @@ void RegionManager::DumpRegionStats() const
     VLOG(DEBUG, "\tactive units: %zu (%zu B)", activeUnits, activeSize);
 
     garbageRegionList_.DumpRegionSummary();
-    pinnedRegionList_.DumpRegionSummary();
-    recentPinnedRegionList_.DumpRegionSummary();
-    rawPointerRegionList_.DumpRegionSummary();
-    largeRegionList_.DumpRegionSummary();
-    recentLargeRegionList_.DumpRegionSummary();
-    readOnlyRegionList_.DumpRegionSummary();
-    appSpawnRegionList_.DumpRegionSummary();
 
     size_t releasedUnits = freeRegionManager_.GetReleasedUnitCount();
     size_t dirtyUnits = freeRegionManager_.GetDirtyUnitCount();
@@ -838,84 +650,4 @@ void RegionManager::RequestForRegion(size_t size)
     std::this_thread::sleep_for(std::chrono::nanoseconds{ sleepTime });
     prevRegionAllocTime_ = TimeUtil::NanoSeconds();
 }
-
-uintptr_t RegionManager::AllocPinnedFromFreeList(size_t cellCount)
-{
-    GCPhase mutatorPhase = Mutator::GetMutator()->GetMutatorPhase();
-    // workaround: make sure collector doesn't fix newly allocated incomplete objects
-    if (mutatorPhase == GC_PHASE_MARK || mutatorPhase == GC_PHASE_FIX) {
-        return 0;
-    }
-
-    RegionList* list = fixedPinnedRegionList_[cellCount];
-    std::lock_guard<std::mutex> lock(list->GetListMutex());
-    uintptr_t allocPtr = list->AllocFromFreeListInLock();
-    // For making bitmap comform with live object count, do not mark object repeated.
-    if (allocPtr == 0 || mutatorPhase == GCPhase::GC_PHASE_IDLE) {
-        return allocPtr;
-    }
-
-    // Mark new allocated pinned object.
-    RegionDesc* regionDesc = RegionDesc::GetRegionDescAt(allocPtr);
-    BaseObject* object = reinterpret_cast<BaseObject*>(allocPtr);
-    regionDesc->MarkObject(object);
-    size_t size = (cellCount + 1) * sizeof(uint64_t);
-    regionDesc->AddLiveByteCount(size);
-    return allocPtr;
 }
-
-uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
-{
-    uintptr_t addr = 0;
-    std::mutex& regionListMutex = readOnlyRegionList_.GetListMutex();
-
-    std::lock_guard<std::mutex> lock(regionListMutex);
-    RegionDesc* headRegion = readOnlyRegionList_.GetHeadRegion();
-    if (headRegion != nullptr) {
-        addr = headRegion->Alloc(size);
-    }
-    if (addr == 0) {
-        RegionDesc* region =
-            TakeRegion(1, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, allowGC);
-        if (region == nullptr) {
-            return 0;
-        }
-        DLOG(REGION, "alloc read only region @0x%zx+%zu type %u", region->GetRegionStart(),
-             region->GetRegionAllocatedSize(),
-             region->GetRegionType());
-        GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
-        if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
-            phase == GC_PHASE_POST_MARK) {
-            region->SetMarkingLine();
-        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-            region->SetMarkingLine();
-            region->SetCopyLine();
-        }
-
-        // To make sure the allocedSize are consistent, it must prepend region first then alloc object.
-        readOnlyRegionList_.PrependRegionLocked(region, RegionDesc::RegionType::READ_ONLY_REGION);
-        addr = region->Alloc(size);
-    }
-
-    DLOG(ALLOC, "alloc read only obj 0x%zx(%zu)", addr, size);
-    return addr;
-}
-
-void RegionManager::MarkRememberSet(const std::function<void(BaseObject*)>& func)
-{
-    auto visitFunc = [&func](RegionDesc* region) {
-        region->VisitRememberSetBeforeMarking(func);
-    };
-    recentPinnedRegionList_.VisitAllRegions(visitFunc);
-    pinnedRegionList_.VisitAllRegions(visitFunc);
-    recentLargeRegionList_.VisitAllRegions(visitFunc);
-    largeRegionList_.VisitAllRegions(visitFunc);
-    appSpawnRegionList_.VisitAllRegions(visitFunc);
-    rawPointerRegionList_.VisitAllRegions(visitFunc);
-
-    for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
-        recentFixedPinnedRegionList_[i]->VisitAllRegions(visitFunc);
-        fixedPinnedRegionList_[i]->VisitAllRegions(visitFunc);
-    }
-}
-} // namespace common

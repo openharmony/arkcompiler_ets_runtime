@@ -19,7 +19,7 @@
 #include "common_components/common/type_def.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/heap/allocator/region_manager.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 
 namespace common {
 Address AllocateYoungInAllocBuffer(uintptr_t buffer, size_t size)
@@ -45,7 +45,7 @@ Address HeapAllocator::AllocateInYoungOrHuge(size_t size, LanguageType language)
 
 Address HeapAllocator::AllocateInNonmoveOrHuge(size_t size, LanguageType language)
 {
-    auto address = HeapManager::Allocate(size, AllocType::PINNED_OBJECT);
+    auto address = HeapManager::Allocate(size, AllocType::NONMOVABLE_OBJECT);
     BaseObject::Cast(address)->SetLanguageType(language);
     return address;
 }
@@ -73,7 +73,7 @@ Address HeapAllocator::AllocateInReadOnly(size_t size, LanguageType language)
 
 uintptr_t HeapAllocator::AllocateLargeJitFortRegion(size_t size, LanguageType language)
 {
-    RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& allocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     auto address =  allocator.AllocJitFortRegion(size);
     BaseObject::Cast(address)->SetLanguageType(language);
     return address;
@@ -93,26 +93,26 @@ Address HeapAllocator::AllocateOldOrLargeNoGC(size_t size)
     return HeapManager::Allocate(size, AllocType::MOVEABLE_OLD_OBJECT, false);
 }
 
-Address HeapAllocator::AllocatePinNoGC(size_t size)
+Address HeapAllocator::AllocateNonmoveNoGC(size_t size)
 {
-    return HeapManager::Allocate(size, AllocType::PINNED_OBJECT, false);
+    return HeapManager::Allocate(size, AllocType::NONMOVABLE_OBJECT, false);
 }
 
 Address HeapAllocator::AllocateOldRegion()
 {
-    RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& allocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     return allocator.AllocOldRegion();
 }
 
-Address HeapAllocator::AllocatePinnedRegion()
+Address HeapAllocator::AllocateNonMovableRegion()
 {
-    RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-    return allocator.AllocPinnedRegion();
+    RegionalHeap& allocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    return allocator.AllocateNonMovableRegion();
 }
 
 Address HeapAllocator::AllocateLargeRegion(size_t size)
 {
-    RegionSpace& allocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& allocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     return allocator.AllocLargeRegion(size);
 }
 

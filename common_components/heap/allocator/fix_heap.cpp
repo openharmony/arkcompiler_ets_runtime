@@ -52,7 +52,7 @@ template <FixHeapWorker::DeadObjectHandlerType type>
 void FixHeapWorker::FixRegion(RegionDesc *region)
 {
     size_t cellCount = 0;
-    if constexpr (type == FixHeapWorker::COLLECT_FIXED_PINNED) {
+    if constexpr (type == FixHeapWorker::COLLECT_MONOSIZE_NONMOVABLE) {
         cellCount = region->GetRegionCellCount();
     }
 
@@ -61,11 +61,11 @@ void FixHeapWorker::FixRegion(RegionDesc *region)
             collector_->FixObjectRefFields(object);
         } else {
             if constexpr (type == FixHeapWorker::FILL_FREE) {
-                FillFreeObject(object, RegionSpace::GetAllocSize(*object));
-            } else if constexpr (type == FixHeapWorker::COLLECT_FIXED_PINNED) {
-                result_.fixedPinnedGarbages.emplace_back(region, object, cellCount);
-            } else if constexpr (type == FixHeapWorker::COLLECT_PINNED) {
-                result_.pinnedGarbages.emplace_back(object, RegionSpace::GetAllocSize(*object));
+                FillFreeObject(object, RegionalHeap::GetAllocSize(*object));
+            } else if constexpr (type == FixHeapWorker::COLLECT_MONOSIZE_NONMOVABLE) {
+                result_.monoSizeNonMovableGarbages.emplace_back(region, object, cellCount);
+            } else if constexpr (type == FixHeapWorker::COLLECT_POLYSIZE_NONMOVABLE) {
+                result_.polySizeNonMovableGarbages.emplace_back(object, RegionalHeap::GetAllocSize(*object));
             } else if constexpr (type == FixHeapWorker::IGNORED) {
                 /* Ignore */
             }
@@ -78,7 +78,7 @@ template <FixHeapWorker::DeadObjectHandlerType type>
 void FixHeapWorker::FixRecentRegion(RegionDesc *region)
 {
     size_t cellCount = 0;
-    if constexpr (type == FixHeapWorker::COLLECT_FIXED_PINNED) {
+    if constexpr (type == FixHeapWorker::COLLECT_MONOSIZE_NONMOVABLE) {
         cellCount = region->GetRegionCellCount();
     }
 
@@ -87,11 +87,11 @@ void FixHeapWorker::FixRecentRegion(RegionDesc *region)
             collector_->FixObjectRefFields(object);
         } else {  // handle dead objects in tl-regions for concurrent gc.
             if constexpr (type == FixHeapWorker::FILL_FREE) {
-                FillFreeObject(object, RegionSpace::GetAllocSize(*object));
-            } else if constexpr (type == FixHeapWorker::COLLECT_FIXED_PINNED) {
-                result_.fixedPinnedGarbages.emplace_back(region, object, cellCount);
-            } else if constexpr (type == FixHeapWorker::COLLECT_PINNED) {
-                result_.pinnedGarbages.emplace_back(object, RegionSpace::GetAllocSize(*object));
+                FillFreeObject(object, RegionalHeap::GetAllocSize(*object));
+            } else if constexpr (type == FixHeapWorker::COLLECT_MONOSIZE_NONMOVABLE) {
+                result_.monoSizeNonMovableGarbages.emplace_back(region, object, cellCount);
+            } else if constexpr (type == FixHeapWorker::COLLECT_POLYSIZE_NONMOVABLE) {
+                result_.polySizeNonMovableGarbages.emplace_back(object, RegionalHeap::GetAllocSize(*object));
             } else if constexpr (type == FixHeapWorker::IGNORED) {
                 /* Ignore */
             }
@@ -125,10 +125,10 @@ void FixHeapWorker::DispatchRegionFixTask(FixHeapTask *task)
             FixRecentOldRegion(region);
             break;
         case FIX_RECENT_REGION:
-            if (region->IsFixedRegion()) {
-                FixRecentRegion<COLLECT_FIXED_PINNED>(region);
-            } else if (region->IsPinnedRegion()) {
-                FixRecentRegion<COLLECT_PINNED>(region);
+            if (region->IsMonoSizeNonMovableRegion()) {
+                FixRecentRegion<COLLECT_MONOSIZE_NONMOVABLE>(region);
+            } else if (region->IsPolySizeNonMovableRegion()) {
+                FixRecentRegion<COLLECT_POLYSIZE_NONMOVABLE>(region);
             } else if (region->IsLargeRegion()) {
                 FixRecentRegion<IGNORED>(region);
             } else {
@@ -136,10 +136,10 @@ void FixHeapWorker::DispatchRegionFixTask(FixHeapTask *task)
             }
             break;
         case FIX_REGION:
-            if (region->IsFixedRegion()) {
-                FixRegion<COLLECT_FIXED_PINNED>(region);
-            } else if (region->IsPinnedRegion()) {
-                FixRegion<COLLECT_PINNED>(region);
+            if (region->IsMonoSizeNonMovableRegion()) {
+                FixRegion<COLLECT_MONOSIZE_NONMOVABLE>(region);
+            } else if (region->IsPolySizeNonMovableRegion()) {
+                FixRegion<COLLECT_POLYSIZE_NONMOVABLE>(region);
             } else if (region->IsLargeRegion()) {
                 FixRegion<IGNORED>(region);
             } else {
@@ -158,14 +158,15 @@ std::stack<std::pair<RegionList *, RegionDesc *>> PostFixHeapWorker::emptyRegion
 
 void PostFixHeapWorker::PostClearTask()
 {
-    for (auto [region, object, cellCount] : result_.fixedPinnedGarbages) {
-        region->CollectPinnedGarbage(object, cellCount);
+    for (auto [region, object, cellCount] : result_.monoSizeNonMovableGarbages) {
+        region->CollectNonMovableGarbage(object, cellCount);
     }
-    for (auto [object, size] : result_.pinnedGarbages) {
+    for (auto [object, size] : result_.polySizeNonMovableGarbages) {
         FillFreeObject(object, size);
     }
-    DLOG(FIX, "Fix heap worker processed %d Regions, %d fixedPinnedGarbages, %d pinnedGarbages",
-         result_.numProcessedRegions, result_.fixedPinnedGarbages.size(), result_.pinnedGarbages.size());
+    DLOG(FIX, "Fix heap worker processed %d Regions, %d monoSizeNonMovableGarbages, %d polySizeNonMovableGarbages",
+         result_.numProcessedRegions, result_.monoSizeNonMovableGarbages.size(),
+         result_.polySizeNonMovableGarbages.size());
 }
 
 bool PostFixHeapWorker::Run([[maybe_unused]] uint32_t threadIndex)
@@ -184,7 +185,7 @@ void PostFixHeapWorker::AddEmptyRegionToCollectDuringPostFix(RegionList *list, R
 
 void PostFixHeapWorker::CollectEmptyRegions()
 {
-    RegionSpace &theAllocator = reinterpret_cast<RegionSpace &>(Heap::GetHeap().GetAllocator());
+    RegionalHeap &theAllocator = reinterpret_cast<RegionalHeap &>(Heap::GetHeap().GetAllocator());
     RegionManager &regionManager = theAllocator.GetRegionManager();
     GCStats &stats = Heap::GetHeap().GetCollector().GetGCStats();
     size_t garbageSize = 0;
@@ -196,7 +197,7 @@ void PostFixHeapWorker::CollectEmptyRegions()
         list->DeleteRegion(del);
         garbageSize += regionManager.CollectRegion(del);
     }
-    stats.pinnedGarbageSize += garbageSize;
+    stats.nonMovableGarbageSize += garbageSize;
 }
 
 };  // namespace common

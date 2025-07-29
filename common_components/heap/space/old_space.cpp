@@ -31,4 +31,18 @@ void OldSpace::DumpRegionStats() const
     VLOG(DEBUG, "\told-regions %zu: %zu units (%zu B, alloc %zu)",
         oldRegions,  oldUnits, oldSize, allocFromSize);
 }
+
+RegionDesc* OldSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
+{
+    RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, true);
+    ASSERT_LOGF(!IsGcThread(), "GC thread cannot take tlOldRegion");
+    if (region != nullptr) {
+        DLOG(REGION, "alloc thread local old region @0x%zx+%zu type %u", region->GetRegionStart(),
+             region->GetRegionAllocatedSize(),
+             region->GetRegionType());
+        InitRegionPhaseLine(region);
+        tlOldRegionList_.PrependRegion(region, RegionDesc::RegionType::THREAD_LOCAL_OLD_REGION);
+    }
+    return region;
+}
 } // namespace common

@@ -46,8 +46,8 @@ void GCStats::Init()
     fromSpaceSize = 0;
     smallGarbageSize = 0;
 
-    pinnedSpaceSize = 0;
-    pinnedGarbageSize = 0;
+    nonMovableSpaceSize = 0;
+    nonMovableGarbageSize = 0;
 
     largeSpaceSize = 0;
     largeGarbageSize = 0;
