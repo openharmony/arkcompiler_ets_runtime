@@ -117,6 +117,8 @@
       common::Log::*;
       common::AndroidLog*;
       common::ThreadHolder::*;
+      common::utf_helper::ConvertRegionUtf16ToUtf8*;
+      common::utf_helper::ConvertUtf8ToUnicodeChar*;
 
       panda::ecmascript::AotCrashInfo*;
       panda::ecmascript::Method::*;
@@ -327,6 +329,7 @@
       panda::ecmascript::ObjectFactory::NewJSSArray*;
       panda::ecmascript::ObjectFactory::NewJSObject*;
       panda::ecmascript::ObjectFactory::NewJSObjectByConstructor*;
+      panda::ecmascript::ObjectFactory::NewJSPrimitiveRef*;
       panda::ecmascript::ObjectFactory::NewJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewTaggedArray*;
@@ -359,7 +362,6 @@
       panda::ecmascript::Unlink*;
       panda::ecmascript::filesystem::CreateEmptyFile*;
       panda::ecmascript::base::ArrayHelper::GetLength*;
-      common::utf_helper::ConvertRegionUtf16ToUtf8*;
       panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;
       panda::ecmascript::base::NumberHelper::StringToBigInt*;
       panda::ecmascript::base::NumberHelper::TruncateDouble*;
