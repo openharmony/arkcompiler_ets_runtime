@@ -41,6 +41,8 @@ public:
     static constexpr uint32_t INDIRECT_SIZE = 8U; // 8: 2^3
     static constexpr uint32_t INDIRECT_MASK = INDIRECT_SIZE - 1U;
 
+    static constexpr uint64_t HIGH_8_BIT_MASK = 0xFFULL << 56; // used to detect 56-63 Bits
+
     enum SlotBarrier {
         NeedSlotBarrier,
         NoSlotBarrier,
@@ -109,6 +111,11 @@ public:
     std::atomic<HashTrieMapEntry*>& Overflow()
     {
         return overflow_;
+    }
+
+    uint64_t GetBitField() const
+    {
+        return bitField_;
     }
 
 private:
@@ -344,14 +351,15 @@ public:
             }
             return true;
         };
-        Range(readBarrier, iter);
+        Range(iter);
     }
 
-    template <typename ReadBarrier>
-    void Range(ReadBarrier&& readBarrier, std::function<bool(Node*)> &iter)
+    void Range(std::function<bool(Node*)> &iter)
     {
         for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
-            Iter(std::forward<ReadBarrier>(readBarrier), root_[i].load(std::memory_order_acquire), iter);
+            if (!Iter(root_[i].load(std::memory_order_acquire), iter)) {
+                return;
+            }
         }
     }
 
@@ -422,8 +430,7 @@ private:
     Node* Expand(Entry* oldEntry, Entry* newEntry,
         uint32_t oldHash, uint32_t newHash, uint32_t hashShift, Indirect* parent);
 
-    template<class ReadBarrier>
-    bool Iter(ReadBarrier &&readBarrier, Indirect *node, std::function<bool(Node *)> &iter);
+    bool Iter(Indirect *node, std::function<bool(Node *)> &iter);
 
     bool CheckWeakRef(const WeakRefFieldVisitor& visitor, Entry* entry);
     bool CheckWeakRef(const WeakRootVisitor& visitor, Entry* entry);

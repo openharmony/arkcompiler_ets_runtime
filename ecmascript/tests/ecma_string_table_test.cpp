@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "common_components/objects/string_table/hashtriemap.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_string_table_optimization-inl.h"
 #include "ecmascript/ecma_string_table.h"
@@ -156,6 +157,25 @@ HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
     TestLoadOrStoreConcurrentAccess<common::TrieMapConfig::NoSlotBarrier>();
 }
 
+// Check BitFiled of Entry
+template<typename Mutex, typename ThreadHolder, common::TrieMapConfig::SlotBarrier SlotBarrier>
+bool CheckBitFields(common::HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* map)
+{
+    bool highBitsNotSet = true;
+    std::function<bool(common::HashTrieMapNode *)> checkbit = [&highBitsNotSet](common::HashTrieMapNode *node) {
+        if (node->IsEntry()) {
+            uint64_t bitfield = node->AsEntry()->GetBitField();
+            if ((bitfield & common::TrieMapConfig::HIGH_8_BIT_MASK) != 0) {
+                highBitsNotSet = false;
+                return false;
+            }
+        }
+        return true;
+    };
+    map->Range(checkbit);
+    return highBitsNotSet;
+}
+
 template<common::TrieMapConfig::SlotBarrier barrier>
 void EcmaStringTableTest::TestLoadOrStoreConcurrentAccess()
 {
@@ -215,9 +235,6 @@ void EcmaStringTableTest::TestLoadOrStoreConcurrentAccess()
             ecmascript::ThreadSuspensionScope suspensionScope(thread);
             t.join();
         }
-        auto readBarrier = [vm](const void *obj, size_t offset) -> TaggedObject * {
-            return Barriers::GetTaggedObject(vm->GetAssociatedJSThread(), obj, offset);
-        };
         uint32_t count = 0;
         std::function<bool(common::HashTrieMapNode *)> iter = [&count](common::HashTrieMapNode *node) {
             if (node->IsEntry()) {
@@ -225,8 +242,9 @@ void EcmaStringTableTest::TestLoadOrStoreConcurrentAccess()
             }
             return true;
         };
-        map->Range(readBarrier, iter);
+        map->Range(iter);
         ASSERT_PRINT(count == string_count, count);
+        ASSERT_TRUE(CheckBitFields(map)) << "Bits 56-63 of Bitfield are incorrectly set!";
         delete map;
     }
 }
@@ -265,6 +283,7 @@ void EcmaStringTableTest::TestLoadOrStoreInsertNewKey()
     BaseString* loadResult2 = map->template Load<false>(std::move(readBarrier), key, value->ToBaseString());
     EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(loadResult2)).ToCString(thread).c_str(), "test_value");
     EXPECT_EQ(loadResult2, value->ToBaseString());
+    ASSERT_TRUE(CheckBitFields(map)) << "Bits 56-63 of Bitfield are incorrectly set!";
     delete map;
 }
 
@@ -312,6 +331,7 @@ void EcmaStringTableTest::TestLoadOrStoreStoreExistingKey()
               original->ToBaseString());
     EXPECT_EQ(map->template Load<false>(std::move(readBarrier), key2, origina2->ToBaseString()),
               origina2->ToBaseString());
+    ASSERT_TRUE(CheckBitFields(map)) << "Bits 56-63 of Bitfield are incorrectly set!";
     delete map;
 }
 
@@ -406,6 +426,7 @@ void EcmaStringTableTest::TestExpandHashCollisionHandling()
     // Verify overflow
     ASSERT_TRUE(entry->Overflow().load() != nullptr);
     ASSERT_TRUE(root->GetChild(0x2).load() != nullptr);
+    ASSERT_TRUE(CheckBitFields(map)) << "Bits 56-63 of Bitfield are incorrectly set!";
     delete map;
 }
 

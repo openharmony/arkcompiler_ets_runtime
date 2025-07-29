@@ -701,9 +701,7 @@ bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::CheckValidity(ReadBarrier&& 
 }
 
 template<typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
-template<typename ReadBarrier>
-bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Iter(ReadBarrier &&readBarrier, Indirect *node,
-                                                         std::function<bool(Node *)> &iter)
+bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Iter(Indirect *node, std::function<bool(Node *)> &iter)
 {
     if (node == nullptr) {
         return true;
@@ -719,7 +717,7 @@ bool HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Iter(ReadBarrier &&readBarri
 
         if (!(childNode->IsEntry())) {
             // Recursive traversal of indirect nodes
-            Iter(std::forward<ReadBarrier>(readBarrier), childNode->AsIndirect(), iter);
+            Iter(childNode->AsIndirect(), iter);
             continue;
         }
 
