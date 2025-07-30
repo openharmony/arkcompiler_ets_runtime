@@ -31,6 +31,7 @@ void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm) {}
 void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm) {}
 void VisitDynamicThreadPreforwardRoot(const RefFieldVisitor &visitorFunc, void *vm) {}
 void SweepThreadLocalJitFort() {}
+void MarkThreadLocalJitFortInstalled(void* thread, void* machineCode) {}
 void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase) {}
 void JSGCCallback(void *ecmaVM) {}
 bool IsPostForked() { return true; }

@@ -29,6 +29,7 @@
 #include "common_components/heap/allocator/region_list.h"
 #include "common_components/heap/allocator/fix_heap.h"
 #include "common_components/heap/allocator/slot_list.h"
+#include "common_components/common_runtime/hooks.h"
 
 namespace common {
 using JitFortUnProtHookType = void (*)(size_t size, void* base);
@@ -484,11 +485,21 @@ public:
     void MarkRememberSet(const std::function<void(BaseObject*)>& func);
     void ClearRSet();
 
-    void MarkJitFortMemInstalled(BaseObject *obj)
+    void MarkJitFortMemInstalled(void *thread, BaseObject *obj)
     {
         std::lock_guard guard(awaitingJitFortMutex_);
-        RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(false);
-        awaitingJitFort_.erase(obj);
+        // GC is running, we should mark JitFort installled after GC finish
+        if (Heap::GetHeap().GetGCPhase() != GCPhase::GC_PHASE_IDLE) {
+            jitFortPostGCInstallTask_.emplace(nullptr, obj);
+        } else {
+            // a threadlocal JitFort mem
+            if (thread) {
+                MarkThreadLocalJitFortInstalled(thread, obj);
+            } else {
+                RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(false);
+            }
+            awaitingJitFort_.erase(obj);
+        }
     }
 
     void MarkJitFortMemAwaitingInstall(BaseObject *obj)
@@ -496,6 +507,16 @@ public:
         std::lock_guard guard(awaitingJitFortMutex_);
         RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(true);
         awaitingJitFort_.insert(obj);
+    }
+
+    void HandlePostGCJitFortInstallTask()
+    {
+        ASSERT(Heap::GetHeap().GetGCPhase() == GCPhase::GC_PHASE_IDLE);
+        while (!jitFortPostGCInstallTask_.empty()) {
+            auto [thread, machineCode] = jitFortPostGCInstallTask_.top();
+            MarkJitFortMemInstalled(thread, machineCode);
+            jitFortPostGCInstallTask_.pop();
+        }
     }
 
 private:
@@ -562,6 +583,7 @@ private:
     // Awaiting JitFort object has no references from other objects,
     // but we need to keep them as live untill jit compilation has finished installing.
     std::set<BaseObject*> awaitingJitFort_;
+    std::stack<std::pair<void*, BaseObject*>> jitFortPostGCInstallTask_;
     std::mutex awaitingJitFortMutex_;
 
     friend class VerifyIterator;

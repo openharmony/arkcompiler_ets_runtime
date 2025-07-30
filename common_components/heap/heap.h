@@ -159,7 +159,7 @@ public:
         return false;
     }
 
-    static void MarkJitFortMemInstalled(void* obj);
+    static void MarkJitFortMemInstalled(void *thread, void *obj);
 
     static bool IsHeapAddress(const void* addr) { return IsHeapAddress(reinterpret_cast<HeapAddress>(addr)); }
 

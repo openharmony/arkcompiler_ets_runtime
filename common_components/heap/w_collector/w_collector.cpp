@@ -1040,6 +1040,7 @@ void WCollector::ClearAllGCInfo()
     COMMON_PHASE_TIMER("ClearAllGCInfo");
     RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
     space.ClearAllGCInfo();
+    reinterpret_cast<RegionSpace&>(theAllocator_).ClearJitFortAwaitingMark();
 }
 
 void WCollector::CollectSmallSpace()

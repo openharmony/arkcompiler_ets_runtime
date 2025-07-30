@@ -43,10 +43,10 @@ void HeapManager::StartRuntimeThreads() { Heap::GetHeap().StartRuntimeThreads();
 
 void HeapManager::StopRuntimeThreads() { Heap::GetHeap().StopRuntimeThreads(); }
 
-void HeapManager::MarkJitFortMemInstalled(void* obj)
+void HeapManager::MarkJitFortMemInstalled(void *vm, void *obj)
 {
-    RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
-    manager.MarkJitFortMemInstalled(reinterpret_cast<BaseObject*>(obj));
+    RegionManager &manager = reinterpret_cast<RegionSpace &>(Heap::GetHeap().GetAllocator()).GetRegionManager();
+    manager.MarkJitFortMemInstalled(vm, reinterpret_cast<BaseObject *>(obj));
 }
 
 void HeapManager::SetReadOnlyToROSpace()
