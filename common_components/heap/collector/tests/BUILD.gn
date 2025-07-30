@@ -109,12 +109,12 @@ host_unittest_action("Collector_Proxy_Test") {
   ]
 }
 
-host_unittest_action("Trace_Collector_Test") {
+host_unittest_action("Marking_Collector_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
-    "trace_collector_test.cpp",
+    "marking_collector_test.cpp",
   ]
 
   configs = [
@@ -187,7 +187,7 @@ group("unittest") {
     ":Finalizer_Processor_Test",
     ":Heuristic_Gc_Policy_Test",
     ":Collector_Proxy_Test",
-    ":Trace_Collector_Test",
+    ":Marking_Collector_Test",
     ":Task_Queue_Test",
     ":Gc_Request_Test",
   ]
@@ -202,7 +202,7 @@ group("host_unittest") {
     ":Finalizer_Processor_TestAction",
     ":Heuristic_Gc_Policy_TestAction",
     ":Collector_Proxy_TestAction",
-    ":Trace_Collector_TestAction",
+    ":Marking_Collector_TestAction",
     ":Task_Queue_TestAction",
     ":Gc_Request_TestAction",
   ]

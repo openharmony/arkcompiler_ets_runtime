@@ -293,7 +293,7 @@ public:
 
     void CountLiveObject(const BaseObject* obj) { regionManager_.CountLiveObject(obj); }
 
-    void PrepareTrace() { regionManager_.PrepareTrace(); }
+    void PrepareMarking() { regionManager_.PrepareMarking(); }
     void PrepareForward() { regionManager_.PrepareForward(); }
     void FeedHungryBuffers() override;
 
@@ -333,11 +333,11 @@ public:
         return regionInfo->IsEnqueuedObject(obj);
     }
 
-    static bool IsNewObjectSinceTrace(const BaseObject* object)
+    static bool IsNewObjectSinceMarking(const BaseObject* object)
     {
         RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(object));
         ASSERT_LOGF(region != nullptr, "region is nullptr");
-        return region->IsNewObjectSinceTrace(object);
+        return region->IsNewObjectSinceMarking(object);
     }
 
     static bool IsReadOnlyObject(const BaseObject* object)

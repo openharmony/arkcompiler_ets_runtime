@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/w_collector/post_trace_barrier.h"
-#include "common_components/heap/w_collector/tests/mock_barrier_collector.h"
+#include "common_components/heap/ark_collector/post_marking_barrier.h"
+#include "common_components/heap/ark_collector/tests/mock_barrier_collector.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
 #include "common_components/heap/heap_manager.h"
@@ -23,7 +23,7 @@
 using namespace common;
 
 namespace common::test {
-class PostTraceBarrierTest : public ::testing::Test {
+class PostMarkingBarrierTest : public ::testing::Test {
 protected:
     static void SetUpTestCase()
     {
@@ -43,85 +43,85 @@ protected:
     }
 };
 
-HWTEST_F_L0(PostTraceBarrierTest, ReadRefField_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, ReadRefField_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    BaseObject *resultObj = postTraceBarrier->ReadRefField(obj, field);
+    BaseObject *resultObj = postMarkingBarrier->ReadRefField(obj, field);
     ASSERT_TRUE(resultObj != nullptr);
     EXPECT_EQ(resultObj, obj);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, ReadRefField_TEST2)
+HWTEST_F_L0(PostMarkingBarrierTest, ReadRefField_TEST2)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    BaseObject *resultObj = postTraceBarrier->ReadRefField(nullptr, field);
+    BaseObject *resultObj = postMarkingBarrier->ReadRefField(nullptr, field);
     ASSERT_TRUE(resultObj != nullptr);
     EXPECT_EQ(resultObj, obj);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, ReadStaticRef_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, ReadStaticRef_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    BaseObject *resultObj = postTraceBarrier->ReadStaticRef(field);
+    BaseObject *resultObj = postMarkingBarrier->ReadStaticRef(field);
     ASSERT_TRUE(resultObj != nullptr);
     EXPECT_EQ(resultObj, obj);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, ReadStringTableStaticRef_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, ReadStringTableStaticRef_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     RefField<false> field(nullptr);
 
-    BaseObject* resultObj = postTraceBarrier->ReadStringTableStaticRef(field);
+    BaseObject* resultObj = postMarkingBarrier->ReadStringTableStaticRef(field);
     ASSERT_TRUE(resultObj == nullptr);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, ReadStringTableStaticRef_TEST2)
+HWTEST_F_L0(PostMarkingBarrierTest, ReadStringTableStaticRef_TEST2)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(addr);
     regionInfo->SetRegionAllocPtr(addr - 1);
-    regionInfo->SetTraceLine();
+    regionInfo->SetMarkingLine();
     RefField<false> field(obj);
 
-    BaseObject* resultObj = postTraceBarrier->ReadStringTableStaticRef(field);
+    BaseObject* resultObj = postMarkingBarrier->ReadStringTableStaticRef(field);
     ASSERT_TRUE(resultObj != nullptr);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, ReadStringTableStaticRef_TEST3)
+HWTEST_F_L0(PostMarkingBarrierTest, ReadStringTableStaticRef_TEST3)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -129,30 +129,30 @@ HWTEST_F_L0(PostTraceBarrierTest, ReadStringTableStaticRef_TEST3)
     regionInfo->SetRegionType(RegionDesc::RegionType::ALIVE_REGION_FIRST);
     RefField<false> field(obj);
 
-    BaseObject* resultObj = postTraceBarrier->ReadStringTableStaticRef(field);
+    BaseObject* resultObj = postMarkingBarrier->ReadStringTableStaticRef(field);
     ASSERT_TRUE(resultObj == nullptr);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, ReadStringTableStaticRef_TEST4)
+HWTEST_F_L0(PostMarkingBarrierTest, ReadStringTableStaticRef_TEST4)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
     Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
-    BaseObject* resultObj = postTraceBarrier->ReadStringTableStaticRef(field);
+    BaseObject* resultObj = postMarkingBarrier->ReadStringTableStaticRef(field);
     ASSERT_TRUE(resultObj != nullptr);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, WriteRefField_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, WriteRefField_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(addr);
@@ -161,45 +161,45 @@ HWTEST_F_L0(PostTraceBarrierTest, WriteRefField_TEST1)
 
     HeapAddress newObjAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* newObj = reinterpret_cast<BaseObject*>(newObjAddr);
-    postTraceBarrier->WriteRefField(oldObj, field, newObj);
+    postMarkingBarrier->WriteRefField(oldObj, field, newObj);
     MAddress newAddr = field.GetFieldValue();
 
     EXPECT_NE(oldAddr, newAddr);
     EXPECT_EQ(newAddr, reinterpret_cast<MAddress>(newObj));
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, WriteBarrier_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, WriteBarrier_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<> field(obj);
-    postTraceBarrier->WriteBarrier(obj, field, obj);
+    postMarkingBarrier->WriteBarrier(obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, WriteBarrier_TEST2)
+HWTEST_F_L0(PostMarkingBarrierTest, WriteBarrier_TEST2)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<> field(obj);
     Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
-    postTraceBarrier->WriteBarrier(obj, field, obj);
+    postMarkingBarrier->WriteBarrier(obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, ReadStruct_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, ReadStruct_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -210,15 +210,15 @@ HWTEST_F_L0(PostTraceBarrierTest, ReadStruct_TEST1)
     BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
     dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
     EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
-    postTraceBarrier->ReadStruct(dst, obj, src, sizeof(BaseObject));
+    postMarkingBarrier->ReadStruct(dst, obj, src, sizeof(BaseObject));
     EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, WriteStruct_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, WriteStruct_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -229,29 +229,29 @@ HWTEST_F_L0(PostTraceBarrierTest, WriteStruct_TEST1)
     BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
     dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
     EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
-    postTraceBarrier->WriteStruct(obj, dst, sizeof(BaseObject), src, sizeof(BaseObject));
+    postMarkingBarrier->WriteStruct(obj, dst, sizeof(BaseObject), src, sizeof(BaseObject));
     EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, AtomicReadRefField_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, AtomicReadRefField_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<true> field(obj);
 
-    BaseObject* result = postTraceBarrier->AtomicReadRefField(obj, field, std::memory_order_seq_cst);
+    BaseObject* result = postMarkingBarrier->AtomicReadRefField(obj, field, std::memory_order_seq_cst);
     EXPECT_EQ(result, obj);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, AtomicWriteRefField_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, AtomicWriteRefField_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -267,17 +267,17 @@ HWTEST_F_L0(PostTraceBarrierTest, AtomicWriteRefField_TEST1)
     newObj->SetSizeForwarded(newSize);
     EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
 
-    postTraceBarrier->AtomicWriteRefField(oldObj, oldField, newObj, std::memory_order_relaxed);
+    postMarkingBarrier->AtomicWriteRefField(oldObj, oldField, newObj, std::memory_order_relaxed);
 
     EXPECT_NE(oldField.GetFieldValue(), oldAddress);
     EXPECT_EQ(oldField.GetFieldValue(), reinterpret_cast<MAddress>(newObj));
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, AtomicWriteRefField_TEST2)
+HWTEST_F_L0(PostMarkingBarrierTest, AtomicWriteRefField_TEST2)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -293,34 +293,34 @@ HWTEST_F_L0(PostTraceBarrierTest, AtomicWriteRefField_TEST2)
     newObj->SetSizeForwarded(newSize);
     EXPECT_EQ(newObj->GetSizeForwarded(), newSize);
 
-    postTraceBarrier->AtomicWriteRefField(nullptr, oldField, newObj, std::memory_order_relaxed);
+    postMarkingBarrier->AtomicWriteRefField(nullptr, oldField, newObj, std::memory_order_relaxed);
 
     EXPECT_NE(oldField.GetFieldValue(), oldAddress);
     EXPECT_EQ(oldField.GetFieldValue(), reinterpret_cast<MAddress>(newObj));
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, AtomicSwapRefField_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, AtomicSwapRefField_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
     RefField<true> field(oldObj);
     HeapAddress newAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* newObj = reinterpret_cast<BaseObject*>(newAddr);
-    BaseObject* result = postTraceBarrier->AtomicSwapRefField(
+    BaseObject* result = postMarkingBarrier->AtomicSwapRefField(
         oldObj, field, newObj, std::memory_order_relaxed);
     EXPECT_EQ(result, oldObj);
     EXPECT_EQ(field.GetFieldValue(), reinterpret_cast<MAddress>(newObj));
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, CompareAndSwapRefField_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, CompareAndSwapRefField_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -339,17 +339,17 @@ HWTEST_F_L0(PostTraceBarrierTest, CompareAndSwapRefField_TEST1)
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    bool result = postTraceBarrier->CompareAndSwapRefField(
+    bool result = postMarkingBarrier->CompareAndSwapRefField(
         oldObj, oldField, oldObj, newObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_TRUE(result);
     EXPECT_EQ(oldField.GetFieldValue(), neWAddress);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, CompareAndSwapRefField_TEST2)
+HWTEST_F_L0(PostMarkingBarrierTest, CompareAndSwapRefField_TEST2)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -360,17 +360,17 @@ HWTEST_F_L0(PostTraceBarrierTest, CompareAndSwapRefField_TEST2)
 
     MAddress initialAddress = oldField.GetFieldValue();
 
-    bool result = postTraceBarrier->CompareAndSwapRefField(
+    bool result = postMarkingBarrier->CompareAndSwapRefField(
         oldObj, oldField, oldObj, oldObj, std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_TRUE(result);
     EXPECT_EQ(oldField.GetFieldValue(), initialAddress);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, CompareAndSwapRefField_TEST3)
+HWTEST_F_L0(PostMarkingBarrierTest, CompareAndSwapRefField_TEST3)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress oldAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* oldObj = reinterpret_cast<BaseObject*>(oldAddr);
@@ -389,16 +389,16 @@ HWTEST_F_L0(PostTraceBarrierTest, CompareAndSwapRefField_TEST3)
     MAddress neWAddress = newField.GetFieldValue();
     EXPECT_NE(oldAddress, neWAddress);
 
-    bool result = postTraceBarrier->CompareAndSwapRefField(oldObj, newField, oldObj, newObj,
+    bool result = postMarkingBarrier->CompareAndSwapRefField(oldObj, newField, oldObj, newObj,
         std::memory_order_seq_cst, std::memory_order_seq_cst);
     ASSERT_FALSE(result);
 }
 
-HWTEST_F_L0(PostTraceBarrierTest, CopyStructArray_TEST1)
+HWTEST_F_L0(PostMarkingBarrierTest, CopyStructArray_TEST1)
 {
     MockCollector collector;
-    auto postTraceBarrier = std::make_unique<PostTraceBarrier>(collector);
-    ASSERT_TRUE(postTraceBarrier != nullptr);
+    auto postMarkingBarrier = std::make_unique<PostMarkingBarrier>(collector);
+    ASSERT_TRUE(postMarkingBarrier != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -409,7 +409,7 @@ HWTEST_F_L0(PostTraceBarrierTest, CopyStructArray_TEST1)
     BaseObject* dstObj = reinterpret_cast<BaseObject*>(dst);
     dstObj->SetForwardState(BaseStateWord::ForwardState::FORWARDED);
     EXPECT_NE(dstObj->IsForwarding(), srcObj->IsForwarding());
-    postTraceBarrier->CopyStructArray(obj, dst, sizeof(BaseObject), obj, src, sizeof(BaseObject));
+    postMarkingBarrier->CopyStructArray(obj, dst, sizeof(BaseObject), obj, src, sizeof(BaseObject));
     EXPECT_EQ(dstObj->IsForwarding(), srcObj->IsForwarding());
 }
 }  // namespace common::test

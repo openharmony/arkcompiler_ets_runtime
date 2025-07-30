@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "common_components/heap/w_collector/trace_barrier.h"
+#include "common_components/heap/ark_collector/marking_barrier.h"
 
 #include "common_components/mutator/mutator.h"
 #if defined(COMMON_TSAN_SUPPORT)
@@ -20,22 +20,22 @@
 #endif
 
 namespace common {
-// Because gc thread will also have impact on tagged pointer in enum and trace phase,
+// Because gc thread will also have impact on tagged pointer in enum and marking phase,
 // so we don't expect reading barrier have the ability to modify the referent field.
-BaseObject* TraceBarrier::ReadRefField(BaseObject* obj, RefField<false>& field) const
+BaseObject* MarkingBarrier::ReadRefField(BaseObject* obj, RefField<false>& field) const
 {
     RefField<> tmpField(field);
     return (BaseObject*)tmpField.GetFieldValue();
 }
 
-BaseObject* TraceBarrier::ReadStaticRef(RefField<false>& field) const { return ReadRefField(nullptr, field); }
+BaseObject* MarkingBarrier::ReadStaticRef(RefField<false>& field) const { return ReadRefField(nullptr, field); }
 
-void TraceBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const
+void MarkingBarrier::ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const
 {
     CHECK_CC(memcpy_s(reinterpret_cast<void*>(dst), size, reinterpret_cast<void*>(src), size) == EOK);
 }
 
-void TraceBarrier::WriteRoot(BaseObject *obj) const
+void MarkingBarrier::WriteRoot(BaseObject *obj) const
 {
     ASSERT(Heap::IsHeapAddress(obj));
     Mutator *mutator = Mutator::GetMutator();
@@ -43,7 +43,7 @@ void TraceBarrier::WriteRoot(BaseObject *obj) const
     DLOG(BARRIER, "write root obj %p", obj);
 }
 
-void TraceBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void MarkingBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     UpdateRememberSet(obj, ref);
     RefField<> tmpField(field);
@@ -59,7 +59,7 @@ void TraceBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseOb
     field.SetFieldValue(newField.GetFieldValue());
 }
 #ifdef ARK_USE_SATB_BARRIER
-void TraceBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void MarkingBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     RefField<> tmpField(field);
     BaseObject* rememberedObject = nullptr;
@@ -83,7 +83,7 @@ void TraceBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObj
     DLOG(BARRIER, "write obj %p ref-field@%p: %#zx -> %p", obj, &field, rememberedObject, ref);
 }
 #else
-void TraceBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void MarkingBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     if (!Heap::IsTaggedObject((HeapAddress)ref)) {
         return;
@@ -98,14 +98,14 @@ void TraceBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObj
 }
 #endif
 
-void TraceBarrier::WriteStaticRef(RefField<false>& field, BaseObject* ref) const
+void MarkingBarrier::WriteStaticRef(RefField<false>& field, BaseObject* ref) const
 {
     std::atomic_thread_fence(std::memory_order_seq_cst);
     RefField<> newField(ref);
     field.SetFieldValue(newField.GetFieldValue());
 }
 
-void TraceBarrier::WriteStruct(BaseObject* obj, HeapAddress dst, size_t dstLen, HeapAddress src, size_t srcLen) const
+void MarkingBarrier::WriteStruct(BaseObject* obj, HeapAddress dst, size_t dstLen, HeapAddress src, size_t srcLen) const
 {
     CHECK_CC(obj != nullptr);
     if (obj != nullptr) { //LCOV_EXCL_BR_LINE
@@ -128,7 +128,7 @@ void TraceBarrier::WriteStruct(BaseObject* obj, HeapAddress dst, size_t dstLen, 
 #endif
 }
 
-BaseObject* TraceBarrier::AtomicReadRefField(BaseObject* obj, RefField<true>& field, MemoryOrder order) const
+BaseObject* MarkingBarrier::AtomicReadRefField(BaseObject* obj, RefField<true>& field, MemoryOrder order) const
 {
     BaseObject* target = nullptr;
     RefField<false> oldField(field.GetFieldValue(order));
@@ -137,8 +137,8 @@ BaseObject* TraceBarrier::AtomicReadRefField(BaseObject* obj, RefField<true>& fi
     return target;
 }
 
-void TraceBarrier::AtomicWriteRefField(BaseObject* obj, RefField<true>& field, BaseObject* newRef,
-                                       MemoryOrder order) const
+void MarkingBarrier::AtomicWriteRefField(BaseObject* obj, RefField<true>& field, BaseObject* newRef,
+                                         MemoryOrder order) const
 {
     RefField<> oldField(field.GetFieldValue(order));
     HeapAddress oldValue = oldField.GetFieldValue();
@@ -156,8 +156,8 @@ void TraceBarrier::AtomicWriteRefField(BaseObject* obj, RefField<true>& field, B
     }
 }
 
-BaseObject* TraceBarrier::AtomicSwapRefField(BaseObject* obj, RefField<true>& field, BaseObject* newRef,
-                                             MemoryOrder order) const
+BaseObject* MarkingBarrier::AtomicSwapRefField(BaseObject* obj, RefField<true>& field, BaseObject* newRef,
+                                               MemoryOrder order) const
 {
     RefField<> newField(newRef);
     HeapAddress oldValue = field.Exchange(newField.GetFieldValue(), order);
@@ -170,8 +170,8 @@ BaseObject* TraceBarrier::AtomicSwapRefField(BaseObject* obj, RefField<true>& fi
     return oldRef;
 }
 
-bool TraceBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& field, BaseObject* oldRef,
-                                          BaseObject* newRef, MemoryOrder succOrder, MemoryOrder failOrder) const
+bool MarkingBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& field, BaseObject* oldRef,
+                                            BaseObject* newRef, MemoryOrder succOrder, MemoryOrder failOrder) const
 {
     HeapAddress oldFieldValue = field.GetFieldValue(std::memory_order_seq_cst);
     RefField<false> oldField(oldFieldValue);
@@ -192,8 +192,8 @@ bool TraceBarrier::CompareAndSwapRefField(BaseObject* obj, RefField<true>& field
     return false;
 }
 
-void TraceBarrier::CopyStructArray(BaseObject* dstObj, HeapAddress dstField, MIndex dstSize, BaseObject* srcObj,
-                                   HeapAddress srcField, MIndex srcSize) const
+void MarkingBarrier::CopyStructArray(BaseObject* dstObj, HeapAddress dstField, MIndex dstSize, BaseObject* srcObj,
+                                     HeapAddress srcField, MIndex srcSize) const
 {
     LOG_COMMON(FATAL) << "Unresolved fatal";
     UNREACHABLE_CC();

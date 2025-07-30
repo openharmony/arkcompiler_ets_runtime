@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/w_collector/enum_barrier.h"
-#include "common_components/heap/w_collector/tests/mock_barrier_collector.h"
+#include "common_components/heap/ark_collector/enum_barrier.h"
+#include "common_components/heap/ark_collector/tests/mock_barrier_collector.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
 #include "common_components/heap/heap_manager.h"

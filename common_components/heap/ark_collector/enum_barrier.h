@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef COMMON_COMPONENTS_HEAP_W_COLLECTOR_ENUM_BARRIER_H
-#define COMMON_COMPONENTS_HEAP_W_COLLECTOR_ENUM_BARRIER_H
+#ifndef COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_ENUM_BARRIER_H
+#define COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_ENUM_BARRIER_H
 
-#include "common_components/heap/w_collector/idle_barrier.h"
+#include "common_components/heap/ark_collector/idle_barrier.h"
 
 namespace common {
 // EnumBarrier is the barrier for concurrent enum phase
@@ -50,4 +50,4 @@ public:
 };
 } // namespace common
 
-#endif // COMMON_COMPONENTS_HEAP_W_COLLECTOR_ENUM_BARRIER_H
+#endif // COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_ENUM_BARRIER_H

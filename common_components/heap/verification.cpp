@@ -14,6 +14,8 @@
  */
 
 #include "verification.h"
+
+#include "ark_collector/ark_collector.h"
 #include "allocator/region_desc.h"
 #include "allocator/region_space.h"
 #include "common/mark_work_stack.h"
@@ -26,7 +28,6 @@
 #include "mutator/mutator_manager.h"
 #include "securec.h"
 #include "thread/mutator_base.h"
-#include "w_collector/w_collector.h"
 #include <iomanip>
 #include <sstream>
 #include <unordered_set>
@@ -105,7 +106,7 @@ std::string GetObjectInfo(const BaseObject* obj)
           << "Start: 0x" << region->GetRegionStart() << ", "
           << "End: 0x" << region->GetRegionEnd() << ", "
           << "AllocPtr: 0x" << region->GetRegionAllocPtr() << ", "
-          << "TraceLine: 0x" << region->GetTraceLine() << ", "
+          << "MarkingLine: 0x" << region->GetMarkingLine() << ", "
           << "CopyLine: 0x" << region->GetCopyLine() << std::endl;
     }
 
@@ -210,7 +211,7 @@ public:
     {
         IsValidRef(obj, ref);
 
-        // check retraced objects, so they must be in one of the states below
+        // check remarked objects, so they must be in one of the states below
         auto refObj = ref.GetTargetObject();
         RegionDesc *region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(refObj));
 
@@ -235,14 +236,14 @@ public:
         if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
             CHECKF(RegionSpace::IsResurrectedObject(refObj) ||
                    RegionSpace::IsMarkedObject(refObj) ||
-                   RegionSpace::IsNewObjectSinceTrace(refObj) ||
+                   RegionSpace::IsNewObjectSinceMarking(refObj) ||
                    !RegionSpace::IsYoungSpaceObject(refObj))
                 << CONTEXT << "Object: " << GetObjectInfo(obj) << std::endl
                 << "Ref: " << GetRefInfo(ref) << std::endl;
         } else {
             CHECKF(RegionSpace::IsResurrectedObject(refObj) ||
                    RegionSpace::IsMarkedObject(refObj) ||
-                   RegionSpace::IsNewObjectSinceTrace(refObj))
+                   RegionSpace::IsNewObjectSinceMarking(refObj))
                 << CONTEXT << "Object: " << GetObjectInfo(obj) << std::endl
                 << "Ref: " << GetRefInfo(ref) << std::endl;
         }
@@ -355,9 +356,9 @@ public:
         VisitWeakRoots(refVisitor);
     }
 
-    // By default, IterateRetraced uses the VisitRoots method to traverse GC roots
+    // By default, IterateRemarked uses the VisitRoots method to traverse GC roots
     template <void (*VisitRoot)(const RefFieldVisitor &) = VisitRoots>
-    void IterateRetraced(VerifyVisitor &visitor, std::unordered_set<BaseObject *> &markSet, bool forRBDFX = false)
+    void IterateRemarked(VerifyVisitor &visitor, std::unordered_set<BaseObject *> &markSet, bool forRBDFX = false)
     {
         MarkStack<BaseObject*> markStack;
         BaseObject* obj = nullptr;
@@ -414,7 +415,7 @@ private:
         VisitRoots(markFunc);
     }
 
-    void Trace(MarkStack<BaseObject*>& markStack) {}
+    void Marking(MarkStack<BaseObject*>& markStack) {}
 
     RegionSpace& space_;
 };
@@ -422,14 +423,14 @@ private:
 void WVerify::VerifyAfterMarkInternal(RegionSpace& space)
 {
     CHECKF(Heap::GetHeap().GetGCPhase() == GCPhase::GC_PHASE_POST_MARK)
-        << CONTEXT << "Mark verification should be called after PostTrace()";
+        << CONTEXT << "Mark verification should be called after PostMarking()";
 
     auto iter = VerifyIterator(space);
     auto verifySTWRoots = AfterMarkVisitor();
     std::unordered_set<BaseObject*> markSet;
-    iter.IterateRetraced<VisitSTWRoots>(verifySTWRoots, markSet);
+    iter.IterateRemarked<VisitSTWRoots>(verifySTWRoots, markSet);
     auto verifyConcurrentRoots = AfterMarkVisitor<false>();
-    iter.IterateRetraced<VisitConcurrentRoots>(verifyConcurrentRoots, markSet);
+    iter.IterateRemarked<VisitConcurrentRoots>(verifyConcurrentRoots, markSet);
 
     LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterMark (STWRoots) verified ref count: "
                       << verifySTWRoots.VerifyRefCount();
@@ -437,7 +438,7 @@ void WVerify::VerifyAfterMarkInternal(RegionSpace& space)
                       << verifyConcurrentRoots.VerifyRefCount();
 }
 
-void WVerify::VerifyAfterMark(WCollector& collector)
+void WVerify::VerifyAfterMark(ArkCollector& collector)
 {
 #if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
@@ -464,7 +465,7 @@ void WVerify::VerifyAfterForwardInternal(RegionSpace& space)
     LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterForward verified ref count: " << visitor.VerifyRefCount();
 }
 
-void WVerify::VerifyAfterForward(WCollector& collector)
+void WVerify::VerifyAfterForward(ArkCollector& collector)
 {
 #if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
@@ -488,12 +489,12 @@ void WVerify::VerifyAfterFixInternal(RegionSpace& space)
     auto visitor = AfterFixVisitor();
 
     std::unordered_set<BaseObject*> markSet;
-    iter.IterateRetraced(visitor, markSet);
+    iter.IterateRemarked(visitor, markSet);
 
     LOG_COMMON(DEBUG) << "[WVerify]: VerifyAfterFix verified ref count: " << visitor.VerifyRefCount();
 }
 
-void WVerify::VerifyAfterFix(WCollector& collector)
+void WVerify::VerifyAfterFix(ArkCollector& collector)
 {
 #if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
@@ -515,12 +516,12 @@ void WVerify::EnableReadBarrierDFXInternal(RegionSpace& space)
     auto unsetter = ReadBarrierUnsetter();
 
     std::unordered_set<BaseObject*> markSet;
-    iter.IterateRetraced(setter, markSet, true);
+    iter.IterateRemarked(setter, markSet, true);
     // some slots of heap object are also roots, so we need to unset them
     iter.IterateRoot(unsetter);
 }
 
-void WVerify::EnableReadBarrierDFX(WCollector& collector)
+void WVerify::EnableReadBarrierDFX(ArkCollector& collector)
 {
 #if !defined(ENABLE_CMC_RB_DFX)
     return;
@@ -541,10 +542,10 @@ void WVerify::DisableReadBarrierDFXInternal(RegionSpace& space)
     auto unsetter = ReadBarrierUnsetter();
 
     std::unordered_set<BaseObject*> markSet;
-    iter.IterateRetraced(unsetter, markSet, true);
+    iter.IterateRemarked(unsetter, markSet, true);
 }
 
-void WVerify::DisableReadBarrierDFX(WCollector& collector)
+void WVerify::DisableReadBarrierDFX(ArkCollector& collector)
 {
 #if !defined(ENABLE_CMC_RB_DFX)
     return;

@@ -15,8 +15,8 @@
 
 #include "common_components/tests/test_helper.h"
 
-#include "common_components/heap/w_collector/w_collector.h"
-#include "common_components/heap/w_collector/w_collector.cpp"
+#include "common_components/heap/ark_collector/ark_collector.h"
+#include "common_components/heap/ark_collector/ark_collector.cpp"
 #include "common_components/heap/collector/collector_proxy.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/heap/allocator/region_desc.h"
@@ -26,7 +26,7 @@ using namespace common;
 
 namespace common::test {
 using SuspensionType = MutatorBase::SuspensionType;
-class WCollectorTest : public common::test::BaseTestWithScope {
+class ArkCollectorTest : public common::test::BaseTestWithScope {
 protected:
     static void SetUpTestCase()
     {
@@ -47,40 +47,40 @@ protected:
     }
 };
 
-std::unique_ptr<WCollector> GetWCollector()
+std::unique_ptr<ArkCollector> GetArkCollector()
 {
     CollectorResources &resources = Heap::GetHeap().GetCollectorResources();
     Allocator &allocator = Heap::GetHeap().GetAllocator();
 
-    return std::make_unique<WCollector>(allocator, resources);
+    return std::make_unique<ArkCollector>(allocator, resources);
 }
 
-HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest0)
+HWTEST_F_L0(ArkCollectorTest, IsUnmovableFromObjectTest0)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     BaseObject *obj = nullptr;
-    EXPECT_FALSE(wcollector->IsUnmovableFromObject(obj));
+    EXPECT_FALSE(arkCollector->IsUnmovableFromObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest1)
+HWTEST_F_L0(ArkCollectorTest, IsUnmovableFromObjectTest1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
 
     new (obj) BaseObject();
 
-    EXPECT_FALSE(wcollector->IsUnmovableFromObject(obj));
+    EXPECT_FALSE(arkCollector->IsUnmovableFromObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest2)
+HWTEST_F_L0(ArkCollectorTest, IsUnmovableFromObjectTest2)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::PINNED_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
@@ -95,13 +95,13 @@ HWTEST_F_L0(WCollectorTest, IsUnmovableFromObjectTest2)
 
     EXPECT_FALSE(isMarked);
 
-    EXPECT_TRUE(wcollector->IsUnmovableFromObject(obj));
+    EXPECT_TRUE(arkCollector->IsUnmovableFromObject(obj));
 }
 
-HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRefTest0)
+HWTEST_F_L0(ArkCollectorTest, ForwardUpdateRawRefTest0)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr);
@@ -110,7 +110,7 @@ HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRefTest0)
 
     common::ObjectRef root = {obj};
 
-    BaseObject *oldObj = wcollector->ForwardUpdateRawRef(root);
+    BaseObject *oldObj = arkCollector->ForwardUpdateRawRef(root);
     EXPECT_EQ(oldObj, obj);
 }
 
@@ -133,27 +133,27 @@ void FlipTest()
     mutatorManager.FlipMutators(param, stwTest, &mutatorTest);
 }
 
-HWTEST_F_L0(WCollectorTest, FlipTest)
+HWTEST_F_L0(ArkCollectorTest, FlipTest)
 {
     std::thread t1(FlipTest);
     t1.join();
 }
 
-HWTEST_F_L0(WCollectorTest, IsUnmovableFromObject_ReturnsFalseForNullptr)
+HWTEST_F_L0(ArkCollectorTest, IsUnmovableFromObject_ReturnsFalseForNullptr)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     BaseObject* obj = nullptr;
-    EXPECT_FALSE(wcollector->IsUnmovableFromObject(obj));
+    EXPECT_FALSE(arkCollector->IsUnmovableFromObject(obj));
 }
 
-class TestableWCollector : public WCollector {
+class TestableArkCollector : public ArkCollector {
 public:
-    using WCollector::ForwardObject;
+    using ArkCollector::ForwardObject;
 
-    explicit TestableWCollector(Allocator& allocator, CollectorResources& resources)
-        : WCollector(allocator, resources), currentGCPhase_(GCPhase::GC_PHASE_COPY) {}
+    explicit TestableArkCollector(Allocator& allocator, CollectorResources& resources)
+        : ArkCollector(allocator, resources), currentGCPhase_(GCPhase::GC_PHASE_COPY) {}
 
     void SetCurrentGCPhaseForTest(GCPhase phase)
     {
@@ -202,18 +202,18 @@ private:
     BaseStateWord stateWord_;
 };
 
-HWTEST_F_L0(WCollectorTest, ForwardObject_WithUnmovedObject_ReturnsSameAddress)
+HWTEST_F_L0(ArkCollectorTest, ForwardObject_WithUnmovedObject_ReturnsSameAddress)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
-    TestableWCollector* testableCollector = reinterpret_cast<TestableWCollector*>(wcollector.get());
+    TestableArkCollector* testableCollector = reinterpret_cast<TestableArkCollector*>(arkCollector.get());
 
     testableCollector->SetCurrentGCPhaseForTest(GCPhase::GC_PHASE_COPY);
     EXPECT_EQ(testableCollector->GetCurrentGCPhaseForTest(), GCPhase::GC_PHASE_COPY);
 }
 
-HWTEST_F_L0(WCollectorTest, TraceRefField_TEST1)
+HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST1)
 {
     constexpr uint64_t TAG_BITS_SHIFT = 48;
     constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
@@ -226,11 +226,11 @@ HWTEST_F_L0(WCollectorTest, TraceRefField_TEST1)
 
     MarkStack<BaseObject*> workStack;
     WeakStack weakStack;
-    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
     EXPECT_FALSE(Heap::IsTaggedObject(field.GetFieldValue()));
 }
 
-HWTEST_F_L0(WCollectorTest, TraceRefField_TEST2)
+HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST2)
 {
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -240,12 +240,12 @@ HWTEST_F_L0(WCollectorTest, TraceRefField_TEST2)
 
     MarkStack<BaseObject*> workStack;
     WeakStack weakStack;
-    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_APPSPAWN);
+    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_APPSPAWN);
     EXPECT_FALSE(region->IsInOldSpace());
     workStack.pop_back();
 }
 
-HWTEST_F_L0(WCollectorTest, TraceRefField_TEST3)
+HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST3)
 {
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -255,12 +255,12 @@ HWTEST_F_L0(WCollectorTest, TraceRefField_TEST3)
 
     MarkStack<BaseObject*> workStack;
     WeakStack weakStack;
-    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_APPSPAWN);
+    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_APPSPAWN);
     EXPECT_TRUE(region->IsInOldSpace());
     workStack.pop_back();
 }
 
-HWTEST_F_L0(WCollectorTest, TraceRefField_TEST4)
+HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST4)
 {
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -270,12 +270,12 @@ HWTEST_F_L0(WCollectorTest, TraceRefField_TEST4)
 
     MarkStack<BaseObject*> workStack;
     WeakStack weakStack;
-    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
     EXPECT_FALSE(region->IsInOldSpace());
     workStack.pop_back();
 }
 
-HWTEST_F_L0(WCollectorTest, TraceRefField_TEST5)
+HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST5)
 {
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -285,29 +285,28 @@ HWTEST_F_L0(WCollectorTest, TraceRefField_TEST5)
 
     MarkStack<BaseObject*> workStack;
     WeakStack weakStack;
-    TraceRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
     EXPECT_TRUE(region->IsInOldSpace());
 }
 
-HWTEST_F_L0(WCollectorTest, TraceRefField_TEST6)
+HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST6)
 {
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
     region->SetRegionAllocPtr(addr - 1);
-    region->SetTraceLine();
+    region->SetMarkingLine();
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
     MarkStack<BaseObject*> workStack;
-    TraceRefField(obj, obj, field, workStack, region);
-    EXPECT_TRUE(region->IsNewObjectSinceTrace(obj));
+    MarkingRefField(obj, obj, field, workStack, region);
+    EXPECT_TRUE(region->IsNewObjectSinceMarking(obj));
 }
-
-class TestCreateTraceWCollector : public TraceCollector {
+class TestCreateMarkingArkCollector : public MarkingCollector {
 public:
-    using TraceCollector::SetGCReason;
-    explicit TestCreateTraceWCollector(Allocator& allocator, CollectorResources& resources)
-        : TraceCollector(allocator, resources) {}
+    using MarkingCollector::SetGCReason;
+    explicit TestCreateMarkingArkCollector(Allocator& allocator, CollectorResources& resources)
+        : MarkingCollector(allocator, resources) {}
     BaseObject* ForwardObject(BaseObject*) override { return nullptr; }
     bool IsFromObject(BaseObject*) const override { return false; }
     bool IsUnmovableFromObject(BaseObject*) const override { return false; }
@@ -320,33 +319,33 @@ public:
     void AddRawPointerObject(BaseObject*) override {}
     void RemoveRawPointerObject(BaseObject*) override {}
     bool MarkObject(BaseObject* obj) const override { return false; }
-    void TraceObjectRefFields(BaseObject *obj, TraceRefFieldVisitor *data) override {}
+    void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) override {}
     BaseObject* CopyObjectAfterExclusive(BaseObject* obj) override { return nullptr; }
     void DoGarbageCollection() override {}
     bool IsCurrentPointer(RefField<>&) const override { return false; }
-    TraceRefFieldVisitor CreateTraceObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) override
+    MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) override
     {
-        return TraceRefFieldVisitor();
+        return MarkingRefFieldVisitor();
     }
 };
 
-HWTEST_F_L0(WCollectorTest, CreateTraceObjectRefFieldsVisitor_TEST1)
+HWTEST_F_L0(ArkCollectorTest, CreateMarkingObjectRefFieldsVisitor_TEST1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     MarkStack<BaseObject*> workStack;
     WeakStack weakStack;
-    TestCreateTraceWCollector* collector = reinterpret_cast<TestCreateTraceWCollector*>(wcollector.get());
+    TestCreateMarkingArkCollector* collector = reinterpret_cast<TestCreateMarkingArkCollector*>(arkCollector.get());
     collector->SetGCReason(GCReason::GC_REASON_YOUNG);
-    auto visitor = wcollector->CreateTraceObjectRefFieldsVisitor(&workStack, &weakStack);
+    auto visitor = arkCollector->CreateMarkingObjectRefFieldsVisitor(&workStack, &weakStack);
     EXPECT_TRUE(visitor.GetRefFieldVisitor() != nullptr);
 }
 
-HWTEST_F_L0(WCollectorTest, FixRefField_TEST1)
+HWTEST_F_L0(ArkCollectorTest, FixRefField_TEST1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     constexpr uint64_t TAG_BITS_SHIFT = 48;
     constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
@@ -356,18 +355,18 @@ HWTEST_F_L0(WCollectorTest, FixRefField_TEST1)
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr | TAG_HEAP_OBJECT_MASK);
     RefField<> field(obj);
-    wcollector->FixRefField(obj, field);
+    arkCollector->FixRefField(obj, field);
     EXPECT_FALSE(Heap::IsTaggedObject(field.GetFieldValue()));
 }
 
-HWTEST_F_L0(WCollectorTest, FixRefField_TEST2)
+HWTEST_F_L0(ArkCollectorTest, FixRefField_TEST2)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     BaseObject* obj = reinterpret_cast<BaseObject*>(0);
     RefField<> field(obj);
-    wcollector->FixRefField(obj, field);
+    arkCollector->FixRefField(obj, field);
     EXPECT_FALSE(Heap::IsHeapAddress(obj));
 }
 
@@ -383,10 +382,10 @@ public:
     }
 };
 
-HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRef_TEST1)
+HWTEST_F_L0(ArkCollectorTest, ForwardUpdateRawRef_TEST1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -402,8 +401,8 @@ HWTEST_F_L0(WCollectorTest, ForwardUpdateRawRef_TEST1)
 
     ObjectRef root;
     root.object = obj;
-    auto ret = wcollector->ForwardUpdateRawRef(root);
-    EXPECT_TRUE(wcollector->IsFromObject(obj));
+    auto ret = arkCollector->ForwardUpdateRawRef(root);
+    EXPECT_TRUE(arkCollector->IsFromObject(obj));
     EXPECT_EQ(ret, obj);
 }
 
@@ -412,10 +411,10 @@ public:
     BaseObject *GetForwardingPointer(const BaseObject *object) const override { return nullptr; }
 };
 
-HWTEST_F_L0(WCollectorTest, ForwardObject_TEST1)
+HWTEST_F_L0(ArkCollectorTest, ForwardObject_TEST1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -429,14 +428,14 @@ HWTEST_F_L0(WCollectorTest, ForwardObject_TEST1)
     TestForwardNullObject staticObject;
     obj->RegisterStatic(&staticObject);
 
-    auto ret = wcollector->ForwardObject(obj);
+    auto ret = arkCollector->ForwardObject(obj);
     EXPECT_EQ(ret, obj);
 }
 
-HWTEST_F_L0(WCollectorTest, CopyObjectImpl_TEST1)
+HWTEST_F_L0(ArkCollectorTest, CopyObjectImpl_TEST1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -450,39 +449,39 @@ HWTEST_F_L0(WCollectorTest, CopyObjectImpl_TEST1)
     TestForwardNullObject staticObject;
     obj->RegisterStatic(&staticObject);
 
-    auto ret = wcollector->CopyObjectImpl(obj);
+    auto ret = arkCollector->CopyObjectImpl(obj);
     EXPECT_TRUE(ret == nullptr);
 }
 
-HWTEST_F_L0(WCollectorTest, TryUpdateRefFieldImpl_TEST1)
+HWTEST_F_L0(ArkCollectorTest, TryUpdateRefFieldImpl_TEST1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     RefField<> field(nullptr);
     BaseObject* obj = nullptr;
-    bool ret = wcollector->TryUpdateRefField(nullptr, field, obj);
+    bool ret = arkCollector->TryUpdateRefField(nullptr, field, obj);
     EXPECT_FALSE(ret);
 }
 
-HWTEST_F_L0(WCollectorTest, TryUpdateRefFieldImpl_TEST2)
+HWTEST_F_L0(ArkCollectorTest, TryUpdateRefFieldImpl_TEST2)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
     region->SetRegionType(RegionDesc::RegionType::FROM_REGION);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
-    bool ret = wcollector->TryUpdateRefField(nullptr, field, obj);
+    bool ret = arkCollector->TryUpdateRefField(nullptr, field, obj);
     EXPECT_FALSE(ret);
 }
 
-HWTEST_F_L0(WCollectorTest, TryUpdateRefFieldImpl_TEST3)
+HWTEST_F_L0(ArkCollectorTest, TryUpdateRefFieldImpl_TEST3)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -497,14 +496,14 @@ HWTEST_F_L0(WCollectorTest, TryUpdateRefFieldImpl_TEST3)
     obj->RegisterStatic(&staticObject);
 
     RefField<false> field(obj);
-    bool ret = wcollector->TryForwardRefField(nullptr, field, obj);
+    bool ret = arkCollector->TryForwardRefField(nullptr, field, obj);
     EXPECT_FALSE(ret);
 }
 
-HWTEST_F_L0(WCollectorTest, TryUpdateRefFieldImpl_TEST4)
+HWTEST_F_L0(ArkCollectorTest, TryUpdateRefFieldImpl_TEST4)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
 
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
@@ -519,7 +518,7 @@ HWTEST_F_L0(WCollectorTest, TryUpdateRefFieldImpl_TEST4)
     obj->RegisterStatic(&staticObject);
 
     RefField<false> field(obj);
-    bool ret = wcollector->TryForwardRefField(nullptr, field, obj);
+    bool ret = arkCollector->TryForwardRefField(nullptr, field, obj);
     EXPECT_TRUE(ret);
 }
 }  // namespace common::test

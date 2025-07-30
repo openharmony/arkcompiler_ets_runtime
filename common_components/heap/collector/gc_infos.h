@@ -37,7 +37,7 @@ public:
         REG_ROOT,
         SLOT_ROOT,
     };
-    static GCInfoNode BuildNodeForTrace(uintptr_t startIP, uintptr_t ip, FrameAddress* fa)
+    static GCInfoNode BuildNodeForMarking(uintptr_t startIP, uintptr_t ip, FrameAddress* fa)
     {
         CString time = TimeUtil::GetTimestamp();
 
@@ -151,15 +151,15 @@ private:
 class CurrentGCInfo {
 public:
     ~CurrentGCInfo(){};
-    void PushFrameInfoForTrace(const GCInfoNode& frameGCInfo) { gcInfosForTrace.push_back(frameGCInfo); }
-    void PushFrameInfoForTrace(const GCInfoNode&& frameGCInfo) { gcInfosForTrace.push_back(frameGCInfo); }
+    void PushFrameInfoForMarking(const GCInfoNode& frameGCInfo) { gcInfosForMarking.push_back(frameGCInfo); }
+    void PushFrameInfoForMarking(const GCInfoNode&& frameGCInfo) { gcInfosForMarking.push_back(frameGCInfo); }
 
     void PushFrameInfoForFix(const GCInfoNodeForFix& frameGCInfo) { gcInfosForFix.push_back(frameGCInfo); }
     void PushFrameInfoForFix(const GCInfoNodeForFix&& frameGCInfo) { gcInfosForFix.push_back(frameGCInfo); }
     void Clear()
     {
-        gcInfosForTrace.clear();
-        std::vector<GCInfoNode>().swap(gcInfosForTrace);
+        gcInfosForMarking.clear();
+        std::vector<GCInfoNode>().swap(gcInfosForMarking);
         gcInfosForFix.clear();
         std::vector<GCInfoNodeForFix>().swap(gcInfosForFix);
     }
@@ -168,13 +168,13 @@ public:
         DLOG(ENUM, "  fix roots info:");
         std::for_each(gcInfosForFix.begin(), gcInfosForFix.end(),
                       [](const GCInfoNodeForFix& info) { info.DumpFrameGCInfo(); });
-        DLOG(ENUM, "  trace roots info:");
-        std::for_each(gcInfosForTrace.begin(), gcInfosForTrace.end(),
+        DLOG(ENUM, "  marking roots info:");
+        std::for_each(gcInfosForMarking.begin(), gcInfosForMarking.end(),
                       [](const GCInfoNode& info) { info.DumpFrameGCInfo(); });
     }
 
 private:
-    std::vector<GCInfoNode> gcInfosForTrace;
+    std::vector<GCInfoNode> gcInfosForMarking;
     std::vector<GCInfoNodeForFix> gcInfosForFix;
 };
 class GCInfos {
@@ -191,10 +191,15 @@ public:
         }
         gcInfos.push_back(CurrentGCInfo());
     }
-    void PushFrameInfoForTrace(const GCInfoNode& frameGCInfo) { GetCurrentGCInfo().PushFrameInfoForTrace(frameGCInfo); }
-    void PushFrameInfoForTrace(const GCInfoNode&& frameGCInfo)
+
+    void PushFrameInfoForMarking(const GCInfoNode& frameGCInfo)
     {
-        GetCurrentGCInfo().PushFrameInfoForTrace(frameGCInfo);
+        GetCurrentGCInfo().PushFrameInfoForMarking(frameGCInfo);
+    }
+
+    void PushFrameInfoForMarking(const GCInfoNode&& frameGCInfo)
+    {
+        GetCurrentGCInfo().PushFrameInfoForMarking(frameGCInfo);
     }
 
     void PushFrameInfoForFix(const GCInfoNodeForFix& infoNodeFoxFix)

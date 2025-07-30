@@ -15,15 +15,15 @@
 
 #include "common_components/heap/heap.h"
 
+#include "common_components/heap/ark_collector/idle_barrier.h"
+#include "common_components/heap/ark_collector/enum_barrier.h"
+#include "common_components/heap/ark_collector/marking_barrier.h"
+#include "common_components/heap/ark_collector/remark_barrier.h"
+#include "common_components/heap/ark_collector/post_marking_barrier.h"
+#include "common_components/heap/ark_collector/preforward_barrier.h"
+#include "common_components/heap/ark_collector/copy_barrier.h"
 #include "common_components/heap/collector/collector_proxy.h"
 #include "common_components/heap/collector/collector_resources.h"
-#include "common_components/heap/w_collector/idle_barrier.h"
-#include "common_components/heap/w_collector/enum_barrier.h"
-#include "common_components/heap/w_collector/trace_barrier.h"
-#include "common_components/heap/w_collector/remark_barrier.h"
-#include "common_components/heap/w_collector/post_trace_barrier.h"
-#include "common_components/heap/w_collector/preforward_barrier.h"
-#include "common_components/heap/w_collector/copy_barrier.h"
 #include "common_components/mutator/mutator_manager.h"
 
 #if defined(_WIN64)
@@ -49,8 +49,8 @@ public:
     HeapImpl()
         : theSpace_(Allocator::CreateAllocator()), collectorResources_(collectorProxy_),
           collectorProxy_(*theSpace_, collectorResources_), stwBarrier_(collectorProxy_),
-        idleBarrier_(collectorProxy_), enumBarrier_(collectorProxy_), traceBarrier_(collectorProxy_),
-        remarkBarrier_(collectorProxy_), postTraceBarrier_(collectorProxy_), preforwardBarrier_(collectorProxy_),
+        idleBarrier_(collectorProxy_), enumBarrier_(collectorProxy_), markingBarrier_(collectorProxy_),
+        remarkBarrier_(collectorProxy_), postMarkingBarrier_(collectorProxy_), preforwardBarrier_(collectorProxy_),
         copyBarrier_(collectorProxy_)
     {
         currentBarrier_.store(&stwBarrier_, std::memory_order_relaxed);
@@ -145,9 +145,9 @@ private:
     Barrier stwBarrier_;
     IdleBarrier idleBarrier_;
     EnumBarrier enumBarrier_;
-    TraceBarrier traceBarrier_;
+    MarkingBarrier markingBarrier_;
     RemarkBarrier remarkBarrier_;
-    PostTraceBarrier postTraceBarrier_;
+    PostMarkingBarrier postMarkingBarrier_;
     PreforwardBarrier preforwardBarrier_;
     CopyBarrier copyBarrier_;
     std::atomic<Barrier*> currentBarrier_ = nullptr;
@@ -301,7 +301,7 @@ void HeapImpl::InstallBarrier(const GCPhase phase)
     if (phase == GCPhase::GC_PHASE_ENUM) {
         currentBarrier_.store(&enumBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_MARK) {
-        currentBarrier_.store(&traceBarrier_, std::memory_order_relaxed);
+        currentBarrier_.store(&markingBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_PRECOPY) {
         currentBarrier_.store(&preforwardBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_COPY || phase == GCPhase::GC_PHASE_FIX) {
@@ -309,7 +309,7 @@ void HeapImpl::InstallBarrier(const GCPhase phase)
     } else if (phase == GCPhase::GC_PHASE_IDLE) {
         currentBarrier_.store(&idleBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_POST_MARK) {
-        currentBarrier_.store(&postTraceBarrier_, std::memory_order_relaxed);
+        currentBarrier_.store(&postMarkingBarrier_, std::memory_order_relaxed);
     } else if (phase == GCPhase::GC_PHASE_FINAL_MARK ||
                phase == GCPhase::GC_PHASE_REMARK_SATB) {
         currentBarrier_ = &remarkBarrier_;

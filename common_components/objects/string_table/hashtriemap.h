@@ -215,7 +215,6 @@ public:
         {
             totalDepth_.fetch_add(hashShift / TrieMapConfig::N_CHILDREN_LOG2 + 1, std::memory_order_relaxed);
             uint64_t currentSuccess = totalSuccessNum_.fetch_add(1, std::memory_order_relaxed) + 1;
-
             if (currentSuccess >= lastDumpPoint_.load(std::memory_order_relaxed) + DUMP_THRESHOLD) {
                 DumpWithLock(currentSuccess);
             }

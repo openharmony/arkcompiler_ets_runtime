@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/collector/trace_collector.h"
+#include "common_components/heap/collector/marking_collector.h"
 #include "common_components/heap/heap_manager.h"
-#include "common_components/heap/w_collector/w_collector.h"
+#include "common_components/heap/ark_collector/ark_collector.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
 #include <cstdint>
@@ -23,7 +23,7 @@
 using namespace common;
 
 namespace common::test {
-class TraceCollectorTest : public common::test::BaseTestWithScope {
+class MarkingCollectorTest : public common::test::BaseTestWithScope {
 protected:
     static void SetUpTestCase()
     {
@@ -59,18 +59,18 @@ protected:
         table.VisitRoots(visitor);
         return found;
     }
-    class TableTraceCollctor : public TraceCollector {
+    class TableMarkingCollctor : public MarkingCollector {
     public:
-        using TraceCollector::SetGCReason;
-        using TraceCollector::TraceRoots;
-        using TraceCollector::PushRootToWorkStack;
-        using TraceCollector::UpdateNativeThreshold;
+        using MarkingCollector::SetGCReason;
+        using MarkingCollector::MarkingRoots;
+        using MarkingCollector::PushRootToWorkStack;
+        using MarkingCollector::UpdateNativeThreshold;
     };
 };
 
-HWTEST_F_L0(TraceCollectorTest, RunGarbageCollection)
+HWTEST_F_L0(MarkingCollectorTest, RunGarbageCollection)
 {
-    TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
+    MarkingCollector& collector = reinterpret_cast<MarkingCollector&>(Heap::GetHeap().GetCollector());
     Heap::GetHeap().SetGCReason(GCReason::GC_REASON_YOUNG);
     collector.RunGarbageCollection(0, GCReason::GC_REASON_USER, common::GC_TYPE_FULL);
     ASSERT_FALSE(Heap::GetHeap().GetCollector().GetGCStats().isYoungGC());
@@ -80,17 +80,17 @@ HWTEST_F_L0(TraceCollectorTest, RunGarbageCollection)
     ASSERT_FALSE(Heap::GetHeap().GetCollector().GetGCStats().isYoungGC());
 }
 
-HWTEST_F_L0(TraceCollectorTest, RunGarbageCollectionTest2)
+HWTEST_F_L0(MarkingCollectorTest, RunGarbageCollectionTest2)
 {
-    TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
+    MarkingCollector& collector = reinterpret_cast<MarkingCollector&>(Heap::GetHeap().GetCollector());
     Heap::GetHeap().SetGCReason(GCReason::GC_REASON_YOUNG);
     collector.RunGarbageCollection(0, GCReason::GC_REASON_YOUNG, common::GC_TYPE_FULL);
     ASSERT_TRUE(Heap::GetHeap().GetCollector().GetGCStats().isYoungGC());
 }
 
-HWTEST_F_L0(TraceCollectorTest, UpdateNativeThresholdTest)
+HWTEST_F_L0(MarkingCollectorTest, UpdateNativeThresholdTest)
 {
-    TableTraceCollctor& collector = reinterpret_cast<TableTraceCollctor&>(Heap::GetHeap().GetCollector());
+    TableMarkingCollctor& collector = reinterpret_cast<TableMarkingCollctor&>(Heap::GetHeap().GetCollector());
     GCParam gcParam;
     gcParam.minGrowBytes = 1024;
     Heap::GetHeap().SetNativeHeapThreshold(512);
@@ -100,9 +100,9 @@ HWTEST_F_L0(TraceCollectorTest, UpdateNativeThresholdTest)
     EXPECT_NE(newThreshold, oldThreshold);
 }
 
-HWTEST_F_L0(TraceCollectorTest, UpdateNativeThresholdTest2)
+HWTEST_F_L0(MarkingCollectorTest, UpdateNativeThresholdTest2)
 {
-    TableTraceCollctor& collector = reinterpret_cast<TableTraceCollctor&>(Heap::GetHeap().GetCollector());
+    TableMarkingCollctor& collector = reinterpret_cast<TableMarkingCollctor&>(Heap::GetHeap().GetCollector());
     Heap::GetHeap().NotifyNativeAllocation(1100 * MB);
 
     GCParam param;
@@ -110,9 +110,9 @@ HWTEST_F_L0(TraceCollectorTest, UpdateNativeThresholdTest2)
     ASSERT_TRUE(Heap::GetHeap().GetNotifiedNativeSize() > MAX_NATIVE_SIZE_INC);
 }
 
-HWTEST_F_L0(TraceCollectorTest, TraceRootsTest)
+HWTEST_F_L0(MarkingCollectorTest, MarkingRootsTest)
 {
-    TableTraceCollctor& collector = reinterpret_cast<TableTraceCollctor&>(Heap::GetHeap().GetCollector());
+    TableMarkingCollctor& collector = reinterpret_cast<TableMarkingCollctor&>(Heap::GetHeap().GetCollector());
     CArrayList<BaseObject *> roots;
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
@@ -124,13 +124,13 @@ HWTEST_F_L0(TraceCollectorTest, TraceRootsTest)
     collector.SetGCReason(GC_REASON_YOUNG);
 
     roots.push_back(obj);
-    collector.TraceRoots(roots);
+    collector.MarkingRoots(roots);
     ASSERT_TRUE(region->IsInOldSpace());
 }
 
-HWTEST_F_L0(TraceCollectorTest, PushRootToWorkStackTest)
+HWTEST_F_L0(MarkingCollectorTest, PushRootToWorkStackTest)
 {
-    TableTraceCollctor& collector = reinterpret_cast<TableTraceCollctor&>(Heap::GetHeap().GetCollector());
+    TableMarkingCollctor& collector = reinterpret_cast<TableMarkingCollctor&>(Heap::GetHeap().GetCollector());
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);

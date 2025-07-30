@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef COMMON_COMPONENTS_HEAP_COLLECTOR_TRACE_COLLECTOR_H
-#define COMMON_COMPONENTS_HEAP_COLLECTOR_TRACE_COLLECTOR_H
+#ifndef COMMON_COMPONENTS_HEAP_COLLECTOR_MARKING_COLLECTOR_H
+#define COMMON_COMPONENTS_HEAP_COLLECTOR_MARKING_COLLECTOR_H
 
 #include <cstdint>
 #include <map>
@@ -112,16 +112,16 @@ using WeakStackBuf = MarkStackBuffer<std::shared_ptr<std::tuple<RefField<>*, siz
 using GlobalWorkStackQueue = GlobalStackQueue<WorkStack>;
 using GlobalWeakStackQueue = GlobalStackQueue<WeakStack>;
 
-class TraceCollector : public Collector {
+class MarkingCollector : public Collector {
     friend MarkingWork;
     friend ConcurrentMarkingWork;
 
 public:
-    explicit TraceCollector(Allocator& allocator, CollectorResources& resources)
+    explicit MarkingCollector(Allocator& allocator, CollectorResources& resources)
         : Collector(), theAllocator_(allocator), collectorResources_(resources)
     {}
 
-    ~TraceCollector() override = default;
+    ~MarkingCollector() override = default;
     virtual void PreGarbageCollection(bool isConcurrent);
     virtual void PostGarbageCollection(uint64_t gcIndex);
 
@@ -186,10 +186,10 @@ public:
 
     virtual bool MarkObject(BaseObject* obj) const = 0;
 
-    // avoid std::function allocation for each object trace
-    class TraceRefFieldVisitor {
+    // avoid std::function allocation for each object marking
+    class MarkingRefFieldVisitor {
     public:
-        TraceRefFieldVisitor() : closure_(std::make_shared<BaseObject *>(nullptr)) {}
+        MarkingRefFieldVisitor() : closure_(std::make_shared<BaseObject *>(nullptr)) {}
 
         template <typename Functor>
         void SetVisitor(Functor &&f)
@@ -197,15 +197,15 @@ public:
             visitor_ = std::forward<Functor>(f);
         }
         const auto &GetRefFieldVisitor() const { return visitor_; }
-        void SetTraceRefFieldArgs(BaseObject *obj) { *closure_ = obj; }
+        void SetMarkingRefFieldArgs(BaseObject *obj) { *closure_ = obj; }
         const auto &GetClosure() const { return closure_; }
 
     private:
         common::RefFieldVisitor visitor_;
         std::shared_ptr<BaseObject *> closure_;
     };
-    virtual TraceRefFieldVisitor CreateTraceObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) = 0;
-    virtual void TraceObjectRefFields(BaseObject *obj, TraceRefFieldVisitor *data) = 0;
+    virtual MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) = 0;
+    virtual void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) = 0;
 
     inline bool IsResurrectedObject(const BaseObject* obj) const { return RegionSpace::IsResurrectedObject(obj); }
 
@@ -314,7 +314,7 @@ protected:
 
     bool PushRootToWorkStack(RootSet *workStack, BaseObject *obj);
     void PushRootsToWorkStack(RootSet *workStack, const CArrayList<BaseObject *> &collectedRoots);
-    void TraceRoots(const CArrayList<BaseObject *> &collectedRoots);
+    void MarkingRoots(const CArrayList<BaseObject *> &collectedRoots);
     void Remark();
 
     bool MarkSatbBuffer(WorkStack& workStack);
@@ -390,4 +390,4 @@ private:
 
 } // namespace common
 
-#endif  // COMMON_COMPONENTS_HEAP_COLLECTOR_TRACE_COLLECTOR_H
+#endif  // COMMON_COMPONENTS_HEAP_COLLECTOR_MARKING_COLLECTOR_H

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 #include "common_components/heap/allocator/region_space.h"
-#include "common_components/heap/w_collector/copy_barrier.h"
+#include "common_components/heap/ark_collector/copy_barrier.h"
 #include "common_components/base/sys_call.h"
 #include "common_components/common/scoped_object_lock.h"
 #include "common_components/mutator/mutator.h"
@@ -55,9 +55,9 @@ BaseObject* CopyBarrier::ReadStringTableStaticRef(RefField<false>& field) const
     }
 
     auto isSurvivor = [](BaseObject* obj) {
-        RegionDesc *regionInfo =
-            RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
-        return (regionInfo->IsNewObjectSinceTrace(obj) || regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
+        RegionDesc *regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+        return (regionInfo->IsNewObjectSinceMarking(obj) ||
+            regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
     };
 
     RefField<> tmpField(field);

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+#include "common_components/heap/ark_collector/ark_collector.h"
 #include "common_components/tests/test_helper.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/common_runtime/base_runtime.cpp"
-#include "common_components/heap/w_collector/w_collector.h"
 
 using namespace common;
 

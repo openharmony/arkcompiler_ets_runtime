@@ -14,7 +14,7 @@
  */
 
 #include "common_components/heap/allocator/region_manager.h"
-#include "common_components/heap/collector/trace_collector.h"
+#include "common_components/heap/collector/marking_collector.h"
 #include "common_components/heap/heap.cpp"
 #include "common_components/common_runtime/base_runtime_param.h"
 #include "common_components/heap/heap_manager.h"
@@ -457,7 +457,7 @@ HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeCopyTest)
     free(regionMemory);
 }
 
-HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeTraceTest)
+HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeMarkingTest)
 {
     size_t totalUnits = 1024;
     size_t heapSize = totalUnits * RegionDesc::UNIT_SIZE;
@@ -479,7 +479,7 @@ HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeTraceTest)
     manager.MarkRememberSet([&](BaseObject* obj) {});
 
     int callbackCount = 0;
-    region->VisitRememberSetBeforeTrace([&](BaseObject* obj) {
+    region->VisitRememberSetBeforeMarking([&](BaseObject* obj) {
         callbackCount++;
     });
 

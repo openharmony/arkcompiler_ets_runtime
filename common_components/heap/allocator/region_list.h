@@ -230,7 +230,7 @@ public:
     {
         std::lock_guard<std::mutex> lock(listMutex_);
         for (RegionDesc* node = listHead_; node != nullptr; node = node->GetNextRegion()) {
-            node->ClearTraceCopyLine();
+            node->ClearMarkingCopyLine();
         }
         active_ = false;
     }

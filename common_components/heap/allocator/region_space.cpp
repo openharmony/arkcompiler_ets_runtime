@@ -42,9 +42,9 @@ RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
         GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
         if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
             phase == GC_PHASE_POST_MARK) {
-            region->SetTraceLine();
+            region->SetMarkingLine();
         } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-            region->SetTraceLine();
+            region->SetMarkingLine();
             region->SetCopyLine();
         }
 
@@ -145,9 +145,9 @@ uintptr_t RegionSpace::AllocOldRegion()
     GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
     if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
         phase == GC_PHASE_POST_MARK) {
-        region->SetTraceLine();
+        region->SetMarkingLine();
     } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-        region->SetTraceLine();
+        region->SetMarkingLine();
         region->SetCopyLine();
     }
 
@@ -172,9 +172,9 @@ uintptr_t RegionSpace::AllocPinnedRegion()
     GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
     if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
         phase == GC_PHASE_POST_MARK) {
-        region->SetTraceLine();
+        region->SetMarkingLine();
     } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-        region->SetTraceLine();
+        region->SetMarkingLine();
         region->SetCopyLine();
     }
 

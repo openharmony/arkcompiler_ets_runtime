@@ -26,7 +26,7 @@
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/base/c_string.h"
 #include "common_components/heap/collector/collector.h"
-#include "common_components/heap/collector/trace_collector.h"
+#include "common_components/heap/collector/marking_collector.h"
 #include "common_components/common/base_object.h"
 #include "common_components/common/scoped_object_access.h"
 #include "common_components/heap/heap.h"
@@ -176,7 +176,7 @@ bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*
         return true;
     }
 
-    TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
+    MarkingCollector& collector = reinterpret_cast<MarkingCollector&>(Heap::GetHeap().GetCollector());
     if (IsLargeRegion()) {
         if (IsJitFortAwaitInstallFlag()) {
             return true;
@@ -195,13 +195,13 @@ bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*
     return true;
 }
 
-void RegionDesc::VisitRememberSetBeforeTrace(const std::function<void(BaseObject*)>& func)
+void RegionDesc::VisitRememberSetBeforeMarking(const std::function<void(BaseObject*)>& func)
 {
     if (IsLargeRegion() && IsJitFortAwaitInstallFlag()) {
         // machine code which is not installed should skip here.
         return;
     }
-    uintptr_t end = std::min(GetTraceLine(), GetRegionAllocPtr());
+    uintptr_t end = std::min(GetMarkingLine(), GetRegionAllocPtr());
     GetRSet()->VisitAllMarkedCardBefore(func, GetRegionBaseFast(), end);
 }
 
@@ -627,7 +627,7 @@ RegionDesc *RegionManager::TakeRegion(size_t num, RegionDesc::UnitRole type, boo
 }
 
 
-void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& list, size_t cellCount, GCStats& stats)
+void RegionManager::FixFixedRegionList(MarkingCollector& collector, RegionList& list, size_t cellCount, GCStats& stats)
 {
     size_t garbageSize = 0;
     RegionDesc* region = list.GetHeadRegion();
@@ -656,7 +656,7 @@ void RegionManager::FixFixedRegionList(TraceCollector& collector, RegionList& li
     stats.pinnedGarbageSize += garbageSize;
 }
 
-void RegionManager::CollectFixHeapTaskForPinnedRegion(TraceCollector &collector, RegionList &list,
+void RegionManager::CollectFixHeapTaskForPinnedRegion(MarkingCollector &collector, RegionList &list,
                                                       FixHeapTaskList &taskList)
 {
     RegionDesc *region = list.GetHeadRegion();
@@ -698,7 +698,7 @@ void RegionManager::CollectFixTasks(FixHeapTaskList& taskList)
         FixHeapWorker::CollectFixHeapTasks(taskList, rawPointerRegionList_, FIX_RECENT_REGION);
 
         FixHeapWorker::CollectFixHeapTasks(taskList, recentPinnedRegionList_, FIX_RECENT_REGION);
-        TraceCollector &collector = reinterpret_cast<TraceCollector &>(Heap::GetHeap().GetCollector());
+        MarkingCollector &collector = reinterpret_cast<MarkingCollector &>(Heap::GetHeap().GetCollector());
         CollectFixHeapTaskForPinnedRegion(collector, pinnedRegionList_, taskList);
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
             FixHeapWorker::CollectFixHeapTasks(taskList, *recentFixedPinnedRegionList_[i], FIX_RECENT_REGION);
@@ -712,7 +712,7 @@ size_t RegionManager::CollectLargeGarbage()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectLargeGarbage", "");
     size_t garbageSize = 0;
-    TraceCollector& collector = reinterpret_cast<TraceCollector&>(Heap::GetHeap().GetCollector());
+    MarkingCollector& collector = reinterpret_cast<MarkingCollector&>(Heap::GetHeap().GetCollector());
     RegionDesc* region = largeRegionList_.GetHeadRegion();
     while (region != nullptr) {
         HeapAddress addr = region->GetRegionStart();
@@ -722,7 +722,7 @@ size_t RegionManager::CollectLargeGarbage()
                 region = region->GetNextRegion();
                 continue;
         }
-        if (!collector.IsSurvivedObject(obj) && !region->IsNewObjectSinceTrace(obj)) {
+        if (!collector.IsSurvivedObject(obj) && !region->IsNewObjectSinceMarking(obj)) {
             DLOG(REGION, "reclaim large region %p@0x%zx+%zu type %u", region, region->GetRegionStart(),
                  region->GetRegionAllocatedSize(), region->GetRegionType());
 
@@ -871,9 +871,9 @@ uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
         GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
         if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
             phase == GC_PHASE_POST_MARK) {
-            region->SetTraceLine();
+            region->SetMarkingLine();
         } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-            region->SetTraceLine();
+            region->SetMarkingLine();
             region->SetCopyLine();
         }
 
@@ -889,7 +889,7 @@ uintptr_t RegionManager::AllocReadOnly(size_t size, bool allowGC)
 void RegionManager::MarkRememberSet(const std::function<void(BaseObject*)>& func)
 {
     auto visitFunc = [&func](RegionDesc* region) {
-        region->VisitRememberSetBeforeTrace(func);
+        region->VisitRememberSetBeforeMarking(func);
     };
     recentPinnedRegionList_.VisitAllRegions(visitFunc);
     pinnedRegionList_.VisitAllRegions(visitFunc);
