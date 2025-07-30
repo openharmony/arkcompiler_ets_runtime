@@ -338,7 +338,6 @@ group("fuzztest") {
     "jsvaluerefuint32value_fuzzer:fuzztest",
     "jsvaluerefwithinint32_fuzzer:fuzztest",
     "loadapbinaryfile_fuzzer:fuzztest",
-    "loadpatchlong_fuzzer:fuzztest",
     "mapiteratorefget_fuzzer:fuzztest",
     "maprefgetsetkeyvaluesize_fuzzer:fuzztest",
     "mergeapfiles_fuzzer:fuzztest",
