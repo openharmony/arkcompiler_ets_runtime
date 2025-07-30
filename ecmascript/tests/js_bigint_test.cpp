@@ -489,12 +489,16 @@ HWTEST_F_L0(JSBigintTest, Int64ToBigInt)
     JSHandle<BigInt> resBigint3 = BigInt::Int64ToBigInt(thread, INT_MAX);
     JSHandle<BigInt> resBigint4 = BigInt::Int64ToBigInt(thread, INT_MIN);
     JSHandle<BigInt> resBigint5 = BigInt::Int64ToBigInt(thread, 0);
+    JSHandle<BigInt> resBigint6 = BigInt::Int64ToBigInt(thread, 1234);
+    JSHandle<BigInt> resBigint7 = BigInt::Int64ToBigInt(thread, LLONG_MAX - INT_MAX);
 
     EXPECT_TRUE(resBigint1->ToInt64() == LLONG_MAX);
     EXPECT_TRUE(resBigint2->ToInt64() == LLONG_MIN);
     EXPECT_TRUE(resBigint3->ToInt64() == INT_MAX);
     EXPECT_TRUE(resBigint4->ToInt64() == INT_MIN);
     EXPECT_TRUE(resBigint5->ToInt64() == 0);
+    EXPECT_TRUE(resBigint6->ToInt64() == 1234);
+    EXPECT_TRUE(resBigint7->ToInt64() == LLONG_MAX - INT_MAX);
 }
 
 /**
@@ -508,10 +512,14 @@ HWTEST_F_L0(JSBigintTest, Uint64ToBigInt)
     JSHandle<BigInt> resBigint1 = BigInt::Uint64ToBigInt(thread, ULLONG_MAX);
     JSHandle<BigInt> resBigint2 = BigInt::Uint64ToBigInt(thread, UINT_MAX);
     JSHandle<BigInt> resBigint3 = BigInt::Uint64ToBigInt(thread, 0);
+    JSHandle<BigInt> resBigint4 = BigInt::Uint64ToBigInt(thread, 1234U);
+    JSHandle<BigInt> resBigint5 = BigInt::Uint64ToBigInt(thread, ULLONG_MAX - UINT_MAX);
 
     EXPECT_TRUE(resBigint1->ToUint64() == ULLONG_MAX);
     EXPECT_TRUE(resBigint2->ToUint64() == UINT_MAX);
     EXPECT_TRUE(resBigint3->ToUint64() == 0);
+    EXPECT_TRUE(resBigint4->ToUint64() == 1234U);
+    EXPECT_TRUE(resBigint5->ToUint64() == ULLONG_MAX - UINT_MAX);
 }
 
 void GetWordsArray(bool *signBit, size_t wordCount, uint64_t *words, JSHandle<BigInt> bigintVal)

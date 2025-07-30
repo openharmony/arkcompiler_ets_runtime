@@ -1554,7 +1554,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_New_Uint64)
 
     JSHandle<BigInt> maxBigintUint64Val(thread_, JSNApiHelper::ToJSTaggedValue(*maxBigintUint64));
     EXPECT_EQ(maxBigintUint64Val->GetDigit(0), static_cast<uint32_t>(maxUint64 & 0xffffffff));
-    EXPECT_EQ(maxBigintUint64Val->GetDigit(1), static_cast<uint32_t>((maxUint64 >> BigInt::DATEBITS) & 0xffffffff));
+    EXPECT_EQ(maxBigintUint64Val->GetDigit(1), static_cast<uint32_t>((maxUint64 >> BigInt::DATA_BITS) & 0xffffffff));
 
     uint64_t minUint64 = std::numeric_limits<uint64_t>::min();
     Local<BigIntRef> minBigintUint64 = BigIntRef::New(vm_, minUint64);
@@ -1573,7 +1573,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_New_Int64)
 
     JSHandle<BigInt> maxBigintInt64Val(thread_, JSNApiHelper::ToJSTaggedValue(*maxBigintInt64));
     EXPECT_EQ(maxBigintInt64Val->GetDigit(0), static_cast<uint32_t>(maxInt64 & 0xffffffff));
-    EXPECT_EQ(maxBigintInt64Val->GetDigit(1), static_cast<uint32_t>((maxInt64 >> BigInt::DATEBITS) & 0xffffffff));
+    EXPECT_EQ(maxBigintInt64Val->GetDigit(1), static_cast<uint32_t>((maxInt64 >> BigInt::DATA_BITS) & 0xffffffff));
 
     int64_t minInt64 = std::numeric_limits<int64_t>::min();
     Local<BigIntRef> minBigintInt64 = BigIntRef::New(vm_, minInt64);
@@ -1582,7 +1582,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_New_Int64)
     JSHandle<BigInt> minBigintInt64Val(thread_, JSNApiHelper::ToJSTaggedValue(*minBigintInt64));
     EXPECT_EQ(minBigintInt64Val->GetSign(), true);
     EXPECT_EQ(minBigintInt64Val->GetDigit(0), static_cast<uint32_t>((-minInt64) & 0xffffffff));
-    EXPECT_EQ(minBigintInt64Val->GetDigit(1), static_cast<uint32_t>(((-minInt64) >> BigInt::DATEBITS) & 0xffffffff));
+    EXPECT_EQ(minBigintInt64Val->GetDigit(1), static_cast<uint32_t>(((-minInt64) >> BigInt::DATA_BITS) & 0xffffffff));
 }
 
 /**

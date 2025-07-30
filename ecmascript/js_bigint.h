@@ -31,22 +31,28 @@ class JSThread;
 
 class BigInt : public TaggedObject {
 public:
-    static constexpr uint32_t DATEBITS = sizeof(uint32_t) * 8; // 8 : one-bit number of bytes
+    static constexpr uint32_t DATA_BITS = sizeof(uint32_t) * 8; // 8 : one-bit number of bytes
     static constexpr uint32_t MAXBITS = 1_MB; // 1 MB : Maximum space that can be opened up
     static constexpr uint32_t kMaxLengthBits = 1 << 30;  // ~1 billion.
-    static constexpr uint32_t MAXSIZE = MAXBITS / DATEBITS; // the maximum value of size
+    static constexpr uint32_t MAXSIZE = MAXBITS / DATA_BITS; // the maximum value of size
     static constexpr uint32_t MAXOCTALVALUE = 7; // 7 : max octal value
     static constexpr uint32_t BINARY = 2; // 2 : binary
 
     static constexpr uint32_t OCTAL = 8; // 8 : octal
     static constexpr uint32_t DECIMAL = 10; // 10 : decimal
     static constexpr uint32_t HEXADECIMAL = 16; // 16 : hexadecimal
-    static constexpr uint32_t HALFDATEBITS = DATEBITS / 2;
-    static constexpr uint32_t HALFUINT32VALUE = 1U << HALFDATEBITS;
-    static constexpr uint32_t HALFDATEMASK = HALFUINT32VALUE - 1;
+    static constexpr uint32_t HALF_DATA_BITS = DATA_BITS / 2;
+    static constexpr uint32_t HALF_UINT32_VALUE = 1U << HALF_DATA_BITS;
+    static constexpr uint32_t HALF_DATA_MASK = HALF_UINT32_VALUE - 1;
     CAST_CHECK(BigInt, IsBigInt);
     template <MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE>
     static JSHandle<BigInt> CreateBigint(JSThread *thread, uint32_t size);
+
+    template <MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE>
+    static JSHandle<BigInt> CreateRawBigInt(JSThread *thread, uint32_t size);
+
+    template <MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE>
+    static JSHandle<BigInt> CreateSubBigInt(JSThread *thread, const JSHandle<BigInt>& x, uint32_t size);
 
     static bool Equal(const JSTaggedValue &x, const JSTaggedValue &y);
     static PUBLIC_API bool SameValue(const JSTaggedValue &x, const JSTaggedValue &y);

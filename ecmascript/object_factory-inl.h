@@ -183,7 +183,7 @@ TaggedObject *ObjectFactory::AllocObjectWithSpaceType(size_t size, JSHClass *cls
 }
 
 template <MemSpaceType type>
-JSHandle<BigInt> ObjectFactory::NewBigInt(uint32_t length)
+JSHandle<BigInt> ObjectFactory::NewBigIntWithoutInitData(uint32_t length)
 {
     NewObjectHook();
     ASSERT(length > 0);
@@ -198,8 +198,25 @@ JSHandle<BigInt> ObjectFactory::NewBigInt(uint32_t length)
     }
     JSHandle<BigInt> bigint(thread_, header);
     bigint->SetLength(length);
-    bigint->SetSign(false);
+    return bigint;
+}
+
+template <MemSpaceType type>
+JSHandle<BigInt> ObjectFactory::NewBigInt(uint32_t length)
+{
+    JSHandle<BigInt> bigint = NewBigIntWithoutInitData<type>(length);
     bigint->InitializationZero();
+    bigint->SetSign(false);
+    return bigint;
+}
+
+template <MemSpaceType type>
+JSHandle<BigInt> ObjectFactory::NewSubBigInt(const JSHandle<BigInt>& x, uint32_t length)
+{
+    JSHandle<BigInt> bigint = NewBigIntWithoutInitData<type>(length);
+    bigint->SetSign(x->GetSign());
+    ASSERT(x->GetLength() >= length);
+    std::copy(x->GetData(), x->GetData() + length, bigint->GetData());
     return bigint;
 }
 }  // namespace panda::ecmascript
