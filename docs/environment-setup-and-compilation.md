@@ -2,9 +2,7 @@
 
 ## Environment Configuration
 
-Use Ubuntu 18.04 or 20.04. For details about how to set up the environment, see:
-
-[Setting Up Ubuntu Development Environment with Installation Package and Building Source Code](https://developer.huawei.com/consumer/cn/training/course/video/C101639988048536240)
+Use Ubuntu 18.04 or 20.04. For details about how to set up the environment
 
 ## Compilation
 
