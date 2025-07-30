@@ -175,5 +175,28 @@ private:
     ThreadStateTransitionScope<T, ThreadState::IS_SUSPENDED> scope_;
     NO_COPY_SEMANTIC(SuspendAllScope);
 };
+
+template<typename T>
+class SuspendOtherScope final {
+    static_assert(std::is_base_of_v<JSThread, T>);
+    static_assert(!std::is_same_v<JitThread, T>);
+public:
+    explicit SuspendOtherScope(T* self, T* target)
+        : self_(self), target_(target), scope_(self)
+    {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SuspendOther", "");
+        Runtime::GetInstance()->SuspendOther(self_, target_);
+    }
+    ~SuspendOtherScope()
+    {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ResumeOther", "");
+        Runtime::GetInstance()->ResumeOther(self_, target_);
+    }
+private:
+    T* self_;
+    T* target_;
+    ThreadStateTransitionScope<T, ThreadState::IS_SUSPENDED> scope_;
+    NO_COPY_SEMANTIC(SuspendOtherScope);
+};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_CHECKPOINT_THREAD_STATE_TRANSITION_H

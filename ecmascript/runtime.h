@@ -51,6 +51,8 @@ public:
 
     void SuspendAll(JSThread *current);
     void ResumeAll(JSThread *current);
+    void SuspendOther(JSThread *current, JSThread *target);
+    void ResumeOther(JSThread *current, JSThread *target);
     void IterateSerializeRoot(RootVisitor &v);
 
     JSThread *GetMainThread() const
@@ -315,6 +317,8 @@ private:
     ~Runtime();
     void SuspendAllThreadsImpl(JSThread *current);
     void ResumeAllThreadsImpl(JSThread *current);
+    void SuspendOtherThreadImpl(JSThread *current, JSThread *target);
+    void ResumeOtherThreadImpl(JSThread *current, JSThread *target);
 
     void PreInitialization(const EcmaVM *vm);
     void PostInitialization(const EcmaVM *vm);
