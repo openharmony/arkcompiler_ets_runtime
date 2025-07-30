@@ -221,6 +221,7 @@ size_t JSHClass::GetCloneSize(JSHClass* jshclass)
                                                        jshclass->GetObjectSize();
 }
 
+// Ensure behavior consistent with CopyAllHClass.
 JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                    bool specificInlinedProps, uint32_t specificNumInlinedProps)
 {
@@ -233,12 +234,11 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     } else {
         newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(size, type, numInlinedProps);
     }
+
     // Copy all
     newJsHClass->Copy(thread, *jshclass);
-    newJsHClass->SetTransitions(thread, JSTaggedValue::Undefined());
-    newJsHClass->SetParent(thread, JSTaggedValue::Undefined());
-    newJsHClass->SetProtoChangeDetails(thread, JSTaggedValue::Null());
-    newJsHClass->SetEnumCache(thread, JSTaggedValue::Null());
+    newJsHClass->SetIsStable(true);
+    
     // reuse Attributes first.
     newJsHClass->SetLayout(thread, jshclass->GetLayout(thread));
 

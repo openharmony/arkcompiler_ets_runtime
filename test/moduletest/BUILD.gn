@@ -249,6 +249,7 @@ group("ark_js_assert_moduletest") {
     "stringreplaceall",
     "stringsplit",
     "stubbuilder",
+    "stable_hclass",
     "throwdyn",
     "throwerror",
     "trycatch",

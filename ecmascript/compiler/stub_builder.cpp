@@ -4286,7 +4286,9 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
     env->SubCfgEntry(&entry);
     auto proto = GetPrototypeFromHClass(glue, srcHClass);
     SetPrototypeToHClass(VariableType::JS_POINTER(), glue, dstHClass, proto);
-    SetBitFieldToHClass(glue, dstHClass, GetBitFieldFromHClass(srcHClass));
+    GateRef bitField = GetBitFieldFromHClass(srcHClass);
+    GateRef afterSetStableBitField = SetIsStableToBitField(bitField, Int32(1));
+    SetBitFieldToHClass(glue, dstHClass, afterSetStableBitField);
     SetIsAllTaggedProp(glue, dstHClass, GetIsAllTaggedPropFromHClass(srcHClass));
     SetNumberOfPropsToHClass(glue, dstHClass, GetNumberOfPropsFromHClass(srcHClass));
     SetTransitionsToHClass(VariableType::INT64(), glue, dstHClass, Undefined());

@@ -170,6 +170,21 @@ JSTaggedValue BuiltinsArkTools::IsStableJsArray(EcmaRuntimeCallInfo *info)
         GetTaggedBoolean(true) : GetTaggedBoolean(false);
 }
 
+JSTaggedValue BuiltinsArkTools::IsStableHClass(EcmaRuntimeCallInfo *info)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ASSERT(info->GetArgsNumber() == 1);
+    JSHandle<JSTaggedValue> object = GetCallArg(info, 0);
+    JSHClass *hclass = object->GetHeapObject()->GetClass();
+    return (hclass->IsStable()) ?
+        GetTaggedBoolean(true) : GetTaggedBoolean(false);
+}
+
 JSTaggedValue BuiltinsArkTools::HasConstructor(EcmaRuntimeCallInfo *info)
 {
     DISALLOW_GARBAGE_COLLECTION;

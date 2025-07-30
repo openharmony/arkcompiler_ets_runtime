@@ -2368,6 +2368,15 @@ inline GateRef StubBuilder::GetIsAllTaggedPropFromHClass(GateRef hclass)
         Int32((1LLU << JSHClass::IsAllTaggedPropBit::SIZE) - 1));
 }
 
+inline GateRef StubBuilder::SetIsStableToBitField(GateRef bitfield, GateRef isStable)
+{
+    GateRef mask = Int32LSL(
+        Int32((1LU << JSHClass::IsStableBit::SIZE) - 1),
+        Int32(JSHClass::IsStableBit::START_BIT));
+    return Int32Or(Int32And(bitfield, Int32Not(mask)),
+        Int32LSL(isStable, Int32(JSHClass::IsStableBit::START_BIT)));
+}
+
 inline void StubBuilder::SetBitFieldToHClass(GateRef glue, GateRef hClass, GateRef bitfield)
 {
     GateRef offset = IntPtr(JSHClass::BIT_FIELD_OFFSET);
