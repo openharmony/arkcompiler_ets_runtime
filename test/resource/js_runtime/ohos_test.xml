@@ -1487,6 +1487,11 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/typedarray_length.abc -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="PGOProfilerEncoderTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="HeapTrackerFirstTest">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
