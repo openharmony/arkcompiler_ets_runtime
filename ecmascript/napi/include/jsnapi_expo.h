@@ -1680,6 +1680,12 @@ public:
         HIGH,
     };
 
+    enum class PUBLIC_API PandaFileType : int8_t {
+        FILE_FORMAT_INVALID = -1,
+        FILE_DYNAMIC = 0,
+        FILE_STATIC = 1,
+    };
+
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
     static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
@@ -1709,6 +1715,15 @@ public:
     static bool ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename = "",
                                     bool needUpdate = false);
     static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
+    /**
+     * @brief Return the abc file type
+     * @param[in] data : begin pos of abc file
+     * @param[in] size : length of abc file
+     * @return -1 indicates the abc file format invalid
+     *         0 indicates the abc file is dynamic
+     *         1 indicates the abc file is static
+     */
+    static PandaFileType GetFileType(const uint8_t *data, int32_t size);
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string &ohmUrl, const std::string &key);
