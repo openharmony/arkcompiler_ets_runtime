@@ -79,6 +79,197 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("test Queue[i] overFlowTest:", overFlowTest);
     }
 
+    {
+        let queue = new Queue();
+        let result = queue.add(1);
+        map.set("test Queue add0001:", result == true);
+    }
+
+    {
+        let queue = new Queue();
+        let result = queue.add("a");
+        map.set("test Queue add0002:", result == true);
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let result = queue.add(a);
+        map.set("test Queue add0003:", result == true);
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = 'a'
+        let c = 1
+        let result1 = queue.add(a)
+        let result2 = queue.add(b)
+        let result3 = queue.add(c)
+        let myFlag = true;
+        if (result1 != true || result2 != true || result3 != true) {
+            myFlag = false;
+        }
+        map.set("test Queue add0004:", myFlag);
+    }
+
+    {
+        let queue = new Queue();
+        let result = queue.add(undefined)
+        map.set("test Queue add0005:", result == true);
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = 'a'
+        let c = 1
+        queue.add(a)
+        queue.add(b)
+        queue.add(c)
+        let result = queue.pop();
+        map.set("test Queue pop0001:", result == a);
+    }
+
+    {
+        let queue = new Queue();
+        let result = queue.pop();
+        map.set("test Queue pop0002:", result == undefined);
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = 'a'
+        let c = 1
+        queue.add(a)
+        queue.add(b)
+        queue.add(c)
+        let result = queue.getFirst();
+        map.set("test Queue getFirst0001:", result == a);
+    }
+
+    {
+        let queue = new Queue();
+        let result = queue.getFirst();
+        map.set("test Queue getFirst0002:", result == undefined);
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = 'a';
+        let c = 1;
+        queue.add(a);
+        queue.add(b);
+        queue.add(c);
+        let myFlag = true;
+        queue.forEach((value, index) => {
+          let result = value;
+          let result1 = index;
+          if (result != value || result1 != index) {
+            myFlag = false;
+          }
+          map.set("test Queue forEach0001:", myFlag);
+        });
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = 'a';
+        let c = 1;
+        queue.add(a);
+        queue.add(b);
+        queue.add(c);
+        let iter = queue[Symbol.iterator]();
+        let temp = iter.next().value;
+        let myFlag = true;
+        while (temp != undefined) {
+          temp = iter.next().value;
+          if (temp != temp) {
+            myFlag = false;
+          }
+        }
+        map.set("test Queue [Symbol.iterator]0001:", myFlag);
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = 'a';
+        let c = 1;
+        queue.add(a);
+        queue.add(b);
+        queue.add(c);
+        let myFlag = true;
+        queue.forEach(() => {
+            if (queue.length != 3) {
+                myFlag = false;
+            }
+        });
+        map.set("test Queue forEach0002:", myFlag);
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        queue.add(a);
+        let myFlag = true;
+        queue.forEach((value) => {
+            if (queue.getFirst() != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test Queue forEach0003:", myFlag);
+    }
+
+    {
+        let queue = new Queue();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        queue.add(a);
+        let myFlag = true;
+        queue.forEach((value, index, queue) => {
+            if (queue.getFirst() != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test Queue forEach0004:", myFlag);
+    }
+
+    {
+        let queue = new Queue();
+        queue.add(1);
+        let myFlag = true;
+        queue.forEach((value, index, queue) => {
+            if (queue.getFirst() != value) {
+                myFlag = false;
+            }
+        }, queue);
+        if (queue.getFirst() != 1) {
+            myFlag = false;
+        }
+        map.set("test Queue forEach0005:", myFlag);
+    }
+
     let flag = undefined;
     function elements(value, key, map) {
         if (!value) {

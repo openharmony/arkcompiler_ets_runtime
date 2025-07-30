@@ -155,6 +155,851 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("test PlainArray[i] overFlowTest:", overFlowTest);
     }
 
+    class Tmp {
+        age = 0;
+        constructor(age) {
+            this.age = age;
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.get(1);
+        map.set("test PlainArray get0001:", result == "squirrel");
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.get(1);
+        map.set("test PlainArray get0002:", result == '');
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(null, "zhang san");
+            plainArray.get(null);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 401);
+            map.set("test PlainArray get0003:", result == true);
+        }
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(undefined, "zhang san");
+            plainArray.get(undefined);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 401);
+            map.set("test PlainArray get0004:", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(0, "zhang san");
+        let str = plainArray.get(0);
+        let result = (str == "zhang san");
+        map.set("test PlainArray get0005:", result == true);
+        plainArray.add(-1, "zhang san");
+        str = plainArray.get(-1);
+        result = (str == "zhang san");
+        map.set("test PlainArray get0005:", result == true);
+
+        let num = 2147483647;
+        plainArray.add(num, "li si");
+        str = plainArray.get(num);
+        result = (str == "li si");
+        map.set("test PlainArray get0005:", result == true);
+        let num1 = -2147483648;
+        plainArray.add(num1, "li si");
+        str = plainArray.get(num1);
+        result = (str == "li si");
+        map.set("test PlainArray get0005:", result == true);
+    }
+    
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "");
+        let result = plainArray.getIndexOfKey(2);
+        map.set("test PlainArray getIndexOfKey0001:", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, new Tmp(10));
+        plainArray.add(2, new Tmp(12));
+        let result = plainArray.getIndexOfKey(2);
+        map.set("test PlainArray getIndexOfKey0002:", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, null);
+        plainArray.add(3, undefined);
+        let result = plainArray.getIndexOfKey(2);
+        map.set("test PlainArray getIndexOfKey0003:", result == 1);
+        let result1 = plainArray.getIndexOfKey(3);
+        map.set("test PlainArray getIndexOfKey0003:", result1 == 2);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.getIndexOfKey(2);
+        map.set("test PlainArray getIndexOfKey0004:", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "");
+        let result = plainArray.getIndexOfValue("");
+        map.set("test PlainArray getIndexOfValue0001:", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let param1 = new Tmp(10);
+        plainArray.add(1, param1);
+        let param2 = new Tmp(10);
+        plainArray.add(2, param2);
+        let result = plainArray.getIndexOfValue(param2);
+        map.set("test PlainArray getIndexOfValue0002:", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, null);
+        plainArray.add(3, undefined);
+        let result = plainArray.getIndexOfValue(null);
+        map.set("test PlainArray getIndexOfValue0003:", result == 1);
+        let result1 = plainArray.getIndexOfValue(undefined);
+        map.set("test PlainArray getIndexOfValue0003:", result1 == 2);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.getIndexOfValue("sparrow");
+        map.set("test PlainArray getIndexOfValue0004:", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.getKeyAt(3);
+        map.set("test PlainArray getKeyAt0001:", result == undefined);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.getKeyAt(1);
+        map.set("test PlainArray getKeyAt0002:", result == 2);
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(1, "squirrel");
+            plainArray.add(2, "sparrow");
+            plainArray.getKeyAt(null);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 401);
+            map.set("test PlainArray getKeyAt0003:", result == true);
+        }
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(1, "squirrel");
+            plainArray.add(2, "sparrow");
+            plainArray.getKeyAt(undefined);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 401);
+            map.set("test PlainArray getKeyAt0004:", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.getKeyAt(1);
+        let index = plainArray.getIndexOfKey(result);
+        map.set("test PlainArray getKeyAt0005:", index == 1);
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(1, "squirrel");
+            plainArray.add(2, "sparrow");
+            plainArray.getValueAt(2);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 10200001);
+            map.set("test PlainArray getValueAt0001:", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.getValueAt(1);
+        map.set("test PlainArray getValueAt0002:", result == "sparrow");
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(1, "squirrel");
+            plainArray.add(2, "sparrow");
+            plainArray.getValueAt(null);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 401);
+            map.set("test PlainArray getValueAt0003:", result == true);
+        }
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(1, "squirrel");
+            plainArray.add(2, "sparrow");
+            plainArray.getValueAt(undefined);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 401);
+            map.set("test PlainArray getValueAt0004:", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.getValueAt(1);
+        let index = plainArray.getIndexOfValue(result);
+        map.set("test PlainArray getValueAt0005:", index == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let newPlainArray = plainArray.clone();
+        let result = (newPlainArray.length == plainArray.length);
+        map.set("test PlainArray clone0001", result == true);
+    }
+    
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, 1);
+        plainArray.add(2, 2);
+        let newPlainArray = plainArray.clone();
+        let result = (newPlainArray.length == plainArray.length);
+        map.set("test PlainArray clone0002", result == true);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, new Tmp(10));
+        plainArray.add(2, new Tmp(12));
+        let newPlainArray = plainArray.clone();
+        let result = (newPlainArray.length == plainArray.length);
+        map.set("test PlainArray clone0003", result == true);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, new Tmp(10));
+        plainArray.add(2, new Tmp(12));
+        let newPlainArray = plainArray.clone();
+        newPlainArray.add(3, new Tmp(13));
+        let result = plainArray.length;
+        map.set("test PlainArray clone0004", result == 2);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let param = "a".repeat(5120);
+        plainArray.add(1, param);
+        let newPlainArray = plainArray.clone();
+        let result = (newPlainArray.length == plainArray.length);
+        map.set("test PlainArray clone0005", result == true);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, null);
+        plainArray.add(2, undefined);
+        let newPlainArray = plainArray.clone();
+        let result = (newPlainArray.length == plainArray.length);
+        map.set("test PlainArray clone0006", result == true);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let param = "a".repeat(5120);
+        plainArray.add(1, param);
+        let result = plainArray.length;
+        map.set("test PlainArray add0001", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        let result = plainArray.length;
+        map.set("test PlainArray add0002", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, null);
+        plainArray.add(2, undefined);
+        let result = plainArray.length;
+        map.set("test PlainArray add0003", result == 2);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.remove(2);
+        map.set("test PlainArray remove0001", result == "sparrow");
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.remove(null);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 401);
+            map.set("test PlainArray remove0002", result == true);
+        }
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.remove(undefined);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 401);
+            map.set("test PlainArray remove0003", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "zhang san");
+        plainArray.add(2, "zhang san1");
+        let result = plainArray.remove(3);
+        map.set("test PlainArray remove0004", result == undefined);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "zhang san");
+        plainArray.add(2, "zhang san1");
+        let num = 2147483647;
+        plainArray.add(num, "li si");
+        let result = plainArray.remove(num);
+        map.set("test PlainArray remove0005", result == "li si");
+        let num1 = -2147483648;
+        plainArray.add(num1, "li si");
+        result = plainArray.remove(num1);
+        map.set("test PlainArray remove0005", result == "li si");
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(1);
+        map.set("test PlainArray removeAt0001", result == "sparrow");
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(-1);
+        map.set("test PlainArray removeAt0002", result == undefined);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(2);
+        map.set("test PlainArray removeAt0003", result == undefined);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let result = plainArray.removeAt(0);
+        map.set("test PlainArray removeAt0004", result == undefined);
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(1, "squirrel");
+            plainArray.add(2, "sparrow");
+            plainArray.removeRangeFrom(1, 0);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 10200001)
+            map.set("test PlainArray removeRangeFrom0001", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeRangeFrom(1, 3);
+        map.set("test PlainArray removeRangeFrom0002", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeRangeFrom(1, Math.floor(7.5));
+        map.set("test PlainArray removeRangeFrom0003", result == 1);
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            let result = plainArray.removeRangeFrom(0, 0);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 10200001);
+            map.set("test PlainArray removeRangeFrom0004", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        plainArray.setValueAt(1, 3546);
+        let result = plainArray.getValueAt(1);
+        map.set("test PlainArray setValueAt0001", result == 3546);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "zhang san");
+        plainArray.add(2, "zhang san1");
+        let num = 2147483647;
+        plainArray.add(num, "li si");
+        let result = plainArray.remove(num);
+        map.set("test PlainArray remove0005", result == "li si");
+        let num1 = -2147483648;
+        plainArray.add(num1, "li si");
+        result = plainArray.remove(num1);
+        map.set("test PlainArray remove0005", result == "li si");
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(1);
+        map.set("test PlainArray removeAt0001", result == "sparrow");
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(-1);
+        map.set("test PlainArray removeAt0002", result == undefined);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(2);
+        map.set("test PlainArray removeAt0003", result == undefined);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let result = plainArray.removeAt(0);
+        map.set("test PlainArray removeAt0004", result == undefined);
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(1, "squirrel");
+            plainArray.add(2, "sparrow");
+            plainArray.removeRangeFrom(1, 0);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 10200001)
+            map.set("test PlainArray removeRangeFrom0001", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeRangeFrom(1, 3);
+        map.set("test PlainArray removeRangeFrom0002", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeRangeFrom(1, Math.floor(7.5));
+        map.set("test PlainArray removeRangeFrom0003", result == 1);
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            let result = plainArray.removeRangeFrom(0, 0);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 10200001);
+            map.set("test PlainArray removeRangeFrom0004", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        plainArray.setValueAt(1, 3546);
+        let result = plainArray.getValueAt(1);
+        map.set("test PlainArray setValueAt0001", result == 3546);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "zhang san");
+        plainArray.add(2, "zhang san1");
+        let num = 2147483647;
+        plainArray.add(num, "li si");
+        let result = plainArray.remove(num);
+        map.set("test PlainArray remove0005", result == "li si");
+        let num1 = -2147483648;
+        plainArray.add(num1, "li si");
+        result = plainArray.remove(num1);
+        map.set("test PlainArray remove0005", result == "li si");
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(1);
+        map.set("test PlainArray removeAt0001", result == "sparrow");
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(-1);
+        map.set("test PlainArray removeAt0002", result == undefined);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeAt(2);
+        map.set("test PlainArray removeAt0003", result == undefined);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let result = plainArray.removeAt(0);
+        map.set("test PlainArray removeAt0004", result == undefined);
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            plainArray.add(1, "squirrel");
+            plainArray.add(2, "sparrow");
+            plainArray.removeRangeFrom(1, 0);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 10200001)
+            map.set("test PlainArray removeRangeFrom0001", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeRangeFrom(1, 3);
+        map.set("test PlainArray removeRangeFrom0002", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let result = plainArray.removeRangeFrom(1, Math.floor(7.5));
+        map.set("test PlainArray removeRangeFrom0003", result == 1);
+    }
+
+    {
+        try {
+            let plainArray = new PlainArray();
+            let result = plainArray.removeRangeFrom(0, 0);
+        } catch (err) {
+            const code = err.code;
+            let result = (code == 10200001);
+            map.set("test PlainArray removeRangeFrom0004", result == true);
+        }
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        plainArray.setValueAt(1, 3546);
+        let result = plainArray.getValueAt(1);
+        map.set("test PlainArray setValueAt0001", result == 3546);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        for (let i = 0; i < 1024; i++) {
+          plainArray.add(i, i);
+        }
+        plainArray.toString();
+        let result = plainArray.length;
+        map.set("test PlainArray toString0006", result == 1024);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        plainArray.clear();
+        let result = plainArray.length;
+        map.set("test PlainArray clear0001", result == 0);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.clear();
+        plainArray.add(2, "sparrow");
+        let result = plainArray.length;
+        map.set("test PlainArray clear0002", result == 1);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.clear();
+        let result = plainArray.length;
+        map.set("test PlainArray clear0003", result == 0);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+          if (plainArray.get(index) != value) {
+            myFlag = false;
+          }
+        });
+        map.set("test PlainArray forEach0001", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        plainArray.add(3, "sparrow");
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0002", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0003", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(0, undefined);
+        plainArray.add(1, null);
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0004", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(0, undefined);
+        plainArray.add(1, null);
+        let myFlag = true;
+        plainArray.forEach(() => {
+          if (plainArray.length != 2) {
+            myFlag = false;
+          }
+        });
+        map.set("test PlainArray forEach0005", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        plainArray.add(3, "sparrow");
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0002", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0003", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(0, undefined);
+        plainArray.add(1, null);
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0004", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(0, undefined);
+        plainArray.add(1, null);
+        let myFlag = true;
+        plainArray.forEach(() => {
+          if (plainArray.length != 2) {
+            myFlag = false;
+          }
+        });
+        map.set("test PlainArray forEach0005", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(1, "squirrel");
+        plainArray.add(2, "sparrow");
+        plainArray.add(3, "sparrow");
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0002", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0003", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(0, undefined);
+        plainArray.add(1, null);
+        let myFlag = true;
+        plainArray.forEach((value, index) => {
+            if (plainArray.get(index) != value) {
+                myFlag = false;
+            }
+        });
+        map.set("test PlainArray forEach0004", myFlag);
+    }
+
+    {
+        let plainArray = new PlainArray();
+        plainArray.add(0, undefined);
+        plainArray.add(1, null);
+        let myFlag = true;
+        plainArray.forEach(() => {
+          if (plainArray.length != 2) {
+            myFlag = false;
+          }
+        });
+        map.set("test PlainArray forEach0005", myFlag);
+    }
+
     res = undefined;
     function elements(value, key, map) {
         if (!value) {
