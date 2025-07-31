@@ -116,7 +116,7 @@ print(mySet.has(42));
 //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
 //aot: false
 
-print("fuck") //: fuck
+print("hello") //: hello
 mySet.add = true_add
 print(mySet.add("xyz"));
 //: [object Set]
