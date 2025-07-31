@@ -35,8 +35,6 @@ host_unittest_action("mapleallUT") {
     "${MAPLEALL_ROOT}/maple_phase/include/",
     "${MAPLEALL_ROOT}/mpl2mpl/include/",
     "${MAPLEALL_ROOT}/test/include/",
-    "${MAPLEALL_THIRD_PARTY_ROOT}/",
-    "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include/",
   ]
   src_mapleallUT = [
     "./maple_be/cg_aarch64_aarch64_abi_test.cpp",
@@ -70,6 +68,7 @@ host_unittest_action("mapleallUT") {
   # If dynamic cast is used in the source code, set COMPILE_RTTI_ to true
   rtti_compile_flag = true
   deps += deps_libcg
+  external_deps = [ "bounds_checking_function:libsec_shared" ]
   libs = [ "pthread" ]
 }
 group("host_unittest") {
