@@ -157,22 +157,27 @@ void TraceCollector::ProcessWeakStack(WeakStack &weakStack)
         RefField<> &field = reinterpret_cast<RefField<>&>(*fieldPointer);
         RefField<> oldField(field);
 
+        if (!Heap::IsTaggedObject(oldField.GetFieldValue())) {
+            continue;
+        }
         BaseObject* targetObj = oldField.GetTargetObject();
-        if (!Heap::IsHeapAddress(targetObj) || IsMarkedObject(targetObj) ||
-            RegionSpace::IsNewObjectSinceTrace(targetObj)) {
+        DCHECK_CC(Heap::IsHeapAddress(targetObj));
+
+        auto targetRegion = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>(targetObj));
+        if (targetRegion->IsMarkedObject(targetObj) || targetRegion->IsNewObjectSinceTrace(targetObj)) {
             continue;
         }
 
         BaseObject* obj = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(&field) - offset);
-        auto regionType = RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(reinterpret_cast<uintptr_t>(obj))
-                              ->GetRegionType();
-        // the object might be trimed then forwarded, we need to make sure toField still points to the current object
-        if (regionType == RegionDesc::RegionType::FROM_REGION && obj->IsForwarded() &&
-            obj->GetSizeForwarded() > offset) {
-            BaseObject *toObj = obj->GetForwardingPointer();
-            RefField<> &toField = *reinterpret_cast<RefField<>*>(reinterpret_cast<uintptr_t>(toObj) + offset);
+        if (RegionDesc::GetAliveRegionType(reinterpret_cast<MAddress>(obj)) == RegionDesc::RegionType::FROM_REGION) {
+            BaseObject* toObj = obj->GetForwardingPointer();
 
-            toField.ClearRef(oldField.GetFieldValue());
+            // Make sure even the object that contains the weak reference is trimed before forwarding, the weak ref
+            // field is still within the object
+            if (toObj != nullptr && offset < obj->GetSizeForwarded()) {
+                RefField<>& toField = *reinterpret_cast<RefField<>*>(reinterpret_cast<uintptr_t>(toObj) + offset);
+                toField.ClearRef(oldField.GetFieldValue());
+            }
         }
         field.ClearRef(oldField.GetFieldValue());
     }
@@ -236,7 +241,28 @@ void TraceCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Tas
 void TraceCollector::MergeWeakStack(WeakStack& weakStack)
 {
     std::lock_guard<std::mutex> lock(weakStackLock_);
-    globalWeakStack_.insert(weakStack);
+
+    // Preprocess the weak stack to minimize work during STW remark.
+    while (!weakStack.empty()) {
+        auto tuple = weakStack.back();
+        weakStack.pop_back();
+
+        auto [weakFieldPointer, _] = *tuple;
+        RefField<> oldField(*weakFieldPointer);
+
+        if (!Heap::IsTaggedObject(oldField.GetFieldValue())) {
+            continue;
+        }
+        auto obj = oldField.GetTargetObject();
+        DCHECK_CC(Heap::IsHeapAddress(obj));
+
+        auto region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>(obj));
+        if (region->IsNewObjectSinceTrace(obj) || region->IsMarkedObject(obj)) {
+            continue;
+        }
+
+        globalWeakStack_.push_back(tuple);
+    }
 }
 
 void TraceCollector::EnumConcurrencyModelRoots(RootSet& rootSet) const
