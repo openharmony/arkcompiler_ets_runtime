@@ -194,9 +194,6 @@ obj/arkcompiler/ets_runtime/ecmascript/tests/JS_ListFormat_TestWithQemu
 #25244
 obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearryAsmAssert
 
-#26429
-obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_NumberHelper_TestWithQemu
-
 #27147
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestWithQemu
@@ -223,3 +220,6 @@ obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_Intl_TestWithQemu
 
 #27055
 obj/arkcompiler/ets_runtime/test/aottest/aot_compatibility_test/property_operation/property_operation/AssertSlowPath
+
+#28394
+obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Trace_Collector_TestWithQemu
