@@ -197,4 +197,15 @@ HWTEST_F_L0(BuiltinsSharedArrayBufferTest, IsShared)
     bool result1 = BuiltinsSharedArrayBuffer::IsShared(thread, arrBuf1.GetTaggedValue());
     ASSERT_EQ(result1, false);
 }
+
+HWTEST_F_L0(BuiltinsSharedArrayBufferTest, OOMTest)
+{
+#ifdef NDEBUG
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    for (int i = 0; i < 2048; i++) {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        [[maybe_unused]] JSHandle<JSArrayBuffer> sharedArrayBuffer(factory->NewJSSharedArrayBuffer(8 * 1024 * 1024));
+    }
+#endif
+}
 }  // namespace panda::test

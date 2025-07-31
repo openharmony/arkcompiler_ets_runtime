@@ -542,8 +542,7 @@ void Runtime::InvokeSharedNativePointerCallbacks()
     while (!callbacks.empty()) {
         auto callbackPair = callbacks.back();
         callbacks.pop_back();
-        ASSERT(callbackPair.first != nullptr && callbackPair.second.first != nullptr &&
-               callbackPair.second.second != nullptr);
+        ASSERT(callbackPair.first != nullptr);
         auto callback = callbackPair.first;
         (*callback)(nullptr, callbackPair.second.first, callbackPair.second.second);
     }

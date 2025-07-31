@@ -106,6 +106,7 @@
       common::VisitDynamicWeakThreadRoot*;
       common::VisitDynamicThreadPreforwardRoot*;
       common::VisitDynamicConcurrentRoots*;
+      common::InvokeSharedNativePointerCallbacks*;
       common::BaseObject::*;
       common::BaseString::*;
       common::VisitJSThread*;
