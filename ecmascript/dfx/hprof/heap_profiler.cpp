@@ -401,7 +401,11 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         }
         // ide.
         if (dumpOption.isSync) {
-            return DoDump(stream, progress, dumpOption);
+            if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+                return BinaryDump(stream, dumpOption);
+            } else {
+                return DoDump(stream, progress, dumpOption);
+            }
         }
         AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
         if (appfreezeCallback != nullptr && !appfreezeCallback(getpid(), false)) {
