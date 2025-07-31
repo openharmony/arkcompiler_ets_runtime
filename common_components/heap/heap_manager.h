@@ -33,7 +33,7 @@ public:
     void Fini();
 
     static void RequestGC(GCReason reason, bool async, GCType gcType);
-    static void MarkJitFortMemInstalled(void* obj);
+    static void MarkJitFortMemInstalled(void *vm, void *obj);
 
     // alloc return memory address, not "object" pointers, since they're not
     // initialized yet

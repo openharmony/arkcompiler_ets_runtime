@@ -290,6 +290,14 @@ void SynchronizeGCPhaseToJSThread(void *jsThread, GCPhase gcPhase)
     }
 }
 
+void MarkThreadLocalJitFortInstalled(void *thread, void *machineCode)
+{
+    auto vm = reinterpret_cast<JSThread *>(thread)->GetEcmaVM();
+    const_cast<panda::ecmascript::Heap *>(vm->GetHeap())
+        ->GetMachineCodeSpace()
+        ->MarkJitFortMemInstalled(reinterpret_cast<panda::ecmascript::MachineCode *>(machineCode));
+}
+
 void SweepThreadLocalJitFort()
 {
     panda::ecmascript::Runtime* runtime = panda::ecmascript::Runtime::GetInstance();

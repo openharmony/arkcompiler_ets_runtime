@@ -336,14 +336,14 @@ void JitTask::InstallCode()
     __builtin___clear_cache(reinterpret_cast<char *>(codeAddr), reinterpret_cast<char*>(codeAddrEnd));
 
     if (Jit::GetInstance()->IsEnableJitFort()) {
-        if (codeDesc_.isHugeObj) {
-            if (g_isEnableCMCGC) {
-                common::BaseRuntime::GetInstance()->GetHeapManager().MarkJitFortMemInstalled(
-                    machineCodeObj.GetObject<MachineCode>());
-            }
+        if (g_isEnableCMCGC) {
+            common::BaseRuntime::GetInstance()->GetHeapManager().MarkJitFortMemInstalled(
+                codeDesc_.isHugeObj ? nullptr : hostThread_, machineCodeObj.GetObject<MachineCode>());
         } else {
-            const Heap *heap = this->GetHostThread()->GetEcmaVM()->GetHeap();
-            heap->GetMachineCodeSpace()->MarkJitFortMemInstalled(machineCodeObj.GetObject<MachineCode>());
+            if (!codeDesc_.isHugeObj) {
+                const Heap *heap = this->GetHostThread()->GetEcmaVM()->GetHeap();
+                heap->GetMachineCodeSpace()->MarkJitFortMemInstalled(machineCodeObj.GetObject<MachineCode>());
+            }
         }
     }
 

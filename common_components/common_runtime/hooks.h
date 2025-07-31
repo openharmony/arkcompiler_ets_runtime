@@ -56,6 +56,7 @@ PUBLIC_API bool IsPostForked();
 PUBLIC_API void SweepThreadLocalJitFort();
 PUBLIC_API bool IsMachineCodeObject(uintptr_t obj);
 PUBLIC_API void JitFortUnProt(size_t size, void* base);
+PUBLIC_API void MarkThreadLocalJitFortInstalled(void *thread, void *machineCode);
 
 } // namespace common
 #endif // COMMON_COMPONENTS_BASE_RUNTIME_HOOKS_H
