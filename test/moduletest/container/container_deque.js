@@ -94,6 +94,122 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("test Deque[i] overFlowTest:", overFlowTest);
     }
 
+    try {
+        let deque = new Deque();
+        deque.insertFront("a")
+        deque.insertFront("b")
+        deque.insertFront("c")
+        let result = deque.getFirst();
+        map.set("testInsertFront0001 failed, first element:" + result, result === "c");
+    } catch (err) {
+        map.set("testInsertFront0001 failed, error code:" + err.code, false);
+    }
+
+    try {
+        let deque = new Deque();
+        deque.insertFront(1)
+        deque.insertFront(2)
+        deque.insertFront(3)
+        let result = deque.getFirst();
+        map.set("testInsertFront0002 failed, first element:" + result, result === 3);
+    } catch (err) {
+        map.set("testInsertFront0002 failed, error code:" + err.code, false);
+    }
+
+    try {
+        let deque = new Deque();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = {
+          name: "Joe", age: "14"
+        };
+        let c = {
+          name: "Lucy", age: "15"
+        };
+        deque.insertFront(a)
+        deque.insertFront(b)
+        deque.insertFront(c)
+        let result = deque.getFirst();
+        map.set("testInsertFront0003 failed, first element:" + result, result === c);
+    } catch (err) {
+        map.set("testInsertFront0003 failed, error code:" + err.code, false);
+    }
+
+    try {
+        let deque = new Deque();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = 'a'
+        let c = 1
+        deque.insertFront(a)
+        deque.insertFront(b)
+        deque.insertFront(c)
+        let result = deque.getFirst();
+        map.set("testInsertFront0004 failed, first element:" + result, result === c);
+    } catch (err) {
+        map.set("testInsertFront0004 failed, error code:" + err.code, false);
+    }
+
+    try {
+        let deque = new Deque();
+        deque.insertEnd("a")
+        deque.insertEnd("b")
+        deque.insertEnd("c")
+        let result = deque.getLast();
+        map.set("testInsertEnd0005 failed, last element:" + result, result === "c");
+    } catch (err) {
+        map.set("testInsertEnd0005 failed, error code:" + err.code + " error message:" + err.message, false);
+    }
+
+    try {
+        let deque = new Deque();
+        deque.insertEnd(1)
+        deque.insertEnd(2)
+        deque.insertEnd(3)
+        let result = deque.getLast();
+        map.set("testInsertEnd0006 failed, last element:" + result, result === 3);
+    } catch (err) {
+        map.set("testInsertEnd0006 failed, error code:" + err.code, false);
+    }
+
+    try {
+        let deque = new Deque();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = {
+          name: "Joe", age: "14"
+        };
+        let c = {
+          name: "Lucy", age: "15"
+        };
+        deque.insertEnd(a)
+        deque.insertEnd(b)
+        deque.insertEnd(c)
+        let result = deque.getLast();
+        map.set("testInsertEnd0007 failed, last element:" + result, result === c);
+    } catch (err) {
+        map.set("testInsertEnd0007 failed, error code:" + err.code, false);
+    }
+
+    try {
+        let deque = new Deque();
+        let a = {
+          name: "Dylon", age: "13"
+        };
+        let b = 'a'
+        let c = 1
+        deque.insertEnd(a)
+        deque.insertEnd(b)
+        deque.insertEnd(c)
+        let result = deque.getLast();
+        map.set("testInsertEnd0008 failed, last element:" + result, result === c);
+    } catch (err) {
+        map.set("testInsertEnd0008 failed, error code:" + err.code, false);
+    }
+
     let flag = undefined;
     function elements(value, key, map) {
         if (!value) {
