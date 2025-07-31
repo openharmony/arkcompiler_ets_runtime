@@ -126,49 +126,49 @@ JIT_DEFINEFUNC_STUB_GENERATOR(BaseConstructor, FunctionKind::BASE_CONSTRUCTOR)
 void CallArg0StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARG0_IMM8);
-    Return(callBuilder.CallStubDispatch());
+    Return(callBuilder.CallStubDispatch(!GetCallSignature()->IsStwCopyStub()));
 }
 
 void CallArg1StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARG1_IMM8_V8);
-    Return(callBuilder.CallStubDispatch());
+    Return(callBuilder.CallStubDispatch(!GetCallSignature()->IsStwCopyStub()));
 }
 
 void CallArg2StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARGS2_IMM8_V8_V8);
-    Return(callBuilder.CallStubDispatch());
+    Return(callBuilder.CallStubDispatch(!GetCallSignature()->IsStwCopyStub()));
 }
 
 void CallArg3StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8);
-    Return(callBuilder.CallStubDispatch());
+    Return(callBuilder.CallStubDispatch(!GetCallSignature()->IsStwCopyStub()));
 }
 
 void CallThis0StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS0_IMM8_V8);
-    Return(callBuilder.CallStubDispatch());
+    Return(callBuilder.CallStubDispatch(!GetCallSignature()->IsStwCopyStub()));
 }
 
 void CallThis1StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS1_IMM8_V8_V8);
-    Return(callBuilder.CallStubDispatch());
+    Return(callBuilder.CallStubDispatch(!GetCallSignature()->IsStwCopyStub()));
 }
 
 void CallThis2StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8);
-    Return(callBuilder.CallStubDispatch());
+    Return(callBuilder.CallStubDispatch(!GetCallSignature()->IsStwCopyStub()));
 }
 
 void CallThis3StubStubBuilder::GenerateCircuit()
 {
     CallCoStubBuilder callBuilder(this, EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8);
-    Return(callBuilder.CallStubDispatch());
+    Return(callBuilder.CallStubDispatch(!GetCallSignature()->IsStwCopyStub()));
 }
 
 void NewFloat32ArrayWithNoArgsStubBuilder::GenerateCircuit()

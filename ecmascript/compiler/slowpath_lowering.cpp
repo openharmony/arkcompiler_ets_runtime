@@ -196,7 +196,8 @@ void SlowPathLowering::LowerToJSCall(GateRef hirGate, const std::vector<GateRef>
     DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     GateRef func = args[static_cast<size_t>(CommonArgIdx::FUNC)];
     GateRef argc = args[static_cast<size_t>(CommonArgIdx::ACTUAL_ARGC)];
-    CallCoStubBuilder::LowerFastCall(hirGate, glue_, builder_, func, argc, args, argsFastCall, &res, &exit, false);
+    CallCoStubBuilder::LowerFastCall(hirGate, glue_, builder_, func, argc, args, argsFastCall, &res, &exit, false,
+                                     g_isEnableCMCGC);
     builder_.Bind(&exit);
     GateRef stateInGate = builder_.GetState();
     GateRef depend = builder_.GetDepend();
@@ -2221,7 +2222,7 @@ void SlowPathLowering::GenerateSuperCallForwardAllArgsWithoutArgv(const std::vec
         SelectFastNew(selectCall, gate, super, callArgs, argsFastCall, &result, &afterCallSuper);
     } else {
         CallCoStubBuilder::LowerFastCall(gate, glue_, builder_, super, actualArgc, callArgs, argsFastCall, &result,
-                                         &afterCallSuper, true);
+                                         &afterCallSuper, true, g_isEnableCMCGC);
     }
     builder_.Bind(&afterCallSuper);
     result = builder_.CallStub(glue_, gate, CommonStubCSigns::ConstructorCheck, { glue_, super, *result, thisObj });
@@ -2277,7 +2278,7 @@ void SlowPathLowering::LowerNewObjRange(GateRef gate)
             SelectFastNew(selectCall, gate, ctor, args, argsFastCall, &result, &exit);
         } else {
             CallCoStubBuilder::LowerFastCall(gate, glue_, builder_, ctor, actualArgc, args, argsFastCall, &result,
-                                             &exit, true);
+                                             &exit, true, g_isEnableCMCGC);
         }
         builder_.Bind(&exit);
         result = builder_.CallStub(glue_, gate, CommonStubCSigns::ConstructorCheck, {glue_, ctor, *result, thisObj});
@@ -3607,7 +3608,8 @@ void SlowPathLowering::LowerConstruct(GateRef gate)
         auto selectCall = builder_.CallStub(glue_, gate, CommonStubCSigns::FastCallSelector, {glue_, ctor, argc});
         SelectFastNew(selectCall, gate, ctor, args, argsFastCall, &res, &exit);
     } else {
-        CallCoStubBuilder::LowerFastCall(gate, glue_, builder_, ctor, argc, args, argsFastCall, &res, &exit, true);
+        CallCoStubBuilder::LowerFastCall(gate, glue_, builder_, ctor, argc, args, argsFastCall, &res, &exit, true,
+                                         g_isEnableCMCGC);
     }
     builder_.Bind(&exit);
     GateRef thisObj = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::THIS_OBJECT));
@@ -3637,7 +3639,8 @@ void SlowPathLowering::LowerCallInternal(GateRef gate)
     GateRef argc = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::ACTUAL_ARGC));
     Label exit(&builder_);
     DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    CallCoStubBuilder::LowerFastCall(gate, glue_, builder_, func, argc, args, argsFastCall, &res, &exit, false);
+    CallCoStubBuilder::LowerFastCall(gate, glue_, builder_, func, argc, args, argsFastCall, &res, &exit, false,
+                                     g_isEnableCMCGC);
     builder_.Bind(&exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
 }
