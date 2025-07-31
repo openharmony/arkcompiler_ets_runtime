@@ -20,3 +20,6 @@ regresstest/ark-regress/mjsunit/regress/regress-crbug-1263994.js
 
 #26099
 regresstest/ark-regress/mjsunit/regress/regress-3612.js
+
+#28446
+regresstest/ark-regress/mjsunit/regress/regress-774475.js
