@@ -35,8 +35,11 @@ static JSHandle<JSObject> JSObjectCreate(JSThread *thread)
     return jsObject;
 }
 
-HWTEST_F_L0(DynamicObjectAccessorTest, SetGetHasProperty01)
+HWTEST_F_L0(DynamicObjectAccessorTest, SetGetHasProperty)
 {
+    if (!g_isEnableCMCGC) {
+        return;
+    }
     ThreadHolder *threadHolder = thread->GetThreadHolder();
     JSHandle<JSObject> jsobject = JSObjectCreate(thread);
     EXPECT_TRUE(*jsobject != nullptr);
@@ -55,8 +58,11 @@ HWTEST_F_L0(DynamicObjectAccessorTest, SetGetHasProperty01)
         jsobject.GetTaggedValue().GetTaggedObject(), array), true);
 }
 
-HWTEST_F_L0(DynamicObjectAccessorTest, SetGetHasProperty02)
+HWTEST_F_L0(DynamicObjectAccessorTest, SetGetHasElement)
 {
+    if (!g_isEnableCMCGC) {
+        return;
+    }
     ThreadHolder *threadHolder = thread->GetThreadHolder();
     JSHandle<JSObject> jsobject = JSObjectCreate(thread);
     EXPECT_TRUE(*jsobject != nullptr);
