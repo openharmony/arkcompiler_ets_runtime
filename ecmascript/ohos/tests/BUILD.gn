@@ -27,8 +27,13 @@ host_unittest_action("OhosTest") {
 
   configs = [
     "$js_root:ecma_test_config",
-    "$ark_root/assembler:arkassembler_public_config",
   ]
+
+  if (ark_standalone_build || is_arkui_x) {
+    configs += [
+      "$ark_root/assembler:arkassembler_public_config",
+    ]
+  }
 
   deps = [
     "$js_root:libark_jsruntime_test",
@@ -42,6 +47,11 @@ host_unittest_action("OhosTest") {
     "icu:shared_icuuc",
     "zlib:libz",
   ]
+  if (!ark_standalone_build && !is_arkui_x) {
+    external_deps += [ 
+      "runtime_core:arkassembler_public_headers",
+    ]
+  }
   deps += hiviewdfx_deps
 }
 
@@ -56,8 +66,13 @@ host_unittest_action("CrashTest") {
 
   configs = [
     "$js_root:ecma_test_config",
-    "$ark_root/assembler:arkassembler_public_config",
   ]
+
+  if (ark_standalone_build) {
+    configs += [
+      "$ark_root/assembler:arkassembler_public_config",
+    ]
+  }
 
   deps = [
     "$js_root:libark_jsruntime_test",
@@ -71,6 +86,11 @@ host_unittest_action("CrashTest") {
     "icu:shared_icuuc",
     "zlib:libz",
   ]
+  if (!ark_standalone_build) {
+    external_deps += [ 
+      "runtime_core:arkassembler_public_headers",
+    ]
+  }
   deps += hiviewdfx_deps
 }
 

@@ -54,9 +54,14 @@ host_unittest_action("ThreadTerminationTest") {
 
   configs = [
     "$js_root:ecma_test_config",
-    "$ark_root/assembler:arkassembler_public_config",
-    "$ark_root/libpandafile:arkfile_public_config",
   ]
+
+  if (ark_standalone_build || is_arkui_x) {
+    configs += [
+      "$ark_root/assembler:arkassembler_public_config",
+      "$ark_root/libpandafile:arkfile_public_config",
+    ]
+  }
 
   deps = [
     "$js_root:libark_jsruntime_test",
@@ -76,6 +81,12 @@ host_unittest_action("ThreadTerminationTest") {
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
   external_deps += [ "runtime_core:libarkassembler_static" ]
+  if (!ark_standalone_build && !is_arkui_x) {
+    external_deps += [ 
+      "runtime_core:arkassembler_public_headers",
+      "runtime_core:arkfile_public_headers",
+    ]
+  }
   deps += hiviewdfx_deps
 }
 

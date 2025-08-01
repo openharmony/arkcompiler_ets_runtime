@@ -27,9 +27,14 @@ host_unittest_action("JIT_001_Test") {
   configs = [
     "../../../:asm_interp_enable_config",
     "../../../:ecma_test_config",
-    "$ark_root/assembler:arkassembler_public_config",
-    "$ark_root/libpandafile:arkfile_public_config",
   ]
+
+  if (ark_standalone_build || is_arkui_x) {
+    configs += [
+      "$ark_root/assembler:arkassembler_public_config",
+      "$ark_root/libpandafile:arkfile_public_config",
+    ]
+  }
 
   deps = [ "../../../:libark_jsruntime_test" ]
 
@@ -39,6 +44,12 @@ host_unittest_action("JIT_001_Test") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
   ]
+  if (!ark_standalone_build && !is_arkui_x) {
+    external_deps += [ 
+      "runtime_core:arkassembler_public_headers",
+      "runtime_core:arkfile_public_headers",
+    ]
+  }
   deps += hiviewdfx_deps
 }
 
