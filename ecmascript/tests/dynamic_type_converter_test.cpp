@@ -45,6 +45,9 @@ static JSHandle<JSObject> JSObjectCreate(JSThread *thread)
  */
 HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test0)
 {
+    if (!g_isEnableCMCGC) {
+        return;
+    }
     DynamicTypeConverter dynTypeConverter_;
     ThreadHolder *threadHolder = thread->GetThreadHolder();
     // 1. Test monostate (empty variant)
@@ -103,6 +106,9 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test0)
  */
 HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test1)
 {
+    if (!g_isEnableCMCGC) {
+        return;
+    }
     DynamicTypeConverter dynTypeConverter_;
     ThreadHolder *threadHolder = thread->GetThreadHolder();
     // int32_t
@@ -154,6 +160,9 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test1)
  */
 HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test2)
 {
+    if (!g_isEnableCMCGC) {
+        return;
+    }
     DynamicTypeConverter dynTypeConverter_;
     ThreadHolder *threadHolder = thread->GetThreadHolder();
     // 6. Test undefined and null
@@ -218,6 +227,9 @@ HWTEST_F_L0(DynamicTypeConverterTest, WrapTagged_Test2)
  */
 HWTEST_F_L0(DynamicTypeConverterTest, UnWrapTagged_Test0)
 {
+    if (!g_isEnableCMCGC) {
+        return;
+    }
     DynamicTypeConverter dynTypeConverter_;
     /* Boolean type tests */
     {
@@ -264,6 +276,9 @@ HWTEST_F_L0(DynamicTypeConverterTest, UnWrapTagged_Test0)
  */
 HWTEST_F_L0(DynamicTypeConverterTest, UnWrapTagged_Test1)
 {
+    if (!g_isEnableCMCGC) {
+        return;
+    }
     DynamicTypeConverter dynTypeConverter_;
     /* Undefined type tests */
     {
