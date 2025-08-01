@@ -1000,7 +1000,7 @@ void TypedHCRLowering::LowerCallGetter(GateRef gate, GateRef glue)
         }
     }
     builder_.Bind(&exit);
-    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedHCRLowering::LowerStoreProperty(GateRef gate)
@@ -1090,7 +1090,7 @@ void TypedHCRLowering::LowerCallSetter(GateRef gate, GateRef glue)
         }
     }
     builder_.Bind(&exit);
-    ReplaceHirWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypedHCRLowering::LowerLoadArrayLength(GateRef gate)

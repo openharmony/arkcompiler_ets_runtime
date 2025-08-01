@@ -446,7 +446,11 @@ void TypedBytecodeLowering::SpeculateStrings(const BinOpTypeInfoAccessor &tacc)
             }
         }
         GateRef result = builder_.TypedBinaryOp<Op>(left, right, tacc.GetParamType());
-        acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+        if (Op == TypedBinOp::TYPED_ADD) {
+            ReplaceGateWithPendingException(glue_, tacc.GetGate(), builder_.GetState(), builder_.GetDepend(), result);
+        } else {
+            acc_.ReplaceHirAndReplaceDeadIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
+        }
     }
 }
 
@@ -755,7 +759,7 @@ void TypedBytecodeLowering::LowerTypedMonoLdObjByName(const LoadObjPropertyTypeI
             }
         }
     }
-    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
+    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -865,7 +869,7 @@ void TypedBytecodeLowering::LowerTypedPolyLdObjByName(const LoadObjPropertyTypeI
         PolyHeapObjectCheckAndLoad(info, typeIndex2HeapConstantIndex);
     }
     builder_.Bind(&exit);
-    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
+    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -926,7 +930,7 @@ void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
     }
 
     builder_.Bind(&exit);
-    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
+    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
     DeleteConstDataIfNoUser(key);
 }
 
@@ -964,7 +968,7 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
     }
 
     builder_.Bind(&exit);
-    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     DeleteConstDataIfNoUser(key);
 }
 
@@ -1056,7 +1060,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
                                      tacc.GetValue(), tacc.GetAccessInfo(0).Plr(), tacc.GetExpectedHClassIndex(0));
         }
-        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+        ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
         DeleteConstDataIfNoUser(tacc.GetKey());
         return;
     }
@@ -1117,7 +1121,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
         }
     }
     builder_.Bind(&exit);
-    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
+    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -1623,7 +1627,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByValue(GateRef gate)
                 result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, unsharedConstPoool, holderHClassIndex);
             }
         }
-        acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
+        ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
         return;
     }
 }

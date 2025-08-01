@@ -125,6 +125,8 @@ public:
         Circuit *circuit, const MethodLiteral *literal);
     ~FrameStateBuilder();
 
+    void BuildStateSplitBeforeCatch(uint32_t bcId, FrameLiveOut *liveout);
+    void UpdateCatchState(uint32_t bcId, FrameLiveOut* liveout);
     void DoBytecodeAnalysis();
     void AnalyzeLiveness();
     void AdvanceToNextBc(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);

@@ -1137,14 +1137,6 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
             bbNext.expandedPreds.push_back({bb.id, bb.end, false});
             continue;
         }
-        if (!bb.trys.empty()) {
-            GateRef state = frameStateBuilder_.GetCurrentState();
-            GateRef depend = frameStateBuilder_.GetCurrentDepend();
-            auto getException = circuit_->NewGate(circuit_->GetException(),
-                MachineType::I64, {state, depend}, GateType::AnyType());
-            frameStateBuilder_.UpdateAccumulator(getException);
-            frameStateBuilder_.UpdateStateDepend(state, getException);
-        }
         EnumerateBlock(bb, [this, &bb]
             (const BytecodeInfo &bytecodeInfo) -> bool {
             NewByteCode(bb);
