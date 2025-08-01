@@ -613,6 +613,7 @@ public:
 
     inline void SetIsDictionaryMode(bool flag) const
     {
+        SetIsStable(!flag);
         IsDictionaryBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 

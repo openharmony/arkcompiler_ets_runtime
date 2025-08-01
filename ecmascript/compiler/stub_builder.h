@@ -610,6 +610,7 @@ public:
     GateRef GetTransitionsFromHClass(GateRef glue, GateRef hClass);
     void SetParentToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef parent);
     void SetIsPrototypeToHClass(GateRef glue, GateRef hClass, GateRef value);
+    GateRef SetIsStableToBitField(GateRef bitfield, GateRef isStable);
     inline void SetIsAOT(GateRef glue, GateRef hClass, GateRef value);
     GateRef IsPrototypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
