@@ -1458,22 +1458,25 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
     vm_->SetEnableForceGC(true);
 }
 
-HWTEST_F_L0(JSNApiTests, DISABLED_Hint_GC)
+HWTEST_F_L0(JSNApiTests, Hint_GC)
 {
     ecmascript::ThreadManagedScope managedScope(thread_);
     vm_->SetEnableForceGC(false);
     [[maybe_unused]] auto heap = const_cast<Heap *>(thread_->GetEcmaVM()->GetHeap());
 
 #ifdef NDEBUG
-    heap->CollectGarbage(TriggerGCType::OLD_GC);
-    {
-        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread_);
-        for (int i = 0; i < 2049; i++) {
-            [[maybe_unused]] JSHandle<TaggedArray> array = thread_->GetEcmaVM()->GetFactory()->NewTaggedArray(
-                1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
-        }
-    }
     size_t beforeSize = heap->GetHeapObjectSize();
+    if (!g_isEnableCMCGC) {
+        heap->CollectGarbage(TriggerGCType::OLD_GC);
+        {
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread_);
+            for (int i = 0; i < 2049; i++) {
+                [[maybe_unused]] JSHandle<TaggedArray> array = thread_->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                    1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+            }
+        }
+        beforeSize = heap->GetHeapObjectSize();
+    }
 #endif
 
     Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "1");
@@ -1489,8 +1492,10 @@ HWTEST_F_L0(JSNApiTests, DISABLED_Hint_GC)
 
     ASSERT_EQ("1", origin->ToString(vm_));
 #ifdef NDEBUG
-    size_t afterSize = heap->GetHeapObjectSize();
-    EXPECT_TRUE(afterSize < beforeSize);
+    if (!g_isEnableCMCGC) {
+        size_t afterSize = heap->GetHeapObjectSize();
+        EXPECT_TRUE(afterSize < beforeSize);
+    }
 #endif
     vm_->SetEnableForceGC(true);
 }
