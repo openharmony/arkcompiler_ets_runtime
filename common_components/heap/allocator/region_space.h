@@ -294,7 +294,8 @@ public:
         regionManager_.AssembleLargeGarbageCandidates();
     }
 
-    void DumpAllRegionStats(const char* msg, GCReason reason, GCType type) const;
+    void DumpAllRegionSummary(const char* msg) const;
+    void DumpAllRegionStats(const char* msg) const;
 
     void CountLiveObject(const BaseObject* obj) { regionManager_.CountLiveObject(obj); }
 

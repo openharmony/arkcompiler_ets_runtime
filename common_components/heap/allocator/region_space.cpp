@@ -58,27 +58,27 @@ RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
     return region;
 }
 
-void RegionSpace::DumpAllRegionStats(const char* msg, GCReason reason, GCType type) const
+// used to dump a brief summary of all regions.
+void RegionSpace::DumpAllRegionSummary(const char* msg) const
 {
-    // summary info in info level.
     auto from = fromSpace_.GetAllocatedSize();
     auto exempt = fromSpace_.GetSurvivedSize();
     auto to = toSpace_.GetAllocatedSize();
     auto young = youngSpace_.GetAllocatedSize();
     auto old = oldSpace_.GetAllocatedSize();
     auto other = regionManager_.GetAllocatedSize();
-    auto currentThreshold = Heap::GetHeap().GetCollector().GetGCStats().GetThreshold();
 
     std::ostringstream oss;
-    oss << msg << " GCReason: " << GCReasonToString(reason)
-        << ", GCType: " << GCTypeToString(type) << ", Current allocated: "
-        << Pretty(from + to + young + old + other) <<
-        ", Current threshold: " << Pretty(currentThreshold) << ". (from: " << Pretty(from)
+    oss << msg << "Current allocated: " << Pretty(from + to + young + old + other) << ". (from: " << Pretty(from)
         << "(exempt: " << Pretty(exempt) << "), to: " << Pretty(to) << ", young: " << Pretty(young)
         << ", old: " << Pretty(old) << ", other: " << Pretty(other) << ")";
-    VLOG(INFO, oss.str().c_str());
+    VLOG(DEBUG, oss.str().c_str());
+}
 
-    // detail info in debug level.
+// used to dump a detailed information of all regions.
+void RegionSpace::DumpAllRegionStats(const char* msg) const
+{
+    VLOG(DEBUG, msg);
     youngSpace_.DumpRegionStats();
     oldSpace_.DumpRegionStats();
     fromSpace_.DumpRegionStats();
