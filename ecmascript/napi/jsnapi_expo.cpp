@@ -6277,10 +6277,9 @@ bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size,
     return true;
 }
 
-JSNApi::PandaFileType JSNApi::GetFileType(const std::string &filename)
+JSNApi::PandaFileType JSNApi::GetFileType(const uint8_t *data, int32_t size)
 {
-    panda::ecmascript::CString normalFilename = PathHelper::NormalizePath(filename.c_str());
-    panda_file::PandaFileType fileType = panda_file::GetFileType(normalFilename);
+    panda_file::PandaFileType fileType = panda_file::GetFileType(data, size);
     switch (fileType) {
         case panda_file::PandaFileType::FILE_FORMAT_INVALID: {
             return JSNApi::PandaFileType::FILE_FORMAT_INVALID;
