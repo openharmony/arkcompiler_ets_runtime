@@ -158,6 +158,9 @@ bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFil
         LOG_ECMA(ERROR) << "file verify failed.";
         return false;
     }
+    if (hdr.rootObjectSize == 0) {
+        LOG_ECMA(ERROR) << "Snapshot rootObjectSize is 0";
+    }
     [[maybe_unused]] EcmaHandleScope stringHandleScope(vm_->GetJSThread());
     if (g_isEnableCMCGC) {
         uintptr_t regularObjBegin = readFile + sizeof(SnapShotHeader);
