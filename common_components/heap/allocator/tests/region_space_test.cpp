@@ -83,7 +83,7 @@ HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseEnum)
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 
@@ -95,7 +95,7 @@ HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseMark)
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 
@@ -107,7 +107,7 @@ HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhaseRemarkStab)
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 
@@ -119,7 +119,7 @@ HWTEST_F_L0(RegionSpaceTest, AllocRegion_PhasePostMark)
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 
@@ -175,7 +175,7 @@ HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseEnum)
     uintptr_t addr = theAllocator.AllocPinnedRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 
@@ -187,7 +187,7 @@ HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseMark)
     uintptr_t addr = theAllocator.AllocPinnedRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 
@@ -199,7 +199,7 @@ HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhaseRemarkStab)
     uintptr_t addr = theAllocator.AllocPinnedRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 
@@ -211,7 +211,7 @@ HWTEST_F_L0(RegionSpaceTest, AllocPinnedRegion_PhasePostMark)
     uintptr_t addr = theAllocator.AllocPinnedRegion();
     ASSERT_NE(addr, 0);
     RegionDesc* region = RegionDesc::GetAliveRegionDescAt(addr);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 
@@ -289,22 +289,22 @@ HWTEST_F_L0(RegionSpaceTest, AllocateThreadLocalRegion4)
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
     ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
     RegionDesc* region = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
-    EXPECT_EQ(region->GetTraceLine(), region->GetRegionStart());
+    EXPECT_EQ(region->GetMarkingLine(), region->GetRegionStart());
     EXPECT_EQ(region->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
     RegionDesc* region2 = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
-    EXPECT_EQ(region2->GetTraceLine(), region2->GetRegionStart());
+    EXPECT_EQ(region2->GetMarkingLine(), region2->GetRegionStart());
     EXPECT_EQ(region2->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_REMARK_SATB);
     RegionDesc* region3 = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
-    EXPECT_EQ(region3->GetTraceLine(), region3->GetRegionStart());
+    EXPECT_EQ(region3->GetMarkingLine(), region3->GetRegionStart());
     EXPECT_EQ(region3->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 
     mutator->SetMutatorPhase(GCPhase::GC_PHASE_POST_MARK);
     RegionDesc* region4 = theAllocator.AllocateThreadLocalRegion<AllocBufferType::OLD>(false);
-    EXPECT_EQ(region4->GetTraceLine(), region4->GetRegionStart());
+    EXPECT_EQ(region4->GetMarkingLine(), region4->GetRegionStart());
     EXPECT_EQ(region4->GetCopyLine(), std::numeric_limits<uintptr_t>::max());
 }
 

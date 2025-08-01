@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "common_components/heap/ark_collector/ark_collector.h"
 #include "common_components/heap/verification.cpp"
 #include "common_components/heap/heap_manager.h"
-#include "common_components/heap/w_collector/w_collector.h"
 #include "common_components/tests/test_helper.h"
 #include "common_interfaces/objects/base_object_operator.h"
 
@@ -145,59 +145,59 @@ HWTEST_F_L0(VerificationTest, VerifyRefImplTest3)
     EXPECT_NE(oldRefValue, newRefValue);
 }
 
-std::unique_ptr<WCollector> GetWCollector()
+std::unique_ptr<ArkCollector> GetArkCollector()
 {
     CollectorResources &resources = Heap::GetHeap().GetCollectorResources();
     Allocator &allocator = Heap::GetHeap().GetAllocator();
 
-    return std::make_unique<WCollector>(allocator, resources);
+    return std::make_unique<ArkCollector>(allocator, resources);
 }
 
 HWTEST_F_L0(VerificationTest, VerifyAfterMarkTest1)
 {
     Heap::GetHeap().SetGCPhase(GCPhase::GC_PHASE_POST_MARK);
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
     WVerify verify;
-    verify.VerifyAfterMark(*wcollector);
+    verify.VerifyAfterMark(*arkCollector);
     ASSERT_FALSE(MutatorManager::Instance().WorldStopped());
 }
 
 HWTEST_F_L0(VerificationTest, VerifyAfterForwardTest1)
 {
     Heap::GetHeap().SetGCPhase(GCPhase::GC_PHASE_COPY);
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
     WVerify verify;
-    verify.VerifyAfterForward(*wcollector);
+    verify.VerifyAfterForward(*arkCollector);
     ASSERT_FALSE(MutatorManager::Instance().WorldStopped());
 }
 
 HWTEST_F_L0(VerificationTest, VerifyAfterFixTest1)
 {
     Heap::GetHeap().SetGCPhase(GCPhase::GC_PHASE_FIX);
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
     WVerify verify;
-    verify.VerifyAfterFix(*wcollector);
+    verify.VerifyAfterFix(*arkCollector);
     ASSERT_FALSE(MutatorManager::Instance().WorldStopped());
 }
 
 HWTEST_F_L0(VerificationTest, EnableReadBarrierDFXTest1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
     WVerify verify;
-    verify.EnableReadBarrierDFX(*wcollector);
+    verify.EnableReadBarrierDFX(*arkCollector);
     ASSERT_FALSE(MutatorManager::Instance().WorldStopped());
 }
 
 HWTEST_F_L0(VerificationTest, DisableReadBarrierDFXTest1)
 {
-    std::unique_ptr<WCollector> wcollector = GetWCollector();
-    ASSERT_TRUE(wcollector != nullptr);
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
     WVerify verify;
-    verify.DisableReadBarrierDFX(*wcollector);
+    verify.DisableReadBarrierDFX(*arkCollector);
     ASSERT_FALSE(MutatorManager::Instance().WorldStopped());
 }
 
@@ -212,7 +212,7 @@ HWTEST_F_L0(VerificationTest, GetObjectInfoTest3)
     EXPECT_NE(result.find("Start: 0x"), std::string::npos);
     EXPECT_NE(result.find("End: 0x"), std::string::npos);
     EXPECT_NE(result.find("AllocPtr: 0x"), std::string::npos);
-    EXPECT_NE(result.find("TraceLine: 0x"), std::string::npos);
+    EXPECT_NE(result.find("MarkingLine: 0x"), std::string::npos);
     EXPECT_NE(result.find("CopyLine: 0x"), std::string::npos);
 }
 
@@ -268,7 +268,7 @@ static void CustomVisitRoot(const RefFieldVisitor& visitorFunc)
     RefField<> field(testObj);
     visitorFunc(field);
 }
-HWTEST_F_L0(VerificationTest, IterateRetraced_VerifyAllRefs)
+HWTEST_F_L0(VerificationTest, IterateRemarked_VerifyAllRefs)
 {
     RegionSpace regionSpace;
     VerifyIterator verify(regionSpace);
@@ -278,8 +278,8 @@ HWTEST_F_L0(VerificationTest, IterateRetraced_VerifyAllRefs)
     testObj = reinterpret_cast<BaseObject*>(addr);
     markSet.insert(testObj);
 
-    verify.IterateRetraced<CustomVisitRoot>(visitor, markSet, true);
-    verify.IterateRetraced<CustomVisitRoot>(visitor, markSet, false);
+    verify.IterateRemarked<CustomVisitRoot>(visitor, markSet, true);
+    verify.IterateRemarked<CustomVisitRoot>(visitor, markSet, false);
     EXPECT_EQ(markSet.size(), 1);
     EXPECT_TRUE(markSet.find(testObj) != markSet.end());
 }

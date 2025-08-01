@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "common_components/heap/w_collector/idle_barrier.h"
+#include "common_components/heap/ark_collector/idle_barrier.h"
 
 #include "common_components/mutator/mutator.h"
 #if defined(COMMON_TSAN_SUPPORT)

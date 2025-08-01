@@ -32,7 +32,7 @@ const char* LOG_TYPE_NAMES[LOG_TYPE_NUMBER] = {
 
     "barrier",          "ebarrier",     "tbarrier", "pbarrier",     "fbarrier",
 
-    "gcphase",          "enum",         "trace",    "preforward",   "copy", "fix", "finalize",
+    "gcphase",          "enum",         "marking",    "preforward",   "copy", "fix", "finalize",
 
     "unwind",           "exception",    "signal",
 

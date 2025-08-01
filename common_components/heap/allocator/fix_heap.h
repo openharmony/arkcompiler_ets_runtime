@@ -22,8 +22,8 @@
 #include "common_components/taskpool/task.h"
 namespace common {
 
-class TraceCollector;
-class WCollector;
+class ArkCollector;
+class MarkingCollector;
 class RegionDesc;
 class RegionList;
 class BaseObject;
@@ -73,7 +73,7 @@ public:
         size_t numProcessedRegions = 0;
     };
 
-    FixHeapWorker(WCollector *collector, TaskPackMonitor &monitor, Result &result,
+    FixHeapWorker(ArkCollector *collector, TaskPackMonitor &monitor, Result &result,
                   std::function<FixHeapTask *()> &next) noexcept
         : Task(0), collector_(collector), monitor_(monitor), result_(result), getNextTask_(next)
     {
@@ -112,7 +112,7 @@ private:
     template <DeadObjectHandlerType HandlerType>
     void FixRecentRegion(RegionDesc *region);
 
-    WCollector *collector_;
+    ArkCollector *collector_;
     TaskPackMonitor &monitor_;
     Result &result_;
     std::function<FixHeapTask *()> getNextTask_;

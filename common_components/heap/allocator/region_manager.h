@@ -34,7 +34,7 @@
 namespace common {
 using JitFortUnProtHookType = void (*)(size_t size, void* base);
 
-class TraceCollector;
+class MarkingCollector;
 class CompactCollector;
 class RegionManager;
 class Taskpool;
@@ -73,7 +73,7 @@ public:
     }
 
     void CollectFixTasks(FixHeapTaskList& taskList);
-    void CollectFixHeapTaskForPinnedRegion(TraceCollector& collector, RegionList& list, FixHeapTaskList& taskList);
+    void CollectFixHeapTaskForPinnedRegion(MarkingCollector& collector, RegionList& list, FixHeapTaskList& taskList);
 
     void Initialize(size_t regionNum, uintptr_t regionInfoStart);
 
@@ -94,7 +94,7 @@ public:
 
     RegionManager& operator=(const RegionManager&) = delete;
 
-    void FixFixedRegionList(TraceCollector& collector, RegionList& list, size_t cellCount, GCStats& stats);
+    void FixFixedRegionList(MarkingCollector& collector, RegionList& list, size_t cellCount, GCStats& stats);
 
     using RootSet = MarkStack<BaseObject*>;
 
@@ -180,9 +180,9 @@ public:
             GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
             if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK ||
                 phase == GC_PHASE_REMARK_SATB || phase == GC_PHASE_POST_MARK) {
-                region->SetTraceLine();
+                region->SetMarkingLine();
             } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-                region->SetTraceLine();
+                region->SetMarkingLine();
                 region->SetCopyLine();
             }
             // To make sure the allocedSize are consistent, it must prepend region first then alloc object.
@@ -216,9 +216,9 @@ public:
             GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
             if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
                 phase == GC_PHASE_POST_MARK) {
-                region->SetTraceLine();
+                region->SetMarkingLine();
             } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-                region->SetTraceLine();
+                region->SetMarkingLine();
                 region->SetCopyLine();
             }
 
@@ -245,9 +245,9 @@ public:
         GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
         if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
             phase == GC_PHASE_POST_MARK) {
-            region->SetTraceLine();
+            region->SetMarkingLine();
         } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-            region->SetTraceLine();
+            region->SetMarkingLine();
             region->SetCopyLine();
         }
 
@@ -379,34 +379,34 @@ public:
     // until allocation does no harm to gc.
     void RequestForRegion(size_t size);
 
-    void PrepareTrace()
+    void PrepareMarking()
     {
         AllocBufferVisitor visitor = [](AllocationBuffer& regionBuffer) {
             RegionDesc* region = regionBuffer.GetRegion<AllocBufferType::YOUNG>();
             if (region != RegionDesc::NullRegion()) {
-                region->SetTraceLine();
+                region->SetMarkingLine();
             }
             region = regionBuffer.GetRegion<AllocBufferType::OLD>();
             if (region != RegionDesc::NullRegion()) {
-                region->SetTraceLine();
+                region->SetMarkingLine();
             }
         };
         Heap::GetHeap().GetAllocator().VisitAllocBuffers(visitor);
 
         RegionDesc* pinRegion = recentPinnedRegionList_.GetHeadRegion();
         if (pinRegion != nullptr && pinRegion != RegionDesc::NullRegion()) {
-            pinRegion->SetTraceLine();
+            pinRegion->SetMarkingLine();
         }
 
         RegionDesc* readOnlyRegion = readOnlyRegionList_.GetHeadRegion();
         if (readOnlyRegion != nullptr && readOnlyRegion != RegionDesc::NullRegion()) {
-            readOnlyRegion->SetTraceLine();
+            readOnlyRegion->SetMarkingLine();
         }
 
         for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
             RegionDesc* region = recentFixedPinnedRegionList_[i]->GetHeadRegion();
             if (region != nullptr && region != RegionDesc::NullRegion()) {
-                region->SetTraceLine();
+                region->SetMarkingLine();
             }
         }
     }
@@ -528,7 +528,7 @@ private:
         RegionList tmp("temp region list");
         list.CopyListTo(tmp);
         tmp.VisitAllRegions([](RegionDesc* region) {
-            region->ClearTraceCopyLine();
+            region->ClearMarkingCopyLine();
             region->ClearLiveInfo();
             region->ResetMarkBit();
         });

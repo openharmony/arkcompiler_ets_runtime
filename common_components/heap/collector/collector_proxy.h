@@ -16,9 +16,9 @@
 #ifndef COMMON_COMPONENTS_HEAP_COLLECTOR_COLLECTOR_PROXY_H
 #define COMMON_COMPONENTS_HEAP_COLLECTOR_COLLECTOR_PROXY_H
 
+#include "common_components/heap/ark_collector/ark_collector.h"
 #include "common_components/heap/collector/collector.h"
 #include "common_components/heap/collector/collector_resources.h"
-#include "common_components/heap/w_collector/w_collector.h"
 
 namespace common {
 // CollectorProxy is a special kind of collector, it is derived from Base class Collector, thus behaves like a real
@@ -28,7 +28,7 @@ namespace common {
 class CollectorProxy : public Collector {
 public:
     explicit CollectorProxy(Allocator& allocator, CollectorResources& resources)
-        : wCollector_(allocator, resources)
+        : arkCollector_(allocator, resources)
     {
         collectorType_ = CollectorType::PROXY_COLLECTOR;
     }
@@ -47,7 +47,7 @@ public:
 
     bool ShouldIgnoreRequest(GCRequest& request) override { return currentCollector_->ShouldIgnoreRequest(request); }
 
-    TraceCollector& GetCurrentCollector() const { return *currentCollector_; }
+    MarkingCollector& GetCurrentCollector() const { return *currentCollector_; }
 
     BaseObject* FindToVersion(BaseObject* obj) const override { return currentCollector_->FindToVersion(obj); }
 
@@ -87,8 +87,8 @@ public:
 
 private:
     // supported collector set
-    WCollector* currentCollector_ = nullptr;
-    WCollector wCollector_;
+    ArkCollector* currentCollector_ = nullptr;
+    ArkCollector arkCollector_;
 };
 } // namespace common
 

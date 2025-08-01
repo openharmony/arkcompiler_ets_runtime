@@ -37,7 +37,7 @@ enum LogType {
     // for barriers
     BARRIER,  // idle phase
     EBARRIER, // enum phase
-    TBARRIER, // trace phase
+    TBARRIER, // marking phase
     PBARRIER, // preforward phase
     FBARRIER, // copy phase
 

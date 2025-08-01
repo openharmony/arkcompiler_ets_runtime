@@ -16,17 +16,17 @@
 #ifndef VERIFICATION_H
 #define VERIFICATION_H
 
-#include "w_collector/w_collector.h"
+#include "ark_collector/ark_collector.h"
 
 namespace common {
 
 class WVerify {
 public:
-    static void VerifyAfterMark(WCollector &collector);
-    static void VerifyAfterForward(WCollector &collector);
-    static void VerifyAfterFix(WCollector &collector);
-    static void EnableReadBarrierDFX(WCollector &collector);
-    static void DisableReadBarrierDFX(WCollector &collector);
+    static void VerifyAfterMark(ArkCollector &collector);
+    static void VerifyAfterForward(ArkCollector &collector);
+    static void VerifyAfterFix(ArkCollector &collector);
+    static void EnableReadBarrierDFX(ArkCollector &collector);
+    static void DisableReadBarrierDFX(ArkCollector &collector);
 
 private:
     static void VerifyAfterMarkInternal(RegionSpace &space);

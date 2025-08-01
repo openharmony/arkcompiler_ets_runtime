@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-#ifndef COMMON_COMPONENTS_HEAP_W_COLLECTOR_POST_TRACE_BARRIER_H
-#define COMMON_COMPONENTS_HEAP_W_COLLECTOR_POST_TRACE_BARRIER_H
+#ifndef COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_POST_MARKING_BARRIER_H
+#define COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_POST_MARKING_BARRIER_H
 
-#include "common_components/heap/w_collector/idle_barrier.h"
+#include "common_components/heap/ark_collector/idle_barrier.h"
 
 namespace common {
-// PostTraceBarrier is the barrier for concurrent marking phase.
+// PostMarkingBarrier is the barrier for concurrent marking phase.
 // rename to TracingBarrier. Marking is confusing in consideration of MarkObject.
-class PostTraceBarrier : public IdleBarrier {
+class PostMarkingBarrier : public IdleBarrier {
 public:
-    explicit PostTraceBarrier(Collector& collector) : IdleBarrier(collector) {}
+    explicit PostMarkingBarrier(Collector& collector) : IdleBarrier(collector) {}
 
     BaseObject* ReadRefField(BaseObject* obj, RefField<false>& field) const override;
     BaseObject* ReadStaticRef(RefField<false>& field) const override;
@@ -49,4 +49,4 @@ public:
 };
 } // namespace common
 
-#endif // COMMON_COMPONENTS_HEAP_W_COLLECTOR_MARK_BARRIER_H
+#endif // COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_MARK_BARRIER_H

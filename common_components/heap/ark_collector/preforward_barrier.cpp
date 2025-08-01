@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "common_components/heap/w_collector/preforward_barrier.h"
+#include "common_components/heap/ark_collector/preforward_barrier.h"
 
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/base/sys_call.h"
@@ -57,9 +57,9 @@ BaseObject* PreforwardBarrier::ReadStringTableStaticRef(RefField<false>& field) 
 
     auto isSurvivor = [](BaseObject* obj) {
         auto gcReason = Heap::GetHeap().GetGCReason();
-        RegionDesc *regionInfo =
-            RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
-        return (regionInfo->IsNewObjectSinceTrace(obj) || regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
+        RegionDesc *regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+        return (regionInfo->IsNewObjectSinceMarking(obj) ||
+            regionInfo->IsToRegion() || regionInfo->IsMarkedObject(obj));
     };
 
     RefField<> tmpField(field);

@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "common_components/heap/w_collector/enum_barrier.h"
+#include "common_components/heap/ark_collector/enum_barrier.h"
 
 #include "common_components/mutator/mutator.h"
 #if defined(COMMON_TSAN_SUPPORT)
@@ -20,7 +20,7 @@
 #endif
 
 namespace common {
-// Because gc thread will also have impact on tagged pointer in enum and trace phase,
+// Because gc thread will also have impact on tagged pointer in enum and marking phase,
 // so we don't expect reading barrier have the ability to modify the referent field.
 BaseObject* EnumBarrier::ReadRefField(BaseObject* obj, RefField<false>& field) const
 {

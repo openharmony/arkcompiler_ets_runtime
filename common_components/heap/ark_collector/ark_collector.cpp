@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "common_components/heap/w_collector/w_collector.h"
+#include "common_components/heap/ark_collector/ark_collector.h"
 
 #include "common_components/common_runtime/hooks.h"
 #include "common_components/log/log.h"
@@ -29,7 +29,7 @@
 #endif
 
 namespace common {
-bool WCollector::IsUnmovableFromObject(BaseObject* obj) const
+bool ArkCollector::IsUnmovableFromObject(BaseObject* obj) const
 {
     // filter const string object.
     if (!Heap::IsHeapAddress(obj)) {
@@ -41,7 +41,7 @@ bool WCollector::IsUnmovableFromObject(BaseObject* obj) const
     return regionInfo->IsUnmovableFromRegion();
 }
 
-bool WCollector::MarkObject(BaseObject* obj) const
+bool ArkCollector::MarkObject(BaseObject* obj) const
 {
     bool marked = RegionSpace::MarkObject(obj);
     if (!marked) {
@@ -55,14 +55,14 @@ bool WCollector::MarkObject(BaseObject* obj) const
 
 // this api updates current pointer as well as old pointer, caller should take care of this.
 template<bool copy>
-bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseObject*& fromObj,
-                                       BaseObject*& toObj) const
+bool ArkCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseObject*& fromObj,
+                                         BaseObject*& toObj) const
 {
     RefField<> oldRef(field);
     fromObj = oldRef.GetTargetObject();
     if (IsFromObject(fromObj)) { //LCOV_EXCL_BR_LINE
         if (copy) { //LCOV_EXCL_BR_LINE
-            toObj = const_cast<WCollector*>(this)->TryForwardObject(fromObj);
+            toObj = const_cast<ArkCollector*>(this)->TryForwardObject(fromObj);
             if (toObj != nullptr) { //LCOV_EXCL_BR_LINE
                 HeapProfilerListener::GetInstance().OnMoveEvent(reinterpret_cast<uintptr_t>(fromObj),
                                                                 reinterpret_cast<uintptr_t>(toObj),
@@ -101,20 +101,20 @@ bool WCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseO
     return false;
 }
 
-bool WCollector::TryUpdateRefField(BaseObject* obj, RefField<>& field, BaseObject*& newRef) const
+bool ArkCollector::TryUpdateRefField(BaseObject* obj, RefField<>& field, BaseObject*& newRef) const
 {
     BaseObject* oldRef = nullptr;
     return TryUpdateRefFieldImpl<false>(obj, field, oldRef, newRef);
 }
 
-bool WCollector::TryForwardRefField(BaseObject* obj, RefField<>& field, BaseObject*& newRef) const
+bool ArkCollector::TryForwardRefField(BaseObject* obj, RefField<>& field, BaseObject*& newRef) const
 {
     BaseObject* oldRef = nullptr;
     return TryUpdateRefFieldImpl<true>(obj, field, oldRef, newRef);
 }
 
 // this api untags current pointer as well as old pointer, caller should take care of this.
-bool WCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject*& target) const
+bool ArkCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject*& target) const
 {
     for (;;) { //LCOV_EXCL_BR_LINE
         RefField<> oldRef(field);
@@ -139,11 +139,11 @@ bool WCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject
     return false;
 }
 
-static void TraceRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &field,
-                          WorkStack &workStack, RegionDesc *targetRegion);
-// note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
-static void TraceRefField(BaseObject *obj, RefField<> &field, WorkStack &workStack,
-                          WeakStack &weakStack, const GCReason gcReason)
+static void MarkingRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &field,
+                            WorkStack &workStack, RegionDesc *targetRegion);
+// note each ref-field will not be marked twice, so each old pointer the markingr meets must come from previous gc.
+static void MarkingRefField(BaseObject *obj, RefField<> &field, WorkStack &workStack,
+                            WeakStack &weakStack, const GCReason gcReason)
 {
     RefField<> oldField(field);
     BaseObject* targetObj = oldField.GetTargetObject();
@@ -156,7 +156,7 @@ static void TraceRefField(BaseObject *obj, RefField<> &field, WorkStack &workSta
 
     auto targetRegion = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void*)targetObj));
     if (gcReason != GC_REASON_YOUNG && oldField.IsWeak()) {
-        DLOG(TRACE, "trace: skip weak obj when full gc, object: %p@%p, targetObj: %p", obj, &field, targetObj);
+        DLOG(TRACE, "marking: skip weak obj when full gc, object: %p@%p, targetObj: %p", obj, &field, targetObj);
         // weak ref is cleared after roots pre-forward, so there might be a to-version weak ref which also need to be
         // cleared, offset recorded here will help us find it
         weakStack.push_back(std::make_shared<std::tuple<RefField<>*, size_t>>(
@@ -166,58 +166,58 @@ static void TraceRefField(BaseObject *obj, RefField<> &field, WorkStack &workSta
 
     // cannot skip objects in EXEMPTED_FROM_REGION, because its rset is incomplete
     if (gcReason == GC_REASON_YOUNG && !targetRegion->IsInYoungSpace()) {
-        DLOG(TRACE, "trace: skip non-young object %p@%p, target object: %p<%p>(%zu)",
+        DLOG(TRACE, "marking: skip non-young object %p@%p, target object: %p<%p>(%zu)",
             obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
-    common::TraceRefField(obj, targetObj, field, workStack, targetRegion);
+    common::MarkingRefField(obj, targetObj, field, workStack, targetRegion);
 }
 
-// note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
-static void TraceRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &field,
-                          WorkStack &workStack, RegionDesc *targetRegion)
+// note each ref-field will not be marked twice, so each old pointer the markingr meets must come from previous gc.
+static void MarkingRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &field,
+                            WorkStack &workStack, RegionDesc *targetRegion)
 {
-    if (targetRegion->IsNewObjectSinceTrace(targetObj)) {
-        DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
+    if (targetRegion->IsNewObjectSinceMarking(targetObj)) {
+        DLOG(TRACE, "marking: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
 
     if (targetRegion->MarkObject(targetObj)) {
-        DLOG(TRACE, "trace: obj has been marked %p", targetObj);
+        DLOG(TRACE, "marking: obj has been marked %p", targetObj);
         return;
     }
 
-    DLOG(TRACE, "trace obj %p ref@%p: %p<%p>(%zu)",
+    DLOG(TRACE, "marking obj %p ref@%p: %p<%p>(%zu)",
         obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
     workStack.push_back(targetObj);
 }
 
-TraceCollector::TraceRefFieldVisitor WCollector::CreateTraceObjectRefFieldsVisitor(WorkStack *workStack,
-                                                                                   WeakStack *weakStack)
+MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack,
+                                                                                           WeakStack *weakStack)
 {
-    TraceRefFieldVisitor visitor;
+    MarkingRefFieldVisitor visitor;
 
     if (gcReason_ == GCReason::GC_REASON_YOUNG) {
         visitor.SetVisitor([obj = visitor.GetClosure(), workStack, weakStack](RefField<> &field) {
             const GCReason gcReason = GCReason::GC_REASON_YOUNG;
-            TraceRefField(*obj, field, *workStack, *weakStack, gcReason);
+            MarkingRefField(*obj, field, *workStack, *weakStack, gcReason);
         });
     } else {
         visitor.SetVisitor([obj = visitor.GetClosure(), workStack, weakStack](RefField<> &field) {
             const GCReason gcReason = GCReason::GC_REASON_HEU;
-            TraceRefField(*obj, field, *workStack, *weakStack, gcReason);
+            MarkingRefField(*obj, field, *workStack, *weakStack, gcReason);
         });
     }
     return visitor;
 }
 
-void WCollector::TraceObjectRefFields(BaseObject *obj, TraceRefFieldVisitor *data)
+void ArkCollector::MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data)
 {
-    data->SetTraceRefFieldArgs(obj);
+    data->SetMarkingRefFieldArgs(obj);
     obj->ForEachRefField(data->GetRefFieldVisitor());
 }
 
-void WCollector::FixRefField(BaseObject* obj, RefField<>& field) const
+void ArkCollector::FixRefField(BaseObject* obj, RefField<>& field) const
 {
     RefField<> oldField(field);
     BaseObject* targetObj = oldField.GetTargetObject();
@@ -251,14 +251,14 @@ void WCollector::FixRefField(BaseObject* obj, RefField<>& field) const
     }
 }
 
-void WCollector::FixObjectRefFields(BaseObject* obj) const
+void ArkCollector::FixObjectRefFields(BaseObject* obj) const
 {
     DLOG(FIX, "fix obj %p<%p>(%zu)", obj, obj->GetTypeInfo(), obj->GetSize());
     auto refFunc = [this, obj](RefField<>& field) { FixRefField(obj, field); };
     obj->ForEachRefField(refFunc);
 }
 
-BaseObject* WCollector::ForwardUpdateRawRef(ObjectRef& root)
+BaseObject* ArkCollector::ForwardUpdateRawRef(ObjectRef& root)
 {
     auto& refField = reinterpret_cast<RefField<>&>(root);
     RefField<> oldField(refField);
@@ -283,7 +283,7 @@ BaseObject* WCollector::ForwardUpdateRawRef(ObjectRef& root)
 
 class RemarkAndPreforwardVisitor {
 public:
-    RemarkAndPreforwardVisitor(WorkStack &localStack, WCollector *collector)
+    RemarkAndPreforwardVisitor(WorkStack &localStack, ArkCollector *collector)
         : localStack_(localStack), collector_(collector) {}
 
     void operator()(RefField<> &refField)
@@ -313,7 +313,7 @@ public:
         } else {
             if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
                 MarkObject(oldObj);
-            } else if (RegionSpace::IsYoungSpaceObject(oldObj) && !RegionSpace::IsNewObjectSinceTrace(oldObj) &&
+            } else if (RegionSpace::IsYoungSpaceObject(oldObj) && !RegionSpace::IsNewObjectSinceMarking(oldObj) &&
                        !RegionSpace::IsMarkedObject(oldObj)) {
                 // RSet don't protect exempted objects, we need to mark it
                 MarkObject(oldObj);
@@ -324,14 +324,14 @@ public:
 private:
     void MarkObject(BaseObject *object)
     {
-        if (!RegionSpace::IsNewObjectSinceTrace(object) && !collector_->MarkObject(object)) {
+        if (!RegionSpace::IsNewObjectSinceMarking(object) && !collector_->MarkObject(object)) {
             localStack_.push_back(object);
         }
     }
 
     void MarkToObject(BaseObject *oldVersion, BaseObject *toVersion)
     {
-        // We've checked oldVersion is in fromSpace, no need to check traceLine
+        // We've checked oldVersion is in fromSpace, no need to check markingLine
         if (!collector_->MarkObject(oldVersion)) {
             // No need to count oldVersion object size, as it has been copied.
             collector_->MarkObject(toVersion);
@@ -342,12 +342,12 @@ private:
 
 private:
     WorkStack &localStack_;
-    WCollector *collector_;
+    ArkCollector *collector_;
 };
 
 class RemarkingAndPreforwardTask : public common::Task {
 public:
-    RemarkingAndPreforwardTask(WCollector *collector, WorkStack &localStack, TaskPackMonitor &monitor,
+    RemarkingAndPreforwardTask(ArkCollector *collector, WorkStack &localStack, TaskPackMonitor &monitor,
                                std::function<Mutator*()>& next)
         : Task(0), visitor_(localStack, collector), monitor_(monitor), getNextMutator_(next)
     {}
@@ -372,7 +372,7 @@ private:
     std::function<Mutator*()> &getNextMutator_;
 };
 
-void WCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
+void ArkCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
 {
     std::vector<Mutator*> taskList;
     MutatorManager &mutatorManager = MutatorManager::Instance();
@@ -410,7 +410,7 @@ void WCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
     }
 }
 
-void WCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
+void ArkCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RemarkAndPreforwardStaticRoots", "");
     const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
@@ -422,7 +422,7 @@ void WCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
     }
 }
 
-void WCollector::PreforwardConcurrentRoots()
+void ArkCollector::PreforwardConcurrentRoots()
 {
     RefFieldVisitor visitor = [this](RefField<> &refField) {
         RefField<> oldField(refField);
@@ -444,7 +444,7 @@ void WCollector::PreforwardConcurrentRoots()
     VisitConcurrentRoots(visitor);
 }
 
-void WCollector::PreforwardStaticWeakRoots()
+void ArkCollector::PreforwardStaticWeakRoots()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PreforwardStaticRoots", "");
 
@@ -462,7 +462,7 @@ void WCollector::PreforwardStaticWeakRoots()
     }
 }
 
-void WCollector::PreforwardConcurrencyModelRoots()
+void ArkCollector::PreforwardConcurrencyModelRoots()
 {
     LOG_COMMON(FATAL) << "Unresolved fatal";
     UNREACHABLE_CC();
@@ -502,8 +502,8 @@ void EnumRootsBuffer::UpdateBufferSize()
     }
 }
 
-template <WCollector::EnumRootsPolicy policy>
-CArrayList<BaseObject *> WCollector::EnumRoots()
+template <ArkCollector::EnumRootsPolicy policy>
+CArrayList<BaseObject *> ArkCollector::EnumRoots()
 {
     STWParam stwParam{"wgc-enumroot"};
     EnumRootsBuffer buffer;
@@ -529,21 +529,21 @@ CArrayList<BaseObject *> WCollector::EnumRoots()
     return std::move(*results);
 }
 
-void WCollector::TraceHeap(const CArrayList<BaseObject *> &collectedRoots)
+void ArkCollector::MarkingHeap(const CArrayList<BaseObject *> &collectedRoots)
 {
-    COMMON_PHASE_TIMER("trace live objects");
+    COMMON_PHASE_TIMER("marking live objects");
     markedObjectCount_.store(0, std::memory_order_relaxed);
     TransitionToGCPhase(GCPhase::GC_PHASE_MARK, true);
 
-    TraceRoots(collectedRoots);
+    MarkingRoots(collectedRoots);
     ProcessFinalizers();
     ExemptFromSpace();
 }
 
-void WCollector::PostTrace()
+void ArkCollector::PostMarking()
 {
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PostTrace", "");
-    COMMON_PHASE_TIMER("PostTrace");
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PostMarking", "");
+    COMMON_PHASE_TIMER("PostMarking");
     TransitionToGCPhase(GC_PHASE_POST_MARK, true);
 
     // clear satb buffer when gc finish tracing.
@@ -552,18 +552,18 @@ void WCollector::PostTrace()
     WVerify::VerifyAfterMark(*this);
 }
 
-WeakRefFieldVisitor WCollector::GetWeakRefFieldVisitor()
+WeakRefFieldVisitor ArkCollector::GetWeakRefFieldVisitor()
 {
     return [this](RefField<> &refField) -> bool {
         RefField<> oldField(refField);
         BaseObject *oldObj = oldField.GetTargetObject();
         if (gcReason_ == GC_REASON_YOUNG) {
             if (RegionSpace::IsYoungSpaceObject(oldObj) && !IsMarkedObject(oldObj) &&
-                !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
+                !RegionSpace::IsNewObjectSinceMarking(oldObj)) {
                 return false;
             }
         } else {
-            if (!IsMarkedObject(oldObj) && !RegionSpace::IsNewObjectSinceTrace(oldObj)) {
+            if (!IsMarkedObject(oldObj) && !RegionSpace::IsNewObjectSinceMarking(oldObj)) {
                 return false;
             }
         }
@@ -586,7 +586,7 @@ WeakRefFieldVisitor WCollector::GetWeakRefFieldVisitor()
     };
 }
 
-RefFieldVisitor WCollector::GetPrefowardRefFieldVisitor()
+RefFieldVisitor ArkCollector::GetPrefowardRefFieldVisitor()
 {
     return [this](RefField<> &refField) -> void {
         RefField<> oldField(refField);
@@ -607,7 +607,7 @@ RefFieldVisitor WCollector::GetPrefowardRefFieldVisitor()
     };
 }
 
-void WCollector::PreforwardFlip()
+void ArkCollector::PreforwardFlip()
 {
     auto remarkAndForwardGlobalRoot = [this]() {
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PreforwardFlip[STW]", "");
@@ -615,7 +615,7 @@ void WCollector::PreforwardFlip()
         ASSERT_LOGF(GetThreadPool() != nullptr, "thread pool is null");
         TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
         Remark();
-        PostTrace();
+        PostMarking();
         reinterpret_cast<RegionSpace&>(theAllocator_).PrepareForward();
 
         TransitionToGCPhase(GCPhase::GC_PHASE_PRECOPY, true);
@@ -648,7 +648,7 @@ void WCollector::PreforwardFlip()
     }
 }
 
-void WCollector::Preforward()
+void ArkCollector::Preforward()
 {
     COMMON_PHASE_TIMER("Preforward");
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::Preforward[STW]", "");
@@ -664,14 +664,14 @@ void WCollector::Preforward()
     VisitPreforwardRoots(visitor);
 }
 
-void WCollector::ConcurrentPreforward()
+void ArkCollector::ConcurrentPreforward()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ConcurrentPreforward", "");
     PreforwardConcurrentRoots();
     ProcessStringTable();
 }
 
-void WCollector::PrepareFix()
+void ArkCollector::PrepareFix()
 {
     if (Heap::GetHeap().GetGCReason() == GCReason::GC_REASON_YOUNG) {
         // string table objects are always not in young space, skip it
@@ -702,7 +702,7 @@ void WCollector::PrepareFix()
     }
 }
 
-void WCollector::ParallelFixHeap()
+void ArkCollector::ParallelFixHeap()
 {
     auto& regionSpace = reinterpret_cast<RegionSpace&>(theAllocator_);
     auto taskList = regionSpace.CollectFixTasks();
@@ -750,7 +750,7 @@ void WCollector::ParallelFixHeap()
     }
 }
 
-void WCollector::FixHeap()
+void ArkCollector::FixHeap()
 {
     TransitionToGCPhase(GCPhase::GC_PHASE_FIX, true);
     COMMON_PHASE_TIMER("FixHeap");
@@ -760,7 +760,7 @@ void WCollector::FixHeap()
     WVerify::VerifyAfterFix(*this);
 }
 
-void WCollector::DoGarbageCollection()
+void ArkCollector::DoGarbageCollection()
 {
     const bool isNotYoungGC = gcReason_ != GCReason::GC_REASON_YOUNG;
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::DoGarbageCollection", "");
@@ -772,10 +772,10 @@ void WCollector::DoGarbageCollection()
     {
         ScopedStopTheWorld stw(stwParam);
         auto collectedRoots = EnumRoots<EnumRootsPolicy::NO_STW_AND_NO_FLIP_MUTATOR>();
-        TraceHeap(collectedRoots);
+        MarkingHeap(collectedRoots);
         TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
         Remark();
-        PostTrace();
+        PostMarking();
 
         Preforward();
         ConcurrentPreforward();
@@ -808,12 +808,12 @@ void WCollector::DoGarbageCollection()
         return;
     } else if (gcMode_ == GCMode::CONCURRENT_MARK) { // 1: concurrent-mark
         auto collectedRoots = EnumRoots<EnumRootsPolicy::STW_AND_NO_FLIP_MUTATOR>();
-        TraceHeap(collectedRoots);
+        MarkingHeap(collectedRoots);
         STWParam finalMarkStwParam{"final-mark"};
     {
         ScopedStopTheWorld stw(finalMarkStwParam, true, GCPhase::GC_PHASE_FINAL_MARK);
         Remark();
-        PostTrace();
+        PostMarking();
         reinterpret_cast<RegionSpace&>(theAllocator_).PrepareForward();
         Preforward();
     }
@@ -842,7 +842,7 @@ void WCollector::DoGarbageCollection()
     }
 
     auto collectedRoots = EnumRoots<EnumRootsPolicy::STW_AND_FLIP_MUTATOR>();
-    TraceHeap(collectedRoots);
+    MarkingHeap(collectedRoots);
     PreforwardFlip();
     ConcurrentPreforward();
     // reclaim large objects should after preforward(may process weak ref)
@@ -868,7 +868,8 @@ void WCollector::DoGarbageCollection()
     CollectSmallSpace();
 }
 
-CArrayList<CArrayList<BaseObject *>> WCollector::EnumRootsFlip(STWParam& param, const common::RefFieldVisitor &visitor)
+CArrayList<CArrayList<BaseObject *>> ArkCollector::EnumRootsFlip(STWParam& param,
+                                                                 const common::RefFieldVisitor &visitor)
 {
     const auto enumGlobalRoots = [this, &visitor]() {
         SetGCThreadQosPriority(common::PriorityMode::STW);
@@ -889,7 +890,7 @@ CArrayList<CArrayList<BaseObject *>> WCollector::EnumRootsFlip(STWParam& param, 
     return rootSet;
 }
 
-void WCollector::ProcessStringTable()
+void ArkCollector::ProcessStringTable()
 {
 #ifdef GC_STW_STRINGTABLE
     return;
@@ -904,7 +905,7 @@ void WCollector::ProcessStringTable()
             RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(oldObj));
             return (gcReason_ == GC_REASON_YOUNG && !region->IsInYoungSpace())
                 || region->IsMarkedObject(oldObj)
-                || region->IsNewObjectSinceTrace(oldObj)
+                || region->IsNewObjectSinceMarking(oldObj)
                 || region->IsToRegion();
         };
 
@@ -943,7 +944,7 @@ void WCollector::ProcessStringTable()
 }
 
 
-void WCollector::ProcessFinalizers()
+void ArkCollector::ProcessFinalizers()
 {
     std::function<bool(BaseObject*)> finalizable = [this](BaseObject* obj) { return !IsMarkedObject(obj); };
     FinalizerProcessor& fp = collectorResources_.GetFinalizerProcessor();
@@ -951,7 +952,7 @@ void WCollector::ProcessFinalizers()
     fp.Notify();
 }
 
-BaseObject* WCollector::ForwardObject(BaseObject* obj)
+BaseObject* ArkCollector::ForwardObject(BaseObject* obj)
 {
     BaseObject* to = TryForwardObject(obj);
     if (to != nullptr) {
@@ -962,13 +963,13 @@ BaseObject* WCollector::ForwardObject(BaseObject* obj)
     return (to != nullptr) ? to : obj;
 }
 
-BaseObject* WCollector::TryForwardObject(BaseObject* obj)
+BaseObject* ArkCollector::TryForwardObject(BaseObject* obj)
 {
     return CopyObjectImpl(obj);
 }
 
 // ConcurrentGC
-BaseObject* WCollector::CopyObjectImpl(BaseObject* obj)
+BaseObject* ArkCollector::CopyObjectImpl(BaseObject* obj)
 {
     // reconsider phase difference between mutator and GC thread during transition.
     if (IsGcThread()) {
@@ -1007,7 +1008,7 @@ BaseObject* WCollector::CopyObjectImpl(BaseObject* obj)
     return nullptr;
 }
 
-BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
+BaseObject* ArkCollector::CopyObjectAfterExclusive(BaseObject* obj)
 {
     size_t size = RegionSpace::GetAllocSize(*obj);
     // 8: size of free object, but free object can not be copied.
@@ -1037,7 +1038,7 @@ BaseObject* WCollector::CopyObjectAfterExclusive(BaseObject* obj)
     return toObj;
 }
 
-void WCollector::ClearAllGCInfo()
+void ArkCollector::ClearAllGCInfo()
 {
     COMMON_PHASE_TIMER("ClearAllGCInfo");
     RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
@@ -1045,7 +1046,7 @@ void WCollector::ClearAllGCInfo()
     reinterpret_cast<RegionSpace&>(theAllocator_).ClearJitFortAwaitingMark();
 }
 
-void WCollector::CollectSmallSpace()
+void ArkCollector::CollectSmallSpace()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectSmallSpace", "");
     GCStats& stats = GetGCStats();
@@ -1086,7 +1087,7 @@ void WCollector::CollectSmallSpace()
     collectorResources_.GetFinalizerProcessor().NotifyToReclaimGarbage();
 }
 
-void WCollector::SetGCThreadQosPriority(common::PriorityMode mode)
+void ArkCollector::SetGCThreadQosPriority(common::PriorityMode mode)
 {
 #ifdef ENABLE_QOS
     LOG_COMMON(DEBUG) << "SetGCThreadQosPriority gettid " << gettid();
@@ -1112,5 +1113,5 @@ void WCollector::SetGCThreadQosPriority(common::PriorityMode mode)
 #endif
 }
 
-bool WCollector::ShouldIgnoreRequest(GCRequest& request) { return request.ShouldBeIgnored(); }
+bool ArkCollector::ShouldIgnoreRequest(GCRequest& request) { return request.ShouldBeIgnored(); }
 } // namespace common

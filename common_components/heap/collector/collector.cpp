@@ -36,10 +36,10 @@ const char* Collector::GetGCPhaseName(GCPhase phase)
         "stub phase",           // reserved
         "start phase",          // GC_PHASE_START
         "enum phase",           // GC_PHASE_ENUM
-        "trace phase",          // GC_PHASE_MARK
+        "marking phase",          // GC_PHASE_MARK
         "remark-satb phase",    // GC_PHASE_REMARK_SATB
         "final-mark phase",     // GC_PHASE_FINAL_MARK
-        "post-trace phase",     // GC_PHASE_POST_MARK
+        "post-marking phase",     // GC_PHASE_POST_MARK
         "pre-copy phase",    // GC_PHASE_PRECOPY
         "copy phase",        // GC_PHASE_COPY
         "fix phase",            // GC_PHASE_FIX

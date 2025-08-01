@@ -18,7 +18,7 @@
 
 #include "common_components/base/time_utils.h"
 #include "common_components/heap/collector/finalizer_processor.h"
-#include "common_components/heap/collector/trace_collector.h"
+#include "common_components/heap/collector/marking_collector.h"
 #include "common_components/heap/heap.h"
 #include "common_components/mutator/mutator.inline.h"
 

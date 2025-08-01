@@ -15,7 +15,7 @@
 
 #include "common_components/heap/allocator/fix_heap.h"
 
-#include "common_components/heap/w_collector/w_collector.h"
+#include "common_components/heap/ark_collector/ark_collector.h"
 #include "common_runtime/hooks.h"
 
 namespace common {
@@ -83,7 +83,7 @@ void FixHeapWorker::FixRecentRegion(RegionDesc *region)
     }
 
     region->VisitAllObjectsBeforeCopy([this, region, cellCount](BaseObject *object) {
-        if (region->IsNewObjectSinceTrace(object) || collector_->IsSurvivedObject(object)) {
+        if (region->IsNewObjectSinceMarking(object) || collector_->IsSurvivedObject(object)) {
             collector_->FixObjectRefFields(object);
         } else {  // handle dead objects in tl-regions for concurrent gc.
             if constexpr (type == FixHeapWorker::FILL_FREE) {

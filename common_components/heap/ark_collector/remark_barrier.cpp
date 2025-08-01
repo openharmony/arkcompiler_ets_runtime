@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "common_components/heap/w_collector/remark_barrier.h"
+#include "common_components/heap/ark_collector/remark_barrier.h"
 #include "common_components/heap/allocator/region_space.h"
 #include "common_components/mutator/mutator.h"
 #if defined(ARKCOMMON_TSAN_SUPPORT)
@@ -20,7 +20,7 @@
 #endif
 
 namespace common {
-// Because gc thread will also have impact on tagged pointer in enum and trace phase,
+// Because gc thread will also have impact on tagged pointer in enum and marking phase,
 // so we don't expect reading barrier have the ability to modify the referent field.
 BaseObject* RemarkBarrier::ReadRefField(BaseObject* obj, RefField<false>& field) const
 {
@@ -43,7 +43,7 @@ BaseObject* RemarkBarrier::ReadStringTableStaticRef(RefField<false> &field) cons
     auto isSurvivor = [](BaseObject* obj) {
         RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
 
-        return region->IsMarkedObject(obj) || region->IsNewObjectSinceTrace(obj);
+        return region->IsMarkedObject(obj) || region->IsNewObjectSinceMarking(obj);
     };
 
     auto obj = ReadRefField(nullptr, field);

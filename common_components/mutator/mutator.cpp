@@ -24,7 +24,7 @@
 #include <windows.h>
 #endif
 #include "common_components/heap/allocator/region_manager.h"
-#include "common_components/heap/collector/trace_collector.h"
+#include "common_components/heap/collector/marking_collector.h"
 #include "common_components/common/scoped_object_access.h"
 #include "common_components/mutator/mutator_manager.h"
 

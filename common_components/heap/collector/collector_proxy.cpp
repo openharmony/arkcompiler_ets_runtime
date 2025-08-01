@@ -17,14 +17,14 @@
 namespace common {
 void CollectorProxy::Init(const RuntimeParam& param)
 {
-    wCollector_.Init(param);
+    arkCollector_.Init(param);
 
     if (currentCollector_ == nullptr) {
-        currentCollector_ = &wCollector_;
+        currentCollector_ = &arkCollector_;
     }
 }
 
-void CollectorProxy::Fini() { wCollector_.Fini(); }
+void CollectorProxy::Fini() { arkCollector_.Fini(); }
 
 void CollectorProxy::RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCType gcType)
 {
@@ -32,14 +32,14 @@ void CollectorProxy::RunGarbageCollection(uint64_t gcIndex, GCReason reason, GCT
         case GC_REASON_HEU:
         case GC_REASON_YOUNG:
         case GC_REASON_BACKUP:
-            currentCollector_ = &wCollector_;
+            currentCollector_ = &arkCollector_;
             break;
         case GC_REASON_OOM:
         case GC_REASON_FORCE:
-            currentCollector_ = &wCollector_;
+            currentCollector_ = &arkCollector_;
             break;
         default:
-            currentCollector_ = &wCollector_;
+            currentCollector_ = &arkCollector_;
             break;
     }
     currentCollector_->MarkGCStart();

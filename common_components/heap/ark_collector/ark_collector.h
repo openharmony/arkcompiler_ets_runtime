@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#ifndef COMMON_COMPONENTS_HEAP_W_COLLECTOR_WCOLLECTOR_H
-#define COMMON_COMPONENTS_HEAP_W_COLLECTOR_WCOLLECTOR_H
+#ifndef COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_ARKCOLLECTOR_H
+#define COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_ARKCOLLECTOR_H
 
 #include <unordered_map>
 
 #include "common_components/heap/allocator/region_space.h"
-#include "common_components/heap/collector/trace_collector.h"
+#include "common_components/heap/collector/marking_collector.h"
 #include "common_interfaces/base_runtime.h"
 
 namespace common {
@@ -49,15 +49,15 @@ enum class GCMode: uint8_t {
     STW = 2
 };
 
-class WCollector : public TraceCollector {
+class ArkCollector : public MarkingCollector {
 public:
-    explicit WCollector(Allocator& allocator, CollectorResources& resources)
-        : TraceCollector(allocator, resources), fwdTable_(reinterpret_cast<RegionSpace&>(allocator))
+    explicit ArkCollector(Allocator& allocator, CollectorResources& resources)
+        : MarkingCollector(allocator, resources), fwdTable_(reinterpret_cast<RegionSpace&>(allocator))
     {
         collectorType_ = CollectorType::SMOOTH_COLLECTOR;
     }
 
-    ~WCollector() override = default;
+    ~ArkCollector() override = default;
 
     void Init(const RuntimeParam& param) override
     {
@@ -84,8 +84,8 @@ public:
     bool ShouldIgnoreRequest(GCRequest& request) override;
     bool MarkObject(BaseObject* obj) const override;
 
-    TraceRefFieldVisitor CreateTraceObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) override;
-    void TraceObjectRefFields(BaseObject *obj, TraceRefFieldVisitor *data) override;
+    MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) override;
+    void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) override;
 
     void FixObjectRefFields(BaseObject* obj) const override;
     void FixRefField(BaseObject* obj, RefField<>& field) const;
@@ -129,7 +129,7 @@ public:
 
     BaseObject* FindToVersion(BaseObject* obj) const override
     {
-        return const_cast<WCollector*>(this)->fwdTable_.GetForwardingPointer(obj);
+        return const_cast<ArkCollector*>(this)->fwdTable_.GetForwardingPointer(obj);
     }
 
     void SetGCThreadQosPriority(common::PriorityMode mode);
@@ -198,7 +198,7 @@ private:
     {
         // assemble garbage candidates.
         reinterpret_cast<RegionSpace &>(theAllocator_).AssembleGarbageCandidates();
-        reinterpret_cast<RegionSpace &>(theAllocator_).PrepareTrace();
+        reinterpret_cast<RegionSpace &>(theAllocator_).PrepareMarking();
 
         COMMON_PHASE_TIMER("enum roots & update old pointers within");
         TransitionToGCPhase(GCPhase::GC_PHASE_ENUM, true);
@@ -207,8 +207,8 @@ private:
     }
     CArrayList<CArrayList<BaseObject *>> EnumRootsFlip(STWParam& param, const common::RefFieldVisitor &visitor);
 
-    void TraceHeap(const CArrayList<BaseObject *> &collectedRoots);
-    void PostTrace();
+    void MarkingHeap(const CArrayList<BaseObject *> &collectedRoots);
+    void PostMarking();
     void RemarkAndPreforwardStaticRoots(WorkStack& workStack) override;
     void ParallelRemarkAndPreforward(WorkStack& workStack);
     void Preforward();
@@ -231,4 +231,4 @@ private:
 };
 } // namespace common
 
-#endif // COMMON_COMPONENTS_HEAP_W_COLLECTOR_WCOLLECTOR_H
+#endif // COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_ARKCOLLECTOR_H

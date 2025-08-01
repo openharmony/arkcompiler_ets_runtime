@@ -106,10 +106,10 @@ public:
         };
 
         auto visitRecentFunc = [&func](RegionDesc* region) {
-            region->VisitRememberSetBeforeTrace(func);
+            region->VisitRememberSetBeforeMarking(func);
         };
 
-        // Need to visit objects allocated before current GC iteration, traceline is used to distinguish them.
+        // Need to visit objects allocated before current GC iteration, markingline is used to distinguish them.
         tlOldRegionList_.VisitAllRegions(visitRecentFunc);
         recentFullOldRegionList_.VisitAllRegions(visitRecentFunc);
         oldRegionList_.VisitAllRegions(visitFunc);
@@ -135,7 +135,7 @@ private:
         RegionList tmp("temp region list");
         list.CopyListTo(tmp);
         tmp.VisitAllRegions([](RegionDesc* region) {
-            region->ClearTraceCopyLine();
+            region->ClearMarkingCopyLine();
             region->ClearLiveInfo();
             region->ResetMarkBit();
         });

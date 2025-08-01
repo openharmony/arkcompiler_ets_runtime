@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/w_collector/preforward_barrier.h"
-#include "common_components/heap/w_collector/tests/mock_barrier_collector.h"
+#include "common_components/heap/ark_collector/preforward_barrier.h"
+#include "common_components/heap/ark_collector/tests/mock_barrier_collector.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
 #include "common_components/heap/heap_manager.h"
@@ -155,7 +155,7 @@ HWTEST_F_L0(PreforwardBarrierTest, ReadStringTableStaticRef_TEST2)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RegionDesc *regionInfo = RegionDesc::GetRegionDescAt(addr);
     regionInfo->SetRegionAllocPtr(addr - 1);
-    regionInfo->SetTraceLine();
+    regionInfo->SetMarkingLine();
     RefField<false> field(obj);
 
     BaseObject* resultObj = preforwardBarrier->ReadStringTableStaticRef(field);

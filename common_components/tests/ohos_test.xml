@@ -88,7 +88,7 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="Trace_Collector_Test">
+    <target name="Marking_Collector_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
@@ -108,7 +108,7 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="Post_Trace_Barrier_Test">
+    <target name="Post_Marking_Barrier_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
@@ -123,12 +123,12 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="Trace_Barrier_Test">
+    <target name="Marking_Barrier_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="W_Collector_Test">
+    <target name="Ark_Collector_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>

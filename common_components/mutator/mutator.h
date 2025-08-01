@@ -243,9 +243,9 @@ public:
     }
 
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
-    void PushFrameInfoForTrace(const GCInfoNode& frameGCInfo) { gcInfos_.PushFrameInfoForTrace(frameGCInfo); }
+    void PushFrameInfoForMarking(const GCInfoNode& frameGCInfo) { gcInfos_.PushFrameInfoForMarking(frameGCInfo); }
 
-    void PushFrameInfoForTrace(const GCInfoNode&& frameGCInfo) { gcInfos_.PushFrameInfoForTrace(frameGCInfo); }
+    void PushFrameInfoForMarking(const GCInfoNode&& frameGCInfo) { gcInfos_.PushFrameInfoForMarking(frameGCInfo); }
 
     void PushFrameInfoForFix(const GCInfoNodeForFix& frameGCInfo) { gcInfos_.PushFrameInfoForFix(frameGCInfo); }
 

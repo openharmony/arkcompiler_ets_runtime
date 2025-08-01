@@ -31,7 +31,7 @@ bool SatbBuffer::ShouldEnqueue(const BaseObject* obj)
     if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG && !RegionSpace::IsYoungSpaceObject(obj)) {
         return false;
     }
-    if (RegionSpace::IsNewObjectSinceTrace(obj)) {
+    if (RegionSpace::IsNewObjectSinceMarking(obj)) {
         return false;
     }
     if (RegionSpace::IsMarkedObject(obj)) {

@@ -13,27 +13,22 @@
  * limitations under the License.
  */
 
-#ifndef COMMON_COMPONENTS_HEAP_W_COLLECTOR_IDLE_BARRIER_H
-#define COMMON_COMPONENTS_HEAP_W_COLLECTOR_IDLE_BARRIER_H
+#ifndef COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_COPY_BARRIER_H
+#define COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_COPY_BARRIER_H
 
-#include "common_components/heap/barrier/barrier.h"
+#include "common_components/heap/ark_collector/idle_barrier.h"
 
 namespace common {
-// IdleBarrier is the barrier for concurrent enum phase
-class IdleBarrier : public Barrier {
+// CopyBarrier is the barrier for concurrent forwarding.
+class CopyBarrier : public IdleBarrier {
 public:
-    explicit IdleBarrier(Collector& collector) : Barrier(collector) {}
+    explicit CopyBarrier(Collector& collector) : IdleBarrier(collector) {}
 
     BaseObject* ReadRefField(BaseObject* obj, RefField<false>& field) const override;
     BaseObject* ReadStaticRef(RefField<false>& field) const override;
+    BaseObject* ReadStringTableStaticRef(RefField<false>& field) const override;
+
     void ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const override;
-
-    void WriteRoot(BaseObject *obj) const override;
-    void WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const override;
-    void WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const override;
-
-    void WriteStaticRef(RefField<false>& field, BaseObject* ref) const override;
-    void WriteStruct(BaseObject* obj, HeapAddress dst, size_t dstLen, HeapAddress src, size_t srcLen) const override;
 
     BaseObject* AtomicReadRefField(BaseObject* obj, RefField<true>& field, MemoryOrder order) const override;
     void AtomicWriteRefField(BaseObject* obj, RefField<true>& field, BaseObject* ref,
@@ -47,9 +42,7 @@ public:
 
     void CopyStructArray(BaseObject* dstObj, HeapAddress dstField, MIndex dstSize, BaseObject* srcObj,
                          HeapAddress srcField, MIndex srcSize) const override;
-    
-    void UpdateRememberSet(BaseObject* object, BaseObject* ref) const;
 };
 } // namespace common
 
-#endif // COMMON_COMPONENTS_HEAP_W_COLLECTOR_IDLE_BARRIER_H
+#endif // COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_COPY_BARRIER_H

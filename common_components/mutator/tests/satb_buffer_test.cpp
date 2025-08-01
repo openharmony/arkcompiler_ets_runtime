@@ -161,7 +161,7 @@ HWTEST_F_L0(SatbBufferTest, EnqueueObject)
 
     RegionDesc* region = RegionDesc::GetRegionDescAt(reinterpret_cast<uintptr_t>(obj));
     region->SetRegionType(RegionDesc::RegionType::FROM_REGION);
-    region->SetTraceLine();
+    region->SetMarkingLine();
     region->SetMarkedRegionFlag(0);
     RegionBitmap* markBitmap = region->GetMarkBitmap();
     size_t offset = region->GetAddressOffset(reinterpret_cast<HeapAddress>(obj));

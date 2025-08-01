@@ -105,7 +105,7 @@ public:
     RegionDesc()
     {
         metadata.allocPtr = reinterpret_cast<uintptr_t>(nullptr);
-        metadata.traceLine = std::numeric_limits<uintptr_t>::max();
+        metadata.markingLine = std::numeric_limits<uintptr_t>::max();
         metadata.forwardLine = std::numeric_limits<uintptr_t>::max();
         metadata.freeSlot = nullptr;
         metadata.regionBase = reinterpret_cast<uintptr_t>(nullptr);
@@ -581,7 +581,7 @@ public:
     void VisitAllObjectsBeforeCopy(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
 
-    void VisitRememberSetBeforeTrace(const std::function<void(BaseObject*)>& func);
+    void VisitRememberSetBeforeMarking(const std::function<void(BaseObject*)>& func);
     void VisitRememberSetBeforeCopy(const std::function<void(BaseObject*)>& func);
     void VisitRememberSet(const std::function<void(BaseObject*)>& func);
 
@@ -692,16 +692,16 @@ public:
 
     HeapAddress GetRegionAllocPtr() const { return metadata.allocPtr; }
 
-    HeapAddress GetTraceLine() const { return metadata.traceLine; }
+    HeapAddress GetMarkingLine() const { return metadata.markingLine; }
     HeapAddress GetCopyLine() const { return metadata.forwardLine; }
 
-    void SetTraceLine()
+    void SetMarkingLine()
     {
-        if (metadata.traceLine == std::numeric_limits<uintptr_t>::max()) {
+        if (metadata.markingLine == std::numeric_limits<uintptr_t>::max()) {
             uintptr_t line = GetRegionAllocPtr();
-            metadata.traceLine = line;
-            DLOG(REGION, "set region %p(base=%#zx)@%#zx+%zu trace-line %#zx type %u",
-                 this, GetRegionBase(), GetRegionStart(), GetRegionSize(), GetTraceLine(), GetRegionType());
+            metadata.markingLine = line;
+            DLOG(REGION, "set region %p(base=%#zx)@%#zx+%zu marking-line %#zx type %u",
+                 this, GetRegionBase(), GetRegionStart(), GetRegionSize(), GetMarkingLine(), GetRegionType());
         }
     }
 
@@ -715,9 +715,9 @@ public:
         }
     }
 
-    void ClearTraceCopyLine()
+    void ClearMarkingCopyLine()
     {
-        metadata.traceLine = std::numeric_limits<uintptr_t>::max();
+        metadata.markingLine = std::numeric_limits<uintptr_t>::max();
         metadata.forwardLine = std::numeric_limits<uintptr_t>::max();
     }
 
@@ -726,9 +726,9 @@ public:
         metadata.freeSlot = nullptr;
     }
 
-    bool IsNewObjectSinceTrace(const BaseObject* obj)
+    bool IsNewObjectSinceMarking(const BaseObject* obj)
     {
-        return GetTraceLine() <= reinterpret_cast<uintptr_t>(obj);
+        return GetMarkingLine() <= reinterpret_cast<uintptr_t>(obj);
     }
 
     bool IsNewObjectSinceForward(const BaseObject* obj)
@@ -1069,8 +1069,8 @@ private:
             uintptr_t allocPtr;
             uintptr_t regionEnd;
 
-            // watermark set when gc phase transitions to pre-trace.
-            uintptr_t traceLine;
+            // watermark set when gc phase transitions to pre-marking.
+            uintptr_t markingLine;
             uintptr_t forwardLine;
             ObjectSlot* freeSlot;
             // `regionStart` is the header of the data, and `regionBase` is the header of the total region
@@ -1357,7 +1357,7 @@ private:
         metadata.freeSlot = nullptr;
         SetRegionType(RegionType::FREE_REGION);
         SetUnitRole(uClass);
-        ClearTraceCopyLine();
+        ClearMarkingCopyLine();
         SetMarkedRegionFlag(0);
         SetEnqueuedRegionFlag(0);
         SetResurrectedRegionFlag(0);

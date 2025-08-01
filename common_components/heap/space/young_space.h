@@ -105,7 +105,7 @@ private:
         RegionList tmp("temp region list");
         list.CopyListTo(tmp);
         tmp.VisitAllRegions([](RegionDesc* region) {
-            region->ClearTraceCopyLine();
+            region->ClearMarkingCopyLine();
             region->ClearLiveInfo();
             region->ResetMarkBit();
         });
