@@ -1517,6 +1517,11 @@ void SnapshotProcessor::HandleRootObject(SnapshotType type, uintptr_t rootObject
         }
         case SnapshotType::AI: {
             JSTaggedValue item = JSTaggedValue(static_cast<JSTaggedType>(rootObjectAddr));
+            LOG_ECMA(INFO) << "SnapshotProcessor isRootObjRelocate: " << isRootObjRelocate_;
+            if (item.IsHeapObject()) {
+                LOG_ECMA(INFO) << "SnapshotProcessor rootObject jstype: "
+                    << static_cast<uint64_t>(item.GetTaggedObject()->GetClass()->GetObjectType());
+            }
             if (!isRootObjRelocate_ && item.IsTaggedArray()) {
                 root_ = item;
                 isRootObjRelocate_ = true;
