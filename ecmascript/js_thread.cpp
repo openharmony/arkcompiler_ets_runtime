@@ -406,6 +406,10 @@ void JSThread::InvokeWeakNodeFreeGlobalCallBack()
 
 void JSThread::InvokeWeakNodeNativeFinalizeCallback()
 {
+    if (ShouldIgnoreFinalizeCallback()) {
+        weakNodeNativeFinalizeCallbacks_.clear();
+        return;
+    }
     // the second callback may lead to another GC, if this, return directly;
     if (runningNativeFinalizeCallbacks_) {
         return;

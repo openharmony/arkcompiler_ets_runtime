@@ -1688,6 +1688,7 @@ public:
 
     static EcmaVM *CreateJSVM(const RuntimeOption &option);
     static void DestroyJSVM(EcmaVM *ecmaVm);
+    static void IgnoreFinalizeCallback(EcmaVM *ecmaVm);
     static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
 
     // aot load

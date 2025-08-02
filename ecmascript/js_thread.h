@@ -1807,6 +1807,17 @@ public:
         finalizeTaskCallback_ = callback;
     }
 
+    bool ShouldIgnoreFinalizeCallback() const
+    {
+        return ignoreFinalizeCallback_;
+    }
+
+    void IgnoreFinalizeCallback()
+    {
+        ignoreFinalizeCallback_ = true;
+        SetWeakFinalizeTaskCallback(nullptr);
+    }
+
     uint64_t GetJobId()
     {
         if (jobId_ == UINT64_MAX) {
@@ -2045,6 +2056,7 @@ private:
     std::function<bool(uintptr_t addr)> isWeak_;
     NativePointerTaskCallback asyncCleanTaskCb_ {nullptr};
     WeakFinalizeTaskCallback finalizeTaskCallback_ {nullptr};
+    bool ignoreFinalizeCallback_ {false};
     uint32_t globalNumberCount_ {0};
 
     // Run-time state
