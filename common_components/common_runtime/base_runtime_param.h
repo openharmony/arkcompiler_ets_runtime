@@ -27,7 +27,11 @@ public:
     static size_t InitHeapSize();
     static void SetConfigHeapSize(RuntimeParam &param, size_t configHeapSize);
     static void SetMaxGarbageCacheSize(RuntimeParam &param, uint64_t maxGarbageCacheSize);
+#ifdef PANDA_TARGET_32
+    static constexpr size_t MAX_HEAP_POOL_SIZE = 1 * GB;
+#else
     static constexpr size_t MAX_HEAP_POOL_SIZE = 3.6 * GB;
+#endif
 
 private:
     BaseRuntimeParam() = delete;
