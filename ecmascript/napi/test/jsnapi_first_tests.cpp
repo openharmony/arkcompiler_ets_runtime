@@ -2426,4 +2426,30 @@ HWTEST_F_L0(JSNApiTests, SetReleaseSecureMemCallback)
         ecmascript::Runtime::GetInstance()->GetReleaseSecureMemCallback();
     ASSERT_FALSE(releaseSecureMemCallBack2 == nullptr);
 }
+
+static bool g_finalizeCallbackExecuted = false;
+
+void FinalizeCallback([[maybe_unused]] EcmaVM *vm)
+{
+    g_finalizeCallbackExecuted = true;
+}
+
+HWTEST_F_L0(JSNApiTests, IgnoreFinalizeCallback)
+{
+    ecmascript::ThreadManagedScope managedScope(vm_->GetJSThread());
+    NativeReferenceHelper *ref = nullptr;
+    g_finalizeCallbackExecuted = false;
+    {
+        LocalScope scope(vm_);
+        Local<ObjectRef> object = ObjectRef::New(vm_);
+        Global<ObjectRef> globalObject(vm_, object);
+        ref = new NativeReferenceHelper(vm_, globalObject, FinalizeCallback);
+        ref->SetWeakCallback();
+    }
+    vm_->GetJSThread()->IgnoreFinalizeCallback();
+    vm_->CollectGarbage(TriggerGCType::FULL_GC);
+    vm_->CollectGarbage(TriggerGCType::FULL_GC);
+    ASSERT_FALSE(g_finalizeCallbackExecuted);
+    delete ref;
+}
 }  // namespace panda::test

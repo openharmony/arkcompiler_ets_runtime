@@ -4852,6 +4852,15 @@ void JSNApi::DestroyJSVM(EcmaVM *ecmaVm)
     EcmaVM::Destroy(ecmaVm);
 }
 
+void JSNApi::IgnoreFinalizeCallback(EcmaVM *ecmaVm)
+{
+    CROSS_THREAD_CHECK(ecmaVm);
+    ecmascript::ThreadManagedScope scope(thread);
+    if (ecmascript::g_isEnableCMCGC) {
+        thread->IgnoreFinalizeCallback();
+    }
+}
+
 void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler)
 {
     ecmaVm->RegisterUncatchableErrorHandler(handler);
