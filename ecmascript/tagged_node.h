@@ -130,7 +130,7 @@ public:
     ACCESSORS_FIXED_SIZE_FIELD(IsRed, bool, uint64_t, ISRED_OFFSET, COUNT_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(Count, uint32_t, COUNT_OFFSET, LAST_OFFSET)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
-
+    DECL_DUMP()
     DECL_VISIT_OBJECT(TaggedObject::SIZE, ISRED_OFFSET)
 
     void InitRBTreeNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key,
@@ -147,7 +147,7 @@ public:
                                 JSHandle<LinkedNode> &head, JSHandle<LinkedNode> &tail);
     static JSHandle<LinkedNode> Detreeing(JSThread *thread, const JSHandle<RBTreeNode> &root);
     static uint32_t Count(JSTaggedValue nodeValue);
-    static int Compare(const JSThread *thread, int hash1, JSTaggedValue key1, int hash2, JSTaggedValue key2);
+    static int Compare(JSThread *thread, int hash1, JSTaggedValue key1, int hash2, JSTaggedValue key2);
     static bool IsRed(JSTaggedValue treeNodeValue);
 private:
     static void InOrderTraverse(JSThread *thread, const JSHandle<RBTreeNode> &treeNode,
