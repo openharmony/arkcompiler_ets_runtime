@@ -1134,6 +1134,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
             LinkedNode::Cast(obj)->Dump(thread, os);
             break;
         case JSType::RB_TREENODE:
+            RBTreeNode::Cast(obj)->Dump(thread, os);
             break;
         case JSType::JS_API_HASH_MAP:
             JSAPIHashMap::Cast(obj)->Dump(thread, os);
@@ -1673,6 +1674,34 @@ void LinkedNode::Dump([[maybe_unused]] const JSThread *thread, std::ostream &os)
 {
     os << " - Next: ";
 
+    os << "\n";
+}
+
+void RBTreeNode::Dump([[maybe_unused]] const JSThread *thread, std::ostream &os) const
+{
+    // dump with (presentNode key, parents key, color, left or right)
+    os << " - RBTree:\n";
+    std::queue<std::tuple<std::string, RBTreeNode *, bool> > q;
+    q.push({"null", const_cast<RBTreeNode *>(this), false});
+    while (!q.empty()) {
+        auto now = q.front();
+        RBTreeNode *root;
+        std::string key;
+        bool isLeft;
+        std::tie(key, root, isLeft) = now;
+        auto presentKey = EcmaStringAccessor(EcmaString::Cast(root->GetKey(thread))).ToStdString(thread);
+        os << "(presentNode : " << presentKey << ", parents : " << key <<
+              ", color :" << (IsRed(JSTaggedValue(root)) ? "red" : "black") <<
+              ", hash :" << root->GetHash(thread).GetInt() << ", isLeftSon: " << (isLeft ? "true" : "false") <<
+              ")\n";
+        q.pop();
+        if (!root->GetLeft(thread).IsHole()) {
+            q.push({presentKey, RBTreeNode::Cast(root->GetLeft(thread).GetTaggedObject()), true});
+        }
+        if (!root->GetRight(thread).IsHole()) {
+            q.push({presentKey, RBTreeNode::Cast(root->GetRight(thread).GetTaggedObject()), false});
+        }
+    }
     os << "\n";
 }
 
@@ -2361,6 +2390,7 @@ void JSAPIHashMap::Dump(const JSThread *thread, std::ostream &os) const
     TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable(thread).GetTaggedObject());
     os << " - elements: " << std::dec << GetSize() << "\n";
     os << " - table capacity: " << std::dec << static_cast<int>(hashArray->GetLength()) << "\n";
+    hashArray->Dump(thread, os);
     JSObject::Dump(thread, os);
 }
 
@@ -2380,6 +2410,7 @@ void JSAPIHashSet::Dump(const JSThread *thread, std::ostream &os) const
     TaggedHashArray *hashArray = TaggedHashArray::Cast(GetTable(thread).GetTaggedObject());
     os << " - elements: " << std::dec << GetSize() << "\n";
     os << " - table capacity: " << std::dec << static_cast<int>(hashArray->GetLength()) << "\n";
+    hashArray->Dump(thread, os);
     JSObject::Dump(thread, os);
 }
 

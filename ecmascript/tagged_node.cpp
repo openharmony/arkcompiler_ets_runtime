@@ -154,17 +154,18 @@ void RBTreeNode::Divide(JSThread *thread, JSHandle<TaggedHashArray> table,
     }
 }
 
-int RBTreeNode::Compare(const JSThread *thread, int hash1, JSTaggedValue key1, int hash2, JSTaggedValue key2)
+int RBTreeNode::Compare(JSThread *thread, int hash1, JSTaggedValue key1, int hash2, JSTaggedValue key2)
 {
     ASSERT(!key1.IsHole() && !key2.IsHole());
     if (JSTaggedValue::SameValue(thread, key1, key2)) {
         return 0;
     }
-    if (hash1 < hash2) {
-        return -1;
-    } else {
-        return 1;
+    if (UNLIKELY(hash1 == hash2)) {
+        JSHandle<JSTaggedValue> keyHandle1 = JSHandle<JSTaggedValue>(thread, key1);
+        JSHandle<JSTaggedValue> keyHandle2 = JSHandle<JSTaggedValue>(thread, key2);
+        return JSTaggedValue::Less(thread, keyHandle1, keyHandle2) ? -1 : 1;
     }
+    return hash1 < hash2 ? -1 : 1;
 }
 
 bool RBTreeNode::IsRed(JSTaggedValue treeNodeValue)
