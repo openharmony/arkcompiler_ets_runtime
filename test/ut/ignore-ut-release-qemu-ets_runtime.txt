@@ -223,3 +223,6 @@ obj/arkcompiler/ets_runtime/test/aottest/aot_compatibility_test/property_operati
 
 #28394
 obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Trace_Collector_TestWithQemu
+
+#28652
+obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Marking_Collector_TestWithQemu
