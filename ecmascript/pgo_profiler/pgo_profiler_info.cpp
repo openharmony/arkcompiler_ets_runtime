@@ -861,6 +861,7 @@ bool PGORecordDetailInfos::ParseRecordInfosFromBinary(void* buffer, PGOProfilerH
     SectionInfo* info = header->GetRecordInfoSection();
     if (info == nullptr) {
         LOG_PGO(ERROR) << "[ParseRecordInfosFromBinary] section info is nullptr";
+        return false;
     }
     void* addr = reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
     for (uint32_t i = 0; i < info->number_; i++) {
