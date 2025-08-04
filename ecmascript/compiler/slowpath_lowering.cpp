@@ -16,13 +16,18 @@
 #include "ecmascript/compiler/slowpath_lowering.h"
 
 #include "ecmascript/compiler/call_stub_builder.h"
+#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate.h"
+#include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
+#include "thread/mutator_base.h"
 #include <cstdint>
 
 namespace panda::ecmascript::kungfu {
@@ -3848,10 +3853,22 @@ void SlowPathLowering::LowerCheckSafePointAndStackOver(GateRef gate)
     Label stackOverflow(&builder_);
     GateRef stackLimit = builder_.LoadWithoutBarrier(VariableType::INT64(), glue_,
         builder_.IntPtr(JSThread::GlueData::GetStackLimitOffset(builder_.GetCompilationConfig()->Is32Bit())));
-    GateRef interruptsFlag = builder_.LoadWithoutBarrier(VariableType::INT8(), glue_,
-        builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
     GateRef spValue = builder_.ReadSp();
-    builder_.Branch(builder_.Int8Equal(interruptsFlag, builder_.Int8(VmThreadControl::VM_NEED_SUSPENSION)),
+    GateRef checkSafePoint = Circuit::NullGate();
+    if (!g_isEnableCMCGC) {
+        GateRef interruptsFlag = builder_.LoadWithoutBarrier(VariableType::INT8(), glue_,
+            builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
+        checkSafePoint = builder_.Int8Equal(interruptsFlag, builder_.Int8(VmThreadControl::VM_NEED_SUSPENSION));
+    } else {
+        GateRef threadHolderOffset = builder_.IntPtr(JSThread::GlueData::GetThreadHolderOffset(env.IsArch32Bit()));
+        GateRef threadHolder = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue_, threadHolderOffset);
+        GateRef mutatorBase = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), threadHolder,
+            builder_.IntPtr(ThreadHolder::GetMutatorBaseOffset()));
+        GateRef safepointActive = builder_.LoadWithoutBarrier(VariableType::INT32(), mutatorBase,
+            builder_.IntPtr(common::MutatorBase::GetSafepointActiveOffset()));
+        checkSafePoint = builder_.Int32Equal(builder_.Int32(ThreadFlag::SUSPEND_REQUEST), safepointActive);
+    }
+    builder_.Branch(checkSafePoint,
                     &slowPath, &checkStackOver, BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "checkSafePoint");
     builder_.Bind(&slowPath);
     {
