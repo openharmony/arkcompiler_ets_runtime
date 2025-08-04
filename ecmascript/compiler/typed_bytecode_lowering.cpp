@@ -759,7 +759,8 @@ void TypedBytecodeLowering::LowerTypedMonoLdObjByName(const LoadObjPropertyTypeI
             }
         }
     }
-    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceHirWithCheckingAccessor(glue_, gate, builder_.GetStateDepend(), *result,
+        tacc.GetAccessInfo(0).Plr().IsAccessor());
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -853,6 +854,10 @@ void TypedBytecodeLowering::LowerTypedPolyLdObjByName(const LoadObjPropertyTypeI
     std::vector<Label> loaders;
     std::vector<Label> fails;
     ASSERT(typeCount > 0);
+    bool hasGetter = false;
+    for (size_t i = 0; i < typeCount; ++i) {
+        hasGetter |= tacc.GetAccessInfo(i).Plr().IsAccessor();
+    }
     for (size_t i = 0; i < typeCount - 1; ++i) {
         loaders.emplace_back(Label(&builder_));
         fails.emplace_back(Label(&builder_));
@@ -869,7 +874,8 @@ void TypedBytecodeLowering::LowerTypedPolyLdObjByName(const LoadObjPropertyTypeI
         PolyHeapObjectCheckAndLoad(info, typeIndex2HeapConstantIndex);
     }
     builder_.Bind(&exit);
-    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceHirWithCheckingAccessor(glue_, gate, builder_.GetStateDepend(), *result,
+        hasGetter);
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -930,7 +936,7 @@ void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
     }
 
     builder_.Bind(&exit);
-    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceHirWithCheckingAccessor(glue_, gate, builder_.GetStateDepend(), *result, tacc.IsAccessor());
     DeleteConstDataIfNoUser(key);
 }
 
@@ -968,7 +974,7 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
     }
 
     builder_.Bind(&exit);
-    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    ReplaceHirWithCheckingAccessor(glue_, gate, builder_.GetStateDepend(), Circuit::NullGate(), tacc.IsAccessor());
     DeleteConstDataIfNoUser(key);
 }
 
@@ -1060,13 +1066,16 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
             BuildNamedPropertyAccess(gate, tacc.GetReceiver(), tacc.GetReceiver(),
                                      tacc.GetValue(), tacc.GetAccessInfo(0).Plr(), tacc.GetExpectedHClassIndex(0));
         }
-        ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+        ReplaceHirWithCheckingAccessor(glue_, gate, builder_.GetStateDepend(), Circuit::NullGate(),
+            tacc.GetAccessInfo(0).Plr().IsAccessor());
         DeleteConstDataIfNoUser(tacc.GetKey());
         return;
     }
     builder_.HeapObjectCheck(tacc.GetReceiver(), frameState);
     auto receiverHC = builder_.LoadHClassByConstOffset(glue_, tacc.GetReceiver());
+    bool hasSetter = false;
     for (size_t i = 0; i < typeCount; ++i) {
+        hasSetter |= tacc.GetAccessInfo(i).Plr().IsAccessor();
         auto expected = builder_.GetHClassGateFromIndex(gate, tacc.GetExpectedHClassIndex(i));
         if (i != typeCount - 1) {
             BRANCH_CIR(builder_.Equal(receiverHC, expected),
@@ -1121,7 +1130,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
         }
     }
     builder_.Bind(&exit);
-    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+    ReplaceHirWithCheckingAccessor(glue_, gate, builder_.GetStateDepend(), Circuit::NullGate(), hasSetter);
     DeleteConstDataIfNoUser(tacc.GetKey());
 }
 
@@ -1627,7 +1636,8 @@ void TypedBytecodeLowering::LowerTypedLdObjByValue(GateRef gate)
                 result = builder_.MonoCallGetterOnProto(gate, receiver, plrGate, unsharedConstPoool, holderHClassIndex);
             }
         }
-        ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
+        ReplaceHirWithCheckingAccessor(glue_, gate, builder_.GetStateDepend(), *result,
+            tacc.GetAccessInfo(0).Plr().IsAccessor());
         return;
     }
 }
@@ -2939,5 +2949,15 @@ void TypedBytecodeLowering::ReplaceGateWithPendingException(GateRef glue, GateRe
     StateDepend success(ifFalse, sDepend);
     StateDepend exception(ifTrue, eDepend);
     acc_.ReplaceHirWithIfBranch(gate, success, exception, value);
+}
+
+void TypedBytecodeLowering::ReplaceHirWithCheckingAccessor(GateRef glue, GateRef hirGate, StateDepend replacement,
+    GateRef value, bool isAccessor)
+{
+    if (isAccessor) {
+        ReplaceGateWithPendingException(glue, hirGate, replacement.State(), replacement.Depend(), value);
+    } else {
+        acc_.ReplaceHirAndReplaceDeadIfException(hirGate, replacement, value);
+    }
 }
 }  // namespace panda::ecmascript
