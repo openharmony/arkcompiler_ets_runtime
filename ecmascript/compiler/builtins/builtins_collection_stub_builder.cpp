@@ -44,10 +44,18 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Clear(Variable *result, Labe
     GateRef linkedTable = GetLinked();
     GateRef res = Circuit::NullGate();
     if constexpr (std::is_same_v<CollectionType, JSMap>) {
-        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.Clear(linkedTable);
     } else {
-        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.Clear(linkedTable);
     }
 
@@ -136,10 +144,18 @@ void BuiltinsCollectionStubBuilder<CollectionType>::ForEach(Variable *result, La
     GateRef res = Circuit::NullGate();
     GateRef thisArg = GetCallArg1(numArgs_);
     if constexpr (std::is_same_v<CollectionType, JSMap>) {
-        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, callbackFnHandle, thisArg);
     } else {
-        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.ForEach(thisValue_, linkedTable, callbackFnHandle, thisArg);
     }
 
@@ -171,10 +187,18 @@ void BuiltinsCollectionStubBuilder<CollectionType>::MapSetOrSetAdd(
     GateRef linkedTable = GetLinked();
     GateRef res = Circuit::NullGate();
     if constexpr (std::is_same_v<CollectionType, JSMap>) {
-        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.Insert(linkedTable, key, value);
     } else {
-        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.Insert(linkedTable, key, value);
     }
 
@@ -212,10 +236,18 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Delete(Variable *result, Lab
     GateRef linkedTable = GetLinked();
     GateRef res = Circuit::NullGate();
     if constexpr (std::is_same_v<CollectionType, JSMap>) {
-        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.Delete(linkedTable, key);
     } else {
-        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.Delete(linkedTable, key);
     }
     *result = BooleanToTaggedBooleanPtr(res);
@@ -238,10 +270,18 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Has(Variable *result, Label 
     GateRef linkedTable = GetLinked();
     GateRef res = Circuit::NullGate();
     if constexpr (std::is_same_v<CollectionType, JSMap>) {
-        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.Has(linkedTable, key);
     } else {
-        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+            this,
+            glue_,
+            GetCurrentGlobalEnv()
+        );
         res = linkedHashTableStubBuilder.Has(linkedTable, key);
     }
     *result = BooleanToTaggedBooleanPtr(res);
@@ -263,7 +303,11 @@ void BuiltinsCollectionStubBuilder<CollectionType>::Get(Variable *result, Label 
     GateRef key = GetCallArg0(numArgs_);
     GateRef linkedTable = GetLinked();
     static_assert(std::is_same_v<CollectionType, JSMap>);
-    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(this, glue_, GetCurrentGlobalEnv());
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+        this,
+        glue_,
+        GetCurrentGlobalEnv()
+    );
     *result = linkedHashTableStubBuilder.Get(linkedTable, key);
     Jump(exit);
 }

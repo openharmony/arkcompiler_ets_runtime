@@ -282,6 +282,7 @@ bool EcmaString::IsSubStringAt(const EcmaVM *vm, const JSHandle<EcmaString>& lef
 template <typename T1, typename T2>
 int32_t EcmaString::IndexOf(common::Span<const T1>& lhsSp, common::Span<const T2>& rhsSp, int32_t pos, int32_t max)
 {
+    ASSERT(pos > max || lhsSp.size() >= static_cast<size_t>(max));
     return BaseString::IndexOf(lhsSp, rhsSp, pos, max);
 }
 
