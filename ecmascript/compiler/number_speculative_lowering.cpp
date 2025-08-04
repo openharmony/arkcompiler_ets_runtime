@@ -164,7 +164,7 @@ void NumberSpeculativeLowering::VisitNumberBinaryOp(GateRef gate)
             break;
         }
         case TypedBinOp::TYPED_MUL: {
-            VisitNumberCalculate<TypedBinOp::TYPED_MUL>(gate);
+            VisitNumberMultiply(gate);
             break;
         }
         case TypedBinOp::TYPED_LESS: {
@@ -359,6 +359,31 @@ void NumberSpeculativeLowering::VisitNumberDiv(GateRef gate)
     } else {
         result = builder_.BinaryArithmetic(circuit_->Fdiv(),
             MachineType::F64, left, right, GateType::NJSValue());
+        acc_.SetMachineType(gate, MachineType::F64);
+    }
+    acc_.SetGateType(gate, GateType::NJSValue());
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+void NumberSpeculativeLowering::VisitNumberMultiply(GateRef gate)
+{
+    GateRef left = acc_.GetValueIn(gate, 0);
+    GateRef right = acc_.GetValueIn(gate, 1);
+    TypedBinaryAccessor accessor(acc_.TryGetValue(gate));
+    const ParamType paramType = accessor.GetParamType();
+    ASSERT(paramType.HasNumberType());
+    GateRef result = Circuit::NullGate();
+    if (paramType.IsIntType()) {
+        result = CalculateInts<TypedBinOp::TYPED_MUL>(left, right);    // int op int
+        auto resultRange = GetRange(left) * GetRange(right);
+        bool maybeNegativeZero = resultRange.MaybeZero() && resultRange.MaybeNegative();
+        if (maybeNegativeZero) {
+            builder_.ProductIsNegativeZero(result, left, right);
+        }
+        UpdateRange(result, GetRange(gate));
+        acc_.SetMachineType(gate, MachineType::I32);
+    } else {
+        result = CalculateDoubles<TypedBinOp::TYPED_MUL>(left, right); // float op float
         acc_.SetMachineType(gate, MachineType::F64);
     }
     acc_.SetGateType(gate, GateType::NJSValue());

@@ -19,6 +19,7 @@
 namespace panda::ecmascript::kungfu {
 
 #define MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)                                                             \
+    V(ProductIsNegativeZero, PRODUCT_IS_NEGATIVE_ZERO, GateFlags::CHECKABLE, 1, 1, 3)                       \
     V(Int32CheckRightIsZero, INT32_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)                      \
     V(RemainderIsNegativeZero, REMAINDER_IS_NEGATIVE_ZERO, GateFlags::CHECKABLE, 1, 1, 2)                   \
     V(Float64CheckRightIsZero, FLOAT64_CHECK_RIGHT_IS_ZERO, GateFlags::CHECKABLE, 1, 1, 1)                  \

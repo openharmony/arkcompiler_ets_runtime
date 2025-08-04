@@ -62,6 +62,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::GET_GLOBAL_CONSTANT_VALUE:
             LowerGetGlobalConstantValue(gate);
             break;
+        case OpCode::PRODUCT_IS_NEGATIVE_ZERO:
+            LowerProductIsNegativeZero(gate);
+            break;
         case OpCode::INT32_CHECK_RIGHT_IS_ZERO:
             LowerInt32CheckRightIsZero(gate);
             break;
@@ -859,6 +862,24 @@ void MCRLowering::HeapAllocateInSOld(GateRef gate)
                                        {builder_.ToTaggedInt(size)}, gate);
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void MCRLowering::LowerProductIsNegativeZero(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef result = acc_.GetValueIn(gate, 0);  // 0: result
+    GateRef left = acc_.GetValueIn(gate, 1);    // 1: left
+    GateRef right = acc_.GetValueIn(gate, 2);   // 2: right
+    // Check if the product of left and right is negative by comparing the sign bits via XOR.
+    // A negative result (sign bit set) indicates different signs, which could lead to negative zero.
+    GateRef productIsNegativeZero = LogicAndBuilder(&env)
+        .And(builder_.Int32Equal(result, builder_.Int32(0)))
+        .And(builder_.Int32LessThan(builder_.Int32Xor(left, right), builder_.Int32(0)))
+        .Done();
+    GateRef productIsNotNegativeZero = builder_.BoolNot(productIsNegativeZero);
+    builder_.DeoptCheck(productIsNotNegativeZero, frameState, DeoptType::PRODUCTISNEGATIVEZERO);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void MCRLowering::LowerInt32CheckRightIsZero(GateRef gate)

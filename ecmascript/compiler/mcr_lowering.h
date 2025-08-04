@@ -63,6 +63,7 @@ private:
     void LowerGetGlobalEnvObj(GateRef gate);
     void LowerGetGlobalEnvObjHClass(GateRef gate);
     void LowerGetGlobalConstantValue(GateRef gate);
+    void LowerProductIsNegativeZero(GateRef gate);
     void LowerInt32CheckRightIsZero(GateRef gate);
     void LowerRemainderIsNegativeZero(GateRef gate);
     void LowerFloat64CheckRightIsZero(GateRef gate);

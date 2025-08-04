@@ -85,6 +85,7 @@ namespace panda::ecmascript::kungfu {
     V(NotJSFastCallTarget2,            NOTJSFASTCALLTGT2)              \
     V(NotJSFastCallTarget3,            NOTJSFASTCALLTGT3)              \
     V(LexVarIsHole1,                   LEXVARISHOLE1)                  \
+    V(ProductIsNegativeZero,           PRODUCTISNEGATIVEZERO)          \
     V(ModZero1,                        MODZERO1)                       \
     V(RemainderIsNegativeZero,         REMAINDERISNEGATIVEZERO)        \
     V(Int32Overflow1,                  INT32OVERFLOW1)                 \
