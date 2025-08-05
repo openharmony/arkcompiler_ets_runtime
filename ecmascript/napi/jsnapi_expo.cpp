@@ -5645,8 +5645,6 @@ int JSNApi::ExecuteWithSingletonPatternFlag(EcmaVM *vm, const std::string &bundl
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->HandleUncaughtException();
         }
-        LOG_ECMA(ERROR) << "Execute with singleton-pattern flag failed with bundle name is'" << bundleName
-                        << "' and module name is '" << moduleName << "', entry is'" << ohmurl << "'" << std::endl;
     }
     return result;
 }
