@@ -2,6 +2,7 @@ moduleImportJson.js;moduleImportJson;esm;moduleImportJson.js;xxmoduleImportJsonx
 cjsImportJson.js;cjsImportJson;commonjs;cjsImportJson.js;xxcjsImportJsonxx
 1.json;1;esm;1.json;xx1xx
 2.json;2;esm;2.json;xx2xx
+4.json;4;esm;4.json;xx4xx
 moduleCircularCheck.js;moduleCircularCheck;esm;moduleCircularCheck.js;xxmoduleCircularCheckxx
 3.js;3;esm;3.js;xx3xx
 check.js;check;esm;check.js;xxcheckxx

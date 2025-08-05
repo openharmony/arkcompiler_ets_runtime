@@ -1034,11 +1034,6 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
                 EvaluateNativeModule(thread, requiredModule, moduleType);
                 continue;
             }
-            // if requiredModule is jsonModule, then don't need to execute.
-            if (moduleType == ModuleTypes::JSON_MODULE) {
-                requiredModule->SetStatus(ModuleStatus::EVALUATED);
-                continue;
-            }
 
             index = SourceTextModule::InnerModuleEvaluation(
                 thread, requiredModule, stack, errorStack, index, buffer, size, executeType);
@@ -1227,10 +1222,6 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<SourceTe
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
                 EvaluateNativeModule(thread, requiredModule, moduleType);
-                continue;
-            }
-            if (moduleType == ModuleTypes::JSON_MODULE) {
-                requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
             }
             CVector<JSHandle<SourceTextModule>> stack;
