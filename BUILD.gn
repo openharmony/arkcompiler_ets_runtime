@@ -1141,11 +1141,7 @@ ecma_source += [
 ]
 
 if (ark_js_hybrid) {
-  ecma_source += [
-    "ecmascript/cross_vm/cross_vm_operator.cpp",
-    "ecmascript/serializer/inter_op_value_deserializer.cpp",
-    "ecmascript/serializer/inter_op_value_serializer.cpp",
-  ]
+  ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]
 }
 
 if (!is_arkui_x) {
@@ -1174,7 +1170,9 @@ ecma_source += [
   "ecmascript/cross_vm/jsnapi_expo_hybrid.cpp",
   "ecmascript/cross_vm/object_factory_hybrid.cpp",
   "ecmascript/cross_vm/ecma_vm_hybrid.cpp",
-  "ecmascript/cross_vm/js_thread_hybrid.cpp"
+  "ecmascript/cross_vm/js_thread_hybrid.cpp",
+  "ecmascript/serializer/inter_op_value_deserializer.cpp",
+  "ecmascript/serializer/inter_op_value_serializer.cpp",
 ]
 
 hitrace_scope_source = []

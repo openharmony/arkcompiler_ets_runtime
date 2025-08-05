@@ -6076,6 +6076,7 @@ Local<JSValueRef> JSNApi::InterOpDeserializeValue([[maybe_unused]] const EcmaVM 
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     ecmascript::ThreadManagedScope scope(thread);
+    EscapeLocalScope escapeScope(vm);
     std::unique_ptr<ecmascript::SerializeData> data(reinterpret_cast<ecmascript::SerializeData *>(recoder));
     ecmascript::InterOpValueDeserializer deserializer(thread, data.release(), hint);
     bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
@@ -6089,7 +6090,7 @@ Local<JSValueRef> JSNApi::InterOpDeserializeValue([[maybe_unused]] const EcmaVM 
         endTime = std::chrono::system_clock::now();
         GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, false);
     }
-    return JSNApiHelper::ToLocal<ObjectRef>(result);
+    return escapeScope.Escape(JSNApiHelper::ToLocal<JSValueRef>(result));
 #else
     LOG_FULL(FATAL) << "Only support in inter-op";
     UNREACHABLE();
