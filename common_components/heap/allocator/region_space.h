@@ -393,7 +393,7 @@ public:
 private:
     enum class TryAllocationThreshold {
         RESCHEDULE = 3,
-        TRIGGER_OOM = 5,
+        TRIGGER_OOM = 4,
     };
     HeapAddress TryAllocateOnce(size_t allocSize, AllocType allocType);
     bool ShouldRetryAllocation(size_t& tryTimes) const;

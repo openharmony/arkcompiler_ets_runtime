@@ -90,6 +90,8 @@ public:
         RegionDesc *region = RegionDesc::GetRegionDescAt(reinterpret_cast<HeapAddress>(addr));
         return region->IsInRecentSpace();
     }
+    bool GetForceThrowOOM() const override { return isForceThrowOOM_; };
+    void SetForceThrowOOM(bool val) override { isForceThrowOOM_ = val; };
 
     HeapAddress Allocate(size_t size, AllocType allocType, bool allowGC = true) override;
 
@@ -158,6 +160,7 @@ private:
     std::atomic<bool> isGCEnabled_ = { true };
 
     GCReason gcReason_ = GCReason::GC_REASON_INVALID;
+    bool isForceThrowOOM_ = { false };
 }; // end class HeapImpl
 
 static ImmortalWrapper<HeapImpl> g_heapInstance;

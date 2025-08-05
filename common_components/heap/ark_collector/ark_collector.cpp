@@ -1018,8 +1018,7 @@ BaseObject* ArkCollector::CopyObjectAfterExclusive(BaseObject* obj)
             "is survived: " << (IsSurvivedObject(obj) ? "true" : "false");
     }
     BaseObject* toObj = fwdTable_.RouteObject(obj, size);
-    if (toObj == nullptr) { //LCOV_EXCL_BR_LINE
-        Heap::throwOOM();
+    if (toObj == nullptr) {
         // ConcurrentGC
         obj->UnlockExclusive(BaseStateWord::ForwardState::NORMAL);
         return toObj;
