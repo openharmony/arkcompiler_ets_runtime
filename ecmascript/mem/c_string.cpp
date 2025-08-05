@@ -260,7 +260,7 @@ void ConvertQuotedAndAppendToCString(const JSThread *thread, CString &str, const
     uint32_t strLen = EcmaStringAccessor(const_cast<EcmaString *>(s)).GetLength();
     CVector<uint8_t> buf;
     const uint8_t *data = EcmaStringAccessor::GetUtf8DataFlat(thread, s, buf);
-    const Span<const uint8_t> dataSpan(data, strLen);
+    const common::Span<const uint8_t> dataSpan(data, strLen);
     base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
 }
 
@@ -272,12 +272,12 @@ void ConvertQuotedAndAppendToC16String(const JSThread *thread, C16String &str, c
     if (EcmaStringAccessor(const_cast<EcmaString *>(s)).IsUtf8()) {
         CVector<uint8_t> buf;
         const uint8_t *data = EcmaStringAccessor::GetUtf8DataFlat(thread, s, buf);
-        const Span<const uint8_t> dataSpan(data, strLen);
+        const common::Span<const uint8_t> dataSpan(data, strLen);
         base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
     } else {
         CVector<uint16_t> buf;
         const uint16_t *data = EcmaStringAccessor::GetUtf16DataFlat(thread, s, buf);
-        const Span<const uint16_t> dataSpan(data, strLen);
+        const common::Span<const uint16_t> dataSpan(data, strLen);
         base::JsonHelper::AppendValueToQuotedString(dataSpan, str);
     }
 }

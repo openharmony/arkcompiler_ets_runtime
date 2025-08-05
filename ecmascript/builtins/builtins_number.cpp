@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -165,7 +165,7 @@ JSTaggedValue BuiltinsNumber::ParseFloat(EcmaRuntimeCallInfo *argv)
     // 2. ReturnIfAbrupt(inputString).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(thread, buf);
+    common::Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(thread, buf);
     // 4. If neither trimmedString nor any prefix of trimmedString satisfies the syntax of a StrDecimalLiteral
     // (see 7.1.3.1), return NaN.
     if (NumberHelper::IsEmptyString(str.begin(), str.end())) {

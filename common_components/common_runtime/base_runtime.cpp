@@ -274,4 +274,9 @@ void BaseRuntime::NotifyHighSensitive(bool isStart)
 {
     Heap::GetHeap().NotifyHighSensitive(isStart);
 }
+
+void BaseRuntime::FillFreeObject(void *object, size_t size)
+{
+    common::FillFreeObject(object, size);
+}
 }  // namespace common

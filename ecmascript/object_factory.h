@@ -818,7 +818,7 @@ public:
 
     JSHandle<JSHClass> NewSEcmaReadOnlyHClass(JSHClass *hclass, uint32_t size, JSType type,
                                              uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    JSTaggedValue InitHClassInCompositeBaseClass(JSHClass* hclass, common::CommonType type);
+    JSTaggedValue InitHClassInCompositeBaseClass(JSHClass* hclass, common::ObjectType type);
     JSHandle<JSHClass> NewSEcmaReadOnlySharedHClass(JSHClass *hclass, uint32_t size, JSType type,
                                                     uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
 

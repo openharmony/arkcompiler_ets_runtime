@@ -370,6 +370,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_DefinedSep)
     EXPECT_FALSE(EcmaStringAccessor(handleEcmaStrRet).IsTreeString());
 }
 
+
 /**
  * @tc.name: Join_StringElements_ManyTiny
  * @tc.desc: Create a source Array whose elements are EcmaStrings and an EcmaRuntimeCallInfo, define the first arg of
@@ -437,7 +438,7 @@ HWTEST_F_L0(JSStableArrayTest, Join_StringElements_LargeString)
     }
     JSHandle<JSTaggedValue> handleTagValEcmaStrRet = CallJoin(handleTagArr, sep, lengthArr);
     JSHandle<EcmaString> handleEcmaStrRet(handleTagValEcmaStrRet);
-    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString().c_str(),
+    EXPECT_STREQ(EcmaStringAccessor(handleEcmaStrRet).ToCString(thread).c_str(),
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

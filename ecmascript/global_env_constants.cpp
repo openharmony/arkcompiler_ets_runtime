@@ -132,11 +132,11 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::SIZE, JSType::FREE_OBJECT_WITH_TWO_FIELD));
     if (g_isEnableCMCGC) {
         SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
-                    factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::LINE_STRING));
+                    factory->InitHClassInCompositeBaseClass(hClass, common::ObjectType::LINE_STRING));
         SetConstant(ConstantIndex::SLICED_STRING_CLASS_INDEX,
-                    factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::SLICED_STRING));
+                    factory->InitHClassInCompositeBaseClass(hClass, common::ObjectType::SLICED_STRING));
         SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
-                    factory->InitHClassInCompositeBaseClass(hClass, common::CommonType::TREE_STRING));
+                    factory->InitHClassInCompositeBaseClass(hClass, common::ObjectType::TREE_STRING));
     } else {
         SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
             factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
