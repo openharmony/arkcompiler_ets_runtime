@@ -14,3 +14,4 @@
 $99
 undefined
 TypeError: obj is not Callable
+RangeError: Stack overflow!

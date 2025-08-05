@@ -132,6 +132,8 @@ public:
     {
         globalEnv_ = globalEnv;
     }
+    GateRef ReadSp();
+    GateRef CheckStackOverflow(GateRef glue);
     int NextVariableId();
     // constant
     GateRef Int8(int8_t value);

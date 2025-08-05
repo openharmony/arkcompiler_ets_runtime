@@ -178,7 +178,8 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
 {
     auto env = GetEnvironment();
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    Label callExit(env);
+    Label stackOverflow(env);
+    Label dispatch(env);
     Label checkGetTrapResult(env);
     Label exit(env);
     Label handlerIsNull(env);
@@ -186,6 +187,14 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
     Label slowPath(env);
     Label trapIsCallable(env);
     Label trapFastPath(env);
+    BRANCH_UNLIKELY(CheckStackOverflow(glue_), &stackOverflow, &dispatch);
+    Bind(&stackOverflow);
+    {
+        CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(ThrowStackOverflowException), {});
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&dispatch);
     GateRef handler = GetHandler(glue_, proxy);
     BRANCH(TaggedIsNull(handler), &handlerIsNull, &handlerIsNotNull);
     Bind(&handlerIsNull);
@@ -201,6 +210,15 @@ GateRef BuiltinsProxyStubBuilder::GetProperty(GateRef proxy, GateRef key, GateRe
         GateRef name = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
             ConstantIndex::GET_STRING_INDEX);
         GateRef trap = GetPropertyByName(glue_, handler, name);
+        Label isPendingException(env);
+        Label noPendingException(env);
+        BRANCH_UNLIKELY(HasPendingException(glue_), &isPendingException, &noPendingException);
+        Bind(&isPendingException);
+        {
+            result = Exception();
+            Jump(&exit);
+        }
+        Bind(&noPendingException);
         BRANCH(TaggedIsHeapObject(trap), &trapFastPath, &slowPath);
         Bind(&trapFastPath);
         {
@@ -236,8 +254,9 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
 {
     auto env = GetEnvironment();
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedTrue());
+    Label stackOverflow(env);
+    Label dispatch(env);
     Label trapResultIsFalse(env);
-    Label callExit(env);
     Label checkSetTrapResult(env);
     Label exit(env);
     Label handlerIsNull(env);
@@ -245,6 +264,14 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
     Label slowPath(env);
     Label trapIsCallable(env);
     Label trapFastPath(env);
+    BRANCH_UNLIKELY(CheckStackOverflow(glue_), &stackOverflow, &dispatch);
+    Bind(&stackOverflow);
+    {
+        CallRuntimeWithGlobalEnv(glue_, GetCurrentGlobalEnv(), RTSTUB_ID(ThrowStackOverflowException), {});
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&dispatch);
     GateRef handler = GetHandler(glue_, proxy);
     BRANCH(TaggedIsNull(handler), &handlerIsNull, &handlerIsNotNull);
     Bind(&handlerIsNull);
@@ -260,6 +287,15 @@ GateRef BuiltinsProxyStubBuilder::SetProperty(GateRef proxy, GateRef key, GateRe
         GateRef name = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
             ConstantIndex::SET_STRING_INDEX);
         GateRef trap = GetPropertyByName(glue_, handler, name);
+        Label isPendingException(env);
+        Label noPendingException(env);
+        BRANCH_UNLIKELY(HasPendingException(glue_), &isPendingException, &noPendingException);
+        Bind(&isPendingException);
+        {
+            result = TaggedFalse();
+            Jump(&exit);
+        }
+        Bind(&noPendingException);
         BRANCH(TaggedIsHeapObject(trap), &trapFastPath, &slowPath);
         Bind(&trapFastPath);
         {
