@@ -1717,13 +1717,14 @@ public:
     static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
 
     /**
-     * @brief Return input abc file type
-     * @param[in] filename : absolute file path
-     * return -1 , indicates open file failed or file format invalid
-     *        0 , indicates input abc file is dynamic file
-     *        1 , indicates input abc file is static file
+     * @brief Return the abc file type
+     * @param[in] data : begin pos of abc file
+     * @param[in] size : length of abc file
+     * @return -1 indicates the abc file format invalid
+     *         0 indicates the abc file is dynamic
+     *         1 indicates the abc file is static
      */
-    static PandaFileType GetFileType(const std::string &filename);
+    static PandaFileType GetFileType(const uint8_t *data, int32_t size);
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string &ohmUrl, const std::string &key);
