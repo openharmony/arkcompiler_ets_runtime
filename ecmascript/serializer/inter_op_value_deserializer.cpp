@@ -28,7 +28,7 @@ size_t InterOpValueDeserializer::DerivedExtraReadSingleEncodeData(uint8_t encode
             slot.Update(JSTaggedValue::Undefined().GetRawData());
             AttachXRefFunc af = reinterpret_cast<AttachXRefFunc>(data_->ReadJSTaggedType(position_));
             void *attachXRefData = reinterpret_cast<void *>(data_->ReadJSTaggedType(position_));
-            JSHandle<JSTaggedValue> obj(thread_, JSTaggedValue(objAddr));
+            JSHandle<JSTaggedValue> obj(thread_, JSTaggedValue(static_cast<JSTaggedType>(objAddr)));
             // defer new xref binding object until deserialize finish
             xRefBindingAttachInfos_.emplace_back(af, attachXRefData, obj, fieldOffset);
             break;
