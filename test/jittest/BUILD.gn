@@ -99,6 +99,7 @@ group("ark_jit_ts_test") {
     "boolean_number_ic",
     "boolean_new_boolean_poly",
     "boolean_change_proto_ic",
+    "neg_int_min",
     "hole_in_array",
     "definefunc",
     "jnez",

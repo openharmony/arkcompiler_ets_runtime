@@ -963,8 +963,9 @@ void MCRLowering::LowerValueCheckNegOverflow(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef valueNotZero = builder_.NotEqual(value, builder_.Int32(0));
-    builder_.DeoptCheck(valueNotZero, frameState, DeoptType::NOTNEGOV1);
+    GateRef condition = LogicAndBuilder(&env).And(builder_.NotEqual(value, builder_.Int32(0)))
+                                             .And(builder_.NotEqual(value, builder_.Int32(INT32_MIN))).Done();
+    builder_.DeoptCheck(condition, frameState, DeoptType::NOTNEGOV1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
