@@ -13253,12 +13253,17 @@ void StubBuilder::ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateR
     {
         CallNGCRuntime(glue, RTSTUB_ID(CopyObjectPrimitive),
             {glue, TaggedCastToIntPtr(dstObj), TaggedCastToIntPtr(dstAddr), TaggedCastToIntPtr(srcAddr), taggedValueCount});
-        if (copyKind == SameArray) {
-            CMCArrayCopyWriteBarrierSameArray(glue, dstObj, srcAddr, dstAddr, taggedValueCount);
-        } else {
-            CMCArrayCopyWriteBarrier(glue, dstObj, srcAddr, dstAddr, taggedValueCount);
+        Label handleBarrier(env);
+        BRANCH_NO_WEIGHT(needBarrier, &handleBarrier, &exit);
+        Bind(&handleBarrier);
+        {
+            if (copyKind == SameArray) {
+                CMCArrayCopyWriteBarrierSameArray(glue, dstObj, srcAddr, dstAddr, taggedValueCount);
+            } else {
+                CMCArrayCopyWriteBarrier(glue, dstObj, srcAddr, dstAddr, taggedValueCount);
+            }
+            Jump(&exit);
         }
-        Jump(&exit);
     }
     Bind(&notCMCGC);
     {
