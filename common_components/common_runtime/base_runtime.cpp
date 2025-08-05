@@ -100,8 +100,11 @@ void BaseRuntime::Init(const RuntimeParam &param)
     }
 
     param_ = param;
-
-    PagePool::Instance().Init(param_.heapParam.heapSize * KB / COMMON_PAGE_SIZE);
+    size_t pagePoolSize = param_.heapParam.heapSize;
+#if defined(PANDA_TARGET_32)
+    pagePoolSize = pagePoolSize / 128; // 128 means divided.
+#endif
+    PagePool::Instance().Init(pagePoolSize * KB / COMMON_PAGE_SIZE);
     mutatorManager_ = NewAndInit<MutatorManager>();
     heapManager_ = NewAndInit<HeapManager>(param_);
     baseClassRoots_ = NewAndInit<BaseClassRoots>();
@@ -112,7 +115,7 @@ void BaseRuntime::Init(const RuntimeParam &param)
         "Heap utilization: %.2f\n\tHeap growth: %.2f\n\tAllocation rate: %.2f(MB/s)\n\tAlloction wait time: %zuns\n\t"
         "GC Threshold: %zu(KB)\n\tGarbage threshold: %.2f\n\tGC interval: %zums\n\tBackup GC interval: %zus\n\t"
         "Log level: %d\n\tThread stack size: %zu(KB)\n\tArkcommon stack size: %zu(KB)\n\t"
-        "Processor number: %d", param_.heapParam.heapSize, param_.heapParam.regionSize,
+        "Processor number: %d", pagePoolSize, param_.heapParam.regionSize,
         param_.heapParam.exemptionThreshold, param_.heapParam.heapUtilization, 1 + param_.heapParam.heapGrowth,
         param_.heapParam.allocationRate, param_.heapParam.allocationWaitTime,
         param_.gcParam.gcThreshold / KB, param_.gcParam.garbageThreshold,
