@@ -154,6 +154,8 @@ private:
         Variable &checkResult, size_t index, GateRef receiverHC);
     void PolyHeapObjectCheckAndLoad(LoadObjByNameDataInfo &info,
         const std::map<size_t, uint32_t> &typeIndex2HeapConstantIndex);
+    void ReplaceHirWithCheckingAccessor(GateRef glue, GateRef hirGate, StateDepend replacement,
+        GateRef value, bool IsAccessor);
     void LoadOnPrototypeForHeapObjectReceiver(const LoadObjPropertyTypeInfoAccessor &tacc, Variable &result,
                                               LoadObjByNameOnProtoTypeInfo ldProtoInfo);
     void LowerTypedMonoLdObjByNameOnProto(const LoadObjPropertyTypeInfoAccessor &tacc, Variable &result);
