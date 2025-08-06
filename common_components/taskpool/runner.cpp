@@ -115,7 +115,7 @@ void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
 void Runner::SetRssPriority([[maybe_unused]] RssPriorityType type)
 {
 #ifdef ENABLE_RSS
-    uint64_t pid = getpid();
+    uint64_t pid = static_cast<uint64_t>(getpid());
     int64_t status = static_cast<int64_t>(type);
     for (uint32_t threadId : gcThreadId_) {
         std::unordered_map<std::string, std::string> payLoad = { { "pid", std::to_string(pid) },

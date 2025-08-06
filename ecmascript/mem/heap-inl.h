@@ -924,7 +924,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
 
     TaggedObject *object = nullptr;
     if (UNLIKELY(g_isEnableCMCGC)) {
-        object = thread->IsJitThread() ? nullptr : reinterpret_cast<TaggedObject *>(
+        object = reinterpret_cast<TaggedObject *>(
             common::HeapAllocator::AllocateInNonmove(size, common::LanguageType::DYNAMIC));
         object->SetClass(thread, hclass);
     } else {
