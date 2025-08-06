@@ -5020,7 +5020,7 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, exceptionHandle);
     ecmascript::CString string = ConvertToString(thread, *result);
-    LOG_ECMA(ERROR) << string;
+    LOG_ECMA(WARN) << string;
     ThrowException(vm, exception);
 }
 
@@ -5390,7 +5390,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StopDebug");
     if (!sym) {
-        LOG_ECMA(ERROR) << sym.Error().ToString();
+        LOG_ECMA(WARN) << sym.Error().ToString();
         return false;
     }
 
