@@ -134,7 +134,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
 
     moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
 
-    moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
+    moduleRecord->SetStatus(ModuleStatus::EVALUATED);
     moduleRecord->SetTypes(ModuleTypes::JSON_MODULE);
     moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 

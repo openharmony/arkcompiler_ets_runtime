@@ -23,8 +23,10 @@ import data from "./1.json"
 import { fun } from "./cjsImportJson";
 import {a} from './moduleCircularCheck';
 import {chinese} from './中文路径';
+import lazy data4 from "./4.json"
 
 print(data.name);
 fun();
 print(a);
 print(chinese);
+print(data4.name);
