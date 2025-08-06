@@ -75,8 +75,11 @@ std::string HexDump(const void* address, size_t length)
         // Print content
         uint64_t word = 0;
         size_t bytesToRead = std::min(wordSize, length - i);
-        memcpy_s(&word, sizeof(uint64_t), ptr + i, bytesToRead);
-
+        auto ret = memcpy_s(&word, sizeof(uint64_t), ptr + i, bytesToRead);
+        if (ret != EOK) {
+            LOG_COMMON(FATAL) << "memcpy_s failed: ret = " << ret;
+            break;
+        }
         oss << "0x" << std::setw(wordSize * hexDigitsPerByte) << word << std::endl;
     }
 
