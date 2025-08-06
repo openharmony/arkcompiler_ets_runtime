@@ -25,7 +25,7 @@
 #define RETURN_VALUE_IF_ABRUPT(thread, value)                 \
     do {                                                      \
         if (thread->HasPendingException()) {                  \
-            LOG_FULL(ERROR) << "occur exception need return"; \
+            LOG_FULL(WARN) << "occur exception need return";  \
             return value;                                     \
         }                                                     \
     } while (false)
