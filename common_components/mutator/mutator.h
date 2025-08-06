@@ -50,6 +50,7 @@ public:
             SatbBuffer::Instance().RetireNode(satbNode_);
             satbNode_ = nullptr;
         }
+        delete holder_;
     }
 
     static Mutator* NewMutator()

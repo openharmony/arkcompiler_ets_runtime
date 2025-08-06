@@ -31,6 +31,7 @@ HWTEST_F_L0(MutatorManagerTest, BindMutatorOnly_Test1)
 {
     MutatorManager *managerPtr = new MutatorManager();
     Mutator mutator;
+    mutator.Init();
     managerPtr->UnbindMutatorOnly();
     bool res = managerPtr->BindMutatorOnly(&mutator);
     ASSERT_TRUE(res);
@@ -67,6 +68,7 @@ HWTEST_F_L0(MutatorManagerTest, BindMutator_Test1)
     localData->buffer = nullptr;
     MutatorManager *managerPtr = new MutatorManager();
     Mutator mutator;
+    mutator.Init();
     managerPtr->BindMutator(mutator);
     EXPECT_TRUE(localData->buffer != nullptr);
 
