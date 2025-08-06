@@ -5131,9 +5131,10 @@ void JSFinalizationRegistry::DumpForSnapshot(const JSThread *thread, std::vector
 {
     vec.emplace_back(CString("CleanupCallback"), GetCleanupCallback(thread));
     if (!(GetMaybeUnregister(thread).IsInvalidValue())) {
-        LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister(thread).GetTaggedObject());
         vec.emplace_back(CString("MaybeUnregister"), GetMaybeUnregister(thread));
-        map->DumpForSnapshot(thread, vec);
+    }
+    if (!(GetNoUnregister(thread).IsInvalidValue())) {
+        vec.emplace_back(CString("NoUnregister"), GetNoUnregister(thread));
     }
 
     vec.emplace_back(CString("Next"), GetNext(thread));
