@@ -522,7 +522,7 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unu
         thread, abcFilePath, entry, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "When checking if module is in abc file, loading panda file failed. Current file is " <<
+        LOG_ECMA(WARN) << "When checking if module is in abc file, loading panda file failed. Current file is " <<
             abcFilePath;
         return false;
     }
@@ -530,7 +530,7 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unu
         abcFilePath, "", entry);
     JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
     if (recordInfo == nullptr) {
-        LOG_ECMA(ERROR) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
+        LOG_ECMA(WARN) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
         return false;
     }
     return true;

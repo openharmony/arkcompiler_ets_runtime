@@ -71,7 +71,7 @@ void SetSecurityLabel(const std::string& path)
     }
 
     if (setxattr(path.c_str(), XATTR_KEY, DEFAULT_DATA_LEVEL.data(), DEFAULT_DATA_LEVEL.size(), 0, 0) < 0) {
-        LOG_ECMA(WARN) << "set label failed! level: " << DEFAULT_DATA_LEVEL << ", file: " << path;
+        LOG_ECMA(DEBUG) << "set label failed! level: " << DEFAULT_DATA_LEVEL << ", file: " << path;
     }
 }
 

@@ -1934,7 +1934,7 @@ PGOProfiler::PGOProfiler(EcmaVM* vm, bool isEnable)
         }
         LOG_PGO(INFO) << "constructing pgo profiler, pgo is enabled";
     } else {
-        LOG_PGO(INFO) << "skipping pgo profiler construction, pgo is disabled";
+        LOG_PGO(DEBUG) << "skipping pgo profiler construction, pgo is disabled";
     }
 };
 

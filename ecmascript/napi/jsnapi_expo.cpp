@@ -4669,7 +4669,7 @@ void JSNApi::ClearCurrentTaskInfo(const EcmaVM *vm)
 
 void JSNApi::SetLargeHeap(bool isLargeHeap)
 {
-    LOG_ECMA(INFO) << "Set large heap: " << isLargeHeap;
+    LOG_ECMA(DEBUG) << "Set large heap: " << isLargeHeap;
     auto instance = ecmascript::Runtime::GetInstance();
     ASSERT(instance != nullptr);
     instance->SetEnableLargeHeap(isLargeHeap);
