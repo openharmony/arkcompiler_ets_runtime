@@ -34,6 +34,7 @@ public:
     bool Mark(JSTaggedType addr);
     bool CMCMark(JSTaggedType addr);
     bool IsMarked(JSTaggedType addr);
+    bool IsCMCMarked(JSTaggedType addr);
     void Clear();
     void IterateMarked(const std::function<void(JSTaggedType)> &cb);
     void IterateCMCMarked(const std::function<void(JSTaggedType)> &cb);
