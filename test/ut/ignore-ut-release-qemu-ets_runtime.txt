@@ -212,7 +212,6 @@ obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_Atomics_TestWithQ
 obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_Lazy_TestWithQemu
 
 #27826
-obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Sendable_BuiltinsSharedTypedArray_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/containers/tests/Containers_002_TestWithQemu
 
 #27473
@@ -226,3 +225,27 @@ obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Trace_Collect
 
 #28652
 obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Marking_Collector_TestWithQemu
+
+#28814
+obj/arkcompiler/ets_runtime/ecmascript/dfx/stackinfo/tests/JsStackInfoTestWithQemu
+
+#28815
+obj/arkcompiler/ets_runtime/ecmascript/containers/tests/Containers_003_TestWithQemu
+
+#28816
+obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_Object_TestWithQemu
+
+#28817
+obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_Errors_TestWithQemu
+
+#28818
+obj/arkcompiler/ets_runtime/ecmascript/containers/tests/Containers_001_TestWithQemu
+
+#28819
+obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_UtfHelper_TestWithQemu
+
+#28820
+obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Sendable_BuiltinsSharedTypedArray_TestWithQemu
+
+#28747
+obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Collector_TestWithQemu
