@@ -5145,15 +5145,15 @@ bool JSNApi::StartDebuggerForSocketPair([[maybe_unused]] int tid, [[maybe_unused
         return false;
     }
 
-    using StartDebugForSocketpair = bool (*)(int, int);
+    using StartDebugForSocketpair = bool (*)(int, int, bool);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StartDebugForSocketpair");
     if (!sym) {
         LOG_ECMA(ERROR) << "[StartDebuggerForSocketPair] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
-
-    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd);
+    // false: not hybrid
+    bool ret = reinterpret_cast<StartDebugForSocketpair>(sym.Value())(tid, socketfd, false);
     if (!ret) {
         // Reset the config
         jsDebuggerManager->SetDebugMode(false);
@@ -5228,7 +5228,7 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
 
 #ifndef PANDA_TARGET_ARM32
     // Initialize debugger
-    using InitializeDebuggerForSocketpair = bool(*)(void*);
+    using InitializeDebuggerForSocketpair = bool(*)(void*, bool);
     auto sym = panda::os::library_loader::ResolveSymbol(
         jsDebuggerManager->GetDebugLibraryHandle(), "InitializeDebuggerForSocketpair");
     if (!sym) {
@@ -5236,7 +5236,8 @@ bool JSNApi::NotifyDebugMode([[maybe_unused]] int tid,
             << sym.Error().ToString();
         return false;
     }
-    if (!reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm)) {
+    // false: not hybrid
+    if (!reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm, false)) {
         LOG_ECMA(ERROR) << "[NotifyDebugMode] InitializeDebuggerForSocketpair fail";
         return false;
     }
@@ -5309,13 +5310,14 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
     }
     reinterpret_cast<StoreDebuggerInfo>(symOfStoreDebuggerInfo.Value())(tid, vm, debuggerPostTask);
     bool ret = false;
-    using InitializeDebuggerForSocketpair = bool(*)(void*);
+    using InitializeDebuggerForSocketpair = bool(*)(void*, bool);
     auto sym = panda::os::library_loader::ResolveSymbol(handler, "InitializeDebuggerForSocketpair");
     if (!sym) {
         LOG_ECMA(ERROR) << "[InitializeDebuggerForSocketpair] Resolve symbol fail: " << sym.Error().ToString();
         return false;
     }
-    ret = reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm);
+    // false: not hybrid
+    ret = reinterpret_cast<InitializeDebuggerForSocketpair>(sym.Value())(vm, false);
     if (!ret) {
     // Reset the config
         vm->GetJsDebuggerManager()->SetDebugMode(false);
@@ -5341,15 +5343,15 @@ bool JSNApi::StopDebugger([[maybe_unused]] EcmaVM *vm)
 
     const auto &handle = vm->GetJsDebuggerManager()->GetDebugLibraryHandle();
 
-    using StopDebug = void (*)(void *);
+    using StopDebug = void (*)(void *, bool);
 
     auto sym = panda::os::library_loader::ResolveSymbol(handle, "StopDebug");
     if (!sym) {
         LOG_ECMA(ERROR) << sym.Error().ToString();
         return false;
     }
-
-    reinterpret_cast<StopDebug>(sym.Value())(vm);
+    // false: not hybrid
+    reinterpret_cast<StopDebug>(sym.Value())(vm, false);
 
     vm->GetJsDebuggerManager()->SetDebugMode(false);
     uint32_t tid = vm->GetTid();
