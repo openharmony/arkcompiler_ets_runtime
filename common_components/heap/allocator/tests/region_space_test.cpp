@@ -24,9 +24,19 @@ using namespace common;
 
 namespace common::test {
 class RegionSpaceTest : public common::test::BaseTestWithScope {
-    void SetUp() override
+protected:
+    static void SetUpTestCase()
     {
         BaseRuntime::GetInstance()->Init();
+    }
+
+    static void TearDownTestCase()
+    {
+        BaseRuntime::GetInstance()->Fini();
+    }
+
+    void SetUp() override
+    {
         holder_ = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
         scope_ = new ThreadHolder::TryBindMutatorScope(holder_);
     }
@@ -37,8 +47,6 @@ class RegionSpaceTest : public common::test::BaseTestWithScope {
             delete scope_;
             scope_ = nullptr;
         }
-
-        BaseRuntime::GetInstance()->Fini();
     }
 
     ThreadHolder *holder_ {nullptr};

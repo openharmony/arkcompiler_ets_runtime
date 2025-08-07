@@ -67,17 +67,21 @@ class TestLogRedirect {
 public:
     TestLogRedirect()
     {
+#ifndef ENABLE_HILOG
         originalCoutBuffer = std::cout.rdbuf();
         originalCerrBuffer = std::cerr.rdbuf();
 
         std::cout.rdbuf(buffer.rdbuf());
         std::cerr.rdbuf(buffer.rdbuf());
+#endif
     }
 
     ~TestLogRedirect()
     {
+#ifndef ENABLE_HILOG
         std::cout.rdbuf(originalCoutBuffer);
         std::cerr.rdbuf(originalCerrBuffer);
+#endif
     }
 
     std::string GetOutput() const
@@ -92,8 +96,10 @@ public:
 
 private:
     std::stringstream buffer;
+#ifndef ENABLE_HILOG
     std::streambuf* originalCoutBuffer;
     std::streambuf* originalCerrBuffer;
+#endif
 };
 }  // namespace common
 
@@ -123,9 +129,11 @@ HWTEST_F_L0(TimerTest, Timer_BasicUsage_LogsTime)
         for (volatile int i = 0; i < SECOND_TIME; ++i);
     }
 
+#ifndef ENABLE_HILOG
     std::string output = redirect.GetOutput();
     EXPECT_NE(output.find("TestScope time:"), std::string::npos);
     EXPECT_NE(output.find("us"), std::string::npos);
+#endif
 }
 
 HWTEST_F_L0(TimerTest, Timer_LevelNotDebug_NoLogging)
@@ -151,8 +159,10 @@ HWTEST_F_L0(TimerTest, Timer_LongName_CorrectFormat)
         for (volatile int i = 0; i < SECOND_TIME; ++i);
     }
 
+#ifndef ENABLE_HILOG
     std::string output = redirect.GetOutput();
     EXPECT_NE(output.find("VeryLongTimerNameForTesting time:"), std::string::npos);
+#endif
 }
 
 HWTEST_F_L0(TimerTest, Timer_MultipleInstances_DistinctOutput)
@@ -167,8 +177,10 @@ HWTEST_F_L0(TimerTest, Timer_MultipleInstances_DistinctOutput)
         for (volatile int i = 0; i < SECOND_TIME; ++i);
     }
 
+#ifndef ENABLE_HILOG
     std::string output = redirect.GetOutput();
     EXPECT_NE(output.find("First time:"), std::string::npos);
     EXPECT_NE(output.find("Second time:"), std::string::npos);
+#endif
 }
 }

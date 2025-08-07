@@ -399,7 +399,8 @@ HWTEST_F_L0(ArkCollectorTest, ForwardUpdateRawRef_TEST1)
     TestStaticObject staticObject;
     obj->RegisterStatic(&staticObject);
 
-    ObjectRef root;
+    alignas(RefField<>) char rootBuffer[sizeof(RefField<>)] = {0};
+    ObjectRef& root = *new (rootBuffer) ObjectRef();
     root.object = obj;
     auto ret = arkCollector->ForwardUpdateRawRef(root);
     EXPECT_TRUE(arkCollector->IsFromObject(obj));
