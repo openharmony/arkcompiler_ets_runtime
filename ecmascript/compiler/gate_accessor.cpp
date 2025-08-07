@@ -104,7 +104,8 @@ size_t GateAccessor::GetOffset(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::LOAD_CONST_OFFSET ||
            GetOpCode(gate) == OpCode::LOAD_HCLASS_CONST_OFFSET ||
-           GetOpCode(gate) == OpCode::STORE_CONST_OFFSET);
+           GetOpCode(gate) == OpCode::STORE_CONST_OFFSET ||
+           GetOpCode(gate) == OpCode::STORE_HCLASS_CONST_OFFSET);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     auto accessor = LoadStoreConstOffsetAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
     return accessor.GetOffset();
@@ -149,7 +150,8 @@ MemoryAttribute GateAccessor::GetMemoryAttribute(GateRef gate) const
         }
         case OpCode::LOAD_CONST_OFFSET:
         case OpCode::LOAD_HCLASS_CONST_OFFSET:
-        case OpCode::STORE_CONST_OFFSET: {
+        case OpCode::STORE_CONST_OFFSET:
+        case OpCode::STORE_HCLASS_CONST_OFFSET: {
             auto accessor = LoadStoreConstOffsetAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
             return accessor.GetMemoryAttribute();
         }

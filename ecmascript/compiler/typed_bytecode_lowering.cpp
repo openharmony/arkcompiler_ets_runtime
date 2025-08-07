@@ -1142,7 +1142,7 @@ void TypedBytecodeLowering::TypedStObjByNameTransition(GateRef gate, GateRef rec
     auto newHolderHC = builder_.GetHClassGateFromIndex(gate, tacc.GetAccessInfo(i).HClassIndex());
     if (compilationEnv_->IsAotCompiler()) {
         auto prototype = builder_.LoadPrototype(glue_, receiverHC);
-        builder_.StorePrototype(glue_, newHolderHC, prototype);
+        builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
     }
     if (!tacc.IsPrototypeHclass(i)) {
         if (!TryLazyDeoptNotPrototype(tacc, i, gate)) {
@@ -1162,7 +1162,7 @@ void TypedBytecodeLowering::TypedStObjByNameTransition(GateRef gate, GateRef rec
         builder_.Bind(&notProto);
     }
     MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
-    builder_.TransitionHClass(glue_, tacc.GetReceiver(), newHolderHC, mAttr);
+    builder_.TransitionHClassByConstOffset(glue_, tacc.GetReceiver(), newHolderHC, mAttr);
     if (!tacc.GetAccessInfo(i).Plr().IsInlinedProps()) {
         auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
                                                    JSObject::PROPERTIES_OFFSET);

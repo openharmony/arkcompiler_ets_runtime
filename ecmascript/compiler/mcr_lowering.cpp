@@ -47,6 +47,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::STORE_CONST_OFFSET:
             LowerStoreConstOffset(gate);
             break;
+        case OpCode::STORE_HCLASS_CONST_OFFSET:
+            LowerStoreHClassConstOffset(gate);
+            break;
         case OpCode::CONVERT_HOLE_AS_UNDEFINED:
             LowerConvertHoleAsUndefined(gate);
             break;
@@ -207,6 +210,19 @@ void MCRLowering::LowerStoreConstOffset(GateRef gate)
     GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
     builder_.Store(type, glue_, receiver, offset, value, acc_.GetMemoryAttribute(gate));
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerStoreHClassConstOffset(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    GateRef compValue = acc_.GetValueIn(gate, 2);   // 2: compValue
+    GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
+    VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
+    builder_.StoreHClass(type, glue_, receiver, offset, value, compValue, acc_.GetMemoryAttribute(gate));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

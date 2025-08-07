@@ -725,6 +725,29 @@ void CircuitBuilder::CheckHClassFieldInvalidAccess([[maybe_unused]]GateRef glue,
 #endif
 }
 
+void CircuitBuilder::CheckHClassAddrInvalid([[maybe_unused]]GateRef glue, [[maybe_unused]] GateRef hClass)
+{
+#ifndef NDEBUG
+    Label entryPass(env_);
+    SubCfgEntry(&entryPass);
+    Label exit(env_);
+    Label failed(env_);
+    constexpr uint64_t highHClassMask = 0xFFFFFFFF00000000ul;
+    GateRef highHClass = Int64And(TaggedPointerToInt64(hClass), Int64(highHClassMask));
+    GateRef expectHighHClass = TaggedPointerToInt64(LoadWithoutBarrier(VariableType::JS_POINTER(), glue,
+        IntPtr(JSThread::GlueData::GetBaseAddressOffset(env_->Is32Bit()))));
+    BRANCH_UNLIKELY(Int64NotEqual(expectHighHClass, highHClass), &failed, &exit);
+    Bind(&failed);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(FatalPrint), Gate::InvalidGateRef,
+                       {Int32(GET_MESSAGE_STRING_ID(HClassAddressIsInvalid))}, glue);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    SubCfgExit();
+#endif
+}
+
 GateRef CircuitBuilder::GetPrototypeFromHClass(GateRef glue, GateRef hClass)
 {
     CheckHClassFieldInvalidAccess(glue, hClass);

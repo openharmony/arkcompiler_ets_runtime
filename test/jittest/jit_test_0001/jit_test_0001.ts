@@ -33,3 +33,22 @@ for (var i = 0; i < 10; i++) {
 ArkTools.jitCompileAsync(Test);
 var ret = ArkTools.waitJitCompileFinish(Test);
 print(ret);
+
+function Test2() {
+    let v2 = new Uint8ClampedArray(42);
+    const v5 = new Int32Array(3);
+    ({"buffer": v2} = v5);
+
+    function func() {
+        return v5;
+    }
+    let v21 = 10;
+    for (;v21--;) {
+        v2.valueOf = func;
+    }
+}
+
+Test2();
+ArkTools.jitCompileAsync(Test2);
+print(ArkTools.waitJitCompileFinish(Test2));
+Test2();
