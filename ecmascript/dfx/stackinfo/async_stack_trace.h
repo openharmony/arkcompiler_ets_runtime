@@ -19,6 +19,7 @@
 #include <memory>
 #include <string>
 
+#include "ecmascript/js_promise.h"
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
@@ -158,7 +159,7 @@ public:
 
     uint32_t GetAsyncTaskId()
     {
-        if (asyncTaskId_ == UINT32_MAX) {
+        if (asyncTaskId_ == MAX_ASYNC_TASK_ID) {
             asyncTaskId_ = 0;
         }
         return ++asyncTaskId_;
@@ -169,6 +170,8 @@ public:
     NO_COPY_SEMANTIC(AsyncStackTrace);
     NO_MOVE_SEMANTIC(AsyncStackTrace);
 private:
+    static constexpr uint32_t MAX_ASYNC_TASK_ID = (1u << JSPromise::ASYNC_TASK_ID_BITS) - 1;
+
     EcmaVM *vm_ {nullptr};
     JSThread *jsThread_ {nullptr};
     uint32_t asyncTaskId_ {0};
