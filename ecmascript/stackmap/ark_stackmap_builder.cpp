@@ -19,19 +19,18 @@
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript::kungfu {
-uint8_t* BinaryBufferWriter::WriteBuffer(const uint8_t *src, uint32_t count)
+void BinaryBufferWriter::WriteBuffer(const uint8_t *src, uint32_t count)
 {
     uint8_t *dst = buffer_ + offset_;
     if (dst >= buffer_ && dst + count <= buffer_ + length_) {
         if (memcpy_s(dst, buffer_ + length_ - dst, src, count) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
-            return nullptr;
+            return;
         };
         offset_ = offset_ + count;
     }  else {
         LOG_FULL(FATAL) << "parse buffer error, length is 0 or overflow";
     }
-    return dst;
 }
 
 void ArkStackMapBuilder::Dump(const StackMapDumper& dumpInfo) const
@@ -210,17 +209,15 @@ void ArkStackMapBuilder::SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, Binary
 }
 
 void ArkStackMapBuilder::SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length,
-    ARKCallsiteAOTFileInfo& info, Triple triple)
+    const ARKCallsiteAOTFileInfo& info, Triple triple)
 {
     BinaryBufferWriter writer(ptr, length);
     ASSERT(length >= info.secHead.secSize);
     writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(info.secHead)), sizeof(ArkStackMapHeader));
     dumper_.callsiteHeadSize += sizeof(ArkStackMapHeader);
-    std::vector<uint8_t *> ptrVector;
     for (auto &it: info.callsites) {
-        uint8_t *dst = writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(it.head)), sizeof(CallsiteHeader));
+        writer.WriteBuffer(reinterpret_cast<const uint8_t *>(&(it.head)), sizeof(CallsiteHeader));
         dumper_.callsiteHeadSize += sizeof(CallsiteHeader);
-        ptrVector.emplace_back(dst);
     }
     SaveArkStackMap(info, writer, triple);
     SaveArkDeopt(info, writer, triple);
