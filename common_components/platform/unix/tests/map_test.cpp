@@ -39,6 +39,6 @@ HWTEST_F_L0(PageProtectTest, TestPageProtect)
 
 HWTEST_F_L0(PageProtectTest, TestNullptrMemory)
 {
-    bool success = common::PageProtect(nullptr, getpagesize(), PROT_READ);
+    bool success = common::PageProtect(nullptr, getpagesize(), -1);
     EXPECT_FALSE(success);
 }

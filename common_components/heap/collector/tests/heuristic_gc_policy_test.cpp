@@ -22,9 +22,19 @@
 using namespace common;
 namespace common::test {
 class HeuristicGCPolicyTest : public common::test::BaseTestWithScope {
-    void SetUp() override
+protected:
+    static void SetUpTestCase()
     {
         BaseRuntime::GetInstance()->Init();
+    }
+
+    static void TearDownTestCase()
+    {
+        BaseRuntime::GetInstance()->Fini();
+    }
+
+    void SetUp() override
+    {
         holder_ = ThreadHolder::CreateAndRegisterNewThreadHolder(nullptr);
         scope_ = new ThreadHolder::TryBindMutatorScope(holder_);
     }
@@ -35,8 +45,6 @@ class HeuristicGCPolicyTest : public common::test::BaseTestWithScope {
             delete scope_;
             scope_ = nullptr;
         }
-
-        BaseRuntime::GetInstance()->Fini();
     }
 
     ThreadHolder *holder_ {nullptr};
@@ -60,13 +68,13 @@ HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test2)
     EXPECT_TRUE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
 
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-    auto allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+    auto allocated = theAllocator.GetAllocatedBytes();
     auto param = BaseRuntime::GetInstance()->GetHeapParam();
     auto size = param.heapSize * KB * HeuristicGCPolicy::COLD_STARTUP_PHASE1_GC_THRESHOLD_RATIO;
     for (int i = 0; allocated < size; i++) {
         uintptr_t addr = theAllocator.AllocOldRegion();
         ASSERT_NE(addr, 0);
-        allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+        allocated = theAllocator.GetAllocatedBytes();
     }
 
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_FINISH);
@@ -74,6 +82,13 @@ HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test2)
 
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP);
     EXPECT_FALSE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
+
+    theAllocator.GetOldSpace().AssembleRecentFull();
+    auto& fromSpace = theAllocator.GetFromSpace();
+    theAllocator.GetOldSpace().AssembleGarbageCandidates(fromSpace);
+    fromSpace.GetFromRegionList().ClearList();
+    allocated = theAllocator.GetAllocatedBytes();
+    EXPECT_EQ(allocated, 0);
 }
 
 HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test3)
@@ -84,13 +99,13 @@ HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test3)
     EXPECT_TRUE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
 
     RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
-    auto allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+    auto allocated = theAllocator.GetAllocatedBytes();
     auto param = BaseRuntime::GetInstance()->GetHeapParam();
     auto size = param.heapSize * KB * HeuristicGCPolicy::COLD_STARTUP_PHASE2_GC_THRESHOLD_RATIO;
     for (int i = 0; allocated < size; i++) {
         uintptr_t addr = theAllocator.AllocOldRegion();
         ASSERT_NE(addr, 0);
-        allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
+        allocated = theAllocator.GetAllocatedBytes();
     }
 
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_FINISH);
@@ -98,6 +113,13 @@ HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test3)
 
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_PARTIALLY_FINISH);
     EXPECT_FALSE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
+
+    theAllocator.GetOldSpace().AssembleRecentFull();
+    auto& fromSpace = theAllocator.GetFromSpace();
+    theAllocator.GetOldSpace().AssembleGarbageCandidates(fromSpace);
+    fromSpace.GetFromRegionList().ClearList();
+    allocated = theAllocator.GetAllocatedBytes();
+    EXPECT_EQ(allocated, 0);
 }
 
 HWTEST_F_L0(HeuristicGCPolicyTest, NotifyNativeAllocation)

@@ -43,11 +43,6 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="Common_Profiler_Interface_Test">
-        <preparer>
-            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
     <target name="C_String_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
@@ -209,6 +204,26 @@
         </preparer>
     </target>
     <target name="Heuristic_Gc_Policy_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Heap_Allocator_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Region_Space_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Taskpool_Task_Queue_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Serialize_Utils_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
