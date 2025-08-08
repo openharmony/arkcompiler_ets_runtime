@@ -219,7 +219,7 @@ void PGOProfilerManager::Destroy()
 
 std::shared_ptr<PGOProfiler> PGOProfilerManager::BuildProfiler(EcmaVM* vm, bool isEnable)
 {
-    LOG_PGO(INFO) << "build profiler, pgo is " << (isEnable ? "enabled" : "disabled");
+    LOG_PGO(DEBUG) << "build profiler, pgo is " << (isEnable ? "enabled" : "disabled");
     if (isEnable) {
         isEnable = InitializeData();
     }

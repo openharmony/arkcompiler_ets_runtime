@@ -39,7 +39,7 @@ void ModuleSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &path)
 
 void ModuleSnapshotInterfaces::Deserialize(const EcmaVM *vm, const CString &path)
 {
-    LOG_ECMA(INFO) << "ModuleSnapshotInterfaces::Deserialize: " << path;
+    LOG_ECMA(DEBUG) << "ModuleSnapshotInterfaces::Deserialize: " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshotInterfaces::Deserialize", "");
     // check application white list
     if (!filesystem::Exists(path.c_str())) {

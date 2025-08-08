@@ -1511,7 +1511,6 @@ public:
     {
         sHeap_->NotifyPostFork();
         smartGCStats_.startupStatus_.store(StartupStatus::ON_STARTUP, std::memory_order_relaxed);
-        LOG_GC(INFO) << "SmartGC: enter app cold start";
         size_t localFirst = config_.GetMaxHeapSize();
         size_t localSecond = config_.GetMaxHeapSize() * JUST_FINISH_STARTUP_LOCAL_THRESHOLD_RATIO;
         auto sharedHeapConfig = sHeap_->GetEcmaParamConfiguration();
