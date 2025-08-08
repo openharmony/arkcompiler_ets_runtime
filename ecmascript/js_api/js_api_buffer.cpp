@@ -919,7 +919,6 @@ JSTaggedValue JSAPIFastBuffer::WriteBufferObjectLoop(JSThread *thread, JSHandle<
     }
     auto srcArray = GetUInt8ArrayFromBufferObject(thread, srcObj);
     uint32_t length = srcArray->GetByteLength();
-    auto srcData = srcArray->GetViewedArrayBufferOrByteArray(thread);
     uint8_t *src = GetUnderlyingData(thread, srcObj.GetTaggedValue());
     uint8_t *dst = GetUnderlyingData(thread, buffer.GetTaggedValue());
     if (src == nullptr || dst == nullptr) {

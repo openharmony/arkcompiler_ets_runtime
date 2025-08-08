@@ -105,15 +105,14 @@ JSHandle<JSTaggedValue> JSArray::ArrayCreate(JSThread *thread, JSTaggedNumber le
     }
 
     // For new Array(Len), the elementsKind should be Hole
-    if (thread->GetEcmaVM()->IsEnableElementsKind()) {
-        if ((newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue()) && normalArrayLength != 0) {
-            JSHandle<JSArray> newArray(obj);
-            #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
-            JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::GENERIC);
-            #else
-            JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::HOLE);
-            #endif
-        }
+    if (thread->GetEcmaVM()->IsEnableElementsKind() && (newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue()) &&
+        normalArrayLength != 0) {
+        JSHandle<JSArray> newArray(obj);
+        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+        JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::GENERIC);
+        #else
+        JSHClass::TransitToElementsKind(thread, newArray, ElementsKind::HOLE);
+        #endif
     }
     CheckAndSetPrototypeModified(thread, obj);
     return JSHandle<JSTaggedValue>(obj);

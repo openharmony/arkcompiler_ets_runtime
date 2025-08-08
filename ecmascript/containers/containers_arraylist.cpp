@@ -584,13 +584,11 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    auto obj = JSHandle<JSAPIArrayList>::Cast(self);
-    uint32_t length = JSHandle<JSAPIArrayList>::Cast(self)->GetLength(thread).GetArrayLength();
-    JSHandle<TaggedArray> elements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length);
-    elements->Copy(thread, 0, 0, TaggedArray::Cast(obj->GetElements(thread)), length);
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSAPIArrayList>::Cast(self)->GetElements(thread));
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    uint32_t length = JSHandle<JSAPIArrayList>::Cast(self)->GetLength(thread).GetArrayLength();
     for (uint32_t i = 1; i < length; i++) {
         uint32_t beginIndex = 0;
         uint32_t endIndex = i;
@@ -615,8 +613,6 @@ JSTaggedValue ContainersArrayList::Sort(EcmaRuntimeCallInfo *argv)
             elements->Set(thread, endIndex, presentValue.GetTaggedValue());
         }
     }
-    obj->SetElements(thread, elements);
-    obj->SetLength(thread, JSTaggedValue(elements->GetLength()));
     return JSTaggedValue::Undefined();
 }
 

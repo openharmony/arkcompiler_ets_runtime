@@ -296,3 +296,4 @@ JSTaggedValue ContainersHashSet::ForEach(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue::Undefined();
 }
 } // namespace panda::ecmascript::containers
+

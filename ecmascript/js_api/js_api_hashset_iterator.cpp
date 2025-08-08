@@ -44,7 +44,9 @@ JSTaggedValue JSAPIHashSetIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIHashSet> hashSet = JSHandle<JSAPIHashSet>::Cast(iteratedHashSet);
     JSHandle<TaggedHashArray> tableArr(thread, hashSet->GetTable(thread));
     uint32_t tableLength = tableArr->GetLength();
+
     uint32_t index = iter->GetNextIndex();
+
     JSMutableHandle<TaggedQueue> queue(thread, iter->GetTaggedQueue(thread));
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
     JSMutableHandle<TaggedNode> currentNode(thread, JSTaggedValue::Undefined());

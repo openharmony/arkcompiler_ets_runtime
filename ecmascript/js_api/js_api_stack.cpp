@@ -59,12 +59,10 @@ JSTaggedValue JSAPIStack::Pop(JSThread *thread)
     if (top == -1) {
         return JSTaggedValue::Undefined();
     }
-    JSHandle<TaggedArray> elements(thread, TaggedArray::Cast(this->GetElements(thread).GetTaggedObject()));
+    TaggedArray *elements = TaggedArray::Cast(this->GetElements(thread).GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
-    JSTaggedValue ret = elements->Get(thread, top);
-    elements->Set(thread, top, JSTaggedValue::Hole());
     this->SetTop(--top);
-    return ret;
+    return elements->Get(thread, top + 1);
 }
 
 int JSAPIStack::Search(JSThread *thread, const JSHandle<JSTaggedValue> &value)
@@ -106,8 +104,8 @@ JSTaggedValue JSAPIStack::Get(JSThread *thread, const uint32_t index)
 
 JSTaggedValue JSAPIStack::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
-    uint32_t length = GetSize() + 1;
-    if (index >= length) {
+    int32_t length = GetSize() + 1;
+    if (index >= static_cast<uint32_t>(length)) {
         return JSTaggedValue::Undefined();
     }
     TaggedArray *elements = TaggedArray::Cast(GetElements(thread).GetTaggedObject());
