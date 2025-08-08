@@ -139,7 +139,7 @@ config("common_components_common_config") {
 
   if (ets_runtime_enable_cmc_gc) {
     defines += [ "USE_CMC_GC" ]
-    if (is_ohos && current_cpu == "arm64") {
+    if (is_ohos) {
       defines += [ "ENABLE_COLD_STARTUP_GC_POLICY" ]
     }
   } else {
