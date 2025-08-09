@@ -117,6 +117,8 @@ private:
     uintptr_t AllocateMultiCMCRegion(size_t spaceObjSize, size_t &regionIndex, RegionType regionType);
     void AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
                              SerializedObjectSpace spaceType);
+    void AllocateMultiNonmovableRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
+                                       SerializedObjectSpace spaceType);
     void AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
                                    SerializedObjectSpace spaceType);
     void AllocateToOldSpace(size_t oldSpaceSize);

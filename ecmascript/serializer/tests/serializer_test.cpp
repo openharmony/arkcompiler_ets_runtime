@@ -587,6 +587,23 @@ public:
         Destroy();
     }
 
+    void SerializeMultiNonmovableRegionTest(SerializeData *data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_TRUE(!res.IsEmpty());
+        EXPECT_TRUE(res->IsJSObject());
+        JSTaggedValue elements = JSHandle<JSObject>(res)->GetElements(thread);
+        EXPECT_TRUE(elements.IsTaggedArray());
+        EXPECT_EQ(JSHandle<TaggedArray>(thread, elements)->GetLength(), 10 * 1024); // 10 * 1024: array length
+        JSTaggedValue value = JSHandle<TaggedArray>(thread, elements)->Get(thread, 0);
+        EXPECT_TRUE(value.IsTaggedArray());
+        uint32_t length = JSHandle<TaggedArray>(thread, value)->GetLength();
+        EXPECT_EQ(length, 11 * 1024); // 11 * 1024: array length
+        Destroy();
+    }
+
     void SerializeMultiSharedRegionTest(SerializeData *data)
     {
         Init();
@@ -2742,6 +2759,32 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSSharedMapBasic)
         EXPECT_TRUE(!JSSharedMap::Has(thread, jsMap, JSTaggedValue(0)));
         EXPECT_TRUE(JSSharedMap::Has(thread, jsMap, JSTaggedValue(INITIALIZE_SIZE)));
     }
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeMultiNonmovableRegion)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(10 * 1024, JSTaggedValue::Hole(),
+                                                          MemSpaceType::NON_MOVABLE); // 10 * 1024: array length
+    for (int i = 0; i < 5; i++) {
+        JSHandle<TaggedArray> element = factory->NewTaggedArray((11 + i) * 1024, JSTaggedValue::Hole(),
+                                                                MemSpaceType::NON_MOVABLE);
+        array->Set(thread, i, element);
+    }
+    JSHandle<JSHClass> hClassHandle(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> object = factory->NewJSObject(hClassHandle);
+    object->SetElements(thread, array);
+    ValueSerializer *serializer = new ValueSerializer(thread, false, true);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(object),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SerializeMultiNonmovableRegionTest, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
     delete serializer;
 };
 
