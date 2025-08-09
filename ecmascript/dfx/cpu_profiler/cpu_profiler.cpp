@@ -479,7 +479,7 @@ bool CpuProfiler::InHeaderOrTail(uint64_t pc, uint64_t entryBegin, uint64_t entr
 
 bool CpuProfiler::IfNeedSkipBarrierStubHeaderOrTail(JSThread *thread, uint64_t pc) const
 {
-    uint64_t headerSize = 0;
+    uint64_t headerSize = 20;
     uintptr_t entryBegin = thread->GetFastStubEntry(kungfu::CommonStubCSigns::ID::GetValueWithBarrier);
     bool needSkip = InHeaderOrTail(pc, entryBegin, 0, headerSize, 0);
     return needSkip;
