@@ -21,7 +21,8 @@ JSTaggedValue QuickFixHelper::CreateMainFuncWithPatch(EcmaVM *vm, MethodLiteral 
                                                       const JSPandaFile *jsPandaFile)
 {
     JSThread *thread = vm->GetJSThread();
-    if (vm->GetStageOfColdReload() != StageOfColdReload::NOT_COLD_RELOAD) {
+    if (vm->GetStageOfColdReload() !=
+        StageOfColdReload::NOT_COLD_RELOAD) {
         EntityId methodId = mainMethodLiteral->GetMethodId();
         JSTaggedValue patchVal = vm->GetQuickFixManager()->CheckAndGetPatch(thread, jsPandaFile, methodId);
         return patchVal;
