@@ -34,14 +34,27 @@ public:
     static_assert(ID::NONE == 0);
     static constexpr int NONE = ID::NONE;
     static constexpr int NUM_OF_BUILTINS_STUBS = ID::NUM_OF_BUILTINS_STUBS;
-    using SubID = builtinssubid::SubID;
-    static constexpr int NUM_OF_BUILTINS_STUBS_EXTEND = SubID::NUM_OF_BUILTINS_STUBS_EXTEND;
-    static_assert(SubID::NONE == 0);
+
+    enum CALL_SIGNATURE_ID {
+#define DEF_STUB_ID(name) ID_##name,
+#define DEF_STUB_ID_DYN(name, type, ...) ID_##type##name,
+        PADDING_BUILTINS_STUB_LIST(DEF_STUB_ID)
+        BUILTINS_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN, DEF_STUB_ID)
+#undef DEF_STUB_ID_DYN
+#undef DEF_STUB_ID
+#define DEF_STUB_ID(name) ID_##name##StwCopy,
+#define DEF_STUB_ID_DYN(name, type, ...) ID_##type##name##StwCopy,
+        BUILTINS_STW_COPY_STUB_LIST(DEF_STUB_ID, DEF_STUB_ID_DYN, DEF_STUB_ID)
+#undef DEF_STUB_ID_DYN
+#undef DEF_STUB_ID
+        NUM_OF_BUILTINS_STUBS_EXTEND,
+    };
+    static_assert(CALL_SIGNATURE_ID::ID_NONE == 0);
 #define ASSERT_ID_EQUAL(name) \
-    static_assert((static_cast<uint32_t>(ID::name)) == (static_cast<uint32_t>(SubID::name)));
+    static_assert(static_cast<uint32_t>(ID::name) == static_cast<uint32_t>(CALL_SIGNATURE_ID::ID_##name));
 
 #define ASSERT_ID_EQUAL_DYN(name, type, ...) \
-    static_assert((static_cast<uint32_t>(ID::type##name)) == (static_cast<uint32_t>(SubID::type##name)));
+    static_assert(static_cast<uint32_t>(ID::type##name) == static_cast<uint32_t>(CALL_SIGNATURE_ID::ID_##type##name));
 
     BUILTINS_STUB_LIST(ASSERT_ID_EQUAL, ASSERT_ID_EQUAL_DYN, ASSERT_ID_EQUAL)
 #undef ASSERT_ID_EQUAL_DYN

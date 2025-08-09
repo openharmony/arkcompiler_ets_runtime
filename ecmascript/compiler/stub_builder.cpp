@@ -4012,9 +4012,8 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
             Label notString(env);
             Label notJsPrimitiveRef(env);
             auto holderValue = *holder;
-            BRANCH(
-                LogicAndBuilder(env).And(TaggedIsString(glue, holderValue)).And(TaggedIsString(glue, propKey)).Done(),
-                &isString, &notString);
+            BRANCH(LogicAndBuilder(env).And(TaggedIsString(glue, holderValue)).And(TaggedIsString(glue, propKey))
+                .Done(), &isString, &notString);
             Bind(&isString);
             {
                 Label getStringLength(env);
@@ -12578,7 +12577,7 @@ void StubBuilder::TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRe
                 Bind(&machineCodeIsNotUndefine);
                 {
                     GateRef machineCode = TaggedCastToIntPtr(RemoveTaggedWeakTag(weakMachineCode));
-                    GateRef codeAddr = LoadPrimitive(VariableType::NATIVE_POINTER(), machineCode,
+                    GateRef codeAddr = Load(VariableType::NATIVE_POINTER(), glue, machineCode,
                                             IntPtr(MachineCode::FUNCADDR_OFFSET));
                     ASSERT(IntPtrNotEqual(codeAddr, IntPtr(0)));
                     GateRef isFastCall = GetIsFastCall(machineCode);

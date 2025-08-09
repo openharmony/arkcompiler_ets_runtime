@@ -24,46 +24,45 @@ CallSignature BuiltinsStubCSigns::builtinsWithArgvCSign_;
 
 void BuiltinsStubCSigns::Initialize()
 {
-#define COMMON_INIT(name)                                                   \
-    callSigns_[SubID::name].SetID(SubID::name);                             \
-    callSigns_[SubID::name].SetName(std::string("BuiltinStub_") + #name);   \
-    callSigns_[SubID::name].SetConstructor(                                 \
-    [](void* env) {                                                         \
-        return static_cast<void*>(                                          \
-            new name##StubBuilder(&callSigns_[SubID::name],                 \
-                static_cast<Environment*>(env), Gate::InvalidGateRef));     \
+#define COMMON_INIT(name)                                               \
+    callSigns_[ID_##name].SetID(ID_##name);                             \
+    callSigns_[ID_##name].SetName(std::string("BuiltinStub_") + #name); \
+    callSigns_[ID_##name].SetConstructor(                               \
+    [](void* env) {                                                     \
+        return static_cast<void*>(                                      \
+            new name##StubBuilder(&callSigns_[ID_##name],               \
+                static_cast<Environment*>(env), Gate::InvalidGateRef)); \
     });
 
-#define INIT_BUILTINS_METHOD(name)                                          \
-    BuiltinsCallSignature::Initialize(&callSigns_[SubID::name]);            \
+#define INIT_BUILTINS_METHOD(name)                                   \
+    BuiltinsCallSignature::Initialize(&callSigns_[ID_##name]);       \
     COMMON_INIT(name)
 
-#define INIT_BUILTINS_METHOD_DYN(name, type, ...)                           \
-    BuiltinsCallSignature::Initialize(&callSigns_[SubID::type##name]);      \
+#define INIT_BUILTINS_METHOD_DYN(name, type, ...)                    \
+    BuiltinsCallSignature::Initialize(&callSigns_[ID_##type##name]); \
     COMMON_INIT(type##name)
 
-#define INIT_BUILTINS_CONSTRUCTOR_METHOD(name)                              \
-    BuiltinsWithArgvCallSignature::Initialize(&callSigns_[SubID::name]);    \
+#define INIT_BUILTINS_CONSTRUCTOR_METHOD(name)                         \
+    BuiltinsWithArgvCallSignature::Initialize(&callSigns_[ID_##name]); \
     COMMON_INIT(name)
 
-    BUILTINS_STUB_LIST(INIT_BUILTINS_METHOD, INIT_BUILTINS_METHOD_DYN, INIT_BUILTINS_CONSTRUCTOR_METHOD)
+#define STW_COPY_INIT(name)                                          \
+    callSigns_[ID_##name].SetStwCopyStub(true);                      \
+    callSigns_[ID_##name].SetTargetKind(CallSignature::TargetKind::BUILTINS_STW_COPY_STUB);
 
-#define STW_COPY_INIT(name)                                                 \
-    callSigns_[SubID::name].SetStwCopyStub(true);                           \
-    callSigns_[SubID::name].SetTargetKind(CallSignature::TargetKind::BUILTINS_STW_COPY_STUB);
-
-#define INIT_BUILTINS_METHOD_STW_COPY(name)                                 \
-    INIT_BUILTINS_METHOD(name##StwCopy)                                     \
+#define INIT_BUILTINS_METHOD_STW_COPY(name)                          \
+    INIT_BUILTINS_METHOD(name##StwCopy)                              \
     STW_COPY_INIT(name##StwCopy)
 
-#define INIT_BUILTINS_METHOD_DYN_STW_COPY(name, type, ...)                  \
-    INIT_BUILTINS_METHOD_DYN(name##StwCopy, type)                           \
+#define INIT_BUILTINS_METHOD_DYN_STW_COPY(name, type, ...)           \
+    INIT_BUILTINS_METHOD_DYN(name##StwCopy, type)                    \
     STW_COPY_INIT(type##name##StwCopy)
 
-#define INIT_BUILTINS_CONSTRUCTOR_METHOD_STW_COPY(name)                     \
-    INIT_BUILTINS_CONSTRUCTOR_METHOD(name##StwCopy)                         \
+#define INIT_BUILTINS_CONSTRUCTOR_METHOD_STW_COPY(name)              \
+    INIT_BUILTINS_CONSTRUCTOR_METHOD(name##StwCopy)                  \
     STW_COPY_INIT(name##StwCopy)
 
+    BUILTINS_STUB_LIST(INIT_BUILTINS_METHOD, INIT_BUILTINS_METHOD_DYN, INIT_BUILTINS_CONSTRUCTOR_METHOD)
     BUILTINS_STW_COPY_STUB_LIST(INIT_BUILTINS_METHOD_STW_COPY, INIT_BUILTINS_METHOD_DYN_STW_COPY, \
         INIT_BUILTINS_CONSTRUCTOR_METHOD_STW_COPY)
 
