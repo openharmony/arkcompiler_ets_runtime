@@ -44,17 +44,17 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::TYPED_ARRAY_CHECK:
             LowerTypedArrayCheck(glue, gate);
             break;
-        case OpCode::STRING_KEY_CHECK:
-            LowerStringKeyCheck(gate, glue);
-            break;
-        case OpCode::INTERN_STRING_KEY_CHECK:
-            LowerInternStringKeyCheck(gate, glue);
-            break;
         case OpCode::ECMA_STRING_CHECK:
             LowerEcmaStringCheck(gate, glue);
             break;
         case OpCode::INTERN_STRING_CHECK:
             LowerInternStringCheck(gate, glue);
+            break;
+        case OpCode::STRING_KEY_CHECK:
+            LowerStringKeyCheck(gate, glue);
+            break;
+        case OpCode::INTERN_STRING_KEY_CHECK:
+            LowerInternStringKeyCheck(gate, glue);
             break;
         case OpCode::ECMA_MAP_CHECK:
             LowerEcmaMapCheck(glue, gate);
@@ -237,7 +237,7 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
             LowerElementskindCheck(glue, gate);
             break;
         case OpCode::INLINE_SUPER_CTOR_CHECK:
-            LowerInlineSuperCtorCheck(gate, glue);
+            LowerInlineSuperCtorCheck(glue, gate);
             break;
         case OpCode::CHECK_CONSTRUCTOR:
             LowerCheckConstructor(gate, glue);
@@ -457,18 +457,6 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef glue, GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::LowerStringKeyCheck(GateRef gate, GateRef glue)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = GetFrameState(gate);
-    GateRef key = acc_.GetValueIn(gate, 0);
-    GateRef value = acc_.GetValueIn(gate, 1);
-    builder_.DeoptCheck(builder_.TaggedIsString(glue, key), frameState, DeoptType::NOTSTRING1);
-    builder_.DeoptCheck(builder_.StringEqual(key, value),
-                        frameState, DeoptType::KEYMISSMATCH);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
 void TypedHCRLowering::LowerInternStringKeyCheck(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
@@ -482,6 +470,18 @@ void TypedHCRLowering::LowerInternStringKeyCheck(GateRef gate, GateRef glue)
     builder_.DeoptCheck(isInternString, frameState, DeoptType::NOTINTERNSTRING1);
     GateRef isEqual = builder_.Equal(value, key);
     builder_.DeoptCheck(isEqual, frameState, DeoptType::KEYMISSMATCH);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::LowerStringKeyCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef key = acc_.GetValueIn(gate, 0);
+    GateRef value = acc_.GetValueIn(gate, 1);
+    builder_.DeoptCheck(builder_.TaggedIsString(glue, key), frameState, DeoptType::NOTSTRING1);
+    builder_.DeoptCheck(builder_.StringEqual(key, value),
+                        frameState, DeoptType::KEYMISSMATCH);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -1815,7 +1815,7 @@ void TypedHCRLowering::LowerJSInlineTargetHeapConstantCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::LowerInlineSuperCtorCheck(GateRef gate, GateRef glue)
+void TypedHCRLowering::LowerInlineSuperCtorCheck(GateRef glue, GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
