@@ -43,7 +43,7 @@ namespace panda::ecmascript::containers {
     }
 
 #define CHECK_NULL_OR_UNDEFINED(value)                                                                         \
-    if (value->IsUndefined() || value->IsNull()) {                                                             \
+    if ((value)->IsUndefined() || (value)->IsNull()) {                                                             \
         std::ostringstream oss;                                                                                \
         oss << "The parameter should not be null or undefined.";                                               \
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, oss.str().c_str()); \

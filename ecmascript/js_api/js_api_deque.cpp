@@ -114,7 +114,6 @@ JSTaggedValue JSAPIDeque::PopFirst(JSThread *thread)
     uint32_t capacity = elements->GetLength();
     JSTaggedValue firstElement = elements->Get(thread, first);
     ASSERT(capacity != 0);
-    elements->Set(thread, first, JSTaggedValue::Hole());
     first = (first + 1) % capacity;
     SetFirst(first);
     return firstElement;
@@ -130,7 +129,6 @@ JSTaggedValue JSAPIDeque::PopLast(JSThread *thread)
     ASSERT(!elements->IsDictionaryMode());
     uint32_t capacity = elements->GetLength();
     ASSERT(capacity != 0);
-    elements->Set(thread, last, JSTaggedValue::Hole());
     last = (last + capacity - 1) % capacity;
     JSTaggedValue lastElement = elements->Get(thread, last);
     SetLast(last);

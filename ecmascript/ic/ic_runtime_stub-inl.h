@@ -174,20 +174,20 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::TryStoreICByValue(JSThread *thread, JSTa
     return JSTaggedValue::Hole();
 }
 
-ARK_NOINLINE JSTaggedValue ICRuntimeStub::StoreICByValue(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
-                                                         JSTaggedValue receiver, JSTaggedValue key,
-                                                         JSTaggedValue value, uint32_t slotId)
-{
-    INTERPRETER_TRACE(thread, StoreICByValue);
-    return StoreMiss(thread, profileTypeInfo, receiver, key, value, slotId, ICKind::StoreIC);
-}
-
 ARK_NOINLINE JSTaggedValue ICRuntimeStub::StoreOwnICByValue(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
                                                             JSTaggedValue receiver, JSTaggedValue key,
                                                             JSTaggedValue value, uint32_t slotId)
 {
     INTERPRETER_TRACE(thread, StoreOwnICByValue);
     return StoreMiss(thread, profileTypeInfo, receiver, key, value, slotId, ICKind::StoreIC, true);
+}
+
+ARK_NOINLINE JSTaggedValue ICRuntimeStub::StoreICByValue(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
+                                                         JSTaggedValue receiver, JSTaggedValue key,
+                                                         JSTaggedValue value, uint32_t slotId)
+{
+    INTERPRETER_TRACE(thread, StoreICByValue);
+    return StoreMiss(thread, profileTypeInfo, receiver, key, value, slotId, ICKind::StoreIC);
 }
 
 ARK_INLINE JSTaggedValue ICRuntimeStub::TryStoreICByName(JSThread *thread, JSTaggedValue receiver,

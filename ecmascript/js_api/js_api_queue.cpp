@@ -91,7 +91,6 @@ JSTaggedValue JSAPIQueue::Pop(JSThread *thread, const JSHandle<JSAPIQueue> &queu
     queue->SetLength(thread, JSTaggedValue(length - 1));
     uint32_t elementsSize = elements->GetLength();
     ASSERT(elementsSize != 0);
-    elements->Set(thread, front, JSTaggedValue::Hole());
     queue->SetFront((front + 1) % elementsSize);
 
     return value;

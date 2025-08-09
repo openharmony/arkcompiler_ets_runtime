@@ -90,7 +90,7 @@ JSTaggedValue ContainersHashMap::Values(EcmaRuntimeCallInfo *argv)
         JSAPIHashMapIterator::CreateHashMapIterator(thread, self, IterationKind::VALUE);
     return iter.GetTaggedValue();
 }
-
+ 
 JSTaggedValue ContainersHashMap::GetIteratorObj(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv != nullptr);
@@ -417,3 +417,4 @@ JSTaggedValue ContainersHashMap::IsEmpty(EcmaRuntimeCallInfo *argv)
     return jsHashMap->IsEmpty();
 }
 } // namespace panda::ecmascript::containers
+

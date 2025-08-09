@@ -752,13 +752,12 @@ JSTaggedValue ContainersVector::Sort(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
 
-    auto obj = JSHandle<JSAPIVector>::Cast(self);
-    uint32_t length = static_cast<uint32_t>(obj->GetSize());
-    JSHandle<TaggedArray> elements = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length);
-    elements->Copy(thread, 0, 0, TaggedArray::Cast(obj->GetElements(thread)), length);
+    JSHandle<TaggedArray> elements(thread, JSHandle<JSAPIVector>::Cast(self)->GetElements(thread));
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
+    uint32_t length = static_cast<uint32_t>(JSHandle<JSAPIVector>::Cast(self)->GetSize());
+
     for (uint32_t i = 1; i < length; i++) {
         uint32_t beginIndex = 0;
         uint32_t endIndex = i;
@@ -783,8 +782,6 @@ JSTaggedValue ContainersVector::Sort(EcmaRuntimeCallInfo *argv)
             elements->Set(thread, endIndex, presentValue.GetTaggedValue());
         }
     }
-    obj->SetElements(thread, elements);
-    obj->SetLength(elements->GetLength());
     return JSTaggedValue::True();
 }
 
