@@ -216,12 +216,12 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-jit-lazy-deopt:     Enable lazy deopt for jit compiler. Default: 'false'\n"
     "--compiler-an-file-max-size:          Max size of compiler .an file in MB. '0' means Default\n"
     "                                      Default: No limit for Host, '100' for TargetCompilerMode\n"
-    "--compiler-enable-merge-poly:         Enable poly-merge optimization for ldobjbyname. Default: 'true'\n"
     "--compiler-jit-method-dichotomy:      Find problematic method by dichotomy. Default: 'disable'\n"
     "                                      'collect': collect methods during JIT runtime.\n"
     "                                      'filter': only compile specified methods during JIT runtime.\n"
     "--compiler-jit-method-path:           Store method names for jit method dichotomy.\n"
     "                                      Default: 'method_compiled_by_jit.cfg'\n"
+    "--compiler-enable-merge-poly:         Enable poly-merge optimization for ldobjbyname. Default: 'true'\n"
     // Please add new options above this line for keep a blank line after help message.
     "\n";
 
@@ -376,15 +376,15 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
          OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION},
         {"enable-inline-property-optimization", required_argument, nullptr, OPTION_ENABLE_INLINE_PROPERTY_OPTIMIZATION},
         {"compiler-enable-aot-code-comment", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_CODE_COMMENT},
-        {"compile-enable-jit-verify-pass", required_argument, nullptr, OPTION_ENABLE_JIT_VERIFY_PASS},
         {"compiler-enable-aot-lazy-deopt", required_argument, nullptr, OPTION_COMPILER_ENABLE_AOT_LAZY_DEOPT},
         {"compiler-enable-jit-lazy-deopt", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_LAZY_DEOPT},
         {"compiler-enable-lazy-deopt-trace", required_argument, nullptr, OPTION_COMPILER_ENABLE_LAZY_DEOPT_TRACE},
         {"compiler-an-file-max-size", required_argument, nullptr, OPTION_COMPILER_AN_FILE_MAX_SIZE},
         {"compiler-trace-builtins", required_argument, nullptr, OPTION_COMPILER_TRACE_BUILTINS},
-        {"compiler-enable-merge-poly", required_argument, nullptr, OPTION_COMPILER_ENABLE_MERGE_POLY},
+        {"compile-enable-jit-verify-pass", required_argument, nullptr, OPTION_ENABLE_JIT_VERIFY_PASS},
         {"compiler-jit-method-dichotomy", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_DICHOTOMY},
         {"compiler-jit-method-path", required_argument, nullptr, OPTION_COMPILER_JIT_METHOD_PATH},
+        {"compiler-enable-merge-poly", required_argument, nullptr, OPTION_COMPILER_ENABLE_MERGE_POLY},
         {"mem-config", required_argument, nullptr, OPTION_MEM_CONFIG},
         {"multi-context", required_argument, nullptr, OPTION_MULTI_CONTEXT},
         {nullptr, 0, nullptr, 0},

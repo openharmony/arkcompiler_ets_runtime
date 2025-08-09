@@ -242,9 +242,9 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_JIT_LAZY_DEOPT,
     OPTION_COMPILER_ENABLE_LAZY_DEOPT_TRACE,
     OPTION_ENABLE_LOADING_STUBS_LOG,
-    OPTION_COMPILER_ENABLE_MERGE_POLY,
     OPTION_COMPILER_JIT_METHOD_DICHOTOMY,
     OPTION_COMPILER_JIT_METHOD_PATH,
+    OPTION_COMPILER_ENABLE_MERGE_POLY,
     OPTION_MEM_CONFIG,
     OPTION_MULTI_CONTEXT,
 
@@ -2202,26 +2202,6 @@ public:
         return CompilerAnFileMaxByteSize_ == 0;
     }
 
-    void SetEnableMergePoly(bool value)
-    {
-        enableMergePoly_ = value;
-    }
-
-    bool IsEnableMergePoly() const
-    {
-        return enableMergePoly_;
-    }
-
-    void SetMultiContext(bool value)
-    {
-        multiContext_ = value;
-    }
-
-    bool IsMultiContext() const
-    {
-        return multiContext_;
-    }
-
     void SetJitMethodDichotomy(std::string jitMethodDichotomy)
     {
         jitMethodDichotomy_ = jitMethodDichotomy;
@@ -2250,6 +2230,26 @@ public:
     std::string GetJitMethodPath() const
     {
         return jitMethodPath_;
+    }
+
+    void SetEnableMergePoly(bool value)
+    {
+        enableMergePoly_ = value;
+    }
+
+    bool IsEnableMergePoly() const
+    {
+        return enableMergePoly_;
+    }
+
+    void SetMultiContext(bool value)
+    {
+        multiContext_ = value;
+    }
+
+    bool IsMultiContext() const
+    {
+        return multiContext_;
     }
 
     void SetDisableModuleSnapshot(bool isdisable)
