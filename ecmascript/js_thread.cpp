@@ -950,10 +950,10 @@ void JSThread::SwitchStwCopyBuiltinsStubs(bool isStwCopy)
     if (isSwitch) {
         Address curAddress;
 #define SWITCH_STW_COPY_STUB_ENTRY(base)                                                                    \
-        curAddress = GetBuiltinStubEntry(BuiltinsStubCSigns::SubID::base);                                  \
-        SetBuiltinStubEntry(BuiltinsStubCSigns::SubID::base,                                                \
-                            GetBuiltinStubEntry(BuiltinsStubCSigns::SubID::base##StwCopy));                 \
-        SetBuiltinStubEntry(BuiltinsStubCSigns::SubID::base##StwCopy, curAddress);
+        curAddress = GetBuiltinStubEntry(BuiltinsStubCSigns::ID_##base);                                    \
+        SetBuiltinStubEntry(BuiltinsStubCSigns::ID_##base,                                                  \
+                            GetBuiltinStubEntry(BuiltinsStubCSigns::ID_##base##StwCopy));                   \
+        SetBuiltinStubEntry(BuiltinsStubCSigns::ID_##base##StwCopy, curAddress);
 
 #define SWITCH_STW_COPY_STUB_ENTRY_DYN(base, type, ...)                                                     \
         SWITCH_STW_COPY_STUB_ENTRY(type##base)

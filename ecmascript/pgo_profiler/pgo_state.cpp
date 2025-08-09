@@ -191,13 +191,12 @@ void PGOState::SetSaveAndNotify()
     NotifyAllDumpWaiters();
 }
 
-void PGOState::StartDumpBeforeDestroy(JSThread *thread)
+void PGOState::StartDumpBeforeDestroy([[maybe_unused]] JSThread *thread)
 {
     LockHolder lock(stateMutex_);
     // possible state: STOP, SAVE, START
     // may notify after change to STOP and SAVE, we need to make sure state is STOP
     while (!StateIsStop()) {
-        ThreadNativeScope scope(thread);
         WaitDump();
     }
     // possible gc state: STOP, WAITING, RUNNING
