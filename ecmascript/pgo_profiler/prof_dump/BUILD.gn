@@ -24,8 +24,8 @@ ohos_executable("profdump") {
   deps = [
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
-    "$js_root:libcommon_components_set",
     "$js_root/ecmascript/compiler:libark_mock_stub_set",
+    "$js_root:libcommon_components_set",
   ]
   external_deps = [
     "runtime_core:arkfile_header_deps",
