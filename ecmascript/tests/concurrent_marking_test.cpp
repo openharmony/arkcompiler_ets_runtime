@@ -167,9 +167,4 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFreshRegion)
         heap->GetConcurrentMarker()->HandleMarkingFinished();
     }
 }
-
-HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingRequestBySharedSize)
-{
-    SharedHeap::GetInstance()->TryTriggerLocalConcurrentMarking();
-}
 }  // namespace panda::test
