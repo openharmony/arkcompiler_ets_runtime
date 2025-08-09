@@ -119,9 +119,9 @@ class EcmaStringTable;
 class JSObjectResizingStrategy;
 class Jit;
 class JitThread;
+class AbcBufferCache;
 class SustainingJSHandle;
 class SustainingJSHandleList;
-class AbcBufferCache;
 struct CJSInfo;
 enum class CompareStringsOption : uint8_t;
 
