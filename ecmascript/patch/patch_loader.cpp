@@ -89,10 +89,11 @@ void PatchLoader::ExecuteFuncOrPatchMain(
         moduleRecords.emplace(recordName, moduleRecord);
     }
 
+    EcmaVM *vm = thread->GetEcmaVM();
     for (const auto &recordName : replacedRecordNames) {
         LOG_ECMA(DEBUG) << "func main record name " << recordName;
         JSHandle<Program> program =
-            JSPandaFileManager::GetInstance()->GenerateProgram(thread->GetEcmaVM(), jsPandaFile, recordName);
+            JSPandaFileManager::GetInstance()->GenerateProgram(vm, jsPandaFile, recordName);
         if (program.IsEmpty()) {
             LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
             continue;
