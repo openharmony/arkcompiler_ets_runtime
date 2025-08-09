@@ -14,14 +14,13 @@
  */
 
 #include "ecmascript/mem/free_object_list.h"
-
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/jit_fort.h"
 
 namespace panda::ecmascript {
 template <typename T>
-FreeObjectList<T>::FreeObjectList(JitFort * fort) : sets_(new FreeObjectSet<T> *[NUMBER_OF_SETS](), NUMBER_OF_SETS),
-    lastSets_(new FreeObjectSet<T> *[NUMBER_OF_SETS](), NUMBER_OF_SETS), jitFort_(fort)
+FreeObjectList<T>::FreeObjectList() : sets_(new FreeObjectSet<T> *[NUMBER_OF_SETS](), NUMBER_OF_SETS),
+    lastSets_(new FreeObjectSet<T> *[NUMBER_OF_SETS](), NUMBER_OF_SETS)
 {
     for (int i = 0; i < NUMBER_OF_SETS; i++) {
         sets_[i] = nullptr;
@@ -29,8 +28,21 @@ FreeObjectList<T>::FreeObjectList(JitFort * fort) : sets_(new FreeObjectSet<T> *
     }
     noneEmptySetBitMap_ = 0;
 }
-template FreeObjectList<FreeObject>::FreeObjectList(JitFort* fort);
-template FreeObjectList<MemDesc>::FreeObjectList(JitFort* fort);
+template FreeObjectList<FreeObject>::FreeObjectList();
+template FreeObjectList<MemDesc>::FreeObjectList();
+
+template <>
+FreeObjectList<MemDesc>::FreeObjectList(JitFort *fort)
+    : sets_(new FreeObjectSet<MemDesc> *[NUMBER_OF_SETS](), NUMBER_OF_SETS),
+    lastSets_(new FreeObjectSet<MemDesc> *[NUMBER_OF_SETS](), NUMBER_OF_SETS),
+    jitFort_(fort)
+{
+    for (int i = 0; i < NUMBER_OF_SETS; i++) {
+        sets_[i] = nullptr;
+        lastSets_[i] = nullptr;
+    }
+    noneEmptySetBitMap_ = 0;
+}
 
 template <typename T>
 FreeObjectList<T>::~FreeObjectList()
@@ -125,25 +137,25 @@ T *FreeObjectList<T>::LookupSuitableFreeObject(size_t size)
 template FreeObject *FreeObjectList<FreeObject>::LookupSuitableFreeObject(size_t);
 
 template <typename T>
-template <typename U>
-void FreeObjectList<T>::FreeImpl(U* region, uintptr_t start, size_t size, bool isAdd)
+void FreeObjectList<T>::Free(uintptr_t start, size_t size, bool isAdd)
 {
     if (UNLIKELY(start == 0)) { // LCOV_EXCL_BR_LINE
         return;
     }
     if (UNLIKELY(size < MIN_SIZE)) { // LCOV_EXCL_BR_LINE
+        Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(start));
         region->IncreaseWasted(size);
         if (isAdd) {
             wasted_ += size;
         }
         return;
     }
-
     SetType type = SelectSetType(size);
     if (type == FreeObjectSet<T>::INVALID_SET_TYPE) {
         return;
     }
 
+    Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(start));
     auto set = region->GetFreeObjectSet(type);
     if (set == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "The set of region is nullptr";
@@ -159,15 +171,6 @@ void FreeObjectList<T>::FreeImpl(U* region, uintptr_t start, size_t size, bool i
         }
     }
 }
-template void FreeObjectList<FreeObject>::FreeImpl<Region>(Region* region, uintptr_t start, size_t size, bool isAdd);
-template void FreeObjectList<MemDesc>::FreeImpl<JitFortRegion>(JitFortRegion* region,
-    uintptr_t start, size_t size, bool isAdd);
-
-template <typename T>
-void FreeObjectList<T>::Free(uintptr_t start, size_t size, bool isAdd)
-{
-    return FreeImpl<Region>(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(start)), start, size, isAdd);
-}
 
 // template class instance for non JitFort space uses FreeObject and Region.
 template void FreeObjectList<FreeObject>::Free(uintptr_t, size_t, bool);
@@ -175,7 +178,37 @@ template void FreeObjectList<FreeObject>::Free(uintptr_t, size_t, bool);
 template <>
 void FreeObjectList<MemDesc>::Free(uintptr_t start, size_t size, bool isAdd)
 {
-    return FreeImpl<JitFortRegion>(jitFort_->ObjectAddressToRange(start), start, size, isAdd);
+    if (UNLIKELY(start == 0)) {
+        return;
+    }
+    if (UNLIKELY(size < MIN_SIZE)) {
+        JitFortRegion *region = jitFort_->ObjectAddressToRange(start);
+        region->IncreaseWasted(size);
+        if (isAdd) {
+            wasted_ += size;
+        }
+        return;
+    }
+    SetType type = SelectSetType(size);
+    if (type == FreeObjectSet<MemDesc>::INVALID_SET_TYPE) {
+        return;
+    }
+
+    JitFortRegion *region = jitFort_->ObjectAddressToRange(start);
+    auto set = region->GetFreeObjectSet(type);
+    if (set == nullptr) {
+        LOG_FULL(FATAL) << "The set of region is nullptr";
+        return;
+    }
+    set->Free(start, size);
+
+    if (isAdd) {
+        if (set->isAdded_ == 0) {
+            AddSet(set);
+        } else {
+            available_ += size;
+        }
+    }
 }
 
 template <typename T>

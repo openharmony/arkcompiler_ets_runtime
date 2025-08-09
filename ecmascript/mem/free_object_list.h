@@ -28,7 +28,8 @@ class JitFort;
 template <typename T>
 class FreeObjectList {
 public:
-    FreeObjectList(JitFort* fort = nullptr);
+    FreeObjectList();
+    FreeObjectList(JitFort *fort);
     ~FreeObjectList();
 
     T *Allocate(size_t size);
@@ -79,9 +80,6 @@ public:
     {
         return NUMBER_OF_SETS;
     }
-
-    template<typename U>
-    void FreeImpl(U* region, uintptr_t start, size_t size, bool isAdd);
 
 private:
     static constexpr int NUMBER_OF_SETS = 39;
