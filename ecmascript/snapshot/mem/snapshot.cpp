@@ -206,11 +206,9 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
         UNREACHABLE();
     }
 
-    std::ifstream file(realPath);
-    if (!file.good()) {
+    if (!FileExist(realPath.c_str())) {
         return false;
     }
-    file.close();
 
     SnapshotProcessor processor(vm_);
     if (isBuiltins) {
