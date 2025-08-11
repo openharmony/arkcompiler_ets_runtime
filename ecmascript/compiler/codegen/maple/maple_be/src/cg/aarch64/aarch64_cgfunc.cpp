@@ -987,9 +987,7 @@ Operand *AArch64CGFunc::SelectFloatConst(MIRFloatConst &floatConst, const BaseNo
     PrimType stype = floatConst.GetType().GetPrimType();
     int32 val = floatConst.GetIntValue();
     /* according to aarch64 encoding format, convert int to float expression */
-    Operand *result;
-    result = HandleFmovImm(stype, val, floatConst, parent);
-    return result;
+    return HandleFmovImm(stype, val, floatConst, parent);
 }
 
 Operand *AArch64CGFunc::SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent)
@@ -997,9 +995,7 @@ Operand *AArch64CGFunc::SelectDoubleConst(MIRDoubleConst &doubleConst, const Bas
     PrimType stype = doubleConst.GetType().GetPrimType();
     int64 val = doubleConst.GetIntValue();
     /* according to aarch64 encoding format, convert int to float expression */
-    Operand *result;
-    result = HandleFmovImm(stype, val, doubleConst, parent);
-    return result;
+    return HandleFmovImm(stype, val, doubleConst, parent);
 }
 
 /*
@@ -3814,8 +3810,7 @@ MemOperand &AArch64CGFunc::GetOrCreateMemOpnd(const MIRSymbol &symbol, int64 off
                 }
             } else {
                 Operand *offOpnd = (it->second)->GetOffset();
-                DEBUG_ASSERT(static_cast<OfstOperand *>(offOpnd) != nullptr,
-                    "static cast of offOpnd should not be nullptr");
+                DEBUG_ASSERT(offOpnd != nullptr, "offOpnd should not be nullptr");
                 if (((static_cast<OfstOperand *>(offOpnd))->GetOffsetValue() == (stOffset + offset)) &&
                     (it->second->GetSize() == size)) {
                     return *(it->second);
@@ -3848,8 +3843,7 @@ MemOperand &AArch64CGFunc::GetOrCreateMemOpnd(const MIRSymbol &symbol, int64 off
         }
         if (symLoc->GetMemSegment()->GetMemSegmentKind() == kMsArgsStkPassed &&
             MemOperand::IsPIMMOffsetOutOfRange(totalOffset, size)) {
-            ImmOperand *offsetOprand;
-            offsetOprand = &CreateImmOperand(totalOffset, k64BitSize, true, kUnAdjustVary);
+            ImmOperand *offsetOprand = &CreateImmOperand(totalOffset, k64BitSize, true, kUnAdjustVary);
             Operand *resImmOpnd = &SelectCopy(*offsetOprand, PTY_i64, PTY_i64);
             return *CreateMemOperand(MemOperand::kAddrModeBOrX, size, *baseOpnd, static_cast<RegOperand &>(*resImmOpnd),
                                      nullptr, symbol, true);

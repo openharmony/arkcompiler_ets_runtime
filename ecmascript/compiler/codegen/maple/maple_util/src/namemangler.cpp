@@ -91,20 +91,20 @@ std::string DecodeName(const std::string &name)
                 c = static_cast<unsigned char>(namePtr[i++]);
                 uint8_t b4 = (c <= '9') ? c - '0' : c - 'a' + kNumLimit;
                 uint32_t codepoint = (b1 << kCodeOffset3) | (b2 << kCodeOffset2) | (b3 << kCodeOffset) | b4;
-                str16 += (char16_t)codepoint;
+                str16 += static_cast<char16_t>(codepoint);
                 unsigned int count = UTF16ToUTF8(str, str16, 1, false) >> 16; // shift 16 to get count
                 if (count == 2) {  // the count of str equal 2 to 4, use array to save the utf8
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                } else if (count == 3) {
+                } else if (count == 3) {  // the count of str equal 2 to 4, deal 3 new
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                    newName[pos++] = str[2]; // 2 is index of third char
-                } else if (count == 4) {
+                    newName[pos++] = str[2];  // 2 is index of third char
+                } else if (count == 4) {      // the count of str equal 2 to 4
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                    newName[pos++] = str[2]; // 2 is index of third char
-                    newName[pos++] = str[3]; // 3 is index of fourth char
+                    newName[pos++] = str[2];  // 2 is index of third char
+                    newName[pos++] = str[3];  // 3 is index of fourth char
                 }
             } else {
                 c = static_cast<unsigned char>(namePtr[i++]);

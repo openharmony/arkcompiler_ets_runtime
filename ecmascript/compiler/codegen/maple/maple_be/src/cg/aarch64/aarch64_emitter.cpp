@@ -757,10 +757,9 @@ void AArch64AsmEmitter::EmitAdrpLabel(Emitter &emitter, const Insn &insn) const
     (void)emitter.Emit("\t").Emit("adrp").Emit("\t");
     opnd0->Accept(visitor);
     (void)emitter.Emit(", ");
-    char *idx;
     CHECK_NULL_FATAL(Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction());
-    idx =
-        strdup(std::to_string(Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction()->GetPuidx()).c_str());
+    char *idx = strdup(std::to_string(
+        Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction()->GetPuidx()).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
     (void)emitter.Emit(".L.").Emit(idx).Emit("__").Emit(lidx).Emit("\n");
 

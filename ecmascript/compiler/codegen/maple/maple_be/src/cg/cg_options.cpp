@@ -15,7 +15,7 @@
 
 #include "driver_options.h"
 
-#include <stdint.h>
+#include <cstdint>
 
 namespace opts::cg {
 

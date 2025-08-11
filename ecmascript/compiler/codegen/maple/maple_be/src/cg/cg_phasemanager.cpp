@@ -129,11 +129,6 @@ void CgFuncPM::PostOutPut(MIRModule &m)
 }
 
 /* =================== new phase manager ===================  */
-#ifdef RA_PERF_ANALYSIS
-extern void printLSRATime();
-extern void printRATime();
-#endif
-
 bool CgFuncPM::PhaseRun(MIRModule &m)
 {
     // registry target based on build, cgfunc, emitter need to be registried.
@@ -217,7 +212,6 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
 #ifdef RA_PERF_ANALYSIS
         if (cgOptions->IsEnableTimePhases()) {
             printLSRATime();
-            printRATime();
         }
 #endif
     } else {
