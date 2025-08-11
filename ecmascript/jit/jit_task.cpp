@@ -18,8 +18,8 @@
 #include "common_components/heap/heap_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ohos/jit_tools.h"
-#include "ecmascript/platform/file.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
+#include "ecmascript/platform/file.h"
 
 namespace panda::ecmascript {
 
