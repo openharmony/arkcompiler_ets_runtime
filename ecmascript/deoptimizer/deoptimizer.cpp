@@ -342,7 +342,8 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
             case FrameType::LEAVE_FRAME:
                 break;
             default: {
-                LOG_FULL(FATAL) << "frame type error!";
+                LOG_FULL(FATAL) << "frame type error, type: " << std::hex << static_cast<long>(type)
+                                << ", sp: " << lastLeave;
                 UNREACHABLE();
             }
         }
