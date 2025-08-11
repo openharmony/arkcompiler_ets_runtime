@@ -49,7 +49,7 @@ void panda::ecmascript::HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *t
 
     auto appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid(), true)) {
-        LOG_ECMA(INFO) << "DumpHeapSnapshotBeforeOOM, no dump quota.";
+        LOG_ECMA(INFO) << "DumpHeapSnapshotForCMCOOM, no dump quota.";
         return;
     }
 
