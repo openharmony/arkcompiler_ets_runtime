@@ -20,7 +20,6 @@
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {
-
 void ObjectMarker::VisitRoot([[maybe_unused]]Root type, ObjectSlot slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
@@ -391,7 +390,7 @@ void RawHeapDumpV1::UpdateStringTable(ObjectMarker &marker)
             strIdMapObjVec_.emplace(strId, objVec);
         }
     });
-    LOG_ECMA(INFO) << "rawheap dump, UpdateStringTable count " << strCnt;
+    LOG_ECMA(INFO) << "rawheap dump, update string table count " << strCnt;
 }
 
 RawHeapDumpV2::RawHeapDumpV2(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
@@ -514,7 +513,7 @@ void RawHeapDumpV2::UpdateStringTable(ObjectMarker &marker)
             strIdMapObjVec_.emplace(strId, objVec);
         }
     });
-    LOG_ECMA(INFO) << "rawheap dump, UpdateStringTable count " << strCnt;
+    LOG_ECMA(INFO) << "rawheap dump, update string table count " << strCnt;
 }
 
 uint32_t RawHeapDumpV2::GenerateRegionId(JSTaggedType addr)
