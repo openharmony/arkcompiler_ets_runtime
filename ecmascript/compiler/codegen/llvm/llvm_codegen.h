@@ -64,7 +64,7 @@ struct LOptions {
 class LLVMAssembler : public Assembler {
 public:
     explicit LLVMAssembler(LLVMModule *lm, CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand,
-                           LOptions option = LOptions());
+                           LOptions option = LOptions(), bool isStubCompiler = false);
     virtual ~LLVMAssembler();
     void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) override;
     const LLVMExecutionEngineRef &GetEngine()
