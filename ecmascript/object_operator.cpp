@@ -95,7 +95,7 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
 void ObjectOperator::UpdateHolder()
 {
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_NEXT_OPTIMIZATION
     if (holder_->IsECMAObject()) {
         return;
     }

@@ -1533,7 +1533,7 @@ bool JSTaggedValue::ToArrayLength(JSThread *thread, const JSHandle<JSTaggedValue
 
 JSHandle<JSTaggedValue> JSTaggedValue::ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_NEXT_OPTIMIZATION
     if (obj->IsECMAObject()) {
         return obj;
     }
