@@ -818,9 +818,15 @@ Operand *AArch64CGFunc::SelectDread(const BaseNode &parent, DreadNode &expr)
     MIRSymbol *symbol = GetFunction().GetLocalOrGlobalSymbol(expr.GetStIdx());
 
     PrimType symType = symbol->GetType()->GetPrimType();
-
+    uint32 offset = 0;
+    uint32 dataSize = GetPrimTypeBitSize(symType);
     PrimType resultType = expr.GetPrimType();
     MemOperand *memOpnd = nullptr;
+
+    memOpnd = &GetOrCreateMemOpnd(*symbol, offset, dataSize);
+    if ((memOpnd->GetMemVaryType() == kNotVary) && IsImmediateOffsetOutOfRange(*memOpnd, dataSize)) {
+        memOpnd = &SplitOffsetWithAddInstruction(*memOpnd, dataSize);
+    }
 
     RegOperand &resOpnd = GetOrCreateResOperand(parent, symType);
     SelectCopy(resOpnd, resultType, *memOpnd, symType);

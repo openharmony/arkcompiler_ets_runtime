@@ -100,6 +100,7 @@ void JitDfx::DumpBytecodeInst(JSThread *thread, Method *method)
     CString methodInfo = method->GetRecordNameStr(thread) + "." + CString(method->GetMethodName(thread));
     MethodLiteral *methodLiteral = method->GetMethodLiteral(thread);
     auto jsPandaFile = method->GetJSPandaFile(thread);
+    ASSERT(jsPandaFile != nullptr);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     ASSERT(methodLiteral != nullptr);
     panda_file::File::EntityId methodIdx = methodLiteral->GetMethodId();

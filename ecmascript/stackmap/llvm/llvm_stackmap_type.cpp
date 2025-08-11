@@ -40,10 +40,13 @@ void LLVMStackMapType::EncodeRegAndOffset(std::vector<uint8_t> &regOffset, size_
     regOffsetSize = panda::leb128::EncodeSigned(dwarfRegAndOff, regOffset.data());
 }
 
-bool LLVMStackMapType::IsBaseEqualDerive(SLeb128Type regOffset) { return (regOffset & NO_DERIVED) != 0; }
+bool LLVMStackMapType::IsBaseEqualDerive(SLeb128Type regOffset)
+{
+    return (static_cast<uint64_t>(regOffset) & NO_DERIVED) != 0;
+}
 LLVMStackMapType::OffsetType LLVMStackMapType::GetOffsetFromRegOff(SLeb128Type regOffset)
 {
-    return static_cast<LLVMStackMapType::OffsetType>(regOffset & STACKMAP_OFFSET_MASK);
+    return static_cast<LLVMStackMapType::OffsetType>(static_cast<uint64_t>(regOffset) & STACKMAP_OFFSET_MASK);
 }
 
 bool LLVMStackMapType::DecodeRegAndOffset(SLeb128Type regOffset, DwarfRegType &reg, OffsetType &offset)

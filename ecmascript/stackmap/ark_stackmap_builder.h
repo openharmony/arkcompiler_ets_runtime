@@ -37,8 +37,7 @@ class BinaryBufferWriter {
 public:
     BinaryBufferWriter(uint8_t *buffer, uint32_t length) : buffer_(buffer), length_(length) {}
     ~BinaryBufferWriter() = default;
-    uint8_t *WriteBuffer(const uint8_t *src, uint32_t count);
-    void WriteBufferToDst(uint8_t *dst, const uint8_t *src, uint32_t count);
+    void WriteBuffer(const uint8_t *src, uint32_t count);
     uint32_t GetOffset() const
     {
         return offset_;
@@ -96,7 +95,7 @@ private:
     void SaveArkDeopt(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
     void SaveArkStackMap(const ARKCallsiteAOTFileInfo& info, BinaryBufferWriter& writer, Triple triple);
     void SaveArkCallsiteAOTFileInfo(uint8_t *ptr, uint32_t length,
-                                    ARKCallsiteAOTFileInfo& info, Triple triple);
+                                    const ARKCallsiteAOTFileInfo& info, Triple triple);
     int FindLoc(std::vector<intptr_t> &CallsitePcs, intptr_t pc);
     void GenARKDeopt(const LLVMStackMapType::DeoptInfoType& deopt,
         std::pair<uint32_t, std::vector<ARKDeopt>> &sizeAndArkDeopt, Triple triple);
