@@ -23,7 +23,7 @@
 #include "ecmascript/base/gc_ring_buffer.h"
 
 using BytesAndDuration = std::pair<uint64_t, double>;
-static inline BytesAndDuration MakeBytesAndDuration(uint64_t bytes, double duration)
+inline BytesAndDuration MakeBytesAndDuration(uint64_t bytes, double duration)
 {
     return std::make_pair(bytes, duration);
 }

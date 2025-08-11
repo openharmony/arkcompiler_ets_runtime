@@ -181,7 +181,7 @@ bool IdleGCTrigger::CheckIdleYoungGC(bool isLongIdle) const
     }
     size_t expectIdleLimitSize = (newSpace->GetInitialCapacity() + newSpace->GetOvershootSize()) *
                                     IDLE_SPACE_SIZE_LIMIT_RATE;
-    return newSpace->GetObjectSize() >= expectIdleLimitSize;
+    return allocatedSizeSinceGC > IDLE_MIN_EXPECT_RECLAIM_SIZE && newSpace->GetObjectSize() >= expectIdleLimitSize;
 }
 
 bool IdleGCTrigger::CheckIdleLocalOldGC(const Heap *heap) const
@@ -224,7 +224,7 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
                 heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
             } else if (CheckLocalBindingNativeTriggerOldGC() && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger local old GC by native binding size.";
-                heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE_NATIVE);
+                heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE_NATIVE);
             } else if (CheckIdleYoungGC(true) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger young gc";
                 heap_->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);
