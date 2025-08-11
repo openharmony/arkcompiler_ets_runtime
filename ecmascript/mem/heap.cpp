@@ -659,7 +659,7 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
         // LocalHeap could do FullGC later instead of Fatal at once if only set `shouldThrowOOMError_` because there
         // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
-        DumpHeapSnapshotBeforeOOM(false, Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC);
+        DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC);
         LOG_GC(FATAL) << "SharedHeap OOM";
         UNREACHABLE();
     }
@@ -785,7 +785,7 @@ void SharedHeap::ReclaimForAppSpawn()
     sHugeObjectSpace_->EnumerateRegions(cb);
 }
 
-void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[maybe_unused]]JSThread *thread,
+void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
                                            [[maybe_unused]] SharedHeapOOMSource source)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -813,7 +813,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
         heapProfile = HeapProfilerInterface::GetInstance(vm);
     }
     // Filter appfreeze when dump.
-    LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, isFullGC = " << isFullGC;
+    LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, trigger oom dump";
     base::BlockHookScope blockScope;
     vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
                                                     GetHeapObjectSize());
@@ -822,7 +822,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
     dumpOption.isVmMode = true;
     dumpOption.isPrivate = false;
     dumpOption.captureNumericValue = false;
-    dumpOption.isFullGC = isFullGC;
+    dumpOption.isFullGC = false;
     dumpOption.isSimplify = true;
     dumpOption.isSync = true;
     dumpOption.isBeforeFill = false;
@@ -1419,7 +1419,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         oldSpace_->ResetCommittedOverSizeLimit();
         if (oldSpace_->CommittedSizeExceed()) { // LCOV_EXCL_BR_LINE
             sweeper_->EnsureAllTaskFinished();
-            DumpHeapSnapshotBeforeOOM(false);
+            DumpHeapSnapshotBeforeOOM();
             StatisticHeapDetail();
             ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
         }
@@ -1429,7 +1429,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
     // Allocate region failed during GC, MUST throw OOM here
     if (shouldForceThrowOOMError_) {
         sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM(false);
+        DumpHeapSnapshotBeforeOOM();
         StatisticHeapDetail();
         ThrowOutOfMemoryError(thread_, DEFAULT_REGION_SIZE, " HeapRegionAllocator::AllocateAlignedRegion");
     }
@@ -1563,7 +1563,7 @@ void Heap::CheckNonMovableSpaceOOM()
 {
     if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) { // LCOV_EXCL_BR_LINE
         sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM(false);
+        DumpHeapSnapshotBeforeOOM();
         StatisticHeapDetail();
         ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
     }
@@ -1700,7 +1700,7 @@ void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]]
 #endif
 }
 
-void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
+void Heap::DumpHeapSnapshotBeforeOOM()
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
@@ -1716,7 +1716,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
         return;
     }
     // Filter appfreeze when dump.
-    LOG_ECMA(INFO) << " Heap::DumpHeapSnapshotBeforeOOM, isFullGC = " << isFullGC;
+    LOG_ECMA(INFO) << " Heap::DumpHeapSnapshotBeforeOOM, trigger oom dump";
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
 #ifdef ENABLE_HISYSEVENT
@@ -1729,7 +1729,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
     dumpOption.isVmMode = true;
     dumpOption.isPrivate = false;
     dumpOption.captureNumericValue = false;
-    dumpOption.isFullGC = isFullGC;
+    dumpOption.isFullGC = false;
     dumpOption.isSimplify = true;
     dumpOption.isSync = true;
     dumpOption.isBeforeFill = false;
