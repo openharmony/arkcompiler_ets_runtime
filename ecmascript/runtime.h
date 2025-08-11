@@ -35,7 +35,7 @@
 
 namespace panda::ecmascript {
 class EcmaStringTable;
-using AppfreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
+using AppFreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
 using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
 
 class Runtime {
@@ -254,12 +254,12 @@ public:
         v.VisitRangeRoot(Root::ROOT_VM, begin, end);
     }
 
-    AppfreezeFilterCallback GetAppFreezeFilterCallback() const
+    AppFreezeFilterCallback GetAppFreezeFilterCallback() const
     {
         return appfreezeFilterCallback_;
     }
 
-    void SetAppFreezeFilterCallback(AppfreezeFilterCallback cb)
+    void SetAppFreezeFilterCallback(AppFreezeFilterCallback cb)
     {
         appfreezeFilterCallback_ = cb;
     }
