@@ -21,6 +21,8 @@
  */
 import {testdProxyArray1}  from "./utility";
 
+const INT32_MAX = 2 ** 31 - 1;  // 表示2^31-1,是int32能表达的最大值
+
 var Deque = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     Deque = ArkPrivate.Load(ArkPrivate.Deque);
@@ -88,7 +90,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     try {
         let myDeque = new Deque();
         myDeque.insertEnd(1);
-        myDeque[2147483648];
+        myDeque[INT32_MAX + 1];
     } catch(err) {
         let overFlowTest = (err == "BusinessError: The type of \"index\" must be small integer.");
         map.set("test Deque[i] overFlowTest:", overFlowTest);
