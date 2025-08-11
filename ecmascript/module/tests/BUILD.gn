@@ -52,6 +52,53 @@ foreach(file, test_js_files) {
   }
 }
 
+test_multi_files = [
+  "deregister_test/entry.js",
+  "deregister_test/A.js",
+  "deregister_test/B.js",
+]
+
+_test_js_file_name_ = [
+  "deregister_test"
+]
+
+foreach(filename, _test_js_file_name_) {
+  merge_file = "$target_out_dir/${filename}.txt"
+  merge_file_prefix = "//arkcompiler/ets_runtime/ecmascript/module/tests/${filename}/"
+  _merge_file_raw_ = "//arkcompiler/ets_runtime/ecmascript/module/tests/${filename}/${filename}.txt"
+
+  action("gen_${filename}_merge_file") {
+    script = "//arkcompiler/ets_runtime/test/quickfix/generate_merge_file.py"
+    args = [
+      "--input",
+      rebase_path(_merge_file_raw_),
+      "--output",
+      rebase_path(merge_file),
+      "--prefix",
+      rebase_path(merge_file_prefix),
+    ]
+
+    inputs = [ _merge_file_raw_ ]
+    outputs = [ merge_file ]
+  }
+
+  abc_path = "$target_out_dir/${filename}.abc"
+
+  es2abc_gen_abc("gen_${filename}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    extra_dependencies = [ ":gen_${filename}_merge_file" ]
+    src_js = "@" + rebase_path(merge_file)
+    dst_file = rebase_path(abc_path)
+    extra_args = [
+      "--module",
+      "--merge-abc",
+    ]
+
+    in_puts = test_multi_files
+    out_puts = [ abc_path ]
+  }
+}
+
 module_output_path = "ets_runtime"
 
 host_unittest_action("ModuleTest") {
@@ -89,6 +136,10 @@ host_unittest_action("ModuleTest") {
   foreach(file, test_js_files) {
     deps += [ ":gen_${file}_abc" ]
   }
+
+  deps += [
+  ":gen_deregister_test_abc",
+  ]
 
   if (is_ohos && is_standard_system) {
     test_abc_dir = "/data/test"

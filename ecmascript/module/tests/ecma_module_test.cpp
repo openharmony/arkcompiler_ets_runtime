@@ -18,8 +18,10 @@
 #include "libpandafile/class_data_accessor-inl.h"
 
 #include "ecmascript/base/path_helper.h"
+#include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_object-inl.h"
@@ -47,6 +49,7 @@
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
+using namespace testing::ext;
 
 namespace panda::test {
 using FunctionCallbackInfo = JSHandle<JSTaggedValue>(*)(JsiRuntimeCallInfo *);
@@ -4353,5 +4356,28 @@ HWTEST_F_L0(EcmaModuleTest, DeregisterModuleList)
     vm->RemoveFromDeregisterModuleList("com.bundleName.test/moduleName/requestModuleName");
     EXPECT_EQ(vm->ContainInDeregisterModuleList("@ohos:hilog"), false);
     EXPECT_EQ(vm->ContainInDeregisterModuleList("com.bundleName.test/moduleName/requestModuleName"), false);
+}
+
+HWTEST_F(EcmaModuleTest, Deregister, TestSize.Level0)
+{
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordName = "entry";
+    CString recordNameA = "A";
+
+    Expected<JSTaggedValue, bool> result =
+        JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordName);
+    EXPECT_TRUE(result);
+    JSHandle<SourceTextModule> moduleA =
+        thread->GetModuleManager()->GetImportedModule(recordNameA);
+    JSHandle<JSTaggedValue> recordNameARecord = JSHandle<JSTaggedValue>::Cast(moduleA);
+    JSTaggedValue val = ModuleValueAccessor::GetModuleValueInner(thread, 0, recordNameARecord);
+    EXPECT_EQ(val, JSTaggedValue(20));
+    uint32_t normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 3);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
+    normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 1);
 }
 }  // namespace panda::test
