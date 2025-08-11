@@ -521,7 +521,6 @@ DECLARE_BUILTINS(DateConstructor)
     Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
-    Label slowPath1(env);
     Label exit(env);
 
     BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
@@ -532,7 +531,7 @@ DECLARE_BUILTINS(DateConstructor)
         Label intialHClassIsHClass(env);
         GateRef intialHClass = Load(VariableType::JS_ANY(), glue, newTarget,
                                     IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
+        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath);
         Bind(&intialHClassIsHClass);
         {
             Label oneArg(env);
@@ -587,18 +586,11 @@ DECLARE_BUILTINS(DateConstructor)
                 }
             }
         }
-        Bind(&slowPath1);
-        {
-            GateRef argv = GetArgv();
-            res = CallBuiltinRuntimeWithNewTarget(glue,
-                { glue, nativeCode, func, thisValue, numArgs, argv, newTarget });
-            Jump(&exit);
-        }
     }
     Bind(&slowPath);
     {
         GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
+        res = CallBuiltinRuntimeWithNewTarget(glue, {glue, nativeCode, func, thisValue, numArgs, argv, newTarget});
         Jump(&exit);
     }
     Bind(&exit);
