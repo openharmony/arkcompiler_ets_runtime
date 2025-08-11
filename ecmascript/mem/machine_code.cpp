@@ -17,8 +17,6 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/jit/rewriter/reloc_rewriter_aarch64.h"
-#include "ecmascript/jit/rewriter/reloc_rewriter.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #if ECMASCRIPT_ENABLE_CAST_CHECK
 #include "ecmascript/js_tagged_value-inl.h"
@@ -140,12 +138,11 @@ bool MachineCode::SetNonText(const MachineCodeDesc &desc, EntityId methodId)
     return true;
 }
 
-bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize,
-                          RelocMap &relocInfo)
+bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (desc.codeType == MachineCodeType::BASELINE_CODE) {
-        return SetBaselineCodeData(thread, desc, method, dataSize, relocInfo);
+        return SetBaselineCodeData(thread, desc, method, dataSize);
     }
 
     if (desc.isHugeObj) {
@@ -198,7 +195,7 @@ bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandl
 }
 
 bool MachineCode::SetBaselineCodeData(JSThread *thread, const MachineCodeDesc &desc,
-                                      JSHandle<Method> &method, size_t dataSize, RelocMap &relocInfo)
+                                      JSHandle<Method> &method, size_t dataSize)
 {
     DISALLOW_GARBAGE_COLLECTION;
 
@@ -225,12 +222,6 @@ bool MachineCode::SetBaselineCodeData(JSThread *thread, const MachineCodeDesc &d
         ASSERT(IsAligned(reinterpret_cast<uintptr_t>(textStart), TEXT_ALIGN));
     }
     uint8_t *pText = textStart;
-
-    // relocating for baselinejit opt
-    if (desc.archType == MachineCodeArchType::AArch64 && desc.codeType == MachineCodeType::BASELINE_CODE) {
-        kungfu::RelocWriterAArch64 reWriter;
-        reWriter.RewriteRelocInfo((uint8_t*)desc.codeAddr, pText, relocInfo);
-    }
 
     if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort() ||
         !desc.isAsyncCompileMode) {
