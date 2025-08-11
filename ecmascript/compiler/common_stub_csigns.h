@@ -144,21 +144,21 @@ namespace panda::ecmascript::kungfu {
     V(DeleteObjectProperty)           \
     V(SameValue)                      \
     V(StringIteratorNext)             \
+    V(VerifyBarrier)                  \
     V(ArrayIteratorNext)              \
     V(MapIteratorNext)                \
     V(SetIteratorNext)                \
     V(GetIterator)                    \
     V(GrowElementsCapacity)           \
     V(BatchBarrier)                   \
-    V(VerifyBarrier)                  \
     V(MoveBarrierInRegion)            \
     V(MoveBarrierCrossRegion)         \
     V(FindEntryFromNameDictionary)    \
     V(ReverseBarrier)                 \
-    V(GetValueWithBarrier)            \
     V(DefineNormalFuncForJit)         \
     V(DefineArrowFuncForJit)          \
     V(DefineBaseConstructorForJit)    \
+    V(GetValueWithBarrier)            \
     V(CMCSetValueWithBarrier)
 
 #define COMMON_STUB_ID_LIST(V)          \

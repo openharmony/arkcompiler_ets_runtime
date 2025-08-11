@@ -17,11 +17,7 @@ declare_args() {
   skip_gen_stub = false
 }
 
-if (defined(timeout)) {
-  _timeout_ = 14400
-} else {
-  _timeout_ = 2400
-}
+_timeout_ = 14400
 
 config("include_maple") {
   include_dirs = [

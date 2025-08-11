@@ -123,6 +123,7 @@ public:
     GateRef NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc, RegionSpaceFlag spaceFlag,
                          GateRef arraySize);
     // Note: The size is the num of bytes, it is required to be divisible by 8.
+    void InitializeObject(Variable *result);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end,
                                     MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
@@ -178,7 +179,6 @@ private:
     void AllocateInSOld(Variable *result, Label *exit, GateRef hclass);
     void InitializeTaggedArrayWithSpeicalValue(Label *exit,
         GateRef array, GateRef value, GateRef start, GateRef length);
-    void InitializeObject(Variable *result);
     GateRef glue_ {Circuit::NullGate()};
     GateRef size_ {0};
 };
