@@ -1166,6 +1166,7 @@ ecma_source += [
   "ecmascript/cross_vm/unified_gc/unified_gc.cpp",
   "ecmascript/cross_vm/unified_gc/unified_gc_marker.cpp",
   "ecmascript/cross_vm/builtins_gc_hybrid.cpp",
+  "ecmascript/cross_vm/dynamic_object_accessor_util.cpp",
   "ecmascript/cross_vm/heap_hybrid.cpp",
   "ecmascript/cross_vm/jsnapi_expo_hybrid.cpp",
   "ecmascript/cross_vm/object_factory_hybrid.cpp",

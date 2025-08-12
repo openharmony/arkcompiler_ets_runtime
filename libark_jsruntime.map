@@ -132,6 +132,7 @@
       common::ThreadHolder::*;
       common::utf_helper::ConvertRegionUtf16ToUtf8*;
       common::utf_helper::ConvertUtf8ToUnicodeChar*;
+      common::DynamicObjectAccessorUtil::*;
 
       panda::ecmascript::AotCrashInfo*;
       panda::ecmascript::Method::*;
