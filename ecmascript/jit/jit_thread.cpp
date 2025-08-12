@@ -53,13 +53,12 @@ JitVM *JitVM::Create()
 
 JitVM::~JitVM()
 {
+    jitThread_ = nullptr;
 }
 
 void JitVM::Destroy(EcmaVM *compilerVm)
 {
     JitVM *jitVM = static_cast<JitVM*>(compilerVm);
-    delete jitVM->jitThread_;
-    jitVM->jitThread_ = nullptr;
 
     delete jitVM;
 }
