@@ -482,7 +482,7 @@ public:
 
     static std::unique_ptr<FPConstTable> Create()
     {
-        auto p = std::unique_ptr<FPConstTable>(new FPConstTable());
+        auto p = std::make_unique<FPConstTable>();
         p->PostInit();
         return p;
     }
@@ -504,6 +504,8 @@ private:
     MIRDoubleConst *infDoubleConst = nullptr;
     MIRDoubleConst *minusInfDoubleConst = nullptr;
     MIRDoubleConst *minusZeroDoubleConst = nullptr;
+
+    friend std::unique_ptr<FPConstTable> std::make_unique<FPConstTable>();
 };
 
 class IntConstTable {
@@ -516,7 +518,7 @@ public:
 
     static std::unique_ptr<IntConstTable> Create()
     {
-        auto p = std::unique_ptr<IntConstTable>(new IntConstTable());
+        auto p = std::make_unique<IntConstTable>();
         return p;
     }
 
@@ -525,6 +527,8 @@ private:
     MIRIntConst *DoGetOrCreateIntConst(uint64 val, MIRType &type);
     std::shared_timed_mutex mtx;
     std::unordered_map<IntConstKey, MIRIntConst *, IntConstHash, IntConstCmp> intConstTable;
+
+    friend std::unique_ptr<IntConstTable> std::make_unique<IntConstTable>();
 };
 
 // STypeNameTable is only used to store class and interface types.

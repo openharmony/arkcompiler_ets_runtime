@@ -768,8 +768,8 @@ void AArch64GenProEpilog::AppendInstructionDeallocateCallFrameDebug(AArch64reg r
             cgFunc.GetCurBB()->AppendInsn(deallocInsn);
         }
     } else {
-        Operand *o2;
-        o2 = aarchCGFunc.CreateStackMemOpnd(RSP, static_cast<int32>(fpToSpDistance), GetPointerBitSize());
+        Operand *o2 =
+            aarchCGFunc.CreateStackMemOpnd(RSP, static_cast<int32>(fpToSpDistance), GetPointerBitSize());
         if (fpToSpDistance > kStpLdpImm64UpperBound) {
             (void)AppendInstructionForAllocateOrDeallocateCallFrame(fpToSpDistance, reg0, reg1, rty, false);
         } else {

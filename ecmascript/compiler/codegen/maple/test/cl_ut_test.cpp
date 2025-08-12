@@ -33,7 +33,7 @@ static bool utCLTypeChecker = false;
 class UTCLType {
 public:
     UTCLType() = default;
-    UTCLType(const std::string &data) : data(data) {};
+    explicit UTCLType(const std::string &data) : data(data) {};
 
     std::string data;
 };

@@ -328,8 +328,7 @@ struct ClassMetadata {
 public:
     static inline intptr_t OffsetOfInitState()
     {
-        ClassMetadata *base = nullptr;
-        return reinterpret_cast<intptr_t>(&(base->initState));
+        return reinterpret_cast<intptr_t>(nullptr);
     }
 
     uintptr_t GetInitStateRawValue() const
