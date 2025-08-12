@@ -31,7 +31,7 @@ void JSNApiIsConstructorFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<IntegerRef> intValue = IntegerRef::New(vm_, (int)size);
+    Local<IntegerRef> intValue = IntegerRef::New(vm_, *data + (int)size);
     intValue->IsConstructor(vm_);
     JSNApi::DestroyJSVM(vm_);
 }

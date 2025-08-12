@@ -33,6 +33,8 @@ void JSNApiIsTrueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
     }
     Local<JSValueRef> b = JSValueRef::True(vm_);
     b->IsTrue();
+    Local <StringRef>str = StringRef::NewFromUtf8(vm_, (const char *)data);
+    str->IsTrue();
     JSNApi::DestroyJSVM(vm_);
 }
 }

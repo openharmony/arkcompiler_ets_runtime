@@ -32,7 +32,7 @@ void JSNApiIsProfilingFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    bool profilerFalg = size % DIVISOR ? true : false;
+    bool profilerFalg = (*data + size) % DIVISOR ? true : false;
     vm->SetProfilerState(profilerFalg);
     JSNApi::IsProfiling(vm);
     JSNApi::DestroyJSVM(vm);

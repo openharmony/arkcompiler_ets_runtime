@@ -21,7 +21,7 @@
 using namespace panda;
 using namespace panda::ecmascript;
 namespace OHOS {
-void JSNApiIsArrayIterator_FuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSNApiIsArrayIterator_FuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -30,8 +30,8 @@ void JSNApiIsArrayIterator_FuzzTest([[maybe_unused]]const uint8_t *data, size_t 
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<ArrayBufferRef> arraybuffer = ArrayBufferRef::New(vm_, (int32_t)size);
-    arraybuffer->IsArrayIterator(vm_);
+    Local <StringRef>str = StringRef::NewFromUtf8(vm_, (const char *)data);
+    str->IsArrayIterator(vm_);
     JSNApi::DestroyJSVM(vm_);
 }
 }

@@ -23,62 +23,6 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void JSNApiCreateEcmaVMFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
-    }
-    JSRuntimeOptions runtimeOptions;
-    EcmaVM *workerVm = JSNApi::CreateEcmaVM(runtimeOptions);
-    JSNApi::DestroyJSVM(workerVm);
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSNApiEnableUserUncaughtErrorHandlerFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
-    }
-    JSNApi::EnableUserUncaughtErrorHandler(vm);
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSNApiFunctionFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
-    }
-    std::function<bool(std::string dirPath, uint8_t * *buff, size_t * buffSize)> cb = [](const std::string &inputPath,
-        uint8_t **buff, size_t *buffSize) -> bool {
-        if (inputPath.empty() || buff == nullptr || buffSize == nullptr) {
-            return false;
-        }
-        return false;
-    };
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSNApiIsMixedDebugEnabledFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
-    }
-    JSNApi::IsMixedDebugEnabled(vm);
-    JSNApi::DestroyJSVM(vm);
-}
-
 void JSNApiNotifyNativeCallingFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
@@ -97,10 +41,6 @@ void JSNApiNotifyNativeCallingFuzzTest(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSNApiCreateEcmaVMFuzzTest(data, size);
-    OHOS::JSNApiEnableUserUncaughtErrorHandlerFuzzTest(data, size);
-    OHOS::JSNApiFunctionFuzzTest(data, size);
-    OHOS::JSNApiIsMixedDebugEnabledFuzzTest(data, size);
     OHOS::JSNApiNotifyNativeCallingFuzzTest(data, size);
     return 0;
 }

@@ -36,8 +36,8 @@ void CopyableGlobalSetandClearWeakFuzzTest(const uint8_t *data, size_t size)
             LOG_ECMA(ERROR) << "Parameter out of range.";
             return;
         }
-        Local<ObjectRef> object = ObjectRef::New(vm);
-        Global<ObjectRef> globalObject(vm, object);
+        Local <StringRef>str = StringRef::NewFromUtf8(vm, (const char *)data);
+        Global<ObjectRef> globalObject(vm, str);
         globalObject.SetWeak();
         globalObject.ClearWeak();
     }
