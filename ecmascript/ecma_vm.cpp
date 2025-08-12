@@ -174,7 +174,8 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
         SharedHeap::GetInstance()->ResetLargeCapacity();
         heap_->ResetLargeCapacity();
     }
-    Runtime::GetInstance()->PostFork();
+    bool enableWarmStartup = option.GetEnableWarmStartupSmartGC();
+    Runtime::GetInstance()->PostFork(enableWarmStartup);
     Runtime::GetInstance()->SetPostForked(true);
     RandomGenerator::InitRandom(GetAssociatedJSThread());
     heap_->SetHeapMode(HeapMode::SHARE);
@@ -204,7 +205,7 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
     GetJSOptions().SetArkProperties(arkProperties);
 #endif
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
-    if (option.GetEnableWarmStartupSmartGC()) {
+    if (enableWarmStartup) {
         LOG_ECMA(WARN) << "SmartGC: process is start by premake/preload, skip cold start smrt gc."
                        << " replace with warm startup smart gc later";
     } else {

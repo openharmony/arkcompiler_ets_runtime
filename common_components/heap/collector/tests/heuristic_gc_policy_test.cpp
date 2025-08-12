@@ -13,11 +13,15 @@
  * limitations under the License.
  */
 
+#include "common_components/common_runtime/base_runtime_param.h"
 #include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/collector/collector_resources.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_components/heap/heap.h"
+#include "common_components/heap/heap_manager.h"
 #include "common_components/tests/test_helper.h"
+#include "common_interfaces/heap/heap_allocator.h"
 
 using namespace common;
 namespace common::test {
@@ -25,7 +29,9 @@ class HeuristicGCPolicyTest : public common::test::BaseTestWithScope {
 protected:
     static void SetUpTestCase()
     {
-        BaseRuntime::GetInstance()->Init();
+        RuntimeParam param = BaseRuntimeParam::DefaultRuntimeParam();
+        param.gcParam.enableGC = false;
+        BaseRuntime::GetInstance()->Init(param);
     }
 
     static void TearDownTestCase()
@@ -196,5 +202,89 @@ HWTEST_F_L0(HeuristicGCPolicyTest, NotifyNativeAllocation_TriggerByBytes1)
 
     EXPECT_EQ(gcPolicy.GetNotifiedNativeSize(), initialNotified + NATIVE_IMMEDIATE_THRESHOLD + 1);
     EXPECT_NE(gcPolicy.GetNativeHeapThreshold(), initialObjects + 1);
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartup) {
+    Heap& heap = Heap::GetHeap();
+    HeuristicGCPolicy& heuristicGCPolicy = heap.GetHeuristicGCPolicy();
+    heuristicGCPolicy.TryHeuristicGC();
+
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP);
+    bool result = heuristicGCPolicy.ShouldRestrainGCOnStartupOrSensitive();
+    EXPECT_EQ(result, true);  //  cold Startup
+
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_PARTIALLY_FINISH);
+    result = heuristicGCPolicy.ShouldRestrainGCOnStartupOrSensitive();
+    EXPECT_EQ(result, true);  //  cold partially Startup
+
+    StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_FINISH);
+    result = heuristicGCPolicy.ShouldRestrainGCOnStartupOrSensitive();
+    EXPECT_EQ(result, false);  //  cold partially Startup
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCInSensitive) {
+    Heap& heap = Heap::GetHeap();
+    HeuristicGCPolicy& heuristicGCPolicy = heap.GetHeuristicGCPolicy();
+    heuristicGCPolicy.TryIdleGC();
+    bool result = heuristicGCPolicy.ShouldRestrainGCInSensitive(1 * MB);
+    EXPECT_EQ(result, false);  //  normal scene
+
+    heap.NotifyHighSensitive(true);
+    GCStats& gcStates = heap.GetCollectorResources().GetGCStats();
+    gcStates.shouldRequestYoung = true;
+    result = heuristicGCPolicy.ShouldRestrainGCInSensitive(1 * MB);
+    EXPECT_EQ(result, false);  //  sensitive scene
+
+    gcStates.shouldRequestYoung = false;
+    result = heuristicGCPolicy.ShouldRestrainGCInSensitive(1 * MB);
+    EXPECT_EQ(result, true);  //  sensitive scene for young gc
+
+    result = heuristicGCPolicy.ShouldRestrainGCInSensitive(200 * MB);
+    EXPECT_EQ(result, false);  //  sensitive scene for size over threshold
+
+    heap.NotifyHighSensitive(false);
+    EXPECT_EQ(result, false);  // exit sensitive
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, CheckAndTriggerHintGCLow) {
+    Heap& heap = Heap::GetHeap();
+    HeuristicGCPolicy& heuristicGCPolicy = heap.GetHeuristicGCPolicy();
+    bool result = heuristicGCPolicy.CheckAndTriggerHintGC(MemoryReduceDegree::LOW);
+    EXPECT_EQ(result, false);
+
+    heap.NotifyHighSensitive(false);
+    result = heuristicGCPolicy.CheckAndTriggerHintGC(MemoryReduceDegree::LOW);
+    EXPECT_EQ(result, false);
+
+    auto obj = common::HeapAllocator::AllocateLargeRegion(7 * MB);
+    RegionDesc *regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+    HeapAddress start = regionInfo->GetRegionAllocPtr();
+    HeapAddress end = regionInfo->GetRegionEnd();
+    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
+    for (HeapAddress current = start; current < end; current += sizeof(HeapAddress)) {
+        *(reinterpret_cast<uint64_t *>(current)) = TAG_SPECIAL;
+    }
+
+    heap.RecordAliveSizeAfterLastGC(1);
+    result = heuristicGCPolicy.CheckAndTriggerHintGC(MemoryReduceDegree::LOW);
+    EXPECT_EQ(result, true);
+}
+
+HWTEST_F_L0(HeuristicGCPolicyTest, CheckAndTriggerHintGCHigh) {
+    Heap& heap = Heap::GetHeap();
+    HeuristicGCPolicy& heuristicGCPolicy = heap.GetHeuristicGCPolicy();
+
+    auto obj = common::HeapAllocator::AllocateLargeRegion(2 * MB);
+    RegionDesc *regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
+    HeapAddress start = regionInfo->GetRegionAllocPtr();
+    HeapAddress end = regionInfo->GetRegionEnd();
+    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
+    for (HeapAddress current = start; current < end; current += sizeof(HeapAddress)) {
+        *(reinterpret_cast<uint64_t *>(current)) = TAG_SPECIAL;
+    }
+
+    heap.RecordAliveSizeAfterLastGC(1);
+    bool result = heuristicGCPolicy.CheckAndTriggerHintGC(MemoryReduceDegree::HIGH);
+    EXPECT_EQ(result, true);
 }
 } // namespace common::test

@@ -270,7 +270,7 @@ public:
     }
 
     void PreFork(JSThread *thread);
-    void PostFork();
+    void PostFork(bool enableWarmStartup);
 
     RawHeapDumpCropLevel GetRawHeapDumpCropLevel() const
     {

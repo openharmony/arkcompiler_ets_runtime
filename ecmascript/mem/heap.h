@@ -1410,6 +1410,8 @@ public:
 
     void NotifyWarmStartup();
 
+    bool AllowWarmStartGcRestrain();
+
     void NotifyHighSensitive(bool isStart);
 
     bool HandleExitHighSensitiveEvent();

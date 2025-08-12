@@ -130,7 +130,8 @@ public:
 
     bool OnStartupEvent() const
     {
-        return StartupStatusManager::GetStartupStatus() == StartupStatus::COLD_STARTUP;
+        return StartupStatusManager::GetStartupStatus() == StartupStatus::COLD_STARTUP ||
+            StartupStatusManager::GetStartupStatus() == StartupStatus::COLD_STARTUP_PARTIALLY_FINISH;
     }
 
     StartupStatus GetStartupStatus() const;
