@@ -6,9 +6,6 @@ obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathC
 #20471
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/set/Delete/builtinSetDelete
 
-#23236
-obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearryAsmAssertContext
-
 #22100
 obj/arkcompiler/ets_runtime/ecmascript/tests/GC_NewToOldPromotion_Test
 
@@ -201,3 +198,6 @@ obj/arkcompiler/ets_runtime/ecmascript/base/tests/JSHelper_NumberHelper_TestWith
 
 #26017
 obj/arkcompiler/ets_runtime/test/moduletest/allocatearraybuffer/allocatearraybufferAsm
+
+#26429
+obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearrayAsmAssertContext
