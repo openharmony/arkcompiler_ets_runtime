@@ -253,3 +253,13 @@ obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Collector_Tes
 
 #27473
 obj/arkcompiler/ets_runtime/ecmascript/module/tests/ModuleTestWithQemu
+
+#27555
+obj/arkcompiler/ets_runtime/ecmascript/base/tests/JS_JsonStringIfier_TestWithQemu
+obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_Data_TestWithQemu
+obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_Array_TestWithQemu
+obj/arkcompiler/ets_runtime/test/moduletest/throwerrorrelease/throwerrorreleaseAsm
+
+#28747
+obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_003_TestWithQemu
+obj/arkcompiler/ets_runtime/test/jittest/throw_error/throw_error
