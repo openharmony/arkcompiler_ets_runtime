@@ -448,6 +448,7 @@ void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, b
         CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
         GateRef thisValue = acc_.GetValueIn(gate, 0);
         GateRef startTag = tacc.GetArg0();
+        GateRef endTag = builder_.GetLengthFromString(thisValue);
         if (!Uncheck()) {
             builder_.CallTargetCheck(gate, tacc.GetFunc(),
                                      builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSubstring)),
@@ -456,8 +457,7 @@ void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, b
             auto param_check = builder_.TaggedIsNumber(startTag);
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
-        std::vector<GateRef> args {thisValue, startTag};
-        ret = builder_.StringSubstring(args);
+        ret = builder_.StringSubstring(thisValue, startTag, endTag);
     } else {
         GateRef thisValue = acc_.GetValueIn(gate, 0);
         GateRef startTag = acc_.GetValueIn(gate, 1);
@@ -471,8 +471,7 @@ void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, b
                 .And(builder_.TaggedIsNumber(endTag)).Done();
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
-        std::vector<GateRef> args {thisValue, startTag, endTag};
-        ret = builder_.StringSubstring(args);
+        ret = builder_.StringSubstring(thisValue, startTag, endTag);
     }
     acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }
@@ -533,6 +532,7 @@ void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool 
         CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
         GateRef thisValue = acc_.GetValueIn(gate, 0);
         GateRef startTag = tacc.GetArg0();
+        GateRef endTag = builder_.GetLengthFromString(thisValue);
         if (!Uncheck()) {
             builder_.CallTargetCheck(gate, tacc.GetFunc(),
                                      builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSlice)),
@@ -541,8 +541,7 @@ void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool 
             auto param_check = builder_.TaggedIsNumber(startTag);
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
-        std::vector<GateRef> args {thisValue, startTag};
-        ret = builder_.StringSlice(args);
+        ret = builder_.StringSlice(thisValue, startTag, endTag);
     } else {
         GateRef thisValue = acc_.GetValueIn(gate, 0);
         GateRef startTag = acc_.GetValueIn(gate, 1);
@@ -556,8 +555,7 @@ void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool 
                 .And(builder_.TaggedIsNumber(endTag)).Done();
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
-        std::vector<GateRef> args {thisValue, startTag, endTag};
-        ret = builder_.StringSlice(args);
+        ret = builder_.StringSlice(thisValue, startTag, endTag);
     }
     acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
 }

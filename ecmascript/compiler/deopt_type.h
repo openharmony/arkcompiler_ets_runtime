@@ -134,9 +134,9 @@ namespace panda::ecmascript::kungfu {
     V(ArrayLengthOverMax,              ARRAYLENGTHOVERMAX)             \
     V(ArrayLengthNotWritable,          ARRAYLENGTHNOTWRITABLE)         \
     V(InsufficientProfile,             INSUFFICIENTPROFILE)            \
-    V(KeyMissmatch,                    KEYMISSMATCH)                   \
     V(CallTargetNotCompiled,           CALLTARGETNOTCOMPILED)          \
     V(PropertyBoxInvalid,              PROPERTYBOXINVALID)             \
+    V(KeyMissmatch,                    KEYMISSMATCH)                   \
     V(HotReloadPatchMain,              HOTRELOAD_PATCHMAIN)
 
 enum class DeoptType : uint8_t {
