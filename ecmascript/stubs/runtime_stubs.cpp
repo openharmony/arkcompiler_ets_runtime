@@ -4113,6 +4113,9 @@ void RuntimeStubs::SortTypedArray(uintptr_t argGlue, JSTypedArray *typedArray)
     JSThread *thread = JSThread::GlueToJSThread(argGlue);
     JSTaggedValue buffer = typedArray->GetViewedArrayBufferOrByteArray(thread);
     const uint32_t len = typedArray->GetArrayLength();
+    if (len == 0) {
+        return;
+    }
     void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer);
     switch (jsType) {
         case JSType::JS_INT8_ARRAY:
