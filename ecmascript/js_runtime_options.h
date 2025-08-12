@@ -1971,16 +1971,6 @@ public:
         return enableMemoryAnalysis_;
     }
 
-    void SetCheckPgoVersion(bool value)
-    {
-        checkPgoVersion_ = value;
-    }
-
-    bool IsCheckPgoVersion() const
-    {
-        return checkPgoVersion_;
-    }
-
     void SetEnableJITPGO(bool value)
     {
         enableJITPGO_ = value;
@@ -2009,6 +1999,16 @@ public:
     bool IsEnableAOTPGO() const
     {
         return enableAOTPGO_;
+    }
+
+    void SetCheckPgoVersion(bool value)
+    {
+        checkPgoVersion_ = value;
+    }
+
+    bool IsCheckPgoVersion() const
+    {
+        return checkPgoVersion_;
     }
 
     void SetEnableJitFastCompile(bool value)
