@@ -608,9 +608,6 @@ public:
     bool IsJSSharedInt32Array(const EcmaVM *vm);
     bool IsJSSharedUint32Array(const EcmaVM *vm);
     bool IsJSSharedFloat32Array(const EcmaVM *vm);
-    bool IsJSSharedFloat64Array(const EcmaVM *vm);
-    bool IsJSSharedBigInt64Array(const EcmaVM *vm);
-    bool IsJSSharedBigUint64Array(const EcmaVM *vm);
 
     bool IsGeneratorObject(const EcmaVM *vm);
     bool IsJSPrimitiveSymbol(const EcmaVM *vm);
@@ -976,7 +973,7 @@ public:
                                                                  Local<panda::JSValueRef> *keys = nullptr,
                                                                  PropertyAttribute *attrs = nullptr,
                                                                  size_t nativeBindingsize = 0);
-                                                                 
+
     static Local<FunctionRef> NewClassFunction(EcmaVM *vm,
                                                InternalFunctionCallback nativeFunc,
                                                NativePointerCallback deleter,
@@ -1335,34 +1332,16 @@ public:
                                       int32_t length);
 };
 
-class PUBLIC_API SharedFloat64ArrayRef : public SendableTypedArrayRef {
-public:
-    static Local<SharedFloat64ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
-                                            int32_t byteOffset, int32_t length);
-};
-
 class PUBLIC_API BigInt64ArrayRef : public TypedArrayRef {
 public:
     static Local<BigInt64ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                       int32_t length);
 };
 
-class PUBLIC_API SharedBigInt64ArrayRef : public SendableTypedArrayRef {
-public:
-    static Local<SharedBigInt64ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
-                                            int32_t byteOffset, int32_t length);
-};
-
 class PUBLIC_API BigUint64ArrayRef : public TypedArrayRef {
 public:
     static Local<BigUint64ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
                                       int32_t length);
-};
-
-class PUBLIC_API SharedBigUint64ArrayRef : public SendableTypedArrayRef {
-public:
-    static Local<SharedBigUint64ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
-                                            int32_t byteOffset, int32_t length);
 };
 
 class PUBLIC_API Exception {
@@ -1939,7 +1918,7 @@ public:
     static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
     // 1.2runtime interface info
     static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
-    
+
     JSNAPI_PUBLIC_HYBRID_EXTENSION();
 private:
     static bool isForked_;
