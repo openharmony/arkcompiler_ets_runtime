@@ -37,6 +37,7 @@ struct DumpSnapShotOption {
     bool isSync = true; // OOM and Ide dump need sync dump.
     bool isBeforeFill = true; // whether do fillmap on main thread.
     bool isDumpOOM = false; // whether dump oom heapdump.
+    bool isJSLeakWatcher = false;  // whether dump from jsleak wather.
 };
 
 enum class RawHeapDumpCropLevel {
