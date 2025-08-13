@@ -18,6 +18,8 @@ var FastBuffer = undefined;
 let encodeArr = ['utf8', 'utf-8', 'ucs2', 'ucs-2', 'ascii', 'latin1', 'binary',
     'utf16le', 'utf-16le', 'base64', 'base64url', 'hex'];
 
+const UINT32_MAX = 2 ** 32 - 1; // 表示2^32-1,是uint32能表达的最大值
+
 function normalizeEncoding(enc) {
     enc = enc.toLowerCase();
     if (enc === 'ucs2' || enc === 'ucs-2' || enc === 'utf-16le') {
@@ -2009,7 +2011,7 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     {
         try {
-            let size = 4294967296;
+            let size = UINT32_MAX + 1;
             let buf = new FastBuffer(size);
             map.set("SUB_COMMONLIBRARY_FASTBUFFER_BASETEST_ALLOC_0002 failed", false);
         } catch (e) {
