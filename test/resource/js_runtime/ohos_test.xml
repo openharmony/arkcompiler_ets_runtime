@@ -3708,4 +3708,14 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="CommonCompBaseUtfFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_fuzz_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="CommonCompLogFuzzTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_fuzz_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
 </configuration>

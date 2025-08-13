@@ -26,33 +26,48 @@ namespace OHOS {
         FormatLog("%d", data[size / 2]); // 2：Check size is even number
     }
     
-    void CommonCompPrettyOrderMathNano(size_t size)
+    void CommonCompPrettyOrderMathNano(const uint8_t* data, size_t size)
     {
         const char* orderOfMagnitudeFromNano[] = { "n", "u", "m" };
-        PrettyOrderMathNano(size, orderOfMagnitudeFromNano[size % 3]); // 3: len of orderOfMagnitudeFromNano
+        if (size == 0) {
+            return;
+        }
+        PrettyOrderMathNano(size, orderOfMagnitudeFromNano[data[size - 1] % 3]); // 3: len of orderOfMagnitudeFromNano
     }
     
-    void CommonCompPrettyOrderInfo(size_t size)
+    void CommonCompPrettyOrderInfo(const uint8_t* data, size_t size)
     {
         const char* orderOfMagnitude[] = { "", "K", "M", "G", "T", "P", "E" };
-        PrettyOrderInfo(size, orderOfMagnitude[size % 7]); // 7：len of orderOfMagnitude
+        if (size == 0) {
+            return;
+        }
+        PrettyOrderInfo(size, orderOfMagnitude[data[size - 1] % 7]); // 7：len of orderOfMagnitude
     }
     
-    void CommonCompPretty(size_t size)
+    void CommonCompPretty(const uint8_t* data, size_t size)
     {
-        Pretty(size);
+        if (size == 0) {
+            return;
+        }
+        Pretty(data[size - 1]);
     }
 
-    void CommonCompLevelToString(size_t size)
+    void CommonCompLevelToString(const uint8_t* data, size_t size)
     {
+        if (size == 0) {
+            return;
+        }
         Log log;
-        log.LevelToString(static_cast<Level>(size % 7)); // 7: FATAL + 1
+        log.LevelToString(static_cast<Level>(data[size - 1] % 7)); // 7: FATAL + 1
     }
 
-    void CommonCompConvertFromRuntime(size_t size)
+    void CommonCompConvertFromRuntime(const uint8_t* data, size_t size)
     {
+        if (size == 0) {
+            return;
+        }
         Log log;
-        log.ConvertFromRuntime(static_cast<LOG_LEVEL>(size % 5)); // 5: LOG_LEVEL + 1
+        log.ConvertFromRuntime(static_cast<LOG_LEVEL>(data[size - 1] % 5)); // 5: LOG_LEVEL + 1
     }
 }
 
@@ -61,11 +76,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Run your code on data.
     OHOS::CommonCompFormatLog(data, size);
-    OHOS::CommonCompPrettyOrderMathNano(size);
-    OHOS::CommonCompPrettyOrderInfo(size);
-    OHOS::CommonCompPretty(size);
-    OHOS::CommonCompLevelToString(size);
-    OHOS::CommonCompConvertFromRuntime(size);
+    OHOS::CommonCompPrettyOrderMathNano(data, size);
+    OHOS::CommonCompPrettyOrderInfo(data, size);
+    OHOS::CommonCompPretty(data, size);
+    OHOS::CommonCompLevelToString(data, size);
+    OHOS::CommonCompConvertFromRuntime(data, size);
 
     return 0;
 }
