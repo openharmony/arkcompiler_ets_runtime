@@ -258,14 +258,8 @@ JSThread::~JSThread()
         globalDebugStorage_ = nullptr;
     }
 
-    if (glueData_.loadMegaICCache_ != nullptr) {
-        delete glueData_.loadMegaICCache_;
-        glueData_.loadMegaICCache_ = nullptr;
-    }
-    if (glueData_.storeMegaICCache_ != nullptr) {
-        delete glueData_.storeMegaICCache_;
-        glueData_.storeMegaICCache_ = nullptr;
-    }
+    ClearMegaIC();
+
     if (glueData_.propertiesCache_ != nullptr) {
         delete glueData_.propertiesCache_;
         glueData_.propertiesCache_ = nullptr;
@@ -502,6 +496,18 @@ void JSThread::IterateMegaIC(RootVisitor &v)
     }
     if (glueData_.storeMegaICCache_ != nullptr) {
         glueData_.storeMegaICCache_->Iterate(v);
+    }
+}
+
+void JSThread::ClearMegaIC()
+{
+    if (glueData_.loadMegaICCache_ != nullptr) {
+        delete glueData_.loadMegaICCache_;
+        glueData_.loadMegaICCache_ = nullptr;
+    }
+    if (glueData_.storeMegaICCache_ != nullptr) {
+        delete glueData_.storeMegaICCache_;
+        glueData_.storeMegaICCache_ = nullptr;
     }
 }
 

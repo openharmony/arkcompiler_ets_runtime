@@ -335,6 +335,7 @@ public:
     void IterateJitCodeMap(const JitCodeMapVisitor &updater);
 
     void IterateMegaIC(RootVisitor &v);
+    void ClearMegaIC();
 
     void IterateHandleWithCheck(RootVisitor &visitor);
 
