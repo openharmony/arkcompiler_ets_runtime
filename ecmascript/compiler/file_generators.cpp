@@ -764,16 +764,9 @@ bool AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.stackMapOrOffsetTableAddr = stackMapPtr;
     machineCodeDesc.stackMapOrOffsetTableSize = stackMapSize;
     machineCodeDesc.codeType = MachineCodeType::FAST_JIT_CODE;
-    if (cfg_.IsAArch64()) {
-        machineCodeDesc.archType = MachineCodeArchType::AArch64;
-    } else {
-        machineCodeDesc.archType = MachineCodeArchType::X86;
-    }
 
-    // modify relocating is only used in baselinjit.
-    RelocMap relocInfo = {};
     if (Jit::GetInstance()->IsEnableJitFort() && Jit::GetInstance()->IsEnableAsyncCopyToFort() &&
-        JitCompiler::AllocFromFortAndCopy(*compilationEnv_, machineCodeDesc, relocInfo) == false) {
+        JitCompiler::AllocFromFortAndCopy(*compilationEnv_, machineCodeDesc) == false) {
         return false;
     }
     return true;

@@ -373,7 +373,6 @@
       panda::ecmascript::kungfu::ArkStackMapBuilder::Run*;
       panda::ecmascript::kungfu::PGOBCInfo::Record*;
       panda::ecmascript::SharedModuleManager::GetInstance*;
-      panda::ecmascript::kungfu::RelocWriterAArch64::*;
       panda::ecmascript::SharedModuleManager::TransferSModule*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolIDByMethodOffset*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolByMethodOffset*;

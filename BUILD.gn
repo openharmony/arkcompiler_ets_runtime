@@ -904,7 +904,6 @@ ecma_source = [
   "ecmascript/interpreter/interpreter-inl.cpp",
   "ecmascript/interpreter/slow_runtime_stub.cpp",
   "ecmascript/intl/locale_helper.cpp",
-  "ecmascript/jit/rewriter/reloc_rewriter_aarch64.cpp",
   "ecmascript/jit/compile_decision.cpp",
   "ecmascript/jit/jit.cpp",
   "ecmascript/jit/jit_dfx.cpp",

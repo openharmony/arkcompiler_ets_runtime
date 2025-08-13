@@ -72,7 +72,6 @@ public:
     MacroAssembler() : allocator(NativeAreaAllocator()), chunk(&allocator) {}
     virtual ~MacroAssembler() = default;
     virtual uint8_t *GetBegin() const = 0;
-    virtual RelocMap &GetRelocInfo() = 0;
     virtual size_t GetBufferCurrentSize() const = 0;
     virtual void Move(const StackSlotOperand &dstStackSlot, Immediate value) = 0;
     virtual void Move(const StackSlotOperand &dstStackSlot,
@@ -91,6 +90,5 @@ protected:
     Chunk chunk;
     static constexpr int32_t FUNCTION_OFFSET_FROM_SP = -72; // 72: includes 9 slots
 };
-
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_MACRO_ASSEMBLER_H

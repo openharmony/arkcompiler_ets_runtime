@@ -85,11 +85,6 @@ public:
         return macroAssembler->GetBegin();
     }
 
-    RelocMap &GetRelocInfo() const
-    {
-        return macroAssembler->GetRelocInfo();
-    }
-
     size_t GetBufferSize() const
     {
         return macroAssembler->GetBufferCurrentSize();

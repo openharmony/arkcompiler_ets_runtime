@@ -129,8 +129,7 @@ public:
     }
     void UpdatePassOptions(CompilationEnv *env);
 
-    static ARK_INLINE bool AllocFromFortAndCopy(CompilationEnv &compilationEnv,
-                                                MachineCodeDesc &desc, RelocMap &relocInfo);
+    static ARK_INLINE bool AllocFromFortAndCopy(CompilationEnv &compilationEnv, MachineCodeDesc &desc);
 private:
     JitCompilationOptions jitOptions_;
     CompilerLog log_;

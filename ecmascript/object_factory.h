@@ -620,9 +620,8 @@ public:
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
     TaggedObject *NewMachineCodeObject(size_t length, MachineCodeDesc &desc);
     JSHandle<MachineCode> SetMachineCodeObjectData(TaggedObject *obj, size_t length,
-        const MachineCodeDesc &desc, JSHandle<Method> &method, RelocMap &relocInfo);
-    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc,
-                                               JSHandle<Method> &method, RelocMap &relocInfo);
+        const MachineCodeDesc &desc, JSHandle<Method> &method);
+    JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 

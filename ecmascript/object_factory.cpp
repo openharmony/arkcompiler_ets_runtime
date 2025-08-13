@@ -4339,24 +4339,24 @@ TaggedObject *ObjectFactory::NewMachineCodeObject(size_t length,
 }
 
 JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
-    const MachineCodeDesc &desc, JSHandle<Method> &method, RelocMap &relocInfo)
+    const MachineCodeDesc &desc, JSHandle<Method> &method)
 {
     NewObjectHook();
     TaggedObject *obj = heap_->AllocateMachineCodeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetMachineCodeClass().GetTaggedObject()),
         length + MachineCode::SIZE);
-    return SetMachineCodeObjectData(obj, length, desc, method, relocInfo);
+    return SetMachineCodeObjectData(obj, length, desc, method);
 }
 
 JSHandle<MachineCode> ObjectFactory::SetMachineCodeObjectData(TaggedObject *obj, size_t length,
-    const MachineCodeDesc &desc, JSHandle<Method> &method, RelocMap &relocInfo)
+    const MachineCodeDesc &desc, JSHandle<Method> &method)
 {
     MachineCode *code = MachineCode::Cast(obj);
     if (code == nullptr) {
         LOG_FULL(FATAL) << "machine code cast failed";
         UNREACHABLE();
     }
-    if (code->SetData(thread_, desc, method, length, relocInfo)) {
+    if (code->SetData(thread_, desc, method, length)) {
         JSHandle<MachineCode> codeObj(thread_, code);
         if (g_isEnableCMCGC) {
             uintptr_t start = code->GetText();

@@ -39,11 +39,6 @@ public:
         assembler.SetDoCodeSign();
     }
 
-    RelocMap &GetRelocInfo() override
-    {
-        return assembler.GetRelocInfo();
-    }
-
     void Move(const StackSlotOperand &dstStackSlot, Immediate value) override;
     void Move(const StackSlotOperand &dstStackSlot, const StackSlotOperand &srcStackSlot) override;
     void Cmp(const StackSlotOperand &stackSlot, Immediate value) override;
@@ -58,7 +53,6 @@ public:
 private:
     aarch64::AssemblerAarch64 assembler;
     const uint32_t PARAM_REGISTER_COUNT = 8;
-    static const int INSTRUCT_SIZE = 4;
     const std::vector<aarch64::Register> registerParamVec {
         aarch64::Register(aarch64::X0), aarch64::Register(aarch64::X1), aarch64::Register(aarch64::X2),
         aarch64::Register(aarch64::X3), aarch64::Register(aarch64::X4), aarch64::Register(aarch64::X5),

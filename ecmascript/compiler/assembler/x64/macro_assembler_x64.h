@@ -34,11 +34,6 @@ public:
         return assembler.GetCurrentPosition();
     }
 
-    RelocMap &GetRelocInfo() override
-    {
-        return assembler.GetRelocInfo();
-    }
-
     void Move(const StackSlotOperand &dstStackSlot, Immediate value) override;
     void Move(const StackSlotOperand &dstStackSlot, const StackSlotOperand &srcStackSlot) override;
     void Cmp(const StackSlotOperand &stackSlot, Immediate value) override;
