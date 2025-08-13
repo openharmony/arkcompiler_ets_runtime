@@ -33,7 +33,7 @@ void BuiltinsGlobal::AppendPercentEncodedByte(std::u16string &sStr, uint8_t byte
 void BuiltinsGlobal::AppendU32Data(std::u16string &resStr, uint32_t data)
 {
     uint8_t len = 0;
-    static std::u16string sStr(u"%00%00%00%00");
+    std::u16string sStr(u"%00%00%00%00");
     if (data <= 0x7F) {          // 0x7F: 1 byte
         AppendPercentEncodedByte(sStr, data, len);
     } else if (data <= 0x7FF) {  // 0x7FF: 2 bytes
