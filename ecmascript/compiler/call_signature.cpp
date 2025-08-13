@@ -2156,31 +2156,6 @@ DEF_CALL_SIGNATURE(CallReturnWithArgv)
     PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(CallReturnWithArgv)
 }
 
-DEF_CALL_SIGNATURE(CallGetterToBaseline)
-{
-    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(CallGetterToBaseline)
-}
-
-DEF_CALL_SIGNATURE(CallSetterToBaseline)
-{
-    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(CallSetterToBaseline)
-}
-
-DEF_CALL_SIGNATURE(CallContainersArgs2ToBaseline)
-{
-    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(CallContainersArgs2ToBaseline)
-}
-
-DEF_CALL_SIGNATURE(CallContainersArgs3ToBaseline)
-{
-    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(CallContainersArgs3ToBaseline)
-}
-
-DEF_CALL_SIGNATURE(CallReturnWithArgvToBaseline)
-{
-    PUSH_CALL_ARGS_AND_DISPATCH_NATIVE_RANGE_SIGNATURE(CallReturnWithArgvToBaseline)
-}
-
 DEF_CALL_SIGNATURE(JSCallWithArgV)
 {
     // 5 : 5 input parameters

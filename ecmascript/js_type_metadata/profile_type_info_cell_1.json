@@ -12,17 +12,12 @@
             "size": 8
         },
         {
-            "name": "BaselineCode",
-            "offset": 16,
-            "size": 8
-        },
-        {
             "name": "Handle",
-            "offset": 24,
+            "offset": 16,
             "size": 8
         }
     ],
-    "end_offset": 32,
+    "end_offset": 24,
     "parents": [
         "TAGGED_OBJECT"
     ]

@@ -215,16 +215,6 @@ public:
 
     static void CallReturnWithArgv([[maybe_unused]]ExtendedAssembler *assembler);
 
-    static void CallGetterToBaseline(ExtendedAssembler *assembler);
-
-    static void CallSetterToBaseline(ExtendedAssembler *assembler);
-
-    static void CallContainersArgs2ToBaseline(ExtendedAssembler *assembler);
-
-    static void CallContainersArgs3ToBaseline(ExtendedAssembler *assembler);
-
-    static void CallReturnWithArgvToBaseline(ExtendedAssembler *assembler);
-
     static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
 
     static void ASMFastSharedWriteBarrier(ExtendedAssembler *assembler, Label& needCall);

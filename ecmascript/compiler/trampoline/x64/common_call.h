@@ -178,16 +178,6 @@ public:
 
     static void CallReturnWithArgv(ExtendedAssembler *assembler);
 
-    static void CallGetterToBaseline(ExtendedAssembler *assembler);
-
-    static void CallSetterToBaseline(ExtendedAssembler *assembler);
-
-    static void CallContainersArgs2ToBaseline(ExtendedAssembler *assembler);
-
-    static void CallContainersArgs3ToBaseline(ExtendedAssembler *assembler);
-
-    static void CallReturnWithArgvToBaseline(ExtendedAssembler *assembler);
-
     static void ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembler);
 
     static void ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembler);

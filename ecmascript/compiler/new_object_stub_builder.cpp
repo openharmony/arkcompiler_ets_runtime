@@ -636,7 +636,6 @@ GateRef NewObjectStubBuilder::DefineFuncForJit(GateRef glue, GateRef method, Gat
     SetMethodToFunction(glue, func, method);
     SetBitFieldToFunction(glue, func, Int32(0), MemoryAttribute::NoBarrier());
     SetMachineCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
-    SetBaselineJitCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
     SetCodeEntryToFunctionFromMethod(glue, func, method);
     Jump(&exit);
     Bind(&exit);
@@ -2871,8 +2870,6 @@ GateRef NewObjectStubBuilder::NewProfileTypeInfoCell(GateRef glue, GateRef value
     SetValueToProfileTypeInfoCell(glue, *result, value);
     GateRef machineCodeOffset = IntPtr(ProfileTypeInfoCell::MACHINE_CODE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, machineCodeOffset, Hole());
-    GateRef baselineCodeOffset = IntPtr(ProfileTypeInfoCell::BASELINE_CODE_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, *result, baselineCodeOffset, Hole());
     GateRef handleOffset = IntPtr(ProfileTypeInfoCell::HANDLE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, handleOffset, Undefined());
 

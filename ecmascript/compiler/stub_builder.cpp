@@ -12592,49 +12592,6 @@ void StubBuilder::TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRe
     env_->SubCfgExit();
 }
 
-// Used for baselinejit machine code reusing of inner functions have the same method to improve performance.
-void StubBuilder::TryToBaselineJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell)
-{
-    Label subEntry(env_);
-    env_->SubCfgEntry(&subEntry);
-
-    Label machineCodeIsNotHole(env_);
-    Label exitPoint(env_);
-    Label hasNotDisable(env_);
-    GateRef weakMachineCode = Load(VariableType::JS_ANY(), glue, profileTypeInfoCell,
-                                   IntPtr(ProfileTypeInfoCell::BASELINE_CODE_OFFSET));
-    BRANCH(TaggedIsHole(weakMachineCode), &exitPoint, &machineCodeIsNotHole);
-    Bind(&machineCodeIsNotHole);
-    {
-        GateRef profileTypeInfo = Load(VariableType::JS_ANY(), glue, profileTypeInfoCell,
-                                       IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
-        GateRef baselineJitHotnessThreshold = ProfilerStubBuilder(env_).GetBaselineJitHotnessThreshold(profileTypeInfo);
-        BRANCH(Int32Equal(baselineJitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)),
-            &exitPoint, &hasNotDisable);
-        Bind(&hasNotDisable);
-        {
-            Label machineCodeIsUndefine(env_);
-            Label machineCodeIsNotUndefine(env_);
-            BRANCH(TaggedIsUndefined(weakMachineCode), &machineCodeIsUndefine, &machineCodeIsNotUndefine);
-            Bind(&machineCodeIsUndefine);
-            {
-                ProfilerStubBuilder(env_).SetJitHotnessCnt(glue, profileTypeInfo, Int16(0));
-                Store(VariableType::JS_POINTER(), glue, profileTypeInfoCell,
-                      IntPtr(ProfileTypeInfoCell::BASELINE_CODE_OFFSET), Hole());
-                Jump(&exitPoint);
-            }
-            Bind(&machineCodeIsNotUndefine);
-            {
-                GateRef machineCode = TaggedCastToIntPtr(RemoveTaggedWeakTag(weakMachineCode));
-                SetBaselineJitCodeToFunction(glue, jsFunc, machineCode);
-                Jump(&exitPoint);
-            }
-        }
-    }
-    Bind(&exitPoint);
-    env_->SubCfgExit();
-}
-
 GateRef StubBuilder::GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv)
 {
     auto env = GetEnvironment();

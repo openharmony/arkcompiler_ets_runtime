@@ -125,7 +125,6 @@ public:
         GateRef pc);
     GateRef IsCompiledOrTryCompile(GateRef glue, GateRef func, GateRef profileTypeInfo, GateRef pc);
     GateRef GetJitHotnessThreshold(GateRef profileTypeInfo);
-    GateRef GetBaselineJitHotnessThreshold(GateRef profileTypeInfo);
     void SetJitHotnessCnt(GateRef glue, GateRef profileTypeInfo, GateRef hotnessCnt);
 
 private:
@@ -156,6 +155,7 @@ private:
     GateRef GetOsrHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetOsrHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetBaselineJitHotnessThresholdOffset(GateRef profileTypeInfo);
+    GateRef GetBaselineJitHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetOsrHotnessCntOffset(GateRef profileTypeInfo);
     GateRef GetOsrHotnessCnt(GateRef profileTypeInfo);
     void PGOProfiler(GateRef glue, GateRef func, GateRef profileTypeInfo, SlotIDInfo slotIdInfo,
