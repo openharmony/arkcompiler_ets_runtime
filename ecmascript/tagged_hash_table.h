@@ -431,6 +431,7 @@ public:
         }
 
         int enumIndex = table->NextEnumerationIndex(thread);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(const_cast<JSThread*>(thread), table);
         PropertyAttributes attr(metaData);
         attr.SetDictionaryOrder(enumIndex);
         attr.SetRepresentation(Representation::TAGGED);
@@ -452,6 +453,7 @@ public:
                                  const PropertyAttributes &metaData)
     {
         int enumIndex = table->NextEnumerationIndex(thread);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(const_cast<JSThread*>(thread), table);
         PropertyAttributes attr(metaData);
         attr.SetDictionaryOrder(enumIndex);
         attr.SetRepresentation(Representation::TAGGED);
@@ -498,18 +500,24 @@ public:
         int index = GetNextEnumerationIndex();
         auto table = Derived::Cast(this);
 
+        if (PropertyAttributes::IsValidIndex(index)) {
+            return index;
+        }
+        
+        std::vector<int> indexOrder = GetEnumerationOrder(thread);
+        int length = static_cast<int>(indexOrder.size());
+        for (int i = 0; i < length; i++) {
+            int oldIndex = indexOrder[i];
+            int enumIndex = PropertyAttributes::INITIAL_PROPERTY_INDEX + i;
+            PropertyAttributes attr = table->GetAttributes(thread, oldIndex);
+            attr.SetDictionaryOrder(enumIndex);
+            attr.SetRepresentation(Representation::TAGGED);
+            table->SetAttributes(thread, oldIndex, attr);
+        }
+        index = PropertyAttributes::INITIAL_PROPERTY_INDEX + length;
+        
         if (!PropertyAttributes::IsValidIndex(index)) {
-            std::vector<int> indexOrder = GetEnumerationOrder(thread);
-            int length = static_cast<int>(indexOrder.size());
-            for (int i = 0; i < length; i++) {
-                int oldIndex = indexOrder[i];
-                int enumIndex = PropertyAttributes::INITIAL_PROPERTY_INDEX + i;
-                PropertyAttributes attr = table->GetAttributes(thread, oldIndex);
-                attr.SetDictionaryOrder(enumIndex);
-                attr.SetRepresentation(Representation::TAGGED);
-                table->SetAttributes(thread, oldIndex, attr);
-            }
-            index = PropertyAttributes::INITIAL_PROPERTY_INDEX + length;
+            THROW_RANGE_ERROR_AND_RETURN(const_cast<JSThread*>(thread), "Invalid array length", index);
         }
         return index;
     }
