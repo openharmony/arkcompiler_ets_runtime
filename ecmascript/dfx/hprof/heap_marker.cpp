@@ -64,6 +64,9 @@ bool HeapMarker::CMCMark(JSTaggedType addr)
 
 bool HeapMarker::IsMarked(JSTaggedType addr)
 {
+    if (g_isEnableCMCGC) {
+        return IsCMCMarked(addr);
+    }
     auto index = (addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG;
     Region *region = Region::ObjectAddressToRange(addr);
     auto bitsetIt = regionBitsetMap_.find(region);
@@ -73,8 +76,23 @@ bool HeapMarker::IsMarked(JSTaggedType addr)
     return false;
 }
 
+bool HeapMarker::IsCMCMarked(JSTaggedType addr)
+{
+    auto index = (addr & common::RegionDesc::DEFAULT_REGION_UNIT_MASK) >> TAGGED_TYPE_SIZE_LOG;
+    JSTaggedType region =
+        reinterpret_cast<JSTaggedType>(common::RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(addr));
+    auto bitsetIt = cmcRegionBitsetMap_.find(region);
+    if (bitsetIt != cmcRegionBitsetMap_.end() && bitsetIt->second.test(index)) {
+        return true;
+    }
+    return false;
+}
+
 void HeapMarker::Clear()
 {
+    if (g_isEnableCMCGC) {
+        cmcRegionBitsetMap_.clear();
+    }
     regionBitsetMap_.clear();
 }
 
