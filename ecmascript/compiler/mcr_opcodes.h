@@ -191,6 +191,7 @@ namespace panda::ecmascript::kungfu {
     V(LoadHClassConstOffset,       LOAD_HCLASS_CONST_OFFSET,       GateFlags::NO_WRITE,  0, 1, 1)       \
     V(LoadHClassFromConstpool,     LOAD_HCLASS_FROM_CONSTPOOL,     GateFlags::NO_WRITE,  0, 1, 1)       \
     V(StoreConstOffset,            STORE_CONST_OFFSET,             GateFlags::NONE_FLAG, 0, 1, 2)       \
+    V(StoreHClassConstOffset,      STORE_HCLASS_CONST_OFFSET,      GateFlags::NONE_FLAG, 0, 1, 3)       \
     V(LoadElement,                 LOAD_ELEMENT,                   GateFlags::NO_WRITE,  1, 1, 2)       \
     V(StoreElement,                STORE_ELEMENT,                  GateFlags::NONE_FLAG, 1, 1, 3)       \
     V(StoreMemory,                 STORE_MEMORY,                   GateFlags::NONE_FLAG, 1, 1, 3)       \

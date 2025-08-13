@@ -90,7 +90,8 @@ namespace panda::ecmascript {
     V(RecordNameMustBeString, "RecordName must be string")                                                     \
     V(LexicalEnvIsInvalid, "LexicalEnv of native JSFunction is invalid, it should be GlobalEnv or Undefined")  \
     V(CurrentEnvIsInvalid, "CurrentEnv is invalid, it should be GlobalEnv, LexicalEnv or SFunctionEnv")        \
-    V(AccessCompositeClassField, "this field of CompositeClass is unavailable")
+    V(AccessCompositeClassField, "this field of CompositeClass is unavailable")                                \
+    V(HClassAddressIsInvalid, "HClass address is invalid")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

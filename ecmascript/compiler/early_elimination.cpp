@@ -252,6 +252,7 @@ DependInfoNode* EarlyElimination::UpdateWrite(GateRef gate, DependInfoNode* depe
         case OpCode::STORE_PROPERTY:
         case OpCode::STORE_PROPERTY_NO_BARRIER:
         case OpCode::STORE_CONST_OFFSET:
+        case OpCode::STORE_HCLASS_CONST_OFFSET:
         case OpCode::STORE_ELEMENT:
         case OpCode::STORE_MEMORY:
         case OpCode::MIGRATE_ARRAY_WITH_KIND:
@@ -302,7 +303,8 @@ bool EarlyElimination::MayAccessOneMemory(GateRef lhs, GateRef rhs)
             }
             break;
         }
-        case OpCode::STORE_CONST_OFFSET: {
+        case OpCode::STORE_CONST_OFFSET:
+        case OpCode::STORE_HCLASS_CONST_OFFSET: {
             if (lop == OpCode::LOAD_CONST_OFFSET || lop == OpCode::LOAD_HCLASS_CONST_OFFSET) {
                 auto loff = acc_.GetOffset(lhs);
                 auto roff = acc_.GetOffset(rhs);

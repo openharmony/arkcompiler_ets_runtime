@@ -284,9 +284,17 @@ void CircuitBuilder::StoreHClass(GateRef glue, GateRef object, GateRef hClass, M
 
 void CircuitBuilder::TransitionHClass(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
 {
+    CheckHClassAddrInvalid(glue, hClass);
     GateRef compValue = TruncInt64ToInt32(TaggedPointerToInt64(hClass));
     StoreHClass(VariableType::JS_POINTER(), glue, object, IntPtr(TaggedObject::HCLASS_OFFSET), hClass,
         compValue, mAttr);
+}
+
+void CircuitBuilder::TransitionHClassByConstOffset(GateRef glue, GateRef object, GateRef hClass, MemoryAttribute mAttr)
+{
+    CheckHClassAddrInvalid(glue, hClass);
+    GateRef compValue = TruncInt64ToInt32(TaggedPointerToInt64(hClass));
+    StoreHClassConstOffset(VariableType::JS_POINTER(), object, hClass, compValue, mAttr);
 }
 
 void CircuitBuilder::StorePrototype(GateRef glue, GateRef hclass, GateRef prototype)

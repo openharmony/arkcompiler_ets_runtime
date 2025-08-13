@@ -50,6 +50,7 @@ private:
     void LowerLoadHClassConstOffset(GateRef gate);
     void LowerLoadHClassFromConstpool(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);
+    void LowerStoreHClassConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
     void LowerCheckAndConvert(GateRef gate);
     void LowerCheckUInt32AndConvert(GateRef gate, GateRef frameState);

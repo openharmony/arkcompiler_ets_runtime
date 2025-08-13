@@ -1106,6 +1106,23 @@ GateRef CircuitBuilder::StoreConstOffset(VariableType type,
     return ret;
 }
 
+GateRef CircuitBuilder::StoreHClassConstOffset(VariableType type, GateRef receiver, GateRef value,
+                                               GateRef compValue, MemoryAttribute mAttr)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentDepend = currentLabel->GetDepend();
+    if (mAttr.GetBarrier() == MemoryAttribute::Barrier::UNKNOWN_BARRIER && acc_.IsConstant(value)) {
+        mAttr.SetBarrier(MemoryAttribute::Barrier::NO_BARRIER);
+    }
+    size_t offset = TaggedObject::HCLASS_OFFSET;
+    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, mAttr);
+    auto ret = GetCircuit()->NewGate(circuit_->StoreHClassConstOffset(bits), type.GetMachineType(),
+        { currentDepend, receiver, value, compValue }, type.GetGateType());
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+
 GateRef CircuitBuilder::TaggedIsHeapObjectOp(GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();

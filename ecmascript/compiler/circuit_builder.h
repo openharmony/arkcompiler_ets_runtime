@@ -363,6 +363,7 @@ public:
     GateRef GetEmptyArray(GateRef glue);
     GateRef IsCompositeHClass(GateRef hClass);
     void CheckHClassFieldInvalidAccess(GateRef glue, GateRef hClass);
+    void CheckHClassAddrInvalid(GateRef glue, GateRef hClass);
     GateRef GetPrototypeFromHClass(GateRef glue, GateRef hClass);
     GateRef GetEnumCacheFromHClass(GateRef glue, GateRef hClass);
     GateRef GetProtoChangeMarkerFromHClass(GateRef glue, GateRef hClass);
@@ -568,6 +569,8 @@ public:
     // It must keeps high 32 bits field when store hclass to object header.
     inline void TransitionHClass(GateRef glue, GateRef object, GateRef hClass,
                              MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
+    inline void TransitionHClassByConstOffset(GateRef glue, GateRef object, GateRef hClass,
+                                              MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());
     inline void StorePrototype(GateRef glue, GateRef hclass, GateRef prototype);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
 
@@ -758,6 +761,8 @@ public:
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value,
                              MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef StoreHClassConstOffset(VariableType type, GateRef receiver, GateRef value, GateRef compValue,
+                                   MemoryAttribute mAttr = MemoryAttribute::Default());
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
     GateRef StringEqual(GateRef x, GateRef y);
     GateRef StringAdd(GateRef x, GateRef y, uint32_t stringStatus = 0);
