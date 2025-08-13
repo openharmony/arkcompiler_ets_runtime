@@ -202,8 +202,11 @@ void HeuristicGCPolicy::ChangeGCParams(bool isBackground)
             Heap::GetHeap().GetCollector().RequestGC(GC_REASON_BACKGROUND, true, GC_TYPE_FULL);
         }
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::BACKGROUND);
+        BaseRuntime::GetInstance()->GetGCParam().multiplier = 1;
     } else {
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
+        // 3: The front-end application waterline is 3 times
+        BaseRuntime::GetInstance()->GetGCParam().multiplier = 3;
     }
 }
 
