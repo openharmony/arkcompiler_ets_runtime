@@ -36,7 +36,8 @@ void FunctionRefIsNativeFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
         return;
     }
     FunctionCallback nativeFunc = FuncRefConCallbackForTest;
-    Local<FunctionRef> func = FunctionRef::New(vm, nativeFunc);
+    NativePointerCallback deleter = nullptr;
+    Local<FunctionRef> func = FunctionRef::New(vm, nativeFunc, deleter, (void *)data);
     func->IsNative(vm);
     JSNApi::DestroyJSVM(vm);
 }

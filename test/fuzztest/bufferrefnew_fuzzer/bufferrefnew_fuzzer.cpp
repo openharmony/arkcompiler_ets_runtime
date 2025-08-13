@@ -48,7 +48,7 @@ void BufferRefMultiParamNewFuzzTest(const uint8_t *data, size_t size)
     JSNApi::DestroyJSVM(vm);
 }
 
-void BufferRefByteLengthFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void BufferRefByteLengthFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -57,12 +57,13 @@ void BufferRefByteLengthFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<BufferRef> buffer = BufferRef::New(vm, (int32_t)size);
+    NativePointerCallback deleter = nullptr;
+    Local<BufferRef> buffer = BufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     buffer->ByteLength(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
-void BufferRefGetBufferFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void BufferRefGetBufferFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -71,12 +72,13 @@ void BufferRefGetBufferFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<BufferRef> buffer = BufferRef::New(vm, (int32_t)size);
+    NativePointerCallback deleter = nullptr;
+    Local<BufferRef> buffer = BufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     buffer->GetBuffer(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
-void BufferToStringCallbackFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void BufferToStringCallbackFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -85,7 +87,8 @@ void BufferToStringCallbackFuzzTest([[maybe_unused]]const uint8_t *data, size_t 
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<BufferRef> buffer = BufferRef::New(vm, (int32_t)size);
+    NativePointerCallback deleter = nullptr;
+    Local<BufferRef> buffer = BufferRef::New(vm, (void *)data, (int32_t)size, deleter, (void *)data);
     buffer->ToString(vm);
     JSNApi::DestroyJSVM(vm);
 }

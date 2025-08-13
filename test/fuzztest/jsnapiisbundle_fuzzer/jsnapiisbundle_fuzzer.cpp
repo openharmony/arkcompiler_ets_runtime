@@ -23,7 +23,7 @@ using namespace panda::ecmascript;
 namespace OHOS {
 constexpr size_t DIVISOR = 2;
 
-void JSNApiIsBundleFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSNApiIsBundleFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -32,7 +32,7 @@ void JSNApiIsBundleFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    bool bundleFalg = size % DIVISOR ? true : false;
+    bool bundleFalg = (*data + size) % DIVISOR ? true : false;
     vm->SetIsBundlePack(bundleFalg);
     JSNApi::IsBundle(vm);
     JSNApi::DestroyJSVM(vm);

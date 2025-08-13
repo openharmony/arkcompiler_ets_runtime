@@ -31,8 +31,8 @@ void JSNApiValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    void *vps = static_cast<void *>(new std::string("test"));
-    void *vps1 = static_cast<void *>(new std::string("test"));
+    void *vps = static_cast<void *>(const_cast<uint8_t *>(data));
+    void *vps1 = static_cast<void *>(const_cast<uint8_t *>(data));
     Local<NativePointerRef> res_vps = NativePointerRef::New(vm_, vps, NativeAreaAllocator::FreeBufferFunc, vps1, 0);
     res_vps->Value();
     JSNApi::DestroyJSVM(vm_);

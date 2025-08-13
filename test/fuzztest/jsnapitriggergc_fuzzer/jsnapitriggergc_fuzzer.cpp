@@ -32,10 +32,10 @@ void JSNApiTriggerGCFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    if (size % DEFAULT_THREAD_COUNT == 0) {
+    if ((*data + size) % DEFAULT_THREAD_COUNT == 0) {
         JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::FULL_GC;
         JSNApi::TriggerGC(vm, gcType);
-    } else if (size % DEFAULT_THREAD_COUNT == 1) {
+    } else if ((*data + size) % DEFAULT_THREAD_COUNT == 1) {
         JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::OLD_GC;
         JSNApi::TriggerGC(vm, gcType);
     } else {

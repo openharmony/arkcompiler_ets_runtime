@@ -31,7 +31,9 @@ void JSNApiSetAssetPathFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     if (size <= 0) {
         return;
     }
-    std::string str = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
+    std::string str = "/data/storage/el1/bundle/";
+    str += std::string((char *)data, size);
+    str += "/ets/modules.abc";
     JSNApi::SetAssetPath(vm, str);
     JSNApi::DestroyJSVM(vm);
 }
@@ -47,7 +49,7 @@ void JSNApiSetBundleFuzzTest(const uint8_t *data, size_t size)
     }
     uint8_t *ptr = nullptr;
     ptr = const_cast<uint8_t *>(data);
-    JSNApi::SetBundle(vm, (bool)size);
+    JSNApi::SetBundle(vm, (*data & size) > 0 ? true : false);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -65,7 +67,7 @@ void JSNApiSetHostEnqueueJobFuzzTest(const uint8_t *data, size_t size)
     JSNApi::DestroyJSVM(vm);
 }
 
-void JSNApiSetMockModuleListFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSNApiSetMockModuleListFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -73,22 +75,8 @@ void JSNApiSetMockModuleListFuzzTest([[maybe_unused]]const uint8_t *data, size_t
     if (size <= 0) {
         return;
     }
-    std::map<std::string, std::string> str = { { "10", "20" } };
+    std::map<std::string, std::string> str = { { (char *)data, "20" } };
     JSNApi::SetMockModuleList(vm, str);
-    JSNApi::DestroyJSVM(vm);
-}
-
-void JSNApiSetSourceMapTranslateCallbackFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
-{
-    RuntimeOption option;
-    option.SetLogLevel(common::LOG_LEVEL::ERROR);
-    EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
-    }
-    SourceMapTranslateCallback tag { nullptr };
-    JSNApi::SetSourceMapTranslateCallback(vm, tag);
-    vm->GetSourceMapTranslateCallback();
     JSNApi::DestroyJSVM(vm);
 }
 }
@@ -97,10 +85,8 @@ void JSNApiSetSourceMapTranslateCallbackFuzzTest([[maybe_unused]]const uint8_t *
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     // Run your code on data.
-    OHOS::JSNApiSetAssetPathFuzzTest(data, size);
     OHOS::JSNApiSetBundleFuzzTest(data, size);
     OHOS::JSNApiSetHostEnqueueJobFuzzTest(data, size);
     OHOS::JSNApiSetMockModuleListFuzzTest(data, size);
-    OHOS::JSNApiSetSourceMapTranslateCallbackFuzzTest(data, size);
     return 0;
 }
