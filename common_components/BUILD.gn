@@ -445,3 +445,78 @@ ohos_shared_library("libark_common_components_test") {
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
+
+ohos_shared_library("libark_common_components_fuzz_test") {
+  testonly = true
+  stack_protector_ret = false
+
+  configs = [ ":common_components_test_config" ]
+
+  sources = [
+    "log/log.cpp",
+    "base/utf_helper.cpp",
+  ]
+
+  if (is_mingw) {
+    sources += [
+      "platform/windows/cpu.cpp",
+      "platform/windows/os.cpp",
+    ]
+  } else if (is_mac) {
+    sources += [
+      "platform/unix/mac/cpu.cpp",
+      "platform/unix/mac/os.cpp",
+    ]
+  } else if (is_ohos || target_os == "android") {
+    sources += [
+      "platform/unix/linux/cpu.cpp",
+      "platform/unix/linux/os.cpp",
+    ]
+  } else if (is_linux) {
+    sources += [
+      "platform/unix/linux/cpu.cpp",
+      "platform/unix/linux/os.cpp",
+    ]
+  }
+
+  # deps = [ ":libarkcommon-runtime" ]
+
+  public_configs = [ ":common_components_public_config" ]
+  public_configs += [ "//arkcompiler/ets_runtime:include_llvm" ]
+
+  external_deps = []
+  if (!ark_standalone_build) {
+    public_external_deps = [
+      "zlib:libz",
+    ]
+    public_external_deps += hiviewdfx_ext_deps
+  } else {
+    external_deps += [
+      "zlib:libz",
+    ]
+    external_deps += hiviewdfx_ext_deps
+  }
+
+  ldflags = []
+  if (enable_coverage) {
+    ldflags += [ "--coverage" ]
+    cflags_cc = [ "--coverage" ]
+  }
+  if (!ark_standalone_build) {
+    ldflags += [ "-Wl,--lto-O0" ]
+  }
+
+  install_enable = false
+  if (!is_mingw && !is_mac) {
+    output_extension = "so"
+  }
+
+  if (!is_arkui_x) {
+    external_deps += [ "runtime_core:libarkfile_runtime_static" ]
+  } else {
+    deps += [ "$ark_root/libpandafile:libarkfile_runtime_static" ]
+  }
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
