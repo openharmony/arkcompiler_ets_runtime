@@ -61,7 +61,7 @@ int DynChunk::Insert(uint32_t position, size_t len)
     }
     size_t moveSize = size_ - position;
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    if (LIKELY(moveSize > 0) && memmove_s(buf_ + position + len, moveSize, buf_ + position, moveSize) != EOK) {
+    if (memmove_s(buf_ + position + len, moveSize, buf_ + position, moveSize) != EOK) {
         return FAILURE;
     }
     size_ += len;
