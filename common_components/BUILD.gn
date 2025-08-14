@@ -514,7 +514,7 @@ ohos_shared_library("libark_common_components_fuzz_test") {
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:libarkfile_runtime_static" ]
   } else {
-    deps += [ "$ark_root/libpandafile:libarkfile_runtime_static" ]
+    deps = [ "$ark_root/libpandafile:libarkfile_runtime_static" ]
   }
 
   part_name = "ets_runtime"
