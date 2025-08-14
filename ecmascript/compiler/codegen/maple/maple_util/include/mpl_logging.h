@@ -184,16 +184,6 @@ private:
 #define DBG(tag, fmt, ...)
 #endif // IS_RELEASE_VERSION
 
-// #ifdef LOG
-// #undef LOG
-// #endif
-// #define LOG(tag, fmt, ...)                                                                      \
-//   do {                                                                                          \
-//     if (PRINT_LEVEL_DEV <= kLlLog) {                                                            \
-//       logInfo.EmitLogForDev(tag, kLlLog, __FILE__, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__); \
-//     }                                                                                                \
-//   } while (0)
-
 #ifdef CHECK
 #undef CHECK
 #endif
