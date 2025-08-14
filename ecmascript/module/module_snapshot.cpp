@@ -194,8 +194,8 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
     remaining -= sizeof(data->dataIndex_);
 
     // 8-byte alignment
-    const size_t alignPadding = AlignUp(readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()), sizeof(uint64_t))
-                                - (readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
+    const size_t offset = static_cast<size_t>(readPtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
+    const size_t alignPadding = AlignUp(offset, sizeof(uint64_t)) - offset;
     readPtr += alignPadding;
     remaining -= alignPadding;
 
@@ -451,8 +451,8 @@ bool ModuleSnapshot::WriteDataToFile(
     writePtr += sizeof(data->dataIndex_);
 
     // padding
-    const size_t pad1 = AlignUp(writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()), sizeof(uint64_t))
-                        - (writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
+    const size_t offset1 = static_cast<size_t>(writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
+    const size_t pad1 = AlignUp(offset1, sizeof(uint64_t)) - offset1;
     if (pad1 > 0) {
         if (memset_s(writePtr, pad1, 0, pad1) != EOK) { // 0: reset
             LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memset_s write pad1 failed";
@@ -468,8 +468,8 @@ bool ModuleSnapshot::WriteDataToFile(
     writePtr += sizeof(data->sizeLimit_);
 
     // alignment to size_t
-    const size_t pad2 = AlignUp(writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()), sizeof(uint64_t))
-                        - (writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
+    const size_t offset2 = static_cast<size_t>(writePtr - static_cast<uint8_t*>(fileMapMem.GetOriginAddr()));
+    const size_t pad2 = AlignUp(offset2, sizeof(uint64_t)) - offset2;
     if (pad2 > 0) {
         if (memset_s(writePtr, pad2, 0, pad2) != EOK) { // 0: reset
             LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile memset_s write pad2 failed";
