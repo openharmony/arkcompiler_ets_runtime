@@ -27,3 +27,6 @@ obj/arkcompiler/ets_runtime/test/jittest/throw_error/throw_error
 
 #27862
 obj/arkcompiler/ets_runtime/test/moduletest/stringreplace/stringreplaceAsmAssert
+
+#28993
+obj/arkcompiler/ets_runtime/test/jittest/hole_in_array/hole_in_array
