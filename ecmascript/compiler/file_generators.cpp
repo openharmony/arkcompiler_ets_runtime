@@ -377,10 +377,14 @@ void StubFileGenerator::CollectCodeInfo()
         std::vector<std::thread> threads;
         for (size_t i = 1; i < modulePackage_.size(); ++i) {
             threads.emplace_back([&, i]() {
+                ConcurrentMonitor::Scope concurrentScope;
                 entryPoints[i] = modulePackage_[i].GetFuncEntryPoints();
             });
         }
-        entryPoints[0] = modulePackage_[0].GetFuncEntryPoints();
+        {
+            ConcurrentMonitor::Scope concurrentScope;
+            entryPoints[0] = modulePackage_[0].GetFuncEntryPoints();
+        }
         for (auto& t : threads) {
             if (t.joinable()) {
                 t.join();
@@ -533,10 +537,14 @@ void StubFileGenerator::RunLLVMAssembler()
         for (size_t i = 1; i < modulePackage_.size(); ++i) {
             const CompilerLog &log = *(this->log_);
             threads.emplace_back([&, i] {
+                ConcurrentMonitor::Scope concurrentScope;
                 modulePackage_[i].RunAssembler(log, false);
             });
         }
-        modulePackage_[0].RunAssembler(*(this->log_), false);
+        {
+            ConcurrentMonitor::Scope concurrentScope;
+            modulePackage_[0].RunAssembler(*(this->log_), false);
+        }
         for (auto& t : threads) {
             if (t.joinable()) {
                 t.join();
