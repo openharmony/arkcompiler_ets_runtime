@@ -48,6 +48,11 @@ const std::string APP_SANBOX_PATH_PREFIX = "/data/storage/el1/bundle/";
 const std::string ETS_PATH = "/ets";
 const std::string OWNERID_SHARED_TAG = "SHARED_LIB_ID";
 
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+// Default closed, open on qiangji
+const bool ARK_AOT_ENABLE_STATIC_COMPILER_DEFAULT_VALUE = false;
+#endif
+
 AOTArgsHandler::AOTArgsHandler(const std::unordered_map<std::string, std::string> &argsMap) : argsMap_(argsMap)
 {
     parser_ = *AOTArgsParserFactory::GetParser(argsMap);
@@ -181,6 +186,12 @@ void AOTArgsParser::SetEnableCodeCommentBySysParam(HapArgs &hapArgs)
         hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT + Symbols::EQ + "allasm");
     }
 }
+
+bool AOTArgsParserBase::IsEnableStaticCompiler()
+{
+    return OHOS::system::GetBoolParameter("ark.aot.enable_static_compiler",
+        ARK_AOT_ENABLE_STATIC_COMPILER_DEFAULT_VALUE);
+}
 #endif
 
 void AOTArgsParser::AddExpandArgs(std::vector<std::string> &argVector, int32_t thermalLevel)
@@ -289,6 +300,11 @@ std::string StaticAOTArgsParser::ParseLocation(std::string &anFilePath)
 std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParser(
     const std::unordered_map<std::string, std::string> &argsMap)
 {
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    if (!AOTArgsParserBase::IsEnableStaticCompiler()) {
+        return std::make_unique<AOTArgsParser>();
+    }
+#endif
     int32_t isSystemComponent = 0;
     if ((AOTArgsParserBase::FindArgsIdxToInteger(argsMap, ArgsIdx::IS_SYSTEM_COMPONENT, isSystemComponent) != ERR_OK)) {
         LOG_SA(INFO) << "aot sa failed to get isSystemComponent";

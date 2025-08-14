@@ -68,6 +68,9 @@ public:
 
     static int32_t FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
                                        const std::string &keyName, std::string &bundleArg);
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    static bool IsEnableStaticCompiler();
+#endif
 };
 
 class AOTArgsParser final : public AOTArgsParserBase {
