@@ -2703,7 +2703,7 @@ void TypedHCRLowering::LowerOrdinaryHasInstanceForJIT(GateRef gate, GateRef glue
     GateRef target = acc_.GetValueIn(gate, 1);
     auto result = builder_.CallStub(glue, gate, CommonStubCSigns::OrdinaryHasInstance,
                                     {glue, obj, target, circuit_->GetGlobalEnvCache()}, "OrdinaryHasInstance stub");
-    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), result);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void TypedHCRLowering::LowerOrdinaryHasInstance(GateRef gate, GateRef glue)
