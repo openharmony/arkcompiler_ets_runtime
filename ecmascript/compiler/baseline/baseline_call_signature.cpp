@@ -852,7 +852,7 @@ DEF_CALL_SIGNATURE(BaselineIstrue)
     CallSignature signature("BaselineIstrue", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 1 : 1 input parameters
+    // 2 : 2 input parameters
     std::array<VariableType, 2> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
@@ -1306,10 +1306,10 @@ DEF_CALL_SIGNATURE(BaselineDefineclasswithbufferImm8Id16Id16Imm16V8)
     std::array<VariableType, 6> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
-        VariableType::INT32(),
+        VariableType::INT16(),
+        VariableType::INT16(),
         VariableType::INT16(),
         VariableType::INT8(),
-        VariableType::INT32(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }

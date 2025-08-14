@@ -63,8 +63,6 @@ public:
     inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetLastLeaveFrame(GateRef glue);
     inline GateRef CallBaselineStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
-    inline void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
-                                                    GateRef profileTypeInfo, GateRef slotId);
 };
 
 #define DECLARE_STUB_CLASS(name)                                                   \

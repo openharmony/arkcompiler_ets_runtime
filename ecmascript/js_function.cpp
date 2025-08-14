@@ -1192,16 +1192,6 @@ void JSFunction::SetJitMachineCodeCache(const JSThread *thread, const JSHandle<M
     handleRaw->SetMachineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef());
 }
 
-void JSFunction::SetBaselineJitCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode)
-{
-    JSHandle<ProfileTypeInfoCell> handleRaw(thread, GetRawProfileTypeInfo(thread));
-    if (handleRaw->IsEmptyProfileTypeInfoCell(thread)) {
-        LOG_BASELINEJIT(ERROR) << "skip set baselinejit cache, as profileTypeInfoCell is empty.";
-        return;
-    }
-    handleRaw->SetBaselineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef());
-}
-
 JSTaggedValue JSFunctionBase::GetFunctionExtraInfo(const JSThread *thread) const
 {
     JSTaggedType hashField = Barriers::GetTaggedValue(thread, this, HASH_OFFSET);

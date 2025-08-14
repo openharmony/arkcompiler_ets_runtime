@@ -17,7 +17,6 @@
 #include "ecmascript/interpreter/frame_handler.h"
 
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/stubs/runtime_stubs-inl.h"
 
 namespace panda::ecmascript {
 FrameHandler::FrameHandler(JSThread *thread)
@@ -132,23 +131,9 @@ JSTaggedValue FrameHandler::GetAcc() const
 uint32_t FrameHandler::GetBytecodeOffset() const
 {
     ASSERT(IsInterpretedFrame());
-    auto pc = GetPc();
-    if (reinterpret_cast<uintptr_t>(pc) != std::numeric_limits<uintptr_t>::max()) {
-        // interpreter frame
-        Method *method = GetMethod();
-        auto offset = pc - method->GetBytecodeArray();
-        return static_cast<uint32_t>(offset);
-    } else {
-        // baseline frame
-        uintptr_t curNativePc = GetBaselineNativePc();
-        ASSERT(curNativePc != 0);
-        LOG_BASELINEJIT(DEBUG) << "current native pc in UpFrame: " << std::hex <<
-        reinterpret_cast<void*>(curNativePc);
-        JSHandle<JSTaggedValue> funcVal = JSHandle<JSTaggedValue>(thread_, GetFunction());
-        JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(funcVal);
-        uint32_t curBytecodePcOfst = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(thread_, func, curNativePc);
-        return curBytecodePcOfst;
-    }
+    Method *method = GetMethod();
+    auto offset = GetPc() - method->GetBytecodeArray();
+    return static_cast<uint32_t>(offset);
 }
 
 Method *FrameHandler::GetMethod() const

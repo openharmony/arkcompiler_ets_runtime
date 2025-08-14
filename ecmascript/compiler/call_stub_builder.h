@@ -220,7 +220,7 @@ private:
     void JSSlowAotCall(Label *exit);
     GateRef CallConstructorBridge(const int idxForAot, const std::vector<GateRef> &argsForAot);
     void CallBridge(GateRef code, GateRef expectedNum, Label *exit);
-    void JSCallAsmInterpreter(bool hasBaselineCode, Label *exit, Label *noNeedCheckException);
+    void JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNotAot, Label *exit, Label *noNeedCheckException);
 
     int PrepareIdxForNative();
     std::vector<GateRef> PrepareArgsForNative();

@@ -945,8 +945,6 @@ public:
                                MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryAttribute mAttr = MemoryAttribute::Default());
-    void SetBaselineJitCodeToFunction(GateRef glue, GateRef function, GateRef value,
-                                      MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetTypedArrayName(GateRef glue, GateRef typedArray, GateRef name,
                            MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetContentType(GateRef glue, GateRef typedArray, GateRef type);
@@ -1254,7 +1252,6 @@ public:
     GateRef LoadModuleNamespaceByIndex(GateRef glue, GateRef index, GateRef module);
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);
     void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
-    void TryToBaselineJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     void StartTraceLoadDetail(GateRef glue, GateRef receiver, GateRef profileTypeInfo, GateRef slotId);
     void StartTraceLoadGetter(GateRef glue);
     void StartTraceLoadSlowPath(GateRef glue);

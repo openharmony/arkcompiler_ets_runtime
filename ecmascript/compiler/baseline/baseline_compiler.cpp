@@ -2524,7 +2524,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINEGETTERSETTERBYVALUE_V8_V8_V8_V8)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8)
 {
-    uint8_t slotId = READ_INST_8_0();
     int16_t methodId = READ_INST_16_1();
     int16_t literalId = READ_INST_16_3();
     int16_t count = READ_INST_16_5();
@@ -2538,11 +2537,10 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    uint32_t methodAndLiteralId = static_cast<uint32_t>(methodId) | (static_cast<uint32_t>(literalId) << TWO_BYTE_SIZE);
-    parameters.emplace_back(static_cast<int32_t>(methodAndLiteralId));
+    parameters.emplace_back(methodId);
+    parameters.emplace_back(literalId);
     parameters.emplace_back(count);
     parameters.emplace_back(v0);
-    parameters.emplace_back(static_cast<int32_t>(slotId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
