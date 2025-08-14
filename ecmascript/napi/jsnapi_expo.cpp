@@ -841,24 +841,6 @@ bool JSValueRef::IsJSSharedUint32Array(const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint32Array();
 }
 
-bool JSValueRef::IsJSSharedFloat64Array(const EcmaVM *vm)
-{
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedFloat64Array();
-}
-
-bool JSValueRef::IsJSSharedBigInt64Array(const EcmaVM *vm)
-{
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedBigInt64Array();
-}
-
-bool JSValueRef::IsJSSharedBigUint64Array(const EcmaVM *vm)
-{
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedBigUint64Array();
-}
-
 bool JSValueRef::IsJSPrimitiveRef(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
