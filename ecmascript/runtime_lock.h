@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_RUNTIME_LOCK_H
 #define ECMASCRIPT_RUNTIME_LOCK_H
 
-#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
