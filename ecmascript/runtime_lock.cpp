@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/runtime_lock.h"
 
 namespace panda::ecmascript {
