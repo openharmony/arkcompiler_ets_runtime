@@ -189,4 +189,18 @@ function test9()
 }
 test9();
 
+function test10()
+{
+  let target = { a: 1 };
+  const handler = {};
+  handler.__proto__ = new Proxy(target, handler);
+  try {
+    handler.__proto__ = new Proxy(target, handler);
+  } catch (error) {
+    assert_equal(error instanceof RangeError, true);
+    print(error);
+  }
+}
+test10();
+
 test_end();
