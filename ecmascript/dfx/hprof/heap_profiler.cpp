@@ -408,7 +408,8 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             }
         }
         AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-        if (appfreezeCallback != nullptr && !appfreezeCallback(getpid(), false)) {
+        std::string unused;
+        if (appfreezeCallback != nullptr && !appfreezeCallback(getpid(), false, unused)) {
             LOG_ECMA(ERROR) << "failed to set appfreeze filter";
             return false;
         }

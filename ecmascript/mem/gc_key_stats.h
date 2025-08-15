@@ -18,6 +18,7 @@
 
 #include <ctime>
 #include <chrono>
+#include <string>
 
 #include "ecmascript/common_enum.h"
 #include "ecmascript/mem/mem_common.h"
@@ -69,7 +70,8 @@ public:
     void AddGCStatsToKey();
     bool CheckIfMainThread() const;
     bool CheckIfKeyPauseTime() const;
-    void SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory) const;
+    void SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory,
+                                const std::string &eventConfig) const;
     int32_t SendSysEventDataSize(std::vector<std::string> filePaths,  std::vector<uint64_t> fileSizes) const;
     void ProcessLongGCEvent();
     static bool IsIdle(GCReason gcReason)

@@ -83,7 +83,8 @@ using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
 using GCListenerId = std::vector<std::pair<FinishGCListener, void *>>::const_iterator;
 using Clock = std::chrono::high_resolution_clock;
-using AppFreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
+using AppFreezeFilterCallback =
+    std::function<bool(const int32_t pid, const bool needDecreaseQuota, std::string &eventConfig)>;
 using BytesAndDuration = std::pair<uint64_t, double>;
 using MemoryReduceDegree = panda::JSNApi::MemoryReduceDegree;
 using NativePointerList = CVector<JSTaggedValue>;

@@ -790,14 +790,18 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-    if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid(), true)) {
+    std::string eventConfig;
+    bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
+    EcmaVM *vm = thread->GetEcmaVM();
+    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
+                                                    GetHeapObjectSize(), eventConfig);
+    if (!shouldDump) {
         LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         return;
     }
 #endif
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
-    EcmaVM *vm = thread->GetEcmaVM();
     HeapProfilerInterface *heapProfile = nullptr;
     if (source == SharedHeapOOMSource::SHARED_GC) {
 #ifndef NDEBUG
@@ -815,8 +819,6 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
     // Filter appfreeze when dump.
     LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, trigger oom dump";
     base::BlockHookScope blockScope;
-    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
-                                                    GetHeapObjectSize());
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::BINARY;
     dumpOption.isVmMode = true;
@@ -1704,7 +1706,10 @@ void Heap::DumpHeapSnapshotBeforeOOM()
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-    if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid(), true)) {
+    std::string eventConfig;
+    bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
+    GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig);
+    if (!shouldDump) {
         LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         return;
     }
@@ -1719,10 +1724,7 @@ void Heap::DumpHeapSnapshotBeforeOOM()
     LOG_ECMA(INFO) << " Heap::DumpHeapSnapshotBeforeOOM, trigger oom dump";
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
-#ifdef ENABLE_HISYSEVENT
-    GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize());
     hasOOMDump_ = true;
-#endif
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = DumpFormat::BINARY;
@@ -2978,13 +2980,16 @@ void Heap::ThresholdReachedDump()
             base::BlockHookScope blockScope;
             HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
             AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-            if (appfreezeCallback != nullptr && appfreezeCallback(getprocpid(), true)) {
+            std::string eventConfig;
+            bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
+            GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
+                                                        GetHeapLimitSize(), GetLiveObjectSize(), eventConfig);
+            if (shouldDump) {
                 LOG_ECMA(INFO) << "ThresholdReachedDump and avoid freeze success.";
             } else {
                 LOG_ECMA(WARN) << "ThresholdReachedDump but avoid freeze failed.";
+                return;
             }
-            GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
-                                                        GetHeapLimitSize(), GetLiveObjectSize());
             DumpSnapShotOption dumpOption;
             dumpOption.dumpFormat = DumpFormat::BINARY;
             dumpOption.isVmMode = true;
