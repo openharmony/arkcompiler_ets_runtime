@@ -19,6 +19,7 @@
 #include <unordered_map>
 
 #include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/collector/copy_data_manager.h"
 #include "common_components/heap/collector/marking_collector.h"
 #include "common_interfaces/base_runtime.h"
 
@@ -79,6 +80,11 @@ public:
 #ifdef ENABLE_CMC_RB_DFX
         gcMode_ = GCMode::STW;
 #endif
+    }
+
+    void Fini() override
+    {
+        HeapBitmapManager::GetHeapBitmapManager().DestroyHeapBitmap();
     }
 
     bool ShouldIgnoreRequest(GCRequest& request) override;

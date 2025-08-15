@@ -16,6 +16,7 @@
 #ifndef COMMON_COMPONENTS_HEAP_COLLECTOR_COPY_DATA_MANAGER_H
 #define COMMON_COMPONENTS_HEAP_COLLECTOR_COPY_DATA_MANAGER_H
 
+#include "base/common.h"
 #include "common_components/base/immortal_wrapper.h"
 #include "common_components/heap/heap.h"
 #if defined(__linux__) || defined(PANDA_TARGET_OHOS) || defined(__APPLE__)
@@ -123,20 +124,13 @@ public:
     HeapBitmapManager() = default;
     ~HeapBitmapManager()
     {
-#ifdef _WIN64
-        if (!VirtualFree(reinterpret_cast<void*>(heapBitmapStart_), 0, MEM_RELEASE)) {
-            LOG_COMMON(ERROR) << "VirtualFree error for HeapBitmapManager";
-        }
-#else
-        if (munmap(reinterpret_cast<void*>(heapBitmapStart_), allHeapBitmapSize_) != 0) {
-            LOG_COMMON(ERROR) << "munmap error for HeapBitmapManager";
-        }
-#endif
+        CHECK_CC(!initialized);
     }
 
     static HeapBitmapManager& GetHeapBitmapManager();
 
     void InitializeHeapBitmap();
+    void DestroyHeapBitmap();
 
     void ClearHeapBitmap() { heapBitmap_[0].ReleaseMemory(); }
 
@@ -168,6 +162,7 @@ private:
     size_t regionUnitCount_ = 0;
     uintptr_t heapBitmapStart_ = 0;
     size_t allHeapBitmapSize_ = 0;
+    bool initialized = false;
 };
 } // namespace common
 #endif // COMMON_COMPONENTS_HEAP_COLLECTOR_COPY_DATA_MANAGER_H
