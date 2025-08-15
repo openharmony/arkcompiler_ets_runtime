@@ -313,6 +313,7 @@ JSTaggedValue BuiltinsPromiseJob::HandleModuleException(JSThread *thread, JSHand
                                             JSHandle<JSTaggedValue>(resolve),
                                             undefined, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, CatchException(thread, reject));
+    ASSERT(info != nullptr);
     info->SetCallArg(exportObject.GetTaggedValue());
     return JSFunction::Call(info);
 }
