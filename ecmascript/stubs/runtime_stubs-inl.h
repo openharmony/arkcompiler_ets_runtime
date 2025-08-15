@@ -796,6 +796,10 @@ JSTaggedValue RuntimeStubs::RuntimeStGlobalRecord(JSThread *thread, const JSHand
     // cross files global record name binding judgment
     int entry = dict->FindEntry(thread, prop.GetTaggedValue());
     if (entry != -1) {
+        std::string message = "Duplicate identifier \"";
+        message.append(EcmaStringAccessor(JSTaggedValue::ToString(thread, prop)).ToStdString(thread));
+        message.append("\"");
+        LOG_ECMA(ERROR) << message;
         return RuntimeThrowSyntaxError(thread, "Duplicate identifier");
     }
 
