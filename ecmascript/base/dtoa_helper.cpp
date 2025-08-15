@@ -283,13 +283,13 @@ void DtoaHelper::RoundUp(BufferVector<char> digitsBuffer, int* digitCount, int* 
     }
     digitsBuffer[(*digitCount) - 1]++;
     for (int i = (*digitCount) - 1; i > 0; --i) {
-        if (digitsBuffer[i] != '0' + 10) {
+        if (digitsBuffer[i] != '0' + DECIMAL_BASE) {
             return;
         }
         digitsBuffer[i] = '0';
         digitsBuffer[i - 1]++;
     }
-    if (digitsBuffer[0] == '0' + 10) {
+    if (digitsBuffer[0] == '0' + DECIMAL_BASE) {
         digitsBuffer[0] = '1';
         (*decimalPosition)++;
     }
@@ -300,13 +300,13 @@ void DtoaHelper::FillFractionals(uint64_t fractionalValue, int exponentValue, in
 {
     ASSERT(NEGATIVE_128BIT <= exponentValue && exponentValue <= 0);
     if (-exponentValue <= EXPONENT_64) {
-        ASSERT((fractionalValue >> 56) == 0);
+        ASSERT((fractionalValue >> BITS_SHIFT) == 0);
         int currentPoint = -exponentValue;
         for (int i = 0; i < fractionalDigitCount; ++i) {
             if (fractionalValue == 0) {
                 break;
             }
-            fractionalValue *= 5;
+            fractionalValue *= DECIMAL_RADIX_HALF;
             currentPoint--;
             int digitValue = static_cast<int>(fractionalValue >> currentPoint);
             targetBuffer[*totalLength] = '0' + digitValue;
@@ -325,7 +325,7 @@ void DtoaHelper::FillFractionals(uint64_t fractionalValue, int exponentValue, in
             if (fractionalValue128.IsZero()) {
                 break;
             }
-            fractionalValue128.Multiply(5);
+            fractionalValue128.Multiply(DECIMAL_RADIX_HALF);
             currentPoint--;
             int digitValue = fractionalValue128.DivModPowerOf2(currentPoint);
             targetBuffer[*totalLength] = '0' + digitValue;
@@ -369,31 +369,29 @@ bool DtoaHelper::FixedDtoa(double value, int fractionalDigitCount, BufferVector<
     }
     uint64_t significandValue = NumberHelper::Significand(value);
     int exponentValue = NumberHelper::Exponent(value);
-    if (exponentValue > 20) {
+    if (exponentValue > MAX_FIXED_FORMAT_PRECISION) {
         return false;
     }
-    if (fractionalDigitCount > 20) {
+    if (fractionalDigitCount > MAX_FIXED_FORMAT_PRECISION) {
         return false;
     }
     *totalLength = 0;
     if (exponentValue + kDoubleSignificandSize > EXPONENT_64) {
-        const uint64_t kFive17 = 0xB1'A2BC'2EC5;
-        uint64_t divisorValue = kFive17;
-        int divisorPower = 17;
+        uint64_t divisorValue = KFIVE17;
         uint64_t dividendValue = significandValue;
         uint32_t quotientValue;
         uint64_t remainderValue;
-        if (exponentValue > divisorPower) {
-            dividendValue <<= exponentValue - divisorPower;
+        if (exponentValue > DIVISOR_POWER) {
+            dividendValue <<= exponentValue - DIVISOR_POWER;
             quotientValue = static_cast<uint32_t>(dividendValue / divisorValue);
-            remainderValue = (dividendValue % divisorValue) << divisorPower;
+            remainderValue = (dividendValue % divisorValue) << DIVISOR_POWER;
         } else {
-            divisorValue <<= divisorPower - exponentValue;
+            divisorValue <<= DIVISOR_POWER - exponentValue;
             quotientValue = static_cast<uint32_t>(dividendValue / divisorValue);
             remainderValue = (dividendValue % divisorValue) << exponentValue;
         }
         FillDigits32(quotientValue, outputBuffer, totalLength);
-        FillDigits64FixedLength(remainderValue, divisorPower, outputBuffer, totalLength);
+        FillDigits64FixedLength(remainderValue, DIVISOR_POWER, outputBuffer, totalLength);
         *decimalPointPosition = *totalLength;
     } else if (exponentValue >= 0) {
         significandValue <<= exponentValue;
@@ -411,7 +409,7 @@ bool DtoaHelper::FixedDtoa(double value, int fractionalDigitCount, BufferVector<
         FillFractionals(fractionalPart, exponentValue, fractionalDigitCount,
                         outputBuffer, totalLength, decimalPointPosition);
     } else if (exponentValue < NEGATIVE_128BIT) {
-        ASSERT(fractionalDigitCount <= 20);
+        ASSERT(fractionalDigitCount <= MAX_FIXED_FORMAT_PRECISION);
         outputBuffer[0] = '\0';
         *totalLength = 0;
         *decimalPointPosition = -fractionalDigitCount;

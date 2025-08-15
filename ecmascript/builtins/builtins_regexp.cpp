@@ -533,7 +533,7 @@ JSTaggedValue BuiltinsRegExp::GetSource(EcmaRuntimeCallInfo *argv)
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
         JSHandle<JSTaggedValue> objConstructor = JSTaggedValue::GetProperty(thread, thisObj, constructorKey).GetValue();
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(false));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
         if (objConstructor->IsJSFunction() && constructor->IsJSFunction()) {
             JSHandle<GlobalEnv> objRealm = JSObject::GetFunctionRealm(thread, objConstructor);

@@ -150,6 +150,12 @@ public:
     static constexpr int EXPONENT_64 = 64;
     static constexpr int EXPONENT_128 = 128;
     static constexpr int NEGATIVE_128BIT = -128;
+    static constexpr uint64_t BITS_SHIFT = 56;
+    static constexpr uint32_t DECIMAL_BASE = 10;
+    static constexpr uint64_t DECIMAL_RADIX_HALF = 5;
+    static constexpr uint64_t KFIVE17 = 0xB1'A2BC'2EC5;
+    static constexpr int MAX_FIXED_FORMAT_PRECISION = 20;
+    static constexpr int DIVISOR_POWER = 17;
     static constexpr uint64_t POW10[] = { 1ULL, 10ULL, 100ULL, 1000ULL, 10000ULL, 100000ULL, 1000000ULL,
                                           10000000ULL, 100000000ULL, 1000000000ULL, 10000000000ULL, 100000000000ULL,
                                           1000000000000ULL, 10000000000000ULL, 100000000000000ULL, 1000000000000000ULL,
