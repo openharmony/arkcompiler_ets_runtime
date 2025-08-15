@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "base/common.h"
 #ifdef _WIN64
 #include <errhandlingapi.h>
 #include <handleapi.h>
@@ -31,6 +32,7 @@ HeapBitmapManager& HeapBitmapManager::GetHeapBitmapManager() { return *forwardDa
 
 void HeapBitmapManager::InitializeHeapBitmap()
 {
+    DCHECK_CC(!initialized);
     size_t maxHeapBytes = Heap::GetHeap().GetMaxCapacity();
     size_t heapBitmapSize = RoundUp(GetHeapBitmapSize(maxHeapBytes), COMMON_PAGE_SIZE);
     allHeapBitmapSize_ = heapBitmapSize;
@@ -57,5 +59,21 @@ void HeapBitmapManager::InitializeHeapBitmap()
     heapBitmap_[0].InitializeMemory(heapBitmapStart_, heapBitmapSize, regionUnitCount_);
 
     os::PrctlSetVMA(startAddress, allHeapBitmapSize_, "ArkTS Heap CMCGC HeapBitMap");
+    initialized = true;
 }
+
+void HeapBitmapManager::DestroyHeapBitmap()
+{
+#ifdef _WIN64
+    if (!VirtualFree(reinterpret_cast<void*>(heapBitmapStart_), 0, MEM_RELEASE)) {
+        LOG_COMMON(ERROR) << "VirtualFree error for HeapBitmapManager";
+    }
+#else
+    if (munmap(reinterpret_cast<void*>(heapBitmapStart_), allHeapBitmapSize_) != 0) {
+        LOG_COMMON(ERROR) << "munmap error for HeapBitmapManager";
+    }
+#endif
+    initialized = false;
+}
+
 } // namespace common
