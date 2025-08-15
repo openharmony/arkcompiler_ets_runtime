@@ -1518,6 +1518,32 @@ host_unittest_action("Dynamic_Object_Accessor_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("Dynamic_Object_Accessor_Util_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "dynamic_object_accessor_util_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("JS_Object_Test") {
   module_out_path = module_output_path
 
@@ -3775,6 +3801,7 @@ group("host_unittest") {
     ":Sendable_JsSendableArrayBuffer_TestAction",
     ":Sendable_JsSharedArray_TestAction",
     ":Sendable_SharedObjectFactory_TestAction",
+    ":Dynamic_Object_Accessor_Util_TestAction",
   ]
 
   if (is_mac) {
