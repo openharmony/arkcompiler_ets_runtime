@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <chrono>
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
@@ -102,14 +103,11 @@ public:
         return heapProfile->GetIdCount();
     }
 
-    bool GenerateRawHeapSnashot(const std::string &filePath, DumpFormat dumpFormat = DumpFormat::BINARY,
-                                bool isSync = true, Progress *progress = nullptr,
-                                std::function<void(uint8_t)> callback = [] (uint8_t) {})
+    bool GenerateRawHeapSnashot(const std::string &filePath, DumpSnapShotOption &dumpOption,
+                                Progress *progress = nullptr, std::function<void(uint8_t)> callback = [] (uint8_t) {})
     {
         HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
-        DumpSnapShotOption dumpOption;
-        dumpOption.dumpFormat = dumpFormat;
-        dumpOption.isSync = isSync;
+        dumpOption.dumpFormat = DumpFormat::BINARY;
         dumpOption.isDumpOOM = true;
         dumpOption.isFullGC = false;
         fstream outputString(filePath, std::ios::out);
@@ -136,6 +134,42 @@ public:
             result.insert(it.first);
         }
         GTEST_LOG_(INFO) << "DecodeRawHeapObjectTable count " << translate.nodesMap_.size();
+        return true;
+    }
+
+    bool CheckHashInNodeId(JSThread *thread, const std::vector<Reference> &refs, const std::string &filePath)
+    {
+        uint64_t fileSize = rawheap_translate::FileReader::GetFileSize(filePath);
+        rawheap_translate::FileReader file;
+        rawheap_translate::RawHeapTranslateV1 translate(nullptr);
+        if (!file.Initialize(filePath) || !translate.Parse(file, fileSize)) {
+            return false;
+        }
+
+        int checkCnt = 0;
+        for (auto const &ref : refs) {
+            if (!ref.value_.IsJSObject()) {
+                continue;
+            }
+
+            auto it = translate.nodesMap_.find(ref.value_.GetRawData());
+            if (it == translate.nodesMap_.end()) {
+                std::cout << "CheckHashInNodeId, missed object in rawheap." << std::endl;
+                return false;
+            }
+
+            ++checkCnt;
+            // 32: 32-bits means a half of uint64_t
+            if (JSObject::Cast(ref.value_)->GetHash(thread) != static_cast<int32_t>(it->second->nodeId >> 32)) {
+                std::cout << "CheckHashInNodeId, hash value verification failed!" << std::endl;
+                return false;
+            }
+        }
+
+        if (checkCnt == 0) {
+            std::cout << "CheckHashInNodeId, no JSObject." << std::endl;
+            return false;
+        }
         return true;
     }
 
@@ -1541,7 +1575,8 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV0)
     CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
     std::string rawHeapPath("test_binary_dump_v0.rawheap");
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
 
     FILE* file = std::fopen(rawHeapPath.c_str(), "rb+");
     ASSERT_TRUE(file != nullptr);
@@ -1565,7 +1600,8 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1)
     CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
     std::string rawHeapPath("test_binary_dump_v1.rawheap");
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
 
     CSet<JSTaggedType> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawHeapPath, dumpObjects));
@@ -1586,7 +1622,8 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2)
 
     std::string rawHeapPath("test_binary_dump_v2.rawheap");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath));
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
 
     CSet<uint32_t> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawHeapPath, dumpObjects));
@@ -1613,8 +1650,33 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
             status = false;
         }
     };
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, DumpFormat::BINARY, false, nullptr, cb));
+    DumpSnapShotOption dumpOption;
+    dumpOption.isSync = false;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption, nullptr, cb));
     ASSERT_TRUE(status);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestGenerateMixedNodeId)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    for (auto ref : vec) {
+        if (ref.value_.IsJSObject()) {
+            int32_t hash = base::RandomGenerator::GenerateIdentityHash();
+            JSHandle<ECMAObject> ecmaObj(thread_, ref.value_);
+            ECMAObject::SetHash(thread_, hash, ecmaObj);
+        }
+    }
+
+    std::string rawHeapPath("test_binary_dump_for_mixed_node_id.rawheap");
+    DumpSnapShotOption dumpOption;
+    dumpOption.isSync = false;
+    dumpOption.isJSLeakWatcher = true;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.CheckHashInNodeId(thread_, vec, rawHeapPath));
 }
 #endif
 

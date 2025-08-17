@@ -87,6 +87,7 @@ private:
     uint32_t fileOffset_ {0};
     uint32_t preOffset_ {0};
     bool isOOM_ {false};
+    bool isJSLeakWatcher_ {false};
     std::chrono::time_point<std::chrono::steady_clock> startTime_;
 };
 
