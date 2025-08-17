@@ -113,7 +113,8 @@ void GCKeyStats::SendSysEvent() const
 #endif
 }
 
-void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory) const
+void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory,
+                                        const std::string &eventConfig) const
 {
 #ifdef ENABLE_HISYSEVENT
     int32_t ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::FRAMEWORK,
@@ -125,6 +126,7 @@ void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size
         "LIMITSIZE", limitSize,
         "ACTIVE_MEMORY", activeMemory,
         "TYPE", type,
+        "EVENT_CONFIG", eventConfig,
         "APP_RUNNING_UNIQUE_ID", &DFX_GetAppRunningUniqueId == nullptr ? "" : DFX_GetAppRunningUniqueId());
     if (ret != 0) {
         LOG_GC(ERROR) << "GCKeyStats SendSysEventBeforeDump Failed! ret = " << ret;

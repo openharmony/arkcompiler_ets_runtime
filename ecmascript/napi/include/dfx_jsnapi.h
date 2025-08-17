@@ -56,7 +56,8 @@ using JsFrameInfo = ecmascript::JsFrameInfo;
 using SamplingInfo = ecmascript::SamplingInfo;
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 using TraceEvent = ecmascript::TraceEvent;
-using AppFreezeFilterCallback = std::function<bool(const int32_t pid, const bool needDecreaseQuota)>;
+using AppFreezeFilterCallback =
+    std::function<bool(const int32_t pid, const bool needDecreaseQuota, std::string &eventConfig)>;
 using DumpSnapShotOption = ecmascript::DumpSnapShotOption;
 using DumpFormat = ecmascript::DumpFormat;
 using CropLevel = ecmascript::RawHeapDumpCropLevel;

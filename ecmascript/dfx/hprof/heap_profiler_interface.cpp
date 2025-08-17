@@ -48,7 +48,10 @@ void panda::ecmascript::HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *t
     }
 
     auto appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
-    if (appfreezeCallback != nullptr && !appfreezeCallback(getprocpid(), true)) {
+    std::string eventConfig;
+    bool shouldDump = appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig);
+    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", 0, 0, eventConfig);
+    if (!shouldDump) {
         LOG_ECMA(INFO) << "DumpHeapSnapshotForCMCOOM, no dump quota.";
         return;
     }
@@ -58,7 +61,6 @@ void panda::ecmascript::HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *t
     dumpOption.isFullGC = false;
     dumpOption.isDumpOOM = true;
 
-    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", 0, 0);
     vm->GetOrNewHeapProfile()->DumpHeapSnapshotForOOM(dumpOption);
 #endif
 }
