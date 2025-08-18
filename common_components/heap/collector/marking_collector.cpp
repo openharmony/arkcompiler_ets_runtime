@@ -605,6 +605,7 @@ void MarkingCollector::PreGarbageCollection(bool isConcurrent)
     gcStats.collectedBytes = 0;
     gcStats.smallGarbageSize = 0;
     gcStats.pinnedGarbageSize = 0;
+    gcStats.largeGarbageSize = 0;
     gcStats.gcStartTime = TimeUtil::NanoSeconds();
     gcStats.totalSTWTime = 0;
     gcStats.maxSTWTime = 0;
