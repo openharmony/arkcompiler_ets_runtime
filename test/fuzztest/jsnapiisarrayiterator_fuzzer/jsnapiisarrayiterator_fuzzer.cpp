@@ -30,7 +30,7 @@ void JSNApiIsArrayIterator_FuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local <StringRef>str = StringRef::NewFromUtf8(vm_, (const char *)data);
+    Local <StringRef>str = StringRef::NewFromUtf8(vm_, (const char *)data, (int)size);
     str->IsArrayIterator(vm_);
     JSNApi::DestroyJSVM(vm_);
 }
