@@ -49,6 +49,7 @@ group("ark_js_moduletest") {
     "callframe",
     "calltype",
     "changelistener",
+    "changelistener2",
     "class",
     "clampedarray",
     "compareobjecthclass",
