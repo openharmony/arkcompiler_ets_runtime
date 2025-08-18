@@ -203,3 +203,18 @@ print(Array.from(v1.keys()))
     print(JSON.stringify(res));
 }
 
+function test() {
+    var set = [];
+    var a = [];
+    var p = new Proxy(a, {
+        set: function (o, k, v) {
+            set.push(k);
+            o[k] = v;
+            return true;
+        }
+    });
+    Array.from.call(function () { return p; }, { length: 2, 0: 1, 1: 2 });
+    return set + "" === "length";
+}
+
+print(test());
