@@ -189,8 +189,10 @@ void AOTArgsParser::SetEnableCodeCommentBySysParam(HapArgs &hapArgs)
 
 bool AOTArgsParserBase::IsEnableStaticCompiler()
 {
-    return OHOS::system::GetBoolParameter("ark.aot.enable_static_compiler",
+    bool enable = OHOS::system::GetBoolParameter("ark.aot.enable_static_compiler",
         ARK_AOT_ENABLE_STATIC_COMPILER_DEFAULT_VALUE);
+    LOG_SA(INFO) << "enable static compiler switch is : " << enable;
+    return enable;
 }
 #endif
 
