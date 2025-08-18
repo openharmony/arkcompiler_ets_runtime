@@ -26,7 +26,6 @@ public:
     static RuntimeParam DefaultRuntimeParam();
     static size_t InitHeapSize();
     static void SetConfigHeapSize(RuntimeParam &param, size_t configHeapSize);
-    static void SetMaxGarbageCacheSize(RuntimeParam &param, uint64_t maxGarbageCacheSize);
 #ifdef PANDA_TARGET_32
     static constexpr size_t MAX_HEAP_POOL_SIZE = 1 * GB;
 #else
@@ -66,8 +65,7 @@ private:
     V(gcParam,      kMinConcurrentRemainingBytes,                                                           \
                                             size_t,     0,      INT64_MAX,  128 * KB        ) /*  byte */;  \
     V(gcParam,      kMaxConcurrentRemainingBytes,                                                           \
-                                            size_t,     0,      INT64_MAX,  512 * KB        ) /*  byte */;  \
-    V(gcParam,      maxGarbageCacheSize,    uint64_t,   0,      INT64_MAX,  16 * MB         ) /*  byte */;
+                                            size_t,     0,      INT64_MAX,  512 * KB        ) /*  byte */;
 #else  // PANDA_TARGET_OHOS
 #define RUNTIME_PARAM_LIST(V)                                                                               \
     /*  KEY         SUB_KEY                 TYPE        MIN     MAX         DEFAULT        */ /*  UNIT */   \

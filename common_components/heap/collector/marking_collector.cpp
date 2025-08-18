@@ -727,7 +727,7 @@ void MarkingCollector::CopyObject(const BaseObject& fromObj, BaseObject& toObj, 
 
 void MarkingCollector::ReclaimGarbageMemory(GCReason reason)
 {
-    if (reason != GC_REASON_YOUNG) {
+    if (reason == GC_REASON_OOM) {
         Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(true);
     } else {
         Heap::GetHeap().GetAllocator().ReclaimGarbageMemory(false);

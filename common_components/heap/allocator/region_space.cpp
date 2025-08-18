@@ -288,7 +288,6 @@ void RegionSpace::Init(const RuntimeParam& param)
     MemoryMap::Option opt = MemoryMap::DEFAULT_OPTIONS;
     opt.tag = "region_heap";
     size_t heapSize = param.heapParam.heapSize * KB;
-    maxGarbageCacheSize_ = param.gcParam.maxGarbageCacheSize;
 
 #ifndef PANDA_TARGET_32
     static constexpr uint64_t MAX_SUPPORT_CAPACITY = 4ULL * GB;

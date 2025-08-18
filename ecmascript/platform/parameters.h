@@ -26,7 +26,5 @@ namespace panda::ecmascript {
     size_t GetPoolSize(size_t defaultSize);
 
     bool IsEnableCMCGC(bool defaultValue);
-
-    uint64_t GetCMCMaxGarbageCacheSize(uint64_t defaultSize);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_PARAMETERS_H
