@@ -61,6 +61,7 @@ module_test_list = [
   "callframe",
   "calltype",
   "changelistener",
+  "changelistener2",
   "class",
   "clampedarray",
   "compareobjecthclass",
