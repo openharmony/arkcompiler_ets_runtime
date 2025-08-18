@@ -27,7 +27,7 @@ Local<JSValueRef> FuncRefConCallbackForTest(JsiRuntimeCallInfo *info)
     return scope.Escape(ArrayRef::New(info->GetVM(), info->GetArgsNumber()));
 }
 
-void FunctionRefIsNativeFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void FunctionRefIsNativeFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);

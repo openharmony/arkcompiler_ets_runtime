@@ -23,7 +23,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void JSNApiSetAssetPathFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSNApiSetAssetPathFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -75,7 +75,7 @@ void JSNApiSetMockModuleListFuzzTest(const uint8_t *data, size_t size)
     if (size <= 0) {
         return;
     }
-    std::map<std::string, std::string> str = { { (char *)data, "20" } };
+    std::map<std::string, std::string> str = { { std::string((char *)data, size), "20" } };
     JSNApi::SetMockModuleList(vm, str);
     JSNApi::DestroyJSVM(vm);
 }

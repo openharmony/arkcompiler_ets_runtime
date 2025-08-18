@@ -21,7 +21,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-void BufferRefNewFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void BufferRefNewFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -30,7 +30,8 @@ void BufferRefNewFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    BufferRef::New(vm, (int32_t)size);
+    NativePointerCallback deleter = nullptr;
+    BufferRef::New(vm, (void *)data, (int32_t)size, deleter, nullptr);
     JSNApi::DestroyJSVM(vm);
 }
 

@@ -22,7 +22,7 @@
 using namespace panda;
 using namespace panda::ecmascript;
 namespace OHOS {
-void JSNApiValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSNApiValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
@@ -32,8 +32,7 @@ void JSNApiValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
         return;
     }
     void *vps = static_cast<void *>(const_cast<uint8_t *>(data));
-    void *vps1 = static_cast<void *>(const_cast<uint8_t *>(data));
-    Local<NativePointerRef> res_vps = NativePointerRef::New(vm_, vps, NativeAreaAllocator::FreeBufferFunc, vps1, 0);
+    Local<NativePointerRef> res_vps = NativePointerRef::New(vm_, vps, nullptr, nullptr, 0);
     res_vps->Value();
     JSNApi::DestroyJSVM(vm_);
 }
