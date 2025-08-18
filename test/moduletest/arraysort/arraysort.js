@@ -846,3 +846,11 @@ print(sortNumber7[6]);
     print(arr.toSorted());
     print("---------------test for string array sort end-----------------------------")
 }
+
+{
+    let arr = [0, , 1];
+    arr.sort((v1, v2) => {
+        arr.shift();
+    });
+    print("test for array sort with shift Success!");
+}

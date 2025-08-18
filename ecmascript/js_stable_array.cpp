@@ -1745,7 +1745,7 @@ JSHandle<TaggedArray> JSStableArray::SortIndexedProperties(JSThread *thread, con
 }
 
 JSTaggedValue JSStableArray::CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
-                                                      JSHandle<TaggedArray> sortedList, uint32_t len)
+                                                      JSHandle<TaggedArray> sortedList)
 {
     // 6. Let itemCount be the number of elements in sortedList.
     uint32_t itemCount = sortedList->GetLength();
@@ -1774,7 +1774,7 @@ JSTaggedValue JSStableArray::CopySortedListToReceiver(JSThread *thread, const JS
     //       a. Perform ? DeletePropertyOrThrow(obj, ! ToString((j))).
     //       b. Set j to j + 1.
     valueHandle.Update(JSTaggedValue::Hole());
-    for (uint32_t j = itemCount; j < len; j++) {
+    for (uint32_t j = itemCount; j < newLength; j++) {
         ElementAccessor::Set(thread, thisObj, j, valueHandle, needTransition);
     }
     JSHandle<JSArray>::Cast(thisObj)->SetArrayLength(thread, newLength);
@@ -1800,7 +1800,7 @@ JSTaggedValue JSStableArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue
         thread, thisObjVal, len, callbackFnHandle, base::HolesType::SKIP_HOLES);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (thisObjVal->IsStableJSArray(thread)) {
-        CopySortedListToReceiver(thread, thisObjVal, sortedList, len);
+        CopySortedListToReceiver(thread, thisObjVal, sortedList);
     } else {
         JSArray::CopySortedListToReceiver(thread, thisObjVal, sortedList, len);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

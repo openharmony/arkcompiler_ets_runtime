@@ -114,7 +114,7 @@ public:
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
                               const JSHandle<JSTaggedValue> &callbackFnHandle);
     static JSTaggedValue CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
-                                                  JSHandle<TaggedArray> sortedList, uint32_t len);
+                                                  JSHandle<TaggedArray> sortedList);
     static JSTaggedValue Fill(JSThread *thread, const JSHandle<JSObject> &thisObj,
                               const JSHandle<JSTaggedValue> &value,
                               int64_t start, int64_t end);
