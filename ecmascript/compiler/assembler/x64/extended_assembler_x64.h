@@ -35,6 +35,7 @@ public:
     void PopAlignBytes();
     void PushCppCalleeSaveRegisters();
     void PopCppCalleeSaveRegisters();
+    void PopCppCalleeSaveNoReservedRegisters();
     void UpdateCalleeSaveRegisters();
     void PushGhcCalleeSaveRegisters();
     void PopGhcCalleeSaveRegisters();

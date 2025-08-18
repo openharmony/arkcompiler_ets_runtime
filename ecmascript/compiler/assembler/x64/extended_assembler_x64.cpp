@@ -52,6 +52,15 @@ void ExtendedAssembler::PopCppCalleeSaveRegisters()
     Popq(r12);
 }
 
+void ExtendedAssembler::PopCppCalleeSaveNoReservedRegisters()
+{
+    Popq(rbx);
+    PopAlignBytes();
+    Popq(r14);
+    Popq(r13);
+    Popq(r12);
+}
+
 void ExtendedAssembler::UpdateCalleeSaveRegisters()
 {
     Addq(8 * 5, rsp);  // 8: 8 bytes, 5: number of CalleeSaveRegisters

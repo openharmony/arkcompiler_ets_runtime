@@ -230,7 +230,11 @@ private:
     static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp,
                              Register acc = INVALID_REG, bool hasException = false);
 
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode, Register calleeSaveGlue);
+#else
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
+#endif
 
     static bool PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
         FrameType type, Register op, Register next);

@@ -52,6 +52,9 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     Label lJSCallWithArgVAndPushArgv;
     Label lPopFrame;
     PushJSFunctionEntryFrame(assembler, prevFpReg);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Movq(Operand(glueReg, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+#endif
     __ Movq(argv, rbx);
     __ Movq(needPushArgv, r12);
     __ Movq(Operand(rbx, 0), rdx);
@@ -277,7 +280,13 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler, Register
     AsmInterpreterCall::PushBuiltinFrame(assembler, glueReg, FrameType::BUILTIN_CALL_LEAVE_FRAME);
     __ Leaq(Operand(rbp, DOUBLE_SLOT_SIZE), rdi); // 2: skip rbp & return Addr
     __ PushAlignBytes();
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    Register calleeSaveGlue = r15; // move glue to a callee-save register
+    __ Movq(glueReg, calleeSaveGlue);
+    AsmInterpreterCall::CallNativeInternal(assembler, nativeCode, calleeSaveGlue);
+#else
     AsmInterpreterCall::CallNativeInternal(assembler, nativeCode);
+#endif
     __ Movq(Operand(rsp, DOUBLE_SLOT_SIZE), temp); // argc
     __ Movq(Immediate(0), Operand(rsp, DOUBLE_SLOT_SIZE)); // argv -> argc
     __ Movq(temp, Operand(rsp, FRAME_SLOT_SIZE)); // argc -> thread
@@ -1045,7 +1054,13 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Movq(Operand(rdx, FRAME_SLOT_SIZE), rsi);
     // 2: argv
     __ Addq(2 * FRAME_SLOT_SIZE, rdx);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Movq(rax, r15); // move glue to a callee-save register
+#endif
     __ Callq(r10);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Movq(Operand(r15, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+#endif
 
     // 8: skip rax
     __ Addq(FRAME_SLOT_SIZE, rsp);
@@ -1107,7 +1122,13 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
     __ Movq(argcReg, rsi); // argc
     __ Movq(argvReg, rdx); // argv
     __ Pushq(r8);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Movq(glueReg, r15); // move glue to a callee-save register
+#endif
     __ Callq(r9);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Movq(Operand(r15, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+#endif
     __ Popq(r8);
     __ Addq(FRAME_SLOT_SIZE, rsp); // 8: skip type
     __ Popq(rbp);

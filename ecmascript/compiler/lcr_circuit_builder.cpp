@@ -216,8 +216,12 @@ GateRef CircuitBuilder::LoadFromAddressWithoutBarrier(VariableType type, GateRef
 
 GateRef CircuitBuilder::NeedSkipReadBarrier(GateRef glue)
 {
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    GateRef gcStateBitField = ReadReserveRegister();
+#else
     GateRef gcStateBitField = LoadWithoutBarrier(VariableType::INT64(), glue,
         IntPtr(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+#endif
     GateRef readBarrierStateBit = Int64And(gcStateBitField, Int64(JSThread::READ_BARRIER_STATE_BITFIELD_MASK));
     GateRef ret = Int64Equal(readBarrierStateBit, Int64(0));
     return ret;

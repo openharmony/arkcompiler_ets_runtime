@@ -53,6 +53,20 @@ void ExtendedAssembler::CalleeRestore()
     Ldp(Register(X27), Register(X28), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
 }
 
+void ExtendedAssembler::CalleeRestoreNoReservedRegister()
+{
+    Register sp(SP);
+    Ldp(VectorRegister(v8), VectorRegister(v9), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(VectorRegister(v10), VectorRegister(v11), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(VectorRegister(v12), VectorRegister(v13), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(VectorRegister(v14), VectorRegister(v15), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X19), Register(X20), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X21), Register(X22), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X23), Register(X24), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X25), Register(X26), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+    Ldp(Register(X27), Register(Zero), MemoryOperand(sp, PAIR_SLOT_SIZE, POSTINDEX));
+}
+
 void ExtendedAssembler::CallAssemblerStub(int id, bool isTail)
 {
     Label *target = module_->GetFunctionLabel(id);

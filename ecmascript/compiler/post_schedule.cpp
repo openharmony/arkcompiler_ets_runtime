@@ -921,10 +921,14 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
 
     Label callRuntime(&builder_);
     Label noBarrier(&builder_);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    GateRef gcStateBitField = builder_.ReadReserveRegister();
+#else
     GateRef bitOffset = circuit_->GetConstantGateWithoutCache(
         MachineType::I64, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false), GateType::NJSValue());
     GateRef bitAddr = builder_.PtrAdd(glue, bitOffset);
     GateRef gcStateBitField = builder_.LoadFromAddressWithoutBarrier(VariableType::INT64(), bitAddr);
+#endif
     GateRef readBarrierStateMask = circuit_->GetConstantGateWithoutCache(
         MachineType::I64, JSThread::READ_BARRIER_STATE_BITFIELD_MASK, GateType::NJSValue());
     GateRef readBarrierStateBit = builder_.Int64And(gcStateBitField, readBarrierStateMask);
@@ -940,8 +944,10 @@ void PostSchedule::LoweringLoadWithBarrierAndPrepareScheduleGate(GateRef gate,
         PrepareToScheduleNewGate(readBarrierStateBit, currentBBGates);
         PrepareToScheduleNewGate(readBarrierStateMask, currentBBGates);
         PrepareToScheduleNewGate(gcStateBitField, currentBBGates);
+#ifndef ENABLE_CMC_IR_FIX_REGISTER
         PrepareToScheduleNewGate(bitAddr, currentBBGates);
         PrepareToScheduleNewGate(bitOffset, currentBBGates);
+#endif
         PrepareToScheduleNewGate(hole, currentBBGates);
     }
     builder_.Bind(&noBarrier);

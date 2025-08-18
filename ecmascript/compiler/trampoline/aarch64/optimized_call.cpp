@@ -77,7 +77,13 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Ldr(rtfunc, MemoryOperand(tmp, JSThread::GlueData::GetRTStubEntriesOffset(false)));
     __ Ldr(argC, MemoryOperand(fp, GetStackArgOffSetToFp(1)));  // 1: the second arg id
     __ Add(argV, fp, Immediate(GetStackArgOffSetToFp(2)));  // 2: the third arg id
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Mov(Register(X28), glue); // move glue to a callee-save register
+#endif
     __ Blr(rtfunc);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Ldr(Register(X28), MemoryOperand(Register(X28), JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+#endif
 
     // callee restore
     // 0 : 0 restore size
@@ -142,6 +148,9 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     Label lPopFrame;
 
     PushJSFunctionEntryFrame (assembler, prevFpReg);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Ldr(Register(X28), MemoryOperand(glueReg, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+#endif
     __ Mov(Register(X6), needPushArgv);
     __ Mov(tmpArgV, argV);
     __ Mov(Register(X20), glueReg);
@@ -328,8 +337,14 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler)
     __ Mov(Register(X29), temp); // rbp
     __ Mov(temp, Immediate(static_cast<int32_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME)));
     __ Stp(Register(Zero), temp, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX)); // frameType, argv
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Mov(Register(X28), glue); // move glue to a callee-save register
+#endif
     __ Add(Register(X0), sp, Immediate(QUADRUPLE_SLOT_SIZE));
     __ Blr(nativeFuncAddr);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Ldr(Register(X28), MemoryOperand(Register(X28), JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+#endif
 
     __ Mov(sp, Register(FP));
     __ Ldp(Register(X29), Register(X30), MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
@@ -1084,7 +1099,13 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
     __ Ldr(rtfunc, MemoryOperand(tmp, JSThread::GlueData::GetRTStubEntriesOffset(false)));
     __ Mov(X1, argc);
     __ Mov(X2, argv);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Mov(Register(X28), glue); // move glue to a callee-save register
+#endif
     __ Blr(rtfunc);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Ldr(Register(X28), MemoryOperand(Register(X28), JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+#endif
     __ Ldp(Register(Zero), Register(X29), MemoryOperand(sp, ExtendedAssembler::PAIR_SLOT_SIZE, POSTINDEX));
     __ Ldp(Register(X30), Register(Zero), MemoryOperand(sp, ExtendedAssembler::PAIR_SLOT_SIZE, POSTINDEX));
     __ Add(sp, sp, Immediate(2 * FRAME_SLOT_SIZE)); // 2 : 2 means pair

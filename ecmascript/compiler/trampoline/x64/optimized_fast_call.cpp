@@ -36,6 +36,9 @@ void OptimizedFastCall::OptimizedFastCallEntry(ExtendedAssembler *assembler)
     Register prevFpReg = rcx;
 
     OptimizedCall::PushJSFunctionEntryFrame(assembler, prevFpReg);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Movq(Operand(glueReg, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+#endif
     __ Movq(argv, r8);
     __ Movq(rsi, rcx);
     __ Movq(Operand(r8, 0), rsi); // func

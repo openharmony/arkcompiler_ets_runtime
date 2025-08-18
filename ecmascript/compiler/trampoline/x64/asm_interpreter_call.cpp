@@ -174,7 +174,13 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
         __ Movq(kungfu::RuntimeStubCSigns::ID_CallRuntime, trampolineIdRegister);
         __ Movq(Operand(rax, trampolineIdRegister, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)),
             trampolineRegister);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        __ Movq(glueRegister, r15); // move glue to a callee-save register
+#endif
         __ Callq(trampolineRegister);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        __ Movq(Operand(r15, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+#endif
         __ Addq(16, rsp);  // 16: skip argc and runtime_id
         __ Ret();
     }
@@ -287,6 +293,9 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
     Register fpRegister = __ AvailableRegister1();
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register argcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARG0);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Movq(Operand(glueRegister, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+#endif
     // save fp
     __ Movq(rsp, fpRegister);
     Register declaredNumArgsRegister = __ AvailableRegister2();
@@ -793,6 +802,9 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
         __ Movq(JSTaggedValue::Hole().GetRawData(), rsi);
     }
     __ Movq(Operand(r13, bcIndexRegister, Times8, JSThread::GlueData::GetBCStubEntriesOffset(false)), tempRegister);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    __ Movq(Operand(r13, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+#endif
     __ Jmp(tempRegister);
 }
 
@@ -871,6 +883,10 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Addl(NUM_MANDATORY_JSFUNC_ARGS, numArgs);
     __ Pushq(numArgs);
     // push thread
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    Register calleeSaveGlue = r15; // move glue to a callee-save register
+    __ Movq(glue, calleeSaveGlue);
+#endif
     __ Pushq(glue);
     // EcmaRuntimeCallInfo
     __ Movq(rsp, rdi);
@@ -880,7 +896,11 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ PushAlignBytes();
 
     __ Bind(&aligned);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    CallNativeInternal(assembler, nativeCode, calleeSaveGlue);
+#else
     CallNativeInternal(assembler, nativeCode);
+#endif
     __ Ret();
 
     __ Bind(&stackOverflow);
@@ -916,7 +936,13 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         __ Movq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException, trampolineIdRegister);
         __ Movq(Operand(glue, trampolineIdRegister, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)),
             trampolineRegister);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        __ Movq(glue, r15); // move glue to a callee-save register
+#endif
         __ Callq(trampolineRegister);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        __ Movq(Operand(r15, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+#endif
 
         // resume rsp
         __ Movq(rbp, rsp);
@@ -964,13 +990,21 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
     // 3: 24 means skip thread & argc & returnAddr
     __ Subq(3 * FRAME_SLOT_SIZE, rsp);
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_ENTRY_FRAME);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    Register calleeSaveGlue = r15; // move glue to a callee-save register
+    __ Movq(glue, calleeSaveGlue);
+#endif
     __ Movq(argv, r11);
     // 2: 16 means skip numArgs & thread
     __ Subq(2 * FRAME_SLOT_SIZE, r11);
     // EcmaRuntimeCallInfo
     __ Movq(r11, rdi);
 
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    CallNativeInternal(assembler, nativeCode, calleeSaveGlue);
+#else
     CallNativeInternal(assembler, nativeCode);
+#endif
 
     // 5: 40 means skip function
     __ Addq(5 * FRAME_SLOT_SIZE, rsp);
@@ -1129,9 +1163,17 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
 
     __ Movq(Operand(rsp, FRAME_SLOT_SIZE), glue); // 8: glue
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME);
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    Register calleeSaveGlue = r15; // move glue to a callee-save register
+    __ Movq(glue, calleeSaveGlue);
+#endif
     __ Leaq(Operand(rbp, 2 * FRAME_SLOT_SIZE), rdi); // 2: skip argc & thread
     __ PushAlignBytes();
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    CallNativeInternal(assembler, nativeCode, calleeSaveGlue);
+#else
     CallNativeInternal(assembler, nativeCode);
+#endif
     __ Ret();
 }
 
@@ -1154,6 +1196,16 @@ bool AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler,
     }
 }
 
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode, Register calleeSaveGlue)
+{
+    __ Callq(nativeCode);
+    __ Movq(Operand(calleeSaveGlue, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
+    // resume rsp
+    __ Movq(rbp, rsp);
+    __ Pop(rbp);
+}
+#else
 void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode)
 {
     __ Callq(nativeCode);
@@ -1161,6 +1213,7 @@ void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Regist
     __ Movq(rbp, rsp);
     __ Pop(rbp);
 }
+#endif
 
 // ResumeRspAndDispatch(uintptr_t glue, uintptr_t sp, uintptr_t pc, uintptr_t constantPool,
 //     uint64_t profileTypeInfo, uint64_t acc, uint32_t hotnessCounter, size_t jumpSize)

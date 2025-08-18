@@ -55,7 +55,11 @@ void CommonCall::GetArgvAtStack(ExtendedAssembler *assembler)
 void CommonCall::PopAsmInterpBridgeFrame(ExtendedAssembler *assembler)
 {
     if (!assembler->FromInterpreterHandler()) {
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        __ PopCppCalleeSaveNoReservedRegisters();
+#else
         __ PopCppCalleeSaveRegisters();
+#endif
     }
     __ PopAlignBytes();
     __ Addq(8, rsp);   // 8: skip pc
