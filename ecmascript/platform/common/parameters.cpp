@@ -30,9 +30,4 @@ namespace panda::ecmascript {
     {
         return defaultValue;
     }
-
-    uint64_t GetCMCMaxGarbageCacheSize(uint64_t defaultSize)
-    {
-        return defaultSize;
-    }
 }  // namespace panda::ecmascript
