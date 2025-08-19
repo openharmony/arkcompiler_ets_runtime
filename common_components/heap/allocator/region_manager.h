@@ -335,7 +335,7 @@ public:
     size_t GetUsedUnitCount() const
     {
         return largeRegionList_.GetUnitCount() + recentLargeRegionList_.GetUnitCount() +
-            pinnedRegionList_.GetUnitCount() + recentPinnedRegionList_.GetUnitCount() +
+            GetPinnedUnitCount() +
             rawPointerRegionList_.GetUnitCount() + readOnlyRegionList_.GetUnitCount() +
             appSpawnRegionList_.GetUnitCount();
     }
@@ -355,6 +355,17 @@ public:
         return largeRegionList_.GetAllocatedSize() + recentLargeRegionList_.GetAllocatedSize() +
             GetPinnedSpaceSize() + rawPointerRegionList_.GetAllocatedSize() +
             readOnlyRegionList_.GetAllocatedSize() + appSpawnRegionList_.GetAllocatedSize();
+    }
+
+    inline size_t GetPinnedUnitCount() const
+    {
+        size_t pinnedUnitCount =
+            pinnedRegionList_.GetUnitCount() + recentPinnedRegionList_.GetUnitCount();
+        for (size_t i = 0; i < FIXED_PINNED_REGION_COUNT; i++) {
+            pinnedUnitCount += recentFixedPinnedRegionList_[i]->GetUnitCount();
+            pinnedUnitCount += fixedPinnedRegionList_[i]->GetUnitCount();
+        }
+        return pinnedUnitCount;
     }
 
     inline size_t GetPinnedSpaceSize() const
