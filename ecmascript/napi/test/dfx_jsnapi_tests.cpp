@@ -466,6 +466,33 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyHighSensitive)
     EXPECT_TRUE(heap->GetSensitiveStatus() == AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
 }
 
+HWTEST_F_L0(DFXJSNApiTests, NotifyWarmStart)
+{
+    auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
+    if (!g_isEnableCMCGC) {
+        DFXJSNApi::NotifyWarmStart(vm_);
+        EXPECT_TRUE(heap->OnStartupEvent());
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        if (!heap->OnStartupEvent()) {
+            StartupStatus startupStatus = heap->GetStartupStatus();
+            EXPECT_TRUE(startupStatus == StartupStatus::JUST_FINISH_STARTUP);
+        }
+    } else {
+        DFXJSNApi::NotifyWarmStart(vm_);
+        EXPECT_TRUE(g_isEnableCMCGC);
+    }
+}
+
+HWTEST_F_L0(DFXJSNApiTests, NotifyWarmStartCMC)
+{
+    if (!g_isEnableCMCGC) {
+        g_isEnableCMCGC = true;
+        DFXJSNApi::NotifyWarmStart(vm_);
+        EXPECT_TRUE(g_isEnableCMCGC);
+        g_isEnableCMCGC = false;
+    }
+}
+
 HWTEST_F_L0(DFXJSNApiTests, GetGCCount)
 {
     vm_->GetJSOptions().SetIsWorker(true);

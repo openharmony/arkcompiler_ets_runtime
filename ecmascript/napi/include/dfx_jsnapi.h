@@ -115,7 +115,6 @@ public:
     static void NotifyFinishColdStart(EcmaVM *vm, [[maybe_unused]] bool isConvinced);
     static void NotifyHighSensitive(EcmaVM *vm, bool isStart);
     static void NotifyWarmStart(EcmaVM *vm);
-    static bool AllowWarmStartGcRestrain(EcmaVM *vm);
     static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
     static int32_t GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject);
     static int32_t GetObjectHashCode(const EcmaVM *vm, Local<JSValueRef> nativeObject);

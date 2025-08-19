@@ -544,4 +544,19 @@ HWTEST_F_L0(GCTest, IncrementMarkerTest004)
     heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
 }
 
+HWTEST_F_L0(GCTest, NotifyWarmStartFalse001)
+{
+    auto heap = const_cast<ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap->AllowWarmStartGcRestrain());
+    heap->TriggerConcurrentMarking();
+    EXPECT_FALSE(heap->AllowWarmStartGcRestrain());
+}
+
+HWTEST_F_L0(GCTest, NotifyWarmStartFalse002)
+{
+    auto heap = const_cast<ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap->AllowWarmStartGcRestrain());
+    heap->NotifyPostFork();
+    EXPECT_FALSE(heap->AllowWarmStartGcRestrain());
+}
 } // namespace panda::test

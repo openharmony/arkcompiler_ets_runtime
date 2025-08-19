@@ -2448,8 +2448,30 @@ void Heap::NotifyWarmStartup()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SmartGC: warm startup GC restrain start", "");
     // warm startup use the same GC restrain policy as cold startup
     LOG_GC(INFO) << "SmartGC: warm startup use the same GC restrain policy as cold startup";
-    NotifyPostFork();
-    NotifyFinishColdStartSoon();
+    if (g_isEnableCMCGC) {
+        common::BaseRuntime::NotifyWarmStart();
+        return;
+    }
+    if (AllowWarmStartGcRestrain()) {
+        NotifyPostFork();
+        NotifyFinishColdStartSoon();
+    }
+}
+
+bool Heap::AllowWarmStartGcRestrain()
+{
+    bool hasFinishedMark = ecmaVm_->GetJSThread()->IsConcurrentMarkingOrFinished();
+    if (hasFinishedMark) {
+        LOG_ECMA(WARN) << "SmartGC: app warm start gc, but gc mark is concurrent marking or finished, skip";
+        return false;
+    }
+    StartupStatus status = GetStartupStatus();
+    bool isGcRestraining = (status == StartupStatus::ON_STARTUP || status == StartupStatus::JUST_FINISH_STARTUP);
+    if (isGcRestraining) {
+        LOG_ECMA(WARN) << "SmartGC: app warm start gc, but it is already in GC restraining now, skip";
+        return false;
+    }
+    return true;
 }
 
 void Heap::NotifyHighSensitive(bool isStart)

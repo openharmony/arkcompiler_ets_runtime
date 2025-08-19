@@ -28,6 +28,8 @@ void StartupStatusManager::OnAppStartup()
     Taskpool *threadPool = common::Taskpool::GetCurrentTaskpool();
     threadPool->PostDelayedTask(
         std::make_unique<StartupTask>(0, threadPool, STARTUP_DURATION_MS), STARTUP_DURATION_MS);
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL,
+        "SmartGC: app startup just finished, CMC FinishGCRestrainTask create", "");
 }
 
 void HeuristicGCPolicy::Init()

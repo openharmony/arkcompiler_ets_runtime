@@ -157,12 +157,21 @@ void BaseRuntime::PreFork(ThreadHolder *holder)
     }
 }
 
-void BaseRuntime::PostFork()
+void BaseRuntime::PostFork([[maybe_unused]] bool enableWarmStartup)
 {
     HeapManager::StartRuntimeThreads();
 #ifdef ENABLE_COLD_STARTUP_GC_POLICY
-    StartupStatusManager::OnAppStartup();
+    if (!enableWarmStartup) {
+        StartupStatusManager::OnAppStartup();
+    }
 #endif
+}
+
+void BaseRuntime::NotifyWarmStart()
+{
+    if (!Heap::GetHeap().IsGcStarted() && !Heap::GetHeap().OnStartupEvent()) {
+        StartupStatusManager::OnAppStartup();
+    }
 }
 
 void BaseRuntime::WriteRoot(void *obj)

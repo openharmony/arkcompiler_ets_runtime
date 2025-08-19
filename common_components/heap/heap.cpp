@@ -99,7 +99,7 @@ public:
     void SetGCPhase(const GCPhase phase) override;
     Collector& GetCollector() override;
     Allocator& GetAllocator() override;
-
+    HeuristicGCPolicy& GetHeuristicGCPolicy() override;
     size_t GetMaxCapacity() const override;
     size_t GetCurrentCapacity() const override;
     size_t GetUsedPageSize() const override;
@@ -133,6 +133,7 @@ public:
     void SetRecordHeapObjectSizeBeforeSensitive(size_t objSize) override;
     AppSensitiveStatus GetSensitiveStatus() override;
     StartupStatus GetStartupStatus() override;
+    bool OnStartupEvent() const override;
 
 private:
     // allocator is actually a subspace in heap
@@ -217,6 +218,11 @@ void HeapImpl::StopRuntimeThreads()
     collectorResources_.StopRuntimeThreads();
 }
 
+HeuristicGCPolicy& HeapImpl::GetHeuristicGCPolicy()
+{
+    return heuristicGCPolicy_;
+}
+
 void HeapImpl::TryHeuristicGC()
 {
     heuristicGCPolicy_.TryHeuristicGC();
@@ -293,6 +299,11 @@ AppSensitiveStatus HeapImpl::GetSensitiveStatus()
 StartupStatus HeapImpl::GetStartupStatus()
 {
     return heuristicGCPolicy_.GetStartupStatus();
+}
+
+bool HeapImpl::OnStartupEvent() const
+{
+    return heuristicGCPolicy_.OnStartupEvent();
 }
 
 Collector& HeapImpl::GetCollector() { return collectorProxy_.GetCurrentCollector(); }

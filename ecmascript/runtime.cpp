@@ -552,10 +552,10 @@ void Runtime::PreFork(JSThread *thread)
     }
 }
 
-void Runtime::PostFork()
+void Runtime::PostFork(bool enableWarmStartup)
 {
     if (g_isEnableCMCGC) {
-        baseInstance_->PostFork();
+        baseInstance_->PostFork(enableWarmStartup);
     }
 }
 }  // namespace panda::ecmascript

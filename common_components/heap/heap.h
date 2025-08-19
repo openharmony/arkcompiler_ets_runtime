@@ -34,7 +34,10 @@ class Allocator;
 class AllocationBuffer;
 class FinalizerProcessor;
 class CollectorResources;
+class HeuristicGCPolicy;
 using MemoryReduceDegree = common::MemoryReduceDegree;
+using AppSensitiveStatus = common::AppSensitiveStatus;
+using StartupStatus = common::StartupStatus;
 
 class Heap {
 public:
@@ -93,6 +96,7 @@ public:
 
     virtual Collector& GetCollector() = 0;
     virtual Allocator& GetAllocator() = 0;
+    virtual HeuristicGCPolicy& GetHeuristicGCPolicy() = 0;
     virtual void TryHeuristicGC() = 0;
     virtual void TryIdleGC() = 0;
     virtual void NotifyNativeAllocation(size_t bytes) = 0;
@@ -108,6 +112,7 @@ public:
     virtual void SetRecordHeapObjectSizeBeforeSensitive(size_t objSize) = 0;
     virtual AppSensitiveStatus GetSensitiveStatus() = 0;
     virtual StartupStatus GetStartupStatus() = 0;
+    virtual bool OnStartupEvent() const = 0;
     /* to avoid misunderstanding, variant types of heap size are defined as followed:
      * |------------------------------ max capacity ---------------------------------|
      * |------------------------------ current capacity ------------------------|
