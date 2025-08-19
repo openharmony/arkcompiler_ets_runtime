@@ -1062,6 +1062,7 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         JSHandle<NameDictionary> dictHandle(array);
         JSHandle<NameDictionary> newDict =
             NameDictionary::PutIfAbsent(thread, dictHandle, keyHandle, valueHandle, attr);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, attr);
         objHandle->SetProperties(thread, newDict);
     }
     return attr;

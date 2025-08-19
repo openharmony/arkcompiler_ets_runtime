@@ -497,6 +497,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(static_cast<int32_t>(index)));
         JSHandle<NumberDictionary> newDict =
             NumberDictionary::Put(thread, JSHandle<NumberDictionary>(thread, elements), keyHandle, value, attr);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         receiver->SetElements(thread, newDict);
         return true;
     }
