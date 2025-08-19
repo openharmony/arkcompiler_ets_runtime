@@ -1705,4 +1705,17 @@ assert_equal(typedArrEleAssertLengthRes,typedArrEleAssertLengthEqual);
     assert_equal(v4, -Infinity);
 }
 
+const v6 = new Int32Array();
+class C3 extends Uint8ClampedArray {
+    constructor(a5, a6, a7) {
+        super(v6);
+        v6.sort(a6);
+    }
+}
+try {
+    new C3();
+} catch (error) {
+    assert_unreachable();
+}
+
 test_end();
