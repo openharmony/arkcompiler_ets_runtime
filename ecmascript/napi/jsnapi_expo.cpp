@@ -5939,6 +5939,8 @@ Local<JSValueRef> JSNApi::CreateContext(const EcmaVM *vm)
     thread->SetMultiContextTriggered(true);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
+    auto notificationMgr = vm->GetJsDebuggerManager()->GetNotificationManager();
+    notificationMgr->SetDebuggerAccessorEvent(globalEnv);
     return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(globalEnv));
 }
 
