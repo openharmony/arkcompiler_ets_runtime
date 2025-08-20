@@ -212,12 +212,6 @@ MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFie
     return visitor;
 }
 
-void ArkCollector::MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data)
-{
-    data->SetMarkingRefFieldArgs(obj);
-    obj->ForEachRefField(data->GetRefFieldVisitor());
-}
-
 void ArkCollector::FixRefField(BaseObject* obj, RefField<>& field) const
 {
     RefField<> oldField(field);

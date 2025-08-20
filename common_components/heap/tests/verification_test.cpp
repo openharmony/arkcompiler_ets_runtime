@@ -25,6 +25,12 @@ class TestBaseObjectOperator : public common::BaseObjectOperatorInterfaces {
 public:
     bool IsValidObject([[maybe_unused]] const BaseObject *object) const override { return enbaleValidObject_; }
     void ForEachRefField(const BaseObject *object, const common::RefFieldVisitor &visitor) const override {}
+    size_t ForEachRefFieldAndGetSize(
+        const BaseObject *object,
+        const common::RefFieldVisitor &visitor) const override
+    {
+        return 0;
+    }
     size_t GetSize(const BaseObject *object) const override{ return size_; }
     BaseObject *GetForwardingPointer(const BaseObject *object) const override { return nullptr; }
     void SetForwardingPointerAfterExclusive(BaseObject *object, BaseObject *fwdPtr) override {}

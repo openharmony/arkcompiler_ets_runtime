@@ -21,6 +21,9 @@
 #include "common_components/heap/heap_manager.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/mutator/mutator_manager-inl.h"
+#include "objects/base_object.h"
+#include "gtest/gtest.h"
+#include <cstddef>
 
 using namespace common;
 
@@ -202,6 +205,30 @@ private:
     BaseStateWord stateWord_;
 };
 
+class TestBaseObjectOperator : public common::BaseObjectOperatorInterfaces {
+public:
+    bool IsValidObject([[maybe_unused]] const BaseObject *object) const override { return true; }
+    void ForEachRefField(const BaseObject *object, const common::RefFieldVisitor &visitor) const override {}
+    size_t GetSize(const BaseObject *object) const override{ return size_; }
+    size_t ForEachRefFieldAndGetSize(
+        const BaseObject *object,
+        const common::RefFieldVisitor &visitor) const override
+    {
+        return 0;
+    }
+    BaseObject *GetForwardingPointer(const BaseObject *object) const override
+    {
+        return fwdPtr_;
+    }
+    void SetForwardingPointerAfterExclusive(BaseObject *object, BaseObject *fwdPtr) override
+    {
+        fwdPtr_ = fwdPtr;
+    }
+    void SetSize(size_t size) { size_ = size; }
+private:
+    size_t size_ = 0;
+    BaseObject *fwdPtr_ = nullptr;
+};
 HWTEST_F_L0(ArkCollectorTest, ForwardObject_WithUnmovedObject_ReturnsSameAddress)
 {
     std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
@@ -334,8 +361,10 @@ public:
     void AddRawPointerObject(BaseObject*) override {}
     void RemoveRawPointerObject(BaseObject*) override {}
     bool MarkObject(BaseObject* obj) const override { return false; }
-    void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) override {}
-    BaseObject* CopyObjectAfterExclusive(BaseObject* obj) override { return nullptr; }
+    BaseObject *CopyObjectAfterExclusive(BaseObject *obj) override
+    {
+        return nullptr;
+    }
     void DoGarbageCollection() override {}
     bool IsCurrentPointer(RefField<>&) const override { return false; }
     MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
@@ -388,11 +417,108 @@ HWTEST_F_L0(ArkCollectorTest, FixRefField_TEST2)
     EXPECT_FALSE(Heap::IsHeapAddress(obj));
 }
 
+HWTEST_F_L0(ArkCollectorTest, FixRefField_RefNotInFrom)
+{
+    // refRegion Not In IsFrom Branch
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
+    HeapAddress addr = HeapManager::Allocate(8, AllocType::MOVEABLE_OBJECT);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RegionDesc *refRegion =  RegionDesc::GetRegionDescAt(
+    reinterpret_cast<uintptr_t>(obj));
+    refRegion->SetRegionType(RegionDesc::RegionType::TO_REGION);
+    RefField<> field(obj);
+    arkCollector->FixRefField(obj, field);
+    // Because it is in TO_REGION, it will not be moved, so the results are consistent
+    EXPECT_EQ((uint64_t)field.GetFieldValue(), (uint64_t)obj);
+}
+
+HWTEST_F_L0(ArkCollectorTest, FixRefField_RefInFrom)
+{
+    // refRegion In IsFrom Branch
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
+    TestBaseObjectOperator operatorImpl;
+    BaseObject::RegisterDynamic(&operatorImpl);
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject) * 3, AllocType::MOVEABLE_OBJECT);
+    HeapAddress fwdAddr = HeapManager::Allocate(sizeof(BaseObject) * 3, AllocType::MOVEABLE_OBJECT);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    BaseObject* fwdObj = reinterpret_cast<BaseObject*>(fwdAddr);
+    RegionDesc *refRegion =  RegionDesc::GetRegionDescAt(
+    reinterpret_cast<uintptr_t>(obj));
+    refRegion->SetRegionType(RegionDesc::RegionType::FROM_REGION);
+    obj->SetForwardState(BaseStateWord::ForwardState::FORWARDING);
+    obj->SetForwardingPointerAfterExclusive(fwdObj);
+    RefField<> field(obj);
+    arkCollector->FixRefField(obj, field);
+    // Because it is in FromSpace, it will be forwarded to a new pointer
+    EXPECT_EQ((uint64_t)field.GetFieldValue(), (uint64_t)fwdObj);
+}
+
+HWTEST_F_L0(ArkCollectorTest, FixRefField_RefInRecent1)
+{
+    // refRegion InRecent
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
+    HeapAddress addr = HeapManager::Allocate(8, AllocType::MOVEABLE_OBJECT);
+    BaseObject* ref = reinterpret_cast<BaseObject*>(addr);
+    RegionDesc *refRegion =  RegionDesc::GetRegionDescAt(
+    reinterpret_cast<uintptr_t>(ref));
+    refRegion->SetRegionType(RegionDesc::RegionType::RECENT_FULL_REGION);
+    RefField<> field(ref);
+
+    //  && objRegion InRecent
+    HeapAddress addr2 = HeapManager::Allocate(8, AllocType::MOVEABLE_OLD_OBJECT);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr2);
+    RegionDesc *objRegion =  RegionDesc::GetRegionDescAt(
+    reinterpret_cast<uintptr_t>(obj));
+    objRegion->SetRegionType(RegionDesc::RegionType::RECENT_FULL_REGION);
+    objRegion->ClearRSet();
+    arkCollector->FixRefField(obj, field);
+    // refRegion in RecentSpace will not be forwarded (fwd),
+    // because it belongs to the Recent generation
+    // so the Remembered Set (Rset) will not be updated, resulting in false
+    EXPECT_EQ((uint64_t)field.GetFieldValue(), (uint64_t)ref);
+    EXPECT_EQ(objRegion->MarkRSetCardTable(obj), false);
+}
+
+HWTEST_F_L0(ArkCollectorTest, FixRefField_RefInRecent2)
+{
+    // refRegion InRecent
+    std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
+    ASSERT_TRUE(arkCollector != nullptr);
+    HeapAddress addr = HeapManager::Allocate(8, AllocType::MOVEABLE_OBJECT);
+    BaseObject* ref = reinterpret_cast<BaseObject*>(addr);
+    RegionDesc *refRegion =  RegionDesc::GetRegionDescAt(
+    reinterpret_cast<uintptr_t>(ref));
+    refRegion->SetRegionType(RegionDesc::RegionType::RECENT_FULL_REGION);
+    RefField<> field(ref);
+
+    //  && !objRegion InRecent
+    HeapAddress addr2 = HeapManager::Allocate(8, AllocType::MOVEABLE_OLD_OBJECT);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr2);
+    RegionDesc *objRegion =  RegionDesc::GetRegionDescAt(
+    reinterpret_cast<uintptr_t>(obj));
+    objRegion->SetRegionType(RegionDesc::RegionType::TO_REGION);
+    // && !objRegion->MarkRSetCardTable(obj)
+    objRegion->ClearRSet();
+    arkCollector->FixRefField(obj, field);
+    EXPECT_EQ((uint64_t)field.GetFieldValue(), (uint64_t)ref);
+    EXPECT_EQ(objRegion->MarkRSetCardTable(obj), true);
+}
+
 class TestStaticObject : public BaseObjectOperatorInterfaces {
 public:
     size_t GetSize(const BaseObject *object) const override { return 0; }
     bool IsValidObject(const BaseObject *object) const override { return false; }
     void ForEachRefField(const BaseObject *object, const RefFieldVisitor &visitor) const override {}
+    size_t ForEachRefFieldAndGetSize(
+        const BaseObject *object,
+        const common::RefFieldVisitor &visitor) const override
+    {
+        return 0;
+    }
     void SetForwardingPointerAfterExclusive(BaseObject *object, BaseObject *fwdPtr) override {}
     BaseObject *GetForwardingPointer(const BaseObject *object) const override
     {
