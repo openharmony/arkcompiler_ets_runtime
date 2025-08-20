@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/common_components/tests/test_helper.gni")
 
-module_output_path = "common_component"
+module_output_path = "ets_runtime"
 
 host_unittest_action("Mutator_Manager_Test") {
   module_out_path = module_output_path

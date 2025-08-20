@@ -3718,4 +3718,219 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_fuzz_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="Allocator_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Barrier_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Base_Runtime_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Base_String_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Collector_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Finalizer_Processor_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="C_String_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Collector_Proxy_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="From_Space_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Mutator_Manager_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Mutator_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Region_Manager_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Satb_Buffer_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Thread_Holder_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Marking_Collector_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Copy_Barrier_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Enum_Barrier_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Idle_Barrier_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Post_Marking_Barrier_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Preforward_Barrier_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Remark_Barrier_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Marking_Barrier_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Ark_Collector_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Page_Cache_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Treap_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Gc_Request_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Task_Queue_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Log_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Map_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Runner_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Taskpool_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Thread_Local_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Composite_Base_Class_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Verification_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Heap_Manager_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Base_String_Table_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Mem_Utils_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Utf_Helper_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Heuristic_Gc_Policy_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Heap_Allocator_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Region_Space_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Taskpool_Task_Queue_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="Serialize_Utils_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
 </configuration>
