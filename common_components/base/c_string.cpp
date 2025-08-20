@@ -408,6 +408,9 @@ bool CString::IsNumber(const CString& s)
     size_t i = 0;
     char it = s.Str()[i];
     if (it == '-') {
+        if (s.Length() == 1) {
+            return false;
+        }
         i++;
     }
     for (; i < s.Length(); ++i) {
@@ -558,6 +561,9 @@ void CString::Replace(size_t pos, CString cStr)
 
 void CString::ReplaceAll(CString replacement, CString target)
 {
+    if (replacement.Length() == 0 || target.Length() == 0) {
+        return;
+    }
     int index = -1;
     int ret = Find(target.Str());
     while (ret != -1) {
