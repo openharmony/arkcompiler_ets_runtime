@@ -43,9 +43,9 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
     std::string patchFileName;
     uint8_t *patchBuffer = nullptr;
     size_t patchSize = 0;
-    CString baseFileName = baseFile->GetJSPandaFileDesc();
+    const CString &baseFileName = baseFile->GetJSPandaFileDesc();
     if (checkedFiles_.find(baseFileName) != checkedFiles_.end()) {
-        LOG_ECMA(DEBUG) << "Do not need check " << baseFileName << " has patch again";
+        LOG_ECMA(DEBUG) << "Skipping patch check for" << baseFileName << ", already checked";
         return;
     }
     checkedFiles_.insert(baseFileName);
@@ -74,7 +74,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
         return;
     }
     thread->GetEcmaVM()->SetStageOfColdReload(StageOfColdReload::IS_COLD_RELOAD);
-    methodInfos_.emplace(baseFileName, patchInfo);
+    methodInfos_.emplace(baseFileName, std::move(patchInfo));
 }
 
 PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &patchFileName,
@@ -197,7 +197,7 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
         return JSTaggedValue::Hole();
     }
 
-    PatchInfo patchInfo = iter->second;
+    PatchInfo &patchInfo = iter->second;
     MethodLiteral *patchMethodLiteral = PatchLoader::FindSameMethod(patchInfo, baseFile, baseMethodId, baseClassInfo_);
     if (patchMethodLiteral == nullptr) {
         return JSTaggedValue::Hole();
@@ -208,13 +208,12 @@ JSTaggedValue QuickFixManager::CheckAndGetPatch(JSThread *thread, const JSPandaF
     }
 
     // Generate patch constpool.
-    CString patchFileName = patchInfo.patchFileName;
+    const CString &patchFileName = patchInfo.patchFileName;
     std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(patchFileName);
     ASSERT(patchFile != nullptr);
 
     EcmaVM *vm = thread->GetEcmaVM();
-    JSHandle<Method> method;
-    method = vm->GetFactory()->NewSMethod(patchMethodLiteral);
+    JSHandle<Method> method = vm->GetFactory()->NewSMethod(patchMethodLiteral);
     JSHandle<ConstantPool> newConstpool = vm->FindOrCreateConstPool(
         patchFile.get(), patchMethodLiteral->GetMethodId());
     method->SetConstantPool(thread, newConstpool);
