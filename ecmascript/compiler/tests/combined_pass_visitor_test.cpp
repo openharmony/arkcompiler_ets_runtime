@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/early_elimination.h"
@@ -67,7 +68,7 @@ HWTEST_F_L0(CombinedPassVisitorTests, TSLoweringTestFramework)
     Chunk chunk(&allocator);
     CombinedPassVisitor visitor(&circuit, false, "combined pass visitor test", &chunk);
     DeadCodeElimination deadCodeElimination(&circuit, &visitor, &chunk);
-    EarlyElimination earlyElimination(&circuit, &visitor, &chunk, true);
+    EarlyElimination earlyElimination(&circuit, &visitor, &chunk, true, true);
     visitor.AddPass(&deadCodeElimination);
     visitor.AddPass(&earlyElimination);
     visitor.VisitGraph();
