@@ -36,6 +36,10 @@ ohos_executable("rawheap_translator") {
     "cJSON:cjson_static",
   ]
 
+  if (is_linux) {
+    remove_configs = [ "//build/config:executable_config" ]
+  }
+
   install_enable = true
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
