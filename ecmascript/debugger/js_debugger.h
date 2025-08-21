@@ -199,7 +199,7 @@ public:
         }
     }
 
-    void SetDebuggerAccessor(JSHandle<GlobalEnv> &globalEnv) override
+    void SetDebuggerAccessor(const JSHandle<GlobalEnv> &globalEnv) override
     {
         if (hooks_ == nullptr) {
             return;

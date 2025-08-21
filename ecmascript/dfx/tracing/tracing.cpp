@@ -315,7 +315,7 @@ void Tracing::MethodExit([[maybe_unused]] JSHandle<Method> method)
     return;
 }
 
-void Tracing::SetDebuggerAccessor([[maybe_unused]] JSHandle<GlobalEnv> &globalEnv)
+void Tracing::SetDebuggerAccessor([[maybe_unused]] const JSHandle<GlobalEnv> &globalEnv)
 {
     return;
 }

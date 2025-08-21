@@ -104,7 +104,7 @@ public:
 
     virtual void GenerateAsyncFrames(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) = 0;
 
-    virtual void SetDebuggerAccessor(JSHandle<GlobalEnv> &globalEnv) = 0;
+    virtual void SetDebuggerAccessor(const JSHandle<GlobalEnv> &globalEnv) = 0;
 
     /**
     * \brief called by the ecmavm when symbolic breakpoint hits. Thread where symbolic breakpoint hits is stopped until
