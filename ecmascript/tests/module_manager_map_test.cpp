@@ -47,7 +47,7 @@ HWTEST_F_L0(ModuleManagerMapTest, GCRoot)
 
     // Test regular and move constructor
     {
-        JSTaggedValue value(42);
+        JSTaggedValue value(static_cast<JSTaggedType>(42));
         GCRoot root1(value);
 
         GCRoot root2(std::move(root1));
@@ -56,9 +56,9 @@ HWTEST_F_L0(ModuleManagerMapTest, GCRoot)
 
     // Test move assignment
     {
-        JSTaggedValue value1(42);
+        JSTaggedValue value1(static_cast<JSTaggedType>(42));
 
-        JSTaggedValue value2(84);
+        JSTaggedValue value2(static_cast<JSTaggedType>(84));
 
         GCRoot root1(value1);
         GCRoot root2(value2);
@@ -69,7 +69,7 @@ HWTEST_F_L0(ModuleManagerMapTest, GCRoot)
 
     // Test read barrier
     {
-        JSTaggedValue value(42);
+        JSTaggedValue value(static_cast<JSTaggedType>(42));
         GCRoot root(value);
 
         JSTaggedValue read_value = root.Read();
@@ -78,9 +78,9 @@ HWTEST_F_L0(ModuleManagerMapTest, GCRoot)
 
     // Test Hash er
     {
-        JSTaggedValue value1(42);
-        JSTaggedValue value2(42);
-        JSTaggedValue value3(84);
+        JSTaggedValue value1(static_cast<JSTaggedType>(42));
+        JSTaggedValue value2(static_cast<JSTaggedType>(42));
+        JSTaggedValue value3(static_cast<JSTaggedType>(84));
 
         GCRoot root1(value1);
         GCRoot root2(value2);
@@ -101,7 +101,7 @@ HWTEST_F_L0(ModuleManagerMapTest, GCRoot)
 
 HWTEST_F_L0(ModuleManagerMapTest, InsertAndFind)
 {
-    JSTaggedValue value(42);
+    JSTaggedValue value(static_cast<JSTaggedType>(42));
 
     map.Insert(1, value);
 
@@ -112,7 +112,7 @@ HWTEST_F_L0(ModuleManagerMapTest, InsertAndFind)
 
 HWTEST_F_L0(ModuleManagerMapTest, EmplaceAndFind)
 {
-    JSTaggedValue value(42);
+    JSTaggedValue value(static_cast<JSTaggedType>(42));
 
     map.Emplace(1, value);
 
@@ -123,8 +123,8 @@ HWTEST_F_L0(ModuleManagerMapTest, EmplaceAndFind)
 
 HWTEST_F_L0(ModuleManagerMapTest, EmplaceDoesNotOverwrite)
 {
-    JSTaggedValue value1(42);
-    JSTaggedValue value2(84);
+    JSTaggedValue value1(static_cast<JSTaggedType>(42));
+    JSTaggedValue value2(static_cast<JSTaggedType>(84));
 
     map.Insert(1, value1);
     map.Emplace(1, value2);  // Should not overwrite
@@ -136,8 +136,8 @@ HWTEST_F_L0(ModuleManagerMapTest, EmplaceDoesNotOverwrite)
 
 HWTEST_F_L0(ModuleManagerMapTest, InsertOverwrites)
 {
-    JSTaggedValue value1(42);
-    JSTaggedValue value2(84);
+    JSTaggedValue value1(static_cast<JSTaggedType>(42));
+    JSTaggedValue value2(static_cast<JSTaggedType>(84));
 
     map.Insert(1, value1);
     map.Insert(1, value2);  // Should overwrite
@@ -155,8 +155,8 @@ HWTEST_F_L0(ModuleManagerMapTest, FindNonExistent)
 
 HWTEST_F_L0(ModuleManagerMapTest, ForEach)
 {
-    JSTaggedValue value1(42);
-    JSTaggedValue value2(84);
+    JSTaggedValue value1(static_cast<JSTaggedType>(42));
+    JSTaggedValue value2(static_cast<JSTaggedType>(84));
 
     map.Insert(1, value1);
     map.Insert(2, value2);
@@ -177,7 +177,7 @@ HWTEST_F_L0(ModuleManagerMapTest, ForEach)
 
 HWTEST_F_L0(ModuleManagerMapTest, Erase)
 {
-    JSTaggedValue value(42);
+    JSTaggedValue value(static_cast<JSTaggedType>(42));
 
     map.Insert(1, value);
     ASSERT_TRUE(map.Find(1).has_value());
@@ -191,10 +191,10 @@ HWTEST_F_L0(ModuleManagerMapTest, Size)
 {
     ASSERT_EQ(map.Size(), 0U);
 
-    map.Insert(1, JSTaggedValue(42));
+    map.Insert(1, JSTaggedValue(static_cast<JSTaggedType>(42)));
     ASSERT_EQ(map.Size(), 1U);
 
-    map.Insert(2, JSTaggedValue(84));
+    map.Insert(2, JSTaggedValue(static_cast<JSTaggedType>(84)));
     ASSERT_EQ(map.Size(), 2U);
 
     map.Erase(1);
@@ -203,8 +203,8 @@ HWTEST_F_L0(ModuleManagerMapTest, Size)
 
 HWTEST_F_L0(ModuleManagerMapTest, Clear)
 {
-    map.Insert(1, JSTaggedValue(42));
-    map.Insert(2, JSTaggedValue(84));
+    map.Insert(1, JSTaggedValue(static_cast<JSTaggedType>(42)));
+    map.Insert(2, JSTaggedValue(static_cast<JSTaggedType>(84)));
 
     ASSERT_EQ(map.Size(), 2U);
 
@@ -218,7 +218,7 @@ HWTEST_F_L0(ModuleManagerMapTest, Clear)
 HWTEST_F_L0(ModuleManagerMapTest, TemplateKeyType)
 {
     ModuleManagerMap<std::string> string_map;
-    JSTaggedValue value(42);
+    JSTaggedValue value(static_cast<JSTaggedType>(42));
 
     string_map.Insert("test_key", value);
 
