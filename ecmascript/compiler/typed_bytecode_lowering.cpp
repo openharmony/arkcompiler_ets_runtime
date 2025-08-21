@@ -2809,7 +2809,7 @@ void TypedBytecodeLowering::LowerInstanceOf(GateRef gate)
     builder_.ProtoChangeMarkerCheck(target);
 
     result = builder_.OrdinaryHasInstance(obj, target);
-    acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), *result);
+    ReplaceGateWithPendingException(glue_, gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
