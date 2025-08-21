@@ -384,11 +384,11 @@ public:
         OLD_REGION,
         THREAD_LOCAL_OLD_REGION,
 
-        // pinned object will not be forwarded by concurrent copying gc.
-        FULL_PINNED_REGION,
-        RECENT_PINNED_REGION,
-        FIXED_PINNED_REGION,
-        FULL_FIXED_PINNED_REGION,
+        // non movable object will not be forwarded by concurrent copying gc.
+        RECENT_POLYSIZE_NONMOVABLE_REGION,
+        FULL_POLYSIZE_NONMOVABLE_REGION,
+        MONOSIZE_NONMOVABLE_REGION,
+        FULL_MONOSIZE_NONMOVABLE_REGION,
 
         // region for raw-pointer objects which are exposed to runtime thus can not be moved by any gc.
         // raw-pointer region becomes pinned region when none of its member objects are used as raw pointer.
@@ -576,7 +576,6 @@ public:
     const char* GetTypeName() const;
 #endif
 
-    void VisitAllObjectsWithFixedSize(size_t cellCount, const std::function<void(BaseObject*)>&& func);
     void VisitAllObjects(const std::function<void(BaseObject*)>&& func);
     void VisitAllObjectsBeforeCopy(const std::function<void(BaseObject*)>&& func);
     bool VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func);
@@ -832,10 +831,10 @@ public:
         return static_cast<UnitRole>(metadata.unitRole) == UnitRole::LARGE_SIZED_UNITS;
     }
 
-    bool IsFixedRegion() const
+    bool IsMonoSizeNonMovableRegion() const
     {
-        return (GetRegionType()  == RegionType::FIXED_PINNED_REGION) ||
-            (GetRegionType()  == RegionType::FULL_FIXED_PINNED_REGION);
+        return (GetRegionType()  == RegionType::MONOSIZE_NONMOVABLE_REGION) ||
+            (GetRegionType()  == RegionType::FULL_MONOSIZE_NONMOVABLE_REGION);
     }
     
     bool IsThreadLocalRegion() const
@@ -844,10 +843,10 @@ public:
                GetRegionType() == RegionType::THREAD_LOCAL_OLD_REGION;
     }
 
-    bool IsPinnedRegion() const
+    bool IsPolySizeNonMovableRegion() const
     {
-        return (GetRegionType()  == RegionType::FULL_PINNED_REGION) ||
-               (GetRegionType()  == RegionType::RECENT_PINNED_REGION);
+        return (GetRegionType()  == RegionType::FULL_POLYSIZE_NONMOVABLE_REGION) ||
+               (GetRegionType()  == RegionType::RECENT_POLYSIZE_NONMOVABLE_REGION);
     }
 
     bool IsReadOnlyRegion() const
@@ -863,10 +862,10 @@ public:
         return reinterpret_cast<RegionDesc*>(UnitInfo::GetUnitInfo(metadata.prevRegionIdx));
     }
 
-    bool CollectPinnedGarbage(BaseObject* obj, size_t cellCount)
+    bool CollectNonMovableGarbage(BaseObject* obj, size_t cellCount)
     {
         std::lock_guard<std::mutex> lg(metadata.regionMutex);
-        if (IsFreePinnedObject(obj)) {
+        if (IsFreeNonMovableObject(obj)) {
             return false;
         }
         size_t size = (cellCount + 1) * sizeof(uint64_t);
@@ -888,7 +887,7 @@ public:
         return reinterpret_cast<HeapAddress>(res);
     }
 
-    HeapAddress AllocPinnedFromFreeList()
+    HeapAddress AllocNonMovableFromFreeList()
     {
         std::lock_guard<std::mutex> lg(metadata.regionMutex);
         HeapAddress addr = GetFreeSlot();
@@ -905,7 +904,7 @@ public:
         return addr;
     }
 
-    bool IsFreePinnedObject(BaseObject* object)
+    bool IsFreeNonMovableObject(BaseObject* object)
     {
         ObjectSlot* slot = reinterpret_cast<ObjectSlot*>(object);
         return slot->isFree_;

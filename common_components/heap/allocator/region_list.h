@@ -154,7 +154,7 @@ public:
         if (region == nullptr) {
             return 0;
         }
-        return region->AllocPinnedFromFreeList();
+        return region->AllocNonMovableFromFreeList();
     }
 
 protected:

@@ -15,8 +15,8 @@
 
 #include "common_components/common_runtime/base_runtime_param.h"
 #include "common_components/heap/allocator/allocator.h"
-#include "common_components/heap/allocator/region_space.h"
 #include "common_components/heap/collector/collector_resources.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_components/heap/heap.h"
 #include "common_components/heap/heap_manager.h"
@@ -73,7 +73,7 @@ HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test2)
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP);
     EXPECT_TRUE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
 
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     auto allocated = theAllocator.GetAllocatedBytes();
     auto param = BaseRuntime::GetInstance()->GetHeapParam();
     auto size = param.heapSize * KB * HeuristicGCPolicy::COLD_STARTUP_PHASE1_GC_THRESHOLD_RATIO;
@@ -104,7 +104,7 @@ HWTEST_F_L0(HeuristicGCPolicyTest, ShouldRestrainGCOnStartupOrSensitive_Test3)
     StartupStatusManager::SetStartupStatus(StartupStatus::COLD_STARTUP_PARTIALLY_FINISH);
     EXPECT_TRUE(gcPolicy.ShouldRestrainGCOnStartupOrSensitive());
 
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     auto allocated = theAllocator.GetAllocatedBytes();
     auto param = BaseRuntime::GetInstance()->GetHeapParam();
     auto size = param.heapSize * KB * HeuristicGCPolicy::COLD_STARTUP_PHASE2_GC_THRESHOLD_RATIO;

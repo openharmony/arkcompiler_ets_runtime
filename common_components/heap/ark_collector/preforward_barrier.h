@@ -16,7 +16,7 @@
 #ifndef COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_MARKING_FIX_BARRIER_H
 #define COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_MARKING_FIX_BARRIER_H
 
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/heap/ark_collector/idle_barrier.h"
 
 namespace common {

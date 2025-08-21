@@ -29,7 +29,13 @@
 #include "common_components/heap/space/old_space.h"
 #include "common_components/heap/space/from_space.h"
 #include "common_components/heap/space/to_space.h"
+#include "common_components/heap/space/nonmovable_space.h"
 #include "common_components/mutator/mutator.h"
+#include "common_components/heap/space/appspawn_space.h"
+#include "common_components/heap/space/large_space.h"
+#include "common_components/heap/space/rawpointer_space.h"
+#include "common_components/heap/space/readonly_space.h"
+#include "objects/base_object.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/sanitizer/sanitizer_interface.h"
 #endif
@@ -38,12 +44,11 @@
 namespace common {
 class Taskpool;
 
-// RegionSpace aims to be the API for other components of runtime
+// RegionalHeap aims to be the API for other components of runtime
 // the complication of implementation is delegated to RegionManager
 // allocator should not depend on any assumptions on the details of RegionManager
 
-// todo: Allocator -> BaseAllocator, RegionSpace -> RegionalHeap
-class RegionSpace : public Allocator {
+class RegionalHeap : public Allocator {
 public:
     static size_t ToAllocatedSize(size_t objSize)
     {
@@ -57,9 +62,13 @@ public:
         return ToAllocatedSize(objSize);
     }
 
-    RegionSpace() : youngSpace_(regionManager_), oldSpace_(regionManager_),
-        fromSpace_(regionManager_, *this), toSpace_(regionManager_) {}
-    NO_INLINE_CC virtual ~RegionSpace()
+    RegionalHeap() : youngSpace_(regionManager_), oldSpace_(regionManager_),
+        fromSpace_(regionManager_, *this), toSpace_(regionManager_),
+        nonMovableSpace_(regionManager_), largeSpace_(regionManager_),
+        appSpawnSpace_(regionManager_), rawpointerSpace_(regionManager_),
+        readonlySpace_(regionManager_) {}
+
+    NO_INLINE_CC virtual ~RegionalHeap()
     {
         if (allocBufferManager_ != nullptr) {
             delete allocBufferManager_;
@@ -97,9 +106,8 @@ public:
     }
 
     // only used for deserialize allocation, allocate one region and regard it as full region
-    // todo: adapt for concurrent gc
     uintptr_t AllocOldRegion();
-    uintptr_t AllocPinnedRegion();
+    uintptr_t AllocateNonMovableRegion();
     uintptr_t AllocLargeRegion(size_t size);
     uintptr_t AllocJitFortRegion(size_t size);
 
@@ -126,20 +134,22 @@ public:
 
     inline size_t GetRecentAllocatedSize() const
     {
-        return youngSpace_.GetRecentAllocatedSize() + regionManager_.GetRecentAllocatedSize();
+        return youngSpace_.GetRecentAllocatedSize() + nonMovableSpace_.GetRecentAllocatedSize() +
+               largeSpace_.GetRecentAllocatedSize();
     }
 
     // size of objects survived in previous gc.
     size_t GetSurvivedSize() const override
     {
-        return fromSpace_.GetSurvivedSize() + toSpace_.GetAllocatedSize() +
-            youngSpace_.GetAllocatedSize() + oldSpace_.GetAllocatedSize() + regionManager_.GetSurvivedSize();
+        return fromSpace_.GetSurvivedSize() + toSpace_.GetAllocatedSize() + youngSpace_.GetAllocatedSize() +
+            oldSpace_.GetAllocatedSize() + nonMovableSpace_.GetSurvivedSize() + largeSpace_.GetAllocatedSize();
     }
 
     inline size_t GetUsedUnitCount() const
     {
-        return fromSpace_.GetUsedUnitCount() + toSpace_.GetUsedUnitCount() +
-            youngSpace_.GetUsedUnitCount() + oldSpace_.GetUsedUnitCount() + regionManager_.GetUsedUnitCount();
+        return fromSpace_.GetUsedUnitCount() + toSpace_.GetUsedUnitCount() + youngSpace_.GetUsedUnitCount() +
+            oldSpace_.GetUsedUnitCount() + nonMovableSpace_.GetUsedUnitCount() + largeSpace_.GetUsedUnitCount() +
+            appSpawnSpace_.GetUsedUnitCount() + readonlySpace_.GetUsedUnitCount() + rawpointerSpace_.GetUsedUnitCount();
     }
 
     size_t GetUsedPageSize() const override
@@ -155,18 +165,18 @@ public:
 
     size_t GetAllocatedBytes() const override
     {
-        return fromSpace_.GetAllocatedSize() + toSpace_.GetAllocatedSize() +
-            youngSpace_.GetAllocatedSize() + oldSpace_.GetAllocatedSize() + regionManager_.GetAllocatedSize();
+        return fromSpace_.GetAllocatedSize() + toSpace_.GetAllocatedSize() + youngSpace_.GetAllocatedSize() +
+            oldSpace_.GetAllocatedSize() + nonMovableSpace_.GetAllocatedSize() + LargeObjectSize();
     }
 
-    size_t LargeObjectSize() const override { return regionManager_.GetLargeObjectSize(); }
+    size_t LargeObjectSize() const override { return largeSpace_.GetAllocatedSize(); }
 
     size_t FromSpaceSize() const { return fromSpace_.GetAllocatedSize(); }
     // note: it doesn't contain exemptFromRegion
     size_t FromRegionSize() const { return fromSpace_.GetFromRegionAllocatedSize(); }
     size_t ToSpaceSize() const { return toSpace_.GetAllocatedSize(); }
 
-    size_t PinnedSpaceSize() const { return regionManager_.GetPinnedSpaceSize(); }
+    size_t NonMovableSpaceSize() const { return nonMovableSpace_.GetAllocatedSize(); }
 
 #ifndef NDEBUG
     bool IsHeapObject(HeapAddress addr) const override;
@@ -226,24 +236,37 @@ public:
         oldSpace_.CollectFixTasks(taskList);
         fromSpace_.CollectFixTasks(taskList);
         toSpace_.CollectFixTasks(taskList);
-        regionManager_.CollectFixTasks(taskList);
+        nonMovableSpace_.CollectFixTasks(taskList);
+        largeSpace_.CollectFixTasks(taskList);
+        rawpointerSpace_.CollectFixTasks(taskList);
+        appSpawnSpace_.CollectFixTasks(taskList);
 
         return taskList;
     }
 
     void MarkAwaitingJitFort()
     {
-        regionManager_.ForEachAwaitingJitFortUnsafe(MarkObject);
+        ForEachAwaitingJitFortUnsafe(MarkObject);
     }
 
     void ClearJitFortAwaitingMark()
     {
-        regionManager_.HandlePostGCJitFortInstallTask();
+        HandlePostGCJitFortInstallTask();
     }
 
-    using RootSet = MarkStack<BaseObject*>;
+    void MarkJitFortMemInstalled(void *thread, BaseObject *obj);
 
-    size_t CollectLargeGarbage() { return regionManager_.CollectLargeGarbage(); }
+    void SetReadOnlyToROSpace()
+    {
+        readonlySpace_.SetReadOnlyToRORegionList();
+    }
+
+    void ClearReadOnlyFromROSpace()
+    {
+        readonlySpace_.ClearReadOnlyFromRORegionList();
+    }
+
+    size_t CollectLargeGarbage() { return largeSpace_.CollectLargeGarbage(); }
 
     void CollectFromSpaceGarbage()
     {
@@ -263,32 +286,39 @@ public:
         if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
             oldSpace_.ClearRSet();
             oldSpace_.AssembleGarbageCandidates(fromSpace_);
-            regionManager_.ClearRSet();
+            nonMovableSpace_.ClearRSet();
+            largeSpace_.ClearRSet();
+            appSpawnSpace_.ClearRSet();
+            rawpointerSpace_.ClearRSet();
         }
     }
 
     void CollectAppSpawnSpaceGarbage()
     {
         regionManager_.CollectFromSpaceGarbage(fromSpace_.GetFromRegionList());
-        regionManager_.ReassembleAppspawnSpace(fromSpace_.GetExemptedRegionList());
-        regionManager_.ReassembleAppspawnSpace(toSpace_.GetTlToRegionList());
-        regionManager_.ReassembleAppspawnSpace(toSpace_.GetFullToRegionList());
+        appSpawnSpace_.ReassembleAppspawnSpace(fromSpace_.GetExemptedRegionList());
+        appSpawnSpace_.ReassembleAppspawnSpace(toSpace_.GetTlToRegionList());
+        appSpawnSpace_.ReassembleAppspawnSpace(toSpace_.GetFullToRegionList());
     }
 
     void ClearAllGCInfo()
     {
-        regionManager_.ClearAllGCInfo();
         youngSpace_.ClearAllGCInfo();
         oldSpace_.ClearAllGCInfo();
         toSpace_.ClearAllGCInfo();
         fromSpace_.ClearAllGCInfo();
+        nonMovableSpace_.ClearAllGCInfo();
+        largeSpace_.ClearAllGCInfo();
+        appSpawnSpace_.ClearAllGCInfo();
+        rawpointerSpace_.ClearAllGCInfo();
+        readonlySpace_.ClearAllGCInfo();
     }
 
     void AssembleGarbageCandidates()
     {
         AssembleSmallGarbageCandidates();
-        regionManager_.AssemblePinnedGarbageCandidates();
-        regionManager_.AssembleLargeGarbageCandidates();
+        nonMovableSpace_.AssembleGarbageCandidates();
+        largeSpace_.AssembleGarbageCandidates();
     }
 
     void DumpAllRegionSummary(const char* msg) const;
@@ -296,8 +326,41 @@ public:
 
     void CountLiveObject(const BaseObject* obj) { regionManager_.CountLiveObject(obj); }
 
-    void PrepareMarking() { regionManager_.PrepareMarking(); }
-    void PrepareForward() { regionManager_.PrepareForward(); }
+    void PrepareMarking()
+    {
+        AllocBufferVisitor visitor = [](AllocationBuffer& regionBuffer) {
+            RegionDesc* region = regionBuffer.GetRegion<AllocBufferType::YOUNG>();
+            if (region != RegionDesc::NullRegion()) {
+                region->SetMarkingLine();
+            }
+            region = regionBuffer.GetRegion<AllocBufferType::OLD>();
+            if (region != RegionDesc::NullRegion()) {
+                region->SetMarkingLine();
+            }
+        };
+        VisitAllocBuffers(visitor);
+
+        nonMovableSpace_.PrepareMarking();
+        readonlySpace_.PrepareMarking();
+    }
+
+    void PrepareForward()
+    {
+        AllocBufferVisitor visitor = [](AllocationBuffer& regionBuffer) {
+            RegionDesc* region = regionBuffer.GetRegion<AllocBufferType::YOUNG>();
+            if (region != RegionDesc::NullRegion()) {
+                region->SetCopyLine();
+            }
+            region = regionBuffer.GetRegion<AllocBufferType::OLD>();
+            if (region != RegionDesc::NullRegion()) {
+                region->SetCopyLine();
+            }
+        };
+        VisitAllocBuffers(visitor);
+
+        nonMovableSpace_.PrepareForward();
+        readonlySpace_.PrepareForward();
+    }
     void FeedHungryBuffers() override;
 
     // markObj
@@ -365,7 +428,7 @@ public:
                 RegionDesc::RegionType::RAW_POINTER_REGION)) {
             GCPhase phase = Heap::GetHeap().GetGCPhase();
             CHECK(phase != GCPhase::GC_PHASE_COPY && phase != GCPhase::GC_PHASE_PRECOPY);
-            regionManager_.AddRawPointerRegion(region);
+            rawpointerSpace_.AddRawPointerRegion(region);
         } else {
             CHECK(region->GetRegionType() != RegionDesc::RegionType::LONE_FROM_REGION);
         }
@@ -379,11 +442,10 @@ public:
 
     void AddRawPointerRegion(RegionDesc* region)
     {
-        regionManager_.AddRawPointerRegion(region);
+        rawpointerSpace_.AddRawPointerRegion(region);
     }
 
     void CopyRegion(RegionDesc* region);
-
     void MarkRememberSet(const std::function<void(BaseObject *)> &func);
 
     friend class Allocator;
@@ -394,19 +456,32 @@ private:
     };
     HeapAddress TryAllocateOnce(size_t allocSize, AllocType allocType);
     bool ShouldRetryAllocation(size_t& tryTimes) const;
+
+    void ForEachAwaitingJitFortUnsafe(const std::function<void(BaseObject*)>& visitor) const;
+    void MarkJitFortMemAwaitingInstall(BaseObject *obj);
+    void HandlePostGCJitFortInstallTask();
+
     HeapAddress reservedStart_ = 0;
     HeapAddress reservedEnd_ = 0;
     RegionManager regionManager_;
     MemoryMap* map_{ nullptr };
 
+    // Awaiting JitFort object has no references from other objects,
+    // but we need to keep them as live untill jit compilation has finished installing.
+    std::set<BaseObject*> awaitingJitFort_;
+    std::stack<std::pair<void*, BaseObject*>> jitFortPostGCInstallTask_;
+    std::mutex awaitingJitFortMutex_;
+
     YoungSpace youngSpace_;
     OldSpace oldSpace_;
-
     FromSpace fromSpace_;
     ToSpace toSpace_;
+    NonMovableSpace nonMovableSpace_;
+    LargeSpace largeSpace_;
+    AppSpawnSpace appSpawnSpace_;
+    RawPointerSpace rawpointerSpace_;
+    ReadOnlySpace readonlySpace_;
 };
-
-using RegionalHeap = RegionSpace;
 } // namespace common
 
 #endif // COMMON_COMPONENTS_HEAP_ALLOCATOR_REGION_SPACE_H

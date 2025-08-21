@@ -17,7 +17,7 @@
 
 #include "ark_collector/ark_collector.h"
 #include "allocator/region_desc.h"
-#include "allocator/region_space.h"
+#include "allocator/regional_heap.h"
 #include "common/mark_work_stack.h"
 #include "common/type_def.h"
 #include "common_components/log/log.h"
@@ -39,7 +39,8 @@
  *
  * RB DFX:
  * Force to use STW GC. Force to use read barrier out of GC.
- * After GC is finished, set the lowerst bit(WEAK_TAG) of RefField which is not root or doesn't point to pinned objects.
+ * After GC is finished, set the lowerst bit(WEAK_TAG) of RefField which is not root or doesn't
+ * point to non-movable objects.
  * The read barrier is responsible to remove the WEAK_TAG for properly deferencing the object.
  * Disabled by defualt. Controlled by gn-option `ets_runtime_enable_rb_dfx`.
  *
@@ -234,16 +235,16 @@ public:
         }
 
         if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-            CHECKF(RegionSpace::IsResurrectedObject(refObj) ||
-                   RegionSpace::IsMarkedObject(refObj) ||
-                   RegionSpace::IsNewObjectSinceMarking(refObj) ||
-                   !RegionSpace::IsYoungSpaceObject(refObj))
+            CHECKF(RegionalHeap::IsResurrectedObject(refObj) ||
+                   RegionalHeap::IsMarkedObject(refObj) ||
+                   RegionalHeap::IsNewObjectSinceMarking(refObj) ||
+                   !RegionalHeap::IsYoungSpaceObject(refObj))
                 << CONTEXT << "Object: " << GetObjectInfo(obj) << std::endl
                 << "Ref: " << GetRefInfo(ref) << std::endl;
         } else {
-            CHECKF(RegionSpace::IsResurrectedObject(refObj) ||
-                   RegionSpace::IsMarkedObject(refObj) ||
-                   RegionSpace::IsNewObjectSinceMarking(refObj))
+            CHECKF(RegionalHeap::IsResurrectedObject(refObj) ||
+                   RegionalHeap::IsMarkedObject(refObj) ||
+                   RegionalHeap::IsNewObjectSinceMarking(refObj))
                 << CONTEXT << "Object: " << GetObjectInfo(obj) << std::endl
                 << "Ref: " << GetRefInfo(ref) << std::endl;
         }
@@ -256,7 +257,7 @@ public:
     {
         // check objects in from-space, only alive objects are forwarded
         auto refObj = ref.GetTargetObject();
-        if (RegionSpace::IsMarkedObject(refObj) || RegionSpace::IsResurrectedObject(refObj)) {
+        if (RegionalHeap::IsMarkedObject(refObj) || RegionalHeap::IsResurrectedObject(refObj)) {
             CHECKF(refObj->IsForwarded())
                 << CONTEXT
                 << "Object: " << GetObjectInfo(obj) << std::endl
@@ -299,11 +300,11 @@ public:
 
         auto regionType =
             RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(ref.GetTargetObject()))->GetRegionType();
-        if (regionType == RegionDesc::RegionType::RECENT_PINNED_REGION ||
-            regionType == RegionDesc::RegionType::FULL_PINNED_REGION ||
-            regionType == RegionDesc::RegionType::FIXED_PINNED_REGION ||
-            regionType == RegionDesc::RegionType::FULL_FIXED_PINNED_REGION) {
-            // Read barrier for pinned objects might be optimized out, so don't set dfx tag
+        if (regionType == RegionDesc::RegionType::RECENT_POLYSIZE_NONMOVABLE_REGION ||
+            regionType == RegionDesc::RegionType::FULL_POLYSIZE_NONMOVABLE_REGION ||
+            regionType == RegionDesc::RegionType::MONOSIZE_NONMOVABLE_REGION ||
+            regionType == RegionDesc::RegionType::FULL_MONOSIZE_NONMOVABLE_REGION) {
+            // Read barrier for non-movable objects might be optimized out, so don't set dfx tag
             return;
         }
 
@@ -330,7 +331,7 @@ public:
 
 class VerifyIterator {
 public:
-    explicit VerifyIterator(RegionSpace& space) : space_(space) {}
+    explicit VerifyIterator(RegionalHeap& space) : space_(space) {}
 
     void IterateFromSpace(VerifyVisitor& visitor)
     {
@@ -417,10 +418,10 @@ private:
 
     void Marking(MarkStack<BaseObject*>& markStack) {}
 
-    RegionSpace& space_;
+    RegionalHeap& space_;
 };
 
-void WVerify::VerifyAfterMarkInternal(RegionSpace& space)
+void WVerify::VerifyAfterMarkInternal(RegionalHeap& space)
 {
     CHECKF(Heap::GetHeap().GetGCPhase() == GCPhase::GC_PHASE_POST_MARK)
         << CONTEXT << "Mark verification should be called after PostMarking()";
@@ -443,7 +444,7 @@ void WVerify::VerifyAfterMark(ArkCollector& collector)
 #if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
 #endif
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
         STWParam stwParam{"WGC-verify-aftermark"};
         ScopedStopTheWorld stw(stwParam);
@@ -453,7 +454,7 @@ void WVerify::VerifyAfterMark(ArkCollector& collector)
     }
 }
 
-void WVerify::VerifyAfterForwardInternal(RegionSpace& space)
+void WVerify::VerifyAfterForwardInternal(RegionalHeap& space)
 {
     CHECKF(Heap::GetHeap().GetGCPhase() == GCPhase::GC_PHASE_COPY)
         << CONTEXT << "Forward verification should be called after ForwardFromSpace()";
@@ -470,7 +471,7 @@ void WVerify::VerifyAfterForward(ArkCollector& collector)
 #if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
 #endif
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
         STWParam stwParam{"WGC-verify-aftermark"};
         ScopedStopTheWorld stw(stwParam);
@@ -480,7 +481,7 @@ void WVerify::VerifyAfterForward(ArkCollector& collector)
     }
 }
 
-void WVerify::VerifyAfterFixInternal(RegionSpace& space)
+void WVerify::VerifyAfterFixInternal(RegionalHeap& space)
 {
     CHECKF(Heap::GetHeap().GetGCPhase() == GCPhase::GC_PHASE_FIX)
         << CONTEXT << "Fix verification should be called after Fix()";
@@ -499,7 +500,7 @@ void WVerify::VerifyAfterFix(ArkCollector& collector)
 #if !defined(ENABLE_CMC_VERIFY) && defined(NDEBUG)
     return;
 #endif
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
         STWParam stwParam{"WGC-verify-aftermark"};
         ScopedStopTheWorld stw(stwParam);
@@ -509,7 +510,7 @@ void WVerify::VerifyAfterFix(ArkCollector& collector)
     }
 }
 
-void WVerify::EnableReadBarrierDFXInternal(RegionSpace& space)
+void WVerify::EnableReadBarrierDFXInternal(RegionalHeap& space)
 {
     auto iter = VerifyIterator(space);
     auto setter = ReadBarrierSetter();
@@ -526,7 +527,7 @@ void WVerify::EnableReadBarrierDFX(ArkCollector& collector)
 #if !defined(ENABLE_CMC_RB_DFX)
     return;
 #endif
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
         STWParam stwParam{"WGC-verify-enable-rb-dfx"};
         ScopedStopTheWorld stw(stwParam);
@@ -536,7 +537,7 @@ void WVerify::EnableReadBarrierDFX(ArkCollector& collector)
     }
 }
 
-void WVerify::DisableReadBarrierDFXInternal(RegionSpace& space)
+void WVerify::DisableReadBarrierDFXInternal(RegionalHeap& space)
 {
     auto iter = VerifyIterator(space);
     auto unsetter = ReadBarrierUnsetter();
@@ -550,7 +551,7 @@ void WVerify::DisableReadBarrierDFX(ArkCollector& collector)
 #if !defined(ENABLE_CMC_RB_DFX)
     return;
 #endif
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(collector.GetAllocator());
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(collector.GetAllocator());
     if (!MutatorManager::Instance().WorldStopped()) {
         STWParam stwParam{"WGC-verify-disable-rb-dfx"};
         ScopedStopTheWorld stw(stwParam);

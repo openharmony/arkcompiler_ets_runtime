@@ -18,7 +18,7 @@
 
 #include <unordered_map>
 
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/heap/collector/copy_data_manager.h"
 #include "common_components/heap/collector/marking_collector.h"
 #include "common_interfaces/base_runtime.h"
@@ -27,7 +27,7 @@ namespace common {
 
 class CopyTable {
 public:
-    explicit CopyTable(RegionSpace& space) : theSpace(space) {}
+    explicit CopyTable(RegionalHeap& space) : theSpace(space) {}
 
     // if object is not relocated (forwarded or compacted), return nullptr.
     BaseObject* RouteObject(BaseObject* old, size_t size)
@@ -41,7 +41,7 @@ public:
         return old->GetForwardingPointer();
     }
 
-    RegionSpace& theSpace;
+    RegionalHeap& theSpace;
 };
 
 enum class GCMode: uint8_t {
@@ -53,7 +53,7 @@ enum class GCMode: uint8_t {
 class ArkCollector : public MarkingCollector {
 public:
     explicit ArkCollector(Allocator& allocator, CollectorResources& resources)
-        : MarkingCollector(allocator, resources), fwdTable_(reinterpret_cast<RegionSpace&>(allocator))
+        : MarkingCollector(allocator, resources), fwdTable_(reinterpret_cast<RegionalHeap&>(allocator))
     {
         collectorType_ = CollectorType::SMOOTH_COLLECTOR;
     }
@@ -104,13 +104,13 @@ public:
 
     void AddRawPointerObject(BaseObject* obj) override
     {
-        RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+        RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
         space.AddRawPointerObject(obj);
     }
 
     void RemoveRawPointerObject(BaseObject* obj) override
     {
-        RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+        RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
         space.RemoveRawPointerObject(obj);
     }
 
@@ -162,19 +162,19 @@ protected:
     void CollectLargeGarbage()
     {
         COMMON_PHASE_TIMER("Collect large garbage");
-        RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+        RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
         GCStats& stats = GetGCStats();
         stats.largeSpaceSize = space.LargeObjectSize();
         stats.largeGarbageSize = space.CollectLargeGarbage();
         stats.collectedBytes += stats.largeGarbageSize;
     }
 
-    void CollectPinnedGarbage()
+    void CollectNonMovableGarbage()
     {
-        RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+        RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
         GCStats& stats = GetGCStats();
-        stats.pinnedSpaceSize = space.PinnedSpaceSize();
-        stats.collectedBytes += stats.pinnedGarbageSize;
+        stats.nonMovableSpaceSize = space.NonMovableSpaceSize();
+        stats.collectedBytes += stats.nonMovableGarbageSize;
     }
 
     void CollectSmallSpace();
@@ -203,8 +203,8 @@ private:
     void EnumRootsImpl(const common::RefFieldVisitor &visitor)
     {
         // assemble garbage candidates.
-        reinterpret_cast<RegionSpace &>(theAllocator_).AssembleGarbageCandidates();
-        reinterpret_cast<RegionSpace &>(theAllocator_).PrepareMarking();
+        reinterpret_cast<RegionalHeap &>(theAllocator_).AssembleGarbageCandidates();
+        reinterpret_cast<RegionalHeap &>(theAllocator_).PrepareMarking();
 
         COMMON_PHASE_TIMER("enum roots & update old pointers within");
         TransitionToGCPhase(GCPhase::GC_PHASE_ENUM, true);

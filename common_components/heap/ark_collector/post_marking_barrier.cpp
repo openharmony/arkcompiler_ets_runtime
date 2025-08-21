@@ -14,7 +14,7 @@
  */
 #include "common_components/heap/ark_collector/post_marking_barrier.h"
 
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/mutator/mutator.h"
 #include "heap/space/young_space.h"
 #if defined(COMMON_TSAN_SUPPORT)

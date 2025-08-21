@@ -22,10 +22,13 @@
 #include <thread>
 #include <vector>
 
+#include "common_interfaces/base/common.h"
 #include "common_components/heap/allocator/alloc_util.h"
 #include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/region_manager.h"
 #include "common_components/mutator/mutator.h"
+#include "common_components/heap/allocator/region_desc.h"
+#include "common_components/mutator/mutator_manager.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/base/asan_interface.h"
 #endif
@@ -38,6 +41,29 @@ public:
     RegionManager& GetRegionManager() { return regionManager_; }
 
 protected:
+    void ClearGCInfo(RegionList& list)
+    {
+        RegionList tmp("temp region list");
+        list.CopyListTo(tmp);
+        tmp.VisitAllRegions([](RegionDesc* region) {
+            region->ClearMarkingCopyLine();
+            region->ClearLiveInfo();
+            region->ResetMarkBit();
+        });
+    }
+
+    void InitRegionPhaseLine(RegionDesc* region)
+    {
+        GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
+        if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
+            phase == GC_PHASE_POST_MARK) {
+            region->SetMarkingLine();
+        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
+            region->SetMarkingLine();
+            region->SetCopyLine();
+        }
+    }
+
     RegionManager& regionManager_;
 };
 } // namespace common

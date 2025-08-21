@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 
 #include "common_components/heap/collector/collector.h"
 #include "common_components/heap/collector/collector_resources.h"
@@ -26,47 +26,28 @@
 
 namespace common {
 template <AllocBufferType type>
-RegionDesc* RegionSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
+RegionDesc* RegionalHeap::AllocateThreadLocalRegion(bool expectPhysicalMem)
 {
     if constexpr (type == AllocBufferType::TO) {
-        RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, false, true);
-        if (region != nullptr) {
-            toSpace_.AddThreadLocalRegion(region);
-        }
-        return region;
+        return toSpace_.AllocateThreadLocalRegion(expectPhysicalMem);
+    } else if constexpr (type == AllocBufferType::YOUNG) {
+        return youngSpace_.AllocateThreadLocalRegion(expectPhysicalMem);
+    } else if constexpr (type == AllocBufferType::OLD) {
+        return oldSpace_.AllocateThreadLocalRegion(expectPhysicalMem);
     }
-
-    ASSERT_LOGF(!IsGcThread(), "GC thread cannot take tlRegion/tlOldRegion");
-    RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, true);
-    if (region != nullptr) {
-        GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
-        if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
-            phase == GC_PHASE_POST_MARK) {
-            region->SetMarkingLine();
-        } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-            region->SetMarkingLine();
-            region->SetCopyLine();
-        }
-
-        if constexpr (type == AllocBufferType::YOUNG) {
-            youngSpace_.AddThreadLocalRegion(region);
-        } else if constexpr (type == AllocBufferType::OLD) {
-            oldSpace_.AddThreadLocalRegion(region);
-        }
-    }
-
-    return region;
 }
 
 // used to dump a brief summary of all regions.
-void RegionSpace::DumpAllRegionSummary(const char* msg) const
+void RegionalHeap::DumpAllRegionSummary(const char* msg) const
 {
     auto from = fromSpace_.GetAllocatedSize();
     auto exempt = fromSpace_.GetSurvivedSize();
     auto to = toSpace_.GetAllocatedSize();
     auto young = youngSpace_.GetAllocatedSize();
     auto old = oldSpace_.GetAllocatedSize();
-    auto other = regionManager_.GetAllocatedSize();
+    auto other = nonMovableSpace_.GetAllocatedSize() + largeSpace_.GetAllocatedSize() +
+                                appSpawnSpace_.GetAllocatedSize() + readonlySpace_.GetAllocatedSize() +
+                                rawpointerSpace_.GetAllocatedSize();
 
     std::ostringstream oss;
     oss << msg << "Current allocated: " << Pretty(from + to + young + old + other) << ". (from: " << Pretty(from)
@@ -76,38 +57,44 @@ void RegionSpace::DumpAllRegionSummary(const char* msg) const
 }
 
 // used to dump a detailed information of all regions.
-void RegionSpace::DumpAllRegionStats(const char* msg) const
+void RegionalHeap::DumpAllRegionStats(const char* msg) const
 {
     VLOG(DEBUG, msg);
     youngSpace_.DumpRegionStats();
     oldSpace_.DumpRegionStats();
     fromSpace_.DumpRegionStats();
     toSpace_.DumpRegionStats();
+    nonMovableSpace_.DumpRegionStats();
+    largeSpace_.DumpRegionStats();
+    appSpawnSpace_.DumpRegionStats();
+    rawpointerSpace_.DumpRegionStats();
+    readonlySpace_.DumpRegionStats();
+
     regionManager_.DumpRegionStats();
 
     size_t usedUnits = GetUsedUnitCount();
     VLOG(DEBUG, "\tused units: %zu (%zu B)", usedUnits, usedUnits * RegionDesc::UNIT_SIZE);
 }
 
-HeapAddress RegionSpace::TryAllocateOnce(size_t allocSize, AllocType allocType)
+HeapAddress RegionalHeap::TryAllocateOnce(size_t allocSize, AllocType allocType)
 {
     if (UNLIKELY_CC(allocType == AllocType::READ_ONLY_OBJECT)) {
-        return regionManager_.AllocReadOnly(allocSize);
+        return readonlySpace_.Alloc(allocSize);
     }
     if (UNLIKELY_CC(allocSize >= RegionDesc::LARGE_OBJECT_DEFAULT_THRESHOLD)) {
-        return regionManager_.AllocLarge(allocSize);
+        return largeSpace_.Alloc(allocSize);
     }
-    if (UNLIKELY_CC(allocType == AllocType::PINNED_OBJECT)) {
-        return regionManager_.AllocPinned(allocSize);
+    if (UNLIKELY_CC(allocType == AllocType::NONMOVABLE_OBJECT)) {
+        return nonMovableSpace_.Alloc(allocSize);
     }
     AllocationBuffer* allocBuffer = AllocationBuffer::GetOrCreateAllocBuffer();
     return allocBuffer->Allocate(allocSize, allocType);
 }
 
-bool RegionSpace::ShouldRetryAllocation(size_t& tryTimes) const
+bool RegionalHeap::ShouldRetryAllocation(size_t& tryTimes) const
 {
     {
-        // check STW request.
+        // check safepoint
         ScopedEnterSaferegion enterSaferegion(true);
     }
 
@@ -137,73 +124,30 @@ bool RegionSpace::ShouldRetryAllocation(size_t& tryTimes) const
     }
 }
 
-uintptr_t RegionSpace::AllocOldRegion()
+uintptr_t RegionalHeap::AllocOldRegion()
 {
-    RegionDesc* region = regionManager_.TakeRegion(false, false);
-    ASSERT(region != nullptr);
-
-    GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
-    if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
-        phase == GC_PHASE_POST_MARK) {
-        region->SetMarkingLine();
-    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-        region->SetMarkingLine();
-        region->SetCopyLine();
-    }
-
-    DLOG(REGION, "alloc small object region %p @0x%zx+%zu units[%zu+%zu, %zu) type %u",
-        region, region->GetRegionStart(), region->GetRegionSize(),
-        region->GetUnitIdx(), region->GetUnitCount(), region->GetUnitIdx() + region->GetUnitCount(),
-        region->GetRegionType());
-    oldSpace_.AddFullRegion(region);
-
-    uintptr_t start = region->GetRegionStart();
-    uintptr_t addr = region->Alloc(region->GetRegionEnd() - region->GetRegionAllocPtr());
-    ASSERT(addr != 0);
-
-    return start;
+    return oldSpace_.AllocFullRegion();
 }
 
-uintptr_t RegionSpace::AllocPinnedRegion()
+uintptr_t RegionalHeap::AllocateNonMovableRegion()
 {
-    RegionDesc* region = regionManager_.TakeRegion(false, false);
-    ASSERT(region != nullptr);
-
-    GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
-    if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
-        phase == GC_PHASE_POST_MARK) {
-        region->SetMarkingLine();
-    } else if (phase == GC_PHASE_PRECOPY || phase == GC_PHASE_COPY || phase == GC_PHASE_FIX) {
-        region->SetMarkingLine();
-        region->SetCopyLine();
-    }
-
-    DLOG(REGION, "alloc pinned region @0x%zx+%zu type %u", region->GetRegionStart(),
-         region->GetRegionAllocatedSize(),
-         region->GetRegionType());
-    regionManager_.AddRecentPinnedRegion(region);
-
-    uintptr_t start = region->GetRegionStart();
-    uintptr_t addr = region->Alloc(region->GetRegionEnd() - region->GetRegionAllocPtr());
-    ASSERT(addr != 0);
-
-    return start;
+    return nonMovableSpace_.AllocFullRegion();
 }
 
-uintptr_t RegionSpace::AllocLargeRegion(size_t size)
+uintptr_t RegionalHeap::AllocLargeRegion(size_t size)
 {
-    return regionManager_.AllocLarge(size, false);
+    return largeSpace_.Alloc(size, false);
 }
 
-uintptr_t RegionSpace::AllocJitFortRegion(size_t size)
+uintptr_t RegionalHeap::AllocJitFortRegion(size_t size)
 {
-    uintptr_t addr = regionManager_.AllocLarge(size, false);
+    uintptr_t addr = largeSpace_.Alloc(size, false);
     os::PrctlSetVMA(reinterpret_cast<void *>(addr), size, "ArkTS Code");
-    regionManager_.MarkJitFortMemAwaitingInstall(reinterpret_cast<BaseObject*>(addr));
+    MarkJitFortMemAwaitingInstall(reinterpret_cast<BaseObject*>(addr));
     return addr;
 }
 
-HeapAddress RegionSpace::Allocate(size_t size, AllocType allocType)
+HeapAddress RegionalHeap::Allocate(size_t size, AllocType allocType)
 {
     size_t tryTimes = 0;
     uintptr_t internalAddr = 0;
@@ -232,13 +176,13 @@ HeapAddress RegionSpace::Allocate(size_t size, AllocType allocType)
 }
 
 // Only used for serialization in which allocType and target memory should keep consistency.
-HeapAddress RegionSpace::AllocateNoGC(size_t size, AllocType allocType)
+HeapAddress RegionalHeap::AllocateNoGC(size_t size, AllocType allocType)
 {
     bool allowGC = false;
     uintptr_t internalAddr = 0;
     size_t allocSize = ToAllocatedSize(size);
-    if (UNLIKELY_CC(allocType == AllocType::PINNED_OBJECT)) {
-        internalAddr = regionManager_.AllocPinned(allocSize, allowGC);
+    if (UNLIKELY_CC(allocType == AllocType::NONMOVABLE_OBJECT)) {
+        internalAddr = nonMovableSpace_.Alloc(allocSize, allowGC);
     } else if (LIKELY_CC(allocType == AllocType::MOVEABLE_OBJECT || allocType == AllocType::MOVEABLE_OLD_OBJECT)) {
         AllocationBuffer* allocBuffer = AllocationBuffer::GetOrCreateAllocBuffer();
         internalAddr = allocBuffer->Allocate(allocSize, allocType);
@@ -255,7 +199,7 @@ HeapAddress RegionSpace::AllocateNoGC(size_t size, AllocType allocType)
     return internalAddr + HEADER_SIZE;
 }
 
-void RegionSpace::CopyRegion(RegionDesc* region)
+void RegionalHeap::CopyRegion(RegionDesc* region)
 {
     LOGF_CHECK(region->IsFromRegion()) << "region type " << static_cast<uint8_t>(region->GetRegionType());
     DLOG(COPY, "try forward region %p @0x%zx+%zu type %u, live bytes %u",
@@ -283,7 +227,7 @@ void RegionSpace::CopyRegion(RegionDesc* region)
     }
 }
 
-void RegionSpace::Init(const RuntimeParam& param)
+void RegionalHeap::Init(const RuntimeParam& param)
 {
     MemoryMap::Option opt = MemoryMap::DEFAULT_OPTIONS;
     opt.tag = "region_heap";
@@ -343,17 +287,17 @@ AllocationBuffer* AllocationBuffer::GetOrCreateAllocBuffer()
 void AllocationBuffer::ClearThreadLocalRegion()
 {
     if (LIKELY_CC(tlRegion_ != RegionDesc::NullRegion())) {
-        RegionSpace& heap = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+        RegionalHeap& heap = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
         heap.HandleFullThreadLocalRegion<AllocBufferType::YOUNG>(tlRegion_);
         tlRegion_ = RegionDesc::NullRegion();
     }
     if (LIKELY_CC(tlOldRegion_ != RegionDesc::NullRegion())) {
-        RegionSpace& heap = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+        RegionalHeap& heap = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
         heap.HandleFullThreadLocalRegion<AllocBufferType::OLD>(tlOldRegion_);
         tlOldRegion_ = RegionDesc::NullRegion();
     }
     if (LIKELY_CC(tlToRegion_ != RegionDesc::NullRegion())) {
-        RegionSpace& heap = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+        RegionalHeap& heap = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
         heap.HandleFullThreadLocalRegion<AllocBufferType::TO>(tlToRegion_);
         tlToRegion_ = RegionDesc::NullRegion();
     }
@@ -388,7 +332,7 @@ HeapAddress AllocationBuffer::ToSpaceAllocate(size_t totalSize)
     }
 
     if (UNLIKELY_CC(addr == 0)) {
-        RegionSpace& heapSpace = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+        RegionalHeap& heapSpace = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
 
         heapSpace.HandleFullThreadLocalRegion<AllocBufferType::TO>(tlToRegion_);
         tlToRegion_ = RegionDesc::NullRegion();
@@ -438,7 +382,7 @@ HeapAddress AllocationBuffer::Allocate(size_t totalSize, AllocType allocType)
 // try an allocation but do not handle failure
 HeapAddress AllocationBuffer::AllocateImpl(size_t totalSize, AllocType allocType)
 {
-    RegionSpace& heapSpace = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& heapSpace = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
 
     // allocate new thread local region and try alloc
     if (allocType == AllocType::MOVEABLE_OBJECT) {
@@ -476,7 +420,7 @@ HeapAddress AllocationBuffer::AllocateRawPointerObject(size_t totalSize)
             return allocAddr;
         }
     }
-    RegionManager& manager = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
+    RegionManager& manager = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator()).GetRegionManager();
     size_t needRegionNum = totalSize / RegionDesc::UNIT_SIZE + 1;
     // region should have at least 2 unit
     needRegionNum = (needRegionNum == 1) ? 2 : needRegionNum;
@@ -492,7 +436,7 @@ HeapAddress AllocationBuffer::AllocateRawPointerObject(size_t totalSize)
 }
 
 #ifndef NDEBUG
-bool RegionSpace::IsHeapObject(HeapAddress addr) const
+bool RegionalHeap::IsHeapObject(HeapAddress addr) const
 {
     if (!IsHeapAddress(addr)) {
         return false;
@@ -500,7 +444,7 @@ bool RegionSpace::IsHeapObject(HeapAddress addr) const
     return true;
 }
 #endif
-void RegionSpace::FeedHungryBuffers()
+void RegionalHeap::FeedHungryBuffers()
 {
     ScopedObjectAccess soa;
     AllocBufferManager::HungryBuffers hungryBuffers;
@@ -521,9 +465,55 @@ void RegionSpace::FeedHungryBuffers()
     }
 }
 
-void RegionSpace::MarkRememberSet(const std::function<void(BaseObject*)>& func)
+void RegionalHeap::MarkRememberSet(const std::function<void(BaseObject*)>& func)
 {
     oldSpace_.MarkRememberSet(func);
-    regionManager_.MarkRememberSet(func);
+    nonMovableSpace_.MarkRememberSet(func);
+    largeSpace_.MarkRememberSet(func);
+    appSpawnSpace_.MarkRememberSet(func);
+    rawpointerSpace_.MarkRememberSet(func);
 }
+
+void RegionalHeap::ForEachAwaitingJitFortUnsafe(const std::function<void(BaseObject*)>& visitor) const
+{
+    ASSERT(BaseRuntime::GetInstance()->GetMutatorManager().WorldStopped());
+    for (const auto jitFort : awaitingJitFort_) {
+        visitor(jitFort);
+    }
+}
+
+void RegionalHeap::MarkJitFortMemInstalled(void *thread, BaseObject *obj)
+{
+    std::lock_guard guard(awaitingJitFortMutex_);
+    // GC is running, we should mark JitFort installled after GC finish
+    if (Heap::GetHeap().GetGCPhase() != GCPhase::GC_PHASE_IDLE) {
+        jitFortPostGCInstallTask_.emplace(nullptr, obj);
+    } else {
+        // a threadlocal JitFort mem
+        if (thread) {
+            MarkThreadLocalJitFortInstalled(thread, obj);
+        } else {
+            RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(false);
+        }
+        awaitingJitFort_.erase(obj);
+    }
+}
+
+void RegionalHeap::MarkJitFortMemAwaitingInstall(BaseObject *obj)
+{
+    std::lock_guard guard(awaitingJitFortMutex_);
+    RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj))->SetJitFortAwaitInstallFlag(true);
+    awaitingJitFort_.insert(obj);
+}
+
+void RegionalHeap::HandlePostGCJitFortInstallTask()
+{
+    ASSERT(Heap::GetHeap().GetGCPhase() == GCPhase::GC_PHASE_IDLE);
+    while (!jitFortPostGCInstallTask_.empty()) {
+        auto [thread, machineCode] = jitFortPostGCInstallTask_.top();
+        MarkJitFortMemInstalled(thread, machineCode);
+        jitFortPostGCInstallTask_.pop();
+    }
+}
+
 } // namespace common

@@ -29,6 +29,7 @@
 #include "common_components/heap/space/from_space.h"
 #include "common_components/mutator/mutator.h"
 #include "common_components/heap/allocator/fix_heap.h"
+#include "common_components/heap/allocator/region_desc.h"
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/base/asan_interface.h"
 #endif
@@ -50,10 +51,7 @@ public:
         FixHeapWorker::CollectFixHeapTasks(taskList, recentFullRegionList_, FIX_RECENT_REGION);
     }
 
-    void AddThreadLocalRegion(RegionDesc* region)
-    {
-        tlRegionList_.PrependRegion(region, RegionDesc::RegionType::THREAD_LOCAL_REGION);
-    }
+    RegionDesc* AllocateThreadLocalRegion(bool expectPhysicalMem);
 
     void AddFullRegion(RegionDesc* region)
     {

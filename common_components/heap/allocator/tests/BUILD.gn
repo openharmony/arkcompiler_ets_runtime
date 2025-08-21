@@ -86,12 +86,12 @@ host_unittest_action("Treap_Test") {
   ]
 }
 
-host_unittest_action("Region_Space_Test") {
+host_unittest_action("Regional_Heap_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
-    "region_space_test.cpp",
+    "regional_heap_test.cpp",
   ]
 
   configs = [
@@ -140,7 +140,7 @@ group("unittest") {
   deps = [
     ":Allocator_Test",
     ":Treap_Test",
-    ":Region_Space_Test",
+    ":Regional_Heap_Test",
     ":Heap_Allocator_Test",
     ":Region_Manager_Test"
   ]
@@ -153,7 +153,7 @@ group("host_unittest") {
   deps = [
     ":Allocator_TestAction",
     ":Treap_TestAction",
-    ":Region_Space_TestAction",
+    ":Regional_Heap_TestAction",
     ":Heap_Allocator_TestAction",
     ":Region_Manager_TestAction"
   ]

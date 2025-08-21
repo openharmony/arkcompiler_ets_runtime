@@ -1247,7 +1247,7 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, size_t objSi
                 regularRegions_.emplace_back(regionAddr, liveObjectSize);
                 break;
             case SerializedObjectSpace::PIN_SPACE:
-                regionAddr = common::HeapAllocator::AllocatePinnedRegion();
+                regionAddr = common::HeapAllocator::AllocateNonMovableRegion();
                 pinnedRegions_.emplace_back(regionAddr, liveObjectSize);
                 break;
             case SerializedObjectSpace::LARGE_SPACE:

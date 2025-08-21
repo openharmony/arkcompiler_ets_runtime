@@ -29,11 +29,11 @@ public:
     static void DisableReadBarrierDFX(ArkCollector &collector);
 
 private:
-    static void VerifyAfterMarkInternal(RegionSpace &space);
-    static void VerifyAfterForwardInternal(RegionSpace &space);
-    static void VerifyAfterFixInternal(RegionSpace &space);
-    static void EnableReadBarrierDFXInternal(RegionSpace &space);
-    static void DisableReadBarrierDFXInternal(RegionSpace &space);
+    static void VerifyAfterMarkInternal(RegionalHeap &space);
+    static void VerifyAfterForwardInternal(RegionalHeap &space);
+    static void VerifyAfterFixInternal(RegionalHeap &space);
+    static void EnableReadBarrierDFXInternal(RegionalHeap &space);
+    static void DisableReadBarrierDFXInternal(RegionalHeap &space);
 };
 
 }  // namespace common

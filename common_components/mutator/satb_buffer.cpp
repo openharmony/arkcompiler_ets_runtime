@@ -14,7 +14,7 @@
  */
 
 #include "common_components/mutator/satb_buffer.h"
-#include "common_components/heap/allocator/region_space.h"
+#include "common_components/heap/allocator/regional_heap.h"
 
 #include "common_components/base/immortal_wrapper.h"
 
@@ -28,15 +28,15 @@ bool SatbBuffer::ShouldEnqueue(const BaseObject* obj)
     if (UNLIKELY_CC(obj == nullptr)) {
         return false;
     }
-    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG && !RegionSpace::IsYoungSpaceObject(obj)) {
+    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG && !RegionalHeap::IsYoungSpaceObject(obj)) {
         return false;
     }
-    if (RegionSpace::IsNewObjectSinceMarking(obj)) {
+    if (RegionalHeap::IsNewObjectSinceMarking(obj)) {
         return false;
     }
-    if (RegionSpace::IsMarkedObject(obj)) {
+    if (RegionalHeap::IsMarkedObject(obj)) {
         return false;
     }
-    return !RegionSpace::EnqueueObject(obj);
+    return !RegionalHeap::EnqueueObject(obj);
 }
 } // namespace common

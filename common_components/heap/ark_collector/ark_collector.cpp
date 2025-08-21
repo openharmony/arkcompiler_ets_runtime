@@ -23,6 +23,7 @@
 #include "common_interfaces/profiler/heap_profiler_listener.h"
 #include "common_components/objects/string_table_internal.h"
 #include "common_components/heap/allocator/fix_heap.h"
+#include "common_components/heap/allocator/regional_heap.h"
 
 #ifdef ENABLE_QOS
 #include "qos.h"
@@ -43,7 +44,7 @@ bool ArkCollector::IsUnmovableFromObject(BaseObject* obj) const
 
 bool ArkCollector::MarkObject(BaseObject* obj) const
 {
-    bool marked = RegionSpace::MarkObject(obj);
+    bool marked = RegionalHeap::MarkObject(obj);
     if (!marked) {
         RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
         DCHECK_CC(!region->IsGarbageRegion());
@@ -321,8 +322,8 @@ public:
         } else {
             if (Heap::GetHeap().GetGCReason() != GC_REASON_YOUNG) {
                 MarkObject(oldObj);
-            } else if (RegionSpace::IsYoungSpaceObject(oldObj) && !RegionSpace::IsNewObjectSinceMarking(oldObj) &&
-                       !RegionSpace::IsMarkedObject(oldObj)) {
+            } else if (RegionalHeap::IsYoungSpaceObject(oldObj) && !RegionalHeap::IsNewObjectSinceMarking(oldObj) &&
+                       !RegionalHeap::IsMarkedObject(oldObj)) {
                 // RSet don't protect exempted objects, we need to mark it
                 MarkObject(oldObj);
             }
@@ -332,7 +333,7 @@ public:
 private:
     void MarkObject(BaseObject *object)
     {
-        if (!RegionSpace::IsNewObjectSinceMarking(object) && !collector_->MarkObject(object)) {
+        if (!RegionalHeap::IsNewObjectSinceMarking(object) && !collector_->MarkObject(object)) {
             localStack_.push_back(object);
         }
     }
@@ -566,12 +567,12 @@ WeakRefFieldVisitor ArkCollector::GetWeakRefFieldVisitor()
         RefField<> oldField(refField);
         BaseObject *oldObj = oldField.GetTargetObject();
         if (gcReason_ == GC_REASON_YOUNG) {
-            if (RegionSpace::IsYoungSpaceObject(oldObj) && !IsMarkedObject(oldObj) &&
-                !RegionSpace::IsNewObjectSinceMarking(oldObj)) {
+            if (RegionalHeap::IsYoungSpaceObject(oldObj) && !IsMarkedObject(oldObj) &&
+                !RegionalHeap::IsNewObjectSinceMarking(oldObj)) {
                 return false;
             }
         } else {
-            if (!IsMarkedObject(oldObj) && !RegionSpace::IsNewObjectSinceMarking(oldObj)) {
+            if (!IsMarkedObject(oldObj) && !RegionalHeap::IsNewObjectSinceMarking(oldObj)) {
                 return false;
             }
         }
@@ -624,7 +625,7 @@ void ArkCollector::PreforwardFlip()
         TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
         Remark();
         PostMarking();
-        reinterpret_cast<RegionSpace&>(theAllocator_).PrepareForward();
+        reinterpret_cast<RegionalHeap&>(theAllocator_).PrepareForward();
 
         TransitionToGCPhase(GCPhase::GC_PHASE_PRECOPY, true);
         WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
@@ -712,8 +713,8 @@ void ArkCollector::PrepareFix()
 
 void ArkCollector::ParallelFixHeap()
 {
-    auto& regionSpace = reinterpret_cast<RegionSpace&>(theAllocator_);
-    auto taskList = regionSpace.CollectFixTasks();
+    auto& regionalHeap = reinterpret_cast<RegionalHeap&>(theAllocator_);
+    auto taskList = regionalHeap.CollectFixTasks();
     std::atomic<int> taskIter = 0;
     std::function<FixHeapTask *()> getNextTask = [&taskIter, &taskList]() -> FixHeapTask* {
         uint32_t idx = static_cast<uint32_t>(taskIter.fetch_add(1U, std::memory_order_relaxed));
@@ -800,7 +801,7 @@ void ArkCollector::DoGarbageCollection()
         PrepareFix();
         FixHeap();
         if (isNotYoungGC) {
-            CollectPinnedGarbage();
+            CollectNonMovableGarbage();
         }
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
@@ -822,7 +823,7 @@ void ArkCollector::DoGarbageCollection()
         ScopedStopTheWorld stw(finalMarkStwParam, true, GCPhase::GC_PHASE_FINAL_MARK);
         Remark();
         PostMarking();
-        reinterpret_cast<RegionSpace&>(theAllocator_).PrepareForward();
+        reinterpret_cast<RegionalHeap&>(theAllocator_).PrepareForward();
         Preforward();
     }
         GetGCStats().recordSTWTime(finalMarkStwParam.GetElapsedNs());
@@ -840,7 +841,7 @@ void ArkCollector::DoGarbageCollection()
         PrepareFix();
         FixHeap();
         if (isNotYoungGC) {
-            CollectPinnedGarbage();
+            CollectNonMovableGarbage();
         }
 
         TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
@@ -866,12 +867,12 @@ void ArkCollector::DoGarbageCollection()
     PrepareFix();
     FixHeap();
     if (isNotYoungGC) {
-        CollectPinnedGarbage();
+        CollectNonMovableGarbage();
     }
 
     TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
     ClearAllGCInfo();
-    RegionSpace &space = reinterpret_cast<RegionSpace &>(theAllocator_);
+    RegionalHeap &space = reinterpret_cast<RegionalHeap &>(theAllocator_);
     space.DumpAllRegionSummary("Peak GC log");
     space.DumpAllRegionStats("region statistics when gc ends");
     CollectSmallSpace();
@@ -1019,7 +1020,7 @@ BaseObject* ArkCollector::CopyObjectImpl(BaseObject* obj)
 
 BaseObject* ArkCollector::CopyObjectAfterExclusive(BaseObject* obj)
 {
-    size_t size = RegionSpace::GetAllocSize(*obj);
+    size_t size = RegionalHeap::GetAllocSize(*obj);
     // 8: size of free object, but free object can not be copied.
     if (size == 8) {
         LOG_COMMON(FATAL) << "forward free obj: " << obj <<
@@ -1049,16 +1050,16 @@ BaseObject* ArkCollector::CopyObjectAfterExclusive(BaseObject* obj)
 void ArkCollector::ClearAllGCInfo()
 {
     COMMON_PHASE_TIMER("ClearAllGCInfo");
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
     space.ClearAllGCInfo();
-    reinterpret_cast<RegionSpace&>(theAllocator_).ClearJitFortAwaitingMark();
+    reinterpret_cast<RegionalHeap&>(theAllocator_).ClearJitFortAwaitingMark();
 }
 
 void ArkCollector::CollectSmallSpace()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectSmallSpace", "");
     GCStats& stats = GetGCStats();
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
     {
         COMMON_PHASE_TIMER("CollectFromSpaceGarbage");
         stats.collectedBytes += stats.smallGarbageSize;
@@ -1071,23 +1072,23 @@ void ArkCollector::CollectSmallSpace()
         }
     }
 
-    size_t candidateBytes = stats.fromSpaceSize + stats.pinnedSpaceSize + stats.largeSpaceSize;
+    size_t candidateBytes = stats.fromSpaceSize + stats.nonMovableSpaceSize + stats.largeSpaceSize;
     stats.garbageRatio = (candidateBytes > 0) ? static_cast<float>(stats.collectedBytes) / candidateBytes : 0;
 
     stats.liveBytesAfterGC = space.GetAllocatedBytes();
 
     VLOG(INFO,
-         "collect %zu B: old small %zu - %zu B, old pinned %zu - %zu B, old large %zu - %zu B. garbage ratio %.2f%%",
-         stats.collectedBytes, stats.fromSpaceSize, stats.smallGarbageSize, stats.pinnedSpaceSize,
-         stats.pinnedGarbageSize, stats.largeSpaceSize, stats.largeGarbageSize,
+         "collect %zu B: small %zu - %zu B, non-movable %zu - %zu B, large %zu - %zu B. garbage ratio %.2f%%",
+         stats.collectedBytes, stats.fromSpaceSize, stats.smallGarbageSize, stats.nonMovableSpaceSize,
+         stats.nonMovableGarbageSize, stats.largeSpaceSize, stats.largeGarbageSize,
          stats.garbageRatio * 100); // The base of the percentage is 100
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectSmallSpace END", (
                     "collect:" + std::to_string(stats.collectedBytes) +
-                    "B;old small:" + std::to_string(stats.fromSpaceSize) +
+                    "B;small:" + std::to_string(stats.fromSpaceSize) +
                     "-" + std::to_string(stats.smallGarbageSize) +
-                    "B;old pinned:" + std::to_string(stats.pinnedSpaceSize) +
-                    "-" + std::to_string(stats.pinnedGarbageSize) +
-                    "B;old large:" + std::to_string(stats.largeSpaceSize) +
+                    "B;non-movable:" + std::to_string(stats.nonMovableSpaceSize) +
+                    "-" + std::to_string(stats.nonMovableGarbageSize) +
+                    "B;large:" + std::to_string(stats.largeSpaceSize) +
                     "-" + std::to_string(stats.largeGarbageSize) +
                     "B;garbage ratio:" + std::to_string(stats.garbageRatio)
                 ).c_str());

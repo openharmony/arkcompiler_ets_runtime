@@ -114,7 +114,7 @@ HWTEST_F_L0(MarkingCollectorTest, MarkingRootsTest)
 {
     TableMarkingCollctor& collector = reinterpret_cast<TableMarkingCollctor&>(Heap::GetHeap().GetCollector());
     CArrayList<BaseObject *> roots;
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
@@ -131,7 +131,7 @@ HWTEST_F_L0(MarkingCollectorTest, MarkingRootsTest)
 HWTEST_F_L0(MarkingCollectorTest, PushRootToWorkStackTest)
 {
     TableMarkingCollctor& collector = reinterpret_cast<TableMarkingCollctor&>(Heap::GetHeap().GetCollector());
-    RegionSpace& theAllocator = reinterpret_cast<RegionSpace&>(Heap::GetHeap().GetAllocator());
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);

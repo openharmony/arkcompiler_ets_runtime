@@ -418,7 +418,7 @@ void MarkingCollector::MarkingRoots(const CArrayList<BaseObject *> &collectedRoo
     if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PushRootInRSet", "");
         auto func = [this, &workStack](BaseObject *object) { MarkRememberSetImpl(object, workStack); };
-        RegionSpace &space = reinterpret_cast<RegionSpace &>(Heap::GetHeap().GetAllocator());
+        RegionalHeap &space = reinterpret_cast<RegionalHeap &>(Heap::GetHeap().GetAllocator());
         space.MarkRememberSet(func);
     }
 
@@ -545,7 +545,7 @@ void MarkingCollector::ConcurrentRemark(WorkStack& remarkStack, bool parallel)
 
 void MarkingCollector::MarkAwaitingJitFort()
 {
-    reinterpret_cast<RegionSpace&>(theAllocator_).MarkAwaitingJitFort();
+    reinterpret_cast<RegionalHeap&>(theAllocator_).MarkAwaitingJitFort();
 }
 
 void MarkingCollector::Init(const RuntimeParam& param) {}
@@ -604,7 +604,7 @@ void MarkingCollector::PreGarbageCollection(bool isConcurrent)
     gcStats.isConcurrentMark = isConcurrent;
     gcStats.collectedBytes = 0;
     gcStats.smallGarbageSize = 0;
-    gcStats.pinnedGarbageSize = 0;
+    gcStats.nonMovableGarbageSize = 0;
     gcStats.largeGarbageSize = 0;
     gcStats.gcStartTime = TimeUtil::NanoSeconds();
     gcStats.totalSTWTime = 0;
@@ -628,7 +628,7 @@ void MarkingCollector::PostGarbageCollection(uint64_t gcIndex)
 
 void MarkingCollector::UpdateGCStats()
 {
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
     GCStats& gcStats = GetGCStats();
     gcStats.Dump();
 
@@ -806,7 +806,7 @@ void MarkingCollector::CopyFromSpace()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CopyFromSpace", "");
     TransitionToGCPhase(GCPhase::GC_PHASE_COPY, true);
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
     GCStats& stats = GetGCStats();
     stats.liveBytesBeforeGC = space.GetAllocatedBytes();
     stats.fromSpaceSize = space.FromSpaceSize();
@@ -817,7 +817,7 @@ void MarkingCollector::CopyFromSpace()
 
 void MarkingCollector::ExemptFromSpace()
 {
-    RegionSpace& space = reinterpret_cast<RegionSpace&>(theAllocator_);
+    RegionalHeap& space = reinterpret_cast<RegionalHeap&>(theAllocator_);
     space.ExemptFromSpace();
 }
 

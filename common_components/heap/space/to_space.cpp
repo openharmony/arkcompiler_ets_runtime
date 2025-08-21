@@ -51,4 +51,17 @@ void ToSpace::GetPromotedTo(OldSpace& mspace)
     mspace.PromoteRegionList(fullToRegionList_);
     mspace.PromoteRegionList(tlToRegionList_);
 }
+
+RegionDesc* ToSpace::AllocateThreadLocalRegion(bool expectPhysicalMem)
+{
+    RegionDesc* region = regionManager_.TakeRegion(expectPhysicalMem, false, true);
+    if (region != nullptr) {
+        DLOG(REGION, "alloc thread local to region @0x%zx+%zu type %u", region->GetRegionStart(),
+             region->GetRegionAllocatedSize(),
+             region->GetRegionType());
+        tlToRegionList_.PrependRegion(region, RegionDesc::RegionType::TO_REGION);
+    }
+    return region;
+}
+
 } // namespace common

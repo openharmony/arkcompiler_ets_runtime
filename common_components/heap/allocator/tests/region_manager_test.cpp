@@ -305,98 +305,6 @@ HWTEST_F_L0(RegionManagerTest, TakeRegion2)
     EXPECT_NE(region, nullptr);
 }
 
-HWTEST_F_L0(RegionManagerTest, AllocPinnedFromFreeList)
-{
-    ASSERT_NE(mutator_, nullptr);
-    mutator_->SetMutatorPhase(GCPhase::GC_PHASE_FIX);
-    RegionManager manager;
-    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
-    EXPECT_EQ(manager.AllocPinnedFromFreeList(0), 0);
-}
-
-HWTEST_F_L0(RegionManagerTest, AllocReadOnly1)
-{
-    auto* mutator = common::Mutator::GetMutator();
-    mutator->SetMutatorPhase(GCPhase::GC_PHASE_ENUM);
-    RegionManager manager;
-    manager.ClearAllGCInfo();
-    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    EXPECT_EQ(ret, 0);
-}
-
-HWTEST_F_L0(RegionManagerTest, AllocReadOnly2)
-{
-    auto* mutator = common::Mutator::GetMutator();
-    mutator->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
-    RegionManager manager;
-    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
-    manager.ClearAllGCInfo();
-    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    EXPECT_NE(ret, 0);
-}
-
-HWTEST_F_L0(RegionManagerTest, AllocReadOnly3)
-{
-    auto* mutator = common::Mutator::GetMutator();
-    mutator->SetMutatorPhase(GCPhase::GC_PHASE_POST_MARK);
-    RegionManager manager;
-    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
-    manager.ClearAllGCInfo();
-    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    EXPECT_NE(ret, 0);
-}
-
-HWTEST_F_L0(RegionManagerTest, AllocReadOnly4)
-{
-    auto* mutator = common::Mutator::GetMutator();
-    mutator->SetMutatorPhase(GCPhase::GC_PHASE_PRECOPY);
-    RegionManager manager;
-    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
-    manager.ClearAllGCInfo();
-    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    EXPECT_NE(ret, 0);
-}
-
-HWTEST_F_L0(RegionManagerTest, AllocReadOnly5)
-{
-    auto* mutator = common::Mutator::GetMutator();
-    mutator->SetMutatorPhase(GCPhase::GC_PHASE_COPY);
-    RegionManager manager;
-    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
-    manager.ClearAllGCInfo();
-    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    EXPECT_NE(ret, 0);
-}
-
-HWTEST_F_L0(RegionManagerTest, AllocReadOnly6)
-{
-    auto* mutator = common::Mutator::GetMutator();
-    mutator->SetMutatorPhase(GCPhase::GC_PHASE_FIX);
-    RegionManager manager;
-    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
-    manager.ClearAllGCInfo();
-    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    EXPECT_NE(ret, 0);
-}
-
-HWTEST_F_L0(RegionManagerTest, AllocReadOnly7)
-{
-    auto* mutator = common::Mutator::GetMutator();
-    mutator->SetMutatorPhase(GCPhase::GC_PHASE_UNDEF);
-    RegionManager manager;
-    manager.Initialize(SIZE_MAX_TEST, reinterpret_cast<uintptr_t>(regionMemory_));
-    manager.ClearAllGCInfo();
-    ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
-    uintptr_t ret = manager.AllocReadOnly(sizeof(RegionDesc), false);
-    EXPECT_NE(ret, 0);
-}
-
 HWTEST_F_L0(RegionManagerTest, VisitRememberSetTest)
 {
     size_t totalUnits = 1024;
@@ -415,8 +323,6 @@ HWTEST_F_L0(RegionManagerTest, VisitRememberSetTest)
     size_t nUnit = 4;
     RegionDesc* region = RegionDesc::InitRegion(unitIdx, nUnit, RegionDesc::UnitRole::LARGE_SIZED_UNITS);
     ASSERT_NE(region, nullptr);
-
-    manager.MarkRememberSet([&](BaseObject* obj) {});
 
     int callbackCount = 0;
     region->VisitRememberSet([&](BaseObject* obj) {
@@ -446,8 +352,6 @@ HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeCopyTest)
     RegionDesc* region = RegionDesc::InitRegion(unitIdx, nUnit, RegionDesc::UnitRole::LARGE_SIZED_UNITS);
     ASSERT_NE(region, nullptr);
 
-    manager.MarkRememberSet([&](BaseObject* obj) {});
-
     int callbackCount = 0;
     region->VisitRememberSetBeforeCopy([&](BaseObject* obj) {
         callbackCount++;
@@ -476,8 +380,6 @@ HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeMarkingTest)
     RegionDesc* region = RegionDesc::InitRegion(unitIdx, nUnit, RegionDesc::UnitRole::LARGE_SIZED_UNITS);
     ASSERT_NE(region, nullptr);
 
-    manager.MarkRememberSet([&](BaseObject* obj) {});
-
     int callbackCount = 0;
     region->VisitRememberSetBeforeMarking([&](BaseObject* obj) {
         callbackCount++;
@@ -486,4 +388,5 @@ HWTEST_F_L0(RegionManagerTest, VisitRememberSetBeforeMarkingTest)
     EXPECT_GE(callbackCount, 0);
     free(regionMemory);
 }
+
 }
