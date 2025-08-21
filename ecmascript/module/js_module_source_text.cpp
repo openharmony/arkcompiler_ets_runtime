@@ -645,8 +645,6 @@ bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
 int SourceTextModule::FinishModuleInstantiation(JSThread *thread, JSHandle<SourceTextModule> module,
     CVector<JSHandle<SourceTextModule>> &stack, int index, JSHandle<JSTaggedValue> exception)
 {
-    // Add a safepoint here to check if a suspension is needed.
-    thread->CheckSafepointIfSuspended();
     // ArkTS module doesn't implement other module Record, delete follow branch.
     // 1. If module is not a Source Text Module Record, then
         //  a. Perform ? module.Instantiate().
@@ -711,6 +709,9 @@ int SourceTextModule::FinishModuleInstantiation(JSThread *thread, JSHandle<Sourc
 void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
                                                          const JSHandle<SourceTextModule> &module)
 {
+    // Add a safepoint here to check if a suspension is needed.
+    thread->CheckSafepointIfSuspended();
+
     CheckResolvedBinding(thread, module);
     if (module->GetImportEntries(thread).IsUndefined()) {
         return;
@@ -789,6 +790,9 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
 void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
                                                               const JSHandle<SourceTextModule> &module)
 {
+    // Add a safepoint here to check if a suspension is needed.
+    thread->CheckSafepointIfSuspended();
+
     ModuleTraceScope moduleTraceScope(thread,
         "SourceTextModule::Instantiating:" + module->GetEcmaModuleRecordNameString());
     if (IsSharedModule(module) && SharedModuleManager::GetInstance()->IsInstantiatedSModule(thread, module)) {
