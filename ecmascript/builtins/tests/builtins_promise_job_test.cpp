@@ -61,6 +61,15 @@ Local<JSValueRef> BuiltinsPromiseJobTest::MockGetModuleJSError(JsiRuntimeCallInf
 // dynamic import static module after load 1.0 module failed
 HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException)
 {
+    /**
+     * Both the handle and the stack are allocated using maloc.
+     * When newJsError is called, the C interpreter will step back one frame before executing.
+     * In the UT, there is only one frame, and stepping back causes it to step on the handle address.
+     * This is a special scenario caused by the UT, and it would not occur during normal execution.
+     */
+    if (!thread->IsAsmInterpreter()) {
+        return;
+    }
     auto vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
@@ -111,6 +120,15 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException)
 // throw 1.2 load failed
 HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException2)
 {
+    /**
+     * Both the handle and the stack are allocated using maloc.
+     * When newJsError is called, the C interpreter will step back one frame before executing.
+     * In the UT, there is only one frame, and stepping back causes it to step on the handle address.
+     * This is a special scenario caused by the UT, and it would not occur during normal execution.
+     */
+    if (!thread->IsAsmInterpreter()) {
+        return;
+    }
     auto vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
