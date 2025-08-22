@@ -15,4 +15,4 @@
 
 import('./A').then((ns)=>{
     markModuleCollectable(ns);
-})
+});
