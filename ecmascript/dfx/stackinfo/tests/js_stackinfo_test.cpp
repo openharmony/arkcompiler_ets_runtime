@@ -616,6 +616,7 @@ HWTEST_F_L0(JsStackInfoTest, TestLocalParseJsFrameInfo__002)
     EXPECT_TRUE(ret == -1);
 }
 
+#if defined(PANDA_TARGET_ARM64)
 HWTEST_F_L0(JsStackInfoTest, TestFrameType_001)
 {
     EXPECT_TRUE(ToUintPtr(arkts_frame_type::OPTIMIZED_FRAME) ==
@@ -1605,4 +1606,5 @@ HWTEST_F_L0(JsStackInfoTest, TestNextArkFrame)
 
     free(ctx);
 }
+#endif
 }  // namespace panda::test
