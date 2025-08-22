@@ -1680,7 +1680,7 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
         SetCompilerEnableLiteCG(true);
         SetEnableOptPGOType(true);
         if (IsCompilerAnFileMaxByteSizeDefault()) {
-            SetCompilerAnFileMaxByteSize(100_MB);
+            SetCompilerAnFileMaxByteSize(300_MB);
         }
     }
 
