@@ -20,7 +20,7 @@
 namespace panda::ecmascript::kungfu {
 size_t UnionFind(std::vector<size_t> &semiDom, std::vector<size_t> &parent, std::vector<size_t> &minIdx, size_t idx)
 {
-    std::stack<size_t> allIdxs;
+    std::stack<size_t, std::vector<size_t>> allIdxs;
     allIdxs.emplace(idx);
     size_t pIdx = parent[idx];
     while (pIdx != allIdxs.top()) {
