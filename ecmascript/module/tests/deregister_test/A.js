@@ -13,5 +13,5 @@
  * limitations under the License.
  */
 
-import { b } from './B'
+import { b } from './B';
 export let a = 10 + b;
