@@ -108,8 +108,7 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
             RETURN_IF_ABRUPT_COMPLETION(thread);
             ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
-            CString moduleName =
-                moduleRecordName.empty() ? requiredModule->GetEcmaModuleFilenameString() : moduleRecordName;
+            CString moduleName = SourceTextModule::GetModuleName(requiredModule.GetTaggedValue());
             if (increaseModule.find(moduleName) != increaseModule.end()) {
                 LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
                 requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
@@ -145,11 +144,12 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
                 SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, idx);
             RETURN_IF_ABRUPT_COMPLETION(thread);
             ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
-            const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
-            CString moduleName =
-                moduleRecordName.empty() ? requiredModule->GetEcmaModuleFilenameString() : moduleRecordName;
+            CString moduleName = SourceTextModule::GetModuleName(requiredModule.GetTaggedValue());
+            if (moduleName.empty()) {
+                continue;
+            }
             if (decreaseModule.find(moduleName) != decreaseModule.end()) {
-                LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
+                LOG_FULL(DEBUG) << "Find module cyclical loading, stop decreasing.";
                 requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
                 return;
             }

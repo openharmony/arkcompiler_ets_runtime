@@ -1,0 +1,3 @@
+entry.js;entry;esm;entry.js;xxentryxx
+A.js;A;esm;A.js;xxAxx
+B.js;B;esm;B.js;xxBxx
