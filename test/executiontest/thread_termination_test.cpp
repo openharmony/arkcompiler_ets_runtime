@@ -127,7 +127,7 @@ HWTEST_F_L0(ThreadTerminationTest, TerminateFromThreadItself)
     JSThread *thread = vm_->GetAssociatedJSThread();
     auto* factory = vm_->GetFactory();
     JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
-    SaveAndSwitchEnv(thread, globalEnv);
+    SaveAndSwitchEnv(thread, globalEnv.GetTaggedValue());
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     RegisterGlobalTemplate(vm_, TerminateThread, Fail, Signal);
     TryCatch tryCatch(vm_);
@@ -141,7 +141,7 @@ HWTEST_F_L0(ThreadTerminationTest, TerminateFromOtherThread)
     JSThread *thread = vm_->GetAssociatedJSThread();
     auto* factory = vm_->GetFactory();
     JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
-    SaveAndSwitchEnv(thread, globalEnv);
+    SaveAndSwitchEnv(thread, globalEnv.GetTaggedValue());
     TerminatorThread terminatorThread(vm_);
     terminatorThread.Run();
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
@@ -158,7 +158,7 @@ HWTEST_F_L0(ThreadTerminationTest, TerminateFromOtherThreadWithoutCall)
     JSThread *thread = vm_->GetAssociatedJSThread();
     auto* factory = vm_->GetFactory();
     JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
-    SaveAndSwitchEnv(thread, globalEnv);
+    SaveAndSwitchEnv(thread, globalEnv.GetTaggedValue());
     TerminatorThread terminatorThread(vm_);
     terminatorThread.RunWithSleep();
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
@@ -175,7 +175,7 @@ HWTEST_F_L0(ThreadTerminationTest, TerminateClearArrayJoinStack)
     JSThread *thread = vm_->GetAssociatedJSThread();
     auto* factory = vm_->GetFactory();
     JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
-    SaveAndSwitchEnv(thread, globalEnv);
+    SaveAndSwitchEnv(thread, globalEnv.GetTaggedValue());
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     RegisterGlobalTemplate(vm_, TerminateThread, Fail, Signal);
     TryCatch tryCatch(vm_);
@@ -189,7 +189,7 @@ HWTEST_F_L0(ThreadTerminationTest, TerminateInMicroTask)
     JSThread *thread = vm_->GetAssociatedJSThread();
     auto* factory = vm_->GetFactory();
     JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
-    SaveAndSwitchEnv(thread, globalEnv);
+    SaveAndSwitchEnv(thread, globalEnv.GetTaggedValue());
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     RegisterGlobalTemplate(vm_, TerminateThread, Fail, Signal);
     TryCatch tryCatch(vm_);
@@ -202,7 +202,7 @@ HWTEST_F_L0(ThreadTerminationTest, TerminateWithoutExecutingMicroTask)
     JSThread *thread = vm_->GetAssociatedJSThread();
     auto* factory = vm_->GetFactory();
     JSHandle<GlobalEnv> globalEnv = factory->NewGlobalEnv();
-    SaveAndSwitchEnv(thread, globalEnv);
+    SaveAndSwitchEnv(thread, globalEnv.GetTaggedValue());
     JSNApi::EnableUserUncaughtErrorHandler(vm_);
     RegisterGlobalTemplate(vm_, TerminateThread, Fail, Signal);
     TryCatch tryCatch(vm_);
