@@ -45,6 +45,7 @@ public:
     void HandleThermalLevelChanged(const int32_t level);
     int32_t SendSysEvent(const std::unordered_map<std::string, std::string> &argsMap) const;
     std::string ParseArkCacheFromArgs(const std::unordered_map<std::string, std::string> &argsMap) const;
+    bool IsAllowAotCompiler() const;
 
 protected:
     void DropCapabilities() const;

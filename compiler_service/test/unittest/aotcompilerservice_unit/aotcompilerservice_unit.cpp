@@ -226,15 +226,12 @@ HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_010, TestSize.Level0)
 HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_011, TestSize.Level0)
 {
     AotCompilerService aotService;
-    bool viewData1 = true;
-    int32_t viewData2 = 101010;
-    std::string viewData3 = "101010";
     aotService.RegisterPowerDisconnectedListener();
+    EXPECT_TRUE(aotService.IsPowerEventSubscribered());
     aotService.UnRegisterPowerDisconnectedListener();
+    EXPECT_FALSE(aotService.IsPowerEventSubscribered());
     aotService.UnRegisterPowerDisconnectedListener();
-    EXPECT_TRUE(viewData1);
-    EXPECT_EQ(viewData2, 101010);
-    EXPECT_STREQ(viewData3.c_str(), "101010");
+    EXPECT_FALSE(aotService.IsPowerEventSubscribered());
 }
 
 /**
@@ -245,15 +242,12 @@ HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_011, TestSize.Level0)
 HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_012, TestSize.Level0)
 {
     AotCompilerService aotService;
-    bool viewData1 = true;
-    int32_t viewData2 = 101010;
-    std::string viewData3 = "101010";
     aotService.RegisterScreenStatusSubscriber();
+    EXPECT_TRUE(aotService.IsScreenStatusSubscribered());
     aotService.UnRegisterScreenStatusSubscriber();
+    EXPECT_FALSE(aotService.IsScreenStatusSubscribered());
     aotService.UnRegisterScreenStatusSubscriber();
-    EXPECT_TRUE(viewData1);
-    EXPECT_EQ(viewData2, 101010);
-    EXPECT_STREQ(viewData3.c_str(), "101010");
+    EXPECT_FALSE(aotService.IsScreenStatusSubscribered());
 }
 
 /**
@@ -264,15 +258,12 @@ HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_012, TestSize.Level0)
 HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_013, TestSize.Level0)
 {
     AotCompilerService aotService;
-    bool viewData1 = true;
-    int32_t viewData2 = 101010;
-    std::string viewData3 = "101010";
     aotService.RegisterThermalMgrListener();
+    EXPECT_TRUE(aotService.IsThermalLevelEventSubscribered());
     aotService.UnRegisterThermalMgrListener();
+    EXPECT_FALSE(aotService.IsThermalLevelEventSubscribered());
     aotService.UnRegisterThermalMgrListener();
-    EXPECT_TRUE(viewData1);
-    EXPECT_EQ(viewData2, 101010);
-    EXPECT_STREQ(viewData3.c_str(), "101010");
+    EXPECT_FALSE(aotService.IsThermalLevelEventSubscribered());
 }
 
 /**

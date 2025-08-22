@@ -365,4 +365,9 @@ void AotCompilerImpl::ResetState()
     state_.running = false;
     state_.childPid = -1;
 }
+
+bool AotCompilerImpl::IsAllowAotCompiler() const
+{
+    return allowAotCompiler_.load();
+}
 } // namespace OHOS::ArkCompiler

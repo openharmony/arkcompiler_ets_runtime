@@ -46,6 +46,10 @@ public:
     int32_t StopAotCompiler() override;
     int32_t GetAOTVersion(std::string& sigData) override;
     int32_t NeedReCompile(const std::string& args, bool& sigData) override;
+    bool IsPowerEventSubscribered() const;
+    bool IsScreenStatusSubscribered() const;
+    bool IsThermalLevelEventSubscribered() const;
+
 protected:
     void OnStart() override;
     void OnStop() override;
