@@ -87,8 +87,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, Execute)
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::Execute(thread, pf.get(), JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
-
-    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
@@ -126,6 +124,9 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     pfManager->RemoveJSPandaFile(pf.get());
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
     EXPECT_TRUE(foundPf == nullptr);
+
+    // readd panda file into mgr, due to panda file should managed by gc.
+    pfManager->AddJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
@@ -163,6 +164,9 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     pfManager->RemoveJSPandaFile(pf.get());
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
     EXPECT_TRUE(foundPf == nullptr);
+
+    // readd panda file into mgr, due to panda file should managed by gc.
+    pfManager->AddJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteAbcFileWithSingletonPatternFlag)
