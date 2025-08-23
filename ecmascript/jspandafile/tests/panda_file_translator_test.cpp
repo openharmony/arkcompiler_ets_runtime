@@ -96,8 +96,6 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
     JSHandle<JSFunction> mainFunc2(thread, program2->GetMainFunction(thread));
     JSHandle<JSTaggedValue> funcName2 = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc2));
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName2)).ToCString(thread).c_str(), "func_main_0");
-
-    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
@@ -131,6 +129,5 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
     EXPECT_TRUE(pf->FindMethodLiteral(methodId[0].GetOffset()) != nullptr);
     EXPECT_EQ(pf->FindMethodLiteral(methodId[0].GetOffset())->GetFunctionKind(),
                                     ecmascript::FunctionKind::NONE_FUNCTION);
-    pfManager->RemoveJSPandaFile(pf.get());
 }
 }  // namespace panda::test

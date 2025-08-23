@@ -192,6 +192,10 @@ HWTEST_F_L0(JSPandaFileManagerTest, MultiEcmaVM_Add_Find_Remove_JSPandaFile)
     std::shared_ptr<JSPandaFile> afterRemovePf2 = pfManager->FindJSPandaFile(filename2);
     EXPECT_EQ(afterRemovePf1, nullptr);
     EXPECT_EQ(afterRemovePf2, nullptr);
+    
+    // panda file would be managed by gc, readd to panda file manager after check
+    pfManager->AddJSPandaFile(pf1);
+    pfManager->AddJSPandaFile(pf2);
 }
 
 void CreateJSPandaFileAndConstpool(EcmaVM *vm)
@@ -298,8 +302,6 @@ HWTEST_F_L0(JSPandaFileManagerTest, GenerateProgram)
     JSHandle<JSFunction> mainFunc(thread, program->GetMainFunction(thread));
     JSHandle<JSTaggedValue> funcName = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc));
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName)).ToCString(thread).c_str(), "foo");
-
-    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, GetJSPtExtractor)
