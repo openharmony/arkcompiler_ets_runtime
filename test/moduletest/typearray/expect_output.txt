@@ -267,3 +267,6 @@ true
 true
 true
 true
+true
+Infinity
+-Infinity
