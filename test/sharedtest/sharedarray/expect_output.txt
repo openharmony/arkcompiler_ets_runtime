@@ -71,8 +71,8 @@ Start Test pop
 60
 Start Test randomUpdate
 30
-add element by index access failed. err: TypeError: Cannot add property in prevent extensions, code: undefined
-add element by index access failed. err: TypeError: Cannot add property in prevent extensions, code: undefined
+add element by index access failed. err: TypeError: Cannot add property "null" in prevent extensions, code: undefined
+add element by index access failed. err: TypeError: Cannot add property "undefined" in prevent extensions, code: undefined
 add element by index access failed. err: BusinessError: The value of index is out of range., code: 10200001
 Start Test randomGet
 5,12,8,130,44
@@ -253,28 +253,28 @@ Start Test testStringForIC
 [IC] String Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
 Start Test arrayFrozenTest
 arrayFrozenTest [new] single string. arr: ARK
-Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+Add prop to array failed. err: TypeError: Cannot add property "notExistProp" in prevent extensions
 defineNotExistProp to array failed. err: TypeError: Cannot define property
 Update function [at] failed. err: TypeError: Cannot assign to read only property
 Update function [at] by defineProperty failed. err: TypeError: Cannot define property
 arrayFrozenTest [new]. arr: A,R,K
-Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+Add prop to array failed. err: TypeError: Cannot add property "notExistProp" in prevent extensions
 defineNotExistProp to array failed. err: TypeError: Cannot define property
 Update function [at] failed. err: TypeError: Cannot assign to read only property
 Update function [at] by defineProperty failed. err: TypeError: Cannot define property
 arrayFrozenTest static [from]. arr: A,R,K
-Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+Add prop to array failed. err: TypeError: Cannot add property "notExistProp" in prevent extensions
 defineNotExistProp to array failed. err: TypeError: Cannot define property
 Update function [at] failed. err: TypeError: Cannot assign to read only property
 Update function [at] by defineProperty failed. err: TypeError: Cannot define property
 arrayFrozenTest static [create]. arr: A,A,A
-Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+Add prop to array failed. err: TypeError: Cannot add property "notExistProp" in prevent extensions
 defineNotExistProp to array failed. err: TypeError: Cannot define property
 Update function [at] failed. err: TypeError: Cannot assign to read only property
 Update function [at] by defineProperty failed. err: TypeError: Cannot define property
 Start Test sharedArrayFrozenTest
 sharedArrayFrozenTest [new]. arr: A,R,K
-Add prop to array failed. err: TypeError: Cannot add property in prevent extensions
+Add prop to array failed. err: TypeError: Cannot add property "notExistProp" in prevent extensions
 defineNotExistProp to array failed. err: TypeError: Cannot define property
 Update function [at] failed. err: TypeError: Cannot assign to read only property
 Update function [at] by defineProperty failed. err: TypeError: Cannot define property

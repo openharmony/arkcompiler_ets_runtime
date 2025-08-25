@@ -28,8 +28,8 @@ true
 true
 true
 3
-add extension(.): TypeError: Cannot add property in prevent extensions
-add extension([]): TypeError: Cannot add property in prevent extensions
+add extension(.): TypeError: Cannot add property "extension" in prevent extensions
+add extension([]): TypeError: Cannot add property "extension" in prevent extensions
 SubSubSendableSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 SubSubSendableSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Class inheritance test end ===

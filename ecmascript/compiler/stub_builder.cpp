@@ -4998,8 +4998,8 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     Bind(&throwNotExtensible);
     {
         if (mayThrow) {
-            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
-            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensibleByIndex));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeErrorWithParam), {IntToTaggedInt(taggedId), IntToTaggedInt(index)});
             returnValue = Exception();
         } else {
             returnValue = TaggedFalse();
@@ -5170,13 +5170,40 @@ GateRef StubBuilder::DefinePropertyByIndex(GateRef glue, GateRef receiver, GateR
     }
     Bind(&throwNotExtensible);
     {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensibleByIndex));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeErrorWithParam), {IntToTaggedInt(taggedId), IntToTaggedInt(index)});
         returnValue = Exception();
         Jump(&exit);
     }
     Bind(&exit);
     auto ret = *returnValue;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ThrowTypeErrorInextensiableAddProperty(GateRef glue, GateRef key)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    Label isString(env);
+    Label notString(env);
+    BRANCH(TaggedIsString(glue, key), &isString, &notString);
+    Bind(&isString);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensibleByName));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeErrorWithParam), {IntToTaggedInt(taggedId), key});
+        Jump(&exit);
+    }
+    Bind(&notString);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = Exception();
     env->SubCfgExit();
     return ret;
 }
@@ -5540,9 +5567,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
     Bind(&inextensible);
     {
         if (mayThrow) {
-            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
-            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
-            result = Exception();
+            result = ThrowTypeErrorInextensiableAddProperty(glue, key);
         } else {
             result = TaggedFalse();
         }
@@ -5837,9 +5862,7 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
     BRANCH(IsExtensible(glue, receiver), &extensible, &inextensible);
     Bind(&inextensible);
     {
-        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetPropertyWhenNotExtensible));
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-        result = Exception();
+        result = ThrowTypeErrorInextensiableAddProperty(glue, key);
         Jump(&exit);
     }
     Bind(&extensible);

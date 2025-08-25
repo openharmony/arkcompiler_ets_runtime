@@ -50,8 +50,8 @@ Fail to set prop through accessor with mismatched type. err: TypeError: Cannot s
 Start testUpdateInstanceFunction
 Fail to replace instance's func. err: TypeError: Cannot assign to read only property
 Start testUpdatePrototype
-Fail to update prototype. err: TypeError: Cannot add property in prevent extensions
-Fail to extend prop to constructor's prototype. err: TypeError: Cannot add property in prevent extensions
+Fail to update prototype. err: TypeError: Cannot add property "staticSubClassPropString" in prevent extensions
+Fail to extend prop to constructor's prototype. err: TypeError: Cannot add property "tmpProp" in prevent extensions
 I'm propString
 Fail to change constructor of instance's prototype. err: TypeError: Cannot assign to read only property
 Fail to replace instance's prototype. err: TypeError: Cannot set proto with sendable object
@@ -65,10 +65,10 @@ Start testExtend
 Fail to extend prop with defineProperty. err: TypeError: Cannot define property
 Fail to extend prop1 with defineProperty. err: TypeError: Cannot define property
 Fail to extend prop2 with defineProperties. err: TypeError: Cannot define property
-Fail to extend prop3 with stobjbyname. err: TypeError: Cannot add property in prevent extensions
+Fail to extend prop3 with stobjbyname. err: TypeError: Cannot add property "prop3" in prevent extensions
 Start testObjectProtoFunc
 Start testObjectAssign
-Fail to call Object.assign to extend target. err: TypeError: Cannot add property in prevent extensions
+Fail to call Object.assign to extend target. err: TypeError: Cannot add property "a" in prevent extensions
 Fail to call Object.assign to update propString with mismatched type. err: TypeError: Cannot set sendable property with mismatched type
 Success to call Object.assign to update propString
 Start testObjectCreate

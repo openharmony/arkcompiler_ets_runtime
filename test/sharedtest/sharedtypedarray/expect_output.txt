@@ -659,8 +659,8 @@ true, array: [1,2,3]
 Object.freeze error: TypeError: Cannot define property
 Object.freeze freeze empty array success
 Object.defineProperty error: TypeError: Cannot define property
-Add nonExistProp error: TypeError: Cannot add property in prevent extensions
-Add nonExistProp error: TypeError: Cannot add property in prevent extensions
+Add nonExistProp error: TypeError: Cannot add property "nonExistProp" in prevent extensions
+Add nonExistProp error: TypeError: Cannot add property "nonExistProp" in prevent extensions
 ================Test Inheritance================
 array: [1,4,3,2,5], sorted: [1,2,3,4,5]
 length: 5, byteLength: 20

@@ -17,7 +17,7 @@
 #define ECMASCRIPT_MESSAGE_STRING_H
 
 #include <string>
-
+#include "common_components/base/c_string.h"
 #include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/compiler/interpreter_stub.h"
 
@@ -33,6 +33,8 @@ namespace panda::ecmascript {
     V(NotSendableSubClass, "The subclass of sendable class must be a sendable class")                          \
     V(FunctionCallNotConstructor, "class constructor cannot call")                                             \
     V(SetPropertyWhenNotExtensible, "Cannot add property in prevent extensions")                               \
+    V(SetPropertyWhenNotExtensibleByIndex, "Cannot add property \"%d\" in prevent extensions")                 \
+    V(SetPropertyWhenNotExtensibleByName, "Cannot add property \"%s\" in prevent extensions")                  \
     V(GetPropertyOutOfBounds, "Get Property index out-of-bounds")                                              \
     V(CanNotSetPropertyOnContainer, "Cannot set property on Container")                                        \
     V(NonCallable, "CallObj is NonCallable")                                                                   \
@@ -147,5 +149,10 @@ public:
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define GET_MESSAGE_STRING_ID(name) static_cast<int>((MessageString::MessageId::Message_##name))
 #define GET_MESSAGE_STRING(name)  MessageString::GetMessageString(GET_MESSAGE_STRING_ID(name)).c_str()
+#define GET_MESSAGE_STRING_WITH_PARAM(name, ...)                              \
+    common::CString::FormatString(                                            \
+        MessageString::GetMessageString(GET_MESSAGE_STRING_ID(name)).c_str(), \
+        __VA_ARGS__                                                           \
+    ).Str()
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MESSAGE_STRING_H
