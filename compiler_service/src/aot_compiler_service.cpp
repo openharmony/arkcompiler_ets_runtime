@@ -246,4 +246,19 @@ void AotCompilerService::UnRegisterThermalMgrListener()
     isThermalLevelEventSubscribered_ = false;
     LOG_SA(INFO) << "AotCompilerService::UnRegisterThermalMgrListener done";
 }
+
+bool AotCompilerService::IsPowerEventSubscribered() const
+{
+    return isPowerEventSubscribered_;
+}
+
+bool AotCompilerService::IsScreenStatusSubscribered() const
+{
+    return isScreenStatusSubscribered_;
+}
+
+bool AotCompilerService::IsThermalLevelEventSubscribered() const
+{
+    return isThermalLevelEventSubscribered_;
+}
 } // namespace OHOS::ArkCompiler
