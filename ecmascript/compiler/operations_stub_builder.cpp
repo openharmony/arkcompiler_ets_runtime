@@ -1263,13 +1263,24 @@ GateRef OperationsStubBuilder::Inc(GateRef glue, GateRef value, ProfileOperation
     Bind(&valueNotInt);
     {
         Label valueIsDouble(env);
+        Label valueIsNanOrInf(env);
+        Label valueIsNotNanOrInf(env);
         BRANCH(TaggedIsDouble(value), &valueIsDouble, &slowPath);
         Bind(&valueIsDouble);
         {
-            callback.ProfileOpType(TaggedInt(PGOSampleType::DoubleType()));
             GateRef valueDouble = GetDoubleOfTDouble(value);
-            result = DoubleToTaggedDoublePtr(DoubleAdd(valueDouble, Double(1.0)));
-            Jump(&exit);
+            callback.ProfileOpType(TaggedInt(PGOSampleType::DoubleType()));
+            BRANCH_UNLIKELY(DoubleIsNanOrInf(valueDouble), &valueIsNanOrInf, &valueIsNotNanOrInf);
+            Bind(&valueIsNanOrInf);
+            {
+                result = value;
+                Jump(&exit);
+            }
+            Bind(&valueIsNotNanOrInf);
+            {
+                result = DoubleToTaggedDoublePtr(DoubleAdd(valueDouble, Double(1.0)));
+                Jump(&exit);
+            }
         }
     }
     Bind(&slowPath);
@@ -1311,13 +1322,24 @@ GateRef OperationsStubBuilder::Dec(GateRef glue, GateRef value, ProfileOperation
     Bind(&valueNotInt);
     {
         Label valueIsDouble(env);
+        Label valueIsNanOrInf(env);
+        Label valueIsNotNanOrInf(env);
         BRANCH(TaggedIsDouble(value), &valueIsDouble, &slowPath);
         Bind(&valueIsDouble);
         {
-            callback.ProfileOpType(TaggedInt(PGOSampleType::DoubleType()));
             GateRef valueDouble = GetDoubleOfTDouble(value);
-            result = DoubleToTaggedDoublePtr(DoubleSub(valueDouble, Double(1.0)));
-            Jump(&exit);
+            callback.ProfileOpType(TaggedInt(PGOSampleType::DoubleType()));
+            BRANCH_UNLIKELY(DoubleIsNanOrInf(valueDouble), &valueIsNanOrInf, &valueIsNotNanOrInf);
+            Bind(&valueIsNanOrInf);
+            {
+                result = value;
+                Jump(&exit);
+            }
+            Bind(&valueIsNotNanOrInf);
+            {
+                result = DoubleToTaggedDoublePtr(DoubleSub(valueDouble, Double(1.0)));
+                Jump(&exit);
+            }
         }
     }
     Bind(&slowPath);
