@@ -162,8 +162,8 @@ NodeId RawHeapDump::GenerateNodeId(JSTaggedType addr)
     }
 
     JSTaggedValue value {addr};
-    uint64_t hash = value.IsJSObject() ? JSObject::Cast(value)->GetHash(vm_->GetJSThread()) : 0;
-    return (hash << 32) | (nodeId & 0xFFFFFFFF);  // 32: 32-bits means a half of uint64_t
+    int32_t hash = value.IsJSObject() ? JSObject::Cast(value)->GetHash(vm_->GetJSThread()) : 0;
+    return (static_cast<uint64_t>(hash) << 32) | (nodeId & 0xFFFFFFFF);  // 32: 32-bits means a half of uint64_t
 }
 
 void RawHeapDump::WriteChunk(char *data, size_t size)
