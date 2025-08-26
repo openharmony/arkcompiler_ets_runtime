@@ -49,11 +49,24 @@ public:
 
     std::string GetCodeSignArgs() const;
 
+    void SetParser(const std::unordered_map<std::string, std::string> &argsMap);
+
+    void SetIsEnableStaticCompiler(bool value)
+    {
+        isEnableStaticCompiler_ = value;
+    }
+
+    bool IsEnableStaticCompiler() const
+    {
+        return isEnableStaticCompiler_;
+    }
+
 private:
     std::unique_ptr<AOTArgsParserBase> parser_;
     const std::unordered_map<std::string, std::string> argsMap_;
     HapArgs hapArgs_;
     mutable std::mutex hapArgsMutex_;
+    bool isEnableStaticCompiler_ { false };
 };
 
 class AOTArgsParserBase {
@@ -108,8 +121,9 @@ public:
 
 class AOTArgsParserFactory {
 public:
-    static std::optional<std::unique_ptr<AOTArgsParserBase>> GetParser(const std::unordered_map<std::string,
-                                                                       std::string> &argsMap);
+    static std::optional<std::unique_ptr<AOTArgsParserBase>> GetParser(
+        const std::unordered_map<std::string, std::string> &argsMap, bool IsEnableStaticCompiler = false);
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOT_ARGS_HANDLER_H
+ 

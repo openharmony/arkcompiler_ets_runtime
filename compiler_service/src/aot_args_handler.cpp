@@ -49,19 +49,36 @@ const std::string ETS_PATH = "/ets";
 const std::string OWNERID_SHARED_TAG = "SHARED_LIB_ID";
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-// Default closed, open on qiangji
+// disable on master branch defaultly, only enable on feature branch
 const bool ARK_AOT_ENABLE_STATIC_COMPILER_DEFAULT_VALUE = false;
 #endif
 
 AOTArgsHandler::AOTArgsHandler(const std::unordered_map<std::string, std::string> &argsMap) : argsMap_(argsMap)
 {
-    parser_ = *AOTArgsParserFactory::GetParser(argsMap);
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    SetIsEnableStaticCompiler(AOTArgsParserBase::IsEnableStaticCompiler());
+#endif
+    SetParser(argsMap);
+}
+
+void AOTArgsHandler::SetParser(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto parserOpt = AOTArgsParserFactory::GetParser(argsMap, IsEnableStaticCompiler());
+    if (parserOpt.has_value()) {
+        parser_ = std::move(parserOpt.value());
+    } else {
+        parser_ = nullptr;
+    }
 }
 
 int32_t AOTArgsHandler::Handle(int32_t thermalLevel)
 {
     if (argsMap_.empty()) {
         LOG_SA(ERROR) << "pass empty args to aot sa";
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+    if (!parser_) {
+        LOG_SA(ERROR) << "AOTArgsParser is null, invalid parameters";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
@@ -300,13 +317,25 @@ std::string StaticAOTArgsParser::ParseLocation(std::string &anFilePath)
 }
 
 std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParser(
-    const std::unordered_map<std::string, std::string> &argsMap)
+    const std::unordered_map<std::string, std::string> &argsMap, bool isEnableStaticCompiler)
 {
-#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-    if (!AOTArgsParserBase::IsEnableStaticCompiler()) {
+    std::string arkTsMode;
+    if (AOTArgsParserBase::FindArgsIdxToString(argsMap, ArgsIdx::ARKTS_MODE, arkTsMode) != ERR_OK) {
+        LOG_SA(INFO) << "aot sa failed to get arkTsMode";
         return std::make_unique<AOTArgsParser>();
     }
-#endif
+    if (arkTsMode == ARKTS_DYNAMIC) {
+        LOG_SA(INFO) << "aot sa use default compiler";
+        return std::make_unique<AOTArgsParser>();
+    }
+    if (arkTsMode != ARKTS_STATIC && arkTsMode != ARKTS_HYBRID) {
+        LOG_SA(ERROR) << "aot sa get invalid code arkTsMode";
+        return std::nullopt;
+    }
+    // After this, only arkTsMode that is static or hybrid will proceed downwards
+    if (!isEnableStaticCompiler) {
+        return std::nullopt;
+    }
     int32_t isSystemComponent = 0;
     if ((AOTArgsParserBase::FindArgsIdxToInteger(argsMap, ArgsIdx::IS_SYSTEM_COMPONENT, isSystemComponent) != ERR_OK)) {
         LOG_SA(INFO) << "aot sa failed to get isSystemComponent";
@@ -314,21 +343,7 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
     if (isSystemComponent) {
         return std::make_unique<StaticFrameworkAOTArgsParser>();
     }
-    std::string arkTsMode;
-    if (AOTArgsParserBase::FindArgsIdxToString(argsMap, ArgsIdx::ARKTS_MODE, arkTsMode) != ERR_OK) {
-        LOG_SA(INFO) << "aot sa failed to get language version";
-        arkTsMode = ARKTS_DYNAMIC;
-    }
-
-    if (arkTsMode == ARKTS_DYNAMIC) {
-        LOG_SA(INFO) << "aot sa use default compiler";
-        return std::make_unique<AOTArgsParser>();
-    } else if (arkTsMode == ARKTS_STATIC || arkTsMode == ARKTS_HYBRID) {
-        LOG_SA(INFO) << "aot sa use static compiler";
-        return std::make_unique<StaticAOTArgsParser>();
-    }
-    LOG_SA(FATAL) << "aot sa get invalid code language version";
-    return std::nullopt;
+    return std::make_unique<StaticAOTArgsParser>();
 }
 
 bool StaticFrameworkAOTArgsParser::IsFileExists(const std::string &fileName)
