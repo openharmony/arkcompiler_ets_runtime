@@ -42,7 +42,7 @@ void JSAPIPlainArray::Add(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj
     }
     uint32_t capacity = valueArray->GetLength();
     if (size + 1 >= capacity) {
-        uint32_t newCapacity = capacity << 1U;
+        uint32_t newCapacity = std::max(uint32_t(DEFAULT_CAPACITY_LENGTH), capacity << 1U);
         keyArray =
             thread->GetEcmaVM()->GetFactory()->CopyArray(keyArray, capacity, newCapacity);
         valueArray =

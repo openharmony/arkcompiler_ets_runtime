@@ -32,22 +32,22 @@
 
 namespace panda::ecmascript::containers {
 
+#define NEW_BUSINESS_ERROR_AND_THROW(thread, errorType, message)                     \
+    JSTaggedValue error = ContainerError::BusinessError(thread, errorType, message); \
+    THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception())
+
 #define RANGE_ERROR_CHECK(value, name, left, right)                                                                    \
     double(num##name) = (value)->GetNumber();                                                                          \
     if ((num##name) < (left) || (num##name) > (right)) {                                                               \
         std::ostringstream oss;                                                                                        \
         oss << "The value of \"" << (#name) << "\" is out of range. It must be >= " << (left) << " and <= " << (right) \
             << ". Received value is: " << (num##name);                                                                 \
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());        \
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());                                   \
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());                               \
     }
 
-#define CHECK_NULL_OR_UNDEFINED(value)                                                                         \
-    if ((value)->IsUndefined() || (value)->IsNull()) {                                                             \
-        std::ostringstream oss;                                                                                \
-        oss << "The parameter should not be null or undefined.";                                               \
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, oss.str().c_str()); \
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());                           \
+#define CHECK_NULL_OR_UNDEFINED(value)                                                                                 \
+    if ((value)->IsUndefined() || (value)->IsNull()) {                                                                 \
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The parameter should not be null or undefined."); \
     }
 
 int32_t GetValueInt32(JSHandle<JSTaggedValue> valueHandle)
@@ -105,9 +105,8 @@ JSTaggedValue ContainersBuffer::BufferConstructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> newTarget = GetNewTarget(argv);
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
     if (newTarget->IsUndefined()) {
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::IS_NULL_ERROR,
-                                                            "The Buffer's constructor cannot be directly invoked.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::IS_NULL_ERROR,
+            "The Buffer's constructor cannot be directly invoked.");
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -122,16 +121,15 @@ JSTaggedValue ContainersBuffer::BufferConstructor(EcmaRuntimeCallInfo *argv)
         RANGE_ERROR_CHECK(value, value, 0, UINT32_MAX);
         JSAPIFastBuffer::AllocateFastBuffer(thread, bufferObj, GetValueUInt32(value));
     } else if (value->IsString()) {
-        if (byteOffsetOrEncoding->IsString() && !IsValidEncoding(thread, byteOffsetOrEncoding)) {
-            JSTaggedValue error = ContainerError::BusinessError(
-                thread, ErrorFlag::TYPE_ERROR,
-                "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        if (!byteOffsetOrEncoding->IsString()) {
+            JSAPIFastBuffer::FromString(thread, bufferObj, value);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return bufferObj.GetTaggedValue();
         }
         JSAPIFastBuffer::FromString(thread, bufferObj, value, byteOffsetOrEncoding);
     } else if (value->IsJSAPIBuffer()) {
         if (byteOffsetOrEncoding->IsNumber() && length->IsNumber()) {
-            // share memory with another buffer(eg: create from pool)
+            // share memory with another buffer(create from pool)
             JSAPIFastBuffer::AllocateFromBufferObject(thread, bufferObj, value, GetValueUInt32(length),
                                                       GetValueUInt32(byteOffsetOrEncoding));
         } else {
@@ -142,6 +140,10 @@ JSTaggedValue ContainersBuffer::BufferConstructor(EcmaRuntimeCallInfo *argv)
             JSAPIFastBuffer::Copy(thread, bufferHandle, value, 0, 0, bufferLength);
         }
     } else if (value->IsArrayBuffer() || value->IsSharedArrayBuffer()) {
+        if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, value.GetTaggedValue())) {
+            NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::ARRAY_BUFFER_IS_NULL_OR_DETACHED,
+                "The underlying ArrayBuffer is null or detached.");
+        }
         uint32_t index = 0;
         uint32_t byteLength = JSHandle<JSArrayBuffer>(value)->GetArrayBufferByteLength();
         if (byteOffsetOrEncoding->IsNumber()) {
@@ -159,7 +161,7 @@ JSTaggedValue ContainersBuffer::BufferConstructor(EcmaRuntimeCallInfo *argv)
     } else if (value->IsJSArray()) {
         JSAPIFastBuffer::CreateBufferFromArrayLike(thread, bufferObj, value);
     }
-
+    
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return bufferObj.GetTaggedValue();
 }
@@ -205,6 +207,10 @@ JSTaggedValue ContainersBuffer::Compare(EcmaRuntimeCallInfo *argv)
     CONTAINER_BUFFER_CHECK(Compare);
     auto value = GetCallArg(argv, 0);  // 0 means the first arg
     CHECK_NULL_OR_UNDEFINED(value);
+    if (!value->IsJSAPIBuffer() && !value->IsTypedArray()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
+            "The type of \"target\" must be [FastBuffer, Uint8Array].");
+    }
     auto src = JSHandle<JSAPIFastBuffer>::Cast(self);
     uint32_t tStart = 0;
     uint32_t tEnd = (value->IsJSAPIBuffer() ? JSHandle<JSAPIFastBuffer>::Cast(value)->GetLength()
@@ -233,12 +239,6 @@ JSTaggedValue ContainersBuffer::Compare(EcmaRuntimeCallInfo *argv)
         RANGE_ERROR_CHECK(sourceEnd, sourceEnd, 0, srcLength);
         sEnd = GetValueUInt32(sourceEnd);
     }
-    if (sStart >= sEnd) {
-        return JSTaggedValue(tStart >= tEnd ? 0 : -1);
-    }
-    if (tStart >= tEnd) {
-        return JSTaggedValue(1);
-    }
     auto ret = JSAPIFastBuffer::Compare(thread, src, value, sStart, sEnd, tStart, tEnd);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return ret;
@@ -253,6 +253,10 @@ JSTaggedValue ContainersBuffer::Equals(EcmaRuntimeCallInfo *argv)
     CONTAINER_BUFFER_CHECK(Equals);
     auto value = GetCallArg(argv, 0);  // 0 means the first arg
     CHECK_NULL_OR_UNDEFINED(value);
+    if (!value->IsJSAPIBuffer() && !value->IsTypedArray()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
+            "The type of \"target\" must be [FastBuffer, Uint8Array].");
+    }
     auto src = JSHandle<JSAPIFastBuffer>::Cast(self);
     uint32_t tEnd;
     if (value->IsJSAPIBuffer()) {
@@ -279,6 +283,10 @@ JSTaggedValue ContainersBuffer::IndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);   // 0 means the first arg
     JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(value);
+    if (!value->IsString() && !value->IsJSAPIBuffer() && !value->IsTypedArray() && !value->IsNumber()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
+            "The type of \"value\" must be [string, FastBuffer, Uint8Array, number].");
+    }
     int32_t offsetIndex = 0;
     int32_t length = static_cast<int32_t>(buffer->GetLength());
     if (offset->IsNumber()) {
@@ -297,10 +305,8 @@ JSTaggedValue ContainersBuffer::IndexOf(EcmaRuntimeCallInfo *argv)
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
         if (!IsValidEncoding(thread, encoding)) {
-            JSTaggedValue error = ContainerError::BusinessError(
-                thread, ErrorFlag::TYPE_ERROR,
+            NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
     }
@@ -336,10 +342,8 @@ JSTaggedValue ContainersBuffer::Includes(EcmaRuntimeCallInfo *argv)
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
         if (!IsValidEncoding(thread, encoding)) {
-            JSTaggedValue error = ContainerError::BusinessError(
-                thread, ErrorFlag::TYPE_ERROR,
+            NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
     }
@@ -356,6 +360,10 @@ JSTaggedValue ContainersBuffer::LastIndexOf(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);  // 0 means the first arg
     CHECK_NULL_OR_UNDEFINED(value);
+    if (!value->IsString() && !value->IsJSAPIBuffer() && !value->IsTypedArray() && !value->IsNumber()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
+            "The type of \"value\" must be [string, FastBuffer, Uint8Array, number].");
+    }
     JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);  // 1 means the second arg
     int64_t length = static_cast<int64_t>(buffer->GetLength());
     int64_t offsetIndex = length - 1;
@@ -376,10 +384,8 @@ JSTaggedValue ContainersBuffer::LastIndexOf(EcmaRuntimeCallInfo *argv)
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
         if (!IsValidEncoding(thread, encoding)) {
-            JSTaggedValue error = ContainerError::BusinessError(
-                thread, ErrorFlag::TYPE_ERROR,
+            NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
     }
@@ -427,19 +433,21 @@ JSTaggedValue ContainersBuffer::Fill(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     CONTAINER_BUFFER_CHECK(Fill);
     JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>::Cast(self);
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);  // 0 means the first arg
     uint32_t length = buffer->GetLength();
-    if (length == 0) {
+    if (length == 0 || value->IsUndefinedOrNull()) {
         return buffer.GetTaggedValue();
     }
-    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);  // 0 means the first arg
+    if (!value->IsString() && !value->IsJSAPIBuffer() && !value->IsTypedArray() && !value->IsNumber()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
+            "The type of \"value\" must be [string, FastBuffer, Uint8Array, number].");
+    }
     JSHandle<JSTaggedValue> start = GetCallArg(argv, 1);  // 1 means the second arg
     if (start->IsString()) {
         JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
         if (!IsValidEncoding(thread, start)) {
-            JSTaggedValue error = ContainerError::BusinessError(
-                thread, ErrorFlag::TYPE_ERROR,
+            NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, start));
         return JSAPIFastBuffer::Fill(thread, buffer, value, encodingType, 0, length);
@@ -462,10 +470,8 @@ JSTaggedValue ContainersBuffer::Fill(EcmaRuntimeCallInfo *argv)
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (encoding->IsString()) {
         if (!IsValidEncoding(thread, encoding)) {
-            JSTaggedValue error = ContainerError::BusinessError(
-                thread, ErrorFlag::TYPE_ERROR,
+            NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
     }
@@ -491,10 +497,8 @@ JSTaggedValue ContainersBuffer::Write(EcmaRuntimeCallInfo *argv)
         }
         if (secondArg->IsString()) {
             if (!IsValidEncoding(thread, secondArg)) {
-                JSTaggedValue error = ContainerError::BusinessError(
-                    thread, ErrorFlag::TYPE_ERROR,
+                NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
                     "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
             }
             encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, secondArg));
             return JSAPIFastBuffer::WriteString(thread, buffer, firstArg, 0, buffer->GetLength(), encodingType);
@@ -513,10 +517,8 @@ JSTaggedValue ContainersBuffer::Write(EcmaRuntimeCallInfo *argv)
         JSHandle<JSTaggedValue> encoding = GetCallArg(argv, 3);  // 3 means the fourth arg
         if (encoding->IsString()) {
             if (!IsValidEncoding(thread, encoding)) {
-                JSTaggedValue error = ContainerError::BusinessError(
-                    thread, ErrorFlag::TYPE_ERROR,
+                NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
                     "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-                THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
             }
             encodingType = JSAPIFastBuffer::GetEncodingType(JSAPIFastBuffer::GetString(thread, encoding));
         }
@@ -539,10 +541,8 @@ JSTaggedValue ContainersBuffer::ToString(EcmaRuntimeCallInfo *argv)
     JSAPIFastBuffer::EncodingType encodingType = JSAPIFastBuffer::UTF8;
     if (firstArg->IsString()) {
         if (!IsValidEncoding(thread, firstArg)) {
-            JSTaggedValue error = ContainerError::BusinessError(
-                thread, ErrorFlag::TYPE_ERROR,
+            NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
                 "Parameter error. The type of \"encoding\" must be BufferEncoding. the encoding code is unknown");
-            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
         encodingType = JSAPIFastBuffer::GetEncodingType(thread, firstArg);
     }
@@ -580,6 +580,10 @@ JSTaggedValue ContainersBuffer::Copy(EcmaRuntimeCallInfo *argv)
     JSHandle<JSAPIFastBuffer> src = JSHandle<JSAPIFastBuffer>::Cast(self);
     JSHandle<JSTaggedValue> dst = GetCallArg(argv, 0);  // 0 means the first arg
     CHECK_NULL_OR_UNDEFINED(dst);
+    if (!dst->IsJSAPIBuffer() && !dst->IsTypedArray()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR,
+            "The type of \"target\" must be [FastBuffer, Uint8Array].");
+    }
     uint32_t srcLength = src->GetLength();
     uint32_t dstLength = dst->IsJSAPIBuffer() ? JSHandle<JSAPIFastBuffer>(dst)->GetLength()
                                               : JSHandle<JSTypedArray>(dst)->GetArrayLength();
@@ -619,11 +623,10 @@ JSTaggedValue ContainersBuffer::WriteUIntBE(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);            // 1 means the second arg
     JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 2);  // 2 means the third arg
     CHECK_NULL_OR_UNDEFINED(value);
-    if (!byteLengthHandle->IsNumber()) {
-        JSTaggedValue error =
-            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    if (!value->IsNumber() || !byteLengthHandle->IsNumber()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The parameter should be number.");
     }
+    RANGE_ERROR_CHECK(byteLengthHandle, byteLength, 0, buffer->GetLength());
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
@@ -646,11 +649,10 @@ JSTaggedValue ContainersBuffer::WriteUIntLE(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);             // 0 means the first arg
     JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);            // 1 means the second arg
     JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 2);  // 2 means the third arg
-    if (!byteLengthHandle->IsNumber()) {
-        JSTaggedValue error =
-            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    if (!value->IsNumber() || !byteLengthHandle->IsNumber()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The parameter should be number.");
     }
+    RANGE_ERROR_CHECK(byteLengthHandle, byteLength, 0, buffer->GetLength());
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     CHECK_NULL_OR_UNDEFINED(value);
     uint32_t offsetIndex = 0;
@@ -675,10 +677,9 @@ JSTaggedValue ContainersBuffer::ReadUIntBE(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(offset);
     if (!byteLengthHandle->IsNumber()) {
-        JSTaggedValue error =
-            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
     }
+    RANGE_ERROR_CHECK(byteLengthHandle, byteLength, 0, buffer->GetLength());
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
@@ -702,10 +703,9 @@ JSTaggedValue ContainersBuffer::ReadUIntLE(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(offset);
     if (!byteLengthHandle->IsNumber()) {
-        JSTaggedValue error =
-            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
     }
+    RANGE_ERROR_CHECK(byteLengthHandle, byteLength, 0, buffer->GetLength());
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
@@ -730,11 +730,10 @@ JSTaggedValue ContainersBuffer::WriteIntBE(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);            // 1 means the second arg
     JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 2);  // 2 means the third arg
     CHECK_NULL_OR_UNDEFINED(value);
-    if (!byteLengthHandle->IsNumber()) {
-        JSTaggedValue error =
-            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    if (!value->IsNumber() || !byteLengthHandle->IsNumber()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The parameter should be number.");
     }
+    RANGE_ERROR_CHECK(byteLengthHandle, byteLength, 0, buffer->GetLength());
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
@@ -758,11 +757,10 @@ JSTaggedValue ContainersBuffer::WriteIntLE(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> offset = GetCallArg(argv, 1);            // 1 means the second arg
     JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 2);  // 2 means the third arg
     CHECK_NULL_OR_UNDEFINED(value);
-    if (!byteLengthHandle->IsNumber()) {
-        JSTaggedValue error =
-            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    if (!value->IsNumber() || !byteLengthHandle->IsNumber()) {
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The parameter should be number.");
     }
+    RANGE_ERROR_CHECK(byteLengthHandle, byteLength, 0, buffer->GetLength());
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
@@ -786,10 +784,9 @@ JSTaggedValue ContainersBuffer::ReadIntBE(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(offset);
     if (!byteLengthHandle->IsNumber()) {
-        JSTaggedValue error =
-            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
     }
+    RANGE_ERROR_CHECK(byteLengthHandle, byteLength, 0, buffer->GetLength());
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {
@@ -813,10 +810,9 @@ JSTaggedValue ContainersBuffer::ReadIntLE(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> byteLengthHandle = GetCallArg(argv, 1);  // 1 means the second arg
     CHECK_NULL_OR_UNDEFINED(offset);
     if (!byteLengthHandle->IsNumber()) {
-        JSTaggedValue error =
-            ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        NEW_BUSINESS_ERROR_AND_THROW(thread, ErrorFlag::TYPE_ERROR, "The byteLength should be number.");
     }
+    RANGE_ERROR_CHECK(byteLengthHandle, byteLength, 0, buffer->GetLength());
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     uint32_t offsetIndex = 0;
     if (offset->IsNumber()) {

@@ -164,8 +164,8 @@ void JSAPILightWeightSet::SizeCopy(const JSThread *thread, const JSHandle<JSAPIL
     hashArray = thread->GetEcmaVM()->GetFactory()->CopyArray(hashArray, capacity, newCapacity);
     valueArray = thread->GetEcmaVM()->GetFactory()->CopyArray(valueArray, capacity, newCapacity);
 
-    obj->SetValues(thread, hashArray);
-    obj->SetHashes(thread, valueArray);
+    obj->SetValues(thread, valueArray);
+    obj->SetHashes(thread, hashArray);
 }
 
 bool JSAPILightWeightSet::IsEmpty()
@@ -301,10 +301,15 @@ void JSAPILightWeightSet::IncreaseCapacityTo(JSThread *thread, const JSHandle<JS
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     JSHandle<TaggedArray> hashArray(thread, obj->GetHashes(thread));
+    JSHandle<TaggedArray> valueArray(thread, obj->GetValues(thread));
     JSHandle<TaggedArray> newElements =
         thread->GetEcmaVM()->GetFactory()->NewAndCopyTaggedArray(hashArray,
                                                                  static_cast<uint32_t>(minCapacity), capacity);
+    JSHandle<TaggedArray> newValues =
+        thread->GetEcmaVM()->GetFactory()->NewAndCopyTaggedArray(valueArray,
+                                                                 static_cast<uint32_t>(minCapacity), capacity);
     obj->SetHashes(thread, newElements);
+    obj->SetValues(thread, newValues);
 }
 
 JSHandle<JSTaggedValue> JSAPILightWeightSet::GetIteratorObj(JSThread *thread, const JSHandle<JSAPILightWeightSet> &obj,
