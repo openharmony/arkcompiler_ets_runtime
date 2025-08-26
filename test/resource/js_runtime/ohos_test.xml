@@ -894,6 +894,7 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/module_unexecute_A.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/module_unexecute_B.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/module_unexecute_C.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/module/tests/deregister_test.abc -> /data/test" src="out"/>
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
