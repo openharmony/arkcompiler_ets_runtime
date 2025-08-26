@@ -673,6 +673,18 @@ var s = "success"
 assert_equal(s,"success");
 
 {
+  let pattern = /^\s*([^;\s]*)/;
+  let match1 = "text/html".match(pattern);
+  assert_equal(match1[1], 'text/html');
+
+  let match2 = "text/plain".match(pattern);
+  assert_equal(match2[1], 'text/plain');
+
+  let match3 = "text/html".match(pattern);
+  assert_equal(match3[1], 'text/html');
+}
+
+{
   let str = /^\s*([^;\s]*)/;
   str.test("text/html");
   assert_equal(RegExp.$1,'text/html');
