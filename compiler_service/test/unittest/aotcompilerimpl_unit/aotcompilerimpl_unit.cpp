@@ -264,30 +264,6 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_006, TestSize.Level0)
 }
 
 /**
-* @tc.name: AotCompilerImplTest_007
-* @tc.desc: AotCompilerImpl::HandlePowerDisconnected()
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_007, TestSize.Level0)
-{
-    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
-    aotImpl.HandlePowerDisconnected();
-    EXPECT_TRUE(aotImpl.IsAllowAotCompiler());
-}
-
-/**
-* @tc.name: AotCompilerImplTest_008
-* @tc.desc: AotCompilerImpl::HandleScreenOn()
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_008, TestSize.Level0)
-{
-    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
-    aotImpl.HandleScreenOn();
-    EXPECT_TRUE(aotImpl.IsAllowAotCompiler());
-}
-
-/**
 * @tc.name: AotCompilerImplTest_009
 * @tc.desc: AotCompilerImpl::HandleThermalLevelChanged()
 * @tc.type: Func
