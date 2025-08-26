@@ -68,7 +68,9 @@ bool DoSomethingInterestingWithMyAPI(const char* data, size_t size)
     // parse sigData
     while (offset + sizeof(int16_t) < size) {
         int16_t signalValue;
-        std::copy_n(&data[offset], sizeof(int16_t), &signalValue);
+        if (memcpy_s(&signalValue, sizeof(int16_t), &data[offset], sizeof(int16_t)) != 0) {
+            break;
+        }
         sigData.push_back(signalValue);
         offset += sizeof(int16_t);
     }
