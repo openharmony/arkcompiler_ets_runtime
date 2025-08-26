@@ -766,8 +766,8 @@ void RawHeapTranslateV2::BuildFieldEdges(Node *node, std::vector<Node *> &refs)
     }
 
     for (auto &field : meta->fields) {
-        int index = field.offset / sizeof(uint64_t) - 1;
-        if (index < 0 || static_cast<size_t>(index) >= refs.size()) {
+        size_t index = field.offset / sizeof(uint64_t) - 1;
+        if (index >= refs.size()) {
             continue;
         }
 
