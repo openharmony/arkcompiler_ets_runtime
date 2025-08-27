@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_TYPE_H
 #define ECMASCRIPT_COMPILER_TYPE_H
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/ts_types/global_ts_type_ref.h"
 
 #define VALUE_TYPE_LIST(V)  \
