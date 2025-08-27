@@ -482,6 +482,18 @@ group("ark_aot_ts_assert_test") {
   }
 }
 
+group("ark_aot_js_double_pgo_test") {
+  testonly = true
+  test_list = [
+    "object_literal_double",
+  ]
+
+  deps = []
+  foreach(test, test_list) {
+    deps += [ "${test}:${test}AotAction" ]
+  }
+}
+
 group("ark_aot_test") {
   testonly = true
   deps = [
@@ -489,6 +501,7 @@ group("ark_aot_test") {
     ":ark_aot_js_test",
     ":ark_aot_ts_assert_test",
     ":ark_aot_ts_test",
+    ":ark_aot_js_double_pgo_test",
     "analyze_property:analyze_property_test",
     "aot_compatibility_test:aot_compatibility_test",
     "aot_multi_constantpool_test:aot_multi_constantpool_test",

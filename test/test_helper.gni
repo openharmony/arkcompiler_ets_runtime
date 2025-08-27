@@ -5412,3 +5412,246 @@ template("host_baseline_jit_test_action") {
     outputs = [ "$target_out_dir/${_target_name_}/" ]
   }
 }
+
+template("host_aot_js_double_pgo_test_action") {
+  _target_name_ = "${target_name}"
+  _deps_ = invoker.deps
+
+  _test_ts_path_ = "./${_target_name_}.js"
+  _test_abc_path_ = "$target_out_dir/${_target_name_}.abc"
+  _test_aot_path_ = "$target_out_dir/${_target_name_}.an"
+  _test_aot_snapshot_path_ = "$target_out_dir/${_target_name_}.ai"
+  _test_aot_arg_ = "$target_out_dir/${_target_name_}"
+  _test_aot_log_level = "info"
+  _test_expect_path_ = "./expect_output.txt"
+  _test_pgo_expect_path_ = "./pgo_expect_output.txt"
+
+  extra_args = [ "--module" ]
+  extra_args += [ "--merge-abc" ]
+
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
+    extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
+    extra_dependencies = _deps_
+    src_js = rebase_path(_test_ts_path_)
+    dst_file = rebase_path(_test_abc_path_)
+
+    in_puts = [
+      _test_ts_path_,
+      _test_expect_path_,
+    ]
+    out_puts = [ _test_abc_path_ ]
+  }
+
+  _script_args_ = rebase_path(_test_abc_path_)
+
+  action("${_target_name_}FirstPgoExecute") {
+    testonly = true
+    _host_jsvm_target_ =
+        "$js_root/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
+
+    script = "$js_root/script/run_ark_executable.py"
+
+    _aot_run_options_ =
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+        " --enable-pgo-profiler=true" + " --compiler-pgo-profiler-path=" +
+        rebase_path(_test_aot_arg_) + "/modules.ap"
+
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
+    }
+
+    _aot_run_options_ += " --enable-ark-tools=true"
+    _aot_run_options_ += " --enable-force-gc=false"
+    _aot_run_options_ += common_options
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _aot_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-file",
+      rebase_path(_test_pgo_expect_path_),
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib:") +
+          rebase_path(_root_out_dir_) + "/hmosbundlemanager/zlib_override/",
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/firstpgo" ]
+  }
+
+  action("${_target_name_}SecondPgoExecute") {
+    testonly = true
+    _host_jsvm_target_ =
+        "$js_root/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+      ":${_target_name_}FirstPgoExecute",
+    ]
+    deps += _deps_
+
+    script = "$js_root/script/run_ark_executable.py"
+
+    _aot_run_options_ =
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}" +
+        " --enable-pgo-profiler=true" + " --compiler-pgo-profiler-path=" +
+        rebase_path(_test_aot_arg_) + "/modules.ap"
+
+    _aot_run_options_ += " --enable-ark-tools=true"
+    _aot_run_options_ += " --enable-force-gc=false"
+    _aot_run_options_ += common_options
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
+    }
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _aot_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-file",
+      rebase_path(_test_pgo_expect_path_),
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib:") +
+          rebase_path(_root_out_dir_) + "/hmosbundlemanager/zlib_override/",
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/secondpgo" ]
+  }
+
+  action("${_target_name_}AotCompileAction") {
+    testonly = true
+
+    _host_aot_target_ = "//arkcompiler/ets_runtime/ecmascript/compiler:ark_aot_compiler(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_aot_target_, "root_out_dir")
+    deps = [
+      ":gen_${_target_name_}_abc",
+      _host_aot_target_,
+      ":${_target_name_}SecondPgoExecute",
+    ]
+    deps += _deps_
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_) +
+                            " --log-level=" + _test_aot_log_level + " --log-components=compiler --compiler-opt-type-lowering=false --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=true"
+    _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
+                             rebase_path(_test_aot_arg_) + "/modules.ap"
+    _aot_compile_options_ += common_options
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_aot_compiler",
+      "--script-options",
+      _aot_compile_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-sub-output",
+      "ts aot compile success",
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib:") +
+          rebase_path(_root_out_dir_) + "/hmosbundlemanager/zlib_override/",
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [
+      _test_aot_path_,
+      _test_aot_snapshot_path_,
+    ]
+  }
+
+  action("${_target_name_}AotAction") {
+    testonly = true
+
+    _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+    _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+    deps = [
+      ":${_target_name_}AotCompileAction",
+      ":gen_${_target_name_}_abc",
+      _host_jsvm_target_,
+    ]
+    deps += _deps_
+
+    script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+    _aot_run_options_ =
+        " --aot-file=" + rebase_path(_test_aot_arg_) +
+        " --asm-interpreter=true" + " --entry-point=${_target_name_}"
+
+    if (defined(invoker.log_option)) {
+      _aot_run_options_ += invoker.log_option
+    }
+    _aot_run_options_ += " --enable-ark-tools=true"
+    _aot_run_options_ += " --enable-force-gc=false"
+    _aot_run_options_ += common_options
+
+    _icu_data_path_options_ =
+        " --icu-data-path=" + rebase_path("//third_party/icu/ohos_icu4j/data")
+    _aot_run_options_ += _icu_data_path_options_
+
+    args = [
+      "--script-file",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+      "--script-options",
+      _aot_run_options_,
+      "--script-args",
+      _script_args_,
+      "--expect-file",
+      rebase_path(_test_expect_path_),
+      "--env-path",
+      rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+          rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+          rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+          rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+          rebase_path(_root_out_dir_) +
+          "/thirdparty/bounds_checking_function:" +
+          rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib:") +
+          rebase_path(_root_out_dir_) + "/hmosbundlemanager/zlib_override/",
+    ]
+
+    inputs = [ _test_abc_path_ ]
+
+    outputs = [ "$target_out_dir/${_target_name_}/" ]
+  }
+}

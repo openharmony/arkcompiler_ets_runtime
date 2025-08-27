@@ -1506,7 +1506,6 @@ JSHandle<JSHClass> JSHClass::CreateChildHClassFromPGO(const JSThread* thread,
 
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, parent);
     newJsHClass->SetAOT(true);
-    ASSERT(newJsHClass->GetInlinedProperties() >= (numOfProps + 1));
     uint32_t offset = numOfProps;
     {
         JSMutableHandle<LayoutInfo> layoutInfoHandle(thread, newJsHClass->GetLayout(thread));
@@ -1524,7 +1523,15 @@ JSHandle<JSHClass> JSHClass::CreateChildHClassFromPGO(const JSThread* thread,
             newJsHClass->SetIsAllTaggedProp(false);
         }
         attributes.SetOffset(offset);
-        attributes.SetIsInlinedProps(true);
+        // We use the object literal cache for optimization. However, in very rare cases, there may be
+        // two identical object literals associated with two different PGO root types, and the transition
+        // chains of the two roots are inconsistent. This leads to retrieving an HClass from the cache with
+        // an incorrect number of inlined properties, which needs to be fixed.
+        if UNLIKELY(newJsHClass->NumberOfProps() + 1 > newJsHClass->GetInlinedProperties()) {
+            attributes.SetIsInlinedProps(false);
+        } else {
+            attributes.SetIsInlinedProps(true);
+        }
         layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attributes);
         newJsHClass->IncNumberOfProps();
         AddTransitions(thread, parent, newJsHClass, key, attributes);
