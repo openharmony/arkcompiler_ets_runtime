@@ -1032,6 +1032,29 @@ bool JSObject::SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperato
     return CreateDataProperty(thread, JSHandle<JSObject>(receiver), key, value);
 }
 
+bool JSObject::ThrowTypeErrorInextensiableAddProperty(ObjectOperator *op)
+{
+    JSThread *thread = op->GetThread();
+    if (!op->IsElement()) {
+        JSHandle<JSTaggedValue> keyHandle = op->GetKey();
+        if (keyHandle->IsString()) {
+            CString keyStr = ConvertToString(thread, EcmaString::Cast(keyHandle.GetTaggedValue()));
+            THROW_TYPE_ERROR_AND_RETURN(
+                thread,
+                GET_MESSAGE_STRING_WITH_PARAM(SetPropertyWhenNotExtensibleByName, keyStr.c_str()),
+                false);
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible), false);
+        }
+    } else {
+        uint32_t index = op->GetElementIndex();
+        THROW_TYPE_ERROR_AND_RETURN(
+            thread,
+            GET_MESSAGE_STRING_WITH_PARAM(SetPropertyWhenNotExtensibleByIndex, index),
+            false);
+    }
+}
+
 bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, JSHandle<JSTaggedValue> value,
                                             JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor)
 {
@@ -1106,7 +1129,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, JSHandle<JSTagge
         // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
         if (!receiver->IsExtensible(thread) && !(receiver->IsJSSharedArray() && op->IsElement())) {
             if (mayThrow) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible), false);
+                return ThrowTypeErrorInextensiableAddProperty(op);
             }
             return false;
         }

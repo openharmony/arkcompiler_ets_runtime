@@ -882,6 +882,7 @@ public:
                               bool canUseIsInternal = false,
                               bool defineSemantics = false,
                               bool mayThrow = true); // Crawl prototype chain
+    GateRef ThrowTypeErrorInextensiableAddProperty(GateRef glue, GateRef key);
     GateRef DefinePropertyByName(GateRef glue, GateRef receiver, GateRef key,
         GateRef value, GateRef isInternal, GateRef SCheckModelIsCHECK,
         ProfileOperation callback = ProfileOperation());

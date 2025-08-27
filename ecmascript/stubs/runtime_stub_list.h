@@ -243,6 +243,7 @@ namespace panda::ecmascript {
     V(CallJSObjDeletePrototype)                                \
     V(ToPropertyKey)                                           \
     V(ThrowTypeError)                                          \
+    V(ThrowTypeErrorWithParam)                                 \
     V(MismatchError)                                           \
     V(NotifyArrayPrototypeChanged)                             \
     V(NumberToString)                                          \

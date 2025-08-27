@@ -49,8 +49,8 @@ true
 false
 true
 true
-add extension(.): TypeError: Cannot add property in prevent extensions
-add extension([]): TypeError: Cannot add property in prevent extensions
+add extension(.): TypeError: Cannot add property "extension" in prevent extensions
+add extension([]): TypeError: Cannot add property "extension" in prevent extensions
 ===Basic test end===
 ===Concurrent modification during iteration Test(iterator) begin===
 set size is 5

@@ -269,3 +269,86 @@ try {
 } catch (e) {
   print("sendable can not change attr. err: " + e);
 }
+
+const idSymbol = Symbol('id');
+let userString = '{"name":"lifei", "age":20, "1":"huawei"}'
+class User {
+    constructor() {
+        "use sendable";
+    }
+    name: string = '';
+    age: number = 0;
+}
+let user = new User();
+let array = new SendableArray<string>('ARK');
+try {
+    user[idSymbol] = "";
+} catch (err) {
+    print(err); // TypeError: Cannot add property in prevent extensions
+}
+
+try {
+    user[1] = "";
+} catch (err) {
+    print(err); // TypeError: Cannot add property "1" in prevent extensions
+}
+
+try {
+    user["1"] = "";
+} catch (err) {
+    print(err); // TypeError: Cannot add property "1" in prevent extensions
+}
+
+try {
+    user[undefined] = "";
+} catch (err) {
+    print(err); // TypeError: Cannot add property "undefined" in prevent extensions
+}
+
+try {
+    user[null] = "";
+} catch (err) {
+    print(err); // TypeError: Cannot add property "null" in prevent extensions
+}
+
+try {
+    user["address"] = "";
+} catch (err) {
+    print(err); // TypeError: Cannot add property "address" in prevent extensions
+}
+
+try {
+    Object.assign(user, {[idSymbol]: ""});
+} catch (err) {
+    print(err); // TypeError: Cannot add property in prevent extensions
+}
+
+try {
+    Object.assign(user, {"address": ""});
+} catch (err) {
+    print(err); // TypeError: Cannot add property "address" in prevent extensions
+}
+
+try {
+    Object.assign(user, {1: ""});
+} catch (err) {
+    print(err); // TypeError: Cannot add property "1" in prevent extensions
+}
+
+try {
+    Object.assign(user, {"1": ""});
+} catch (err) {
+    print(err); // TypeError: Cannot add property "1" in prevent extensions
+}
+
+try {
+    array[idSymbol] = "";
+} catch (err) {
+    print(err); // TypeError: Cannot add property in prevent extensions
+}
+
+try {
+    array["address"] = "";
+} catch (err) {
+    print(err); // TypeError: Cannot add property "address" in prevent extensions
+}

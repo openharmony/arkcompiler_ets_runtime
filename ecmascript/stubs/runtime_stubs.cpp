@@ -2197,6 +2197,30 @@ DEF_RUNTIME_STUBS(ThrowTypeError)
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
+DEF_RUNTIME_STUBS(ThrowTypeErrorWithParam)
+{
+    RUNTIME_STUBS_HEADER(ThrowTypeError);
+    JSTaggedValue argMessageStringId = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue argParam = GetArg(argv, argc, 1); // 1: means the first parameter
+    std::string message = "";
+    if (argParam.IsInt()) { // number
+        message = common::CString::FormatString(
+            MessageString::GetMessageString(argMessageStringId.GetInt()).c_str(),
+            argParam.GetInt()
+        ).Str();
+    } else { // string
+        ASSERT(argParam.IsString());
+        CString keyStr = ConvertToString(thread, EcmaString::Cast(argParam));
+        message = common::CString::FormatString(
+            MessageString::GetMessageString(argMessageStringId.GetInt()).c_str(),
+            keyStr.c_str()
+        ).Str();
+    }
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);
+    THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
+}
+
 DEF_RUNTIME_STUBS(MismatchError)
 {
     RUNTIME_STUBS_HEADER(MismatchError);

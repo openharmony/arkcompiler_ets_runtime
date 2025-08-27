@@ -624,8 +624,17 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
     JSHandle<JSTaggedValue> valueHandle(thread, value);
 
     if (UNLIKELY(!JSObject::Cast(receiver)->IsExtensible())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
-                                    JSTaggedValue::Exception());
+        if (keyHandle->IsString()) {
+            CString keyStr = ConvertToString(thread, EcmaString::Cast(key));
+            THROW_TYPE_ERROR_AND_RETURN(
+                thread,
+                GET_MESSAGE_STRING_WITH_PARAM(SetPropertyWhenNotExtensibleByName, keyStr.c_str()),
+                JSTaggedValue::Exception()
+            );
+        } else {
+            THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
+                                        JSTaggedValue::Exception());
+        }
     }
     ASSERT(!receiver.IsJSShared());
     PropertyAttributes attr = PropertyAttributes::Default();
@@ -1300,7 +1309,7 @@ JSTaggedValue ObjectFastOperator::AddPropertyByIndex(JSThread *thread, JSTaggedV
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
     if (UNLIKELY(!JSObject::Cast(receiver)->IsExtensible()) && !receiver.IsJSSharedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING_WITH_PARAM(SetPropertyWhenNotExtensibleByIndex, index),
                                     JSTaggedValue::Exception());
     }
 

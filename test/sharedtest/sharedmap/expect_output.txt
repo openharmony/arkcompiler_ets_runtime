@@ -91,8 +91,8 @@ sharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable va
 ===Class inheritance test begin ===
 true
 1
-add extension(.): TypeError: Cannot add property in prevent extensions
-add extension([]): TypeError: Cannot add property in prevent extensions
+add extension(.): TypeError: Cannot add property "extension" in prevent extensions
+add extension([]): TypeError: Cannot add property "extension" in prevent extensions
 SubSendableMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 3
 SubSendableMap [key, value][for-of]: [1, one]

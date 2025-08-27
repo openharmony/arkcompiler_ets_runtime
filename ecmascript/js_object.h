@@ -862,6 +862,7 @@ private:
     static bool SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
                                                   const JSHandle<JSTaggedValue> &value,
                                                   JSHandle<JSTaggedValue> &receiver);
+    static bool ThrowTypeErrorInextensiableAddProperty(ObjectOperator *op);
 };
 }  // namespace ecmascript
 }  // namespace panda
