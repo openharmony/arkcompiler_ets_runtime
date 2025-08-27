@@ -22,7 +22,7 @@
 #include "common_interfaces/thread/mutator_base.h"
 
 // Visitor that iterate all `RefField`s in a TaggedObject and add them to
-// `WorkStack` Should be moved to BaseRT and panda namespace later
+// `LocalMarkStack` Should be moved to BaseRT and panda namespace later
 namespace common {
 // Roots in BaseRuntime
 PUBLIC_API void VisitBaseRoots(const RefFieldVisitor &visitor);

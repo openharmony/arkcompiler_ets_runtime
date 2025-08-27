@@ -16,6 +16,7 @@
 #ifndef COMMON_COMPONENTS_TASKPOOL_TASK_H
 #define COMMON_COMPONENTS_TASKPOOL_TASK_H
 
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 
@@ -68,17 +69,17 @@ private:
 
 class TaskPackMonitor {
 public:
-    explicit TaskPackMonitor(int running, int maxRunning) : running_(running), maxRunning_(maxRunning)
+    explicit TaskPackMonitor(int posted, int capacity) : posted_(posted), capacity_(capacity)
     {
-        DCHECK_CC(running_ >= 0);
-        DCHECK_CC(running_ <= maxRunning_);
+        DCHECK_CC(posted_ >= 0);
+        DCHECK_CC(posted_ <= capacity_);
     }
-    ~TaskPackMonitor() = default;
+    virtual ~TaskPackMonitor() = default;
 
     void WaitAllFinished()
     {
         std::unique_lock<std::mutex> lock(mutex_);
-        while (running_ > 0) {
+        while (posted_ > 0) {
             cv_.wait(lock);
         }
     }
@@ -87,8 +88,8 @@ public:
     {
         std::lock_guard<std::mutex> guard(mutex_);
         DCHECK_CC(running_ >= 0);
-        if (running_ < maxRunning_) {
-            ++running_;
+        if (posted_ < capacity_) {
+            ++posted_;
             return true;
         }
         return false;
@@ -97,16 +98,63 @@ public:
     void NotifyFinishOne()
     {
         std::lock_guard<std::mutex> guard(mutex_);
-        if (--running_ == 0) {
+        DCHECK_CC(posted_ >= 0);
+        if (--posted_ == 0) {
             cv_.notify_all();
+        }
+    }
+
+    bool WaitNextStepOrFinished()
+    {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (terminated_) {
+            return false;
+        }
+        cv_.wait(lock);
+        if (terminated_) {
+            return false;
+        }
+        return true;
+    }
+
+    bool TryStartStep()
+    {
+        std::lock_guard<std::mutex> guard(mutex_);
+        if (terminated_) {
+            return false;
+        }
+        ++running_;
+        DCHECK_CC(running_ <= capacity_ + 1);
+        return true;
+    }
+
+    void FinishStep()
+    {
+        std::lock_guard<std::mutex> guard(mutex_);
+        DCHECK_CC(!terminated_);
+        DCHECK_CC(running_ > 0);
+        if (--running_ == 0) {
+            terminated_ = true;
+            cv_.notify_all();
+        }
+    }
+
+    void WakeUpRunnerApproximately()
+    {
+        // This check may fail because is not inside lock, but for an approximate waking up it is ok
+        size_t current = reinterpret_cast<std::atomic<size_t> *>(&running_)->load(std::memory_order_relaxed);
+        if (UNLIKELY_CC(current < posted_)) {
+            cv_.notify_one();
         }
     }
 
     NO_COPY_SEMANTIC_CC(TaskPackMonitor);
     NO_MOVE_SEMANTIC_CC(TaskPackMonitor);
 private:
-    int running_ {0};
-    int maxRunning_ {0};
+    size_t running_ {0};
+    size_t posted_ {0};
+    size_t capacity_ {0};
+    bool terminated_ {false};
     std::condition_variable cv_;
     std::mutex mutex_;
 };

@@ -141,9 +141,9 @@ bool ArkCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObje
 }
 
 static void MarkingRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &field,
-                            WorkStack &workStack, RegionDesc *targetRegion);
+                            ParallelLocalMarkStack &markStack, RegionDesc *targetRegion);
 // note each ref-field will not be marked twice, so each old pointer the markingr meets must come from previous gc.
-static void MarkingRefField(BaseObject *obj, RefField<> &field, WorkStack &workStack,
+static void MarkingRefField(BaseObject *obj, RefField<> &field, ParallelLocalMarkStack &markStack,
                             WeakStack &weakStack, const GCReason gcReason)
 {
     RefField<> oldField(field);
@@ -171,12 +171,12 @@ static void MarkingRefField(BaseObject *obj, RefField<> &field, WorkStack &workS
             obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
-    common::MarkingRefField(obj, targetObj, field, workStack, targetRegion);
+    common::MarkingRefField(obj, targetObj, field, markStack, targetRegion);
 }
 
 // note each ref-field will not be marked twice, so each old pointer the markingr meets must come from previous gc.
 static void MarkingRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &field,
-                            WorkStack &workStack, RegionDesc *targetRegion)
+                            ParallelLocalMarkStack &markStack, RegionDesc *targetRegion)
 {
     if (targetRegion->IsNewObjectSinceMarking(targetObj)) {
         DLOG(TRACE, "marking: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
@@ -190,23 +190,23 @@ static void MarkingRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &
 
     DLOG(TRACE, "marking obj %p ref@%p: %p<%p>(%zu)",
         obj, &field, targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
-    workStack.push_back(targetObj);
+    markStack.Push(targetObj);
 }
 
-MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack,
-                                                                                           WeakStack *weakStack)
+MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFieldsVisitor(
+    ParallelLocalMarkStack &markStack, WeakStack &weakStack)
 {
     MarkingRefFieldVisitor visitor;
 
     if (gcReason_ == GCReason::GC_REASON_YOUNG) {
-        visitor.SetVisitor([obj = visitor.GetClosure(), workStack, weakStack](RefField<> &field) {
+        visitor.SetVisitor([obj = visitor.GetClosure(), &markStack, &weakStack](RefField<> &field) {
             const GCReason gcReason = GCReason::GC_REASON_YOUNG;
-            MarkingRefField(*obj, field, *workStack, *weakStack, gcReason);
+            MarkingRefField(*obj, field, markStack, weakStack, gcReason);
         });
     } else {
-        visitor.SetVisitor([obj = visitor.GetClosure(), workStack, weakStack](RefField<> &field) {
+        visitor.SetVisitor([obj = visitor.GetClosure(), &markStack, &weakStack](RefField<> &field) {
             const GCReason gcReason = GCReason::GC_REASON_HEU;
-            MarkingRefField(*obj, field, *workStack, *weakStack, gcReason);
+            MarkingRefField(*obj, field, markStack, weakStack, gcReason);
         });
     }
     return visitor;
@@ -292,8 +292,8 @@ BaseObject* ArkCollector::ForwardUpdateRawRef(ObjectRef& root)
 
 class RemarkAndPreforwardVisitor {
 public:
-    RemarkAndPreforwardVisitor(WorkStack &localStack, ArkCollector *collector)
-        : localStack_(localStack), collector_(collector) {}
+    RemarkAndPreforwardVisitor(LocalCollectStack &collectStack, ArkCollector *collector)
+        : collectStack_(collectStack), collector_(collector) {}
 
     void operator()(RefField<> &refField)
     {
@@ -334,7 +334,7 @@ private:
     void MarkObject(BaseObject *object)
     {
         if (!RegionalHeap::IsNewObjectSinceMarking(object) && !collector_->MarkObject(object)) {
-            localStack_.push_back(object);
+            collectStack_.Push(object);
         }
     }
 
@@ -345,30 +345,33 @@ private:
             // No need to count oldVersion object size, as it has been copied.
             collector_->MarkObject(toVersion);
             // oldVersion don't have valid type info, cannot push it
-            localStack_.push_back(toVersion);
+            collectStack_.Push(toVersion);
         }
     }
 
 private:
-    WorkStack &localStack_;
+    LocalCollectStack &collectStack_;
     ArkCollector *collector_;
 };
 
 class RemarkingAndPreforwardTask : public common::Task {
 public:
-    RemarkingAndPreforwardTask(ArkCollector *collector, WorkStack &localStack, TaskPackMonitor &monitor,
+    RemarkingAndPreforwardTask(ArkCollector *collector, GlobalMarkStack &globalMarkStack, TaskPackMonitor &monitor,
                                std::function<Mutator*()>& next)
-        : Task(0), visitor_(localStack, collector), monitor_(monitor), getNextMutator_(next)
+        : Task(0), collector_(collector), globalMarkStack_(globalMarkStack), monitor_(monitor), getNextMutator_(next)
     {}
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
         ThreadLocal::SetThreadType(ThreadType::GC_THREAD);
+        LocalCollectStack collectStack(&globalMarkStack_);
+        RemarkAndPreforwardVisitor visitor(collectStack, collector_);
         Mutator *mutator = getNextMutator_();
         while (mutator != nullptr) {
-            VisitMutatorRoot(visitor_, *mutator);
+            VisitMutatorRoot(visitor, *mutator);
             mutator = getNextMutator_();
         }
+        collectStack.Publish();
         ThreadLocal::SetThreadType(ThreadType::ARK_PROCESSOR);
         ThreadLocal::ClearAllocBufferRegion();
         monitor_.NotifyFinishOne();
@@ -376,12 +379,13 @@ public:
     }
 
 private:
-    RemarkAndPreforwardVisitor visitor_;
+    ArkCollector *collector_ {nullptr};
+    GlobalMarkStack &globalMarkStack_;
     TaskPackMonitor &monitor_;
     std::function<Mutator*()> &getNextMutator_;
 };
 
-void ArkCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
+void ArkCollector::ParallelRemarkAndPreforward(GlobalMarkStack &globalMarkStack)
 {
     std::vector<Mutator*> taskList;
     MutatorManager &mutatorManager = MutatorManager::Instance();
@@ -400,34 +404,34 @@ void ArkCollector::ParallelRemarkAndPreforward(WorkStack& workStack)
     const uint32_t runningWorkers = std::min<uint32_t>(GetGCThreadCount(true), taskList.size());
     uint32_t parallelCount = runningWorkers + 1; // 1 ：DaemonThread
     TaskPackMonitor monitor(runningWorkers, runningWorkers);
-    WorkStack localStack[parallelCount];
     for (uint32_t i = 1; i < parallelCount; ++i) {
-        GetThreadPool()->PostTask(std::make_unique<RemarkingAndPreforwardTask>(this, localStack[i], monitor,
+        GetThreadPool()->PostTask(std::make_unique<RemarkingAndPreforwardTask>(this, globalMarkStack, monitor,
                                                                                getNextMutator));
     }
     // Run in daemon thread.
-    RemarkAndPreforwardVisitor visitor(localStack[0], this);
+    LocalCollectStack collectStack(&globalMarkStack);
+    RemarkAndPreforwardVisitor visitor(collectStack, this);
     VisitGlobalRoots(visitor);
     Mutator *mutator = getNextMutator();
     while (mutator != nullptr) {
         VisitMutatorRoot(visitor, *mutator);
         mutator = getNextMutator();
     }
+    collectStack.Publish();
     monitor.WaitAllFinished();
-    for (uint32_t i = 0; i < parallelCount; ++i) {
-        workStack.insert(localStack[i]);
-    }
 }
 
-void ArkCollector::RemarkAndPreforwardStaticRoots(WorkStack& workStack)
+void ArkCollector::RemarkAndPreforwardStaticRoots(GlobalMarkStack &globalMarkStack)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::RemarkAndPreforwardStaticRoots", "");
     const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
     if (maxWorkers > 0) {
-        ParallelRemarkAndPreforward(workStack);
+        ParallelRemarkAndPreforward(globalMarkStack);
     } else {
-        RemarkAndPreforwardVisitor visitor(workStack, this);
+        LocalCollectStack collectStack(&globalMarkStack);
+        RemarkAndPreforwardVisitor visitor(collectStack, this);
         VisitSTWRoots(visitor);
+        collectStack.Publish();
     }
 }
 

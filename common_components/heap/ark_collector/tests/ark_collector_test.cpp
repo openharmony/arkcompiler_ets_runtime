@@ -224,9 +224,11 @@ HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST1)
     BaseObject *obj = reinterpret_cast<BaseObject *>(addr | TAG_HEAP_OBJECT_MASK);
     RefField<> field(obj);
 
-    MarkStack<BaseObject*> workStack;
+    GlobalMarkStack globalMarkStack;
+    ParallelMarkingMonitor monitor(0, 0);
+    ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
     WeakStack weakStack;
-    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    MarkingRefField(nullptr, field, markStack, weakStack, GCReason::GC_REASON_YOUNG);
     EXPECT_FALSE(Heap::IsTaggedObject(field.GetFieldValue()));
 }
 
@@ -238,11 +240,14 @@ HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST2)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    MarkStack<BaseObject*> workStack;
+    GlobalMarkStack globalMarkStack;
+    ParallelMarkingMonitor monitor(0, 0);
+    ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
     WeakStack weakStack;
-    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_APPSPAWN);
+    MarkingRefField(nullptr, field, markStack, weakStack, GCReason::GC_REASON_APPSPAWN);
     EXPECT_FALSE(region->IsInOldSpace());
-    workStack.pop_back();
+    BaseObject *temp;
+    while (markStack.Pop(&temp)) {}
 }
 
 HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST3)
@@ -253,11 +258,14 @@ HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST3)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    MarkStack<BaseObject*> workStack;
+    GlobalMarkStack globalMarkStack;
+    ParallelMarkingMonitor monitor(0, 0);
+    ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
     WeakStack weakStack;
-    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_APPSPAWN);
+    MarkingRefField(nullptr, field, markStack, weakStack, GCReason::GC_REASON_APPSPAWN);
     EXPECT_TRUE(region->IsInOldSpace());
-    workStack.pop_back();
+    BaseObject *temp;
+    while (markStack.Pop(&temp)) {}
 }
 
 HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST4)
@@ -268,11 +276,14 @@ HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST4)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    MarkStack<BaseObject*> workStack;
+    GlobalMarkStack globalMarkStack;
+    ParallelMarkingMonitor monitor(0, 0);
+    ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
     WeakStack weakStack;
-    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    MarkingRefField(nullptr, field, markStack, weakStack, GCReason::GC_REASON_YOUNG);
     EXPECT_FALSE(region->IsInOldSpace());
-    workStack.pop_back();
+    BaseObject *temp;
+    while (markStack.Pop(&temp)) {}
 }
 
 HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST5)
@@ -283,9 +294,11 @@ HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST5)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    MarkStack<BaseObject*> workStack;
+    GlobalMarkStack globalMarkStack;
+    ParallelMarkingMonitor monitor(0, 0);
+    ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
     WeakStack weakStack;
-    MarkingRefField(nullptr, field, workStack, weakStack, GCReason::GC_REASON_YOUNG);
+    MarkingRefField(nullptr, field, markStack, weakStack, GCReason::GC_REASON_YOUNG);
     EXPECT_TRUE(region->IsInOldSpace());
 }
 
@@ -298,8 +311,10 @@ HWTEST_F_L0(ArkCollectorTest, MarkingRefField_TEST6)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> field(obj);
 
-    MarkStack<BaseObject*> workStack;
-    MarkingRefField(obj, obj, field, workStack, region);
+    GlobalMarkStack globalMarkStack;
+    ParallelMarkingMonitor monitor(0, 0);
+    ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
+    MarkingRefField(obj, obj, field, markStack, region);
     EXPECT_TRUE(region->IsNewObjectSinceMarking(obj));
 }
 class TestCreateMarkingArkCollector : public MarkingCollector {
@@ -323,7 +338,8 @@ public:
     BaseObject* CopyObjectAfterExclusive(BaseObject* obj) override { return nullptr; }
     void DoGarbageCollection() override {}
     bool IsCurrentPointer(RefField<>&) const override { return false; }
-    MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) override
+    MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
+                                                               WeakStack &weakStack) override
     {
         return MarkingRefFieldVisitor();
     }
@@ -334,11 +350,13 @@ HWTEST_F_L0(ArkCollectorTest, CreateMarkingObjectRefFieldsVisitor_TEST1)
     std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
     ASSERT_TRUE(arkCollector != nullptr);
 
-    MarkStack<BaseObject*> workStack;
+    GlobalMarkStack globalMarkStack;
+    ParallelMarkingMonitor monitor(0, 0);
+    ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
     WeakStack weakStack;
     TestCreateMarkingArkCollector* collector = reinterpret_cast<TestCreateMarkingArkCollector*>(arkCollector.get());
     collector->SetGCReason(GCReason::GC_REASON_YOUNG);
-    auto visitor = arkCollector->CreateMarkingObjectRefFieldsVisitor(&workStack, &weakStack);
+    auto visitor = arkCollector->CreateMarkingObjectRefFieldsVisitor(markStack, weakStack);
     EXPECT_TRUE(visitor.GetRefFieldVisitor() != nullptr);
 }
 

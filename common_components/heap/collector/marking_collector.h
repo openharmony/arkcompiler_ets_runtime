@@ -22,6 +22,7 @@
 #include "common_components/heap/collector/collector.h"
 #include "common_components/heap/collector/collector_resources.h"
 #include "common_components/common/mark_work_stack.h"
+#include "common_components/common/work_stack-inl.h"
 #include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/heap/collector/copy_data_manager.h"
 #include "common_components/mutator/mutator_manager.h"
@@ -102,14 +103,28 @@ private:
     size_t totalRootsCount_;
 };
 
+class ParallelMarkingMonitor : public TaskPackMonitor {
+public:
+    explicit ParallelMarkingMonitor(int posted, int capacity) : TaskPackMonitor(posted, capacity) {}
+    ~ParallelMarkingMonitor() override = default;
+
+    void operator()()
+    {
+        WakeUpRunnerApproximately();
+    }
+};
+
 class MarkingWork;
 class ConcurrentMarkingWork;
 using RootSet = MarkStack<BaseObject*>;
-using WorkStack = MarkStack<BaseObject*>;
+constexpr size_t LOCAL_MARK_STACK_CAPACITY = 128;
+using GlobalMarkStack = StackList<BaseObject, LOCAL_MARK_STACK_CAPACITY>;
+using ParallelLocalMarkStack = LocalStack<BaseObject, LOCAL_MARK_STACK_CAPACITY, ParallelMarkingMonitor>;
+using SequentialLocalMarkStack = LocalStack<BaseObject, LOCAL_MARK_STACK_CAPACITY>;
+using LocalCollectStack = LocalStack<BaseObject, LOCAL_MARK_STACK_CAPACITY>;
 using WorkStackBuf = MarkStackBuffer<BaseObject*>;
 using WeakStack = MarkStack<std::shared_ptr<std::tuple<RefField<>*, size_t>>>;
 using WeakStackBuf = MarkStackBuffer<std::shared_ptr<std::tuple<RefField<>*, size_t>>>;
-using GlobalWorkStackQueue = GlobalStackQueue<WorkStack>;
 using GlobalWeakStackQueue = GlobalStackQueue<WeakStack>;
 
 class MarkingCollector : public Collector {
@@ -164,11 +179,8 @@ public:
 
     bool ShouldIgnoreRequest(GCRequest& request) override { return request.ShouldBeIgnored(); }
 
-    void ProcessMarkStack(uint32_t threadIndex, Taskpool *threadPool, WorkStack &workStack,
-                          GlobalWorkStackQueue &globalQueue);
+    void ProcessMarkStack(uint32_t threadIndex, ParallelLocalMarkStack &workStack);
     void ProcessWeakStack(WeakStack &weakStack);
-
-    void TryForkTask(Taskpool *threadPool, WorkStack &workStack, GlobalWorkStackQueue &globalQueue);
 
     // live but not resurrected object.
     bool IsMarkedObject(const BaseObject* obj) const { return RegionalHeap::IsMarkedObject(obj); }
@@ -204,7 +216,8 @@ public:
         common::RefFieldVisitor visitor_;
         std::shared_ptr<BaseObject *> closure_;
     };
-    virtual MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) = 0;
+    virtual MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
+                                                                       WeakStack &weakStack) = 0;
     virtual void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) = 0;
 
     inline bool IsResurrectedObject(const BaseObject* obj) const { return RegionalHeap::IsResurrectedObject(obj); }
@@ -289,12 +302,6 @@ protected:
         return collectorResources_.GetGCThreadCount(isConcurrent);
     }
 
-    inline WorkStack NewWorkStack() const
-    {
-        WorkStack workStack = WorkStack();
-        return workStack;
-    }
-
     inline void SetGCReason(const GCReason reason) { gcReason_ = reason; }
 
     Taskpool *GetThreadPool() const { return collectorResources_.GetThreadPool(); }
@@ -304,29 +311,26 @@ protected:
     virtual void ProcessStringTable() {}
 
     virtual void ProcessFinalizers() {}
-    virtual void RemarkAndPreforwardStaticRoots(WorkStack& workStack)
+    virtual void RemarkAndPreforwardStaticRoots(GlobalMarkStack &globalMarkStack)
     {
         LOG_COMMON(FATAL) << "Unresolved fatal";
         UNREACHABLE_CC();
     }
 
-    void MergeAllocBufferRoots(WorkStack& workStack);
-
-    bool PushRootToWorkStack(RootSet *workStack, BaseObject *obj);
-    void PushRootsToWorkStack(RootSet *workStack, const CArrayList<BaseObject *> &collectedRoots);
+    bool PushRootToWorkStack(LocalCollectStack &markStack, BaseObject *obj);
+    void PushRootsToWorkStack(LocalCollectStack &markStack, const CArrayList<BaseObject *> &collectedRoots);
     void MarkingRoots(const CArrayList<BaseObject *> &collectedRoots);
     void Remark();
 
-    bool MarkSatbBuffer(WorkStack& workStack);
+    bool MarkSatbBuffer(GlobalMarkStack &globalMarkStack);
 
     // concurrent marking.
-    void TracingImpl(WorkStack& workStack, bool parallel, bool Remark);
+    void TracingImpl(GlobalMarkStack &globalMarkStack, bool parallel, bool Remark);
 
-    bool AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkStackQueue &globalQueue, size_t threadCount);
     bool AddWeakStackClearWork(WeakStack& workStack, GlobalWeakStackQueue &globalQueue, size_t threadCount);
 private:
-    void MarkRememberSetImpl(BaseObject* object, WorkStack& workStack);
-    void ConcurrentRemark(WorkStack& remarkStack, bool parallel);
+    void MarkRememberSetImpl(BaseObject* object, LocalCollectStack &markStack);
+    void ConcurrentRemark(GlobalMarkStack &globalMarkStack, bool parallel);
     void MarkAwaitingJitFort();
     void EnumMutatorRoot(ObjectPtr& obj, RootSet& rootSet) const;
     void EnumConcurrencyModelRoots(RootSet& rootSet) const;
