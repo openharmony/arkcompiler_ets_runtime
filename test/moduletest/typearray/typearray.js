@@ -1079,3 +1079,19 @@ try {
 } catch (e) {
     print(e instanceof TypeError);
 }
+
+{
+    var v0 = new ArrayBuffer(16);
+    var v1 = new Int32Array(v0);
+    v1[1] = 0xfff7ffff;
+    let v2 = new Float64Array(v0);
+    v2[0]++;
+    v2[0]--;
+    print(Number.isNaN(v2[0]));
+    let v3 = Infinity;
+    v3++;
+    let v4 = -Infinity;
+    v4--;
+    print(v3);
+    print(v4);
+}
