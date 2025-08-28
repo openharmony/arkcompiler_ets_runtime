@@ -1818,15 +1818,14 @@ GateRef CircuitBuilder::StringCharCodeAt(GateRef thisValue, GateRef posTag)
     return ret;
 }
 
-GateRef CircuitBuilder::StringSubstring(std::vector<GateRef>& args)
+GateRef CircuitBuilder::StringSubstring(GateRef thisValue, GateRef startTag, GateRef endTag)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    std::vector<GateRef> inList {currentControl, currentDepend};
-    inList.insert(inList.end(), args.begin(), args.end());
-    GateRef ret = GetCircuit()->NewGate(
-        circuit_->StringSubstring(args.size()), MachineType::I64, inList, GateType::AnyType());
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->StringSubstring(), MachineType::I64,
+            { currentControl, currentDepend, thisValue, startTag, endTag }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -1845,15 +1844,14 @@ GateRef CircuitBuilder::StringSubStr(GateRef thisValue, GateRef intStart, GateRe
     return ret;
 }
 
-GateRef CircuitBuilder::StringSlice(std::vector<GateRef>& args)
+GateRef CircuitBuilder::StringSlice(GateRef thisValue, GateRef startTag, GateRef endTag)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    std::vector<GateRef> inList {currentControl, currentDepend};
-    inList.insert(inList.end(), args.begin(), args.end());
     GateRef ret =
-        GetCircuit()->NewGate(circuit_->StringSlice(args.size()), MachineType::I64, inList, GateType::AnyType());
+        GetCircuit()->NewGate(circuit_->StringSlice(), MachineType::I64,
+            { currentControl, currentDepend, thisValue, startTag, endTag }, GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
