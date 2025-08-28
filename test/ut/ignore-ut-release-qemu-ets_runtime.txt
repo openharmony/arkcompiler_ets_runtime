@@ -262,5 +262,4 @@ obj/arkcompiler/ets_runtime/test/moduletest/throwerrorrelease/throwerrorreleaseA
 obj/arkcompiler/ets_runtime/test/moduletest/throwerrorrelease/throwerrorreleaseAsmContext
 
 #28747
-obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_003_TestWithQemu
 obj/arkcompiler/ets_runtime/test/jittest/throw_error/throw_error
