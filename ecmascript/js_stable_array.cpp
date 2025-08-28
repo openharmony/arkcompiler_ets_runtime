@@ -1664,28 +1664,29 @@ JSTaggedValue JSStableArray::ToReversed(JSThread *thread, JSHandle<JSArray> rece
     return newArrayHandle.GetTaggedValue();
 }
 
-JSTaggedValue JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
-                                    JSHandle<JSTaggedValue> callbackFnHandle,
-                                    JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len)
+void JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle, JSHandle<JSTaggedValue> callbackFnHandle,
+                           JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t len)
 {
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     JSTaggedValue callResult = JSTaggedValue::Undefined();
     while (k < len) {
+        // thisObj.length may change and needs to be rechecked. If the thisObj is stableArray and k >= current length,
+        // thisObj will have no chance to change and we can directly exit the entire loop.
+        if (UNLIKELY(k >= base::ArrayHelper::GetArrayLength(thread, thisObjVal))) {
+            k = len;
+            break;
+        }
         JSTaggedValue kValue(ElementAccessor::Get(thread, thisObjHandle, k));
         if (!kValue.IsHole()) {
-            JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
             const uint32_t argsLength = 4; // 4: «accumulator, kValue, k, O»
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, undefined, undefined, argsLength);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             info->SetCallArg(accumulator.GetTaggedValue(), kValue, JSTaggedValue(k),
                              thisObjVal.GetTaggedValue());
             callResult = JSFunction::Call(info);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (ElementAccessor::GetElementsLength(thread, thisObjHandle) < len) {
-                len = ElementAccessor::GetElementsLength(thread, thisObjHandle);
-            }
+            RETURN_IF_ABRUPT_COMPLETION(thread);
             accumulator.Update(callResult);
         }
         k++;
@@ -1693,7 +1694,6 @@ JSTaggedValue JSStableArray::Reduce(JSThread *thread, JSHandle<JSObject> thisObj
             break;
         }
     }
-    return base::BuiltinsBase::GetTaggedDouble(true);
 }
 
 JSTaggedValue JSStableArray::Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle,
