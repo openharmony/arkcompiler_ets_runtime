@@ -1313,6 +1313,14 @@ public:
     static void ClearKeptObjects(JSThread *thread);
     static void AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value);
     void AddModuleManager(ModuleManager *moduleManager);
+    int8_t GetDataViewType(JSTaggedType type) const
+    {
+        auto result = dataViewTypeTable_.find(type);
+        if (result == dataViewTypeTable_.end()) {
+            return -1;
+        }
+        return result->second;
+    }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     ECMAVM_PUBLIC_HYBRID_MODE_EXTENSION()
@@ -1369,6 +1377,8 @@ private:
         const JSPandaFile *jsPandaFile, std::string_view entryPoint, const ExecuteTypes &executeType);
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
         std::string_view entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType);
+
+    void InitDataViewTypeTable(const GlobalEnvConstants *constant);
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
@@ -1529,6 +1539,8 @@ private:
     JSTaggedValue registerSymbols_ {JSTaggedValue::Hole()};
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     std::atomic<bool> isProcessingPendingJob_{false};
+    
+    std::unordered_map<JSTaggedType, int8_t> dataViewTypeTable_;
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks

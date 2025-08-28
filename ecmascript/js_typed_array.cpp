@@ -463,6 +463,10 @@ bool JSTypedArray::IsValidIntegerIndex(const JSHandle<JSTaggedValue> &typedArray
 
 DataViewType JSTypedArray::GetTypeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName)
 {
+    auto type = thread->GetEcmaVM()->GetDataViewType(typeName.GetTaggedType());
+    if (type != -1) {
+        return DataViewType(type);
+    }
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     if (JSTaggedValue::SameValue(typeName, globalConst->GetHandledInt8ArrayString()) ||
         JSTaggedValue::SameValue(typeName, globalConst->GetHandledSharedInt8ArrayString())) {
