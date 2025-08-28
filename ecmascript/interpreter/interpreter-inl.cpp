@@ -929,7 +929,7 @@ void EcmaInterpreter::MethodEntry(JSThread *thread)
             continue;
         }
         Method *method = frameHandler.GetMethod();
-        if (method->IsNativeWithCallField()) {
+        if (JSTaggedValue::Cast(method).IsUndefined() || method->IsNativeWithCallField()) {
             continue;
         }
         JSTaggedValue env = frameHandler.GetEnv();
