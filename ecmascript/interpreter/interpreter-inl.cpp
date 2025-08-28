@@ -4846,7 +4846,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(JSTaggedValue(a0 + 1));
             }
         } else if (value.IsDouble()) {
-            SET_ACC(JSTaggedValue(value.GetDouble() + 1.0));
+            double doubleVal = value.GetDouble();
+            if (UNLIKELY(std::isnan(doubleVal) || !std::isfinite(doubleVal))) {
+                SET_ACC(value);
+            } else {
+                SET_ACC(JSTaggedValue(doubleVal + 1.0));
+            }
         } else {
             // slow path
             SAVE_PC();
@@ -4873,7 +4878,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(JSTaggedValue(a0 + 1));
             }
         } else if (value.IsDouble()) {
-            SET_ACC(JSTaggedValue(value.GetDouble() + 1.0));
+            double doubleVal = value.GetDouble();
+            if (UNLIKELY(std::isnan(doubleVal) || !std::isfinite(doubleVal))) {
+                SET_ACC(value);
+            } else {
+                SET_ACC(JSTaggedValue(doubleVal + 1.0));
+            }
         } else {
             // slow path
             SAVE_PC();
@@ -4897,7 +4907,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(JSTaggedValue(a0 - 1));
             }
         } else if (value.IsDouble()) {
-            SET_ACC(JSTaggedValue(value.GetDouble() - 1.0));
+            double doubleVal = value.GetDouble();
+            if (UNLIKELY(std::isnan(doubleVal) || !std::isfinite(doubleVal))) {
+                SET_ACC(value);
+            } else {
+                SET_ACC(JSTaggedValue(doubleVal - 1.0));
+            }
         } else {
             // slow path
             SAVE_PC();
@@ -4923,7 +4938,12 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                 SET_ACC(JSTaggedValue(a0 - 1));
             }
         } else if (value.IsDouble()) {
-            SET_ACC(JSTaggedValue(value.GetDouble() - 1.0));
+            double doubleVal = value.GetDouble();
+            if (UNLIKELY(std::isnan(doubleVal) || !std::isfinite(doubleVal))) {
+                SET_ACC(value);
+            } else {
+                SET_ACC(JSTaggedValue(doubleVal - 1.0));
+            }
         } else {
             // slow path
             SAVE_PC();
