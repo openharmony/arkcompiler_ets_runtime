@@ -1334,7 +1334,6 @@ if (is_mingw) {
     "common_components/platform/unix/map.cpp",
     "ecmascript/platform/unix/file.cpp",
     "ecmascript/platform/unix/map.cpp",
-    "ecmascript/platform/unix/time.cpp",
     "ecmascript/platform/unix/aot_crash_info.cpp",
   ]
   if (is_mac) {
@@ -1352,6 +1351,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/asm_stack.cpp",
       "ecmascript/platform/common/ecma_context.cpp",
       "ecmascript/platform/common/parameters.cpp",
+      "ecmascript/platform/unix/time.cpp",
     ]
   } else if (target_os == "ios") {
     ecma_platform_source += [
@@ -1368,6 +1368,7 @@ if (is_mingw) {
       "ecmascript/platform/common/ecma_context.cpp",
       "ecmascript/platform/common/parameters.cpp",
       "ecmascript/platform/unix/mac/asm_stack.cpp",
+      "ecmascript/platform/unix/time.cpp",
     ]
   } else if (is_ohos || target_os == "android") {
     ecma_platform_source += [
@@ -1381,6 +1382,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/ohos/dfx_hisys_event.cpp",
       "ecmascript/platform/common/module.cpp",
       "ecmascript/platform/common/asm_stack.cpp",
+      "ecmascript/platform/unix/ohos/time.cpp",
     ]
 
     if (is_ohos) {
@@ -1420,6 +1422,7 @@ if (is_mingw) {
       "ecmascript/platform/common/ecma_context.cpp",
       "ecmascript/platform/common/parameters.cpp",
       "ecmascript/platform/common/asm_stack.cpp",
+      "ecmascript/platform/unix/time.cpp",
     ]
   } else {
     print("Invalid os!")

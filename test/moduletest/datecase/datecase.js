@@ -57,3 +57,9 @@ print(d9.getDate() == 1);
 print(d9.getHours() == 0);
 
 print(d10.getMonth(),d10.getDate(),d10.getHours());
+
+print(Date.parse("1972T23:50:03.500+01:00"));
+print(Date.parse("1972T23:50:03.500Z"));
+print(Date.parse("1972T23:50:03.500Z"));
+print(Date.parse("1972T23:50:03Z"));
+print(Date.parse("1972Z"));
