@@ -2498,7 +2498,7 @@ DEF_RUNTIME_STUBS(MethodEntry)
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     if (func.GetTaggedValue().IsECMAObject()) {
         Method *method = ECMAObject::Cast(func.GetTaggedValue().GetTaggedObject())->GetCallTarget(thread);
-        if (method->IsNativeWithCallField()) {
+        if (JSTaggedValue::Cast(method).IsUndefined() || method->IsNativeWithCallField()) {
             return JSTaggedValue::Hole().GetRawData();
         }
         JSHandle<JSFunction> funcObj = JSHandle<JSFunction>::Cast(func);
