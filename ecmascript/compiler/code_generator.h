@@ -85,8 +85,6 @@ struct CodeInfo {
 
     uint8_t *AllocaCodeSectionOnDemand(uintptr_t size, const char *sectionName);
 
-    void VerifyAddress(uintptr_t addr, uintptr_t size, uintptr_t alignSize);
-
     uint8_t *AllocaDataSectionImp(uintptr_t size, const char *sectionName, AllocaSectionCallback allocaInReqSecBuffer,
                                   AllocaSectionCallback allocaInNotReqSecBuffer);
 
@@ -139,8 +137,6 @@ private:
     CodeSpaceOnDemand &codeSpaceOnDemand_;
     bool useOwnSpace_ {false};
     std::unique_ptr<CodeSpace> ownCodeSpace_ {nullptr};
-    uintptr_t lastAddr_ {0};
-    uintptr_t lastSize_ {0};
 };
 
 class Assembler {

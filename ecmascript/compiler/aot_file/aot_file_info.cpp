@@ -16,9 +16,6 @@
 #include "ecmascript/compiler/aot_file/aot_file_info.h"
 
 namespace panda::ecmascript {
-
-ConcurrentMonitor ConcurrentMonitor::monitor_;
-
 void AOTFileInfo::Destroy()
 {
     entryNum_ = 0;
