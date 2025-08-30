@@ -55,7 +55,7 @@ void RefFieldObjectVisitor::VisitAllRefFields(TaggedObject *obj)
     // Note this will update the stack param, not the slot of object hclass
     // But sinc hclass in non-movable, so current all visitor will not update hlass field, so it's ok
     VisitObjectHClassImpl(obj->GetClass());
-    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, obj->GetClass(), *this);
+    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT, true>(obj, obj->GetClass(), *this);
 }
 
 void RefFieldObjectVisitor::visit(ObjectSlot slot)

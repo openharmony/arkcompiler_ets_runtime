@@ -157,12 +157,19 @@ public:
         vm->GetJSThread()->IterateJitCodeMap(updater);
     }
 
-    template<VisitType visitType, class DerivedVisitor>
+    template<VisitType visitType, bool isCMCGC = false, class DerivedVisitor>
     static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass,
                                        BaseObjectVisitor<DerivedVisitor> &visitor)
     {
         // handle body
         JSType type = klass->GetObjectType();
+        if constexpr (isCMCGC) {
+            // fastpath for cmcgc
+            if (type == JSType::JS_TYPED_ARRAY) {
+                JSTypedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                return;
+            }
+        }
         switch (type) {
             case JSType::JS_OBJECT:
             case JSType::JS_XREF_OBJECT:
