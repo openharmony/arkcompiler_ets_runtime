@@ -32,7 +32,7 @@ public:
     void ReadStruct(HeapAddress dst, BaseObject* obj, HeapAddress src, size_t size) const override;
 
     void WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const override;
-    void WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const override;
+    void WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const override;
     void WriteStruct(BaseObject* obj, HeapAddress dst, size_t dstLen, HeapAddress src, size_t srcLen) const override;
     void WriteStaticRef(RefField<false>& field, BaseObject* ref) const override;
 

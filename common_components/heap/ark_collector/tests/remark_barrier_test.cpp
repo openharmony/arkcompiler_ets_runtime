@@ -239,7 +239,7 @@ HWTEST_F_L0(RemarkBarrierTest, WriteBarrier_TEST1)
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     addr |= TAG_HEAP_OBJECT_MASK;
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    remarkBarrier->WriteBarrier(obj, field, obj);
+    remarkBarrier->WriteBarrier(nullptr, obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 #endif
 }
@@ -254,17 +254,17 @@ HWTEST_F_L0(RemarkBarrierTest, WriteBarrier_TEST2)
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> normalField(obj);
-    remarkBarrier->WriteBarrier(obj, normalField, obj);
+    remarkBarrier->WriteBarrier(nullptr, obj, normalField, obj);
     EXPECT_TRUE(obj != nullptr);
 
     BaseObject weakObj;
     RefField<false> weakField(MAddress(0));
-    remarkBarrier->WriteBarrier(&weakObj, weakField, &weakObj);
+    remarkBarrier->WriteBarrier(nullptr, &weakObj, weakField, &weakObj);
     EXPECT_TRUE(weakObj != nullptr);
 
     BaseObject nonTaggedObj;
     RefField<false> nonTaggedField(&nonTaggedObj);
-    remarkBarrier->WriteBarrier(nullptr, nonTaggedField, &nonTaggedObj);
+    remarkBarrier->WriteBarrier(nullptr, nullptr, nonTaggedField, &nonTaggedObj);
     EXPECT_TRUE(nonTaggedObj != nullptr);
 #endif
 }
@@ -279,7 +279,22 @@ HWTEST_F_L0(RemarkBarrierTest, WriteBarrier_TEST3)
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<> field(obj);
-    remarkBarrier->WriteBarrier(obj, field, obj);
+    remarkBarrier->WriteBarrier(nullptr, obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+#endif
+}
+
+HWTEST_F_L0(RemarkBarrierTest, WriteBarrier_TEST4)
+{
+    MockCollector collector;
+    auto remarkBarrier = std::make_unique<RemarkBarrier>(collector);
+    ASSERT_TRUE(remarkBarrier != nullptr);
+
+#ifndef ARK_USE_SATB_BARRIER
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<> field(obj);
+    remarkBarrier->WriteBarrier(Mutator::GetMutator(), obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 #endif
 }

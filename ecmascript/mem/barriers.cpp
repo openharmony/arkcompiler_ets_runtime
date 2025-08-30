@@ -176,11 +176,11 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
     JSTaggedType *srcPtr = reinterpret_cast<JSTaggedType *>(src);
     common::GCPhase gcPhase = thread->GetCMCGCPhase();
     // 1. update Rememberset
-    if (ShouldUpdateRememberSet(gcPhase)) {
+    if (ShouldUpdateRememberSet(gcPhase) && !objMetaRegion->IsInYoungSpaceForWB()) {
         auto checkReference = [&](BaseObject *ref) {
             common::RegionDesc::InlinedRegionMetaData *refMetaRegion =
                 common::RegionDesc::InlinedRegionMetaData::GetInlinedRegionMetaData(reinterpret_cast<uintptr_t>(ref));
-            return (!objMetaRegion->IsInYoungSpaceForWB() && refMetaRegion->IsInYoungSpaceForWB());
+            return refMetaRegion->IsInYoungSpaceForWB();
         };
 
         for (size_t i = 0; i < count; i++) {
@@ -198,7 +198,7 @@ void Barriers::CMCArrayCopyWriteBarrier(const JSThread *thread, const TaggedObje
 
     // 2. SATB buffer proccess
     if (ShouldProcessSATB(gcPhase)) {
-        common::Mutator* mutator = common::Mutator::GetMutator();
+        common::Mutator* mutator = thread->GetMutator();
         for (size_t i = 0; i < count; i++) {
             JSTaggedType ref = *reinterpret_cast<JSTaggedType *>(ToUintPtr(srcPtr) + i * sizeof(JSTaggedType));
             if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {

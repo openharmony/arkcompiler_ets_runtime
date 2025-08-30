@@ -281,9 +281,9 @@ GateRef NewObjectStubBuilder::NewAccessorData(GateRef glue)
     HeapAlloc(&result, &noException, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
     Bind(&noException);
     {
-        Store(VariableType::JS_POINTER(), glue, result.ReadVariable(), IntPtr(0), hclass);
-        Store(VariableType::JS_ANY(), glue, *result, IntPtr(AccessorData::GETTER_OFFSET), Undefined());
-        Store(VariableType::JS_ANY(), glue, *result, IntPtr(AccessorData::SETTER_OFFSET), Undefined());
+        StoreBuiltinHClass(glue, *result, hclass);
+        StoreWithoutBarrier(VariableType::JS_ANY(), *result, IntPtr(AccessorData::GETTER_OFFSET), Undefined());
+        StoreWithoutBarrier(VariableType::JS_ANY(), *result, IntPtr(AccessorData::SETTER_OFFSET), Undefined());
         Jump(&exit);
     }
 
@@ -1649,7 +1649,7 @@ void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *res
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     auto isStartHeapSamplingOffset = JSThread::GlueData::GetIsStartHeapSamplingOffset(env->Is32Bit());
     auto isStartHeapSampling = LoadPrimitive(VariableType::JS_ANY(), glue_, IntPtr(isStartHeapSamplingOffset));
-    BRANCH(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
+    BRANCH_UNLIKELY(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
     Bind(&next);
 #endif
     Label isCMCGC(env);
@@ -1794,7 +1794,7 @@ void NewObjectStubBuilder::AllocateInYoungPrologue([[maybe_unused]] Variable *re
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     auto isStartHeapSamplingOffset = JSThread::GlueData::GetIsStartHeapSamplingOffset(env->Is32Bit());
     auto isStartHeapSampling = LoadPrimitive(VariableType::JS_ANY(), glue_, IntPtr(isStartHeapSamplingOffset));
-    BRANCH(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
+    BRANCH_UNLIKELY(TaggedIsTrue(isStartHeapSampling), callRuntime, &next);
     Bind(&next);
 #endif
     Label isCMCGC(env);
@@ -1857,6 +1857,7 @@ GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, G
     SetParameters(glue, size);
     HeapAlloc(&result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
     Bind(&initialize);
+    StoreBuiltinHClass(glue, *result, hclass);
     Store(VariableType::JS_POINTER(), glue_, *result, IntPtr(0), hclass);
     GateRef cachedHClassOffset = IntPtr(TrackInfo::CACHED_HCLASS_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, cachedHClassOffset, cachedHClass);
@@ -1961,7 +1962,7 @@ void NewObjectStubBuilder::AllocLineStringObject(Variable *result, Label *exit, 
     AllocateInSOld(result, &afterAllocate, stringClass);
 
     Bind(&afterAllocate);
-    StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBuiltinHClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
     SetMixHashcode(glue_, result->ReadVariable(), Int32(0));
     Jump(exit);
@@ -1979,7 +1980,7 @@ void NewObjectStubBuilder::AllocSlicedStringObject(Variable *result, Label *exit
     AllocateInSOld(result, &afterAllocate, stringClass);
 
     Bind(&afterAllocate);
-    StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBuiltinHClass(glue_, result->ReadVariable(), stringClass);
     GateRef mixLength = LoadPrimitive(VariableType::INT32(), flatString->GetFlatString(),
                                       IntPtr(BaseString::LENGTH_AND_FLAGS_OFFSET));
     GateRef compressedStatus = TruncInt32ToInt1(Int32And(Int32((1 << BaseString::CompressedStatusBit::SIZE) - 1),
@@ -2008,7 +2009,7 @@ void NewObjectStubBuilder::AllocTreeStringObject(Variable *result, Label *exit, 
     AllocateInSOld(result, &afterAllocate, stringClass);
 
     Bind(&afterAllocate);
-    StoreHClass(glue_, result->ReadVariable(), stringClass);
+    StoreBuiltinHClass(glue_, result->ReadVariable(), stringClass);
     InitStringLengthAndFlags(glue_, result->ReadVariable(), length, compressed);
     SetMixHashcode(glue_, result->ReadVariable(), Int32(0));
     Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(TreeString::FIRST_OFFSET), first);
@@ -2290,7 +2291,7 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, GateRef jsFunc, Tra
     {
         trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo,
             slotId, slotValue, Circuit::NullGate(), callback);
-        hclass = Load(VariableType::JS_ANY(), glue, *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
+        hclass = LoadPrimitive(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
         trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
@@ -2334,7 +2335,7 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index,
     Bind(&mayFastpath);
     {
         trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, slotValue, obj, callback);
-        hclass = Load(VariableType::JS_ANY(), glue, *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
+        hclass = LoadPrimitive(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
         trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
@@ -2893,7 +2894,7 @@ GateRef NewObjectStubBuilder::NewEnumCache(GateRef glue)
     SetParameters(glue, size);
     HeapAlloc(&result, &initialize, RegionSpaceFlag::IN_YOUNG_SPACE, hclass);
     Bind(&initialize);
-    Store(VariableType::JS_POINTER(), glue, result.ReadVariable(), IntPtr(0), hclass);
+    StoreBuiltinHClass(glue, *result, hclass);
     GateRef enumCacheKindOffset = IntPtr(EnumCache::ENUM_CACHE_KIND_OFFSET);
     Store(VariableType::INT32(), glue, *result, enumCacheKindOffset,
         Int32(static_cast<uint32_t>(EnumCacheKind::NONE)));

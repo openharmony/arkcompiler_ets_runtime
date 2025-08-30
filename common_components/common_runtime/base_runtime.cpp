@@ -179,10 +179,10 @@ void BaseRuntime::WriteRoot(void *obj)
     Heap::GetBarrier().WriteRoot(reinterpret_cast<BaseObject *>(obj));
 }
 
-void BaseRuntime::WriteBarrier(void* obj, void* field, void* ref)
+void BaseRuntime::WriteBarrier(void* obj, void* field, void* ref, Mutator *mutator)
 {
     DCHECK_CC(field != nullptr);
-    Heap::GetBarrier().WriteBarrier(reinterpret_cast<BaseObject*>(obj),
+    Heap::GetBarrier().WriteBarrier(mutator, reinterpret_cast<BaseObject*>(obj),
         *reinterpret_cast<RefField<>*>(field), reinterpret_cast<BaseObject*>(ref));
 }
 

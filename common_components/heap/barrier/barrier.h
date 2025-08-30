@@ -37,7 +37,7 @@ public:
 
     virtual void WriteRoot(BaseObject* obj) const;
     virtual void WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject* ref) const;
-    virtual void WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const;
+    virtual void WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const;
     
     virtual void WriteStaticRef(RefField<false>& field, BaseObject* ref) const;
     virtual void WriteStruct(BaseObject* obj, HeapAddress dst, size_t dstLen, HeapAddress src, size_t srcLen) const;

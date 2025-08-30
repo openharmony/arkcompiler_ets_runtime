@@ -216,5 +216,33 @@ public:
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
 };
+
+class CMCBaseTestWithScope : public BaseTestWithOutScope {
+public:
+    void SetUp() override
+    {
+        JSRuntimeOptions options;
+#if defined(PANDA_TARGET_LINUX) && defined(ICU_PATH)
+        // for consistency requirement, use ohos_icu4j/data as icu-data-path
+        options.SetIcuDataPath(ICU_PATH);
+#endif
+        options.SetEnableCMCGC(true);
+        instance = JSNApi::CreateEcmaVM(options);
+        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
+        thread = instance->GetJSThread();
+        thread->ManagedCodeBegin();
+        scope = new EcmaHandleScope(thread);
+        JSNApi::InitHybridVMEnv(thread->GetEcmaVM());
+    }
+
+    void TearDown() override
+    {
+        TestHelper::DestroyEcmaVMWithScope(instance, scope);
+    }
+
+    EcmaVM *instance {nullptr};
+    EcmaHandleScope *scope {nullptr};
+    JSThread *thread {nullptr};
+};
 }  // namespace panda::test
 #endif  // ECMASCRIPT_TESTS_TEST_HELPER_H

@@ -814,7 +814,7 @@ void BarrierStubBuilder::DoReverseBarrier()
                     Bind(&markInBuffer);
                     {
                         ASSERT(RuntimeStubCSigns::Get(RTSTUB_ID(MarkInBuffer))->IsNoTailCall());
-                        CallNGCRuntime(glue_, RTSTUB_ID(MarkInBuffer), {ref});
+                        CallNGCRuntime(glue_, RTSTUB_ID(MarkInBuffer), {glue_, ref});
                         Jump(&notMarkRSetLoopEnd);
                     }
                     

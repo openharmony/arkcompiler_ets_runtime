@@ -116,7 +116,7 @@ void IdleBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObj
     field.SetTargetObject(ref);
 }
 
-void IdleBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void IdleBarrier::WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     if (!Heap::IsTaggedObject((HeapAddress)ref)) {
         return;

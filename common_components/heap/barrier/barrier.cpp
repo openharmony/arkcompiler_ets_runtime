@@ -31,7 +31,7 @@ void Barrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObject*
     field.SetTargetObject(ref);
 }
 
-void Barrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void Barrier::WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     DLOG(BARRIER, "write obj %p ref-field@%p: %p => %p", obj, &field, field.GetTargetObject(), ref);
 }
