@@ -25,6 +25,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/mutator_lock.h"
+#include "ecmascript/platform/dfx_hisys_event.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/serializer/serialize_chunk.h"
 
@@ -307,6 +308,12 @@ public:
     {
         isHybridVm_ = isHybridVm;
     }
+    
+    uint32_t AddIncompatibleEvent(DFXHiSysEvent::IncompatibleType type)
+    {
+        WriteLockHolder lock(incompatibleEventLock_);
+        return ++incompatibleEventMap_[type];
+    }
 
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
@@ -374,6 +381,9 @@ private:
     int32_t sharedConstpoolCount_ = 0; // shared constpool count.
     std::set<int32_t> freeSharedConstpoolIndex_ {}; // reuse shared constpool index.
     bool postForked_ {false};
+
+    CMap<DFXHiSysEvent::IncompatibleType, uint32_t> incompatibleEventMap_;
+    RWLock incompatibleEventLock_;
 
     // Runtime instance and VMs creation.
     static int32_t vmCount_;
