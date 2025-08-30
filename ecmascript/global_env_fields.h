@@ -149,6 +149,7 @@
     V(JSTaggedValue, MathFunctionClass, MATH_FUNCTION_CLASS_INDEX)                                  \
     V(JSTaggedValue, AtomicsFunction, ATOMICS_FUNCTION_INDEX)                                       \
     V(JSTaggedValue, JsonFunction, JSON_FUNCTION_INDEX)                                             \
+    V(JSTaggedValue, JsonParseFunction, JSON_PARSE_FUNCTION_INDEX)                                  \
     V(JSTaggedValue, StringFunction, STRING_FUNCTION_INDEX)                                         \
     V(JSTaggedValue, StringPrototype, STRING_PROTOTYPE_INDEX)                                       \
     V(JSTaggedValue, ProxyFunction, PROXY_FUNCTION_INDEX)                                           \

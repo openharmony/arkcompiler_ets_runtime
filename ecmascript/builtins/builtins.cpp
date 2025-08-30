@@ -1757,7 +1757,7 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     JSHandle<JSHClass> jsonHClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, objFuncPrototypeVal);
     JSHandle<JSObject> jsonObject = factory_->NewJSObjectWithInit(jsonHClass);
 
-    SetFunction(env, jsonObject, "parse", Json::Parse, FunctionLength::TWO);
+    JSHandle<JSFunction> parseFunc = SetAndReturnFunction(env, jsonObject, "parse", Json::Parse, FunctionLength::TWO);
     SetFunction(env, jsonObject, "parseSendable", SendableJson::Parse, FunctionLength::THREE);
     SetFunction(env, jsonObject, "parseBigInt", BigIntJson::Parse, FunctionLength::THREE);
     SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::THREE, BUILTINS_STUB_ID(JsonStringify));
@@ -1768,6 +1768,8 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
     JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCIIReadOnly("JSON"));
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     JSObject::DefineOwnProperty(thread_, globalObject, jsonString, jsonDesc);
+    // set json Parse Function
+    env->SetJsonParseFunction(thread_, parseFunc);
     // @@ToStringTag
     SetStringTagSymbol(env, jsonObject, "JSON");
     env->SetJsonFunction(thread_, jsonObject);
