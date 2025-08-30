@@ -158,6 +158,7 @@ private:
         DATE_TIME_ZONE,
         DATE_TIME_FALG,
         DATE_MONTH,
+        DATE_AM_PM,
         DATE_INVALID_WORD,
         DATE_WORD_START = DATE_TIME_ZONE,
     };
@@ -212,6 +213,11 @@ private:
             bool IsMonth() const
             {
                 return type_ == DATE_MONTH;
+            }
+
+            bool IsAMOrPM() const
+            {
+                return type_ == DATE_AM_PM;
             }
 
             bool IsWord() const
@@ -343,7 +349,7 @@ private:
             }
         private:
             DateUnit Read();
-            DateValueType MatchKeyWord(const CString &str, int *value);
+            DateValueType MatchKeyWord(const CString &str, int strLen, int *value);
 
             StringReader *str_ {nullptr};
             DateUnit date_;
@@ -402,6 +408,13 @@ private:
                 return false;
             }
 
+            inline void FixHourForAMOrPM(int value)
+            {
+                if (data_[HOUR_IDX] < 12) {  // 12: while date string includes PM, the hour need to be fixed.
+                    data_[HOUR_IDX] += value;
+                }
+            }
+
             static bool MinuteIsValid(int n)
             {
                 // 59 : max min
@@ -450,9 +463,9 @@ private:
                 return value / divisor;
             }
 
-            int GetIndex() const
+            inline bool IsEmpty() const
             {
-                return index_;
+                return index_ == HOUR_IDX;
             }
 
             bool IsValid(int n) const
@@ -470,6 +483,7 @@ private:
             bool SetTimeValue(int *time);
         private:
             static constexpr int TIME_LEN = 4;
+            static constexpr int HOUR_IDX = 0;
             int data_[TIME_LEN] {0};
             int index_ {0};
     };
