@@ -229,7 +229,7 @@ public:
 
     size_t UnionFind(size_t idx)
     {
-        std::stack<size_t> allIdxs;
+        std::stack<size_t, std::vector<size_t>> allIdxs;
         allIdxs.emplace(idx);
         size_t pIdx = parentIdx_[idx];
         while (pIdx != allIdxs.top()) {
