@@ -83,10 +83,9 @@ protected:
     {
         JSHandle<JSFunction> newTarget(thread, InitializeBufferConstructor());
         auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
-                                                                 ContainersBufferTest::GetArgvCount(4));
+                                                                 ContainersBufferTest::GetArgvCount(3));
         objCallInfo->SetFunction(newTarget.GetTaggedValue());
         objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
-        objCallInfo->SetThis(JSTaggedValue::Undefined());
         objCallInfo->SetCallArg(0, JSTaggedValue(length));
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
         JSTaggedValue result = ContainersBuffer::BufferConstructor(objCallInfo);
@@ -101,12 +100,13 @@ HWTEST_F_L0(ContainersBufferTest, BufferConstructor)
     InitializeBufferConstructor();
     JSHandle<JSFunction> newTarget(thread, InitializeBufferConstructor());
     auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(),
-                                                             ContainersBufferTest::GetArgvCount(4));
+                                                             6);
     objCallInfo->SetFunction(newTarget.GetTaggedValue());
     objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
-    objCallInfo->SetThis(JSTaggedValue::Undefined());
     objCallInfo->SetCallArg(0, JSTaggedValue(JSAPIFastBuffer::DEFAULT_CAPACITY_LENGTH));
+    EXPECT_EQ(objCallInfo->GetArgsNumber(), 1);
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+    EXPECT_EQ(objCallInfo->GetArgsNumber(), 1);
     JSTaggedValue result = ContainersBuffer::BufferConstructor(objCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     ASSERT_TRUE(result.IsJSAPIBuffer());
@@ -715,7 +715,6 @@ HWTEST_F_L0(ContainersBufferTest, CreateFromArrayTest001)
                                                              ContainersBufferTest::GetArgvCount(4));
     objCallInfo->SetFunction(newTarget.GetTaggedValue());
     objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
-    objCallInfo->SetThis(JSTaggedValue::Undefined());
     objCallInfo->SetCallArg(0, arr.GetTaggedValue());
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
     JSTaggedValue result = ContainersBuffer::BufferConstructor(objCallInfo);
