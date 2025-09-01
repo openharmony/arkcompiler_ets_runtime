@@ -343,7 +343,7 @@ bool EcmaVM::Initialize()
     if (Runtime::GetInstance()->IsHybridVm()) {
         crossVMOperator_ = new CrossVMOperator(this);
     }
-    
+
 #endif // PANDA_JS_ETS_HYBRID_MODE
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
     gcKeyStats_ = chunk_.New<GCKeyStats>(heap_, gcStats_);
@@ -416,7 +416,10 @@ EcmaVM::~EcmaVM()
             factory_ = nullptr;
         }
         stringTable_ = nullptr;
-        thread_ = nullptr;
+        if (thread_ != nullptr) {
+            delete thread_;
+            thread_ = nullptr;
+        }
         if (g_isEnableCMCGC) {
             common::BaseRuntime::ExitGCCriticalSection();
         }

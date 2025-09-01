@@ -38,7 +38,7 @@ void* CollectorResources::GCMainThreadEntry(void* arg)
     LOGE_IF(UNLIKELY_CC(ret != 0)) << "pthread setname in CollectorResources::StartGCThreads() return " <<
         ret << " rather than 0";
 #endif
-    
+
     ASSERT_LOGF(arg != nullptr, "GCMainThreadEntry arg=nullptr");
     // set current thread as a gc thread.
     ThreadLocal::SetThreadType(ThreadType::GC_THREAD);
@@ -119,8 +119,12 @@ void CollectorResources::StopGCThreads()
         LOG_COMMON(FATAL) << "[GC] CollectorResources Thread not begin.";
         UNREACHABLE();
     }
-    int ret = ::pthread_join(gcMainThread_, nullptr);
-    LOGE_IF(UNLIKELY_CC(ret != 0)) << "::pthread_join() in StopGCThreads() return " << ret;
+    {
+        // Enter saferegion to avoid blocking gc stw
+        ScopedEnterSaferegion enterSaferegion(true);
+        int ret = ::pthread_join(gcMainThread_, nullptr);
+        LOGE_IF(UNLIKELY_CC(ret != 0)) << "::pthread_join() in StopGCThreads() return " << ret;
+    }
     // wait the thread pool stopped.
     if (gcThreadPool_ != nullptr) {
         gcThreadPool_->Destroy(0);
@@ -221,13 +225,13 @@ void CollectorResources::NotifyGCFinished(uint64_t gcIndex)
 void CollectorResources::MarkGCStart()
 {
     std::unique_lock<std::mutex> lock(gcFinishedCondMutex_);
-    
+
     // Wait for any existing GC to finish - inline the wait logic
     std::function<bool()> pred = [this] {
         return !IsGcStarted();
     };
     gcFinishedCondVar_.wait(lock, pred);
-    
+
     // Now claim GC ownership
     SetGcStarted(true);
 }
