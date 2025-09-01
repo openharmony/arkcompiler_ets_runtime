@@ -90,7 +90,8 @@ public:
     bool ShouldIgnoreRequest(GCRequest& request) override;
     bool MarkObject(BaseObject* obj) const override;
 
-    MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) override;
+    MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
+                                                               WeakStack &weakStack) override;
     void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) override;
 
     void FixObjectRefFields(BaseObject* obj) const override;
@@ -215,8 +216,8 @@ private:
 
     void MarkingHeap(const CArrayList<BaseObject *> &collectedRoots);
     void PostMarking();
-    void RemarkAndPreforwardStaticRoots(WorkStack& workStack) override;
-    void ParallelRemarkAndPreforward(WorkStack& workStack);
+    void RemarkAndPreforwardStaticRoots(GlobalMarkStack &globalMarkStack) override;
+    void ParallelRemarkAndPreforward(GlobalMarkStack &globalMarkStack);
     void Preforward();
     void ConcurrentPreforward();
 

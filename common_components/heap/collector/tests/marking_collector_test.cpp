@@ -135,22 +135,23 @@ HWTEST_F_L0(MarkingCollectorTest, PushRootToWorkStackTest)
     uintptr_t addr = theAllocator.AllocOldRegion();
     ASSERT_NE(addr, 0);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
-    RootSet roots;
+    GlobalMarkStack globalMarkStack;
+    LocalCollectStack collectStack(&globalMarkStack);
     RegionDesc* region = RegionDesc::GetRegionDescAt(addr);
     region->SetRegionType(RegionDesc::RegionType::RECENT_LARGE_REGION);
     collector.SetGCReason(GC_REASON_NATIVE);
     region->MarkObject(obj);
-    bool result = collector.PushRootToWorkStack(&roots, obj);
+    bool result = collector.PushRootToWorkStack(collectStack, obj);
     ASSERT_FALSE(result);
 
     region->SetRegionType(RegionDesc::RegionType::RECENT_LARGE_REGION);
     collector.SetGCReason(GC_REASON_YOUNG);
-    result = collector.PushRootToWorkStack(&roots, obj);
+    result = collector.PushRootToWorkStack(collectStack, obj);
     ASSERT_FALSE(result);
 
     region->SetRegionType(RegionDesc::RegionType::OLD_REGION);
     collector.SetGCReason(GC_REASON_NATIVE);
-    result = collector.PushRootToWorkStack(&roots, obj);
+    result = collector.PushRootToWorkStack(collectStack, obj);
     ASSERT_FALSE(result);
 }
 }

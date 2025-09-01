@@ -49,41 +49,32 @@ void StaticRootTable::VisitRoots(const RefFieldVisitor& visitor)
 
 class ConcurrentMarkingTask : public common::Task {
 public:
-    ConcurrentMarkingTask(uint32_t id, MarkingCollector &tc, Taskpool *pool, TaskPackMonitor &monitor,
-                          GlobalWorkStackQueue &globalQueue)
-        : Task(id), collector_(tc), threadPool_(pool), monitor_(monitor), globalQueue_(globalQueue)
+    ConcurrentMarkingTask(uint32_t id, MarkingCollector &tc, ParallelMarkingMonitor &monitor,
+                          GlobalMarkStack &globalMarkStack)
+        : Task(id), collector_(tc), monitor_(monitor), globalMarkStack_(globalMarkStack)
     {}
 
-    // single work task without thread pool
-    ConcurrentMarkingTask(uint32_t id, MarkingCollector& tc, TaskPackMonitor &monitor,
-                          GlobalWorkStackQueue &globalQueue)
-        : Task(id), collector_(tc), threadPool_(nullptr), monitor_(monitor), globalQueue_(globalQueue)
-    {}
-
-    ~ConcurrentMarkingTask() override
-    {
-        threadPool_ = nullptr;
-    }
+    ~ConcurrentMarkingTask() override = default;
 
     // run concurrent marking task.
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
-        while (true) {
-            WorkStack workStack = globalQueue_.PopWorkStack();
-            if (workStack.empty()) {
+        ParallelLocalMarkStack markStack(&globalMarkStack_, &monitor_);
+        do {
+            if (!monitor_.TryStartStep()) {
                 break;
             }
-            collector_.ProcessMarkStack(threadIndex, threadPool_, workStack, globalQueue_);
-        }
+            collector_.ProcessMarkStack(threadIndex, markStack);
+            monitor_.FinishStep();
+        } while (monitor_.WaitNextStepOrFinished());
         monitor_.NotifyFinishOne();
         return true;
     }
 
 private:
     MarkingCollector &collector_;
-    Taskpool *threadPool_;
-    TaskPackMonitor &monitor_;
-    GlobalWorkStackQueue &globalQueue_;
+    ParallelMarkingMonitor &monitor_;
+    GlobalMarkStack &globalMarkStack_;
 };
 
 class ClearWeakStackTask : public common::Task {
@@ -125,28 +116,6 @@ private:
     GlobalWeakStackQueue &globalQueue_;
 };
 
-void MarkingCollector::TryForkTask(Taskpool *threadPool, WorkStack &workStack, GlobalWorkStackQueue &globalQueue)
-{
-    size_t size = workStack.size();
-    if (size > MIN_MARKING_WORK_SIZE) {
-        bool doFork = false;
-        size_t newSize = 0;
-        if (size > MAX_MARKING_WORK_SIZE) {
-            newSize = size >> 1; // give 1/2 the stack to the thread pool as a new work task
-            doFork = true;
-        } else if (size > MIN_MARKING_WORK_SIZE) {
-            constexpr uint8_t shiftForEight = 3;
-            newSize = size >> shiftForEight; // give 1/8 the stack to the thread pool as a new work task
-            doFork = true;
-        }
-
-        if (doFork) {
-            WorkStackBuf *hSplit = workStack.split(newSize);
-            globalQueue.AddWorkStack(WorkStack(hSplit));
-        }
-    }
-}
-
 void MarkingCollector::ProcessWeakStack(WeakStack &weakStack)
 {
     while (!weakStack.empty()) {
@@ -183,56 +152,46 @@ void MarkingCollector::ProcessWeakStack(WeakStack &weakStack)
     }
 }
 
-void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, Taskpool *threadPool,
-                                        WorkStack &workStack, GlobalWorkStackQueue &globalQueue)
+void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, ParallelLocalMarkStack &markStack)
 {
     size_t nNewlyMarked = 0;
     WeakStack weakStack;
-    auto visitor = CreateMarkingObjectRefFieldsVisitor(&workStack, &weakStack);
-    WorkStack remarkStack;
-    auto fetchFromSatbBuffer = [this, &workStack, &remarkStack]() {
+    auto visitor = CreateMarkingObjectRefFieldsVisitor(markStack, weakStack);
+    std::vector<BaseObject *> remarkStack;
+    auto fetchFromSatbBuffer = [this, &markStack, &remarkStack]() {
         SatbBuffer::Instance().TryFetchOneRetiredNode(remarkStack);
+        bool needProcess = false;
         while (!remarkStack.empty()) {
             BaseObject *obj = remarkStack.back();
             remarkStack.pop_back();
             if (Heap::IsHeapAddress(obj) && (!MarkObject(obj))) {
-                workStack.push_back(obj);
+                markStack.Push(obj);
+                needProcess = true;
                 DLOG(TRACE, "tracing take from satb buffer: obj %p", obj);
             }
         }
+        return needProcess;
     };
     size_t iterationCnt = 0;
     constexpr size_t maxIterationLoopNum = 1000;
     // loop until work stack empty.
-    do {
-        for (;;) {
+    while (true) {
+        BaseObject *object;
+        while (markStack.Pop(&object)) {
             ++nNewlyMarked;
-            if (workStack.empty()) {
-                break;
-            }
-            // get next object from work stack.
-            BaseObject *obj = workStack.back();
-            workStack.pop_back();
-            auto region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<MAddress>((void *)obj));
-            region->AddLiveByteCount(obj->GetSize());
-            [[maybe_unused]] auto beforeSize = workStack.count();
-            MarkingObjectRefFields(obj, &visitor);
-            DLOG(TRACE, "[tracing] visit finished, workstack size: before=%d, after=%d, newly added=%d", beforeSize,
-                 workStack.count(), workStack.count() - beforeSize);
-            // try to fork new task if needed.
-            if (threadPool != nullptr) {
-                TryForkTask(threadPool, workStack, globalQueue);
-            }
+            auto region = RegionDesc::GetAliveRegionDescAt(static_cast<MAddress>(reinterpret_cast<uintptr_t>(object)));
+            region->AddLiveByteCount(object->GetSize());
+            MarkingObjectRefFields(object, &visitor);
         }
-
         // Try some task from satb buffer, bound the loop to make sure it converges in time
-        if (++iterationCnt < maxIterationLoopNum) {
-            fetchFromSatbBuffer();
-            if (workStack.empty()) {
-                fetchFromSatbBuffer();
-            }
+        if (++iterationCnt >= maxIterationLoopNum) {
+            break;
         }
-    } while (!workStack.empty());
+        if (!fetchFromSatbBuffer()) {
+            break;
+        }
+    }
+    DCHECK_CC(markStack.IsEmpty());
     // newly marked statistics.
     markedObjectCount_.fetch_add(nNewlyMarked, std::memory_order_relaxed);
     MergeWeakStack(weakStack);
@@ -292,21 +251,10 @@ private:
     bool worldStopped_;
 };
 
-void MarkingCollector::MergeAllocBufferRoots(WorkStack& workStack)
+void MarkingCollector::TracingImpl(GlobalMarkStack &globalMarkStack, bool parallel, bool Remark)
 {
-    // hold mutator list lock to freeze mutator liveness, otherwise may access dead mutator fatally
-    MergeMutatorRootsScope lockScope;
-    theAllocator_.VisitAllocBuffers([&workStack](AllocationBuffer &buffer) {
-        buffer.MarkStack([&workStack](BaseObject *o) { workStack.push_back(o); });
-    });
-}
-
-void MarkingCollector::TracingImpl(WorkStack& workStack, bool parallel, bool Remark)
-{
-    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, ("CMCGC::TracingImpl_" + std::to_string(workStack.count())).c_str(), "");
-    if (workStack.empty()) {
-        return;
-    }
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, ("CMCGC::TracingImpl_" + std::to_string(globalMarkStack.Count())).c_str(),
+        "");
 
     // enable parallel marking if we have thread pool.
     Taskpool *threadPool = GetThreadPool();
@@ -320,45 +268,28 @@ void MarkingCollector::TracingImpl(WorkStack& workStack, bool parallel, bool Rem
             parallelCount = GetGCThreadCount(true) - 1;
         }
         uint32_t threadCount = parallelCount + 1;
-        TaskPackMonitor monitor(parallelCount, parallelCount);
-        GlobalWorkStackQueue globalQueue;
+        ParallelMarkingMonitor monitor(parallelCount, parallelCount);
         for (uint32_t i = 0; i < parallelCount; ++i) {
-            threadPool->PostTask(std::make_unique<ConcurrentMarkingTask>(0, *this, threadPool, monitor, globalQueue));
+            threadPool->PostTask(std::make_unique<ConcurrentMarkingTask>(0, *this, monitor, globalMarkStack));
         }
-        if (!AddConcurrentTracingWork(workStack, globalQueue, static_cast<size_t>(threadCount))) {
-            ProcessMarkStack(0, threadPool, workStack, globalQueue);
-        }
-        while (true) {
-            WorkStack stack = globalQueue.DrainAllWorkStack();
-            if (stack.empty()) {
+        ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
+        do {
+            if (!monitor.TryStartStep()) {
                 break;
             }
-            ProcessMarkStack(0, threadPool, stack, globalQueue);
-        }
-        globalQueue.NotifyFinish();
+            ProcessMarkStack(0, markStack);
+            monitor.FinishStep();
+        } while (monitor.WaitNextStepOrFinished());
         monitor.WaitAllFinished();
     } else {
         // serial marking with a single mark task.
-        GlobalWorkStackQueue globalQueue;
-        WorkStack stack(std::move(workStack));
-        ProcessMarkStack(0, nullptr, stack, globalQueue);
+        // Fixme: this `ParallelLocalMarkStack` could be replaced with `SequentialLocalMarkStack`, and no need to
+        // use monitor, but this need to add template param to `ProcessMarkStack`.
+        // So for convenience just use a fake dummy parallel one.
+        ParallelMarkingMonitor dummyMonitor(0, 0);
+        ParallelLocalMarkStack markStack(&globalMarkStack, &dummyMonitor);
+        ProcessMarkStack(0, markStack);
     }
-}
-
-bool MarkingCollector::AddConcurrentTracingWork(WorkStack& workStack, GlobalWorkStackQueue &globalQueue,
-                                                size_t threadCount)
-{
-    if (workStack.size() <= threadCount * MIN_MARKING_WORK_SIZE) {
-        return false; // too less init tasks, which may lead to workload imbalance, add work rejected
-    }
-    DCHECK_CC(threadCount > 0);
-    const size_t chunkSize = std::min(workStack.size() / threadCount + 1, MIN_MARKING_WORK_SIZE);
-    // Split the current work stack into work tasks.
-    while (!workStack.empty()) {
-        WorkStackBuf *hSplit = workStack.split(chunkSize);
-        globalQueue.AddWorkStack(WorkStack(hSplit));
-    }
-    return true;
 }
 
 bool MarkingCollector::AddWeakStackClearWork(WeakStack &weakStack,
@@ -378,7 +309,7 @@ bool MarkingCollector::AddWeakStackClearWork(WeakStack &weakStack,
     return true;
 }
 
-bool MarkingCollector::PushRootToWorkStack(RootSet *workStack, BaseObject *obj)
+bool MarkingCollector::PushRootToWorkStack(LocalCollectStack &collectStack, BaseObject *obj)
 {
     RegionDesc *regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
     if (gcReason_ == GCReason::GC_REASON_YOUNG && !regionInfo->IsInYoungSpace()) {
@@ -392,19 +323,20 @@ bool MarkingCollector::PushRootToWorkStack(RootSet *workStack, BaseObject *obj)
         ASSERT(!regionInfo->IsGarbageRegion());
         DLOG(TRACE, "mark obj %p<%p>(%zu) in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(), obj->GetSize(),
              regionInfo, regionInfo->GetRegionType(), regionInfo->GetRegionStart(), regionInfo->GetLiveByteCount());
-        workStack->push_back(obj);
+        collectStack.Push(obj);
         return true;
     } else {
         return false;
     }
 }
 
-void MarkingCollector::PushRootsToWorkStack(RootSet *workStack, const CArrayList<BaseObject *> &collectedRoots)
+void MarkingCollector::PushRootsToWorkStack(LocalCollectStack &collectStack,
+                                            const CArrayList<BaseObject *> &collectedRoots)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL,
                  ("CMCGC::PushRootsToWorkStack_" + std::to_string(collectedRoots.size())).c_str(), "");
     for (BaseObject *obj : collectedRoots) {
-        PushRootToWorkStack(workStack, obj);
+        PushRootToWorkStack(collectStack, obj);
     }
 }
 
@@ -412,40 +344,45 @@ void MarkingCollector::MarkingRoots(const CArrayList<BaseObject *> &collectedRoo
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MarkingRoots", "");
 
-    WorkStack workStack = NewWorkStack();
-    PushRootsToWorkStack(&workStack, collectedRoots);
+    GlobalMarkStack globalMarkStack;
 
-    if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
-        OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PushRootInRSet", "");
-        auto func = [this, &workStack](BaseObject *object) { MarkRememberSetImpl(object, workStack); };
-        RegionalHeap &space = reinterpret_cast<RegionalHeap &>(Heap::GetHeap().GetAllocator());
-        space.MarkRememberSet(func);
+    {
+        LocalCollectStack collectStack(&globalMarkStack);
+
+        PushRootsToWorkStack(collectStack, collectedRoots);
+
+        if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
+            OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PushRootInRSet", "");
+            auto func = [this, &collectStack](BaseObject *object) { MarkRememberSetImpl(object, collectStack); };
+            RegionalHeap &space = reinterpret_cast<RegionalHeap &>(Heap::GetHeap().GetAllocator());
+            space.MarkRememberSet(func);
+        }
+
+        collectStack.Publish();
     }
 
     COMMON_PHASE_TIMER("MarkingRoots");
-    VLOG(DEBUG, "roots size: %zu", workStack.size());
 
     ASSERT_LOGF(GetThreadPool() != nullptr, "null thread pool");
 
     // use fewer threads and lower priority for concurrent mark.
     const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
-    VLOG(DEBUG, "Concurrent mark with %u threads, workStack: %zu", (maxWorkers + 1), workStack.size());
 
     {
         COMMON_PHASE_TIMER("Concurrent marking");
-        TracingImpl(workStack, maxWorkers > 0, false);
+        TracingImpl(globalMarkStack, maxWorkers > 0, false);
     }
 }
 
 void MarkingCollector::Remark()
 {
-    WorkStack workStack = NewWorkStack();
+    GlobalMarkStack globalMarkStack;
     const uint32_t maxWorkers = GetGCThreadCount(true) - 1;
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::Remark[STW]", "");
     COMMON_PHASE_TIMER("STW re-marking");
-    RemarkAndPreforwardStaticRoots(workStack);
-    ConcurrentRemark(workStack, maxWorkers > 0); // Mark enqueue
-    TracingImpl(workStack, maxWorkers > 0, true);
+    RemarkAndPreforwardStaticRoots(globalMarkStack);
+    ConcurrentRemark(globalMarkStack, maxWorkers > 0); // Mark enqueue
+    TracingImpl(globalMarkStack, maxWorkers > 0, true);
     MarkAwaitingJitFort(); // Mark awaiting
     ClearWeakStack(maxWorkers > 0);
 
@@ -490,13 +427,12 @@ void MarkingCollector::ClearWeakStack(bool parallel)
     }
 }
 
-
-bool MarkingCollector::MarkSatbBuffer(WorkStack& workStack)
+bool MarkingCollector::MarkSatbBuffer(GlobalMarkStack &globalMarkStack)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MarkSatbBuffer", "");
     COMMON_PHASE_TIMER("MarkSatbBuffer");
-    auto visitSatbObj = [this, &workStack]() {
-        WorkStack remarkStack;
+    auto visitSatbObj = [this, &globalMarkStack]() {
+        std::vector<BaseObject *> remarkStack;
         auto func = [&remarkStack](Mutator& mutator) {
             const SatbBuffer::TreapNode* node = mutator.GetSatbBufferNode();
             if (node != nullptr) {
@@ -506,41 +442,41 @@ bool MarkingCollector::MarkSatbBuffer(WorkStack& workStack)
         MutatorManager::Instance().VisitAllMutators(func);
         SatbBuffer::Instance().GetRetiredObjects(remarkStack);
 
+        LocalCollectStack collectStack(&globalMarkStack);
         while (!remarkStack.empty()) { // LCOV_EXCL_BR_LINE
             BaseObject* obj = remarkStack.back();
             remarkStack.pop_back();
-            if (Heap::IsHeapAddress(obj)) {
-                if (!this->MarkObject(obj)) {
-                    workStack.push_back(obj);
-                    DLOG(TRACE, "satb buffer add obj %p", obj);
-                }
+            if (Heap::IsHeapAddress(obj) && !this->MarkObject(obj)) {
+                collectStack.Push(obj);
+                DLOG(TRACE, "satb buffer add obj %p", obj);
             }
         }
+        collectStack.Publish();
     };
 
     visitSatbObj();
     return true;
 }
 
-void MarkingCollector::MarkRememberSetImpl(BaseObject* object, WorkStack& workStack)
+void MarkingCollector::MarkRememberSetImpl(BaseObject* object, LocalCollectStack &collectStack)
 {
-    object->ForEachRefField([this, &workStack, &object](RefField<>& field) {
+    object->ForEachRefField([this, &collectStack, &object](RefField<>& field) {
         BaseObject* targetObj = field.GetTargetObject();
         if (Heap::IsHeapAddress(targetObj)) {
             RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(targetObj));
             if (region->IsInYoungSpace() &&
                 !region->IsNewObjectSinceMarking(targetObj) &&
                 !this->MarkObject(targetObj)) {
-                workStack.push_back(targetObj);
+                collectStack.Push(targetObj);
                 DLOG(TRACE, "remember set marking obj: %p@%p, ref: %p", object, &field, targetObj);
             }
         }
     });
 }
 
-void MarkingCollector::ConcurrentRemark(WorkStack& remarkStack, bool parallel)
+void MarkingCollector::ConcurrentRemark(GlobalMarkStack &globalMarkStack, bool parallel)
 {
-    LOGF_CHECK(MarkSatbBuffer(remarkStack)) << "not cleared\n";
+    LOGF_CHECK(MarkSatbBuffer(globalMarkStack)) << "not cleared\n";
 }
 
 void MarkingCollector::MarkAwaitingJitFort()
