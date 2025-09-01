@@ -264,6 +264,28 @@ public:
         return false;  // Lost the Line
     }
 
+    bool ReadRawHeapSectionInfo(std::string &filePath, std::vector<uint32_t> &section)
+    {
+        uint64_t fileSize = rawheap_translate::FileReader::GetFileSize(filePath);
+        rawheap_translate::FileReader file;
+        if (!file.Initialize(filePath) || !file.CheckAndGetHeaderAt(file.GetFileSize() - sizeof(uint64_t), 0)) {
+            return false;
+        }
+        if (!file.CheckAndGetHeaderAt(fileSize - sizeof(uint64_t), sizeof(uint32_t))) {
+            GTEST_LOG_(ERROR) << "sections header error!";
+            return false;
+        }
+
+        uint32_t sectionHeaderOffset = fileSize - (file.GetHeaderLeft() + 2) * sizeof(uint32_t);
+        section.resize(file.GetHeaderLeft());
+        if (!file.Seek(sectionHeaderOffset) || !file.ReadArray(section, file.GetHeaderLeft())) {
+            GTEST_LOG_(ERROR) << "read sections error!";
+            return false;
+        }
+
+        return true;
+    }
+
     JSHandle<JSTypedArray> CreateNumberTypedArray(JSType jsType)
     {
         JSHandle<GlobalEnv> env = instance->GetGlobalEnv();
@@ -1677,6 +1699,32 @@ HWTEST_F_L0(HeapDumpTest, TestGenerateMixedNodeId)
     dumpOption.isJSLeakWatcher = true;
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
     ASSERT_TRUE(tester.CheckHashInNodeId(thread_, vec, rawHeapPath));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMin)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_binary_dump_addrtable_size_min.rawheap");
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+
+    std::vector<uint32_t> sections;
+    ASSERT_TRUE(tester.ReadRawHeapSectionInfo(rawHeapPath, sections));
+
+    FILE* fd = std::fopen(rawHeapPath.c_str(), "rb+");
+    ASSERT_TRUE(fd != nullptr);
+    uint32_t testUnitSize = sizeof(uint64_t) - 1;
+    std::fseek(fd, sections[4] + sizeof(uint32_t), SEEK_SET);
+    std::fwrite(reinterpret_cast<char *>(&testUnitSize), sizeof(testUnitSize), sizeof(testUnitSize), fd);
+    std::fclose(fd);
+
+    std::string heapsnapshotPath("test_binary_dump_addrtable_size_min.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_FALSE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
 }
 #endif
 
