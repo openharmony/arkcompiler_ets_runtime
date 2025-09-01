@@ -16,6 +16,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/platform/backtrace.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
@@ -52,6 +53,11 @@ JitFort::JitFort()
 
 JitFort::~JitFort()
 {
+    std::ostringstream stack;
+    Backtrace(stack);
+    LOG_JIT(INFO) << "~JitFort Begin " << (void *)JitFortBegin()
+                  << " end " << (void *)(JitFortBegin() + JitFortSize())
+                  << "trace: \n" << stack.str();
     constexpr size_t numRegions = JIT_FORT_REG_SPACE_MAX / DEFAULT_REGION_SIZE;
     for (size_t i = 0; i < numRegions; i++) {
         if (regions_[i] != nullptr) {
