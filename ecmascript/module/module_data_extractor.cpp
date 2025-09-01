@@ -16,7 +16,9 @@
 #include "ecmascript/module/module_data_extractor.h"
 
 #include "ecmascript/builtins/builtins_json.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/module/accessor/module_data_accessor.h"
 
 namespace panda::ecmascript {
@@ -165,16 +167,16 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
 JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint)
 {
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSHandle<JSTaggedValue> jsonParseFunc(thread->GetEcmaVM()->GetGlobalEnv()->GetJsonParseFunction());
     EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(
-            thread, undefined, undefined, undefined, 1); // 1 : argument numbers
+        EcmaInterpreter::NewRuntimeCallInfo(thread, jsonParseFunc, undefined, undefined, 1); // 1 : argument numbers
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
     ASSERT(recordInfo != nullptr);
     StringData sd = jsPandaFile->GetStringData(EntityId(recordInfo->jsonStringId));
     JSTaggedValue value(thread->GetEcmaVM()->GetFactory()->GetRawStringFromStringTable(sd));
     info->SetCallArg(value);
-    return BuiltinsJson::Parse(info);
+    return JSFunction::Call(info);
 }
 
 bool* ModuleDataExtractor::ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile, EntityId lazyImportFlagId)
