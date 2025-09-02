@@ -97,3 +97,11 @@ if (isSendable(func)) {
     print("sendableFunc is not sendable");
 }
 
+let sharedMap: SendableMap = new SendableMap<number, string>();
+sharedMap.set(4, "value4");
+let arr = SendableArray.from(sharedMap.keys());
+if (isSendable(arr)) {
+    print("Arr is sendable");
+} else {
+    print("Arr is not sendable");
+}
