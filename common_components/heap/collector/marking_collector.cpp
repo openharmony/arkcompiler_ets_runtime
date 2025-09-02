@@ -17,11 +17,12 @@
 
 #include <new>
 #include <iomanip>
+#include <string>
 
 #include "common_components/heap/allocator/alloc_buffer.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"
 #include "common_interfaces/base/runtime_param.h"
-#include <string>
+#include "common_components/heap/collector/utils.h"
 
 namespace common {
 const size_t MarkingCollector::MAX_MARKING_WORK_SIZE = 16; // fork task if bigger
@@ -77,50 +78,11 @@ private:
     GlobalMarkStack &globalMarkStack_;
 };
 
-class ClearWeakStackTask : public common::Task {
-public:
-    ClearWeakStackTask(uint32_t id, MarkingCollector &tc, Taskpool *pool, TaskPackMonitor &monitor,
-                          GlobalWeakStackQueue &globalQueue)
-        : Task(id), collector_(tc), threadPool_(pool), monitor_(monitor), globalQueue_(globalQueue)
-    {}
-
-    // single work task without thread pool
-    ClearWeakStackTask(uint32_t id, MarkingCollector& tc, TaskPackMonitor &monitor,
-                          GlobalWeakStackQueue &globalQueue)
-        : Task(id), collector_(tc), threadPool_(nullptr), monitor_(monitor), globalQueue_(globalQueue)
-    {}
-
-    ~ClearWeakStackTask() override
-    {
-        threadPool_ = nullptr;
-    }
-
-    // run concurrent marking task.
-    bool Run([[maybe_unused]] uint32_t threadIndex) override
-    {
-        while (true) {
-            WeakStack weakStack = globalQueue_.PopWorkStack();
-            if (weakStack.empty()) {
-                break;
-            }
-            collector_.ProcessWeakStack(weakStack);
-        }
-        monitor_.NotifyFinishOne();
-        return true;
-    }
-
-private:
-    MarkingCollector &collector_;
-    Taskpool *threadPool_;
-    TaskPackMonitor &monitor_;
-    GlobalWeakStackQueue &globalQueue_;
-};
-
-void MarkingCollector::ProcessWeakStack(WeakStack &weakStack)
+static void ClearWeakRef(WeakStack::value_type *begin, WeakStack::value_type *end)
 {
-    while (!weakStack.empty()) {
-        auto [fieldPointer, offset] = *weakStack.back();
-        weakStack.pop_back();
+    for (auto iter = begin; iter != end; ++iter) {
+        RefField<> *fieldPointer = iter->first;
+        size_t offset = iter->second;
         ASSERT_LOGF(offset % sizeof(RefField<>) == 0, "offset is not aligned");
 
         RefField<> &field = reinterpret_cast<RefField<>&>(*fieldPointer);
@@ -150,6 +112,13 @@ void MarkingCollector::ProcessWeakStack(WeakStack &weakStack)
         }
         field.ClearRef(oldField.GetFieldValue());
     }
+}
+
+void MarkingCollector::ProcessWeakStack(WeakStack &weakStack)
+{
+    WeakStack::value_type *begin = &(*weakStack.begin());
+    WeakStack::value_type *end = begin + weakStack.size();
+    ClearWeakRef(begin, end);
 }
 
 void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, ParallelLocalMarkStack &markStack)
@@ -197,17 +166,13 @@ void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, P
     MergeWeakStack(weakStack);
 }
 
-void MarkingCollector::MergeWeakStack(WeakStack& weakStack)
+void MarkingCollector::MergeWeakStack(WeakStack &weakStack)
 {
     std::lock_guard<std::mutex> lock(weakStackLock_);
 
     // Preprocess the weak stack to minimize work during STW remark.
-    while (!weakStack.empty()) {
-        auto tuple = weakStack.back();
-        weakStack.pop_back();
-
-        auto [weakFieldPointer, _] = *tuple;
-        RefField<> oldField(*weakFieldPointer);
+    for (const auto &pair : weakStack) {
+        RefField<> oldField(*pair.first);
 
         if (!Heap::IsTaggedObject(oldField.GetFieldValue())) {
             continue;
@@ -220,7 +185,7 @@ void MarkingCollector::MergeWeakStack(WeakStack& weakStack)
             continue;
         }
 
-        globalWeakStack_.push_back(tuple);
+        globalWeakStack_.push_back(pair);
     }
 }
 
@@ -290,23 +255,6 @@ void MarkingCollector::TracingImpl(GlobalMarkStack &globalMarkStack, bool parall
         ParallelLocalMarkStack markStack(&globalMarkStack, &dummyMonitor);
         ProcessMarkStack(0, markStack);
     }
-}
-
-bool MarkingCollector::AddWeakStackClearWork(WeakStack &weakStack,
-                                             GlobalWeakStackQueue &globalQueue,
-                                             size_t threadCount)
-{
-    if (weakStack.size() <= threadCount * MIN_MARKING_WORK_SIZE) {
-        return false; // too less init tasks, which may lead to workload imbalance, add work rejected
-    }
-    DCHECK_CC(threadCount > 0);
-    const size_t chunkSize = std::min(weakStack.size() / threadCount + 1, MIN_MARKING_WORK_SIZE);
-    // Split the current work stack into work tasks.
-    while (!weakStack.empty()) {
-        WeakStackBuf *hSplit = weakStack.split(chunkSize);
-        globalQueue.AddWorkStack(WeakStack(hSplit));
-    }
-    return true;
 }
 
 bool MarkingCollector::PushRootToWorkStack(LocalCollectStack &collectStack, BaseObject *obj)
@@ -391,39 +339,43 @@ void MarkingCollector::Remark()
     VLOG(DEBUG, "mark %zu objects", markedObjectCount_.load(std::memory_order_relaxed));
 }
 
+class ClearWeakRefTask : public ArrayTaskDispatcher::ArrayTask {
+public:
+    using T = WeakStack::value_type;
+    explicit ClearWeakRefTask(CArrayList<T> *inputs) : data_(inputs) {}
+    void Run(void *begin, void *end) override
+    {
+        T *first = reinterpret_cast<T *>(begin);
+        T *last = reinterpret_cast<T *>(end);
+        ASSERT(((uintptr_t)last - (uintptr_t)first) % sizeof(T) == 0 &&
+               ((uintptr_t)first - (uintptr_t)data_->data()) % sizeof(T) == 0);
+        ASSERT(first == last || (first >= data_->data() && last > data_->data()));
+        ASSERT(first == last || (first < (data_->data() + data_->size()) && last <= (data_->data() + data_->size())));
+        ClearWeakRef(first, last);
+    }
+    CArrayList<T> *data_;
+};
+
 void MarkingCollector::ClearWeakStack(bool parallel)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessGlobalWeakStack", "");
-    {
-        if (gcReason_ == GC_REASON_YOUNG || globalWeakStack_.empty()) {
-            return;
-        }
-        Taskpool *threadPool = GetThreadPool();
-        ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
-        if (parallel) {
-            uint32_t parallelCount = GetGCThreadCount(true);
-            uint32_t threadCount = parallelCount + 1;
-            TaskPackMonitor monitor(parallelCount, parallelCount);
-            GlobalWeakStackQueue globalQueue;
-            for (uint32_t i = 0; i < parallelCount; ++i) {
-                threadPool->PostTask(std::make_unique<ClearWeakStackTask>(0, *this, threadPool, monitor, globalQueue));
-            }
-            if (!AddWeakStackClearWork(globalWeakStack_, globalQueue, static_cast<size_t>(threadCount))) {
-                ProcessWeakStack(globalWeakStack_);
-            }
-            bool exitLoop = false;
-            while (!exitLoop) {
-                WeakStack stack = globalQueue.DrainAllWorkStack();
-                if (stack.empty()) {
-                    exitLoop = true;
-                }
-                ProcessWeakStack(stack);
-            }
-            globalQueue.NotifyFinish();
-            monitor.WaitAllFinished();
-        } else {
-            ProcessWeakStack(globalWeakStack_);
-        }
+    if (gcReason_ == GC_REASON_YOUNG || globalWeakStack_.empty()) {
+        return;
+    }
+    // the globalWeakStack_ cannot be modified during task execution
+    Taskpool *threadPool = GetThreadPool();
+    ASSERT_LOGF(threadPool != nullptr, "thread pool is null");
+    constexpr size_t BATCH_N = 200;
+    if (parallel && globalWeakStack_.size() > BATCH_N) {
+        auto inputs = &globalWeakStack_;
+        ClearWeakRefTask callback(inputs);
+        ASSERT(inputs->size() < (SIZE_MAX / sizeof(WeakStack::value_type)));
+        ArrayTaskDispatcher dispatcher(inputs->data(), inputs->size() * sizeof(WeakStack::value_type),
+                                       BATCH_N * sizeof(WeakStack::value_type), &callback);
+        dispatcher.Dispatch(threadPool, threadPool->GetTotalThreadNum());
+        dispatcher.JoinAndWait();
+    } else {
+        ProcessWeakStack(globalWeakStack_);
     }
 }
 

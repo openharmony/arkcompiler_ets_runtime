@@ -123,9 +123,8 @@ using ParallelLocalMarkStack = LocalStack<BaseObject, LOCAL_MARK_STACK_CAPACITY,
 using SequentialLocalMarkStack = LocalStack<BaseObject, LOCAL_MARK_STACK_CAPACITY>;
 using LocalCollectStack = LocalStack<BaseObject, LOCAL_MARK_STACK_CAPACITY>;
 using WorkStackBuf = MarkStackBuffer<BaseObject*>;
-using WeakStack = MarkStack<std::shared_ptr<std::tuple<RefField<>*, size_t>>>;
-using WeakStackBuf = MarkStackBuffer<std::shared_ptr<std::tuple<RefField<>*, size_t>>>;
-using GlobalWeakStackQueue = GlobalStackQueue<WeakStack>;
+
+using WeakStack = CArrayList<std::pair<RefField<>*, size_t>>;
 
 class MarkingCollector : public Collector {
     friend MarkingWork;
@@ -327,7 +326,6 @@ protected:
     // concurrent marking.
     void TracingImpl(GlobalMarkStack &globalMarkStack, bool parallel, bool Remark);
 
-    bool AddWeakStackClearWork(WeakStack& workStack, GlobalWeakStackQueue &globalQueue, size_t threadCount);
 private:
     void MarkRememberSetImpl(BaseObject* object, LocalCollectStack &markStack);
     void ConcurrentRemark(GlobalMarkStack &globalMarkStack, bool parallel);
