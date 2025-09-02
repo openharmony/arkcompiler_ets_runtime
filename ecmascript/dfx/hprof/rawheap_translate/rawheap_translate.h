@@ -54,15 +54,24 @@ protected:
     void InsertEdge(Node *toNode, uint32_t indexOrStrId, EdgeType type);
     StringId InsertAndGetStringId(const std::string &str);
     void SetVersion(const std::string &version);
+    void CreateHashEdge(Node *node);
+    void AddPrimitiveNodes();
 
     static bool ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section);
 
 private:
     StringHashMap *strTable_ {nullptr};
+    std::vector<Node *> primitiveNodes_ {};
     std::vector<Node *> nodes_ {};
     std::vector<Edge *> edges_ {};
     std::string version_;
     uint32_t nodeIndex_ {0};
+
+#ifdef OHOS_UNIT_TEST
+    std::unordered_set<uint32_t> hashSet_ {};
+#endif
+
+    friend class panda::test::HeapDumpTestHelper;
 };
 
 class RawHeapTranslateV1 : public RawHeap {

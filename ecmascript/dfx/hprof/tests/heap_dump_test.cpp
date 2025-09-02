@@ -137,12 +137,19 @@ public:
         return true;
     }
 
-    bool CheckHashInNodeId(JSThread *thread, const std::vector<Reference> &refs, const std::string &filePath)
+    bool CheckHashInRawheap(JSThread *thread, const std::vector<Reference> &refs, const std::string &filePath)
     {
         uint64_t fileSize = rawheap_translate::FileReader::GetFileSize(filePath);
         rawheap_translate::FileReader file;
-        rawheap_translate::RawHeapTranslateV1 translate(nullptr);
-        if (!file.Initialize(filePath) || !translate.Parse(file, fileSize)) {
+        rawheap_translate::MetaParser metaParser;
+
+        if (!file.Initialize(filePath) || !rawheap_translate::RawHeap::ParseMetaData(file, &metaParser) ||
+            !file.CheckAndGetHeaderAt(fileSize - sizeof(uint64_t), 0)) {
+            return false;
+        }
+
+        rawheap_translate::RawHeapTranslateV1 translate(&metaParser);
+        if (!translate.Parse(file, file.GetHeaderLeft()) || !translate.Translate()) {
             return false;
         }
 
@@ -152,22 +159,21 @@ public:
                 continue;
             }
 
-            auto it = translate.nodesMap_.find(ref.value_.GetRawData());
-            if (it == translate.nodesMap_.end()) {
-                std::cout << "CheckHashInNodeId, missed object in rawheap." << std::endl;
+            uint32_t hash = static_cast<uint32_t>(JSObject::Cast(ref.value_)->GetHash(thread));
+            if (hash == 0) {
+                continue;
+            }
+
+            if (translate.hashSet_.find(hash) == translate.hashSet_.end()) {
+                std::cout << "CheckHashInRawheap, missed object hash in rawheap." << std::endl;
                 return false;
             }
 
             ++checkCnt;
-            // 32: 32-bits means a half of uint64_t
-            if (JSObject::Cast(ref.value_)->GetHash(thread) != static_cast<int32_t>(it->second->nodeId >> 32)) {
-                std::cout << "CheckHashInNodeId, hash value verification failed!" << std::endl;
-                return false;
-            }
         }
 
         if (checkCnt == 0) {
-            std::cout << "CheckHashInNodeId, no JSObject." << std::endl;
+            std::cout << "CheckHashInRawheap, no JSObject." << std::endl;
             return false;
         }
         return true;
@@ -1678,7 +1684,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
     ASSERT_TRUE(status);
 }
 
-HWTEST_F_L0(HeapDumpTest, TestGenerateMixedNodeId)
+HWTEST_F_L0(HeapDumpTest, TestGenerateHashInRawheap)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
@@ -1698,7 +1704,8 @@ HWTEST_F_L0(HeapDumpTest, TestGenerateMixedNodeId)
     dumpOption.isSync = false;
     dumpOption.isJSLeakWatcher = true;
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
-    ASSERT_TRUE(tester.CheckHashInNodeId(thread_, vec, rawHeapPath));
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.CheckHashInRawheap(thread_, vec, rawHeapPath));
 }
 
 HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMin)
