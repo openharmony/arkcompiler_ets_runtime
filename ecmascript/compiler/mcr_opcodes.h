@@ -67,7 +67,9 @@ namespace panda::ecmascript::kungfu {
     V(MonoLoadPropertyOnProto, MONO_LOAD_PROPERTY_ON_PROTO, GateFlags::CHECKABLE, 1, 1, 4)                         \
     V(StringFromSingleCharCode, STRING_FROM_SINGLE_CHAR_CODE, GateFlags::NO_WRITE, 1, 1, 1)                        \
     V(StringCharCodeAt, STRING_CHAR_CODE_AT, GateFlags::NO_WRITE, 1, 1, 2)                                         \
+    V(StringSubstring, STRING_SUB_STRING, GateFlags::NO_WRITE, 1, 1, 3)                                            \
     V(StringSubStr, STRING_SUB_STR, GateFlags::NO_WRITE, 1, 1, 3)                                                  \
+    V(StringSlice, STRING_SLICE, GateFlags::NO_WRITE, 1, 1, 3)                                                     \
     V(TypedArrayEntries, TYPED_ARRAY_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                                        \
     V(TypedArrayKeys, TYPED_ARRAY_KEYS, GateFlags::NO_WRITE, 1, 1, 1)                                              \
     V(TypedArrayValues, TYPED_ARRAY_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                                          \
@@ -243,11 +245,9 @@ namespace panda::ecmascript::kungfu {
     MCR_GATE_META_DATA_LIST_WITH_VALUE(V)                     \
     MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(V)
 
-#define MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                                   \
-    V(StringSlice, STRING_SLICE, GateFlags::NO_WRITE, 1, 1, value)                                                 \
-    V(StringSubstring, STRING_SUB_STRING, GateFlags::NO_WRITE, 1, 1, value)                                        \
-    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value)                   \
-    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)                                         \
+#define MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                                 \
+    V(TypedCreateObjWithBuffer, TYPED_CREATE_OBJ_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, value) \
+    V(TypedCallCheck, TYPED_CALL_CHECK, GateFlags::CHECKABLE, 1, 1, value)                       \
     V(FunctionPrototypeCall, FUNCTION_PROTOTYPE_CALL, GateFlags::NONE_FLAG, 1, 1, value)
 
 #define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
