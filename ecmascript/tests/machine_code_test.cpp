@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <thread>
+
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/jit/jit.h"
@@ -22,6 +24,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/compiler/aot_file/aot_file_info.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
@@ -226,4 +229,27 @@ HWTEST_F_L0(MachineCodeTest, SetText003)
     Jit::GetInstance()->SetEnableAsyncCopyToFort(true);
 }
 
+HWTEST_F_L0(MachineCodeTest, ConcurrentTest001)
+{
+    std::vector<std::thread> threads;
+    for (size_t i = 1; i < 10; ++i) {
+        threads.emplace_back([] {
+            ConcurrentMonitor::Scope concurrentScope;
+            sleep(1);
+            ConcurrentMonitor::monitor_.ArriveAndWait();
+            sleep(1);
+        });
+    }
+    {
+        ConcurrentMonitor::Scope concurrentScope;
+        sleep(1);
+        ConcurrentMonitor::monitor_.ArriveAndWait();
+        sleep(1);
+    }
+    for (auto &t: threads) {
+        if (t.joinable()) {
+            t.join();
+        }
+    }
+}
 }

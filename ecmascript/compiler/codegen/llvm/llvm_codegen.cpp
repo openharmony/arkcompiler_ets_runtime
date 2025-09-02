@@ -105,7 +105,8 @@ CodeInfo::CodeSpace::~CodeSpace()
 
 uint8_t *CodeInfo::CodeSpace::Alloca(uintptr_t size, bool isReq, size_t alignSize)
 {
-    LockHolder lock(mutex_);
+    // Wait other threads arrived here, then allocate in same time.
+    ConcurrentMonitor::monitor_.ArriveAndWait();
     uint8_t *addr = nullptr;
     auto bufBegin = isReq ? reqSecs_ : unreqSecs_;
     auto &curPos = isReq ? reqBufPos_ : unreqBufPos_;
@@ -182,11 +183,14 @@ uint8_t *CodeInfo::AllocaCodeSectionImp(uintptr_t size, const char *sectionName,
         if (!alreadyPageAlign_) {
             addr = (this->*allocaInReqSecBuffer)(size, AOTFileInfo::PAGE_ALIGN);
             alreadyPageAlign_ = true;
+            VerifyAddress(reinterpret_cast<uintptr_t>(addr), size, AOTFileInfo::PAGE_ALIGN);
         } else {
             addr = (this->*allocaInReqSecBuffer)(size, AOTFileInfo::TEXT_SEC_ALIGN);
+            VerifyAddress(reinterpret_cast<uintptr_t>(addr), size, AOTFileInfo::TEXT_SEC_ALIGN);
         }
     } else {
         addr = (this->*allocaInReqSecBuffer)(size, 0);
+        VerifyAddress(reinterpret_cast<uintptr_t>(addr), size, 0);
     }
     codeInfo_.push_back({addr, size});
     if (curSec.isValidAOTSec()) {
@@ -203,6 +207,28 @@ uint8_t *CodeInfo::AllocaCodeSection(uintptr_t size, const char *sectionName)
 uint8_t *CodeInfo::AllocaCodeSectionOnDemand(uintptr_t size, const char *sectionName)
 {
     return AllocaCodeSectionImp(size, sectionName, &CodeInfo::AllocaOnDemand);
+}
+
+void CodeInfo::VerifyAddress(uintptr_t addr, uintptr_t size, uintptr_t alignSize)
+{
+    if (!useOwnSpace_) {
+        return;
+    }
+    if (lastAddr_ == 0) {
+        lastAddr_ = addr;
+        lastSize_ = size;
+        return;
+    }
+    uintptr_t expectAddr = lastAddr_ + lastSize_;
+    if (alignSize != 0 && !IsAligned(expectAddr, alignSize)) {
+        expectAddr = AlignUp(expectAddr, alignSize);
+    }
+    if (expectAddr != addr) {
+        LOG_COMPILER(FATAL) << "VerifyAddress failed: " << lastAddr_ << " " << lastSize_ << " " << alignSize <<
+                ", addr: " << addr;
+    }
+    lastAddr_ = addr;
+    lastSize_ = size;
 }
 
 uint8_t *CodeInfo::AllocaDataSectionImp(uintptr_t size, const char *sectionName,
