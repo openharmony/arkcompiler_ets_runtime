@@ -54,6 +54,9 @@ protected:
 
     void InitRegionPhaseLine(RegionDesc* region)
     {
+        if (region == nullptr) {
+            return;
+        }
         GCPhase phase = Mutator::GetMutator()->GetMutatorPhase();
         if (phase == GC_PHASE_ENUM || phase == GC_PHASE_MARK || phase == GC_PHASE_REMARK_SATB ||
             phase == GC_PHASE_POST_MARK) {

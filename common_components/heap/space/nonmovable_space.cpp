@@ -128,7 +128,7 @@ uintptr_t NonMovableSpace::Alloc(size_t size, bool allowGC)
     size_t cellCount = size / sizeof(uint64_t) - 1;
     RegionList* list = recentMonoSizeRegionList_[cellCount];
     std::mutex& listMutex = list->GetListMutex();
-    listMutex.lock();
+    std::lock_guard<std::mutex> lock(listMutex);
     RegionDesc* headRegion = list->GetHeadRegion();
     if (headRegion != nullptr) {
         addr = headRegion->Alloc(size);
@@ -140,7 +140,6 @@ uintptr_t NonMovableSpace::Alloc(size_t size, bool allowGC)
         RegionDesc* region =
             regionManager_.TakeRegion(1, RegionDesc::UnitRole::SMALL_SIZED_UNITS, false, allowGC);
         if (region == nullptr) {
-            listMutex.unlock();
             return 0;
         }
         DLOG(REGION, "alloc non-movable region @0x%zx+%zu type %u", region->GetRegionStart(),
@@ -154,7 +153,6 @@ uintptr_t NonMovableSpace::Alloc(size_t size, bool allowGC)
         addr = region->Alloc(size);
     }
     DLOG(ALLOC, "alloc non-movable obj 0x%zx(%zu)", addr, size);
-    listMutex.unlock();
     return addr;
 }
 
