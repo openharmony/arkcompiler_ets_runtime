@@ -180,6 +180,33 @@ void RawHeap::SetVersion(const std::string &version)
     version_ = version;
 }
 
+void RawHeap::CreateHashEdge(Node *node)
+{
+    static const StringId hashStrId = InsertAndGetStringId("ArkInternalHash");
+    uint32_t hash = static_cast<uint32_t>(node->nodeId >> 32);  // 32: the high-32bits means hash value
+    node->nodeId &= 0xFFFFFFFFULL;
+    if (hash == 0) {
+        return;
+    }
+
+    Node *hashNode = new Node(nodeIndex_++);
+    hashNode->nodeId = 0;
+    hashNode->type = 7;  // 7: means HEAPNUMBER
+    hashNode->strId = InsertAndGetStringId("Int: " + std::to_string(hash));
+    InsertEdge(hashNode, hashStrId, EdgeType::DEFAULT);
+    primitiveNodes_.push_back(hashNode);
+    node->edgeCount++;
+
+#ifdef OHOS_UNIT_TEST
+    hashSet_.insert(hash);
+#endif
+}
+
+void RawHeap::AddPrimitiveNodes()
+{
+    nodes_.insert(nodes_.end(), primitiveNodes_.begin(), primitiveNodes_.end());
+}
+
 bool RawHeap::ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section)
 {
     if (!file.CheckAndGetHeaderAt(offset - sizeof(uint64_t), sizeof(uint32_t))) {
@@ -236,10 +263,13 @@ bool RawHeapTranslateV1::Translate()
         JSType type = metaParser_->GetJSTypeFromHClass(hclass);
         FillNodes(node, type);
         CreateHClassEdge(node, hclass);
+        CreateHashEdge(node);
         if (!metaParser_->IsString(type)) {
             BuildEdges(node, type);
         }
     }
+
+    AddPrimitiveNodes();
     LOG_INFO_ << "success!";
     return true;
 }
@@ -567,11 +597,14 @@ bool RawHeapTranslateV2::Translate()
             CreateEdge(node, hclass, InsertAndGetStringId("hclass"), EdgeType::DEFAULT);
         }
 
+        CreateHashEdge(node);
         if (metaParser_->IsString(node->jsType)) {
             continue;
         }
         BuildEdges(node);
     }
+
+    AddPrimitiveNodes();
     LOG_INFO_ << "success!";
     return true;
 }

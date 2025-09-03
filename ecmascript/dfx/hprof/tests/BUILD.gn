@@ -102,6 +102,7 @@ host_unittest_action("HeapDumpTest") {
     "HPROF_TEST_JS_FILES_DIR=\"${test_js_dir}\"",
     "HPROF_TEST_ABC_FILES_DIR=\"${test_abc_dir}\"",
     "HPROF_TEST_METADATA_JSON_DIR=\"${test_metadata_dir}\"",
+    "OHOS_UNIT_TEST",
   ]
 
   external_deps = [
