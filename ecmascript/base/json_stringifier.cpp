@@ -894,7 +894,8 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, const JSH
             if (!key.IsUndefined() && !key.IsHole()) {
                 PropertyAttributes attr = numberDic->GetAttributes(thread_, hashIndex);
                 if (attr.IsEnumerable()) {
-                    JSTaggedValue numberKey = JSTaggedValue(static_cast<uint32_t>(key.GetInt()));
+                    JSTaggedValue numberKey = key.IsInt() ? JSTaggedValue(static_cast<uint32_t>(key.GetInt())) :
+                                                            JSTaggedValue(key.GetDouble());
                     sortArr.emplace_back(JSHandle<JSTaggedValue>(thread_, numberKey));
                 }
             }
