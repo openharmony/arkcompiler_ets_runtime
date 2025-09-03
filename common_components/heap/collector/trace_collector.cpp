@@ -237,7 +237,7 @@ void TraceCollector::EnumConcurrencyModelRoots(RootSet& rootSet) const
 void TraceCollector::EnumStaticRoots(RootSet& rootSet) const
 {
     const RefFieldVisitor& visitor = [&rootSet, this](RefField<>& root) { EnumRefFieldRoot(root, rootSet); };
-    VisitRoots(visitor);
+    VisitRoots(visitor, true);
 }
 
 class MergeMutatorRootsScope {

@@ -107,11 +107,6 @@ private:
 
 void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 {
-    // todo 梁婷婷
-    if (!panda::ecmascript::Runtime::HasInstance()) {
-        return;
-    }
-
     BaseClassRoots &baseClassRoots = BaseRuntime::GetInstance()->GetBaseClassRoots();
     // When visit roots, the language of the object is not used, so using the visitorFunc will work for
     // both dynamic and static.

@@ -50,7 +50,7 @@
  */
 
 namespace common {
-void VisitRoots(const RefFieldVisitor& visitorFunc);
+void VisitRoots(const RefFieldVisitor& visitorFunc, bool isMark);
 void VisitWeakRoots(const WeakRefFieldVisitor& visitorFunc);
 
 #define CONTEXT " at " << __FILE__ << ":" << __LINE__ << std::endl
@@ -332,7 +332,7 @@ public:
         MarkStack<BaseObject*> roots;
 
         RefFieldVisitor refVisitor = [&](RefField<>& ref) { visitor.VerifyRef(nullptr, ref); };
-        VisitRoots(refVisitor);
+        VisitRoots(refVisitor, true);
     }
 
     void IterateWeakRoot(VerifyVisitor& visitor)
@@ -401,7 +401,7 @@ private:
 
     void EnumStrongRoots(const std::function<void(RefField<>&)>& markFunc)
     {
-        VisitRoots(markFunc);
+        VisitRoots(markFunc, true);
     }
 
     void Trace(MarkStack<BaseObject*>& markStack) {}
