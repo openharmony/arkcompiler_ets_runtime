@@ -49,7 +49,7 @@ public:
     {
         ASSERT(sp != nullptr);
         FrameType *typeAddr = reinterpret_cast<FrameType *>(reinterpret_cast<uintptr_t>(sp) - sizeof(FrameType));
-        return static_cast<FrameType> (static_cast<uint32_t>(*typeAddr) &
+        return static_cast<FrameType> (static_cast<uintptr_t>(*typeAddr) &
             FrameIterator::CLEARD_LAZY_DEOPT_FLAG);
     }
 
@@ -274,7 +274,7 @@ private:
     {
         ASSERT(HasFrame());
         FrameType *typeAddr = reinterpret_cast<FrameType *>(reinterpret_cast<uintptr_t>(sp_) - sizeof(FrameType));
-        return static_cast<FrameType> (static_cast<uint32_t>(*typeAddr) &
+        return static_cast<FrameType> (static_cast<uintptr_t>(*typeAddr) &
             FrameIterator::CLEARD_LAZY_DEOPT_FLAG);
     }
 
