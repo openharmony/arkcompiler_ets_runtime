@@ -422,13 +422,13 @@ public:
             node->SetObject(JSTaggedValue::Undefined().GetRawData());
         };
 
-        IterateNodeList<decltype(clearWeakNodeCallback), WeakNode>(clearWeakNodeCallback, topWeakGlobalNodes_);
-        IterateNodeList<decltype(clearNodeCallback), T>(clearNodeCallback, topXRefGlobalNodes_);
-        IterateNodeList<decltype(clearNodeCallback), T>(clearNodeCallback, topGlobalNodes_);
+        IterateNodeList<decltype(clearWeakNodeCallback), WeakNode>(clearWeakNodeCallback, topWeakGlobalNodes_, true);
+        IterateNodeList<decltype(clearNodeCallback), T>(clearNodeCallback, topXRefGlobalNodes_, true);
+        IterateNodeList<decltype(clearNodeCallback), T>(clearNodeCallback, topGlobalNodes_, true);
     }
 
     template<class Callback, class S>
-    inline void IterateNodeList(Callback callback, NodeList<S> *nodeList)
+    inline void IterateNodeList(Callback callback, NodeList<S> *nodeList, bool releaseNodeList)
     {
         auto *next = nodeList;
         NodeList<S> *current = nullptr;
@@ -437,6 +437,9 @@ public:
             next = current->GetNext();
             ASSERT(current != next);
             current->IterateUsageGlobal(callback);
+            if (releaseNodeList) {
+                allocator_->Delete(current);
+            }
         }
     }
 
@@ -500,17 +503,17 @@ public:
     template<class Callback>
     void IterateUsageGlobal(Callback &&callback)
     {
-        IterateNodeList<Callback, T>(callback, topGlobalNodes_);
+        IterateNodeList<Callback, T>(callback, topGlobalNodes_, false);
         if (nodeKind_ == NodeKind::UNIFIED_NODE) {
             return;
         }
-        IterateNodeList<Callback, T>(callback, topXRefGlobalNodes_);
+        IterateNodeList<Callback, T>(callback, topXRefGlobalNodes_, false);
     }
 
     template<class Callback>
     void IterateWeakUsageGlobal(Callback callback)
     {
-        IterateNodeList<Callback, WeakNode>(callback, topWeakGlobalNodes_);
+        IterateNodeList<Callback, WeakNode>(callback, topWeakGlobalNodes_, false);
     }
 
     ECMAGLOBALSTORAGE_PUBLIC_HYBRID_EXTENSION()
