@@ -554,9 +554,6 @@ void ProfilerStubBuilder::ProfileBranch(
     Label profiler(env);
     Label icSlotValid(env);
     Label hasSlot(env);
-    Label currentIsTrue(env);
-    Label currentIsFalse(env);
-    Label genCurrentWeight(env);
     Label compareLabel(env);
     Label updateSlot(env);
     Label preProfile(env);
@@ -630,7 +627,6 @@ void ProfilerStubBuilder::TryPreDumpInner(GateRef glue, GateRef func, GateRef pr
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
     Label setPreDumpPeriodIndex(env);
-    Label isInPredumpWorkList(env);
     Label addPredumpWorkList(env);
     Label exit(env);
     BRANCH(IsProfileTypeInfoPreDumped(profileTypeInfo), &exit, &setPreDumpPeriodIndex);
@@ -834,7 +830,6 @@ GateRef ProfilerStubBuilder::IsProfileTypeInfoHotAndValid(GateRef profileTypeInf
     env->SubCfgEntry(&subEntry);
     Label exit(env);
     Label isHot(env);
-    Label hotAndValid(env);
     DEFVARIABLE(res, VariableType::BOOL(), Boolean(false));
     BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &isHot);
     Bind(&isHot);
@@ -971,15 +966,10 @@ GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, [[maybe_unused
     GateRef hotnessThreshold = GetJitHotnessThreshold(profileTypeInfo);
     GateRef jitCallCnt = GetJitCallCnt(profileTypeInfo);
 
-    Label cmpJitHotnessCnt(env);
-    Label checkJitCallThreshold(env);
     Label cmpJitCallThreshold(env);
     Label jitCallNotEqualZero(env);
-    Label checkJitCallEqualZero(env);
     Label setResultAsTrue(env);
     Label exit(env);
-    Label jitCheck(env);
-    Label cmpBaselineJitHotnessCnt(env);
     Label tryCompile(env);
 
     Branch(Int32Equal(hotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)),

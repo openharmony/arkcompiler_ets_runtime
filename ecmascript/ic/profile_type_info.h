@@ -101,19 +101,28 @@ private:
 
 /**
  *              ProfileTypeInfo
- *      +--------------------------------+
- *      |           ic slot              |
- *      |            .....               |
- *      +--------------------------------+
- *      |        64 bits jit osr         |
- *      |      tagged array address      |
- *      +--------------------------------+
- *      |    low 32 bits(PeriodCount)    |
- *      |    hight 32 bits(jit hotness)  |
- *      +--------------------------------+
- *      |    low 32 bits(osr hotness)    |
- *      | hight 32 bits(baseline hotness)|
- *      +--------------------------------+
+ *      +--------------------------------+             --- TaggedArray Length
+ *      |           ic slot              |              ^
+ *      |            .....               |              |
+ *      +--------------------------------+              |    --- Reserved Length
+ *      |        extra info map          | 64 bits      |     ^   = 4 * 64 bits
+ *      +--------------------------------+              |     |
+ *      |            jit osr             | 64 bits      |     |
+ *      +--------------------------------+              |     |
+ *      |           bit field            | 32 bits      |     |
+ *      +--------------------------------+              |     |
+ *      |     jit hotness threshold      | 16 bits      |     |
+ *      +--------------------------------+              |     |
+ *      |            jit cnt             | 16 bits      |     |
+ *      +--------------------------------+              |     |
+ *      |     osr hotness threshold      | 16 bits      |     |
+ *      +--------------------------------+              |     |
+ *      |            osr cnt             | 16 bits      |     |
+ *      +--------------------------------+              |     |
+ *      | baselinejit hotness threshold  | 16 bits      |     |
+ *      +--------------------------------+              |     |
+ *      |          jit call cnt          | 16 bits      v     v
+ *      +--------------------------------+             ---   ---
  */
 class ProfileTypeInfo : public TaggedArray {
 public:
