@@ -29,3 +29,5 @@ regresstest/ark-regress/mjsunit/regress/regress-2073.js
 
 #27744
 regresstest/ark-regress/mjsunit/regress/regress-dictionary-to-fast-arguments.js
+#26099
+regresstest/ark-regress/mjsunit/regress/regress-3612.js

@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_hclass.h"
 
+#include "common_interfaces/objects/string/line_string-inl.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_bigint.h"

@@ -47,6 +47,7 @@ void StaticRootTable::VisitRoots(const RefFieldVisitor& visitor)
     }
 }
 
+template <bool ProcessXRef>
 class ConcurrentMarkingTask : public common::Task {
 public:
     ConcurrentMarkingTask(uint32_t id, MarkingCollector &tc, ParallelMarkingMonitor &monitor,
@@ -64,7 +65,7 @@ public:
             if (!monitor_.TryStartStep()) {
                 break;
             }
-            collector_.ProcessMarkStack(threadIndex, markStack);
+            collector_.ProcessMarkStack<ProcessXRef>(threadIndex, markStack);
             monitor_.FinishStep();
         } while (monitor_.WaitNextStepOrFinished());
         monitor_.NotifyFinishOne();
@@ -152,6 +153,7 @@ void MarkingCollector::ProcessWeakStack(WeakStack &weakStack)
     }
 }
 
+template <bool ProcessXRef>
 void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, ParallelLocalMarkStack &markStack)
 {
     size_t nNewlyMarked = 0;
@@ -182,6 +184,11 @@ void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, P
             auto region = RegionDesc::GetAliveRegionDescAt(static_cast<MAddress>(reinterpret_cast<uintptr_t>(object)));
             region->AddLiveByteCount(object->GetSize());
             MarkingObjectRefFields(object, &visitor);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if constexpr (ProcessXRef) {
+                MarkingObjectXRef(obj, workStack);
+            }
+#endif
         }
         // Try some task from satb buffer, bound the loop to make sure it converges in time
         if (++iterationCnt >= maxIterationLoopNum) {
@@ -270,14 +277,30 @@ void MarkingCollector::TracingImpl(GlobalMarkStack &globalMarkStack, bool parall
         uint32_t threadCount = parallelCount + 1;
         ParallelMarkingMonitor monitor(parallelCount, parallelCount);
         for (uint32_t i = 0; i < parallelCount; ++i) {
-            threadPool->PostTask(std::make_unique<ConcurrentMarkingTask>(0, *this, monitor, globalMarkStack));
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if (gcReason_ == GCReason::GC_REASON_XREF) {
+                threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<true>>(0, *this, monitor, globalMarkStack));
+            } else {
+                threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<false>>(0, *this, monitor, globalMarkStack));
+            }
+#else
+            threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<false>>(0, *this, monitor, globalMarkStack));
+#endif
         }
         ParallelLocalMarkStack markStack(&globalMarkStack, &monitor);
         do {
             if (!monitor.TryStartStep()) {
                 break;
             }
-            ProcessMarkStack(0, markStack);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if (gcReason_ == GCReason::GC_REASON_XREF) {
+                ProcessMarkStack<true>(0, markStack);
+            } else {
+                ProcessMarkStack<false>(0, markStack);
+            }
+#else
+            ProcessMarkStack<false>(0, markStack);
+#endif
             monitor.FinishStep();
         } while (monitor.WaitNextStepOrFinished());
         monitor.WaitAllFinished();
@@ -288,7 +311,15 @@ void MarkingCollector::TracingImpl(GlobalMarkStack &globalMarkStack, bool parall
         // So for convenience just use a fake dummy parallel one.
         ParallelMarkingMonitor dummyMonitor(0, 0);
         ParallelLocalMarkStack markStack(&globalMarkStack, &dummyMonitor);
-        ProcessMarkStack(0, markStack);
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if (gcReason_ == GCReason::GC_REASON_XREF) {
+                ProcessMarkStack<true>(0, markStack);
+            } else {
+                ProcessMarkStack<false>(0, markStack);
+            }
+#else
+            ProcessMarkStack<false>(0, markStack);
+#endif
     }
 }
 

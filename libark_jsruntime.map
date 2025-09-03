@@ -97,6 +97,7 @@
       panda::JsiFastNativeScope::*;
       panda::JSExecutionScope::*;
       common::BaseRuntime::*;
+      common::HeapAllocator::*;
       common::VisitDynamicGlobalRoots*;
       common::VisitDynamicWeakGlobalRoots*;
       common::VisitDynamicLocalRoots*;
@@ -114,12 +115,24 @@
       common::FillFreeObject*;
       common::SetBaseAddress*;
       common::JSGCCallback*;
+      common::RegisterVisitStaticRootsHook*;
+      common::RegisterUpdateStaticRootsHook*;
+      common::RegisterSweepStaticRootsHook*;
+      common::InterOpCoroutineToNative*;
+      common::InterOpCoroutineToRunning*;
+      common::RegisterInterOpCoroutineToNativeHook*;
+      common::RegisterInterOpCoroutineToRunningHook*;
+      common::RegisterUnmarkAllXRefsHook*;
+      common::RegisterSweepUnmarkedXRefsHook*;
+      common::RegisterAddXRefToStaticRootsHook*;
+      common::RegisterRemoveXRefFromStaticRootsHook*;
       common::MutatorBase::*;
       common::Log::*;
       common::AndroidLog*;
       common::ThreadHolder::*;
       common::utf_helper::ConvertRegionUtf16ToUtf8*;
       common::utf_helper::ConvertUtf8ToUnicodeChar*;
+      common::DynamicObjectAccessorUtil::*;
 
       panda::ecmascript::AotCrashInfo*;
       panda::ecmascript::Method::*;

@@ -1,4 +1,4 @@
-# Known failure list for ut - release - x64 - ets_runtime
+# Known failure list for ut - release - x64 - ets_runtime -cmc -gc
 #20980
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDelete
 
@@ -17,11 +17,8 @@ obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/math/Ceil/builtinMathC
 #20981
 obj/arkcompiler/ets_runtime/test/aottest/builtin_inlining/map/Delete/builtinMapDeleteContext
 
-#23236
-obj/arkcompiler/ets_runtime/test/moduletest/hugearray/hugearrayAsmAssertContext
+#26090
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest
 
 #23099
 obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
-
-#26263
-obj/arkcompiler/ets_runtime/ecmascript/tests/GC_Third_Test

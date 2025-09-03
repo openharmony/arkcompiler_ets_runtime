@@ -4322,6 +4322,11 @@ JsiFastNativeScope::JsiFastNativeScope(const EcmaVM *vm)
         hasSwitchState_ = oldThreadState_ != static_cast<uint16_t>(ecmascript::ThreadState::RUNNING);
     } else {
         isEnableCMCGC_ = true;
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+        // This is a temporary impl to adapt interop to cmc, because some interop call napi
+        // without transfering to NATIVE
+        extraCoroutineSwitchedForInterop_ = InterOpCoroutineToNative(thread_->GetThreadHolder());
+#endif
         hasSwitchState_ = thread_->GetThreadHolder()->TransferToRunningIfInNative();
     }
 }
@@ -4335,6 +4340,11 @@ JsiFastNativeScope::~JsiFastNativeScope()
             thread_->GetThreadHolder()->TransferToNative();
         }
     }
+#if defined(PANDA_JS_ETS_HYBRID_MODE)
+    if (isEnableCMCGC_ && extraCoroutineSwitchedForInterop_) {
+        InterOpCoroutineToRunning(thread_->GetThreadHolder());
+    }
+#endif
 }
 
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
