@@ -103,6 +103,7 @@ group("ark_jit_ts_test") {
     "hole_in_array",
     "definefunc",
     "jnez",
+    "poly_merge",
     "constructor",
     "intrinsic_test",
     "intrinsic_test2",

@@ -1130,8 +1130,8 @@ protected:
     bool GeneratePlrInJIT(JSHClass* hclass, ObjectAccessInfo &info, JSTaggedValue key) const;
 
     bool hasIllegalType_;
-    ChunkVector<ObjectAccessInfo> accessInfos_;
-    ChunkVector<ObjectAccessInfo> checkerInfos_;
+    ChunkVector<ObjectAccessInfo> accessInfos_;     // holder
+    ChunkVector<ObjectAccessInfo> checkerInfos_;    // receiver
 };
 
 class LoadPrivatePropertyTypeInfoAccessor final : public ObjAccByNameTypeInfoAccessor {
@@ -1541,13 +1541,21 @@ public:
             rightCheckerInfo.GetPrimitiveType() != PrimitiveType::PRIMITIVE_TYPE_INVALID) {
             return false;
         }
+        // left receiver equal holder
         if (leftCheckerInfo.HClassIndex() == leftAccessInfo.HClassIndex()) {
+            // right receiver equal holder
             if (rightAccessInfo.HClassIndex() == rightCheckerInfo.HClassIndex() &&
                 rightAccessInfo.GetData() == leftAccessInfo.GetData()) {
                 return true;
             }
             return false;
         } else {
+            // when left receiver not equal holder, bug right receiver equal holder,
+            // these two cannot be merged
+            if (rightAccessInfo.HClassIndex() == rightCheckerInfo.HClassIndex()) {
+                return false;
+            }
+            // left and right has same holder
             if (leftAccessInfo.HClassIndex() == rightAccessInfo.HClassIndex() &&
                 rightAccessInfo.GetData() == leftAccessInfo.GetData()) {
                 return true;
