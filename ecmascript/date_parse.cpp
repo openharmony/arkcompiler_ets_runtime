@@ -170,7 +170,7 @@ bool DateParse::ParseIsoDateTime(DateProxy *proxy, DayValue *dayValue, TimeValue
             }
         }
     }
-    if (timeZone->IsLocal() && timeValue->GetIndex() == 0) {
+    if (timeZone->IsLocal() && timeValue->IsEmpty()) {
         timeZone->SetUTC();
     }
     dayValue->SetIsoFlag(true);
@@ -225,6 +225,12 @@ bool DateParse::ParseLegacyDates(DateProxy *proxy, DayValue *dayValue, TimeValue
             dayValue->SetMonth(date.GetValue());
         } else if (date.IsTimeZone() && hasNumber) {
             timeZone->SetUTC();
+        } else if (date.IsAMOrPM()) {
+            if (!timeValue->IsEmpty()) {
+                timeValue->FixHourForAMOrPM(date.GetValue());
+            } else if (hasNumber) {
+                return false;
+            }
         } else if (date.IsTimeFlag() || date.IsInvalidWord()) {
             if (hasNumber) {
                 return false;
@@ -232,7 +238,7 @@ bool DateParse::ParseLegacyDates(DateProxy *proxy, DayValue *dayValue, TimeValue
             if (proxy->GetDate().IsNumber()) {
                 return false;
             }
-        } else if (date.IsSign() && ((timeValue->GetIndex() > 0) || timeZone->IsUTC())) {
+        } else if (date.IsSign() && (!timeValue->IsEmpty() || timeZone->IsUTC())) {
             if (date.IsSymbol('-')) {
                 timeZone->SetSign(-1);
             } else {
@@ -307,7 +313,7 @@ DateParse::DateUnit DateParse::DateProxy::Read()
         int minLen = len < 3 ? len : 3;
         CString str(buf, minLen);
         int value = 0;
-        DateValueType type = MatchKeyWord(str, &value);
+        DateValueType type = MatchKeyWord(str, minLen, &value);
         return DateUnit::Word(type, value, len);
     }
     if (str_->IsSpaceOrTab()) {
@@ -318,23 +324,34 @@ DateParse::DateUnit DateParse::DateProxy::Read()
     return DateUnit::Unknown();
 }
 
-DateParse::DateValueType DateParse::DateProxy::MatchKeyWord(const CString &str, int *value)
+DateParse::DateValueType DateParse::DateProxy::MatchKeyWord(const CString &str, int strLen, int *value)
 {
-    if (str == "t") {
-        return DATE_TIME_FALG;
-    }
-    if (str == "z") {
-        return DATE_TIME_ZONE;
-    }
-
-    if (str == "utc" || str == "gmt") {
-        *value = 1;
-        return DATE_TIME_ZONE;
-    }
-    for (int i = 0; i < MOUTH_PER_YEAR; i++) {
-        if (str == DateParse::MONTH_NAME[i]) {
-            *value = i + 1;
-            return DATE_MONTH;
+    if (strLen == 1) { // 1: length of "t"/"z".
+        if (str == "t") {
+            return DATE_TIME_FALG;
+        }
+        if (str == "z") {
+            return DATE_TIME_ZONE;
+        }
+    } else if (strLen == 3) { // 3: length of "utc"/"gmt".
+        if (str == "utc" || str == "gmt") {
+            *value = 1;
+            return DATE_TIME_ZONE;
+        }
+        for (int i = 0; i < MOUTH_PER_YEAR; i++) {
+            if (str == DateParse::MONTH_NAME[i]) {
+                *value = i + 1;
+                return DATE_MONTH;
+            }
+        }
+    } else if (strLen == 2) { // 2: length of "am"/"pm".
+        if (str == "am") {
+            *value = 0;
+            return DATE_AM_PM;
+        }
+        if (str == "pm") {
+            *value = 12; // 12: while date string includes PM, the hour need to be fixed.
+            return DATE_AM_PM;
         }
     }
     return DATE_INVALID_WORD;
