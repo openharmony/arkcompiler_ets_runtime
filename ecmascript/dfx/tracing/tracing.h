@@ -117,7 +117,7 @@ public:
     void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) override;
     void MethodExit(JSHandle<Method> method) override;
     void GenerateAsyncFrames(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) override;
-    void SetDebuggerAccessor(JSHandle<GlobalEnv> &globalEnv) override;
+    void SetDebuggerAccessor(const JSHandle<GlobalEnv> &globalEnv) override;
 
     bool IsTracing()
     {

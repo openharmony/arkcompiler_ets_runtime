@@ -44,7 +44,7 @@ public:
     virtual void MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle) = 0;
     virtual void MethodExit(JSHandle<Method> method) = 0;
     virtual void GenerateAsyncFrames(std::shared_ptr<AsyncStack> asyncStack, bool skipTopFrame) = 0;
-    virtual void SetDebuggerAccessor(JSHandle<GlobalEnv> &globalEnv) = 0;
+    virtual void SetDebuggerAccessor(const JSHandle<GlobalEnv> &globalEnv) = 0;
 };
 
 class NotificationManager {
@@ -144,7 +144,7 @@ public:
         }
     }
 
-    void SetDebuggerAccessorEvent(JSHandle<GlobalEnv> &globalEnv) const
+    void SetDebuggerAccessorEvent(const JSHandle<GlobalEnv> &globalEnv) const
     {
         for (auto it: listeners_) {
             it->SetDebuggerAccessor(globalEnv);

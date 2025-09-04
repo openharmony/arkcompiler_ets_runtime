@@ -417,10 +417,12 @@ std::pair<int32_t, uint32_t> DebuggerApi::GetLevelSlot(const JSThread *thread, c
     return std::make_pair(-1, 0);
 }
 
-Local<JSValueRef> DebuggerApi::GetGlobalValue(const EcmaVM *ecmaVm, Local<StringRef> name)
+Local<JSValueRef> DebuggerApi::GetGlobalValue(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
+                                              Local<StringRef> name)
 {
     JSTaggedValue result;
-    JSTaggedValue globalObj = ecmaVm->GetGlobalEnv()->GetGlobalObject();
+    Local<JSValueRef> globalEnv = GetCurrentGlobalEnv(ecmaVm, frameHandler);
+    JSHandle<JSTaggedValue> globalObj = JSNApiHelper::ToJSHandle(JSNApi::GetGlobalObject(ecmaVm, globalEnv));
     JSThread *thread = ecmaVm->GetJSThread();
 
     JSTaggedValue key = JSNApiHelper::ToJSTaggedValue(*name);
@@ -431,18 +433,19 @@ Local<JSValueRef> DebuggerApi::GetGlobalValue(const EcmaVM *ecmaVm, Local<String
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, result));
     }
 
-    JSTaggedValue globalVar = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj, key);
+    JSTaggedValue globalVar = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj.GetTaggedValue(), key);
     if (!globalVar.IsHole()) {
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, globalVar));
     } else {
-        result = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj, key);
+        result = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj.GetTaggedValue(), key);
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, result));
     }
 
     return Local<JSValueRef>();
 }
 
-bool DebuggerApi::SetGlobalValue(const EcmaVM *ecmaVm, Local<StringRef> name, Local<JSValueRef> value)
+bool DebuggerApi::SetGlobalValue(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
+                                 Local<StringRef> name, Local<JSValueRef> value)
 {
     JSTaggedValue result;
     JSTaggedValue globalObj = ecmaVm->GetGlobalEnv()->GetGlobalObject();
