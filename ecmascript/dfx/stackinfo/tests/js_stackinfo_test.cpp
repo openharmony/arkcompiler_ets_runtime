@@ -41,19 +41,19 @@ public:
 
     void SetUp() override
     {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-        instance->SetEnableForceGC(false);
+        TestHelper::CreateEcmaVMWithScope(instance_, thread_, scope_);
+        instance_->SetEnableForceGC(false);
     }
 
     void TearDown() override
     {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
+        TestHelper::DestroyEcmaVMWithScope(instance_, scope_);
         JsStackInfo::nameMap.clear();
     }
 
-    EcmaVM *instance {nullptr};
-    EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+    EcmaVM *instance_ {nullptr};
+    EcmaHandleScope *scope_ {nullptr};
+    JSThread *thread_ {nullptr};
 };
 
 template<typename T>
@@ -411,7 +411,7 @@ HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
  */
 HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo)
 {
-    auto jsFrame = JsStackInfo::BuildJsStackInfo(thread);
+    auto jsFrame = JsStackInfo::BuildJsStackInfo(thread_);
     EXPECT_TRUE(jsFrame.empty());
 }
 
@@ -1607,4 +1607,44 @@ HWTEST_F_L0(JsStackInfoTest, TestNextArkFrame)
     free(ctx);
 }
 #endif
+
+HWTEST_F_L0(JsStackInfoTest, MatchLineAndRevisedOffset) {
+    const std::string fileName = STACKINFO_TEST_ABC_FILES_DIR"index.abc";
+    std::string entryPoint = "index";
+
+    bool result = JSNApi::Execute(instance_, fileName, entryPoint);
+    ASSERT_TRUE(result);
+    auto jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(CString(fileName));
+    EXPECT_NE(jsPandaFile, nullptr);
+
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+    DebugInfoExtractor *debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile.get());
+    int32_t lineNumber = 0;
+    auto callbackLineFunc = [&lineNumber](int32_t line) -> bool {
+        lineNumber = line + 1;
+        return true;
+    };
+    auto method = methods[0];
+    uintptr_t offset = 54; // line = -1
+    debugExtractor->MatchLineWithOffset(callbackLineFunc, EntityId(method.methodId), offset);
+    EXPECT_TRUE(lineNumber == 0);
+    debugExtractor->MatchLineAndRevisedOffset(callbackLineFunc, EntityId(method.methodId), offset);
+    EXPECT_TRUE(lineNumber == 20);
+    EXPECT_TRUE(offset == 55);
+
+    lineNumber = 0;
+    offset = 55;
+    debugExtractor->MatchLineWithOffset(callbackLineFunc, EntityId(method.methodId), offset);
+    EXPECT_TRUE(lineNumber == 20);
+    lineNumber = 0;
+    debugExtractor->MatchLineAndRevisedOffset(callbackLineFunc, EntityId(method.methodId), offset);
+    EXPECT_TRUE(lineNumber == 20);
+
+    offset = 20;
+    debugExtractor->MatchLineWithOffset(callbackLineFunc, EntityId(method.methodId), offset);
+    EXPECT_TRUE(lineNumber == 17);
+    debugExtractor->MatchLineAndRevisedOffset(callbackLineFunc, EntityId(method.methodId), offset);
+    EXPECT_TRUE(lineNumber == 17);
+}
+
 }  // namespace panda::test

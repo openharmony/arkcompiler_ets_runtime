@@ -179,6 +179,32 @@ public:
     }
 
     template<class Callback>
+    bool MatchLineAndRevisedOffset(const Callback &cb, panda_file::File::EntityId methodId, uintptr_t &offset)
+    {
+        int32_t line = 0;
+        const LineNumberTable &lineTable = GetLineNumberTable(methodId);
+
+        auto iter = std::upper_bound(lineTable.begin(), lineTable.end(), LineTableEntry {offset, 0});
+
+        if (iter == lineTable.begin()) {
+            return cb(line);
+        }
+
+        if (iter == lineTable.end() || ((iter - 1)->line != -1)) {
+            line = (iter - 1)->line;
+            return cb(line);
+        }
+
+        do {
+            iter++;
+        } while (iter != lineTable.end() && ((iter - 1)->line == -1));
+
+        line = (iter - 1)->line;
+        offset = (iter - 1)->offset;
+        return cb(line);
+    }
+
+    template<class Callback>
     bool MatchColumnWithOffset(const Callback &cb, panda_file::File::EntityId methodId, uint32_t offset)
     {
         int32_t column = 0;

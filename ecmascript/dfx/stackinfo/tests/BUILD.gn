@@ -16,6 +16,31 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 module_output_path = "ets_runtime/ets_runtime"
 
+test_js_path = "//arkcompiler/ets_runtime/ecmascript/dfx/stackinfo/tests/js_files/"
+
+test_js_files = [
+  "index",
+]
+
+foreach(file, test_js_files) {
+  es2abc_gen_abc("gen_${file}_abc") {
+    test_js = "${test_js_path}${file}.js"
+    test_abc = "$target_out_dir/abc_files/${file}.abc"
+    # Only targets in this file can depend on this.
+    extra_visibility = [ ":*" ]
+    src_js = rebase_path(test_js)
+    dst_file = rebase_path(test_abc)
+    extra_args = [
+      "--module",
+      "--merge-abc",
+      "--debug",
+    ]
+
+    in_puts = [ test_js ]
+    out_puts = [ test_abc ]
+  }
+}
+
 host_unittest_action("JsStackInfoTest") {
   module_out_path = module_output_path
 
@@ -38,6 +63,21 @@ host_unittest_action("JsStackInfoTest") {
 
   deps = [
     "../../../../:libark_jsruntime_test",
+  ]
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test/"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir + "/abc_files/")
+  }
+
+  test_js_dir = rebase_path(test_js_path)
+  defines = [
+    "STACKINFO_TEST_JS_FILES_DIR=\"${test_js_dir}\"",
+    "STACKINFO_TEST_ABC_FILES_DIR=\"${test_abc_dir}\"",
   ]
 
   # hiviewdfx libraries

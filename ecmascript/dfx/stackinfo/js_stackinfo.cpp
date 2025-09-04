@@ -537,7 +537,7 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
         return true;
     };
 
-    if (!debugExtractor->MatchLineWithOffset(callbackLineFunc, methodId, offset) ||
+    if (!debugExtractor->MatchLineAndRevisedOffset(callbackLineFunc, methodId, offset) ||
         !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, offset)) {
         lineNumber = 0;
         columnNumber = 0;
