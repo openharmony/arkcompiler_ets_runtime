@@ -213,7 +213,7 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="Region_Space_Test">
+    <target name="Regional_Heap_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
         </preparer>
