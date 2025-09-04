@@ -3071,4 +3071,37 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleBinding)
     }
     delete serializer;
 };
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSHClass)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, nullptr, FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSHClass> hclass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, env->GetObjectFunctionPrototype());
+    // set proto change marker
+    JSHandle<ProtoChangeMarker> markerHandle = factory->NewProtoChangeMarker();
+    markerHandle->SetHasChanged(false);
+    markerHandle->SetNotFoundHasChanged(false);
+    hclass->SetProtoChangeMarker(thread, markerHandle.GetTaggedValue());
+    // set proto change details
+    JSHandle<ProtoChangeDetails> protoDetailsHandle = factory->NewProtoChangeDetails();
+    hclass->SetProtoChangeDetails(thread, protoDetailsHandle);
+    // set enum cache
+    JSHandle<EnumCache> enumCache = factory->NewEnumCache();
+    hclass->SetEnumCache(thread, enumCache);
+    // set dependentinfos
+    auto dependentInfos = factory->NewTaggedArray(2);
+    dependentInfos->Set(thread, 0, func.GetTaggedValue());
+    dependentInfos->Set(thread, 1, func.GetTaggedValue());
+    hclass->SetDependentInfos(thread, dependentInfos.GetTaggedValue());
+    // serialize check
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(hclass),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize js hclass fail";
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    delete serializer;
+}
 }  // namespace panda::test
