@@ -1370,7 +1370,10 @@ bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef ga
             return false;
         }
         AddProfiling(gate);
-        builder_.MathHClassConsistencyCheck(receiver);
+        
+        GateRef classIndexGate = circuit_->GetConstantGate(MachineType::I64,
+            static_cast<int64_t>(GlobalEnv::MATH_FUNCTION_CLASS_INDEX), GateType::NJSValue());
+        builder_.BuiltinHClassConsistencyCheck(receiver, classIndexGate);
         GateRef plrGate = builder_.Int32(plr.GetData());
         GateRef result = builder_.LoadProperty(receiver, plrGate, plr.IsFunction());
         acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);

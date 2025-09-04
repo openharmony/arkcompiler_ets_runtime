@@ -148,15 +148,15 @@ GateRef CircuitBuilder::StableArrayCheck(GateRef gate, ElementsKind kind, ArrayM
     return ret;
 }
 
-GateRef CircuitBuilder::MathHClassConsistencyCheck(GateRef receiver)
+GateRef CircuitBuilder::BuiltinHClassConsistencyCheck(GateRef receiver, GateRef classIndexGate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef frameState = acc_.FindNearestFrameState(receiver);
 
-    GateRef ret = GetCircuit()->NewGate(circuit_->MathHClassConsistencyCheck(),
-        MachineType::I1, {currentControl, currentDepend, receiver, frameState},
+    GateRef ret = GetCircuit()->NewGate(circuit_->BuiltinHClassConsistencyCheck(),
+        MachineType::I1, {currentControl, currentDepend, receiver, classIndexGate, frameState},
         GateType::NJSValue());
 
     currentLabel->SetControl(ret);
