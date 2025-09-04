@@ -226,6 +226,7 @@ obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Trace_Collect
 
 #28652
 obj/arkcompiler/ets_runtime/common_components/heap/collector/tests/Marking_Collector_TestWithQemu
+obj/arkcompiler/ets_runtime/ecmascript/tests/GC_ReadOnlySpace_TestWithQemu
 
 #28814
 obj/arkcompiler/ets_runtime/ecmascript/dfx/stackinfo/tests/JsStackInfoTestWithQemu
