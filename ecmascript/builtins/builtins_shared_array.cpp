@@ -261,15 +261,6 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     if (!usingIterator->IsUndefined()) {
-        // Fast path for MapIterator
-        JSHandle<JSTaggedValue> iterator(thread, JSTaggedValue::Hole());
-        if (!mapping && items->IsJSMapIterator()) {
-            iterator = JSIterator::GetIterator(thread, items, usingIterator);
-            if (iterator->IsJSMapIterator()) {
-                return JSMapIterator::MapIteratorToList(thread, iterator);
-            }
-        }
-
         //   a. If IsConstructor(C) is true, then
         //     i. Let A be Construct(C).
         //   b. Else,
@@ -291,11 +282,10 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
         }
         JSHandle<JSObject> newArrayHandle(thread, newArray);
         //   d. Let iterator be GetIterator(items, usingIterator).
-        if (iterator->IsHole()) {
-            iterator = JSIterator::GetIterator(thread, items, usingIterator);
-            //   e. ReturnIfAbrupt(iterator).
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        }
+        JSHandle<JSTaggedValue> iterator(thread, JSTaggedValue::Hole());
+        iterator = JSIterator::GetIterator(thread, items, usingIterator);
+        //   e. ReturnIfAbrupt(iterator).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         //   f. Let k be 0.
         int k = 0;
         //   g. Repeat
