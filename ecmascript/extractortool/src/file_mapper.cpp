@@ -21,7 +21,6 @@ namespace panda {
 namespace ecmascript {
 namespace {
 long g_pageSize = 0;
-const int32_t MAP_XPM = 0x40;
 }
 FileMapper::FileMapper()
 {
@@ -53,7 +52,7 @@ bool FileMapper::CreateFileMapper(const std::string &fileName, bool compress,
     size_t adjust = offset % static_cast<size_t>(g_pageSize);
     size_t adjOffset = offset - adjust;
     baseLen_ = len + adjust;
-    int32_t mmapFlag = MAP_PRIVATE | MAP_XPM;
+    int32_t mmapFlag = MAP_PRIVATE;
     if (type == FileMapperType::SHARED_MMAP) {
         mmapFlag = MAP_SHARED;
     }
