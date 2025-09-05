@@ -2756,9 +2756,16 @@ size_t Heap::GetHeapLimitSize() const
 
 bool BaseHeap::IsAlive(TaggedObject *object) const
 {
-    if (!ContainObject(object)) {
-        LOG_GC(ERROR) << "The region is already free";
-        return false;
+    if (g_isEnableCMCGC) {
+        if (!common::Heap::IsHeapAddress(object)) {
+            LOG_GC(ERROR) << "The region is already free";
+            return false;
+        }
+    } else {
+        if (!ContainObject(object)) {
+            LOG_GC(ERROR) << "The region is already free";
+            return false;
+        }
     }
 
     bool isFree = object->GetClass() != nullptr && FreeObject::Cast(ToUintPtr(object))->IsFreeObject();
