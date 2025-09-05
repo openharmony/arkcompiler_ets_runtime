@@ -102,6 +102,11 @@ void BaseRuntime::Init(const RuntimeParam &param)
     CheckAndInitBaseRuntime(param);
 }
 
+void BaseRuntime::InitFromDynamic()
+{
+    InitFromDynamic(BaseRuntimeParam::DefaultRuntimeParam());
+}
+
 void BaseRuntime::InitFromDynamic(const RuntimeParam &param)
 {
     std::unique_lock<std::mutex> lock(vmCreationLock_);

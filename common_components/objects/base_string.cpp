@@ -52,15 +52,26 @@ uint32_t ComputeHashForDataInternal(const T *data, size_t size, uint32_t hashSee
     return StringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
 }
 
-PUBLIC_API uint32_t BaseString::ComputeHashForData(const uint8_t *data, size_t size, uint32_t hashSeed)
+// To change the hash algorithm of BaseString, please modify BaseString::CalculateConcatHashCode
+// and BaseStringHashHelper::ComputeHashForDataPlatform simultaneously!!
+template <typename T>
+uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
+                                        uint32_t hashSeed)
 {
-    return ComputeHashForDataInternal(data, size, hashSeed);
+    if (size <= static_cast<size_t>(StringHash::MIN_SIZE_FOR_UNROLLING)) {
+        uint32_t hash = hashSeed;
+        for (uint32_t i = 0; i < size; i++) {
+            hash = (hash << static_cast<uint32_t>(StringHash::HASH_SHIFT)) - hash + data[i];
+        }
+        return hash;
+    }
+    return StringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
 }
 
-PUBLIC_API uint32_t BaseString::ComputeHashForData(const uint16_t *data, size_t size, uint32_t hashSeed)
-{
-    return ComputeHashForDataInternal(data, size, hashSeed);
-}
+template
+uint32_t BaseString::ComputeHashForData<uint8_t>(const uint8_t*, size_t, uint32_t);
+template
+uint32_t BaseString::ComputeHashForData<uint16_t>(const uint16_t*, size_t, uint32_t);
 
 // static
 template <typename T1, typename T2>

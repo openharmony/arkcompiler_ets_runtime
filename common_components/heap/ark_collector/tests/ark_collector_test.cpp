@@ -30,7 +30,7 @@ class ArkCollectorTest : public common::test::BaseTestWithScope {
 protected:
     static void SetUpTestCase()
     {
-        BaseRuntime::GetInstance()->Init();
+        BaseRuntime::GetInstance()->InitFromDynamic();
     }
 
     static void TearDownTestCase()
@@ -398,6 +398,8 @@ public:
     {
         return const_cast<BaseObject*>(object);
     }
+    void ForEachRefFieldSkipReferent(const BaseObject *object, const RefFieldVisitor &visitor) const override {}
+    void IterateXRef(const BaseObject *object, const RefFieldVisitor &visitor) const override {}
 };
 
 HWTEST_F_L0(ArkCollectorTest, ForwardUpdateRawRef_TEST1)

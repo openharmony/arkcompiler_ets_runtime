@@ -232,7 +232,7 @@ void ArkCollector::MarkingXRef(RefField<> &field, ParallelLocalMarkStack &workSt
     DCHECK_CC(Heap::IsHeapAddress(targetObj));
 
     DLOG(TRACE, "trace obj %p <%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
-    if (region->IsNewObjectSinceTrace(targetObj)) {
+    if (region->IsNewObjectSinceForward(targetObj)) {
         DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
         return;
     }
@@ -809,6 +809,7 @@ void ArkCollector::FixHeap()
 
 void ArkCollector::CollectGarbageWithXRef()
 {
+    const bool isNotYoungGC = gcReason_ != GCReason::GC_REASON_YOUNG;
 #ifdef ENABLE_CMC_RB_DFX
     WVerify::DisableReadBarrierDFX(*this);
 #endif

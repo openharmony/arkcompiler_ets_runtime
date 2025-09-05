@@ -186,7 +186,7 @@ void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, P
             MarkingObjectRefFields(object, &visitor);
 #ifdef PANDA_JS_ETS_HYBRID_MODE
             if constexpr (ProcessXRef) {
-                MarkingObjectXRef(obj, workStack);
+                MarkingObjectXRef(object, markStack);
             }
 #endif
         }
