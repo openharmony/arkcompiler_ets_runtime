@@ -601,7 +601,7 @@ public:
     // **************************** Middle IR ****************************
     GateRef EcmaObjectCheck(GateRef gate);
     GateRef HeapObjectCheck(GateRef gate, GateRef frameState);
-    GateRef MathHClassConsistencyCheck(GateRef receiver);
+    GateRef BuiltinHClassConsistencyCheck(GateRef receiver, GateRef classIndexGate);
     GateRef HeapObjectIsEcmaObjectCheck(GateRef gate, GateRef frameState);
     GateRef ProtoChangeMarkerCheck(GateRef gate, GateRef frameState = Gate::InvalidGateRef);
     GateRef PrimitiveTypeProtoChangeMarkerCheck(GateRef gate, GateRef frameState);

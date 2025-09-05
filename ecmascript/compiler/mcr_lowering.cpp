@@ -134,8 +134,8 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::IS_CALLABLE_CHECK:
             LowerIsCallableCheck(gate);
             break;
-        case OpCode::MATH_HCLASS_CONSISTENCY_CHECK:
-            LowerMathHClassConsistencyCheck(gate);
+        case OpCode::BUILTIN_HCLASS_CONSISTENCY_CHECK:
+            LowerBuiltinHClassConsistencyCheck(gate);
             break;
         case OpCode::STRING_ADD:
             LowerStringAdd(gate);
@@ -324,14 +324,16 @@ void MCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void MCRLowering::LowerMathHClassConsistencyCheck(GateRef gate)
+void MCRLowering::LowerBuiltinHClassConsistencyCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef receiverHClass = builder_.LoadHClassByConstOffset(glue_, receiver);
 
+    GateRef classIndexGate = acc_.GetValueIn(gate, 1);
+    size_t classIndex = static_cast<size_t>(acc_.GetConstantValue(classIndexGate));
     GateRef cond = builder_.Equal(
-        receiverHClass, builder_.GetGlobalEnvObj(circuit_->GetGlobalEnvCache(), GlobalEnv::MATH_FUNCTION_CLASS_INDEX));
+        receiverHClass, builder_.GetGlobalEnvObj(circuit_->GetGlobalEnvCache(), classIndex));
 
     builder_.DeoptCheck(cond, acc_.GetFrameState(gate), DeoptType::INCONSISTENTHCLASS14);
 

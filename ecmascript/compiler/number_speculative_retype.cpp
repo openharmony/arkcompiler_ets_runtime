@@ -367,7 +367,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::IS_NOT_UNDEFINED_OR_HOLE_CHECK:
         case OpCode::ECMA_OBJECT_CHECK:
         case OpCode::GET_EXCEPTION:
-        case OpCode::MATH_HCLASS_CONSISTENCY_CHECK:
+        case OpCode::BUILTIN_HCLASS_CONSISTENCY_CHECK:
         case OpCode::INLINE_SUPER_CTOR_CHECK:
         case OpCode::CHECK_CONSTRUCTOR:
             return VisitOthers(gate);

@@ -49,7 +49,7 @@ namespace panda::ecmascript::kungfu {
     V(FlattenTreeStringCheck, FLATTEN_TREE_STRING_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                      \
     V(HeapObjectCheck, HEAP_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                     \
     V(EcmaObjectCheck, ECMA_OBJECT_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                     \
-    V(MathHClassConsistencyCheck, MATH_HCLASS_CONSISTENCY_CHECK, GateFlags::CHECKABLE, 1, 1, 1)              \
+    V(BuiltinHClassConsistencyCheck, BUILTIN_HCLASS_CONSISTENCY_CHECK, GateFlags::CHECKABLE, 1, 1, 2)        \
     V(ProtoChangeMarkerCheck, PROTO_CHANGE_MARKER_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                      \
     V(PrimTypeProtoChangeMarkerCheck, PRIMTYPE_PROTO_CHANGE_MARKER_CHECK, GateFlags::CHECKABLE, 1, 1, 1)     \
     V(LookUpHolder, LOOK_UP_HOLDER, GateFlags::CHECKABLE, 1, 1, 3)                                           \
