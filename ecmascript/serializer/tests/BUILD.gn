@@ -62,11 +62,35 @@ host_unittest_action("InterOpSerializerTest") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("CMCSerializerTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "cmc_serializer_test.cpp",
+  ]
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+    sdk_libc_secshared_dep,
+  ]
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
   deps = [
     ":SerializerTest",
     ":InterOpSerializerTest",
+    ":CMCSerializerTest",
   ]
 }
 
@@ -75,12 +99,14 @@ group("host_unittest") {
   deps = [
     ":SerializerTestAction",
     ":InterOpSerializerTest",
+    ":CMCSerializerTest",
   ]
 
   if (is_mac) {
     deps -= [
       ":SerializerTestAction",
       ":InterOpSerializerTest",
+      ":CMCSerializerTest",
     ]
   }
 }

@@ -654,42 +654,68 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
 void BaseDeserializer::AllocateToDifferentSpaces()
 {
     if (g_isEnableCMCGC) {
-        size_t regularSpaceSize = data_->GetRegularSpaceSize();
-        if (regularSpaceSize > 0) {
-            // statistic object size
-            AllocateToRegularSpace(regularSpaceSize);
-        }
-        size_t pinSpaceSize = data_->GetPinSpaceSize();
-        if (pinSpaceSize > 0) {
-            // statistic object size
-            AllocateToPinSpace(pinSpaceSize);
-        }
+        AllocateToDifferentCMCSpaces();
     } else {
-        size_t oldSpaceSize = data_->GetOldSpaceSize();
-        if (oldSpaceSize > 0) {
-            heap_->GetOldSpace()->IncreaseLiveObjectSize(oldSpaceSize);
-            AllocateToOldSpace(oldSpaceSize);
+        if (!AllocateToDifferentLocalSpaces(true)) {
+            // If allocate local obj fail, trigger old gc and retry again
+            heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+            AllocateToDifferentLocalSpaces(false);
         }
-        size_t nonMovableSpaceSize = data_->GetNonMovableSpaceSize();
-        if (nonMovableSpaceSize > 0) {
-            heap_->GetNonMovableSpace()->IncreaseLiveObjectSize(nonMovableSpaceSize);
-            AllocateToNonMovableSpace(nonMovableSpaceSize);
+        AllocateToDifferentSharedSpaces();
+    }
+}
+
+bool BaseDeserializer::AllocateToDifferentLocalSpaces(bool isFirstAllocate)
+{
+    size_t oldSpaceSize = data_->GetOldSpaceSize();
+    if (oldSpaceSize > 0) {
+        // Old space should increase space live object size here since the allocate is independent
+        heap_->GetOldSpace()->IncreaseLiveObjectSize(oldSpaceSize);
+        if (!AllocateToOldSpace(oldSpaceSize, isFirstAllocate)) {
+            heap_->GetOldSpace()->DecreaseLiveObjectSize(oldSpaceSize);
+            return false;
         }
-        size_t machineCodeSpaceSize = data_->GetMachineCodeSpaceSize();
-        if (machineCodeSpaceSize > 0) {
-            heap_->GetMachineCodeSpace()->IncreaseLiveObjectSize(machineCodeSpaceSize);
-            AllocateToMachineCodeSpace(machineCodeSpaceSize);
+    }
+    size_t nonMovableSpaceSize = data_->GetNonMovableSpaceSize();
+    if (nonMovableSpaceSize > 0) {
+        if (!AllocateToNonMovableSpace(nonMovableSpaceSize, isFirstAllocate)) {
+            return false;
         }
-        size_t sOldSpaceSize = data_->GetSharedOldSpaceSize();
-        if (sOldSpaceSize > 0) {
-            sheap_->GetOldSpace()->IncreaseLiveObjectSize(sOldSpaceSize);
-            AllocateToSharedOldSpace(sOldSpaceSize);
+    }
+    size_t machineCodeSpaceSize = data_->GetMachineCodeSpaceSize();
+    if (machineCodeSpaceSize > 0) {
+        if (!AllocateToMachineCodeSpace(machineCodeSpaceSize, isFirstAllocate)) {
+            return false;
         }
-        size_t sNonMovableSpaceSize = data_->GetSharedNonMovableSpaceSize();
-        if (sNonMovableSpaceSize > 0) {
-            sheap_->GetNonMovableSpace()->IncreaseLiveObjectSize(sNonMovableSpaceSize);
-            AllocateToSharedNonMovableSpace(sNonMovableSpaceSize);
-        }
+    }
+    return true;
+}
+
+void BaseDeserializer::AllocateToDifferentSharedSpaces()
+{
+    size_t sOldSpaceSize = data_->GetSharedOldSpaceSize();
+    if (sOldSpaceSize > 0) {
+        sheap_->GetOldSpace()->IncreaseLiveObjectSize(sOldSpaceSize);
+        AllocateToSharedOldSpace(sOldSpaceSize);
+    }
+    size_t sNonMovableSpaceSize = data_->GetSharedNonMovableSpaceSize();
+    if (sNonMovableSpaceSize > 0) {
+        sheap_->GetNonMovableSpace()->IncreaseLiveObjectSize(sNonMovableSpaceSize);
+        AllocateToSharedNonMovableSpace(sNonMovableSpaceSize);
+    }
+}
+
+void BaseDeserializer::AllocateToDifferentCMCSpaces()
+{
+    size_t regularSpaceSize = data_->GetRegularSpaceSize();
+    if (regularSpaceSize > 0) {
+        // statistic object size
+        AllocateToRegularSpace(regularSpaceSize);
+    }
+    size_t pinSpaceSize = data_->GetPinSpaceSize();
+    if (pinSpaceSize > 0) {
+        // statistic object size
+        AllocateToPinSpace(pinSpaceSize);
     }
 }
 
@@ -765,8 +791,8 @@ uintptr_t BaseDeserializer::AllocateMultiCMCRegion(size_t spaceObjSize, size_t &
     return firstRegionAddr;
 }
 
-void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
-                                           SerializedObjectSpace spaceType)
+bool BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
+                                           SerializedObjectSpace spaceType, bool isFirstAllocate)
 {
     ASSERT(spaceType != SerializedObjectSpace::NON_MOVABLE_SPACE);
     regionIndex = regionVector_.size();
@@ -779,7 +805,11 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
         space->GetCurrentRegion()->IncreaseAliveObject(regionAliveObjSize);
         space->ResetTopPointer(space->GetCurrentRegion()->GetBegin() + regionAliveObjSize);
         if (!space->Expand()) {
-            DeserializeFatalOutOfMemory(spaceObjSize);
+            if (!isFirstAllocate) {
+                DeserializeFatalOutOfMemory(spaceObjSize);
+            }
+            regionVector_.clear();
+            return false;
         }
         Region *currentRegion = space->GetCurrentRegion();
         FreeObject::FillFreeObject(heap_, currentRegion->GetBegin(), currentRegion->GetSize());
@@ -789,30 +819,49 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
     size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
     space->GetCurrentRegion()->IncreaseAliveObject(Region::GetRegionAvailableSize() - lastRegionRemainSize);
     space->ResetTopPointer(space->GetCurrentRegion()->GetEnd() - lastRegionRemainSize);
+    return true;
 }
 
-void BaseDeserializer::AllocateMultiNonmovableRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
-                                                     [[maybe_unused]] SerializedObjectSpace spaceType)
+bool BaseDeserializer::AllocateMultiNonmovableRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
+                                                     [[maybe_unused]] SerializedObjectSpace spaceType,
+                                                     bool isFirstAllocate)
 {
     ASSERT(spaceType == SerializedObjectSpace::NON_MOVABLE_SPACE);
     regionIndex = regionVector_.size();
     size_t allocatedSize = 0;
+    const std::vector<size_t> &remainSize = data_->GetRegionRemainSizeVectors().at(static_cast<int>(spaceType));
+    size_t numRegion = 0;
+    size_t totalRegion = remainSize.size();
     while (allocatedSize < spaceObjSize) {
         size_t leftSize = spaceObjSize - allocatedSize;
         size_t size = std::min(leftSize, Region::GetRegionAvailableSize());
         uintptr_t obj = space->Allocate(size, false);
-        if (obj > 0) {
-            if (allocatedSize == 0) {
-                // The first region
-                nonMovableSpaceBeginAddr_ = obj;
-            } else {
-                regionVector_.push_back(obj);
+        if (obj == 0) {
+            if (!isFirstAllocate) {
+                DeserializeFatalOutOfMemory(spaceObjSize);
             }
+            regionVector_.clear();
+            return false;
+        }
+        if (allocatedSize == 0) {
+            // The first region
+            nonMovableSpaceBeginAddr_ = obj;
         } else {
-            DeserializeFatalOutOfMemory(spaceObjSize);
+            regionVector_.push_back(obj);
         }
         allocatedSize += size;
+        if (numRegion < totalRegion) {
+            size_t wastedSize = remainSize[numRegion++];
+            // Fill actual used size
+            FreeObject::FillFreeObject(heap_, obj, size - wastedSize);
+            // Fill wasted size
+            FreeObject::FillFreeObject(heap_, obj + size - wastedSize, wastedSize);
+        } else {
+            // Fill last allocate size
+            FreeObject::FillFreeObject(heap_, obj, size);
+        }
     }
+    return true;
 }
 
 void BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
@@ -844,52 +893,59 @@ void BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_
     space->MergeDeserializeAllocateRegions(allocateRegions);
 }
 
-void BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize)
+bool BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize, bool isFirstAllocate)
 {
     OldSpace *space = heap_->GetOldSpace();
     uintptr_t object = space->AllocateSlow(oldSpaceSize, true);
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
-            DeserializeFatalOutOfMemory(oldSpaceSize);
+            if (!isFirstAllocate) {
+                DeserializeFatalOutOfMemory(oldSpaceSize);
+            }
+            return false;
         }
         oldSpaceBeginAddr_ = space->GetCurrentRegion()->GetBegin();
         FreeObject::FillFreeObject(heap_, oldSpaceBeginAddr_, space->GetCurrentRegion()->GetSize());
-        AllocateMultiRegion(space, oldSpaceSize, oldRegionIndex_, SerializedObjectSpace::OLD_SPACE);
-    } else {
-        FreeObject::FillFreeObject(heap_, object, oldSpaceSize);
-        oldSpaceBeginAddr_ = object;
+        return AllocateMultiRegion(space, oldSpaceSize, oldRegionIndex_,
+                                   SerializedObjectSpace::OLD_SPACE, isFirstAllocate);
     }
+    FreeObject::FillFreeObject(heap_, object, oldSpaceSize);
+    oldSpaceBeginAddr_ = object;
+    return true;
 }
 
-void BaseDeserializer::AllocateToNonMovableSpace(size_t nonMovableSpaceSize)
+bool BaseDeserializer::AllocateToNonMovableSpace(size_t nonMovableSpaceSize, bool isFirstAllocate)
 {
     SparseSpace *space = heap_->GetNonMovableSpace();
     uintptr_t object = space->Allocate(nonMovableSpaceSize, false);
     if (UNLIKELY(object == 0U)) {
-        AllocateMultiNonmovableRegion(space, nonMovableSpaceSize, nonMovableRegionIndex_,
-                                      SerializedObjectSpace::NON_MOVABLE_SPACE);
-    } else {
-        FreeObject::FillFreeObject(heap_, object, nonMovableSpaceSize);
-        nonMovableSpaceBeginAddr_ = object;
+        return AllocateMultiNonmovableRegion(space, nonMovableSpaceSize, nonMovableRegionIndex_,
+                                             SerializedObjectSpace::NON_MOVABLE_SPACE, isFirstAllocate);
     }
+    FreeObject::FillFreeObject(heap_, object, nonMovableSpaceSize);
+    nonMovableSpaceBeginAddr_ = object;
+    return true;
 }
 
-void BaseDeserializer::AllocateToMachineCodeSpace(size_t machineCodeSpaceSize)
+bool BaseDeserializer::AllocateToMachineCodeSpace(size_t machineCodeSpaceSize, bool isFirstAllocate)
 {
     SparseSpace *space = heap_->GetMachineCodeSpace();
     uintptr_t object = space->Allocate(machineCodeSpaceSize, false);
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
-            DeserializeFatalOutOfMemory(machineCodeSpaceSize);
+            if (!isFirstAllocate) {
+                DeserializeFatalOutOfMemory(machineCodeSpaceSize);
+            }
+            return false;
         }
         machineCodeSpaceBeginAddr_ = space->GetCurrentRegion()->GetBegin();
         FreeObject::FillFreeObject(heap_, machineCodeSpaceBeginAddr_, space->GetCurrentRegion()->GetSize());
-        AllocateMultiRegion(space, machineCodeSpaceSize, machineCodeRegionIndex_,
-                            SerializedObjectSpace::MACHINE_CODE_SPACE);
-    } else {
-        FreeObject::FillFreeObject(heap_, object, machineCodeSpaceSize);
-        machineCodeSpaceBeginAddr_ = object;
+        return AllocateMultiRegion(space, machineCodeSpaceSize, machineCodeRegionIndex_,
+                                   SerializedObjectSpace::MACHINE_CODE_SPACE, isFirstAllocate);
     }
+    FreeObject::FillFreeObject(heap_, object, machineCodeSpaceSize);
+    machineCodeSpaceBeginAddr_ = object;
+    return true;
 }
 
 void BaseDeserializer::AllocateToSharedOldSpace(size_t sOldSpaceSize)

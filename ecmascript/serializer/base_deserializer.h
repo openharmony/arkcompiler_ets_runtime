@@ -108,6 +108,9 @@ private:
     void ResetNativePointerBuffer(uintptr_t objAddr, void *bufferPointer);
 
     void AllocateToDifferentSpaces();
+    bool AllocateToDifferentLocalSpaces(bool isFirstAllocate);
+    void AllocateToDifferentSharedSpaces();
+    void AllocateToDifferentCMCSpaces();
     enum class RegionType : uint8_t {
         RegularRegion,
         PinRegion,
@@ -115,17 +118,18 @@ private:
     void AllocateToRegularSpace(size_t regularSpaceSize);
     void AllocateToPinSpace(size_t pinSpaceSize);
     uintptr_t AllocateMultiCMCRegion(size_t spaceObjSize, size_t &regionIndex, RegionType regionType);
-    void AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
-                             SerializedObjectSpace spaceType);
-    void AllocateMultiNonmovableRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
-                                       SerializedObjectSpace spaceType);
+    bool AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
+                             SerializedObjectSpace spaceType, bool isFirstAllocate);
+    bool AllocateMultiNonmovableRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
+                                       SerializedObjectSpace spaceType, bool isFirstAllocate);
     void AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex,
                                    SerializedObjectSpace spaceType);
-    void AllocateToOldSpace(size_t oldSpaceSize);
-    void AllocateToNonMovableSpace(size_t nonMovableSpaceSize);
-    void AllocateToMachineCodeSpace(size_t machineCodeSpaceSize);
+    bool AllocateToOldSpace(size_t oldSpaceSize, bool isFirstAllocate);
+    bool AllocateToNonMovableSpace(size_t nonMovableSpaceSize, bool isFirstAllocate);
+    bool AllocateToMachineCodeSpace(size_t machineCodeSpaceSize, bool isFirstAllocate);
     void AllocateToSharedOldSpace(size_t sOldSpaceSize);
     void AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSize);
+
     bool GetAndResetWeak()
     {
         bool isWeak = isWeak_;
