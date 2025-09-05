@@ -161,7 +161,8 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
                 break;
             }
             case JSHClass::TRANSTIONS_OFFSET:
-            case JSHClass::PARENT_OFFSET: {
+            case JSHClass::PARENT_OFFSET:
+            case JSHClass::DEPENDENT_INFOS_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
                 slot++;
