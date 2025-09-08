@@ -274,6 +274,19 @@ if (globalThis["ArkPrivate"] != undefined) {
     Object.assign(v1,v5)
     print(JSON.stringify(v1))
     const v6 = new Deque()
+
+    {
+        try {
+            const v1 = new Deque();
+            const v4 = Array(4);
+            v4.__proto__ = v1;
+            JSON.stringify(v4);
+            map.set("test deque as _proto_ stringify:", false);    
+        } catch (e) {
+
+        }
+    }
+
     try {
         v6[4294967295]
     } catch (error) {
