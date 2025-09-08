@@ -84,9 +84,8 @@ public:
     bool ShouldIgnoreRequest(GCRequest& request) override;
     bool MarkObject(BaseObject* obj, size_t cellCount = 0) const override;
 
-    void EnumRefFieldRoot(RefField<>& ref, RootSet& rootSet) const override;
-    void TraceRefField(BaseObject* obj, RefField<>& ref, WorkStack& workStack, WeakStack& weakStack) const;
-    void TraceObjectRefFields(BaseObject* obj, WorkStack& workStack, WeakStack& weakStack) override;
+    TraceRefFieldVisitor CreateTraceObjectRefFieldsVisitor(WorkStack *workStack, WeakStack *weakStack) override;
+    void TraceObjectRefFields(BaseObject *obj, TraceRefFieldVisitor *data) override;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     void TraceXRef(RefField<>& ref, WorkStack& workStack) const;
     void TraceObjectXRef(BaseObject* obj, WorkStack& workStack) override;
@@ -186,9 +185,30 @@ private:
     template<bool copy>
     bool TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& ref, BaseObject*& oldRef, BaseObject*& newRef) const;
 
-    void EnumRoots(WorkStack& workStack);
+    enum class EnumRootsPolicy {
+        NO_STW_AND_NO_FLIP_MUTATOR,
+        STW_AND_NO_FLIP_MUTATOR,
+        STW_AND_FLIP_MUTATOR,
+    };
 
-    void TraceHeap(WorkStack& workStack);
+    template <EnumRootsPolicy policy>
+    CArrayList<BaseObject *> EnumRoots();
+
+    template <void (&rootsVisitFunc)(const common::RefFieldVisitor &)>
+    void EnumRootsImpl(const common::RefFieldVisitor &visitor)
+    {
+        // assemble garbage candidates.
+        reinterpret_cast<RegionSpace &>(theAllocator_).AssembleGarbageCandidates();
+        reinterpret_cast<RegionSpace &>(theAllocator_).PrepareTrace();
+
+        COMMON_PHASE_TIMER("enum roots & update old pointers within");
+        TransitionToGCPhase(GCPhase::GC_PHASE_ENUM, true);
+
+        rootsVisitFunc(visitor);
+    }
+    CArrayList<CArrayList<BaseObject *>> EnumRootsFlip(const common::RefFieldVisitor &visitor);
+
+    void TraceHeap(const CArrayList<BaseObject *> &collectedRoots);
     void PostTrace();
     void RemarkAndPreforwardStaticRoots(WorkStack& workStack) override;
     void Preforward();
@@ -198,8 +218,7 @@ private:
     void PrepareFix();
     void FixHeap(); // roots and ref-fields
     WeakRefFieldVisitor GetWeakRefFieldVisitor();
-    void PreforwardFlip(WorkStack& workStack);
-    void EnumRootsFlip(WorkStack& workStack);
+    void PreforwardFlip();
 
     void CollectGarbageWithXRef();
 

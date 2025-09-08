@@ -15,7 +15,6 @@
 
 #include "common_components/base_runtime/base_runtime_param.h"
 
-#include "common_components/base/globals.h"
 #include "common_components/platform/cpu.h"
 
 namespace common {
@@ -26,6 +25,11 @@ size_t BaseRuntimeParam::InitHeapSize()
     size_t initHeapSize =
         systemSize > 1 * GB ? std::min(systemSize * DEFAULT_HEAP_SIZE_PERCENTAGE / KB, 1.2 * MB) : 64 * KB;
     return initHeapSize;
+}
+
+void BaseRuntimeParam::SetConfigHeapSize(RuntimeParam &param, size_t configHeapSize)
+{
+    param.heapParam.heapSize = std::min(configHeapSize, MAX_HEAP_POOL_SIZE) / KB;
 }
 
 /**

@@ -26,7 +26,7 @@
 #include "common_components/heap/w_collector/preforward_barrier.h"
 #include "common_components/heap/w_collector/copy_barrier.h"
 #include "common_components/mutator/mutator_manager.h"
-#include "common_interfaces/base_runtime.h"
+
 #if defined(_WIN64)
 #include <windows.h>
 #include <psapi.h>
@@ -106,9 +106,12 @@ public:
     void NotifyNativeAllocation(size_t bytes) override;
     void NotifyNativeFree(size_t bytes) override;
     void NotifyNativeReset(size_t oldBytes, size_t newBytes) override;
-    size_t GetNotifiedNativeSize() override;
+    size_t GetNotifiedNativeSize() const override;
     void SetNativeHeapThreshold(size_t newThreshold) override;
-    size_t GetNativeHeapThreshold() override;
+    size_t GetNativeHeapThreshold() const override;
+    void ChangeGCParams(bool isBackground) override;
+    void RecordAliveSizeAfterLastGC(size_t aliveBytes) override;
+    bool CheckAndTriggerHintGC(MemoryReduceDegree degree) override;
 
 private:
     // allocator is actually a subspace in heap
@@ -213,7 +216,7 @@ void HeapImpl::NotifyNativeReset(size_t oldBytes, size_t newBytes)
     heuristicGCPolicy_.NotifyNativeAllocation(newBytes);
 }
 
-size_t HeapImpl::GetNotifiedNativeSize()
+size_t HeapImpl::GetNotifiedNativeSize() const
 {
     return heuristicGCPolicy_.GetNotifiedNativeSize();
 }
@@ -223,9 +226,24 @@ void HeapImpl::SetNativeHeapThreshold(size_t newThreshold)
     heuristicGCPolicy_.SetNativeHeapThreshold(newThreshold);
 }
 
-size_t HeapImpl::GetNativeHeapThreshold()
+size_t HeapImpl::GetNativeHeapThreshold() const
 {
     return heuristicGCPolicy_.GetNativeHeapThreshold();
+}
+
+void HeapImpl::ChangeGCParams(bool isBackground)
+{
+    heuristicGCPolicy_.ChangeGCParams(isBackground);
+}
+
+void HeapImpl::RecordAliveSizeAfterLastGC(size_t aliveBytes)
+{
+    heuristicGCPolicy_.RecordAliveSizeAfterLastGC(aliveBytes);
+}
+
+bool HeapImpl::CheckAndTriggerHintGC(MemoryReduceDegree degree)
+{
+    return heuristicGCPolicy_.CheckAndTriggerHintGC(degree);
 }
 
 Collector& HeapImpl::GetCollector() { return collectorProxy_.GetCurrentCollector(); }

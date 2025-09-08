@@ -16,6 +16,7 @@
 #ifndef COMMON_COMPONENTS_BASE_RUNTIME_BASE_RUNTIME_PARAM_H
 #define COMMON_COMPONENTS_BASE_RUNTIME_BASE_RUNTIME_PARAM_H
 
+#include "common_components/base/globals.h"
 #include "common_interfaces/base/common.h"
 #include "common_interfaces/base/runtime_param.h"
 
@@ -24,6 +25,8 @@ class BaseRuntimeParam {
 public:
     static RuntimeParam DefaultRuntimeParam();
     static size_t InitHeapSize();
+    static void SetConfigHeapSize(RuntimeParam &param, size_t configHeapSize);
+    static constexpr size_t MAX_HEAP_POOL_SIZE = 3.6 * GB;
 
 private:
     BaseRuntimeParam() = delete;
