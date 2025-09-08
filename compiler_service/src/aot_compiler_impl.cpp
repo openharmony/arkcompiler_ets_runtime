@@ -37,6 +37,7 @@ AotCompilerImpl& AotCompilerImpl::GetInstance()
     return aotCompiler;
 }
 
+// LCOV_EXCL_START
 void AotCompilerImpl::DropCapabilities() const
 {
     LOG_SA(INFO) << "begin to drop capabilities";
@@ -154,6 +155,7 @@ bool AotCompilerImpl::VerifyCompilerModeAndPkgInfo(const std::unordered_map<std:
     }
     return true;
 }
+// LCOV_EXCL_STOP
 
 int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                                std::vector<int16_t> &sigData)
@@ -235,6 +237,7 @@ int32_t AotCompilerImpl::NeedReCompile(const std::string& args, bool& sigData)
     return ERR_OK;
 }
 
+// LCOV_EXCL_START
 int32_t AotCompilerImpl::AOTLocalCodeSign(std::vector<int16_t> &sigData) const
 {
 #ifdef CODE_SIGN_ENABLE
@@ -370,4 +373,5 @@ bool AotCompilerImpl::IsAllowAotCompiler() const
 {
     return allowAotCompiler_.load();
 }
+// LCOV_EXCL_STOP
 } // namespace OHOS::ArkCompiler
