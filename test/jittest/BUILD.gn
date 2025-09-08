@@ -33,6 +33,7 @@ group("ark_jit_ts_test") {
     "try_catch_throw",
     "try_catch_throw2",
     "ldobjbyname",
+    "ldobjbyname_poly",
     "lazy_deopt_1",
     "lazy_deopt_2",
     "lazy_deopt_3",

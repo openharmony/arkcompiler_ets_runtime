@@ -1394,6 +1394,7 @@ public:
         virtual bool IsMono() const = 0;
         virtual bool IsReceiverEqHolder(size_t index) const = 0;
         virtual void FetchPGORWTypesDual() = 0;
+        virtual void DeleteRedundantHClass(const std::vector<bool> &infoIsMerged) = 0;
         virtual bool GenerateObjectAccessInfo() = 0;
         virtual JSHClass* GetReceiverHClass(size_t index) const = 0;
         virtual JSHClass* GetHolderHClass(size_t index) const = 0;
@@ -1439,6 +1440,7 @@ public:
         }
 
         void FetchPGORWTypesDual() override;
+        void DeleteRedundantHClass(const std::vector<bool> &infoIsMerged) override;
         bool GenerateObjectAccessInfo() override;
 
     private:
@@ -1482,6 +1484,7 @@ public:
         }
 
         void FetchPGORWTypesDual() override;
+        void DeleteRedundantHClass(const std::vector<bool> &infoIsMerged) override;
         bool GenerateObjectAccessInfo() override;
 
     private:
@@ -1586,12 +1589,7 @@ public:
             }
             infoIsMerged.at(i) = isMerged;
         }
-        for (int i = accessInfos_.size() - 1; i >= 0; i--) {
-            if (infoIsMerged[i]) {
-                accessInfos_.erase(accessInfos_.begin() + i);
-                checkerInfos_.erase(checkerInfos_.begin() + i);
-            }
-        }
+        strategy_->DeleteRedundantHClass(infoIsMerged);
     }
 
     JSHClass* GetReceiverHClass(size_t index) const

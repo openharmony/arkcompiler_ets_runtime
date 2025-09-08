@@ -849,6 +849,43 @@ void LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
     }
 }
 
+void LoadObjPropertyTypeInfoAccessor::AotAccessorStrategy::DeleteRedundantHClass(const std::vector<bool> &infoIsMerged)
+{
+    auto accessIt = parent_.accessInfos_.begin();
+    auto checkerIt = parent_.checkerInfos_.begin();
+    auto mergedIt = infoIsMerged.begin();
+    while (accessIt != parent_.accessInfos_.end()) {
+        if (*mergedIt) {
+            accessIt = parent_.accessInfos_.erase(accessIt);
+            checkerIt = parent_.checkerInfos_.erase(checkerIt);
+        } else {
+            ++accessIt;
+            ++checkerIt;
+        }
+        ++mergedIt;
+    }
+}
+
+void LoadObjPropertyTypeInfoAccessor::JitAccessorStrategy::DeleteRedundantHClass(const std::vector<bool> &infoIsMerged)
+{
+    auto accessIt = parent_.accessInfos_.begin();
+    auto checkerIt = parent_.checkerInfos_.begin();
+    auto jitTypeIt = parent_.jitTypes_.begin();
+    auto mergedIt = infoIsMerged.begin();
+    while (accessIt != parent_.accessInfos_.end()) {
+        if (*mergedIt) {
+            accessIt = parent_.accessInfos_.erase(accessIt);
+            checkerIt = parent_.checkerInfos_.erase(checkerIt);
+            jitTypeIt = parent_.jitTypes_.erase(jitTypeIt);
+        } else {
+            ++accessIt;
+            ++checkerIt;
+            ++jitTypeIt;
+        }
+        ++mergedIt;
+    }
+}
+
 bool LoadObjPropertyTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
 {
     JSTaggedValue key = JSTaggedValue::Undefined();
