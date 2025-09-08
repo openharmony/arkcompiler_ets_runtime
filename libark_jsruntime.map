@@ -19,7 +19,7 @@
       panda::ecmascript::COMPILER_HELP_HEAD_MSG*;
       panda::ecmascript::g_isEnableCMCGC*;
       panda::ArkCrashHolder*;
-
+      panda::ecmascript::ConcurrentMonitor::*;
       panda::ArrayBufferRef::*;
       panda::SendableArrayBufferRef::*;
       panda::BufferRef::*;

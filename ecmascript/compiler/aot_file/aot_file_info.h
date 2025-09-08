@@ -24,6 +24,79 @@
 #include "ecmascript/stackmap/ark_stackmap.h"
 
 namespace panda::ecmascript {
+class PUBLIC_API ConcurrentMonitor {
+public:
+    void RegisterThread()
+    {
+#ifndef NDEBUG
+        std::lock_guard<std::mutex> lock(mtx_);
+        ++registeredThreads_;
+#endif
+    }
+
+    void UnregisterThread()
+    {
+#ifndef NDEBUG
+        std::unique_lock<std::mutex> lock(mtx_);
+        --registeredThreads_;
+        if (waitingThreads_ == registeredThreads_)
+        {
+            ++generation_;
+            waitingThreads_ = 0;
+            cv_.notify_all();
+        }
+#endif
+    }
+
+    void ArriveAndWait()
+    {
+#ifndef NDEBUG
+        std::unique_lock<std::mutex> lock(mtx_);
+        if (registeredThreads_ == 0) {
+            return;
+        }
+        int gen = generation_;
+        ++waitingThreads_;
+        if (waitingThreads_ == registeredThreads_) {
+            ++generation_;
+            waitingThreads_ = 0;
+            cv_.notify_all();
+        } else {
+            // 等待其他线程
+            cv_.wait(lock, [&] {
+                return gen != generation_;
+            });
+        }
+#endif
+    }
+    static ConcurrentMonitor monitor_;
+
+    class Scope {
+    public:
+        Scope()
+        {
+#ifndef NDEBUG
+            monitor_.RegisterThread();
+#endif
+        }
+
+        ~Scope()
+        {
+#ifndef NDEBUG
+            monitor_.UnregisterThread();
+#endif
+        }
+    };
+private:
+#ifndef NDEBUG
+    std::mutex mtx_;
+    std::condition_variable cv_;
+    int registeredThreads_ = 0;
+    int waitingThreads_ = 0;
+    int generation_ = 0;
+#endif
+};
+
 class PUBLIC_API AOTFileInfo {
 public:
     using FuncEntryDes = ecmascript::FuncEntryDes;
