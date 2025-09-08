@@ -65,10 +65,12 @@ private:
 
 class HeapProfilerFriendTest {
 public:
-    explicit HeapProfilerFriendTest(const EcmaVM *vm) : heapProfiler(vm) {}
+    explicit HeapProfilerFriendTest(const EcmaVM *vm) : heapProfiler(vm), vm_(vm) {}
 
     HeapSnapshot *MakeHeapSnapshotTest(HeapProfiler::SampleType type, DumpSnapShotOption dumpOption)
     {
+        heapProfiler.ForceFullGC(vm_);
+        heapProfiler.ForceSharedGC();
         return heapProfiler.MakeHeapSnapshot(type, dumpOption);
     }
 
@@ -83,6 +85,7 @@ public:
     }
 private:
     HeapProfiler heapProfiler;
+    const EcmaVM *vm_;
 };
 }
 
