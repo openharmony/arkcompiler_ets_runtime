@@ -176,9 +176,9 @@ HWTEST_F_L0(MarkingBarrierTest, WriteBarrier_TEST1)
     constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
 
     RefField<> field(MAddress(0));
-    markingBarrier->WriteBarrier(nullptr, field, nullptr);
+    markingBarrier->WriteBarrier(nullptr, nullptr, field, nullptr);
     BaseObject *obj = reinterpret_cast<BaseObject *>(TAG_HEAP_OBJECT_MASK);
-    markingBarrier->WriteBarrier(obj, field, obj);
+    markingBarrier->WriteBarrier(nullptr, obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 #endif
 }
@@ -193,17 +193,17 @@ HWTEST_F_L0(MarkingBarrierTest, WriteBarrier_TEST2)
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> normalField(obj);
-    markingBarrier->WriteBarrier(obj, normalField, obj);
+    markingBarrier->WriteBarrier(nullptr, obj, normalField, obj);
     EXPECT_TRUE(obj != nullptr);
 
     BaseObject weakObj;
     RefField<false> weakField(MAddress(0));
-    markingBarrier->WriteBarrier(&weakObj, weakField, &weakObj);
+    markingBarrier->WriteBarrier(nullptr, &weakObj, weakField, &weakObj);
     EXPECT_TRUE(weakObj != nullptr);
 
     BaseObject nonTaggedObj;
     RefField<false> nonTaggedField(&nonTaggedObj);
-    markingBarrier->WriteBarrier(nullptr, nonTaggedField, &nonTaggedObj);
+    markingBarrier->WriteBarrier(nullptr, nullptr, nonTaggedField, &nonTaggedObj);
     EXPECT_TRUE(nonTaggedObj != nullptr);
 #endif
 }
@@ -219,7 +219,23 @@ HWTEST_F_L0(MarkingBarrierTest, WriteBarrier_TEST3)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<> field(obj);
     Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
-    markingBarrier->WriteBarrier(obj, field, obj);
+    markingBarrier->WriteBarrier(nullptr, obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+#endif
+}
+
+HWTEST_F_L0(MarkingBarrierTest, WriteBarrier_TEST4)
+{
+    MockCollector collector;
+    auto markingBarrier = std::make_unique<MarkingBarrier>(collector);
+    ASSERT_TRUE(markingBarrier != nullptr);
+
+#ifndef ARK_USE_SATB_BARRIER
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<> field(obj);
+    Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
+    markingBarrier->WriteBarrier(Mutator::GetMutator(), obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 #endif
 }

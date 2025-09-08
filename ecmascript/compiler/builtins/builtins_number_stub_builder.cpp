@@ -422,7 +422,7 @@ GateRef BuiltinsNumberStubBuilder::NumberToString(GateRef number, GateRef radix)
                 }
             }
             Bind(&loopEnd);
-            LoopEndWithCheckSafePoint(&loopHead, env, glue_);
+            LoopEnd(&loopHead);
             Bind(&loopExit);
             {
                 NewObjectStubBuilder newBuilder(this);

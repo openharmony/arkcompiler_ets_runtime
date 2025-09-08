@@ -33,7 +33,7 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
 {
     if (UNLIKELY(thread->IsEnableCMCGC())) {
         common::BaseRuntime::WriteBarrier(obj, reinterpret_cast<void*>(ToUintPtr(obj) + offset),
-                                        reinterpret_cast<void*>(value));
+                                          reinterpret_cast<void*>(value), thread->GetMutator());
         // Ignore barrier for cmc gc allocation
         return;
     }

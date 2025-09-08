@@ -84,7 +84,7 @@ void RemarkBarrier::WriteRefField(BaseObject *obj, RefField<false> &field, BaseO
     field.SetFieldValue(newField.GetFieldValue());
 }
 #ifdef ARK_USE_SATB_BARRIER
-void RemarkBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void RemarkBarrier::WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     RefField<> tmpField(field);
     BaseObject* rememberedObject = nullptr;
@@ -93,7 +93,9 @@ void RemarkBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseOb
         return;
     }
     UpdateRememberSet(obj, ref);
-    Mutator* mutator = Mutator::GetMutator();
+    if (UNLIKELY(mutator == nullptr)) {
+        mutator = Mutator::GetMutator();
+    }
     if (rememberedObject != nullptr) {
         mutator->RememberObjectInSatbBuffer(rememberedObject);
     }
@@ -108,14 +110,16 @@ void RemarkBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseOb
     DLOG(BARRIER, "write obj %p ref-field@%p: %#zx -> %p", obj, &field, rememberedObject, ref);
 }
 #else
-void RemarkBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void RemarkBarrier::WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     if (!Heap::IsTaggedObject((HeapAddress)ref)) {
         return;
     }
     UpdateRememberSet(obj, ref);
     ref = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(ref) & ~TAG_WEAK);
-    Mutator* mutator = Mutator::GetMutator();
+    if (UNLIKELY(mutator == nullptr)) {
+        mutator = Mutator::GetMutator();
+    }
     mutator->RememberObjectInSatbBuffer(ref);
     DLOG(BARRIER, "write obj %p ref-field@%p: -> %p", obj, &field, ref);
 }

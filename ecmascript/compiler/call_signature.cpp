@@ -3503,11 +3503,12 @@ DEF_CALL_SIGNATURE(MarkRSetCardTable)
 
 DEF_CALL_SIGNATURE(MarkInBuffer)
 {
-    // 3 : 3 input parameters
-    CallSignature MarkInBuffer("MarkInBuffer", 0, 1, ArgumentsOrder::DEFAULT_ORDER,
+    // 2 : 2 input parameters
+    CallSignature MarkInBuffer("MarkInBuffer", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
                                          VariableType::BOOL());
     *callSign = MarkInBuffer;
-    std::array<VariableType, 1> params = { // 1 : 1 input parameters
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
     };
     callSign->SetParameters(params.data());
@@ -3519,10 +3520,11 @@ DEF_CALL_SIGNATURE(MarkInBuffer)
 DEF_CALL_SIGNATURE(BatchMarkInBuffer)
 {
     // 3 : 3 input parameters
-    CallSignature BatchMarkInBuffer("BatchMarkInBuffer", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
+    CallSignature BatchMarkInBuffer("BatchMarkInBuffer", 0, 3, ArgumentsOrder::DEFAULT_ORDER,
                                     VariableType::BOOL());
     *callSign = BatchMarkInBuffer;
-    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+    std::array<VariableType, 3> params = { // 3 : 3 input parameters
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::INT32(),
     };

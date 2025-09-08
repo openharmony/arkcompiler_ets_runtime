@@ -224,6 +224,7 @@ void Runtime::RegisterThread(JSThread* newThread)
     if (g_isEnableCMCGC) {
         ThreadHolder* threadHolder = newThread->GetThreadHolder();
         threadHolder->BindMutator();
+        newThread->SetMutator(reinterpret_cast<common::Mutator*>(threadHolder->GetMutator()));
         newThread->SetAllocBuffer(threadHolder->GetAllocBuffer());
         newThread->OnHeapCreated(common::Heap::heapStartAddr_);
         newThread->OnHeapExtended(common::Heap::heapCurrentEnd_);

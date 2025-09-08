@@ -177,7 +177,7 @@ HWTEST_F_L0(PostMarkingBarrierTest, WriteBarrier_TEST1)
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<> field(obj);
-    postMarkingBarrier->WriteBarrier(obj, field, obj);
+    postMarkingBarrier->WriteBarrier(nullptr, obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 }
 
@@ -191,7 +191,7 @@ HWTEST_F_L0(PostMarkingBarrierTest, WriteBarrier_TEST2)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<> field(obj);
     Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
-    postMarkingBarrier->WriteBarrier(obj, field, obj);
+    postMarkingBarrier->WriteBarrier(nullptr, obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 }
 

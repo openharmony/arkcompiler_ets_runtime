@@ -126,7 +126,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 
 #define UPDATE_HOTNESS(_sp, callback)                                                                  \
     varHotnessCounter = Int32Add(offset, *varHotnessCounter);                                          \
-    BRANCH(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                         \
+    BRANCH_UNLIKELY(Int32LessThan(*varHotnessCounter, Int32(0)), &slowPath, &dispatch);                \
     Bind(&slowPath);                                                                                   \
     {                                                                                                  \
         GateRef func = GetFunctionFromFrame(glue, GetFrame(_sp));                                      \
@@ -135,9 +135,9 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                          \
         Label initialized(env);                                                                        \
         Label callRuntime(env);                                                                        \
-        BRANCH(BitOr(TaggedIsUndefined(*varProfileTypeInfo),                                           \
-                     Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),            \
-               &callRuntime, &initialized);                                                            \
+        BRANCH_UNLIKELY(BitOr(TaggedIsUndefined(*varProfileTypeInfo),                                  \
+                              Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),   \
+                        &callRuntime, &initialized);                                                   \
         Bind(&callRuntime);                                                                            \
         if (!(callback).IsEmpty()) {                                                                   \
             varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), {func});   \
@@ -146,7 +146,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         }                                                                                              \
         Label handleException(env);                                                                    \
         Label noException(env);                                                                        \
-        BRANCH(HasPendingException(glue), &handleException, &noException);                             \
+        BRANCH_UNLIKELY(HasPendingException(glue), &handleException, &noException);                    \
         Bind(&handleException);                                                                        \
         {                                                                                              \
             DISPATCH_LAST();                                                                           \
@@ -158,9 +158,13 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         Bind(&initialized);                                                                            \
         Label callCheckSafePoint(env);                                                                 \
         Label afterCheckSafePoint(env);                                                                \
+        Label enableCMCGC(env);                                                                        \
         BRANCH_UNLIKELY(LoadPrimitive(VariableType::BOOL(), glue, IntPtr(                              \
             JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),                              \
-            &callCheckSafePoint, &afterCheckSafePoint);                                                \
+            &enableCMCGC, &afterCheckSafePoint);                                                       \
+        Bind(&enableCMCGC);                                                                            \
+        BRANCH_UNLIKELY(Int32Equal(Int32(ThreadFlag::SUSPEND_REQUEST),                                 \
+            CheckSuspendForCMCGC(glue)), &callCheckSafePoint, &afterCheckSafePoint);                   \
         Bind(&callCheckSafePoint);                                                                     \
         {                                                                                              \
             CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});                                          \
@@ -244,8 +248,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     Label executeBCByInterpreter(env);                                                                               \
     GateRef curFrame = GetFrame(sp);                                                                                 \
     GateRef curFunction = GetFunctionFromFrame(glue, curFrame);                                                      \
-    GateRef curMethod = Load(VariableType::JS_ANY(), glue, curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));      \
-    Branch(TaggedIsUndefined(profileTypeInfo), &executeBCByInterpreter, &getOsrCache);                               \
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &executeBCByInterpreter, &getOsrCache);                               \
     Bind(&getOsrCache);                                                                                              \
     {                                                                                                                \
         GateRef profileTypeInfoLength = GetLengthOfTaggedArray(profileTypeInfo);                                     \
@@ -253,7 +256,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         GateRef relativeOffset = PtrMul(ZExtInt32ToPtr(typeInfoNum), IntPtr(JSTaggedValue::TaggedTypeSize()));       \
         GateRef osrCacheOffset = PtrAdd(relativeOffset, IntPtr(TaggedArray::DATA_OFFSET));                           \
         varOsrCache = LoadPrimitive(VariableType::NATIVE_POINTER(), profileTypeInfo, osrCacheOffset);                \
-        Branch(TaggedIsUndefinedOrNull(*varOsrCache), &executeBCByInterpreter, &getMachineCode);                     \
+        BRANCH_LIKELY(TaggedIsUndefinedOrNull(*varOsrCache), &executeBCByInterpreter, &getMachineCode);              \
     }                                                                                                                \
     Bind(&getMachineCode);                                                                                           \
     {                                                                                                                \
@@ -262,6 +265,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         Label compareOffset(env);                                                                                    \
         Label addIndex(env);                                                                                         \
         Label traverseOsrCacheAgain(env);                                                                            \
+        GateRef curMethod = Load(VariableType::JS_ANY(), glue, curFunction, IntPtr(JSFunctionBase::METHOD_OFFSET));  \
         GateRef fistPC = LoadPrimitive(VariableType::NATIVE_POINTER(), curMethod,                                    \
                               IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));                              \
         GateRef jmpOffsetInFunc = TruncPtrToInt32(PtrSub(pc, fistPC));                                               \

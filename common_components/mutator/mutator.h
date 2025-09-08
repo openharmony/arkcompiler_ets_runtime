@@ -314,7 +314,7 @@ private:
     void RememberObjectImpl(const BaseObject* obj)
     {
         if (LIKELY_CC(Heap::IsHeapAddress(obj))) {
-            if (SatbBuffer::Instance().ShouldEnqueue(obj)) {
+            if (SatbBuffer::ShouldEnqueue(obj)) {
                 SatbBuffer::Instance().EnsureGoodNode(satbNode_);
                 satbNode_->Push(obj);
             }

@@ -2761,6 +2761,29 @@ host_unittest_action("JS_Barrier_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("CMC_Barrier_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "cmcbarrier_test.cpp",
+  ]
+
+  configs = [ "../../:ecma_test_config" ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("GC_ModuleManagerMap_Test") {
   module_out_path = module_output_path
 
@@ -3505,6 +3528,7 @@ group("unittest") {
     ":ECMA_StringTable_Test",
 
     ":BASE_String_Test",
+    ":CMC_Barrier_Test",
     ":ECMA_VM_Test",
     ":GC_ModuleManagerMap_Test",
     ":GC_ConcurrentMarking_Test",

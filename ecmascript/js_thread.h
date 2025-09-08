@@ -119,6 +119,7 @@ using ThreadHolder = common::ThreadHolder;
 using ThreadFlag = common::ThreadFlag;
 using ThreadState = common::ThreadState;
 using ThreadStateAndFlags = common::ThreadStateAndFlags;
+using Mutator = common::Mutator;
 static constexpr uint32_t THREAD_STATE_OFFSET = common::THREAD_STATE_OFFSET;
 static constexpr uint32_t THREAD_FLAGS_MASK = common::THREAD_FLAGS_MASK;
 
@@ -1728,6 +1729,17 @@ public:
         return reinterpret_cast<ThreadHolder *>(glueData_.threadHolder_);
     }
 
+    void SetMutator(Mutator *mutator)
+    {
+        mutator_ = mutator;
+    }
+
+    Mutator *GetMutator() const
+    {
+        ASSERT(mutator_ != nullptr);
+        return mutator_;
+    }
+
     // to impl
     void Visit(common::CommonRootVisitor visitor)
     {
@@ -2035,6 +2047,7 @@ private:
     GlueData glueData_;
     std::atomic<ThreadId> id_ {0};
     EcmaVM *vm_ {nullptr};
+    Mutator *mutator_ {nullptr};
     void *env_ {nullptr};
     Area *regExpCacheArea_ {nullptr};
 

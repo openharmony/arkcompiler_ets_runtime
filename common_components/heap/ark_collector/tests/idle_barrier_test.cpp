@@ -249,7 +249,7 @@ HWTEST_F_L0(IdleBarrierTest, WriteBarrier_TEST1)
 
     RefField<> field(MAddress(0));
     BaseObject *obj = reinterpret_cast<BaseObject *>(TAG_HEAP_OBJECT_MASK);
-    idleBarrier->WriteBarrier(obj, field, obj);
+    idleBarrier->WriteBarrier(nullptr, obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 }
 
@@ -262,7 +262,7 @@ HWTEST_F_L0(IdleBarrierTest, WriteBarrier_TEST2)
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<> field(obj);
-    idleBarrier->WriteBarrier(obj, field, obj);
+    idleBarrier->WriteBarrier(nullptr, obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 }
 

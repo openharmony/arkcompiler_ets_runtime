@@ -65,7 +65,7 @@ void PostMarkingBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, 
     field.SetFieldValue(newField.GetFieldValue());
 }
 
-void PostMarkingBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void PostMarkingBarrier::WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
         UpdateRememberSet(obj, ref);

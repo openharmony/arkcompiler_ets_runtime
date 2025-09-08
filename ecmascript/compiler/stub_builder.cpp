@@ -2061,7 +2061,7 @@ void StubBuilder::CMCSetValueWithBarrier(GateRef glue, GateRef obj, [[maybe_unus
     BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
     Bind(&markInBuffer);
     {
-        CallNGCRuntime(glue, RTSTUB_ID(MarkInBuffer), {value});
+        CallNGCRuntime(glue, RTSTUB_ID(MarkInBuffer), {glue, value});
         Jump(&exit);
     }
     Bind(&exit);
@@ -2084,6 +2084,9 @@ void StubBuilder::CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
     GateRef gcPhase = GetGCPhase(glue);
     Label checkOldToYoung(env);
+    Label objInOld(env);
+    BRANCH(BoolNot(CMCIsInYoungSpace(objRegionType)), &objInOld, &notMarkRSet);
+    Bind(&objInOld);
     BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &checkOldToYoung, &notMarkRSet);
     Bind(&checkOldToYoung);
     Jump(&loopHead);
@@ -2095,8 +2098,8 @@ void StubBuilder::CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef
         GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
         BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
         Bind(&isTaggedObject);
-        GateRef isOldToYoung = IsOldToYoung(objRegionType, GetCMCRegionType(ref));
-        BRANCH_UNLIKELY(isOldToYoung, &markRSet, &loopEnd);
+        GateRef refRegionType = GetCMCRegionType(ref);
+        BRANCH(CMCIsInYoungSpace(refRegionType), &markRSet, &loopEnd);
         Bind(&markRSet);
         MarkRSetCardTable(dstObj, &notMarkRSet);
         Bind(&loopEnd);
@@ -2108,7 +2111,7 @@ void StubBuilder::CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef
     GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
     BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
     Bind(&markInBuffer);
-    CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {TaggedCastToIntPtr(src), count});
+    CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {glue, TaggedCastToIntPtr(src), count});
     Jump(&exit);
     Bind(&exit);
     env->SubCfgExit();
@@ -2134,6 +2137,9 @@ void StubBuilder::CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj
     Bind(&notIdlePhase);
     {
         Label checkOldToYoung(env);
+        Label objInOld(env);
+        BRANCH(BoolNot(CMCIsInYoungSpace(objRegionType)), &objInOld, &notMarkRSet);
+        Bind(&objInOld);
         BRANCH(ShouldUpdateRememberSet(glue, gcPhase), &checkOldToYoung, &notMarkRSet);
         Bind(&checkOldToYoung);
         Jump(&loopHead);
@@ -2145,8 +2151,8 @@ void StubBuilder::CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj
             GateRef ref = LoadPrimitive(VariableType::JS_ANY(), src, offset);
             BRANCH(TaggedIsHeapObject(ref), &isTaggedObject, &loopEnd);
             Bind(&isTaggedObject);
-            GateRef isOldToYoung = IsOldToYoung(objRegionType, GetCMCRegionType(ref));
-            BRANCH_UNLIKELY(isOldToYoung, &markRSet, &loopEnd);
+            GateRef refRegionType = GetCMCRegionType(ref);
+            BRANCH(CMCIsInYoungSpace(refRegionType), &markRSet, &loopEnd);
             Bind(&markRSet);
             MarkRSetCardTable(dstObj, &notMarkRSet);
             Bind(&loopEnd);
@@ -2158,7 +2164,7 @@ void StubBuilder::CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj
         GateRef shouldProcessSATB = ShouldProcessSATB(gcPhase);
         BRANCH_UNLIKELY(shouldProcessSATB, &markInBuffer, &exit);
         Bind(&markInBuffer);
-        CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {TaggedCastToIntPtr(src), count});
+        CallNGCRuntime(glue, RTSTUB_ID(BatchMarkInBuffer), {glue, TaggedCastToIntPtr(src), count});
         Jump(&exit);
     }
     Bind(&exit);

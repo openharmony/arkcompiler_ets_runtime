@@ -183,8 +183,8 @@ public:
     static void TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTaggedValue> func);
     static JSTaggedValue GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index);
     static bool MarkRSetCardTable(BaseObject* obj);
-    static void MarkInBuffer(BaseObject* ref);
-    static void BatchMarkInBuffer(void* src, size_t count);
+    static void MarkInBuffer(uintptr_t argGlue, BaseObject* ref);
+    static void BatchMarkInBuffer(uintptr_t argGlue, void* src, size_t count);
 
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);

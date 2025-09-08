@@ -150,9 +150,9 @@ HWTEST_F_L0(EnumBarrierTest, WriteBarrier_TEST1)
     constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
 
     RefField<> field(MAddress(0));
-    enumBarrier->WriteBarrier(nullptr, field, nullptr);
+    enumBarrier->WriteBarrier(nullptr, nullptr, field, nullptr);
     BaseObject *obj = reinterpret_cast<BaseObject *>(TAG_HEAP_OBJECT_MASK);
-    enumBarrier->WriteBarrier(obj, field, obj);
+    enumBarrier->WriteBarrier(nullptr, obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 #endif
 }
@@ -167,19 +167,19 @@ HWTEST_F_L0(EnumBarrierTest, WriteBarrier_TEST2)
     HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<false> normalField(obj);
-    enumBarrier->WriteBarrier(obj, normalField, obj);
+    enumBarrier->WriteBarrier(nullptr, obj, normalField, obj);
     EXPECT_TRUE(obj != nullptr);
 
     HeapAddress weakAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* weakObj = reinterpret_cast<BaseObject*>(weakAddr);
     RefField<false> weakField(MAddress(0));
-    enumBarrier->WriteBarrier(&weakObj, weakField, &weakObj);
+    enumBarrier->WriteBarrier(nullptr, &weakObj, weakField, &weakObj);
     EXPECT_TRUE(weakObj != nullptr);
 
     HeapAddress nonTaggedAddr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
     BaseObject* nonTaggedObj = reinterpret_cast<BaseObject*>(nonTaggedAddr);
     RefField<false> nonTaggedField(&nonTaggedObj);
-    enumBarrier->WriteBarrier(nullptr, nonTaggedField, &nonTaggedObj);
+    enumBarrier->WriteBarrier(nullptr, nullptr, nonTaggedField, &nonTaggedObj);
     EXPECT_TRUE(nonTaggedObj != nullptr);
 #endif
 }
@@ -201,7 +201,29 @@ HWTEST_F_L0(EnumBarrierTest, WriteBarrier_TEST3)
     BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
     RefField<> field(obj);
     Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
-    enumBarrier->WriteBarrier(obj, field, obj);
+    enumBarrier->WriteBarrier(nullptr, obj, field, obj);
+    EXPECT_TRUE(obj != nullptr);
+#endif
+}
+
+HWTEST_F_L0(EnumBarrierTest, WriteBarrier_TEST4)
+{
+    MockCollector collector;
+    auto enumBarrier = std::make_unique<EnumBarrier>(collector);
+    ASSERT_TRUE(enumBarrier != nullptr);
+
+#ifndef ARK_USE_SATB_BARRIER
+    constexpr uint64_t TAG_BITS_SHIFT = 48;
+    constexpr uint64_t TAG_MARK = 0xFFFFULL << TAG_BITS_SHIFT;
+    constexpr uint64_t TAG_SPECIAL = 0x02ULL;
+    constexpr uint64_t TAG_BOOLEAN = 0x04ULL;
+    constexpr uint64_t TAG_HEAP_OBJECT_MASK = TAG_MARK | TAG_SPECIAL | TAG_BOOLEAN;
+
+    HeapAddress addr = HeapManager::Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT, true);
+    BaseObject* obj = reinterpret_cast<BaseObject*>(addr);
+    RefField<> field(obj);
+    Heap::GetHeap().SetGCReason(GC_REASON_YOUNG);
+    enumBarrier->WriteBarrier(Mutator::GetMutator(), obj, field, obj);
     EXPECT_TRUE(obj != nullptr);
 #endif
 }

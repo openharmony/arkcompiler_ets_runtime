@@ -62,7 +62,7 @@ void EnumBarrier::WriteRefField(BaseObject* obj, RefField<false>& field, BaseObj
     field.SetFieldValue(newField.GetFieldValue());
 }
 #ifdef ARK_USE_SATB_BARRIER
-void EnumBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void EnumBarrier::WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     RefField<> tmpField(field);
     BaseObject* remeberedObject = nullptr;
@@ -73,7 +73,9 @@ void EnumBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObje
     }
     UpdateRememberSet(obj, ref);
     remeberedObject = tmpField.GetTargetObject();
-    Mutator* mutator = Mutator::GetMutator();
+    if (UNLIKELY(mutator == nullptr)) {
+        mutator = Mutator::GetMutator();
+    }
     if (remeberedObject != nullptr) {
         mutator->RememberObjectInSatbBuffer(remeberedObject);
     }
@@ -85,7 +87,7 @@ void EnumBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObje
     DLOG(BARRIER, "write obj %p ref@%p: 0x%zx -> %p", obj, &field, remeberedObject, ref);
 }
 #else
-void EnumBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObject* ref) const
+void EnumBarrier::WriteBarrier(Mutator *mutator, BaseObject* obj, RefField<false>& field, BaseObject* ref) const
 {
     if (!Heap::IsTaggedObject((HeapAddress)ref)) {
         return;
@@ -94,7 +96,9 @@ void EnumBarrier::WriteBarrier(BaseObject* obj, RefField<false>& field, BaseObje
         UpdateRememberSet(obj, ref);
     }
     ref = (BaseObject*)((uintptr_t)ref & ~(TAG_WEAK));
-    Mutator* mutator = Mutator::GetMutator();
+    if (UNLIKELY(mutator == nullptr)) {
+        mutator = Mutator::GetMutator();
+    }
     mutator->RememberObjectInSatbBuffer(ref);
     DLOG(BARRIER, "write obj %p ref-field@%p: -> %p", obj, &field, ref);
 }

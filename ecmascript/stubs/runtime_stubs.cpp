@@ -5042,17 +5042,19 @@ bool RuntimeStubs::MarkRSetCardTable(BaseObject* obj)
     return region->MarkRSetCardTable(obj);
 }
 
-void RuntimeStubs::MarkInBuffer(BaseObject* ref)
+void RuntimeStubs::MarkInBuffer(uintptr_t argGlue, BaseObject* ref)
 {
     ref = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(ref) & ~(common::Barrier::TAG_WEAK));
-    common::Mutator* mutator = common::Mutator::GetMutator();
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    common::Mutator* mutator = thread->GetMutator();
     mutator->RememberObjectInSatbBuffer(ref);
 }
 
-void RuntimeStubs::BatchMarkInBuffer(void* src, size_t count)
+void RuntimeStubs::BatchMarkInBuffer(uintptr_t argGlue, void* src, size_t count)
 {
     uintptr *srcPtr = reinterpret_cast<uintptr_t *>(src);
-    common::Mutator* mutator = common::Mutator::GetMutator();
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    common::Mutator* mutator = thread->GetMutator();
     for (size_t i = 0; i < count; i++) {
         BaseObject* ref = reinterpret_cast<BaseObject*>(srcPtr[i]);
         if (!common::Heap::IsTaggedObject(reinterpret_cast<common::HeapAddress>(ref))) {

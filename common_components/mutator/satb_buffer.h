@@ -28,6 +28,9 @@ public:
     static constexpr size_t INITIAL_PAGES = 64;    // 64 pages of initial satb buffer
     static constexpr size_t CACHE_LINE_ALIGN = 64; // for most hardware platfrom, the cache line is 64-byte aigned.
     static SatbBuffer& Instance() noexcept;
+
+    static bool ShouldEnqueue(const BaseObject* obj);
+
     class TreapNode {
         friend class SatbBuffer;
 
@@ -208,7 +211,6 @@ public:
             LOGF_CHECK(node->IsEmpty()) << "get an unempty node from free nodes";
         }
     }
-    bool ShouldEnqueue(const BaseObject* obj);
 
     // must not have thread racing
     void Init()
