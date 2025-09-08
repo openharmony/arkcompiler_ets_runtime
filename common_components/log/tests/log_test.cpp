@@ -38,12 +38,20 @@ HWTEST_F_L0(LogTest, ConvertFromRuntime_Info_ReturnsInfo) {
     EXPECT_EQ(result, Level::INFO);
 }
 
+HWTEST_F_L0(LogTest, ConvertFromRuntime_Info_ReturnsWarn) {
+    Level result = Log::ConvertFromRuntime(LOG_LEVEL::WARN);
+    EXPECT_EQ(result, Level::WARN);
+}
 
 HWTEST_F_L0(LogTest, ConvertFromRuntime_Debug_ReturnsDebug) {
     Level result = Log::ConvertFromRuntime(LOG_LEVEL::DEBUG);
     EXPECT_EQ(result, Level::DEBUG);
 }
 
+HWTEST_F_L0(LogTest, ConvertFromRuntime_Debug_ReturnsError) {
+    Level result = Log::ConvertFromRuntime(LOG_LEVEL::ERROR);
+    EXPECT_EQ(result, Level::ERROR);
+}
 
 HWTEST_F_L0(LogTest, ConvertFromRuntime_Fatal_ReturnsFatal) {
     Level result = Log::ConvertFromRuntime(LOG_LEVEL::FATAL);

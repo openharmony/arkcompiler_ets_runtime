@@ -14,6 +14,7 @@
  */
 
 #include "common_components/common/type_def.h"
+#include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/heap/allocator/region_manager.h"
 #include "common_components/heap/allocator/regional_heap.h"
@@ -515,5 +516,81 @@ HWTEST_F_L0(RegionalHeapTest, AllocReadOnly7)
     RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
     uintptr_t ret = theAllocator.Allocate(sizeof(RegionDesc), AllocType::READ_ONLY_OBJECT);
     EXPECT_NE(ret, 0);
+}
+
+HWTEST_F_L0(RegionalHeapTest, AllocateNoGC1)
+{
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    size_t size = 32;
+    AllocType allocType = AllocType::MOVEABLE_OLD_OBJECT;
+    HeapAddress addr = theAllocator.AllocateNoGC(size, allocType);
+    EXPECT_NE(addr, 0);
+}
+
+HWTEST_F_L0(RegionalHeapTest, AllocateNoGC2)
+{
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    size_t size = 16;
+    AllocType allocType = AllocType::MOVEABLE_OBJECT;
+    HeapAddress addr = theAllocator.AllocateNoGC(size, allocType);
+    EXPECT_NE(addr, 0);
+}
+
+HWTEST_F_L0(RegionalHeapTest, AllocateNoGC3)
+{
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    AllocType allocType = AllocType::MOVEABLE_OBJECT;
+
+    uintptr_t regionAddr = theAllocator.AllocOldRegion();
+    ASSERT_NE(regionAddr, 0);
+    RegionDesc* region = RegionDesc::GetRegionDescAt(regionAddr);
+    ASSERT_NE(region, nullptr);
+    region->InitFreeUnits();
+    region->SetRegionType(RegionDesc::RegionType::THREAD_LOCAL_REGION);
+
+    HeapAddress addr = theAllocator.AllocateNoGC(1, allocType);
+    EXPECT_NE(addr, 0);
+
+    size_t maxSize = region->GetRegionSize() - Allocator::HEADER_SIZE;
+    addr = theAllocator.AllocateNoGC(maxSize, allocType);
+    EXPECT_NE(addr, 0);
+
+    addr = theAllocator.AllocateNoGC(maxSize + 1, allocType);
+    EXPECT_EQ(addr, 0);
+
+    maxSize = 1024 * 1024 * 1024;
+    addr = theAllocator.AllocateNoGC(maxSize, allocType);
+    EXPECT_EQ(addr, 0);
+}
+
+HWTEST_F_L0(RegionalHeapTest, AllocateNoGC4)
+{
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    size_t size = 16;
+    AllocType allocType = AllocType::NONMOVABLE_OBJECT;
+
+    uintptr_t regionAddr = theAllocator.AllocateNonMovableRegion();
+    EXPECT_NE(regionAddr, 0);
+
+    HeapAddress addr = theAllocator.AllocateNoGC(size, allocType);
+    EXPECT_NE(addr, 0);
+}
+
+HWTEST_F_L0(RegionalHeapTest, MarkJitFortMemInstalled)
+{
+    auto* mutator = common::Mutator::GetMutator();
+    mutator->SetMutatorPhase(GCPhase::GC_PHASE_MARK);
+    RegionalHeap& theAllocator = reinterpret_cast<RegionalHeap&>(Heap::GetHeap().GetAllocator());
+    
+    BaseObject* obj =
+        reinterpret_cast<BaseObject*>(theAllocator.Allocate(sizeof(BaseObject), AllocType::MOVEABLE_OBJECT));
+    ASSERT_NE(obj, nullptr);
+
+    RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<uintptr_t>(obj));
+    ASSERT_NE(region, nullptr);
+
+    Heap::GetHeap().SetGCPhase(GCPhase::GC_PHASE_IDLE);
+    theAllocator.MarkJitFortMemInstalled(nullptr, obj);
+    EXPECT_FALSE(region->IsJitFortAwaitInstallFlag());
 }
 }
