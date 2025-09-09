@@ -1383,6 +1383,15 @@ DEF_RUNTIME_STUBS(GetArrayLiteralFromCache)
         thread, cp, index.GetInt(), module.GetTaggedValue()).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CreateUnsharedConstpool)
+{
+    RUNTIME_STUBS_HEADER(CreateUnsharedConstpool);
+    JSHandle<JSTaggedValue> sharedConstpool = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the first parameter
+    ASSERT(thread->GetEcmaVM()->FindUnsharedConstpool(sharedConstpool.GetTaggedValue()).IsHole());
+    thread->GetEcmaVM()->CreateUnsharedConstpool(sharedConstpool.GetTaggedValue());
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(StObjByValue)
 {
     RUNTIME_STUBS_HEADER(StObjByValue);

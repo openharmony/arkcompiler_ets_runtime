@@ -516,6 +516,7 @@ namespace panda::ecmascript {
     V(GetArrayLiteralFromCache)                                \
     V(GetObjectLiteralFromCache)                               \
     V(GetStringFromCache)                                      \
+    V(CreateUnsharedConstpool)                                 \
     V(BigIntEqual)                                             \
     V(StringEqual)                                             \
     V(StringIndexOf)                                           \

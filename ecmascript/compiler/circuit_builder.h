@@ -334,6 +334,7 @@ public:
 
     // Get
     GateRef GetConstPoolFromFunction(GateRef glue, GateRef jsFunc);
+    GateRef GetSharedConstpoolFromMethod(GateRef glue, GateRef method);
     GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpoolIndex(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef glue, GateRef arrayAddr, GateRef index);

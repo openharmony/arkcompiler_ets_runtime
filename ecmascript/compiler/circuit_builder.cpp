@@ -644,6 +644,11 @@ GateRef CircuitBuilder::GetConstPoolFromFunction(GateRef glue, GateRef jsFunc)
     return Load(VariableType::JS_ANY(), glue, method, IntPtr(Method::CONSTANT_POOL_OFFSET));
 }
 
+GateRef CircuitBuilder::GetSharedConstpoolFromMethod(GateRef glue, GateRef method)
+{
+    return Load(VariableType::JS_ANY(), glue, method, IntPtr(Method::CONSTANT_POOL_OFFSET));
+}
+
 GateRef CircuitBuilder::GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool)
 {
     Label entryPass(env_);
@@ -1020,16 +1025,36 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
         if (type == ConstPoolType::METHOD) {
             Label isHeapObj(env_);
             Label checkInteger(env_);
+            Label checkCalleeUnsharedConstpool(env_);
+            Label checkCalleeUnsharedConstpoolNotHole(env_);
+            Label initCalleeUnsharedConstpool(env_);
             BRANCH(TaggedIsHeapObject(*result), &isHeapObj, &checkInteger);
             Bind(&isHeapObj);
             {
                 Label isAOTLiteralInfo(env_);
-                BRANCH(IsAOTLiteralInfo(glue, *result), &isAOTLiteralInfo, &exit);
+                BRANCH(IsAOTLiteralInfo(glue, *result), &isAOTLiteralInfo, &checkCalleeUnsharedConstpool);
                 Bind(&isAOTLiteralInfo);
                 {
                     result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
                         { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
                     Jump(&exit);
+                }
+                Bind(&checkCalleeUnsharedConstpool);
+                {
+                    GateRef calleeSharedConstpool = GetSharedConstpoolFromMethod(glue, *result);
+                    BRANCH_LIKELY(Equal(calleeSharedConstpool, sharedConstPool), &exit,
+                                  &checkCalleeUnsharedConstpoolNotHole);
+                    {
+                        Bind(&checkCalleeUnsharedConstpoolNotHole);
+                        BRANCH(TaggedIsHole(GetUnsharedConstpoolFromGlue(glue, calleeSharedConstpool)),
+                               &initCalleeUnsharedConstpool, &exit);
+                        Bind(&initCalleeUnsharedConstpool);
+                        {
+                            CallRuntime(glue, RTSTUB_ID(CreateUnsharedConstpool), Gate::InvalidGateRef,
+                                        {calleeSharedConstpool}, hirGate);
+                            Jump(&exit);
+                        }
+                    }
                 }
             }
             Bind(&checkInteger);
