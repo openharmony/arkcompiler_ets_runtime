@@ -62,7 +62,7 @@ protected:
         mutator_ = Mutator::NewMutator();
         ASSERT_NE(mutator_, nullptr);
         mutator_->InitTid();
-        ThreadLocal::GetThreadLocalData()->mutator = mutator_;
+        ThreadLocal::SetMutator(mutator_);
     }
 
     void TearDown() override
@@ -70,6 +70,7 @@ protected:
         if (mutator_) {
             delete mutator_;
             mutator_ = nullptr;
+            ThreadLocal::SetMutator(mutator_);
         }
         if (regionMemory_) {
             free(regionMemory_);
