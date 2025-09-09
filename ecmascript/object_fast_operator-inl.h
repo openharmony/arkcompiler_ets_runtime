@@ -1219,10 +1219,12 @@ JSTaggedValue ObjectFastOperator::GetContainerProperty(JSThread *thread, JSTagge
             res = JSAPIPlainArray::Cast(receiver.GetTaggedObject())->Get(thread, JSTaggedValue(index));
             break;
         case JSType::JS_API_DEQUE:
-            res = JSAPIDeque::Cast(receiver.GetTaggedObject())->Get(thread, index);
+            res = JSAPIDeque::GetProperty(thread, JSHandle<JSAPIDeque>(thread, receiver),
+                JSHandle<JSTaggedValue>(thread, JSTaggedValue(index))).GetValue().GetTaggedValue();
             break;
         case JSType::JS_API_STACK:
-            res = JSAPIStack::Cast(receiver.GetTaggedObject())->Get(thread, index);
+            res = JSAPIStack::GetProperty(thread, JSHandle<JSAPIStack>(thread, receiver),
+                JSHandle<JSTaggedValue>(thread, JSTaggedValue(index))).GetValue().GetTaggedValue();
             break;
         case JSType::JS_API_VECTOR: {
             auto self = JSHandle<JSTaggedValue>(thread, receiver);

@@ -58,6 +58,18 @@ if (globalThis["ArkPrivate"] != undefined) {
 
     map.set("test stack forEach:", res)
 
+    {
+        try{
+            const v1 = new Stack();
+            const v4 = Array(4);
+            v4.__proto__ = v1;
+            JSON.stringify(v4);
+            map.set("test stack as _proto_ stringify:", false);    
+        } catch (e) {
+
+        }
+    }
+
     res = true
     let j = 0
     for (const data of proxy) {
