@@ -92,8 +92,6 @@ public:
 
     MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
                                                                WeakStack &weakStack) override;
-    void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) override;
-
     void FixObjectRefFields(BaseObject* obj) const override;
     void FixRefField(BaseObject* obj, RefField<>& field) const;
 

@@ -33,20 +33,20 @@ public:
 
     void push_back(T t)
     {
-        LOGF_CHECK(!full()) << "Mark stack buffer can not be full when push back";
+        ASSERT_LOGF(!full(), "Mark stack buffer can not be full when push back");
         stack_[count] = t;
         count++;
     }
 
     T back()
     {
-        LOGF_CHECK(!empty()) << "Mark stack buffer can not be empty when get back";
+        ASSERT_LOGF(!empty(), "Mark stack buffer can not be empty when get back");
         return stack_[count - 1];
     }
 
     void pop_back()
     {
-        LOGF_CHECK(!empty()) << "Mark stack buffer can not be empty when pop back";
+        ASSERT_LOGF(!empty(), "Mark stack buffer can not be empty when pop back");
         count--;
     }
     size_t count = 0;
@@ -138,7 +138,7 @@ public:
 
     void pop_back()
     {
-        LOGF_CHECK(!empty()) << "Mark stack can not be empty when pop back";
+        ASSERT_LOGF(!empty(), "Mark stack can not be empty when pop back");
         this->t_->pop_back();
         if (this->t_->empty()) {
             auto tmp = pop();

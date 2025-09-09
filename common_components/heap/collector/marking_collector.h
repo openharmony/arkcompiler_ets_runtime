@@ -217,8 +217,6 @@ public:
     };
     virtual MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
                                                                        WeakStack &weakStack) = 0;
-    virtual void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) = 0;
-
     inline bool IsResurrectedObject(const BaseObject* obj) const { return RegionalHeap::IsResurrectedObject(obj); }
 
     Allocator& GetAllocator() const { return theAllocator_; }
