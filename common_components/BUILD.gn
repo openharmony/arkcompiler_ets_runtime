@@ -53,6 +53,7 @@ source_Heap = [
   "heap/collector/task_queue.cpp",
   "heap/collector/copy_data_manager.cpp",
   "heap/collector/marking_collector.cpp",
+  "heap/collector/utils.cpp",
   "heap/space/from_space.cpp",
   "heap/space/nonmovable_space.cpp",
   "heap/space/large_space.cpp",
