@@ -28,6 +28,7 @@ constexpr int32_t DELAY_TIME = 180000;
 
 REGISTER_SYSTEM_ABILITY_BY_ID(AotCompilerService, AOT_COMPILER_SERVICE_ID, false);
 
+// LCOV_EXCL_START
 AotCompilerService::AotCompilerService()
     : SystemAbility(AOT_COMPILER_SERVICE_ID, false), state_(ServiceRunningState::STATE_NOT_START)
 {
@@ -112,6 +113,7 @@ void AotCompilerService::OnStop()
     UnRegisterScreenStatusSubscriber();
     UnRegisterThermalMgrListener();
 }
+// LCOV_EXCL_STOP
 
 int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                         std::vector<int16_t> &sigData)
@@ -157,6 +159,7 @@ int32_t AotCompilerService::StopAotCompiler()
     return ret;
 }
 
+// LCOV_EXCL_START
 void AotCompilerService::RegisterPowerDisconnectedListener()
 {
     LOG_SA(DEBUG) << "AotCompilerService::RegisterPowerDisconnectedListener";
@@ -261,4 +264,5 @@ bool AotCompilerService::IsThermalLevelEventSubscribered() const
 {
     return isThermalLevelEventSubscribered_;
 }
+// LCOV_EXCL_STOP
 } // namespace OHOS::ArkCompiler
