@@ -30,6 +30,9 @@ void ArkStackMapParser::ParseArkDeopt(const CallsiteHeader& callsiteHead,
     LLVMStackMapType::DwarfRegType reg;
     LLVMStackMapType::OffsetType offsetType;
     ASSERT(deoptNum % DEOPT_ENTRY_SIZE == 0); // 2:<id, value>
+    if (deoptNum == 0) {
+        LOG_ECMA(INFO) << "deoptNum is 0";
+    }
     for (uint32_t j = 0; j < deoptNum; j += DEOPT_ENTRY_SIZE) { // DEOPT_ENTRY_SIZE:<id, value>
         auto [vregsInfo, vregsInfoSize, InfoIsFull] =
             panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(ptr + deoptOffset);
@@ -94,6 +97,7 @@ void ArkStackMapParser::GetArkDeopt(uintptr_t callSiteAddr,
     ArkStackMapHeader *head = reinterpret_cast<ArkStackMapHeader *>(stackmapAddr);
     ASSERT(head != nullptr);
     if (head == nullptr) {
+        LOG_ECMA(INFO) << "stack map addr is null";
         return;
     }
     uint32_t callsiteNum = head->callsiteNum;
@@ -102,6 +106,7 @@ void ArkStackMapParser::GetArkDeopt(uintptr_t callSiteAddr,
     int mid = BinaraySearch(callsiteHead, callsiteNum, callSiteAddr);
     ASSERT(mid != -1);
     if (mid == -1) {
+        LOG_ECMA(INFO) << "can't find callSiteAddr";
         return;
     }
     CallsiteHeader *found = callsiteHead + mid;

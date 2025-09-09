@@ -89,7 +89,8 @@ void DependentInfos::TriggerLazyDeoptimization(JSHandle<DependentInfos> dependen
             Deoptimizier::ClearCompiledCodeStatusWhenDeopt(thread,
                                                            func.GetObject<JSFunction>(),
                                                            method.GetObject<Method>(),
-                                                           kungfu::DeoptType::LAZYDEOPT);
+                                                           kungfu::DeoptType::LAZYDEOPT,
+                                                           true);
             TraceLazyDeoptReason(thread, func, (depCollection & collection));
         }
     }
