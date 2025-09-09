@@ -31,12 +31,12 @@ protected:
     {
         RuntimeParam param = BaseRuntimeParam::DefaultRuntimeParam();
         param.gcParam.enableGC = false;
-        BaseRuntime::GetInstance()->Init(param);
+        BaseRuntime::GetInstance()->InitFromDynamic(param);
     }
 
     static void TearDownTestCase()
     {
-        BaseRuntime::GetInstance()->Fini();
+        BaseRuntime::GetInstance()->FiniFromDynamic();
     }
 
     void SetUp() override

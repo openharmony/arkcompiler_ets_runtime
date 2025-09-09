@@ -49,6 +49,7 @@ constexpr const char* BOOLEAN_FALSE = "0";
 namespace Symbols {
 constexpr const char* PREFIX = "--";
 constexpr const char* EQ = "=";
+constexpr const char* COLON = ":";
 } // namespace Symbols
 
 /**

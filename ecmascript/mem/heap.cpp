@@ -1484,6 +1484,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             async = false;
         }
         common::BaseRuntime::RequestGC(cmcReason, async, common::GC_TYPE_FULL);
+        ThreadNativeScope scope(thread_);
         return;
     }
     CollectGarbageImpl(gcType, reason);

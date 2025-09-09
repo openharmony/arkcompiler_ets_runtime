@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -571,7 +571,7 @@ JSTaggedValue NumberHelper::StringToNumber(JSThread *thread, EcmaString *string,
         }
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(string).ToUtf8Span(thread, buf);
+    common::Span<const uint8_t> str = EcmaStringAccessor(string).ToUtf8Span(thread, buf);
 
     JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix, &negative);
     if (result.GetNumber() == 0 && negative == true) {
@@ -1171,7 +1171,7 @@ JSTaggedValue NumberHelper::StringToBigInt(JSThread *thread, JSHandle<JSTaggedVa
         return BigInt::Int32ToBigInt(thread, 0).GetTaggedValue();
     }
     CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(thread, buf);
+    common::Span<const uint8_t> str = EcmaStringAccessor(strObj).ToUtf8Span(thread, buf);
 
     auto p = const_cast<uint8_t *>(str.begin());
     auto end = str.end();

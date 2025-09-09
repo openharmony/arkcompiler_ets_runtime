@@ -401,6 +401,7 @@ config("ark_jsruntime_common_config") {
     defines += [ "ENABLE_COLD_STARTUP_GC_POLICY" ]
   }
   if (ets_runtime_enable_cmc_gc) {
+    defines += [ "ARK_HYBRID" ]
     defines += [ "USE_CMC_GC" ]
     if (ets_runtime_enable_cmc_rb_dfx) {
       defines += [ "ENABLE_CMC_RB_DFX" ]
@@ -1165,6 +1166,7 @@ ecma_source += [
   "ecmascript/cross_vm/unified_gc/unified_gc.cpp",
   "ecmascript/cross_vm/unified_gc/unified_gc_marker.cpp",
   "ecmascript/cross_vm/builtins_gc_hybrid.cpp",
+  "ecmascript/cross_vm/dynamic_object_accessor_util.cpp",
   "ecmascript/cross_vm/heap_hybrid.cpp",
   "ecmascript/cross_vm/jsnapi_expo_hybrid.cpp",
   "ecmascript/cross_vm/object_factory_hybrid.cpp",
@@ -1561,11 +1563,6 @@ ohos_source_set("libark_jsruntime_test_set") {
   }
 
   deps += [ ":libcommon_components_set" ]
-  if (ets_runtime_enable_cmc_gc) {
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
-  }
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
   public_configs += [ ":include_llvm" ]
@@ -1613,11 +1610,6 @@ ohos_source_set("libark_jsruntime_static") {
   }
 
   deps += [ ":libcommon_components_set" ]
-  if (ets_runtime_enable_cmc_gc) {
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
-  }
 
   external_deps = []
   if (!is_arkui_x) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -2257,8 +2257,7 @@ GateRef BuiltinsStringStubBuilder::StringAdd(GateRef glue, GateRef leftString, G
                 builder_.Int32(SlicedString::MIN_SLICED_STRING_LENGTH)), &slowPath, &stringConcatOpt);
             builder_.Bind(&stringConcatOpt);
             {
-                GateRef backStoreLength =
-                    builder_.Int32Mul(newLength, builder_.Int32(LineString::INIT_LENGTH_TIMES));
+                GateRef backStoreLength = builder_.Int32Mul(newLength, builder_.Int32(INIT_LENGTH_TIMES));
                 GateRef leftIsUtf8 = builder_.IsUtf8String(left);
                 GateRef rightIsUtf8 = builder_.IsUtf8String(right);
                 GateRef canBeCompressed = builder_.BitAnd(leftIsUtf8, rightIsUtf8);

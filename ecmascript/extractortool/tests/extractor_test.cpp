@@ -18,6 +18,7 @@
 
 #include "ecmascript/extractortool/src/extractor.h"
 #include "ecmascript/tests/test_helper.h"
+#include "securec.h"
 
 using namespace panda::ecmascript;
 

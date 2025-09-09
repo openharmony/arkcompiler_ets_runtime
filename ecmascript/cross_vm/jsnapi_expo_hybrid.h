@@ -21,6 +21,7 @@
     /* This method must be called before Global is released.*/                   \
     void FreeGlobalHandleAddr();                                                 \
     void FreeXRefGlobalHandleAddr();                                             \
+    void MarkFromObject(std::function<void(uintptr_t)> &visitor);                \
     void MarkFromObject();                                                       \
     bool IsObjectAlive() const;                                                  \
     bool IsValidHeapObject() const
@@ -47,6 +48,7 @@
     static void DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
   
 #define JSNAPI_PRIVATE_HYBRID_MODE_EXTENSION()                                                             \
+    static void MarkFromObject(const EcmaVM *vm, uintptr_t addr, std::function<void(uintptr_t)> &visitor); \
     static void MarkFromObject(const EcmaVM *vm, uintptr_t addr)
 
 #define GLOBAL_PUBLIC_DEF_HYBRID_EXTENSION()                                                    \
@@ -70,6 +72,14 @@
     }
 
 #define GLOBAL_PUBLIC_DEF_HYBRID_MODE_EXTENSION()                                              \
+    template<typename T>                                                                       \
+    void Global<T>::MarkFromObject(std::function<void(uintptr_t)> &visitor)                    \
+    {                                                                                          \
+        if (address_ == 0) {                                                                   \
+            return;                                                                            \
+        }                                                                                      \
+        JSNApi::MarkFromObject(vm_, address_, visitor);                                        \
+    }                                                                                          \
     template<typename T>                                                                       \
     void Global<T>::MarkFromObject()                                                           \
     {                                                                                          \

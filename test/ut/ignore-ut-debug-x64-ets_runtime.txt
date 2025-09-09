@@ -30,3 +30,6 @@ obj/arkcompiler/ets_runtime/test/moduletest/stringreplace/stringreplaceAsmAssert
 
 #28993
 obj/arkcompiler/ets_runtime/test/jittest/hole_in_array/hole_in_array
+
+#26095
+obj/arkcompiler/ets_runtime/test/aottest/sharedset/sharedset/modules.ap

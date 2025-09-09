@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -103,7 +103,8 @@ private:
     friend class TaggedObject;
 };
 static_assert(sizeof(TaggedStateWord) == sizeof(uint64_t), "Excepts 8 bytes");
-static_assert(common::BaseStateWord::PADDING_WIDTH == 60, "Excepts 60 bits");
+static_assert(common::BaseStateWord::BASECLASS_WIDTH == 48, "Excepts 48 bits");
+static_assert(common::BaseStateWord::PADDING_WIDTH == 12, "Excepts 12 bits");
 static_assert(common::BaseStateWord::FORWARD_WIDTH == 2, "Excepts 2 bits");
 static_assert(common::BaseStateWord::LANGUAGE_WIDTH == 2, "Excepts 2 bits");
 }  //  namespace panda::ecmascript

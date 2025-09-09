@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -57,8 +57,8 @@ bool NameDictionary::IsMatch(const uint8_t* str, int size, const JSTaggedValue &
     }
     EcmaString *keyString = reinterpret_cast<EcmaString *>(other.GetTaggedObject());
 
-    Span<const uint8_t> data1(EcmaStringAccessor(keyString).GetDataUtf8(), keyString->GetLength());
-    Span<const uint8_t> data2(str, size);
+    common::Span<const uint8_t> data1(EcmaStringAccessor(keyString).GetDataUtf8(), keyString->GetLength());
+    common::Span<const uint8_t> data2(str, size);
     if (data1.Size() != data2.Size()) {
         return false;
     }

@@ -17,11 +17,11 @@
 #include "common_interfaces/objects/base_string_table.h"
 #include "common_components/objects/string_table_internal.h"
 #include "common_interfaces/thread/mutator_base.h"
-#include "common_interfaces/objects/base_string.h"
+#include "common_interfaces/objects/string/base_string.h"
 #include "common_interfaces/thread/thread_holder.h"
 #include "common_interfaces/base_runtime.h"
 #include "common_interfaces/heap/heap_allocator.h"
-#include "common_interfaces/objects/string/base_string-inl2.h"
+#include "common_interfaces/objects/string/base_string-inl.h"
    
 
 namespace common {
@@ -66,7 +66,7 @@ protected:
 
     BaseString* CreateUtf8String(const char* utf8Data, uint32_t length, bool canBeCompress)
     {
-        auto allocator = [](size_t size, CommonType type) -> BaseString* {
+        auto allocator = [](size_t size, ObjectType type) -> BaseString* {
             void* mem = reinterpret_cast<void*>(HeapAllocator::AllocateInOldOrHuge(size, LanguageType::DYNAMIC));
             if (mem == nullptr) {
                 return nullptr;
@@ -74,7 +74,7 @@ protected:
             return reinterpret_cast<BaseString*>(mem);
         };
        
-        BaseString* str = BaseString::CreateFromUtf8(allocator,
+        BaseString* str = LineString::CreateFromUtf8(allocator,
             reinterpret_cast<const uint8_t*>(utf8Data), length, canBeCompress);
 
         if (str == nullptr) {

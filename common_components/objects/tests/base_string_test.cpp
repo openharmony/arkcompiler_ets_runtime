@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/objects/base_string.h"
+#include "common_interfaces/objects/string/base_string.h"
 #include "common_components/platform/string_hash.h"
 #include "common_components/tests/test_helper.h"
+#include "objects/string/base_string-inl.h"
 
 using namespace common;
 

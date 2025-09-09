@@ -26,12 +26,12 @@ class CollectorResourcesTest : public BaseTestWithScope {
 protected:
     static void SetUpTestCase()
     {
-        BaseRuntime::GetInstance()->Init();
+        BaseRuntime::GetInstance()->InitFromDynamic();
     }
 
     static void TearDownTestCase()
     {
-        BaseRuntime::GetInstance()->Fini();
+        BaseRuntime::GetInstance()->FiniFromDynamic();
     }
 
     void SetUp() override

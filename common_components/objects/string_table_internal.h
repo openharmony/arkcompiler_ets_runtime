@@ -71,8 +71,8 @@ public:
 
     void CleanUp();
 private:
-    NO_COPY_SEMANTIC(BaseStringTableCleaner);
-    NO_MOVE_SEMANTIC(BaseStringTableCleaner);
+    NO_COPY_SEMANTIC_CC(BaseStringTableCleaner);
+    NO_MOVE_SEMANTIC_CC(BaseStringTableCleaner);
     static void ProcessSweepWeakRef(IteratorPtr &iter,
                                     BaseStringTableCleaner *cleaner,
                                     const WeakRefFieldVisitor &visitor);
@@ -100,8 +100,8 @@ private:
 
         bool Run(uint32_t threadIndex) override;
 
-        NO_COPY_SEMANTIC(CMCSweepWeakRefTask);
-        NO_MOVE_SEMANTIC(CMCSweepWeakRefTask);
+        NO_COPY_SEMANTIC_CC(CMCSweepWeakRefTask);
+        NO_MOVE_SEMANTIC_CC(CMCSweepWeakRefTask);
 
       private:
         IteratorPtr iter_;

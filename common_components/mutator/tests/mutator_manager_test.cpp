@@ -82,7 +82,7 @@ HWTEST_F_L0(MutatorManagerTest, CreateMutator_Test1)
     ThreadLocalData* localData = ThreadLocal::GetThreadLocalData();
     localData->mutator = new Mutator();
     MutatorManager *managerPtr = new MutatorManager();
-    BaseRuntime::GetInstance()->Init();
+    BaseRuntime::GetInstance()->InitFromDynamic();
     Mutator* ptr = managerPtr->CreateMutator();
     EXPECT_TRUE(ptr != nullptr);
 

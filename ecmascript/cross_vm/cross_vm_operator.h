@@ -48,6 +48,7 @@ public:
         return ecmaVMInterface_.get();
     }
 
+    void MarkFromObject(JSTaggedType value, std::function<void(uintptr_t)> &visitor);
     void MarkFromObject(JSTaggedType value);
     bool IsObjectAlive(JSTaggedType value);
     bool IsValidHeapObject(JSTaggedType value);
@@ -62,7 +63,7 @@ private:
         bool StartXRefMarking() override;
         void NotifyXGCInterruption() override;
     private:
-        EcmaVM *vm_ {nullptr};
+        [[maybe_unused]] EcmaVM *vm_ {nullptr};
     };
 
     EcmaVM *vm_ {nullptr};

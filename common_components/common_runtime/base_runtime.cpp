@@ -86,12 +86,28 @@ inline void CheckAndFini(T*& module)
     module = nullptr;
 }
 
+bool BaseRuntime::HasBeenInitialized()
+{
+    std::unique_lock<std::mutex> lock(vmCreationLock_);
+    return initialized_;
+}
+
 void BaseRuntime::Init()
 {
     Init(BaseRuntimeParam::DefaultRuntimeParam());
 }
 
 void BaseRuntime::Init(const RuntimeParam &param)
+{
+    CheckAndInitBaseRuntime(param);
+}
+
+void BaseRuntime::InitFromDynamic()
+{
+    InitFromDynamic(BaseRuntimeParam::DefaultRuntimeParam());
+}
+
+void BaseRuntime::InitFromDynamic(const RuntimeParam &param)
 {
     std::unique_lock<std::mutex> lock(vmCreationLock_);
     if (initialized_) {
@@ -126,6 +142,11 @@ void BaseRuntime::Init(const RuntimeParam &param)
 }
 
 void BaseRuntime::Fini()
+{
+    CheckAndFiniBaseRuntime();
+}
+
+void BaseRuntime::FiniFromDynamic()
 {
     std::unique_lock<std::mutex> lock(vmCreationLock_);
     if (!initialized_) {
@@ -257,5 +278,10 @@ bool BaseRuntime::CheckAndTriggerHintGC(MemoryReduceDegree degree)
 void BaseRuntime::NotifyHighSensitive(bool isStart)
 {
     Heap::GetHeap().NotifyHighSensitive(isStart);
+}
+
+void BaseRuntime::FillFreeObject(void *object, size_t size)
+{
+    common::FillFreeObject(object, size);
 }
 }  // namespace common
