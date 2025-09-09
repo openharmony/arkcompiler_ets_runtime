@@ -92,7 +92,6 @@ public:
 
     MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
                                                                WeakStack &weakStack) override;
-    void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) override;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     void MarkingXRef(RefField<> &ref, ParallelLocalMarkStack &workStack) const;
     void MarkingObjectXRef(BaseObject *obj, ParallelLocalMarkStack &workStack) override;

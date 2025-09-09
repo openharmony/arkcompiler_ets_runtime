@@ -38,10 +38,12 @@ void DynamicObjectOperator::IterateXRef([[maybe_unused]] const BaseObject *objec
         JSTaggedValue value(reinterpret_cast<TaggedObject *>(const_cast<BaseObject *>(object)));
         if (value.IsJSXRefObject()) {
             Runtime::GetInstance()->GetSTSVMInterface()->MarkFromObject(
-                JSObject::Cast(TaggedObject::Cast(object))->GetNativePointerField(0), visitor);
+                JSObject::Cast(TaggedObject::Cast(object))
+                    ->GetNativePointerField(
+                        Runtime::GetInstance()->GetMainThread(), 0), visitor);
         }
     } else {
-        std:abort();
+        std::abort();
     }
 #else
     std::abort();

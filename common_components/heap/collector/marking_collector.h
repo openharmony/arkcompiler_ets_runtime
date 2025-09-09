@@ -220,7 +220,6 @@ public:
     };
     virtual MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
                                                                        WeakStack &weakStack) = 0;
-    virtual void MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data) = 0;
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     virtual void MarkingObjectXRef(BaseObject *obj, ParallelLocalMarkStack &workStack)
     {

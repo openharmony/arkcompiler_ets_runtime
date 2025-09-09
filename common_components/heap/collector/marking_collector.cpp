@@ -150,9 +150,11 @@ void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, P
         BaseObject *object;
         while (markStack.Pop(&object)) {
             ++nNewlyMarked;
-            auto region = RegionDesc::GetAliveRegionDescAt(static_cast<MAddress>(reinterpret_cast<uintptr_t>(object)));
-            region->AddLiveByteCount(object->GetSize());
-            MarkingObjectRefFields(object, &visitor);
+            auto region = RegionDesc::GetAliveRegionDescAt(
+                static_cast<MAddress>(reinterpret_cast<uintptr_t>(object)));
+            visitor.SetMarkingRefFieldArgs(object);
+            auto objSize = object->ForEachRefFieldAndGetSize(visitor.GetRefFieldVisitor());
+            region->AddLiveByteCount(objSize);
 #ifdef PANDA_JS_ETS_HYBRID_MODE
             if constexpr (ProcessXRef) {
                 MarkingObjectXRef(object, markStack);

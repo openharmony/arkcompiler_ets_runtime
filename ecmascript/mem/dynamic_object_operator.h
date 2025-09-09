@@ -115,6 +115,17 @@ public:
         }
     }
 
+    size_t ForEachRefFieldAndGetSize(const BaseObject *object, const common::RefFieldVisitor &visitor) const override
+    {
+        // Only used in the MarkingPhase phase.
+        auto obj = TaggedObject::Cast(object);
+        auto klass = obj->GetClass();
+        auto size =  klass->SizeFromJSHClass(obj);
+        RefFieldObjectVisitor refFieldObjectVisitor(visitor);
+        refFieldObjectVisitor.VisitAllRefFields(obj);
+        return size;
+    }
+
     void IterateXRef(const BaseObject *object, const common::RefFieldVisitor &visitor) const override;
 
     size_t GetSize(const BaseObject *object) const override

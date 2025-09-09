@@ -211,16 +211,6 @@ MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFie
     return visitor;
 }
 
-void ArkCollector::MarkingObjectRefFields(BaseObject *obj, MarkingRefFieldVisitor *data)
-{
-    data->SetMarkingRefFieldArgs(obj);
-#ifdef PANDA_JS_ETS_HYBRID_MODE
-    obj->ForEachRefFieldSkipReferent(data->GetRefFieldVisitor());
-#else
-    obj->ForEachRefField(data->GetRefFieldVisitor());
-#endif
-}
-
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 // note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
 void ArkCollector::MarkingXRef(RefField<> &field, ParallelLocalMarkStack &workStack) const
