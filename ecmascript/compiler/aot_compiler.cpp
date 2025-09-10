@@ -113,8 +113,10 @@ int Main(const int argc, const char **argv)
 
         AotCompilerStats compilerStats;
         std::string bundleName = "";
+        std::string pgoDir = "";
         if (cPreprocessor.GetMainPkgArgs()) {
             bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
+            pgoDir = cPreprocessor.GetMainPkgArgs()->GetPgoDir();
         }
         compilerStats.SetBundleName(bundleName);
         compilerStats.SetAotFilePath(cOptions.outputFileName_);
@@ -212,7 +214,7 @@ int Main(const int argc, const char **argv)
         log.Print();
         if (runtimeOptions.IsTargetCompilerMode()) {
             compilerStats.PrintCompilerStatsLog();
-            compilerStats.SendDataPartitionSysEvent(cPreprocessor.GetMainPkgArgs()->GetPgoDir());
+            compilerStats.SendDataPartitionSysEvent(pgoDir);
         }
     }
 
