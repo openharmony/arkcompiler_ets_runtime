@@ -25,7 +25,7 @@ ohos_fuzztest("CommonCompLogFuzzTest") {
 
   fuzz_config_file =
       "//arkcompiler/ets_runtime/test/fuzztest/commoncomplog_fuzzer"
-
+  resource_config_file = "$js_root/test/resource/js_runtime/ohos_test.xml"
   sources = [ "commoncomplog_fuzzer.cpp" ]
 
   configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
