@@ -278,8 +278,8 @@ void CallCoStubBuilder::LowerFastSuperCall(GateRef glue, CircuitBuilder &builder
 }
 
 void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder &builder, GateRef func, GateRef argc,
-    const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall,
-    Variable *result, Label *exit, bool isNew)
+                                      const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall,
+                                      Variable *result, Label *exit, bool isNew, bool useCmc)
 {
     auto env = builder.GetCurrentEnvironment();
     Label isHeapObject(&builder);
@@ -298,16 +298,17 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     auto &builder_ = builder;
     Label readBarrier(&builder);
     Label skipReadBarrier(&builder);
-    BRANCH_CIR(
-        builder.LoadWithoutBarrier(
-            VariableType::BOOL(), glue,
-            builder.IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &readBarrier, &skipReadBarrier);
-    builder.Bind(&readBarrier);
-    builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget),
-                            Gate::InvalidGateRef, {glue, func}, glue);
-    builder.Jump(&skipReadBarrier);
-    builder.Bind(&skipReadBarrier);
+    if (useCmc) {
+        BRANCH_CIR(
+            builder.LoadWithoutBarrier(VariableType::BOOL(), glue,
+                                       builder.IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
+            &readBarrier, &skipReadBarrier);
+        builder.Bind(&readBarrier);
+        builder_.CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), Gate::InvalidGateRef, {glue, func}, glue);
+        builder.Jump(&skipReadBarrier);
+        builder.Bind(&skipReadBarrier);
+    }
+
     BRANCH_CIR(builder.TaggedIsHeapObject(func), &isHeapObject, &slowPath);
     builder.Bind(&isHeapObject);
     {
@@ -400,7 +401,7 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     }
 }
 
-GateRef CallCoStubBuilder::CallStubDispatch()
+GateRef CallCoStubBuilder::CallStubDispatch(bool useCmc)
 {
     std::vector<GateRef> args = {};
     std::vector<GateRef> argsFastCall = {};
@@ -413,8 +414,7 @@ GateRef CallCoStubBuilder::CallStubDispatch()
     env->SubCfgEntry(&entry);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), builder.Undefined());
-    LowerFastCall(hirGate_, glue_, builder, func_, actualArgc_, args, argsFastCall,
-                  &result, &exit, false);
+    LowerFastCall(hirGate_, glue_, builder, func_, actualArgc_, args, argsFastCall, &result, &exit, false, useCmc);
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
