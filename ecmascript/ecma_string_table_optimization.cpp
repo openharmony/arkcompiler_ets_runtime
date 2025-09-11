@@ -101,18 +101,21 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternFlattenString(EcmaVM* vm, Ec
     } else {
         ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
     }
-    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+    auto readBarrierForLoad = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    auto loadResult = stringTable_.template Load(std::move(readBarrier), hashcode, string->ToBaseString());
+    auto loadResult = stringTable_.template Load(std::move(readBarrierForLoad), hashcode, string->ToBaseString());
     if (loadResult.value != nullptr) {
         return EcmaString::FromBaseString(loadResult.value);
     }
     JSHandle<EcmaString> stringHandle(thread, string);
     ThreadType* holder = GetThreadHolder(thread);
+    auto readBarrierForStoreOrLoad = [thread](const void *obj, size_t offset) -> TaggedObject* {
+        return Barriers::GetTaggedObject(thread, obj, offset);
+    };
     BaseString *result = stringTable_.template StoreOrLoad<
-        true, decltype(readBarrier), common::ReadOnlyHandle<BaseString>>(
-        holder, std::move(readBarrier), hashcode, loadResult, stringHandle);
+        true, decltype(readBarrierForStoreOrLoad), common::ReadOnlyHandle<BaseString>>(
+        holder, std::move(readBarrierForStoreOrLoad), hashcode, loadResult, stringHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
@@ -134,7 +137,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternFlattenStringNoGC(EcmaVM* vm
     } else {
         ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
     }
-    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
     auto loadResult = stringTable_.template Load(readBarrier, hashcode, string->ToBaseString());
@@ -157,7 +160,7 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringFromCompressedSubStrin
     const uint8_t* utf8Data = EcmaStringAccessor(string).GetDataUtf8() + offset;
     uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
     JSThread *thread = vm->GetAssociatedJSThread();
-    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
     auto loadResult = stringTable_.template Load(std::move(readBarrier), hashcode, string, offset, utf8Len);
@@ -207,7 +210,7 @@ EcmaString *EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM *vm, EcmaStrin
         return strFlat;
     }
     uint32_t hashcode = EcmaStringAccessor(strFlat).GetHashcode(thread);
-    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
     auto loadResult = stringTable_.template Load(readBarrier, hashcode, strFlat->ToBaseString());
@@ -312,18 +315,21 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, const uin
     JSThread* thread = vm->GetJSThread();
     EcmaString* str = EcmaStringAccessor::CreateUtf16StringFromUtf8(vm, utf8Data, utf16Len, type);
     uint32_t hashcode = EcmaStringAccessor(str).GetHashcode(thread);
-    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+    auto readBarrierForLoad = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
-    auto loadResult = stringTable_.template Load(std::move(readBarrier), hashcode, str->ToBaseString());
+    auto loadResult = stringTable_.template Load(std::move(readBarrierForLoad), hashcode, str->ToBaseString());
     if (loadResult.value != nullptr) {
         return EcmaString::FromBaseString(loadResult.value);
     }
     JSHandle<EcmaString> strHandle(thread, str);
     ThreadType* holder = GetThreadHolder(vm->GetJSThread());
+    auto readBarrierForStoreOrLoad = [thread](const void *obj, size_t offset) -> TaggedObject* {
+        return Barriers::GetTaggedObject(thread, obj, offset);
+    };
     BaseString* result = stringTable_.template StoreOrLoad<
-        true, decltype(readBarrier), common::ReadOnlyHandle<BaseString>>(
-        holder, std::move(readBarrier), hashcode, loadResult, strHandle);
+        true, decltype(readBarrierForStoreOrLoad), common::ReadOnlyHandle<BaseString>>(
+        holder, std::move(readBarrierForStoreOrLoad), hashcode, loadResult, strHandle);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
@@ -366,7 +372,7 @@ EcmaString *EcmaStringTableImpl<Traits>::TryGetInternString(JSThread *thread, co
 {
     uint32_t hashcode = EcmaStringAccessor(*string).GetHashcode(thread);
     EcmaString *str = *string;
-    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
     return EcmaString::FromBaseString(
@@ -461,7 +467,7 @@ template <typename Traits>
 bool EcmaStringTableImpl<Traits>::CheckStringTableValidity(JSThread *thread)
 {
     bool isValid = true;
-    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
+    auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject* {
         return Barriers::GetTaggedObject(thread, obj, offset);
     };
     stringTable_.Range(std::move(readBarrier), isValid);
