@@ -120,11 +120,11 @@ public:
     NO_COPY_SEMANTIC(CallCoStubBuilder);
     void GenerateCircuit() override {}
     void PrepareArgs(std::vector<GateRef> &args, std::vector<GateRef> &argsFastCall);
-    GateRef CallStubDispatch();
+    GateRef CallStubDispatch(bool useCmc);
     std::tuple<bool, size_t, size_t> GetOpInfo();
     static void LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder &builder, GateRef func, GateRef argc,
                               const std::vector<GateRef> &args, const std::vector<GateRef> &fastCallArgs,
-                              Variable *result, Label *exit, bool isNew);
+                              Variable *result, Label *exit, bool isNew, bool useCmc);
     static void FastCallSelector(CircuitBuilder &builder, GateRef glue, GateRef func, GateRef argc, Variable *result,
                                  Label *exit);
     static void LowerFastSuperCall(GateRef glue, CircuitBuilder &builder, const std::vector<GateRef> &args,
