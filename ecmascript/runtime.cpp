@@ -360,6 +360,71 @@ void Runtime::ResumeAllThreadsImpl(JSThread *current)
     }
 }
 
+void Runtime::SuspendOther(JSThread *current, JSThread *target)
+{
+    ASSERT(!g_isEnableCMCGC);
+    ASSERT(current != nullptr);
+    ASSERT(!current->IsInRunningState());
+    SuspendOtherThreadImpl(current, target);
+}
+
+void Runtime::ResumeOther(JSThread *current, JSThread *target)
+{
+    ASSERT(!g_isEnableCMCGC);
+    ASSERT(current != nullptr);
+    ASSERT(!current->IsInRunningState());
+    ResumeOtherThreadImpl(current, target);
+}
+
+void Runtime::SuspendOtherThreadImpl(JSThread *current, JSThread *target)
+{
+    SuspendBarrier barrier;
+    for (uint32_t iterCount = 1U;; ++iterCount) {
+        {
+            LockHolder lock(threadsLock_);
+            if (suspendNewCount_ == 0) {
+                suspendNewCount_++;
+                if (current == target ||
+                    std::find(threads_.begin(), threads_.end(), target) == threads_.end()) {
+                    LOG_ECMA(FATAL) << "Invalid target thread!";
+                    UNREACHABLE();
+                }
+                barrier.Initialize(1);
+                target->SuspendThread(+1, &barrier);
+                if (target->IsSuspended()) {
+                    target->PassSuspendBarrier();
+                }
+                return;
+            }
+        }
+        if (iterCount < MAX_SUSPEND_RETRIES) {
+            LockHolder lock(threadsLock_);
+            if (suspendNewCount_ != 0) {
+                threadSuspendCondVar_.Wait(&threadsLock_);
+            }
+        } else {
+            LOG_ECMA(FATAL) << "Too many SuspendOther retries!";
+            UNREACHABLE();
+        }
+    }
+    barrier.Wait();
+}
+
+void Runtime::ResumeOtherThreadImpl(JSThread *current, JSThread *target)
+{
+    LockHolder lock(threadsLock_);
+    if (suspendNewCount_ > 0) {
+        suspendNewCount_--;
+    }
+    if (suspendNewCount_ == 0) {
+        // Signal to waiting to suspend thread
+        threadSuspendCondVar_.Signal();
+    }
+    if (target != current) {
+        target->ResumeThread(true);
+    }
+}
+
 void Runtime::IterateSharedRoot(RootVisitor &visitor)
 {
     IterateSerializeRoot(visitor);
