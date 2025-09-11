@@ -50,6 +50,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/mutator/mutator.h"
+#include "ecmascript/platform/dfx_hisys_event.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_locale.h"
@@ -1127,6 +1128,15 @@ DEF_RUNTIME_STUBS(OptSuperCallForwardAllArgs)
     uint32_t restNumArgs = convertedActualArgc - NUM_MANDATORY_JSFUNC_ARGS;
     uint32_t startIdx = NUM_MANDATORY_JSFUNC_ARGS;
     return RuntimeSuperCallForwardAllArgs(thread, sp, superFunc, newTarget, restNumArgs, startIdx).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ReportHiEvents)
+{
+    RUNTIME_STUBS_HEADER(ReportHiEvents);
+    DFXHiSysEvent::IncompatibleType type = static_cast<DFXHiSysEvent::IncompatibleType>(
+        GetHArg<JSTaggedValue>(argv, argc, 0)->GetInt());
+    DFXHiSysEvent::SendRuntimeIncompatibleEvent(thread, type);
+    return JSTaggedValue(true).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetCallSpreadArgs)

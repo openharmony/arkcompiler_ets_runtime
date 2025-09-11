@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/platform/dfx_hisys_event.h"
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #ifdef ENABLE_HISYSEVENT
 #include "hisysevent.h"
 #endif
@@ -22,6 +23,7 @@
 #endif
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -75,6 +77,38 @@ void DFXHiSysEvent::SendLongGCEvent([[maybe_unused]] LongGCStats *longGCStats)
         "CPU_LOAD", longGCStats->GetCpuLoad());
     if (ret != 0) {
         LOG_GC(ERROR) << "GCKeyStats HiSysEventWrite ARK_GC_LONG_TIME Failed! ret = " << ret;
+    }
+#endif
+}
+
+void DFXHiSysEvent::SendRuntimeIncompatibleEvent([[maybe_unused]] JSThread *thread,
+    [[maybe_unused]] IncompatibleType type)
+{
+#ifdef ENABLE_HISYSEVENT
+    std::string functionName;
+    switch (type) {
+        case IncompatibleType::ARRAY_FLATMAP:
+            functionName = "Array.prototype.flatMap";
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable, type:" << static_cast<int32_t>(type);
+            break;
+    }
+    LOG_ECMA(DEBUG) << "SendRuntimeIncompatibleEvent: functionName" << functionName;
+    uint32_t eventCount = Runtime::GetInstance()->AddIncompatibleEvent(type);
+    if (eventCount > MAX_REPORT_COUNT) {
+        LOG_ECMA(DEBUG) << functionName << " has report more than " << DFXHiSysEvent::MAX_REPORT_COUNT;
+        return ;
+    }
+    std::string stack = JsStackInfo::BuildJsStackTrace(thread, true, false, 1);
+    std::string bundleName = ConvertToStdString(thread->GetEcmaVM()->GetBundleName());
+    int32_t ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::ARKTS_RUNTIME,
+        "ARK_RUNTIME_INCOMPATIBLE", OHOS::HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
+        "FUNCTIONNAME", functionName,
+        "STACK", stack,
+        "BUNDLENAME", bundleName);
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "HiSysEventWrite RuntimeIncompatibleEvent Failed! ret = " << ret;
     }
 #endif
 }

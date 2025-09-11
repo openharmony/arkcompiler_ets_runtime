@@ -25,6 +25,12 @@ void DFXHiSysEvent::SendLongGCEvent([[maybe_unused]]LongGCStats *longGCStats)
     LOG_GC(FATAL) << "Send LongGCEvent is not support in linux.";
 }
 
+void DFXHiSysEvent::SendRuntimeIncompatibleEvent([[maybe_unused]] JSThread *thread,
+    [[maybe_unused]] IncompatibleType type)
+{
+    LOG_ECMA(WARN) << "Send RuntimeIncompatibleEvent is not support in linux.";
+}
+
 bool DFXHiSysEvent::IsEnableDFXHiSysEvent()
 {
     return false;

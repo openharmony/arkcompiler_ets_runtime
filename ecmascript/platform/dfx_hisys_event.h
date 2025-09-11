@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PLATFORM_DFX_HISYS_EVENT_H
 #define ECMASCRIPT_PLATFORM_DFX_HISYS_EVENT_H
 
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/long_gc_stats.h"
 #include "ecmascript/mem/mem_common.h"
 
@@ -23,7 +24,15 @@ namespace panda::ecmascript {
 class DFXHiSysEvent {
     
 public:
+    enum class IncompatibleType : uint8_t {
+        ARRAY_FLATMAP = 0,
+    };
+    
+    static constexpr int32_t MAX_REPORT_COUNT = 2;
+
     static void SendLongGCEvent(LongGCStats *longGCStats);
+
+    static void SendRuntimeIncompatibleEvent(JSThread *thread, IncompatibleType type);
 
     static bool IsEnableDFXHiSysEvent();
 
