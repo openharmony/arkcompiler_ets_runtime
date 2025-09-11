@@ -16,12 +16,13 @@
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 
 #include "ecmascript/builtins/builtins_string.h"
+#include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_iterator.h"
-#include "ecmascript/compiler/access_object_stub_builder.h"
+#include "ecmascript/platform/dfx_hisys_event.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -5218,6 +5219,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
     DEFVARIABLE(thisArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
     DEFVARIABLE(newArrLen, VariableType::INT64(), ZExtInt32ToInt64(GetArrayLength(thisValue)));
+    DEFVARIABLE(flag, VariableType::BOOL(), Boolean(false));
     GateRef mappedArray = NewArray(glue, *thisArrLen);
     GateRef mappedElements = GetElementsArray(glue, mappedArray);
     // fast path for stable array
@@ -5417,7 +5419,16 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
             BRANCH_NO_WEIGHT(TaggedIsHeapObject(retValue), &retValueIsHeapObject, &retValueIsNotJsArray);
             Bind(&retValueIsHeapObject);
             {
-                BRANCH_NO_WEIGHT(IsJsArray(glue, retValue), &retValueIsJsArray, &retValueIsNotJsArray);
+                Label checkProxy(env);
+                Label isProxy(env);
+                BRANCH_NO_WEIGHT(IsJsArray(glue, retValue), &retValueIsJsArray, &checkProxy);
+                Bind(&checkProxy);
+                BRANCH_UNLIKELY(IsJsProxy(glue, retValue), &isProxy, &retValueIsNotJsArray);
+                Bind(&isProxy);
+                {
+                    flag = Boolean(true);
+                    Jump(&retValueIsNotJsArray);
+                }
                 Bind(&retValueIsJsArray);
                 {
                     Label retValueIsStableArray(env);
@@ -5473,6 +5484,16 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
         i = Int64Add(*i, Int64(1));
         LoopEnd(&loopHead2);
         Bind(&loopExit2);
+        Label reportHiEvent(env);
+        Label next(env);
+        BRANCH_UNLIKELY(*flag, &reportHiEvent, &next);
+        Bind(&reportHiEvent);
+        {
+            CallRuntime(glue, RTSTUB_ID(ReportHiEvents), {
+                Int32(static_cast<int32_t>(DFXHiSysEvent::IncompatibleType::ARRAY_FLATMAP))});
+            Jump(&next);
+        }
+        Bind(&next);
         Label trim(env);
         Label noTrim(env);
         BRANCH(Int32GreaterThan(*newArrLen, *j), &trim, &noTrim);

@@ -105,3 +105,9 @@ ARK_BLOCKUI_JIT:
   JIT_FUNCTION_NAME: {type: STRING, desc: JIT compiled function name}
   TIME_ON_MAIN_THREAD: {type: INT32, desc: The time occupied by JIT on the main thread}
   TIME_ON_JIT_THREAD: {type: INT32, desc: The time occupied on JIT thread}
+
+ARK_RUNTIME_INCOMPATIBLE:
+  __BASE: {type: STATISTIC, level: MINOR, desc: ARKTSRUNTIME INCOMPATIBLE EVENT, preserve: true}
+  FUNCTIONNAME: {type: STRING, desc: Name of the incompatible function}
+  STACK: {type: STRING, desc: Function call stack}
+  BUNDLE_NAME: {type: STRING, desc: Application bundle name}
