@@ -137,6 +137,7 @@ public:
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
+    bool IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction);
     JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc);
     void UpdateAndDumpDeoptInfo(kungfu::DeoptType type);
     static PUBLIC_API std::string DisplayItems(kungfu::DeoptType type);
@@ -146,7 +147,7 @@ public:
     static size_t DecodeDeoptDepth(OffsetType id, size_t shift);
     static size_t GetInlineDepth(JSThread *thread);
     static void ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction *fun,
-                                                 Method *method, kungfu::DeoptType type);
+                                                 Method *method, kungfu::DeoptType type, bool clearMachineCode);
     static void ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread, uintptr_t *returnAddraddress,
                                                         FrameType *prevFrameTypeAddress, uintptr_t prevFrameCallSiteSp);
     static void PrepareForLazyDeopt(JSThread *thread);
@@ -217,6 +218,7 @@ private:
     bool traceDeopt_{false};
     size_t inlineDepth_ {0};
     uint32_t type_ {static_cast<uint32_t>(DeoptType::NONE)};
+    bool isRecursiveCall_ {false};
 };
 
 }  // namespace panda::ecmascript

@@ -8803,6 +8803,11 @@ GateRef StubBuilder::GetConstPoolFromFunction(GateRef glue, GateRef jsFunc)
     return env_->GetBuilder()->GetConstPoolFromFunction(glue, jsFunc);
 }
 
+GateRef StubBuilder::GetSharedConstpoolFromMethod(GateRef glue, GateRef method)
+{
+    return env_->GetBuilder()->GetSharedConstpoolFromMethod(glue, method);
+}
+
 GateRef StubBuilder::GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index)
 {
     GateRef module = Circuit::NullGate();

@@ -22,14 +22,8 @@ obj/arkcompiler/ets_runtime/test/jittest/icnotfound/icnotfound
 #23099
 obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
 
-#27690
-obj/arkcompiler/ets_runtime/test/jittest/throw_error/throw_error
-
 #27862
 obj/arkcompiler/ets_runtime/test/moduletest/stringreplace/stringreplaceAsmAssert
-
-#28993
-obj/arkcompiler/ets_runtime/test/jittest/hole_in_array/hole_in_array
 
 #26095
 obj/arkcompiler/ets_runtime/test/aottest/sharedset/sharedset/modules.ap

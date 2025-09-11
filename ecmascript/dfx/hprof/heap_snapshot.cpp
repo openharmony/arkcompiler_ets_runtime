@@ -723,17 +723,8 @@ void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
     LOG_ECMA(INFO) << "HeapSnapshot::FillNodes";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "HeapSnapshot::FillNodes", "");
     // Iterate Heap Object
-    if (g_isEnableCMCGC) {
-        GenerateNodeRootVisitor visitor(*this, isInFinish, isSimplify);
-        rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
-    } else {
-        auto heap = vm_->GetHeap();
-        if (heap != nullptr) {
-            heap->IterateOverObjects([this, isInFinish, isSimplify](TaggedObject *obj) {
-                GenerateNode(JSTaggedValue(obj), 0, isInFinish, isSimplify);
-            }, isSimplify);
-        }
-    }
+    GenerateNodeRootVisitor visitor(*this, isInFinish, isSimplify);
+    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
 }
 
 Node *HeapSnapshot::HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod)

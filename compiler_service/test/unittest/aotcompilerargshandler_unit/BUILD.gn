@@ -81,6 +81,8 @@ ohos_unittest("AotCompilerArgsHandlerUnitTest") {
     "samgr:samgr_proxy",
   ]
   defines = []
+  external_deps += [ "init:libbegetutil" ]
+  defines += [ "ENABLE_COMPILER_SERVICE_GET_PARAMETER" ]
   if (code_sign_enable_test) {
     external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
     defines += [ "CODE_SIGN_ENABLE" ]

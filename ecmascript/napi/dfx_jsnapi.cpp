@@ -1115,11 +1115,17 @@ void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTrac
         stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
             thread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
     } else {
-        ecmascript::ThreadManagedScope runningScope(thread);
-        ecmascript::SuspendAllScope suspendScope(thread);
         auto mainThread = ecmascript::Runtime::GetInstance()->GetMainThread();
-        stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
-            mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
+        ecmascript::ThreadManagedScope runningScope(thread);
+        if (g_isEnableCMCGC) {
+            ecmascript::SuspendAllScope suspendAllScope(thread);
+            stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
+                mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
+        } else {
+            ecmascript::SuspendOtherScope suspendOtherScope(thread, mainThread);
+            stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
+                mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
+        }
     }
     auto sourceMapcb = vm->GetSourceMapCallback();
     if (sourceMapcb != nullptr && !stackTraceStr.empty()) {

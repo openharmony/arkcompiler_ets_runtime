@@ -71,6 +71,18 @@ HWTEST_F_L0(UtfHelperTest, DecodeUTF16Test3)
     uint16_t utf16In[] = {0xD800, 0x0041};
     result = utf_helper::DecodeUTF16(utf16In, len, &index, false);
     EXPECT_EQ(result, 0xD800);
+    
+    uint16_t utf16In1[] = {0xD800, 0xDC00};
+    index = 0;
+    len = 2;
+    result = utf_helper::DecodeUTF16(utf16In1, len, &index, false);
+    EXPECT_EQ(result, 0x10000);
+
+    uint16_t utf16In2[] = {0x0041, 0x0042};
+    index = 0;
+    len = 2;
+    result = utf_helper::DecodeUTF16(utf16In2, len, &index, false);
+    EXPECT_EQ(result, 0x0041);
 }
 
 HWTEST_F_L0(UtfHelperTest, HandleAndDecodeInvalidUTF16Test1)
@@ -79,6 +91,30 @@ HWTEST_F_L0(UtfHelperTest, HandleAndDecodeInvalidUTF16Test1)
     size_t index = 0;
     size_t len = sizeof(input) / sizeof(input[0]);
     uint32_t result = utf_helper::HandleAndDecodeInvalidUTF16(input, len, &index);
+    EXPECT_EQ(result, utf_helper::UTF16_REPLACEMENT_CHARACTER);
+
+    uint16_t input1[] = {0xD800, 0x0041};
+    index = 0;
+    len = sizeof(input1) / sizeof(input1[0]);
+    result = utf_helper::HandleAndDecodeInvalidUTF16(input1, len, &index);
+    EXPECT_EQ(result, utf_helper::UTF16_REPLACEMENT_CHARACTER);
+
+    uint16_t input2[] = {0x0041};
+    index = 0;
+    len = sizeof(input2) / sizeof(input2[0]);
+    result = utf_helper::HandleAndDecodeInvalidUTF16(input2, len, &index);
+    EXPECT_EQ(result, 0x0041);
+
+    uint16_t input3[] = {0xDBFF};
+    index = 0;
+    len = sizeof(input3) / sizeof(input3[0]);
+    result = utf_helper::HandleAndDecodeInvalidUTF16(input3, len, &index);
+    EXPECT_EQ(result, utf_helper::UTF16_REPLACEMENT_CHARACTER);
+
+    uint16_t input4[] = {0xDFFF};
+    index = 0;
+    len = sizeof(input4) / sizeof(input4[0]);
+    result = utf_helper::HandleAndDecodeInvalidUTF16(input4, len, &index);
     EXPECT_EQ(result, utf_helper::UTF16_REPLACEMENT_CHARACTER);
 }
 
@@ -145,6 +181,12 @@ HWTEST_F_L0(UtfHelperTest, IsValidUTF8Test1)
 
     std::vector<uint8_t> data4 = {0xE0, 0xA0, 0x80};
     EXPECT_TRUE(utf_helper::IsValidUTF8(data4));
+
+    std::vector<uint8_t> data5 = {0xC2, 0xA9}; // © symbol
+    EXPECT_TRUE(utf_helper::IsValidUTF8(data5));
+
+    std::vector<uint8_t> data6 = {0xE2, 0x82, 0xAC}; // € symbol
+    EXPECT_TRUE(utf_helper::IsValidUTF8(data6));
 }
 
 HWTEST_F_L0(UtfHelperTest, IsValidUTF8Test2)

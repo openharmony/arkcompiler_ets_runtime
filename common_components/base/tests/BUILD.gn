@@ -84,6 +84,29 @@ host_unittest_action("Utf_Helper_Test") {
   ]
 }
 
+host_unittest_action("TimeUtilsTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "time_utils_test.cpp",
+  ]
+
+  configs = [
+    "//arkcompiler/ets_runtime/common_components:common_components_test_config",
+    "//arkcompiler/ets_runtime:icu_path_test_config",
+  ]
+
+  deps = [ "//arkcompiler/ets_runtime/common_components:libark_common_components_test" ]
+
+  # hiviewdfx libraries
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+}
+
 group("unittest") {
   testonly = true
 

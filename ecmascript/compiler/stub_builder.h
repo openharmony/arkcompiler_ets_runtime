@@ -979,6 +979,7 @@ public:
 
     inline GateRef GetObjectFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetConstPoolFromFunction(GateRef glue, GateRef jsFunc);
+    GateRef GetSharedConstpoolFromMethod(GateRef glue, GateRef method);
     GateRef GetStringFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);

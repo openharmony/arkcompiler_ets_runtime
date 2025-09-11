@@ -343,7 +343,7 @@ bool EcmaVM::Initialize()
     if (Runtime::GetInstance()->IsHybridVm()) {
         crossVMOperator_ = new CrossVMOperator(this);
     }
-    
+
 #endif // PANDA_JS_ETS_HYBRID_MODE
     gcStats_ = chunk_.New<GCStats>(heap_, options_.GetLongPauseTime());
     gcKeyStats_ = chunk_.New<GCKeyStats>(heap_, gcStats_);
@@ -416,7 +416,10 @@ EcmaVM::~EcmaVM()
             factory_ = nullptr;
         }
         stringTable_ = nullptr;
-        thread_ = nullptr;
+        if (thread_ != nullptr) {
+            delete thread_;
+            thread_ = nullptr;
+        }
         if (g_isEnableCMCGC) {
             common::BaseRuntime::ExitGCCriticalSection();
         }
@@ -1663,15 +1666,22 @@ JSTaggedValue EcmaVM::FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpoo
 {
     JSTaggedValue unsharedConstpool = FindUnsharedConstpool(sharedConstpool);
     if (unsharedConstpool.IsHole()) {
-        ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
-        int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
-        // unshared constpool index is default INT32_MAX.
-        ASSERT(0 <= constpoolIndex && constpoolIndex != INT32_MAX);
-        JSHandle<ConstantPool> unshareCp = ConstantPool::CreateUnSharedConstPoolBySharedConstpool(
-            thread_->GetEcmaVM(), shareCp->GetJSPandaFile(), shareCp);
-        unsharedConstpool = unshareCp.GetTaggedValue();
-        SetUnsharedConstpool(constpoolIndex, unsharedConstpool);
+        return CreateUnsharedConstpool(sharedConstpool);
     }
+    return unsharedConstpool;
+}
+
+JSTaggedValue EcmaVM::CreateUnsharedConstpool(JSTaggedValue sharedConstpool)
+{
+    JSTaggedValue unsharedConstpool = JSTaggedValue::Hole();
+    ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
+    int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
+    // unshared constpool index is default INT32_MAX.
+    ASSERT(0 <= constpoolIndex && constpoolIndex != INT32_MAX);
+    JSHandle<ConstantPool> unshareCp = ConstantPool::CreateUnSharedConstPoolBySharedConstpool(
+        thread_->GetEcmaVM(), shareCp->GetJSPandaFile(), shareCp);
+    unsharedConstpool = unshareCp.GetTaggedValue();
+    SetUnsharedConstpool(constpoolIndex, unsharedConstpool);
     return unsharedConstpool;
 }
 

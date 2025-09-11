@@ -218,4 +218,63 @@ HWTEST_F_L0(MutatorManagerTest, EnsureCpuProfileFinish_Test5)
     testthread.join();
     EXPECT_EQ(Mutators.size(), 0);
 }
+
+HWTEST_F_L0(MutatorManagerTest, EnsurePhaseTransition_Test1)
+{
+    std::list<Mutator*> mutators;
+    MutatorManager *managerPtr = new MutatorManager();
+    Mutator mutator1;
+    mutator1.Init();
+    mutator1.SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_TRUE);
+    managerPtr->BindMutator(mutator1);
+
+    Mutator mutator2;
+    mutator2.Init();
+    mutator2.SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_TRUE);
+    managerPtr->BindMutator(mutator2);
+    
+    mutators.push_back(&mutator1);
+    EXPECT_EQ(mutators.size(), 1);
+    mutators.push_back(&mutator2);
+    EXPECT_EQ(mutators.size(), 2);
+
+    GCPhase targetPhase = GCPhase::GC_PHASE_IDLE;
+    managerPtr->EnsurePhaseTransition(targetPhase, mutators);
+    EXPECT_EQ(mutators.size(), 0);
+    delete managerPtr;
+}
+
+HWTEST_F_L0(MutatorManagerTest, EnsurePhaseTransition_Test2)
+{
+    std::list<Mutator*> mutators;
+    MutatorManager *managerPtr = new MutatorManager();
+    Mutator mutator1;
+    mutator1.Init();
+    mutator1.SetInSaferegion(MutatorBase::SaferegionState::SAFE_REGION_TRUE);
+    managerPtr->BindMutator(mutator1);
+
+    Mutator mutator2;
+    mutator2.Init();
+    mutator2.SetMutatorPhase(GCPhase::GC_PHASE_IDLE);
+    EXPECT_EQ(mutator2.GetMutatorPhase(), GCPhase::GC_PHASE_IDLE);
+    MutatorBase* base = static_cast<MutatorBase*>(mutator2.GetMutatorBasePtr());
+    base->Init();
+    MutatorBase::SuspensionType flag = MutatorBase::SuspensionType::SUSPENSION_FOR_STW;
+    base->SetSuspensionFlag(flag);
+    flag = MutatorBase::SuspensionType::SUSPENSION_FOR_GC_PHASE;
+    base->SetSuspensionFlag(flag);
+    base->HandleSuspensionRequest();
+    EXPECT_TRUE(mutator2.FinishedTransition());
+    managerPtr->BindMutator(mutator2);
+    
+    mutators.push_back(&mutator1);
+    EXPECT_EQ(mutators.size(), 1);
+    mutators.push_back(&mutator2);
+    EXPECT_EQ(mutators.size(), 2);
+
+    GCPhase targetPhase = GCPhase::GC_PHASE_IDLE;
+    managerPtr->EnsurePhaseTransition(targetPhase, mutators);
+    EXPECT_EQ(mutators.size(), 0);
+    delete managerPtr;
+}
 }  // namespace common::test

@@ -38,6 +38,11 @@ var obj = {
 }
 assert_equal(JSON.stringify(obj),'{"2147483648":2289}');
 
+var obj = {
+    6958012010: 2289
+}
+assert_equal(JSON.stringify(obj),'{"6958012010":2289}');
+
 const a = new Uint32Array(0x10);
 let  b = a.__proto__;
 b[1073741823] = {}
