@@ -4013,7 +4013,7 @@ static void DumpElementClass(const JSThread *thread, const TaggedArray *arr, std
     vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(arr->Get(thread, i));
-        vec.emplace_back(i, val, Reference::ReferenceType::ELEMENT);
+        vec.emplace_back(i, val, EdgeType::ELEMENT);
     }
 }
 
@@ -4647,7 +4647,7 @@ void NumberDictionary::DumpForSnapshot(const JSThread *thread, std::vector<Refer
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             JSTaggedValue val(GetValue(thread, hashIndex));
             vec.emplace_back(
-                static_cast<uint32_t>(JSTaggedNumber(key).GetNumber()), val, Reference::ReferenceType::ELEMENT);
+                static_cast<uint32_t>(JSTaggedNumber(key).GetNumber()), val, EdgeType::ELEMENT);
         }
     }
 }
