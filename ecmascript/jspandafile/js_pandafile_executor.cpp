@@ -63,10 +63,13 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         ThreadManagedScope managedScope(thread);
         JSHandle<JSTaggedValue> moduleRecord =
             ModuleResolver::HostResolveImportedModule(thread, name, entry, jsPandaFile.get(), executeType);
+        JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+        if (SourceTextModule::IsSharedModule(module)) {
+            LOG_ECMA(ERROR) << "Cannot load module '" + entry + "' , the entry file does not support shared modules";
+        }
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
         SourceTextModule::Instantiate(thread, moduleRecord, executeType);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
-        JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         module->SetStatus(ModuleStatus::INSTANTIATED);
         SourceTextModule::Evaluate(thread, module, nullptr, 0, executeType);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
@@ -201,11 +204,14 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     moduleManager->SetExecuteMode(ModuleExecuteMode::ExecuteBufferMode);
     JSHandle<JSTaggedValue> moduleRecord =
         ModuleResolver::HostResolveImportedModule(thread, filename, entry, buffer, size, executeType);
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    if (SourceTextModule::IsSharedModule(module)) {
+        LOG_ECMA(ERROR) << "Cannot load module '" + entry + "' , the entry file does not support shared modules";
+    }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     SourceTextModule::Instantiate(thread, moduleRecord, executeType);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
 
-    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     SourceTextModule::Evaluate(thread, module, buffer, size, executeType);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
@@ -306,10 +312,13 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
     moduleManager->SetExecuteMode(ModuleExecuteMode::ExecuteBufferMode);
     JSHandle<JSTaggedValue> moduleRecord =
         ModuleResolver::HostResolveImportedModule(thread, filename, entry, jsPandaFile, ExecuteTypes::STATIC);
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    if (SourceTextModule::IsSharedModule(module)) {
+        LOG_ECMA(ERROR) << "Cannot load module '" + entry + "' , the entry file does not support shared modules";
+    }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     SourceTextModule::Instantiate(thread, moduleRecord);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
-    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ModuleStatus::INSTANTIATED);
     //After the module is instantiated, stop preloading so and parallel abc loading
     thread->GetEcmaVM()->StopPreLoadSoOrAbc();
@@ -496,10 +505,13 @@ int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread
     ASSERT(!jsPandaFile->IsBundlePack());
     JSHandle<JSTaggedValue> moduleRecord =
         ModuleResolver::HostResolveImportedModule(thread, abcFilePath, entryPoint, jsPandaFile.get());
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    if (SourceTextModule::IsSharedModule(module)) {
+        LOG_ECMA(ERROR) << "Cannot load module '" + entry + "' , the entry file does not support shared modules";
+    }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ROUTE_INTERNAL_ERROR);
     SourceTextModule::Instantiate(thread, moduleRecord);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ROUTE_INTERNAL_ERROR);
-    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     if (!isSingletonPattern) {
         LOG_ECMA(INFO) << "Route jump to non-singleton page: " << entryPoint;
         module->SetStatus(ModuleStatus::INSTANTIATED);

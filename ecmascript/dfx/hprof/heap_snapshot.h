@@ -384,16 +384,14 @@ private:
 };
 
 struct Reference {
-    enum class ReferenceType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, DEFAULT = PROPERTY };
-
     Reference(const CString &name, JSTaggedValue value) : name_(name), value_(value) {}
-    Reference(const CString &name, JSTaggedValue value, ReferenceType type) : name_(name), value_(value), type_(type) {}
-    Reference(uint32_t index, JSTaggedValue value, ReferenceType type) : index_(index), value_(value), type_(type) {}
+    Reference(const CString &name, JSTaggedValue value, EdgeType type) : name_(name), value_(value), type_(type) {}
+    Reference(uint32_t index, JSTaggedValue value, EdgeType type) : index_(index), value_(value), type_(type) {}
 
     CString name_;
     uint32_t index_ {-1U};
     JSTaggedValue value_;
-    ReferenceType type_ {ReferenceType::DEFAULT};
+    EdgeType type_ {EdgeType::DEFAULT};
 };
 
 class EntryVisitor {
@@ -458,11 +456,11 @@ public:
     }
     CString *GenerateNodeName(TaggedObject *entry);
     NodeType GenerateNodeType(TaggedObject *entry);
-    const CList<Node *> *GetNodes() const
+    const CVector<Node *> *GetNodes() const
     {
         return &nodes_;
     }
-    const CList<Edge *> *GetEdges() const
+    const CVector<Edge *> *GetEdges() const
     {
         return &edges_;
     }
@@ -551,14 +549,14 @@ private:
     void LogLeakedLocalHandleBackTrace(ObjectSlot slot);
     void LogLeakedLocalHandleBackTrace(common::RefField<> &refField);
 
-    CList<Node *> nodes_ {};
-    CList<Edge *> edges_ {};
+    CVector<Node *> nodes_ {};
+    CVector<Edge *> edges_ {};
     CVector<TimeStamp> timeStamps_ {};
     uint32_t nodeCount_ {0};
     uint32_t edgeCount_ {0};
     size_t totalNodesSize_ {0};
     HeapEntryMap entryMap_;
-    panda::ecmascript::HeapRootVisitor rootVisitor_;
+    HeapRootVisitor rootVisitor_;
     const EcmaVM *vm_;
     StringHashMap *stringTable_ {nullptr};
     bool isVmMode_ {true};
@@ -567,7 +565,7 @@ private:
     Node* privateStringNode_ {nullptr};
     bool trackAllocations_ {false};
     CVector<FunctionInfo> traceInfoStack_ {};
-    CMap<MethodLiteral *, struct FunctionInfo> stackInfo_;
+    CMap<MethodLiteral *, FunctionInfo> stackInfo_;
     CMap<std::string, int> scriptIdMap_;
     TraceTree traceTree_;
     CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
