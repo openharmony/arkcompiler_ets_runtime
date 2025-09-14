@@ -59,7 +59,7 @@ ecmascript/stackmap/         @ginxu @zhangyukun8 @yingguofeng
 ecmascript/stubs/            @ginxu @zhangyukun8 @yingguofeng
 ecmascript/taskpool/         @weng-changcheng @chentianyuu
 
-test/regresstest/*.json                  @shirunova_viktoria @wuzhefengh @weng-changcheng @zhuheng27
-test/regresstest/ignored-*               @shirunova_viktoria @kuchkovairina @wuzhefengh @weng-changcheng @zhuheng27
-test/regresstest/regress_test_config.py  @shirunova_viktoria @wuzhefengh @weng-changcheng @zhuheng27
-test/regresstest/run_regress_test.py     @shirunova_viktoria @wuzhefengh @weng-changcheng @zhuheng27
+test/regresstest/*.json                  @shirunova_viktoria @wuzhefengh @weng-changcheng @HuangShengda
+test/regresstest/ignored-*               @shirunova_viktoria @kuchkovairina @wuzhefengh @weng-changcheng @HuangShengda
+test/regresstest/regress_test_config.py  @shirunova_viktoria @wuzhefengh @weng-changcheng @HuangShengda
+test/regresstest/run_regress_test.py     @shirunova_viktoria @wuzhefengh @weng-changcheng @HuangShengda
