@@ -86,3 +86,20 @@ test3.prototype = v26;
 const v33 = new test3();
 v33[0] = v33;
 print(ArkTools.isTSHClass(v33));
+
+const v10 = 0;
+function f15() {
+    return f15;
+}
+
+const t15 = f15();
+t15.prototype = null;
+class C25 extends f15 {}
+const v28 = C25.prototype;
+v28.a = v10;
+print("Hello World");
+
+class C27 extends null {}
+const v29 = C27.prototype;
+v29.f = {};
+print("Hello World");
