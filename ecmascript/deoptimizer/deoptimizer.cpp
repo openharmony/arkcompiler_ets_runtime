@@ -309,6 +309,33 @@ void Deoptimizier::AssistCollectDeoptBundleVec(FrameIterator &it, T &frame)
     stackContext_.isFrameLazyDeopt_ = it.IsLazyDeoptFrameType();
 }
 
+void Deoptimizier::DumpMachineCode(JSTaggedValue jsFunction)
+{
+    if (jsFunction.IsUndefined()) {
+        LOG_FULL(INFO) << "call target is undefined.";
+        return;
+    }
+    JSTaggedValue machineCodeObj = JSFunction::Cast(jsFunction.GetTaggedObject())->GetMachineCode(thread_);
+    if (machineCodeObj.IsUndefined()) {
+        LOG_FULL(INFO) << "machine code is undefined.";
+        return;
+    }
+    MachineCode* machineCode = MachineCode::Cast(machineCodeObj.GetTaggedObject());
+    if (machineCode == nullptr) {
+        LOG_FULL(INFO) << "machine code is nullptr.";
+        return;
+    }
+    Method *method = Method::Cast(JSFunction::Cast(jsFunction.GetTaggedObject())->GetMethod(thread_).GetTaggedObject());
+    if (method == nullptr) {
+        LOG_FULL(INFO) << "method is nullptr.";
+        return;
+    }
+    LOG_FULL(INFO) << "method name: " << CString(method->GetMethodName(thread_))
+                   << "machine code addr: " << std::hex << machineCode
+                   << "text addr: " << machineCode->GetInstructionsAddr()
+                   << ", text size: " << machineCode->GetInstructionsSize();
+}
+
 void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
 {
     JSTaggedValue jsFunction = JSTaggedValue::Undefined();
@@ -345,6 +372,7 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
             case FrameType::LEAVE_FRAME:
                 break;
             default: {
+                DumpMachineCode(jsFunction);
                 LOG_FULL(FATAL) << "frame type error, type: " << std::hex << static_cast<long>(type)
                                 << ", sp: " << lastLeave;
                 UNREACHABLE();
@@ -363,8 +391,11 @@ bool Deoptimizier::IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction)
     for (it.Advance<GCVisitedFlag::VISITED>(); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
         switch (it.GetFrameType()) {
             case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
-            case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+            case FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
+            case FrameType::FASTJIT_FUNCTION_FRAME:
+            case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
                 if (it.GetFunction() == jsFunction) {
+                    DumpMachineCode(jsFunction);
                     return true;
                 }
             }
@@ -640,7 +671,7 @@ void Deoptimizier::ResetJitHotness(JSThread *thread, JSFunction *jsFunc)
 
 // static
 void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction *func,
-                                                    Method *method, kungfu::DeoptType type, bool clearMachineCode)
+                                                    Method *method, kungfu::DeoptType type, bool resetJitHotness)
 {
     method->SetDeoptType(type);
     if (func->GetMachineCode(thread).IsMachineCodeObject()) {
@@ -654,9 +685,8 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction
         func->SetCodeEntry(entry);
         method->ClearAOTStatusWhenDeopt(entry);
         func->ClearCompiledCodeFlags();
-        if (clearMachineCode) {
+        if (resetJitHotness) {
             ResetJitHotness(thread, func);
-            func->ClearMachineCode(thread);
         }
     }  // Do not change the func code entry if the method is not aot or deopt has happened already
 }

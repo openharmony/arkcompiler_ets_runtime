@@ -136,6 +136,7 @@ public:
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
+    void DumpMachineCode(JSTaggedValue jsFunction);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
     bool IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction);
     JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc);
@@ -147,7 +148,7 @@ public:
     static size_t DecodeDeoptDepth(OffsetType id, size_t shift);
     static size_t GetInlineDepth(JSThread *thread);
     static void ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction *fun,
-                                                 Method *method, kungfu::DeoptType type, bool clearMachineCode);
+                                                 Method *method, kungfu::DeoptType type, bool resetJitHotness);
     static void ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread, uintptr_t *returnAddraddress,
                                                         FrameType *prevFrameTypeAddress, uintptr_t prevFrameCallSiteSp);
     static void PrepareForLazyDeopt(JSThread *thread);

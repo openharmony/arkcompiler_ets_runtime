@@ -364,7 +364,9 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
         jsFunction_->SetCompiledFuncEntry(codeAddr, machineCodeObj->GetIsFastCall());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
-        jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
+        if (!jit_->IsAppJit()) {
+            jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
+        }
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
         LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodName() << ", code range:" <<
             reinterpret_cast<void*>(codeAddr) <<"--" << reinterpret_cast<void*>(codeAddrEnd);
