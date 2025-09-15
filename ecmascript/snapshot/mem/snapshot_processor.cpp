@@ -1786,11 +1786,12 @@ uint64_t SnapshotProcessor::SerializeTaggedField(JSTaggedType *tagged, CQueue<Ta
 void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *root)
 {
     EncodeBit encodeBit(*value);
+    size_t offset = ToUintPtr(value) - ToUintPtr(root);
     if (!builtinsDeserialize_ && encodeBit.IsReference() && encodeBit.IsGlobalConstOrBuiltins()) {
         size_t index = encodeBit.GetNativePointerOrObjectIndex();
         auto object = vm_->GetSnapshotEnv()->RelocateRootObjectAddr(index);
         *value = object;
-        WriteBarrier<WriteBarrierType::DESERIALIZE>(vm_->GetJSThread(), reinterpret_cast<void *>(value), 0, object);
+        WriteBarrier(vm_->GetJSThread(), reinterpret_cast<void *>(root), offset, object);
         return;
     }
 
@@ -1801,29 +1802,8 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
         *value = taggedObjectAddr;
-        if (!g_isEnableCMCGC) {
-            Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(root));
-            Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
-            if (rootRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) {
-                // Should align with '8' in 64 and 32 bit platform
-                ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
-                rootRegion->InsertOldToNewRSet((uintptr_t)value);
-            }
-            if (valueRegion->InSharedSweepableSpace()) {
-                if (!rootRegion->InSharedHeap()) {
-                    rootRegion->InsertLocalToShareRSet((uintptr_t)value);
-                }
-                // In deserializing can not use barriers, only mark the shared value to prevent markingbit being lost
-                if (vm_->GetJSThread()->IsSharedConcurrentMarkingOrFinished()) {
-                    ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
-                    valueRegion->AtomicMark(reinterpret_cast<void*>(taggedObjectAddr));
-                }
-            }
-        } else {
-            size_t offset = ToUintPtr(root) - ToUintPtr(value);
-            WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), reinterpret_cast<void *>(root), offset,
-                static_cast<JSTaggedType>(taggedObjectAddr));
-        }
+        WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), reinterpret_cast<void *>(root), offset,
+            static_cast<JSTaggedType>(taggedObjectAddr));
         return;
     }
 
@@ -1836,7 +1816,8 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
 void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
 {
     // During AOT deserialization, setting the hclass on an object does not require atomic operations, but a write
-    // barrier is still needed to track cross-generation references.
+    // barrier is still needed to track cross-generation references. Besides this, if the hclass is created during
+    // deserialization, it should not be pushed into the mark stack, because its fields may have not been relocated.
     EncodeBit encodeBit(*reinterpret_cast<uint64_t *>(object));
     if (!builtinsDeserialize_ && encodeBit.IsGlobalConstOrBuiltins()) {
         size_t hclassIndex = encodeBit.GetNativePointerOrObjectIndex();
@@ -1844,8 +1825,7 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
         JSTaggedValue hclassValue = globalConst->GetGlobalConstantObject(hclassIndex);
         ASSERT(hclassValue.IsJSHClass());
         object->SetClassWithoutBarrier(JSHClass::Cast(hclassValue.GetTaggedObject()));
-        WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET,
-                                                        hclassValue.GetRawData());
+        WriteBarrier(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET, hclassValue.GetRawData());
         return;
     }
     uintptr_t hclassAddr = TaggedObjectEncodeBitToAddr(encodeBit);
