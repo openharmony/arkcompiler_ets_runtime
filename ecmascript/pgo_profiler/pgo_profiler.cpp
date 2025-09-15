@@ -1313,8 +1313,13 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
         if (IsSkippableObjectTypeSafe(localType)) {
             return;
         }
-        PGODefineOpType objDefType(localType);
         auto protoOrHClass = ctorFunction->GetProtoOrHClass(thread);
+        if (protoOrHClass.IsJSHClass() &&
+            !JSHClass::Cast(protoOrHClass.GetTaggedObject())->IsOnlyJSObject()) {
+            return;
+        }
+
+        PGODefineOpType objDefType(localType);
         if (protoOrHClass.IsJSHClass()) {
             auto ihc = JSHClass::Cast(protoOrHClass.GetTaggedObject());
             SetRootProfileType(ihc, ctorAbcId, ctorMethodId, ProfileType::Kind::ClassId);
