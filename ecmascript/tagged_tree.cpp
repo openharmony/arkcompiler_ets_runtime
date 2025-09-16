@@ -422,6 +422,7 @@ JSHandle<Derived> TaggedTree<Derived>::Insert(JSThread *thread, JSHandle<Derived
     if (parentKey->IsHole()) {
         tree->SetRoot(thread, 0, key.GetTaggedValue(), value.GetTaggedValue());
         tree->SetNumberOfElements(thread, tree->NumberOfElements() + 1);
+        tree->SetNumberOfDeletedElements(thread, 0);
         return tree;
     }
 
