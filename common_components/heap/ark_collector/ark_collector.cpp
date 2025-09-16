@@ -211,6 +211,36 @@ MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFie
     return visitor;
 }
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+// note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
+void ArkCollector::MarkingXRef(RefField<> &field, ParallelLocalMarkStack &workStack) const
+{
+    BaseObject* targetObj = field.GetTargetObject();
+    auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(targetObj));
+    // field is tagged object, should be in heap
+    DCHECK_CC(Heap::IsHeapAddress(targetObj));
+
+    DLOG(TRACE, "trace obj %p <%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
+    if (region->IsNewObjectSinceForward(targetObj)) {
+        DLOG(TRACE, "trace: skip new obj %p<%p>(%zu)", targetObj, targetObj->GetTypeInfo(), targetObj->GetSize());
+        return;
+    }
+    ASSERT(!field.IsWeak());
+    if (!region->MarkObject(targetObj)) {
+        workStack.Push(targetObj);
+    }
+}
+
+void ArkCollector::MarkingObjectXRef(BaseObject *obj, ParallelLocalMarkStack &workStack)
+{
+    auto refFunc = [this, &workStack] (RefField<>& field) {
+        MarkingXRef(field, workStack);
+    };
+
+    obj->IterateXRef(refFunc);
+}
+#endif
+
 void ArkCollector::FixRefField(BaseObject* obj, RefField<>& field) const
 {
     RefField<> oldField(field);
@@ -770,10 +800,62 @@ void ArkCollector::FixHeap()
     WVerify::VerifyAfterFix(*this);
 }
 
+void ArkCollector::CollectGarbageWithXRef()
+{
+    const bool isNotYoungGC = gcReason_ != GCReason::GC_REASON_YOUNG;
+#ifdef ENABLE_CMC_RB_DFX
+    WVerify::DisableReadBarrierDFX(*this);
+#endif
+    STWParam stwParam{"stw-gc"};
+    ScopedStopTheWorld stw(stwParam);
+    RemoveXRefFromRoots();
+
+    auto collectedRoots = EnumRoots<EnumRootsPolicy::NO_STW_AND_NO_FLIP_MUTATOR>();
+    MarkingHeap(collectedRoots);
+    TransitionToGCPhase(GCPhase::GC_PHASE_FINAL_MARK, true);
+    Remark();
+    SweepUnmarkedXRefs();
+    PostMarking();
+
+    AddXRefToRoots();
+    Preforward();
+    ConcurrentPreforward();
+    // reclaim large objects should after preforward(may process weak ref) and
+    // before fix heap(may clear live bit)
+    if (isNotYoungGC) {
+        CollectLargeGarbage();
+    }
+    SweepThreadLocalJitFort();
+
+    CopyFromSpace();
+    WVerify::VerifyAfterForward(*this);
+
+    PrepareFix();
+    FixHeap();
+    if (isNotYoungGC) {
+        CollectNonMovableGarbage();
+    }
+
+    TransitionToGCPhase(GCPhase::GC_PHASE_IDLE, true);
+
+    ClearAllGCInfo();
+    CollectSmallSpace();
+    UnmarkAllXRefs();
+
+#if defined(ENABLE_CMC_RB_DFX)
+    WVerify::EnableReadBarrierDFX(*this);
+#endif
+    GetGCStats().recordSTWTime(stwParam.GetElapsedNs());
+}
+
 void ArkCollector::DoGarbageCollection()
 {
     const bool isNotYoungGC = gcReason_ != GCReason::GC_REASON_YOUNG;
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::DoGarbageCollection", "");
+    if (gcReason_ == GCReason::GC_REASON_XREF) {
+        CollectGarbageWithXRef();
+        return;
+    }
     if (gcMode_ == GCMode::STW) { // 2: stw-gc
 #ifdef ENABLE_CMC_RB_DFX
         WVerify::DisableReadBarrierDFX(*this);

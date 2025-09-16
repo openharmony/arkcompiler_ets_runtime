@@ -115,6 +115,7 @@ public:
 };
 
 class MarkingWork;
+template <bool ProcessXRef>
 class ConcurrentMarkingWork;
 using RootSet = MarkStack<BaseObject*>;
 constexpr size_t LOCAL_MARK_STACK_CAPACITY = 128;
@@ -128,7 +129,8 @@ using WeakStack = CArrayList<std::pair<RefField<>*, size_t>>;
 
 class MarkingCollector : public Collector {
     friend MarkingWork;
-    friend ConcurrentMarkingWork;
+    template <bool ProcessXRef>
+    friend class ConcurrentMarkingWork;
 
 public:
     explicit MarkingCollector(Allocator& allocator, CollectorResources& resources)
@@ -178,6 +180,7 @@ public:
 
     bool ShouldIgnoreRequest(GCRequest& request) override { return request.ShouldBeIgnored(); }
 
+    template<bool ProcessXRef>
     void ProcessMarkStack(uint32_t threadIndex, ParallelLocalMarkStack &workStack);
     void ProcessWeakStack(WeakStack &weakStack);
 
@@ -217,6 +220,14 @@ public:
     };
     virtual MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
                                                                        WeakStack &weakStack) = 0;
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    virtual void MarkingObjectXRef(BaseObject *obj, ParallelLocalMarkStack &workStack)
+    {
+        LOG_COMMON(FATAL) << "Unresolved fatal";
+        UNREACHABLE_CC();
+    }
+#endif
+
     inline bool IsResurrectedObject(const BaseObject* obj) const { return RegionalHeap::IsResurrectedObject(obj); }
 
     Allocator& GetAllocator() const { return theAllocator_; }

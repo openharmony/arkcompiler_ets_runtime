@@ -86,6 +86,15 @@ void JSNApi::DisposeXRefGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
 }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
+void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr, std::function<void(uintptr_t)> &visitor)
+{
+    if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return;
+    }
+    JSTaggedType value = *(reinterpret_cast<JSTaggedType *>(addr));
+    vm->GetCrossVMOperator()->MarkFromObject(value, visitor);
+}
+
 void JSNApi::MarkFromObject(const EcmaVM *vm, uintptr_t addr)
 {
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {

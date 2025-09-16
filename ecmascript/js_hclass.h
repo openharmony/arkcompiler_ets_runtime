@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -358,11 +358,11 @@ enum class JSType : uint8_t {
     PRESET_JSTYPE_DECL,
 };
 
-static_assert(static_cast<uint8_t>(JSType::LINE_STRING) == static_cast<uint8_t>(common::CommonType::LINE_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::LINE_STRING) == static_cast<uint8_t>(common::ObjectType::LINE_STRING) &&
     "line string type should be same with common type");
-static_assert(static_cast<uint8_t>(JSType::SLICED_STRING) == static_cast<uint8_t>(common::CommonType::SLICED_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::SLICED_STRING) == static_cast<uint8_t>(common::ObjectType::SLICED_STRING) &&
     "sliced string type should be same with common type");
-static_assert(static_cast<uint8_t>(JSType::TREE_STRING) == static_cast<uint8_t>(common::CommonType::TREE_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::TREE_STRING) == static_cast<uint8_t>(common::ObjectType::TREE_STRING) &&
     "tree string type should be same with common type");
 
 struct TransitionResult {
@@ -682,8 +682,8 @@ public:
     // These types are not complete hclass, does not has profile field.
     inline bool IsCompositeHClass() const
     {
-        common::CommonType jsType = static_cast<common::CommonType>(GetObjectType());
-        return (common::CommonType::FIRST_OBJECT_TYPE <= jsType && jsType <= common::CommonType::LAST_OBJECT_TYPE);
+        common::ObjectType jsType = static_cast<common::ObjectType>(GetObjectType());
+        return (common::ObjectType::FIRST_OBJECT_TYPE <= jsType && jsType <= common::ObjectType::LAST_OBJECT_TYPE);
     }
 
     inline bool IsString() const

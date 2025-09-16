@@ -32,9 +32,9 @@ class JsonHelperTest : public BaseTestWithScope<false> {
  */
 HWTEST_F_L0(JsonHelperTest, IsFastValueToQuotedString_001)
 {
-    Span<const uint8_t> sp1(reinterpret_cast<const uint8_t*>("Hello World"), 11);
-    Span<const uint8_t> sp2(reinterpret_cast<const uint8_t*>("0123456789"), 10);
-    Span<const uint8_t> sp3(reinterpret_cast<const uint8_t*>("!#$%&'()*+,-./:;=?@[]^_`{|}~"), 28);
+    common::Span<const uint8_t> sp1(reinterpret_cast<const uint8_t*>("Hello World"), 11);
+    common::Span<const uint8_t> sp2(reinterpret_cast<const uint8_t*>("0123456789"), 10);
+    common::Span<const uint8_t> sp3(reinterpret_cast<const uint8_t*>("!#$%&'()*+,-./:;=?@[]^_`{|}~"), 28);
     EXPECT_TRUE(JsonHelper::IsFastValueToQuotedString(sp1));
     EXPECT_TRUE(JsonHelper::IsFastValueToQuotedString(sp2));
     EXPECT_TRUE(JsonHelper::IsFastValueToQuotedString(sp3));
@@ -48,13 +48,13 @@ HWTEST_F_L0(JsonHelperTest, IsFastValueToQuotedString_001)
  */
 HWTEST_F_L0(JsonHelperTest, IsFastValueToQuotedString_002)
 {
-    Span<const uint8_t> sp1(reinterpret_cast<const uint8_t*>("\""), 1);
-    Span<const uint8_t> sp2(reinterpret_cast<const uint8_t*>("\\"), 1);
-    Span<const uint8_t> sp3(reinterpret_cast<const uint8_t*>("\b"), 1);
-    Span<const uint8_t> sp4(reinterpret_cast<const uint8_t*>("\f"), 1);
-    Span<const uint8_t> sp5(reinterpret_cast<const uint8_t*>("\n"), 1);
-    Span<const uint8_t> sp6(reinterpret_cast<const uint8_t*>("\r"), 1);
-    Span<const uint8_t> sp7(reinterpret_cast<const uint8_t*>("\t"), 1);
+    common::Span<const uint8_t> sp1(reinterpret_cast<const uint8_t*>("\""), 1);
+    common::Span<const uint8_t> sp2(reinterpret_cast<const uint8_t*>("\\"), 1);
+    common::Span<const uint8_t> sp3(reinterpret_cast<const uint8_t*>("\b"), 1);
+    common::Span<const uint8_t> sp4(reinterpret_cast<const uint8_t*>("\f"), 1);
+    common::Span<const uint8_t> sp5(reinterpret_cast<const uint8_t*>("\n"), 1);
+    common::Span<const uint8_t> sp6(reinterpret_cast<const uint8_t*>("\r"), 1);
+    common::Span<const uint8_t> sp7(reinterpret_cast<const uint8_t*>("\t"), 1);
     EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(sp1));
     EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(sp2));
     EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(sp3));
@@ -66,7 +66,7 @@ HWTEST_F_L0(JsonHelperTest, IsFastValueToQuotedString_002)
 
     for (uint8_t c = 0; c < 32; c++) {
         EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(
-          Span<const uint8_t>(reinterpret_cast<const uint8_t*>(&c), 1)));
+          common::Span<const uint8_t>(reinterpret_cast<const uint8_t*>(&c), 1)));
     }
 }
 
@@ -78,9 +78,9 @@ HWTEST_F_L0(JsonHelperTest, IsFastValueToQuotedString_002)
  */
 HWTEST_F_L0(JsonHelperTest, IsFastValueToQuotedString_003)
 {
-    Span<const uint8_t> sp1(reinterpret_cast<const uint8_t*>("Hello\nWorld"), 11);
-    Span<const uint8_t> sp2(reinterpret_cast<const uint8_t*>("Test\"Quote"), 10);
-    Span<const uint8_t> sp3(reinterpret_cast<const uint8_t*>("Test\\BackSlash"), 14);
+    common::Span<const uint8_t> sp1(reinterpret_cast<const uint8_t*>("Hello\nWorld"), 11);
+    common::Span<const uint8_t> sp2(reinterpret_cast<const uint8_t*>("Test\"Quote"), 10);
+    common::Span<const uint8_t> sp3(reinterpret_cast<const uint8_t*>("Test\\BackSlash"), 14);
 
     EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(sp1));
     EXPECT_FALSE(JsonHelper::IsFastValueToQuotedString(sp2));

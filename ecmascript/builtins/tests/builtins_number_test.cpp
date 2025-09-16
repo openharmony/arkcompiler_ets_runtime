@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -461,7 +461,7 @@ HWTEST_F_L0(BuiltinsNumberTest, parseInt)
 HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleFlags)
 {
     JSHandle<EcmaString> str;
-    Span<const uint8_t> sp;
+    common::Span<const uint8_t> sp;
     CVector<uint8_t> buf;
 
     // flags of IGNORE_TRAILING
@@ -543,7 +543,7 @@ HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleFlags)
 HWTEST_F_L0(BuiltinsNumberTest, StringToDoubleRadix)
 {
     JSHandle<EcmaString> str;
-    Span<const uint8_t> sp;
+    common::Span<const uint8_t> sp;
     CVector<uint8_t> buf;
     int radix;
 

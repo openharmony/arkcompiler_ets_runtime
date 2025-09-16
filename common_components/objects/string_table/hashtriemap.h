@@ -18,8 +18,10 @@
 
 #include "common_components/heap/heap.h"
 #include "common_components/log/log.h"
+#include "common_interfaces/base/common.h"
 #include "common_interfaces/objects/readonly_handle.h"
-#include "common_interfaces/objects/base_string.h"
+#include "common_interfaces/objects/string/base_string.h"
+#include "common_interfaces/objects/string/base_string-inl.h"
 
 namespace panda::ecmascript {
 class TaggedObject;
@@ -172,13 +174,13 @@ struct HashTrieMapLoadResult {
 
 inline HashTrieMapEntry* HashTrieMapNode::AsEntry()
 {
-    ASSERT(IsEntry() && "HashTrieMap: called entry on non-entry node");
+    DCHECK_CC(IsEntry() && "HashTrieMap: called entry on non-entry node");
     return static_cast<HashTrieMapEntry*>(this);
 }
 
 inline HashTrieMapIndirect* HashTrieMapNode::AsIndirect()
 {
-    ASSERT(!IsEntry() && "HashTrieMap: called indirect on entry node");
+    DCHECK_CC(!IsEntry() && "HashTrieMap: called indirect on entry node");
     return static_cast<HashTrieMapIndirect*>(this);
 }
 
@@ -197,7 +199,7 @@ public:
     {
         Clear();
     };
-    
+
 #if ECMASCRIPT_ENABLE_TRACE_STRING_TABLE
     class StringTableTracer {
     public:
@@ -207,10 +209,10 @@ public:
             static StringTableTracer tracer;
             return tracer;
         }
-        
+
         NO_COPY_SEMANTIC_CC(StringTableTracer);
         NO_MOVE_SEMANTIC_CC(StringTableTracer);
-    
+
         void TraceFindSuccess(uint32_t hashShift)
         {
             totalDepth_.fetch_add(hashShift / TrieMapConfig::N_CHILDREN_LOG2 + 1, std::memory_order_relaxed);
@@ -219,33 +221,33 @@ public:
                 DumpWithLock(currentSuccess);
             }
         }
-    
+
         void TraceFindFail()
         {
             totalFailNum_.fetch_add(1, std::memory_order_relaxed);
         }
-    
+
     private:
         StringTableTracer() = default;
-    
+
         void DumpWithLock(uint64_t triggerPoint)
         {
             std::lock_guard<std::mutex> lock(mu_);
-            
+
             if (triggerPoint >= lastDumpPoint_.load(std::memory_order_relaxed) + DUMP_THRESHOLD) {
                 lastDumpPoint_ = triggerPoint;
                 DumpInfo();
             }
         }
-    
+
         void DumpInfo() const
         {
             uint64_t depth = totalDepth_.load(std::memory_order_relaxed);
             uint64_t success = totalSuccessNum_.load(std::memory_order_relaxed);
             uint64_t fail = totalFailNum_.load(std::memory_order_relaxed);
-            
+
             double avgDepth = (static_cast<double>(depth) / success);
-    
+
             LOG_COMMON(INFO) << "------------------------------------------------------------"
                            << "---------------------------------------------------------";
             LOG_COMMON(INFO) << "StringTableTotalSuccessFindNum: " << success;
@@ -254,14 +256,14 @@ public:
             LOG_COMMON(INFO) << "------------------------------------------------------------"
                            << "---------------------------------------------------------";
         }
-    
+
         std::mutex mu_;
         std::atomic<uint64_t> totalDepth_{0};
         std::atomic<uint64_t> totalSuccessNum_{0};
         std::atomic<uint64_t> totalFailNum_{0};
         std::atomic<uint64_t> lastDumpPoint_{0};
     };
-    
+
     void TraceFindSuccessDepth(uint32_t hashShift)
     {
         StringTableTracer::GetInstance().TraceFindSuccess(hashShift);
@@ -294,7 +296,7 @@ public:
     template <typename LoaderCallback, typename EqualsCallback>
     BaseString* LoadOrStoreForJit(ThreadHolder* holder, const uint32_t key, LoaderCallback loaderCallback,
                                   EqualsCallback equalsCallback);
-    
+
     static void ProcessHash(uint32_t &hash)
     {
         hash >>= TrieMapConfig::ROOT_BIT;
@@ -310,7 +312,7 @@ public:
         } else {
             Indirect* expected = nullptr;
             Indirect* newRoot = new Indirect();
-            
+
             if (root_[rootID].compare_exchange_strong(expected, newRoot,
                                                       std::memory_order_release, std::memory_order_acquire)) {
                 return newRoot;
@@ -377,7 +379,7 @@ public:
     // ut used
     const std::atomic<Indirect*>& GetRoot(uint32_t index) const
     {
-        ASSERT(index < TrieMapConfig::ROOT_SIZE);
+        DCHECK_CC(index < TrieMapConfig::ROOT_SIZE);
         return root_[index];
     }
 
@@ -475,8 +477,8 @@ public:
         hashTrieMap_->DecreaseInuseCount();
     }
 
-    NO_COPY_SEMANTIC(HashTrieMapInUseScope);
-    NO_MOVE_SEMANTIC(HashTrieMapInUseScope);
+    NO_COPY_SEMANTIC_CC(HashTrieMapInUseScope);
+    NO_MOVE_SEMANTIC_CC(HashTrieMapInUseScope);
 
 private:
     HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* hashTrieMap_;

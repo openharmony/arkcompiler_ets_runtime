@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_STRING_INL_H
 #define ECMASCRIPT_STRING_INL_H
 
+#include "common_interfaces/objects/string/base_string-inl.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
@@ -24,7 +25,6 @@
 #include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
-#include "common_interfaces/objects/string/base_string-inl2.h"
 
 namespace panda::ecmascript {
 /* static */
@@ -44,11 +44,11 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
     if (utf8Len == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
-    auto allocator = [vm, type](size_t size, common::CommonType stringType) -> BaseObject* {
-        ASSERT(stringType == common::CommonType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm, type](size_t size, common::ObjectType stringType) -> BaseObject* {
+        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
         return EcmaString::AllocLineString(vm, size, type)->ToBaseString();
     };
-    BaseString *str = BaseString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
+    BaseString *str = LineString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
     return EcmaString::FromBaseString(str);
 }
 #else
@@ -86,11 +86,11 @@ inline EcmaString *EcmaString::CreateFromUtf8CompressedSubString(const EcmaVM *v
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
 
-    auto allocator = [vm, type](size_t size, common::CommonType stringType) -> BaseObject* {
-        ASSERT(stringType == common::CommonType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm, type](size_t size, common::ObjectType stringType) -> BaseObject* {
+        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
         return EcmaString::AllocLineString(vm, size, type)->ToBaseString();
     };
-    BaseString *str = BaseString::CreateFromUtf8CompressedSubString(std::move(allocator), string, offset, utf8Len);
+    BaseString *str = LineString::CreateFromUtf8CompressedSubString(std::move(allocator), string, offset, utf8Len);
     return EcmaString::FromBaseString(str);
 }
 
@@ -124,36 +124,36 @@ inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t 
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
 
-    auto allocator = [vm, type](size_t size, common::CommonType stringType) -> BaseObject* {
-        ASSERT(stringType == common::CommonType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm, type](size_t size, common::ObjectType stringType) -> BaseObject* {
+        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
         return EcmaString::AllocLineString(vm, size, type)->ToBaseString();
     };
-    BaseString *str = BaseString::CreateFromUtf16(std::move(allocator), utf16Data, utf16Len, canBeCompress);
+    BaseString *str = LineString::CreateFromUtf16(std::move(allocator), utf16Data, utf16Len, canBeCompress);
     return EcmaString::FromBaseString(str);
 }
 
 /* static */
 inline EcmaString *EcmaString::CreateLineString(const EcmaVM *vm, size_t length, bool compressed)
 {
-    auto allocator = [vm](size_t size, common::CommonType stringType) -> BaseObject* {
-        ASSERT(stringType == common::CommonType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm](size_t size, common::ObjectType stringType) -> BaseObject* {
+        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
         EcmaString* string = vm->GetFactory()->AllocLineStringObject(size);
         return string;
     };
-    BaseString *str = BaseString::CreateLineString(std::move(allocator), length, compressed);
+    BaseString *str = LineString::Create(std::move(allocator), length, compressed);
     return EcmaString::FromBaseString(str);
 }
 
 /* static */
 inline EcmaString *EcmaString::CreateLineStringNoGC(const EcmaVM *vm, size_t length, bool compressed)
 {
-    auto allocator = [vm](size_t size, common::CommonType stringType) -> BaseObject* {
-        ASSERT(stringType == common::CommonType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm](size_t size, common::ObjectType stringType) -> BaseObject* {
+        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         EcmaString* string = vm->GetFactory()->AllocLineStringObjectNoGC(size);
         return string;
     };
-    BaseString *str = BaseString::CreateLineString(std::move(allocator), length, compressed);
+    BaseString *str = LineString::Create(std::move(allocator), length, compressed);
     return EcmaString::FromBaseString(str);
 }
 
@@ -181,27 +181,27 @@ inline EcmaString* EcmaString::AllocLineString(const EcmaVM* vm, size_t size, Me
 inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, size_t length, bool compressed,
                                                              MemSpaceType type)
 {
-    auto allocator = [vm, type](size_t size, common::CommonType stringType) -> BaseObject* {
-        ASSERT(stringType == common::CommonType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm, type](size_t size, common::ObjectType stringType) -> BaseObject* {
+        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
         ASSERT(IsSMemSpace(type));
         return AllocLineString(vm, size, type);
     };
-    BaseString *str = BaseString::CreateLineString(std::move(allocator), length, compressed);
+    BaseString *str = LineString::Create(std::move(allocator), length, compressed);
     return EcmaString::FromBaseString(str);
 }
 
 inline SlicedEcmaString* EcmaString::CreateSlicedString(const EcmaVM* vm, JSHandle<EcmaString> parent,
                                                         MemSpaceType type)
 {
-    auto allocator = [vm, type](size_t, common::CommonType stringType) -> BaseObject* {
-        ASSERT(stringType == common::CommonType::SLICED_STRING && "Can only allocate sliced string");
+    auto allocator = [vm, type](size_t, common::ObjectType stringType) -> BaseObject* {
+        ASSERT(stringType == common::ObjectType::SLICED_STRING && "Can only allocate sliced string");
         EcmaString* string = vm->GetFactory()->AllocSlicedStringObject(type);
         return string;
     };
     auto writeBarrier = [vm](void* obj, size_t offset, BaseObject* str) {
         Barriers::SetObject<true>(vm->GetJSThread(), obj, offset, reinterpret_cast<JSTaggedType>(str));
     };
-    SlicedString* slicedString = BaseString::CreateSlicedString(std::move(allocator), std::move(writeBarrier), parent);
+    SlicedString* slicedString = SlicedString::Create(std::move(allocator), std::move(writeBarrier), parent);
     return SlicedEcmaString::FromBaseString(slicedString);
 }
 
@@ -232,16 +232,16 @@ inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
     JSThread *thread = nullptr;
     GetDebuggerThread(vm, &thread);
 
-    auto allocator = [vm](size_t, common::CommonType stringType) -> BaseObject* {
-        ASSERT(stringType == common::CommonType::TREE_STRING && "Can only allocate tree string");
+    auto allocator = [vm](size_t, common::ObjectType stringType) -> BaseObject* {
+        ASSERT(stringType == common::ObjectType::TREE_STRING && "Can only allocate tree string");
         EcmaString* string = vm->GetFactory()->AllocTreeStringObject();
         return string;
     };
     auto writeBarrier = [thread](void* obj, size_t offset, BaseObject* str) {
         Barriers::SetObject<true>(thread, obj, offset, reinterpret_cast<JSTaggedType>(str));
     };
-    TreeString* treeString = BaseString::CreateTreeString(std::move(allocator), std::move(writeBarrier), left, right,
-                                                          length, compressed);
+    TreeString* treeString = TreeString::Create(std::move(allocator), std::move(writeBarrier), left, right,
+                                                length, compressed);
     return TreeEcmaString::FromBaseString(treeString);
 }
 
@@ -252,8 +252,8 @@ EcmaString *EcmaString::FastSubUtf8String(const EcmaVM *vm, const JSHandle<EcmaS
     JSHandle<EcmaString> string(vm->GetJSThread(), CreateLineString(vm, length, true));
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     FlatStringInfo srcFlat = FlattenAllString(vm, src);
-    Span<uint8_t> dst(string->GetDataUtf8Writable(), length);
-    Span<const uint8_t> source(srcFlat.GetDataUtf8() + start, length);
+    common::Span<uint8_t> dst(string->GetDataUtf8Writable(), length);
+    common::Span<const uint8_t> source(srcFlat.GetDataUtf8() + start, length);
     EcmaString::MemCopyChars(dst, length, source, length);
 
     ASSERT_PRINT(CanBeCompressed(*string), "canBeCompresse does not match the real value!");
@@ -275,8 +275,8 @@ EcmaString *EcmaString::FastSubUtf16String(const EcmaVM *vm, const JSHandle<Ecma
     } else {
         uint32_t len = length * (sizeof(uint16_t) / sizeof(uint8_t));
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        Span<uint16_t> dst(string->GetDataUtf16Writable(), length);
-        Span<const uint16_t> source(srcFlat.GetDataUtf16() + start, length);
+        common::Span<uint16_t> dst(string->GetDataUtf16Writable(), length);
+        common::Span<const uint16_t> source(srcFlat.GetDataUtf16() + start, length);
         EcmaString::MemCopyChars(dst, len, source, len);
     }
     ASSERT_PRINT(canBeCompressed == CanBeCompressed(*string), "canBeCompresse does not match the real value!");
@@ -285,23 +285,23 @@ EcmaString *EcmaString::FastSubUtf16String(const EcmaVM *vm, const JSHandle<Ecma
 
 inline const uint8_t* EcmaString::GetDataUtf8() const
 {
-    return ToBaseString()->GetDataUtf8();
+    return LineString::ConstCast(this)->GetDataUtf8();
 }
 
 inline const uint16_t* EcmaString::GetDataUtf16() const
 {
-    return ToBaseString()->GetDataUtf16();
+    return LineString::ConstCast(this)->GetDataUtf16();
 }
 
 // require is LineString
 inline uint8_t* EcmaString::GetDataUtf8Writable()
 {
-    return ToBaseString()->GetDataUtf8Writable();
+    return LineString::Cast(this)->GetDataUtf8Writable();
 }
 
 inline uint16_t* EcmaString::GetDataUtf16Writable()
 {
-    return ToBaseString()->GetDataUtf16Writable();
+    return LineString::Cast(this)->GetDataUtf16Writable();
 }
 
 inline size_t EcmaString::GetUtf8Length(const JSThread *thread, bool modify, bool isGetBufferSize) const
@@ -321,17 +321,23 @@ uint16_t EcmaString::At(const JSThread *thread, int32_t index) const
     return ToBaseString()->At<verify>(std::move(readBarrier), index);
 }
 
-inline void EcmaString::WriteData(uint32_t index, uint16_t src)
+template <typename T, typename T1>
+bool EcmaString::StringsAreEquals(common::Span<const T>& str1, common::Span<const T1>& str2)
 {
-    return ToBaseString()->WriteData(index, src);
+    return BaseString::StringsAreEquals(str1, str2);
 }
 
-inline Span<const uint8_t> EcmaString::FastToUtf8Span() const
+inline void EcmaString::WriteData(uint32_t index, uint16_t src)
+{
+    return LineString::Cast(this)->Set(index, src);
+}
+
+inline common::Span<const uint8_t> EcmaString::FastToUtf8Span() const
 {
     uint32_t len = GetLength();
     ASSERT(IsUtf8());
     const uint8_t *data = GetDataUtf8();
-    return Span<const uint8_t>(data, len);
+    return common::Span<const uint8_t>(data, len);
 }
 
 inline bool EcmaString::IsFlat(const JSThread *thread) const
@@ -395,8 +401,8 @@ inline uint32_t EcmaString::CopyDataUtf16(const JSThread *thread, uint16_t *buf,
     return ToBaseString()->CopyDataUtf16(std::move(readBarrier), buf, maxLength);
 }
 
-inline Span<const uint8_t> EcmaString::ToUtf8Span(const JSThread *thread, CVector<uint8_t> &buf, bool modify,
-                                                  bool cesu8)
+inline common::Span<const uint8_t> EcmaString::ToUtf8Span(const JSThread *thread, CVector<uint8_t> &buf, bool modify,
+                                                          bool cesu8)
 {
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
         return Barriers::GetTaggedObject(thread, obj, offset);
@@ -404,7 +410,8 @@ inline Span<const uint8_t> EcmaString::ToUtf8Span(const JSThread *thread, CVecto
     return ToBaseString()->ToUtf8Span(std::move(readBarrier), buf, modify, cesu8);
 }
 
-inline Span<const uint8_t> EcmaString::DebuggerToUtf8Span(const JSThread *thread, CVector<uint8_t> &buf, bool modify)
+inline common::Span<const uint8_t> EcmaString::DebuggerToUtf8Span(const JSThread *thread, CVector<uint8_t> &buf,
+                                                                  bool modify)
 {
     auto readBarrier = [thread](const void *obj, size_t offset) -> TaggedObject * {
         return Barriers::GetTaggedObject(thread, obj, offset);
@@ -454,9 +461,14 @@ inline void EcmaStringAccessor::ReadData(const JSThread *thread, EcmaString *dst
     dst->WriteData<mode>(thread, src, start, destSize, length);
 }
 
-inline Span<const uint8_t> EcmaStringAccessor::FastToUtf8Span() const
+inline common::Span<const uint8_t> EcmaStringAccessor::FastToUtf8Span() const
 {
     return string_->FastToUtf8Span();
+}
+
+inline bool EcmaStringAccessor::IsASCIICharacter(uint16_t data)
+{
+    return BaseString::IsASCIICharacter(data);
 }
 }  // namespace panda::ecmascript
 #endif

@@ -36,6 +36,8 @@ public:
     void SetForwardingPointerAfterExclusive(BaseObject *object, BaseObject *fwdPtr) override {}
     void SetValidObject(bool value) { enbaleValidObject_ = value; }
     void SetSize(size_t size) { size_ = size; }
+    void ForEachRefFieldSkipReferent(const BaseObject *object, const RefFieldVisitor &visitor) const override {}
+    void IterateXRef(const BaseObject *object, const RefFieldVisitor &visitor) const override {}
 private:
     bool enbaleValidObject_ = false;
     size_t size_ = 0;
@@ -44,12 +46,12 @@ class VerificationTest : public common::test::BaseTestWithScope {
 protected:
     static void SetUpTestCase()
     {
-        BaseRuntime::GetInstance()->Init();
+        BaseRuntime::GetInstance()->InitFromDynamic();
     }
 
     static void TearDownTestCase()
     {
-        BaseRuntime::GetInstance()->Fini();
+        BaseRuntime::GetInstance()->FiniFromDynamic();
     }
 
     void SetUp() override

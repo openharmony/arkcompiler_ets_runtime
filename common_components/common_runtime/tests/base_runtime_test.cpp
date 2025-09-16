@@ -91,7 +91,7 @@ HWTEST_F_L0(BaseRuntimeTest, ThreadSafe_GetInstance) {
 HWTEST_F_L0(BaseRuntimeTest, RequestGC_Sync_CallsHeapManager) {
     auto* runtime = BaseRuntime::GetInstance();
     ASSERT_NE(runtime, nullptr);
-    runtime->Init();
+    runtime->InitFromDynamic();
     struct TestCase {
         GCReason reason;
         bool async;

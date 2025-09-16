@@ -17,7 +17,8 @@
 #define COMMON_COMPONENTS_OBJECTS_STRING_TABLE_INTEGER_CACHE_H
 
 #include <array>
-#include "common_interfaces/objects/base_string.h"
+#include "common_interfaces/objects/string/base_string.h"
+#include "common_interfaces/objects/string/line_string.h"
 
 namespace common {
 
@@ -52,7 +53,7 @@ public:
     {
         DCHECK_CC(string->IsUtf8() && string->GetLength() <= MAX_INTEGER_CACHE_SIZE
             && string->GetLength() > 0 && string->IsInternString());
-        IntegerCache* cache = reinterpret_cast<IntegerCache*>(string->GetData());
+        IntegerCache* cache = reinterpret_cast<IntegerCache*>(LineString::Cast(string)->GetData());
         return cache;
     }
 

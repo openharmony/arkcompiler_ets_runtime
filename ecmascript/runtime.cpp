@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -54,6 +54,11 @@ Runtime *Runtime::GetInstance()
     return instance_;
 }
 
+bool Runtime::HasInstance()
+{
+    return instance_ != nullptr;
+}
+
 Runtime::~Runtime()
 {
     LockHolder lock(constpoolLock_);
@@ -88,7 +93,7 @@ void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
             LOG_ECMA(INFO) << "start run with cmc gc";
             // SetConfigHeapSize for cmc gc, pc and persist config may change heap size.
             const_cast<JSRuntimeOptions &>(options).SetConfigHeapSize(MemMapAllocator::GetInstance()->GetCapacity());
-            common::BaseRuntime::GetInstance()->Init(options.GetRuntimeParam());
+            common::BaseRuntime::GetInstance()->InitFromDynamic(options.GetRuntimeParam());
             common::g_enableGCTimeoutCheck = options.IsEnableGCTimeoutCheck();
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
             common::HeapProfilerListener::GetInstance().RegisterOutOfMemoryEventCb(
@@ -194,7 +199,7 @@ void Runtime::DestroyIfLastVm()
         DaemonThread::DestroyInstance();
         if (g_isEnableCMCGC) {
             // Finish common::BaseRuntime after daemon thread because it will unregister mutator
-            common::BaseRuntime::GetInstance()->Fini();
+            common::BaseRuntime::GetInstance()->FiniFromDynamic();
         }
         SharedHeap::DestroyInstance();
         AnFileDataManager::GetInstance()->SafeDestroyAllData();

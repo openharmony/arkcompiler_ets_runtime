@@ -422,11 +422,6 @@ ohos_executable("ark_stub_compiler") {
   ]
 
   deps += [ "$js_root:libcommon_components_set" ]
-  if (ets_runtime_enable_cmc_gc) {
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
-  }
 
   external_deps = [ "zlib:libz" ]
   external_deps += hiviewdfx_ext_deps
@@ -498,12 +493,6 @@ ohos_executable("ark_aot_compiler") {
       "$js_root:libcommon_components_set",
       "${MAPLEALL_ROOT}/maple_be:libcg",
     ]
-  }
-
-  if (ets_runtime_enable_cmc_gc) {
-    if (ark_hybrid) {
-      deps += [ "$ark_root/static_core/runtime:libarkruntime_set_static" ]
-    }
   }
 
   external_deps = [ "zlib:libz" ]
@@ -622,6 +611,8 @@ action("gen_stub_file") {
           rebase_path(root_out_dir_with_host_toolchain) +
           "/${icu_subsystem_name}/${icu_part_name}:" +
           rebase_path(root_out_dir_with_host_toolchain) + "/thirdparty/zlib:" +
+          rebase_path(root_out_dir_with_host_toolchain) +
+          "/hmosbundlemanager/zlib_override:" +
           rebase_path(root_out_dir_with_host_toolchain) +
           "/resourceschedule/frame_aware_sched:" +
           rebase_path(root_out_dir_with_host_toolchain) + "/hiviewdfx/hilog:" +

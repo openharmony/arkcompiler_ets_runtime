@@ -16,9 +16,12 @@
 #include "common_components/common_runtime/hooks.h"
 
 #include <cstdint>
+#include <mutex>
 
 #include "common_components/heap/heap.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/tagged_object.h"
@@ -34,6 +37,10 @@ using panda::ecmascript::FreeObject;
 using panda::ecmascript::ObjectSlot;
 using panda::ecmascript::JSThread;
 using panda::ecmascript::TaggedType;
+
+// A fake EcmaVM which will never used, only for unify the BaseRuntime::Init&Fini
+static panda::ecmascript::EcmaVM *g_fakeEcmaVM = nullptr;
+static std::mutex g_rtMutexForStatic;
 
 class CMCRootVisitor final : public panda::ecmascript::RootVisitor {
 public:
@@ -100,6 +107,11 @@ private:
 
 void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 {
+    // todo 梁婷婷
+    if (!panda::ecmascript::Runtime::HasInstance()) {
+        return;
+    }
+
     BaseClassRoots &baseClassRoots = BaseRuntime::GetInstance()->GetBaseClassRoots();
     // When visit roots, the language of the object is not used, so using the visitorFunc will work for
     // both dynamic and static.
@@ -108,6 +120,10 @@ void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
 {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
+        return;
+    }
+
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicGlobalRoot", "");
     CMCRootVisitor visitor(visitorFunc);
 
@@ -126,6 +142,9 @@ void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicLocalRoots(const RefFieldVisitor &visitorFunc)
 {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicLocalRoots", "");
     CMCRootVisitor visitor(visitorFunc);
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
@@ -156,6 +175,9 @@ void VisitDynamicWeakGlobalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 void VisitDynamicWeakGlobalRootsOld(const common::WeakRefFieldVisitor &visitorFunc)
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakGlobalRootsOld", "");
+    if (!panda::ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     CMCWeakVisitor visitor(visitorFunc);
 
     panda::ecmascript::SharedHeap::GetInstance()->IteratorNativePointerList(visitor);
@@ -178,6 +200,9 @@ void InvokeSharedNativePointerCallbacks()
 
 void VisitDynamicWeakLocalRoots(const common::WeakRefFieldVisitor &visitorFunc)
 {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakLocalRoots", "");
     CMCWeakVisitor visitor(visitorFunc);
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
@@ -223,6 +248,9 @@ void VisitDynamicConcurrentRoots(const RefFieldVisitor &visitorFunc)
 
 void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
 {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicThreadRoot", "");
     auto ecmaVm = reinterpret_cast<panda::ecmascript::EcmaVM*>(vm);
     if (!ecmaVm->GetAssociatedJSThread()->ReadyForGCIterating()) {
@@ -242,6 +270,9 @@ void VisitDynamicThreadRoot(const RefFieldVisitor &visitorFunc, void *vm)
 
 void VisitDynamicWeakThreadRoot(const WeakRefFieldVisitor &visitorFunc, void *vm)
 {
+    if (!panda::ecmascript::Runtime::HasInstance()) {
+        return;
+    }
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::VisitDynamicWeakThreadRoot", "");
     auto ecmaVm = reinterpret_cast<panda::ecmascript::EcmaVM*>(vm);
     auto thread = ecmaVm->GetAssociatedJSThread();
@@ -340,6 +371,29 @@ bool IsPostForked()
     return panda::ecmascript::Runtime::GetInstance()->IsPostForked();
 }
 
+void CheckAndInitBaseRuntime(const RuntimeParam &param)
+{
+    std::lock_guard<std::mutex> guard(g_rtMutexForStatic);
+    if (BaseRuntime::GetInstance()->HasBeenInitialized()) {
+        // BaseRuntime is inited from Dynamic
+        return;
+    }
+    panda::ecmascript::JSRuntimeOptions options(param);
+    g_fakeEcmaVM = panda::ecmascript::EcmaVM::Create(options);
+}
+
+void CheckAndFiniBaseRuntime()
+{
+    std::lock_guard<std::mutex> guard(g_rtMutexForStatic);
+    if (g_fakeEcmaVM == nullptr) {
+        // BaseRuntime is inited from Dynamic
+        return;
+    }
+    g_fakeEcmaVM->GetJSThread()->ManagedCodeBegin();
+    panda::ecmascript::EcmaVM::Destroy(g_fakeEcmaVM);
+    g_fakeEcmaVM = nullptr;
+}
+
 void SetBaseAddress(uintptr_t base)
 {
     // Please be careful about reentrant
@@ -356,6 +410,22 @@ bool IsMachineCodeObject(uintptr_t objPtr)
 {
     JSTaggedValue value(static_cast<TaggedType>(objPtr));
     return value.IsMachineCodeObject();
+}
+
+void AddXRefToDynamicRoots()
+{
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
+    runtime->GCIterateThreadList([&](JSThread *thread) {
+        thread->SetNodeKind(panda::ecmascript::NodeKind::NORMAL_NODE);
+    });
+}
+
+void RemoveXRefFromDynamicRoots()
+{
+    panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
+    runtime->GCIterateThreadList([&](JSThread *thread) {
+        thread->SetNodeKind(panda::ecmascript::NodeKind::UNIFIED_NODE);
+    });
 }
 
 } // namespace panda

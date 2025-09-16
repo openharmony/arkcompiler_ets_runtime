@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,7 @@
 
 #include "ecmascript/base/json_helper.h"
 #include "common_components/base/utf_helper.h"
+#include "libpandabase/utils/span.h"
 
 
 namespace panda::ecmascript::base {
@@ -68,7 +69,7 @@ bool DoNotEscape(uint16_t c)
            (c >= 0x23 && c != 0x5C && (c < 0xD800 || c > 0xDFFF));
 }
 
-bool JsonHelper::IsFastValueToQuotedString(const Span<const uint8_t> &sp)
+bool JsonHelper::IsFastValueToQuotedString(const common::Span<const uint8_t> &sp)
 {
     for (const auto utf8Ch : sp) {
         if (!DoNotEscape(utf8Ch)) {
@@ -105,7 +106,8 @@ bool JsonHelper::IsFastValueToQuotedString(const CString& str)
 #endif
 
 #if ENABLE_NEXT_OPTIMIZATION
-void JsonHelper::AppendQuotedValueToC16String(const Span<const uint16_t> &sp, uint32_t &index, C16String &output)
+void JsonHelper::AppendQuotedValueToC16String(const common::Span<const uint16_t>& sp, uint32_t& index,
+                                              C16String& output)
 {
     auto ch = sp[index];
     if (common::utf_helper::IsUTF16Surrogate(ch)) {
@@ -128,7 +130,7 @@ void JsonHelper::AppendQuotedValueToC16String(const Span<const uint16_t> &sp, ui
 }
 
 template <typename SrcType, typename DstType>
-void JsonHelper::AppendValueToQuotedString(const Span<const SrcType> &sp, DstType &output)
+void JsonHelper::AppendValueToQuotedString(const common::Span<const SrcType> &sp, DstType &output)
 {
     static_assert(sizeof(typename DstType::value_type) >= sizeof(SrcType));
     AppendString(output, "\"");
@@ -154,11 +156,11 @@ void JsonHelper::AppendValueToQuotedString(const Span<const SrcType> &sp, DstTyp
     AppendString(output, "\"");
 }
 template void JsonHelper::AppendValueToQuotedString<uint8_t, CString>(
-    const Span<const uint8_t> &sp, CString &output);
+    const common::Span<const uint8_t> &sp, CString &output);
 template void JsonHelper::AppendValueToQuotedString<uint8_t, C16String>(
-    const Span<const uint8_t> &sp, C16String &output);
+    const common::Span<const uint8_t> &sp, C16String &output);
 template void JsonHelper::AppendValueToQuotedString<uint16_t, C16String>(
-    const Span<const uint16_t> &sp, C16String &output);
+    const common::Span<const uint16_t> &sp, C16String &output);
 
 #else
 void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)

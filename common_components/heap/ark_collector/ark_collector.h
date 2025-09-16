@@ -92,6 +92,11 @@ public:
 
     MarkingRefFieldVisitor CreateMarkingObjectRefFieldsVisitor(ParallelLocalMarkStack &workStack,
                                                                WeakStack &weakStack) override;
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+    void MarkingXRef(RefField<> &ref, ParallelLocalMarkStack &workStack) const;
+    void MarkingObjectXRef(BaseObject *obj, ParallelLocalMarkStack &workStack) override;
+#endif
+
     void FixObjectRefFields(BaseObject* obj) const override;
     void FixRefField(BaseObject* obj, RefField<>& field) const;
 
@@ -229,6 +234,8 @@ private:
     WeakRefFieldVisitor GetWeakRefFieldVisitor();
     RefFieldVisitor GetPrefowardRefFieldVisitor();
     void PreforwardFlip();
+
+    void CollectGarbageWithXRef();
 
     CopyTable fwdTable_;
 

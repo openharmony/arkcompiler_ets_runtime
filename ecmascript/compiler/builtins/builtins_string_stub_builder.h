@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -98,6 +98,7 @@ private:
     GateRef GetSingleCharCodeFromSlicedString(GateRef glue, GateRef str, GateRef index);
     void CheckParamsAndGetPosition(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* pos, Label *exit, Label *slowPath, Label *posIsValid);
+    static constexpr uint32_t INIT_LENGTH_TIMES = 4;
 };
 
 class FlatStringStubBuilder : public StubBuilder {

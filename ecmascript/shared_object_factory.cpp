@@ -186,7 +186,7 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaReadOnlySharedHClass(JSHClass *hclass,
     return newClass;
 }
 
-JSTaggedValue ObjectFactory::InitHClassInCompositeBaseClass(JSHClass* hclass, common::CommonType type)
+JSTaggedValue ObjectFactory::InitHClassInCompositeBaseClass(JSHClass* hclass, common::ObjectType type)
 {
     common::BaseClassRoots& classRoots = common::BaseRuntime::GetInstance()->GetBaseClassRoots();
     auto* newClass = reinterpret_cast<JSHClass*>(classRoots.GetBaseClass(type));

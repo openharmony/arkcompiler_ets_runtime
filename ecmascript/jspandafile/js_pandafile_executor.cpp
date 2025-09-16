@@ -23,6 +23,7 @@
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/platform/pandafile.h"
+#include "ecmascript/base/number_helper.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
