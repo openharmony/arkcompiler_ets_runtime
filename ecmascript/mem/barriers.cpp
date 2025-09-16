@@ -43,7 +43,7 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
     if (valueRegion->IsFreshRegion()) {
         valueRegion->NonAtomicMark(heapValue);
-    } else if (writeType != WriteBarrierType::DESERIALIZE && valueRegion->AtomicMark(heapValue)) {
+    } else if (writeType == WriteBarrierType::NORMAL && valueRegion->AtomicMark(heapValue)) {
         heap->GetWorkManager()->GetWorkNodeHolder(MAIN_THREAD_INDEX)->Push(heapValue);
     }
 }

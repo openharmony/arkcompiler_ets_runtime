@@ -72,7 +72,7 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
         // NOTE: ConcurrentMarking and SharedConcurrentMarking can be enabled at the same time, but a specific value
         // can't be "not shared heap" and "in SharedSweepableSpace" at the same time. So using "if - else if" is safe.
     } else if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
-        if constexpr (writeType != WriteBarrierType::DESERIALIZE) {
+        if constexpr (writeType == WriteBarrierType::NORMAL) {
             Barriers::UpdateShared(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
                                    valueRegion);
         } else {
