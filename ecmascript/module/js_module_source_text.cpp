@@ -2308,7 +2308,9 @@ void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<Sou
     fields.Exception = module->GetException(thread);
     fields.Namespace = module->GetNamespace(thread);
     module->SetTopLevelCapability(thread, undefinedValue);
-    module->SetNameDictionary(thread, undefinedValue);
+    if (module->GetTypes() != ModuleTypes::JSON_MODULE) {
+        module->SetNameDictionary(thread, undefinedValue);
+    }
     module->SetCycleRoot(thread, undefinedValue);
     module->SetAsyncParentModules(thread, undefinedValue);
     module->SetSendableEnv(thread, undefinedValue);
