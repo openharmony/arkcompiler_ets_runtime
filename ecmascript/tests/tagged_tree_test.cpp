@@ -1017,4 +1017,46 @@ HWTEST_F_L0(TaggedTreeTest, RBTreeDeleteShrink)
         EXPECT_EQ(newSet->Capacity(), NODE_NUMBERS - 1);
     }
 }
+
+HWTEST_F_L0(TaggedTreeTest, CheckCapacityAndElementsCount)
+{
+    // Creata a tree map and insert MIN_SHRINK_CAPACITY elements, make sure that shrink did not work.
+    std::vector<JSMutableHandle<JSTaggedValue>> keyValue;
+    auto tmap = KeyValueCommon(thread, keyValue, static_cast<int32_t>(TaggedTreeMap::MIN_SHRINK_CAPACITY));
+    EXPECT_EQ(tmap->Capacity(), TaggedTreeMap::MIN_SHRINK_CAPACITY);
+    EXPECT_EQ(tmap->NumberOfElements(), TaggedTreeMap::MIN_SHRINK_CAPACITY);
+    EXPECT_EQ(tmap->NumberOfDeletedElements(), 0);
+
+    // Delete all elements one by one, and then check Capacity、NumberOfElements、NumberOfDeletedElements.
+    for (int i = 0; i < TaggedTreeMap::MIN_SHRINK_CAPACITY; i++) {
+        keyValue[0].Update(JSTaggedValue(i));
+        TaggedTreeMap::Delete(thread, tmap, TaggedTreeMap::FindEntry(thread, tmap, keyValue[0]));
+    }
+    EXPECT_EQ(tmap->Capacity(), TaggedTreeMap::MIN_SHRINK_CAPACITY);
+    EXPECT_EQ(tmap->NumberOfElements(), 0);
+    EXPECT_EQ(tmap->NumberOfDeletedElements(), TaggedTreeMap::MIN_SHRINK_CAPACITY);
+
+    // Add an element from an empty treemap and then delete it, which did not causing out of bounds
+    for (int i = 0; i < TaggedTreeMap::MIN_SHRINK_CAPACITY; i++) {
+        keyValue[0].Update(JSTaggedValue(0));
+        keyValue[1].Update(JSTaggedValue(0));
+        tmap.Update(TaggedTreeMap::Set(thread, tmap, keyValue[0], keyValue[1]));
+        TaggedTreeMap::Delete(thread, tmap, TaggedTreeMap::FindEntry(thread, tmap, keyValue[0]));
+        EXPECT_EQ(tmap->Capacity(), TaggedTreeMap::MIN_SHRINK_CAPACITY);
+        EXPECT_EQ(tmap->NumberOfElements(), 0);
+        EXPECT_EQ(tmap->NumberOfDeletedElements(), 1);
+        EXPECT_TRUE(tmap->Capacity() >= tmap->NumberOfElements() + tmap->NumberOfDeletedElements());
+    }
+
+    // Insert MIN_SHRINK_CAPACITY elements again, expect it to be same as before
+    for (int i = 0; i < TaggedTreeMap::MIN_SHRINK_CAPACITY; i++) {
+        keyValue[0].Update(JSTaggedValue(i));
+        keyValue[1].Update(JSTaggedValue(i));
+        tmap.Update(TaggedTreeMap::Set(thread, tmap, keyValue[0], keyValue[1]));
+    }
+    EXPECT_EQ(tmap->Capacity(), TaggedTreeMap::MIN_SHRINK_CAPACITY);
+    EXPECT_EQ(tmap->NumberOfElements(), TaggedTreeMap::MIN_SHRINK_CAPACITY);
+    EXPECT_EQ(tmap->NumberOfDeletedElements(), 0);
+    EXPECT_TRUE(tmap->Capacity() >= tmap->NumberOfElements() + tmap->NumberOfDeletedElements());
+}
 }  // namespace panda::test
