@@ -5490,7 +5490,7 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
         Bind(&reportHiEvent);
         {
             CallRuntime(glue, RTSTUB_ID(ReportHiEvents), {
-                Int32(static_cast<int32_t>(DFXHiSysEvent::IncompatibleType::ARRAY_FLATMAP))});
+                IntToTaggedInt(Int32(static_cast<int32_t>(DFXHiSysEvent::IncompatibleType::ARRAY_FLATMAP)))});
             Jump(&next);
         }
         Bind(&next);
