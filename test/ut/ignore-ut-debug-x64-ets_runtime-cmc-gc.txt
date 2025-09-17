@@ -15,3 +15,7 @@ obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
 #26061
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_Test
 obj/arkcompiler/ets_runtime/ecmascript/serializer/tests/SerializerTest
+
+#22962
+obj/arkcompiler/ets_runtime/ecmascript/tests/ECMA_StringTable_Test
+obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTest
