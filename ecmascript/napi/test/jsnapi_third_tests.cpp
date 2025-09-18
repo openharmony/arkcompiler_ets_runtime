@@ -1465,6 +1465,26 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
     EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 12);
     EXPECT_EQ(vmPkgList["hsp"].size(), 1);
     EXPECT_EQ(vmPkgList["hsp"]["hsp"].size(), 12);
+
+    CVector<CString> hapInfo{};
+    vm_->GetPkgContextInfoListElements("entry", "entry", hapInfo);
+    EXPECT_EQ(hapInfo.size(), 12);
+    EXPECT_EQ(hapInfo[1], "entry");
+    EXPECT_EQ(hapInfo[3], "");
+    EXPECT_EQ(hapInfo[5], "");
+    EXPECT_EQ(hapInfo[7], "");
+    EXPECT_EQ(hapInfo[9], "src/main/");
+    EXPECT_EQ(hapInfo[11], "false");
+
+    CVector<CString> hspInfo{};
+    vm_->GetPkgContextInfoListElements("hsp", "hsp", hspInfo);
+    EXPECT_EQ(hspInfo.size(), 12);
+    EXPECT_EQ(hspInfo[1], "hsp");
+    EXPECT_EQ(hspInfo[3], "");
+    EXPECT_EQ(hspInfo[5], "");
+    EXPECT_EQ(hspInfo[7], "1.1.0");
+    EXPECT_EQ(hspInfo[9], "Index.ets");
+    EXPECT_EQ(hspInfo[11], "false");
 }
 
 HWTEST_F_L0(JSNApiTests, UpdatePkgNameList)

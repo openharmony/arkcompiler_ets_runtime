@@ -181,8 +181,6 @@ public:
     static CString TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    [[maybe_unused]] CString &baseFileName, const CString &recordName,
                                                    CString &requestPath);
-    static CVector<CString> GetPkgContextInfoListElements(EcmaVM *vm, const CString &moduleName,
-                                                          const CString &packageName);
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
                                                 const CString &requestName);
     static CVector<CString> SplitNormalizedOhmurl(const CString &ohmurl);

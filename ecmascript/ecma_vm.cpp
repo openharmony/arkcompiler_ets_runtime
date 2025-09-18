@@ -1547,6 +1547,25 @@ void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CSt
     pkgContextInfoList_ = list;
 }
 
+void EcmaVM::GetPkgContextInfoListElements(const CString &moduleName, const CString &packageName,
+                                           CVector<CString> &resultList)
+{
+    ReadLockHolder lock(pkgContextInfoLock_);
+    if (packageName.empty()) {
+        return;
+    }
+    auto pkgContextIt = pkgContextInfoList_.find(moduleName);
+    if (pkgContextIt == pkgContextInfoList_.end()) {
+        return;
+    }
+    const CMap<CString, CVector<CString>> &pkgList = pkgContextIt->second;
+    auto pkgIt = pkgList.find(packageName);
+    if (pkgIt == pkgList.end()) {
+        return;
+    }
+    resultList = pkgIt->second;
+}
+
 void EcmaVM::StopPreLoadSoOrAbc()
 {
     if (!stopPreLoadCallbacks_.empty()) {

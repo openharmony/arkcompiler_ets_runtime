@@ -269,7 +269,8 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
     if (currentModuleName.empty()) {
         currentModuleName = moduleName;
     }
-    CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgname);
+    CVector<CString> data {};
+    vm->GetPkgContextInfoListElements(currentModuleName, pkgname, data);
     if (data.empty()) {
         return oldEntryPoint;
     }
@@ -835,25 +836,6 @@ CString ModulePathHelper::ParseFileNameToVMAName(const CString &filename)
     return VMA_NAME_ARKTS_CODE.data();
 }
 
-CVector<CString> ModulePathHelper::GetPkgContextInfoListElements(EcmaVM *vm, const CString &moduleName,
-                                                                 const CString &packageName)
-{
-    CVector<CString> resultList;
-    if (packageName.empty()) {
-        return resultList;
-    }
-    CMap<CString, CMap<CString, CVector<CString>>> pkgContextList = vm->GetPkgContextInfoList();
-    if (pkgContextList.find(moduleName) == pkgContextList.end()) {
-        return resultList;
-    }
-    CMap<CString, CVector<CString>> pkgList = pkgContextList[moduleName];
-    if (pkgList.find(packageName) == pkgList.end()) {
-        return resultList;
-    }
-    resultList = pkgList[packageName];
-    return resultList;
-}
-
 CString ModulePathHelper::ConcatImportFileNormalizedOhmurl(const CString &recordPath, const CString &requestName,
     const CString &version)
 {
@@ -938,7 +920,8 @@ void ModulePathHelper::ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile
         currentModuleName = vm->GetModuleName();
     }
     CString pkgName = vm->GetPkgNameWithAlias(requestPath);
-    CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgName);
+    CVector<CString> data {};
+    vm->GetPkgContextInfoListElements(currentModuleName, pkgName, data);
     if (!data.empty()) {
         CString entryPath;
         requestPath = ConcatNormalizedOhmurlWithData(data, pkgName, entryPath);
@@ -975,7 +958,8 @@ CString ModulePathHelper::ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, si
     CString alias = requestPath.substr(0, filePathPos);
     CString entryPath = requestPath.substr(filePathPos + 1);
     CString pkgName = vm->GetPkgNameWithAlias(alias);
-    CVector<CString> data = GetPkgContextInfoListElements(vm, moduleName, pkgName);
+    CVector<CString> data {};
+    vm->GetPkgContextInfoListElements(moduleName, pkgName, data);
     if (!data.empty()) {
         result = ConcatNormalizedOhmurlWithData(data, pkgName, entryPath);
     }
