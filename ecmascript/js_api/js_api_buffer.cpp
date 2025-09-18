@@ -179,9 +179,8 @@ string_view FromStringASCII(JSThread *thread, const JSHandle<JSTaggedValue> &str
 string_view FromStringBase64(JSThread *thread, const JSHandle<JSTaggedValue> &str, string &stringDecoded)
 {
     auto strAccessor = EcmaStringAccessor(JSHandle<EcmaString>(str));
-    CVector<uint8_t> buf;
-    common::Span<const uint8_t> sp = strAccessor.ToUtf8Span(thread, buf);
-    StringConverter::Base64Decode(string_view(reinterpret_cast<const char *>(sp.data()), sp.size()), stringDecoded);
+    string target = strAccessor.ToStdString(thread);
+    StringConverter::Base64Decode(target, stringDecoded);
     return std::string_view(stringDecoded);
 }
 
@@ -1115,7 +1114,8 @@ void StringConverter::Base64Decode(string_view encodedStr, string &ret)
 {
     size_t len = encodedStr.length();
     unsigned int cursor = 0;
-    unsigned char charArray4[4] = {0};
+    // 4 : 0 the charArray4
+    CVector<unsigned char> charArray4(4, 0);
     // why upperLength: len = ceil(decodedString.length / 3) * 4
     // upperLength = len / 4 * 3 = ceil(decodedString.length / 3) * 3 >=
     // decodedString.length
@@ -1127,6 +1127,8 @@ void StringConverter::Base64Decode(string_view encodedStr, string &ret)
     auto &table = BASE64_TABLE;
     const uint8_t *data = reinterpret_cast<const uint8_t *>(encodedStr.data());
     while (cursor < maxLen) {
+        // 4 : every time 4 bytes
+        ASSERT(cursor + 4 <= len);
         // 0 : the first index map to base64 table
         charArray4[0] = static_cast<unsigned char>(table[data[cursor]]);
         // 1 : the second index map to base64 table

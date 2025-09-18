@@ -381,6 +381,8 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("buffer.lastIndexOf() failed", index === 12);
         index = temp.indexOf('www');
         map.set("buffer.indexOf() failed", index === -1);
+        index = temp.indexOf('');
+        map.set("buffer.indexOf() failed", index === -1);
         let flag = temp.includes("hello");
         map.set("buffer.indexOf() failed", flag);
     }
