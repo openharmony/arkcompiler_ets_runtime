@@ -201,6 +201,11 @@ public:
         SwitchToMainStackInfo,
     };
 
+    enum class ThreadKind {
+        JitThread = 0,
+        OtherThread
+    };
+
     struct StackInfo {
         uint64_t stackLimit;
         uint64_t lastLeaveFrame;
@@ -409,7 +414,8 @@ public:
     JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
 
     JSHClass *GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const;
-    JSHClass *GetArrayInstanceHClass(JSHandle<GlobalEnv> env, ElementsKind kind, bool isPrototype) const;
+    JSHClass *GetArrayInstanceHClass(JSHandle<GlobalEnv> env, ElementsKind kind,
+                                     bool isPrototype, ThreadKind threadKind) const;
 
     GlobalEnvField GetArrayInstanceHClassIndex(ElementsKind kind, bool isPrototype) const
     {

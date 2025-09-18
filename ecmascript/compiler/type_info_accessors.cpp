@@ -1118,7 +1118,7 @@ JSTaggedValue InstanceOfTypeInfoAccessor::GetKeyTaggedValue() const
 {
     JSHandle<GlobalEnv> globalEnv = compilationEnv_->GetGlobalEnv();
     auto hasInstanceEnvIndex = static_cast<size_t>(GlobalEnvField::HASINSTANCE_SYMBOL_INDEX);
-    return globalEnv->GetGlobalEnvObjectByIndex(hasInstanceEnvIndex).GetTaggedValue();
+    return globalEnv->GetGlobalEnvObjectWithBarrierByIndex(hasInstanceEnvIndex).GetTaggedValue();
 }
 
 void InstanceOfTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()

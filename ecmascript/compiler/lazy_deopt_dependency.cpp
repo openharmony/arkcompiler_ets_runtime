@@ -136,7 +136,7 @@ bool LazyDeoptAllDependencies::InitializeProtoChainForDependency(JSThread *threa
     if (receiverHClass->IsCompositeHClass()) {
         if (receiverHClass->IsString()) {
             ASSERT(globalEnv != nullptr);
-            current = globalEnv->GetStringPrototype().GetTaggedValue();
+            current = globalEnv->GetStringPrototypeWithBarrier().GetTaggedValue();
             holderHClass = nullptr;
         } else {
             return false;
