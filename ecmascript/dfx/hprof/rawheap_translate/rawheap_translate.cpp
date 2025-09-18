@@ -20,6 +20,14 @@
 namespace rawheap_translate {
 RawHeap::~RawHeap()
 {
+    for (auto node : nodes_) {
+        delete node;
+    }
+
+    for (auto edge : edges_) {
+        delete edge;
+    }
+
     delete strTable_;
     nodes_.clear();
     edges_.clear();
@@ -192,7 +200,7 @@ void RawHeap::CreateHashEdge(Node *node)
     Node *hashNode = new Node(nodeIndex_++);
     hashNode->nodeId = 0;
     hashNode->type = 7;  // 7: means HEAPNUMBER
-    hashNode->strId = InsertAndGetStringId("Int: " + std::to_string(hash));
+    hashNode->strId = InsertAndGetStringId("Int:" + std::to_string(hash));
     InsertEdge(hashNode, hashStrId, EdgeType::DEFAULT);
     primitiveNodes_.push_back(hashNode);
     node->edgeCount++;

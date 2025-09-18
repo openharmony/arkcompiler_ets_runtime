@@ -223,7 +223,7 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_SHARED_TYPED_ARRAY:
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalArray[");
         case JSType::LEXICAL_ENV:
-            return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");    
+            return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
         case JSType::SFUNCTION_ENV:
             return GetArrayString(TaggedArray::Cast(entry), "SFunctionEnv[");
         case JSType::SENDABLE_ENV:
