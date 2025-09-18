@@ -107,7 +107,6 @@ private:
 
 void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
 {
-    // todo 梁婷婷
     if (!panda::ecmascript::Runtime::HasInstance()) {
         return;
     }

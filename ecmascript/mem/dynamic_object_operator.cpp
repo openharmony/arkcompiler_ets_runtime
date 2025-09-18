@@ -43,10 +43,12 @@ void DynamicObjectOperator::IterateXRef([[maybe_unused]] const BaseObject *objec
                         Runtime::GetInstance()->GetMainThread(), 0), visitor);
         }
     } else {
-        std::abort();
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
     }
 #else
-    std::abort();
+    LOG_ECMA(FATAL) << "this branch is unreachable";
+    UNREACHABLE();
 #endif
 }
 
