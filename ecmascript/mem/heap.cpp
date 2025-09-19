@@ -2043,10 +2043,10 @@ bool Heap::CheckCanTriggerConcurrentMarking()
         (idleTask_ == IdleTaskType::NO_TASK || idleTask_ == IdleTaskType::YOUNG_GC);
 }
 
-void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
+bool Heap::TryTriggerConcurrentMarking(MarkReason markReason)
 {
     if (g_isEnableCMCGC) {
-        return;
+        return false;
     }
     // When concurrent marking is enabled, concurrent marking will be attempted to trigger.
     // When the size of old space or global space reaches the limit, isFullMarkNeeded will be set to true.
@@ -2057,19 +2057,19 @@ void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
     // If it spends much time in full mark, the compress full GC will be requested when the spaces reach the limit.
     // If the global space is larger than half max heap size, we will turn to use full mark and trigger partial GC.
     if (!CheckCanTriggerConcurrentMarking()) {
-        return;
+        return false;
     }
     if (fullMarkRequested_) {
         markType_ = MarkType::MARK_FULL;
         OPTIONAL_LOG(ecmaVm_, INFO) << " fullMarkRequested, trigger full mark.";
         TriggerConcurrentMarking(markReason);
-        return;
+        return true;
     }
     if (InSensitiveStatus() && !ObjectExceedHighSensitiveThresholdForCM()) {
-        return;
+        return false;
     }
     if (IsJustFinishStartup() && !ObjectExceedJustFinishStartupThresholdForCM()) {
-        return;
+        return false;
     }
 
     double oldSpaceMarkDuration = 0;
@@ -2089,7 +2089,7 @@ void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
             markType_ = MarkType::MARK_FULL;
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first full mark";
             TriggerConcurrentMarking(markReason);
-            return;
+            return true;
         }
     } else {
         if (oldSpaceHeapObjectSize >= oldSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_ ||
@@ -2097,7 +2097,7 @@ void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
             markType_ = MarkType::MARK_FULL;
             TriggerConcurrentMarking(markReason);
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark";
-            return;
+            return true;
         }
         oldSpaceAllocToLimitDuration = (oldSpaceAllocLimit - oldSpaceHeapObjectSize) / oldSpaceAllocSpeed;
         oldSpaceMarkDuration = GetHeapObjectSize() / oldSpaceConcurrentMarkSpeed;
@@ -2107,7 +2107,7 @@ void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
             markType_ = MarkType::MARK_FULL;
             TriggerConcurrentMarking(markReason);
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark";
-            return;
+            return true;
         }
     }
 
@@ -2118,8 +2118,9 @@ void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
             markType_ = MarkType::MARK_YOUNG;
             TriggerConcurrentMarking(markReason);
             OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first semi mark" << fullGCRequested_;
+            return true;
         }
-        return;
+        return false;
     }
     size_t semiSpaceCapacity = activeSemiSpace_->GetInitialCapacity() + activeSemiSpace_->GetOvershootSize();
     size_t semiSpaceCommittedSize = activeSemiSpace_->GetCommittedSize();
@@ -2136,8 +2137,9 @@ void Heap::TryTriggerConcurrentMarking(MarkReason markReason)
         markType_ = MarkType::MARK_YOUNG;
         TriggerConcurrentMarking(markReason);
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
-        return;
+        return true;
     }
+    return false;
 }
 
 void Heap::TryTriggerFullMarkOrGCByNativeSize()
@@ -2495,13 +2497,15 @@ bool Heap::HandleExitHighSensitiveEvent()
         && CASSensitiveStatus(status, AppSensitiveStatus::NORMAL_SCENE) && !OnStartupEvent()) {
         // Set record heap obj size 0 after exit high senstive
         SetRecordHeapObjectSizeBeforeSensitive(0);
-        // set overshoot size to increase gc threashold larger 8MB than current heap size.
-        TryIncreaseNewSpaceOvershootByConfigSize();
 
         // fixme: IncrementalMarking and IdleCollection is currently not enabled
         TryTriggerIncrementalMarking();
         TryTriggerIdleCollection();
-        TryTriggerConcurrentMarking(MarkReason::EXIT_HIGH_SENSITIVE);
+        bool success = TryTriggerConcurrentMarking(MarkReason::EXIT_HIGH_SENSITIVE);
+        if (success) {
+            // set overshoot size to increase gc threashold larger 8MB than current heap size.
+            TryIncreaseNewSpaceOvershootByConfigSize();
+        }
         return true;
     }
     return false;
