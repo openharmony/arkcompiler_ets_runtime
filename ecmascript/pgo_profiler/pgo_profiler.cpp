@@ -1689,7 +1689,7 @@ bool PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CStrin
     if (builtinsId == BuiltinTypeId::ARRAY) {
         bool receiverIsPrototype = receiver->IsPrototype();
         exceptRecvHClass = thread->GetArrayInstanceHClass(GetCurrentGlobalEnv(), receiver->GetElementsKind(),
-                                                          receiverIsPrototype);
+            receiverIsPrototype, JSThread::ThreadKind::OtherThread);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {
@@ -1728,7 +1728,7 @@ bool PGOProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &r
     if (builtinsId == BuiltinTypeId::ARRAY) {
         bool receiverIsPrototype = receiver->IsPrototype();
         exceptRecvHClass = thread->GetArrayInstanceHClass(GetCurrentGlobalEnv(), receiver->GetElementsKind(),
-                                                          receiverIsPrototype);
+            receiverIsPrototype, JSThread::ThreadKind::OtherThread);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {

@@ -1328,7 +1328,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBuilt
         return true;
     } else if (globalsId.IsGlobalEnvId()) { // ctor Hclass
         GlobalEnvField index = static_cast<GlobalEnvField>(globalsId.GetGlobalEnvId());
-        JSHClass *hclass = JSHClass::Cast(compilationEnv_->GetGlobalEnv()->GetGlobalEnvObjectByIndex(
+        JSHClass *hclass = JSHClass::Cast(compilationEnv_->GetGlobalEnv()->GetGlobalEnvObjectWithBarrierByIndex(
             static_cast<size_t>(index))->GetTaggedObject());
         PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(compilationEnv_->GetJSThread(), hclass, key);
         if (!plr.IsFound() || plr.IsAccessor()) {
@@ -1363,7 +1363,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef ga
     uint64_t index = acc_.TryGetValue(receiver);
     BuiltinType type = static_cast<BuiltinType>(index);
     if (type == BuiltinType::BT_MATH) {
-        auto math = globalEnv->GetMathFunction();
+        auto math = globalEnv->GetMathFunctionWithBarrier();
         JSHClass *hclass = math.GetTaggedValue().GetTaggedObject()->GetClass();
         JSTaggedValue key = tacc.GetKeyTaggedValue();
         if (key.IsUndefined()) {
@@ -1454,7 +1454,8 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
     }
     size_t protoFieldIndex = static_cast<size_t>(*protoField);
     JSHandle<GlobalEnv> globalEnv = compilationEnv_->GetGlobalEnv();
-    JSHClass *prototypeHClass = globalEnv->GetGlobalEnvObjectByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
+    JSHClass *prototypeHClass =
+        globalEnv->GetGlobalEnvObjectWithBarrierByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
     PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(compilationEnv_->GetJSThread(),
         prototypeHClass, key);
     bool isPrototypeOfPrototype = false;
@@ -1466,7 +1467,8 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
                 return false;
             }
             protoFieldIndex = static_cast<size_t>(*protoField);
-            prototypeHClass = globalEnv->GetGlobalEnvObjectByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
+            prototypeHClass =
+                globalEnv->GetGlobalEnvObjectWithBarrierByIndex(protoFieldIndex)->GetTaggedObject()->GetClass();
             plr = JSHClass::LookupPropertyInBuiltinPrototypeHClass(compilationEnv_->GetJSThread(),
                 prototypeHClass, key);
             if (!plr.IsFound() || plr.IsAccessor()) {
@@ -1494,10 +1496,8 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
                 gate, compilationEnv_->GetGlobalEnv())) {
                 return false;
             }
-            if (type == BuiltinTypeId::ARRAY) {
-                if (!TryLazyDeoptArrayGuardianCheck(gate)) {
-                    return false;
-                }
+            if (type == BuiltinTypeId::ARRAY && !TryLazyDeoptArrayGuardianCheck(gate)) {
+                return false;
             }
         } else {
             // For Array type only: array stability shall be ensured.
@@ -2825,7 +2825,7 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
     GateRef globalEnv = circuit_->GetGlobalEnvCache();
     GateRef hclass = builder_.GetGlobalEnvObjHClass(globalEnv, GlobalEnv::OBJECT_FUNCTION_INDEX);
 
-    JSHandle<JSFunction> objectFunc(compilationEnv_->GetGlobalEnv()->GetObjectFunction());
+    JSHandle<JSFunction> objectFunc(compilationEnv_->GetGlobalEnv()->GetObjectFunctionWithBarrier());
     JSTaggedValue protoOrHClass = objectFunc->GetProtoOrHClass(compilationEnv_->GetJSThread());
     JSHClass *objectHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
     size_t objectSize = objectHC->GetObjectSize();

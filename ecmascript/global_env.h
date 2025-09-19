@@ -68,6 +68,20 @@ public:
         return result;
     }
 
+    JSHandle<JSTaggedValue> GetGlobalEnvObjectWithBarrierByIndex(size_t index) const
+    {
+        ASSERT(index < FINAL_INDEX);
+        uintptr_t address = ComputeObjectAddress(index);
+        if (g_isEnableCMCGC) {
+            JSTaggedValue value(reinterpret_cast<JSTaggedType>(
+                common::BaseRuntime::ReadBarrier(reinterpret_cast<void*>(address))));
+            *reinterpret_cast<JSTaggedValue*>(address) = value;
+        }
+
+        JSHandle<JSTaggedValue> result(address);
+        return result;
+    }
+
     JSHandle<JSTaggedValue> GetNoLazyEnvObjectByIndex(size_t index) const
     {
         JSHandle<JSTaggedValue> result = GetGlobalEnvObjectByIndex(index);
@@ -228,6 +242,24 @@ public:
         }                                                                                               \
         return result;                                                                                  \
     }                                                                                                   \
+    inline JSHandle<type> Get##name##WithBarrier() const                                                \
+    {                                                                                                   \
+        /* every GLOBAL_ENV_FIELD is JSTaggedValue */                                                   \
+        size_t offset = HEADER_SIZE + (index)*JSTaggedValue::TaggedTypeSize();                          \
+        const uintptr_t address = reinterpret_cast<uintptr_t>(this) + offset;                           \
+        if (g_isEnableCMCGC) {                                                                          \
+            JSTaggedValue value(reinterpret_cast<JSTaggedType>(                                         \
+                common::BaseRuntime::ReadBarrier(reinterpret_cast<void*>(address))));                   \
+            *reinterpret_cast<JSTaggedValue*>(address) = value;                                         \
+        }                                                                                               \
+        JSHandle<type> result(address);                                                                 \
+        if (result.GetTaggedValue().IsInternalAccessor()) {                                             \
+            JSThread *thread = GetJSThread();                                                           \
+            AccessorData *accessor = AccessorData::Cast(result.GetTaggedValue().GetTaggedObject());     \
+            accessor->CallInternalGet(thread, JSHandle<JSObject>::Cast(GetJSGlobalObject()));           \
+        }                                                                                               \
+        return result;                                                                                  \
+    }                                                                                                   \
     inline JSTaggedValue GetTagged##name() const                                                        \
     {                                                                                                   \
         uint32_t offset = HEADER_SIZE + index * JSTaggedValue::TaggedTypeSize();                        \
@@ -292,7 +324,7 @@ public:
             return nullptr;
         }
         auto index = static_cast<size_t>(buildinTypedArrayHClassIndex);
-        JSHandle<JSTaggedValue> result = GetGlobalEnvObjectByIndex(index);
+        JSHandle<JSTaggedValue> result = GetGlobalEnvObjectWithBarrierByIndex(index);
         return reinterpret_cast<JSHClass *>(result->GetRawData());
     }
 

@@ -3125,17 +3125,17 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
     int callTarget = CommonStubCSigns::NUM_OF_STUBS;
     switch (kind) {
         case FunctionKind::NORMAL_FUNCTION: {
-            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithoutProto();
+            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithoutProtoWithBarrier();
             callTarget = CommonStubCSigns::DefineNormalFuncForJit;
             break;
         }
         case FunctionKind::ARROW_FUNCTION: {
-            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithoutProto();
+            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithoutProtoWithBarrier();
             callTarget = CommonStubCSigns::DefineArrowFuncForJit;
             break;
         }
         case FunctionKind::BASE_CONSTRUCTOR: {
-            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithProto();
+            hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithProtoWithBarrier();
             callTarget = CommonStubCSigns::DefineBaseConstructorForJit;
             break;
         }
@@ -3689,7 +3689,7 @@ void SlowPathLowering::LowerCallNewBuiltin(GateRef gate)
         args[i] = acc_.GetValueIn(gate, i);
     }
     ASSERT(num >= 3);  // 3: skip argc argv newtarget
-    
+
     GateRef ctor = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
 
     if (g_isEnableCMCGC) {
