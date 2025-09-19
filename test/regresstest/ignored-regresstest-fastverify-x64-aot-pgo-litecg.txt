@@ -23,6 +23,3 @@ regresstest/ark-regress/mjsunit/regress/regress-3612.js
 
 #28446
 regresstest/ark-regress/mjsunit/regress/regress-774475.js
-
-#27234
-regresstest/ark-regress/mjsunit/compiler/abstract-equal-symbol.js
