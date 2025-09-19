@@ -118,6 +118,8 @@ protected:
 
     inline void HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object);
 
+    inline void MarkJitCodeVec(JitCodeVector *vec);
+
     template <class Callback>
     void VisitBodyInObj(BaseObject *root, uintptr_t start, uintptr_t end, Callback &&cb);
 

@@ -76,6 +76,16 @@ void FullGCRunner::VisitBodyInObj(BaseObject *root, uintptr_t start, uintptr_t e
     }
 }
 
+void FullGCRunner::MarkJitCodeVec(JitCodeVector *vec)
+{
+    for (auto &jitCodeMap : *vec) {
+        auto &jitCode = std::get<0>(jitCodeMap);
+        auto obj = static_cast<TaggedObject *>(jitCode);
+        // jitcode is MachineCode, and MachineCode is in the MachineCode space, will not be evacute.
+        HandleMarkingSlotObject(ObjectSlot(reinterpret_cast<uintptr_t>(&jitCode)), obj);
+    }
+}
+
 void FullGCRunner::HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
