@@ -672,6 +672,8 @@ public:
     void SerializeOldObjOOMTest(SerializeData *data)
     {
         Init();
+        // disable force gc to avoid time out
+        ecmaVm->SetEnableForceGC(false);
         ObjectFactory *factory = ecmaVm->GetFactory();
         BaseDeserializer deserializer(thread, data);
         if (ecmaVm->GetHeap()->GetHeapLimitSize() >= 448_MB) { // 448_MB: default heap size
@@ -693,6 +695,8 @@ public:
     void SerializeNonMoveObjOOMTest(SerializeData *data)
     {
         Init();
+        // disable force gc to avoid time out
+        ecmaVm->SetEnableForceGC(false);
         ObjectFactory *factory = ecmaVm->GetFactory();
         BaseDeserializer deserializer(thread, data);
         if (ecmaVm->GetHeap()->GetHeapLimitSize() >= 448_MB) { // 448_MB: default heap size
@@ -1306,6 +1310,8 @@ public:
 
 HWTEST_F_L0(JSSerializerTest, SerializeOldObjOOMTest)
 {
+    // disable force gc to avoid time out
+    ecmaVm->SetEnableForceGC(false);
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<TaggedArray> array = factory->NewTaggedArray(80, JSTaggedValue::Hole());
     for (int i = 0; i < 80; i++) {
@@ -1328,6 +1334,8 @@ HWTEST_F_L0(JSSerializerTest, SerializeOldObjOOMTest)
 
 HWTEST_F_L0(JSSerializerTest, SerializeNonMoveObjOOMTest)
 {
+    // disable force gc to avoid time out
+    ecmaVm->SetEnableForceGC(false);
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<TaggedArray> array = factory->NewTaggedArray(80, JSTaggedValue::Hole());
     for (int i = 0; i < 80; i++) {
