@@ -92,6 +92,7 @@ void DFXHiSysEvent::SendRuntimeIncompatibleEvent([[maybe_unused]] JSThread *thre
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable, type:" << static_cast<int32_t>(type);
+            UNREACHABLE();
             break;
     }
     LOG_ECMA(DEBUG) << "SendRuntimeIncompatibleEvent: functionName" << functionName;
@@ -103,7 +104,7 @@ void DFXHiSysEvent::SendRuntimeIncompatibleEvent([[maybe_unused]] JSThread *thre
     std::string stack = JsStackInfo::BuildJsStackTrace(thread, true, false, 1);
     std::string bundleName = ConvertToStdString(thread->GetEcmaVM()->GetBundleName());
     int32_t ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::ARKTS_RUNTIME,
-        "ARK_RUNTIME_INCOMPATIBLE", OHOS::HiviewDFX::HiSysEvent::EventType::BEHAVIOR,
+        "ARK_RUNTIME_INCOMPATIBLE", OHOS::HiviewDFX::HiSysEvent::EventType::STATISTIC,
         "FUNCTIONNAME", functionName,
         "STACK", stack,
         "BUNDLENAME", bundleName);

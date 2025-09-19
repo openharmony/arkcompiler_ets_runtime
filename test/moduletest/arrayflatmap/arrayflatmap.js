@@ -14,6 +14,12 @@
  */
 
 {
+    let emptyHandle = {};
+    let arr = [ new Proxy([1, 2], emptyHandle), new Proxy([3, 4], emptyHandle)];
+    let res = arr.flatMap(x => x);
+}
+
+{
     let arr = [1, , 2, , 3];
     let res = arr.flatMap(x => [x]);
     print(JSON.stringify(res));
@@ -84,5 +90,4 @@ let res = arr.flatMap((x)=>{
 })
 print(res);
 print(res.length)
-
 
