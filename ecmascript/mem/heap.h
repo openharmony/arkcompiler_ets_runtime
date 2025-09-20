@@ -1259,7 +1259,7 @@ public:
     void TriggerIdleCollection(int idleMicroSec);
     void NotifyMemoryPressure(bool inHighMemoryPressure);
 
-    void TryTriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
+    bool TryTriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
     void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
     bool CheckCanTriggerConcurrentMarking();
