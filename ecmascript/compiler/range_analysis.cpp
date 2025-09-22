@@ -313,12 +313,10 @@ RangeInfo RangeAnalysis::GetRangeOfCompare(GateRef gate, GateRef value, bool fla
 
 void RangeAnalysis::PrintRangeInfo() const
 {
-    std::vector<GateRef> gateList;
-    acc_.GetAllGates(gateList);
-    std::string log = "";
-    for (auto gate : gateList) {
+    circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
+        std::string log = "";
         if (!IsInt32Type(gate)) {
-            continue;
+            return;
         }
         log = "id:" + std::to_string(acc_.GetId(gate));
         auto op = acc_.GetOpCode(gate);
@@ -392,6 +390,6 @@ void RangeAnalysis::PrintRangeInfo() const
         auto range = GetRange(gate);
         log += " range = [" + std::to_string(range.GetMin()) + "," + std::to_string(range.GetMax()) + "]";
         LOG_COMPILER(INFO) << log;
-    }
+    });
 }
 }  // namespace panda::ecmascript::kungfu

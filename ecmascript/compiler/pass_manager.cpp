@@ -15,8 +15,9 @@
 
 #include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/compiler/pass.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/log_wrapper.h"
+#include "ecmascript/ohos/jit_tools.h"
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -34,6 +35,110 @@ PassContext::PassContext(const std::string &triple, CompilerLog *log, BytecodeIn
 {
 }
 
+void JitPassManager::RunLitePasses(PassRunner<PassData>& pipeline)
+{
+    pipeline.RunPass<RunFlowCyclesVerifierPass>();
+    if (builder_->EnableLoopOptimization()) {
+        pipeline.RunPass<LoopOptimizationPass>();
+    }
+    if (passOptions_->EnableTypeLowering()) {
+        pipeline.RunPass<PGOTypeInferPass>();
+    }
+    {
+        Jit::JitLockHolder lock(compilationEnv_, "TSInlineLoweringPass");
+        pipeline.RunPass<TSInlineLoweringPass>();
+    }
+    pipeline.RunPass<AsyncFunctionLoweringPass>();
+    pipeline.RunPass<TypeBytecodeLoweringPass>();
+    pipeline.RunPass<UselessGateEliminationPass>();
+    pipeline.RunPass<InductionVariableAnalysisPass>();
+    pipeline.RunPass<NTypeBytecodeLoweringPass>();
+    pipeline.RunPass<EarlyEliminationPass>();
+    pipeline.RunPass<NumberSpeculativePass>();
+    if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+        pipeline.RunPass<ValueNumberingPass>();
+    }
+    pipeline.RunPass<StateSplitLinearizerPass>();
+    pipeline.RunPass<EscapeAnalysisPass>();
+    pipeline.RunPass<NTypeHCRLoweringPass>();
+    pipeline.RunPass<TypeHCRLoweringPass>();
+    pipeline.RunPass<LaterEliminationPass>();
+    pipeline.RunPass<LCRLoweringPass>();
+    pipeline.RunPass<ConstantFoldingPass>();
+    pipeline.RunPass<SlowPathLoweringPass>();
+    pipeline.RunPass<GraphLinearizerPass>(!g_isEnableCMCGC);
+}
+
+void JitPassManager::RunFullPasses(PassRunner<PassData>& pipeline)
+{
+    pipeline.RunPass<RunFlowCyclesVerifierPass>();
+    pipeline.RunPass<RedundantPhiEliminationPass>();
+    if (builder_->EnableLoopOptimization()) {
+        pipeline.RunPass<LoopOptimizationPass>();
+        pipeline.RunPass<RedundantPhiEliminationPass>();
+    }
+    if (passOptions_->EnableTypeLowering()) {
+        pipeline.RunPass<PGOTypeInferPass>();
+    }
+    {
+        Jit::JitLockHolder lock(compilationEnv_, "TSInlineLoweringPass");
+        pipeline.RunPass<TSInlineLoweringPass>();
+    }
+    pipeline.RunPass<RedundantPhiEliminationPass>();
+    pipeline.RunPass<AsyncFunctionLoweringPass>();
+    pipeline.RunPass<TypeBytecodeLoweringPass>();
+    pipeline.RunPass<UselessGateEliminationPass>();
+    pipeline.RunPass<InductionVariableAnalysisPass>();
+    pipeline.RunPass<RedundantPhiEliminationPass>();
+    pipeline.RunPass<NTypeBytecodeLoweringPass>();
+    pipeline.RunPass<UselessGateEliminationPass>();
+    pipeline.RunPass<EarlyEliminationPass>();
+    pipeline.RunPass<NumberSpeculativePass>();
+    pipeline.RunPass<UselessGateEliminationPass>();
+    pipeline.RunPass<LaterEliminationPass>();
+    if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+        pipeline.RunPass<ValueNumberingPass>();
+    }
+    pipeline.RunPass<StateSplitLinearizerPass>();
+    pipeline.RunPass<EscapeAnalysisPass>();
+    pipeline.RunPass<StringOptimizationPass>();
+    pipeline.RunPass<NTypeHCRLoweringPass>();
+    pipeline.RunPass<TypeHCRLoweringPass>();
+    pipeline.RunPass<UselessGateEliminationPass>();
+    pipeline.RunPass<LaterEliminationPass>();
+    pipeline.RunPass<EarlyEliminationPass>();
+    pipeline.RunPass<LCRLoweringPass>();
+    pipeline.RunPass<UselessGateEliminationPass>();
+    pipeline.RunPass<ConstantFoldingPass>();
+    if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+        pipeline.RunPass<ValueNumberingPass>();
+    }
+    pipeline.RunPass<SlowPathLoweringPass>();
+    if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
+        pipeline.RunPass<ValueNumberingPass>();
+    }
+    pipeline.RunPass<InstructionCombinePass>();
+    pipeline.RunPass<EarlyEliminationPass>();
+    pipeline.RunPass<UselessGateEliminationPass>();
+    if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()
+        && compilationEnv_->GetJSOptions().IsEnableJitVerifyPass()) {
+        pipeline.RunPass<VerifierPass>();
+    }
+    pipeline.RunPass<GraphLinearizerPass>(!g_isEnableCMCGC);
+}
+
+void JitPassManager::RunPasses()
+{
+    PassRunner<PassData> pipeline(data_);
+    bool enableLiteCompile
+        = ohos::JitTools::GetEnableJitLiteCompile() || compilationEnv_->GetJSOptions().IsEnableJitLiteCompile();
+    if (enableLiteCompile) {
+        LOG_COMPILER(INFO) << "Running JIT Lite Compile Passes";
+        RunLitePasses(pipeline);
+    } else {
+        RunFullPasses(pipeline);
+    }
+}
 
 bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
                              AOTFileGenerator &gen, int32_t osrOffset)
@@ -96,6 +201,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             jitCompilationEnv->SetProfileTypeInfo(profileTypeInfo);
             jitProfiler_->SetCompilationEnv(compilationEnv_);
             jitProfiler_->InitChunk(&chunk);
+            TimeScope timescope("ProfileBytecode", log_);
             jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo, nullptr,
                                           methodLiteral->GetMethodId(), abcId, pcStart,
                                           methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),
@@ -122,7 +228,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             fullName, recordName, decoder, false, jitProfiler_);
         builder_->SetOsrOffset(osrOffset);
         {
-            TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
+            TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_, circuit_);
             builder_->SetJitCompile();
             builder_->BytecodeToCircuit();
             if (builder_->HasIrreducibleLoop()) {
@@ -135,63 +241,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         data_ = new PassData(builder_, circuit_, ctx_, log_, fullName, &methodInfo, recordName,
             methodLiteral, methodOffset, &methodFlagMap, CVector<AbcFileInfo> {},
             compilationEnv_->GetNativeAreaAllocator(), decoder, passOptions_);
-        PassRunner<PassData> pipeline(data_);
-
-        pipeline.RunPass<RunFlowCyclesVerifierPass>();
-        pipeline.RunPass<RedundantPhiEliminationPass>();
-        if (builder_->EnableLoopOptimization()) {
-            pipeline.RunPass<LoopOptimizationPass>();
-            pipeline.RunPass<RedundantPhiEliminationPass>();
-        }
-        if (passOptions_->EnableTypeLowering()) {
-            pipeline.RunPass<PGOTypeInferPass>();
-        }
-        {
-            Jit::JitLockHolder lock(compilationEnv_, "TSInlineLoweringPass");
-            pipeline.RunPass<TSInlineLoweringPass>();
-        }
-
-        pipeline.RunPass<RedundantPhiEliminationPass>();
-        pipeline.RunPass<AsyncFunctionLoweringPass>();
-        pipeline.RunPass<TypeBytecodeLoweringPass>();
-        pipeline.RunPass<UselessGateEliminationPass>();
-        pipeline.RunPass<InductionVariableAnalysisPass>();
-        pipeline.RunPass<RedundantPhiEliminationPass>();
-        pipeline.RunPass<NTypeBytecodeLoweringPass>();
-        pipeline.RunPass<UselessGateEliminationPass>();
-        pipeline.RunPass<EarlyEliminationPass>();
-        pipeline.RunPass<NumberSpeculativePass>();
-        pipeline.RunPass<UselessGateEliminationPass>();
-        pipeline.RunPass<LaterEliminationPass>();
-        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
-            pipeline.RunPass<ValueNumberingPass>();
-        }
-        pipeline.RunPass<StateSplitLinearizerPass>();
-        pipeline.RunPass<EscapeAnalysisPass>();
-        pipeline.RunPass<StringOptimizationPass>();
-        pipeline.RunPass<NTypeHCRLoweringPass>();
-        pipeline.RunPass<TypeHCRLoweringPass>();
-        pipeline.RunPass<UselessGateEliminationPass>();
-        pipeline.RunPass<LaterEliminationPass>();
-        pipeline.RunPass<EarlyEliminationPass>();
-        pipeline.RunPass<LCRLoweringPass>();
-        pipeline.RunPass<UselessGateEliminationPass>();
-        pipeline.RunPass<ConstantFoldingPass>();
-        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
-            pipeline.RunPass<ValueNumberingPass>();
-        }
-        pipeline.RunPass<SlowPathLoweringPass>();
-        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
-            pipeline.RunPass<ValueNumberingPass>();
-        }
-        pipeline.RunPass<InstructionCombinePass>();
-        pipeline.RunPass<EarlyEliminationPass>();
-        pipeline.RunPass<UselessGateEliminationPass>();
-        if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()
-            && compilationEnv_->GetJSOptions().IsEnableJitVerifyPass()) {
-            pipeline.RunPass<VerifierPass>();
-        }
-        pipeline.RunPass<GraphLinearizerPass>(!g_isEnableCMCGC);
+        RunPasses();
         return true;
     });
 }
@@ -303,7 +353,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
                                        passOptions_->EnableTypeLowering(), passOptions_->EnableTraceCallNum(),
                                        fullName, recordName, decoder, false);
         {
-            TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
+            TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_, &circuit);
             builder.BytecodeToCircuit();
         }
 

@@ -17,6 +17,9 @@ import("$build_root/test.gni")
 
 declare_args() {
   TEST_LLVM_ONLY = false
+
+  # Turn off to disable lite compile version JIT tests
+  enable_jit_lite_compile_test = true
 }
 
 if (is_standard_system || ark_standalone_build) {
@@ -5249,6 +5252,68 @@ template("host_jit_js_test_action") {
 
     outputs = [ "$target_out_dir/${_target_name_}/" ]
   }
+
+  # run jit test with --compiler-enable-jit-lite-compile=true
+  if (enable_jit_lite_compile_test) {
+    action("${_target_name_}JitLiteCompileAction") {
+      testonly = true
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+      _host_jsoptimizer_lib_ = "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      _jit_run_options_ =
+          " --enable-force-gc=false" +
+          " --asm-interpreter=true" +
+          " --compiler-enable-jit=true" +
+          " --compiler-enable-jit-pgo=true" +
+          " --compiler-jit-hotness-threshold=5" +
+          " --compiler-enable-litecg=true" +
+          " --compiler-enable-jit-lite-compile=true" +
+          " --entry-point=${_target_name_} "
+      _jit_run_options_ += common_options
+
+      if (defined(invoker.enable_osr) && invoker.enable_osr) {
+        _jit_run_options_ += " --compiler-enable-osr=true "
+        _jit_run_options_ += " --compiler-osr-hotness-threshold=1 "
+      }
+      if (defined(invoker.extra_option)) {
+        _jit_run_options_ += invoker.extra_option
+      }
+
+      deps = [
+        ":gen_${_target_name_}_abc",
+        _host_jsoptimizer_lib_,
+        _host_jsvm_target_,
+      ]
+      deps += _deps_
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _jit_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib:") +
+            rebase_path(_root_out_dir_) + "/hmosbundlemanager/zlib_override/",
+      ]
+
+      inputs = [ _test_abc_path_ ]
+      outputs = [ "$target_out_dir/${_target_name_}_jit_lite_compile/" ]
+    }
+  }
 }
 
 template("host_jit_test_action") {
@@ -5332,6 +5397,68 @@ template("host_jit_test_action") {
     inputs = [ _test_abc_path_ ]
 
     outputs = [ "$target_out_dir/${_target_name_}/" ]
+  }
+
+  # run jit test with --compiler-enable-jit-lite-compile=true
+  if (enable_jit_lite_compile_test) {
+    action("${_target_name_}JitLiteCompileAction") {
+      testonly = true
+      script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
+
+      _host_jsvm_target_ = "//arkcompiler/ets_runtime/ecmascript/js_vm:ark_js_vm(${host_toolchain})"
+      _host_jsoptimizer_lib_ = "//arkcompiler/ets_runtime/ecmascript/compiler:libark_jsoptimizer(${host_toolchain})"
+      _root_out_dir_ = get_label_info(_host_jsvm_target_, "root_out_dir")
+
+      _jit_run_options_ =
+          " --enable-force-gc=false" +
+          " --asm-interpreter=true" +
+          " --compiler-enable-jit=true" +
+          " --compiler-enable-jit-pgo=true" +
+          " --compiler-jit-hotness-threshold=5" +
+          " --compiler-enable-litecg=true" +
+          " --compiler-enable-jit-lite-compile=true" +
+          " --entry-point=${_target_name_} "
+      _jit_run_options_ += common_options
+
+      if (defined(invoker.enable_osr) && invoker.enable_osr) {
+        _jit_run_options_ += " --compiler-enable-osr=true "
+        _jit_run_options_ += " --compiler-osr-hotness-threshold=1 "
+      }
+      if (defined(invoker.extra_option)) {
+        _jit_run_options_ += invoker.extra_option
+      }
+
+      deps = [
+        ":gen_${_target_name_}_abc",
+        _host_jsoptimizer_lib_,
+        _host_jsvm_target_,
+      ]
+      deps += _deps_
+
+      args = [
+        "--script-file",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime/ark_js_vm",
+        "--script-options",
+        _jit_run_options_,
+        "--script-args",
+        _script_args_,
+        "--expect-file",
+        rebase_path(_test_expect_path_),
+        "--env-path",
+        rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+            rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
+            rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
+            rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +
+            rebase_path(_root_out_dir_) + "/hiviewdfx/hilog:" +
+            rebase_path(_root_out_dir_) +
+            "/thirdparty/bounds_checking_function:" +
+            rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib:") +
+            rebase_path(_root_out_dir_) + "/hmosbundlemanager/zlib_override/",
+      ]
+
+      inputs = [ _test_abc_path_ ]
+      outputs = [ "$target_out_dir/${_target_name_}_jit_lite_compile/" ]
+    }
   }
 }
 

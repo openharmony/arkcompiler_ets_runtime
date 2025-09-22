@@ -148,26 +148,23 @@ bool GraphEditor::FrameValueUsedInCFGTailoring(GateRef gate)
 void GraphEditor::EliminatePhi()
 {
     circuit_->AdvanceTime();
-    std::vector<GateRef> gateList;
-    acc_.GetAllGates(gateList);
     std::vector<GateRef> phis;
     std::queue<GateRef> workList;
     // nomarked phis are unused phis
     // set previsit for phis in worklist
     // set visited for used phis
     // set finished for used gate which is self-use or has same inputs
-
-    for (auto gate : gateList) {
+    circuit_->ForEachGate([this, &phis, &workList](GateRef gate, const Gate* gatePtr) {
         if (acc_.IsValueSelector(gate)) {
             phis.emplace_back(gate);
-            continue;
+            return;
         }
         // 1. When Deopt occurs, FrameValue assists in restoring the assembly interpreter stack. If all the logic
         // affected by this FrameValue does not use this phi, then this phi can be deleted.
         // 2. In the OSR and Insufficient Profile scenarios, we will actively crop CFG and remove some references to
         // phi, which will result in incomplete recovery of the assembly interpreter stack by Deopt.
         if (acc_.IsFrameValues(gate) && !FrameValueUsedInCFGTailoring(gate)) {
-            continue;
+            return;
         }
         // get used phi
         auto valueNum = acc_.GetNumValueIn(gate);
@@ -178,7 +175,7 @@ void GraphEditor::EliminatePhi()
                 workList.push(input);
             }
         }
-    }
+    });
 
     // visit used phi
     while (!workList.empty()) {

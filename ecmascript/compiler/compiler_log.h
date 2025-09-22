@@ -95,6 +95,16 @@ public:
         enableMethodLog_ = enableMethodLog;
     }
 
+    bool GetEnableCompilerLogTimeMethods() const
+    {
+        return enableCompilerLogTimeMethods_;
+    }
+
+    void SetEnableCompilerLogTimeMethods(bool enable)
+    {
+        enableCompilerLogTimeMethods_ = enable;
+    }
+
     bool EnableMethodCIRLog() const
     {
         return GetEnableMethodLog() && OutputCIR();
@@ -110,6 +120,8 @@ public:
     void PUBLIC_API Print() const;
     void AddMethodTime(const std::string& name, uint32_t id, double time);
     void AddPassTime(const std::string& name, double time);
+    double GetPassTime(const std::string& name) const;
+    double GetMethodTime(const std::string& name, uint32_t id) const;
     int GetIndex();
 
     std::map<std::string, int> nameIndex_;
@@ -136,8 +148,9 @@ private:
     bool outputLLIR_ {false};
     bool outputASM_ {false};
     bool outputType_ {false};
-    bool compilerLogTime_ {true};
+    bool compilerLogTime_ {false};
     bool enableMethodLog_ {false};
+    bool enableCompilerLogTimeMethods_ {false};
     std::map<std::string, double> timePassMap_ {};
     std::map<std::pair<uint32_t, std::string>, double> timeMethodMap_ {};
 };
@@ -172,25 +185,31 @@ private:
 
 class TimeScope : public ClockScope {
 public:
-    TimeScope(std::string name, std::string methodName, uint32_t methodOffset, CompilerLog* log);
+    TimeScope(std::string name,
+              std::string methodName,
+              uint32_t methodOffset,
+              CompilerLog* log,
+              Circuit* circuit = nullptr);
     TimeScope(std::string name, CompilerLog* log);
     ~TimeScope();
 
 private:
     static constexpr int PASS_LENS = 32;
-    static constexpr int METHOD_LENS = 16;
-    static constexpr int OFFSET_LENS = 8;
-    static constexpr int TIME_LENS = 8;
-    static constexpr int MILLION_TIME = 1000;
+    static constexpr int METHOD_LENS = 24;
+    static constexpr int OFFSET_LENS = 16;
+    static constexpr int NODE_COUNT_LENS = 16;
+    static constexpr int TIME_LENS = 16;
+    static constexpr int INVALID_NODE_COUNT = -1;
 
     std::string name_ {""};
-    double startTime_ {0};
-    double timeUsed_ {0};
     std::string methodName_ {""};
     uint32_t methodOffset_ {0};
+    size_t initialNodeCount_ {0};
+    Circuit* circuit_ {nullptr};
     CompilerLog *log_ {nullptr};
 
     const std::string GetShortName(const std::string& methodName);
+    size_t GetCurrentNodeCount() const;
 };
 
 class PGOTypeLogList {
@@ -202,6 +221,41 @@ public:
 private:
     GateAccessor acc_;
     std::string log_ {};
+};
+
+struct LogFormatter {
+    std::ostringstream oss;
+
+    template<typename T>
+    LogFormatter& Left(std::string_view key, const T& value, int width)
+    {
+        std::ostringstream ctx;
+        if (key.empty()) {
+            ctx << value;
+        } else {
+            ctx << key << value;
+        }
+        oss << std::left << std::setw(width) << ctx.str();
+        return *this;
+    }
+
+    template<typename T>
+    LogFormatter& Right(std::string_view key, const T& value, int width)
+    {
+        std::ostringstream ctx;
+        if (key.empty()) {
+            ctx << value;
+        } else {
+            ctx << key << value;
+        }
+        oss << std::right << std::setw(width) << ctx.str();
+        return *this;
+    }
+
+    std::string str() const
+    {
+        return oss.str();
+    }
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LOG_H

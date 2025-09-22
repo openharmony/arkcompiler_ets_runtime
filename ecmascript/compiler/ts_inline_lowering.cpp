@@ -32,14 +32,12 @@ void TSInlineLowering::RunTSInlineLowering()
 
 void TSInlineLowering::CollectInlineInfo()
 {
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
+    circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::FRAME_ARGS) {
             GetInlinedMethodId(gate);
         }
-    }
+    });
 }
 
 void TSInlineLowering::GetInlinedMethodId(GateRef gate)
@@ -285,7 +283,7 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
         if (enableTypeLowering_) {
             BuildFrameStateChain(info, builder);
         }
-        TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log);
+        TimeScope timeScope("BytecodeToCircuit", methodName, method->GetMethodId().GetOffset(), log, circuit_);
         if (compilationEnv_->IsJitCompiler()) {
             builder.SetJitCompile();
         }

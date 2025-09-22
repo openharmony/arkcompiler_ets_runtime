@@ -22,6 +22,9 @@
 #if defined(JIT_ESCAPE_ENABLE) || defined(GET_PARAMETER_FOR_JIT) || defined(JIT_ENABLE_CODE_SIGN)
 #include "parameters.h"
 #endif
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
 #if defined(JIT_ENABLE_CODE_SIGN)
 #include "jit_buffer_integrity.h"
 #endif
@@ -141,6 +144,14 @@ public:
         return OHOS::system::GetParameter("persist.ark.jit.method.dichotomy", value);
     #endif
         return value;
+    }
+
+    static bool GetEnableJitLiteCompile()
+    {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+        return OHOS::system::GetBoolParameter("ark.jit.enable.liteCompile", false);
+#endif
+        return false;
     }
 };
 }

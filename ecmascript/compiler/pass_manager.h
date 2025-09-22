@@ -34,6 +34,8 @@
 namespace panda::ecmascript::kungfu {
 class Bytecodes;
 class CompilationConfig;
+template<typename T1>
+class PassRunner;
 class PassData;
 class CallMethodFlagMap;
 struct AbcFileInfo;
@@ -172,6 +174,10 @@ public:
     virtual ~JitPassManager();
 
 private:
+    void RunPasses();
+    void RunLitePasses(PassRunner<PassData>& pipeline);
+    void RunFullPasses(PassRunner<PassData>& pipeline);
+
     BytecodeInfoCollector *collector_ {nullptr};
     LOptions *lOptions_ {nullptr};
     JitCompilationDriver *cmpDriver_ {nullptr};

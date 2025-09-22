@@ -470,7 +470,7 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     }
     DISALLOW_HEAP_ACCESS;
 
-    CString info = "compile method:" + jitTask_->GetMethodName();
+    CString info = "compile method: " + jitTask_->GetMethodName();
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ConvertToStdString("JIT::Compile:" + info).c_str(), "");
 
@@ -479,7 +479,6 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     if (jitTask_->GetJsFunction().GetAddress() == 0) {
         // for unit test
     } else {
-        info = info + ", in jit thread";
         Jit::TimeScope scope(jitTask_->GetHostThread()->GetEcmaVM(), info, jitTask_->GetCompilerTier());
 
         jitTask_->Optimize();
@@ -497,7 +496,7 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
         MachineCodeDesc codeDesc = jitTask_->GetMachineCodeDesc();
         size_t instrSize = codeDesc.codeSizeAlign + codeDesc.rodataSizeBeforeTextAlign
                            + codeDesc.rodataSizeAfterTextAlign;
-        CString sizeInfo = ": text size: ";
+        CString sizeInfo = ", text size: ";
         sizeInfo.append(std::to_string(instrSize)).append("bytes");
         scope.appendMessage(sizeInfo);
 

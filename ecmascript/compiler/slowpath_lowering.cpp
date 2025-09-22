@@ -49,10 +49,8 @@ using UseIterator = GateAccessor::UseIterator;
 
 void SlowPathLowering::CallRuntimeLowering()
 {
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
     GateRef globalEnvCache = Circuit::NullGate();
-    for (const auto &gate : gateList) {
+    circuit_->ForEachGate([this, &globalEnvCache](GateRef gate, const Gate* gatePtr) {
         auto op = acc_.GetOpCode(gate);
         [[maybe_unused]] auto scopedGate = circuit_->VisitGateBegin(gate);
         switch (op) {
@@ -116,7 +114,7 @@ void SlowPathLowering::CallRuntimeLowering()
             default:
                 break;
         }
-    }
+    });
 
     // Make sure all IRs are lowered before lowering the constpool. If constpool is not used in CIR, it will be replaced
     // by undefined.

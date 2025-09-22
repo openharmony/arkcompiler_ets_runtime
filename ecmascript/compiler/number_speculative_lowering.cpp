@@ -19,9 +19,7 @@ namespace panda::ecmascript::kungfu {
 
 void NumberSpeculativeLowering::Run()
 {
-    std::vector<GateRef> gateList;
-    acc_.GetAllGates(gateList);
-    for (auto gate : gateList) {
+    acc_.ForEachGate([this](GateRef gate, const Gate* gatePtr) {
         auto op = acc_.GetOpCode(gate);
         switch (op) {
             case OpCode::RANGE_GUARD: {
@@ -33,7 +31,7 @@ void NumberSpeculativeLowering::Run()
                 break;
             }
         }
-    }
+    });
     for (auto rangeGuard : rangeGuardGates_) {
         VisitRangeGuard(rangeGuard);
     }

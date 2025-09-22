@@ -85,14 +85,22 @@ void AotMethodLogList::ParseFileMethodsName(const std::string &logMethods)
     }
 }
 
-TimeScope::TimeScope(std::string name, std::string methodName, uint32_t methodOffset, CompilerLog* log)
-    : ClockScope(), name_(std::move(name)), methodName_(std::move(methodName)), methodOffset_(methodOffset), log_(log)
+TimeScope::TimeScope(
+    std::string name, std::string methodName, uint32_t methodOffset, CompilerLog* log, Circuit* circuit)
+    : ClockScope(),
+      name_(std::move(name)),
+      methodName_(std::move(methodName)),
+      methodOffset_(methodOffset),
+      circuit_(circuit),
+      log_(log)
 {
     if (log_->GetEnableCompilerLogTime()) {
         if (log_->nameIndex_.find(name_) == log_->nameIndex_.end()) {
             log_->nameIndex_[name_] = log_->GetIndex();
         }
-        startTime_ = ClockScope().GetCurTime();
+        if (circuit_ != nullptr) {
+            initialNodeCount_ = circuit_->GetGateCount();
+        }
     }
 }
 
@@ -103,22 +111,34 @@ TimeScope::TimeScope(std::string name, CompilerLog* log)
         if (log_->nameIndex_.find(name_) == log_->nameIndex_.end()) {
             log_->nameIndex_[name_] = log_->GetIndex();
         }
-        startTime_ = ClockScope().GetCurTime();
     }
 }
 
 TimeScope::~TimeScope()
 {
     if (log_->GetEnableCompilerLogTime()) {
-        timeUsed_ = ClockScope().GetCurTime() - startTime_;
-        if (log_->CertainMethod() && log_->GetEnableMethodLog()) {
-            LOG_COMPILER(INFO) << std::setw(PASS_LENS) << name_ << " " << std::setw(METHOD_LENS)
-                               << GetShortName(methodName_) << " offset:" << std::setw(OFFSET_LENS) << methodOffset_
-                               << " time used:" << std::setw(TIME_LENS) << timeUsed_ / MILLION_TIME << "ms";
+        bool shouldPrint
+            = log_->GetEnableCompilerLogTimeMethods() || (log_->CertainMethod() && log_->GetEnableMethodLog());
+        auto time = TotalSpentTime();
+        if (shouldPrint) {
+            int nodeIn = INVALID_NODE_COUNT;
+            int nodeOut = INVALID_NODE_COUNT;
+            if (circuit_ != nullptr) {
+                nodeIn = initialNodeCount_;
+                nodeOut = GetCurrentNodeCount();
+            }
+            LOG_COMPILER(INFO) << LogFormatter()
+                                      .Left("", name_, PASS_LENS)
+                                      .Left("", GetShortName(methodName_), METHOD_LENS)
+                                      .Right("OFFSET:", methodOffset_, OFFSET_LENS)
+                                      .Right("TIME(ms):", time, TIME_LENS)
+                                      .Right("NODE_IN:", nodeIn, NODE_COUNT_LENS)
+                                      .Right("NODE_OUT:", nodeOut, NODE_COUNT_LENS)
+                                      .str();
         }
         std::string shortName = GetShortName(methodName_);
-        log_->AddPassTime(name_, timeUsed_);
-        log_->AddMethodTime(shortName, methodOffset_, timeUsed_);
+        log_->AddPassTime(name_, time);
+        log_->AddMethodTime(shortName, methodOffset_, time);
     }
 }
 
@@ -132,6 +152,14 @@ const std::string TimeScope::GetShortName(const std::string& methodName)
     } else {
         return methodName;
     }
+}
+
+size_t TimeScope::GetCurrentNodeCount() const
+{
+    if (circuit_ != nullptr) {
+        return circuit_->GetGateCount();
+    }
+    return 0;
 }
 
 void CompilerLog::Print() const
@@ -197,6 +225,25 @@ void CompilerLog::AddMethodTime(const std::string& name, uint32_t id, double tim
 void CompilerLog::AddPassTime(const std::string& name, double time)
 {
     timePassMap_[name] += time;
+}
+
+double CompilerLog::GetPassTime(const std::string& name) const
+{
+    auto it = timePassMap_.find(name);
+    if (it != timePassMap_.end()) {
+        return it->second;
+    }
+    return 0.0;
+}
+
+double CompilerLog::GetMethodTime(const std::string& name, uint32_t id) const
+{
+    auto methodInfo = std::make_pair(id, name);
+    auto it = timeMethodMap_.find(methodInfo);
+    if (it != timeMethodMap_.end()) {
+        return it->second;
+    }
+    return 0.0;
 }
 
 int CompilerLog::GetIndex()

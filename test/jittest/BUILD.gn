@@ -11,7 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("../../js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 group("ark_jit_ts_test") {
   testonly = true
@@ -164,6 +165,9 @@ group("ark_jit_ts_test") {
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]
   foreach(test, test_list) {
     deps += [ "${test}:${test}JitAction" ]
+    if (enable_jit_lite_compile_test) {
+      deps += [ "${test}:${test}JitLiteCompileAction" ]
+    }
   }
 }
 

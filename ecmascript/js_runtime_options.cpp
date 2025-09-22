@@ -66,6 +66,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
+    "--compiler-log-time-methods:          Enable timing statistics for all methods with node count.\n"
+    "                                      Default: 'false'. When true, prints all method timings.\n"
+    "                                      Use with --compiler-log-time.\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
     "--open-ark-tools:                     Open ark tools to return specific implementation. Default: 'false'\n"
     "--pgo-trace:                          Enable pgo trace for JS runtime. Default: 'false'\n"
@@ -201,6 +204,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-induction-variable:  Enable tracing induction variable for aot compiler. Default: 'false'\n"
     "--compiler-memory-analysis:           Enable memory analysis for aot compiler. Default: 'true'\n"
     "--compiler-enable-jit-fast-compile:   Enable jit fast compile. Default: 'false'\n"
+    "--compiler-enable-jit-lite-compile:   Enable lite compile, less PASS but faster compile time. Default: 'false'\n"
     "--compiler-enable-jitfort:            Enable jit fort memory space. Default: 'false'\n"
     "--compiler-codesign-disable:          Disable codesign for jit fort. Default: 'true'\n"
     "--compiler-enable-async-copytofort:   Enable jit fort allocation and code copy in Jit thread. Default: 'true'\n"
@@ -243,6 +247,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
+        {"compiler-log-time-methods", required_argument, nullptr, OPTION_COMPILER_LOG_TIME_METHODS},
         {"compiler-type-threshold", required_argument, nullptr, OPTION_COMPILER_TYPE_THRESHOLD},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"open-ark-tools", required_argument, nullptr, OPTION_OPEN_ARK_TOOLS},
@@ -371,6 +376,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-force-baselinejit-compile-main", required_argument, nullptr,
          OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
         {"compiler-enable-jit-fast-compile", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE},
+        {"compiler-enable-jit-lite-compile", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_LITE_COMPILE},
         {"compiler-enable-jitfort", required_argument, nullptr, OPTION_ENABLE_JITFORT},
         {"compiler-codesign-disable", required_argument, nullptr, OPTION_CODESIGN_DISABLE},
         {"compiler-enable-async-copytofort", required_argument, nullptr, OPTION_ENABLE_ASYNC_COPYTOFORT},
@@ -493,6 +499,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetCompilerLogTime(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_LOG_TIME_METHODS:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableCompilerLogTimeMethods(argBool);
                 } else {
                     return false;
                 }
@@ -1385,6 +1399,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableJitFastCompile(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_JIT_LITE_COMPILE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableJitLiteCompile(argBool);
                 } else {
                     return false;
                 }

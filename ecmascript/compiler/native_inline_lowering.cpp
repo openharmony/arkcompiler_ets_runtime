@@ -54,22 +54,20 @@ std::optional<std::pair<size_t, bool>> NativeInlineLowering::GetCallInfo(GateRef
 
 void NativeInlineLowering::RunNativeInlineLowering()
 {
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
+    circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
         auto op = acc_.GetOpCode(gate);
         if (op != OpCode::JS_BYTECODE) {
-            continue;
+            return;
         }
         auto optCallInfo = GetCallInfo(gate);
         if (!optCallInfo) {
-            continue;
+            return;
         }
         auto [argc, skipThis] = optCallInfo.value();
         CallTypeInfoAccessor ctia(compilationEnv_, circuit_, gate);
         BuiltinsStubCSigns::ID id = ctia.TryGetPGOBuiltinMethodId();
         if (IS_INVALID_ID(id) && id != BuiltinsStubCSigns::ID::BigIntConstructor) {
-            continue;
+            return;
         }
         switch (id) {
             case BuiltinsStubCSigns::ID::StringFromCharCode:
@@ -359,7 +357,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
             default:
                 break;
         }
-    }
+    });
 
     if (EnableLog()) {
         LOG_COMPILER(INFO) << " ";

@@ -229,6 +229,31 @@ host_unittest_action("NumberSpeculativeRetypeTest") {
   ]
 }
 
+host_unittest_action("CompilerLogTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "compiler_log_test.cpp",
+  ]
+
+  deps = [
+    "$js_root:libark_jsruntime_test_set",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+  ]
+  external_deps = [
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
+}
+
+group("unittest") {
+  testonly = true
+
+  # deps file
+  deps = [ ":CompilerLogTest" ]
+}
+
 group("host_unittest") {
   testonly = true
 
@@ -237,6 +262,7 @@ group("host_unittest") {
     ":AotCompilerStatsTestAction",
     ":AotVersionTestAction",
     ":AssemblerTestAction",
+    ":CompilerLogTestAction",
     ":ConstantFoldingTestAction",
     ":CreateEmptyFileTestAction",
     ":GlobalValueNumberingTestAction",

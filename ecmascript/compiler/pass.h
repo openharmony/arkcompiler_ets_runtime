@@ -241,7 +241,11 @@ class PreCompileCheckPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("PreCompileCheckPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("PreCompileCheckPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         PreCompileChecker preCompileChecker(data, data->GetCircuit(), data->GetMethodName(), enableLog);
         if (!preCompileChecker.Run()) {
@@ -256,7 +260,8 @@ class PGOTypeInferPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("PGOTypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope(
+            "PGOTypeInferPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog(), data->GetCircuit());
         bool enableLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         Chunk chunk(data->GetNativeAreaAllocator());
         PGOTypeInfer pgoTypeInfer(data->GetCircuit(), data->GetBuilder(), data->GetMethodName(), &chunk, enableLog);
@@ -273,7 +278,11 @@ public:
         if (!passOptions->EnableEscapeAnalysis()) {
             return false;
         }
-        TimeScope timescope("EscapeAnalysisPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("EscapeAnalysisPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         Chunk chunk(data->GetNativeAreaAllocator());
@@ -299,8 +308,11 @@ public:
         if (!passOptions->EnableInductionVariableAnalysis()) {
             return false;
         }
-        TimeScope timescope("InductionVariableAnalysisPass", data->GetMethodName(),
-                            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("InductionVariableAnalysisPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         Chunk chunk(data->GetNativeAreaAllocator());
@@ -320,8 +332,11 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("TypeBytecodeLoweringPass", data->GetMethodName(),
-            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("TypeBytecodeLoweringPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableTypeLog = data->GetLog()->GetEnableMethodLog() && data->GetLog()->OutputType();
         Chunk chunk(data->GetNativeAreaAllocator());
@@ -359,8 +374,11 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(),
-            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("NTypeBytecodeLoweringPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog,
                                        passOptions->EnableLazyDeopt(), data->GetMethodName(), data->GetRecordName());
@@ -382,7 +400,11 @@ public:
         if (!passOptions->EnableOptString()) {
             return false;
         }
-        TimeScope timescope("StringOptimizationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("StringOptimizationPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         StringBuilderOptimizer stringBuilder(data->GetCircuit(),
@@ -404,7 +426,11 @@ public:
             return false;
         }
         {
-            TimeScope timescope("TypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+            TimeScope timescope("TypeHCRLoweringPass",
+                                data->GetMethodName(),
+                                data->GetMethodOffset(),
+                                data->GetLog(),
+                                data->GetCircuit());
             bool enableLog = data->GetLog()->EnableMethodCIRLog();
             Chunk chunk(data->GetNativeAreaAllocator());
             CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -420,8 +446,11 @@ public:
         }
 
         {
-            TimeScope timescope("TypedNativeInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(),
-                                data->GetLog());
+            TimeScope timescope("TypedNativeInlineLoweringPass",
+                                data->GetMethodName(),
+                                data->GetMethodOffset(),
+                                data->GetLog(),
+                                data->GetCircuit());
             bool enableLog = data->GetLog()->EnableMethodCIRLog();
             Chunk chunk(data->GetNativeAreaAllocator());
             CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -447,7 +476,11 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("NTypeHCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("NTypeHCRLoweringPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -469,7 +502,8 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("LCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope(
+            "LCRLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog(), data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -490,7 +524,11 @@ public:
         if (!passOptions->EnableOptInlining() || !passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("TSInlineLoweringPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
                                   data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset(),
@@ -538,7 +576,11 @@ class SlowPathLoweringPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("SlowPathLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("SlowPathLoweringPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         SlowPathLowering lowering(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
                                   data->GetMethodLiteral(), enableLog, data->GetMethodName(), data->GetRecordName());
@@ -551,7 +593,11 @@ class RunFlowCyclesVerifierPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("FlowCyclesVerifierPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("FlowCyclesVerifierPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool hasFlowCycle = Verifier::RunFlowCyclesFind(data->GetCircuit());
         if (hasFlowCycle) {
             LOG_FULL(FATAL) << "FlowCyclesVerifierPass fail";
@@ -565,7 +611,8 @@ class VerifierPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("VerifierPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope(
+            "VerifierPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog(), data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool isQualified = Verifier::Run(data->GetCircuit(), data->GetMethodName(), enableLog);
         if (!isQualified) {
@@ -584,7 +631,11 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("NumberSpeculativePass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("NumberSpeculativePass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool enableArrayBoundsCheckElimination = passOptions->EnableArrayBoundsCheckElimination();
@@ -603,7 +654,11 @@ public:
         if (!passOptions->EnableOptConstantFolding()) {
             return false;
         }
-        TimeScope timescope("ConstantFoldingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("ConstantFoldingPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -620,7 +675,11 @@ class LoopOptimizationPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("LoopOptimizationPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("LoopOptimizationPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         Chunk chunk(data->GetNativeAreaAllocator());
         LoopAnalysis loopAnalysis(data->GetBuilder(), data->GetCircuit(), &chunk);
         loopAnalysis.Run();
@@ -644,8 +703,11 @@ class RedundantPhiEliminationPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("RedundantPhiEliminationPass", data->GetMethodName(),
-            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("RedundantPhiEliminationPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         GraphEditor::EliminateRedundantPhi(data->GetCircuit(), enableLog, data->GetMethodName());
         return true;
@@ -660,8 +722,11 @@ public:
         if (!passOptions->EnableTypeLowering() || !passOptions->EnableEarlyElimination()) {
             return false;
         }
-        TimeScope timescope("EarlyEliminationPass", data->GetMethodName(),
-                            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("EarlyEliminationPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -683,8 +748,11 @@ public:
         if (!passOptions->EnableTypeLowering() || !passOptions->EnableLaterElimination()) {
             return false;
         }
-        TimeScope timescope("LaterEliminationPass", data->GetMethodName(),
-                            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("LaterEliminationPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -700,8 +768,11 @@ class UselessGateEliminationPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("UselessGateEliminationPass", data->GetMethodName(),
-                            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("UselessGateEliminationPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         UselessGateElimination uselessGateElimination(data->GetCircuit(), enableLog, data->GetMethodName());
         uselessGateElimination.Run();
@@ -718,7 +789,11 @@ public:
             return false;
         }
         JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
-        TimeScope timescope("ValueNumberingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("ValueNumberingPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -738,8 +813,11 @@ public:
     {
         JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         if (runtimeOption.IsEnableInstrcutionCombine()) {
-            TimeScope timescope("InstructionCombinePass", data->GetMethodName(), data->GetMethodOffset(),
-                                data->GetLog());
+            TimeScope timescope("InstructionCombinePass",
+                                data->GetMethodName(),
+                                data->GetMethodOffset(),
+                                data->GetLog(),
+                                data->GetCircuit());
             Chunk chunk(data->GetNativeAreaAllocator());
             bool enableLog = data->GetLog()->EnableMethodCIRLog();
             CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
@@ -757,7 +835,8 @@ class SchedulingPass {
 public:
     bool Run(PassData* data, bool isStwCopyStub)
     {
-        TimeScope timescope("SchedulingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope(
+            "SchedulingPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog(), data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
         Chunk chunk(data->GetNativeAreaAllocator());
@@ -789,8 +868,11 @@ public:
         if (!passOptions->EnableTypeLowering()) {
             return false;
         }
-        TimeScope timescope("StateSplitLinearizerPass", data->GetMethodName(),
-                            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("StateSplitLinearizerPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         StateSplitLinearizer(data->GetPassContext()->GetCompilationEnv(), data->GetCircuit(), nullptr,
@@ -804,7 +886,11 @@ class GraphLinearizerPass {
 public:
     bool Run(PassData* data, bool isStwCopyStub)
     {
-        TimeScope timescope("GraphLinearizerPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("GraphLinearizerPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         bool licm = data->GetPassOptions()->EnableOptLoopInvariantCodeMotion();
@@ -836,7 +922,8 @@ public:
     bool Run(PassData *data)
     {
         auto module = data->GetAotModule();
-        TimeScope timescope("CGIRGenPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope(
+            "CGIRGenPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog(), data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         PassOptions *passOptions = data->GetPassOptions();
         bool enableOptInlining = passOptions->EnableOptInlining() && passOptions->EnableTypeLowering();
@@ -856,8 +943,11 @@ class AsyncFunctionLoweringPass {
 public:
     bool Run(PassData* data)
     {
-        TimeScope timescope("AsyncFunctionLoweringPass", data->GetMethodName(),
-                            data->GetMethodOffset(), data->GetLog());
+        TimeScope timescope("AsyncFunctionLoweringPass",
+                            data->GetMethodName(),
+                            data->GetMethodOffset(),
+                            data->GetLog(),
+                            data->GetCircuit());
         bool enableLog = data->GetLog()->EnableMethodCIRLog() || data->GetLog()->EnableMethodASMLog();
         AsyncFunctionLowering lowering(data->GetBuilder(), data->GetCircuit(), data->GetCompilerConfig(),
                                        enableLog, data->GetMethodName());
