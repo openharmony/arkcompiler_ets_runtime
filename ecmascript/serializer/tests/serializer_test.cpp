@@ -36,6 +36,16 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"
 
+#include "ecmascript/containers/containers_private.h"
+#include "ecmascript/containers/containers_treeset.h"
+#include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/containers/tests/containers_test_helper.h"
+
+
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/serializer/base_deserializer.h"
 #include "ecmascript/serializer/module_deserializer.h"
@@ -44,6 +54,7 @@
 using namespace panda::ecmascript;
 using namespace testing::ext;
 using namespace panda::ecmascript::builtins;
+using namespace panda::ecmascript::containers;
 
 namespace panda::test {
 using DeserializeFunc = void (*)(SerializeData* data);
@@ -561,6 +572,270 @@ public:
             EXPECT_TRUE(JSTaggedValue::ToInt32(thread, resValue) == JSTaggedValue::ToInt32(thread, value))
                 << "Not same map value";
         }
+        Destroy();
+    }
+
+    class JSTreeSetTestClass : public base::BuiltinsBase {
+    public:
+        static JSTaggedValue TestForEachFunc(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> key = GetCallArg(argv, 1);
+            JSHandle<JSAPITreeSet> set(GetCallArg(argv, 2)); // 2 means the second arg
+            EXPECT_EQ(key.GetTaggedValue(), value.GetTaggedValue());
+            JSAPITreeSet::Delete(thread, set, key);
+
+            JSHandle<JSAPITreeSet> jsTreeSet(GetThis(argv));
+            JSAPITreeSet::Add(thread, jsTreeSet, key);
+            return JSTaggedValue::Undefined();
+        }
+
+        static JSTaggedValue TestCompareFunction(EcmaRuntimeCallInfo *argv)
+        {
+            JSThread *thread = argv->GetThread();
+            JSHandle<JSTaggedValue> valueX = GetCallArg(argv, 0);
+            JSHandle<JSTaggedValue> valueY = GetCallArg(argv, 1);
+
+            if (valueX->IsString() && valueY->IsString()) {
+                auto xHandle = JSHandle<EcmaString>(valueX);
+                auto yHandle = JSHandle<EcmaString>(valueY);
+                int result = EcmaStringAccessor::Compare(thread->GetEcmaVM(), xHandle, yHandle);
+                if (result < 0) {
+                    return JSTaggedValue(1);
+                }
+                if (result == 0) {
+                    return JSTaggedValue(0);
+                }
+                return JSTaggedValue(-1);
+            }
+
+            if (valueX->IsNumber() && valueY->IsString()) {
+                return JSTaggedValue(1);
+            }
+            if (valueX->IsString() && valueY->IsNumber()) {
+                return JSTaggedValue(-1);
+            }
+
+            ComparisonResult res = ComparisonResult::UNDEFINED;
+            if (valueX->IsNumber() && valueY->IsNumber()) {
+                res = JSTaggedValue::StrictNumberCompare(valueY->GetNumber(), valueX->GetNumber());
+            } else {
+                res = JSTaggedValue::Compare(thread, valueY, valueX);
+            }
+            return res == ComparisonResult::GREAT ?
+                JSTaggedValue(1) : (res == ComparisonResult::LESS ? JSTaggedValue(-1) : JSTaggedValue(0));
+        }
+    };
+
+    JSTaggedValue InitializeTreeSetConstructor()
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+
+        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
+        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
+        JSHandle<JSTaggedValue> value =
+            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+
+        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        objCallInfo->SetFunction(JSTaggedValue::Undefined());
+        objCallInfo->SetThis(value.GetTaggedValue());
+        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(ContainerTag::TreeSet)));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+        JSTaggedValue result = ContainersPrivate::Load(objCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        return result;
+    }
+
+    JSHandle<JSAPITreeSet> CreateJSAPITreeSet(JSTaggedValue compare = JSTaggedValue::Undefined())
+    {
+        JSHandle<JSTaggedValue> compareHandle(thread, compare);
+        JSHandle<JSFunction> newTarget(thread, InitializeTreeSetConstructor());
+        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        objCallInfo->SetFunction(newTarget.GetTaggedValue());
+        objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
+        objCallInfo->SetThis(JSTaggedValue::Undefined());
+        objCallInfo->SetCallArg(0, compareHandle.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+        JSTaggedValue result = ContainersTreeSet::TreeSetConstructor(objCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        JSHandle<JSAPITreeSet> set(thread, result);
+        return set;
+    }
+
+    void JSTreeSetNextTest(const JSHandle<JSAPITreeSet>& tset)
+    {
+        constexpr uint32_t nodeNumber = 8;
+        auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        callInfo1->SetFunction(JSTaggedValue::Undefined());
+        callInfo1->SetThis(tset.GetTaggedValue());
+        [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
+        JSHandle<JSTaggedValue> iterValues(thread, ContainersTreeSet::Values(callInfo1));
+        TestHelper::TearDownFrame(thread, prev1);
+        EXPECT_TRUE(iterValues->IsJSAPITreeSetIterator());
+        {
+            JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+            auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(iterValues.GetTaggedValue());
+
+            [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+            result.Update(JSAPITreeSetIterator::Next(callInfo));
+            TestHelper::TearDownFrame(thread, prev);
+            bool isDone = false;
+            for (int i = 0; !isDone; i++) {
+                EXPECT_EQ(i, JSIterator::IteratorValue(thread, result)->GetInt());
+                // next
+                auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(iterValues.GetTaggedValue());
+
+                [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+                result.Update(JSAPITreeSetIterator::Next(callInfo));
+                TestHelper::TearDownFrame(thread, prev);
+                isDone = JSIterator::IteratorComplete(thread, result);
+                EXPECT_EQ(i + 1 == nodeNumber, isDone);
+            }
+        }
+    }
+
+    void JSTreeSetEntriesTest(const JSHandle<JSAPITreeSet>& tset)
+    {
+        auto callInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        callInfo2->SetFunction(JSTaggedValue::Undefined());
+        callInfo2->SetThis(tset.GetTaggedValue());
+        [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, callInfo2);
+        JSHandle<JSTaggedValue> iter(thread, ContainersTreeSet::Entries(callInfo2));
+        TestHelper::TearDownFrame(thread, prev2);
+        EXPECT_TRUE(iter->IsJSAPITreeSetIterator());
+    }
+
+    void JSTreeSetForeachTest(JSHandle<JSAPITreeSet>& tset)
+    {
+        constexpr uint32_t nodeNumber = 8;
+        constexpr uint32_t step = 2;
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSAPITreeSet> dset = CreateJSAPITreeSet();
+        {
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            JSHandle<JSFunction> func =
+                factory->NewJSFunction(env, reinterpret_cast<void *>(JSTreeSetTestClass::TestForEachFunc));
+            auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(tset.GetTaggedValue());
+            callInfo->SetCallArg(0, func.GetTaggedValue());
+            callInfo->SetCallArg(1, dset.GetTaggedValue());
+
+            [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+            ContainersTreeSet::ForEach(callInfo);
+            TestHelper::TearDownFrame(thread, prev);
+        }
+
+        EXPECT_EQ(dset->GetSize(thread), nodeNumber / step);
+        EXPECT_EQ(tset->GetSize(thread), nodeNumber / step);
+        for (int i = 0; i < nodeNumber; i += step) {
+            auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(dset.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(i));
+
+            [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+            JSTaggedValue result = ContainersTreeSet::Has(callInfo);
+            TestHelper::TearDownFrame(thread, prev);
+            EXPECT_TRUE(result.IsTrue());
+        }
+        
+        // test add string
+        JSTreeSetStringTest(tset, dset);
+    }
+    void JSTreeSetStringTest(JSHandle<JSAPITreeSet>& tset, JSHandle<JSAPITreeSet>& dset)
+    {
+        constexpr uint32_t nodeNumber = 8;
+        constexpr uint32_t step = 2;
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+        std::string myKey("mykey");
+        for (int i = 0; i < nodeNumber; i++) {
+            std::string ikey = myKey + std::to_string(i);
+            key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+
+            auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(tset.GetTaggedValue());
+            callInfo->SetCallArg(0, key.GetTaggedValue());
+
+            [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+            JSTaggedValue result = ContainersTreeSet::Add(callInfo);
+            TestHelper::TearDownFrame(thread, prev);
+            EXPECT_TRUE(result.IsTrue());
+            EXPECT_EQ(tset->GetSize(thread), nodeNumber / step + i + 1);
+        }
+        EXPECT_EQ(tset->GetSize(thread), nodeNumber / step + nodeNumber);
+        {
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            JSHandle<JSFunction> func =
+                factory->NewJSFunction(env, reinterpret_cast<void *>(JSTreeSetTestClass::TestForEachFunc));
+            auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(tset.GetTaggedValue());
+            callInfo->SetCallArg(0, func.GetTaggedValue());
+            callInfo->SetCallArg(1, dset.GetTaggedValue());
+
+            [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+            ContainersTreeSet::ForEach(callInfo);
+            TestHelper::TearDownFrame(thread, prev);
+        }
+        EXPECT_EQ(dset->GetSize(thread), nodeNumber + step);
+        EXPECT_EQ(tset->GetSize(thread), nodeNumber - step);
+        for (int i = 0; i < nodeNumber; i += step) {
+            std::string ikey = myKey + std::to_string(i);
+            key.Update(factory->NewFromStdString(ikey).GetTaggedValue());
+
+            auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(dset.GetTaggedValue());
+            callInfo->SetCallArg(0, key.GetTaggedValue());
+            [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+            JSTaggedValue result = ContainersTreeSet::Has(callInfo);
+            TestHelper::TearDownFrame(thread, prev);
+            EXPECT_TRUE(result.IsTrue());
+        }
+    }
+
+    void JSTreeSetTest(SerializeData* data)
+    {
+        Init();
+        constexpr uint32_t nodeNumber = 8;
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize JSAPITreeSet fail";
+        EXPECT_TRUE(res->IsJSAPITreeSet()) << "[NotJSAPITreeSet] Deserialize JSAPITreeSet fail";
+        JSHandle<JSAPITreeSet> tset = JSHandle<JSAPITreeSet>::Cast(res);
+        EXPECT_TRUE(tset->GetSize(thread) == nodeNumber) << "the treeset size Not equal";
+        for (int i = 0; i < nodeNumber; i++) {
+            auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(tset.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(i));
+
+            [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+            JSTaggedValue result = ContainersTreeSet::Has(callInfo);
+            TestHelper::TearDownFrame(thread, prev);
+            EXPECT_TRUE(result.IsTrue());
+        }
+        
+        // test values next done
+        JSTreeSetNextTest(tset);
+        
+        // test entries
+        JSTreeSetEntriesTest(tset);
+
+        // test foreach function with TestForEachFunc;
+        JSTreeSetForeachTest(tset);
+        
         Destroy();
     }
 
@@ -1306,6 +1581,46 @@ public:
     JSThread *thread {nullptr};
     EcmaVM *ecmaVm {nullptr};
     EcmaHandleScope *scope {nullptr};
+    EcmaVM *instance {nullptr};
+
+protected:
+    JSTaggedValue InitializeTreeSetConstructor()
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+
+        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
+        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
+        JSHandle<JSTaggedValue> value =
+            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+
+        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        objCallInfo->SetFunction(JSTaggedValue::Undefined());
+        objCallInfo->SetThis(value.GetTaggedValue());
+        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(ContainerTag::TreeSet)));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+        JSTaggedValue result = ContainersPrivate::Load(objCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        return result;
+    }
+
+    JSHandle<JSAPITreeSet> CreateJSAPITreeSet(JSTaggedValue compare = JSTaggedValue::Undefined())
+    {
+        JSHandle<JSTaggedValue> compareHandle(thread, compare);
+        JSHandle<JSFunction> newTarget(thread, InitializeTreeSetConstructor());
+        auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        objCallInfo->SetFunction(newTarget.GetTaggedValue());
+        objCallInfo->SetNewTarget(newTarget.GetTaggedValue());
+        objCallInfo->SetThis(JSTaggedValue::Undefined());
+        objCallInfo->SetCallArg(0, compareHandle.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+        JSTaggedValue result = ContainersTreeSet::TreeSetConstructor(objCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        JSHandle<JSAPITreeSet> set(thread, result);
+        return set;
+    }
 };
 
 HWTEST_F_L0(JSSerializerTest, SerializeOldObjOOMTest)
@@ -1976,6 +2291,53 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSMap)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::JSMapTest, jsDeserializerTest, data.release(), map);
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSTreeSet)
+{
+    constexpr int nodeNumber = 8;
+    JSHandle<JSAPITreeSet> tset = CreateJSAPITreeSet();
+    for (int i = 0; i < nodeNumber; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(tset.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersTreeSet::Add(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsTrue());
+        EXPECT_EQ(tset->GetSize(thread), i + 1);
+    }
+    auto callInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    callInfo1->SetFunction(JSTaggedValue::Undefined());
+    callInfo1->SetThis(tset.GetTaggedValue());
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, callInfo1);
+    JSHandle<JSTaggedValue> iterValues(thread, ContainersTreeSet::Values(callInfo1));
+    TestHelper::TearDownFrame(thread, prev1);
+    EXPECT_TRUE(iterValues->IsJSAPITreeSetIterator());
+    JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+    bool isDone = false;
+    for (int i = 0; !isDone; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(iterValues.GetTaggedValue());
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        result.Update(JSAPITreeSetIterator::Next(callInfo));
+        TestHelper::TearDownFrame(thread, prev);
+        isDone = JSIterator::IteratorComplete(thread, result);
+        EXPECT_EQ(i == nodeNumber, isDone);
+    }
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(tset),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSTreeSet fail";
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSTreeSetTest, jsDeserializerTest, data.release());
     ecmascript::ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;
