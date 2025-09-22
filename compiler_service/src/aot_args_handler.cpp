@@ -54,8 +54,7 @@ const std::string ETS_PATH = "/ets";
 const std::string OWNERID_SHARED_TAG = "SHARED_LIB_ID";
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-// disable on master branch defaultly, only enable on feature branch
-const bool ARK_AOT_ENABLE_STATIC_COMPILER_DEFAULT_VALUE = false;
+const bool ARK_AOT_ENABLE_STATIC_COMPILER_DEFAULT_VALUE = true;
 #endif
 
 AOTArgsHandler::AOTArgsHandler(const std::unordered_map<std::string, std::string> &argsMap) : argsMap_(argsMap)
@@ -371,6 +370,13 @@ bool StaticAOTArgsParser::ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo
 std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParser(
     const std::unordered_map<std::string, std::string> &argsMap, bool isEnableStaticCompiler)
 {
+    int32_t isSystemComponent = 0;
+    if ((AOTArgsParserBase::FindArgsIdxToInteger(argsMap, ArgsIdx::IS_SYSTEM_COMPONENT, isSystemComponent) != ERR_OK)) {
+        LOG_SA(INFO) << "aot sa failed to get isSystemComponent";
+    }
+    if (isSystemComponent && isEnableStaticCompiler) {
+        return std::make_unique<StaticFrameworkAOTArgsParser>();
+    }
     std::string arkTsMode;
     if (AOTArgsParserBase::FindArgsIdxToString(argsMap, ArgsIdx::ARKTS_MODE, arkTsMode) != ERR_OK) {
         LOG_SA(INFO) << "aot sa failed to get arkTsMode";
@@ -380,22 +386,15 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
         LOG_SA(INFO) << "aot sa use default compiler";
         return std::make_unique<AOTArgsParser>();
     }
-    if (arkTsMode != ARKTS_STATIC && arkTsMode != ARKTS_HYBRID) {
-        LOG_SA(ERROR) << "aot sa get invalid code arkTsMode";
-        return std::nullopt;
-    }
     // After this, only arkTsMode that is static or hybrid will proceed downwards
     if (!isEnableStaticCompiler) {
         return std::nullopt;
     }
-    int32_t isSystemComponent = 0;
-    if ((AOTArgsParserBase::FindArgsIdxToInteger(argsMap, ArgsIdx::IS_SYSTEM_COMPONENT, isSystemComponent) != ERR_OK)) {
-        LOG_SA(INFO) << "aot sa failed to get isSystemComponent";
+    if (arkTsMode == ARKTS_STATIC || arkTsMode == ARKTS_HYBRID) {
+        return std::make_unique<StaticAOTArgsParser>();
     }
-    if (isSystemComponent) {
-        return std::make_unique<StaticFrameworkAOTArgsParser>();
-    }
-    return std::make_unique<StaticAOTArgsParser>();
+    LOG_SA(ERROR) << "aot sa get invalid code arkTsMode";
+    return std::nullopt;
 }
 
 bool StaticFrameworkAOTArgsParser::IsFileExists(const std::string &fileName)

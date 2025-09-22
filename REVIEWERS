@@ -17,6 +17,7 @@ common_components/                @wuzhefengh ^weng-changcheng @dmitriitr ^Prof1
 common_components/BUILD.gn        @weng-changcheng ^wuzhefengh
 common_components/base            @wuzhefengh ^weng-changcheng @dmitriitr
 common_components/common          @wuzhefengh ^weng-changcheng @dmitriitr
+compiler_service/                 @dingding5 @zhangyukun8 @chernykhsergey ^Prof
 common_components/base_runtime/   @wuzhefengh ^weng-changcheng @igelhaus
 common_components/common_runtime/ @wuzhefengh ^weng-changcheng @dmitriitr
 common_components/heap/           @wuzhefengh ^weng-changcheng ^yingguofeng @dmitriitr ^udav ^ipetrov

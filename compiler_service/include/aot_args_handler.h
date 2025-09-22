@@ -66,7 +66,7 @@ private:
     const std::unordered_map<std::string, std::string> argsMap_;
     HapArgs hapArgs_;
     mutable std::mutex hapArgsMutex_;
-    bool isEnableStaticCompiler_ { false };
+    bool isEnableStaticCompiler_ { true };
 };
 
 class AOTArgsParserBase {
@@ -126,7 +126,7 @@ public:
 class AOTArgsParserFactory {
 public:
     static std::optional<std::unique_ptr<AOTArgsParserBase>> GetParser(
-        const std::unordered_map<std::string, std::string> &argsMap, bool IsEnableStaticCompiler = false);
+        const std::unordered_map<std::string, std::string> &argsMap, bool IsEnableStaticCompiler = true);
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOT_ARGS_HANDLER_H
