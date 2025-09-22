@@ -32,7 +32,7 @@ class JSPandaFile;
 class PUBLIC_API Snapshot {
 public:
     explicit Snapshot(EcmaVM *vm) : vm_(vm) {}
-    ~Snapshot() = default;
+    virtual ~Snapshot() = default;
 
     void Serialize(const CString &fileName = "./snapshot");
     void Serialize(TaggedObject *objectHeader, const JSPandaFile *jsPandaFile, const CString &fileName = "./snapshot");
