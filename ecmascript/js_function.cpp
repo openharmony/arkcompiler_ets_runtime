@@ -1348,6 +1348,11 @@ void JSFunction::ReplaceFunctionForHook(const JSThread *thread, JSHandle<JSFunct
         return;
     }
 
+    if (!oldFunc->GetMachineCode(thread).IsUndefined() || !newFunc->GetMachineCode(thread).IsUndefined()) {
+        LOG_ECMA(WARN) << "ReplaceFunctionForHook failed";
+        return;
+    }
+
     // Field in FunctionBase
     oldFunc->SetMethod(thread, newFunc->GetMethod(thread));
     oldFunc->SetCodeEntryOrNativePointer(newFunc->GetCodeEntryOrNativePointer());
