@@ -19,10 +19,7 @@ true
 2
 true
 2
-[trace] Lazy Deoptimization occurred on function: "Test"
-[trace] Lazy Deoptimize reason: PROTOTYPE_CHECK
 3
 true
 3
-[trace] Check Type: InconsistentHClass6
 4

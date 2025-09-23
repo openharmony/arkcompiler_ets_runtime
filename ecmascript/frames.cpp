@@ -114,7 +114,10 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
         type == FrameType::FASTJIT_FUNCTION_FRAME ||
         type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME) {
         auto machineCode = thread_->GetEcmaVM()->GetHeap()->GetMachineCodeObject(retAddr);
-        ASSERT(machineCode != nullptr);
+        if (machineCode == nullptr) {
+            LOG_FULL(FATAL) << "machine code is nullptr. sp: " << std::hex << current_;
+            UNREACHABLE();
+        }
         const_cast<FrameIterator*>(this)->machineCode_ = reinterpret_cast<JSTaggedType>(machineCode);
         return reinterpret_cast<MachineCode*>(machineCode_)->CalCallSiteInfo();
     }
