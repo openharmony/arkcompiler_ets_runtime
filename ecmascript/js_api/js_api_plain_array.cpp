@@ -36,10 +36,6 @@ void JSAPIPlainArray::Add(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj
         return;
     }
     index ^= 0xFFFFFFFF;
-    if (index < static_cast<int32_t>(size)) {
-        obj->AdjustArray(thread, *keyArray, index, size, true);
-        obj->AdjustArray(thread, *valueArray, index, size, true);
-    }
     uint32_t capacity = valueArray->GetLength();
     if (size + 1 >= capacity) {
         uint32_t newCapacity = std::max(uint32_t(DEFAULT_CAPACITY_LENGTH), capacity << 1U);
@@ -49,6 +45,10 @@ void JSAPIPlainArray::Add(JSThread *thread, const JSHandle<JSAPIPlainArray> &obj
             thread->GetEcmaVM()->GetFactory()->CopyArray(valueArray, capacity, newCapacity);
         obj->SetKeys(thread, keyArray);
         obj->SetValues(thread, valueArray);
+    }
+    if (index < static_cast<int32_t>(size)) {
+        obj->AdjustArray(thread, *keyArray, index, size, true);
+        obj->AdjustArray(thread, *valueArray, index, size, true);
     }
     keyArray->Set(thread, index, key);
     valueArray->Set(thread, index, value);
@@ -103,6 +103,7 @@ void JSAPIPlainArray::AdjustArray(JSThread *thread, TaggedArray *srcArray, int32
     uint32_t idx = size - 1;
     if (direction) {
         while (fromIndex < toIndex) {
+            ASSERT(idx < srcArray->GetLength());
             JSTaggedValue value = srcArray->Get(thread, idx);
             srcArray->Set(thread, idx + 1, value);
             idx--;
