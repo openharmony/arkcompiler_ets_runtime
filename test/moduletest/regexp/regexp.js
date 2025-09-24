@@ -19,7 +19,10 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
-
+{
+  let reg = /a(?:|x)$/
+  assert_equal(JSON.stringify(reg.exec("ax")), '["ax"]')
+}
 {
   let reg= /ab|cd||/
   assert_equal(JSON.stringify(reg.exec("cd")),'["cd"]')
