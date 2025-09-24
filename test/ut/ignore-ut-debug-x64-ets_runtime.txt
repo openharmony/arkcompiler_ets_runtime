@@ -24,6 +24,3 @@ obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOProfilerTestOne
 
 #27862
 obj/arkcompiler/ets_runtime/test/moduletest/stringreplace/stringreplaceAsmAssert
-
-#26095
-obj/arkcompiler/ets_runtime/test/aottest/sharedset/sharedset/modules.ap
