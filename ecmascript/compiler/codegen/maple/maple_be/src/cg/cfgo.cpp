@@ -555,6 +555,7 @@ bool UnreachBBPattern::Optimize(BB &curBB)
         if (curBB.GetNext() != nullptr) {
             curBB.GetNext()->SetPrev(curBB.GetPrev());
         } else {
+            ASSERT_NOT_NULL(curBB.GetPrev());
             cgFunc->SetLastBB(*(curBB.GetPrev()));
         }
         if (cgFunc->GetFirstBB() == cgFunc->GetLastBB() && cgFunc->GetFirstBB() != nullptr) {

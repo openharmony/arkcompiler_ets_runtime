@@ -122,6 +122,7 @@ void X64MoveRegArgs::GenerateMovInsn(X64ArgInfo &argInfo, X64reg reg2)
     X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(cgFunc);
     int32 stOffset = x64CGFunc->GetBaseOffset(*argInfo.symLoc);
     RegOperand *baseOpnd = x64CGFunc->GetBaseReg(*argInfo.symLoc);
+    CHECK_FATAL(baseOpnd != nullptr, "nullptr check");
     uint32 opndSize = argInfo.symSize * kBitsPerByte;
     RegOperand &regOpnd = x64CGFunc->GetOpndBuilder()->CreatePReg(argInfo.reg, opndSize, argInfo.regType);
     MemOperand *memOpnd = &x64CGFunc->GetOpndBuilder()->CreateMem(*baseOpnd, stOffset, opndSize);
@@ -187,6 +188,7 @@ void X64MoveRegArgs::LoadStackArgsToVReg(MIRSymbol &mirSym)
     auto symLoc = static_cast<const X64SymbolAlloc *>(x64CGFunc->GetMemlayout()->GetSymAllocInfo(mirSym.GetStIndex()));
     int32 stOffset = x64CGFunc->GetBaseOffset(*symLoc);
     RegOperand *baseOpnd = x64CGFunc->GetBaseReg(*symLoc);
+    CHECK_FATAL(baseOpnd != nullptr, "nullptr check");
     MemOperand &memOpnd = x64CGFunc->GetOpndBuilder()->CreateMem(*baseOpnd, stOffset, opndSize);
     PregIdx pregIdx = x64CGFunc->GetFunction().GetPregTab()->GetPregIdxFromPregno(mirSym.GetPreg()->GetPregNo());
     RegOperand &dstRegOpnd = x64CGFunc->GetOpndBuilder()->CreateVReg(
