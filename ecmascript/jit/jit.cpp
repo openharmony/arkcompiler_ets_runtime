@@ -277,6 +277,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 
 void Jit::Compile(EcmaVM *vm, const CompileDecision &decision)
 {
+    [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
     auto tier = decision.GetTier();
     auto jsFunction = decision.GetJsFunction();
     auto methodInfo = decision.GetMethodInfo();
