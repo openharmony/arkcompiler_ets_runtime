@@ -389,6 +389,7 @@ group("ark_aot_ts_test") {
     "builtins_number",
     "builtins_number2",
     "builtins_parseint",
+    "builtins_proto",
     "constructor",
     "proxy_fast_call",
     "realm",
