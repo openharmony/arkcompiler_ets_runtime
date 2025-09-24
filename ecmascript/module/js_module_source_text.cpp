@@ -461,7 +461,6 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleMayThrowError(JSThread
     const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     if (exportObject->IsNativeModuleFailureInfo() || exportObject->IsUndefined()) {
