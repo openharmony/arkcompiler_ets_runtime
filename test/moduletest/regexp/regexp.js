@@ -19,6 +19,13 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+{
+  let res = "abcdef".match(/(?<=ab(?=c)cd)ef/)
+  assert_equal(JSON.stringify(res), '["ef"]')
+
+  res = "abcdef".match(/(?<=ab(?!c)cd)ef/)
+  assert_equal(JSON.stringify(res), 'null')
+}
 
 {
   let reg= /ab|cd||/
