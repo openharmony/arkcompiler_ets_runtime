@@ -89,7 +89,7 @@ bool RawHeap::ParseMetaData(FileReader &file, MetaParser *parser)
         return false;
     }
 
-    cJSON *json = cJSON_Parse(metadata.data());
+    cJSON *json = cJSON_ParseWithLength(metadata.data(), metadata.size());
     if (json == nullptr) {
         LOG_ERROR_ << "metadata cjson parse failed!";
         return false;
