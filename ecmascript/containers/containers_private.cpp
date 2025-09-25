@@ -70,11 +70,13 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
     }
 
     // Lazy set an undefinedIteratorResult to global constants
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
-    JSHandle<JSObject> undefinedIteratorResult = JSIterator::CreateIterResultObject(thread, undefinedHandle, true);
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    env->SetUndefinedIteratorResult(thread, undefinedIteratorResult);
+    JSHandle env = thread->GetEcmaVM()->GetGlobalEnv();
+    if (!env->GetUndefinedIteratorResult()->IsUndefined()) {
+        auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSObject> undefinedIteratorResult = JSIterator::CreateIterResultObject(thread, undefinedHandle, true);
+        env->SetUndefinedIteratorResult(thread, undefinedIteratorResult);
+    }
 
     JSTaggedValue res = JSTaggedValue::Undefined();
     switch (tag) {
@@ -111,7 +113,11 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
             break;
         }
         case ContainerTag::TreeSet: {
-            res = InitializeContainer(thread, thisValue, InitializeTreeSet, "TreeSetConstructor");
+            if (!env->GetTreeSetConstructor()->IsUndefined()) {
+                res = env->GetTreeSetConstructor().GetTaggedValue();
+            } else {
+                LOG_ECMA(FATAL) << "treeset constructor is Undefined";
+            }
             break;
         }
         case ContainerTag::Vector: {
@@ -494,70 +500,6 @@ void ContainersPrivate::InitializeTreeMapIterator(JSThread *thread)
     SetFrozenFunction(thread, mapIteratorPrototype, "next", JSAPITreeMapIterator::Next, FuncLength::ZERO);
     SetStringTagSymbol(thread, env, mapIteratorPrototype, "TreeMap Iterator");
     env->SetTreeMapIteratorPrototype(thread, mapIteratorPrototype);
-}
-
-JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeSet(JSThread *thread)
-{
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // TreeSet.prototype
-    JSHandle<JSObject> setFuncPrototype = factory->NewEmptyJSObject();
-    JSHandle<JSTaggedValue> setFuncPrototypeValue(setFuncPrototype);
-    // TreeSet.prototype_or_hclass
-    JSHandle<JSHClass> setInstanceClass =
-        factory->NewEcmaHClass(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, setFuncPrototypeValue);
-    // TreeSet() = new Function()
-    JSHandle<JSTaggedValue> setFunction(NewContainerConstructor(
-        thread, setFuncPrototype, ContainersTreeSet::TreeSetConstructor, "TreeSet", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
-        JSHandle<JSFunction>::Cast(setFunction), setInstanceClass.GetTaggedValue());
-
-    // "constructor" property on the prototype
-    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(setFuncPrototype), constructorKey, setFunction);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-
-    // TreeSet.prototype methods (excluding constructor and '@@' internal properties)
-    for (const base::BuiltinFunctionEntry &entry: ContainersTreeSet::GetTreeSetPrototypeFunctions()) {
-        SetFrozenFunction(thread, setFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
-                          entry.GetLength(), entry.GetBuiltinStubId());
-    }
-
-    // @@ToStringTag
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, setFuncPrototype, "TreeSet");
-    // %TreeSetPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
-    JSHandle<JSTaggedValue> values(thread, globalConst->GetValuesString());
-    JSHandle<JSTaggedValue> valuesFunc =
-        JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(setFuncPrototype), values);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    PropertyDescriptor descriptor(thread, valuesFunc, false, false, false);
-    JSObject::DefineOwnProperty(thread, setFuncPrototype, iteratorSymbol, descriptor);
-    // length
-    JSHandle<JSTaggedValue> lengthGetter =
-        CreateGetter(thread, ContainersTreeSet::GetLength, "length", FuncLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
-    SetGetter(thread, setFuncPrototype, lengthKey, lengthGetter);
-
-    InitializeTreeSetIterator(thread);
-    return setFunction;
-}
-
-void ContainersPrivate::InitializeTreeSetIterator(JSThread *thread)
-{
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // Iterator.hclass
-    JSHandle<JSHClass> iteratorClass =
-        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
-
-    // TreeSetIterator.prototype
-    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorClass));
-    // TreeSetIterator.prototype.next()
-    SetFrozenFunction(thread, setIteratorPrototype, "next", JSAPITreeSetIterator::Next, FuncLength::ZERO);
-    SetStringTagSymbol(thread, env, setIteratorPrototype, "TreeSet Iterator");
-    env->SetTreeSetIteratorPrototype(thread, setIteratorPrototype);
 }
 
 JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread)

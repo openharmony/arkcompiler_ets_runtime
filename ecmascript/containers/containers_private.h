@@ -85,8 +85,6 @@ private:
     static void InitializeLightWeightSetIterator(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializeTreeMap(JSThread *thread);
     static void InitializeTreeMapIterator(JSThread *thread);
-    static JSHandle<JSTaggedValue> InitializeTreeSet(JSThread *thread);
-    static void InitializeTreeSetIterator(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializePlainArray(JSThread *thread);
     static void InitializePlainArrayIterator(JSThread *thread);
     static JSHandle<JSTaggedValue> InitializeVector(JSThread *thread);
