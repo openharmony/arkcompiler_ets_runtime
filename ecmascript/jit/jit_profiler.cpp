@@ -381,7 +381,7 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
     } else {
         return;
     }
-    PGOSampleType* type = chunk_->New<PGOSampleType>(ProfileType(abcId_, std::abs(calleeMethodId), kind));
+    PGOSampleType* type = chunk_->New<PGOSampleType>(ProfileType(calleeAbcId, std::abs(calleeMethodId), kind));
     UpdatePGOType(bcOffset, type);
 }
 

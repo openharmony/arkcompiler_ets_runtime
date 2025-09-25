@@ -107,18 +107,17 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
         return;
     }
 
-    MethodLiteral* inlinedMethod = nullptr;
     uint32_t methodOffset = info.GetCallMethodId();
-    if (methodOffset == 0 || ctx_->IsSkippedMethod(methodOffset)) {
+    bool skipMethod = methodOffset == 0 || ctx_->IsSkippedMethod(methodOffset) || IsRecursiveFunc(info, methodOffset);
+    if (skipMethod) {
         return;
     }
-    if (IsRecursiveFunc(info, methodOffset)) {
-        return;
-    }
-    inlinedMethod = ctx_->GetJSPandaFile()->FindMethodLiteral(methodOffset);
+
+    MethodLiteral* inlinedMethod = ctx_->GetJSPandaFile()->FindMethodLiteral(methodOffset);
     if (!CheckParameter(gate, info, inlinedMethod)) {
         return;
     }
+
     auto &bytecodeInfo = ctx_->GetBytecodeInfo();
     if (compilationEnv_->IsJitCompiler()) {
         ctx_->GetBytecodeInfoCollector()->ProcessMethod(inlinedMethod);
@@ -130,6 +129,7 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
     if (info.IsNormalCall() && ctx_->FilterMethod(inlinedMethod, methodPcInfo)) {
         return;
     }
+
     GateRef frameState = GetFrameState(info);
     GateRef frameArgs = acc_.GetValueIn(frameState);
     size_t inlineCallCounts = GetOrInitialInlineCounts(frameArgs);
@@ -153,6 +153,15 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
                 lastCallId_ = circuit_->GetGateCount() - 1;
             }
         }
+    }
+
+    bool shouldRecordInlinedFunc = inlinedMethod != nullptr && inlineSuccess_ && compilationEnv_->IsJitCompiler();
+    if (shouldRecordInlinedFunc) {
+        JitCompilationEnv *jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
+        JSFunction *calleeFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
+        JSThread *thread = compilationEnv_->GetJSThread();
+        JSHandle<JSFunction> calleeFuncHandle(thread, calleeFunc);
+        jitCompilationEnv->RecordInlinedFunctions(calleeFuncHandle);
     }
 
     if ((inlinedMethod != nullptr) && IsLogEnabled() && inlineSuccess_) {
@@ -798,6 +807,12 @@ bool TSInlineLowering::CalleePFIProcess(uint32_t methodOffset)
     auto calleeLiteral = calleeMethod->GetMethodLiteral(thread);
     auto calleeFile = calleeMethod->GetJSPandaFile(thread);
     auto calleeAbcId = PGOProfiler::GetMethodAbcId(thread, calleeFunc);
+
+    auto callerFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(initMethodOffset_);
+    auto callerAbcId = PGOProfiler::GetMethodAbcId(thread, callerFunc);
+    if (callerAbcId != calleeAbcId) {
+        return false;
+    }
     auto calleeCodeSize = calleeLiteral->GetCodeSize(calleeFile, calleeMethod->GetMethodId());
     compilationEnv_->GetPGOProfiler()->GetJITProfile()->ProfileBytecode(
         compilationEnv_->GetJSThread(), JSHandle<ProfileTypeInfo>(), profileTypeInfo, calleeMethod->GetMethodId(),

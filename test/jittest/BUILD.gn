@@ -78,6 +78,7 @@ group("ark_jit_ts_test") {
     "wide_call_range_pref_imm16v8",
     "string_length",
     "ts_inline",
+    "multi_constpool_inline",
     "proxy_fast_call",
     "fuzz_exception",
     "utf16key",

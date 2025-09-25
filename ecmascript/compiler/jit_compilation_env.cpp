@@ -84,16 +84,27 @@ JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFil
     return constpool;
 }
 
-JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFile *jsPandaFile,
-    [[maybe_unused]] int32_t index) const
+JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFile *jsPandaFile, int32_t index) const
 {
     ASSERT(thread_->IsInRunningState());
     Method *method = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
     JSTaggedValue constpool = method->GetConstantPool(thread_);
-    [[maybe_unused]] const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+    const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
     ASSERT(taggedPool->GetJSPandaFile() == jsPandaFile);
-    ASSERT(taggedPool->GetSharedConstpoolId().GetInt() == index);
-    return constpool;
+    if (taggedPool->GetSharedConstpoolId().GetInt() == index) {
+        return constpool;
+    }
+    // target constpool is from an inlined function
+    for (auto inlinedFunction : inlinedFunctions_) {
+        method = Method::Cast(inlinedFunction->GetMethod(thread_).GetTaggedObject());
+        constpool = method->GetConstantPool(thread_);
+        taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
+        ASSERT(taggedPool->GetJSPandaFile() == jsPandaFile);
+        if (taggedPool->GetSharedConstpoolId().GetInt() == index) {
+            return constpool;
+        }
+    }
+    return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] const uint32_t methodOffset) const
@@ -109,11 +120,12 @@ JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] 
 
 JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] JSTaggedValue sharedConstpool) const
 {
-    Method *method = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
-    [[maybe_unused]] JSTaggedValue constpool = method->GetConstantPool(thread_);
-    ASSERT(constpool == sharedConstpool);
-    uint32_t methodOffset = method->GetMethodId().GetOffset();
-    return FindOrCreateUnsharedConstpool(methodOffset);
+    if (sharedConstpool.IsUndefined()) {
+        return JSTaggedValue::Undefined();
+    }
+    ASSERT(!ConstantPool::CheckUnsharedConstpool(sharedConstpool));
+    JSTaggedValue unSharedConstpool = hostThread_->GetEcmaVM()->FindUnsharedConstpool(sharedConstpool);
+    return unSharedConstpool;
 }
 
 JSHandle<ConstantPool> JitCompilationEnv::FindOrCreateConstPool([[maybe_unused]] const JSPandaFile *jsPandaFile,
