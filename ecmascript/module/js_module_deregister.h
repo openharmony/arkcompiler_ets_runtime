@@ -42,6 +42,22 @@ public:
         moduleRecord->SetNamespace(thread, weakNameSp);
     }
 
+    static inline void DisableMultiEntryDeregister(JSThread *thread,
+                                                   JSHandle<SourceTextModule> module,
+                                                   const ExecuteTypes &executeType)
+    {
+        LoadingTypes loadType = module->GetLoadingTypes();
+        // if module loadType is stable, doesn't need further check.
+        if (loadType != LoadingTypes::STABLE_MODULE) {
+            if (executeType != ExecuteTypes::DYNAMIC || module->GetStatus() > ModuleStatus::PREINSTANTIATING) {
+                // if module has second import, module cannot be deregistered.
+                // Set all dependent modules to stable to avoid problems in circular dependency cases.
+                // first import :A->B->A; second import: B; A cannot be deregistered.
+                SetModuleLoadingTypeToStable(thread, module);
+            }
+        }
+    }
+
     static void FreeModuleRecord(void *env, void *pointer, void *hint);
 
     static void RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module);
@@ -55,6 +71,8 @@ public:
         std::set<CString> &decreaseModule);
 
     static bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module);
+
+    static void SetModuleLoadingTypeToStable(JSThread *thread, JSHandle<SourceTextModule> module);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_MODULE_DEREGISTER_H

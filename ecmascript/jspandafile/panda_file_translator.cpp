@@ -362,6 +362,7 @@ JSHandle<ConstantPool> PandaFileTranslator::AllocateConstPool(EcmaVM *vm, const 
     JSHandle<ConstantPool> constpool = factory->NewConstantPool(constpoolIndex);
     constpool->SetJSPandaFile(jsPandaFile);
     constpool->SetUnsharedConstpoolIndex(JSTaggedValue(ConstantPool::CONSTPOOL_TYPE_FLAG));
+    constpool->SetSharedConstpoolId(JSTaggedValue(ConstantPool::CONSTPOOL_TYPE_FLAG));
     return constpool;
 }
 

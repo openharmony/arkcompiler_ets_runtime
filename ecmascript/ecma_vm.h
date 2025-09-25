@@ -1176,6 +1176,7 @@ public:
         return isProcessingPendingJob_.load();
     }
     JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
+    JSTaggedValue FindUnsharedConstpool(int32_t constpoolIndex);
     JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSTaggedValue PUBLIC_API CreateUnsharedConstpool(JSTaggedValue sharedConstpool);
     void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);

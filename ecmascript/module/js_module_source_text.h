@@ -228,6 +228,11 @@ public:
             SharedTypes::SENDABLE_FUNCTION_MODULE;
     }
 
+    static bool IsDynamicModule(JSHandle<SourceTextModule> module)
+    {
+        return module->GetLoadingTypes() == LoadingTypes::DYNAMITC_MODULE;
+    }
+
     inline bool *GetLazyImportStatusArray()
     {
         return reinterpret_cast<bool *>(GetLazyImportStatus());
@@ -409,8 +414,6 @@ public:
                                                          const JSHandle<SourceTextModule> &module,
                                                          ResolvedMultiMap &resolvedMap);
     static CString GetModuleName(JSTaggedValue currentModule);
-
-    static bool IsDynamicModule(LoadingTypes types);
 
     // taskpool
     static std::optional<std::set<uint32_t>> GetConcurrentRequestedModules(JSThread *thread,

@@ -214,8 +214,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         return DynamicImport::ExecuteNativeOrJsonModule(
             thread, entryPoint, ModuleTypes::JSON_MODULE, resolve, reject, jsPandaFile.get());
     }
-    // Loading request module.
-    thread->GetEcmaVM()->PushToDeregisterModuleList(entryPoint);
     // IsInstantiatedModule is for lazy module to execute
     if (!moduleManager->IsModuleLoaded(moduleName) || moduleManager->IsInstantiatedModule(moduleName)) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(
@@ -225,7 +223,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
                 HandleModuleException(thread, resolve, reject, specifierString));
         }
     } else {
-        ModuleDeregister::ReviseLoadedModuleCount(thread, moduleName);
+        JSHandle<SourceTextModule> moduleRecord = moduleManager->GetImportedModule(moduleName);
+        ModuleDeregister::DisableMultiEntryDeregister(thread, moduleRecord, ExecuteTypes::DYNAMIC);
     }
 
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,

@@ -1654,6 +1654,11 @@ JSTaggedValue EcmaVM::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
 {
     ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
     int32_t constpoolIndex = shareCp->GetUnsharedConstpoolIndex();
+    return FindUnsharedConstpool(constpoolIndex);
+}
+
+JSTaggedValue EcmaVM::FindUnsharedConstpool(int32_t constpoolIndex)
+{
     // unshared constpool index is default INT32_MAX.
     ASSERT(0 <= constpoolIndex && constpoolIndex != ConstantPool::CONSTPOOL_TYPE_FLAG);
     if (constpoolIndex >= GetUnsharedConstpoolsArrayLen()) {
@@ -1776,6 +1781,10 @@ void EcmaVM::SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue unshared
     GrowUnsharedConstpoolArray(constpoolIndex);
     ASSERT(0 <= constpoolIndex && constpoolIndex < ConstantPool::CONSTPOOL_TYPE_FLAG);
     unsharedConstpools_[constpoolIndex] = unsharedConstpool;
+    if (!unsharedConstpool.IsHole()) {
+        ConstantPool::Cast(unsharedConstpool.GetTaggedObject())->
+            SetUnsharedConstpoolIndex(JSTaggedValue(constpoolIndex));
+    }
 }
 
 void EcmaVM::GrowUnsharedConstpoolArray(int32_t index)

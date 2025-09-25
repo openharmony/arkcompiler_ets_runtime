@@ -56,6 +56,10 @@ test_multi_files = [
   "deregister_test/entry.js",
   "deregister_test/A.js",
   "deregister_test/B.js",
+  "deregister_test/C.js",
+  "deregister_test/circularA.js",
+  "deregister_test/circularB.js",
+  "deregister_test/circular_entry.js",
 ]
 
 _test_js_file_name_ = [

@@ -130,4 +130,22 @@ HWTEST_F_L0(PandaFileTranslatorTest, TranslateClasses)
     EXPECT_EQ(pf->FindMethodLiteral(methodId[0].GetOffset())->GetFunctionKind(),
                                     ecmascript::FunctionKind::NONE_FUNCTION);
 }
+
+HWTEST_F_L0(PandaFileTranslatorTest, AllocateConstPool)
+{
+    Parser parser;
+    const char *filename = "__PandaFileTranslatorTest2.pa";
+    const char *data = R"(
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    auto res = parser.Parse(data);
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    JSHandle<ConstantPool> constpool = PandaFileTranslator::AllocateConstPoolForTest(thread->GetEcmaVM(), pf.get());
+    EXPECT_EQ(constpool->GetSharedConstpoolId(), JSTaggedValue(ConstantPool::CONSTPOOL_TYPE_FLAG));
+}
 }  // namespace panda::test

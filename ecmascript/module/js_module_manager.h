@@ -34,6 +34,7 @@ public:
     ~ModuleManager()
     {
         resolvedModules_.Clear();
+        classLiteralConstPoolMap_.clear();
     }
 
     JSHandle<SourceTextModule> GetImportedModule(const CString &referencing);
@@ -133,6 +134,9 @@ public:
         resolvedModules_.Clear();
     }
 
+    void SetClassLiteralConstPoolMap(const CString &recordName, JSHandle<ConstantPool> constpool, uint32_t literalId);
+    void ResetConstPoolLiterals(const CString &recordName);
+
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
@@ -148,6 +152,9 @@ private:
     EcmaVM *vm_ {nullptr};
     ModuleManagerMap<CString> resolvedModules_;
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
+
+    // for module deregister. <recordName <unsharedConstPoolIndex, value index>.
+    CUnorderedMap<CString, CUnorderedMap<uint32_t, std::vector<uint32_t>>> classLiteralConstPoolMap_;
 
     friend class EcmaVM;
     friend class PatchLoader;
