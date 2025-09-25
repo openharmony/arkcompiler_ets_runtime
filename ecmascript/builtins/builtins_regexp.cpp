@@ -2583,6 +2583,52 @@ JSTaggedValue RegExpExecResultCache::CreateCacheTable(JSThread *thread)
     return JSTaggedValue(table);
 }
 
+void RegExpExecResultCache::ShinkCacheTable(JSThread *thread, JSHandle<RegExpExecResultCache> table)
+{
+    ASSERT(table->GetCacheLength() == DEFAULT_CACHE_NUMBER);
+    int length = CACHE_TABLE_HEADER_SIZE + INITIAL_CACHE_NUMBER * ENTRY_SIZE;
+    table->Trim(thread, length);
+    table->SetCacheLength(thread, INITIAL_CACHE_NUMBER);
+}
+
+void RegExpExecResultCache::ClearCache(JSThread* thread, JSHandle<JSTaggedValue> cache)
+{
+    if (cache->IsUndefined()) {
+        return;
+    }
+    JSHandle<RegExpExecResultCache> regexpCache(cache);
+    if (regexpCache->GetCacheCount() == 0 || regexpCache->CacheInGuard()) {
+        return;
+    }
+    if (regexpCache->GetHitCount() > 0) { // cache is still hot, simply reset hit count
+        regexpCache->SetHitCount(thread, 0);
+        return;
+    }
+    // write last match into global result
+    if (regexpCache->GetNeedUpdateGlobal()) {
+        JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+        ASSERT(!globalEnv.GetTaggedValue().IsHole());
+        const int lastMatchIndex = regexpCache->GetLastMatchGlobalTableIndex();
+        ASSERT(lastMatchIndex != -1);
+        globalEnv->SetRegExpGlobalResult(thread, regexpCache->Get(thread, lastMatchIndex + CAPTURE_SIZE));
+        regexpCache->SetNeedUpdateGlobal(thread, false);
+    }
+    if (regexpCache->GetCacheLength() == DEFAULT_CACHE_NUMBER) {
+        // shrink size
+        ShinkCacheTable(thread, regexpCache);
+    }
+    // clear cache
+    regexpCache->SetCacheCount(thread, 0);
+    regexpCache->SetLargeStrCount(thread, DEFAULT_LARGE_STRING_COUNT);
+    regexpCache->SetConflictCount(thread, DEFAULT_CONFLICT_COUNT);
+    regexpCache->SetStrLenThreshold(thread, 0);
+    regexpCache->SetLastMatchGlobalTableIndex(thread, DEFAULT_LAST_MATCH_INDEX);
+    regexpCache->SetUseLastMatch(thread, false);
+    std::fill_n(regexpCache->GetData() + CACHE_TABLE_HEADER_SIZE,
+                regexpCache->GetLength() - CACHE_TABLE_HEADER_SIZE,
+                JSTaggedValue::Undefined().GetRawData());
+}
+
 void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpExecResultCache> cache,
                                              const JSHandle<JSTaggedValue> regexp,
                                              const JSHandle<JSTaggedValue> input,
@@ -2624,6 +2670,7 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
     ASSERT((static_cast<size_t>(CACHE_TABLE_HEADER_SIZE) +
         static_cast<size_t>(entry) * static_cast<size_t>(ENTRY_SIZE)) <= static_cast<size_t>(UINT32_MAX));
     uint32_t index = CACHE_TABLE_HEADER_SIZE + entry * ENTRY_SIZE;
+    CacheGuardScope scope(cache);
     cache->SetUseLastMatch(thread, true);                // fast path
     if (cache->Get(thread, index).IsUndefined()) {
         cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
@@ -2647,7 +2694,6 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
             flagsValue = flags.GetTaggedValue();
             inputValue = input.GetTaggedValue();
 
-            cache->SetCacheLength(thread, DEFAULT_CACHE_NUMBER);
             entry2 = hash & static_cast<uint32_t>(cache->GetCacheLength() - 1);
             index2 = CACHE_TABLE_HEADER_SIZE + entry2 * ENTRY_SIZE;
         }
@@ -2664,7 +2710,6 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
         } else {
             cache->SetConflictCount(thread, cache->GetConflictCount() > 1 ? (cache->GetConflictCount() - 1) : 0);
-            cache->SetCacheCount(thread, cache->GetCacheCount() - 1);
             cache->ClearEntry(thread, entry2);
             cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue,
                             lastIndexInputValue, lastIndexValue, extendValue, resTableArrayValue);
@@ -2678,7 +2723,8 @@ void RegExpExecResultCache::GrowRegexpCache(JSThread *thread, JSHandle<RegExpExe
     int length = CACHE_TABLE_HEADER_SIZE + DEFAULT_CACHE_NUMBER * ENTRY_SIZE;
     auto factory = thread->GetEcmaVM()->GetFactory();
     auto newCache = factory->ExtendArray(JSHandle<TaggedArray>(cache), length, JSTaggedValue::Undefined());
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<RegExpExecResultCache>::Cast(newCache)->SetCacheLength(thread, DEFAULT_CACHE_NUMBER);
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
     env->SetRegExpCache(thread, newCache.GetTaggedValue());
 }
 

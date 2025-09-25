@@ -595,6 +595,61 @@ HWTEST_F_L0(BuiltinsRegExpTest, RegExpParseCache)
     ASSERT_TRUE(regExpParserCache->GetCache(thread, *string2, UINT32_MAX, vec).first.IsHole());
 }
 
+HWTEST_F_L0(BuiltinsRegExpTest, ClearRegExpCache1)
+{
+    auto globalConst = thread->GlobalConstants();
+    RegExpExecResultCache::ClearCache(thread, globalConst->GetHandledUndefined());
+
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> cache(env->GetRegExpCache());
+    JSHandle<RegExpExecResultCache> regexpCache(cache);
+
+    // cache > 0 & hitcount > 0
+    regexpCache->SetCacheCount(thread, 1);
+    regexpCache->SetHitCount(thread, 1);
+    RegExpExecResultCache::ClearCache(thread, cache);
+    EXPECT_EQ(regexpCache->GetHitCount(), 0);
+}
+
+HWTEST_F_L0(BuiltinsRegExpTest, ClearRegExpCache2)
+{
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> cache(env->GetRegExpCache());
+    JSHandle<RegExpExecResultCache> regexpCache(cache);
+
+    // cache > 0 & hitcount = 0 & clear cache
+    regexpCache->SetCacheCount(thread, 1);
+    RegExpExecResultCache::ClearCache(thread, cache);
+    EXPECT_EQ(regexpCache->GetCacheCount(), 0);
+}
+
+HWTEST_F_L0(BuiltinsRegExpTest, ClearRegExpCache3)
+{
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> cache(env->GetRegExpCache());
+    JSHandle<RegExpExecResultCache> regexpCache(cache);
+
+    // cache > 0 & hitcount = 0 & shrink cache
+    RegExpExecResultCache::GrowRegexpCache(thread, regexpCache);
+    regexpCache->SetCacheCount(thread, 1);
+    RegExpExecResultCache::ClearCache(thread, cache);
+    EXPECT_EQ(regexpCache->GetCacheLength(), RegExpExecResultCache::INITIAL_CACHE_NUMBER);
+}
+
+HWTEST_F_L0(BuiltinsRegExpTest, ClearRegExpCache4)
+{
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    JSHandle<JSTaggedValue> cache(env->GetRegExpCache());
+    JSHandle<RegExpExecResultCache> regexpCache(cache);
+
+    // cache > 0 & hitcount = 0 & update global result
+    regexpCache->SetCacheCount(thread, 1);
+    regexpCache->SetNeedUpdateGlobal(thread, true);
+    regexpCache->SetLastMatchGlobalTableIndex(thread, RegExpExecResultCache::CACHE_TABLE_HEADER_SIZE);
+    RegExpExecResultCache::ClearCache(thread, cache);
+    EXPECT_EQ(regexpCache->GetNeedUpdateGlobal(), false);
+}
+
 HWTEST_F_L0(BuiltinsRegExpTest, FlagD)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

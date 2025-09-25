@@ -118,6 +118,9 @@ void GlobalEnv::NotifyArrayPrototypeChangedGuardians(JSThread *thread, JSHandle<
 void GlobalEnv::ClearCache(JSThread *thread) const
 {
     builtins::StringSplitResultCache::ClearCache(thread, GetStringSplitResultCache());
+#if ENABLE_MEMORY_OPTIMIZATION
+    builtins::RegExpExecResultCache::ClearCache(thread, GetRegExpCache());
+#endif
 }
 
 GlobalEnvField GetBuildinTypedArrayHClassOnHeapIndex(JSType jSType)

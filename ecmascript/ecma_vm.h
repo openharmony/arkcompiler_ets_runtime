@@ -64,7 +64,6 @@ class GCKeyStats;
 class CpuProfiler;
 class Tracing;
 class AsyncStackTrace;
-class RegExpExecResultCache;
 class RegExpParserCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
