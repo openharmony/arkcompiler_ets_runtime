@@ -113,11 +113,12 @@ bool WorkNodeHolder::Pop(TaggedObject **object)
             outNode_ = inNode_;
             inNode_ = tmp;
         } else {
-            cachedInNode_->SetNext(outNode_);
-            outNode_->SetNext(nullptr);
+            WorkNode *tmp = outNode_;
             if (!PopWorkNodeFromGlobal()) {
                 return false;
             }
+            tmp->SetNext(cachedInNode_);
+            cachedInNode_ = tmp;
         }
         return outNode_->PopObject(reinterpret_cast<uintptr_t *>(object));
     }
