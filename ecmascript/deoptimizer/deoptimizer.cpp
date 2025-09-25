@@ -714,7 +714,8 @@ void Deoptimizier::UpdateAndDumpDeoptInfo(kungfu::DeoptType type)
             method->SetDeoptType(type);
             method->SetDeoptThreshold(--deoptThreshold);
         } else {
-            ClearCompiledCodeStatusWhenDeopt(thread_, func, method, type, !isRecursiveCall_);
+            bool resetJitHotness = !(Jit::GetInstance() != nullptr && Jit::GetInstance()->IsAppJit());
+            ClearCompiledCodeStatusWhenDeopt(thread_, func, method, type, resetJitHotness);
         }
     }
 }
