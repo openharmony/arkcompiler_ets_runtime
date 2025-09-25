@@ -11,7 +11,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-Testing methods affected by symbol.species:
+Testing unstable array methods affected by symbol.species:
+concat: true
+map: true
+filter: true
+slice: true
+flatMap: true
+flat: true
+splice: true
+toReversed: true
+toSorted: true
+toSpliced: true
+with: true
+Testing stable array methods affected by symbol.species:
 concat: true
 map: true
 filter: true
