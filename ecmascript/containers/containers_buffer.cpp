@@ -656,7 +656,7 @@ JSTaggedValue ContainersBuffer::WriteUIntLE(EcmaRuntimeCallInfo *argv)
     uint32_t byteLength = GetValueUInt32(byteLengthHandle);
     CHECK_NULL_OR_UNDEFINED(value);
     uint32_t offsetIndex = 0;
-    if (offset->IsInt()) {
+    if (offset->IsNumber()) {
         RANGE_ERROR_CHECK(offset, offset, 0, buffer->GetLength() - byteLength);
         offsetIndex = GetValueUInt32(offset);
     }
