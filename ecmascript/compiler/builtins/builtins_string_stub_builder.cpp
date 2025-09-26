@@ -863,7 +863,7 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
                         searchFlat.FlattenString(glue, searchTag, &searchFlattenFastPath);
                         Bind(&searchFlattenFastPath);
                         StringInfoGateRef searchStringInfoGate(&searchFlat);
-                        GateRef pos = StringIndexOf(glue, thisStringInfoGate, searchStringInfoGate, Int32(-1));
+                        GateRef pos = StringIndexOf(glue, thisStringInfoGate, searchStringInfoGate, Int32(0));
                         BRANCH(Int32Equal(pos, Int32(-1)), &noReplace, &nextProcess);
                         Bind(&noReplace);
                         {
