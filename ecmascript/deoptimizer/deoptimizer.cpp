@@ -311,13 +311,15 @@ void Deoptimizier::AssistCollectDeoptBundleVec(FrameIterator &it, T &frame)
 
 void Deoptimizier::DumpMachineCode(JSTaggedValue jsFunction)
 {
-    if (jsFunction.IsUndefined()) {
-        LOG_FULL(INFO) << "call target is undefined.";
+    if (!jsFunction.IsJSFunction()) {
+        LOG_FULL(INFO) << "not js function object. addr: "
+                       << std::hex << reinterpret_cast<JSTaggedType>(jsFunction.GetRawData());
         return;
     }
     JSTaggedValue machineCodeObj = JSFunction::Cast(jsFunction.GetTaggedObject())->GetMachineCode(thread_);
-    if (machineCodeObj.IsUndefined()) {
-        LOG_FULL(INFO) << "machine code is undefined.";
+    if (!machineCodeObj.IsMachineCodeObject()) {
+        LOG_FULL(INFO) << "not machine code object. addr: "
+                       << std::hex << reinterpret_cast<JSTaggedType>(machineCodeObj.GetRawData());
         return;
     }
     MachineCode* machineCode = MachineCode::Cast(machineCodeObj.GetTaggedObject());
@@ -769,7 +771,7 @@ size_t Deoptimizier::GetInlineDepth(JSThread *thread)
 {
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);
-    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+    for (; !it.Done(); it.Advance<GCVisitedFlag::DEOPT>()) {
         if (!it.IsOptimizedJSFunctionFrame()) {
             continue;
         }

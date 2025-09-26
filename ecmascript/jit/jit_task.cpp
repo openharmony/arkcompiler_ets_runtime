@@ -402,8 +402,6 @@ void JitTask::ReleaseSustainingJSHandle()
 
 void JitTask::CloneProfileTypeInfo()
 {
-    [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
-
     Method *method = Method::Cast(jsFunction_->GetMethod(hostThread_).GetTaggedObject());
     uint32_t slotSize = method->GetSlotSize();
     JSTaggedValue profileTypeInfoVal = jsFunction_->GetProfileTypeInfo(hostThread_);
