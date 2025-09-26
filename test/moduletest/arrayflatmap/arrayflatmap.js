@@ -91,3 +91,607 @@ let res = arr.flatMap((x)=>{
 print(res);
 print(res.length)
 
+// stable array without proxy
+{
+    let arr = [[1, 2], [3, 4]]
+    let res = arr.flatMap(x => x);
+    print(res);
+}
+
+{
+    let arr = [[1, 2], [3, 4]]
+    let res = arr.flatMap(x => {
+        x.push(0)
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [[1, 2, 3], [4, 5, 6]]
+    let res = arr.flatMap(x => {
+        x.pop()
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [[1, 2], [3, 4], 5]
+    let res = arr.flatMap(x => {
+        arr.length = 10
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [[1, 2], [3, 4], 5, 6, 7]
+    let res = arr.flatMap(x => {
+        arr.length = 3
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [[1, 2], [3, 4], 5];
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr.pop();
+        }
+        if(idx === 1) {
+            arr.push(15);
+        }
+        idx++;
+        return x;
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [[1, 2], [3, 4], 7, 8]
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr[1] = [3, 4, 5, 6]
+        }
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [[1, 2], [3, 4], 7, 8]
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr[1] = { a: 1 }
+        }
+        return x
+    });
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [[1, 2], [3, 4]]
+    let res = arr.flatMap(x => {
+        return { arr: x }
+    });
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [[1, 2], [3, 4]]
+    let res = arr.flatMap(x => {
+        arr = { a: 1 }
+        return x
+    });
+    print(res);
+}
+
+// stable array with proxy
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    let res = arr.flatMap(x=>x);
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    let res = arr.flatMap(x => {
+        x.push(0)
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2, 3], {}), new Proxy([4, 5, 6], {}) ];
+    let res = arr.flatMap(x => {
+        x.pop()
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 5 ];
+    let res = arr.flatMap(x => {
+        arr.length = 10
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 5, 6, 7 ];
+    let res = arr.flatMap(x => {
+        arr.length = 3
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 5];
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr.pop();
+        }
+        if(idx === 1) {
+            arr.push(15);
+        }
+        idx ++;
+        return x;
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 7, 8]
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr[1] = new Proxy([3, 4, 5, 6], {})
+        }
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 7, 8]
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr[1] = new Proxy({ a: 1 }, {})
+        }
+        return x
+    });
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    let res = arr.flatMap(x => {
+        return { arr: x }
+    });
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    let res = arr.flatMap(x => {
+        arr = { a: 1 }
+        return x
+    });
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.push(0)
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2], handler), new Proxy([3, 4], handler) ];
+    let res = arr.flatMap(x=>x);
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.pop()
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2, 3], handler), new Proxy([4, 5, 6], handler) ];
+    let res = arr.flatMap(x=>x);
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.push(0)
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2], handler), new Proxy([3, 4], handler) ];
+    let res = arr.flatMap(x => {
+        x.push(0)
+        return x
+    });
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.pop()
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2, 3, 4, 5, 6], handler), new Proxy([7, 8, 9, 10, 11, 12], handler) ];
+    let res = arr.flatMap(x => {
+        x.pop()
+        return x
+    });
+    print(res);
+}
+
+// unstable array without proxy
+{
+    let arr = [[1, 2], [3, 4]]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => x);
+    print(res);
+}
+
+{
+    let arr = [[1, 2], [3, 4]]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        x.push(0)
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [[1, 2, 3], [4, 5, 6]]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        x.pop()
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [[1, 2], [3, 4], 5]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        arr.length = 10
+        return x
+    });
+    print(res);
+}
+{
+    let arr = [[1, 2], [3, 4], 5, 6, 7]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        arr.length = 3
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [[1, 2], [3, 4], 5];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr.pop();
+        }
+        if(idx === 1) {
+            arr.push(15);
+        }
+        idx ++;
+        return x;
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [[1, 2], [3, 4], 7, 8]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr[1] = [3, 4, 5, 6]
+        }
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [[1, 2], [3, 4], 7, 8]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr[1] = { a: 1 }
+        }
+        return x
+    });
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [[1, 2], [3, 4]]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        return { arr: x }
+    });
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [[1, 2], [3, 4]]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        arr = { a: 1 }
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [[1, 2], [3, 4]]
+    let res = arr.flatMap(x => {
+        arr.__proto__ = [];
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [[1, 2], [3, 4]]
+    let res = arr.flatMap(x => {
+        x.__proto__ = [];
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [[1, 2], [3, 4], [5, 6], [7, 8]]
+    let res = arr.flatMap(x => {
+        idx++
+        if (idx === 2) {
+            arr.__proto__ = [];
+        }
+        return x
+    });
+    print(res); // [1, 2, 3, 4, 5, 6, 7, 8]
+}
+
+// unstable array with proxy
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x=>x);
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        x.push(0)
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2, 3], {}), new Proxy([4, 5, 6], {}) ];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        x.pop()
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 5 ];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        arr.length = 10
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 5, 6, 7 ];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        arr.length = 3
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 5];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr.pop();
+        }
+        if(idx === 1) {
+            arr.push(15);
+        }
+        idx ++;
+        return x;
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 7, 8]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr[1] = new Proxy([3, 4, 5, 6], {})
+        }
+        return x
+    });
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), 7, 8]
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        if(idx === 0) {
+            arr[1] = new Proxy({ a: 1 }, {})
+        }
+        return x
+    });
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        return { arr: x }
+    });
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    arr.__proto__ = [];
+    let res = arr.flatMap(x => {
+        arr = { a: 1 }
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    let res = arr.flatMap(x => {
+        arr.__proto__ = [];
+        return x
+    });
+    print(res);
+}
+
+{
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}) ];
+    let res = arr.flatMap(x => {
+        x.__proto__ = [];
+        return x
+    });
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.push(0)
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2], handler), new Proxy([3, 4], handler) ];
+    arr.proto = [];
+    let res = arr.flatMap(x=>x);
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.pop()
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2, 3], handler), new Proxy([4, 5, 6], handler) ];
+    arr.proto = [];
+    let res = arr.flatMap(x=>x);
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.push(0)
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2], handler), new Proxy([3, 4], handler) ];
+    arr.proto = [];
+    let res = arr.flatMap(x => {
+        x.push(0)
+        return x
+    });
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.pop()
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2, 3, 4, 5, 6], handler), new Proxy([7, 8, 9, 10, 11, 12], handler) ];
+    arr.proto = [];
+    let res = arr.flatMap(x => {
+        x.pop()
+        return x
+    });
+    print(res);
+}
+
+{
+    const handler = {
+        get(trapTarget, property, receiver) {
+            trapTarget.proto = [];
+            return trapTarget[property];
+        },
+    }
+    let arr = [ new Proxy([1, 2], handler), new Proxy([3, 4], handler) ];
+    let res = arr.flatMap(x=>x);
+    print(res);
+}
+
+{
+    let idx = 0;
+    let arr = [ new Proxy([1, 2], {}), new Proxy([3, 4], {}), new Proxy([5, 6], {}), new Proxy([7, 8], {}) ];
+    let res = arr.flatMap(x => {
+        idx++
+        if (idx === 2) {
+            arr.__proto__ = [];
+        }
+        return x
+    });
+    print(res);
+}

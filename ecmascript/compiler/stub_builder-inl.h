@@ -1090,6 +1090,12 @@ inline GateRef StubBuilder::IntToTaggedInt(GateRef x)
     return env_->GetBuilder()->ToTaggedInt(val);
 }
 
+inline GateRef StubBuilder::IntUnsignedToTaggedInt(GateRef x)
+{
+    GateRef val = ZExtInt32ToInt64(x);
+    return env_->GetBuilder()->ToTaggedInt(val);
+}
+
 inline GateRef StubBuilder::Int64ToTaggedInt(GateRef x)
 {
     return env_->GetBuilder()->ToTaggedInt(x);

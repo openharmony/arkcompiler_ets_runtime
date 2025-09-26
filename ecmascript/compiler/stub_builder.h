@@ -340,6 +340,7 @@ public:
     GateRef Int16ToTaggedInt(GateRef x);
     GateRef IntToTaggedPtr(GateRef x);
     GateRef IntToTaggedInt(GateRef x);
+    GateRef IntUnsignedToTaggedInt(GateRef x);
     GateRef Int64ToTaggedInt(GateRef x);
     GateRef Int64ToTaggedIntPtr(GateRef x);
     GateRef DoubleToTaggedDouble(GateRef x);

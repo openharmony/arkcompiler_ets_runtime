@@ -1231,7 +1231,7 @@ GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
     GateRef newL = Int32Add(oldLength, Int32LSR(oldLength, Int32(1)));
     Label reachMin(env);
     Label notReachMin(env);
-    BRANCH(Int32GreaterThan(newL, Int32(JSObject::MIN_ELEMENTS_LENGTH)), &reachMin, &notReachMin);
+    BRANCH(Int32UnsignedGreaterThan(newL, Int32(JSObject::MIN_ELEMENTS_LENGTH)), &reachMin, &notReachMin);
     {
         Bind(&reachMin);
         result = newL;
