@@ -401,6 +401,7 @@ void CGCFG::RemoveBB(BB &curBB, bool isGotoIf) const
              */
             if (&curBB == GetTargetSuc(*preBB, true, isGotoIf)) {
                 LabelIdx targetLabel;
+                ASSERT_NOT_NULL(curBB.GetNext());
                 if (curBB.GetNext()->GetLabIdx() == 0) {
                     targetLabel = insnVisitor->GetCGFunc()->CreateLabel();
                     curBB.GetNext()->SetLabIdx(targetLabel);

@@ -213,8 +213,7 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
         DEBUG_ASSERT(offset != nullptr, "nullptr check");
 
         (void)emitter.Emit(", #:lo12:");
-        if (v->GetSymbol()->GetAsmAttr() != UStrIdx(0) &&
-            (v->GetSymbol()->GetStorageClass() == kScPstatic || v->GetSymbol()->GetStorageClass() == kScPstatic)) {
+        if (v->GetSymbol()->GetAsmAttr() != UStrIdx(0) && v->GetSymbol()->GetStorageClass() == kScPstatic) {
             std::string asmSection = GlobalTables::GetUStrTable().GetStringFromStrIdx(v->GetSymbol()->GetAsmAttr());
             (void)emitter.Emit(asmSection);
         } else {
@@ -320,8 +319,7 @@ void A64OpndEmitVisitor::Visit(StImmOperand *v)
     if (hasPrefix) {
         (void)emitter.Emit(":");
     }
-    if (symbol->GetAsmAttr() != UStrIdx(0) &&
-        (symbol->GetStorageClass() == kScPstatic || symbol->GetStorageClass() == kScPstatic)) {
+    if (symbol->GetAsmAttr() != UStrIdx(0) && symbol->GetStorageClass() == kScPstatic) {
         std::string asmSection = GlobalTables::GetUStrTable().GetStringFromStrIdx(symbol->GetAsmAttr());
         (void)emitter.Emit(asmSection);
     } else {
