@@ -61,8 +61,10 @@ JSTaggedValue JSAPIStack::Pop(JSThread *thread)
     }
     TaggedArray *elements = TaggedArray::Cast(this->GetElements(thread).GetTaggedObject());
     ASSERT(!elements->IsDictionaryMode());
+    JSTaggedValue value = elements->Get(thread, top);
+    elements->Set(thread,  top, JSTaggedValue::Hole());
     this->SetTop(--top);
-    return elements->Get(thread, top + 1);
+    return value;
 }
 
 int JSAPIStack::Search(JSThread *thread, const JSHandle<JSTaggedValue> &value)
