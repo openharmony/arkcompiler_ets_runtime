@@ -2865,6 +2865,18 @@ Local<JSValueRef> JSNApi::GetImplements(const EcmaVM *vm, Local<JSValueRef> inst
     return JSNApiHelper::ToLocal<JSValueRef>(implementRet);
 }
 
+uintptr_t JSNApi::CreateStrongRef(const EcmaVM *vm, Local<JSValueRef> local)
+{
+    CROSS_THREAD_CHECK(vm);
+    return GetGlobalHandleAddr(vm, reinterpret_cast<uintptr_t>(*local));
+}
+
+void JSNApi::DeleteStrongRef(const EcmaVM *vm, uintptr_t strongRef)
+{
+    CROSS_THREAD_CHECK(vm);
+    DisposeGlobalHandleAddr(vm, strongRef);
+}
+
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);

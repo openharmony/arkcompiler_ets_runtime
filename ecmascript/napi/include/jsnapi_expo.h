@@ -1922,6 +1922,9 @@ public:
     // 1.2runtime interface info
     static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
 
+    static uintptr_t CreateStrongRef(const EcmaVM *vm, Local<JSValueRef> local);
+    static void DeleteStrongRef(const EcmaVM *vm, uintptr_t strongRef);
+
     JSNAPI_PUBLIC_HYBRID_EXTENSION();
 private:
     static bool isForked_;
