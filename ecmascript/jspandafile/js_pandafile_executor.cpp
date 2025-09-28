@@ -480,11 +480,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     return JSTaggedValue::Undefined();
 }
 
-int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
-    [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
-    bool isSingletonPattern)
+int JSPandaFileExecutor::ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread, const CString &bundleName,
+    const CString &moduleName, const CString &entry, bool isSingletonPattern)
 {
-    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
+    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(bundleName, moduleName);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
         thread, abcFilePath, entry, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ROUTE_URI_ERROR);
