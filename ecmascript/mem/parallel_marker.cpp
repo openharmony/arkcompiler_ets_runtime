@@ -206,6 +206,7 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::MarkJitCodeMap", "");
     FullGCRunner fullGCRunner(heap_, workManager_->GetWorkNodeHolder(threadId), isAppSpawn_);
     JitCodeMapVisitor visitor = [&fullGCRunner] (std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
+        std::map<JSTaggedType, JitCodeVector *> tempVec;
         auto it = jitCodeMaps.begin();
         while (it != jitCodeMaps.end()) {
             JSTaggedType jsError = it->first;
@@ -216,28 +217,24 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
                 if (!objectRegion->InSharedHeap() && !objectRegion->Test(jsErrorObj)) {
                     delete it->second;
                     it = jitCodeMaps.erase(it);
-                    continue;
+                } else {
+                    fullGCRunner.MarkJitCodeVec(jitCodeVec);
+                    ++it;
                 }
             } else {
                 MarkWord markWord(jsErrorObj);
                 if (markWord.IsForwardingAddress()) {
                     TaggedObject *dst = markWord.ToForwardingAddress();
-                    jitCodeMaps.emplace(JSTaggedValue(dst).GetRawData(), it->second);
+                    tempVec.emplace(JSTaggedValue(dst).GetRawData(), it->second);
                     it = jitCodeMaps.erase(it);
+                    fullGCRunner.MarkJitCodeVec(jitCodeVec);
                 } else {
                     delete it->second;
                     it = jitCodeMaps.erase(it);
-                    continue;
                 }
             }
-            for (auto &jitCodeMap : *jitCodeVec) {
-                auto &jitCode = std::get<0>(jitCodeMap);
-                auto obj = static_cast<TaggedObject *>(jitCode);
-                // jitcode is MachineCode, and MachineCode is in the MachineCode space, will not be evacute.
-                fullGCRunner.HandleMarkingSlotObject(ObjectSlot(reinterpret_cast<uintptr_t>(&jitCode)), obj);
-            }
-            ++it;
         }
+        jitCodeMaps.insert(tempVec.begin(), tempVec.end());
     };
     ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
     ProcessMarkStack(threadId);
