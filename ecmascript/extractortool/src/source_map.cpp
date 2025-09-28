@@ -378,13 +378,13 @@ bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int
         return false;
     }
     tmp = tmp.substr(REAL_SOURCE_SIZE, tmp.size() - REAL_SOURCE_SIZE - 1);
+    GetPackageName(url, packageName);
     if (url.rfind(".js") != std::string::npos) {
         url = tmp;
         return true;
     }
     bool isReplaces = true;
     bool ret = false;
-    GetPackageName(url, packageName);
     auto iterData = sourceMaps_.find(url);
     if (iterData != sourceMaps_.end()) {
         if (iterData->second == nullptr) {
