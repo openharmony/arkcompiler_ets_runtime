@@ -105,6 +105,7 @@ group("ark_jit_ts_test") {
     "definefunc",
     "jnez",
     "poly_merge",
+    "poly_primitiveTypeCheck",
     "constructor",
     "intrinsic_test",
     "intrinsic_test2",
