@@ -1388,6 +1388,8 @@ bool RegExpParser::ParseClassRanges(RangeSet *result)
                     return false;
                 }
                 result->Insert(s2);
+                result->Insert(c1, c1);
+                result->Insert('-', '-');
                 continue;
             }
             if (c1 < INT8_MAX) {

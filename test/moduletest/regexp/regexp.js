@@ -21,6 +21,12 @@
  */
 
 {
+    let reg = /[+-\s]/
+    assert_equal(JSON.stringify(reg.exec("-")), '["-"]')
+    assert_equal(JSON.stringify(reg.exec("+")), '["+"]')
+}
+
+{
     let reg1 = /(a)/
     reg1.test("a")
     assert_equal(RegExp.$1, "a");
