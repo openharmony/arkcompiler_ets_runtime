@@ -45,7 +45,6 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/containers/tests/containers_test_helper.h"
 
-
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/serializer/base_deserializer.h"
 #include "ecmascript/serializer/module_deserializer.h"

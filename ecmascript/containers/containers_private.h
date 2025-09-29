@@ -50,6 +50,11 @@ class ContainersPrivate : public base::BuiltinsBase {
 public:
     static JSTaggedValue Load(EcmaRuntimeCallInfo *msg);
 
+    static JSHandle<JSFunction> NewTreeSetConstructor(const JSHandle<GlobalEnv> &env, JSThread *thread,
+                                                      const JSHandle<JSObject> &prototype, EcmaEntrypoint ctorFunc,
+                                                      const char *name, int length);
+    static void InitializeTreeSetIterator(const JSHandle<GlobalEnv> &env, JSThread *thread);
+    
 private:
     static JSHandle<JSFunction> NewContainerConstructor(JSThread *thread, const JSHandle<JSObject> &prototype,
                                                         EcmaEntrypoint ctorFunc, const char *name, int length);
