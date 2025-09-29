@@ -354,6 +354,15 @@ public:
         return base::ConcatToCString(BUNDLE_INSTALL_PATH, moduleName, MERGE_ABC_ETS_MODULES);
     }
 
+    inline static CString ConcatPandaFilePath(const CString &bundleName, const CString &moduleName)
+    {
+        if (bundleName.empty()) {
+            return base::ConcatToCString(BUNDLE_INSTALL_PATH, moduleName, MERGE_ABC_ETS_MODULES);
+        }
+        return base::ConcatToCString(BUNDLE_INSTALL_PATH, bundleName, PathHelper::SLASH_TAG, moduleName,
+            PathHelper::SLASH_TAG, moduleName, MERGE_ABC_ETS_MODULES);
+    }
+
     inline static CString GetBundleNameFromNormalized(const EcmaVM *vm, const CString &moduleName)
     {
         CVector<CString> res = SplitNormalizedOhmurl(moduleName);

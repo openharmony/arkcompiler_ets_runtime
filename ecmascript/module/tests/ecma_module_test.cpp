@@ -1342,6 +1342,26 @@ HWTEST_F_L0(EcmaModuleTest, ConcatPandaFilePath)
     EXPECT_EQ(outFileName3, res3);
 }
 
+HWTEST_F_L0(EcmaModuleTest, ConcatPandaFilePath2)
+{
+    CString moduleName = "entry";
+    CString res1 = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString bundleName = "com.example.application";
+    CString outFileName1 = ModulePathHelper::ConcatPandaFilePath("", moduleName);
+    EXPECT_EQ(outFileName1, res1);
+
+    moduleName = "hsp";
+    CString res2 = "/data/storage/el1/bundle/hsp/ets/modules.abc";
+    CString outFileName2 = ModulePathHelper::ConcatPandaFilePath("", moduleName);
+    EXPECT_EQ(outFileName2, res2);
+
+    moduleName = "crosshsp";
+    bundleName = "com.crosshsp.application";
+    CString res3 = "/data/storage/el1/bundle/com.crosshsp.application/crosshsp/crosshsp/ets/modules.abc";
+    CString outFileName3 = ModulePathHelper::ConcatPandaFilePath(bundleName, moduleName);
+    EXPECT_EQ(outFileName3, res3);
+}
+
 HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName)
 {
     CString inputFileName = "test.abc";
