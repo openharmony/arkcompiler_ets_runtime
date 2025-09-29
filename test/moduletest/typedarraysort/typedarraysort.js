@@ -105,4 +105,10 @@ assert_equal("Before sort (Float64Array): "+float64Array,"Before sort (Float64Ar
 float64Array.sort();  // 默认按字符编码排序
 assert_equal("After sort (Float64Array): "+float64Array,"After sort (Float64Array): -5.678,1.234,2.718,3.14159,9.01");
 
+// 9. Float32Array 使用自定义比较函数排序
+let float32Array2 = new Float32Array([1.0, 5.0, Infinity, -Infinity, 3.0]);
+assert_equal("Before sort (Float64Array): "+float32Array2,"Before sort (Float64Array): 1,5,Infinity,-Infinity,3");
+float32Array2.sort((a, b) => a - b);
+assert_equal("After sort (Float64Array): "+float32Array2,"After sort (Float64Array): -Infinity,1,3,5,Infinity");
+
 test_end();
