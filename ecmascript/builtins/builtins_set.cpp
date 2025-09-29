@@ -80,10 +80,6 @@ JSTaggedValue BuiltinsSet::SetConstructor(EcmaRuntimeCallInfo *argv)
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, adder, setHandle, undefined, 1);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, nextValue.GetTaggedValue());
         info->SetCallArg(nextValue.GetTaggedValue());
-        if (nextValue->IsArray(thread)) {
-            auto prop = JSTaggedValue::GetProperty(thread, nextValue, valueIndex).GetValue();
-            info->SetCallArg(prop.GetTaggedValue());
-        }
         JSFunction::Call(info);
         // Let status be Call(adder, set, «nextValue.[[value]]»).
         if (thread->HasPendingException()) {
