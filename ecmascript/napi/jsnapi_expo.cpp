@@ -2362,6 +2362,20 @@ Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(napiWrapperString);
 }
 
+const uint16_t *StringRef::GetBufferUtf16(const EcmaVM *vm, uint32_t &length)
+{
+    DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    auto ecmaStringAccessor = EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this));
+    if (!ecmaStringAccessor.IsLineString() || !ecmaStringAccessor.IsUtf16()) {
+        LOG_ECMA(DEBUG) << "StringRef GetBufferUtf16 failed: Not LineString or not utf-16.";
+        return nullptr;
+    }
+    length = this->Length(vm);
+    return ecmaStringAccessor.GetDataUtf16();
+}
+
 Local<TypedArrayRef> StringRef::EncodeIntoUint8Array(const EcmaVM *vm)
 {
     CROSS_THREAD_CHECK(vm);

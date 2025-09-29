@@ -1050,6 +1050,7 @@ public:
     uint32_t WriteUtf16(const EcmaVM *vm, char16_t *buffer, uint32_t length);
     uint32_t WriteLatin1(const EcmaVM *vm, char *buffer, uint32_t length);
     uint32_t WriteLatin1WithoutSwitchState(const EcmaVM *vm, char *buffer, uint32_t length);
+    const uint16_t *GetBufferUtf16(const EcmaVM *vm, uint32_t &length);
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
     Local<TypedArrayRef> EncodeIntoUint8Array(const EcmaVM *vm);
     STRINGREF_PUBLIC_HYBRID_EXTENSION();
