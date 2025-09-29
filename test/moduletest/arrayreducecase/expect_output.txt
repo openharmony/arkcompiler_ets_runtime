@@ -20,3 +20,5 @@ a,b,c,e,d
 12,4
 1200
 Reduce of empyt array with no initial value
+110
+10000

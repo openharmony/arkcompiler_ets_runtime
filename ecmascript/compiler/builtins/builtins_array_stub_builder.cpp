@@ -1884,20 +1884,19 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
     Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    DEFVARIABLE(thisLen, VariableType::INT32(), Int32(0));
     Label isHeapObject(env);
     Label isJsArray(env);
     Label atLeastOneArg(env);
     Label callbackFnHandleHeapObject(env);
     Label callbackFnHandleCallable(env);
     Label noTypeError(env);
+    Label writeResult(env);
 
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     BRANCH(IsJsArray(glue, thisValue), &isJsArray, slowPath);
     Bind(&isJsArray);
     // don't check constructor, "Reduce" won't create new array.
-    thisLen = GetArrayLength(thisValue);
     BRANCH(Int64GreaterThanOrEqual(numArgs, IntPtr(1)), &atLeastOneArg, slowPath);
     Bind(&atLeastOneArg);
     GateRef callbackFnHandle = GetCallArg0(numArgs);
@@ -1905,7 +1904,8 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
     Bind(&callbackFnHandleHeapObject);
     BRANCH(IsCallable(glue, callbackFnHandle), &callbackFnHandleCallable, slowPath);
     Bind(&callbackFnHandleCallable);
-    GateRef thisLenIsZero = Int32Equal(*thisLen, Int32(0));
+    GateRef thisLen = GetArrayLength(thisValue);
+    GateRef thisLenIsZero = Int32Equal(thisLen, Int32(0));
     GateRef numArgsLessThanTwo = Int64LessThan(numArgs, IntPtr(2));
     BRANCH(BitAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
     Bind(&noTypeError);
@@ -1934,13 +1934,19 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                 GateRef argList = newBuilder.NewTaggedArray(glue, argsLength);
                 Label loopHead(env);
                 Label next(env);
+                Label doCall(env);
                 Label loopEnd(env);
                 Label loopExit(env);
                 Jump(&loopHead);
                 LoopBegin(&loopHead);
                 {
-                    BRANCH(Int32LessThan(*k, *thisLen), &next, &loopExit);
+                    BRANCH_LIKELY(Int32UnsignedLessThan(*k, thisLen), &next, &loopExit);
                     Bind(&next);
+                    // thisObj.length may change and needs to be rechecked.
+                    // If the thisObj is stableArray and k >= current length,
+                    // thisObj will have no chance to change and we can directly exit the entire loop.
+                    BRANCH_LIKELY(Int32UnsignedLessThan(*k, GetArrayLength(thisValue)), &doCall, &writeResult);
+                    Bind(&doCall);
                     {
                         Label updateK(env);
                         Label notHole(env);
@@ -1962,28 +1968,17 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
                             CallStubBuilder callBuilder(this, glue, callbackFnHandle, argsLength, 0, nullptr,
                                 Circuit::NullGate(), callArgs);
                             GateRef callResult = callBuilder.JSCallDispatch();
-                            Label hasException1(env);
-                            Label notHasException1(env);
-                            BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
-                            Bind(&hasException1);
+                            Label hasException(env);
+                            Label notHasException(env);
+                            BRANCH(HasPendingException(glue), &hasException, &notHasException);
+                            Bind(&hasException);
                             {
                                 result->WriteVariable(Exception());
                                 Jump(exit);
                             }
-                            Bind(&notHasException1);
-                            GateRef elements = GetElementsArray(glue, thisValue);
-                            GateRef newLen = GetLengthOfTaggedArray(elements);
-                            BRANCH(Int32LessThan(newLen, *thisLen), &changeThisLen, &updateCallResult);
-                            Bind(&changeThisLen);
-                            {
-                                thisLen = newLen;
-                                Jump(&updateCallResult);
-                            }
-                            Bind(&updateCallResult);
-                            {
-                                accumulator = callResult;
-                                Jump(&loopEnd);
-                            }
+                            Bind(&notHasException);
+                            accumulator = callResult;
+                            Jump(&loopEnd);
                         }
                     }
                 }
@@ -2006,23 +2001,20 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
             }
             Bind(&notStableJSArray);
             {
-                Label finish(env);
                 Label callRT(env);
-                BRANCH(Int32LessThan(*k, *thisLen), &callRT, &finish);
+                BRANCH(Int32UnsignedLessThan(*k, thisLen), &callRT, &writeResult);
                 Bind(&callRT);
                 {
                     accumulator = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(),
                         RTSTUB_ID(JSArrayReduceUnStable), { thisValue, thisValue, IntToTaggedInt(*k),
-                            IntToTaggedInt(*thisLen), *accumulator, callbackFnHandle });
-                    Jump(&finish);
-                }
-                Bind(&finish);
-                {
-                    result->WriteVariable(*accumulator);
-                    Jump(exit);
+                            IntToTaggedInt(thisLen), *accumulator, callbackFnHandle });
+                    Jump(&writeResult);
                 }
             }
         }
+        Bind(&writeResult);
+        result->WriteVariable(*accumulator);
+        Jump(exit);
     }
 }
 

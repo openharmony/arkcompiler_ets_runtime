@@ -104,9 +104,8 @@ public:
     static JSTaggedValue ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
                                    int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t insertCount);
     static JSTaggedValue ToReversed(JSThread *thread, JSHandle<JSArray> receiver, int64_t insertCount);
-    static JSTaggedValue Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle,
-                                JSHandle<JSTaggedValue> callbackFnHandle,
-                                JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t &len);
+    static void Reduce(JSThread *thread, JSHandle<JSObject> thisObjHandle, JSHandle<JSTaggedValue> callbackFnHandle,
+                       JSMutableHandle<JSTaggedValue> accumulator, int64_t &k, int64_t len);
     static JSTaggedValue Slice(JSThread *thread, JSHandle<JSObject> thisObjHandle, int64_t &k, int64_t &count);
     static JSHandle<TaggedArray> SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObj,
                                                        int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,

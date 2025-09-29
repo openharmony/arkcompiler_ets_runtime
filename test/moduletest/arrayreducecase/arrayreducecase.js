@@ -95,3 +95,41 @@ try {
 } catch (error) {
   print(error);
 }
+
+{
+    let arr = new Array(10000);
+    arr.fill(1);
+    let res = arr.reduce((e, v, idx)=>{
+        if (idx == 1) {
+            for (let j = 0; j < 9990; ++j) {
+                arr.pop();
+            }
+        }
+        if (idx == 2) {
+            arr.push(100);
+        }
+        return e + v;
+    }, 0);
+    print(res);
+}
+
+{
+    let arr = new Array(10000);
+    arr.fill(1);
+    let res = arr.reduce((e, v, idx)=>{
+        if (idx == 1) {
+            // change to small dictionary
+            for (let j = 0; j < 9990; ++j) {
+                arr.pop();
+            }
+            arr[1100] = 345;
+        }
+        if (idx == 2) {
+            for (let j = 0; j < 10000; ++j) {
+                arr[j] = 1;
+            }
+        }
+        return e + v;
+    }, 0);
+    print(res);
+}
