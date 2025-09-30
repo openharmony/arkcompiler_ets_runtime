@@ -64,4 +64,67 @@ assert_equal(res3, true);
     assert_equal(newArr instanceof Uint8Array, true);
 }
 
+{
+    let arr = new Int32Array([1, 2, 3, 4, 5]);
+    let result = arr.map((val) => {
+        return Math.pow(val, 1) * 100;
+    });
+    assert_equal(result[0], 100);
+    assert_equal(result[1], 200);
+}
+
+{
+    let arr = new Int16Array([1, 2, 3, 4, 5]);
+    let result = arr.map((val) => {
+        return Math.pow(val, 1) * 100;
+    });
+    assert_equal(result[0], 100);
+    assert_equal(result[1], 200);
+}
+
+{
+    let arr = new Uint32Array([1, 2, 3, 4, 5]);
+    let result = arr.map((val) => {
+        return Math.pow(val, 1) * 100;
+    });
+    assert_equal(result[0], 100);
+    assert_equal(result[1], 200);
+}
+
+{
+    let arr = new Uint16Array([1, 2, 3, 4, 5]);
+    let result = arr.map((val) => {
+        return Math.pow(val, 1) * 100;
+    });
+    assert_equal(result[0], 100);
+    assert_equal(result[1], 200);
+}
+
+{
+    let arr = new Uint8Array([1, 2, 3, 4, 5]);
+    let result = arr.map((val) => {
+        return Math.pow(val, 1) * 100;
+    });
+    assert_equal(result[0], 100);
+    assert_equal(result[1], 200);
+}
+
+{
+    let arr = new Float32Array([1.0, 2.0, 3.0, 4.0, 5.0]);
+    let result = arr.map((val) => {
+        return parseInt(val) * 100;
+    });
+    assert_equal(result[0], 100);
+    assert_equal(result[1], 200);
+}
+
+{
+    let arr = new Float64Array([1.0, 2.0, 3.0, 4.0, 5.0]);
+    let result = arr.map((val) => {
+        return parseInt(val) * 100;
+    });
+    assert_equal(result[0], 100);
+    assert_equal(result[1], 200);
+}
+
 test_end();

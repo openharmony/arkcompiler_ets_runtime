@@ -2856,15 +2856,14 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
     BRANCH(valueType, &valueTypeIsInt, &valueTypeIsDouble);
     Bind(&valueTypeIsInt);
     {
-        GateRef intValue = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+        GateRef intValue = GetInt32OfTInt(value);
         GateRef valueLessthanMin = Int32LessThanOrEqual(intValue, Int32(INT32_MIN));
         GateRef valueMorethanMax = Int32GreaterThanOrEqual(intValue, Int32(INT32_MAX));
         BRANCH(BitOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
     }
     Bind(&valueTypeIsDouble);
     {
-        GateRef intValue = ChangeFloat64ToInt32(CastInt64ToFloat64(
-            ChangeTaggedPointerToInt64(value)));
+        GateRef intValue = ChangeFloat64ToInt32(GetDoubleOfTDouble(value));
         GateRef valueLessthanMin = Int32LessThanOrEqual(intValue, Int32(INT32_MIN));
         GateRef valueMorethanMax = Int32GreaterThanOrEqual(intValue, Int32(INT32_MAX));
         BRANCH(BitOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
@@ -2887,14 +2886,13 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
             BRANCH(valueType, &valueIsInt, &valueIsDouble);
             Bind(&valueIsInt);
             {
-                GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                GateRef val = TruncInt32ToInt8(GetInt32OfTInt(value));
                 Store(VariableType::INT8(), glue, block, byteIndex, val);
                 Jump(&exit);
             }
             Bind(&valueIsDouble);
             {
-                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(CastInt64ToFloat64(
-                    ChangeTaggedPointerToInt64(value))));
+                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(GetDoubleOfTDouble(value)));
                 Store(VariableType::INT8(), glue, block, byteIndex, val);
                 Jump(&exit);
             }
@@ -2909,14 +2907,13 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
             BRANCH(valueType, &valueIsInt, &valueIsDouble);
             Bind(&valueIsInt);
             {
-                GateRef val = TruncInt32ToInt8(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                GateRef val = TruncInt32ToInt8(GetInt32OfTInt(value));
                 Store(VariableType::INT8(), glue, block, byteIndex, val);
                 Jump(&exit);
             }
             Bind(&valueIsDouble);
             {
-                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(CastInt64ToFloat64(
-                    ChangeTaggedPointerToInt64(value))));
+                GateRef val = TruncInt32ToInt8(ChangeFloat64ToInt32(GetDoubleOfTDouble(value)));
                 Store(VariableType::INT8(), glue, block, byteIndex, val);
                 Jump(&exit);
             }
@@ -2937,7 +2934,7 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
             {
                 Label notOverFlow1(env);
                 Label notUnderFlow1(env);
-                GateRef tmpVal = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                GateRef tmpVal = GetInt32OfTInt(value);
                 BRANCH(Int32GreaterThan(tmpVal, topValue), &overFlow, &notOverFlow1);
                 Bind(&notOverFlow1);
                 {
@@ -2999,14 +2996,13 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
                 BRANCH(valueType, &valueIsInt, &valueIsDouble);
                 Bind(&valueIsInt);
                 {
-                    GateRef val = TruncInt32ToInt16(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                    GateRef val = TruncInt32ToInt16(GetInt32OfTInt(value));
                     Store(VariableType::INT16(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
                 Bind(&valueIsDouble);
                 {
-                    GateRef val = TruncInt32ToInt16(ChangeFloat64ToInt32(CastInt64ToFloat64(
-                        ChangeTaggedPointerToInt64(value))));
+                    GateRef val = TruncInt32ToInt16(ChangeFloat64ToInt32(GetDoubleOfTDouble(value)));
                     Store(VariableType::INT16(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
@@ -3021,14 +3017,13 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
                 BRANCH(valueType, &valueIsInt, &valueIsDouble);
                 Bind(&valueIsInt);
                 {
-                    GateRef val = TruncInt32ToInt16(TruncInt64ToInt32(ChangeTaggedPointerToInt64(value)));
+                    GateRef val = TruncInt32ToInt16(GetInt32OfTInt(value));
                     Store(VariableType::INT16(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
                 Bind(&valueIsDouble);
                 {
-                    GateRef val = TruncInt32ToInt16(ChangeFloat64ToInt32(CastInt64ToFloat64(
-                        ChangeTaggedPointerToInt64(value))));
+                    GateRef val = TruncInt32ToInt16(ChangeFloat64ToInt32(GetDoubleOfTDouble(value)));
                     Store(VariableType::INT16(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
@@ -3043,13 +3038,13 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
                 BRANCH(valueType, &valueIsInt, &valueIsDouble);
                 Bind(&valueIsInt);
                 {
-                    GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                    GateRef val = GetInt32OfTInt(value);
                     Store(VariableType::INT32(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
                 Bind(&valueIsDouble);
                 {
-                    GateRef val = ChangeFloat64ToInt32(CastInt64ToFloat64(ChangeTaggedPointerToInt64(value)));
+                    GateRef val = ChangeFloat64ToInt32(GetDoubleOfTDouble(value));
                     Store(VariableType::INT32(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
@@ -3069,13 +3064,13 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
                 BRANCH(valueType, &valueIsInt, &valueIsDouble);
                 Bind(&valueIsInt);
                 {
-                    GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                    GateRef val = GetInt32OfTInt(value);
                     Store(VariableType::INT32(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
                 Bind(&valueIsDouble);
                 {
-                    GateRef val = ChangeFloat64ToInt32(CastInt64ToFloat64(ChangeTaggedPointerToInt64(value)));
+                    GateRef val = ChangeFloat64ToInt32(GetDoubleOfTDouble(value));
                     Store(VariableType::INT32(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
@@ -3090,13 +3085,13 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
                 BRANCH(valueType, &valueIsInt, &valueIsDouble);
                 Bind(&valueIsInt);
                 {
-                    GateRef val = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+                    GateRef val = GetInt32OfTInt(value);
                     Store(VariableType::INT32(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
                 Bind(&valueIsDouble);
                 {
-                    GateRef val = ChangeFloat64ToInt32(CastInt64ToFloat64(ChangeTaggedPointerToInt64(value)));
+                    GateRef val = ChangeFloat64ToInt32(GetDoubleOfTDouble(value));
                     Store(VariableType::INT32(), glue, block, byteIndex, val);
                     Jump(&exit);
                 }
