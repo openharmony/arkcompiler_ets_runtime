@@ -54,8 +54,7 @@ bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& conte
         return false;
     }
     bool newCreate = false;
-    std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(
-        ExtractorUtil::GetLoadFilePath(hapPath), newCreate);
+    std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(hapPath, newCreate);
     if (extractor == nullptr) {
         return false;
     }
