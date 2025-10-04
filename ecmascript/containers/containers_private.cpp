@@ -501,6 +501,53 @@ void ContainersPrivate::InitializeTreeMapIterator(JSThread *thread)
     SetStringTagSymbol(thread, env, mapIteratorPrototype, "TreeMap Iterator");
     env->SetTreeMapIteratorPrototype(thread, mapIteratorPrototype);
 }
+JSHandle<JSFunction> ContainersPrivate::NewTreeSetConstructor(const JSHandle<GlobalEnv> &env, JSThread *thread,
+                                                              const JSHandle<JSObject> &prototype,
+                                                              EcmaEntrypoint ctorFunc, const char *name, int length)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> ctor =
+        factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
+
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSFunction::SetFunctionLength(thread, ctor, JSTaggedValue(length));
+    JSHandle<JSTaggedValue> nameString(factory->NewFromASCII(name));
+    JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(ctor), nameString,
+                                globalConst->GetHandledUndefined());
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+    PropertyDescriptor descriptor1(thread, JSHandle<JSTaggedValue>::Cast(ctor), true, false, true);
+    JSObject::DefineOwnProperty(thread, prototype, constructorKey, descriptor1);
+
+    /* set "prototype" in constructor */
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, ctor, prototype.GetTaggedValue());
+
+    return ctor;
+}
+
+void ContainersPrivate::InitializeTreeSetIterator(const JSHandle<GlobalEnv> &env, JSThread *thread)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // Iterator.hclass
+    JSHandle<JSHClass> iteratorClass =
+        factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_ITERATOR, env->GetIteratorPrototype());
+
+    // TreeSetIterator.prototype
+    JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorClass));
+    // TreeSetIterator.prototype.next()
+    JSHandle<JSTaggedValue> keyString(factory->NewFromASCII("next"));
+    JSHandle<JSFunction> function =
+        factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(JSAPITreeSetIterator::Next),
+                                      FunctionKind::NORMAL_FUNCTION);
+    JSFunction::SetFunctionLength(thread, function, JSTaggedValue(FuncLength::ZERO));
+    JSHandle<JSFunctionBase> baseFunction(function);
+    JSFunction::SetFunctionName(thread, baseFunction, keyString, thread->GlobalConstants()->GetHandledUndefined());
+
+    PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>(function), false, false, false);
+    JSObject::DefineOwnProperty(thread, setIteratorPrototype, keyString, descriptor);
+
+    SetStringTagSymbol(thread, env, setIteratorPrototype, "TreeSet Iterator");
+    env->SetTreeSetIteratorPrototype(thread, setIteratorPrototype);
+}
 
 JSHandle<JSTaggedValue> ContainersPrivate::InitializePlainArray(JSThread *thread)
 {
