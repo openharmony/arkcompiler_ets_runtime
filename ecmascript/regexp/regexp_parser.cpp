@@ -597,7 +597,7 @@ bool RegExpParser::ParseAssertionCapture(int *captureIndex, bool isBackward)
                     PrintF("Assertion(?= Disjunction)\n");
                     Advance();
                     uint32_t start = buffer_.size_;
-                    ParseDisjunction(isBackward);
+                    ParseDisjunction(false);
                     MatchOpCode matchOp;
                     matchOp.EmitOpCode(&buffer_, 0);
                     MatchAheadOpCode matchAheadOp;
@@ -611,7 +611,7 @@ bool RegExpParser::ParseAssertionCapture(int *captureIndex, bool isBackward)
                     PrintF("Assertion(?! Disjunction)\n");
                     uint32_t start = buffer_.size_;
                     Advance();
-                    ParseDisjunction(isBackward);
+                    ParseDisjunction(false);
                     MatchOpCode matchOp;
                     matchOp.EmitOpCode(&buffer_, 0);
                     NegativeMatchAheadOpCode matchAheadOp;
