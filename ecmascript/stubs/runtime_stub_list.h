@@ -425,6 +425,8 @@ namespace panda::ecmascript {
     V(FunctionPrototypeCall)                                   \
     V(SuperCallForwardAllArgs)                                 \
     V(OptSuperCallForwardAllArgs)                              \
+    V(ContinueFlatMapBeforeCall)                               \
+    V(ContinueFlatMapAfterCall)                                \
     V(ReportHiEvents)
 
 // When ASM enters C++ via CallRuntime, if the C++ process requires GetGlobalEnv(),

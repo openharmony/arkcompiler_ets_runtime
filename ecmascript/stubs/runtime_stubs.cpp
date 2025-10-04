@@ -1115,6 +1115,35 @@ DEF_RUNTIME_STUBS(SuperCallForwardAllArgs)
     return RuntimeSuperCallForwardAllArgs(thread, sp, superFunc, newTarget, restNumArgs, startIdx).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(ContinueFlatMapBeforeCall)
+{
+    RUNTIME_STUBS_HEADER(ContinueFlatMapBeforeCall);
+    JSHandle<JSTaggedValue> srcValue = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: the 0th parameter
+    JSHandle<JSObject> resValue(GetHArg<JSTaggedValue>(argv, argc, 1)); // 1: the 1st parameter
+    JSHandle<JSTaggedValue> mapFunc = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: the 2nd parameter
+    JSHandle<JSTaggedValue> thisArg = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: the 3th parameter
+    int64_t targetIdx = static_cast<int64_t>(JSTaggedNumber(GetArg(argv, argc, 4)).ToUint32()); // 4: the 4th para
+    int64_t curSrcValueIdx = static_cast<int64_t>(JSTaggedNumber(GetArg(argv, argc, 5)).ToUint32()); // 5: the 5th para
+    int64_t srcValueLen = static_cast<int64_t>(JSTaggedNumber(GetArg(argv, argc, 6)).ToUint32()); // 6: the 6th para
+    return ArrayHelper::FlatMapFromIndex<true>(thread, srcValue, resValue, mapFunc, thisArg,
+                                               targetIdx, curSrcValueIdx, srcValueLen).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ContinueFlatMapAfterCall)
+{
+    RUNTIME_STUBS_HEADER(ContinueFlatMapBeforeCall);
+    JSHandle<JSTaggedValue> srcValue = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: the 0th parameter
+    JSHandle<JSObject> resValue(GetHArg<JSTaggedValue>(argv, argc, 1)); // 1: the 1st parameter
+    JSHandle<JSTaggedValue> mapFunc = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: the 2nd parameter
+    JSHandle<JSTaggedValue> thisArg = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: the 3th parameter
+    int64_t targetIdx = static_cast<int64_t>(JSTaggedNumber(GetArg(argv, argc, 4)).ToUint32()); // 4: the 4th para
+    int64_t curSrcValueIdx = static_cast<int64_t>(JSTaggedNumber(GetArg(argv, argc, 5)).ToUint32()); // 5: the 5th para
+    int64_t srcValueLen = static_cast<int64_t>(JSTaggedNumber(GetArg(argv, argc, 6)).ToUint32()); // 6: the 6th para
+    JSHandle<JSTaggedValue> curItem = GetHArg<JSTaggedValue>(argv, argc, 7); // 7: the 7th parameter
+    return ArrayHelper::FlatMapFromIndexAfterCall(thread, srcValue, resValue, mapFunc, thisArg, curItem,
+                                                  targetIdx, curSrcValueIdx, srcValueLen).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(OptSuperCallForwardAllArgs)
 {
     RUNTIME_STUBS_HEADER(OptSuperCallForwardAllArgs);

@@ -70,6 +70,18 @@ public:
                                           const JSHandle<JSTaggedValue> &thisObjVal, const FlattenArgs &args,
                                           const JSHandle<JSTaggedValue> &mapperFunctionHandle,
                                           const JSHandle<JSTaggedValue> &thisArg);
+    template <bool isFirstLayer = true>
+    static JSTaggedValue FlatMapFromIndex(JSThread *thread, const JSHandle<JSTaggedValue>& srcValue,
+                                          const JSHandle<JSObject>& resValue,
+                                          const JSHandle<JSTaggedValue>& mapFunc,
+                                          const JSHandle<JSTaggedValue>& thisArg,
+                                          int64_t& targetIdx, int64_t curSrcValueIdx, int64_t srcValueLen);
+    static JSTaggedValue FlatMapFromIndexAfterCall(JSThread *thread, const JSHandle<JSTaggedValue>& srcValue,
+                                                   const JSHandle<JSObject>& resValue,
+                                                   const JSHandle<JSTaggedValue>& mapFunc,
+                                                   const JSHandle<JSTaggedValue>& thisArg,
+                                                   const JSHandle<JSTaggedValue>& curItem,
+                                                   int64_t& targetIdx, int64_t curSrcValueIdx, int64_t srcValueLen);
     static JSHandle<TaggedArray> SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObj,
                                                        int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
                                                        HolesType holes);

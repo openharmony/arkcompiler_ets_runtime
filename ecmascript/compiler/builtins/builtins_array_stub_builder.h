@@ -114,6 +114,9 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
     GateRef IndexOfGeneric(
         GateRef glue, GateRef elements, GateRef target, GateRef fromIndex, GateRef len, IndexOfOptions options);
 
+    void FlatInnerArray(GateRef glue, Variable &resElements, Variable &targetIndex,
+                        Variable &resElementsCap, GateRef value, Label *exit, Label *exception);
+
 private:
     static constexpr uint32_t MAX_LENGTH_ZERO = 0;
     static constexpr uint32_t MAX_LENGTH_ONE = 1;
