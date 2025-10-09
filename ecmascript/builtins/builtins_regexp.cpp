@@ -2652,17 +2652,15 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
         resultArrayCopy = JSHandle<JSTaggedValue>(resultArray);
     }
     JSHandle<RegExpGlobalResult> globalTable(thread->GetGlobalEnv()->GetRegExpGlobalResult());
-    JSHandle<TaggedArray> taggedArray = JSHandle<TaggedArray>::Cast(globalTable);
     auto factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = globalTable->GetLength();
-    JSHandle<TaggedArray> resTableArray = factory->NewAndCopyTaggedArray(taggedArray, arrayLength, arrayLength);
+    JSTaggedValue globalTableValue = globalTable.GetTaggedValue();
     JSTaggedValue patternValue = pattern.GetTaggedValue();
     JSTaggedValue flagsValue = flags.GetTaggedValue();
     JSTaggedValue inputValue = input.GetTaggedValue();
     JSTaggedValue extendValue = extend.GetTaggedValue();
     JSTaggedValue lastIndexInputValue(lastIndexInput);
     JSTaggedValue lastIndexValue(lastIndex);
-    JSTaggedValue resTableArrayValue = resTableArray.GetTaggedValue();
 
     uint32_t hash = patternValue.GetKeyHashCode(thread) + static_cast<uint32_t>(flagsValue.GetInt()) +
                     inputValue.GetKeyHashCode(thread) + lastIndexInput;
@@ -2675,7 +2673,7 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
     if (cache->Get(thread, index).IsUndefined()) {
         cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
         cache->SetEntry(thread, entry, patternValue, flagsValue, inputValue,
-                        lastIndexInputValue, lastIndexValue, extendValue, resTableArrayValue);
+                        lastIndexInputValue, lastIndexValue, extendValue, globalTableValue);
         cache->UpdateResultArray(thread, entry, resultArrayCopy.GetTaggedValue(), type);
         cache->SetLastMatchGlobalTableIndex(thread, index);  // update last match index
     } else if (cache->Match(thread, entry, patternValue, flagsValue, inputValue,
@@ -2698,12 +2696,12 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
             index2 = CACHE_TABLE_HEADER_SIZE + entry2 * ENTRY_SIZE;
         }
         extendValue = extend.GetTaggedValue();
-        resTableArrayValue = resTableArray.GetTaggedValue();
+        globalTableValue = globalTable.GetTaggedValue();
         cache->SetLastMatchGlobalTableIndex(thread, index2); // update last match index
         if (cache->Get(thread, index2).IsUndefined()) {
             cache->SetCacheCount(thread, cache->GetCacheCount() + 1);
             cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue,
-                            lastIndexInputValue, lastIndexValue, extendValue, resTableArrayValue);
+                            lastIndexInputValue, lastIndexValue, extendValue, globalTableValue);
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
         } else if (cache->Match(thread, entry2, patternValue, flagsValue,
                                 inputValue, lastIndexInputValue, extendValue, type)) {
@@ -2712,7 +2710,7 @@ void RegExpExecResultCache::AddResultInCache(JSThread *thread, JSHandle<RegExpEx
             cache->SetConflictCount(thread, cache->GetConflictCount() > 1 ? (cache->GetConflictCount() - 1) : 0);
             cache->ClearEntry(thread, entry2);
             cache->SetEntry(thread, entry2, patternValue, flagsValue, inputValue,
-                            lastIndexInputValue, lastIndexValue, extendValue, resTableArrayValue);
+                            lastIndexInputValue, lastIndexValue, extendValue, globalTableValue);
             cache->UpdateResultArray(thread, entry2, resultArrayCopy.GetTaggedValue(), type);
         }
     }

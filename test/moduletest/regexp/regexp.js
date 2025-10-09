@@ -19,6 +19,23 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+
+{
+    let reg1 = /(a)/
+    reg1.test("a")
+    assert_equal(RegExp.$1, "a");
+
+    reg1.test("a")
+    assert_equal(RegExp.$1, "a");
+
+    let reg2 = /b(b)/;
+    reg2.test("bb");
+    assert_equal(RegExp.$1, "b");
+
+    reg1.test("a")
+    assert_equal(RegExp.$1, "a");
+}
+
 {
   let res = "abcdef".match(/(?<=ab(?=c)cd)ef/)
   assert_equal(JSON.stringify(res), '["ef"]')
