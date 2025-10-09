@@ -115,6 +115,7 @@ group("unittest") {
     ":C_String_Test",
     ":Mem_Utils_Test",
     ":Utf_Helper_Test",
+    ":TimeUtilsTest",
   ]
 }
 
@@ -126,5 +127,6 @@ group("host_unittest") {
     ":C_String_TestAction",
     ":Mem_Utils_TestAction",
     ":Utf_Helper_TestAction",
+    ":TimeUtilsTestAction",
   ]
 }
