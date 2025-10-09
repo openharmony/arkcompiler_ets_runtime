@@ -226,11 +226,13 @@ JSTaggedValue BuiltinsObject::ObjectDefineProperties(JSThread *thread, const JSH
         //   b.Let desc be the second element of pair.
         //   c.Let status be DefinePropertyOrThrow(O,P, desc).
         //   d.ReturnIfAbrupt(status).
+        JSHandle<JSTaggedValue> key = desArr[i].GetKey();
         [[maybe_unused]] bool setSuccess =
-            JSTaggedValue::DefinePropertyOrThrow(thread, obj, desArr[i].GetKey(), desArr[i]);
+            JSTaggedValue::DefinePropertyOrThrow(thread, obj, key, desArr[i]);
 
         // ReturnIfAbrupt(status)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        PostHandleDefineProperty(thread, obj, key);
     }
     // 9.Return O.
     return obj.GetTaggedValue();
@@ -314,6 +316,7 @@ JSTaggedValue BuiltinsObject::DefineProperty(EcmaRuntimeCallInfo *argv)
 
     // 7.ReturnIfAbrupt(success).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    PostHandleDefineProperty(thread, obj, key);
     // 8.Return O.
     return obj.GetTaggedValue();
 }
