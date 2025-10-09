@@ -1131,7 +1131,7 @@ DEF_RUNTIME_STUBS(ContinueFlatMapBeforeCall)
 
 DEF_RUNTIME_STUBS(ContinueFlatMapAfterCall)
 {
-    RUNTIME_STUBS_HEADER(ContinueFlatMapBeforeCall);
+    RUNTIME_STUBS_HEADER(ContinueFlatMapAfterCall);
     JSHandle<JSTaggedValue> srcValue = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: the 0th parameter
     JSHandle<JSObject> resValue(GetHArg<JSTaggedValue>(argv, argc, 1)); // 1: the 1st parameter
     JSHandle<JSTaggedValue> mapFunc = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: the 2nd parameter
