@@ -116,7 +116,7 @@ HWTEST_F_L0(RawHeapTranslateTest, MetaDataParse)
         "\"string_last\": \"TREE_STRING\", \"js_object_first\": \"JS_OBJECT\", \"js_object_last\": "
         "\"JS_GLOBAL_OBJECT\"}}, \"version\": \"1.0.0\"}";
 
-    cJSON *metadataCJson = cJSON_ParseWithOpts(metadataJson.c_str(), nullptr, true);
+    cJSON *metadataCJson = cJSON_ParseWithLength(metadataJson.c_str(), metadataJson.size());
     ASSERT_TRUE(metadataCJson != nullptr);
 
     bool result = metaParser->Parse(metadataCJson);
