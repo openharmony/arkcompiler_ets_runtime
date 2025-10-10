@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
 
+#include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
@@ -1727,5 +1728,15 @@ JSTaggedValue BuiltinsArkTools::SetNoHotReloadPatchMain(EcmaRuntimeCallInfo *inf
     JSThread *thread = info->GetThread();
     thread->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::GetRegExpCacheCount(EcmaRuntimeCallInfo *info)
+{
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
+    CHECK(info && info->GetArgsNumber() == 0);
+    JSThread *thread = info->GetThread();
+    JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    int32_t count = cacheTable->GetCacheCount();
+    return JSTaggedValue(count);
 }
 } // namespace panda::ecmascript::builtins
