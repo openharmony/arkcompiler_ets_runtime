@@ -387,14 +387,19 @@ void RegExpParser::ParseAlternative(bool isBackward)
                                     set.closeOver(USET_CASE_INSENSITIVE);
                                     set.removeAllStrings();
                                     uint32_t size = static_cast<uint32_t>(set.size());
-                                    RangeOpCode rangeOp;
                                     RangeSet rangeResult;
                                     for (uint32_t idx = 0; idx < size; idx++) {
                                         int32_t uc = set.charAt(idx);
                                         RangeSet curRange(uc);
                                         rangeResult.Insert(curRange);
                                     }
-                                    rangeOp.InsertOpCode(&buffer_, rangeResult);
+                                    if (atomValue > UINT16_MAX) {
+                                        Range32OpCode rangeOp;
+                                        rangeOp.InsertOpCode(&buffer_, rangeResult);
+                                    } else {
+                                        RangeOpCode rangeOp;
+                                        rangeOp.InsertOpCode(&buffer_, rangeResult);
+                                    }
                                     break;
                                 }
                             }
