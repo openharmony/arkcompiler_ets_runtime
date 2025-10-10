@@ -234,4 +234,37 @@ HWTEST_F_L0(QuickFixTest, HotReload_RegisterQuickFixQueryFunc)
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     pfManager->RemoveJSPandaFile(baseFile.get());
 }
+
+HWTEST_F_L0(QuickFixTest, HotReload_UpdateModule)
+{
+    ecmascript::ThreadManagedScope managedScope(thread);
+
+    std::string baseFileName = QUICKFIX_ABC_PATH "single_file/base/index.abc";
+    std::string patchFileName = QUICKFIX_ABC_PATH "single_file/patch/index.abc";
+    CString replacedRecordName = "index";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    JSNApi::SetBundle(instance, false);
+    bool result = JSNApi::Execute(instance, baseFileName, replacedRecordName.c_str());
+    EXPECT_TRUE(result);
+    auto res = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
+
+    ObjectFactory *factory = instance->GetFactory();
+    JSMutableHandle<SourceTextModule> module(thread, factory->NewSourceTextModule());
+    module->SetEcmaModuleRecordNameString(replacedRecordName);
+    EXPECT_TRUE(module->GetEcmaModuleFilenameString().empty());
+
+    QuickFixManager *quickFixManager = instance->GetQuickFixManager();
+    thread->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
+    quickFixManager->UpdateHotReloadModule(thread, module);
+    EXPECT_TRUE(module->GetEcmaModuleFilenameString().empty());
+
+    thread->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+    quickFixManager->UpdateHotReloadModule(thread, module);
+    EXPECT_FALSE(module->GetEcmaModuleFilenameString().empty());
+
+    res = JSNApi::UnloadPatch(instance, patchFileName);
+    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
+}
 }  // namespace panda::test

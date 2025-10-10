@@ -40,11 +40,27 @@ public:
                                    const std::string &patchFileName);
     JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
     CString GetBaseFileName(const JSHandle<SourceTextModule> &module);
+    inline void UpdateHotReloadModule(JSThread *thread, JSMutableHandle<SourceTextModule> &module)
+    {
+        if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+            UpdateHotReloadModuleAfterLoad(thread, module);
+        }
+    }
 private:
     // check whether the callback is registered.
     bool HasQueryQuickFixInfoFunc() const
     {
         return callBack_ != nullptr;
+    }
+
+    inline void UpdateHotReloadModuleAfterLoad(JSThread *thread, JSMutableHandle<SourceTextModule> &module)
+    {
+        ASSERT(thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+        const JSHandle<JSTaggedValue> moduleOfHotReload =
+            thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString());
+        if (!moduleOfHotReload->IsHole()) {
+            module.Update(moduleOfHotReload);
+        }
     }
 
     CUnorderedSet<CString> ParseStackInfo(const CString &stackInfo);

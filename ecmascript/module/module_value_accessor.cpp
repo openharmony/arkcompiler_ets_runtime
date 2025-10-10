@@ -20,6 +20,7 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/require/js_cjs_module.h"
 
 namespace panda::ecmascript {
@@ -256,8 +257,8 @@ JSTaggedValue ModuleValueAccessor::GetModuleNamespaceInternal(JSThread *thread, 
     }
     JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(curModule));
     JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
-    JSHandle<SourceTextModule> requiredModule =
-        SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, index);
+    JSMutableHandle<SourceTextModule> requiredModule(thread,
+        SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, index));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
 
@@ -275,6 +276,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleNamespaceInternal(JSThread *thread, 
         return CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue();
     }
     // if requiredModule is ESM
+    thread->GetEcmaVM()->GetQuickFixManager()->UpdateHotReloadModule(thread, requiredModule);
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModule);
     ASSERT(moduleNamespace->IsModuleNamespace());
     LogModuleLoadInfo(thread, module, requiredModule, -1, false);
@@ -296,17 +298,13 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromIndexBinding(const GetModul
 {
     JSHandle<ResolvedIndexBinding> binding(info.thread, info.resolvedBinding);
     JSMutableHandle<SourceTextModule> resolvedModule(info.thread, binding->GetModule(info.thread));
-    if (!info.isSendable && info.thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
-        const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
-            info.thread->GetEcmaVM()->FindPatchModule(resolvedModule->GetEcmaModuleRecordNameString());
-        if (!resolvedModuleOfHotReload->IsHole()) {
-            resolvedModule.Update(resolvedModuleOfHotReload);
-        }
-    }
     if (info.isSendable && isLazy) { // bug need fix
         SourceTextModule::Evaluate(info.thread, resolvedModule);
     } else {
         EvaluateModuleIfNeeded<isLazy>(info.thread, resolvedModule);
+    }
+    if (!info.isSendable) {
+        info.thread->GetEcmaVM()->GetQuickFixManager()->UpdateHotReloadModule(info.thread, resolvedModule);
     }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
     if (SourceTextModule::IsSharedModule(resolvedModule)) {
