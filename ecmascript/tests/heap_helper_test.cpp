@@ -55,4 +55,97 @@ private:
     Heap *heap_{nullptr};
 };
 
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking1)
+{
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = true;
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_NE(heap, nullptr);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), false);
+    g_isEnableCMCGC = temp;
+}
+
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking2)
+{
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = false;
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_NE(heap, nullptr);
+
+    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
+    EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), false);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), false);
+    g_isEnableCMCGC = temp;
+}
+
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking3)
+{
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = false;
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_NE(heap, nullptr);
+
+    uint32_t length = 1000;
+    heap->GetOldSpace()->SetInitialCapacity(static_cast<size_t>(length));
+    heap->SetFullMarkRequestedState(true);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), true);
+    EXPECT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
+    g_isEnableCMCGC = temp;
+}
+
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking4)
+{
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = false;
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_NE(heap, nullptr);
+
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    EXPECT_EQ(heap->InSensitiveStatus(), true);
+    heap->SetRecordHeapObjectSizeBeforeSensitive(1000000);
+    EXPECT_EQ(heap->ObjectExceedHighSensitiveThresholdForCM(), false);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), false);
+    g_isEnableCMCGC = temp;
+}
+
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking5)
+{
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = false;
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_NE(heap, nullptr);
+
+    heap->NotifyPostFork();
+    EXPECT_EQ(heap->FinishStartupEvent(), true);
+    EXPECT_EQ(heap->IsJustFinishStartup(), true);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), false);
+    g_isEnableCMCGC = temp;
+}
+
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking6)
+{
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = false;
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_NE(heap, nullptr);
+
+    heap->GetOldSpace()->SetInitialCapacity(1000);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), true);
+    EXPECT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
+    g_isEnableCMCGC = temp;
+}
+
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking7)
+{
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = false;
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_NE(heap, nullptr);
+
+    heap->GetNewSpace()->IncreaseCommitted(10000000);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), true);
+    EXPECT_EQ(heap->GetMarkType(), MarkType::MARK_YOUNG);
+    EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::ALLOCATION_LIMIT);
+    g_isEnableCMCGC = temp;
+}
 }

@@ -3687,6 +3687,7 @@ group("unittest") {
     deps -= [
       ":GC_ConcurrentMarking_Test",
       ":GC_First_Test",
+      ":GC_HeapHelper_Test",
       ":GC_IdleGCTrigger_Test",
       ":GC_MachineCode_Test",
       ":GC_MemController_Test",
@@ -3995,6 +3996,7 @@ group("host_unittest") {
     deps -= [
       ":GC_ConcurrentMarking_TestAction",
       ":GC_First_TestAction",
+      ":GC_HeapHelper_TestAction",
       ":GC_IdleGCTrigger_TestAction",
       ":GC_MachineCode_TestAction",
       ":GC_MemController_TestAction",
