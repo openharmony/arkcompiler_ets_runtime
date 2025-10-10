@@ -1000,6 +1000,18 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("test PlainArray forEach0005", myFlag);
     }
 
+    {
+        try {
+            let arr1 = new PlainArray(); 
+            arr1.add(42,0x1337);
+            arr1.add(43,0x1337);
+            let arr2 = arr1.clone();
+            arr2.add(40,0x1338);
+        } catch (e) {
+            map.set("test PlainArray full add test", false);
+        }
+    }
+
     res = undefined;
     function elements(value, key, map) {
         if (!value) {

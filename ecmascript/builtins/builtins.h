@@ -407,6 +407,9 @@ private:
     void InitializeGlobalRegExp(JSHandle<JSObject> &obj) const;
     // Using to initialize jsapi container
     JSHandle<JSObject> InitializeArkPrivate(const JSHandle<GlobalEnv> &env) const;
+
+    JSHandle<JSTaggedValue> InitializeTreeSet(const JSHandle<GlobalEnv> &env);
+    
     void SetConstantObject(const JSHandle<JSObject> &obj, std::string_view key,
                            JSHandle<JSTaggedValue> &value) const;
     void SetFrozenFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,

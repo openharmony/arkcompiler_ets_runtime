@@ -18,6 +18,7 @@
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_runtime_call_info.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 
@@ -227,6 +228,16 @@ private:
                                                 const JSHandle<JSTaggedValue> &prop);
     static JSTaggedValue GetOwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const KeyType &type);
     static JSTaggedValue GetBuiltinObjectToString(JSThread *thread, const JSHandle<JSObject> &object);
+    static inline void PostHandleDefineProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                                const JSHandle<JSTaggedValue> &key)
+    {
+        auto env = thread->GetGlobalEnv();
+        // IR should use slow path after Object.defineProperty(Array, Symbol.species, {value: CustomArray})
+        // When ArrayFunction has been modified, array won't be stable array, no need to set ChangedGuardians
+        if UNLIKELY(key == env->GetSpeciesSymbol() && obj == env->GetArrayFunction()) {
+            env->SetArrayPrototypeChangedGuardians(false);
+        }
+    }
 };
 }  // namespace panda::ecmascript::builtins
 #endif  // ECMASCRIPT_BUILTINS_BUILTINS_OBJECT_H

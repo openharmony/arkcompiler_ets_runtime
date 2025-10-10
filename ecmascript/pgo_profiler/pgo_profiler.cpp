@@ -1028,6 +1028,9 @@ bool PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recor
     if (secondValue.IsInt()) {
         return AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, hclass);
     } else if (secondValue.IsTransitionHandler()) {
+        if (!hclass->GetPrototype(vm_->GetJSThread()).IsHeapObject()) {
+            return false;
+        }
         auto transitionHandler = TransitionHandler::Cast(secondValue.GetTaggedObject());
         auto transitionHClassVal = transitionHandler->GetTransitionHClass(vm_->GetJSThread());
         if (transitionHClassVal.IsJSHClass()) {
@@ -1313,8 +1316,13 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
         if (IsSkippableObjectTypeSafe(localType)) {
             return;
         }
-        PGODefineOpType objDefType(localType);
         auto protoOrHClass = ctorFunction->GetProtoOrHClass(thread);
+        if (protoOrHClass.IsJSHClass() &&
+            !JSHClass::Cast(protoOrHClass.GetTaggedObject())->IsOnlyJSObject()) {
+            return;
+        }
+
+        PGODefineOpType objDefType(localType);
         if (protoOrHClass.IsJSHClass()) {
             auto ihc = JSHClass::Cast(protoOrHClass.GetTaggedObject());
             SetRootProfileType(ihc, ctorAbcId, ctorMethodId, ProfileType::Kind::ClassId);
@@ -1681,7 +1689,7 @@ bool PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CStrin
     if (builtinsId == BuiltinTypeId::ARRAY) {
         bool receiverIsPrototype = receiver->IsPrototype();
         exceptRecvHClass = thread->GetArrayInstanceHClass(GetCurrentGlobalEnv(), receiver->GetElementsKind(),
-                                                          receiverIsPrototype);
+            receiverIsPrototype, JSThread::ThreadKind::OtherThread);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {
@@ -1720,7 +1728,7 @@ bool PGOProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &r
     if (builtinsId == BuiltinTypeId::ARRAY) {
         bool receiverIsPrototype = receiver->IsPrototype();
         exceptRecvHClass = thread->GetArrayInstanceHClass(GetCurrentGlobalEnv(), receiver->GetElementsKind(),
-                                                          receiverIsPrototype);
+            receiverIsPrototype, JSThread::ThreadKind::OtherThread);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {

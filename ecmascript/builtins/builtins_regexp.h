@@ -225,6 +225,8 @@ public:
         return reinterpret_cast<RegExpExecResultCache *>(object);
     }
     static JSTaggedValue CreateCacheTable(JSThread *thread);
+    static void ShinkCacheTable(JSThread *thread, JSHandle<RegExpExecResultCache> table);
+    static void ClearCache(JSThread* thread, JSHandle<JSTaggedValue> cache);
     // extend as an additional parameter to judge cached
     template <RBMode mode = RBMode::DEFAULT_RB>
     JSTaggedValue FindCachedResult(JSThread *thread, const JSHandle<JSTaggedValue> input,
@@ -346,7 +348,28 @@ public:
         return GetPrimitive(NEED_UPDATE_GLOBAL_INDEX).IsTrue();
     }
 
-private:
+    // The extralength field is currently only used to protect the cache during GC, so it only has 0 and 1.
+    // It can be extended for use in the future.
+    class CacheGuardScope {
+    public:
+        CacheGuardScope(JSHandle<RegExpExecResultCache> cache): cache_(cache) { cache_->SetGuard(1); }
+        ~CacheGuardScope() { cache_->SetGuard(0); }
+
+    private:
+        JSHandle<RegExpExecResultCache> cache_;
+    };
+
+    inline bool CacheInGuard()
+    {
+        return GetExtraLength() == 1;
+    }
+
+    inline void SetGuard(uint32_t tag)
+    {
+        ASSERT(tag == 0 || tag == 1);
+        SetExtraLength(tag);
+    }
+
     static constexpr int DEFAULT_LARGE_STRING_COUNT = 10;
     static constexpr int DEFAULT_CONFLICT_COUNT = 100;
     static constexpr int INITIAL_CACHE_NUMBER = 0x10;

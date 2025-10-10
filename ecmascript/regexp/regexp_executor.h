@@ -705,7 +705,7 @@ public:
 
     void ReAllocStack(uint32_t stackLen);
 
-    inline bool IsWordChar(uint8_t value) const
+    inline bool IsWordChar(uint32_t value) const
     {
         return ((value >= '0' && value <= '9') || (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') ||
                 (value == '_'));

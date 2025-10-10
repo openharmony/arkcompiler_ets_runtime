@@ -1,0 +1,2 @@
+#27180
+obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTest

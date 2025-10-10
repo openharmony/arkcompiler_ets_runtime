@@ -667,15 +667,16 @@ JSTaggedValue ContainersVector::CopyToArray(EcmaRuntimeCallInfo *argv)
     uint32_t vectorLength = static_cast<uint32_t>(vector->GetSize());
 
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(arg0);
-    JSHandle<TaggedArray> arrayElements(thread, array->GetElements(thread));
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = array->GetArrayLength();
     if (vectorLength <= arrayLength) {
-        TaggedArray::CopyTaggedArrayElement(thread, vectorElements, arrayElements, vectorLength);
+        JSHandle<TaggedArray> newArrayElement = factory->NewAndCopyTaggedArray(vectorElements,
+                                                                               arrayLength, vectorLength);
         for (uint32_t i = vectorLength; i < arrayLength; i++) {
-            arrayElements->Set(thread, i, JSTaggedValue::Undefined());
+            newArrayElement->Set(thread, i, JSTaggedValue::Undefined());
         }
+        array->SetElements(thread, newArrayElement);
     } else {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<TaggedArray> newArrayElement = factory->NewAndCopyTaggedArray(vectorElements,
                                                                                vectorLength, vectorLength);
         array->SetElements(thread, newArrayElement);

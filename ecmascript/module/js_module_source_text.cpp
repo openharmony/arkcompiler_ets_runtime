@@ -461,7 +461,6 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleMayThrowError(JSThread
     const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     if (exportObject->IsNativeModuleFailureInfo() || exportObject->IsUndefined()) {
@@ -2308,7 +2307,9 @@ void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<Sou
     fields.Exception = module->GetException(thread);
     fields.Namespace = module->GetNamespace(thread);
     module->SetTopLevelCapability(thread, undefinedValue);
-    module->SetNameDictionary(thread, undefinedValue);
+    if (module->GetTypes() != ModuleTypes::JSON_MODULE) {
+        module->SetNameDictionary(thread, undefinedValue);
+    }
     module->SetCycleRoot(thread, undefinedValue);
     module->SetAsyncParentModules(thread, undefinedValue);
     module->SetSendableEnv(thread, undefinedValue);

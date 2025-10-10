@@ -56,15 +56,6 @@ void VisitSTWRoots(const RefFieldVisitor &visitor)
     VisitDynamicGlobalRoots(visitor);
     VisitDynamicLocalRoots(visitor);
     VisitBaseRoots(visitor);
-    // if (isMark) {
-    //    if (g_visitStaticRootsHook != nullptr) {
-    //        g_visitStaticRootsHook(visitor);
-    //     }
-    // } else {
-    //    if (g_updateStaticRootsHook != nullptr) {
-    //        g_updateStaticRootsHook(visitor);
-    //    }
-    // }
 }
 
 void VisitConcurrentRoots(const RefFieldVisitor &visitor)
@@ -77,39 +68,18 @@ void VisitWeakRoots(const WeakRefFieldVisitor &visitor)
     VisitDynamicWeakGlobalRoots(visitor);
     VisitDynamicWeakGlobalRootsOld(visitor);
     VisitDynamicWeakLocalRoots(visitor);
-    // if (g_updateStaticRootsHook != nullptr) {
-    //     g_updateStaticRootsHook(visitor);
-    // }
-    // if (g_sweepStaticRootsHook != nullptr) {
-    //     g_sweepStaticRootsHook(visitor);
-    // }
 }
 
 void VisitGlobalRoots(const RefFieldVisitor &visitor)
 {
     VisitDynamicGlobalRoots(visitor);
     VisitBaseRoots(visitor);
-    // if (isMark) {
-    //    if (g_visitStaticRootsHook != nullptr) {
-    //        g_visitStaticRootsHook(visitor);
-    //     }
-    // } else {
-    //    if (g_updateStaticRootsHook != nullptr) {
-    //        g_updateStaticRootsHook(visitor);
-    //    }
-    // }
 }
 
 void VisitWeakGlobalRoots(const WeakRefFieldVisitor &visitor)
 {
     VisitDynamicWeakGlobalRoots(visitor);
     VisitDynamicWeakGlobalRootsOld(visitor);
-    // if (g_updateStaticRootsHook != nullptr) {
-    //     g_updateStaticRootsHook(visitor);
-    // }
-    // if (g_sweepStaticRootsHook != nullptr) {
-    //     g_sweepStaticRootsHook(visitor);
-    // }
 }
 
 void VisitPreforwardRoots(const RefFieldVisitor &visitor)

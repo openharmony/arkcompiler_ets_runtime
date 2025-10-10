@@ -201,7 +201,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         module->SetEcmaModuleFilenameStringForDeserialize(moduleFileName);
         module->SetEcmaModuleRecordNameStringForDeserialize(moduleRecordName);
         module->SetLazyImportArrayForDeserialize(lazyArray);
-        if (module->GetStatus() > ModuleStatus::INSTANTIATED) {
+        if (module->GetStatus() > ModuleStatus::INSTANTIATED && module->GetTypes() != ModuleTypes::JSON_MODULE) {
             module->SetStatus(ModuleStatus::INSTANTIATED);
         }
         module->SetException(thread_, thread_->GlobalConstants()->GetHole());
@@ -582,6 +582,8 @@ JSTaggedType BaseDeserializer::RelocateObjectProtoAddr(uint8_t objectType)
             return env->GetSharedMapPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SET:
             return env->GetSetPrototype().GetTaggedType();
+        case (uint8_t)JSType::JS_API_TREE_SET:
+            return JSHandle<JSFunction>(env->GetTreeSetConstructor())->GetFunctionPrototype(thread_).GetRawData();
         case (uint8_t)JSType::JS_SHARED_SET:
             return env->GetSharedSetPrototype().GetTaggedType();
         case (uint8_t)JSType::JS_SENDABLE_ARRAY_BUFFER:

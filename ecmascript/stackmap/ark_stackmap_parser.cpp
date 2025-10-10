@@ -106,7 +106,11 @@ void ArkStackMapParser::GetArkDeopt(uintptr_t callSiteAddr,
     int mid = BinaraySearch(callsiteHead, callsiteNum, callSiteAddr);
     ASSERT(mid != -1);
     if (mid == -1) {
-        LOG_ECMA(INFO) << "can't find callSiteAddr";
+        LOG_ECMA(INFO) << "can't find callSiteAddr: " << std::hex << callSiteAddr;
+        for (uint32_t count = 0; count < callsiteNum; count++) {
+            LOG_ECMA(INFO) << "callite offset in text section: "
+                           << std::hex << callsiteHead[count].calliteOffsetInTxtSec;
+        }
         return;
     }
     CallsiteHeader *found = callsiteHead + mid;

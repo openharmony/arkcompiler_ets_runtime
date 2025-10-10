@@ -30,6 +30,8 @@ namespace common {
     #define NEXT_OPTIMIZATION_BOOL false
 #endif
 
+#define ENABLE_MEMORY_OPTIMIZATION 1
+
 #define ECMASCRIPT_ENABLE_TRACE_STRING_TABLE 0
 
 }  // namespace common

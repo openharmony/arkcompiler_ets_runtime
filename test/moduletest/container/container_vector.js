@@ -288,6 +288,32 @@ if (globalThis["ArkPrivate"] != undefined) {
         return value;
     }, v);
     map.set("test vector replaceAllElements redefine:", v.length == 0);
+
+    {
+        let conatiner_obj = new FastVector();
+
+        let arr1 = new Array(0x8);
+        arr1.fill(0x1122cafe);
+
+        let arr2 = new Array(0x8);
+        arr2.length = 0x100000;
+
+        let corrupt_obj1 = {p1:1,p2:2};
+        let corrupt_obj2 = {x:1,y:2};
+
+        for(let i = 0;i < 0x200;i++) {
+            conatiner_obj.add(0x1122);
+        }
+
+        arr1[1] = arr2;
+        arr1[2] = corrupt_obj1;
+        arr1[3] = corrupt_obj2;
+        try {
+            conatiner_obj.copyToArray(arr2);
+        } catch (e) {
+            map.set("test vector copyToDictArray:", false);
+        }
+    }
     
     flag = undefined;
     function elements(value, key, map) {

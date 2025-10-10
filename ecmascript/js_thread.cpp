@@ -1507,14 +1507,20 @@ void JSThread::SetMutatorLockState(MutatorLock::MutatorLockState newState)
 JSHClass *JSThread::GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const
 {
     JSHandle<GlobalEnv> env = GetGlobalEnv();
-    return GetArrayInstanceHClass(env, kind, isPrototype);
+    return GetArrayInstanceHClass(env, kind, isPrototype, JSThread::ThreadKind::OtherThread);
 }
 
-JSHClass *JSThread::GetArrayInstanceHClass(JSHandle<GlobalEnv> env, ElementsKind kind, bool isPrototype) const
+JSHClass *JSThread::GetArrayInstanceHClass(JSHandle<GlobalEnv> env, ElementsKind kind,
+                                           bool isPrototype, ThreadKind threadKind) const
 {
     GlobalEnvField index = glueData_.arrayHClassIndexes_.GetArrayInstanceHClassIndex(kind, isPrototype);
-    auto exceptArrayHClass = env->GetGlobalEnvObjectByIndex(static_cast<size_t>(index)).GetTaggedValue();
-    auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClass.GetTaggedObject());
+    JSHandle<JSTaggedValue> exceptArrayHClassHandle;
+    if (threadKind == JSThread::ThreadKind::JitThread) {
+        exceptArrayHClassHandle = env->GetGlobalEnvObjectWithBarrierByIndex(static_cast<size_t>(index));
+    } else {
+        exceptArrayHClassHandle = env->GetGlobalEnvObjectByIndex(static_cast<size_t>(index));
+    }
+    auto exceptRecvHClass = JSHClass::Cast(exceptArrayHClassHandle.GetTaggedValue().GetTaggedObject());
     ASSERT(exceptRecvHClass->IsJSArray());
     return exceptRecvHClass;
 }

@@ -375,6 +375,94 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
     return BuiltinsBase::GetTaggedDouble(tempArgs.start);
 }
 
+template <bool isFirstLayer>
+JSTaggedValue ArrayHelper::FlatMapFromIndex(JSThread *thread, const JSHandle<JSTaggedValue>& srcValue,
+                                            const JSHandle<JSObject>& resValue,
+                                            [[maybe_unused]] const JSHandle<JSTaggedValue>& mapFunc,
+                                            [[maybe_unused]] const JSHandle<JSTaggedValue>& thisArg,
+                                            int64_t& targetIdx, int64_t curSrcValueIdx, int64_t srcValueLen)
+{
+    ASSERT((isFirstLayer && mapFunc->IsCallable()) || (!isFirstLayer && mapFunc->IsUndefined()));
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    JSMutableHandle<JSTaggedValue> element(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> targetIndexHandle(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> sourceIndexHandle(thread, JSTaggedValue::Undefined());
+    for (int64_t i = curSrcValueIdx; i < srcValueLen; ++i) {
+        sourceIndexHandle.Update(JSTaggedValue(i));
+        JSHandle<JSTaggedValue> sourceIndexStr(JSTaggedValue::ToString(thread, sourceIndexHandle));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        bool exists = JSTaggedValue::HasProperty(thread, srcValue, sourceIndexStr);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (!exists) {
+            continue;
+        }
+        element.Update(JSArray::FastGetPropertyByValue(thread, srcValue, sourceIndexStr));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if constexpr (isFirstLayer) {
+            // call mapFunc
+            const int32_t argsLength = 3; // 3: « element, sourceIndexStr, srcValue »
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, mapFunc, thisArg, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(element.GetTaggedValue(), sourceIndexStr.GetTaggedValue(), srcValue.GetTaggedValue());
+            JSTaggedValue obj = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            element.Update(obj);
+            // check IsArray and continue flat
+            bool shouldFlatten = element->IsArray(thread);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (shouldFlatten) {
+                int64_t elementLen = ArrayHelper::GetLength(thread, element);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                FlatMapFromIndex<false>(thread, element, resValue, undefined, undefined, targetIdx, 0, elementLen);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                continue;
+            }
+        }
+        if (targetIdx > base::MAX_SAFE_INTEGER) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
+        }
+        targetIndexHandle.Update(JSTaggedValue(targetIdx));
+        JSHandle<JSTaggedValue> targetIndexStr(JSTaggedValue::ToString(thread, targetIndexHandle));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSObject::CreateDataPropertyOrThrow(thread, resValue, targetIndexStr, element);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ++targetIdx;
+    }
+    return resValue.GetTaggedValue();
+}
+
+JSTaggedValue ArrayHelper::FlatMapFromIndexAfterCall(JSThread *thread, const JSHandle<JSTaggedValue>& srcValue,
+                                                     const JSHandle<JSObject>& resValue,
+                                                     const JSHandle<JSTaggedValue>& mapFunc,
+                                                     const JSHandle<JSTaggedValue>& thisArg,
+                                                     const JSHandle<JSTaggedValue>& curItem,
+                                                     int64_t& targetIdx, int64_t curSrcValueIdx, int64_t srcValueLen)
+{
+    // curItem is the result of mapFunc(srcValue[curSrcValueIdx]), continue to do flat
+    bool shouldFlatten = curItem->IsArray(thread);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    if (shouldFlatten) {
+        int64_t curItemLen = ArrayHelper::GetLength(thread, curItem);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+        FlatMapFromIndex<false>(thread, curItem, resValue, undefined, undefined, targetIdx, 0, curItemLen);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    } else {
+        if (targetIdx > base::MAX_SAFE_INTEGER) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "out of range.", JSTaggedValue::Exception());
+        }
+        JSHandle<JSTaggedValue> targetIndexHandle(thread, JSTaggedValue(targetIdx));
+        JSHandle<JSTaggedValue> targetIndexStr(JSTaggedValue::ToString(thread, targetIndexHandle));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        JSObject::CreateDataPropertyOrThrow(thread, resValue, targetIndexStr, curItem);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        ++targetIdx;
+    }
+    return FlatMapFromIndex<true>(thread, srcValue, resValue, mapFunc, thisArg,
+                                  targetIdx, curSrcValueIdx + 1, srcValueLen);
+}
+
 JSHandle<TaggedArray> ArrayHelper::SortIndexedProperties(JSThread *thread, const JSHandle<JSTaggedValue> &thisObj,
                                                          int64_t len, const JSHandle<JSTaggedValue> &callbackFnHandle,
                                                          HolesType holes)

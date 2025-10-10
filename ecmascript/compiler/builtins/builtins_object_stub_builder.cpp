@@ -175,7 +175,7 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
                     Bind(&notHole);
                     {
                         // value
-                        FastSetPropertyByIndex(glue_, toAssign, *idx, value);
+                        FastSetPropertyByIndex(glue_, toAssign, TaggedGetInt(key), value);
                         Label exception(env);
                         BRANCH(HasPendingException(glue_), &exception, &loopEnd);
                         Bind(&exception);

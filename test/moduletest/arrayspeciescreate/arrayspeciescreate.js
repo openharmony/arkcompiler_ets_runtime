@@ -18,12 +18,7 @@ class CustomArray extends Array {}
 // define Symbol.species, then the ArraySpeciesCreate for Array will use CustomArray
 Object.defineProperty(Array, Symbol.species, {value: CustomArray})
 
-function testSpeciesEffect() {
-    // test unstable array, fastpath in ir will be fixed later.
-    let custom = new Array(2000);
-
-    print("Testing methods affected by symbol.species:");
-
+function testSpeciesEffect(custom) {
     // Array.prototype.concat
     let result = custom.concat([4, 5]);
     print("concat:", result instanceof CustomArray); // true
@@ -69,4 +64,13 @@ function testSpeciesEffect() {
     print("with:", result instanceof Array); // true
 }
 
-testSpeciesEffect()
+// test unstable array
+let unstableArray = new Array(2000);
+print("Testing unstable array methods affected by symbol.species:");
+testSpeciesEffect(unstableArray)
+
+// test unstable array
+let stableArray = new Array(1, 2, 3);
+print("Testing stable array methods affected by symbol.species:");
+testSpeciesEffect(stableArray)
+

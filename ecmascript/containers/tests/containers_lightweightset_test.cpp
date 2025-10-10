@@ -325,6 +325,55 @@ HWTEST_F_L0(ContainersLightWeightSetTest, HasAllAndHas)
     }
 }
 
+HWTEST_F_L0(ContainersLightWeightSetTest, IncreaseCapacityToTest)
+{
+    constexpr uint32_t NODE_NUMBERS = 16;    // 16 means the value
+    JSHandle<JSAPILightWeightSet> lightWeightSet = CreateJSAPILightWeightSet();
+    auto callInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 means the value
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(lightWeightSet.GetTaggedValue());
+    callInfo->SetCallArg(0, JSTaggedValue(NODE_NUMBERS));
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    JSTaggedValue result = ContainersLightWeightSet::IncreaseCapacityTo(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    EXPECT_EQ(result, JSTaggedValue::Undefined());
+}
+
+HWTEST_F_L0(ContainersLightWeightSetTest, AddAllTest)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;    // 8 means the value
+    JSHandle<JSAPILightWeightSet> lws = CreateJSAPILightWeightSet();
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo =
+            TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);   // 6 means the value
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(lws.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i + 1 + 10));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = ContainersLightWeightSet::Add(callInfo);
+        EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, result),
+                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
+        TestHelper::TearDownFrame(thread, prev);
+        int length = lws->GetLength();
+        EXPECT_EQ(length, static_cast<int>(i + 1));
+    }
+    JSHandle<JSAPILightWeightSet> lightWeightSet = CreateJSAPILightWeightSet();
+    auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    callInfo->SetFunction(JSTaggedValue::Undefined());
+    callInfo->SetThis(lightWeightSet.GetTaggedValue());
+    callInfo->SetCallArg(0, lws.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+    JSTaggedValue result = ContainersLightWeightSet::AddAll(callInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    int length = lightWeightSet->GetLength();
+    EXPECT_EQ(length, static_cast<int>(NODE_NUMBERS));
+    EXPECT_TRUE(JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, result),
+                JSHandle<JSTaggedValue>(thread, JSTaggedValue::True())));
+}
+
 HWTEST_F_L0(ContainersLightWeightSetTest, Equal)
 {
     constexpr uint32_t NODE_NUMBERS = 8;    // 8 means the value

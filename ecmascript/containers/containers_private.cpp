@@ -70,11 +70,13 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
     }
 
     // Lazy set an undefinedIteratorResult to global constants
-    auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
-    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
-    JSHandle<JSObject> undefinedIteratorResult = JSIterator::CreateIterResultObject(thread, undefinedHandle, true);
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    env->SetUndefinedIteratorResult(thread, undefinedIteratorResult);
+    JSHandle env = thread->GetEcmaVM()->GetGlobalEnv();
+    if (!env->GetUndefinedIteratorResult()->IsUndefined()) {
+        auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
+        JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+        JSHandle<JSObject> undefinedIteratorResult = JSIterator::CreateIterResultObject(thread, undefinedHandle, true);
+        env->SetUndefinedIteratorResult(thread, undefinedIteratorResult);
+    }
 
     JSTaggedValue res = JSTaggedValue::Undefined();
     switch (tag) {
@@ -111,7 +113,11 @@ JSTaggedValue ContainersPrivate::Load(EcmaRuntimeCallInfo *msg)
             break;
         }
         case ContainerTag::TreeSet: {
-            res = InitializeContainer(thread, thisValue, InitializeTreeSet, "TreeSetConstructor");
+            if (!env->GetTreeSetConstructor()->IsUndefined()) {
+                res = env->GetTreeSetConstructor().GetTaggedValue();
+            } else {
+                LOG_ECMA(FATAL) << "treeset constructor is Undefined";
+            }
             break;
         }
         case ContainerTag::Vector: {
@@ -495,58 +501,31 @@ void ContainersPrivate::InitializeTreeMapIterator(JSThread *thread)
     SetStringTagSymbol(thread, env, mapIteratorPrototype, "TreeMap Iterator");
     env->SetTreeMapIteratorPrototype(thread, mapIteratorPrototype);
 }
-
-JSHandle<JSTaggedValue> ContainersPrivate::InitializeTreeSet(JSThread *thread)
+JSHandle<JSFunction> ContainersPrivate::NewTreeSetConstructor(const JSHandle<GlobalEnv> &env, JSThread *thread,
+                                                              const JSHandle<JSObject> &prototype,
+                                                              EcmaEntrypoint ctorFunc, const char *name, int length)
 {
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    // TreeSet.prototype
-    JSHandle<JSObject> setFuncPrototype = factory->NewEmptyJSObject();
-    JSHandle<JSTaggedValue> setFuncPrototypeValue(setFuncPrototype);
-    // TreeSet.prototype_or_hclass
-    JSHandle<JSHClass> setInstanceClass =
-        factory->NewEcmaHClass(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, setFuncPrototypeValue);
-    // TreeSet() = new Function()
-    JSHandle<JSTaggedValue> setFunction(NewContainerConstructor(
-        thread, setFuncPrototype, ContainersTreeSet::TreeSetConstructor, "TreeSet", FuncLength::ZERO));
-    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread,
-        JSHandle<JSFunction>::Cast(setFunction), setInstanceClass.GetTaggedValue());
+    JSHandle<JSFunction> ctor =
+        factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_CONSTRUCTOR);
 
-    // "constructor" property on the prototype
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSFunction::SetFunctionLength(thread, ctor, JSTaggedValue(length));
+    JSHandle<JSTaggedValue> nameString(factory->NewFromASCII(name));
+    JSFunction::SetFunctionName(thread, JSHandle<JSFunctionBase>(ctor), nameString,
+                                globalConst->GetHandledUndefined());
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(setFuncPrototype), constructorKey, setFunction);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
+    PropertyDescriptor descriptor1(thread, JSHandle<JSTaggedValue>::Cast(ctor), true, false, true);
+    JSObject::DefineOwnProperty(thread, prototype, constructorKey, descriptor1);
 
-    // TreeSet.prototype methods (excluding constructor and '@@' internal properties)
-    for (const base::BuiltinFunctionEntry &entry: ContainersTreeSet::GetTreeSetPrototypeFunctions()) {
-        SetFrozenFunction(thread, setFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
-                          entry.GetLength(), entry.GetBuiltinStubId());
-    }
+    /* set "prototype" in constructor */
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, ctor, prototype.GetTaggedValue());
 
-    // @@ToStringTag
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    SetStringTagSymbol(thread, env, setFuncPrototype, "TreeSet");
-    // %TreeSetPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
-    JSHandle<JSTaggedValue> values(thread, globalConst->GetValuesString());
-    JSHandle<JSTaggedValue> valuesFunc =
-        JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(setFuncPrototype), values);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    PropertyDescriptor descriptor(thread, valuesFunc, false, false, false);
-    JSObject::DefineOwnProperty(thread, setFuncPrototype, iteratorSymbol, descriptor);
-    // length
-    JSHandle<JSTaggedValue> lengthGetter =
-        CreateGetter(thread, ContainersTreeSet::GetLength, "length", FuncLength::ZERO);
-    JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
-    SetGetter(thread, setFuncPrototype, lengthKey, lengthGetter);
-
-    InitializeTreeSetIterator(thread);
-    return setFunction;
+    return ctor;
 }
 
-void ContainersPrivate::InitializeTreeSetIterator(JSThread *thread)
+void ContainersPrivate::InitializeTreeSetIterator(const JSHandle<GlobalEnv> &env, JSThread *thread)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // Iterator.hclass
     JSHandle<JSHClass> iteratorClass =
@@ -555,7 +534,17 @@ void ContainersPrivate::InitializeTreeSetIterator(JSThread *thread)
     // TreeSetIterator.prototype
     JSHandle<JSObject> setIteratorPrototype(factory->NewJSObject(iteratorClass));
     // TreeSetIterator.prototype.next()
-    SetFrozenFunction(thread, setIteratorPrototype, "next", JSAPITreeSetIterator::Next, FuncLength::ZERO);
+    JSHandle<JSTaggedValue> keyString(factory->NewFromASCII("next"));
+    JSHandle<JSFunction> function =
+        factory->NewJSBuiltinFunction(env, reinterpret_cast<void *>(JSAPITreeSetIterator::Next),
+                                      FunctionKind::NORMAL_FUNCTION);
+    JSFunction::SetFunctionLength(thread, function, JSTaggedValue(FuncLength::ZERO));
+    JSHandle<JSFunctionBase> baseFunction(function);
+    JSFunction::SetFunctionName(thread, baseFunction, keyString, thread->GlobalConstants()->GetHandledUndefined());
+
+    PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>(function), false, false, false);
+    JSObject::DefineOwnProperty(thread, setIteratorPrototype, keyString, descriptor);
+
     SetStringTagSymbol(thread, env, setIteratorPrototype, "TreeSet Iterator");
     env->SetTreeSetIteratorPrototype(thread, setIteratorPrototype);
 }

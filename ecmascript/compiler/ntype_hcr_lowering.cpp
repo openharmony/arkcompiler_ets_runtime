@@ -227,7 +227,7 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     GateRef globalEnv = circuit_->GetGlobalEnvCache();
     hclass = builder_.GetGlobalEnvValue(VariableType::JS_POINTER(), glue, globalEnv, static_cast<size_t>(hclassIndex));
 
-    JSHandle<JSFunction> arrayFunc(compilationEnv_->GetGlobalEnv()->GetArrayFunction());
+    JSHandle<JSFunction> arrayFunc(compilationEnv_->GetGlobalEnv()->GetArrayFunctionWithBarrier());
     JSTaggedValue protoOrHClass = arrayFunc->GetProtoOrHClass(compilationEnv_->GetHostThread());
     JSHClass *arrayHC = JSHClass::Cast(protoOrHClass.GetTaggedObject());
     size_t arraySize = arrayHC->GetObjectSize();

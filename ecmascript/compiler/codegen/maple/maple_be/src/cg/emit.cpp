@@ -310,8 +310,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
     } else {
         symName = mirSymbol.GetName();
     }
-    if (mirSymbol.GetAsmAttr() != UStrIdx(0) &&
-        (mirSymbol.GetStorageClass() == kScPstatic || mirSymbol.GetStorageClass() == kScPstatic)) {
+    if (mirSymbol.GetAsmAttr() != UStrIdx(0) && mirSymbol.GetStorageClass() == kScPstatic) {
         std::string asmSection = GlobalTables::GetUStrTable().GetStringFromStrIdx(mirSymbol.GetAsmAttr());
         symName = asmSection;
     }

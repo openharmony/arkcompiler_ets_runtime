@@ -26,6 +26,11 @@ class c{
       this.n = a;
     }
   }
+try {
+   let treeSet= new TreeSet();
+} catch (error) {
+   print(error.message);
+}
 if (globalThis["ArkPrivate"] != undefined) {
     fastset = ArkPrivate.Load(ArkPrivate.TreeSet);
 

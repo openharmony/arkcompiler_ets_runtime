@@ -74,9 +74,8 @@ public:
                                                                  size_t size, const CString &fileName,
                                                                  const CString &entryPoint);
 
-    static int ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
-        [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
-        bool isSingletonPattern);
+    static int ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread, const CString &bundleName,
+        const CString &moduleName, const CString &entry, bool isSingletonPattern);
 
     static bool IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unused]] const CString &bundleName,
         const CString &moduleName, const CString &entry);

@@ -78,7 +78,7 @@ public:
         CString path = GetSnapshotPath();
         CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
         if (remove(fileName.c_str()) != 0) {
-            GTEST_LOG_(ERROR) << "remove " << fileName << " failed";
+            GTEST_LOG_(ERROR) << "remove " << fileName << " failed when setup";
         }
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
     }
@@ -88,7 +88,7 @@ public:
         CString path = GetSnapshotPath();
         CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
         if (remove(fileName.c_str()) != 0) {
-            GTEST_LOG_(ERROR) << "remove " << fileName << " failed";
+            GTEST_LOG_(ERROR) << "remove " << fileName << " failed when teardown";
         }
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
@@ -104,11 +104,12 @@ public:
         return currentPath;
     }
 
-    void InitEntries(JSHandle<SourceTextModule> module) const
+    void InitEntries(JSHandle<SourceTextModule> module, JSHandle<SourceTextModule> jsonModule) const
     {
         ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
         JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
-        size_t importEntryArrayLen = 2;
+        JSHandle<JSTaggedValue> config = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("config"));
+        size_t importEntryArrayLen = 3;
         JSHandle<JSTaggedValue> importName = val;
         JSHandle<JSTaggedValue> localName = val;
         JSHandle<ImportEntry> importEntry1 =
@@ -118,6 +119,9 @@ public:
         JSHandle<ImportEntry> importEntry2 =
             objectFactory->NewImportEntry(index1, starString, localName, SharedTypes::UNSENDABLE_MODULE);
         SourceTextModule::AddImportEntry(thread, module, importEntry2, index1, importEntryArrayLen);
+        JSHandle<ImportEntry> importEntry3 =
+            objectFactory->NewImportEntry(index2, config, config, SharedTypes::UNSENDABLE_MODULE);
+        SourceTextModule::AddImportEntry(thread, module, importEntry3, index2, importEntryArrayLen);
 
         size_t localExportEntryLen = 1;
         JSHandle<LocalExportEntry> localExportEntry =
@@ -132,6 +136,15 @@ public:
         JSHandle<TaggedArray> indirectExportEntries = objectFactory->NewTaggedArray(indirectExportEntryLen);
         indirectExportEntries->Set(thread, index0, indirectExportEntry);
         module->SetIndirectExportEntries(thread, indirectExportEntries);
+
+        JSHandle<JSTaggedValue> defaultString = thread->GlobalConstants()->GetHandledDefaultString();
+        JSHandle<LocalExportEntry> jsonLocalExportEntry =
+            objectFactory->NewLocalExportEntry(defaultString, defaultString, index0, SharedTypes::UNSENDABLE_MODULE);
+        JSHandle<TaggedArray> jsonLocalExportEntries = objectFactory->NewTaggedArray(localExportEntryLen);
+        jsonLocalExportEntries->Set(thread, index0, jsonLocalExportEntry);
+        SourceTextModule::AddLocalExportEntry(thread, jsonModule, jsonLocalExportEntry, index0, localExportEntryLen);
+        JSHandle<JSTaggedValue> jsonVal = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("jsonVal"));
+        SourceTextModule::StoreModuleValue(thread, jsonModule, index0, jsonVal);
     }
 
     void InitEnv(JSHandle<SourceTextModule> module, JSHandle<SourceTextModule> bindingModule) const
@@ -182,13 +195,19 @@ public:
         module2->SetEcmaModuleFilenameString(baseFileName);
         module2->SetEcmaModuleRecordNameString(recordName2);
         module2->SetStatus(ModuleStatus::EVALUATED);
-
-        InitEntries(module);
+        JSHandle<SourceTextModule> module3 = objectFactory->NewSourceTextModule();
+        CString recordName3 = "d";
+        module3->SetEcmaModuleFilenameString(baseFileName);
+        module3->SetEcmaModuleRecordNameString(recordName3);
+        module3->SetStatus(ModuleStatus::EVALUATED);
+        module3->SetTypes(ModuleTypes::JSON_MODULE);
+        InitEntries(module, module3);
         InitEnv(module, module2);
 
         thread->GetModuleManager()->AddResolveImportedModule(recordName, module.GetTaggedValue());
         thread->GetModuleManager()->AddResolveImportedModule(recordName1, module1.GetTaggedValue());
         thread->GetModuleManager()->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
+        thread->GetModuleManager()->AddResolveImportedModule(recordName3, module3.GetTaggedValue());
     }
 
     void CheckEntries(JSHandle<SourceTextModule> serializeModule, JSHandle<SourceTextModule> deserializeModule) const
@@ -289,9 +308,19 @@ public:
         EXPECT_EQ(serializeModule->GetEcmaModuleFilenameString(), deserializeModule->GetEcmaModuleFilenameString());
         EXPECT_EQ(serializeModule->GetEcmaModuleRecordNameString(), deserializeModule->GetEcmaModuleRecordNameString());
         EXPECT_EQ(serializeModule->GetTypes(), deserializeModule->GetTypes());
-        if (serializeModule->GetStatus() > ModuleStatus::INSTANTIATED) {
+        if (serializeModule->GetStatus() > ModuleStatus::INSTANTIATED &&
+            serializeModule->GetTypes() != ModuleTypes::JSON_MODULE) {
             EXPECT_EQ(deserializeModule->GetStatus(), ModuleStatus::INSTANTIATED);
         } else {
+            auto vm = thread->GetEcmaVM();
+            ObjectFactory *objectFactory = vm->GetFactory();
+            if (serializeModule->GetTypes() == ModuleTypes::JSON_MODULE) {
+                JSHandle<JSTaggedValue> jsonVal = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("jsonVal"));
+                JSHandle<JSTaggedValue> data(thread, deserializeModule->GetNameDictionary(thread));
+                JSHandle<TaggedArray> arr(data);
+                JSTaggedValue jsonString = arr->Get(thread, index0);
+                EXPECT_EQ(jsonVal.GetTaggedValue(), jsonString);
+            }
             EXPECT_EQ(serializeModule->GetStatus(), deserializeModule->GetStatus());
         }
         // check request module
@@ -434,6 +463,7 @@ HWTEST_F_L0(ModuleSnapshotTest, SerializeAndDeserializeTest)
     JSHandle<SourceTextModule> serializeModule = moduleManager->HostGetImportedModule("a");
     JSHandle<SourceTextModule> serializeModule1 = moduleManager->HostGetImportedModule("b");
     JSHandle<SourceTextModule> serializeModule2 = moduleManager->HostGetImportedModule("c");
+    JSHandle<SourceTextModule> serializeModule3 = moduleManager->HostGetImportedModule("d");
     ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
     moduleManager->ClearResolvedModules();
     // deserialize
@@ -441,9 +471,11 @@ HWTEST_F_L0(ModuleSnapshotTest, SerializeAndDeserializeTest)
     JSHandle<SourceTextModule> deserializeModule = moduleManager->HostGetImportedModule("a");
     JSHandle<SourceTextModule> deserializeModule1 = moduleManager->HostGetImportedModule("b");
     JSHandle<SourceTextModule> deserializeModule2 = moduleManager->HostGetImportedModule("c");
+    JSHandle<SourceTextModule> deserializeModule3 = moduleManager->HostGetImportedModule("d");
     CheckModule(serializeModule, deserializeModule);
     CheckModule(serializeModule1, deserializeModule1);
     CheckModule(serializeModule2, deserializeModule2);
+    CheckModule(serializeModule3, deserializeModule3);
 }
 
 HWTEST_F_L0(ModuleSnapshotTest, ShouldNotSerializeWhenFileIsExists)

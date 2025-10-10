@@ -2890,15 +2890,15 @@ JSTaggedValue BuiltinsArray::FlatMap(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "the mapperFunction is not callable.", JSTaggedValue::Exception());
     }
     // 4. Let A be ? ArraySpeciesCreate(O, 0).
-    uint32_t arrayLen = 0;
-    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
+    JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(0U));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     base::FlattenArgs args = { sourceLen, 0, 1 };
     JSHandle<JSObject> newArrayHandle(thread, newArray);
     // 5. Perform ? FlattenIntoArray(A, O, sourceLen, 0, 1, mapperFunction, thisArg).
-    ArrayHelper::FlattenIntoArray(thread, newArrayHandle, thisObjVal, args,
-                                  mapperFunctionHandle, GetCallArg(argv, 1));
+    int64_t targetIdx = 0;
+    ArrayHelper::FlatMapFromIndex(thread, thisObjVal, newArrayHandle, mapperFunctionHandle,
+                                  GetCallArg(argv, 1), targetIdx, 0, sourceLen);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 6. Return A.
     return newArrayHandle.GetTaggedValue();

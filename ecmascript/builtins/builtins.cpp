@@ -58,7 +58,9 @@
 #include "ecmascript/builtins/builtins_weak_ref.h"
 #include "ecmascript/builtins/builtins_weak_set.h"
 #include "ecmascript/containers/containers_private.h"
+#include "ecmascript/containers/containers_treeset.h"
 #include "ecmascript/dfx/native_module_failure_info.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_async_function.h"
@@ -94,6 +96,8 @@
 #include "ecmascript/builtins/builtins_segmenter.h"
 #include "ecmascript/builtins/builtins_segments.h"
 #include "ecmascript/builtins/builtins_segment_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set_iterator.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
 #include "ecmascript/js_collator.h"
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_displaynames.h"
@@ -340,6 +344,7 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeAsyncGeneratorFunction(env, objFuncClass);
     InitializePromise(env, objFuncClass);
     InitializePromiseJob(env);
+    InitializeTreeSet(env);
     thread->CheckSafepointIfSuspended();
 #ifdef ARK_SUPPORT_INTL
     InitializeIntl(env, objFuncPrototypeVal);
@@ -3814,6 +3819,69 @@ JSHandle<JSObject> Builtins::InitializeArkPrivate(const JSHandle<GlobalEnv> &env
     SetConstant(arkPrivate, "PlainArray", JSTaggedValue(static_cast<int>(containers::ContainerTag::PlainArray)));
     SetConstant(arkPrivate, "FastBuffer", JSTaggedValue(static_cast<int>(containers::ContainerTag::FastBuffer)));
     return arkPrivate;
+}
+
+JSHandle<JSTaggedValue> Builtins::InitializeTreeSet(const JSHandle<GlobalEnv> &env)
+{
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    // TreeSet.prototype
+    JSHandle<JSObject> setFuncPrototype = factory_->NewEmptyJSObject(env);
+    JSHandle<JSTaggedValue> setFuncPrototypeValue(setFuncPrototype);
+    // TreeSet.prototype_or_hclass
+    JSHandle<JSHClass> setInstanceClass =
+        factory_->NewEcmaHClass(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, setFuncPrototypeValue);
+    // TreeSet() = new Function()
+    JSHandle<JSTaggedValue> setFunction(ContainersPrivate::NewTreeSetConstructor(env,
+        thread_, setFuncPrototype, containers::ContainersTreeSet::TreeSetConstructor,
+        "TreeSet", containers::FuncLength::ZERO));
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_,
+        JSHandle<JSFunction>::Cast(setFunction), setInstanceClass.GetTaggedValue());
+
+    // "constructor" property on the prototype
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
+    JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(setFuncPrototype), constructorKey, setFunction);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
+
+    // TreeSet.prototype methods (excluding constructor and '@@' internal properties)
+    for (const base::BuiltinFunctionEntry &entry: containers::ContainersTreeSet::GetTreeSetPrototypeFunctions()) {
+        SetFrozenFunction(env, setFuncPrototype, entry.GetName().data(), entry.GetEntrypoint(),
+                          entry.GetLength());
+    }
+
+    // @@ToStringTag
+    SetStringTagSymbol(env, setFuncPrototype, "TreeSet");
+    // %TreeSetPrototype% [ @@iterator ]
+    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> values(thread_, globalConst->GetValuesString());
+    JSHandle<JSTaggedValue> valuesFunc =
+        JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(setFuncPrototype), values);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
+    PropertyDescriptor descriptor(thread_, valuesFunc, false, false, false);
+    JSObject::DefineOwnProperty(thread_, setFuncPrototype, iteratorSymbol, descriptor);
+    // length
+    JSHandle<JSTaggedValue> lengthGetter =
+        CreateGetter(env, containers::ContainersTreeSet::GetLength, "length", containers::FuncLength::ZERO);
+    JSHandle<JSTaggedValue> lengthKey(thread_, globalConst->GetLengthString());
+    SetGetter(setFuncPrototype, lengthKey, lengthGetter);
+
+    ContainersPrivate::InitializeTreeSetIterator(env, thread_);
+
+    JSHandle<JSTaggedValue> undefinedHandle = globalConst->GetHandledUndefined();
+    // 2. Let obj be OrdinaryObjectCreate(%Object.prototype%).
+    JSHandle<JSHClass> klass = JSHandle<JSHClass>::Cast(env->GetIteratorResultClass());
+    JSHandle<JSObject> undefinedIteratorResult = factory_->NewJSObject(klass);
+
+    // 3. Perform ! CreateDataPropertyOrThrow(obj, "value", value).
+    // 4. Perform ! CreateDataPropertyOrThrow(obj, "done", done).
+    undefinedIteratorResult->SetPropertyInlinedPropsWithSize<JSIterator::SIZE, JSIterator::VALUE_INLINE_PROPERTY_INDEX>(
+        thread_, undefinedHandle.GetTaggedValue());
+    undefinedIteratorResult->SetPropertyInlinedPropsWithSize<JSIterator::SIZE, JSIterator::DONE_INLINE_PROPERTY_INDEX>(
+        thread_, JSTaggedValue(true));
+
+    env->SetUndefinedIteratorResult(thread_, undefinedIteratorResult);
+
+    env->SetTreeSetConstructor(thread_, setFunction);
+    return setFunction;
 }
 
 void Builtins::InitializeModuleNamespace(const JSHandle<GlobalEnv> &env,

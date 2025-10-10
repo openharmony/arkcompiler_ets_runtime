@@ -90,7 +90,7 @@ void DependentInfos::TriggerLazyDeoptimization(JSHandle<DependentInfos> dependen
                                                            func.GetObject<JSFunction>(),
                                                            method.GetObject<Method>(),
                                                            kungfu::DeoptType::LAZYDEOPT,
-                                                           true);
+                                                           false);
             TraceLazyDeoptReason(thread, func, (depCollection & collection));
         }
     }

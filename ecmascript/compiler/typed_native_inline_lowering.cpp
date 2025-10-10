@@ -1116,7 +1116,7 @@ GateRef AllocateNewNumber(GateRef glue, const CompilationEnv *compilationEnv, Ci
                           GateRef protoOrHclass, GateRef result)
 {
     Jit::JitLockHolder lock(compilationEnv, "AllocateNewNumber");
-    JSHandle<JSFunction> numberFunctionCT(compilationEnv->GetGlobalEnv()->GetNumberFunction());
+    JSHandle<JSFunction> numberFunctionCT(compilationEnv->GetGlobalEnv()->GetNumberFunctionWithBarrier());
     JSTaggedValue protoOrHClassCT = numberFunctionCT->GetProtoOrHClass(compilationEnv->GetJSThread());
     JSHClass *numberHClassCT = JSHClass::Cast(protoOrHClassCT.GetTaggedObject());
     size_t objectSize = numberHClassCT->GetObjectSize();
