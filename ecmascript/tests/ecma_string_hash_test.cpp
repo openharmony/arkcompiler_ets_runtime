@@ -16,7 +16,7 @@
 
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/ecma_string.h"
-#include "common_components/platform/string_hash.h"
+#include "ecmascript/platform/string_hash.h"
 
 using namespace panda::ecmascript;
 using namespace common;

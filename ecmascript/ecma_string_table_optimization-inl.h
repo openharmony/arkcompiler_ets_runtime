@@ -16,10 +16,10 @@
 #ifndef ECMASCRIPT_STRING_TABLE_OPTIMIZ_INL_H
 #define ECMASCRIPT_STRING_TABLE_OPTIMIZ_INL_H
 
-#include "common_components/objects/string_table/hashtriemap-inl.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_lock.h"
+#include "ecmascript/string/hashtriemap-inl.h"
 
 namespace panda::ecmascript {
 #if ENABLE_NEXT_OPTIMIZATION

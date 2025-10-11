@@ -30,6 +30,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/platform/parameters.h"
+#include "ecmascript/string/string_table_internal.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -61,6 +62,18 @@ bool Runtime::HasInstance()
 
 Runtime::~Runtime()
 {
+    if (g_isEnableCMCGC) {
+        if (baseClassRoots_ != nullptr) {
+            baseClassRoots_->Fini();
+            delete baseClassRoots_;
+            baseClassRoots_ = nullptr;
+        }
+        if (baseStringTable_ != nullptr) {
+            baseStringTable_->Fini();
+            delete baseStringTable_;
+            baseStringTable_ = nullptr;
+        }
+    }
     LockHolder lock(constpoolLock_);
     auto iter = globalSharedConstpools_.begin();
     while (iter != globalSharedConstpools_.end()) {
@@ -153,9 +166,22 @@ void Runtime::PreInitialization(const EcmaVM *vm)
 
 #if ENABLE_NEXT_OPTIMIZATION
     if (g_isEnableCMCGC) {
-        auto& baseStringTable = common::BaseRuntime::GetInstance()->GetStringTable();
+        baseStringTable_ = new (std::nothrow) BaseStringTableImpl();
+        baseStringTable_->Init();
+        auto& baseStringTable = *baseStringTable_;
+        common::BaseRuntime::GetInstance()->SetStringTableCleanUpCallback([] {
+            auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(Runtime::GetInstance()->GetBaseStringTable());
+            stringTable.GetInternalTable()->GetCleaner()->CleanUp();
+        });
+        common::BaseRuntime::GetInstance()->SetStringTableProcessCallback([](const WeakRefFieldVisitor& visitor) {
+            auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(Runtime::GetInstance()->GetBaseStringTable());
+            auto stringTableCleaner = stringTable.GetInternalTable()->GetCleaner();
+            stringTableCleaner->PostSweepWeakRefTask(visitor);
+            stringTableCleaner->JoinAndWaitSweepWeakRefTask(visitor);
+        });
+        baseClassRoots_ = new (std::nothrow) BaseClassRoots();
         stringTable_ = std::make_unique<EcmaStringTable>(true, &baseStringTable,
-                                                         &static_cast<common::BaseStringTableImpl*>(&baseStringTable)->
+                                                         &static_cast<BaseStringTableImpl*>(&baseStringTable)->
                                                           GetInternalTable()->GetHashTrieMap());
     } else {
         stringTable_ = std::make_unique<EcmaStringTable>(false);

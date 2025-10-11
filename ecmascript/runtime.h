@@ -31,6 +31,7 @@
 #include "ecmascript/platform/dfx_hisys_event.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/serializer/serialize_chunk.h"
+#include "ecmascript/string/composite_base_class.h"
 
 #include "libpandabase/macros.h"
 
@@ -137,6 +138,16 @@ public:
     inline EcmaStringTable *GetEcmaStringTable() const
     {
         return stringTable_.get();
+    }
+
+    BaseStringTableInterface<BaseStringTableImpl> &GetBaseStringTable() const
+    {
+        return *baseStringTable_;
+    }
+
+    BaseClassRoots &GetBaseClassRoots() const
+    {
+        return *baseClassRoots_;
     }
 
     void IterateSharedRoot(RootVisitor &visitor);
@@ -391,6 +402,8 @@ private:
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
     // for stringTable.
     std::unique_ptr<EcmaStringTable> stringTable_;
+    BaseStringTableInterface<BaseStringTableImpl>* baseStringTable_ = nullptr;
+    BaseClassRoots* baseClassRoots_ = nullptr;
     std::unordered_map<uint32_t, std::unique_ptr<SerializationChunk>> serializeRootMap_;
     std::vector<uint32_t> serializeDataIndexVector_;
 

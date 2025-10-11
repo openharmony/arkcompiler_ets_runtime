@@ -15,7 +15,7 @@
 
 #include "ecmascript/ecma_string-inl.h"
 
-#include "common_interfaces/objects/string/base_string-inl.h"
+#include "ecmascript/string/base_string-inl.h"
 #include "ecmascript/base/json_helper.h"
 
 namespace panda::ecmascript {

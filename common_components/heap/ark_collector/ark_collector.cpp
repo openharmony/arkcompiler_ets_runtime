@@ -21,7 +21,6 @@
 #include "common_interfaces/heap/heap_visitor.h"
 #include "common_interfaces/objects/ref_field.h"
 #include "common_interfaces/profiler/heap_profiler_listener.h"
-#include "common_components/objects/string_table_internal.h"
 #include "common_components/heap/allocator/fix_heap.h"
 #include "common_components/heap/allocator/regional_heap.h"
 
@@ -727,17 +726,13 @@ void ArkCollector::PrepareFix()
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PrepareFix[STW]", "");
 
 #ifndef GC_STW_STRINGTABLE
-        auto *baseRuntime = BaseRuntime::GetInstance();
-        auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
-        stringTable.GetInternalTable()->GetCleaner()->CleanUp();
+        BaseRuntime::GetInstance()->StringTableCleanUp();
 #endif
 
         GetGCStats().recordSTWTime(prepareFixStwParam.GetElapsedNs());
     } else {
 #ifndef GC_STW_STRINGTABLE
-        auto *baseRuntime = BaseRuntime::GetInstance();
-        auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
-        stringTable.GetInternalTable()->GetCleaner()->CleanUp();
+        BaseRuntime::GetInstance()->StringTableCleanUp();
 #endif
     }
 }
@@ -1029,11 +1024,7 @@ void ArkCollector::ProcessStringTable()
         }
         return true;
     };
-    auto* baseRuntime = BaseRuntime::GetInstance();
-    auto& stringTable = reinterpret_cast<BaseStringTableImpl&>(baseRuntime->GetStringTable());
-    auto stringTableCleaner = stringTable.GetInternalTable()->GetCleaner();
-    stringTableCleaner->PostSweepWeakRefTask(weakVisitor);
-    stringTableCleaner->JoinAndWaitSweepWeakRefTask(weakVisitor);
+    BaseRuntime::GetInstance()->ProcessStringTable(weakVisitor);
 }
 
 

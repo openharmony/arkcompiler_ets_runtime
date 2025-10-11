@@ -14,37 +14,36 @@
  */
 
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/objects/base_string_table.h"
-#include "common_components/objects/string_table_internal.h"
 #include "common_interfaces/thread/mutator_base.h"
-#include "common_interfaces/objects/string/base_string.h"
 #include "common_interfaces/thread/thread_holder.h"
 #include "common_interfaces/base_runtime.h"
 #include "common_interfaces/heap/heap_allocator.h"
-#include "common_interfaces/objects/string/base_string-inl.h"
-   
+#include "ecmascript/string/base_string.h"
+#include "ecmascript/string/base_string-inl.h"
+#include "ecmascript/string/base_string_table.h"
+#include "ecmascript/string/string_table_internal.h"
 
-namespace common {
+namespace panda::ecmascript {
 
-struct DummyMutator : public MutatorBase {
-    explicit DummyMutator(LanguageType lang) : lang_(lang) {}
-    LanguageType lang_;
+struct DummyMutator : public common::MutatorBase {
+    explicit DummyMutator(common::LanguageType lang) : lang_(lang) {}
+    common::LanguageType lang_;
 };
 
 class BaseStringTableTest : public common::test::BaseTestWithScope {
 protected:
     using TableType = BaseStringTableInternal<false>;
-    BaseRuntime* runtime_;
-    std::unique_ptr<MutatorBase> mutator_;
+    common::BaseRuntime* runtime_;
+    std::unique_ptr<common::MutatorBase> mutator_;
     std::unique_ptr<TableType> table_;
-    ThreadHolder* threadHolder_;
+    common::ThreadHolder* threadHolder_;
 
     void SetUp() override
     {
-        mutator_ = std::make_unique<DummyMutator>(LanguageType::DYNAMIC);
-        threadHolder_ = new ThreadHolder(mutator_.get());
+        mutator_ = std::make_unique<DummyMutator>(common::LanguageType::DYNAMIC);
+        threadHolder_ = new common::ThreadHolder(mutator_.get());
 
-        runtime_ = BaseRuntime::GetInstance();
+        runtime_ = common::BaseRuntime::GetInstance();
         ASSERT_TRUE(runtime_ != nullptr);
 
         runtime_->Init();
@@ -66,8 +65,9 @@ protected:
 
     BaseString* CreateUtf8String(const char* utf8Data, uint32_t length, bool canBeCompress)
     {
-        auto allocator = [](size_t size, ObjectType type) -> BaseString* {
-            void* mem = reinterpret_cast<void*>(HeapAllocator::AllocateInOldOrHuge(size, LanguageType::DYNAMIC));
+        auto allocator = [](size_t size, EcmaStringType type) -> BaseString* {
+            void* mem = reinterpret_cast<void*>(common::HeapAllocator::AllocateInOldOrHuge(size,
+                common::LanguageType::DYNAMIC));
             if (mem == nullptr) {
                 return nullptr;
             }
@@ -83,16 +83,16 @@ protected:
         return str;
     }
 
-    static ReadOnlyHandle<BaseString> MockHandleCreator(ThreadHolder* holder, BaseString* str)
+    static common::ReadOnlyHandle<BaseString> MockHandleCreator(common::ThreadHolder* holder, BaseString* str)
     {
         uintptr_t handleValue = reinterpret_cast<uintptr_t>(str);
-        return ReadOnlyHandle<BaseString>(handleValue);
+        return common::ReadOnlyHandle<BaseString>(handleValue);
     }
 };
 
 HWTEST_F_L0(BaseStringTableTest, SweepWeakRef)
 {
-    WeakRefFieldVisitor mockVisitor = [](RefField<false>& field) {
+    WeakRefFieldVisitor mockVisitor = [](common::RefField<false>& field) {
         return true;
     };
 

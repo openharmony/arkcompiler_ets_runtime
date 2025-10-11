@@ -24,8 +24,9 @@ using EcmaStringAccessor = panda::ecmascript::EcmaStringAccessor;
 namespace panda::test {
 class BaseStringTableTest : public BaseTestWithScope<false> {
 public:
-    common::BaseStringTableInterface<common::BaseStringTableImpl>::HandleCreator handleCreator_ = [
-        ](common::ThreadHolder* holder, common::BaseString* string) -> common::ReadOnlyHandle<common::BaseString> {
+    ecmascript::BaseStringTableInterface<ecmascript::BaseStringTableImpl>::HandleCreator handleCreator_ = [
+        ](common::ThreadHolder* holder, ecmascript::BaseString* string)
+            -> common::ReadOnlyHandle<ecmascript::BaseString> {
         return JSHandle<EcmaString>(holder->GetJSThread(), EcmaString::FromBaseString(string));
     };
 };
@@ -41,14 +42,14 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternFlattenString_EmptyString)
     if (!ecmascript::g_isEnableCMCGC) {
         return;
     }
-    auto& table = common::BaseRuntime::GetInstance()->GetStringTable();
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
 
     JSHandle<EcmaString> emptyEcmaStrHandle(thread, EcmaStringAccessor::CreateEmptyString(thread->GetEcmaVM()));
     EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
 
     table.GetOrInternFlattenString(thread->GetThreadHolder(), handleCreator_, emptyEcmaStrHandle->ToBaseString());
     EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
-    common::BaseString* emptyEcmaStr = table.TryGetInternString(emptyEcmaStrHandle);
+    ecmascript::BaseString* emptyEcmaStr = table.TryGetInternString(emptyEcmaStrHandle);
     EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(emptyEcmaStr)).ToCString(thread).c_str(), "");
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(emptyEcmaStr)).IsInternString());
 }
@@ -66,13 +67,13 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternString_utf8Data)
         return;
     }
     EcmaVM* vm = thread->GetEcmaVM();
-    auto& table = common::BaseRuntime::GetInstance()->GetStringTable();
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
 
     uint8_t utf8Data[] = {0x68, 0x65, 0x6c, 0x6c, 0x6f}; // " hello "
     EcmaString* ecmaStrCreatePtr = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, sizeof(utf8Data), true);
     EXPECT_TRUE(!EcmaStringAccessor(ecmaStrCreatePtr).IsInternString());
 
-    common::BaseString* ecmaStrGetPtr = table.GetOrInternString(thread->GetThreadHolder(), handleCreator_, utf8Data,
+    ecmascript::BaseString* ecmaStrGetPtr = table.GetOrInternString(thread->GetThreadHolder(), handleCreator_, utf8Data,
                                                                 sizeof(utf8Data), true);
     EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).ToCString(thread).c_str(), "hello");
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).IsInternString());
@@ -91,15 +92,15 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternString_utf16Data)
         return;
     }
     EcmaVM* vm = thread->GetEcmaVM();
-    auto& table = common::BaseRuntime::GetInstance()->GetStringTable();
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
 
     uint16_t utf16Data[] = {0x7F16, 0x7801, 0x89E3, 0x7801}; // “ 编码解码 ”
     EcmaString* ecmaStrCreatePtr =
         EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, sizeof(utf16Data) / sizeof(uint16_t), false);
     EXPECT_TRUE(!EcmaStringAccessor(ecmaStrCreatePtr).IsInternString());
 
-    common::BaseString* ecmaStrGetPtr = table.GetOrInternString(thread->GetThreadHolder(), handleCreator_, utf16Data,
-                                                                sizeof(utf16Data) / sizeof(uint16_t), false);
+    ecmascript::BaseString* ecmaStrGetPtr = table.GetOrInternString(thread->GetThreadHolder(), handleCreator_,
+        utf16Data, sizeof(utf16Data) / sizeof(uint16_t), false);
     EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).ToCString(thread).c_str(), "编码解码");
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(ecmaStrGetPtr)).IsInternString());
 }
@@ -117,14 +118,14 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternStringFromCompressedSubString_SubStr
     }
     EcmaVM* vm = thread->GetEcmaVM();
     ecmascript::ObjectFactory* factory = vm->GetFactory();
-    auto& table = common::BaseRuntime::GetInstance()->GetStringTable();
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
 
     JSHandle<EcmaString> originalStr =
         factory->NewFromASCII("00000x680x650x6c0x6c0x6f0x200x770x6f0x720x6c0x64"); // "hello world"
     uint32_t offset = 4;
     uint32_t utf8Len = EcmaStringAccessor(*originalStr).GetLength() - offset;
 
-    common::BaseString* internStr = table.GetOrInternStringFromCompressedSubString(
+    ecmascript::BaseString* internStr = table.GetOrInternStringFromCompressedSubString(
         thread->GetThreadHolder(), handleCreator_, originalStr, offset, utf8Len);
     EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(internStr)).ToCString(thread).c_str(),
                  "0x680x650x6c0x6c0x6f0x200x770x6f0x720x6c0x64");

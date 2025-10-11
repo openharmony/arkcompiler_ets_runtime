@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_STRING_INL_H
 #define ECMASCRIPT_STRING_INL_H
 
-#include "common_interfaces/objects/string/base_string-inl.h"
+#include "ecmascript/string/base_string-inl.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
@@ -44,8 +44,8 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
     if (utf8Len == 0) {
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
-    auto allocator = [vm, type](size_t size, common::ObjectType stringType) -> BaseObject* {
-        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm, type](size_t size, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::LINE_STRING && "Can only allocate line string");
         return EcmaString::AllocLineString(vm, size, type)->ToBaseString();
     };
     BaseString *str = LineString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
@@ -86,8 +86,8 @@ inline EcmaString *EcmaString::CreateFromUtf8CompressedSubString(const EcmaVM *v
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
 
-    auto allocator = [vm, type](size_t size, common::ObjectType stringType) -> BaseObject* {
-        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm, type](size_t size, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::LINE_STRING && "Can only allocate line string");
         return EcmaString::AllocLineString(vm, size, type)->ToBaseString();
     };
     BaseString *str = LineString::CreateFromUtf8CompressedSubString(std::move(allocator), string, offset, utf8Len);
@@ -124,8 +124,8 @@ inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t 
         return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
     }
 
-    auto allocator = [vm, type](size_t size, common::ObjectType stringType) -> BaseObject* {
-        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm, type](size_t size, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::LINE_STRING && "Can only allocate line string");
         return EcmaString::AllocLineString(vm, size, type)->ToBaseString();
     };
     BaseString *str = LineString::CreateFromUtf16(std::move(allocator), utf16Data, utf16Len, canBeCompress);
@@ -135,8 +135,8 @@ inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t 
 /* static */
 inline EcmaString *EcmaString::CreateLineString(const EcmaVM *vm, size_t length, bool compressed)
 {
-    auto allocator = [vm](size_t size, common::ObjectType stringType) -> BaseObject* {
-        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm](size_t size, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::LINE_STRING && "Can only allocate line string");
         EcmaString* string = vm->GetFactory()->AllocLineStringObject(size);
         return string;
     };
@@ -147,8 +147,8 @@ inline EcmaString *EcmaString::CreateLineString(const EcmaVM *vm, size_t length,
 /* static */
 inline EcmaString *EcmaString::CreateLineStringNoGC(const EcmaVM *vm, size_t length, bool compressed)
 {
-    auto allocator = [vm](size_t size, common::ObjectType stringType) -> BaseObject* {
-        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm](size_t size, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::LINE_STRING && "Can only allocate line string");
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         EcmaString* string = vm->GetFactory()->AllocLineStringObjectNoGC(size);
         return string;
@@ -181,8 +181,8 @@ inline EcmaString* EcmaString::AllocLineString(const EcmaVM* vm, size_t size, Me
 inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, size_t length, bool compressed,
                                                              MemSpaceType type)
 {
-    auto allocator = [vm, type](size_t size, common::ObjectType stringType) -> BaseObject* {
-        ASSERT(stringType == common::ObjectType::LINE_STRING && "Can only allocate line string");
+    auto allocator = [vm, type](size_t size, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::LINE_STRING && "Can only allocate line string");
         ASSERT(IsSMemSpace(type));
         return AllocLineString(vm, size, type);
     };
@@ -193,8 +193,8 @@ inline EcmaString *EcmaString::CreateLineStringWithSpaceType(const EcmaVM *vm, s
 inline SlicedEcmaString* EcmaString::CreateSlicedString(const EcmaVM* vm, JSHandle<EcmaString> parent,
                                                         MemSpaceType type)
 {
-    auto allocator = [vm, type](size_t, common::ObjectType stringType) -> BaseObject* {
-        ASSERT(stringType == common::ObjectType::SLICED_STRING && "Can only allocate sliced string");
+    auto allocator = [vm, type](size_t, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::SLICED_STRING && "Can only allocate sliced string");
         EcmaString* string = vm->GetFactory()->AllocSlicedStringObject(type);
         return string;
     };
@@ -232,8 +232,8 @@ inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
     JSThread *thread = nullptr;
     GetDebuggerThread(vm, &thread);
 
-    auto allocator = [vm](size_t, common::ObjectType stringType) -> BaseObject* {
-        ASSERT(stringType == common::ObjectType::TREE_STRING && "Can only allocate tree string");
+    auto allocator = [vm](size_t, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::TREE_STRING && "Can only allocate tree string");
         EcmaString* string = vm->GetFactory()->AllocTreeStringObject();
         return string;
     };

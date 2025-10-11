@@ -111,7 +111,7 @@ void VisitBaseRoots(const RefFieldVisitor &visitorFunc)
         return;
     }
 
-    BaseClassRoots &baseClassRoots = BaseRuntime::GetInstance()->GetBaseClassRoots();
+    panda::ecmascript::BaseClassRoots &baseClassRoots = panda::ecmascript::Runtime::GetInstance()->GetBaseClassRoots();
     // When visit roots, the language of the object is not used, so using the visitorFunc will work for
     // both dynamic and static.
     baseClassRoots.IterateCompositeBaseClass(visitorFunc);

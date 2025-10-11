@@ -112,7 +112,7 @@ namespace OHOS {
         JSHandle<EcmaString> value(thread,
                                    EcmaStringAccessor::CreateFromUtf8(vm, utf8Data.data(), utf8Data.size(), true));
 
-        auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, common::TrieMapConfig::NeedSlotBarrier>();
+        auto *map = new HashTrieMap<EcmaStringTableMutex, JSThread, TrieMapConfig::NeedSlotBarrier>();
         map->template LoadOrStore<true>(thread, key1, [value]() { return value; },
                                         [](BaseString *) { return false; });
         map->template LoadOrStore<true>(thread, key2, [value]() { return value; },
