@@ -3420,7 +3420,10 @@ HWTEST_F_L0(EcmaModuleTest, SearchCircularImport)
 
 HWTEST_F_L0(EcmaModuleTest, IsDynamicModule)
 {
-    bool res = SourceTextModule::IsDynamicModule(LoadingTypes::DYNAMITC_MODULE);
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    bool res = SourceTextModule::IsDynamicModule(module);
     EXPECT_EQ(res, true);
 }
 
@@ -3908,46 +3911,6 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValueOuterInternal2)
     EXPECT_TRUE(result);
 }
 
-HWTEST_F_L0(EcmaModuleTest, RemoveModule)
-{
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    thread->GetEcmaVM()->GetJSOptions().SetIsWorker(false);
-
-    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    module->SetTypes(ModuleTypes::APP_MODULE);
-
-    JSHandle<JSTaggedValue> res = moduleManager->TryGetImportedModule("module_test_module_test_C");
-    EXPECT_NE(res, thread->GlobalConstants()->GetHandledUndefined());
-    ModuleDeregister::RemoveModule(thread, module);
-
-    res = moduleManager->TryGetImportedModule("module_test_module_test_C");
-    EXPECT_EQ(res, thread->GlobalConstants()->GetHandledUndefined());
-}
-
-HWTEST_F_L0(EcmaModuleTest, RemoveModule2)
-{
-    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
-    EXPECT_TRUE(result);
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    thread->GetEcmaVM()->GetJSOptions().SetIsWorker(false);
-
-    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    module->SetTypes(ModuleTypes::OHOS_MODULE);
-    
-    JSHandle<JSTaggedValue> res = moduleManager->TryGetImportedModule("module_test_module_test_C");
-    EXPECT_NE(res, thread->GlobalConstants()->GetHandledUndefined());
-    ModuleDeregister::RemoveModule(thread, module);
-
-    res = moduleManager->TryGetImportedModule("module_test_module_test_C");
-    EXPECT_EQ(res, thread->GlobalConstants()->GetHandledUndefined());
-}
-
 HWTEST_F_L0(EcmaModuleTest, IsEvaluatedModule)
 {
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
@@ -4393,11 +4356,167 @@ HWTEST_F(EcmaModuleTest, Deregister, TestSize.Level0)
     JSTaggedValue val = ModuleValueAccessor::GetModuleValueInner(thread, 0, recordNameARecord);
     EXPECT_EQ(val, JSTaggedValue(20));
     uint32_t normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 4);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
+    normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 2);
+
+    result = JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordName);
+    EXPECT_TRUE(result);
+    moduleA = thread->GetModuleManager()->GetImportedModule(recordNameA);
+    recordNameARecord = JSHandle<JSTaggedValue>::Cast(moduleA);
+    val = ModuleValueAccessor::GetModuleValueInner(thread, 0, recordNameARecord);
+    EXPECT_EQ(val, JSTaggedValue(20));
+    normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 4);
+}
+
+HWTEST_F(EcmaModuleTest, DeregisterCircular, TestSize.Level0)
+{
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordNameA = "circularA";
+    CString recordNameB = "circularB";
+
+    Expected<JSTaggedValue, bool> result =
+        JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordNameA, false, ExecuteTypes::DYNAMIC);
+    EXPECT_TRUE(result);
+    JSHandle<SourceTextModule> moduleA =
+        thread->GetModuleManager()->GetImportedModule(recordNameA);
+    JSHandle<SourceTextModule> moduleB =
+        thread->GetModuleManager()->GetImportedModule(recordNameB);
+    uint16_t registerNum1 = moduleA->GetRegisterCounts();
+    uint16_t registerNum2 = moduleB->GetRegisterCounts();
+    EXPECT_EQ(registerNum1, 1);
+    EXPECT_EQ(registerNum2, 1);
+    uint32_t normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 2);
+    std::set<CString> decreaseModule = {recordNameA};
+    ModuleDeregister::DecreaseRegisterCounts(thread, moduleA, decreaseModule);
+    normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 0);
+}
+
+HWTEST_F(EcmaModuleTest, ResetConstPoolLiterals, TestSize.Level0)
+{
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordName = "entry";
+    // cannot find module
+    thread->GetModuleManager()->ResetConstPoolLiterals(recordName);
+
+    Expected<JSTaggedValue, bool> result =
+        JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordName);
+    EXPECT_TRUE(result);
+    thread->GetEcmaVM()->SetUnsharedConstpool(0, JSTaggedValue::Hole());
+    thread->GetModuleManager()->ResetConstPoolLiterals(recordName);
+}
+
+HWTEST_F(EcmaModuleTest, DeregisterCircular1, TestSize.Level0)
+{
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordNameA = "circularA";
+    CString recordNameB = "circularB";
+    CString recordNameC = "circular_entry";
+
+    Expected<JSTaggedValue, bool> result =
+        JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordNameA, false, ExecuteTypes::DYNAMIC);
+    EXPECT_TRUE(result);
+    JSHandle<SourceTextModule> moduleA =
+        thread->GetModuleManager()->GetImportedModule(recordNameA);
+    JSHandle<SourceTextModule> moduleB =
+        thread->GetModuleManager()->GetImportedModule(recordNameB);
+    uint16_t registerNum1 = moduleA->GetRegisterCounts();
+    uint16_t registerNum2 = moduleB->GetRegisterCounts();
+    EXPECT_EQ(registerNum1, 1);
+    EXPECT_EQ(registerNum2, 1);
+    result = JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordNameC);
+    EXPECT_TRUE(result);
+    JSHandle<SourceTextModule> moduleC =
+        thread->GetModuleManager()->GetImportedModule(recordNameC);
+    registerNum1 = moduleA->GetRegisterCounts();
+    registerNum2 = moduleB->GetRegisterCounts();
+    uint16_t registerNum3 = moduleC->GetRegisterCounts();
+    // dynamic import same entry twice
+    EXPECT_EQ(moduleA->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
+    EXPECT_EQ(moduleB->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
+    EXPECT_EQ(moduleC->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
+    EXPECT_EQ(registerNum1, 1);
+    EXPECT_EQ(registerNum2, 1);
+    EXPECT_EQ(registerNum3, UINT16_MAX);
+
+    // unable to deregister
+    uint32_t normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 3);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
+    normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 3);
+}
+
+HWTEST_F(EcmaModuleTest, DeregisterCircular2, TestSize.Level0)
+{
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordNameA = "circularA";
+    CString recordNameB = "circularB";
+    CString recordNameC = "circular_entry";
+
+    Expected<JSTaggedValue, bool> result = JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordNameC);
+    EXPECT_TRUE(result);
+
+    // deregister
+    uint32_t normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
     EXPECT_EQ(normalModuleSize, 3);
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
     normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
     EXPECT_EQ(normalModuleSize, 1);
+}
+
+HWTEST_F(EcmaModuleTest, Deregister1, TestSize.Level0)
+{
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordNameA = "circularA";
+    CString recordNameB = "circularB";
+    CString recordNameC = "circular_entry";
+
+    Expected<JSTaggedValue, bool> result =
+        JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordNameC);
+    EXPECT_TRUE(result);
+    JSHandle<SourceTextModule> moduleA =
+        thread->GetModuleManager()->GetImportedModule(recordNameA);
+    JSHandle<SourceTextModule> moduleB =
+        thread->GetModuleManager()->GetImportedModule(recordNameB);
+    JSHandle<SourceTextModule> moduleC =
+        thread->GetModuleManager()->GetImportedModule(recordNameC);
+    uint16_t registerNum1 = moduleA->GetRegisterCounts();
+    uint16_t registerNum2 = moduleB->GetRegisterCounts();
+    EXPECT_EQ(registerNum1, 1);
+    EXPECT_EQ(registerNum2, 1);
+    result = JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordNameB);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(moduleA->GetLoadingTypes(), LoadingTypes::STABLE_MODULE); // should be stable
+    EXPECT_EQ(moduleB->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
+    EXPECT_EQ(moduleC->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
+
+    // unable to deregister
+    uint32_t normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 3);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    builtins::BuiltinsArkTools::ForceFullGC(ecmaRuntimeCallInfo);
+    normalModuleSize = thread->GetModuleManager()->GetResolvedModulesSize();
+    EXPECT_EQ(normalModuleSize, 3);
+}
+
+HWTEST_F(EcmaModuleTest, SetModuleLoadingTypeToStable, TestSize.Level0)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
+    ModuleDeregister::SetModuleLoadingTypeToStable(thread, module);
+    EXPECT_EQ(module->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
 }
 }  // namespace panda::test

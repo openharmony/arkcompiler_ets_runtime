@@ -14,4 +14,12 @@
  */
 
 import { b } from './B';
+import lazy { c } from './C'
 export let a = 10 + b;
+export class testA {
+    a0 = "a0";
+    static a = 10;
+    foo() {
+        return "0";
+    }
+}

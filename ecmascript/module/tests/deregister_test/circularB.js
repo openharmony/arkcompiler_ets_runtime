@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import('./A').then((ns)=>{
-    let instanceA = new ns.testA;
-    instanceA.foo();
-    markModuleCollectable(ns);
-});
+import { A } from './circularA'
+export let B = 'nestedB';
+export function funcB() {
+    print(A);
+}

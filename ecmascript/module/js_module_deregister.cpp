@@ -84,16 +84,7 @@ void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, const CString &
 void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module)
 {
     CString recordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
-    ModuleManager *moduleManager = thread->GetModuleManager();
-    if (!thread->GetEcmaVM()->IsWorkerThread() &&
-        (module->GetTypes() == ModuleTypes::APP_MODULE || module->GetTypes() == ModuleTypes::OHOS_MODULE)) {
-        if (TryToRemoveSO(thread, module)) {
-            LOG_FULL(INFO) << "Remove native module " << recordName << " successfully.";
-        } else {
-            LOG_FULL(INFO) << "Remove native module " << recordName << " failed.";
-        }
-    }
-    moduleManager->RemoveModuleFromCache(recordName);
+    thread->GetModuleManager()->RemoveModuleFromCache(recordName);
 }
 
 void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
@@ -110,9 +101,7 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
             const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName = SourceTextModule::GetModuleName(requiredModule.GetTaggedValue());
             if (increaseModule.find(moduleName) != increaseModule.end()) {
-                LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
-                requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
-                return;
+                continue;
             }
             increaseModule.emplace(moduleName);
             LoadingTypes type = requiredModule->GetLoadingTypes();
@@ -149,11 +138,15 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
                 continue;
             }
             if (decreaseModule.find(moduleName) != decreaseModule.end()) {
-                LOG_FULL(DEBUG) << "Find module cyclical loading, stop decreasing.";
-                requiredModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
-                return;
+                continue;
             }
             decreaseModule.emplace(moduleName);
+            // if module is lazy, this module and it's request module shoule not deregistered.
+            // because module execute may contain in PromiseJob.
+            if (requiredModule->GetStatus() < ModuleStatus::EVALUATED) {
+                SetModuleLoadingTypeToStable(thread, requiredModule);
+                continue;
+            }
             LoadingTypes type = requiredModule->GetLoadingTypes();
             if (type == LoadingTypes::DYNAMITC_MODULE) {
                 DecreaseRegisterCounts(thread, requiredModule, decreaseModule);
@@ -187,5 +180,24 @@ bool ModuleDeregister::TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule
 
     CString soName = base::PathHelper::GetStrippedModuleName(module->GetEcmaModuleRecordNameString());
     return unloadNativeModuleCallback(soName.c_str());
+}
+
+void ModuleDeregister::SetModuleLoadingTypeToStable(JSThread *thread, JSHandle<SourceTextModule> module)
+{
+    if (!SourceTextModule::IsDynamicModule(module)) {
+        return;
+    }
+    module->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+    if (!module->GetRequestedModules(thread).IsUndefined()) {
+        JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules(thread));
+        size_t requestedModulesLen = requestedModules->GetLength();
+        for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            JSHandle<SourceTextModule> requiredModule =
+                SourceTextModule::GetModuleFromCacheOrResolveNewOne(thread, module, requestedModules, idx);
+            RETURN_IF_ABRUPT_COMPLETION(thread);
+            ASSERT(requiredModule.GetTaggedValue().IsSourceTextModule());
+            SetModuleLoadingTypeToStable(thread, requiredModule);
+        }
+    }
 }
 } // namespace panda::ecmascript

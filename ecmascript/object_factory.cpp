@@ -5114,6 +5114,7 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetStatus(ModuleStatus::UNINSTANTIATED);
     obj->SetTypes(ModuleTypes::UNKNOWN);
     obj->SetIsNewBcVersion(false);
+    obj->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetLazyImportStatus(ToUintPtr(nullptr));
     obj->SetEcmaModuleFilename(ToUintPtr(nullptr));

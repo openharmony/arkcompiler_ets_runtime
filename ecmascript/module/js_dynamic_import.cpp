@@ -37,7 +37,6 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
     // IsInstantiatedModule is for lazy module to execute
     if (moduleManager->IsLocalModuleLoaded(specifierString) &&
         (!moduleManager->IsLocalModuleInstantiated(specifierString))) {
-        ModuleDeregister::ReviseLoadedModuleCount(thread, specifierString);
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->HostGetImportedModule(specifierString);
         moduleRecord->CheckAndThrowModuleError(thread);
@@ -63,9 +62,6 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
                 BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));
         }
         moduleManager->AddResolveImportedModule(specifierString, moduleRecord.GetTaggedValue());
-        moduleRecord->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
-        moduleRecord->SetRegisterCounts(1);
-        thread->GetEcmaVM()->PushToDeregisterModuleList(specifierString);
         requiredModule.Update(moduleRecord);
     }
 

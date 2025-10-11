@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-import('./A').then((ns)=>{
-    let instanceA = new ns.testA;
-    instanceA.foo();
+import('./circularA').then((ns)=>{
+    print(ns.A);
     markModuleCollectable(ns);
 });

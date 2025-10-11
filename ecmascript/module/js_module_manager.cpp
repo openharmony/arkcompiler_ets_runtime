@@ -16,6 +16,7 @@
 
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
@@ -201,6 +202,7 @@ CString ModuleManager::GetRecordName(const JSThread *thread, JSTaggedValue modul
 {
     CString entry = "";
     if (module.IsString()) {
+        // BundlePack
         entry = ModulePathHelper::Utf8ConvertToString(const_cast<JSThread*>(thread), module);
     }
     if (module.IsSourceTextModule()) {
@@ -273,7 +275,6 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModuleMayThrowError(JSThread
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     SourceTextModule::RecordEvaluatedOrError(thread, nativeModule);
-    nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
     SourceTextModule::StoreModuleValue(thread, nativeModule, 0, exportObject);
     AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     return exportObject;
@@ -288,7 +289,6 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
     } else if (IsLocalModuleLoaded(recordName)) {
         JSHandle<SourceTextModule> nativeModule = HostGetImportedModule(recordName);
         SourceTextModule::EvaluateNativeModule(thread, nativeModule, nativeModule->GetTypes());
-        nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
         requiredModule.Update(nativeModule);
     } else {
         ModuleTypes moduleType = SourceTextModule::GetNativeModuleType(recordName);
@@ -297,7 +297,6 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
         JSHandle<SourceTextModule> nativeModule =
             JSHandle<SourceTextModule>::Cast(nativeModuleHandle);
         SourceTextModule::EvaluateNativeModule(thread, nativeModule, moduleType);
-        nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
         requiredModule.Update(nativeModule);
     }
     AddResolveImportedModule(recordName, requiredModule.GetTaggedValue());
@@ -367,9 +366,11 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
             ", when try to remove the module";
     }
     JSTaggedValue result = entry.value();
-    SourceTextModule::Cast(result)->DestoryLazyImportArray();
-    SourceTextModule::Cast(result)->DestoryEcmaModuleFilenameString();
-    SourceTextModule::Cast(result)->DestoryEcmaModuleRecordNameString();
+    SourceTextModule* module = SourceTextModule::Cast(result);
+    module->DestoryLazyImportArray();
+    module->DestoryEcmaModuleFilenameString();
+    module->DestoryEcmaModuleRecordNameString();
+    ResetConstPoolLiterals(recordName);
     resolvedModules_.Erase(recordName);
 }
 
@@ -401,6 +402,33 @@ void ModuleManager::SyncModuleExecuteMode(JSThread *thread)
             return;
         }
         SetExecuteMode(moduleManager->GetExecuteMode());
+    }
+}
+
+void ModuleManager::SetClassLiteralConstPoolMap(const CString &recordName,
+                                                JSHandle<ConstantPool> constpool,
+                                                uint32_t literalId)
+{
+    uint32_t unsharedConstPoolIndex = constpool->GetUnsharedConstpoolIndex();
+    classLiteralConstPoolMap_[recordName][unsharedConstPoolIndex].push_back(literalId);
+}
+
+// Disconnect the reference between the constpool and the class literal.
+void ModuleManager::ResetConstPoolLiterals(const CString &recordName)
+{
+    auto iter = classLiteralConstPoolMap_.find(recordName);
+    if (iter == classLiteralConstPoolMap_.end()) {
+        return;
+    }
+    JSThread* thread = vm_->GetJSThread();
+    JSTaggedValue holeValue = thread->GlobalConstants()->GetHole();
+    for (const auto& [unsharedConstPoolIndex, indexes] : iter->second) {
+        JSTaggedValue unsharedConstPool = vm_->FindUnsharedConstpool(unsharedConstPoolIndex);
+        if (!unsharedConstPool.IsHole()) {
+            for (uint32_t index : indexes) {
+                ConstantPool::Cast(unsharedConstPool.GetTaggedObject())->SetObjectToCache(thread, index, holeValue);
+            }
+        }
     }
 }
 } // namespace panda::ecmascript

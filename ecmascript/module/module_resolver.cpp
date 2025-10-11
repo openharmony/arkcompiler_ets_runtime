@@ -229,6 +229,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleWithMerge(JSThr
     ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(recordName);
     if (!module->IsUndefined()) {
+        ModuleDeregister::DisableMultiEntryDeregister(thread, JSHandle<SourceTextModule>::Cast(module), executeType);
         return module;
     }
     JSHandle<JSTaggedValue> moduleRecord =
@@ -275,6 +276,7 @@ JSHandle<JSTaggedValue> ModuleResolver::HostResolveImportedModuleBundlePack(JSTh
     }
     JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(moduleFileName);
     if (!module->IsUndefined()) {
+        ModuleDeregister::DisableMultiEntryDeregister(thread, JSHandle<SourceTextModule>::Cast(module), executeType);
         return module;
     }
     std::shared_ptr<JSPandaFile> pandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(

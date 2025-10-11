@@ -54,6 +54,10 @@ JSTaggedValue ConstantPool::GetClassLiteralFromCache(JSThread *thread, JSHandle<
             CASSetObjectToCache(thread, constpool.GetTaggedValue(), literal, val);
         } else {
             constpool->SetObjectToCache(thread, literal, val);
+            // NativeModule's entry is empty.
+            if (!entry.empty()) {
+                thread->GetModuleManager()->SetClassLiteralConstPoolMap(entry, constpool, literal);
+            }
         }
     }
 

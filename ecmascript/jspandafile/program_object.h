@@ -100,7 +100,6 @@ public:
     static constexpr size_t EXTEND_DATA_NUM = 7;
 
     static constexpr int32_t CONSTPOOL_TYPE_FLAG = INT32_MAX; // INT32_MAX : unshared constpool.
-    static constexpr int32_t CONSTPOOL_INVALID_ID = 0;
 
     static ConstantPool *Cast(TaggedObject *object)
     {
@@ -253,7 +252,8 @@ public:
 
     static bool CheckUnsharedConstpool(JSTaggedValue constpool)
     {
-        int32_t index = ConstantPool::Cast(constpool.GetTaggedObject())->GetUnsharedConstpoolIndex();
+        int32_t index = static_cast<int32_t>(
+           ConstantPool::Cast(constpool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
         if (index == CONSTPOOL_TYPE_FLAG) {
             return true;
         }
@@ -337,7 +337,7 @@ public:
         SetJSPandaFile(nullptr);
         SetIndexHeader(nullptr);
         SetUnsharedConstpoolIndex(JSTaggedValue(CONSTPOOL_TYPE_FLAG));
-        SetSharedConstpoolId(JSTaggedValue(CONSTPOOL_INVALID_ID));
+        SetSharedConstpoolId(JSTaggedValue(CONSTPOOL_TYPE_FLAG));
     }
 
     inline uint32_t GetCacheLength() const

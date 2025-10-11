@@ -1756,11 +1756,6 @@ CString SourceTextModule::GetModuleName(JSTaggedValue currentModule)
     return recordName;
 }
 
-bool SourceTextModule::IsDynamicModule(LoadingTypes types)
-{
-    return types == LoadingTypes::DYNAMITC_MODULE;
-}
-
 bool SourceTextModule::IsAsyncEvaluating()
 {
     return GetAsyncEvaluatingOrdinal() >= FIRST_ASYNC_EVALUATING_ORDINAL;

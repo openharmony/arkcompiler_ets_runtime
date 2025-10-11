@@ -41,6 +41,11 @@ public:
     static void TranslateClass(const JSThread *thread, JSPandaFile *jsPandaFile, const CString &methodName,
         size_t methodIdx, size_t classIdx);
 
+    static JSHandle<ConstantPool> AllocateConstPoolForTest(EcmaVM *vm, const JSPandaFile *jsPandaFile)
+    {
+        return AllocateConstPool(vm, jsPandaFile);
+    }
+
 private:
     static JSHandle<Program> GenerateProgramInternal(EcmaVM *vm, MethodLiteral *mainMethodLiteral,
                                                      JSHandle<ConstantPool> constpool, const JSPandaFile *jsPandaFile);
