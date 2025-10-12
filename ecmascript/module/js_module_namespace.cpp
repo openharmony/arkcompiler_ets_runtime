@@ -16,11 +16,12 @@
 #include "ecmascript/module/js_module_namespace.h"
 
 #include "ecmascript/global_env.h"
-#include "ecmascript/object_factory-inl.h"
-#include "ecmascript/module/module_value_accessor.h"
-#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_value_accessor.h"
+#include "ecmascript/object_factory-inl.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {
@@ -143,7 +144,8 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             JSTaggedValue targetModule = resolvedBind->GetModule(thread);
             // 9. Assert: targetModule is not undefined.
             ASSERT(!targetModule.IsUndefined());
-            JSHandle<SourceTextModule> module(thread, targetModule);
+            JSMutableHandle<SourceTextModule> module(thread, targetModule);
+            thread->GetEcmaVM()->GetQuickFixManager()->UpdateHotReloadModule(thread, module);
             // DFX: make sure lazy module is already evaluated.
             if (module->GetStatus() == ModuleStatus::INSTANTIATED) {
                 LOG_FULL(ERROR) << "Module is not evaluated, module is :" << module->GetEcmaModuleRecordNameString();
@@ -158,7 +160,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
                     JSHandle<SourceTextModule> sharedModule = SharedModuleManager::GetInstance()->GetSModule(
                         thread, module->GetEcmaModuleRecordNameString());
                     if (sharedModule.GetTaggedValue().IsSourceTextModule()) {
-                        module = sharedModule;
+                        module.Update(sharedModule);
                     }
                 }
                 result = module->GetModuleValue(thread, resolvedBind->GetIndex(), true);
