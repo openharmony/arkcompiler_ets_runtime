@@ -85,6 +85,10 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking3)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     ASSERT_NE(heap, nullptr);
 
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
+
     uint32_t length = 1000;
     heap->GetOldSpace()->SetInitialCapacity(static_cast<size_t>(length));
     heap->SetFullMarkRequestedState(true);
@@ -99,6 +103,12 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking4)
     g_isEnableCMCGC = false;
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     ASSERT_NE(heap, nullptr);
+
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->SetFullMarkRequestedState(false);
+    EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
+    EXPECT_EQ(heap->IsFullMarkRequested(), false);
 
     heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
     EXPECT_EQ(heap->InSensitiveStatus(), true);
@@ -115,6 +125,12 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking5)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     ASSERT_NE(heap, nullptr);
 
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->SetFullMarkRequestedState(false);
+    EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
+    EXPECT_EQ(heap->IsFullMarkRequested(), false);
+
     heap->NotifyPostFork();
     EXPECT_EQ(heap->FinishStartupEvent(), true);
     EXPECT_EQ(heap->IsJustFinishStartup(), true);
@@ -129,6 +145,12 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking6)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     ASSERT_NE(heap, nullptr);
 
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->SetFullMarkRequestedState(false);
+    EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
+    EXPECT_EQ(heap->IsFullMarkRequested(), false);
+
     heap->GetOldSpace()->SetInitialCapacity(1000);
     EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), true);
     EXPECT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
@@ -141,6 +163,12 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking7)
     g_isEnableCMCGC = false;
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     ASSERT_NE(heap, nullptr);
+
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->SetFullMarkRequestedState(false);
+    EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
+    EXPECT_EQ(heap->IsFullMarkRequested(), false);
 
     heap->GetNewSpace()->IncreaseCommitted(10000000);
     EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), true);
