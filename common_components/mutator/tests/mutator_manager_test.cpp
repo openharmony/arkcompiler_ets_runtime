@@ -23,8 +23,14 @@ using namespace common;
 namespace common::test {
 class MutatorManagerTest : public BaseTestWithScope {
 protected:
-    void SetUp() override {}
-    void TearDown() override {}
+    void SetUp() override
+    {
+        BaseRuntime::GetInstance()->InitFromDynamic();
+    }
+    void TearDown() override
+    {
+        BaseRuntime::GetInstance()->FiniFromDynamic();
+    }
 };
 
 HWTEST_F_L0(MutatorManagerTest, BindMutatorOnly_Test1)
@@ -82,7 +88,6 @@ HWTEST_F_L0(MutatorManagerTest, CreateMutator_Test1)
     ThreadLocalData* localData = ThreadLocal::GetThreadLocalData();
     localData->mutator = new Mutator();
     MutatorManager *managerPtr = new MutatorManager();
-    BaseRuntime::GetInstance()->InitFromDynamic();
     Mutator* ptr = managerPtr->CreateMutator();
     EXPECT_TRUE(ptr != nullptr);
 
