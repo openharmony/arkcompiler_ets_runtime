@@ -170,9 +170,6 @@ public:
     static constexpr char FILE_EXTENSION_AI[] = ".ai";
     static constexpr uint32_t STUB_FILE_INDEX = 1;
 
-    static void SetJsAotReader(JsAotReaderCallback cb);
-    static JsAotReaderCallback GetJsAotReader();
-
     void LoadStubFile(const std::string& fileName);
     static bool LoadAnFile(const std::string& fileName);
     static AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr, bool isDeopt);
@@ -236,7 +233,6 @@ private:
     ObjectFactory *factory_ {nullptr};
     AIDatum aiDatum_ {};
     kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
-    static JsAotReaderCallback jsAotReader_;
 
     friend class AnFileInfo;
     friend class StubFileInfo;

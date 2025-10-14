@@ -41,10 +41,6 @@ public:
     bool DeserializeInternal(SnapshotType type, const CString &snapshotFile, SnapshotProcessor &processor,
                              MemMap &fileMap);
     bool Deserialize(SnapshotType type, const CString &snapshotFile, bool isBuiltins = false);
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
-    bool Deserialize(SnapshotType type, const CString &snapshotFile, [[maybe_unused]] std::function<bool
-        (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack, bool isBuiltins = false);
-#endif
     JSTaggedValue GetDeserializeResultForUT() const
     {
         // ONLY used in UT to get the deserialize value result

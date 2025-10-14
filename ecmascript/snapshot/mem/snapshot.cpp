@@ -179,9 +179,7 @@ bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFil
                                                  hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
     }
 
-#if !defined(CROSS_PLATFORM)
     FileUnMap(MemMap(fileMap.GetOriginAddr(), hdr.pandaFileBegin));
-#endif
     std::shared_ptr<JSPandaFile> jsPandaFile;
     if (fileMap.GetSize() > hdr.pandaFileBegin) {
         uintptr_t pandaFileMem = readFile + hdr.pandaFileBegin;
@@ -218,33 +216,6 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
     MemMap fileMap = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READWRITE);
     return DeserializeInternal(type, snapshotFile, processor, fileMap);
 }
-
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
-bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, [[maybe_unused]] std::function<bool
-    (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack, bool isBuiltins)
-{
-    SnapshotProcessor processor(vm_);
-    if (isBuiltins) {
-        processor.SetBuiltinsDeserializeStart();
-    }
-
-    std::string fileName = std::string(snapshotFile);
-    uint8_t *buff = nullptr;
-    size_t buffSize = 0;
-    MemMap fileMap = {};
-    size_t found = fileName.find_last_of("/");
-    if (found != std::string::npos) {
-        fileName = fileName.substr(found + 1);
-    }
-
-    LOG_ECMA(INFO) << "Call JsAotReader to load: " << fileName;
-    if (ReadAOTCallBack(fileName, &buff, &buffSize)) {
-        fileMap = MemMap(buff, buffSize);
-    }
-
-    return DeserializeInternal(type, snapshotFile, processor, fileMap);
-}
-#endif
 
 size_t Snapshot::AlignUpPageSize(size_t spaceSize)
 {

@@ -1676,11 +1676,6 @@ public:
 
     // aot load
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
-    static void LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleName,
-                            const std::string &moduleName,
-                            std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
-#endif
     // JS code
     static bool ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName,
                                        const std::string &entry, bool needUpdate = false,

@@ -1265,8 +1265,6 @@ public:
     void LoadStubFile();
     bool LoadAOTFilesInternal(const std::string& aotFileName);
     bool LoadAOTFiles(const std::string& aotFileName);
-    bool LoadAOTFiles(const std::string &aotFileName,
-                      std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
     void PUBLIC_API LoadProtoTransitionTable(JSTaggedValue constpool);
     void PUBLIC_API ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool);
 

@@ -1155,13 +1155,6 @@ bool EcmaVM::LoadAOTFiles(const std::string& aotFileName)
     return LoadAOTFilesInternal(aotFileName);
 }
 
-bool EcmaVM::LoadAOTFiles(const std::string& aotFileName,
-    std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
-{
-    GetAOTFileManager()->SetJsAotReader(cb);
-    return LoadAOTFilesInternal(aotFileName);
-}
-
 void EcmaVM::LoadProtoTransitionTable(JSTaggedValue constpool)
 {
     JSTaggedValue protoTransitionTable =
