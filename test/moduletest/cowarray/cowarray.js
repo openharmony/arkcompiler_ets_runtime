@@ -38,4 +38,52 @@ for (let i = 0; i < 2; i++) {
     assert_equal(JSON.stringify(arr),"[0,0]");
     arr.length = 3;
 }
+
+// This use case is used to check whether the built-in interfaces of Array performs a COWArray check when modifying
+// the array itself.
+{
+    function createNewArray() {
+        return ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    }
+
+    let oriNumList = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
+    let numList = createNewArray();
+
+    numList.sort((a, b) => b - a);
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+
+    numList.push(11);
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+
+    numList.pop();
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+
+    numList.shift();
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+
+    numList.unshift(0);
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+
+    numList.splice(1, 1);
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+
+    numList.reverse();
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+
+    numList.fill(0, 0, 9);
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+
+    numList.copyWithin(0, 1, 3);
+    numList = createNewArray();
+    assert_equal(JSON.stringify(numList), '["1","2","3","4","5","6","7","8","9","10"]');
+}
+
 test_end();

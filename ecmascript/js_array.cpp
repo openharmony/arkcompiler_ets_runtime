@@ -852,6 +852,7 @@ void JSArray::SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &t
                                    const JSHandle<JSTaggedValue> &fn)
 {
     ASSERT(fn->IsUndefined() || fn->IsCallable());
+    JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObjHandle));
 
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());

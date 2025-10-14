@@ -1772,6 +1772,8 @@ JSTaggedValue JSStableArray::CopySortedListToReceiver(JSThread *thread, const JS
     TaggedArray *elements = TaggedArray::Cast(thisObj->GetElements(thread).GetTaggedObject());
     if (newLength > ElementAccessor::GetElementsLength(thread, thisObj)) {
         elements = *JSObject::GrowElementsCapacity(thread, thisObj, newLength, true);
+    } else {
+        JSArray::CheckAndCopyArray(thread, JSHandle<JSArray>::Cast(thisObjVal));
     }
 
     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
