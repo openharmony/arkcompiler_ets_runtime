@@ -12,58 +12,62 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+/*
+ * @tc.name: arrayconstauctor
+ * @tc.desc: test Array constructor
+ * @tc.type: FUNC
+ */
 class CustomArray extends Array {}
 
 function testSpeciesEffect() {
-    let custom = [1,2,3,4,5,6,7,8,9]
+    let custom = [1, 2, 3, 4, 5, 6, 7, 8, 9]
     custom.constructor = CustomArray;
-
-    print("Testing methods affected by constructor:");
 
     // Array.prototype.concat
     let result = custom.concat([4, 5]);
-    print("concat:", result instanceof CustomArray); // true
+    assert_equal(true, result instanceof CustomArray); // true
 
     // Array.prototype.map
     result = custom.map(x => x * 2);
-    print("map:", result instanceof CustomArray); // true
+    assert_equal(true, result instanceof CustomArray); // true
 
     // Array.prototype.filter
     result = custom.filter(x => x > 1);
-    print("filter:", result instanceof CustomArray); // true
+    assert_equal(true, result instanceof CustomArray); // true
 
     // Array.prototype.slice
     result = custom.slice(1);
-    print("slice:", result instanceof CustomArray); // true
+    assert_equal(true, result instanceof CustomArray); // true
 
     // Array.prototype.flatMap
     result = custom.flatMap(x => [x, x * 2]);
-    print("flatMap:", result instanceof CustomArray); // true
+    assert_equal(true, result instanceof CustomArray); // true
 
     // Array.prototype.flat
     result = custom.flat();
-    print("flat:", result instanceof CustomArray); // true
+    assert_equal(true, result instanceof CustomArray); // true
 
     // Array.prototype.splice
-    result = custom.splice(1,2,3);
-    print("splice:", result instanceof CustomArray); // true
+    result = custom.splice(1, 2, 3);
+    assert_equal(true, result instanceof CustomArray); // true
 
     // Array.prototype.toReversed
     result = custom.toReversed();
-    print("toReversed:", result instanceof Array); // true
+    assert_equal(true, result instanceof Array); // true
 
     // Array.prototype.toSorted
     result = custom.toSorted();
-    print("toSorted:", result instanceof Array); // true
+    assert_equal(true, result instanceof Array); // true
 
     // Array.prototype.toSpliced
-    result = custom.toSpliced(0,1);
-    print("toSpliced:", result instanceof Array); // true
+    result = custom.toSpliced(0, 1);
+    assert_equal(true, result instanceof Array); // true
 
     // Array.prototype.toSpliced
-    result = custom.with(0,1);
-    print("with:", result instanceof Array); // true
+    result = custom.with(0, 1);
+    assert_equal(true, result instanceof Array); // true
 }
 
 testSpeciesEffect()
+
+test_end();

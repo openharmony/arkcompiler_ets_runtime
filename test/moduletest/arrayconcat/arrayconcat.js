@@ -12,49 +12,58 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const array1 = ['a', 'b', 'c'];
-const array2 = ['d', 'e', 'f'];
-const array3 = array1.concat(array2);
-print(array3);
+{
+    const array1 = ['a', 'b', 'c'];
+    const array2 = ['d', 'e', 'f'];
+    const array3 = array1.concat(array2);
+    assert_equal(array3, ['a', 'b', 'c', 'd', 'e', 'f'])
+}
 
-const letters = ["a", "b", "c"];
-const numbers = [1, 2, 3];
+{
+    const letters = ["a", "b", "c"];
+    const numbers = [1, 2, 3];
 
-const alphaNumeric = letters.concat(numbers);
-print(alphaNumeric);
+    const alphaNumeric = letters.concat(numbers);
+    assert_equal(alphaNumeric, ['a', 'b', 'c', 1, 2, 3])
+}
 
-const num1 = [1, 2, 3];
-const num2 = [4, 5, 6];
-const num3 = [7, 8, 9];
+{
+    const num1 = [1, 2, 3];
+    const num2 = [4, 5, 6];
+    const num3 = [7, 8, 9];
 
-const numbers1 = num1.concat(num2, num3);
+    const numbers1 = num1.concat(num2, num3);
+    assert_equal(numbers1, [1, 2, 3, 4, 5, 6, 7, 8, 9])
+}
 
-print(numbers1);
+{
+    const letters1 = ["a", "b", "c"];
+    const alphaNumeric1 = letters1.concat(1, [2, 3]);
 
+    assert_equal(alphaNumeric1, ["a", "b", "c", 1, 2, 3])
+}
 
-const letters1 = ["a", "b", "c"];
+{
+    const num1 = [1, 2, 3];
+    const num11 = [[1]];
+    const num22 = [2, [3]];
 
-const alphaNumeric1 = letters1.concat(1, [2, 3]);
+    const numbers2 = num1.concat(num22);
+    assert_equal(numbers2, [1, 2, 3, 2, [3]]);
 
-print(alphaNumeric1);
+    num11[0].push(4);
+    assert_equal(numbers2, [1, 2, 3, 2, [3]]);
+}
 
-const num11 = [[1]];
-const num22 = [2, [3]];
+{
+    assert_equal([1, , 3].concat([4, 5]), [1,, 3, 4, 5]);
+    assert_equal([1, 2].concat([3, , 5]), [1, 2, 3,, 5]);
+}
 
-const numbers2 = num1.concat(num22);
-
-print(numbers2);
-// [[1], 2, [3]]
-
-num11[0].push(4);
-
-print(numbers2);
-
-print([1, , 3].concat([4, 5])); // [1, empty, 3, 4, 5]
-print([1, 2].concat([3, , 5])); // [1, 2, 3, empty, 5]
-
-const emptyArr = [];
-print(emptyArr.concat([]).length);
+{
+    const emptyArr = [];
+    assert_equal(emptyArr.concat([]).length, 0)
+}
 
 /*
  * @tc.name:Array concat1
@@ -73,7 +82,12 @@ print(emptyArr.concat([]).length);
     arr2[4] = 1;
     let arr3 = new Array(2000);
     let arr4 = arr3.concat(arr2);
-    print(arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
+
+    assert_equal(arr4[2000], 1);
+    assert_equal(arr4[2001], 3);
+    assert_equal(arr4[2002], 2);
+    assert_equal(arr4[2003], 'ab');
+    assert_equal(arr4[2004], 1);
 }
 
 /*
@@ -93,7 +107,12 @@ print(emptyArr.concat([]).length);
     arr2[4] = 1;
     let arr3 = new Array(2000);
     let arr4 = arr3.concat(arr2);
-    print(arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
+
+    assert_equal(arr4[2000], 1);
+    assert_equal(arr4[2001], 3);
+    assert_equal(arr4[2002], 2);
+    assert_equal(arr4[2003], 'ab');
+    assert_equal(arr4[2004], 1);
 }
 
 /*
@@ -113,7 +132,12 @@ print(emptyArr.concat([]).length);
     arr2[4] = 1;
     let arr3 = new Array(10);
     let arr4 = arr3.concat(arr2);
-    print(arr4[10], arr4[11], arr4[12], arr4[13], arr4[14]);
+
+    assert_equal(arr4[10], 1);
+    assert_equal(arr4[11], 3);
+    assert_equal(arr4[12], 2);
+    assert_equal(arr4[13], 'ab');
+    assert_equal(arr4[14], 1);
 }
 
 /*
@@ -129,7 +153,12 @@ print(emptyArr.concat([]).length);
     arr2[4] = 1;
     let arr3 = new Array(2000);
     let arr4 = arr3.concat(arr2);
-    print(arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
+
+    assert_equal(arr4[2000], undefined);
+    assert_equal(arr4[2001], 3);
+    assert_equal(arr4[2002], 2);
+    assert_equal(arr4[2003], 'ab');
+    assert_equal(arr4[2004], 1);
 }
 
 /*
@@ -145,7 +174,12 @@ print(emptyArr.concat([]).length);
     arr2[4] = 1;
     let arr3 = new Array(2000);
     let arr4 = arr3.concat(arr2);
-    print(arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
+
+    assert_equal(arr4[2000], undefined);
+    assert_equal(arr4[2001], 3);
+    assert_equal(arr4[2002], 2);
+    assert_equal(arr4[2003], 'ab');
+    assert_equal(arr4[2004], 1);
 }
 
 /*
@@ -161,7 +195,12 @@ print(emptyArr.concat([]).length);
     arr2[4] = 1;
     let arr3 = new Array(10);
     let arr4 = arr3.concat(arr2);
-    print(arr4[10], arr4[11], arr4[12], arr4[13], arr4[14]);
+
+    assert_equal(arr4[10], undefined);
+    assert_equal(arr4[11], 3);
+    assert_equal(arr4[12], 2);
+    assert_equal(arr4[13], 'ab');
+    assert_equal(arr4[14], 1);
 }
 
 /*
@@ -178,18 +217,27 @@ print(emptyArr.concat([]).length);
     arr2[4] = 1;
     let arr3 = new Array(2000);
     let arr4 = arr3.concat(arr2);
-    print(arr4[0], arr4[2000], arr4[2001], arr4[2002], arr4[2003], arr4[2004]);
+
+    assert_equal(arr4[0], '??');
+    assert_equal(arr4[2000], '??');
+    assert_equal(arr4[2001], 3);
+    assert_equal(arr4[2002], 2);
+    assert_equal(arr4[2003], 'ab');
+    assert_equal(arr4[2004], 1);
 }
 
-print("test arrayconcat success!");
+{
+    const v1 = [1, 2, "j", 9999, , 23];
+    const v2 = ["sss", 2, "j", , , ,"test"];
+    assert_equal(v1.concat(v2), [1, 2, "j", 9999, , 23, "sss", 2, "j", , , ,"test"]);
+}
 
-print("proxy defineproperty success!");
-const v1 = [1, 2, "j", 9999, , 23];
-const v2 = ["sss", 2, "j", , , ,"test"];
-print(v1.concat(v2));
+{
+    let v3 = new Array();
+    v3.push('foo');
+    var v4 = ['bar'];
+    var v5 = v3.concat(v4);
+    assert_equal(v5, ['foo', 'bar']);
+}
 
-let v3 = new Array();
-v3.push('foo');
-var v4 = ['bar'];
-var v5 = v3.concat(v4);
-print(v5);
+test_end();

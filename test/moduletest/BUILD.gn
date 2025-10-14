@@ -16,16 +16,12 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 module_test_list = [
   "addelementinternal",
   "allocatearraybuffer",
-  "arrayderived",
   "arraypushproto",
   "arraySome",
   "arrayEvery",
   "arrayspeciescreate",
-  "arrayconstructor",
   "arrayspliceproto",
   "arrayunshiftproto",
-  "arrayfillproto",
-  "arrayconcat",
   "arrayfind",
   "arrayfindlast",
   "arrayfill",
@@ -219,6 +215,11 @@ group("ark_js_assert_moduletest") {
   testonly = true
   assert_test_list = [
     "array",
+    "arrayconcat",
+    "arrayconstructor",
+    "arrayderived",
+    "arrayfillproto",
+    "arrayFilterCase",
     "addpropertybyname",
     "cowarray",
     "decodeuricomponent",
@@ -364,6 +365,11 @@ group("ark_asm_assert_test") {
   testonly = true
   assert_test_list = [
     "array",
+    "arrayconcat",
+    "arrayconstructor",
+    "arrayderived",
+    "arrayfillproto",
+    "arrayFilterCase",
     "addpropertybyname",
     "cowarray",
     "decodeuricomponent",
