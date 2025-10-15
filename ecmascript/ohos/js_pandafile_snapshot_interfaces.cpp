@@ -22,7 +22,7 @@ namespace panda::ecmascript::ohos {
 
 void JSPandaFileSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &path)
 {
-    LOG_ECMA(INFO) << "PandaFileSnapshotInterfaces::Serialize: " << path;
+    LOG_ECMA(DEBUG) << "PandaFileSnapshotInterfaces::Serialize: " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PandaFileSnapshotInterfaces::Serialize", "");
     // check application white list
     if (!filesystem::Exists(path.c_str())) {

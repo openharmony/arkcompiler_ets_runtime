@@ -25,8 +25,8 @@ template<ForHybridApp isHybrid>
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
                                                                             CString &modulePath, CString &abcFilePath)
 {
-    LOG_ECMA(INFO) << "NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo requestPath:" << requestPath <<
-                   "," << "modulePath:" << modulePath;
+    LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo requestPath:" << requestPath <<
+                    "," << "modulePath:" << modulePath;
     JSThread *thread = vm->GetJSThread();
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     if (!modulePath.empty()) {

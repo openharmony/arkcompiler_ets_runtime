@@ -454,7 +454,7 @@ JSHandle<JSTaggedValue> ModuleValueAccessor::GetNativeOrCjsExports(JSThread *thr
     if (SourceTextModule::IsNativeModule(moduleType)) {
         exports.Update(module->GetModuleValue(thread, 0, false));
         if (!exports->IsJSObject()) {
-            LOG_FULL(WARN) << "Load native module failed, so is " << SourceTextModule::GetModuleName(resolvedModule);
+            LOG_ECMA(WARN) << "Load native module failed: " << SourceTextModule::GetModuleName(resolvedModule);
         }
         return exports;
     }

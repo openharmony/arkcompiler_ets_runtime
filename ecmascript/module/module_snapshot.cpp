@@ -26,7 +26,7 @@
 namespace panda::ecmascript {
 void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CString &path, const CString &version)
 {
-    LOG_ECMA(INFO) << "ModuleSnapshot::SerializeDataAndPostSavingJob " << path;
+    LOG_ECMA(DEBUG) << "ModuleSnapshot::SerializeDataAndPostSavingJob " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::SerializeDataAndPostSavingJob", "");
     CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
     if (FileExist(filePath.c_str())) {
@@ -44,8 +44,8 @@ void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CStri
 
 bool ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, const CString &version)
 {
-    LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::DeserializeData", "");
+    LOG_ECMA(DEBUG) << "ModuleSnapshot::DeserializeData";
     CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
     if (!FileExist(filePath.c_str())) {
         LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData Module serialize file doesn't exist: " << path;
@@ -155,7 +155,7 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile File mmap failed";
         return false;
     }
-    LOG_ECMA(INFO) << "ModuleSnapshot::ReadDataFromFile";
+    LOG_ECMA(DEBUG) << "ModuleSnapshot::ReadDataFromFile";
     MemMapScope memMapScope(fileMapMem);
     FileMemMapReader reader(fileMapMem, std::bind(RemoveSnapshotFiles, path), "ModuleSnapshot::ReadDataFromFile");
     uint32_t checksumSize = sizeof(uint32_t);
@@ -310,7 +310,7 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
 bool ModuleSnapshot::WriteDataToFile(
     JSThread *thread, const std::unique_ptr<SerializeData>& data, const CString& filePath, const CString &version)
 {
-    LOG_ECMA(INFO) << "ModuleSnapshot::WriteDataToFile";
+    LOG_ECMA(DEBUG) << "ModuleSnapshot::WriteDataToFile";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshot::WriteDataToFile", "");
     // calculate file total size
     // versionCode
