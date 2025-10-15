@@ -18,8 +18,8 @@
 
 #include "common_components/base/globals.h"
 #include "common_components/platform/mutex.h"
-#include "common_interfaces/thread/thread_holder.h"
-#include "common_interfaces/objects/base_string_table.h"
+#include "thread/thread_holder.h"
+#include "objects/base_string_table.h"
 #include "common_components/objects/string_table/hashtriemap.h"
 #include "common_components/taskpool/task.h"
 

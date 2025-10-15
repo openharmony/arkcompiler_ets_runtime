@@ -17,7 +17,7 @@
 
 #include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/heap.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 namespace common {
 std::atomic<StartupStatus> StartupStatusManager::startupStatus_ = StartupStatus::BEFORE_STARTUP;

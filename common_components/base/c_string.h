@@ -19,7 +19,7 @@
 #include <vector>
 #include <cstdlib>
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 #include "securec.h"
 
 namespace common {

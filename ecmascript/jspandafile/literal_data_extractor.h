@@ -18,7 +18,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "libpandafile/literal_data_accessor-inl.h"
+#include "literal_data_accessor-inl.h"
 
 namespace panda::ecmascript {
 class LiteralDataExtractor {

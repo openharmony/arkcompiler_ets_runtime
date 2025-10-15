@@ -24,7 +24,7 @@
 #include "ecmascript/platform/directory.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/map.h"
-#include "libpandafile/file.h"
+#include "file.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "ohos_constants.h"
 #include "utils/json_parser.h"

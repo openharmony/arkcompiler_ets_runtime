@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/heap/heap_allocator.h"
+#include "heap/heap_allocator.h"
 
 #include "common_components/heap/heap_allocator-inl.h"
 #include "common_components/common/type_def.h"

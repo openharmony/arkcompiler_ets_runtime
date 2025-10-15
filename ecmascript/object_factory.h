@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_OBJECT_FACTORY_H
 #define ECMASCRIPT_OBJECT_FACTORY_H
 
-#include "common_interfaces/objects/base_class.h"
+#include "objects/base_class.h"
 #include "ecmascript/base/error_type.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/cross_vm/object_factory_hybrid.h"

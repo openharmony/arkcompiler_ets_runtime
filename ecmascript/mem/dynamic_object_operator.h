@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_MEM_DYNAMIC_OBJECT_OPERATOR_H
 #define ECMASCRIPT_MEM_DYNAMIC_OBJECT_OPERATOR_H
 
-#include "common_interfaces/objects/base_object.h"
-#include "common_interfaces/objects/base_object_operator.h"
+#include "objects/base_object.h"
+#include "objects/base_object_operator.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/tagged_object.h"

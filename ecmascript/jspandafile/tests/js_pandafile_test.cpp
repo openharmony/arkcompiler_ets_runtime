@@ -17,7 +17,7 @@
 #include "assembler/assembly-parser.h"
 #include "gtest/gtest.h"
 #include "libpandabase/utils/utf.h"
-#include "libpandafile/class_data_accessor-inl.h"
+#include "class_data_accessor-inl.h"
 
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/jspandafile/js_pandafile.h"

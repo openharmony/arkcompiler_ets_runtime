@@ -23,7 +23,7 @@
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/compiler/compilation_env.h"
-#include "libpandafile/bytecode_instruction-inl.h"
+#include "bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::kungfu {
 using PGOProfilerDecoder = pgo::PGOProfilerDecoder;

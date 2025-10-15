@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <vector>
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 
 namespace common::utf_helper {
 constexpr size_t HI_SURROGATE_MIN = 0xd800;

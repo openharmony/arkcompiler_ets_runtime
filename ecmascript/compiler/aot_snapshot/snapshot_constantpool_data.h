@@ -20,7 +20,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
-#include "libpandafile/bytecode_instruction.h"
+#include "bytecode_instruction.h"
 
 namespace panda::ecmascript::kungfu {
 using ApEntityId = pgo::ApEntityId;

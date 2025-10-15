@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_CROSS_VM_DYNAMIC_OBJECT_DESCRIPTOR_H
 #define ECMASCRIPT_CROSS_VM_DYNAMIC_OBJECT_DESCRIPTOR_H
 
-#include "common_interfaces/objects/base_object.h"
-#include "common_interfaces/objects/base_object_descriptor.h"
+#include "objects/base_object.h"
+#include "objects/base_object_descriptor.h"
 #include "ecmascript/ic/ic_handler.h"
 
 namespace panda::ecmascript {

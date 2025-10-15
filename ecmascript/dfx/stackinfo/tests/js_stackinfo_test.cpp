@@ -19,7 +19,7 @@
 
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
-#include "libpandafile/class_data_accessor-inl.h"
+#include "class_data_accessor-inl.h"
 #include "libziparchive/zip_archive.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/tests/test_helper.h"

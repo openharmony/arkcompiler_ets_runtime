@@ -21,7 +21,7 @@
 
 #include "libpandabase/macros.h"
 #include "libpandabase/utils/bit_field.h"
-#include "libpandafile/bytecode_instruction-inl.h"
+#include "bytecode_instruction-inl.h"
 #include "ecmascript/common.h"
 #include "ecmascript/js_tagged_value.h"
 

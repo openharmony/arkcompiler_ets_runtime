@@ -17,8 +17,8 @@
 #define COMMON_COMPONENTS_OBJECTS_STRING_TABLE_INTEGER_CACHE_H
 
 #include <array>
-#include "common_interfaces/objects/string/base_string.h"
-#include "common_interfaces/objects/string/line_string.h"
+#include "objects/string/base_string.h"
+#include "objects/string/line_string.h"
 
 namespace common {
 

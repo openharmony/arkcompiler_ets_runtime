@@ -17,8 +17,8 @@
 #include "common_components/mutator/mutator.h"
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/base_runtime.h"
-#include "common_interfaces/objects/base_object.h"
+#include "base_runtime.h"
+#include "objects/base_object.h"
 
 using namespace common;
 

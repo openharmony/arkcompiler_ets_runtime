@@ -19,7 +19,7 @@
 #include <mutex>
 #include <type_traits>
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 #include "common_components/log/log.h"
 
 namespace common {

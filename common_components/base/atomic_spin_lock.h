@@ -18,7 +18,7 @@
 
 #include <atomic>
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 
 namespace common {
 class AtomicSpinLock {

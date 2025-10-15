@@ -14,10 +14,10 @@
  */
 
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/thread/mutator_base.h"
-#include "common_interfaces/thread/thread_holder.h"
-#include "common_interfaces/base_runtime.h"
-#include "common_interfaces/heap/heap_allocator.h"
+#include "thread/mutator_base.h"
+#include "thread/thread_holder.h"
+#include "base_runtime.h"
+#include "heap/heap_allocator.h"
 #include "ecmascript/string/base_string.h"
 #include "ecmascript/string/base_string-inl.h"
 #include "ecmascript/string/base_string_table.h"

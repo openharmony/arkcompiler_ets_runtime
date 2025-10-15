@@ -16,7 +16,7 @@
 #include "ecmascript/mem/space.h"
 
 #include "common_components/heap/heap.h"
-#include "common_interfaces/heap/heap_allocator.h"
+#include "heap/heap_allocator.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/region-inl.h"

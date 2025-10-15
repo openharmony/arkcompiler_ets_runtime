@@ -19,7 +19,7 @@
 #include <limits>
 
 #include "common_components/base/globals.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 namespace common {
 // Minimum time between async GC (heuristic, native).

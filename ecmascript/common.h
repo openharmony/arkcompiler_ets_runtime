@@ -20,7 +20,7 @@
 #include <cstdint>
 #include <limits>
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 #include "ecmascript/common_enum.h"
 
 namespace panda {

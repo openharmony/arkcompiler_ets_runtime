@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/ecma_string-inl.h"
-#include "common_interfaces/objects/string/base_string-inl.h"
+#include "objects/string/base_string-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/ecma_test_common.h"
 

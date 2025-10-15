@@ -16,7 +16,7 @@
 #ifndef COMMON_COMPONENTS_PLATFORM_MUTEX_H
 #define COMMON_COMPONENTS_PLATFORM_MUTEX_H
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 #include "thread/thread_state_transition.h"
 
 #ifdef DEBUG

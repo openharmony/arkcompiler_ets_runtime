@@ -21,7 +21,7 @@
 #include "common_components/heap/heap.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/heap/heap_allocator.h"
+#include "heap/heap_allocator.h"
 
 using namespace common;
 namespace common::test {

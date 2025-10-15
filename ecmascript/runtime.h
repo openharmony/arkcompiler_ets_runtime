@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_RUNTIME_H
 #define ECMASCRIPT_RUNTIME_H
 
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 #include "ecmascript/cross_vm/cross_vm_operator.h"
 #endif

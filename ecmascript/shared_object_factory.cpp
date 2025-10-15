@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/objects/base_class.h"
+#include "objects/base_class.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/lexical_env.h"

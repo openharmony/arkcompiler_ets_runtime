@@ -16,7 +16,7 @@
 #include <thread>
 
 #include "libpandabase/utils/utf.h"
-#include "libpandafile/class_data_accessor-inl.h"
+#include "class_data_accessor-inl.h"
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/ecma_vm.h"

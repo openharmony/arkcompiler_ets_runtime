@@ -27,7 +27,7 @@
 #include <condition_variable>
 
 #include "common_components/taskpool/task.h"
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 
 namespace common {
 using SteadyTimePoint = std::chrono::steady_clock::time_point;

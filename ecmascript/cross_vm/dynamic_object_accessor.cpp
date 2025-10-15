@@ -19,7 +19,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/object_factory.h"
-#include "common_interfaces/objects/base_object_dispatcher.h"
+#include "objects/base_object_dispatcher.h"
 
 namespace panda::ecmascript {
 

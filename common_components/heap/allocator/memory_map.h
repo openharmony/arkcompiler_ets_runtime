@@ -16,7 +16,7 @@
 #ifndef COMMON_COMPONENTS_HEAP_ALLOCATOR_ALLOC_MEM_MAP_H
 #define COMMON_COMPONENTS_HEAP_ALLOCATOR_ALLOC_MEM_MAP_H
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 #ifdef _WIN64
 #include <handleapi.h>
 #include <memoryapi.h>

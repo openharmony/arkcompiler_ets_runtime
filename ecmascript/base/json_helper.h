@@ -19,7 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/property_attributes.h"
-#include "common_interfaces/objects/utils/span.h"
+#include "objects/utils/span.h"
 
 namespace panda::ecmascript::base {
 constexpr int HEX_DIGIT_MASK = 0xF;

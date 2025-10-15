@@ -15,7 +15,7 @@
 
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
-#include "libpandafile/class_data_accessor-inl.h"
+#include "class_data_accessor-inl.h"
 
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"

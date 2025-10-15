@@ -21,7 +21,7 @@
 #include <mutex>
 #include <string>
 
-#include "libpandafile/file.h"
+#include "file.h"
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"

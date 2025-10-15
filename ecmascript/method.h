@@ -24,7 +24,7 @@
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/visitor.h"
 
-#include "libpandafile/file.h"
+#include "file.h"
 
 namespace panda::ecmascript {
 class JSPandaFile;

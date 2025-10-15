@@ -22,7 +22,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/barriers.h"
-#include "common_interfaces/objects/readonly_handle.h"
+#include "objects/readonly_handle.h"
 /*
  * JSHandle: A JSHandle provides a reference to an object that survives relocation by the garbage collector.
  *

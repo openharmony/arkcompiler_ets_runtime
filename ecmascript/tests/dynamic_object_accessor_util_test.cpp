@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/objects/dynamic_object_accessor_util.h"
+#include "objects/dynamic_object_accessor_util.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tests/test_helper.h"

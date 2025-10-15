@@ -17,9 +17,9 @@
 #define COMMON_COMPONENTS_OBJECTS_STRING_TABLE_HASHTRIEMAP_INL_H
 
 #include "common_components/log/log.h"
-#include "common_interfaces/objects/readonly_handle.h"
-#include "common_interfaces/objects/string/base_string.h"
-#include "common_interfaces/objects/string/line_string-inl.h"
+#include "objects/readonly_handle.h"
+#include "objects/string/base_string.h"
+#include "objects/string/line_string-inl.h"
 #include "common_components/objects/string_table/hashtriemap.h"
 #include "common_components/objects/string_table/integer_cache.h"
 

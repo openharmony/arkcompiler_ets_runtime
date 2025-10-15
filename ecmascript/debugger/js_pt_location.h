@@ -19,7 +19,7 @@
 #include <cstring>
 
 #include "ecmascript/jspandafile/js_pandafile.h"
-#include "libpandafile/file.h"
+#include "file.h"
 #include "libpandabase/macros.h"
 
 namespace panda::ecmascript::tooling {

@@ -18,9 +18,9 @@
 #include "common_components/log/log.h"
 #include "common_components/mutator/mutator_manager-inl.h"
 #include "common_components/heap/verification.h"
-#include "common_interfaces/heap/heap_visitor.h"
-#include "common_interfaces/objects/ref_field.h"
-#include "common_interfaces/profiler/heap_profiler_listener.h"
+#include "heap/heap_visitor.h"
+#include "objects/ref_field.h"
+#include "profiler/heap_profiler_listener.h"
 #include "common_components/heap/allocator/fix_heap.h"
 #include "common_components/heap/allocator/regional_heap.h"
 

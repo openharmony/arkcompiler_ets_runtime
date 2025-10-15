@@ -26,8 +26,8 @@
 #include "common_components/common/base_object.h"
 #include "common_components/heap/collector/gc_request.h"
 #include "common_components/heap/collector/gc_stats.h"
-#include "common_interfaces/thread/mutator_base.h"
-#include "common_interfaces/base/runtime_param.h"
+#include "thread/mutator_base.h"
+#include "base/runtime_param.h"
 
 namespace common {
 enum CollectorType {

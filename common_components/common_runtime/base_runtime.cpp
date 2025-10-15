@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 #include "common_components/common_runtime/base_runtime_param.h"
 #include "common_components/common_runtime/hooks.h"
@@ -23,7 +23,7 @@
 #include "common_components/heap/heap.h"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/mutator/mutator_manager.h"
-#include "common_interfaces/thread/thread_state_transition.h"
+#include "thread/thread_state_transition.h"
 
 namespace panda::ecmascript {
 class TaggedObject;

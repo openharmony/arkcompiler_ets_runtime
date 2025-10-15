@@ -24,8 +24,8 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 
-#include "libpandafile/class_data_accessor-inl.h"
-#include "libpandafile/file.h"
+#include "class_data_accessor-inl.h"
+#include "file.h"
 #include "libpandabase/utils/utf.h"
 
 namespace panda::ecmascript {

@@ -19,7 +19,7 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/method.h"
-#include "libpandafile/bytecode_instruction.h"
+#include "bytecode_instruction.h"
 
 namespace panda::ecmascript::tooling {
 enum class MethodType : uint8_t {

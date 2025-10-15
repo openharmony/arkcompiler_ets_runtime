@@ -24,7 +24,7 @@
 #include "ecmascript/global_index.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/chunk.h"
-#include "libpandafile/index_accessor.h"
+#include "index_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 class TypeInfoAccessor {

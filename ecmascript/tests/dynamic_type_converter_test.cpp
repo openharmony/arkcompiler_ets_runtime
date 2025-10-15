@@ -13,17 +13,15 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/objects/base_type.h"
-#include "ecmascript/string/base_string.h"
-#include "ecmascript/string/base_string-inl.h"
+#include "objects/base_type.h"
 #include "ecmascript/cross_vm/dynamic_type_converter.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_bigint-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tests/test_helper.h"
-#include "common_interfaces/thread/thread_holder.h"
-#include "common_interfaces/thread/thread_holder_manager.h"
+#include "thread/thread_holder.h"
+#include "thread/thread_holder_manager.h"
 
 using namespace panda::ecmascript;
 

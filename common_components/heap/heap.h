@@ -25,9 +25,9 @@
 #include "common_components/heap/barrier/barrier.h"
 #include "common_components/heap/collector/collector.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"
-#include "common_interfaces/base/runtime_param.h"
-#include "common_interfaces/base_runtime.h"
-#include "common_interfaces/profiler/heap_profiler_listener.h"
+#include "base/runtime_param.h"
+#include "base_runtime.h"
+#include "profiler/heap_profiler_listener.h"
 
 namespace common {
 class Allocator;

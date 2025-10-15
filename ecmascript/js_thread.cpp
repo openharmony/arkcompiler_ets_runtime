@@ -47,7 +47,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/jit/jit.h"
-#include "common_interfaces/thread/thread_holder_manager.h"
+#include "thread/thread_holder_manager.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/platform/asm_stack.h"
 

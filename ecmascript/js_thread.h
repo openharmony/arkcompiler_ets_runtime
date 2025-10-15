@@ -38,9 +38,9 @@
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "common_components/heap/collector/gc_request.h"
-#include "common_interfaces/base_runtime.h"
-#include "common_interfaces/thread/base_thread.h"
-#include "common_interfaces/thread/thread_holder.h"
+#include "base_runtime.h"
+#include "thread/base_thread.h"
+#include "thread/thread_holder.h"
 #include "ecmascript/cross_vm/js_thread_hybrid.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)

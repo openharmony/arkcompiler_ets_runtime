@@ -18,9 +18,9 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "libpandafile/code_data_accessor.h"
-#include "libpandafile/class_data_accessor-inl.h"
-#include "libpandafile/index_accessor.h"
+#include "code_data_accessor.h"
+#include "class_data_accessor-inl.h"
+#include "index_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 template<class T, class... Args>

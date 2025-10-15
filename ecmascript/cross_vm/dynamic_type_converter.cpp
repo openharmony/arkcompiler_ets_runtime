@@ -18,8 +18,8 @@
 #include "ecmascript/js_bigint-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "common_interfaces/objects/base_object_dispatcher.h"
-#include "common_interfaces/objects/base_type.h"
+#include "objects/base_object_dispatcher.h"
+#include "objects/base_type.h"
 
 namespace panda::ecmascript {
 

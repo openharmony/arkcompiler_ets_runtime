@@ -18,7 +18,7 @@
 #include "ecmascript/method.h"
 #include "ecmascript/module/module_resolver.h"
 
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 namespace panda::ecmascript {
 PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,

@@ -31,7 +31,7 @@
 #include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
-#include "libpandafile/index_accessor.h"
+#include "index_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 struct ExceptionItem {

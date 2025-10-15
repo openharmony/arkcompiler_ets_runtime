@@ -22,8 +22,8 @@
 #include "common_components/heap/collector/gc_infos.h"
 #include "common_components/mutator/thread_local.h"
 #include "common_components/mutator/satb_buffer.h"
-#include "common_interfaces/thread/mutator_base.h"
-#include "common_interfaces/thread/thread_holder.h"
+#include "thread/mutator_base.h"
+#include "thread/thread_holder.h"
 
 namespace common {
 class Mutator;

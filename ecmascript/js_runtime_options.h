@@ -24,8 +24,8 @@
 
 #include "common_components/common_runtime/base_runtime_param.h"
 #include "common_components/log/log_base.h"
-#include "common_interfaces/base/common.h"
-#include "common_interfaces/base/runtime_param.h"
+#include "base/common.h"
+#include "base/runtime_param.h"
 #include "ecmascript/base/bit_helper.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
