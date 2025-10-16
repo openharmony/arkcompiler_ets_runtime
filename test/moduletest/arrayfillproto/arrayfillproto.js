@@ -15,12 +15,21 @@
 
 
 /*
- * @tc.name:array fill proto
- * @tc.desc:test array fill proto
+ * @tc.name: array fill proto
+ * @tc.desc: test array fill proto
+ * @tc.type: FUNC
  */
 let arr1 = new Array(500);
 arr1.__proto__.length = 10;
 arr1.__proto__.fill(233, 0, 7);
 let arr2 = new Array(500);
 let arr3 = arr1.concat(arr2);
-print(arr3[0], arr3[1], arr3[2], arr3[500], arr3[501], arr3[502]);
+
+assert_equal(arr3[0], 233);
+assert_equal(arr3[1], 233);
+assert_equal(arr3[2], 233);
+assert_equal(arr3[500], 233);
+assert_equal(arr3[501], 233);
+assert_equal(arr3[502], 233);
+
+test_end();

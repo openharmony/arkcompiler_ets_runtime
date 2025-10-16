@@ -12,43 +12,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+/*
+ * @tc.name: arrayderived
+ * @tc.desc: test Array derived and prototype changed
+ * @tc.type: FUNC
+ */
 class CustomArray extends Array {}
 
 // 测试受 `constructor` 属性影响的方法
 function testConstructorEffect() {
     let custom = new CustomArray(1, 2, 3);
 
-    print("Testing methods affected by constructor:");
-
     // Array.prototype.concat
     let result = custom.concat([4, 5]);
-    print("concat:", result instanceof CustomArray); // true
+    assert_equal(result instanceof CustomArray, true);
 
     // Array.prototype.map
     result = custom.map(x => x * 2);
-    print("map:", result instanceof CustomArray); // true
+    assert_equal(result instanceof CustomArray, true);
 
     // Array.prototype.filter
     result = custom.filter(x => x > 1);
-    print("filter:", result instanceof CustomArray); // true
+    assert_equal(result instanceof CustomArray, true);
 
     // Array.prototype.slice
     result = custom.slice(1);
-    print("slice:", result instanceof CustomArray); // true
+    assert_equal(result instanceof CustomArray, true);
 
     // Array.prototype.flatMap
     result = custom.flatMap(x => [x, x * 2]);
-    print("flatMap:", result instanceof CustomArray); // true
+    assert_equal(result instanceof CustomArray, true);
 
     // Array.prototype.flat
     result = custom.flat();
-    print("flat:", result instanceof CustomArray); // true
-
+    assert_equal(result instanceof CustomArray, true);
 }
 
 function testArrayprototypechange() {
-    print("Testing array when Array's prototype changed.")
     let newProto = {};
     Object.defineProperty(newProto, '1', {
         get: function() {
@@ -57,9 +57,11 @@ function testArrayprototypechange() {
     })
     Array.prototype.__proto__ = newProto;
     let a = new Array(10);
-    print(a[1]);
+    assert_equal(a[1], 1);
 }
 
 testConstructorEffect()
 
 testArrayprototypechange()
+
+test_end();
