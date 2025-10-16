@@ -1739,4 +1739,53 @@ JSTaggedValue BuiltinsArkTools::GetRegExpCacheCount(EcmaRuntimeCallInfo *info)
     int32_t count = cacheTable->GetCacheCount();
     return JSTaggedValue(count);
 }
+
+static inline void CallBackFn([[maybe_unused]] void *data, void *hint)
+{
+    free(hint);
+}
+
+static inline bool CheckArgTwoType(EcmaRuntimeCallInfo *info)
+{
+    if (info->GetArgsNumber() == 2) { // 2: length of arguments
+        return info->GetCallArg(1)->IsBoolean();
+    }
+    return true;
+}
+
+JSTaggedValue BuiltinsArkTools::CreateCachedExternalString(EcmaRuntimeCallInfo *info)
+{
+    RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());
+    CHECK(info && (info->GetArgsNumber() == 1 || info->GetArgsNumber() == 2)); // 2: length of arguments
+    CHECK(info->GetCallArg(0)->IsString());
+    CHECK(CheckArgTwoType(info));
+
+    JSThread *thread = info->GetThread();
+    static constexpr uint32_t TYPE_INFO_SIZE = 4;
+    EcmaString *strArg = EcmaString::Cast(info->GetCallArgValue(0));
+    EcmaStringAccessor strArgAcc(strArg);
+    uint32_t strLength = strArgAcc.GetLength();
+    if (strArgAcc.IsUtf8() && info->GetCallArg(1)->IsTrue()) {
+        uint8_t *hint = (uint8_t *)std::malloc(strLength + TYPE_INFO_SIZE);
+        if (hint == nullptr) {
+            LOG_FULL(FATAL) << "malloc failed";
+            UNREACHABLE();
+        }
+        uint8_t *cachedData = hint + TYPE_INFO_SIZE;
+        EcmaStringAccessor::WriteToFlat(thread, strArg, cachedData, strLength);
+        EcmaString *externalStr = EcmaStringAccessor::CreateFromExternalResource(thread->GetEcmaVM(), cachedData,
+                                                                                 strLength, true, CallBackFn, hint);
+        return JSTaggedValue(externalStr);
+    }
+    uint8_t *hint = (uint8_t *)std::malloc(strLength * 2 + TYPE_INFO_SIZE); // 2: UTF16 characters occupy two bytes
+    if (hint == nullptr) {
+        LOG_FULL(FATAL) << "malloc failed";
+        UNREACHABLE();
+    }
+    uint16_t *cachedData = reinterpret_cast<uint16_t *>(hint + TYPE_INFO_SIZE);
+    strArgAcc.WriteToFlatUtf16(thread, cachedData, strLength);
+    EcmaString *externalStr = EcmaStringAccessor::CreateFromExternalResource(thread->GetEcmaVM(), cachedData, strLength,
+                                                                             false, CallBackFn, hint);
+    return JSTaggedValue(externalStr);
+}
 } // namespace panda::ecmascript::builtins

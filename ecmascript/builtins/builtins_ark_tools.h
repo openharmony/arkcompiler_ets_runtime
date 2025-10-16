@@ -161,7 +161,8 @@
     V("hasConstructor",                            HasConstructor,                            1, INVALID)     \
     V("setHotReloadPatchMain",                     SetHotReloadPatchMain,                     0, INVALID)     \
     V("setNoHotReloadPatchMain",                   SetNoHotReloadPatchMain,                   0, INVALID)     \
-    V("getRegExpCacheCount",                       GetRegExpCacheCount,                       0, INVALID)
+    V("getRegExpCacheCount",                       GetRegExpCacheCount,                       0, INVALID)     \
+    V("createCachedExternalString",                CreateCachedExternalString,                0, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
     V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
@@ -488,6 +489,9 @@ public:
     static JSTaggedValue SetNoHotReloadPatchMain(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue GetRegExpCacheCount(EcmaRuntimeCallInfo *info);
+
+    // Create an external string based on the string literal passed in by the user.
+    static JSTaggedValue CreateCachedExternalString(EcmaRuntimeCallInfo *info);
 
 private:
 #define BUILTINS_ARK_TOOLS_FUNCTION_ENTRY(name, method, length, id) \
