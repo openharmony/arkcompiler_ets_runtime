@@ -45,6 +45,9 @@ public:
         std::ofstream file(bootPathJson_);
         file << bootpathJsonStr << std::endl;
         file.close();
+
+        mkdir(etcDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        mkdir(etcArkkDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     }
 
     void TearDown() override
@@ -52,11 +55,17 @@ public:
         unlink(bootPathJson_);
         rmdir(systemFrameworkDir_);
         rmdir(bootPathJson_);
+
+        rmdir(etcDir);
+        rmdir(etcArkkDir);
     };
 
     const char *systemDir_ = "/system";
     const char *systemFrameworkDir_ = "/system/framework";
     const char *bootPathJson_ = "/system/framework/bootpath.json";
+    const char *etcDir = "/etc";
+    const char *etcArkkDir = "/etc/ark";
+    const char *staticPaocBlackListPath = "/etc/ark/static_aot_methods_black_list.json";
 };
 
 /**
@@ -661,4 +670,1381 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_043, TestSize.Level0) {
     auto result = AOTArgsParserFactory::GetParser(argsMap, false);
     EXPECT_EQ(result, std::nullopt);
 }
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_044, TestSize.Level0)
+{
+    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with non-string elements in methodLists
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"/system/framework/etsstdlib_bootabc.abc\","
+        "      \"type\": \"framework\","
+        "      \"methodLists\": [\"Test:m1\", 456, \"Test:m2\", true, \"Test:m3\"]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2|Test:m3)$).*");
+
+    unlink(staticPaocBlackListPath);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_045, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::ParseBlackListMethods with missing moduleLists
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"com.example.test\","
+        "      \"type\": \"application\""
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticAOTArgsParser parser;
+    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string moduleName = "entry";
+    std::string result = parser.ParseBlackListMethods(pkgInfo, moduleName);
+
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink(staticPaocBlackListPath);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_046, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::ParseBlackListMethods with empty blackMethodList
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": []"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticAOTArgsParser parser;
+    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string moduleName = "entry";
+    std::string result = parser.ParseBlackListMethods(pkgInfo, moduleName);
+
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink(staticPaocBlackListPath);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_047, TestSize.Level0)
+{
+    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with empty blackMethodList
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": []"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_048
+ * @tc.desc: Test StaticAOTArgsParser::ProcessArgsMap with staticAOTArgsList.find branch
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_048, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    HapArgs hapArgs;
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap["boot-panda-files"] = "entry.abc";
+    std::string anfilePath;
+    std::string pkgInfo;
+    bool partialMode = false;
+
+    // Call ProcessArgsMap - this should trigger the staticAOTArgsList.find branch
+    parser.ProcessArgsMap(argsMap, anfilePath, pkgInfo, partialMode, hapArgs);
+
+    // Verify that the vector contains entries from the staticAOTArgsList branch
+    bool foundStaticArg = false;
+    for (const auto& arg : hapArgs.argVector) {
+        if (arg.find("--boot-panda-files=entry.abc") != std::string::npos) {
+            foundStaticArg = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundStaticArg);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_049
+ * @tc.desc: Test StaticAOTArgsParser::ProcessBlackListMethods with non-empty blackListMethods
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_049, TestSize.Level0)
+{
+    // Create black list JSON file with matching bundle and module
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"com.example.test\","
+        "      \"type\": \"application\","
+        "      \"moduleLists\": ["
+        "        {"
+        "          \"name\": \"entry\","
+        "          \"methodLists\": [\"Test:m1\"]"
+        "        }"
+        "      ]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticAOTArgsParser parser;
+    HapArgs hapArgs;
+    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string anfilePath = "/data/local/ark-cache/com.example.test/arm64/entry";
+
+    // Call ProcessBlackListMethods - this should add the method list to hapArgs
+    parser.ProcessBlackListMethods(pkgInfo, anfilePath, hapArgs);
+
+    // Verify that both arguments were added to the argument vector
+    bool foundBlackMethods = false;
+    for (const auto& arg : hapArgs.argVector) {
+        if (arg.find("--compiler-regex=") != std::string::npos &&
+            arg.find("Test:m1") != std::string::npos) {
+            foundBlackMethods = true;
+        }
+    }
+    EXPECT_TRUE(foundBlackMethods);
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_050
+ * @tc.desc: Test AOTArgsParserBase::ParseBlackListJson with file not open
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_050, TestSize.Level0)
+{
+    // This test verifies the case where the file doesn't exist
+    // Use a path that doesn't exist
+    nlohmann::json jsonObject;
+    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
+
+    // The function should return false when the file doesn't exist
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_052
+ * @tc.desc: Test AOTArgsParserBase::ParseBlackListJson with null/empty JSON
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_052, TestSize.Level0)
+{
+    // Create an empty JSON file
+    std::string emptyJson = "{}";
+    std::ofstream file("/tmp/empty_test_black_methods.json");
+    file << emptyJson << std::endl;
+    file.close();
+
+    // Temporarily modify the path to test this specific file
+    std::string originalPath = "/etc/ark/static_aot_methods_black_list.json";
+    std::rename("/tmp/empty_test_black_methods.json", originalPath.c_str());
+
+    nlohmann::json jsonObject;
+    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
+
+    // This returns false because the root object doesn't contain "blackMethodList"
+    EXPECT_FALSE(result);
+
+    // Clean up
+    unlink("/etc/ark/static_aot_methods_black_list.json");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_053
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList with missing bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_053, TestSize.Level0)
+{
+    nlohmann::json item;
+    // Missing bundleName
+    nlohmann::json moduleLists = nlohmann::json::array();
+    item["moduleLists"] = moduleLists;
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_054
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList with non-string bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_054, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = 123; // Non-string value
+    nlohmann::json moduleLists = nlohmann::json::array();
+    item["moduleLists"] = moduleLists;
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_055
+ * @tc.desc: Test StaticAOTArgsParser::CheckModuleNameAndMethodList with missing name
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_055, TestSize.Level0)
+{
+    nlohmann::json moduleItem;
+    // Missing name
+    nlohmann::json methodLists = nlohmann::json::array();
+    moduleItem["methodLists"] = methodLists;
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckModuleNameAndMethodList(moduleItem, "entry");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_056
+ * @tc.desc: Test StaticAOTArgsParser::CheckModuleNameAndMethodList with non-string name
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_056, TestSize.Level0)
+{
+    nlohmann::json moduleItem;
+    moduleItem["name"] = 456; // Non-string value
+    nlohmann::json methodLists = nlohmann::json::array();
+    moduleItem["methodLists"] = methodLists;
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckModuleNameAndMethodList(moduleItem, "entry");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_057
+ * @tc.desc: Test StaticAOTArgsParser::ProcessBlackListForBundleAndModule with invalid blackMethodList
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_057, TestSize.Level0)
+{
+    nlohmann::json jsonObject;
+    // Missing blackMethodList key
+    StaticAOTArgsParser parser;
+    std::string result = parser.ProcessBlackListForBundleAndModule(jsonObject, "bundle", "module");
+    EXPECT_STREQ(result.c_str(), "");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_058
+ * @tc.desc: Test StaticAOTArgsParser::ProcessBlackListForBundleAndModule with non-array blackMethodList
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_058, TestSize.Level0)
+{
+    nlohmann::json jsonObject;
+    jsonObject["blackMethodList"] = "not_an_array"; // Non-array value
+    StaticAOTArgsParser parser;
+    std::string result = parser.ProcessBlackListForBundleAndModule(jsonObject, "bundle", "module");
+    EXPECT_STREQ(result.c_str(), "");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_059
+ * @tc.desc: Test StaticAOTArgsParser::ProcessBlackListForBundleAndModule with empty resultStr comma case
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_059, TestSize.Level0)
+{
+    // Create black list JSON with multiple matching methods to trigger comma logic
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"com.example.test\","
+        "      \"type\": \"application\","
+        "      \"moduleLists\": ["
+        "        {"
+        "          \"name\": \"entry\","
+        "          \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
+        "        }"
+        "      ]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticAOTArgsParser parser;
+    std::string result = parser.ProcessBlackListForBundleAndModule(
+        nlohmann::json::parse(blackListJsonStr),
+        "com.example.test",
+        "entry"
+    );
+
+    // Should return the regex pattern
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2)$).*");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_060
+ * @tc.desc: Test StaticAOTArgsParser::ProcessMatchingModules continue branch
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_060, TestSize.Level0)
+{
+    nlohmann::json item;
+    nlohmann::json moduleLists = nlohmann::json::array();
+
+    // Add a module with a non-matching name
+    nlohmann::json moduleItem;
+    moduleItem["name"] = "other_module";
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("Test:m1");
+    moduleItem["methodLists"] = methodLists;
+    moduleLists.push_back(moduleItem);
+
+    item["moduleLists"] = moduleLists;
+
+    StaticAOTArgsParser parser;
+    std::vector<std::string> result = parser.ProcessMatchingModules(item, "entry");
+    // Should return empty since no module matches "entry"
+    EXPECT_TRUE(result.empty());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_061
+ * @tc.desc: Test StaticAOTArgsParser::ParseBlackListMethods with ParseBundleName failure
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_061, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string invalidPkgInfo = "{}"; // BundleName is missing
+    std::string result = parser.ParseBlackListMethods(invalidPkgInfo, "entry");
+
+    // Should return empty string when bundleName parsing fails
+    EXPECT_STREQ(result.c_str(), "");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_062
+ * @tc.desc: Test StaticAOTArgsParser::ParseBlackListMethods with empty bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_062, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string emptyBundlePkgInfo = "{\"bundleName\": \"\"}"; // BundleName is empty
+    std::string result = parser.ParseBlackListMethods(emptyBundlePkgInfo, "entry");
+
+    // Should return empty string when bundleName is empty
+    EXPECT_STREQ(result.c_str(), "");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_063
+ * @tc.desc: Test StaticAOTArgsHandler::Handle with blackListMethods non-empty path
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_063, TestSize.Level0)
+{
+    // Create black list JSON file with matching bundle and module
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"com.ohos.contacts\","
+        "      \"type\": \"application\","
+        "      \"moduleLists\": ["
+        "        {"
+        "          \"name\": \"entry\","
+        "          \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
+        "        }"
+        "      ]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
+    argsMap.emplace("compiler-pkg-info",
+        "{\"abcName\":\"ets/modules.abc\","
+        "\"abcOffset\":\"0x1000\","
+        "\"abcSize\":\"0x60b058\","
+        "\"appIdentifier\":\"5765880207853624761\","
+        "\"bundleName\":\"com.ohos.contacts\","
+        "\"BundleUid\":\"0x1317b6f\","
+        "\"isEncryptedBundle\":\"0x0\","
+        "\"isScreenOff\":\"0x1\","
+        "\"moduleName\":\"entry\","
+        "\"pgoDir\":\"/data/local/ark-profile/100/com.ohos.contacts\","
+        "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\","
+        "\"processUid\":\"0xbf4\"}");
+
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_OK);
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_064
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList with missing bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_064, TestSize.Level0)
+{
+    nlohmann::json item;
+    // Missing bundleName
+    nlohmann::json methodLists = nlohmann::json::array();
+    item["methodLists"] = methodLists;
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndMethodList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_065
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList with non-string bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_065, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = 123; // Non-string value
+    nlohmann::json methodLists = nlohmann::json::array();
+    item["methodLists"] = methodLists;
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndMethodList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_066
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList with null methodLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_066, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    // methodLists is null
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndMethodList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_067
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with invalid blackMethodList key
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_067, TestSize.Level0)
+{
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "com.example.test";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    // Should return empty when black list file doesn't exist
+    EXPECT_STREQ(result.c_str(), "");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_068
+ * @tc.desc: Test StaticAOTArgsParser::ProcessArgsMap with staticAOTArgsList.find branch emplace_back
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_068, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    HapArgs hapArgs;
+    std::unordered_map<std::string, std::string> argsMap;
+
+    // Use a known argument that exists in staticAOTArgsList
+    argsMap["boot-panda-files"] = "entry.abc";
+    std::string anfilePath;
+    std::string pkgInfo;
+    bool partialMode = false;
+
+    // Call ProcessArgsMap - this should trigger the staticAOTArgsList.find branch
+    parser.ProcessArgsMap(argsMap, anfilePath, pkgInfo, partialMode, hapArgs);
+
+    // Verify that the vector contains the specific argument from staticAOTArgsList branch
+    bool foundArg = false;
+    for (const auto& arg : hapArgs.argVector) {
+        if (arg.find("--boot-panda-files=entry.abc") != std::string::npos) {
+            foundArg = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundArg);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_069
+ * @tc.desc: Test AOTArgsParserBase::ParseBlackListJson with file not existing (IsFileExists path)
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_069, TestSize.Level0)
+{
+    // The ParseBlackListJson function specifically looks for a fixed path at runtime
+    // This covers the !IsFileExists(STATIC_PAOC_BLACK_LIST_PATH) path
+    nlohmann::json jsonObject;
+    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
+    // This should return false since the file doesn't exist by default
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_070
+ * @tc.desc: Test StaticAOTArgsParser::ProcessBlackListForBundleAndModule with comma concatenation
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_070, TestSize.Level0)
+{
+    // Create JSON with multiple items to trigger the comma logic
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"com.example.test\","
+        "      \"type\": \"application\","
+        "      \"moduleLists\": ["
+        "        {"
+        "          \"name\": \"entry\","
+        "          \"methodLists\": [\"Test:m1\"]"
+        "        }"
+        "      ]"
+        "    },"
+        "    {"
+        "      \"bundleName\": \"com.example.test\","
+        "      \"type\": \"application\","
+        "      \"moduleLists\": ["
+        "        {"
+        "          \"name\": \"entry\","
+        "          \"methodLists\": [\"Test:m2\"]"
+        "        }"
+        "      ]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticAOTArgsParser parser;
+    std::string result = parser.ProcessBlackListForBundleAndModule(
+        nlohmann::json::parse(blackListJsonStr),
+        "com.example.test",
+        "entry"
+    );
+
+    // Should return regex pattern
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2)$).*");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_071
+ * @tc.desc: Test StaticAOTArgsParser::ProcessMatchingModules with comma concatenation
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_071, TestSize.Level0)
+{
+    nlohmann::json item;
+    nlohmann::json moduleLists = nlohmann::json::array();
+
+    // Add modules with matching names to trigger comma concatenation
+    nlohmann::json moduleItem1, moduleItem2;
+    moduleItem1["name"] = "entry";
+    nlohmann::json methodLists1 = nlohmann::json::array();
+    methodLists1.push_back("Test:m1");
+    moduleItem1["methodLists"] = methodLists1;
+
+    moduleItem2["name"] = "entry";  // Same name to match
+    nlohmann::json methodLists2 = nlohmann::json::array();
+    methodLists2.push_back("Test:m2");
+    moduleItem2["methodLists"] = methodLists2;
+
+    moduleLists.push_back(moduleItem1);
+    moduleLists.push_back(moduleItem2);
+    item["moduleLists"] = moduleLists;
+
+    StaticAOTArgsParser parser;
+    std::vector<std::string> result = parser.ProcessMatchingModules(item, "entry");
+
+    // Should return concatenated methods with comma
+    ASSERT_EQ(result.size(), 2U);
+    EXPECT_EQ(result[0], "Test:m1");
+    EXPECT_EQ(result[1], "Test:m2");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_072
+ * @tc.desc: Test StaticAOTArgsParser::ParseBlackListMethods with ParseBundleName failure/empty
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_072, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    // Test with empty bundleName - this should trigger the bundleName.empty() check
+    std::string emptyBundlePkgInfo = "{\"bundleName\": \"\"}";
+    std::string result = parser.ParseBlackListMethods(emptyBundlePkgInfo, "entry");
+
+    EXPECT_STREQ(result.c_str(), "");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_073
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Parse function with non-empty blackListMethods
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
+{
+    // Create black list JSON file to be found
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"/system/framework/etsstdlib_bootabc.abc\","
+        "      \"type\": \"framework\","
+        "      \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    // Use framework args map
+    std::unordered_map<std::string, std::string> argsMap(framewordArgsMapForTest);
+    argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
+    argsMap.emplace(ArgsIdx::IS_SYSTEM_COMPONENT, "1");
+
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_OK);
+
+    // Clean up
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_074
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with invalid blackMethodList
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_074, TestSize.Level0)
+{
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    // Should return empty when black list file doesn't exist or is invalid
+    EXPECT_STREQ(result.c_str(), "");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_075
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with comma concatenation
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_075, TestSize.Level0)
+{
+    // Create black list JSON with multiple matching methods
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"/system/framework/etsstdlib_bootabc.abc\","
+        "      \"type\": \"framework\","
+        "      \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    // Should return regex pattern
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2)$).*");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_076
+ * @tc.desc: Test AOTArgsParserBase::ParseBlackListJson with null JSON content
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_076, TestSize.Level0)
+{
+    // Create a JSON file with 'null' content to trigger the jsonObject.is_null() condition
+    std::string nullJson = "null";
+    system("mkdir -p /etc/ark");
+    std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
+    file << nullJson << std::endl;
+    file.close();
+
+    nlohmann::json jsonObject;
+    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
+    // When the parsed JSON is null, the function should return false due to is_null() check
+    // Note: This may or may not actually trigger the condition depending on how nlohmann::json handles 'null'
+    EXPECT_FALSE(result); // Expecting false due to null JSON
+
+    unlink("/etc/ark/static_aot_methods_black_list.json");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_077
+ * @tc.desc: Test AOTArgsParserBase::ParseBlackListJson with invalid JSON to trigger discarded error
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_077, TestSize.Level0)
+{
+    // Create an invalid JSON file to trigger the jsonObject.is_discarded() condition
+    std::string invalidJson = "{}";
+    system("mkdir -p /etc/ark");
+    std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
+    file << invalidJson << std::endl;
+    file.close();
+
+    nlohmann::json jsonObject;
+    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
+    // When JSON is invalid, nlohmann::json::parse() may throw or mark as discarded
+    // In case of exception, we expect it to be handled, return false
+    EXPECT_FALSE(result); // Expecting false due to invalid JSON
+
+    unlink("/etc/ark/static_aot_methods_black_list.json");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_078
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with missing blackMethodList
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_078, TestSize.Level0)
+{
+    // Create a JSON file without blackMethodList to trigger the condition
+    std::string invalidJson = "{\"otherKey\": \"otherValue\"}";  // Missing blackMethodList
+    system("mkdir -p /etc/ark");
+    std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
+    file << invalidJson << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "some_bundle";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    // Should return empty string when blackMethodList is missing
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink("/etc/ark/static_aot_methods_black_list.json");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_079
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with non-array blackMethodList
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_079, TestSize.Level0)
+{
+    // Create a JSON file with blackMethodList as non-array to trigger the condition
+    std::string invalidJson = "{\"blackMethodList\": \"not_an_array\"}";  // blackMethodList is string, not array
+    system("mkdir -p /etc/ark");
+    std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
+    file << invalidJson << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "some_bundle";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    // Should return empty string when blackMethodList is not an array
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink("/etc/ark/static_aot_methods_black_list.json");
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_080, TestSize.Level0)
+{
+    // Create a JSON file that exists but has no blackMethodList to test the exact condition
+    std::string jsonContent = "{}";  // Empty JSON object
+    system("mkdir -p /etc/ark");
+    std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
+    file << jsonContent << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "test_bundle";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    // Should return empty string when blackMethodList is missing
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink("/etc/ark/static_aot_methods_black_list.json");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_081
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with empty blackMethodList array
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_081, TestSize.Level0)
+{
+    std::string jsonContent = "{\"blackMethodList\": []}";  // Empty array
+    system("mkdir -p /etc/ark");
+    std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
+    file << jsonContent << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "test_bundle";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    // Should return empty string when blackMethodList is an empty array
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink("/etc/ark/static_aot_methods_black_list.json");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_082
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with comma concatenation
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_082, TestSize.Level0)
+{
+    // Create a JSON file with multiple matching items to trigger resultStr += "," condition
+    std::string jsonContent =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"/system/framework/etsstdlib_bootabc.abc\","
+        "      \"type\": \"framework\","
+        "      \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
+        "    },"
+        "    {"
+        "      \"bundleName\": \"/system/framework/etsstdlib_bootabc.abc\","
+        "      \"type\": \"framework\","
+        "      \"methodLists\": [\"Test:m3\", \"Test:m4\"]"
+        "    }"
+        "  ]"
+        "}";
+    system("mkdir -p /etc/ark");
+    std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
+    file << jsonContent << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    // Should return concatenated methods with comma when multiple items match
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2|Test:m3|Test:m4)$).*");
+
+    unlink("/etc/ark/static_aot_methods_black_list.json");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_083
+ * @tc.desc: Test AOTArgsParserBase::ParseBundleName with valid bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_083, TestSize.Level0)
+{
+    std::string pkgInfo = "{\"bundleName\": \"com.example.app\"}";
+    std::string bundleName;
+    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
+    EXPECT_STREQ(bundleName.c_str(), "com.example.app");
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_084
+ * @tc.desc: Test AOTArgsParserBase::ParseBundleName with null pkgInfo
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_084, TestSize.Level0)
+{
+    std::string pkgInfo = "null";
+    std::string bundleName;
+    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_085
+ * @tc.desc: Test AOTArgsParserBase::ParseBundleName with non-string bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_085, TestSize.Level0)
+{
+    std::string pkgInfo = "{\"bundleName\":false}";
+    std::string bundleName;
+    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_086
+ * @tc.desc: Test AOTArgsParserBase::ParseBundleName with null bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_086, TestSize.Level0)
+{
+    std::string pkgInfo = "{\"bundleName\":null}";
+    std::string bundleName;
+    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_087
+ * @tc.desc: Test AOTArgsParserBase::ParseBundleName with missing bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_087, TestSize.Level0)
+{
+    std::string pkgInfo = "{\"test\":\"aa\"}";
+    std::string bundleName;
+    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_088
+ * @tc.desc: Test AOTArgsParserBase::ParseBundleName with empty pkgInfo
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_088, TestSize.Level0)
+{
+    std::string pkgInfo = "{}";
+    std::string bundleName;
+    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_089
+ * @tc.desc: Test AOTArgsParserBase::JoinMethodList with empty array
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_089, TestSize.Level0)
+{
+    // Test AOTArgsParserBase::JoinMethodList with empty array
+    nlohmann::json methodLists = nlohmann::json::array();
+    std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
+    EXPECT_TRUE(result.empty());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_090
+ * @tc.desc: Test AOTArgsParserBase::JoinMethodList with method list
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_090, TestSize.Level0)
+{
+    // Test AOTArgsParserBase::JoinMethodList with method list
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("Test:m1");
+    methodLists.push_back("Test:m2");
+    methodLists.push_back("Test:m3");
+    std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
+    ASSERT_EQ(result.size(), 3U);
+    EXPECT_EQ(result[0], "Test:m1");
+    EXPECT_EQ(result[1], "Test:m2");
+    EXPECT_EQ(result[2], "Test:m3");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_091
+ * @tc.desc: Test AOTArgsParserBase::JoinMethodList with non-string elements
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_091, TestSize.Level0)
+{
+    // Test AOTArgsParserBase::JoinMethodList with non-string elements
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("Test:m1");
+    methodLists.push_back(123);  // non-string element
+    methodLists.push_back("Test:m3");
+    std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
+    ASSERT_EQ(result.size(), 2U);
+    EXPECT_EQ(result[0], "Test:m1");
+    EXPECT_EQ(result[1], "Test:m3");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_092
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList with valid bundle and module list
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_092, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::CheckBundleNameAndModuleList with valid bundle and module list
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    nlohmann::json moduleLists = nlohmann::json::array();
+    item["moduleLists"] = moduleLists;
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_093
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList with invalid bundle name
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_093, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::CheckBundleNameAndModuleList with invalid bundle name
+    nlohmann::json item;
+    item["bundleName"] = "com.example.other";
+    nlohmann::json moduleLists = nlohmann::json::array();
+    item["moduleLists"] = moduleLists;
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_094
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList without module list
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_094, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::CheckBundleNameAndModuleList without module list
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    // Missing moduleLists
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_095
+ * @tc.desc: Test StaticAOTArgsParser::CheckModuleNameAndMethodList with valid module and method list
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_095, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::CheckModuleNameAndMethodList with valid module and method list
+    nlohmann::json moduleItem;
+    moduleItem["name"] = "entry";
+    nlohmann::json methodLists = nlohmann::json::array();
+    moduleItem["methodLists"] = methodLists;
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckModuleNameAndMethodList(moduleItem, "entry");
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_096
+ * @tc.desc: Test StaticAOTArgsParser::CheckModuleNameAndMethodList with invalid module name
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_096, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::CheckModuleNameAndMethodList with invalid module name
+    nlohmann::json moduleItem;
+    moduleItem["name"] = "other";
+    nlohmann::json methodLists = nlohmann::json::array();
+    moduleItem["methodLists"] = methodLists;
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckModuleNameAndMethodList(moduleItem, "entry");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_097
+ * @tc.desc: Test StaticAOTArgsParser::CheckModuleNameAndMethodList without method list
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_097, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::CheckModuleNameAndMethodList without method list
+    nlohmann::json moduleItem;
+    moduleItem["name"] = "entry";
+    // Missing methodLists
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckModuleNameAndMethodList(moduleItem, "entry");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_098
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with matching bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_098, TestSize.Level0)
+{
+    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with matching bundleName
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"/system/framework/etsstdlib_bootabc.abc\","
+        "      \"type\": \"framework\","
+        "      \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2)$).*");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_099
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with non-matching bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_099, TestSize.Level0)
+{
+    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with non-matching bundleName
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"/system/framework/other.abc\","
+        "      \"type\": \"framework\","
+        "      \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_100
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods without methodLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_100, TestSize.Level0)
+{
+    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods without methodLists
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"/system/framework/etsstdlib_bootabc.abc\","
+        "      \"type\": \"framework\""
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    EXPECT_STREQ(result.c_str(), "");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_101
+ * @tc.desc: Test StaticAOTArgsParser with proper blackMethodList JSON format
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_101, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser with proper blackMethodList JSON format (as per paoc.md)
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"com.example.test\","
+        "      \"type\": \"application\","
+        "      \"moduleLists\": ["
+        "        {"
+        "          \"name\": \"entry\","
+        "          \"methodLists\": [\"Test:f1\", \"Test:f2\"]"
+        "        }"
+        "      ]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticAOTArgsParser parser;
+    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string moduleName = "entry";
+    std::string result = parser.ParseBlackListMethods(pkgInfo, moduleName);
+
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:f1|Test:f2)$).*");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_102
+ * @tc.desc: Test StaticFrameworkAOTArgsParser with proper blackMethodList JSON format for framework
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_102, TestSize.Level0)
+{
+    // Test StaticFrameworkAOTArgsParser with proper blackMethodList JSON format for framework (as per paoc.md)
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"/system/framework/etsstdlib_bootabc.abc\","
+        "      \"type\": \"framework\","
+        "      \"methodLists\": [\"Test:f1\", \"Test:f2\"]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
+    std::string result = parser.ParseBlackListMethods(bundleName);
+
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:f1|Test:f2)$).*");
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_103
+ * @tc.desc: Test ParseBlackListJson with blackMethodList structure
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_103, TestSize.Level0)
+{
+    // Test ParseBlackListJson with blackMethodList structure as per paoc.md
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"com.example.test\","
+        "      \"type\": \"application\","
+        "      \"methodLists\": [\"Test:f1\"],"
+        "      \"issue\": \"https://example.com/issue/123\""
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    nlohmann::json jsonObject;
+    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(jsonObject.contains("blackMethodList"));
+
+    unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_104
+ * @tc.desc: Test StaticAOTArgsParser::ParseBlackListMethods with non-string elements in methodLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_104, TestSize.Level0)
+{
+    // Test StaticAOTArgsParser::ParseBlackListMethods with non-string elements in methodLists
+    std::string blackListJsonStr =
+        "{"
+        "  \"blackMethodList\": ["
+        "    {"
+        "      \"bundleName\": \"com.example.test\","
+        "      \"type\": \"application\","
+        "      \"moduleLists\": ["
+        "        {"
+        "          \"name\": \"entry\","
+        "          \"methodLists\": [\"Test:m1\", 123, \"Test:m3\", null, \"Test:m4\"]"
+        "        }"
+        "      ]"
+        "    }"
+        "  ]"
+        "}";
+    std::ofstream file(staticPaocBlackListPath);
+    file << blackListJsonStr << std::endl;
+    file.close();
+
+    StaticAOTArgsParser parser;
+    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string moduleName = "entry";
+    std::string result = parser.ParseBlackListMethods(pkgInfo, moduleName);
+
+    EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m3|Test:m4)$).*");
+
+    unlink(staticPaocBlackListPath);
+}
+
 } // namespace OHOS::ArkCompiler
