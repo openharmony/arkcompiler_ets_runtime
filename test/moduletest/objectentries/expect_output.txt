@@ -33,3 +33,8 @@ f,-2147483649
 [["a",1],["b",2],["c",3]]
 []
 aaa,va,bbb,vb
+2
+getterProp
+getterPropValue
+enumProp
+enumPropValue

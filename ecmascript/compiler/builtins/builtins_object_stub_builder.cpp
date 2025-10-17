@@ -1807,6 +1807,9 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
         GateRef key = GetKeyFromLayoutInfo(glue, layout, *idx);
         GateRef attr = GetPropAttrFromLayoutInfo(glue, layout, *idx);
         GateRef value = JSObjectGetPropertyWithRep(glue, obj, cls, attr);
+        Label notAccessor(env);
+        BRANCH(IsAccessor(attr), slowPath, &notAccessor);
+        Bind(&notAccessor);
         BRANCH(IsEnumerable(attr), &propertyIsEnumerable, &loopEnd);
         Bind(&propertyIsEnumerable);
         {

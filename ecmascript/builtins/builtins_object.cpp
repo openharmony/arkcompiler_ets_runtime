@@ -1077,10 +1077,6 @@ JSTaggedValue BuiltinsObject::Entries(EcmaRuntimeCallInfo *argv)
 
     // 1. Let obj be ? ToObject(O).
     JSHandle<JSTaggedValue> obj = GetCallArg(argv, 0);
-    if (obj->IsJSUint8Array() || obj->IsJSUint16Array()) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Object entries is not supported IsJSUint8Array or IsJSUint16Array",
-                                     JSTaggedValue::Exception());
-    }
     JSHandle<JSObject> object = JSTaggedValue::ToObject(thread, obj);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 2. Let nameList be ? EnumerableOwnPropertyNames(obj, key+value).

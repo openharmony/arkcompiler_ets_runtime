@@ -134,6 +134,7 @@ module_test_list = [
   "typedarraymapoverflow",
   "objectcloneproperties",
   "objectdefineproperties",
+  "objectentries",
   "objectgetownproperty",
   "objecthasownproperty",
   "objectkeys",
