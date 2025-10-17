@@ -5576,23 +5576,6 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     vm->LoadAOTFiles(aotFileName);
 }
 
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
-void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleName, const std::string &moduleName,
-                         std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
-{
-    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
-    ecmascript::ThreadManagedScope scope(thread);
-
-    std::string aotFileName = ecmascript::AOTFileManager::GetAOTFileFullPath(vm, moduleName);
-    if (aotFileName.empty()) {
-        LOG_ECMA(INFO) << "can not find aot file";
-        return;
-    }
-    LOG_ECMA(INFO) << "start to load aot file: " << aotFileName;
-    vm->LoadAOTFiles(aotFileName, cb);
-}
-#endif
-
 // function for bundle abc
 bool JSNApi::ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                     bool needUpdate, const ecmascript::ExecuteTypes &executeType)
