@@ -110,6 +110,8 @@ module_test_list = [
   "helloworld",
   "ictest",
   "includesindexof",
+  "inline_property",
+  "inline_property_literal",
   "instanceofic",
   "intl",
   "memleakobjectcreate",

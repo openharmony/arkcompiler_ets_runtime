@@ -214,6 +214,9 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     if (thread->GetEcmaVM()->GetJSOptions().IsEnableInlinePropertyOptimization()) {
         bool isStartObjSizeTracking = true;
         uint32_t expectedOfProperties = JSFunction::CalcuExpotedOfProperties(thread, fun, &isStartObjSizeTracking);
+        uint32_t maxInlinedProperties = static_cast<uint32_t>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+            JSObject::SIZE / JSTaggedValue::TaggedTypeSize());
+        expectedOfProperties = std::min(expectedOfProperties, maxInlinedProperties);
         hclass = factory->NewEcmaHClass(JSObject::SIZE, expectedOfProperties, JSType::JS_OBJECT, proto);
         if (isStartObjSizeTracking) {
             hclass->StartObjSizeTracking();
