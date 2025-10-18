@@ -32,8 +32,7 @@ public:
     static AnFileDataManager *GetInstance();
     ~AnFileDataManager();
 
-    bool SafeLoad(const std::string &fileName, Type type, [[maybe_unused]] std::function<bool
-        (std::string fileName, uint8_t **buff, size_t *buffSize)> cb = nullptr);
+    bool SafeLoad(const std::string &fileName, Type type);
     uint32_t SafeGetFileInfoIndex(const std::string &fileName);
     std::shared_ptr<AnFileInfo> SafeGetAnFileInfo(uint32_t index);
     std::string SafeGetAnFileNameNoSuffix(uint32_t index);
@@ -80,10 +79,6 @@ private:
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
     bool UnsafeLoadFromAOTInternal(const std::string &fileName, std::shared_ptr<AnFileInfo> &info);
     bool UnsafeLoadFromAOT(const std::string &fileName);
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
-    bool UnsafeLoadFromAOT(const std::string &fileName,
-                           std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
-#endif
     bool UnsafeLoadFromStub(const std::string &fileName);
     bool UnsafeCheckFilenameToChecksum(const CString &fileName, uint32_t checksum);
     uint32_t UnSafeGetFileInfoIndex(const std::string &fileName);

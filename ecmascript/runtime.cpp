@@ -399,7 +399,7 @@ void Runtime::SuspendOtherThreadImpl(JSThread *current, JSThread *target)
                 if (target->IsSuspended()) {
                     target->PassSuspendBarrier();
                 }
-                return;
+                break;
             }
         }
         if (iterCount < MAX_SUSPEND_RETRIES) {

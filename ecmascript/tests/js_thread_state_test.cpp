@@ -96,20 +96,30 @@ public:
         changeToRunning.store(true);
     }
 
+    bool CheckThreadSuspended(const JSThread *thread)
+    {
+        return thread->HasSuspendRequest();
+    }
+
     bool CheckAllThreadsSuspended()
     {
         bool result = true;
         for (auto i: vms) {
-            result &= i->GetAssociatedJSThread()->HasSuspendRequest();
+            result &= CheckThreadSuspended(i->GetAssociatedJSThread());
         }
         return result;
+    }
+
+    bool CheckThreadState(const JSThread *thread, ecmascript::ThreadState expectedState)
+    {
+        return thread->GetState() == expectedState;
     }
 
     bool CheckAllThreadsState(ecmascript::ThreadState expectedState)
     {
         bool result = true;
         for (auto i: vms) {
-            result &= (i->GetAssociatedJSThread()->GetState() == expectedState);
+            result &= CheckThreadState(i->GetAssociatedJSThread(), expectedState);
         }
         return result;
     }
@@ -312,6 +322,54 @@ HWTEST_F_L0(StateTransitioningTest, SuspendAllNativeTransferToRunningTest)
     while (CheckAllThreadsState(ecmascript::ThreadState::IS_SUSPENDED)) {}
     while (CheckAllThreadsState(ecmascript::ThreadState::NATIVE)) {}
     EXPECT_TRUE(CheckAllThreadsState(ecmascript::ThreadState::RUNNING));
+    DestroyAllVMs();
+}
+
+HWTEST_F_L0(StateTransitioningTest, SuspendOtherManagedTest)
+{
+    CreateNewVMInSeparateThread(false);
+    EXPECT_TRUE(vms.size() == 1);
+    auto targetThread = vms.front()->GetJSThread();
+    EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::RUNNING));
+    {
+        ecmascript::SuspendOtherScope suspendScope(thread, targetThread);
+        EXPECT_TRUE(CheckThreadSuspended(targetThread));
+    }
+    while (CheckThreadState(targetThread, ecmascript::ThreadState::IS_SUSPENDED)) {}
+    EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::RUNNING));
+    DestroyAllVMs();
+}
+
+HWTEST_F_L0(StateTransitioningTest, SuspendOtherNativeTest)
+{
+    CreateNewVMInSeparateThread(true);
+    EXPECT_TRUE(vms.size() == 1);
+    auto targetThread = vms.front()->GetJSThread();
+    EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE));
+    {
+        ecmascript::SuspendOtherScope suspendScope(thread, targetThread);
+        EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE));
+    }
+    EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE));
+    DestroyAllVMs();
+}
+
+HWTEST_F_L0(StateTransitioningTest, SuspendOtherNativeTransferToRunningTest)
+{
+    CreateNewVMInSeparateThread(true);
+    EXPECT_TRUE(vms.size() == 1);
+    auto targetThread = vms.front()->GetJSThread();
+    EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE));
+    {
+        ecmascript::SuspendOtherScope suspendScope(thread, targetThread);
+        EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE));
+        ChangeAllThreadsToRunning();
+        while (!CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE)) {}
+        EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE));
+    }
+    while (CheckThreadState(targetThread, ecmascript::ThreadState::IS_SUSPENDED)) {}
+    while (CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE)) {}
+    EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::RUNNING));
     DestroyAllVMs();
 }
 }  // namespace panda::test

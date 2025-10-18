@@ -66,8 +66,7 @@ void AnFileDataManager::SafeDestroyAnData(const std::string &fileName)
     info->Destroy();
 }
 
-bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, [[maybe_unused]] std::function<bool
-    (std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
+bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type)
 {
     WriteLockHolder lock(lock_);
     if (type == Type::STUB) {
@@ -80,11 +79,7 @@ bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, [[maybe
         if (aotFileInfo != nullptr) {
             return true;
         }
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
-        return UnsafeLoadFromAOT(fileName, cb);
-#else
         return UnsafeLoadFromAOT(fileName);
-#endif
     }
 }
 
@@ -141,20 +136,6 @@ bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName)
     }
     return UnsafeLoadFromAOTInternal(fileName, info);
 }
-
-#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
-bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, std::function<bool
-    (std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
-{
-    // note: This method is not thread-safe
-    // need to ensure that the instance of AnFileDataManager has been locked before use
-    std::shared_ptr<AnFileInfo> info = std::make_shared<AnFileInfo>(AnFileInfo());
-    if (!info->Load(fileName, cb)) {
-        return false;
-    }
-    return UnsafeLoadFromAOTInternal(fileName, info);
-}
-#endif
 
 uint32_t AnFileDataManager::UnSafeGetFileInfoIndex(const std::string &fileName)
 {
