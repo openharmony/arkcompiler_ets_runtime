@@ -95,7 +95,7 @@ EcmaRuntimeCallInfo *CreateTypedArrayCallInfo(JSThread *thread, const JSHandle<T
 void CreateArrayList(JSThread *thread, JSHandle<JSTaggedValue> &arrayVal)
 {
     auto factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
+    JSHandle<TaggedArray> array(factory->EmptyArray());
     EcmaRuntimeCallInfo *argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT32);
     JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint32ArrayString();
     auto prev = TestHelper::SetupFrame(thread, argv);
@@ -130,7 +130,7 @@ HWTEST_F_L0(TypedArrayHelperTest, AllocateTypedArray_001)
 {
     auto ecmaVm = thread->GetEcmaVM();
     auto factory = ecmaVm->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
+    JSHandle<TaggedArray> array(factory->EmptyArray());
     EcmaRuntimeCallInfo* argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT8);
     JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint8ArrayString();
     auto prev = TestHelper::SetupFrame(thread, argv);
@@ -218,7 +218,7 @@ HWTEST_F_L0(TypedArrayHelperTest, ValidateTypedArray)
 HWTEST_F_L0(TypedArrayHelperTest, GetType_001)
 {
     auto factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
+    JSHandle<TaggedArray> array(factory->EmptyArray());
     EcmaRuntimeCallInfo* argv1 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT8);
     EcmaRuntimeCallInfo* argv2 = CreateTypedArrayCallInfo(thread, array, DataViewType::BIGUINT64);
     EcmaRuntimeCallInfo* argv3 = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT8_CLAMPED);
@@ -266,7 +266,7 @@ HWTEST_F_L0(TypedArrayHelperTest, GetType_002)
 HWTEST_F_L0(TypedArrayHelperTest, GetElementSize_001)
 {
     auto factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
+    JSHandle<TaggedArray> array(factory->EmptyArray());
     EcmaRuntimeCallInfo* argv1 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT8);
     EcmaRuntimeCallInfo* argv2 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT16);
     EcmaRuntimeCallInfo* argv3 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT32);
@@ -324,7 +324,7 @@ HWTEST_F_L0(TypedArrayHelperTest, GetConstructor)
 {
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<TaggedArray> array(factory->NewTaggedArray(0));
+    JSHandle<TaggedArray> array(factory->EmptyArray());
     EcmaRuntimeCallInfo* argv1 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT8);
     EcmaRuntimeCallInfo* argv2 = CreateTypedArrayCallInfo(thread, array, DataViewType::BIGUINT64);
     EcmaRuntimeCallInfo* argv3 = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT8_CLAMPED);

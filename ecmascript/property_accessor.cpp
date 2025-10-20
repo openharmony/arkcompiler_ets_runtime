@@ -266,7 +266,7 @@ std::pair<JSHandle<TaggedArray>, JSHandle<TaggedQueue>> PropertyAccessor::GetOwn
 {
     if (IsObjectWithoutKey()) {
         ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-        JSHandle<TaggedArray> keyArrayOnReceiver = factory->NewTaggedArray(0);
+        JSHandle<TaggedArray> keyArrayOnReceiver = factory->EmptyArray();
         JSHandle<TaggedQueue> shadowQueueOnReceiver = factory->NewTaggedQueue(0);
         return std::make_pair(keyArrayOnReceiver, shadowQueueOnReceiver);
     }

@@ -56,10 +56,7 @@ public:
     static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
     // 21.2.3.4
     static JSTaggedValue ValueOf(EcmaRuntimeCallInfo *argv);
-private:
-    static JSTaggedValue ThisBigIntValue(EcmaRuntimeCallInfo *argv);
 
-public:
     // Excluding the constructor and '@@' internal properties.
     static Span<const base::BuiltinFunctionEntry> GetBigIntFunctions()
     {
@@ -73,6 +70,8 @@ public:
     }
 
 private:
+    static JSTaggedValue ThisBigIntValue(EcmaRuntimeCallInfo *argv);
+
 #define BUILTIN_BIGINT_FUNCTION_ENTRY(name, func, length, builtinId) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsBigInt::func, length, BUILTINS_STUB_ID(builtinId)),
 

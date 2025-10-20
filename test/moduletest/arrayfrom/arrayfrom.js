@@ -13,46 +13,58 @@
  * limitations under the License.
  */
 
-let arr = Array.from("abcd");
-print(arr);
-arr = Array.from("abcd");
-print(arr);
-arr[1] = 'e';
-print(arr);
-arr = Array.from("abcd");
-print(arr);
+/*
+ * @tc.name: arrayfrom
+ * @tc.desc: test Array.from
+ * @tc.type: FUNC
+ */
 
-arr = Array.from("01234567890123456789012");
-print(arr)
-arr = Array.from("方舟")
-print(arr);
-arr = Array.from("方舟")
-print(arr);
-arr = Array.from("")
-print(arr.length)
-arr[0] = 'a'
-arr = Array.from("")
-print(arr.length)
-
-var src = new Uint8Array(10000);
-for(var i = 0; i < 10000; i++)
 {
-    src[i] = 1;
+    let arr = Array.from("abcd");
+    assert_equal(arr, ['a', 'b', 'c', 'd']);
+    arr = Array.from("abcd");
+    assert_equal(arr, ['a', 'b', 'c', 'd']);
+    arr[1] = 'e';
+    assert_equal(arr, ['a', 'e', 'c', 'd']);
+    arr = Array.from("abcd");
+    assert_equal(arr, ['a', 'b', 'c', 'd']);
+
+    arr = Array.from("01234567890123456789012");
+    assert_equal(arr, ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9','0','1','2']);
+    arr = Array.from("方舟")
+    assert_equal(arr, ["方", "舟"]);
+    arr = Array.from("方舟")
+    assert_equal(arr, ["方", "舟"]);
+    arr = Array.from("")
+    assert_equal(arr.length, 0);
+    arr[0] = 'a'
+    arr = Array.from("")
+    assert_equal(arr.length, 0);
 }
-arr = Array.from(src);
-print(arr[666]);
-print(arr[999]);
-print(arr.length);
-
-const v1 = new Map();
-print(Array.from(v1.keys()))
 
 {
-    let mp=new Map();
+    var src = new Uint8Array(10000);
+    for(var i = 0; i < 10000; i++)
+    {
+        src[i] = 1;
+    }
+    let arr = Array.from(src);
+    assert_equal(arr[666], 1);
+    assert_equal(arr[999], 1);
+    assert_equal(arr.length, 10000);
+}
+
+{
+    const v1 = new Map();
+    assert_equal(Array.from(v1.keys()), []);
+}
+
+{
+    let mp = new Map();
     let mpIter = mp.entries();
-    mpIter.__proto__=[1,2,3,4];
-    let res=Array.from(mpIter);
-    print(res);
+    mpIter.__proto__= [1,2,3,4];
+    let res = Array.from(mpIter);
+    assert_equal(res, [1, 2, 3, 4]);
 }
 
 {
@@ -63,177 +75,162 @@ print(Array.from(v1.keys()))
         }
     }
     let arr1 = MyArray1.from([1,2,3,4]);
-    print(JSON.stringify(arr1));
-    
+    assert_equal(JSON.stringify(arr1), "{\"0\":1,\"1\":2,\"2\":3,\"3\":4,\"length\":4}");
+}
+
+{
     class MyArray2 extends Array {
         constructor(...args) {
             super(...args);
             return new Proxy({}, {
                 get(o, k) {
-                    print("get",k);
                     return o[k];
-                 },
-                set(o, k, v) { 
-                    print("set",k);
+                },
+                set(o, k, v) {
                     return o[k]=v;
                 },
                 defineProperty(o, k, v) {
-                    print("defineProperty",k);
                     return Object.defineProperty(o,k,v);
-                 }
+                }
             });
         }
     }
     let arr2 = MyArray2.from([1,2,3,4]);
-    print(JSON.stringify(arr2));
-
+    assert_equal(JSON.stringify(arr2), "{\"0\":1,\"1\":2,\"2\":3,\"3\":4,\"length\":4}");
+}
+{
     class MyArray3 extends Array {
         constructor(...args) {
             super(...args);
             return new Proxy(this, {
                 get(o, k) {
-                    print("get",k);
                     return o[k];
-                 },
+                },
                 set(o, k, v) { 
-                    print("set",k);
                     return o[k]=v;
                 },
                 defineProperty(o, k, v) {
-                    print("defineProperty",k);
                     return Object.defineProperty(o,k,v);
-                 }
+                }
             });
         }
     }
     let arr3 = MyArray3.from([1,2,3,4]);
-    print(JSON.stringify(arr3));
+    assert_equal(JSON.stringify(arr3), '[1,2,3,4]');
 }
 
 {
     let arrIterBak = Array.prototype[Symbol.iterator];
     let obj = {
         get length() {
-            print("get length");
             return 10;
         },
         set length(x) {
-            print("set length", x);
             return true;
         },
         get 0() {
-            print('get 0');
             return 0;
         },
         get 1() {
-            print('get 1');
             return 1;
         },
         get 2() {
-            print('get 2');
             return 2;
         },
         get [Symbol.iterator]() {
-            print("get iterator");
             return arrIterBak;
         }
     }
     let res = Array.from(obj);
-    print(JSON.stringify(res));
+    assert_equal(res, [0, 1, 2,,,,,,,,])
 }
 
 {
     let arr = [1, 2, 3, 4, 5, 6];
     Object.defineProperty(arr, 0, {
         get() {
-            print("get 0");
             arr.pop();
             return "x";
         }
     });
     let res = Array.from(arr);
-    print(JSON.stringify(res))
+    assert_equal(res, ['x', 2, 3, 4, 5]);
 }
+
 {
     let arrIterBak = Array.prototype[Symbol.iterator];
     let arr = new Object(1);
     arr[1] = 1;
     arr.length = 10;
     arr[Symbol.iterator] = arrIterBak;
-    print(arr.constructor)
     let res = Array.from(arr);
-    print(JSON.stringify(res))
+    assert_equal(res, [,1,,,,,,,,,]);
 }
+
 {
     let arrIterBak = Array.prototype[Symbol.iterator];
     Number.prototype.__proto__ = {
         get length() {
-            print("get length");
             return 10;
         },
         set length(x) {
-            print("set length", x);
             return true;
         },
         get 0() {
-            print('get 0');
             return 0;
         },
         get 1() {
-            print('get 1');
             return 1;
         },
         get 2() {
-            print('get 2');
             return 2;
         },
         get [Symbol.iterator]() {
-            print("get iterator");
             return arrIterBak;
         }
     };
     let arr = 1
     let res = Array.from(arr);
-    print(JSON.stringify(res))
+    assert_equal(res, [0, 1, 2, ,,,,,,,]);
 }
 
 {
     let arr = [1,2,3];
     let res = Array.from(arr.values());
-    print(JSON.stringify(res));
+    assert_equal(res, [1, 2, 3]);
 }
 
 // array.from by arrayLike with mapFunc
 {
     let res = Array.from({length : 3}, () => {});
-    print(JSON.stringify(res));
+    assert_equal(res, [,,,]);
 }
   
 {
     let res = Array.from({length : 3}, () => ({}));
-    print(JSON.stringify(res));
+    assert_equal(JSON.stringify(res), '[{},{},{}]');
 }
   
 {
     let res = Array.from({length : 3}, () => []);
-    print(JSON.stringify(res));
+    assert_equal(res, [[],[],[]]);
 }
   
 {
     let res = Array.from({length : 3}, () => [1,2,3]);
-    print(JSON.stringify(res));
+    assert_equal(res, [[1,2,3],[1,2,3],[1,2,3]]);
 }
   
 {
     let res = Array.from({length : 3}, () => 0);
-    print(JSON.stringify(res));
+    assert_equal(res, [0,0,0]);
 }
   
 {
     let num = 1;
     let len = 1025;
     let res = Array.from({length : len}, () => num);
-    print(res.length == len);
+    assert_equal(res.length, len);
     let flag = true;
     for (let i = 0; i < res.length; ++i) {
       if (res[i] != num) {
@@ -241,15 +238,13 @@ print(Array.from(v1.keys()))
         break;
       }
     }
-    if (flag) {
-      print("get JSArray from arrayLike Success");
-    }
+    assert_equal(flag, true);
 }
 
 {
     function example() {
       let res = Array.from(arguments);
-      print(JSON.stringify(res));
+      assert_equal(res, [1,2,3])
     }
     example(1, 2, 3);
 }
@@ -257,28 +252,28 @@ print(Array.from(v1.keys()))
 {
     let arrayLike = {0:1.1, 1:12, 2:'ss', length: 3}
     let res = Array.from(arrayLike, x => x + x);
-    print(JSON.stringify(res));
+    assert_equal(res, [2.2, 24, "ssss"]);
 }
   
 {
     let res = Array.from({length : 3}, (_, index) => [index * 2]);
-    print(JSON.stringify(res));
+    assert_equal(res, [[0],[2],[4]]);
 }
 
 {
     const nonConstructor = {}
     let res = Array.from.call(nonConstructor, {length : 3}, (_, index) => [index * 2]);
-    print(JSON.stringify(res));
+    assert_equal(res, [[0],[2],[4]]);
 }
 
-//array.from by JSArray
+// array.from by JSArray
 {
     const nonConstructor = {}
     let num = 1
     let len = 1025 // may transfer to dictionary elements type
     let myArray = new Array(1025).fill(num)
     let res = Array.from.call(nonConstructor, myArray);
-    print(res.length == len);
+    assert_equal(res.length, len);
     let flag = true;
     for (let i = 0; i < res.length; ++i) {
       if (res[i] != num || res.at(i) != num) {
@@ -286,28 +281,26 @@ print(Array.from(v1.keys()))
         break;
       }
     }
-    if (flag) {
-      print("get JSArray from JSArray Success!")
-    }
+    assert_equal(flag, true);
 }
   
 {
     const nonConstructor = {}
     let myArray = new Array(1,2,3,4,5)
     let res = Array.from.call(nonConstructor, myArray);
-    print(JSON.stringify(res));
+    assert_equal(res, [1,2,3,4,5]);
 }
   
 {
     let res = Array.from([1,2,3,4,5]);
-    print(JSON.stringify(res));
+    assert_equal(res, [1,2,3,4,5]);
 }
 
 // test for String with mapFunc
 {
     let str = 'a'.repeat(10)
     let res = Array.from(str, x => x + 's');
-    print(JSON.stringify(res));
+    assert_equal(res, ["as","as","as","as","as","as","as","as","as","as"]);
 }
   
 {
@@ -323,25 +316,22 @@ print(Array.from(v1.keys()))
         break;
       }
     }
-    if (res.length == len && flag) {
-      print("result check successfully");
-    } else {
-      print("result check failed");
-    }
+    assert_equal(res.length, len);
+    assert_equal(flag, true);
 }
   
 // test for Set with mapFunc
 {
     let set = new Set(['test', 'for', 'array', 'from', 'set'])
     let res = Array.from(set, x => x);
-    print(JSON.stringify(res));
+    assert_equal(res, ["test","for","array","from","set"]);
 }
   
 // test for Map with mapFunc
 {
     let map = new Map([[1, 'test'], [2, 'for'], [3, 'array'], [4, 'from'], [5, 'map']]);
     let res = Array.from(map, x => x);
-    print(JSON.stringify(res));
+    assert_equal(res, [[1,"test"],[2,"for"],[3,"array"],[4,"from"],[5,"map"]]);
 }
   
 // test for TypedArray with mapFunc
@@ -349,35 +339,35 @@ print(Array.from(v1.keys()))
     let mapFunc = x => x + x;
     let uint8Array = new Uint8Array([1, 2, 3, 4, 5, 6]);
     let res = Array.from(uint8Array, mapFunc);
-    print(JSON.stringify(res));
+    assert_equal(res, [2,4,6,8,10,12]);
 }
   
 {
     let mapFunc = x => x + x;
     let uint16Array = new Uint16Array([1, 2, 3, 4, 5, 6]);
     let res = Array.from(uint16Array, mapFunc);
-    print(JSON.stringify(res));
+    assert_equal(res, [2,4,6,8,10,12]);
 }
   
 {
     let mapFunc = x => x + x;
     let uint32Array = new Uint32Array([1, 2, 3, 4, 5, 6]);
     let res = Array.from(uint32Array, mapFunc);
-    print(JSON.stringify(res));
+    assert_equal(res, [2,4,6,8,10,12]);
 }
   
 {
     let mapFunc = x => x + x;
     let float32Array = new Float32Array([1, 2, 3, 4, 5, 6]);
     let res = Array.from(float32Array, mapFunc);
-    print(JSON.stringify(res));
+    assert_equal(res, [2,4,6,8,10,12]);
 }
   
 {
     let mapFunc = x => x + x;
     let float64Array = new Float64Array([1, 2, 3, 4, 5, 6]);
     let res = Array.from(float64Array, mapFunc);
-    print(JSON.stringify(res));
+    assert_equal(res, [2,4,6,8,10,12]);
 }
 
 // Test StringToListResultCache
@@ -385,7 +375,7 @@ print(Array.from(v1.keys()))
     let str = "foo,bar,baz";
     let res = Array.from(str);
     let resCache = Array.from(str);
-    print(JSON.stringify(resCache));
+    assert_equal(resCache, ["f","o","o",",","b","a","r",",","b","a","z"])
 }
 
 function test() {
@@ -402,4 +392,6 @@ function test() {
     return set + "" === "length";
 }
 
-print(test());
+assert_equal(test(), true);
+
+test_end();
