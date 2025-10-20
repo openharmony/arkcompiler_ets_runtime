@@ -282,7 +282,7 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
         }
         if (time(nullptr) > startTime + DUMP_TIME_OUT) {
             LOG_GC(ERROR) << "DumpHeapSnapshot kill thread, wait " << DUMP_TIME_OUT << " s";
-            kill(pid, SIGTERM);
+            kill(pid, SIGKILL);
             if (callback) {
                 callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::WAIT_FORK_PROCESS_TIMEOUT));
             }
