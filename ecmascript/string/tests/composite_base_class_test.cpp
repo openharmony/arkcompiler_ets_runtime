@@ -14,22 +14,22 @@
  */
 
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/objects/composite_base_class.h"
 #include "common_interfaces/objects/base_object.h"
+#include "ecmascript/string/composite_base_class.h"
 
 #include <vector>
 #include <memory>
 #include <functional>
 
-namespace common {
-class CompositeBaseClassTest : public test::BaseTestWithScope {
+namespace panda::ecmascript {
+class CompositeBaseClassTest : public common::test::BaseTestWithScope {
 protected:
     static CompositeBaseClass* MockAllocator()
     {
         void* memory = ::operator new(sizeof(uint64_t) * 16);
 
-        auto* baseClass = reinterpret_cast<BaseClass*>(memory);
-        baseClass->SetObjectType(ObjectType::LINE_STRING);
+        auto* baseClass = static_cast<BaseStringClass*>(memory);
+        baseClass->SetObjectType(static_cast<common::ObjectType>(EcmaStringType::LINE_STRING));
         baseClass->ClearBitField();
 
         return reinterpret_cast<CompositeBaseClass*>(baseClass);
@@ -68,9 +68,9 @@ HWTEST_F_L0(CompositeBaseClassTest, CreateAndGetType)
 
     roots_->InitializeCompositeBaseClass(allocator);
 
-    auto* baseClass = roots_->GetBaseClass(ObjectType::LINE_STRING);
+    auto* baseClass = roots_->GetBaseClass(EcmaStringType::LINE_STRING);
     ASSERT_NE(baseClass, nullptr);
-    EXPECT_EQ(baseClass->GetObjectType(), ObjectType::LINE_STRING);
+    EXPECT_EQ(baseClass->GetEcmaStringType(), EcmaStringType::LINE_STRING);
 }
 
 HWTEST_F_L0(CompositeBaseClassTest, GetBaseClassReturnsCorrectType)
@@ -81,17 +81,17 @@ HWTEST_F_L0(CompositeBaseClassTest, GetBaseClassReturnsCorrectType)
 
     roots_->InitializeCompositeBaseClass(allocator);
 
-    auto* lineString = roots_->GetBaseClass(ObjectType::LINE_STRING);
-    auto* slicedString = roots_->GetBaseClass(ObjectType::SLICED_STRING);
-    auto* treeString = roots_->GetBaseClass(ObjectType::TREE_STRING);
+    auto* lineString = roots_->GetBaseClass(EcmaStringType::LINE_STRING);
+    auto* slicedString = roots_->GetBaseClass(EcmaStringType::SLICED_STRING);
+    auto* treeString = roots_->GetBaseClass(EcmaStringType::TREE_STRING);
 
     ASSERT_NE(lineString, nullptr);
     ASSERT_NE(slicedString, nullptr);
     ASSERT_NE(treeString, nullptr);
 
-    EXPECT_EQ(lineString->GetObjectType(), ObjectType::LINE_STRING);
-    EXPECT_EQ(slicedString->GetObjectType(), ObjectType::SLICED_STRING);
-    EXPECT_EQ(treeString->GetObjectType(), ObjectType::TREE_STRING);
+    EXPECT_EQ(lineString->GetEcmaStringType(), EcmaStringType::LINE_STRING);
+    EXPECT_EQ(slicedString->GetEcmaStringType(), EcmaStringType::SLICED_STRING);
+    EXPECT_EQ(treeString->GetEcmaStringType(), EcmaStringType::TREE_STRING);
 }
 
 HWTEST_F_L0(CompositeBaseClassTest, IterateCompositeBaseClass)
@@ -104,7 +104,7 @@ HWTEST_F_L0(CompositeBaseClassTest, IterateCompositeBaseClass)
 
     std::vector<CompositeBaseClass*> visited;
 
-    roots_->IterateCompositeBaseClass([&visited](RefField<>& field) {
+    roots_->IterateCompositeBaseClass([&visited](common::RefField<>& field) {
         auto* ptr = reinterpret_cast<CompositeBaseClass*>(const_cast<void*>(static_cast<const void*>(&field)));
         visited.push_back(ptr);
     });

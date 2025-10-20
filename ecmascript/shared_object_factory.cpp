@@ -14,11 +14,11 @@
  */
 
 #include "common_interfaces/objects/base_class.h"
-#include "common_interfaces/objects/composite_base_class.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/string/composite_base_class.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/jspandafile/program_object.h"
 
@@ -186,10 +186,10 @@ JSHandle<JSHClass> ObjectFactory::NewSEcmaReadOnlySharedHClass(JSHClass *hclass,
     return newClass;
 }
 
-JSTaggedValue ObjectFactory::InitHClassInCompositeBaseClass(JSHClass* hclass, common::ObjectType type)
+JSTaggedValue ObjectFactory::InitHClassInCompositeBaseClass(JSHClass* hclass, EcmaStringType type)
 {
-    common::BaseClassRoots& classRoots = common::BaseRuntime::GetInstance()->GetBaseClassRoots();
-    auto* newClass = reinterpret_cast<JSHClass*>(classRoots.GetBaseClass(type));
+    BaseClassRoots& classRoots = Runtime::GetInstance()->GetBaseClassRoots();
+    auto* newClass = reinterpret_cast<JSHClass*>(classRoots.GetBaseClass(static_cast<EcmaStringType>(type)));
     newClass->SetClassWithoutBarrier(hclass);
     newClass->SetObjectSize(0);
     newClass->SetExtensible(true);

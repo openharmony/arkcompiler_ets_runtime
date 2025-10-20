@@ -17,8 +17,6 @@
 #define ECMASCRIPT_STRING_TABLE_H
 
 #include <array>
-#include "common_components/objects/string_table/hashtriemap.h"
-#include "common_components/objects/string_table_internal.h"
 #include "common_components/taskpool/task.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/js_tagged_value.h"
@@ -27,8 +25,10 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array.h"
-#include "common_interfaces/objects/base_string_table.h"
-#include "common_interfaces/objects/string/base_string.h"
+#include "ecmascript/string/base_string_table.h"
+#include "ecmascript/string/base_string.h"
+#include "ecmascript/string/hashtriemap.h"
+#include "ecmascript/string/string_table_internal.h"
 
 namespace panda::ecmascript {
 #if ENABLE_NEXT_OPTIMIZATION
@@ -116,13 +116,13 @@ private:
 };
 
 struct EnableCMCGCTrait {
-    using StringTableInterface = common::BaseStringTableInterface<common::BaseStringTableImpl>;
+    using StringTableInterface = BaseStringTableInterface<BaseStringTableImpl>;
 #ifndef GC_STW_STRINGTABLE
-    using HashTrieMapImpl = common::HashTrieMap<common::BaseStringTableMutex, common::ThreadHolder,
-                                                common::TrieMapConfig::NeedSlotBarrier>;
+    using HashTrieMapImpl = HashTrieMap<BaseStringTableMutex, common::ThreadHolder,
+                                                TrieMapConfig::NeedSlotBarrier>;
 #else
-    using HashTrieMapImpl = common::HashTrieMap<common::BaseStringTableMutex, common::ThreadHolder,
-                                            common::TrieMapConfig::NoSlotBarrier>;
+    using HashTrieMapImpl = HashTrieMap<BaseStringTableMutex, common::ThreadHolder,
+                                            TrieMapConfig::NoSlotBarrier>;
 #endif
     using ThreadType = common::ThreadHolder;
     static constexpr bool EnableCMCGC = true;
@@ -135,7 +135,7 @@ struct EnableCMCGCTrait {
 struct DisableCMCGCTrait {
     struct DummyStringTableInterface {}; // placeholder for consistent type
     using StringTableInterface = DummyStringTableInterface;
-    using HashTrieMapImpl = common::HashTrieMap<EcmaStringTableMutex, JSThread, common::TrieMapConfig::NoSlotBarrier>;
+    using HashTrieMapImpl = HashTrieMap<EcmaStringTableMutex, JSThread, TrieMapConfig::NoSlotBarrier>;
     using ThreadType = JSThread;
     static constexpr bool EnableCMCGC = false;
     static common::ReadOnlyHandle<BaseString> CreateHandle(ThreadType* holder, BaseString* string)

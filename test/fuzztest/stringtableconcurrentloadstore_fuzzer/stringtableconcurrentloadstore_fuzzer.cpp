@@ -102,7 +102,7 @@ namespace OHOS {
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         JSThread *thread = vm->GetJSThread();
 
-        auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, common::TrieMapConfig::NeedSlotBarrier>();
+        auto *map = new HashTrieMap<EcmaStringTableMutex, JSThread, TrieMapConfig::NeedSlotBarrier>();
         std::vector<uint8_t> utf8Data = CreateValidUtf8(data, size);
         uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data.data(), utf8Data.size(), true);
         JSHandle<EcmaString> value(thread,

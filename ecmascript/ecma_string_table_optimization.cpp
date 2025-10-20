@@ -15,11 +15,11 @@
 
 #include "ecmascript/ecma_string_table.h"
 
-#include "common_components/objects/string_table/hashtriemap-inl.h"
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/ecma_string_table_optimization-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/string/hashtriemap-inl.h"
 
 namespace panda::ecmascript {
 #if ENABLE_NEXT_OPTIMIZATION
@@ -44,7 +44,7 @@ void EcmaStringTableCleaner::ProcessSweepWeakRef(IteratorPtr &iter, EcmaStringTa
                                                  const WeakRootVisitor &visitor)
 {
     uint32_t index = 0U;
-    while ((index = GetNextIndexId(iter)) < common::TrieMapConfig::ROOT_SIZE) {
+    while ((index = GetNextIndexId(iter)) < TrieMapConfig::ROOT_SIZE) {
         cleaner->stringTable_->SweepWeakRef(visitor, index);
         if (ReduceCountAndCheckFinish(cleaner)) {
             cleaner->SignalSweepWeakRefTask();
@@ -56,7 +56,7 @@ void EcmaStringTableCleaner::StartSweepWeakRefTask()
 {
     // No need lock here, only the daemon thread will reset the state.
     sweepWeakRefFinished_ = false;
-    PendingTaskCount_.store(common::TrieMapConfig::ROOT_SIZE, std::memory_order_relaxed);
+    PendingTaskCount_.store(TrieMapConfig::ROOT_SIZE, std::memory_order_relaxed);
 }
 
 void EcmaStringTableCleaner::WaitSweepWeakRefTask()
@@ -453,12 +453,12 @@ EcmaString* EcmaStringTableImpl<Traits>::GetOrInternStringWithoutJSHandleForJit(
 template <typename Traits>
 void EcmaStringTableImpl<Traits>::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID)
 {
-    ASSERT(rootID >= 0 && rootID < common::TrieMapConfig::ROOT_SIZE);
+    ASSERT(rootID >= 0 && rootID < TrieMapConfig::ROOT_SIZE);
     auto *root_node = stringTable_.root_[rootID].load(std::memory_order_relaxed);
     if (root_node == nullptr) {
         return;
     }
-    for (uint32_t index = 0; index < common::TrieMapConfig::INDIRECT_SIZE; ++index) {
+    for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
         stringTable_.ClearNodeFromGC(root_node, index, visitor);
     }
 }

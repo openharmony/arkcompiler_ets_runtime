@@ -18,7 +18,7 @@
 
 #include <cstdint>
 
-#include "common_interfaces/objects/composite_base_class.h"
+#include "ecmascript/string/composite_base_class.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
@@ -459,9 +459,9 @@ public:
                 if constexpr (visitType != VisitType::SEMI_GC_VISIT) {
                     // reference to the comments in composite_base_class.h, only step 1 and step 2, it maybe enter here.
                     // When the CompostBaseClass is changed to 1.2 Class, it will be visited from 1.2 class linker.
-                    ObjectBodyIterator<visitType, common::CompositeBaseClass::VISIT_BEGIN,
-                                       common::CompositeBaseClass::VISIT_END,
-                                       common::CompositeBaseClass::SIZE>::IterateRefBody(object, visitor);
+                    ObjectBodyIterator<visitType, CompositeBaseClass::VISIT_BEGIN,
+                                       CompositeBaseClass::VISIT_END,
+                                       CompositeBaseClass::SIZE>::IterateRefBody(object, visitor);
                 }
                 break;
             case JSType::LINE_STRING:

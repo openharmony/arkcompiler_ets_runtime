@@ -18,13 +18,13 @@
 
 #include "ecmascript/js_hclass.h"
 
-#include "common_interfaces/objects/string/line_string-inl.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/layout_info.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/mem/assert_scope.h"
+#include "ecmascript/string/line_string-inl.h"
 #include "ecmascript/transitions_dictionary.h"
 
 namespace panda::ecmascript {

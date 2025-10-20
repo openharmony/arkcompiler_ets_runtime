@@ -14,7 +14,7 @@
  */
 
 #include "ecmascript/regexp/regexp_parser_cache.h"
-#include "common_interfaces/objects/string/line_string-inl.h"
+#include "ecmascript/string/line_string-inl.h"
 
 namespace panda::ecmascript {
 RegExpParserCache::RegExpParserCache()

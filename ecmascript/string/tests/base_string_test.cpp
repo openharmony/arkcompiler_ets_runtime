@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/objects/string/base_string.h"
-#include "common_components/platform/string_hash.h"
+#include "ecmascript/string/base_string.h"
+#include "ecmascript/platform/string_hash.h"
 #include "common_components/tests/test_helper.h"
-#include "objects/string/base_string-inl.h"
+#include "ecmascript/string/base_string-inl.h"
 
-using namespace common;
+using namespace panda::ecmascript;
 
-namespace common::test {
+namespace panda::test {
 class BaseStringTest : public common::test::BaseTestWithScope {
 };
 
@@ -123,8 +123,8 @@ HWTEST_F_L0(BaseStringTest, IndexOf_TEST0)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs[] = {'a', 'b', 'c'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 3);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 3);
 
     EXPECT_EQ(BaseString::IndexOf(lhsSp, rhsSp, 0, 4), 0);
 }
@@ -133,8 +133,8 @@ HWTEST_F_L0(BaseStringTest, IndexOf_TEST1)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs[] = {'c', 'd'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
 
     EXPECT_EQ(BaseString::IndexOf(lhsSp, rhsSp, 0, 4), 2);
 }
@@ -143,8 +143,8 @@ HWTEST_F_L0(BaseStringTest, IndexOf_TEST2)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs[] = {'x', 'y', 'z'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 3);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 3);
 
     EXPECT_EQ(BaseString::IndexOf(lhsSp, rhsSp, 0, 4), -1);
 }
@@ -153,8 +153,8 @@ HWTEST_F_L0(BaseStringTest, IndexOf_TEST3)
 {
     const uint8_t lhs[] = {'a', 'b', 'a', 'b', 'c'};
     const uint8_t rhs[] = {'a', 'b', 'c'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 3);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 3);
 
     EXPECT_EQ(BaseString::IndexOf(lhsSp, rhsSp, 0, 4), 2);
 }
@@ -163,8 +163,8 @@ HWTEST_F_L0(BaseStringTest, IndexOf_TEST4)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs[] = {'a', 'b', 'x'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 3);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 3);
 
     EXPECT_EQ(BaseString::IndexOf(lhsSp, rhsSp, 0, 4), -1);
 }
@@ -173,8 +173,8 @@ HWTEST_F_L0(BaseStringTest, CompareStringSpan_TEST0)
 {
     const uint8_t lhs[] = {1, 2, 3};
     const uint8_t rhs[] = {1, 2, 3};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 3);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 3);
     EXPECT_EQ(CompareStringSpan(lhsSp, rhsSp, 3), 0);
 }
 
@@ -182,8 +182,8 @@ HWTEST_F_L0(BaseStringTest, CompareStringSpan_TEST1)
 {
     const uint8_t lhs[] = {1, 2, 4};
     const uint8_t rhs[] = {1, 2, 3};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 3);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 3);
     EXPECT_EQ(CompareStringSpan(lhsSp, rhsSp, 3), 1);
 }
 
@@ -191,8 +191,8 @@ HWTEST_F_L0(BaseStringTest, IsSubStringAtSpan_TEST1)
 {
     const uint8_t lhs[] = {'a', 'b', 'c'};
     const uint8_t rhs[] = {'x', 'y'};
-    Span<const uint8_t> lhsSp(lhs, 3);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 3);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
     ASSERT_FALSE(IsSubStringAtSpan(lhsSp, rhsSp, 1));
 }
 
@@ -200,8 +200,8 @@ HWTEST_F_L0(BaseStringTest, IsSubStringAtSpan_TEST2)
 {
     const uint8_t lhs[] = {'a', 'b'};
     const uint8_t rhs[] = {'b'};
-    Span<const uint8_t> lhsSp(lhs, 2);
-    Span<const uint8_t> rhsSp(rhs, 1);
+    common::Span<const uint8_t> lhsSp(lhs, 2);
+    common::Span<const uint8_t> rhsSp(rhs, 1);
     ASSERT_TRUE(IsSubStringAtSpan(lhsSp, rhsSp, 1));
 }
 
@@ -209,32 +209,32 @@ HWTEST_F_L0(BaseStringTest, IndexOf_TEST5)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs[] = {'a', 'b', 'c'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint16_t> rhsSp(rhs, 3);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint16_t> rhsSp(rhs, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp, rhsSp, 0, 4), 0);
 
     const uint8_t lhs1[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs1[] = {'c', 'd'};
-    Span<const uint8_t> lhsSp1(lhs1, 5);
-    Span<const uint16_t> rhsSp1(rhs1, 2);
+    common::Span<const uint8_t> lhsSp1(lhs1, 5);
+    common::Span<const uint16_t> rhsSp1(rhs1, 2);
     EXPECT_EQ(BaseString::IndexOf(lhsSp1, rhsSp1, 0, 4), 2);
 
     const uint8_t lhs2[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs2[] = {'x', 'y', 'z'};
-    Span<const uint8_t> lhsSp2(lhs2, 5);
-    Span<const uint16_t> rhsSp2(rhs2, 3);
+    common::Span<const uint8_t> lhsSp2(lhs2, 5);
+    common::Span<const uint16_t> rhsSp2(rhs2, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp2, rhsSp2, 0, 4), -1);
 
     const uint8_t lhs3[] = {'a', 'b', 'a', 'b', 'c'};
     const uint16_t rhs3[] = {'a', 'b', 'c'};
-    Span<const uint8_t> lhsSp3(lhs3, 5);
-    Span<const uint16_t> rhsSp3(rhs3, 3);
+    common::Span<const uint8_t> lhsSp3(lhs3, 5);
+    common::Span<const uint16_t> rhsSp3(rhs3, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp3, rhsSp3, 0, 4), 2);
 
     const uint8_t lhs4[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs4[] = {'a', 'b', 'x'};
-    Span<const uint8_t> lhsSp4(lhs4, 5);
-    Span<const uint16_t> rhsSp4(rhs4, 3);
+    common::Span<const uint8_t> lhsSp4(lhs4, 5);
+    common::Span<const uint16_t> rhsSp4(rhs4, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp4, rhsSp4, 0, 4), -1);
 }
 
@@ -242,32 +242,32 @@ HWTEST_F_L0(BaseStringTest, IndexOf_TEST6)
 {
     const uint16_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs[] = {'a', 'b', 'c'};
-    Span<const uint16_t> lhsSp(lhs, 5);
-    Span<const uint16_t> rhsSp(rhs, 3);
+    common::Span<const uint16_t> lhsSp(lhs, 5);
+    common::Span<const uint16_t> rhsSp(rhs, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp, rhsSp, 0, 4), 0);
 
     const uint16_t lhs1[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs1[] = {'c', 'd'};
-    Span<const uint16_t> lhsSp1(lhs1, 5);
-    Span<const uint16_t> rhsSp1(rhs1, 2);
+    common::Span<const uint16_t> lhsSp1(lhs1, 5);
+    common::Span<const uint16_t> rhsSp1(rhs1, 2);
     EXPECT_EQ(BaseString::IndexOf(lhsSp1, rhsSp1, 0, 4), 2);
 
     const uint16_t lhs2[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs2[] = {'x', 'y', 'z'};
-    Span<const uint16_t> lhsSp2(lhs2, 5);
-    Span<const uint16_t> rhsSp2(rhs2, 3);
+    common::Span<const uint16_t> lhsSp2(lhs2, 5);
+    common::Span<const uint16_t> rhsSp2(rhs2, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp2, rhsSp2, 0, 4), -1);
 
     const uint16_t lhs3[] = {'a', 'b', 'a', 'b', 'c'};
     const uint16_t rhs3[] = {'a', 'b', 'c'};
-    Span<const uint16_t> lhsSp3(lhs3, 5);
-    Span<const uint16_t> rhsSp3(rhs3, 3);
+    common::Span<const uint16_t> lhsSp3(lhs3, 5);
+    common::Span<const uint16_t> rhsSp3(rhs3, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp3, rhsSp3, 0, 4), 2);
 
     const uint16_t lhs4[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs4[] = {'a', 'b', 'x'};
-    Span<const uint16_t> lhsSp4(lhs4, 5);
-    Span<const uint16_t> rhsSp4(rhs4, 3);
+    common::Span<const uint16_t> lhsSp4(lhs4, 5);
+    common::Span<const uint16_t> rhsSp4(rhs4, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp4, rhsSp4, 0, 4), -1);
 }
 
@@ -275,32 +275,32 @@ HWTEST_F_L0(BaseStringTest, IndexOf_TEST7)
 {
     const uint16_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs[] = {'a', 'b', 'c'};
-    Span<const uint16_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 3);
+    common::Span<const uint16_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp, rhsSp, 0, 4), 0);
 
     const uint16_t lhs1[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs1[] = {'c', 'd'};
-    Span<const uint16_t> lhsSp1(lhs1, 5);
-    Span<const uint8_t> rhsSp1(rhs1, 2);
+    common::Span<const uint16_t> lhsSp1(lhs1, 5);
+    common::Span<const uint8_t> rhsSp1(rhs1, 2);
     EXPECT_EQ(BaseString::IndexOf(lhsSp1, rhsSp1, 0, 4), 2);
 
     const uint16_t lhs2[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs2[] = {'x', 'y', 'z'};
-    Span<const uint16_t> lhsSp2(lhs2, 5);
-    Span<const uint8_t> rhsSp2(rhs2, 3);
+    common::Span<const uint16_t> lhsSp2(lhs2, 5);
+    common::Span<const uint8_t> rhsSp2(rhs2, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp2, rhsSp2, 0, 4), -1);
 
     const uint16_t lhs3[] = {'a', 'b', 'a', 'b', 'c'};
     const uint8_t rhs3[] = {'a', 'b', 'c'};
-    Span<const uint16_t> lhsSp3(lhs3, 5);
-    Span<const uint8_t> rhsSp3(rhs3, 3);
+    common::Span<const uint16_t> lhsSp3(lhs3, 5);
+    common::Span<const uint8_t> rhsSp3(rhs3, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp3, rhsSp3, 0, 4), 2);
 
     const uint16_t lhs4[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs4[] = {'a', 'b', 'x'};
-    Span<const uint16_t> lhsSp4(lhs4, 5);
-    Span<const uint8_t> rhsSp4(rhs4, 3);
+    common::Span<const uint16_t> lhsSp4(lhs4, 5);
+    common::Span<const uint8_t> rhsSp4(rhs4, 3);
     EXPECT_EQ(BaseString::IndexOf(lhsSp4, rhsSp4, 0, 4), -1);
 }
 
@@ -343,8 +343,8 @@ HWTEST_F_L0(BaseStringTest, LastIndexOf_TEST0)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs[] = {'c', 'd'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
 
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp, rhsSp, 4), 2);
 }
@@ -353,8 +353,8 @@ HWTEST_F_L0(BaseStringTest, LastIndexOf_TEST1)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'x', 'e'};
     const uint8_t rhs[] = {'c', 'd'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
 
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp, rhsSp, 4), -1);
 }
@@ -363,8 +363,8 @@ HWTEST_F_L0(BaseStringTest, LastIndexOf_TEST2)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs[] = {'c', 'x'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
 
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp, rhsSp, 4), -1);
 }
@@ -373,8 +373,8 @@ HWTEST_F_L0(BaseStringTest, LastIndexOf_TEST3)
 {
     const uint8_t lhs[] = {'a', 'b', 'a', 'b', 'c'};
     const uint8_t rhs[] = {'a', 'b'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
 
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp, rhsSp, 4), 2);
 }
@@ -383,8 +383,8 @@ HWTEST_F_L0(BaseStringTest, LastIndexOf_TEST4)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd'};
     const uint8_t rhs[] = {'x', 'y'};
-    Span<const uint8_t> lhsSp(lhs, 4);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 4);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
 
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp, rhsSp, 3), -1);
 }
@@ -393,14 +393,14 @@ HWTEST_F_L0(BaseStringTest, IsSubStringAtSpan_TEST3)
 {
     const uint8_t lhs[] = {'a', 'b', 'c'};
     const uint16_t rhs[] = {'x', 'y'};
-    Span<const uint8_t> lhsSp(lhs, 3);
-    Span<const uint16_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 3);
+    common::Span<const uint16_t> rhsSp(rhs, 2);
     ASSERT_FALSE(IsSubStringAtSpan(lhsSp, rhsSp, 1));
 
     const uint8_t lhs1[] = {'a', 'b'};
     const uint16_t rhs1[] = {'b'};
-    Span<const uint8_t> lhsSp1(lhs1, 2);
-    Span<const uint16_t> rhsSp1(rhs1, 1);
+    common::Span<const uint8_t> lhsSp1(lhs1, 2);
+    common::Span<const uint16_t> rhsSp1(rhs1, 1);
     ASSERT_TRUE(IsSubStringAtSpan(lhsSp1, rhsSp1, 1));
 }
 
@@ -408,14 +408,14 @@ HWTEST_F_L0(BaseStringTest, IsSubStringAtSpan_TEST4)
 {
     const uint16_t lhs[] = {'a', 'b', 'c'};
     const uint8_t rhs[] = {'x', 'y'};
-    Span<const uint16_t> lhsSp(lhs, 3);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint16_t> lhsSp(lhs, 3);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
     ASSERT_FALSE(IsSubStringAtSpan(lhsSp, rhsSp, 1));
 
     const uint16_t lhs1[] = {'a', 'b'};
     const uint8_t rhs1[] = {'b'};
-    Span<const uint16_t> lhsSp1(lhs1, 2);
-    Span<const uint8_t> rhsSp1(rhs1, 1);
+    common::Span<const uint16_t> lhsSp1(lhs1, 2);
+    common::Span<const uint8_t> rhsSp1(rhs1, 1);
     ASSERT_TRUE(IsSubStringAtSpan(lhsSp1, rhsSp1, 1));
 }
 
@@ -423,14 +423,14 @@ HWTEST_F_L0(BaseStringTest, IsSubStringAtSpan_TEST5)
 {
     const uint16_t lhs[] = {'a', 'b', 'c'};
     const uint16_t rhs[] = {'x', 'y'};
-    Span<const uint16_t> lhsSp(lhs, 3);
-    Span<const uint16_t> rhsSp(rhs, 2);
+    common::Span<const uint16_t> lhsSp(lhs, 3);
+    common::Span<const uint16_t> rhsSp(rhs, 2);
     ASSERT_FALSE(IsSubStringAtSpan(lhsSp, rhsSp, 1));
 
     const uint16_t lhs1[] = {'a', 'b'};
     const uint16_t rhs1[] = {'b'};
-    Span<const uint16_t> lhsSp1(lhs1, 2);
-    Span<const uint16_t> rhsSp1(rhs1, 1);
+    common::Span<const uint16_t> lhsSp1(lhs1, 2);
+    common::Span<const uint16_t> rhsSp1(rhs1, 1);
     ASSERT_TRUE(IsSubStringAtSpan(lhsSp1, rhsSp1, 1));
 }
 
@@ -438,32 +438,32 @@ HWTEST_F_L0(BaseStringTest, LastIndexOf_TEST5)
 {
     const uint8_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs[] = {'c', 'd'};
-    Span<const uint8_t> lhsSp(lhs, 5);
-    Span<const uint16_t> rhsSp(rhs, 2);
+    common::Span<const uint8_t> lhsSp(lhs, 5);
+    common::Span<const uint16_t> rhsSp(rhs, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp, rhsSp, 4), 2);
 
     const uint8_t lhs1[] = {'a', 'b', 'c', 'x', 'e'};
     const uint16_t rhs1[] = {'c', 'd'};
-    Span<const uint8_t> lhsSp1(lhs1, 5);
-    Span<const uint16_t> rhsSp1(rhs1, 2);
+    common::Span<const uint8_t> lhsSp1(lhs1, 5);
+    common::Span<const uint16_t> rhsSp1(rhs1, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp1, rhsSp1, 4), -1);
 
     const uint8_t lhs2[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs2[] = {'c', 'x'};
-    Span<const uint8_t> lhsSp2(lhs2, 5);
-    Span<const uint16_t> rhsSp2(rhs2, 2);
+    common::Span<const uint8_t> lhsSp2(lhs2, 5);
+    common::Span<const uint16_t> rhsSp2(rhs2, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp2, rhsSp2, 4), -1);
 
     const uint8_t lhs3[] = {'a', 'b', 'a', 'b', 'c'};
     const uint16_t rhs3[] = {'a', 'b'};
-    Span<const uint8_t> lhsSp3(lhs3, 5);
-    Span<const uint16_t> rhsSp3(rhs3, 2);
+    common::Span<const uint8_t> lhsSp3(lhs3, 5);
+    common::Span<const uint16_t> rhsSp3(rhs3, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp3, rhsSp3, 4), 2);
 
     const uint8_t lhs4[] = {'a', 'b', 'c', 'd'};
     const uint16_t rhs4[] = {'x', 'y'};
-    Span<const uint8_t> lhsSp4(lhs4, 4);
-    Span<const uint16_t> rhsSp4(rhs4, 2);
+    common::Span<const uint8_t> lhsSp4(lhs4, 4);
+    common::Span<const uint16_t> rhsSp4(rhs4, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp4, rhsSp4, 3), -1);
 }
 
@@ -471,32 +471,32 @@ HWTEST_F_L0(BaseStringTest, LastIndexOf_TEST6)
 {
     const uint16_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs[] = {'c', 'd'};
-    Span<const uint16_t> lhsSp(lhs, 5);
-    Span<const uint16_t> rhsSp(rhs, 2);
+    common::Span<const uint16_t> lhsSp(lhs, 5);
+    common::Span<const uint16_t> rhsSp(rhs, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp, rhsSp, 4), 2);
 
     const uint16_t lhs1[] = {'a', 'b', 'c', 'x', 'e'};
     const uint16_t rhs1[] = {'c', 'd'};
-    Span<const uint16_t> lhsSp1(lhs1, 5);
-    Span<const uint16_t> rhsSp1(rhs1, 2);
+    common::Span<const uint16_t> lhsSp1(lhs1, 5);
+    common::Span<const uint16_t> rhsSp1(rhs1, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp1, rhsSp1, 4), -1);
 
     const uint16_t lhs2[] = {'a', 'b', 'c', 'd', 'e'};
     const uint16_t rhs2[] = {'c', 'x'};
-    Span<const uint16_t> lhsSp2(lhs2, 5);
-    Span<const uint16_t> rhsSp2(rhs2, 2);
+    common::Span<const uint16_t> lhsSp2(lhs2, 5);
+    common::Span<const uint16_t> rhsSp2(rhs2, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp2, rhsSp2, 4), -1);
 
     const uint16_t lhs3[] = {'a', 'b', 'a', 'b', 'c'};
     const uint16_t rhs3[] = {'a', 'b'};
-    Span<const uint16_t> lhsSp3(lhs3, 5);
-    Span<const uint16_t> rhsSp3(rhs3, 2);
+    common::Span<const uint16_t> lhsSp3(lhs3, 5);
+    common::Span<const uint16_t> rhsSp3(rhs3, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp3, rhsSp3, 4), 2);
 
     const uint16_t lhs4[] = {'a', 'b', 'c', 'd'};
     const uint16_t rhs4[] = {'x', 'y'};
-    Span<const uint16_t> lhsSp4(lhs4, 4);
-    Span<const uint16_t> rhsSp4(rhs4, 2);
+    common::Span<const uint16_t> lhsSp4(lhs4, 4);
+    common::Span<const uint16_t> rhsSp4(rhs4, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp4, rhsSp4, 3), -1);
 }
 
@@ -504,32 +504,32 @@ HWTEST_F_L0(BaseStringTest, LastIndexOf_TEST7)
 {
     const uint16_t lhs[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs[] = {'c', 'd'};
-    Span<const uint16_t> lhsSp(lhs, 5);
-    Span<const uint8_t> rhsSp(rhs, 2);
+    common::Span<const uint16_t> lhsSp(lhs, 5);
+    common::Span<const uint8_t> rhsSp(rhs, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp, rhsSp, 4), 2);
 
     const uint16_t lhs1[] = {'a', 'b', 'c', 'x', 'e'};
     const uint8_t rhs1[] = {'c', 'd'};
-    Span<const uint16_t> lhsSp1(lhs1, 5);
-    Span<const uint8_t> rhsSp1(rhs1, 2);
+    common::Span<const uint16_t> lhsSp1(lhs1, 5);
+    common::Span<const uint8_t> rhsSp1(rhs1, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp1, rhsSp1, 4), -1);
 
     const uint16_t lhs2[] = {'a', 'b', 'c', 'd', 'e'};
     const uint8_t rhs2[] = {'c', 'x'};
-    Span<const uint16_t> lhsSp2(lhs2, 5);
-    Span<const uint8_t> rhsSp2(rhs2, 2);
+    common::Span<const uint16_t> lhsSp2(lhs2, 5);
+    common::Span<const uint8_t> rhsSp2(rhs2, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp2, rhsSp2, 4), -1);
 
     const uint16_t lhs3[] = {'a', 'b', 'a', 'b', 'c'};
     const uint8_t rhs3[] = {'a', 'b'};
-    Span<const uint16_t> lhsSp3(lhs3, 5);
-    Span<const uint8_t> rhsSp3(rhs3, 2);
+    common::Span<const uint16_t> lhsSp3(lhs3, 5);
+    common::Span<const uint8_t> rhsSp3(rhs3, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp3, rhsSp3, 4), 2);
 
     const uint16_t lhs4[] = {'a', 'b', 'c', 'd'};
     const uint8_t rhs4[] = {'x', 'y'};
-    Span<const uint16_t> lhsSp4(lhs4, 4);
-    Span<const uint8_t> rhsSp4(rhs4, 2);
+    common::Span<const uint16_t> lhsSp4(lhs4, 4);
+    common::Span<const uint8_t> rhsSp4(rhs4, 2);
     EXPECT_EQ(BaseString::LastIndexOf(lhsSp4, rhsSp4, 3), -1);
 }
-}  // namespace common::test
+}  // namespace panda::test

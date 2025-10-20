@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/objects/string_table/hashtriemap.h"
+#include "ecmascript/string/hashtriemap.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_string_table_optimization-inl.h"
 #include "ecmascript/ecma_string_table.h"
@@ -24,13 +24,13 @@ using namespace panda::ecmascript;
 namespace panda::test {
 class EcmaStringTableTest : public BaseTestWithScope<false> {
 public:
-    template <common::TrieMapConfig::SlotBarrier barrier>
+    template <TrieMapConfig::SlotBarrier barrier>
     void TestLoadOrStoreConcurrentAccess();
-    template <common::TrieMapConfig::SlotBarrier barrier>
+    template <TrieMapConfig::SlotBarrier barrier>
     void TestLoadOrStoreInsertNewKey();
-    template <common::TrieMapConfig::SlotBarrier barrier>
+    template <TrieMapConfig::SlotBarrier barrier>
     void TestLoadOrStoreStoreExistingKey();
-    template<common::TrieMapConfig::SlotBarrier barrier>
+    template<TrieMapConfig::SlotBarrier barrier>
     void TestExpandHashCollisionHandling();
 };
 
@@ -153,19 +153,19 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_CheckStringTable)
  */
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_ConcurrentAccess)
 {
-    TestLoadOrStoreConcurrentAccess<common::TrieMapConfig::NeedSlotBarrier>();
-    TestLoadOrStoreConcurrentAccess<common::TrieMapConfig::NoSlotBarrier>();
+    TestLoadOrStoreConcurrentAccess<TrieMapConfig::NeedSlotBarrier>();
+    TestLoadOrStoreConcurrentAccess<TrieMapConfig::NoSlotBarrier>();
 }
 
 // Check BitFiled of Entry
-template<typename Mutex, typename ThreadHolder, common::TrieMapConfig::SlotBarrier SlotBarrier>
-bool CheckBitFields(common::HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* map)
+template<typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+bool CheckBitFields(HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* map)
 {
     bool highBitsNotSet = true;
-    std::function<bool(common::HashTrieMapNode *)> checkbit = [&highBitsNotSet](common::HashTrieMapNode *node) {
+    std::function<bool(HashTrieMapNode *)> checkbit = [&highBitsNotSet](HashTrieMapNode *node) {
         if (node->IsEntry()) {
             uint64_t bitfield = node->AsEntry()->GetBitField();
-            if ((bitfield & common::TrieMapConfig::HIGH_8_BIT_MASK) != 0) {
+            if ((bitfield & TrieMapConfig::HIGH_8_BIT_MASK) != 0) {
                 highBitsNotSet = false;
                 return false;
             }
@@ -176,11 +176,11 @@ bool CheckBitFields(common::HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* map)
     return highBitsNotSet;
 }
 
-template<common::TrieMapConfig::SlotBarrier barrier>
+template<TrieMapConfig::SlotBarrier barrier>
 void EcmaStringTableTest::TestLoadOrStoreConcurrentAccess()
 {
     for (uint32_t i = 0; i < 20; i++) {
-        auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
+        auto *map = new HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
 
         EcmaVM *vm = thread->GetEcmaVM();
         [[maybe_unused]] JSHandle<EcmaString> values[] = {
@@ -236,7 +236,7 @@ void EcmaStringTableTest::TestLoadOrStoreConcurrentAccess()
             t.join();
         }
         uint32_t count = 0;
-        std::function<bool(common::HashTrieMapNode *)> iter = [&count](common::HashTrieMapNode *node) {
+        std::function<bool(HashTrieMapNode *)> iter = [&count](HashTrieMapNode *node) {
             if (node->IsEntry()) {
                 count++;
             }
@@ -256,15 +256,15 @@ void EcmaStringTableTest::TestLoadOrStoreConcurrentAccess()
  */
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_InsertNewKey)
 {
-    TestLoadOrStoreInsertNewKey<common::TrieMapConfig::NeedSlotBarrier>();
-    TestLoadOrStoreInsertNewKey<common::TrieMapConfig::NoSlotBarrier>();
+    TestLoadOrStoreInsertNewKey<TrieMapConfig::NeedSlotBarrier>();
+    TestLoadOrStoreInsertNewKey<TrieMapConfig::NoSlotBarrier>();
 }
 
-template<common::TrieMapConfig::SlotBarrier barrier>
+template<TrieMapConfig::SlotBarrier barrier>
 void EcmaStringTableTest::TestLoadOrStoreInsertNewKey()
 {
     EcmaVM* vm = thread->GetEcmaVM();
-    auto* map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
+    auto* map = new HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
     JSHandle<EcmaString> value(thread, *vm->GetFactory()->NewFromASCII("test_value"));
     uint32_t key = value->ToBaseString()->GetMixHashcode();
     auto readBarrier = [vm](const void *obj, size_t offset) -> TaggedObject * {
@@ -295,15 +295,15 @@ void EcmaStringTableTest::TestLoadOrStoreInsertNewKey()
  */
 HWTEST_F_L0(EcmaStringTableTest, LoadOrStore_StoreExistingKey)
 {
-    TestLoadOrStoreStoreExistingKey<common::TrieMapConfig::NeedSlotBarrier>();
-    TestLoadOrStoreStoreExistingKey<common::TrieMapConfig::NoSlotBarrier>();
+    TestLoadOrStoreStoreExistingKey<TrieMapConfig::NeedSlotBarrier>();
+    TestLoadOrStoreStoreExistingKey<TrieMapConfig::NoSlotBarrier>();
 }
 
-template<common::TrieMapConfig::SlotBarrier barrier>
+template<TrieMapConfig::SlotBarrier barrier>
 void EcmaStringTableTest::TestLoadOrStoreStoreExistingKey()
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
+    auto *map = new HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
     JSHandle<EcmaString> original(thread, *vm->GetFactory()->NewFromASCII("Aa1"));
     JSHandle<EcmaString> origina2(thread, *vm->GetFactory()->NewFromASCII("BB1"));
     // key1 = key2 = 0x0000FFF1
@@ -343,15 +343,15 @@ void EcmaStringTableTest::TestLoadOrStoreStoreExistingKey()
  */
 HWTEST_F_L0(EcmaStringTableTest, Expand_HashCollisionHandling)
 {
-    TestExpandHashCollisionHandling<common::TrieMapConfig::NeedSlotBarrier>();
-    TestExpandHashCollisionHandling<common::TrieMapConfig::NoSlotBarrier>();
+    TestExpandHashCollisionHandling<TrieMapConfig::NeedSlotBarrier>();
+    TestExpandHashCollisionHandling<TrieMapConfig::NoSlotBarrier>();
 }
 
-template <common::TrieMapConfig::SlotBarrier barrier>
+template <TrieMapConfig::SlotBarrier barrier>
 void EcmaStringTableTest::TestExpandHashCollisionHandling()
 {
     EcmaVM* vm = thread->GetEcmaVM();
-    auto* map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
+    auto* map = new HashTrieMap<EcmaStringTableMutex, JSThread, barrier>();
 
     JSHandle<EcmaString> value1(thread, *vm->GetFactory()->NewFromASCII("ADF3"));
     JSHandle<EcmaString> value2(thread, *vm->GetFactory()->NewFromASCII("A ?0"));
@@ -361,7 +361,7 @@ void EcmaStringTableTest::TestExpandHashCollisionHandling()
     uint32_t key2 = value2->ToBaseString()->GetMixHashcode();
     uint32_t key3 = value3->ToBaseString()->GetMixHashcode();
     uint32_t key4 = value4->ToBaseString()->GetMixHashcode();
-    uint32_t ROOT_ID = key1 & common::TrieMapConfig::ROOT_BIT_MASK;
+    uint32_t ROOT_ID = key1 & TrieMapConfig::ROOT_BIT_MASK;
     // Insert first key
     map->template LoadOrStore<true>(
         vm->GetJSThread(), key1, [value1]() { return value1; },
@@ -415,14 +415,14 @@ void EcmaStringTableTest::TestExpandHashCollisionHandling()
 
     */
     // Verify structure after expansion
-    common::HashTrieMapIndirect* root = map->GetRoot(ROOT_ID).load();
+    HashTrieMapIndirect* root = map->GetRoot(ROOT_ID).load();
     ASSERT_TRUE(root->GetChild(0x1).load() != nullptr); // Check first collision level
 
-    common::HashTrieMapIndirect* level1 = root->GetChild(0x1).
+    HashTrieMapIndirect* level1 = root->GetChild(0x1).
         load()->AsIndirect();
     ASSERT_TRUE(level1->GetChild(0x0).load() != nullptr);
     ASSERT_TRUE(level1->GetChild(0x2).load() != nullptr);
-    common::HashTrieMapEntry* entry = level1->GetChild(0x2).load()->AsEntry();
+    HashTrieMapEntry* entry = level1->GetChild(0x2).load()->AsEntry();
     // Verify overflow
     ASSERT_TRUE(entry->Overflow().load() != nullptr);
     ASSERT_TRUE(root->GetChild(0x2).load() != nullptr);

@@ -21,11 +21,6 @@
 #include <cstring>
 
 #include "common_components/base/utf_helper.h"
-#include "common_interfaces/objects/string/base_string.h"
-#include "common_interfaces/objects/string/base_string-inl.h"
-#include "common_interfaces/objects/string/line_string.h"
-#include "common_interfaces/objects/string/sliced_string.h"
-#include "common_interfaces/objects/string/tree_string.h"
 #include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_hclass.h"
@@ -33,6 +28,11 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/string/base_string.h"
+#include "ecmascript/string/base_string-inl.h"
+#include "ecmascript/string/line_string.h"
+#include "ecmascript/string/sliced_string.h"
+#include "ecmascript/string/tree_string.h"
 #include "libpandabase/macros.h"
 #include "securec.h"
 #include "unicode/locid.h"
@@ -51,11 +51,6 @@ class LineEcmaString;
 class TreeEcmaString;
 class SlicedEcmaString;
 class FlatStringInfo;
-
-using ::common::BaseString;
-using ::common::LineString;
-using ::common::SlicedString;
-using ::common::TreeString;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ECMA_STRING_CHECK_LENGTH_AND_TRHOW(vm, length)                                        \

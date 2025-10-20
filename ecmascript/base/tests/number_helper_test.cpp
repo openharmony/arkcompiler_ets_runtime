@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_components/objects/string_table/integer_cache.h"
+#include "ecmascript/string/integer_cache.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -922,10 +922,10 @@ HWTEST_F_L0(NumberHelperTest, FastStringToNumberForLineString)
         auto ecmaString = EcmaStringAccessor::CreateFromUtf8(instance, str.data(), str.size(), true);
         auto baseString = ecmaString->ToBaseString();
         baseString->SetIsInternString();
-        common::IntegerCache::InitIntegerCache(baseString);
-        common::IntegerCache *cache = nullptr;
-        if (baseString->GetLength() <= common::IntegerCache::MAX_INTEGER_CACHE_SIZE) {
-            cache = common::IntegerCache::Extract(ecmaString->ToBaseString());
+        IntegerCache::InitIntegerCache(baseString);
+        IntegerCache *cache = nullptr;
+        if (baseString->GetLength() <= IntegerCache::MAX_INTEGER_CACHE_SIZE) {
+            cache = IntegerCache::Extract(ecmaString->ToBaseString());
         }
         auto resCached = NumberHelper::FastStringToNumber(str.begin(), str.end(), cache);
         ASSERT_EQ(resCached.first, expectedIsSuccess[i]);

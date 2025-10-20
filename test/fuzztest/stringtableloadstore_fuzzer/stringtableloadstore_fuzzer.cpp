@@ -110,7 +110,7 @@ namespace OHOS {
         std::vector<uint8_t> utf8Data = CreateValidUtf8(data, size);
         JSHandle<EcmaString> value(thread,
                                    EcmaStringAccessor::CreateFromUtf8(vm, utf8Data.data(), utf8Data.size(), true));
-        auto *map = new common::HashTrieMap<EcmaStringTableMutex, JSThread, common::TrieMapConfig::NeedSlotBarrier>();
+        auto *map = new HashTrieMap<EcmaStringTableMutex, JSThread, TrieMapConfig::NeedSlotBarrier>();
         map->template Load<false>([](const void *, size_t) { return nullptr; }, key, nullptr);
         map->template LoadOrStore<true>(thread, key, [value]() { return value; },
                                         [](BaseString *) { return false; });

@@ -26,7 +26,7 @@
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/property_attributes.h"
-#include "common_interfaces/objects/composite_base_class.h"
+#include "ecmascript/string/composite_base_class.h"
 
 #include "libpandabase/utils/bit_field.h"
 
@@ -358,11 +358,11 @@ enum class JSType : uint8_t {
     PRESET_JSTYPE_DECL,
 };
 
-static_assert(static_cast<uint8_t>(JSType::LINE_STRING) == static_cast<uint8_t>(common::ObjectType::LINE_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::LINE_STRING) == static_cast<uint8_t>(EcmaStringType::LINE_STRING) &&
     "line string type should be same with common type");
-static_assert(static_cast<uint8_t>(JSType::SLICED_STRING) == static_cast<uint8_t>(common::ObjectType::SLICED_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::SLICED_STRING) == static_cast<uint8_t>(EcmaStringType::SLICED_STRING) &&
     "sliced string type should be same with common type");
-static_assert(static_cast<uint8_t>(JSType::TREE_STRING) == static_cast<uint8_t>(common::ObjectType::TREE_STRING) &&
+static_assert(static_cast<uint8_t>(JSType::TREE_STRING) == static_cast<uint8_t>(EcmaStringType::TREE_STRING) &&
     "tree string type should be same with common type");
 
 struct TransitionResult {
@@ -682,8 +682,8 @@ public:
     // These types are not complete hclass, does not has profile field.
     inline bool IsCompositeHClass() const
     {
-        common::ObjectType jsType = static_cast<common::ObjectType>(GetObjectType());
-        return (common::ObjectType::FIRST_OBJECT_TYPE <= jsType && jsType <= common::ObjectType::LAST_OBJECT_TYPE);
+        EcmaStringType jsType = static_cast<EcmaStringType>(GetObjectType());
+        return (EcmaStringType::FIRST_OBJECT_TYPE <= jsType && jsType <= EcmaStringType::LAST_OBJECT_TYPE);
     }
 
     inline bool IsString() const
@@ -2106,7 +2106,7 @@ public:
     ACCESSORS_DCHECK(DependentInfos, DEPENDENT_INFOS_OFFSET, PROFILE_TYPE_OFFSET, IsString);
     ACCESSORS_PRIMITIVE_FIELD_DCHECK(ProfileType, uint64_t, PROFILE_TYPE_OFFSET, LAST_OFFSET, IsString);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
-    static_assert(common::CompositeBaseClass::SIZE >= SIZE,
+    static_assert(CompositeBaseClass::SIZE >= SIZE,
                   "CompositeBaseClass::SIZE should be larger than JSHClass::SIZE");
 
     static JSHandle<JSHClass> SetPrototypeWithNotification(const JSThread *thread,

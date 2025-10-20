@@ -15,7 +15,6 @@
 
 #include "ecmascript/js_tagged_value.h"
 
-#include "common_components/objects/string_table/integer_cache.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -34,6 +33,7 @@
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/string/integer_cache.h"
 #include "ecmascript/symbol_table.h"
 
 namespace panda::ecmascript {
@@ -1761,10 +1761,10 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSThread *thread, JSTaggedValue tag
         return JSTaggedNumber(0);
     }
     if (strLen < MAX_ELEMENT_INDEX_LEN && strAccessor.IsUtf8()) {
-        common::IntegerCache *cache = nullptr;
+        IntegerCache *cache = nullptr;
 #if ENABLE_NEXT_OPTIMIZATION
-        if ((strLen <= common::IntegerCache::MAX_INTEGER_CACHE_SIZE) && strAccessor.IsInternString()) {
-            cache = common::IntegerCache::Extract(EcmaString::Cast(tagged)->ToBaseString());
+        if ((strLen <= IntegerCache::MAX_INTEGER_CACHE_SIZE) && strAccessor.IsInternString()) {
+            cache = IntegerCache::Extract(EcmaString::Cast(tagged)->ToBaseString());
             if (cache->IsInteger()) {
                 return JSTaggedNumber(cache->GetInteger());
             }
