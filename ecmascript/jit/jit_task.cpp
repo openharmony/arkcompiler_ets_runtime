@@ -349,7 +349,6 @@ void JitTask::InstallCode()
 
     if (compilerTier_.IsFast()) {
         jsFunction_->SetJitCompilingFlag(false);
-        jsFunction_->SetJitHotnessCnt(hostThread_, 0);
     } else {
         ASSERT(compilerTier_.IsBaseLine());
         jsFunction_->SetBaselinejitCompilingFlag(false);
