@@ -3892,7 +3892,7 @@
     </target>
     <target name="Composite_Base_Class_Test">
         <preparer>
-            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
     <target name="Verification_Test">
@@ -3907,7 +3907,7 @@
     </target>
     <target name="Base_String_Table_Test">
         <preparer>
-            <option name="push" value="arkcompiler/ets_runtime/libark_common_components_test.so -> /data/test" src="out"/>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
     <target name="Mem_Utils_Test">
