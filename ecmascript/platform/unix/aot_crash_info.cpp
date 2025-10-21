@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+#include "ecmascript/ohos/ohos_constants.h"
 #include "ecmascript/platform/aot_crash_info.h"
+#include "ecmascript/platform/file.h"
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
 #endif
@@ -128,22 +130,18 @@ bool AotCrashInfo::IsAotEscaped(const std::string &pgoRealPath)
     if (AotCrashInfo::GetAotEscapeDisable()) {
         return false;
     }
-    auto escapeMap = ohos::AotRuntimeInfo::GetInstance().CollectCrashSum(pgoRealPath);
-    int totalCrashes = escapeMap[ohos::RuntimeInfoType::AOT_CRASH] +
-                       escapeMap[ohos::RuntimeInfoType::JIT] +
-                       escapeMap[ohos::RuntimeInfoType::OTHERS] +
-                       escapeMap[ohos::RuntimeInfoType::JS];
-    return totalCrashes >= OPT_CODE_CRASH_THRESHOLD;
+    std::string filePath = std::string(ohos::OhosConstants::SANDBOX_ARK_PROFILE_PATH)
+        + std::string(ohos::OhosConstants::PATH_SEPARATOR)
+        + std::string(ohos::OhosConstants::AOT_RUNTIME_INFO_NAME);
+    return FileExist(filePath.c_str());
 }
 
 bool AotCrashInfo::IsJitEscape()
 {
-    auto escapeMap = ohos::AotRuntimeInfo::GetInstance().CollectCrashSum();
-    int totalCrashes = escapeMap[ohos::RuntimeInfoType::AOT_CRASH] +
-                       escapeMap[ohos::RuntimeInfoType::JIT] +
-                       escapeMap[ohos::RuntimeInfoType::OTHERS] +
-                       escapeMap[ohos::RuntimeInfoType::JS];
-    return totalCrashes >= OPT_CODE_CRASH_THRESHOLD;
+    std::string filePath = std::string(ohos::OhosConstants::SANDBOX_ARK_PROFILE_PATH)
+        + std::string(ohos::OhosConstants::PATH_SEPARATOR)
+        + std::string(ohos::OhosConstants::AOT_RUNTIME_INFO_NAME);
+    return FileExist(filePath.c_str());
 }
 
 bool AotCrashInfo::GetAotEscapeDisable()
