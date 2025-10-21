@@ -631,7 +631,8 @@ void TypedBytecodeLowering::PolyPrimitiveTypeCheckAndLoad(LoadObjByNameDataInfo 
         GateRef protoType = GetPrimitiveTypeProto(primitiveType);
         builder_.PrimitiveTypeProtoChangeMarkerCheck(protoType, frameState);
         GateRef protoConstant = builder_.HeapConstant(itr->second);
-        info.result = BuildNamedPropertyAccess(gate, receiver, protoConstant, info.tacc.GetAccessInfo(i).Plr());
+        info.result =
+            BuildNamedPropertyAccess(gate, receiver, protoConstant, info.tacc.GetAccessInfo(itr->first).Plr());
         builder_.Jump(&info.exit);
 
         if (i != typeCount - 1) {
