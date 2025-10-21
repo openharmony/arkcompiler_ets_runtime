@@ -283,9 +283,20 @@ public:
     {
         return heapConstantInfo_.holderHClassIndex2HeapConstantIndex;
     }
+
+    void RecordInlinedFunctions(const JSHandle<JSFunction> &function)
+    {
+        for (auto inlinedFunction : inlinedFunctions_) {
+            if (function == inlinedFunction) {
+                return;
+            }
+        }
+        inlinedFunctions_.emplace_back(function);
+    }
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
+    std::vector<JSHandle<JSFunction>> inlinedFunctions_;
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSPandaFile *jsPandaFile_ {nullptr};
     MethodLiteral *methodLiteral_ {nullptr};

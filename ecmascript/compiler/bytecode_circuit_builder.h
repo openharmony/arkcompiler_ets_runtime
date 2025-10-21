@@ -556,12 +556,17 @@ public:
     void GetCurrentConstpool(GateRef jsFunc, GateRef &sharedConstPool, GateRef &unSharedConstPool)
     {
         int32_t constpoolId = GetCurrentConstpoolId();
+        // Step 1: If the preFrameArgs is root (i.e. this function is the outer function of the circuit), we need new
+        //         gates for const pool.
         if (gateAcc_.GetOpCode(preFrameArgs_) == OpCode::CIRCUIT_ROOT) {
             sharedConstPool = circuit_->NewGate(circuit_->GetSharedConstPool(constpoolId), MachineType::I64, {jsFunc},
                                                 GateType::AnyType());
             unSharedConstPool = circuit_->NewGate(circuit_->GetUnsharedConstPool(), MachineType::I64,
                                                   {sharedConstPool}, GateType::AnyType());
+            return;
         }
+        // Step 2: Otherwise this function is going to be inlined into a caller (maybe also inlined), we want to reuse
+        //         the const pool of the callers that was created before with a same const pool id.
         GateRef frameArgs = preFrameArgs_;
         GateRef preSharedConstPool = Circuit::NullGate();
         GateRef preUnsharedConstPool = Circuit::NullGate();
@@ -574,10 +579,15 @@ public:
             if (preConstpoolId == constpoolId) {
                 sharedConstPool = preSharedConstPool;
                 unSharedConstPool = preUnsharedConstPool;
-                break;
+                return;
             }
             frameArgs = gateAcc_.GetFrameState(frameArgs);
         }
+        // Step 3: We didn't find any const pool that can be reused from the callers, now create new gates.
+        sharedConstPool = circuit_->NewGate(circuit_->GetSharedConstPool(constpoolId), MachineType::I64, {jsFunc},
+                                            GateType::AnyType());
+        unSharedConstPool = circuit_->NewGate(circuit_->GetUnsharedConstPool(), MachineType::I64, {sharedConstPool},
+                                              GateType::AnyType());
     }
 
     void SetIrreducibleLoop()
