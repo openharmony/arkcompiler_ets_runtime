@@ -172,6 +172,20 @@ const someTestCases = [
         });
         print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: false
     },
+
+    () => {
+        let arr = new Array(1, 2, 3);
+        const result = arr.some((e, idx) => {
+            if (idx == 0) {
+                arr.pop();
+            }
+            if (idx == 1) {
+                arr.push(50);
+            }
+            return e > 10;
+        });
+        print("Result:", JSON.stringify(result)); // Result: true
+    },
 ];
 
 someTestCases.forEach((test, i) => {

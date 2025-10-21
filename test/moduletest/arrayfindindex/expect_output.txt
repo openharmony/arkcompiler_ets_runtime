@@ -74,3 +74,6 @@ Log: [{"value":{"name":"Alice"},"index":0,"array":[{"name":"Alice"},{"name":"Bob
 FindIndex Test case 20:
 Log: [{"value":{"age":30},"index":0,"array":[{"age":30},{"age":25},{"age":30}]}] Result: 0
 ---
+FindIndex Test case 21:
+Count: 3 Result: -1
+---

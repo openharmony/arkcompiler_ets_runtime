@@ -78,3 +78,6 @@ Log: [] Result: undefined
 Find Test case 15:
 Log: [{"value":1,"index":0,"array":[1,2,3]},{"value":2,"index":1,"array":[1,2,3]},{"value":3,"index":2,"array":[1,4,3]}] Result: undefined
 ---
+Find Test case 16:
+Count: 3 Result: undefined
+---

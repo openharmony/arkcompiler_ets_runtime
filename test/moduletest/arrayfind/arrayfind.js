@@ -214,6 +214,19 @@ const findTestCases = [
         });
         print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 4
     },
+
+    () => {
+        let arr = new Array(1, 2, 3);
+        let count = 0;
+        const result = arr.find((e, idx) => {
+            if (idx == 0) {
+                arr.pop();
+            }
+            count++;
+            return e === undefined;
+        });
+        print("Count:", count, "Result:", JSON.stringify(result)); // Result: undefined
+    },
 ];
 
 findTestCases.forEach((test, i) => {
