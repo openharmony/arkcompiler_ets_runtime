@@ -476,10 +476,11 @@ void OldSpace::Merge(LocalSpace *localSpace)
 
 void OldSpace::SelectCSet()
 {
+    GCStats *gcStats = localHeap_->GetEcmaVM()->GetEcmaGCStats();
     if (localHeap_->IsMarking()) {
-        localHeap_->GetEcmaGCStats()->RecordStatisticBeforeGC(TriggerGCType::OLD_GC, GCReason::OTHER);
+        gcStats->RecordStatisticBeforeGC(TriggerGCType::OLD_GC, GCReason::OTHER);
     }
-    if (localHeap_->InSensitiveStatus()) {
+    if (localHeap_->InSensitiveStatus() && gcStats->GetGCReason() != GCReason::ALLOCATION_FAILED) {
         return;
     }
     CheckRegionSize();
