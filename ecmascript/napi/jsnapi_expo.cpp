@@ -2283,6 +2283,42 @@ Local<StringRef> StringRef::NewFromUtf16(const EcmaVM *vm, const char16_t *utf16
     return JSNApiHelper::ToLocal<StringRef>(current);
 }
 
+Local<StringRef> StringRef::NewExternalFromUtf16(const EcmaVM *vm,
+                                                 const char16_t *utf16,
+                                                 int length,
+                                                 ExternalStringFinalizerCallback callback,
+                                                 void *hint)
+{
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSHandle<EcmaString> strHandle(vm->GetJSThread(),
+        EcmaStringAccessor::CreateFromExternalResource(
+            vm, const_cast<char16_t *>(utf16),
+            length, false, static_cast<ecmascript::ExternalStringResourceCallback>(callback), hint));
+    JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>::Cast(strHandle);
+    return JSNApiHelper::ToLocal<StringRef>(current);
+}
+
+Local<StringRef> StringRef::NewExternalFromAscii(const EcmaVM *vm,
+                                                 const char *ascii,
+                                                 int length,
+                                                 ExternalStringFinalizerCallback callback,
+                                                 void *hint)
+{
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSHandle<EcmaString> strHandle(vm->GetJSThread(),
+        EcmaStringAccessor::CreateFromExternalResource(
+            vm, const_cast<char *>(ascii),
+            length, true, static_cast<ecmascript::ExternalStringResourceCallback>(callback), hint));
+    JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>::Cast(strHandle);
+    return JSNApiHelper::ToLocal<StringRef>(current);
+}
+
 std::string StringRef::ToString(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");

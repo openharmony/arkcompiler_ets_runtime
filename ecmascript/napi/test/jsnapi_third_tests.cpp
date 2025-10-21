@@ -792,6 +792,58 @@ HWTEST_F_L0(JSNApiTests, NewFromUtf16)
     ASSERT_EQ(result->Length(vm_), length);
 }
 
+HWTEST_F_L0(JSNApiTests, NewExternalFromAsciiLength)
+{
+    LocalScope scope(vm_);
+    char utf8[] = "hello world!";
+    int length = strlen(utf8);
+    char *str = new char[length];
+    std::copy(utf8, utf8 + length, str);
+    Local<StringRef> result = StringRef::NewExternalFromAscii(vm_, const_cast<char *>(str),
+                                                              length, nullptr, nullptr);
+    ASSERT_EQ(result->Utf8Length(vm_), length + 1);
+    delete[] str;
+}
+
+HWTEST_F_L0(JSNApiTests, NewExternalFromUtf16Length)
+{
+    LocalScope scope(vm_);
+    char16_t utf16[] = u"This is a char16 array";
+    int length = sizeof(utf16) / sizeof(char16_t) - 1;
+    char16_t *str = new char16_t[length];
+    std::copy(utf16, utf16 + length, str);
+    Local<StringRef> result = StringRef::NewExternalFromUtf16(vm_, const_cast<char16_t *>(str),
+                                                              length, nullptr, nullptr);
+    ASSERT_EQ(result->Length(vm_), length);
+    delete[] str;
+}
+
+HWTEST_F_L0(JSNApiTests, NewExternalFromAsciiContent)
+{
+    LocalScope scope(vm_);
+    char utf8[] = "hello world!";
+    int length = strlen(utf8);
+    char *str = new char[length];
+    std::copy(utf8, utf8 + length, str);
+    Local<StringRef> result = StringRef::NewExternalFromAscii(vm_, const_cast<char *>(str),
+                                                              length, nullptr, nullptr);
+    EXPECT_EQ(result->ToString(vm_), "hello world!");
+    delete[] str;
+}
+
+HWTEST_F_L0(JSNApiTests, NewExternalFromUtf16Content)
+{
+    LocalScope scope(vm_);
+    char16_t utf16[] = u"This is a char16 array";
+    int length = sizeof(utf16) / sizeof(char16_t) - 1;
+    char16_t *str = new char16_t[length];
+    std::copy(utf16, utf16 + length, str);
+    Local<StringRef> result = StringRef::NewExternalFromUtf16(vm_, const_cast<char16_t *>(str),
+                                                              length, nullptr, nullptr);
+    EXPECT_EQ(result->ToString(vm_), "This is a char16 array");
+    delete[] str;
+}
+
 /*
  * @tc.number: ffi_interface_api_138
  * @tc.name: JSNApi_GetNapiWrapperString
