@@ -267,6 +267,11 @@ inline bool JSTaggedValue::IsSlicedString() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsSlicedString();
 }
 
+inline bool JSTaggedValue::IsCachedExternalString() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsCachedExternalString();
+}
+
 inline bool JSTaggedValue::IsBigInt() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsBigInt();

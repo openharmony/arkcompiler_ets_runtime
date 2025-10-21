@@ -3306,8 +3306,8 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
     }
     auto stringAcc = EcmaStringAccessor(string);
     JSTaggedValue result;
-    if (stringAcc.IsLineString()) {
-        // line string or flatten tree string
+    if (stringAcc.IsLineOrCachedExternalString()) {
+        // line string or cached external string or flatten tree string
         if (!stringAcc.IsUtf16()) {
             result = RuntimeDecodeURIComponent<uint8_t>(thread, string, stringAcc.GetDataUtf8());
         } else {
@@ -3318,19 +3318,8 @@ DEF_RUNTIME_STUBS(DecodeURIComponent)
         auto parent = SlicedEcmaString::Cast(string.GetTaggedValue())->GetParent(thread);
         auto parentStrAcc = EcmaStringAccessor(parent);
         auto startIndex = SlicedEcmaString::Cast(string.GetTaggedValue())->GetStartIndex();
-#if !ENABLE_NEXT_OPTIMIZATION
-        if (parentStrAcc.IsLineString()) {
-            if (parentStrAcc.IsUtf8()) {
-                result = RuntimeDecodeURIComponent<uint8_t>(thread, string,
-                                                            parentStrAcc.GetDataUtf8() + startIndex);
-            } else {
-                result = RuntimeDecodeURIComponent<uint16_t>(thread, string,
-                                                             parentStrAcc.GetDataUtf16() + startIndex);
-            }
-#else // ENABLE_NEXT_OPTIMIZATION
-        if (parentStrAcc.IsLineString() && !parentStrAcc.IsUtf8()) {
+        if (!parentStrAcc.IsUtf8()) {
             result = RuntimeDecodeURIComponent<uint16_t>(thread, string, parentStrAcc.GetDataUtf16() + startIndex);
-#endif // ENABLE_NEXT_OPTIMIZATION
         } else {
             result = RuntimeDecodeURIComponent<uint8_t>(thread, string, parentStrAcc.GetDataUtf8() + startIndex);
         }

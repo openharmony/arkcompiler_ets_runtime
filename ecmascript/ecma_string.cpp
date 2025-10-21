@@ -57,8 +57,8 @@ EcmaString *EcmaString::Concat(const EcmaVM *vm,
     // if the result string is small, make a LineString
     bool compressed = (strLeft->IsUtf8() && strRight->IsUtf8());
     if (newLength < TreeString::MIN_TREE_STRING_LENGTH) {
-        ASSERT(strLeft->IsLineString());
-        ASSERT(strRight->IsLineString());
+        ASSERT(strLeft->IsLineOrCachedExternalString());
+        ASSERT(strRight->IsLineOrCachedExternalString());
         auto newString = CreateLineStringWithSpaceType(vm, newLength, compressed, type);
         // retrieve strings after gc
         strLeft = *left;
@@ -165,8 +165,9 @@ EcmaString *EcmaString::GetSubString(const EcmaVM *vm,
             return EcmaString::Cast(singleCharTable->GetStringFromSingleCharTable(thread, res).GetTaggedObject());
         }
     }
-    if (static_cast<uint32_t>(length) >= SlicedString::MIN_SLICED_STRING_LENGTH) {
-        if (start == 0 && length == src->GetLength()) {
+    if (length >= SlicedString::MIN_SLICED_STRING_LENGTH && !src->IsCachedExternalString()) {
+        if (length == src->GetLength()) {
+            ASSERT(start == 0);
             return *src;
         }
         if (src->IsUtf16()) {
@@ -912,7 +913,7 @@ FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<Ecm
     ASSERT(IsSMemSpace(type));
     EcmaString *s = *string;
     uint32_t startIndex = 0;
-    if (s->IsLineString()) {
+    if (s->IsLineOrCachedExternalString()) {
         return FlatStringInfo(s, startIndex, s->GetLength());
     }
     JSThread *thread = vm->GetJSThread();
@@ -933,7 +934,7 @@ FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<Ecm
 EcmaString *EcmaString::FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *string)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    if (string->IsLineString()) {
+    if (string->IsLineOrCachedExternalString()) {
         return string;
     }
     if (string->IsTreeString()) {

@@ -464,6 +464,8 @@ public:
     GateRef IsLineString(GateRef glue, GateRef obj);
     GateRef IsSlicedString(GateRef glue, GateRef obj);
     GateRef IsTreeString(GateRef glue, GateRef obj);
+    GateRef IsCachedExternalString(GateRef glue, GateRef obj);
+    GateRef IsLineOrCachedExternalString(GateRef glue, GateRef obj);
     GateRef TreeStringIsFlat(GateRef glue, GateRef string);
     GateRef TaggedIsBigInt(GateRef glue, GateRef obj);
     GateRef TaggedIsPropertyBox(GateRef glue, GateRef obj);

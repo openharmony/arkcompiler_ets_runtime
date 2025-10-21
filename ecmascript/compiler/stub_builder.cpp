@@ -10375,21 +10375,37 @@ GateRef StubBuilder::GetNormalStringData([[maybe_unused]] GateRef glue, const St
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
+    Label isLineString(env);
+    Label notLineString(env);
+    Label getResult(env);
     Label isUtf8(env);
     Label isUtf16(env);
     DEFVARIABLE(result, VariableType::NATIVE_POINTER(), Undefined());
-    GateRef data = ChangeTaggedPointerToInt64(
-        PtrAdd(stringInfoGate.GetString(), IntPtr(LineString::DATA_OFFSET)));
+    DEFVARIABLE(data, VariableType::NATIVE_POINTER(), Undefined());
+    BRANCH(IsLineString(glue, stringInfoGate.GetString()), &isLineString, &notLineString);
+    Bind(&isLineString);
+    {
+        data = ChangeTaggedPointerToInt64(PtrAdd(stringInfoGate.GetString(), IntPtr(LineString::DATA_OFFSET)));
+        Jump(&getResult);
+    }
+    Bind(&notLineString);
+    {
+        GateRef addr = ChangeTaggedPointerToInt64(PtrAdd(stringInfoGate.GetString(),
+            IntPtr(CachedExternalString::CACHE_RESOURCE_DATA_OFFSET)));
+        data = LoadZeroOffsetPrimitive(VariableType::NATIVE_POINTER(), addr);
+        Jump(&getResult);
+    }
+    Bind(&getResult);
     BRANCH(IsUtf8String(stringInfoGate.GetString()), &isUtf8, &isUtf16);
     Bind(&isUtf8);
     {
-        result = PtrAdd(data, ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
+        result = PtrAdd(*data, ZExtInt32ToPtr(stringInfoGate.GetStartIndex()));
         Jump(&exit);
     }
     Bind(&isUtf16);
     {
         GateRef offset = PtrMul(ZExtInt32ToPtr(stringInfoGate.GetStartIndex()), IntPtr(sizeof(uint16_t)));
-        result = PtrAdd(data, offset);
+        result = PtrAdd(*data, offset);
         Jump(&exit);
     }
     Bind(&exit);

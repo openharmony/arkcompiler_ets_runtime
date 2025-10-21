@@ -663,6 +663,7 @@ public:
     inline EcmaString *AllocNonMovableLineStringObject(size_t size);
     inline EcmaString *AllocSlicedStringObject(MemSpaceType type);
     inline EcmaString *AllocTreeStringObject();
+    inline EcmaString *AllocCachedExternalStringObject();
 
     JSHandle<EcmaString> ConcatFromString(const JSHandle<EcmaString> &firstString,
                                           const JSHandle<EcmaString> &secondString);

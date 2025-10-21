@@ -88,6 +88,7 @@ struct Reference;
         V(LINE_STRING),   /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(SLICED_STRING),  /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(TREE_STRING),  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        V(CACHED_EXTERNAL_STRING), /* /////////////////////////////////////////////////////////////////////-PADDING */ \
         V(COMPOSITE_BASE_CLASS),  /* //////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         V(JS_OBJECT),        /* JS_OBJECT_FIRST /////////////////////////////////////////////////////////////////// */ \
@@ -344,7 +345,7 @@ struct Reference;
         MODULE_RECORD_LAST = SOURCE_TEXT_MODULE_RECORD, /* ////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         STRING_FIRST = LINE_STRING, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
-        STRING_LAST = TREE_STRING,  /* ////////////////////////////////////////////////////////////////////-PADDING */ \
+        STRING_LAST = CACHED_EXTERNAL_STRING,  /* /////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         PROFILE_TYPE_INFO_CELL_FIRST = PROFILE_TYPE_INFO_CELL_0,  /* //////////////////////////////////////-PADDING */ \
         PROFILE_TYPE_INFO_CELL_LAST = PROFILE_TYPE_INFO_CELL_N    /* //////////////////////////////////////-PADDING */
@@ -364,6 +365,7 @@ static_assert(static_cast<uint8_t>(JSType::SLICED_STRING) == static_cast<uint8_t
     "sliced string type should be same with common type");
 static_assert(static_cast<uint8_t>(JSType::TREE_STRING) == static_cast<uint8_t>(EcmaStringType::TREE_STRING) &&
     "tree string type should be same with common type");
+// CachedExternalString is not a common type for now
 
 struct TransitionResult {
     bool isTagged;
@@ -705,6 +707,11 @@ public:
     inline bool IsTreeString() const
     {
         return GetObjectType() == JSType::TREE_STRING;
+    }
+
+    inline bool IsCachedExternalString() const
+    {
+        return GetObjectType() == JSType::CACHED_EXTERNAL_STRING;
     }
 
     inline bool IsBigInt() const

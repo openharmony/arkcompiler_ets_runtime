@@ -204,10 +204,24 @@ GateRef BuiltinsStringStubBuilder::FastStringCharCodeAt(GateRef glue, GateRef th
     Bind(&readyStringAt);
     {
         StringInfoGateRef stringInfoGate(&thisFlat);
+        Label isLineString(env);
+        Label notLineString(env);
         Label getCharByIndex(env);
-        GateRef stringData = Circuit::NullGate();
-        stringData = PtrAdd(stringInfoGate.GetString(), IntPtr(LineString::DATA_OFFSET));
-        Jump(&getCharByIndex);
+        DEFVARIABLE(stringData, VariableType::NATIVE_POINTER(), Undefined());
+        BRANCH(IsLineString(glue, stringInfoGate.GetString()), &isLineString, &notLineString);
+        Bind(&isLineString);
+        {
+            stringData = ChangeTaggedPointerToInt64(PtrAdd(
+                stringInfoGate.GetString(), IntPtr(LineString::DATA_OFFSET)));
+            Jump(&getCharByIndex);
+        }
+        Bind(&notLineString);
+        {
+            GateRef address = ChangeTaggedPointerToInt64(PtrAdd(stringInfoGate.GetString(),
+                IntPtr(CachedExternalString::CACHE_RESOURCE_DATA_OFFSET)));
+            stringData = LoadZeroOffsetPrimitive(VariableType::NATIVE_POINTER(), address);
+            Jump(&getCharByIndex);
+        }
         Label isUtf16(env);
         Label isUtf8(env);
         Bind(&getCharByIndex);
@@ -217,14 +231,14 @@ GateRef BuiltinsStringStubBuilder::FastStringCharCodeAt(GateRef glue, GateRef th
         {
             charPosition = PtrMul(ZExtInt32ToPtr(*index), IntPtr(sizeof(uint16_t)));
             result = Int64ToTaggedIntPtr((ZExtInt16ToInt64(
-                LoadZeroOffsetPrimitive(VariableType::INT16(), PtrAdd(stringData, charPosition)))));
+                LoadZeroOffsetPrimitive(VariableType::INT16(), PtrAdd(*stringData, charPosition)))));
             Jump(&exit);
         }
         Bind(&isUtf8);
         {
             charPosition = PtrMul(ZExtInt32ToPtr(*index), IntPtr(sizeof(uint8_t)));
             result = Int64ToTaggedIntPtr((ZExtInt8ToInt64(
-                LoadZeroOffsetPrimitive(VariableType::INT8(), PtrAdd(stringData, charPosition)))));
+                LoadZeroOffsetPrimitive(VariableType::INT8(), PtrAdd(*stringData, charPosition)))));
             Jump(&exit);
         }
     }
@@ -745,8 +759,8 @@ GateRef BuiltinsStringStubBuilder::GetSubString(GateRef glue, GateRef thisValue,
             }
         }
         Bind(&notSingleChar);
-        BRANCH(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_STRING_LENGTH)),
-            &mayGetSliceString, &fastSubstring);
+        BRANCH(LogicAndBuilder(env).And(Int32GreaterThanOrEqual(len, Int32(SlicedString::MIN_SLICED_STRING_LENGTH)))
+               .And(BoolNot(IsCachedExternalString(glue, thisValue))).Done(), &mayGetSliceString, &fastSubstring);
         Bind(&mayGetSliceString);
         {
             BRANCH(IsUtf16String(thisValue), &isUtf16, &sliceString);
@@ -1110,16 +1124,24 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeByIndex(GateRef glue, GateRe
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::INT32(), Int32(0));
 
-    Label lineStringCheck(env);
     Label isLineString(env);
+    Label cachedExternalStringCheck(env);
+    Label isCachedExternalString(env);
     Label slicedStringCheck(env);
     Label isSlicedString(env);
     Label exit(env);
 
-    BRANCH(IsLineString(glue, str), &isLineString, &slicedStringCheck);
+    BRANCH(IsLineString(glue, str), &isLineString, &cachedExternalStringCheck);
     Bind(&isLineString);
     {
         result = GetSingleCharCodeFromLineString(str, index);
+        Jump(&exit);
+    }
+    Bind(&cachedExternalStringCheck);
+    BRANCH(IsCachedExternalString(glue, str), &isCachedExternalString, &slicedStringCheck);
+    Bind(&isCachedExternalString);
+    {
+        result = GetSingleCharCodeFromCachedExternalString(str, index);
         Jump(&exit);
     }
     Bind(&slicedStringCheck);
@@ -1143,6 +1165,37 @@ GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromLineString(GateRef str, 
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::INT32(), Int32(0));
     GateRef dataAddr = ChangeStringTaggedPointerToInt64(PtrAdd(str, IntPtr(LineString::DATA_OFFSET)));
+    Label isUtf16(env);
+    Label isUtf8(env);
+    Label exit(env);
+    BRANCH(IsUtf16String(str), &isUtf16, &isUtf8);
+    Bind(&isUtf16);
+    {
+        result = ZExtInt16ToInt32(LoadZeroOffsetPrimitive(VariableType::INT16(), PtrAdd(dataAddr,
+            PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint16_t))))));
+        Jump(&exit);
+    }
+    Bind(&isUtf8);
+    {
+        result = ZExtInt8ToInt32(LoadZeroOffsetPrimitive(VariableType::INT8(), PtrAdd(dataAddr,
+            PtrMul(ZExtInt32ToPtr(index), IntPtr(sizeof(uint8_t))))));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsStringStubBuilder::GetSingleCharCodeFromCachedExternalString(GateRef str, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    GateRef offset = ChangeStringTaggedPointerToInt64(
+        PtrAdd(str, IntPtr(CachedExternalString::CACHE_RESOURCE_DATA_OFFSET)));
+    GateRef dataAddr = LoadZeroOffsetPrimitive(VariableType::NATIVE_POINTER(), offset);
     Label isUtf16(env);
     Label isUtf8(env);
     Label exit(env);
@@ -1967,7 +2020,7 @@ void FlatStringStubBuilder::FlattenStringImpl(GateRef glue, GateRef str, Label *
     Label notLineString(env);
     Label fastPath(env);
     length_ = GetLengthFromString(str);
-    BRANCH(IsLineString(glue, str), &fastPath, &notLineString);
+    BRANCH(IsLineOrCachedExternalString(glue, str), &fastPath, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);
@@ -2571,6 +2624,34 @@ GateRef BuiltinsStringStubBuilder::ConcatIsInStringAdd(GateRef init, GateRef sta
     return LogicAndBuilder(env).And(init).And(judgeStatus).Done();
 }
 
+GateRef BuiltinsStringStubBuilder::GetStringDataFromLineOrCachedExternalString(GateRef glue, GateRef str)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isLineString(env);
+    Label notLineString(env);
+    DEFVARIABLE(data, VariableType::NATIVE_POINTER(), IntPtr(0));
+    BRANCH(IsLineString(glue, str), &isLineString, &notLineString);
+    Bind(&isLineString);
+    {
+        data = ChangeTaggedPointerToInt64(PtrAdd(str, IntPtr(LineString::DATA_OFFSET)));
+        Jump(&exit);
+    }
+    Bind(&notLineString);
+    {
+        GateRef addr = ChangeTaggedPointerToInt64(PtrAdd(str,
+            IntPtr(CachedExternalString::CACHE_RESOURCE_DATA_OFFSET)));
+        data = LoadZeroOffsetPrimitive(VariableType::NATIVE_POINTER(), addr);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *data;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString, GateRef rightString)
 {
     auto env = GetEnvironment();
@@ -2651,10 +2732,8 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
                 }
                 Bind(&isUtf8Next);
                 {
-                    GateRef leftSource = ChangeStringTaggedPointerToInt64(
-                        PtrAdd(leftString, IntPtr(LineString::DATA_OFFSET)));
-                    GateRef rightSource = ChangeStringTaggedPointerToInt64(
-                        PtrAdd(rightString, IntPtr(LineString::DATA_OFFSET)));
+                    GateRef leftSource = GetStringDataFromLineOrCachedExternalString(glue, leftString);
+                    GateRef rightSource = GetStringDataFromLineOrCachedExternalString(glue, rightString);
                     GateRef leftDst = ChangeStringTaggedPointerToInt64(
                         PtrAdd(*result, IntPtr(LineString::DATA_OFFSET)));
                     GateRef rightDst = ChangeStringTaggedPointerToInt64(PtrAdd(leftDst, ZExtInt32ToPtr(leftLength)));
@@ -2668,10 +2747,8 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
                     Label leftIsUtf16L(env);
                     Label rightIsUtf8L(env);
                     Label rightIsUtf16L(env);
-                    GateRef leftSource = ChangeStringTaggedPointerToInt64(
-                        PtrAdd(leftString, IntPtr(LineString::DATA_OFFSET)));
-                    GateRef rightSource = ChangeStringTaggedPointerToInt64(
-                        PtrAdd(rightString, IntPtr(LineString::DATA_OFFSET)));
+                    GateRef leftSource = GetStringDataFromLineOrCachedExternalString(glue, leftString);
+                    GateRef rightSource = GetStringDataFromLineOrCachedExternalString(glue, rightString);
                     GateRef leftDst = ChangeStringTaggedPointerToInt64(
                         PtrAdd(*result, IntPtr(LineString::DATA_OFFSET)));
                     GateRef rightDst = ChangeStringTaggedPointerToInt64(

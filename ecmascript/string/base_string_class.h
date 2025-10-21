@@ -28,11 +28,12 @@ enum class EcmaStringType : uint8_t {
     LINE_STRING = FIRST_OBJECT_TYPE,
     SLICED_STRING,
     TREE_STRING,
+    CACHED_EXTERNAL_STRING,
 
-    LAST_OBJECT_TYPE = TREE_STRING,
+    LAST_OBJECT_TYPE = CACHED_EXTERNAL_STRING,
 
     STRING_FIRST = LINE_STRING,
-    STRING_LAST = TREE_STRING,
+    STRING_LAST = CACHED_EXTERNAL_STRING,
 };
 
 class BaseStringClass : public common::BaseClass {
@@ -75,6 +76,11 @@ public:
     bool IsTreeString() const
     {
         return GetEcmaStringType() == EcmaStringType::TREE_STRING;
+    }
+
+    bool IsCachedExternalString() const
+    {
+        return GetEcmaStringType() == EcmaStringType::CACHED_EXTERNAL_STRING;
     }
 };
 }  // namespace panda::ecmascript

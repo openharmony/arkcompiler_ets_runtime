@@ -84,14 +84,17 @@ HWTEST_F_L0(CompositeBaseClassTest, GetBaseClassReturnsCorrectType)
     auto* lineString = roots_->GetBaseClass(EcmaStringType::LINE_STRING);
     auto* slicedString = roots_->GetBaseClass(EcmaStringType::SLICED_STRING);
     auto* treeString = roots_->GetBaseClass(EcmaStringType::TREE_STRING);
+    auto* cachedExternalString = roots_->GetBaseClass(EcmaStringType::CACHED_EXTERNAL_STRING);
 
     ASSERT_NE(lineString, nullptr);
     ASSERT_NE(slicedString, nullptr);
     ASSERT_NE(treeString, nullptr);
+    ASSERT_NE(cachedExternalString, nullptr);
 
     EXPECT_EQ(lineString->GetEcmaStringType(), EcmaStringType::LINE_STRING);
     EXPECT_EQ(slicedString->GetEcmaStringType(), EcmaStringType::SLICED_STRING);
     EXPECT_EQ(treeString->GetEcmaStringType(), EcmaStringType::TREE_STRING);
+    EXPECT_EQ(cachedExternalString->GetEcmaStringType(), EcmaStringType::CACHED_EXTERNAL_STRING);
 }
 
 HWTEST_F_L0(CompositeBaseClassTest, IterateCompositeBaseClass)
@@ -109,6 +112,6 @@ HWTEST_F_L0(CompositeBaseClassTest, IterateCompositeBaseClass)
         visited.push_back(ptr);
     });
 
-    EXPECT_EQ(visited.size(), 3);
+    EXPECT_EQ(visited.size(), 4); // 4: four types of string
 }
 }

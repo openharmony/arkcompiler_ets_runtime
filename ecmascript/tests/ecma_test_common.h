@@ -140,7 +140,7 @@ public:
         JSHandle<EcmaString> handleEcmaStrU16NotCompNo4(
             thread,
             EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16NotCompNo4[0], lengthEcmaStrU16NotCompNo4, false));
-        EXPECT_FALSE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
+        EXPECT_TRUE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
         EXPECT_TRUE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
         EXPECT_FALSE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, false));
         EXPECT_FALSE(stringIsEqualFunc(thread, *handleEcmaStrU16NotCompNo3, &arrayU8No1[0], lengthEcmaStrU8No1, false));

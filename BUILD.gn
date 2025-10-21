@@ -1826,6 +1826,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/async_iterator_record.json",
   "ecmascript/js_type_metadata/bigint.json",
   "ecmascript/js_type_metadata/byte_array.json",
+  "ecmascript/js_type_metadata/cached_external_string.json",
   "ecmascript/js_type_metadata/cell_record.json",
   "ecmascript/js_type_metadata/class_info_extractor.json",
   "ecmascript/js_type_metadata/class_literal.json",

@@ -131,7 +131,8 @@ public:
         LINE_STRING_CLASS = 0,
         SLICED_STRING_CLASS = 1,
         TREE_STRING_CLASS = 2,
-        CLASS_COUNT = 3,
+        CACHED_EXTERNAL_STRING_CLASS = 3,
+        CLASS_COUNT = 4,
     };
 
     BaseStringClass *GetBaseClass(EcmaStringType type) const;
@@ -156,6 +157,7 @@ private:
         res[static_cast<size_t>(EcmaStringType::LINE_STRING)] = LINE_STRING_CLASS;
         res[static_cast<size_t>(EcmaStringType::SLICED_STRING)] = SLICED_STRING_CLASS;
         res[static_cast<size_t>(EcmaStringType::TREE_STRING)] = TREE_STRING_CLASS;
+        res[static_cast<size_t>(EcmaStringType::CACHED_EXTERNAL_STRING)] = CACHED_EXTERNAL_STRING_CLASS;
         return res;
     }();
     void CreateCompositeBaseClass(panda::ecmascript::EcmaStringType type, CompositeBaseClassAllocator &allocator);

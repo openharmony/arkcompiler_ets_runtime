@@ -867,6 +867,7 @@ public:
     inline GateRef BothAreString(GateRef glue, GateRef x, GateRef y);
     inline GateRef IsTreeString(GateRef glue, GateRef obj);
     inline GateRef IsSlicedString(GateRef glue, GateRef obj);
+    inline GateRef IsCachedExternalString(GateRef glue, GateRef obj);
     inline GateRef IsSpecialSlicedString(GateRef glue, GateRef obj);
     inline GateRef IsLineString(GateRef glue, GateRef obj);
     inline GateRef TreeStringIsFlat(GateRef glue, GateRef string);

@@ -90,11 +90,13 @@ private:
     {
         return GetEnvironment()->GetBuilder()->ChangeTaggedPointerToInt64(x);
     }
+    GateRef GetStringDataFromLineOrCachedExternalString(GateRef glue, GateRef str);
     GateRef CanBeCompressed(GateRef utf16Data, GateRef utf16Len, bool isUtf16);
     GateRef GetUtf16Data(GateRef stringData, GateRef index);
     GateRef IsASCIICharacter(GateRef data);
     GateRef GetUtf8Data(GateRef stringData, GateRef index);
     GateRef GetSingleCharCodeFromLineString(GateRef str, GateRef index);
+    GateRef GetSingleCharCodeFromCachedExternalString(GateRef str, GateRef index);
     GateRef GetSingleCharCodeFromSlicedString(GateRef glue, GateRef str, GateRef index);
     void CheckParamsAndGetPosition(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* pos, Label *exit, Label *slowPath, Label *posIsValid);

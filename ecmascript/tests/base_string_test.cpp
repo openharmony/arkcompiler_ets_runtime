@@ -1207,7 +1207,7 @@ namespace panda::test {
                                                     instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
         EXPECT_TRUE(BaseString::StringIsEqualUint8Data(LoadTBarrier(), handleEcmaStrU8No1->ToBaseString(),
                                                        &arrayU8No1[0], lengthEcmaStrU8No1, true));
-        EXPECT_FALSE(BaseString::StringIsEqualUint8Data(LoadTBarrier(), handleEcmaStrU8No1->ToBaseString(),
+        EXPECT_TRUE(BaseString::StringIsEqualUint8Data(LoadTBarrier(), handleEcmaStrU8No1->ToBaseString(),
                                                         &arrayU8No1[0], lengthEcmaStrU8No1, false));
         EXPECT_FALSE(BaseString::StringIsEqualUint8Data(LoadTBarrier(), handleEcmaStrU8No2->ToBaseString(),
                                                         &arrayU8No1[0], lengthEcmaStrU8No1, true));
@@ -1244,7 +1244,7 @@ namespace panda::test {
                                                          instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
         EXPECT_TRUE(BaseString::StringIsEqualUint8Data(LoadTBarrier(), handleEcmaStrU16CompNo1->ToBaseString(),
                                                        &arrayU8No1[0], lengthEcmaStrU8No1, true));
-        EXPECT_FALSE(BaseString::StringIsEqualUint8Data(LoadTBarrier(), handleEcmaStrU16CompNo1->ToBaseString(),
+        EXPECT_TRUE(BaseString::StringIsEqualUint8Data(LoadTBarrier(), handleEcmaStrU16CompNo1->ToBaseString(),
                                                         &arrayU8No1[0], lengthEcmaStrU8No1, false));
         EXPECT_FALSE(BaseString::StringIsEqualUint8Data(LoadTBarrier(), handleEcmaStrU16CompNo2->ToBaseString(),
                                                         &arrayU8No1[0], lengthEcmaStrU8No1, true));
