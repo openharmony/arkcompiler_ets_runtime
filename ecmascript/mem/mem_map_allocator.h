@@ -260,9 +260,9 @@ public:
         AdapterSuitablePoolCapacity(isLargeHeap);
         memMapTotalSize_ = 0;
         if (!g_isEnableCMCGC) {
+            InitializeCompressRegionMap(alignment);
             InitializeHugeRegionMap(alignment);
             InitializeRegularRegionMap(alignment);
-            InitializeCompressRegionMap(alignment);
         }
     }
 
