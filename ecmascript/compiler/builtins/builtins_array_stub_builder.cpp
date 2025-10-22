@@ -2979,7 +2979,8 @@ void BuiltinsArrayStubBuilder::From(GateRef glue, [[maybe_unused]] GateRef thisV
     auto env = GetEnvironment();
     GateRef item = GetCallArg0(numArgs);
     Label stringItem(env);
-    BRANCH(TaggedIsString(glue, item), &stringItem, slowPath);
+    GateRef isUtf8String = LogicAndBuilder(env).And(TaggedIsString(glue, item)).And(IsUtf8String(item)).Done();
+    BRANCH(isUtf8String, &stringItem, slowPath);
     Bind(&stringItem);
     Label undefFn(env);
     GateRef fn = GetCallArg1(numArgs);
