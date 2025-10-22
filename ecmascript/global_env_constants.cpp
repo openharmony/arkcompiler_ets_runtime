@@ -54,6 +54,8 @@
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/string/composite_base_class.h"
 #include "ecmascript/vtable.h"
+#include "ecmascript/mem/region.h"
+#include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
 void GlobalEnvConstants::Init(JSThread *thread)
@@ -69,6 +71,9 @@ void GlobalEnvConstants::Init(JSThread *thread)
     } else {
         InitSharedRootsClasses(factory);
         InitSharedMiscellaneous(thread, factory);
+        InitSharedSymbols(factory);
+        // exist symbol detector and string detector
+        InitSharedDetectors(factory);
         InitSharedStrings(factory);
     }
     // 2. Init non-shareds.
@@ -91,11 +96,89 @@ void GlobalEnvConstants::CopySharedConstantsFrom(const GlobalEnvConstants *src)
     }
 }
 
+void GlobalEnvConstants::InitSharedSymbols(ObjectFactory *factory)
+{
+    // Well-known symbols - pass symbolHClass to avoid accessing GlobalConstants during initialization
+    SetConstant(ConstantIndex::HASINSTANCE_SYMBOL_INDEX,
+                factory->NewSWellKnownSymbolWithChar("Symbol.hasInstance"));
+    SetConstant(ConstantIndex::ISCONCAT_SYMBOL_INDEX,
+                factory->NewSWellKnownSymbolWithChar("Symbol.isConcatSpreadable"));
+    SetConstant(ConstantIndex::TOSTRINGTAG_SYMBOL_INDEX,
+                factory->NewSWellKnownSymbolWithChar("Symbol.toStringTag"));
+    SetConstant(ConstantIndex::TOPRIMITIVE_SYMBOL_INDEX,
+                factory->NewSWellKnownSymbolWithChar("Symbol.toPrimitive"));
+    // Other public symbols
+    SetConstant(ConstantIndex::ASYNC_ITERATOR_SYMBOL_INDEX,
+                factory->NewSPublicSymbolWithChar("Symbol.asyncIterator"));
+    SetConstant(ConstantIndex::MATCH_SYMBOL_INDEX,
+                factory->NewSPublicSymbolWithChar("Symbol.match"));
+    SetConstant(ConstantIndex::SEARCH_SYMBOL_INDEX,
+                factory->NewSPublicSymbolWithChar("Symbol.search"));
+    SetConstant(ConstantIndex::UNSCOPABLES_SYMBOL_INDEX,
+                factory->NewSPublicSymbolWithChar("Symbol.unscopables"));
+    SetConstant(ConstantIndex::NATIVE_BINDING_SYMBOL_INDEX,
+                factory->NewSPublicSymbolWithChar("Symbol.nativeBinding"));
+}
+
+void GlobalEnvConstants::InitSharedDetectors(ObjectFactory *factory)
+{
+    // Create symbol string before create symbol to allocate symbol continuously
+    // Attention: Symbol serialization & deserialization are not supported now and
+    // the order of symbols and symbol-strings must be maintained when
+    // Symbol serialization & deserialization are ready.
+    #define INIT_SYMBOL_STRING(key, name, description)                                             \
+    {                                                                                              \
+        [[maybe_unused]] JSHandle<EcmaString> string = factory->NewFromUtf8ReadOnly(description);  \
+    }
+    DETECTOR_SYMBOL_LIST(INIT_SYMBOL_STRING)
+    #undef INIT_SYMBOL_STRING
+
+    #define INIT_PUBLIC_SYMBOL(name, key, description)                                 \
+        SetConstant(ConstantIndex::key, factory->NewSPublicSymbolWithChar(description));
+    DETECTOR_SYMBOL_LIST(INIT_PUBLIC_SYMBOL)
+    #undef INIT_PUBLIC_SYMBOL
+
+    #define INIT_SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(Name, Index, Token)        \
+        SetConstant(ConstantIndex::Index, factory->NewFromASCIIReadOnly(Token));
+    SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(INIT_SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING)
+    #undef INIT_SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING
+
+#ifndef NDEBUG
+    Region* firstRegion = nullptr;
+    
+    #define CHECK_DETECTOR_REGION_IMPL(indexValue)                                      \
+    do {                                                                                \
+        JSTaggedValue obj = constants_[static_cast<int>(ConstantIndex::indexValue)];    \
+        if (obj.IsHeapObject()) {                                                       \
+            Region* region = Region::ObjectAddressToRange(obj.GetTaggedObject());       \
+            if (firstRegion == nullptr) {                                               \
+                firstRegion = region;                                                   \
+            } else {                                                                    \
+                if (firstRegion != region) {                                            \
+                    LOG_ECMA(FATAL) << "Detector region mismatch";                      \
+                }                                                                       \
+            }                                                                           \
+        }                                                                               \
+    } while (0);
+
+    #define CHECK_DETECTOR_SYMBOL_REGION(name, key, description)                        \
+        CHECK_DETECTOR_REGION_IMPL(key)
+    DETECTOR_SYMBOL_LIST(CHECK_DETECTOR_SYMBOL_REGION)
+    #undef CHECK_DETECTOR_SYMBOL_REGION
+
+    #define CHECK_DETECTOR_STRING_REGION(Name, Index, Token)                            \
+        CHECK_DETECTOR_REGION_IMPL(Index)
+    SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(CHECK_DETECTOR_STRING_REGION)
+    #undef CHECK_DETECTOR_STRING_REGION
+    #undef CHECK_DETECTOR_REGION_IMPL
+#endif  // NDEBUG
+}
+
 void GlobalEnvConstants::InitSharedStrings(ObjectFactory *factory)
 {
     #define INIT_GLOBAL_ENV_CONSTANT_STRING(Name, Index, Token) \
         SetConstant(ConstantIndex::Index, factory->NewFromASCIIReadOnly(Token));
-        SHARED_GLOBAL_ENV_CONSTANT_STRING(INIT_GLOBAL_ENV_CONSTANT_STRING)
+    SHARED_GLOBAL_ENV_CONSTANT_STRING(INIT_GLOBAL_ENV_CONSTANT_STRING)
     #undef INIT_GLOBAL_ENV_CONSTANT_STRING
 }
 

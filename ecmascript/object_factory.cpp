@@ -951,7 +951,7 @@ JSHandle<JSHClass> ObjectFactory::CreateJSArguments(const JSHandle<GlobalEnv> &e
         attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder++);
         layoutInfoHandle->AddKey(thread_, JSArguments::ITERATOR_INLINE_PROPERTY_INDEX,
-                                 env->GetIteratorSymbol().GetTaggedValue(), attributes);
+                                 thread_->GlobalConstants()->GetIteratorSymbol(), attributes);
     }
 
     {

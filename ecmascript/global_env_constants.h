@@ -156,7 +156,6 @@ class ObjectFactory;
 
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \
-    V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                 \
     V(PrototypeString,                PROTOTYPE_STRING_INDEX,                "prototype")                   \
     V(SizeString,                     SIZE_STRING_INDEX,                     "size")                        \
     V(LengthString,                   LENGTH_STRING_INDEX,                   "length")                      \
@@ -186,10 +185,8 @@ class ObjectFactory;
     V(DoneString,                     DONE_STRING_INDEX,                     "done")                        \
     V(ProxyString,                    PROXY_STRING_INDEX,                    "proxy")                       \
     V(RevokeString,                   REVOKE_STRING_INDEX,                   "revoke")                      \
-    V(NextString,                     NEXT_STRING_INDEX,                     "next")                        \
     V(ToStringString,                 TO_STRING_STRING_INDEX,                "toString")                    \
     V(ToLocaleStringString,           TO_LOCALE_STRING_STRING_INDEX,         "toLocaleString")              \
-    V(ValueOfString,                  VALUE_OF_STRING_INDEX,                 "valueOf")                     \
     V(UndefinedString,                UNDEFINED_STRING_INDEX,                "undefined")                   \
     V(NullString,                     NULL_STRING_INDEX,                     "null")                        \
     V(BooleanString,                  BOOLEAN_STRING_INDEX,                  "boolean")                     \
@@ -205,7 +202,6 @@ class ObjectFactory;
     V(ReturnString,                   RETURN_STRING_INDEX,                   "return")                      \
     V(ProxyConstructString,           PROXY_CONSTRUCT_STRING_INDEX,          "construct")                   \
     V(ProxyCallString,                PROXY_CALL_STRING_INDEX,               "call")                        \
-    V(PromiseThenString,              PROMISE_THEN_STRING_INDEX,             "then")                        \
     V(PromiseCatchString,             PROMISE_CATCH_STRING_INDEX,            "catch")                       \
     V(PromiseFinallyString,           PROMISE_FINALLY_STRING_INDEX,          "finally")                     \
     V(PromiseStatusString,            PROMISE_STATUS_STRING_INDEX,           "status")                      \
@@ -241,7 +237,6 @@ class ObjectFactory;
     V(SharedBigInt64ArrayString,      SHARED_BIGINT64_ARRAY_STRING_INDEX,    "SharedBigInt64Array")         \
     V(SharedBigUint64ArrayString,     SHARED_BIGUINT64_ARRAY_STRING_INDEX,   "SharedBigUint64Array")        \
     V(AsyncFunctionString,            ASYNC_FUNCTION_STRING_INDEX,           "AsyncFunction")               \
-    V(PromiseResolveString,           PROMISE_RESOLVE_STRING_INDEX,          "resolve")                     \
     V(IdString,                       ID_STRING_INDEX,                       "id")                          \
     V(MethodString,                   METHOD_STRING_INDEX,                   "method")                      \
     V(ParamsString,                   PARAMS_STRING_INDEX,                   "params")                      \
@@ -427,7 +422,6 @@ class ObjectFactory;
     V(FallbackString,                 FALLBACK_INDEX,                        "fallback")                    \
     V(DisjunctionString,              DISJUNCTION_INDEX,                     "disjunction")                 \
     V(ElementString,                  ELEMENT_INDEX,                         "element")                     \
-    V(FlagsString,                    FLAGS_INDEX,                           "flags")                       \
     V(GString,                        G_INDEX,                               "g")                           \
     V(NfcString,                      NFC_INDEX,                             "NFC")                         \
     V(NfdString,                      NFD_INDEX,                             "NFD")                         \
@@ -501,6 +495,14 @@ class ObjectFactory;
     V(InteropJsNapiString,            INTEROP_JS_NAPI,                       "ets_interop_js_napi")         \
     V(GetModuleString,                GET_MODULE,                            "getModule")                   \
     SHARED_GLOBAL_ENV_CONSTANT_STRING_HYBRID(V)
+ 
+#define SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(V)                                                       \
+    V(FlagsString,                    FLAGS_STRING_INDEX,                    "flags")                       \
+    V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                 \
+    V(NextString,                     NEXT_STRING_INDEX,                     "next")                        \
+    V(PromiseThenString,              PROMISE_THEN_STRING_INDEX,             "then")                        \
+    V(PromiseResolveString,           PROMISE_RESOLVE_STRING_INDEX,          "resolve")                     \
+    V(ValueOfString,                  VALUE_OF_STRING_INDEX,                 "valueOf")
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                    \
@@ -548,6 +550,42 @@ class ObjectFactory;
 #define GLOBAL_ENV_CACHES(V)                \
     V(JSTaggedValue, CachedJSCollatorLocales, CACHED_JSCOLLATOR_LOCALES_INDEX, cachedCollatorLocales)
 
+#define SHARED_PUBLIC_CONSTANT_SYMBOL(V)                                                          \
+    /* Well-known Symbols */                                                                      \
+    V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX, ecma_roots_special)             \
+    V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX, ecma_roots_special)         \
+    V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX, ecma_roots_special)             \
+    /* Public Symbols */                                                                          \
+    V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX, ecma_roots_special)        \
+    V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX, ecma_roots_special)                         \
+    V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX, ecma_roots_special)        \
+    V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX, ecma_roots_special)                       \
+    V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX, ecma_roots_special)             \
+    V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX, ecma_roots_special)             \
+
+#define SHARED_DETECTOR_CONSTANT_SYMBOL(V)                                                        \
+    /* Detector Symbols */                                                                        \
+    V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX, ecma_roots_special)                         \
+    V(JSTaggedValue, MatchAllSymbol, MATCH_ALL_SYMBOL_INDEX, ecma_roots_special)                  \
+    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX, ecma_roots_special)                   \
+    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX, ecma_roots_special)
+
+#define SHARED_GLOBAL_ENV_CONSTANT_SYMBOL(V)     \
+    SHARED_PUBLIC_CONSTANT_SYMBOL(V)             \
+    SHARED_DETECTOR_CONSTANT_SYMBOL(V)
+
+#define DETECTOR_SYMBOL_LIST(V)                               \
+    V(replace,   REPLACE_SYMBOL_INDEX,    "Symbol.replace")   \
+    V(split,     SPLIT_SYMBOL_INDEX,      "Symbol.split")     \
+    V(matchAll,  MATCH_ALL_SYMBOL_INDEX,  "Symbol.matchAll")  \
+    V(iterator,  ITERATOR_SYMBOL_INDEX,   "Symbol.iterator")  \
+    V(species,   SPECIES_SYMBOL_INDEX,    "Symbol.species")
+
+#define SHARED_DETECTOR_LISTS(V)                   \
+    DETECTOR_SYMBOL_LIST(V)                        \
+    SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(V)
+
 // ConstantIndex used for explicit visit each constant.
 enum class ConstantIndex : size_t {
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -556,11 +594,15 @@ enum class ConstantIndex : size_t {
 #define INDEX_FILTER_WITH_TYPE(Type, Name, Index, Desc) INDEX_FILTER_COMMON(Index)
 #define INDEX_FILTER_STRING(Name, Index, Token) INDEX_FILTER_COMMON(Index)
     // Caveats: make sure shareds starts from 0 and placed before non-shareds.
+    /* SHARED_BEGIN */
     SHARED_GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER_WITH_TYPE)
     SHARED_GLOBAL_ENV_CONSTANT_SHARED_CLASS(INDEX_FILTER_WITH_TYPE)
     SHARED_GLOBAL_ENV_CONSTANT_STRING(INDEX_FILTER_STRING)
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(INDEX_FILTER_WITH_TYPE)
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
+    SHARED_PUBLIC_CONSTANT_SYMBOL(INDEX_FILTER_WITH_TYPE)
+    SHARED_DETECTOR_LISTS(INDEX_FILTER_STRING)
+    /* SHARED_END */
     GLOBAL_ENV_CONSTANT_CLASS(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(INDEX_FILTER_WITH_TYPE)
     GLOBAL_ENV_CACHES(INDEX_FILTER_WITH_TYPE)
@@ -575,8 +617,11 @@ enum class ConstantIndex : size_t {
     CONSTANT_BEGIN = 0,
     CONSTANT_END = CONSTANT_COUNT,
 
+    DETECTOR_BEGIN = REPLACE_SYMBOL_INDEX,
+    DETECTOR_END = FLAGS_STRING_INDEX,
+
     SHARED_BEGIN = HCLASS_CLASS_INDEX,
-    SHARED_END = BOUND_FUNCTION_METHOD_INDEX,
+    SHARED_END = VALUE_OF_STRING_INDEX,
 
     SHARED_HCLASS_BEGIN = HCLASS_CLASS_INDEX,
     SHARED_HCLASS_END = VTABLE_CLASS_INDEX,
@@ -615,7 +660,7 @@ public:
     template<typename T>
     void SetConstant(ConstantIndex index, JSHandle<T> value);
 
-    uintptr_t GetGlobalConstantAddr(ConstantIndex index) const;
+    constexpr uintptr_t GetGlobalConstantAddr(ConstantIndex index) const;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DECL_GET_COMMON(Type, Name)                 \
@@ -629,6 +674,8 @@ public:
     SHARED_GLOBAL_ENV_CONSTANT_STRING(DECL_GET_STRING)
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_WITH_TYPE)
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
+    SHARED_GLOBAL_ENV_CONSTANT_SYMBOL(DECL_GET_WITH_TYPE)
+    SHARED_DETECTOR_LISTS(DECL_GET_STRING)
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CACHES(DECL_GET_WITH_TYPE)
@@ -675,13 +722,32 @@ public:
         return (index >= specialBegin && index <= specialEnd);
     }
 
+    static constexpr size_t FIRST_DETECTOR_INDEX = static_cast<size_t>(ConstantIndex::DETECTOR_BEGIN);
+    static constexpr size_t LAST_DETECTOR_INDEX = static_cast<size_t>(ConstantIndex::DETECTOR_END);
+
+    static inline uintptr_t GetFirstDetectorAddr(const GlobalEnvConstants *constants)
+    {
+        constexpr size_t offset = FIRST_DETECTOR_INDEX * JSTaggedValue::TaggedTypeSize();
+        uintptr_t slotAddr = reinterpret_cast<uintptr_t>(constants) + offset;
+        return *reinterpret_cast<uintptr_t *>(slotAddr);
+    }
+
+    static inline uintptr_t GetLastDetectorAddr(const GlobalEnvConstants *constants)
+    {
+        constexpr size_t offset = LAST_DETECTOR_INDEX * JSTaggedValue::TaggedTypeSize();
+        uintptr_t slotAddr = reinterpret_cast<uintptr_t>(constants) + offset;
+        return *reinterpret_cast<uintptr_t *>(slotAddr);
+    }
+
     static constexpr size_t SizeArch32 =
         JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(ConstantIndex::CONSTANT_COUNT);
     static constexpr size_t SizeArch64 =
         JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(ConstantIndex::CONSTANT_COUNT);
 
 private:
+    void InitSharedDetectors(ObjectFactory *factory);
     void InitSharedStrings(ObjectFactory *factory);
+    void InitSharedSymbols(ObjectFactory *factory);
     void InitCompositeBaseClasses(ObjectFactory* factory, JSHClass* hClass);
     void InitSharedRootsClasses(ObjectFactory *factory);
     void InitSharedMiscellaneous(JSThread *thread, ObjectFactory *factory);
@@ -694,5 +760,6 @@ private:
     JSTaggedValue constants_[static_cast<int>(ConstantIndex::CONSTANT_COUNT)];  // NOLINT(modernize-avoid-c-arrays)
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(GlobalEnvConstants), GlobalEnvConstants::SizeArch32, GlobalEnvConstants::SizeArch64);
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_GLOBAL_ENV_CONSTANTS_H

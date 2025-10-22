@@ -4151,21 +4151,15 @@ inline GateRef StubBuilder::GetProfileTypeInfo(GateRef glue, GateRef jsFunc)
 
 inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow)
 {
-    GateRef globalEnv = GetCurrentGlobalEnv();
     GateRef keyAddr = ChangeTaggedPointerToInt64(key);
-    GateRef firstDetectorName = GetGlobalEnvValue(
-        VariableType::INT64(), glue, globalEnv, GlobalEnv::FIRST_DETECTOR_SYMBOL_INDEX);
-    GateRef lastDetectorName = GetGlobalEnvValue(
-        VariableType::INT64(), glue, globalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
-    GateRef isDetectorName = BitAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
-                                    Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
-    Label checkCommonDetector(env_);
-    BRANCH(isDetectorName, slow, &checkCommonDetector);
-    Bind(&checkCommonDetector);
-    auto gFlagsStr = GetGlobalConstantValue(
-        VariableType::JS_POINTER(), glue, ConstantIndex::FLAGS_INDEX);
-    GateRef isFlagsStr = Equal(key, gFlagsStr);
-    BRANCH(isFlagsStr, slow, fallthrough);
+    GateRef firstAddr = ChangeTaggedPointerToInt64(GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                          ConstantIndex::DETECTOR_BEGIN));
+    GateRef lastAddr = ChangeTaggedPointerToInt64(GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                         ConstantIndex::DETECTOR_END));
+    Label checkUpper(env_);
+    BRANCH(Int64LessThan(keyAddr, firstAddr), fallthrough, &checkUpper);
+    Bind(&checkUpper);
+    BRANCH(Int64GreaterThan(keyAddr, lastAddr), fallthrough, slow);
 }
 
 inline GateRef StubBuilder::LoadPfHeaderFromConstPool(GateRef glue, GateRef jsFunc)

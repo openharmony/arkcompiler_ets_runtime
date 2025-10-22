@@ -319,7 +319,7 @@ HWTEST_F_L0(BuiltinsSharedSetTest, Species)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> set(thread, CreateBuiltinsSharedSet(thread));
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     EXPECT_TRUE(!speciesSymbol->IsUndefined());
 
     JSHandle<JSFunction> newTarget(env->GetSBuiltininSetFunction());
@@ -330,7 +330,7 @@ HWTEST_F_L0(BuiltinsSharedSetTest, Species)
     EXPECT_EQ(value, newTarget.GetTaggedValue());
 
     // to string tag
-    JSHandle<JSTaggedValue> toStringTagSymbol = env->GetToStringTagSymbol();
+    JSHandle<JSTaggedValue> toStringTagSymbol = thread->GlobalConstants()->GetHandledToStringTagSymbol();
     JSHandle<EcmaString> stringTag(JSObject::GetProperty(thread, set, toStringTagSymbol).GetValue());
     EXPECT_TRUE(!stringTag.GetTaggedValue().IsUndefined());
 

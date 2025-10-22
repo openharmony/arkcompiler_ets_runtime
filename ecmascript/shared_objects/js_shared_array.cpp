@@ -164,7 +164,7 @@ JSTaggedValue JSSharedArray::ArraySpeciesCreate(JSThread *thread, const JSHandle
         // If Type(C) is Object, then
         if (constructor->IsECMAObject()) {
             // Let C be Get(C, @@species).
-            JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+            JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
             constructor = JSTaggedValue::GetProperty(thread, constructor, speciesSymbol).GetValue();
             // ReturnIfAbrupt(C).
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

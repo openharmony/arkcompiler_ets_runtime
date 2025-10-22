@@ -2748,7 +2748,7 @@ bool ObjectRef::ConvertToNativeBindingObject(const EcmaVM *vm, Local<NativePoint
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    JSHandle<JSTaggedValue> keyValue = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> keyValue = thread->GlobalConstants()->GetHandledNativeBindingSymbol();
     auto key = JSNApiHelper::ToLocal<JSValueRef>(keyValue);
     PropertyAttribute attr(Local<JSValueRef>(value), true, false, false);
     bool result = DefineProperty(vm, key, attr);
@@ -2765,7 +2765,7 @@ Local<NativePointerRef> ObjectRef::GetNativeBindingPointer(const EcmaVM *vm)
     JSHandle<JSTaggedValue> object = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(object, ERROR);
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    JSHandle<JSTaggedValue> keyValue = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> keyValue = thread->GlobalConstants()->GetHandledNativeBindingSymbol();
     OperationResult ret = JSTaggedValue::GetProperty(thread, object, keyValue);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(ret.GetValue()));

@@ -698,7 +698,7 @@ HWTEST_F_L0(JSObjectTest, SpeciesConstructor)
     constructorFunc->GetJSHClass()->SetExtensible(true);
     JSFunction::MakeConstructor(thread, speciesConstruct, undefinedValue);
 
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     JSObject::SetProperty(thread, constructorFuncValue, speciesSymbol, speciesConstructValue);
 
     JSTaggedValue speciesValue =

@@ -312,22 +312,6 @@
     V(JSTaggedValue, SAsyncFunctionFunction, SHARED_ASYNC_FUNCTION_FUNCTION_INDEX)                               \
     V(JSTaggedValue, SAsyncFunctionPrototype, SHARED_ASYNC_FUNCTION_PROTOTYPE_INDEX)                             \
     V(JSTaggedValue, SAsyncFunctionClass, SHARED_ASYNC_FUNCTION_CLASS)                                           \
-    /* DETECTOR SYMBOL BEGIN (Maintain the same order with DETECTOR_SYMBOL_LIST) */                              \
-    V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                                        \
-    V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                                            \
-    V(JSTaggedValue, MatchAllSymbol, MATCH_ALL_SYMBOL_INDEX)                                                     \
-    V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX)                                                      \
-    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX)                                                        \
-    /* DETECTOR SYMBOL END */                                                                                    \
-    V(JSTaggedValue, IsConcatSpreadableSymbol, ISCONCAT_SYMBOL_INDEX)                                            \
-    V(JSTaggedValue, ToStringTagSymbol, TOSTRINGTAG_SYMBOL_INDEX)                                                \
-    V(JSTaggedValue, AsyncIteratorSymbol, ASYNC_ITERATOR_SYMBOL_INDEX)                                           \
-    V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX)                                                            \
-    V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX)                                                          \
-    V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX)                                                \
-    V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX)                                                \
-    V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX)                                           \
-    V(JSTaggedValue, HasInstanceSymbol, HASINSTANCE_SYMBOL_INDEX)                                                \
     V(JSTaggedValue, SendableArrayBufferPrototype, SENDABLE_ARRAY_BUFFER_PROTOTYPE_INDEX)                        \
     V(JSTaggedValue, SharedArrayFunction, SHARED_ARRAY_FUNCTION_INDEX)                                           \
     V(JSTaggedValue, SharedArrayPrototype, SHARED_ARRAY_PROTOTYPE_INDEX)                                         \
@@ -489,11 +473,5 @@ enum class GlobalEnvField : uint16_t {
 #undef INDEX_FILTER_BUILTIN4
 #undef GLOBAL_ENV_FIELD_ENUM_ITEM
 
-#define DETECTOR_SYMBOL_LIST(V)                      \
-    V(ReplaceSymbol,  "Symbol.replace",   replace )  \
-    V(SplitSymbol,    "Symbol.split",     split   )  \
-    V(MatchAllSymbol, "Symbol.matchAll",  matchAll)  \
-    V(IteratorSymbol, "Symbol.iterator",  iterator)  \
-    V(SpeciesSymbol,  "Symbol.species",   species)
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_GLOBAL_ENV_FIELDS_H

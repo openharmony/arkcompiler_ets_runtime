@@ -1200,7 +1200,8 @@ HWTEST_F_L0(JSNApiTests, EcmaObjectToInt)
         });
     Local<ObjectRef> obj = ObjectRef::New(vm_);
     PropertyAttribute attribute(toPrimitiveFunc, true, true, true);
-    Local<JSValueRef> toPrimitiveKey = JSNApiHelper::ToLocal<JSValueRef>(vm_->GetGlobalEnv()->GetToPrimitiveSymbol());
+    Local<JSValueRef> toPrimitiveKey = JSNApiHelper::ToLocal<JSValueRef>(
+        vm_->GetJSThread()->GlobalConstants()->GetHandledToPrimitiveSymbol());
     obj->DefineProperty(vm_, toPrimitiveKey, attribute);
     {
         // Test that Uint32Value and Int32Value should transition to Running if needed.

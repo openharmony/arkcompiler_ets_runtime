@@ -15,10 +15,12 @@
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/concurrent_marker.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/object_factory.h"
@@ -205,4 +207,76 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
         }
     }
 }
+
+HWTEST_F_L0(ReadOnlySpaceTest, DetectorsInReadOnlySpace)
+{
+    const GlobalEnvConstants *constants = thread->GlobalConstants();
+    
+    JSTaggedValue replaceSymbol = constants->GetReplaceSymbol();
+    JSTaggedValue splitSymbol = constants->GetSplitSymbol();
+    JSTaggedValue matchAllSymbol = constants->GetMatchAllSymbol();
+    JSTaggedValue iteratorSymbol = constants->GetIteratorSymbol();
+    JSTaggedValue speciesSymbol = constants->GetSpeciesSymbol();
+    
+    TaggedObject *replaceObj = replaceSymbol.GetTaggedObject();
+    TaggedObject *splitObj = splitSymbol.GetTaggedObject();
+    TaggedObject *matchAllObj = matchAllSymbol.GetTaggedObject();
+    TaggedObject *iteratorObj = iteratorSymbol.GetTaggedObject();
+    TaggedObject *speciesObj = speciesSymbol.GetTaggedObject();
+    
+    Region *replaceRegion = Region::ObjectAddressToRange(replaceObj);
+    Region *splitRegion = Region::ObjectAddressToRange(splitObj);
+    Region *matchAllRegion = Region::ObjectAddressToRange(matchAllObj);
+    Region *iteratorRegion = Region::ObjectAddressToRange(iteratorObj);
+    Region *speciesRegion = Region::ObjectAddressToRange(speciesObj);
+    
+    EXPECT_EQ(replaceRegion, splitRegion);
+    EXPECT_EQ(splitRegion, matchAllRegion);
+    EXPECT_EQ(matchAllRegion, iteratorRegion);
+    EXPECT_EQ(iteratorRegion, speciesRegion);
+    
+    if (!g_isEnableCMCGC) {
+        EXPECT_TRUE(replaceRegion->InReadOnlySpace() || replaceRegion->InSharedReadOnlySpace());
+    } else {
+        auto heapManager = common::BaseRuntime::GetInstance()->GetHeapManager();
+        EXPECT_TRUE(heapManager.IsInROSpace(replaceObj));
+    }
+    
+    JSTaggedValue flagsString = constants->GetFlagsString();
+    JSTaggedValue constructorString = constants->GetConstructorString();
+    JSTaggedValue nextString = constants->GetNextString();
+    JSTaggedValue promiseThenString = constants->GetPromiseThenString();
+    JSTaggedValue promiseResolveString = constants->GetPromiseResolveString();
+    JSTaggedValue valueOfString = constants->GetValueOfString();
+    
+    TaggedObject *flagsStringObj = flagsString.GetTaggedObject();
+    TaggedObject *constructorStringObj = constructorString.GetTaggedObject();
+    TaggedObject *nextStringObj = nextString.GetTaggedObject();
+    TaggedObject *promiseThenStringObj = promiseThenString.GetTaggedObject();
+    TaggedObject *promiseResolveStringObj = promiseResolveString.GetTaggedObject();
+    TaggedObject *valueOfStringObj = valueOfString.GetTaggedObject();
+    
+    Region *flagsStringRegion = Region::ObjectAddressToRange(flagsStringObj);
+    Region *constructorStringRegion = Region::ObjectAddressToRange(constructorStringObj);
+    Region *nextStringRegion = Region::ObjectAddressToRange(nextStringObj);
+    Region *promiseThenStringRegion = Region::ObjectAddressToRange(promiseThenStringObj);
+    Region *promiseResolveStringRegion = Region::ObjectAddressToRange(promiseResolveStringObj);
+    Region *valueOfStringRegion = Region::ObjectAddressToRange(valueOfStringObj);
+    
+    EXPECT_EQ(flagsStringRegion, constructorStringRegion);
+    EXPECT_EQ(constructorStringRegion, nextStringRegion);
+    EXPECT_EQ(nextStringRegion, promiseThenStringRegion);
+    EXPECT_EQ(promiseThenStringRegion, promiseResolveStringRegion);
+    EXPECT_EQ(promiseResolveStringRegion, valueOfStringRegion);
+    
+    if (!g_isEnableCMCGC) {
+        EXPECT_TRUE(flagsStringRegion->InReadOnlySpace() || flagsStringRegion->InSharedReadOnlySpace());
+    } else {
+        auto heapManager = common::BaseRuntime::GetInstance()->GetHeapManager();
+        EXPECT_TRUE(heapManager.IsInROSpace(flagsStringObj));
+    }
+    
+    EXPECT_EQ(replaceRegion, flagsStringRegion);
+}
+
 }  // namespace panda::test

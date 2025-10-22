@@ -6297,9 +6297,8 @@ GateRef StubBuilder::InstanceOf(
     Bind(&targetIsEcmaObject);
     {
         // 2.Let instOfHandler be GetMethod(target, @@hasInstance).
-        GateRef globalEnv = GetCurrentGlobalEnv();
-        GateRef hasInstanceSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
-                                                      GlobalEnv::HASINSTANCE_SYMBOL_INDEX);
+        GateRef hasInstanceSymbol = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                           ConstantIndex::HASINSTANCE_SYMBOL_INDEX);
         GateRef instof = GetMethod(glue, target, hasInstanceSymbol, profileTypeInfo, slotId);
 
         // 3.ReturnIfAbrupt(instOfHandler).
@@ -9854,7 +9853,7 @@ GateRef StubBuilder::ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut
 GateRef StubBuilder::CalIteratorKey(GateRef glue)
 {
     GateRef globalEnv = GetCurrentGlobalEnv();
-    GateRef iteratorKey = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ITERATOR_SYMBOL_INDEX);
+    GateRef iteratorKey = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ITERATOR_SYMBOL_INDEX);
     return iteratorKey;
 }
 
@@ -13008,9 +13007,8 @@ GateRef StubBuilder::ToPrimitive(GateRef glue, GateRef value, PreferredPrimitive
     {
         Label isUndefined(env);
         Label notUndefined(env);
-        GateRef globalEnv = GetCurrentGlobalEnv();
-        GateRef primitiveKey = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
-                                                 GlobalEnv::TOPRIMITIVE_SYMBOL_INDEX);
+        GateRef primitiveKey = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                 ConstantIndex::TOPRIMITIVE_SYMBOL_INDEX);
         GateRef name = FastGetPropertyByName(glue, value, primitiveKey, ProfileOperation(), hir);
         BRANCH(HasPendingException(glue), &hasException, &notHasException);
         Bind(&notHasException);

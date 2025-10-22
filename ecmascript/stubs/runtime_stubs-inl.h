@@ -1567,7 +1567,7 @@ JSTaggedValue RuntimeStubs::RuntimeGetIterator(JSThread *thread, const JSHandle<
     EcmaVM *vm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> valuesFunc =
-        JSTaggedValue::GetProperty(thread, obj, env->GetIteratorSymbol()).GetValue();
+        JSTaggedValue::GetProperty(thread, obj, thread->GlobalConstants()->GetHandledIteratorSymbol()).GetValue();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!valuesFunc->IsCallable()) {
         return valuesFunc.GetTaggedValue();

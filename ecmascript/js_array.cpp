@@ -214,7 +214,7 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
     // 5. slowpath: If Type(C) is Object, then
     if (constructor->IsECMAObject()) {
         // a. Set C to ? Get(C, @@species).
-        JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+        JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
         JSTaggedValue speciesConstructor = ObjectFastOperator::FastGetPropertyByValue(
             thread, constructor.GetTaggedValue(), speciesSymbol.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1032,7 +1032,7 @@ JSHandle<JSHClass> JSArray::CreateJSArrayFunctionClass(const JSThread *thread, O
         attributes.SetIsInlinedProps(true);
         attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOrder++);
-        JSTaggedValue key = env->GetSpeciesSymbol().GetTaggedValue();
+        JSTaggedValue key = thread->GlobalConstants()->GetSpeciesSymbol();
         layoutInfoHandle->AddKey(thread, JSArray::ARRAY_FUNCTION_SPECIES_INDEX, key, attributes);
     }
     {

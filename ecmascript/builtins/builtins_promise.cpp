@@ -109,7 +109,7 @@ JSTaggedValue BuiltinsPromise::All(EcmaRuntimeCallInfo *argv)
     }
     // 3. Let S be Get(C, @@species).
     // 4. ReturnIfAbrupt(S).
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> sctor = JSObject::GetProperty(thread, ctor, speciesSymbol).GetValue();
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, sctor.GetTaggedValue());
 
@@ -176,7 +176,7 @@ JSTaggedValue BuiltinsPromise::Race(EcmaRuntimeCallInfo *argv)
     // 3. Let S be Get(C, @@species).
     // 4. ReturnIfAbrupt(S).
     // 5. If S is neither undefined nor null, let C be S.
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesConstructor = JSObject::GetProperty(thread, thisValue, speciesSymbol).GetValue();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!(speciesConstructor->IsUndefined() || speciesConstructor->IsNull())) {

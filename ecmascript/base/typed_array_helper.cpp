@@ -345,7 +345,7 @@ JSTaggedValue TypedArrayHelper::CreateFromOrdinaryObject(EcmaRuntimeCallInfo *ar
     JSHandle<JSTaggedValue> objectArg = BuiltinsBase::GetCallArg(argv, 0);
     JSHandle<JSObject> object(objectArg);
     // 5. Let usingIterator be ? GetMethod(object, @@iterator).
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> iteratorSymbol = thread->GlobalConstants()->GetHandledIteratorSymbol();
     JSHandle<JSTaggedValue> usingIterator =
         JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(object), iteratorSymbol);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

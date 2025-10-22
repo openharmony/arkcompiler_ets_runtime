@@ -47,7 +47,7 @@ inline void GlobalEnvConstants::SetConstant(ConstantIndex index, JSHandle<T> val
     constants_[static_cast<int>(index)] = value.GetTaggedValue();
 }
 
-inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) const
+inline constexpr uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) const
 {
     return ToUintPtr(this) + sizeof(JSTaggedValue) * static_cast<uint32_t>(index);
 }
@@ -75,8 +75,10 @@ inline uintptr_t GlobalEnvConstants::GetGlobalConstantAddr(ConstantIndex index) 
     SHARED_GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)     // NOLINT(readability-const-return-type)
     SHARED_GLOBAL_ENV_CONSTANT_SHARED_CLASS(DECL_GET_IMPL_WITH_TYPE)    // NOLINT(readability-const-return-type)
     SHARED_GLOBAL_ENV_CONSTANT_STRING(DECL_GET_IMPL_STRING)       // NOLINT(readability-const-return-type)
+    SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(DECL_GET_IMPL_STRING)    // NOLINT(readability-const-return-type)
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_IMPL_WITH_TYPE)  // NOLINT(readability-const-return-type)
-    SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE);  // NOLINT(readability-const-return-type)
+    SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE)   // NOLINT(readability-const-return-type)
+    SHARED_GLOBAL_ENV_CONSTANT_SYMBOL(DECL_GET_IMPL_WITH_TYPE)    // NOLINT(readability-const-return-type)
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_IMPL_WITH_TYPE)            // NOLINT(readability-const-return-type)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_IMPL_WITH_TYPE)          // NOLINT(readability-const-return-type)
     GLOBAL_ENV_CACHES(DECL_GET_IMPL_WITH_TYPE)                    // NOLINT(readability-const-return-type)

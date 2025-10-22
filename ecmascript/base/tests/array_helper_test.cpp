@@ -36,9 +36,8 @@ HWTEST_F_L0(ArrayHelperTest, IsConcatSpreadable)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> icConcatSpreadableSymbol(factory->NewWellKnownSymbolWithChar("icConcatSpreadableSymbol"));
+    JSHandle<JSTaggedValue> icConcatSpreadableSymbol = thread->GlobalConstants()->GetHandledIsConcatSpreadableSymbol();
     JSHandle<JSTaggedValue> icSymbolValue(thread, JSTaggedValue(1));
-    globalEnv->SetIsConcatSpreadableSymbol(thread, icConcatSpreadableSymbol);
     JSHandle<JSTaggedValue> objFunc(globalEnv->GetArrayFunction());
 
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(1));

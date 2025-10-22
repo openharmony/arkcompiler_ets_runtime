@@ -350,7 +350,7 @@ HWTEST_F_L0(BuiltinsSharedMapTest, Species)
     JSHandle<JSTaggedValue> map(thread, CreateSBuiltinsMap(thread));
 
     // test species
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     EXPECT_TRUE(!speciesSymbol.GetTaggedValue().IsUndefined());
 
     JSHandle<JSFunction> newTarget(env->GetSBuiltininMapFunction());

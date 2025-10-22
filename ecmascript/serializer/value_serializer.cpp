@@ -353,7 +353,7 @@ void ValueSerializer::SerializeNativeBindingObject(TaggedObject *object)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSTaggedValue> nativeBindingSymbol = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> nativeBindingSymbol = thread_->GlobalConstants()->GetHandledNativeBindingSymbol();
     JSHandle<JSTaggedValue> nativeBindingValue =
         JSObject::GetProperty(thread_, JSHandle<JSObject>(thread_, object), nativeBindingSymbol).GetRawValue();
     if (!nativeBindingValue->IsJSNativePointer()) {

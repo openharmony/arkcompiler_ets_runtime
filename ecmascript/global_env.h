@@ -43,8 +43,6 @@ public:
     BUILTINS_METHOD_STUB_LIST(GLOBAL_ENV_SLOT_FILTER_BUILTIN4, GLOBAL_ENV_SLOT_FILTER_BUILTIN4,
                               GLOBAL_ENV_SLOT_FILTER_BUILTIN4, GLOBAL_ENV_SLOT_FILTER_BUILTIN6)
 
-    static constexpr uint16_t FIRST_DETECTOR_SYMBOL_INDEX = static_cast<uint16_t>(Field::REPLACE_SYMBOL_INDEX);
-    static constexpr uint16_t LAST_DETECTOR_SYMBOL_INDEX = static_cast<uint16_t>(Field::SPECIES_SYMBOL_INDEX);
     static constexpr uint16_t FINAL_INDEX = static_cast<uint16_t>(GlobalEnvField::FINAL_INDEX);
     static constexpr uint8_t RESERVED_LENGTH = 1; // divide the gc area
     static constexpr uint16_t JSTHREAD_INDEX = FINAL_INDEX; // not need gc
@@ -176,20 +174,6 @@ public:
     JSHandle<JSTaggedValue> GetSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &string);
     JSHandle<JSTaggedValue> GetStringFunctionByName(JSThread *thread, const char *name);
     JSHandle<JSTaggedValue> GetStringPrototypeFunctionByName(JSThread *thread, const char *name);
-
-    static inline uintptr_t GetFirstDetectorSymbolAddr(const GlobalEnv *env)
-    {
-        constexpr size_t offset = HEADER_SIZE + FIRST_DETECTOR_SYMBOL_INDEX * JSTaggedValue::TaggedTypeSize();
-        uintptr_t addr = reinterpret_cast<uintptr_t>(env) + offset;
-        return *reinterpret_cast<uintptr_t *>(addr);
-    }
-
-    static uintptr_t GetLastDetectorSymbolAddr(const GlobalEnv *env)
-    {
-        constexpr size_t offset = HEADER_SIZE + LAST_DETECTOR_SYMBOL_INDEX * JSTaggedValue::TaggedTypeSize();
-        uintptr_t addr = reinterpret_cast<uintptr_t>(env) + offset;
-        return *reinterpret_cast<uintptr_t *>(addr);
-    }
 
     bool IsArrayPrototypeChangedGuardiansInvalid() const
     {

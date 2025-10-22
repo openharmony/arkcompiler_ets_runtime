@@ -275,7 +275,7 @@ HWTEST_F_L0(BuiltinsMapTest, Species)
     JSHandle<JSTaggedValue> map(thread, CreateBuiltinsMap(thread));
 
     // test species
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     EXPECT_TRUE(!speciesSymbol.GetTaggedValue().IsUndefined());
 
     JSHandle<JSFunction> newTarget(env->GetBuiltinsMapFunction());
@@ -286,7 +286,7 @@ HWTEST_F_L0(BuiltinsMapTest, Species)
     EXPECT_EQ(value, newTarget.GetTaggedValue());
 
     // to string tag
-    JSHandle<JSTaggedValue> toStringTagSymbol = env->GetToStringTagSymbol();
+    JSHandle<JSTaggedValue> toStringTagSymbol = thread->GlobalConstants()->GetHandledToStringTagSymbol();
     JSHandle<EcmaString> stringTag(JSObject::GetProperty(thread, map, toStringTagSymbol).GetValue());
     JSHandle<EcmaString> str = factory->NewFromASCII("Map");
     EXPECT_TRUE(!stringTag.GetTaggedValue().IsUndefined());

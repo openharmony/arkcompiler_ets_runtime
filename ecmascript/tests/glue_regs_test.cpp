@@ -70,6 +70,7 @@ HWTEST_F_L0(GlueRegsTest, ConstantStringTest)
     Region *Name##region = Region::ObjectAddressToRange(Name##value.GetTaggedObject()); \
     EXPECT_TRUE(Name##region->InSharedReadOnlySpace());
     SHARED_GLOBAL_ENV_CONSTANT_STRING(CONSTANT_STRING_ITERATOR)
+    SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(CONSTANT_STRING_ITERATOR)
 #undef CONSTANT_STRING_ITERATOR
 }
 
@@ -85,5 +86,19 @@ HWTEST_F_L0(GlueRegsTest, ConstantAccessorTest)
     EXPECT_TRUE(!Name##handledValue->IsNull());
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(CONSTANT_ACCESSOR_ITERATOR)
 #undef CONSTANT_ACCESSOR_ITERATOR
+}
+
+HWTEST_F_L0(GlueRegsTest, ConstantSymbolTest)
+{
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    ASSERT_NE(globalConst, nullptr);
+
+#define CONSTANT_SYMBOL_ITERATOR(Type, Name, Index, Desc)                \
+    Type Name##value = globalConst->Get##Name();                         \
+    EXPECT_TRUE(Name##value.IsSymbol());                                 \
+    JSHandle<Type> Name##handledValue = globalConst->GetHandled##Name(); \
+    EXPECT_TRUE(Name##handledValue->IsSymbol());
+    SHARED_GLOBAL_ENV_CONSTANT_SYMBOL(CONSTANT_SYMBOL_ITERATOR);
+#undef CONSTANT_SYMBOL_ITERATOR
 }
 }  // namespace panda::test

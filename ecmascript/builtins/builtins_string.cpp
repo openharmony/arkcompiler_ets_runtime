@@ -611,7 +611,7 @@ JSTaggedValue BuiltinsString::Match(EcmaRuntimeCallInfo *argv)
         }
     }
 
-    JSHandle<JSTaggedValue> matchTag = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchSymbol();
+    JSHandle<JSTaggedValue> matchTag = thread->GlobalConstants()->GetHandledMatchSymbol();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
         JSHandle<JSTaggedValue> matcher = JSObject::GetMethod(thread, regexp, matchTag);
@@ -648,7 +648,7 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> regexp = BuiltinsString::GetCallArg(argv, 0);
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
-    JSHandle<JSTaggedValue> matchAllTag = env->GetMatchAllSymbol();
+    JSHandle<JSTaggedValue> matchAllTag = thread->GlobalConstants()->GetHandledMatchAllSymbol();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
 
     // 2. If regexp is neither undefined nor null, then
@@ -1063,7 +1063,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
 
     // If searchValue is neither undefined nor null, then
     if (!searchTag->IsUndefined() && !searchTag->IsNull()) {
-        JSHandle<JSTaggedValue> replaceKey = env->GetReplaceSymbol();
+        JSHandle<JSTaggedValue> replaceKey = thread->GlobalConstants()->GetHandledReplaceSymbol();
         // Let replacer be GetMethod(searchValue, @@replace).
         JSHandle<JSTaggedValue> replaceMethod = JSObject::GetMethod(thread, searchTag, replaceKey);
         // ReturnIfAbrupt(replacer).
@@ -1189,7 +1189,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
             }
         }
         // c. Let replacer be ? GetMethod(searchValue, @@replace).
-        JSHandle<JSTaggedValue> replaceKey = env->GetReplaceSymbol();
+        JSHandle<JSTaggedValue> replaceKey = thread->GlobalConstants()->GetHandledReplaceSymbol();
         JSHandle<JSTaggedValue> replaceMethod = JSObject::GetMethod(thread, searchTag, replaceKey);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // d. If replacer is not undefined, then
@@ -1522,7 +1522,7 @@ JSTaggedValue BuiltinsString::Search(EcmaRuntimeCallInfo *argv)
             return BuiltinsRegExp::RegExpSearchFast(thread, regexp, thisTag);
         }
     }
-    JSHandle<JSTaggedValue> searchTag = thread->GetEcmaVM()->GetGlobalEnv()->GetSearchSymbol();
+    JSHandle<JSTaggedValue> searchTag = thread->GlobalConstants()->GetHandledSearchSymbol();
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
         JSHandle<JSTaggedValue> searcher = JSObject::GetMethod(thread, regexp, searchTag);
@@ -1638,7 +1638,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
 
     // If separator is neither undefined nor null, then
     if (!seperatorTag->IsUndefined() && !seperatorTag->IsNull()) {
-        JSHandle<JSTaggedValue> splitKey = env->GetSplitSymbol();
+        JSHandle<JSTaggedValue> splitKey = thread->GlobalConstants()->GetHandledSplitSymbol();
         // Let splitter be GetMethod(separator, @@split).
         JSHandle<JSTaggedValue> splitter = JSObject::GetMethod(thread, seperatorTag, splitKey);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

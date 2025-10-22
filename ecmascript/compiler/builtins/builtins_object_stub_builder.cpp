@@ -48,9 +48,8 @@ void BuiltinsObjectStubBuilder::ToStringFunc(Variable *result, Label *exit, Labe
     BRANCH(IsEcmaObject(glue_, thisValue_), &ecmaObj, slowPath);
     Bind(&ecmaObj);
     {
-        GateRef globalEnv = GetCurrentGlobalEnv();
-        GateRef toStringTagSymbol = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, globalEnv,
-                                                      GlobalEnv::TOSTRINGTAG_SYMBOL_INDEX);
+        GateRef toStringTagSymbol = GetGlobalConstantValue(VariableType::JS_ANY(), glue_,
+                                                           ConstantIndex::TOSTRINGTAG_SYMBOL_INDEX);
         GateRef tag = FastGetPropertyByName(glue_, thisValue_, toStringTagSymbol, ProfileOperation());
 
         Label defaultToString(env);

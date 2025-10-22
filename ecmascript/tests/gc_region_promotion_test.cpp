@@ -136,4 +136,5 @@ HWTEST_F_L0(GCTest, NewToOldPromotionOldGCTest)
         EXPECT_TRUE(!region->InNewToOldSet());
     });
 }
+
 } // namespace panda::test

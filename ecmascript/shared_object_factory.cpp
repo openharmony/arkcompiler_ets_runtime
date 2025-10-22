@@ -840,7 +840,7 @@ JSHandle<TaggedArray> ObjectFactory::NewSTaggedArray(uint32_t length, JSTaggedVa
 JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name)
 {
     NewSObjectHook();
-    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
+    TaggedObject *header = sHeap_->AllocateReadOnlyOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
     obj->SetFlags(0);
@@ -852,8 +852,8 @@ JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbol(const JSHandle<JSTaggedVal
 
 JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbol(const JSHandle<JSTaggedValue> &name)
 {
-    NewObjectHook();
-    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
+    NewSObjectHook();
+    TaggedObject *header = sHeap_->AllocateReadOnlyOrHugeObject(
         thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
     JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
     obj->SetFlags(0);
@@ -875,27 +875,16 @@ JSHandle<JSSymbol> ObjectFactory::NewSConstantPrivateSymbol()
     return obj;
 }
 
-JSHandle<JSSymbol> ObjectFactory::NewSEmptySymbol()
-{
-    NewObjectHook();
-    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(
-        thread_, JSHClass::Cast(thread_->GlobalConstants()->GetSymbolClass().GetTaggedObject()));
-    JSHandle<JSSymbol> obj(thread_, JSSymbol::Cast(header));
-    obj->SetDescription<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
-    obj->SetFlags(0);
-    obj->SetHashField(0);
-    return obj;
-}
 
 JSHandle<JSSymbol> ObjectFactory::NewSWellKnownSymbolWithChar(std::string_view description)
 {
-    JSHandle<EcmaString> string = NewFromUtf8(description);
+    JSHandle<EcmaString> string = NewFromUtf8ReadOnly(description);
     return NewSWellKnownSymbol(JSHandle<JSTaggedValue>(string));
 }
 
 JSHandle<JSSymbol> ObjectFactory::NewSPublicSymbolWithChar(std::string_view description)
 {
-    JSHandle<EcmaString> string = NewFromUtf8(description);
+    JSHandle<EcmaString> string = NewFromUtf8ReadOnly(description);
     return NewSPublicSymbol(JSHandle<JSTaggedValue>(string));
 }
 

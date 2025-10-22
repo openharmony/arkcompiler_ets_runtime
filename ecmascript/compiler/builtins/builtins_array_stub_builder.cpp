@@ -2706,7 +2706,7 @@ GateRef BuiltinsArrayStubBuilder::IsConcatSpreadable(GateRef glue, GateRef obj)
     {
         GateRef globalEnv = GetCurrentGlobalEnv();
         GateRef isConcatsprKey =
-            GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ISCONCAT_SYMBOL_INDEX);
+            GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ISCONCAT_SYMBOL_INDEX);
         AccessObjectStubBuilder builder(this, globalEnv);
         GateRef spreadable =
             builder.LoadObjByValue(glue, obj, isConcatsprKey, Undefined(), Int32(0), ProfileOperation());

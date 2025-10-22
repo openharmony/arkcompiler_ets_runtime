@@ -1492,7 +1492,7 @@ void PGOProfiler::DumpInstanceof(ApEntityId abcId, const CString &recordName, En
             JSHClass *hclass = JSHClass::Cast(object);
             // Since pgo does not support symbol, we choose to return if hclass having @@hasInstance
             JSHandle<GlobalEnv> env = GetCurrentGlobalEnv();
-            JSTaggedValue key = env->GetHasInstanceSymbol().GetTaggedValue();
+            JSTaggedValue key = thread->GlobalConstants()->GetHasInstanceSymbol();
             JSHClass *functionPrototypeHC = JSObject::Cast(env->GetFunctionPrototype().GetTaggedValue())->GetClass();
             JSTaggedValue foundHClass = TryFindKeyInPrototypeChain(object, hclass, key);
             if (!foundHClass.IsUndefined() && JSHClass::Cast(foundHClass.GetTaggedObject()) != functionPrototypeHC) {
