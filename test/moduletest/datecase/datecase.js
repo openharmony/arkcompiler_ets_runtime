@@ -57,3 +57,7 @@ print(d9.getDate() == 1);
 print(d9.getHours() == 0);
 
 print(d10.getMonth(),d10.getDate(),d10.getHours());
+
+const testDate = new Date(Date.UTC(2024, 9, 1));
+const result = testDate.toLocaleString("zh-CN", { dateStyle: "full", timeZone: "UTC" });
+print(result);

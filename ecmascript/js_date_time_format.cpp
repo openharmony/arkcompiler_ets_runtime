@@ -307,8 +307,29 @@ std::unique_ptr<icu::SimpleDateFormat> DateTimeStylePattern(DateTimeStyleOption 
     std::unique_ptr<icu::SimpleDateFormat> result;
     icu::DateFormat::EStyle icuDateStyle = DateTimeStyleToEStyle(dateStyle);
     icu::DateFormat::EStyle icuTimeStyle = DateTimeStyleToEStyle(timeStyle);
-    result.reset(reinterpret_cast<icu::SimpleDateFormat *>(
-        icu::DateFormat::createDateTimeInstance(icuDateStyle, icuTimeStyle, icuLocale)));
+    if (dateStyle != DateTimeStyleOption::UNDEFINED) {
+        if (timeStyle != DateTimeStyleOption::UNDEFINED) {
+            // Create formatter with both date and time styles specified
+            result.reset(reinterpret_cast<icu::SimpleDateFormat *>(
+                icu::DateFormat::createDateTimeInstance(icuDateStyle, icuTimeStyle, icuLocale)));
+        } else {
+            // dateStyle set only
+            result.reset(reinterpret_cast<icu::SimpleDateFormat *>(
+                icu::DateFormat::createDateInstance(icuDateStyle, icuLocale)));
+                if (result.get() != nullptr) {
+                    return result;
+                }
+        }
+    } else {
+        if (timeStyle != DateTimeStyleOption::UNDEFINED) {
+            // timeStyle set only
+            result.reset(reinterpret_cast<icu::SimpleDateFormat *>(
+                icu::DateFormat::createTimeInstance(icuTimeStyle, icuLocale)));
+        } else {
+            UNREACHABLE();
+        }
+    }
+
     UErrorCode status = U_ZERO_ERROR;
     icu::UnicodeString pattern("");
     pattern = result->toPattern(pattern);
