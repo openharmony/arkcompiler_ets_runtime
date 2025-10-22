@@ -27,6 +27,7 @@ template <typename Allocator, typename WriteBarrier,
 SlicedString *SlicedString::Create(Allocator &&allocator, WriteBarrier &&writeBarrier,
                                    common::ReadOnlyHandle<BaseString> parent)
 {
+    DCHECK_CC(parent->IsLineString());
     SlicedString *slicedString = SlicedString::Cast(
         std::invoke(std::forward<Allocator>(allocator), SlicedString::SIZE, EcmaStringType::SLICED_STRING));
     slicedString->SetMixHashcode(0);

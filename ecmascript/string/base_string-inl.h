@@ -23,6 +23,7 @@
 #include <vector>
 #include "ecmascript/platform/string_hash.h"
 #include "ecmascript/platform/string_hash_helper.h"
+#include "ecmascript/string/external_string-inl.h"
 #include "ecmascript/string/line_string-inl.h"
 #include "ecmascript/string/sliced_string-inl.h"
 #include "ecmascript/string/tree_string-inl.h"
@@ -254,13 +255,16 @@ const uint8_t *BaseString::GetNonTreeUtf8Data(ReadBarrier &&readBarrier, const B
 {
     DCHECK_CC(src->IsUtf8());
     DCHECK_CC(!src->IsTreeString());
-    if (src->IsSlicedString()) {
+    if (src->IsLineString()) {
+        return LineString::ConstCast(src)->GetDataUtf8();
+    } else if (src->IsSlicedString()) {
         const SlicedString *str = SlicedString::ConstCast(src);
         return LineString::Cast(str->GetParent<BaseObject *>(std::forward<ReadBarrier>(readBarrier)))->GetDataUtf8() +
                str->GetStartIndex();
+    } else {
+        DCHECK_CC(src->IsCachedExternalString());
+        return CachedExternalString::ConstCast(src)->GetDataUtf8();
     }
-    DCHECK_CC(src->IsLineString());
-    return LineString::ConstCast(src)->GetDataUtf8();
 }
 
 template <typename ReadBarrier>
@@ -268,13 +272,16 @@ const uint16_t *BaseString::GetNonTreeUtf16Data(ReadBarrier &&readBarrier, const
 {
     DCHECK_CC(src->IsUtf16());
     DCHECK_CC(!src->IsTreeString());
-    if (src->IsSlicedString()) {
+    if (src->IsLineString()) {
+        return LineString::ConstCast(src)->GetDataUtf16();
+    } else if (src->IsSlicedString()) {
         const SlicedString *str = SlicedString::ConstCast(src);
         return LineString::Cast(str->GetParent<BaseObject *>(std::forward<ReadBarrier>(readBarrier)))->GetDataUtf16() +
                str->GetStartIndex();
+    } else {
+        DCHECK_CC(src->IsCachedExternalString());
+        return CachedExternalString::ConstCast(src)->GetDataUtf16();
     }
-    DCHECK_CC(src->IsLineString());
-    return LineString::ConstCast(src)->GetDataUtf16();
 }
 
 /* static */
@@ -349,23 +356,24 @@ template <typename ReadBarrier>
 bool BaseString::StringIsEqualUint8Data(ReadBarrier &&readBarrier, const BaseString *str1, const uint8_t *dataAddr,
                                         uint32_t dataLen, bool canBeCompressToUtf8)
 {
-    if (!str1->IsSlicedString() && canBeCompressToUtf8 != str1->IsUtf8()) {
-        return false;
-    }
-    if (canBeCompressToUtf8 && str1->GetLength() != dataLen) {
-        return false;
-    }
+    uint32_t strLen = str1->GetLength();
     if (str1->IsUtf8()) {
+        if (strLen != dataLen) {
+            return false;
+        }
         std::vector<uint8_t> buf;
         common::Span<const uint8_t> data1(BaseString::GetUtf8DataFlat(std::forward<ReadBarrier>(readBarrier),
-            str1, buf), dataLen);
+            str1, buf), strLen);
         common::Span<const uint8_t> data2(dataAddr, dataLen);
         return BaseString::StringsAreEquals(data1, data2);
     }
+    // str1 is utf16
+    if (canBeCompressToUtf8 && strLen != dataLen) {
+        return false;
+    }
     std::vector<uint16_t> buf;
-    uint32_t length = str1->GetLength();
-    const uint16_t *data = BaseString::GetUtf16DataFlat(std::forward<ReadBarrier>(readBarrier), str1, buf);
-    return IsUtf8EqualsUtf16(dataAddr, dataLen, data, length);
+    const uint16_t *strAddr = BaseString::GetUtf16DataFlat(std::forward<ReadBarrier>(readBarrier), str1, buf);
+    return IsUtf8EqualsUtf16(dataAddr, dataLen, strAddr, strLen);
 }
 
 /* static */
@@ -409,10 +417,13 @@ const uint16_t *BaseString::GetUtf16DataFlat(ReadBarrier &&readBarrier, const Ba
 {
     DCHECK_CC(src->IsUtf16());
     uint32_t length = src->GetLength();
-    if (src->IsTreeString()) {
+    if (src->IsLineString()) {
+        return LineString::ConstCast(src)->GetDataUtf16();
+    } else if (src->IsTreeString()) {
         if (src->IsFlat(std::forward<ReadBarrier>(readBarrier))) {
             src = BaseString::Cast(
                 TreeString::ConstCast(src)->GetLeftSubString<BaseObject *>(std::forward<ReadBarrier>(readBarrier)));
+            return LineString::ConstCast(src)->GetDataUtf16();
         } else {
             buf.reserve(length);
             WriteToFlat(std::forward<ReadBarrier>(readBarrier), src, buf.data(), length);
@@ -422,8 +433,10 @@ const uint16_t *BaseString::GetUtf16DataFlat(ReadBarrier &&readBarrier, const Ba
         const SlicedString *str = SlicedString::ConstCast(src);
         return LineString::Cast(str->GetParent<BaseObject *>(std::forward<ReadBarrier>(readBarrier)))->GetDataUtf16() +
                str->GetStartIndex();
+    } else {
+        DCHECK_CC(src->IsCachedExternalString());
+        return CachedExternalString::ConstCast(src)->GetDataUtf16();
     }
-    return LineString::ConstCast(src)->GetDataUtf16();
 }
 
 constexpr bool BaseString::IsStringType(EcmaStringType type)
@@ -454,6 +467,8 @@ uint16_t BaseString::At(ReadBarrier &&readBarrier, int32_t index) const
             return SlicedString::ConstCast(this)->Get<VERIFY>(std::forward<ReadBarrier>(readBarrier), index);
         case EcmaStringType::TREE_STRING:
             return TreeString::ConstCast(this)->Get<VERIFY>(std::forward<ReadBarrier>(readBarrier), index);
+        case EcmaStringType::CACHED_EXTERNAL_STRING:
+            return CachedExternalString::ConstCast(this)->Get<VERIFY>(index);
         default:
             UNREACHABLE_CC();
     }
@@ -486,6 +501,14 @@ void BaseString::WriteToFlat(ReadBarrier &&readBarrier, const BaseString *src, C
                     CopyChars(buf, LineString::ConstCast(src)->GetDataUtf8(), length);
                 } else {
                     CopyChars(buf, LineString::ConstCast(src)->GetDataUtf16(), length);
+                }
+                return;
+            }
+            case EcmaStringType::CACHED_EXTERNAL_STRING: {
+                if (src->IsUtf8()) {
+                    CopyChars(buf, CachedExternalString::ConstCast(src)->GetDataUtf8(), length);
+                } else {
+                    CopyChars(buf, CachedExternalString::ConstCast(src)->GetDataUtf16(), length);
                 }
                 return;
             }
@@ -573,6 +596,14 @@ void BaseString::WriteToFlatWithPos(ReadBarrier &&readBarrier, BaseString *src, 
                     CopyChars(buf, LineString::Cast(src)->GetDataUtf8() + pos, length);
                 } else {
                     CopyChars(buf, LineString::Cast(src)->GetDataUtf16() + pos, length);
+                }
+                return;
+            }
+            case EcmaStringType::CACHED_EXTERNAL_STRING: {
+                if (src->IsUtf8()) {
+                    CopyChars(buf, CachedExternalString::ConstCast(src)->GetDataUtf8() + pos, length);
+                } else {
+                    CopyChars(buf, CachedExternalString::ConstCast(src)->GetDataUtf16() + pos, length);
                 }
                 return;
             }
@@ -739,10 +770,13 @@ const uint8_t *BaseString::GetUtf8DataFlat(ReadBarrier &&readBarrier, const Base
 {
     DCHECK_CC(src->IsUtf8());
     uint32_t length = src->GetLength();
-    if (src->IsTreeString()) {
+    if (src->IsLineString()) {
+        return LineString::ConstCast(src)->GetDataUtf8();
+    } else if (src->IsTreeString()) {
         if (src->IsFlat(std::forward<ReadBarrier>(readBarrier))) {
             src = BaseString::Cast(
                 TreeString::ConstCast(src)->GetLeftSubString<BaseObject *>(std::forward<ReadBarrier>(readBarrier)));
+            return LineString::ConstCast(src)->GetDataUtf8();
         } else {
             buf.reserve(length);
             WriteToFlat(std::forward<ReadBarrier>(readBarrier), src, buf.data(), length);
@@ -752,8 +786,10 @@ const uint8_t *BaseString::GetUtf8DataFlat(ReadBarrier &&readBarrier, const Base
         const SlicedString *str = SlicedString::ConstCast(src);
         return LineString::Cast(str->GetParent<BaseObject *>(std::forward<ReadBarrier>(readBarrier)))->GetDataUtf8() +
                str->GetStartIndex();
+    } else {
+        DCHECK_CC(src->IsCachedExternalString());
+        return CachedExternalString::ConstCast(src)->GetDataUtf8();
     }
-    return LineString::ConstCast(src)->GetDataUtf8();
 }
 
 template <typename ReadBarrier>

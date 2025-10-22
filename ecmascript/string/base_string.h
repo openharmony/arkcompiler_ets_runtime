@@ -41,6 +41,7 @@ namespace objects_traits = common::objects_traits;
 class LineString;
 class TreeString;
 class SlicedString;
+class CachedExternalString;
 
 /*
  +-----------------------------+ <-- offset 0
@@ -172,6 +173,15 @@ public:
     bool IsSlicedString() const
     {
         return GetBaseStringClass()->IsSlicedString();
+    }
+
+    /**
+    * @brief Return whether the string is stored as a CachedExternalString.
+    * @return true if CachedExternalString, false otherwise.
+    */
+    bool IsCachedExternalString() const
+    {
+        return GetBaseStringClass()->IsCachedExternalString();
     }
 
     /**

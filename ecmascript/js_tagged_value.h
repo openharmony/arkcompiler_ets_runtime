@@ -534,6 +534,7 @@ public:
     bool IsLineString() const;
     bool IsTreeString() const;
     bool IsSlicedString() const;
+    bool IsCachedExternalString() const;
     bool IsStringOrSymbol() const;
     bool IsLexicalEnv() const;
     bool IsSFunctionEnv() const;

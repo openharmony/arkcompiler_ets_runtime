@@ -130,6 +130,12 @@ GateRef CircuitBuilder::IsSlicedString(GateRef glue, GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
 }
 
+GateRef CircuitBuilder::IsCachedExternalString(GateRef glue, GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::CACHED_EXTERNAL_STRING)));
+}
+
 GateRef CircuitBuilder::IsLineString(GateRef glue, GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(glue, obj));

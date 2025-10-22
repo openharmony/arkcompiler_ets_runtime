@@ -258,6 +258,10 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
             size = SlicedString::SIZE;
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             break;
+        case JSType::CACHED_EXTERNAL_STRING:
+            size = CachedExternalString::SIZE;
+            size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+            break;
         case JSType::MACHINE_CODE_OBJECT:
             size = reinterpret_cast<MachineCode *>(header)->GetMachineCodeObjectSize();
             size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));

@@ -184,6 +184,7 @@ bool JSHClass::IsJSTypeShared(JSType type)
         case JSType::LINE_STRING:
         case JSType::SLICED_STRING:
         case JSType::TREE_STRING:
+        case JSType::CACHED_EXTERNAL_STRING:
             isShared = true;
             break;
         default:

@@ -1613,19 +1613,27 @@ inline GateRef StubBuilder::IsString(GateRef glue, GateRef obj)
 
 inline GateRef StubBuilder::IsLineString(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::LINE_STRING)));
+    return env_->GetBuilder()->IsLineString(glue, obj);
 }
 
 inline GateRef StubBuilder::IsSlicedString(GateRef glue, GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
-    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SLICED_STRING)));
+    return env_->GetBuilder()->IsSlicedString(glue, obj);
 }
 
 inline GateRef StubBuilder::IsTreeString(GateRef glue, GateRef obj)
 {
     return env_->GetBuilder()->IsTreeString(glue, obj);
+}
+
+inline GateRef StubBuilder::IsCachedExternalString(GateRef glue, GateRef obj)
+{
+    return env_->GetBuilder()->IsCachedExternalString(glue, obj);
+}
+
+inline GateRef StubBuilder::IsLineOrCachedExternalString(GateRef glue, GateRef obj)
+{
+    return LogicOrBuilder(env_).Or(IsLineString(glue, obj)).Or(IsCachedExternalString(glue, obj)).Done();
 }
 
 inline GateRef StubBuilder::TreeStringIsFlat(GateRef glue, GateRef string)

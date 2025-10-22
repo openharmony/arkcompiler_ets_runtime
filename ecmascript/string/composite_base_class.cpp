@@ -28,6 +28,7 @@ void BaseClassRoots::InitializeCompositeBaseClass(CompositeBaseClassAllocator &a
     CreateCompositeBaseClass(EcmaStringType::LINE_STRING, allocator);
     CreateCompositeBaseClass(EcmaStringType::SLICED_STRING, allocator);
     CreateCompositeBaseClass(EcmaStringType::TREE_STRING, allocator);
+    CreateCompositeBaseClass(EcmaStringType::CACHED_EXTERNAL_STRING, allocator);
 }
 
 void BaseClassRoots::CreateCompositeBaseClass(EcmaStringType type, CompositeBaseClassAllocator& allocator)

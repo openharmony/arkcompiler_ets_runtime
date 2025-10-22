@@ -167,6 +167,7 @@ public:
             {JSType::ASYNC_ITERATOR_RECORD, {"Iterator", "NextMethod", "ASYNC_ITERATOR_RECORD"}},
             {JSType::BIGINT, {"BIGINT"}},
             {JSType::BYTE_ARRAY, {"BYTE_ARRAY"}},
+            {JSType::CACHED_EXTERNAL_STRING, {"Resouce", "CachedResourceData", "CACHED_EXTERNAL_STRING"}},
             {JSType::CELL_RECORD, {"WeakRefTarget", "HeldValue", "CELL_RECORD"}},
             {JSType::CLASS_INFO_EXTRACTOR, {
                 "NonStaticKeys", "NonStaticProperties", "NonStaticElements", "StaticKeys",
@@ -435,6 +436,10 @@ public:
                                              AsyncIteratorRecord::SIZE - AsyncIteratorRecord::ITERATOR_OFFSET}},
             {JSType::BIGINT, {BigInt::LAST_OFFSET - BigInt::LENGTH_OFFSET}},
             {JSType::BYTE_ARRAY, {ByteArray::LAST_OFFSET - ByteArray::ARRAY_LENGTH_OFFSET}},
+            {JSType::CACHED_EXTERNAL_STRING, {
+                CachedExternalString::RESOURCE_OFFSET,
+                CachedExternalString::CACHE_RESOURCE_DATA_OFFSET,
+                CachedExternalString::SIZE - CachedExternalString::RESOURCE_OFFSET}},
             {JSType::CELL_RECORD, {CellRecord::WEAKREF_TARGET_OFFSET,
                                    CellRecord::HELD_VALUE_OFFSET,
                                    CellRecord::SIZE - CellRecord::WEAKREF_TARGET_OFFSET}},
@@ -1038,6 +1043,7 @@ public:
             {JSType::ASYNC_ITERATOR_RECORD, {"RECORD"}},
             {JSType::BIGINT, {"TAGGED_OBJECT"}},
             {JSType::BYTE_ARRAY, {"TAGGED_OBJECT"}},
+            {JSType::CACHED_EXTERNAL_STRING, {"ECMA_STRING"}},
             {JSType::CELL_RECORD, {"RECORD"}},
             {JSType::CLASS_INFO_EXTRACTOR, {"TAGGED_OBJECT"}},
             {JSType::CLASS_LITERAL, {"TAGGED_OBJECT"}},
@@ -1267,6 +1273,9 @@ public:
                 AsyncIteratorRecord::BIT_FIELD_OFFSET - AsyncIteratorRecord::NEXTMETHOD_OFFSET}},
             {JSType::BIGINT, {}},
             {JSType::BYTE_ARRAY, {}},
+            {JSType::CACHED_EXTERNAL_STRING, {
+                CachedExternalString::CACHE_RESOURCE_DATA_OFFSET - CachedExternalString::RESOURCE_OFFSET,
+                CachedExternalString::SIZE - CachedExternalString::CACHE_RESOURCE_DATA_OFFSET}},
             {JSType::CELL_RECORD, {CellRecord::HELD_VALUE_OFFSET - CellRecord::WEAKREF_TARGET_OFFSET,
                                    CellRecord::SIZE - CellRecord::HELD_VALUE_OFFSET}},
             {JSType::CLASS_INFO_EXTRACTOR, {
@@ -2041,7 +2050,7 @@ public:
             std::cout << "Fail to read string_last: " << filePath << std::endl;
             return false;
         }
-        if (value != "TREE_STRING") {
+        if (value != "CACHED_EXTERNAL_STRING") {
             std::cout << "string_last inconsistent" << std::endl;
             return false;
         }
@@ -2320,6 +2329,17 @@ HWTEST_F_L0(JSMetadataTest, TestByteArrayMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::BYTE_ARRAY, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestCachedExternalStringMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"cached_external_string.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::CACHED_EXTERNAL_STRING, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestCellRecordMetadata)

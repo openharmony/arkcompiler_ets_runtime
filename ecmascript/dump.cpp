@@ -70,6 +70,7 @@ CString JSHClass::DumpJSType(JSType type)
         case JSType::LINE_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
+        case JSType::CACHED_EXTERNAL_STRING:
             return "BaseString";
         case JSType::JS_NATIVE_POINTER:
             return "NativePointer";
@@ -719,6 +720,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
         case JSType::LINE_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
+        case JSType::CACHED_EXTERNAL_STRING:
             DumpStringClass(thread, EcmaString::Cast(obj), os);
             os << "\n";
             break;
@@ -4081,6 +4083,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::LINE_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
+        case JSType::CACHED_EXTERNAL_STRING:
             DumpStringClass(EcmaString::Cast(obj), vec);
             break;
         case JSType::JS_NATIVE_POINTER:

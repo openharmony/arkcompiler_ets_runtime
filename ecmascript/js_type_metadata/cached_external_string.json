@@ -1,0 +1,19 @@
+{
+    "name": "CACHED_EXTERNAL_STRING",
+    "offsets": [
+        {
+            "name": "Resouce",
+            "offset": 0,
+            "size": 8
+        },
+        {
+            "name": "CachedResourceData",
+            "offset": 8,
+            "size": 8
+        }
+    ],
+    "end_offset": 16,
+    "parents": [
+        "ECMA_STRING"
+    ]
+}

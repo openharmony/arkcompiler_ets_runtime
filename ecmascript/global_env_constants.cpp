@@ -137,6 +137,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
                     factory->InitHClassInCompositeBaseClass(hClass, EcmaStringType::SLICED_STRING));
         SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
                     factory->InitHClassInCompositeBaseClass(hClass, EcmaStringType::TREE_STRING));
+        SetConstant(ConstantIndex::CACHED_EXTERNAL_STRING_CLASS_INDEX,
+                    factory->InitHClassInCompositeBaseClass(hClass, EcmaStringType::CACHED_EXTERNAL_STRING));
     } else {
         SetConstant(ConstantIndex::LINE_STRING_CLASS_INDEX,
             factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LINE_STRING));
@@ -144,6 +146,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
             factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SLICED_STRING));
         SetConstant(ConstantIndex::TREE_STRING_CLASS_INDEX,
             factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TREE_STRING));
+        SetConstant(ConstantIndex::CACHED_EXTERNAL_STRING_CLASS_INDEX,
+            factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::CACHED_EXTERNAL_STRING));
     }
     SetConstant(ConstantIndex::BYTE_ARRAY_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::BYTE_ARRAY));

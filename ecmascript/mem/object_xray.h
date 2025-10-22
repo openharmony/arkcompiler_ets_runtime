@@ -475,6 +475,11 @@ public:
             case JSType::SLICED_STRING:
                 SlicedEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::CACHED_EXTERNAL_STRING:
+                if constexpr (visitType == VisitType::ALL_VISIT) {
+                    CachedExternalEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
+                break;
             case JSType::JS_NATIVE_POINTER:
                 if constexpr ((visitType == VisitType::SNAPSHOT_VISIT) || (visitType == VisitType::ALL_VISIT)) {
                     JSNativePointer::Cast(object)->VisitRangeSlot<visitType>(visitor);

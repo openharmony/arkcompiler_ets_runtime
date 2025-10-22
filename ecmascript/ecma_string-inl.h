@@ -133,6 +133,20 @@ inline EcmaString *EcmaString::CreateFromUtf16(const EcmaVM *vm, const uint16_t 
 }
 
 /* static */
+inline EcmaString *EcmaString::CreateFromExternalResource(const EcmaVM *vm, void *data, uint32_t length,
+    bool canBeCompress, ExternalStringResourceCallback callback, void *hint)
+{
+    auto *resource = new (std::nothrow) ExternalNonMovableStringResource(hint, callback);
+    auto allocator = [vm](size_t size, EcmaStringType stringType) -> BaseObject* {
+        ASSERT(stringType == EcmaStringType::CACHED_EXTERNAL_STRING && "Can only allocate line string");
+        EcmaString* string = vm->GetFactory()->AllocCachedExternalStringObject();
+        return string;
+    };
+    BaseString *str = CachedExternalString::Create(std::move(allocator), resource, data, length, canBeCompress);
+    return EcmaString::FromBaseString(str);
+}
+
+/* static */
 inline EcmaString *EcmaString::CreateLineString(const EcmaVM *vm, size_t length, bool compressed)
 {
     auto allocator = [vm](size_t size, EcmaStringType stringType) -> BaseObject* {
@@ -285,22 +299,32 @@ EcmaString *EcmaString::FastSubUtf16String(const EcmaVM *vm, const JSHandle<Ecma
 
 inline const uint8_t* EcmaString::GetDataUtf8() const
 {
-    return LineString::ConstCast(this)->GetDataUtf8();
+    if (IsLineString()) {
+        return LineString::ConstCast(this)->GetDataUtf8();
+    }
+    ASSERT(IsCachedExternalString());
+    return CachedExternalString::ConstCast(this)->GetDataUtf8();
 }
 
 inline const uint16_t* EcmaString::GetDataUtf16() const
 {
-    return LineString::ConstCast(this)->GetDataUtf16();
+    if (IsLineString()) {
+        return LineString::ConstCast(this)->GetDataUtf16();
+    }
+    ASSERT(IsCachedExternalString());
+    return CachedExternalString::ConstCast(this)->GetDataUtf16();
 }
 
 // require is LineString
 inline uint8_t* EcmaString::GetDataUtf8Writable()
 {
+    ASSERT(IsLineString());
     return LineString::Cast(this)->GetDataUtf8Writable();
 }
 
 inline uint16_t* EcmaString::GetDataUtf16Writable()
 {
+    ASSERT(IsLineString());
     return LineString::Cast(this)->GetDataUtf16Writable();
 }
 

@@ -309,7 +309,8 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
             // If Type(value) is String, return QuoteJSONString(value).
             case JSType::LINE_STRING:
             case JSType::TREE_STRING:
-            case JSType::SLICED_STRING: {
+            case JSType::SLICED_STRING:
+            case JSType::CACHED_EXTERNAL_STRING: {
                 JSHandle<EcmaString> strHandle = JSHandle<EcmaString>(valHandle);
                 auto string = JSHandle<EcmaString>(thread_,
                     EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));

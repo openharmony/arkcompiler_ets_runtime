@@ -26,6 +26,8 @@
 #include "ecmascript/string/composite_base_class.h"
 #include "ecmascript/string/hashtriemap.h"
 #include "ecmascript/string/hashtriemap-inl.h"
+#include "ecmascript/string/external_string.h"
+#include "ecmascript/string/external_string-inl.h"
 #include "ecmascript/string/line_string.h"
 #include "ecmascript/string/line_string-inl.h"
 #include "ecmascript/string/tree_string.h"

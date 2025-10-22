@@ -1292,7 +1292,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf8_001)
         EcmaStringAccessor::CreateFromUtf8(instance, &arrayU8No3[0], lengthEcmaStrU8No3, true));
     EXPECT_TRUE(EcmaStringAccessor::StringIsEqualUint8Data(
         thread, *handleEcmaStrU8No1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-    EXPECT_FALSE(EcmaStringAccessor::StringIsEqualUint8Data(
+    EXPECT_TRUE(EcmaStringAccessor::StringIsEqualUint8Data(
         thread, *handleEcmaStrU8No1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
     EXPECT_FALSE(EcmaStringAccessor::StringIsEqualUint8Data(
         thread, *handleEcmaStrU8No2, &arrayU8No1[0], lengthEcmaStrU8No1, true));
@@ -1329,7 +1329,7 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf8_002)
         EcmaStringAccessor::CreateFromUtf16(instance, &arrayU16CompNo3[0], lengthEcmaStrU16CompNo3, true));
     EXPECT_TRUE(EcmaStringAccessor::StringIsEqualUint8Data(
         thread, *handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, true));
-    EXPECT_FALSE(EcmaStringAccessor::StringIsEqualUint8Data(
+    EXPECT_TRUE(EcmaStringAccessor::StringIsEqualUint8Data(
         thread, *handleEcmaStrU16CompNo1, &arrayU8No1[0], lengthEcmaStrU8No1, false));
     EXPECT_FALSE(EcmaStringAccessor::StringIsEqualUint8Data(
         thread, *handleEcmaStrU16CompNo2, &arrayU8No1[0], lengthEcmaStrU8No1, true));

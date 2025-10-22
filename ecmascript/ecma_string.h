@@ -30,6 +30,7 @@
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/string/base_string.h"
 #include "ecmascript/string/base_string-inl.h"
+#include "ecmascript/string/external_string.h"
 #include "ecmascript/string/line_string.h"
 #include "ecmascript/string/sliced_string.h"
 #include "ecmascript/string/tree_string.h"
@@ -50,6 +51,8 @@ class EcmaVM;
 class LineEcmaString;
 class TreeEcmaString;
 class SlicedEcmaString;
+class CachedExternalEcmaString;
+class ExternalNonMovableStringResource;
 class FlatStringInfo;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -97,6 +100,7 @@ private:
     friend class LineEcmaString;
     friend class TreeEcmaString;
     friend class SlicedEcmaString;
+    friend class CachedExternalEcmaString;
     friend class FlatStringInfo;
     friend class NameDictionary;
     friend class panda::test::EcmaStringEqualsTest;
@@ -112,6 +116,8 @@ private:
         MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateFromUtf16(const EcmaVM *vm, const uint16_t *utf16Data, uint32_t utf16Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
+    static EcmaString *CreateFromExternalResource(const EcmaVM *vm, void *data, uint32_t length,
+        bool canBeCompress, ExternalStringResourceCallback callback, void *hint);
     static SlicedEcmaString* CreateSlicedString(const EcmaVM* vm, JSHandle<EcmaString> parent,
                                                 MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
     static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed);
@@ -383,6 +389,16 @@ private:
     bool NotTreeString() const
     {
         return !IsTreeString();
+    }
+
+    bool IsCachedExternalString() const
+    {
+        return ToBaseString()->IsCachedExternalString();
+    }
+    
+    bool IsLineOrCachedExternalString() const
+    {
+        return IsLineString() || IsCachedExternalString();
     }
 
     template <typename Char>
@@ -705,6 +721,66 @@ public:
     }
 };
 
+class CachedExternalEcmaString : public EcmaString {
+private:
+    using TaggedObject::SIZE;
+public:
+    DECL_VISIT_PRIMITIVE_OBJECT();
+
+    CAST_CHECK(CachedExternalEcmaString, IsCachedExternalString);
+
+    static CachedExternalEcmaString* Cast(EcmaString* str)
+    {
+        return static_cast<CachedExternalEcmaString*>(str);
+    }
+
+    static CachedExternalEcmaString* Cast(const EcmaString* str)
+    {
+        return CachedExternalEcmaString::Cast(const_cast<EcmaString*>(str));
+    }
+
+    CachedExternalString* ToCachedExternalString()
+    {
+        return CachedExternalString::Cast(this);
+    }
+
+    const CachedExternalString* ToCachedExternalString() const
+    {
+        return CachedExternalString::ConstCast(this);
+    }
+
+    static CachedExternalEcmaString* FromBaseString(CachedExternalString* str)
+    {
+        return reinterpret_cast<CachedExternalEcmaString*>(str);
+    }
+
+    ExternalNonMovableStringResource* GetResource() const
+    {
+        return ToCachedExternalString()->GetResource();
+    }
+
+    void SetResource(ExternalNonMovableStringResource* resource)
+    {
+        ToCachedExternalString()->SetResource(resource);
+    }
+
+    void SetCachedResourceData(uint8_t* data)
+    {
+        ToCachedExternalString()->SetCachedResourceData(reinterpret_cast<void*>(data));
+    }
+
+    void SetCachedResourceData(uint16_t* data)
+    {
+        ToCachedExternalString()->SetCachedResourceData(reinterpret_cast<void*>(data));
+    }
+
+    template<bool verify = true>
+    uint16_t Get(int32_t index) const
+    {
+        return ToCachedExternalString()->Get<verify>(index);
+    }
+};
+
 // FlatStringInfo holds an EcmaString* instead of a JSHandle. If a GC occurs during its usage period,
 // it may cause the pointer to become invalid, necessitating the pointer to be reset.
 class FlatStringInfo {
@@ -812,6 +888,12 @@ public:
                                        bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE)
     {
         return EcmaString::CreateFromUtf16(vm, utf16Data, utf16Len, canBeCompress, type);
+    }
+
+    static EcmaString *CreateFromExternalResource(const EcmaVM *vm, void *data, uint32_t length, bool canBeCompress,
+                                                  ExternalStringResourceCallback callback, void *hint)
+    {
+        return EcmaString::CreateFromExternalResource(vm, data, length, canBeCompress, callback, hint);
     }
 
     static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &str1Handle,
@@ -1173,6 +1255,16 @@ public:
     bool IsSlicedString() const
     {
         return string_->IsSlicedString();
+    }
+
+    bool IsCachedExternalString() const
+    {
+        return string_->IsCachedExternalString();
+    }
+
+    bool IsLineOrCachedExternalString() const
+    {
+        return string_->IsLineOrCachedExternalString();
     }
 
     bool IsTreeString() const
