@@ -24,3 +24,7 @@ try {
 } catch (e) {
     print(e);
 }
+
+const testNum = 789.12;
+const result = testNum.toLocaleString("en-US", { style: "currency", currency: "USD", currencyDisplay: "code" });
+print(result);

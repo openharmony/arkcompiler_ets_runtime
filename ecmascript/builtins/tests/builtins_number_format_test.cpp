@@ -134,7 +134,7 @@ HWTEST_F_L0(BuiltinsNumberFormatTest, Format_002)
     JSTaggedValue formatResult = BuiltinsFormatTest(thread, optionsObj, numberVal, localeString);
 
     JSHandle<EcmaString> resultEcmaStr(thread, formatResult);
-    EXPECT_STREQ("($3,500.00)", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
+    EXPECT_STREQ("-3,500.00 US dollars", EcmaStringAccessor(resultEcmaStr).ToCString(thread).c_str());
 }
 
 // format percent

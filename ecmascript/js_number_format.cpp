@@ -596,27 +596,29 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     mxfdDefault = fractionOptions.mxfdDefault;
     UnitDisplayOption unitDisplay = numberFormat->GetUnitDisplay();
 
-    // Trans unitDisplay option to ICU display option
-    UNumberUnitWidth uNumberUnitWidth;
-    switch (unitDisplay) {
-        case UnitDisplayOption::SHORT:
-            uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_SHORT;
-            break;
-        case UnitDisplayOption::NARROW:
-            uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_NARROW;
-            break;
-        case UnitDisplayOption::LONG:
-            // UNUM_UNIT_WIDTH_FULL_NAME Print the full name of the unit, without any abbreviations.
-            uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_FULL_NAME;
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
+    StyleOption style = numberFormat->GetStyle();
+    if (style == StyleOption::UNIT && unitDisplay != UnitDisplayOption::SHORT) {
+        // Trans unitDisplay option to ICU display option
+        UNumberUnitWidth uNumberUnitWidth;
+        switch (unitDisplay) {
+            case UnitDisplayOption::SHORT:
+                uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_SHORT;
+                break;
+            case UnitDisplayOption::NARROW:
+                uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_NARROW;
+                break;
+            case UnitDisplayOption::LONG:
+                // UNUM_UNIT_WIDTH_FULL_NAME Print the full name of the unit, without any abbreviations.
+                uNumberUnitWidth = UNumberUnitWidth::UNUM_UNIT_WIDTH_FULL_NAME;
+                break;
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+        }
+        icuNumberFormatter = icuNumberFormatter.unitWidth(uNumberUnitWidth);
     }
-    icuNumberFormatter = icuNumberFormatter.unitWidth(uNumberUnitWidth);
 
     // 16. Let style be numberFormat.[[Style]].
-    StyleOption style = numberFormat->GetStyle();
     if (style == StyleOption::PERCENT) {
         icuNumberFormatter = icuNumberFormatter.unit(icu::MeasureUnit::getPercent()).
             scale(icu::number::Scale::powerOfTen(2));  // means 10^2
