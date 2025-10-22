@@ -2985,7 +2985,7 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         }
         propsLen++;
     }
-    if (propsLen <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
+    if (propsLen <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY - JSObject::SIZE) {
         JSHandle<JSHClass> hclass;
         bool isLiteral = false;
         if (ihcVal.IsJSHClass()) {
