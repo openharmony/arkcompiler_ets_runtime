@@ -358,6 +358,7 @@ CString CString::FormatString(const char* format, ...)
     va_list argList;
     va_start(argList, format);
     if (vsprintf_s(buf, sizeof(buf), format, argList) == -1) {
+        va_end(argList);
         return "invalid arguments for FormatString";
     }
     va_end(argList);

@@ -181,6 +181,7 @@ void MutatorManager::Init()
     LOGF_CHECK(safepointPageManager_ != nullptr) << "new safepointPageManager failed";
     safepointPageManager_->Init();
 #endif
+    SetSuspensionMutatorCount(0);
 }
 
 MutatorManager& MutatorManager::Instance() noexcept
