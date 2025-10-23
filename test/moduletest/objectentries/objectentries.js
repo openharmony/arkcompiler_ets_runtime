@@ -31,7 +31,7 @@ let obj2 = {
     a: "aa",
     get b() {
         this.e = "ee";
-        Object.defineProperty(obj, "c", {
+        Object.defineProperty(obj2, "c", {
             value: "c",
             enumerable: false
         });
@@ -40,10 +40,10 @@ let obj2 = {
     c: "cc",
     123: "123"
 };
-for (const [key, value] of Object.entries(obj)) {
+for (const [key, value] of Object.entries(obj2)) {
     print(key + "," + value);
 }
-print("e," + obj.e);
+print("e," + obj2.e);
 
 var obj3 = {
     a: 4294967295,
@@ -144,3 +144,17 @@ let arr =[];
 arr["aaa"]="va";
 arr["bbb"]="vb";
 print(Object.entries(arr))
+
+const testObj = {
+    get getterProp() {
+        return 'getterPropValue';
+    },
+    enumProp: 'enumPropValue',
+}
+
+const result = Object.entries(testObj);
+print(result.length);
+print(result[0][0]);
+print(result[0][1]);
+print(result[1][0]);
+print(result[1][1]);
