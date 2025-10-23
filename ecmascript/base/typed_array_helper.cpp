@@ -1149,7 +1149,13 @@ int32_t TypedArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedV
         if (std::isnan(value)) {
             return +0;
         }
-        return value;
+        if (value < 0) {
+            return -1;
+        }
+        if (value > 0) {
+            return 1;
+        }
+        return +0;
     }
     if (firstValue->IsNumber()) {
         // 3. If x and y are both NaN, return +0.
