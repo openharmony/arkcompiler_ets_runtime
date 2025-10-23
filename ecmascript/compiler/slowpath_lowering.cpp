@@ -3079,18 +3079,21 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
     if (!compilationEnv_->SupportHeapConstant()) {
         return false;
     }
-    Label success(&builder_);
-    Label failed(&builder_);
+
     if (!acc_.IsConstant(methodId) || !acc_.IsConstant(slotId)) {
         return false;
     }
+
     auto slotIdValue = acc_.GetConstantValue(slotId);
-    auto methodIdValue = acc_.GetConstantValue(methodId);
     if (slotIdValue == ProfileTypeInfo::INVALID_SLOT_INDEX) {
         return false;
     }
-    auto constPool = compilationEnv_->FindConstpool(compilationEnv_->GetJSPandaFile(), 0);
-    auto unsharedConstPool = compilationEnv_->FindOrCreateUnsharedConstpool(methodLiteral_->GetMethodId().GetOffset());
+
+    auto jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+    auto methodOffset = acc_.TryGetMethodOffset(gate);
+    auto constPool = jitCompilationEnv->GetConstantPoolByMethodOffset(methodOffset);
+    auto unsharedConstPool = compilationEnv_->FindOrCreateUnsharedConstpool(constPool);
+    auto methodIdValue = acc_.GetConstantValue(methodId);
     // not optimize if it may use ihc to define function
     if (!unsharedConstPool.IsHole() &&
         !ConstantPool::GetIhcFromAOTLiteralInfo(compilationEnv_->GetHostThread(),
@@ -3102,27 +3105,21 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
     if (!method.IsMethod()) {
         return false;
     }
+
     auto methodObj = Method::Cast(method);
     if (methodObj->IsSendableMethod() || methodObj->IsNativeWithCallField() || methodObj->IsAotWithCallField()) {
         return false;
     }
-    auto kind = methodObj->GetFunctionKind();
-
-    auto jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
-    auto func = jitCompilationEnv->GetJsFunctionByMethodOffset(acc_.TryGetMethodOffset(gate));
+    
+    auto func = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
     auto profileTypeInfo = func->GetProfileTypeInfo(compilationEnv_->GetJSThread());
     if (profileTypeInfo.IsUndefined()) {
         return false;
     }
-    auto constPoolId =
-        static_cast<uint32_t>(ConstantPool::Cast(constPool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
-    auto methodHandle = jitCompilationEnv->NewJSHandle(method);
-    auto index = jitCompilationEnv->RecordHeapConstant(
-        {constPoolId, methodIdValue, JitCompilationEnv::IN_SHARED_CONSTANTPOOL}, methodHandle);
-    GateRef methodNode = builder_.HeapConstant(index);
-    GateRef result;
+    
     JSHandle<JSTaggedValue> hclass;
     int callTarget = CommonStubCSigns::NUM_OF_STUBS;
+    auto kind = methodObj->GetFunctionKind();
     switch (kind) {
         case FunctionKind::NORMAL_FUNCTION: {
             hclass = compilationEnv_->GetGlobalEnv()->GetFunctionClassWithoutProtoWithBarrier();
@@ -3143,9 +3140,17 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
             return false;
     }
 
-    result = builder_.CallStub(glue_, gate, callTarget,
-                               {glue_, jsFunc, builder_.TaggedValueConstant(hclass.GetTaggedValue()), methodNode,
-                                builder_.TruncInt64ToInt32(length), lexEnv, slotId});
+    auto constPoolId =
+        static_cast<uint32_t>(ConstantPool::Cast(constPool.GetTaggedObject())->GetSharedConstpoolId().GetInt());
+    auto methodHandle = jitCompilationEnv->NewJSHandle(method);
+    auto index = jitCompilationEnv->RecordHeapConstant(
+        {constPoolId, methodIdValue, JitCompilationEnv::IN_SHARED_CONSTANTPOOL}, methodHandle);
+    GateRef methodNode = builder_.HeapConstant(index);
+    GateRef result = builder_.CallStub(glue_, gate, callTarget,
+                                       {glue_, jsFunc, builder_.TaggedValueConstant(hclass.GetTaggedValue()),
+                                        methodNode, builder_.TruncInt64ToInt32(length), lexEnv, slotId});
+    Label success(&builder_);
+    Label failed(&builder_);
     BRANCH_CIR(builder_.TaggedIsException(result), &failed, &success);
     CREATE_DOUBLE_EXIT(success, failed)
     acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);

@@ -15,11 +15,11 @@ testing multiple const pool inlining
 iteration 1
 [object Object] 1,2,3
 test finished
+true
 testing multiple const pool inlining
 iteration 1
 [trace] aot inline function name: #*#calleeWithDifferentConstPool@multi_constpool_inline caller function name: #*#caller65@multi_constpool_inline
 [object Object] 1,2,3
-[trace] aot inline function name: #*#simpleFunc@multi_constpool_inline caller function name: #*#calleeWithDifferentConstPool@multi_constpool_inline
 test finished
 undefined
 true
