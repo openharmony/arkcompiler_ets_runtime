@@ -1796,7 +1796,7 @@ public:
         }
         std::stringstream buffer;
         buffer << jsonFile.rdbuf();
-        auto json = cJSON_ParseWithOpts(buffer.str().c_str(), nullptr, true);
+        auto json = cJSON_ParseWithLength(buffer.str().c_str(), buffer.str().size());
         if (!json) {
             std::cout << "Fail to parse type enums cJSON" << std::endl;
             jsonFile.close();
@@ -1827,7 +1827,7 @@ public:
         }
         std::stringstream buffer;
         buffer << jsonFile.rdbuf();
-        auto json = cJSON_ParseWithOpts(buffer.str().c_str(), nullptr, true);
+        auto json = cJSON_ParseWithLength(buffer.str().c_str(), buffer.str().size());
         if (!json) {
             std::cout << "Fail to read metadata file: " << filePath << std::endl;
             jsonFile.close();
@@ -1963,7 +1963,7 @@ public:
         }
         std::stringstream buffer;
         buffer << jsonFile.rdbuf();
-        auto json = cJSON_ParseWithOpts(buffer.str().c_str(), nullptr, true);
+        auto json = cJSON_ParseWithLength(buffer.str().c_str(), buffer.str().size());
         if (!json) {
             std::cout << "Fail to read metadata file: " << filePath << std::endl;
             jsonFile.close();
@@ -2029,7 +2029,7 @@ public:
         }
         std::stringstream buffer;
         buffer << jsonFile.rdbuf();
-        auto json = cJSON_ParseWithOpts(buffer.str().c_str(), nullptr, true);
+        auto json = cJSON_ParseWithLength(buffer.str().c_str(), buffer.str().size());
         if (!json) {
             std::cout << "Fail to read metadata file: " << filePath << std::endl;
             jsonFile.close();
