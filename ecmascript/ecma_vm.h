@@ -1316,6 +1316,21 @@ public:
         globalEnvRecordList_.push_back(static_cast<JSTaggedType>(ToUintPtr(globalEnv)));
     }
 
+    void AddHandleScopeDepth()
+    {
+        ++handleScopeDepth_;
+    }
+
+    void DelHandleScopeDepth()
+    {
+        --handleScopeDepth_;
+    }
+
+    uint32_t GetHandleScopeDepth() const
+    {
+        return handleScopeDepth_;
+    }
+
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
 
@@ -1499,6 +1514,8 @@ private:
     static void *InternalMethodTable[static_cast<uint8_t>(MethodIndex::METHOD_END)];
     CVector<JSTaggedValue> internalNativeMethods_;
 
+    uint32_t handleScopeDepth_ {0};
+
     // For repair patch.
     QuickFixManager *quickFixManager_ {nullptr};
 
@@ -1618,6 +1635,23 @@ private:
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     ECMAVM_PRIVATE_HYBRID_EXTENSION();
 #endif /* PANDA_JS_ETS_HYBRID_MODE */
+};
+
+class HandleScopeDepthScope {
+public:
+    explicit HandleScopeDepthScope(EcmaVM* vm): vm_(vm), initDepth_(vm->GetHandleScopeDepth()) {}
+
+    ~HandleScopeDepthScope()
+    {
+        int32_t curDepth = vm_->GetHandleScopeDepth();
+        if (curDepth < initDepth_) {
+            LOG_ECMA(ERROR) << "Handle scope not match! init depth: " << initDepth_ << " current depth: " << curDepth;
+        }
+    }
+
+private:
+    EcmaVM* vm_ {nullptr};
+    uint32_t initDepth_ {0U};
 };
 }  // namespace ecmascript
 }  // namespace panda

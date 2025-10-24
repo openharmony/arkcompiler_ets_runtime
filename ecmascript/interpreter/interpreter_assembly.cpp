@@ -263,9 +263,15 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     }
     // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread);
-    auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
-    auto acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
-        callTarget, method, method->GetCallField(), argc, argv);
+    JSTaggedType acc;
+    {
+#ifdef USE_HWASAN
+        HandleScopeDepthScope depthScope(thread->GetEcmaVM());
+#endif
+        auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
+        acc = reinterpret_cast<InterpreterEntry>(entry)(thread->GetGlueAddr(),
+            callTarget, method, method->GetCallField(), argc, argv);
+    }
 
     if (thread->IsEntryFrameDroppedTrue()) {
         thread->PendingEntryFrameDroppedState();
