@@ -759,7 +759,7 @@ EcmaString *EcmaString::TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> 
     const char start = 'A';
     const char end = 'Z';
     uint32_t upperIndex = srcLength;
-    common::Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
+    common::Span<const uint8_t> data(srcFlat.GetDataUtf8(), srcLength);
     for (uint32_t index = 0; index < srcLength; ++index) {
         if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
             upperIndex = index;
@@ -780,7 +780,7 @@ EcmaString *EcmaString::TryToUpper(const EcmaVM *vm, const JSHandle<EcmaString> 
     const char start = 'a';
     const char end = 'z';
     uint32_t lowerIndex = srcLength;
-    common::Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
+    common::Span<const uint8_t> data(srcFlat.GetDataUtf8(), srcLength);
     for (uint32_t index = 0; index < srcLength; ++index) {
         if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
             lowerIndex = index;
@@ -802,7 +802,7 @@ EcmaString *EcmaString::ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHand
     uint32_t srcLength = src->GetLength();
     JSHandle<EcmaString> newString(vm->GetJSThread(), CreateLineString(vm, srcLength, true));
     auto srcFlat = FlattenAllString(vm, src);
-    common::Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
+    common::Span<const uint8_t> data(srcFlat.GetDataUtf8(), srcLength);
     auto newStringPtr = newString->GetDataUtf8Writable();
     if (startIndex > 0) {
         if (memcpy_s(newStringPtr, startIndex * sizeof(uint8_t), data.data(), startIndex * sizeof(uint8_t)) != EOK) {
