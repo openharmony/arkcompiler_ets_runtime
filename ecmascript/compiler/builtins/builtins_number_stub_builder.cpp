@@ -240,7 +240,6 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
     DEFVARIABLE(numberValue, VariableType::JS_ANY(), IntToTaggedPtr(IntPtr(0)));
     Label thisCollectionObj(env);
     Label slowPath(env);
-    Label slowPath1(env);
     Label exit(env);
 
     Label hasArg(env);
@@ -274,7 +273,7 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
             Label intialHClassIsHClass(env);
             GateRef intialHClass = Load(VariableType::JS_ANY(), glue_, newTarget,
                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            BRANCH(IsJSHClass(glue_, intialHClass), &intialHClassIsHClass, &slowPath1);
+            BRANCH(IsJSHClass(glue_, intialHClass), &intialHClassIsHClass, &slowPath);
             Bind(&intialHClassIsHClass);
             {
                 NewObjectStubBuilder newBuilder(this);
@@ -288,20 +287,13 @@ void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef
                     Jump(&exit);
                 }
             }
-            Bind(&slowPath1);
-            {
-                GateRef argv = GetArgv();
-                res = CallBuiltinRuntimeWithNewTarget(glue_,
-                    { glue_, nativeCode, func, thisValue_, numArgs_, argv, newTarget });
-                Jump(&exit);
-            }
         }
     }
 
     Bind(&slowPath);
     {
         GateRef argv = GetArgv();
-        res = CallBuiltinRuntime(glue_, { glue_, nativeCode, func, thisValue_, numArgs_, argv }, true);
+        res = CallBuiltinRuntimeWithNewTarget(glue_, {glue_, nativeCode, func, thisValue_, numArgs_, argv, newTarget});
         Jump(&exit);
     }
     Bind(&exit);
