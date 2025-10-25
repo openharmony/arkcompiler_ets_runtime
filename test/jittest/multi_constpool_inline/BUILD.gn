@@ -15,5 +15,5 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_jit_test_action("multi_constpool_inline") {
   deps = []
-  extra_option = " --log-info=trace --compiler-trace-inline=true"
+  extra_option = " --enable-cmc-gc=false --log-info=trace --compiler-trace-inline=true"
 }
