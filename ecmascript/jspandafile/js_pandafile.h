@@ -98,7 +98,7 @@ public:
     static constexpr int32_t PF_OFFSET = 0;
     static constexpr uint32_t ASYN_TRANSLATE_CLSSS_COUNT = 128;
     static constexpr uint32_t ASYN_TRANSLATE_CLSSS_MIN_COUNT = 2;
-    static constexpr uint32_t USING_TASKPOOL_MIN_CLASS_COUNT = 4;
+    static constexpr uint32_t USING_TASKPOOL_MIN_CLASS_COUNT = 32;
     static constexpr uint32_t DEFAULT_MAIN_METHOD_INDEX = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
