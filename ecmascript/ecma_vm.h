@@ -225,7 +225,7 @@ private:
 class EcmaVM {
 public:
     static EcmaVM *Create(const JSRuntimeOptions &options);
-
+    static void InitConfigurableParam(EcmaParamConfiguration& config);
     static bool Destroy(EcmaVM *vm);
 
     EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config);
