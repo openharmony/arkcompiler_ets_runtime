@@ -123,12 +123,13 @@ BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER)
         GateRef offset = IntPtr(JSNativePointer::POINTER_OFFSET);
         return LoadPrimitive(VariableType::NATIVE_POINTER(), buffer, offset);
     }
+
 private:
     GateRef ChangeByteArrayTaggedPointerToInt64(GateRef x)
     {
         return GetEnvironment()->GetBuilder()->ChangeTaggedPointerToInt64(x);
     }
-private:
+
     void BuildArrayIterator(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath, IterationKind iteratorKind);
 };

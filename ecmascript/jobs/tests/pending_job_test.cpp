@@ -64,7 +64,7 @@ HWTEST_F_L0(PendingJobTest, GetJob)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
-    JSHandle<TaggedArray> handleArgv = factory->NewTaggedArray(0);
+    JSHandle<TaggedArray> handleArgv = factory->EmptyArray();
     JSHandle<JSFunction> handleFunc = factory->NewJSFunction(env);
 
     JSHandle<JSTaggedValue> handlePendingJobVal(factory->NewPendingJob(handleFunc, handleArgv));
@@ -89,7 +89,7 @@ HWTEST_F_L0(PendingJobTest, GetArguments)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
-    JSHandle<TaggedArray> handleArgv1 = factory->NewTaggedArray(0);
+    JSHandle<TaggedArray> handleArgv1 = factory->EmptyArray();
     JSHandle<JSFunction> handleFunc = factory->NewJSFunction(env);
 
     JSHandle<JSTaggedValue> handlePendingJobVal(factory->NewPendingJob(handleFunc, handleArgv1));

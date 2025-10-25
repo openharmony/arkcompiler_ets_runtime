@@ -1244,7 +1244,7 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
             replHandle.Update(replStrDeocodeValue);
         } else {
             // Let captures be an empty List.
-            JSHandle<TaggedArray> capturesList = factory->NewTaggedArray(0);
+            JSHandle<TaggedArray> capturesList = factory->EmptyArray();
             ASSERT_PRINT(replaceTag->IsString(), "replace must be string");
             JSHandle<EcmaString> replacement(thread, replaceTag->GetTaggedObject());
             // Let replStr be GetSubstitution(matched, string, pos, captures, replaceValue)
