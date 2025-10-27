@@ -46,6 +46,8 @@ public:
         Register op1, Register op2, Label *stackOverflow);
     static void StackOverflowCheck(ExtendedAssembler *assembler, Register glue, Register numArgs, Register op1,
         Register op2, Label *stackOverflow);
+    static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
+    static void PopAsmBridgeFrame(ExtendedAssembler *assembler);
 };
 
 class OptimizedCall : public CommonCall {
@@ -99,9 +101,7 @@ private:
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
-    static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
     static void CallBuiltinTrampoline(ExtendedAssembler *assembler, Register temp);
-    static void PopAsmBridgeFrame(ExtendedAssembler *assembler);
     static void CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
                                            Register glue, Register temp);
     static void RemoveArgv(ExtendedAssembler *assembler, Register temp);
@@ -214,6 +214,7 @@ private:
                              Register callTargetRegister, Register methodRegister, Register accRegister = rInvalid,
                              bool hasException = false);
     static void CallNativeEntry(ExtendedAssembler *assembler, bool isJSFunction);
+    static void CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
     static bool PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);

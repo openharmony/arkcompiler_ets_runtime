@@ -927,29 +927,38 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
 
 void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJSFunction)
 {
+    Label callFastBuiltin;
+    Label callNativeBuiltin;
     Register glue = rdi;
     Register argv = r9;
     Register function = rsi;
     Register nativeCode = r10;
     // get native pointer
     if (isJSFunction) {
-        [[maybe_unused]] TempRegisterScope scope(assembler);
-        Register lexicalEnv = __ TempRegister();
-        
+        Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
+
         __ Movq(Operand(function, JSFunctionBase::CODE_ENTRY_OFFSET), nativeCode);
 
-        Label next;
-        __ Movq(Operand(function, JSFunction::LEXICAL_ENV_OFFSET), lexicalEnv);
-        __ Cmpq(JSTaggedValue::Undefined().GetRawData(), lexicalEnv);
-        __ Je(&next);
-        __ Movq(lexicalEnv, Operand(glue, JSThread::GlueData::GetCurrentEnvOffset(false)));
-        __ Bind(&next);
+        __ Btq(MethodLiteral::IsFastBuiltinBit::START_BIT, callFieldRegister);
+        __ Jb(&callFastBuiltin);
     } else {
         // JSProxy or JSBoundFunction
         Register method = rdx;
         __ Movq(Operand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET), nativeCode);
     }
 
+    __ Bind(&callNativeBuiltin);
+    if (isJSFunction) {
+        // For non-FastBuiltin native JSFunction, Call will enter C++ and GlobalEnv needs to be set on glue
+        [[maybe_unused]] TempRegisterScope scope(assembler);
+        Register lexicalEnv = __ TempRegister();
+        Label next;
+        __ Movq(Operand(function, JSFunction::LEXICAL_ENV_OFFSET), lexicalEnv);
+        __ Cmpq(JSTaggedValue::Undefined().GetRawData(), lexicalEnv);
+        __ Je(&next);
+        __ Movq(lexicalEnv, Operand(glue, JSThread::GlueData::GetCurrentEnvOffset(false)));
+        __ Bind(&next);
+    }
     __ PushAlignBytes();
     __ Push(function);
     // 3: 24 means skip thread & argc & returnAddr
@@ -966,6 +975,118 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
     // 5: 40 means skip function
     __ Addq(5 * FRAME_SLOT_SIZE, rsp);
     __ Ret();
+
+    __ Bind(&callFastBuiltin);
+    CallFastBuiltin(assembler, &callNativeBuiltin);
+}
+
+// InterpreterEntry attempts to call a fast builtin. Entry registers:
+// Input: glue           - %rdi
+//        callTarget     - %rsi
+//        method         - %rdx
+//        callField      - %rcx
+//        argc           - %r8
+//        argv           - %r9(<callTarget, newTarget, this> are at the beginning of argv)
+//        nativeCode     - %r10
+// Fast builtin uses C calling convention:
+// Input: glue           - %rdi
+//        nativeCode     - %rsi
+//        func           - %rdx
+//        newTarget      - %rcx
+//        this           - %r8
+//        argc           - %r9
+//        arg0           - stack
+//        arg1           - stack
+//        arg2           - stack
+void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin)
+{
+    Label dispatchTable[3]; // 3: call with argc = 0, 1, 2
+    Label callEntryAndRet;
+    Register glue = rdi;
+    Register argc = r8;
+    Register argv = r9;
+    Register method = rdx;
+    Register function = rsi;
+    Register nativeCode = r10;
+    Register temp = rax;
+    Register temp1 = r11;
+    // Get builtinId
+    __ Movq(Operand(method, Method::EXTRA_LITERAL_INFO_OFFSET), temp1);
+    __ Shr(MethodLiteral::BuiltinIdBits::START_BIT, temp1);
+    __ Andl((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1, temp1);
+    __ Cmpl(static_cast<int32_t>(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)), temp1);
+    __ Jge(callNativeBuiltin);
+
+    __ Cmpq(Immediate(3), argc); // 3: Quick arity check: we only handle argc <= 3 here
+    __ Jg(callNativeBuiltin);
+
+    // Resolve stub entry pointer: glue->builtinsStubEntries[builtinId]
+    __ Movq(Operand(glue, temp1, Times8, JSThread::GlueData::GetBuiltinsStubEntriesOffset(false)), temp1);
+    // Create AsmBridge frame
+    PushAsmBridgeFrame(assembler);
+
+    // Shuffle registers to match C calling convention, rdi(glue) already in place
+    __ Movq(function, temp); // Save function to temp
+    __ Movq(nativeCode, rsi); // rsi = nativeCode
+    __ Movq(temp, rdx); // rdx = func
+    __ Movq(argv, temp); // temp = argv
+    __ Movq(argc, r9); // r9 = argc
+    __ Movq(Operand(temp, FRAME_SLOT_SIZE), rcx); // rcx = newTarget
+    __ Movq(Operand(temp, DOUBLE_SLOT_SIZE), r8); // r8 = this
+
+    // Dispatch according to argc (0, 1, 2, or 3)
+    __ Cmp(Immediate(0), r9);
+    __ Je(&dispatchTable[0]);
+    __ Cmp(Immediate(1), r9);
+    __ Je(&dispatchTable[1]);
+    __ Cmp(Immediate(2), r9);
+    __ Je(&dispatchTable[2]);
+    // fallthrough to argc = 3
+
+    // argc = 3
+    __ Movq(Operand(temp, QUINTUPLE_SLOT_SIZE), r10);
+    __ Pushq(r10);
+    __ Movq(Operand(temp, QUADRUPLE_SLOT_SIZE), r10);
+    __ Pushq(r10);
+    __ Movq(Operand(temp, TRIPLE_SLOT_SIZE), r10);
+    __ Pushq(r10);
+    __ Jmp(&callEntryAndRet);
+
+    // argc = 0
+    __ Bind(&dispatchTable[0]);
+    {
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+        __ Jmp(&callEntryAndRet);
+    }
+    // argc = 1
+    __ Bind(&dispatchTable[1]);
+    {
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+        __ Movq(Operand(temp, TRIPLE_SLOT_SIZE), r10);
+        __ Pushq(r10);
+        __ Jmp(&callEntryAndRet);
+    }
+    // argc = 2
+    __ Bind(&dispatchTable[2]);
+    {
+        __ Pushq(JSTaggedValue::VALUE_UNDEFINED);
+        __ Movq(Operand(temp, QUADRUPLE_SLOT_SIZE), r10);
+        __ Pushq(r10);
+        __ Movq(Operand(temp, TRIPLE_SLOT_SIZE), r10);
+        __ Pushq(r10);
+        // fallthrough to callEntryAndRet
+    }
+
+    __ Bind(&callEntryAndRet);
+    {
+        __ Callq(temp1);
+        __ Addq(QUADRUPLE_SLOT_SIZE, rsp);
+        __ Pop(rbp);
+        __ Ret();
+    }
 }
 
 // uint64_t PushCallArgsAndDispatchNative(uintptr_t codeAddress, uintptr_t glue, uint32_t argc, ...)

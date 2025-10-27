@@ -1821,6 +1821,8 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newS
 
 void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJSFunction)
 {
+    Label callFastBuiltin;
+    Label callNativeBuiltin;
     Register glue(X0);
     Register argv(X5);
     Register function(X1);
@@ -1828,21 +1830,26 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
     Register temp(X9);
     // get native pointer
     if (isJSFunction) {
+        Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
         __ Ldr(nativeCode, MemoryOperand(function, JSFunctionBase::CODE_ENTRY_OFFSET));
-
-        Label next;
-        Register lexicalEnv = temp;
-        __ Ldr(lexicalEnv, MemoryOperand(function, JSFunction::LEXICAL_ENV_OFFSET));
-        __ Cmp(lexicalEnv, Immediate(JSTaggedValue::VALUE_UNDEFINED));
-        __ B(Condition::EQ, &next);
-        __ Str(lexicalEnv, MemoryOperand(glue, JSThread::GlueData::GetCurrentEnvOffset(false)));
-        __ Bind(&next);
+        __ Tbnz(callFieldRegister, MethodLiteral::IsFastBuiltinBit::START_BIT, &callFastBuiltin);
     } else {
         // JSProxy or JSBoundFunction
         Register method(X2);
         __ Ldr(nativeCode, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     }
 
+    __ Bind(&callNativeBuiltin);
+    // For non-FastBuiltin native JSFunction, Call will enter C++ and GlobalEnv needs to be set on glue
+    if (isJSFunction) {
+        Register lexicalEnv = temp;
+        Label next;
+        __ Ldr(lexicalEnv, MemoryOperand(function, JSFunction::LEXICAL_ENV_OFFSET));
+        __ Cmp(lexicalEnv, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+        __ B(Condition::EQ, &next);
+        __ Str(lexicalEnv, MemoryOperand(glue, JSThread::GlueData::GetCurrentEnvOffset(false)));
+        __ Bind(&next);
+    }
     Register sp(SP);
     // 2: function & align
     __ Stp(function, Register(Zero), MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
@@ -1856,6 +1863,114 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
     // 4: skip function
     __ Add(sp, sp, Immediate(4 * FRAME_SLOT_SIZE));
     __ Ret();
+
+    __ Bind(&callFastBuiltin);
+    CallFastBuiltin(assembler, &callNativeBuiltin);
+}
+
+// InterpreterEntry attempts to call a fast builtin. Entry registers:
+// Input: glue           - %X0
+//        callTarget     - %X1
+//        method         - %X2
+//        callField      - %X3
+//        argc           - %X4
+//        argv           - %X5(<callTarget, newTarget, this> are at the beginning of argv)
+//        nativeCode     - %7
+// Fast builtin uses C calling convention:
+// Input: glue           - %X0
+//        nativeCode     - %X1
+//        func           - %X2
+//        newTarget      - %X3
+//        this           - %X4
+//        argc           - %X5
+//        arg0           - %X6
+//        arg1           - %X7
+//        arg2           - stack
+void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin)
+{
+    Label dispatchTable[3]; // 3: call with argc = 0, 1, 2
+    Label callEntryAndRet;
+    Register sp(SP);
+    Register glue(X0);
+    Register function(X1);
+    Register method(X2);
+    Register argc(X4);
+    Register argv(X5);
+    Register nativeCode(X7);
+
+    Register builtinId = __ AvailableRegister1();
+    Register temp = __ AvailableRegister2();
+    // Get builtinId
+    __ Ldr(builtinId, MemoryOperand(method, Method::EXTRA_LITERAL_INFO_OFFSET));
+    __ And(builtinId.W(), builtinId.W(), LogicalImmediate::Create(0xff, RegWSize));
+    __ Cmp(builtinId.W(), Immediate(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)));
+    __ B(Condition::GE, callNativeBuiltin);
+
+    __ Cmp(argc, Immediate(3)); // 3: Quick arity check: we only handle argc <= 3 here
+    __ B(Condition::HI, callNativeBuiltin);
+
+    // Resolve stub entry pointer: glue->builtinsStubEntries[builtinId]
+    __ Add(builtinId, glue, Operand(builtinId.W(), UXTW, FRAME_SLOT_SIZE_LOG2));
+    __ Ldr(builtinId, MemoryOperand(builtinId, JSThread::GlueData::GetBuiltinsStubEntriesOffset(false)));
+    // Create AsmBridge frame
+    PushAsmBridgeFrame(assembler);
+    // Shuffle registers to match C calling convention, X0(glue) already in place
+    __ Mov(temp, function); // Save function to temp
+    __ Mov(X1, nativeCode); // X1 = nativeCode
+    __ Mov(X2, temp); // X2 = func
+    __ Mov(temp, argv); // temp = argv
+    __ Mov(X5, argc); // X5 = argc
+    __ Ldr(X3, MemoryOperand(temp, FRAME_SLOT_SIZE)); // X3 = newTarget
+    __ Ldr(X4, MemoryOperand(temp, DOUBLE_SLOT_SIZE)); // X4 = this
+
+    // Dispatch according to argc (0, 1, 2, or 3)
+    __ Cmp(X5, Immediate(0));
+    __ B(Condition::EQ, &dispatchTable[0]);
+    __ Cmp(X5, Immediate(1));
+    __ B(Condition::EQ, &dispatchTable[1]);
+    __ Cmp(X5, Immediate(2));
+    __ B(Condition::EQ, &dispatchTable[2]);
+    // fallthrough to argc = 3
+
+    // argc = 3
+    __ Ldr(Register(X7), MemoryOperand(temp, QUINTUPLE_SLOT_SIZE));
+    __ Stp(Register(X7), Register(X7), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+    __ Ldp(Register(X6), Register(X7), MemoryOperand(temp, TRIPLE_SLOT_SIZE));
+    __ B(&callEntryAndRet);
+
+    // argc = 0
+    __ Bind(&dispatchTable[0]);
+    {
+        __ Mov(Register(X6), Immediate(JSTaggedValue::VALUE_UNDEFINED));
+        __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));
+        __ Stp(Register(X7), Register(X7), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ B(&callEntryAndRet);
+    }
+    // argc = 1
+    __ Bind(&dispatchTable[1]);
+    {
+        __ Ldr(Register(X6), MemoryOperand(temp, TRIPLE_SLOT_SIZE));
+        __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));
+        __ Stp(Register(X7), Register(X7), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ B(&callEntryAndRet);
+    }
+    // argc = 2
+    __ Bind(&dispatchTable[2]);
+    {
+        __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED)); // dummy for stack slot
+        __ Stp(Register(X7), Register(X7), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ Ldp(Register(X6), Register(X7), MemoryOperand(temp, TRIPLE_SLOT_SIZE));
+        // fallthrough to callEntryAndRet
+    }
+
+    __ Bind(&callEntryAndRet);
+    {
+        __ Blr(builtinId);
+        __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE));
+        // Tear down frame and return
+        PopAsmBridgeFrame(assembler);
+        __ Ret();
+    }
 }
 
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue,
