@@ -13,3 +13,4 @@
 
 true
 RangeError: invalid timeZone
+USD 789.12
