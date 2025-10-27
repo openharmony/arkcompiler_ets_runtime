@@ -1718,4 +1718,11 @@ try {
     assert_unreachable();
 }
 
+{
+    for (let i = 0; i <= 100000; ++i) { }
+    let typedArray = new Float32Array(3)
+    typedArray[0] = 6;
+    assert_equal(typedArray[-0.0], 6);
+}
+
 test_end();

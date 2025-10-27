@@ -209,16 +209,29 @@ OperationResult JSTypedArray::GetProperty(JSThread *thread, const JSHandle<JSTag
     // 1. Assert : IsPropertyKey(P) is true.
     ASSERT(JSTaggedValue::IsPropertyKey(key));
     // 2. If Type(P) is String and if SameValue(O, Receiver) is true, then
-    if ((key->IsString() || key->IsNumber()) && JSTaggedValue::SameValue(thread, typedarray, receiver)) {
-        //   a. Let numericIndex be CanonicalNumericIndexString (P).
-        //   b. Assert: numericIndex is not an abrupt completion.
-        //   c. If numericIndex is not undefined, then
-        //     i. Return IntegerIndexedElementGet (O, numericIndex).
-        JSTaggedValue numericIndex = JSTaggedValue::CanonicalNumericIndexString(thread, key);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(
-            thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
-        if (!numericIndex.IsUndefined()) {
-            return JSTypedArray::IntegerIndexedElementGet(thread, typedarray, numericIndex);
+    JSTaggedValue numericIndex = JSTaggedValue::Undefined();
+    if (key->IsString()) {
+        if (JSTaggedValue::SameValue(thread, typedarray, receiver)) {
+            //   a. Let numericIndex be CanonicalNumericIndexString (P).
+            //   b. Assert: numericIndex is not an abrupt completion.
+            //   c. If numericIndex is not undefined, then
+            //     i. Return IntegerIndexedElementGet (O, numericIndex, V).
+            numericIndex = JSTaggedValue::CanonicalNumericIndexString(thread, key);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(
+                thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+            if (!numericIndex.IsUndefined()) {
+                return JSTypedArray::IntegerIndexedElementGet<true>(thread, typedarray, numericIndex);
+            }
+        }
+    } else if (key->IsNumber()) {
+        if (JSTaggedValue::SameValue(thread, typedarray, receiver)) {
+            //   a. Let numericIndex be key.
+            //   b. If numericIndex is not undefined, then
+            //     i. Return IntegerIndexedElementGetForNum (O, numericIndex, V).
+            numericIndex = key.GetTaggedValue();
+            if (!numericIndex.IsUndefined()) {
+                return JSTypedArray::IntegerIndexedElementGet<false>(thread, typedarray, numericIndex);
+            }
         }
     }
 
@@ -366,6 +379,8 @@ JSHandle<TaggedArray> JSTypedArray::OwnEnumPropertyKeys(JSThread *thread, const 
 // 9.4.5.7 IntegerIndexedObjectCreate (prototype, internalSlotsList)
 
 // 9.4.5.8 IntegerIndexedElementGet ( O, index )
+// If isString is true, the detection of -0.0 returns undefined.
+template <bool isString>
 OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const JSHandle<JSTaggedValue> &typedarray,
                                                        JSTaggedValue index)
 {
@@ -404,8 +419,10 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     double tNegZero = -0.0;
     auto eZero = JSTaggedNumber(tNegZero);
     JSHandle<JSTaggedValue> zero(thread, JSTaggedValue(0));
-    if (JSTaggedNumber::SameValue(indexNumber, eZero)) {
-        return OperationResult(thread, JSTaggedValue::Undefined(), PropertyMetaData(true));
+    if constexpr (isString) {
+        if (JSTaggedNumber::SameValue(indexNumber, eZero)) {
+            return OperationResult(thread, JSTaggedValue::Undefined(), PropertyMetaData(true));
+        }
     }
     uint32_t arrLen = typedarrayObj->GetArrayLength();
     JSHandle<JSTaggedValue> arrLenHandle(thread, JSTaggedValue(arrLen));

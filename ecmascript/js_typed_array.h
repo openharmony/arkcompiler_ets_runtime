@@ -83,6 +83,7 @@ public:
     static JSHandle<TaggedArray> OwnEnumPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &typedarray);
     // 9.4.5.7 IntegerIndexedObjectCreate (prototype, internalSlotsList)
     // 9.4.5.8 IntegerIndexedElementGet ( O, index )
+    template <bool isString = true>
     static OperationResult IntegerIndexedElementGet(JSThread *thread, const JSHandle<JSTaggedValue> &typedarray,
                                                     JSTaggedValue index);
     static OperationResult FastElementGet(JSThread *thread, const JSHandle<JSTaggedValue> &typedarray, uint32_t index);
