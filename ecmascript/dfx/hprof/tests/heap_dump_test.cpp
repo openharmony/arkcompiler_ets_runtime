@@ -277,19 +277,7 @@ public:
         if (!file.Initialize(filePath) || !file.CheckAndGetHeaderAt(file.GetFileSize() - sizeof(uint64_t), 0)) {
             return false;
         }
-        if (!file.CheckAndGetHeaderAt(fileSize - sizeof(uint64_t), sizeof(uint32_t))) {
-            GTEST_LOG_(ERROR) << "sections header error!";
-            return false;
-        }
-
-        uint32_t sectionHeaderOffset = fileSize - (file.GetHeaderLeft() + 2) * sizeof(uint32_t);
-        section.resize(file.GetHeaderLeft());
-        if (!file.Seek(sectionHeaderOffset) || !file.ReadArray(section, file.GetHeaderLeft())) {
-            GTEST_LOG_(ERROR) << "read sections error!";
-            return false;
-        }
-
-        return true;
+        return rawheap_translate::RawHeap::ReadSectionInfo(file, fileSize, section);
     }
 
     JSHandle<JSTypedArray> CreateNumberTypedArray(JSType jsType)
@@ -1565,6 +1553,15 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName10)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_10.heapsnapshot", "\"Shared BigUint64 Array\""));
 }
 
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeUnKnowType)
+{
+    int jsTypeFirst = static_cast<int>(JSType::LINE_STRING);
+    for (int objType = jsTypeFirst; objType <= static_cast<int>(JSType::TYPE_LAST); objType++) {
+        CString res = JSHClass::DumpJSType(static_cast<JSType>(objType));
+        ASSERT_TRUE(res.find("unknown") == -1);
+    }
+}
+
 #ifndef PANDA_TARGET_ARM32
 #define CREATE_OBJECT_AND_ADD_REFS(generator, typeName, refs)           \
     {                                                                   \
@@ -1708,14 +1705,14 @@ HWTEST_F_L0(HeapDumpTest, TestGenerateHashInRawheap)
     ASSERT_TRUE(tester.CheckHashInRawheap(thread_, vec, rawHeapPath));
 }
 
-HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMin)
+HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV1)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
     std::vector<Reference> vec;
     CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
-    std::string rawHeapPath("test_binary_dump_addrtable_size_min.rawheap");
+    std::string rawHeapPath("test_binary_dump_addrtable_size_min_V1.rawheap");
     DumpSnapShotOption dumpOption;
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
 
@@ -1729,7 +1726,35 @@ HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMin)
     std::fwrite(reinterpret_cast<char *>(&testUnitSize), sizeof(testUnitSize), sizeof(testUnitSize), fd);
     std::fclose(fd);
 
-    std::string heapsnapshotPath("test_binary_dump_addrtable_size_min.heapsnapshot");
+    std::string heapsnapshotPath("test_binary_dump_addrtable_size_min_V1.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_FALSE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV2)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_binary_dump_addrtable_size_min_V2.rawheap");
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+
+    std::vector<uint32_t> sections;
+    ASSERT_TRUE(tester.ReadRawHeapSectionInfo(rawHeapPath, sections));
+    // 修改objectTable的UnitSize
+    FILE* fd = std::fopen(rawHeapPath.c_str(), "rb+");
+    ASSERT_TRUE(fd != nullptr);
+    uint32_t testUnitSize = sizeof(uint64_t) - 1;
+    std::fseek(fd, sections[4] + sizeof(uint32_t), SEEK_SET);
+    std::fwrite(reinterpret_cast<char *>(&testUnitSize), sizeof(testUnitSize), sizeof(testUnitSize), fd);
+    std::fclose(fd);
+
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::DEFAULT);
+    std::string heapsnapshotPath("test_binary_dump_addrtable_size_min_V2.heapsnapshot");
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
     ASSERT_FALSE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
 }
