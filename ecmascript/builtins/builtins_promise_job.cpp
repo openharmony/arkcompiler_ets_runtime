@@ -25,6 +25,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/module/static/static_module_loader.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 
 namespace panda::ecmascript::builtins {
 using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
@@ -147,6 +148,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     // Resolve request module's ohmurl
     CString entryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
     CString fileName = ModulePathHelper::Utf8ConvertToString(thread, dirPath.GetTaggedValue());
+    // When hot reload happens inside `then()`, restore the base filename or the module may not be found
+    fileName = vm->GetQuickFixManager()->GetBaseFileNameForHotReload(thread, fileName);
     CString requestPath = ModulePathHelper::Utf8ConvertToString(thread, specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
     ModuleTraceScope moduleTraceScope(thread, "BuiltinsPromiseJob::DynamicImport:" + requestPath);

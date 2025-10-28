@@ -287,10 +287,8 @@ CUnorderedSet<CString> QuickFixManager::ParseStackInfo(const CString &stackInfo)
     return methodNames;
 }
 
-CString QuickFixManager::GetBaseFileName(const JSHandle<SourceTextModule> &module)
+CString QuickFixManager::GetBaseFileName(const CString &fileName)
 {
-    CString fileName = module->GetEcmaModuleFilenameString();
-    // Return the baseFileName of the patch module
     if (fileName.find(ModulePathHelper::EXT_NAME_HQF) != std::string::npos) {
         auto it = patchAndBaseFileNameMap_.find(fileName);
         if (it != patchAndBaseFileNameMap_.end()) {
@@ -300,5 +298,11 @@ CString QuickFixManager::GetBaseFileName(const JSHandle<SourceTextModule> &modul
         }
     }
     return fileName;
+}
+
+CString QuickFixManager::GetBaseFileName(const JSHandle<SourceTextModule> &module)
+{
+    CString fileName = module->GetEcmaModuleFilenameString();
+    return GetBaseFileName(fileName);
 }
 }  // namespace panda::ecmascript
