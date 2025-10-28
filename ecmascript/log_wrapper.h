@@ -22,7 +22,7 @@
 #define LOG_NO_TAG(level) ARK_LOG(level, Component::NO_TAG)
 #define LOG_ECMA(level) ARK_LOG(level, Component::ECMASCRIPT)
 #define LOG_PGO(level) ARK_LOG(level, Component::PGO)
-#define LOG_FULL(level) ARK_LOG(level, Component::ALL) << "[" << __func__ << ":" << __LINE__ << "] "
+#define LOG_FULL(level) ARK_LOG(level, Component::ALL) << "[" << __func__ << "] "
 #define LOG_INTERPRETER(level) ARK_LOG(level, Component::INTERPRETER)
 #define LOG_COMPILER(level) ARK_LOG(level, Component::COMPILER)
 #define LOG_DEBUGGER(level) ARK_LOG(level, Component::DEBUGGER)
