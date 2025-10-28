@@ -131,7 +131,7 @@ private:
                                                        const JSHandle<JSObject> &obj,
                                                        const DataViewType arrayType);
     template <TypedArrayKind typedArrayKind = TypedArrayKind::NON_SHARED>
-    static JSTaggedValue FastCopyElementFromArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
+    static JSTaggedValue FastCopyElementFromArrayForCtor(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                                          const DataViewType arrayType);
 };
 }  // namespace panda::ecmascript::base

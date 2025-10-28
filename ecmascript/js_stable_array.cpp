@@ -1498,6 +1498,84 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
     return JSTaggedValue::Undefined();
 }
 
+template JSTaggedValue JSStableArray::CopyArrayToTypedArrayForCtor<TypedArrayKind::SHARED>(
+    JSThread *thread, JSHandle<JSTypedArray> &targetArray, DataViewType targetType,
+    uint64_t targetOffset, uint32_t srcLength, JSHandle<JSObject> &obj);
+template JSTaggedValue JSStableArray::CopyArrayToTypedArrayForCtor<TypedArrayKind::NON_SHARED>(
+    JSThread *thread, JSHandle<JSTypedArray> &targetArray, DataViewType targetType,
+    uint64_t targetOffset, uint32_t srcLength, JSHandle<JSObject> &obj);
+
+template<TypedArrayKind typedArrayKind>
+JSTaggedValue JSStableArray::CopyArrayToTypedArrayForCtor(JSThread *thread, JSHandle<JSTypedArray> &targetArray,
+                                                          DataViewType targetType, uint64_t targetOffset,
+                                                          uint32_t srcLength, JSHandle<JSObject> &obj)
+{
+    JSHandle<JSTaggedValue> targetBuffer(thread, targetArray->GetViewedArrayBufferOrByteArray(thread));
+    // If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
+    if (BuiltinsArrayBufferType<typedArrayKind>::Type::IsDetachedBuffer(thread, targetBuffer.GetTaggedValue())) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
+                                    JSTaggedValue::Exception());
+    }
+    uint32_t targetLength = targetArray->GetArrayLength();
+    uint32_t targetByteOffset = targetArray->GetByteOffset();
+    uint32_t targetElementSize = TypedArrayHelper::GetSizeFromType(targetType);
+    if (srcLength + targetOffset > targetLength) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "The sum of length and targetOffset is greater than targetLength.",
+                                     JSTaggedValue::Exception());
+    }
+    uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
+    ContentType contentType = targetArray->GetContentType();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> elements(thread, obj->GetElements(thread));
+    uint32_t elemLen = elements->GetLength();
+    if (contentType == ContentType::BigInt) {
+        JSHandle<TaggedArray> copyElememts = factory->CopyArray(elements, elemLen, elemLen);
+        JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
+        JSMutableHandle<JSTaggedValue> elem(thread, JSTaggedValue::Hole());
+        for (uint32_t i = 0; i < srcLength; i++) {
+            if (i < elemLen) {
+                elem.Update(copyElememts->Get(thread, i)); // consider element kind
+            } else {
+                elem.Update(JSTaggedValue::Hole());
+            }
+            kValue.Update(JSTaggedValue::ToBigInt(thread, elem));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            BuiltinsArrayBufferType<typedArrayKind>::Type::SetValueInBuffer(
+                thread, targetBuffer.GetTaggedValue(), targetByteIndex, targetType, kValue, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            targetByteIndex += targetElementSize;
+        }
+    } else {
+        double val = 0.0;
+        uint32_t copyLen = srcLength > elemLen ? elemLen : srcLength;
+        // only copy elements within copyLen
+        JSHandle<TaggedArray> copyElememts = factory->CopyArray(elements, copyLen, copyLen);
+        for (uint32_t i = 0; i < copyLen; i++) {
+            JSTaggedValue taggedVal = copyElememts->Get(thread, i); // consider element kind
+            if (!taggedVal.IsNumber()) {
+                JSTaggedNumber taggedNumber = JSTaggedValue::ToNumber(thread, taggedVal);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                val = taggedNumber.GetNumber();
+            } else {
+                val = taggedVal.GetNumber();
+            }
+            BuiltinsArrayBufferType<typedArrayKind>::Type::FastSetValueInBuffer(
+                thread, targetBuffer.GetTaggedValue(), targetByteIndex, targetType, val, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            targetByteIndex += targetElementSize;
+        }
+
+        for (uint32_t i = copyLen; i < srcLength; i++) {
+            val = JSTaggedNumber(base::NAN_VALUE).GetNumber();
+            BuiltinsArrayBufferType<typedArrayKind>::Type::FastSetValueInBuffer(
+                thread, targetBuffer.GetTaggedValue(), targetByteIndex, targetType, val, true);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            targetByteIndex += targetElementSize;
+        }
+    }
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
 {
     JSThread *thread = argv->GetThread();

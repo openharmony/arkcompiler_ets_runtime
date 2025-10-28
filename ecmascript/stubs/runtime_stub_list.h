@@ -414,7 +414,7 @@ namespace panda::ecmascript {
     V(ModuleNamespaceHasProperty)                              \
     V(JSObjectHasProperty)                                     \
     V(HasProperty)                                             \
-    V(FastCopyFromArrayToTypedArray)                           \
+    V(CopyArrayToTypedArrayForCtor)                           \
     V(BigIntConstructor)                                       \
     V(ObjectPrototypeHasOwnProperty)                           \
     V(ReflectHas)                                              \
