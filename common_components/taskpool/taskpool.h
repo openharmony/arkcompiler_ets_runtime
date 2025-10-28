@@ -28,7 +28,7 @@ public:
     PUBLIC_API static Taskpool *GetCurrentTaskpool();
 
     Taskpool() = default;
-    PUBLIC_API ~Taskpool()
+    virtual PUBLIC_API ~Taskpool()
     {
         std::lock_guard<std::mutex> guard(mutex_);
         runner_->TerminateThread();
