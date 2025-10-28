@@ -666,4 +666,79 @@ HWTEST_F_L0(JSNApiTests, JSNApi_DeserializeValue_String)
     ASSERT_FALSE(local->IsObject(vm_));
 }
 
+
+class SendableReference {
+public:
+    SendableReference(EcmaVM *vm, Local<ObjectRef> obj) : vm_(vm), obj_(vm, obj) {}
+    ~SendableReference()
+    {
+        obj_.FreeSendableGlobalHandleAddr(vm_);
+    };
+
+    bool CheckToLocal()
+    {
+        Local<ObjectRef> local = obj_.ToLocal(vm_);
+        return local->IsObject(vm_);
+    }
+
+    bool CheckIsEmpty()
+    {
+        return obj_.IsEmpty();
+    }
+
+private:
+    EcmaVM *vm_;
+    SendableGlobal<ObjectRef> obj_;
+};
+
+HWTEST_F_L0(JSNApiTests, SendableGlobal001)
+{
+    ecmascript::ThreadManagedScope managedScope(thread_);
+    SendableGlobal<ObjectRef> ref;
+    EXPECT_TRUE(ref.IsEmpty());
+    Local<ObjectRef> local = ref.ToLocal(vm_);
+    EXPECT_TRUE(local.IsEmpty());
+    EXPECT_EQ(*ref, nullptr);
+    ref.FreeSendableGlobalHandleAddr(vm_);
+}
+
+HWTEST_F_L0(JSNApiTests, SendableGlobal002)
+{
+    ecmascript::ThreadManagedScope managedScope(thread_);
+    auto sHeap = SharedHeap::GetInstance();
+    // get old size
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+    auto oldSize = sHeap->GetOldSpace()->GetHeapObjectSize();
+
+    // create sendable global object
+    SendableReference *ref;
+    {
+        LocalScope scope(vm_);
+        auto obj = ObjectRef::NewS(vm_);
+        ref = new SendableReference(vm_, obj);
+    }
+
+    // get new size
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+    size_t newSize = sHeap->GetOldSpace()->GetHeapObjectSize();
+    if (!g_isEnableCMCGC) {
+        EXPECT_TRUE(newSize > oldSize);
+    }
+
+    {
+        LocalScope scope(vm_);
+        EXPECT_TRUE(ref->CheckToLocal());
+        EXPECT_FALSE(ref->CheckIsEmpty());
+    }
+
+    delete ref;
+    // get new size after delete
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
+    auto newSizeAfterDelete = sHeap->GetOldSpace()->GetHeapObjectSize();
+    if (!g_isEnableCMCGC) {
+        EXPECT_TRUE(newSizeAfterDelete < newSize);
+        EXPECT_EQ(newSizeAfterDelete, oldSize);
+    }
+}
+
 }  // namespace panda::test

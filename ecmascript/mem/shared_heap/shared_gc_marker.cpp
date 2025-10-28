@@ -24,6 +24,7 @@ namespace panda::ecmascript {
 void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkRoots", "");
+    MarkSendableGlobalStorage(visitor);
     MarkSerializeRoots(visitor);
     MarkSharedModule(visitor);
     MarkStringCache(visitor);
@@ -75,6 +76,12 @@ void SharedGCMarkerBase::MarkStringCache(RootVisitor &visitor)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkStringCache", "");
     Runtime::GetInstance()->IterateCachedStringRoot(visitor);
+}
+
+void SharedGCMarkerBase::MarkSendableGlobalStorage(RootVisitor &visitor)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSendableGlobalStorage", "");
+    Runtime::GetInstance()->IterateSendableGlobalStorage(visitor);
 }
 
 void SharedGCMarkerBase::MarkSharedModule(RootVisitor &visitor)

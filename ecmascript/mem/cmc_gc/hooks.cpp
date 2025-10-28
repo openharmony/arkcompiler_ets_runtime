@@ -133,6 +133,9 @@ void VisitDynamicGlobalRoots(const RefFieldVisitor &visitorFunc)
     // MarkStringCache
     runtime->IterateCachedStringRoot(visitor);
 
+    // MarkSendableGlobalHandle
+    runtime->IterateSendableGlobalStorage(visitor);
+
     if (!panda::ecmascript::g_isEnableCMCGCConcurrentRootMarking) {
         // MarkSharedModule
         panda::ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
@@ -238,6 +241,9 @@ void VisitDynamicConcurrentRoots(const RefFieldVisitor &visitorFunc)
     panda::ecmascript::Runtime *runtime = panda::ecmascript::Runtime::GetInstance();
     // MarkSharedModule
     panda::ecmascript::SharedModuleManager::GetInstance()->Iterate(visitor);
+
+    // MarkSendableGlobalHandle
+    runtime->IterateSendableGlobalStorage(visitor);
 
     runtime->GCIterateThreadList([&](JSThread *thread) {
         auto vm = thread->GetEcmaVM();

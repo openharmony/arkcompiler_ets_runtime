@@ -45,6 +45,7 @@ public:
     void MarkRoots(RootVisitor &visitor, SharedMarkType markType);
     void MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType);
     void CollectLocalVMRSet(EcmaVM *localVm);
+    void MarkSendableGlobalStorage(RootVisitor &visitor);
     void MarkStringCache(RootVisitor &visitor);
     void MarkSerializeRoots(RootVisitor &visitor);
     void MarkSharedModule(RootVisitor &visitor);

@@ -750,6 +750,7 @@ public:
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;
     bool IsSharedType() const;
+    bool IsSendable() const;
 
     bool PUBLIC_API IsInSharedHeap() const;
     bool IsInSharedSweepableSpace() const;

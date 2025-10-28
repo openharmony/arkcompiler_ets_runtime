@@ -1475,5 +1475,11 @@ inline JSHandle<JSTaggedValue> JSTaggedValue::PublishSharedValue(JSThread *threa
     }
     return value;
 }
+
+inline bool JSTaggedValue::IsSendable() const
+{
+    return IsJSShared() || IsString() || IsNumber() || IsBoolean() ||
+         IsUndefined() || IsNull() || IsBigInt();
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_VALUE_INL_H

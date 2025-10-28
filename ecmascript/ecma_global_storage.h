@@ -556,7 +556,10 @@ private:
     inline uintptr_t NewGlobalHandleImplement(NodeList<S> **storage, NodeList<S> **freeList, JSTaggedType value)
     {
 #if ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK
-        thread_->CheckJSTaggedType(value);
+        // sendableGlobalStorage's thread is nullptr
+        if (thread_) {
+            thread_->CheckJSTaggedType(value);
+        }
 #endif
         if (!(*storage)->IsFull()) {
             // alloc new block
