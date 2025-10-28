@@ -3751,7 +3751,9 @@ JSTaggedValue RuntimeStubs::CallBoundFunction(EcmaRuntimeCallInfo *info)
 DEF_RUNTIME_STUBS(DeoptHandler)
 {
     RUNTIME_STUBS_HEADER(DeoptHandler);
-    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetTArg(argv, argc, 0));
+    // deoptType must be tagged because maybe gc will happen, if not, gc will accidentally scan it as heap object.
+    ASSERT(GetArg(argv, argc, 0).IsInt());
+    kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetArg(argv, argc, 0).GetInt());
     JSHandle<JSTaggedValue> maybeAcc = GetHArg<JSTaggedValue>(argv, argc, 1);
     size_t depth = Deoptimizier::GetInlineDepth(thread);
     Deoptimizier deopt(thread, depth, type);
