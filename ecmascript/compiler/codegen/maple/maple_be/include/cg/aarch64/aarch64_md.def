@@ -942,6 +942,19 @@ DEFINE_MOP(MOP_is_stable_elements, {&OpndDesc::Reg32ID, &OpndDesc::Reg64IS, &Opn
 DEFINE_MOP(MOP_has_pending_exception, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Imm64, &OpndDesc::Imm64},ISINTRINSIC,kLtAlu,"__has_pending_exception","0,1,2,3",3)
 
 /*
+ * adr lr .fallthrough
+ * tbnz        x28, 56, .slowpath
+ */
+DEFINE_MOP(MOP_load_intrinsic, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS, &OpndDesc::Imm64},ISINTRINSIC|ISCALL,kLtAlu,"__load_intrinsic","0,1,2,3",3)
+
+/*
+ * adr lr .fallthrough
+ * ubfx x16, x28, 56, 1
+ * cbnz        x16, .slowpath
+ */
+DEFINE_MOP(MOP_load_intrinsic_jump, {&OpndDesc::Reg64ID, &OpndDesc::Reg64IS, &OpndDesc::Reg64IS, &OpndDesc::Imm64},ISINTRINSIC|ISCALL,kLtAlu,"__load_intrinsic","0,1,2,3",4)
+
+/*
  * ldr dest, [src, MACHINECODE_OFFSET]
  * ldr dest, [dest, CONSTANT_TABLE_OFFSET]
  */

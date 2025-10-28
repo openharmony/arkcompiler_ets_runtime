@@ -233,6 +233,7 @@ private:
     void AddFunc();
     void CollectDerivedRefInfo();
     void HandleBB(const std::vector<GateRef> &bb, std::unordered_set<OpCode> &usedOpcodeSet);
+    void RecordHLValueForBarrier();
     bool IsLogEnabled() const
     {
         return enableLog_;

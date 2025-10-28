@@ -42,6 +42,7 @@ public:
     void PushArgsWithArgv(Register argc, Register argv, Register operatorRegister);
     void PushArgc(int32_t argc, Register tempArgcRegister);
     void PushArgc(Register argcRegister, Register tempArgcRegister);
+    void UpdateReadBarrier(Register glueReg = r15);
 
     Register TempRegister()
     {

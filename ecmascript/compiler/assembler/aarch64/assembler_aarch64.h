@@ -326,6 +326,8 @@ public:
     void Ubfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
     void Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms);
 
+    void Adr(const Register &rd, Label *label);
+    void Adr(const Register &rd, int32_t imm);
     void Add(const Register &rd, const Register &rn, const Operand &operand);
     void Adds(const Register &rd, const Register &rn, const Operand &operand);
     void Sub(const Register &rd, const Register &rn, const Operand &operand);

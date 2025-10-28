@@ -116,6 +116,13 @@ RegOperand *X64CGFunc::SelectIsCOWArray(IntrinsicopNode &node, Operand &opnd0, O
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
+
+RegOperand *X64CGFunc::SelectLoadIntrinsic(IntrinsicopNode &node, Operand &glue, Operand &base, Operand &fieldOffset)
+{
+    CHECK_FATAL(false, "NIY");
+    return nullptr;
+}
+
 void X64CGFunc::SelectComment(CommentNode &comment)
 {
     CHECK_FATAL(false, "NIY");

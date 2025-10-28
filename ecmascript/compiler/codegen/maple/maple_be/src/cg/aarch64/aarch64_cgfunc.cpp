@@ -4603,6 +4603,15 @@ RegOperand *AArch64CGFunc::SelectTaggedIsHeapObject(IntrinsicopNode &node, Opera
     return &destReg;
 }
 
+RegOperand *AArch64CGFunc::SelectLoadIntrinsic(IntrinsicopNode &node, Operand &glue, Operand &base,
+                                               Operand &fieldOffset)
+{
+    RegOperand &destReg = CreateRegisterOperandOfType(PTY_ptr);
+    MOperator mOp = MOP_load_intrinsic;
+    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, destReg, glue, base, fieldOffset));
+    return &destReg;
+}
+
 RegOperand *AArch64CGFunc::SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0,
                                                   Operand &opnd1, Operand &opnd2)
 {

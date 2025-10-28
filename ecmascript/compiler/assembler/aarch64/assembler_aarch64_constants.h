@@ -132,6 +132,12 @@ enum BranchOpCode {
     TBNZ        = 0x37000000,
 };
 
+// adr code
+enum AdrOpCode {
+    Adr         = 0x10000000,
+    AdrMask     = 0xff000000,
+};
+
 // brk code
 enum BrkOpCode {
     BRKImm      = 0xd4200000,

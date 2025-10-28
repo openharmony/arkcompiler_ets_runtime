@@ -62,7 +62,8 @@ void AArch64ObjFuncEmitInfo::HandleLocalBranchFixup(const std::vector<uint32> &l
         CHECK_FATAL((defOffset != 0xFFFFFFFFULL || static_cast<AArch64FixupKind>(fixupKind) == kAArch64LoadPCRelImm19),
                     "fixup is not local");
         if (static_cast<AArch64FixupKind>(fixupKind) == kAArch64CondBranchPCRelImm19 ||
-            static_cast<AArch64FixupKind>(fixupKind) == kAArch64CompareBranchPCRelImm19) {
+            static_cast<AArch64FixupKind>(fixupKind) == kAArch64CompareBranchPCRelImm19 ||
+            static_cast<AArch64FixupKind>(fixupKind) == kAArch64PCRelAdrImm21) {
             uint32 pcRelImm = (defOffset - useOffset) >> k2BitSize;
             uint32 mask = 0x7FFFF;
 #ifdef EMIT_DEBUG
@@ -473,6 +474,10 @@ uint32 AArch64ObjEmitter::GetAdrLabelOpndValue(const Insn &insn, const Operand &
         Fixup *fixup =
             memPool->New<Fixup>(stOpnd.GetName(), stOpnd.GetOffset(), objFuncEmitInfo.GetTextDataSize(), fixupKind);
         objFuncEmitInfo.AppendGlobalFixups(*fixup);
+    } else if (opnd.IsLabelOpnd()) {
+        uint32 labelIndex = static_cast<const LabelOperand &>(opnd).GetLabelIndex();
+        LocalFixup *fixup = memPool->New<LocalFixup>(labelIndex, objFuncEmitInfo.GetTextDataSize(), fixupKind);
+        objFuncEmitInfo.AppendLocalFixups(*fixup);
     } else {
         CHECK_FATAL(opnd.IsImmediate(), "check kind failed");
     }
@@ -1176,10 +1181,12 @@ uint32 AArch64ObjEmitter::GenLoadStoreRegInsn(const Insn &insn, ObjFuncEmitInfo 
         OfstOperand *ofstOpnd = static_cast<OfstOperand *>(memOpnd.GetOffsetImmediate());
         /* Imm */
         int32 offsetValue = ofstOpnd != nullptr ? ofstOpnd->GetOffsetValue() : 0;
-        if ((((size == k16BitSize) && (offsetValue % k2BitSize) != 0) ||
-             ((size == k32BitSize) && (offsetValue % k4BitSize) != 0) ||
-             ((size == k64BitSize) && (offsetValue % k8BitSize) != 0)) &&
-            ((offsetValue < k256BitSizeInt) && (offsetValue >= kNegative256BitSize))) {
+        // when offset is negative and pre/post index is not expected, use ldur/stur instead.
+        if ((offsetValue < 0 && memOpnd.IsIntactIndexed()) ||
+            ((((size == k16BitSize) && (offsetValue % k2BitSize) != 0) ||
+            ((size == k32BitSize) && (offsetValue % k4BitSize) != 0) ||
+            ((size == k64BitSize) && (offsetValue % k8BitSize) != 0)) &&
+            ((offsetValue < k256BitSizeInt) && (offsetValue >= kNegative256BitSize)))) {
             uint32 mopEncode = 0;
             // ldur, ldurh, ldurb
             if (insn.IsLoad()) {
@@ -1195,9 +1202,10 @@ uint32 AArch64ObjEmitter::GenLoadStoreRegInsn(const Insn &insn, ObjFuncEmitInfo 
                     mopEncode = size == k16BitSize ? 0x78000000 : (size == k32BitSize ? 0xb8000000 : 0xf8000000);
                 }
             }
+            uint32 imm9Mask = 0x1ff;
             binInsn =
                 GetOpndMachineValue(insn.GetOperand(kInsnFirstOpnd)) | (GetOpndMachineValue(*baseReg) << kShiftFive);
-            return binInsn | mopEncode | (offsetValue << kShiftTwelve);
+            return binInsn | mopEncode | ((static_cast<uint32_t>(offsetValue) & imm9Mask) << kShiftTwelve);
         }
         return binInsn | GenLoadStoreModeBOi(insn);
     } else if (memOpnd.GetAddrMode() == MemOperand::kAddrModeBOrX) {
@@ -1823,7 +1831,358 @@ void AArch64ObjEmitter::EmitIsCowArray(const Insn &insn, const std::vector<uint3
     return;
 }
 
-void AArch64ObjEmitter::EmitIntrinsicInsn(const Insn &insn, const std::vector<uint32> &label2Offset,
+void AArch64ObjEmitter::EmitLoadIntrinsic(const Insn &insn, std::vector<uint32> &label2Offset,
+                                          ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    uint32 schemeNoOpt = 1;
+    uint32 schemeOptForSize = 3;
+    uint32 schemeOptForPerf = 4;
+    // default scheme is optforsize
+    auto scheme = schemeOptForSize;
+    if (scheme == schemeNoOpt) {
+        EmitLoadIntrinsic1(insn, label2Offset, objFuncEmitInfo);
+    } else if (scheme == schemeOptForSize) {
+        EmitLoadIntrinsic3(insn, label2Offset, objFuncEmitInfo);
+    } else if (scheme == schemeOptForPerf) {
+        EmitLoadIntrinsic4(insn, label2Offset, objFuncEmitInfo);
+    } else {
+        EmitLoadIntrinsic3(insn, label2Offset, objFuncEmitInfo);
+    }
+}
+
+void AArch64ObjEmitter::EmitLoadIntrinsic1(const Insn &insn, std::vector<uint32> &label2Offset,
+                                           ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc &>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand &baseReg = static_cast<RegOperand &>(insn.GetOperand(kInsnThirdOpnd));
+    ImmOperand &fieldOffsetReg = static_cast<ImmOperand &>(insn.GetOperand(kInsnFourthOpnd));
+    RegOperand &pregX0 = cgFunc.GetOrCreatePhysicalRegisterOperand(R0, k64BitSize, kRegTyInt);
+    RegOperand &pregX1 = cgFunc.GetOrCreatePhysicalRegisterOperand(R1, k64BitSize, kRegTyInt);
+    RegOperand &pregX2 = cgFunc.GetOrCreatePhysicalRegisterOperand(R2, k64BitSize, kRegTyInt);
+    RegOperand &pregX28 = cgFunc.GetOrCreatePhysicalRegisterOperand(R28, k64BitSize, kRegTyInt);
+    RegOperand &glueReg = pregX28;
+
+    LabelIdx slowpathLabel = CreateLabel(label2Offset);
+    LabelIdx fallthroughLabel = CreateLabel(label2Offset);
+
+    // tbnz x28, 1, .slowpath
+    LabelOperand &slowpathOpnd = cgFunc.GetOrCreateLabelOperand(slowpathLabel);
+    ImmOperand &gcStatusBitOpnd = cgFunc.CreateImmOperand(56, k16BitSize, false);
+    Insn &tbnz = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xtbnz, pregX28, gcStatusBitOpnd, slowpathOpnd);
+    EncodeInstruction(tbnz, label2Offset, objFuncEmitInfo);
+
+    // ldr dest, [base_opnd1, #offset_opnd2]
+    Operand &filedOpnd = cgFunc.CreateMemOpnd(baseReg, fieldOffsetReg.GetValue(), k64BitSize);
+    Insn &ldrField = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, filedOpnd);
+    EncodeInstruction(ldrField, label2Offset, objFuncEmitInfo);
+
+    // b .fallthrough
+    LabelOperand &fallthroughOpnd = cgFunc.GetOrCreateLabelOperand(fallthroughLabel);
+    Insn &gotoFallth = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xuncond, fallthroughOpnd);
+    EncodeInstruction(gotoFallth, label2Offset, objFuncEmitInfo);
+
+    // .slowpath
+    BindLabel(slowpathLabel, label2Offset, objFuncEmitInfo);
+
+    // add x1, base_opnd1, #offset_opnd2
+    auto dummyBB = cgFunc.CreateNewBB();
+    cgFunc.SetCurBB(*dummyBB);
+    cgFunc.SelectAdd(pregX1, baseReg, fieldOffsetReg, maple::PTY_ref);
+    FOR_BB_INSNS_CONST(insn, dummyBB)
+    {
+        EncodeInstruction(*insn, label2Offset, objFuncEmitInfo);
+    }
+    dummyBB->ClearInsns();
+
+    // mov x0, glue_opnd0
+    Insn &movInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovrr, pregX0, glueReg);
+    EncodeInstruction(movInsn, label2Offset, objFuncEmitInfo);
+
+    // ldr x2, [glue_opnd0, #getvaluewithbarrier]
+    Operand &stubAddrOpnd =
+        cgFunc.CreateMemOpnd(glueReg, cgFunc.GetMirModule().GetHLValue(maple::kGetValueWithBarrierOffset), k64BitSize);
+    Insn &ldrStub = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, pregX2, stubAddrOpnd);
+    EncodeInstruction(ldrStub, label2Offset, objFuncEmitInfo);
+
+    // blr x2
+    Insn &callStubInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xblr, pregX2);
+    EncodeInstruction(callStubInsn, label2Offset, objFuncEmitInfo);
+
+    if (destReg.GetRegisterNumber() != R0) {
+        // mov dest, x0
+        Insn &movToDstInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovrr, destReg, pregX0);
+        EncodeInstruction(movToDstInsn, label2Offset, objFuncEmitInfo);
+    }
+
+    // .fallthroth
+    BindLabel(fallthroughLabel, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+void AArch64ObjEmitter::EmitLoadIntrinsic3(const Insn &insn, std::vector<uint32> &label2Offset,
+                                           ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc &>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand &baseReg = static_cast<RegOperand &>(insn.GetOperand(kInsnThirdOpnd));
+    ImmOperand &fieldOffsetReg = static_cast<ImmOperand &>(insn.GetOperand(kInsnFourthOpnd));
+    RegOperand &pregX28 = cgFunc.GetOrCreatePhysicalRegisterOperand(R28, k64BitSize, kRegTyInt);
+
+    RegOperand &lr = cgFunc.GetOrCreatePhysicalRegisterOperand(RLR, k64BitSize, kRegTyInt);
+
+    LabelIdx slowpathLabel = GetOrCreateBarrierSlowPathLabel(baseReg.GetRegisterNumber(), label2Offset);
+    LabelIdx fallthroughLabel = CreateLabel(label2Offset);
+
+    // adr lr .fallthrough
+    LabelOperand &fallthroughOpnd = cgFunc.GetOrCreateLabelOperand(fallthroughLabel);
+    Insn &adrLR = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xadri64, lr, fallthroughOpnd);
+    EncodeInstruction(adrLR, label2Offset, objFuncEmitInfo);
+
+    LabelOperand &slowpathOpnd = cgFunc.GetOrCreateLabelOperand(slowpathLabel);
+    ImmOperand &gcStatusBitOpnd = cgFunc.CreateImmOperand(56, k8BitSize, false);
+    ImmOperand &oneBitLen = cgFunc.CreateImmOperand(1, k8BitSize, false);
+    if (insn.GetMachineOpcode() == MOP_load_intrinsic_jump) {
+        // ubfx x16, x28, 56, 1
+        // cbnz x16, .slowpath
+        RegOperand &tmp = cgFunc.GetOrCreatePhysicalRegisterOperand(R16, k64BitSize, kRegTyInt);
+        Insn &ubfx = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xubfxrri6i6, tmp, pregX28, gcStatusBitOpnd, oneBitLen);
+        Insn &cbnz = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcbnz, tmp, slowpathOpnd);
+        EncodeInstruction(ubfx, label2Offset, objFuncEmitInfo);
+        EncodeInstruction(cbnz, label2Offset, objFuncEmitInfo);
+    } else {
+        // tbnz x28, 1, .slowpath
+        LabelOperand &slowpathOpnd = cgFunc.GetOrCreateLabelOperand(slowpathLabel);
+        Insn &tbnz = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xtbnz, pregX28, gcStatusBitOpnd, slowpathOpnd);
+        EncodeInstruction(tbnz, label2Offset, objFuncEmitInfo);
+    }
+
+    // ldr dest, [base_opnd1, #offset_opnd2]
+    Operand &filedOpnd = cgFunc.CreateMemOpnd(baseReg, fieldOffsetReg.GetValue(), k64BitSize);
+    Insn &ldrField = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, filedOpnd);
+    EncodeInstruction(ldrField, label2Offset, objFuncEmitInfo);
+
+    // fallthroth
+    BindLabel(fallthroughLabel, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+void AArch64ObjEmitter::EmitLoadIntrinsic4(const Insn &insn, std::vector<uint32> &label2Offset,
+                                           ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc &>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &destReg = static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand &baseReg = static_cast<RegOperand &>(insn.GetOperand(kInsnThirdOpnd));
+    ImmOperand &fieldOffsetReg = static_cast<ImmOperand &>(insn.GetOperand(kInsnFourthOpnd));
+    RegOperand &pregX28 = cgFunc.GetOrCreatePhysicalRegisterOperand(R28, k64BitSize, kRegTyInt);
+
+    LabelIdx fallthroughLabel = CreateLabel(label2Offset);
+    LabelIdx slowpathLabel =
+        CreateSingleBarrierSlowPathLabel(baseReg.GetRegisterNumber(), destReg.GetRegisterNumber(),
+                                         fieldOffsetReg.GetValue(), fallthroughLabel, label2Offset);
+
+    LabelOperand &slowpathOpnd = cgFunc.GetOrCreateLabelOperand(slowpathLabel);
+    ImmOperand &gcStatusBitOpnd = cgFunc.CreateImmOperand(56, k8BitSize, false);
+    ImmOperand &oneBitLen = cgFunc.CreateImmOperand(1, k8BitSize, false);
+    if (insn.GetMachineOpcode() == MOP_load_intrinsic_jump) {
+        // ubfx x16, x28, 56, 1
+        // cbnz x16, .slowpath
+        RegOperand &tmp = cgFunc.GetOrCreatePhysicalRegisterOperand(R16, k64BitSize, kRegTyInt);
+        Insn &ubfx = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xubfxrri6i6, tmp, pregX28, gcStatusBitOpnd, oneBitLen);
+        Insn &cbnz = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xcbnz, tmp, slowpathOpnd);
+        EncodeInstruction(ubfx, label2Offset, objFuncEmitInfo);
+        EncodeInstruction(cbnz, label2Offset, objFuncEmitInfo);
+    } else {
+        // tbnz x28, 56, .slowpath
+        LabelOperand &slowpathOpnd = cgFunc.GetOrCreateLabelOperand(slowpathLabel);
+        Insn &tbnz = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xtbnz, pregX28, gcStatusBitOpnd, slowpathOpnd);
+        EncodeInstruction(tbnz, label2Offset, objFuncEmitInfo);
+    }
+
+    // ldr dest, [base_opnd1, #offset_opnd2]
+    Operand &filedOpnd = cgFunc.CreateMemOpnd(baseReg, fieldOffsetReg.GetValue(), k64BitSize);
+    Insn &ldrField = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, destReg, filedOpnd);
+    EncodeInstruction(ldrField, label2Offset, objFuncEmitInfo);
+
+    // fallthroth
+    BindLabel(fallthroughLabel, label2Offset, objFuncEmitInfo);
+    return;
+}
+
+LabelIdx AArch64ObjEmitter::CreateLabel(std::vector<uint32> &label2Offset)
+{
+    LabelIdx label = static_cast<LabelIdx>(label2Offset.size());
+    label2Offset.push_back(0xFFFFFFFFULL);
+    return label;
+}
+
+LabelIdx AArch64ObjEmitter::GetOrCreateBarrierSlowPathLabel(regno_t reg, std::vector<uint32> &label2Offset)
+{
+    auto it = commonBarrierSlowLabel.find(reg);
+    if (it != commonBarrierSlowLabel.end()) {
+        return it->second;
+    }
+    LabelIdx ret = CreateLabel(label2Offset);
+    commonBarrierSlowLabel[reg] = ret;
+    return ret;
+}
+
+LabelIdx AArch64ObjEmitter::CreateSingleBarrierSlowPathLabel(regno_t baseReg, regno_t dstReg, uint32_t offset,
+                                                             LabelIdx returnLabel, std::vector<uint32> &label2Offset)
+{
+    LabelIdx ret = CreateLabel(label2Offset);
+    singleSlowLabelInfo.emplace(ret, std::make_tuple(baseReg, dstReg, offset, returnLabel));
+    return ret;
+}
+
+void AArch64ObjEmitter::BindLabel(LabelIdx label, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    label2Offset[label] = objFuncEmitInfo.GetTextDataSize();
+    objFuncEmitInfo.AppendLabel2Order(label);
+}
+
+void AArch64ObjEmitter::EmitBarrierSlow(std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    if (!commonBarrierSlowLabel.empty()) {
+        for (auto &it : commonBarrierSlowLabel) {
+            EmitCommonBarrierSlowForReg(it.first, it.second, label2Offset, objFuncEmitInfo);
+        }
+        commonBarrierSlowLabel.clear();
+    }
+
+    if (!singleSlowLabelInfo.empty()) {
+        for (auto &it : singleSlowLabelInfo) {
+            EmitSingleBarrierSlow(it.first, it.second, label2Offset, objFuncEmitInfo);
+        }
+        singleSlowLabelInfo.clear();
+    }
+}
+
+void AArch64ObjEmitter::EmitSingleBarrierSlow(LabelIdx label,
+                                              const std::tuple<regno_t, regno_t, uint32_t, LabelIdx> &info,
+                                              std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc &>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &baseReg =
+        cgFunc.GetOrCreatePhysicalRegisterOperand(AArch64reg(std::get<0>(info)), k64BitSize, kRegTyInt);
+    RegOperand &destReg =
+        cgFunc.GetOrCreatePhysicalRegisterOperand(AArch64reg(std::get<1>(info)), k64BitSize, kRegTyInt);
+    ImmOperand &fieldOffsetReg = cgFunc.CreateImmOperand(std::get<2>(info), k32BitSize, false);
+    RegOperand &pregX0 = cgFunc.GetOrCreatePhysicalRegisterOperand(R0, k64BitSize, kRegTyInt);
+    RegOperand &pregX1 = cgFunc.GetOrCreatePhysicalRegisterOperand(R1, k64BitSize, kRegTyInt);
+    RegOperand &pregX2 = cgFunc.GetOrCreatePhysicalRegisterOperand(R2, k64BitSize, kRegTyInt);
+    RegOperand &glueReg = cgFunc.GetOrCreatePhysicalRegisterOperand(R28, k64BitSize, kRegTyInt);
+
+    // .slowpath
+    BindLabel(label, label2Offset, objFuncEmitInfo);
+
+    // add x1, base_opnd1, #offset_opnd2
+    auto dummyBB = cgFunc.CreateNewBB();
+    cgFunc.SetCurBB(*dummyBB);
+    cgFunc.SelectAdd(pregX1, baseReg, fieldOffsetReg, maple::PTY_ref);
+    FOR_BB_INSNS_CONST(insn, dummyBB)
+    {
+        EncodeInstruction(*insn, label2Offset, objFuncEmitInfo);
+    }
+    dummyBB->ClearInsns();
+
+    // mov x0, glue_opnd0
+    Insn &movInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovrr, pregX0, glueReg);
+    EncodeInstruction(movInsn, label2Offset, objFuncEmitInfo);
+
+    // ldr x2, [glue_opnd0, #getvaluewithbarrier]
+    Operand &stubAddrOpnd =
+        cgFunc.CreateMemOpnd(glueReg, cgFunc.GetMirModule().GetHLValue(maple::kGetValueWithBarrierOffset), k64BitSize);
+    Insn &ldrStub = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, pregX2, stubAddrOpnd);
+    EncodeInstruction(ldrStub, label2Offset, objFuncEmitInfo);
+
+    // blr x2
+    Insn &callStubInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xblr, pregX2);
+    EncodeInstruction(callStubInsn, label2Offset, objFuncEmitInfo);
+
+    if (destReg.GetRegisterNumber() != R0) {
+        // mov dest, x0
+        Insn &movToDstInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovrr, destReg, pregX0);
+        EncodeInstruction(movToDstInsn, label2Offset, objFuncEmitInfo);
+    }
+    // b .backup
+    LabelOperand &fallthroughOpnd = cgFunc.GetOrCreateLabelOperand(std::get<3>(info));
+    Insn &gotoFallth = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xuncond, fallthroughOpnd);
+    EncodeInstruction(gotoFallth, label2Offset, objFuncEmitInfo);
+}
+
+void AArch64ObjEmitter::EmitCommonBarrierSlowForReg(regno_t regNo, LabelIdx label, std::vector<uint32> &label2Offset,
+                                                    ObjFuncEmitInfo &objFuncEmitInfo)
+{
+    AArch64CGFunc &cgFunc = static_cast<AArch64CGFunc &>(objFuncEmitInfo.GetCGFunc());
+    RegOperand &baseReg = cgFunc.GetOrCreatePhysicalRegisterOperand(AArch64reg(regNo), k64BitSize, kRegTyInt);
+    RegOperand &pregX0 = cgFunc.GetOrCreatePhysicalRegisterOperand(R0, k64BitSize, kRegTyInt);
+    RegOperand &pregW1 = cgFunc.GetOrCreatePhysicalRegisterOperand(R1, k32BitSize, kRegTyInt);
+    RegOperand &pregX1 = cgFunc.GetOrCreatePhysicalRegisterOperand(R1, k64BitSize, kRegTyInt);
+    RegOperand &pregX2 = cgFunc.GetOrCreatePhysicalRegisterOperand(R2, k64BitSize, kRegTyInt);
+    RegOperand &glueReg = cgFunc.GetOrCreatePhysicalRegisterOperand(R28, k64BitSize, kRegTyInt);
+    RegOperand &lr = cgFunc.GetOrCreatePhysicalRegisterOperand(RLR, k64BitSize, kRegTyInt);
+
+    BindLabel(label, label2Offset, objFuncEmitInfo);
+
+    // mov x0, basereg
+    Insn &backupBaseRegInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovrr, pregX0, baseReg);
+    EncodeInstruction(backupBaseRegInsn, label2Offset, objFuncEmitInfo);
+
+    // ldr w1, [lr, #-4]
+    Operand &ldrLdrInsnOffset = cgFunc.CreateMemOpnd(lr, -4, k32BitSize);
+    Insn &ldrLdrInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_wldr, pregW1, ldrLdrInsnOffset);
+    EncodeInstruction(ldrLdrInsn, label2Offset, objFuncEmitInfo);
+
+    // ubfx w1, w1, #10, #12
+    ImmOperand &offsetStartBit = cgFunc.CreateImmOperand(10, k32BitSize, false);
+    ImmOperand &bitsLength = cgFunc.CreateImmOperand(12, k32BitSize, false);
+    Insn &getOffsetInsn =
+        cgFunc.GetInsnBuilder()->BuildInsn(MOP_wubfxrri5i5, pregW1, pregW1, offsetStartBit, bitsLength);
+    EncodeInstruction(getOffsetInsn, label2Offset, objFuncEmitInfo);
+
+    // add x1, basereg(x0), x1, lsl 3
+    BitShiftOperand &bitShiftOpnd =
+        cgFunc.CreateBitShiftOperand(BitShiftOperand::kLSL, 3, AArch64CGFunc::kBitLenOfShift64Bits);
+    Insn &addOffsetInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xaddrrrs, pregX1, pregX0, pregX1, bitShiftOpnd);
+    EncodeInstruction(addOffsetInsn, label2Offset, objFuncEmitInfo);
+
+    // mov x0, glue_opnd0
+    Insn &movInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xmovrr, pregX0, glueReg);
+    EncodeInstruction(movInsn, label2Offset, objFuncEmitInfo);
+
+    // ldr x2, [glue_opnd0, #getvaluewithbarrier]
+    Operand &stubAddrOpnd =
+        cgFunc.CreateMemOpnd(glueReg, cgFunc.GetMirModule().GetHLValue(maple::kGetValueWithBarrierOffset), k64BitSize);
+    Insn &ldrStub = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, pregX2, stubAddrOpnd);
+    EncodeInstruction(ldrStub, label2Offset, objFuncEmitInfo);
+
+    // str x30
+    MemOperand &strMem = cgFunc.CreateCallFrameOperand(-16, k64BitSize);
+    Insn &storeLr = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xstr, lr, strMem);
+    EncodeInstruction(storeLr, label2Offset, objFuncEmitInfo);
+
+    // blr x2
+    Insn &callStubInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xblr, pregX2);
+    EncodeInstruction(callStubInsn, label2Offset, objFuncEmitInfo);
+
+    // reload x30
+    MemOperand &reloadMem = cgFunc.CreateCallFrameOperand(16, k64BitSize);
+    Insn &restoreLr = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, lr, reloadMem);
+    EncodeInstruction(restoreLr, label2Offset, objFuncEmitInfo);
+
+    // ldr x2, [glue_opnd0, #LoadBarrierCopyBack]
+    Operand &rtAddrOpnd =
+        cgFunc.CreateMemOpnd(glueReg, cgFunc.GetMirModule().GetHLValue(maple::kLoadBarrierCopyBackOffset), k64BitSize);
+    Insn &ldrRTStub = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, pregX2, rtAddrOpnd);
+    EncodeInstruction(ldrRTStub, label2Offset, objFuncEmitInfo);
+
+    // br x2
+    Insn &callRTStubInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xbr, pregX2);
+    EncodeInstruction(callRTStubInsn, label2Offset, objFuncEmitInfo);
+}
+
+void AArch64ObjEmitter::EmitIntrinsicInsn(const Insn &insn, std::vector<uint32> &label2Offset,
                                           ObjFuncEmitInfo &objFuncEmitInfo)
 {
     switch (insn.GetMachineOpcode()) {
@@ -1852,6 +2211,10 @@ void AArch64ObjEmitter::EmitIntrinsicInsn(const Insn &insn, const std::vector<ui
             break;
         case MOP_is_cow_array:
             EmitIsCowArray(insn, label2Offset, objFuncEmitInfo);
+            break;
+        case MOP_load_intrinsic:
+        case MOP_load_intrinsic_jump:
+            EmitLoadIntrinsic(insn, label2Offset, objFuncEmitInfo);
             break;
         default:
             CHECK_FATAL(false, "unsupport mop in EmitIntrinsicInsn!\n");

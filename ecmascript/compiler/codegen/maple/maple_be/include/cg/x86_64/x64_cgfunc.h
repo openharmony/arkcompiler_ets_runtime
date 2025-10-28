@@ -65,6 +65,7 @@ public:
                                           Operand &opnd2, Operand &opnd3, Operand &opnd4) override;
     RegOperand *SelectIsCOWArray(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
                                  Operand &opnd2, Operand &opnd3, Operand &opnd4, Operand &opnd5) override;
+    RegOperand *SelectLoadIntrinsic(IntrinsicopNode &node, Operand &glue, Operand &base, Operand &fieldOffset) override;
     void SelectComment(CommentNode &comment) override;
     Operand *SelectDread(const BaseNode &parent, AddrofNode &expr) override;
     RegOperand *SelectRegread(RegreadNode &expr) override;

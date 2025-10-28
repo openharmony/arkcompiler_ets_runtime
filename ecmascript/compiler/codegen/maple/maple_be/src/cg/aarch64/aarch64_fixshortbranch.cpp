@@ -39,7 +39,7 @@ uint32 AArch64FixShortBranch::CalculateAlignRange(const BB &bb, uint32 addr) con
     return range > kAlignPseudoSize ? range : kAlignPseudoSize;
 }
 
-void AArch64FixShortBranch::SetInsnId() const
+uint32 AArch64FixShortBranch::SetInsnId() const
 {
     uint32 i = 0;
     AArch64CGFunc *aarch64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
@@ -61,6 +61,7 @@ void AArch64FixShortBranch::SetInsnId() const
             }
         }
     }
+    return i;
 }
 
 uint32 AArch64FixShortBranch::CalculateIfBBNum() const
@@ -101,6 +102,24 @@ void AArch64FixShortBranch::PatchLongBranch()
         aarch64CGFunc->InsertJumpPad(insn);
     }
 }
+
+void AArch64FixShortBranch::SolveLoadIntrinsic(bool &change, uint32 &maxInsnId, BB *&bb, Insn *&insn) const
+{
+    MOperator thisMop = insn->GetMachineOpcode();
+    if (thisMop != MOP_load_intrinsic) {
+        return;
+    }
+    // loadintrinsic will emit tbnz in emitter pass.
+    if (maxInsnId - insn->GetId() > AArch64Abi::kMaxInstrForTbnz) {
+        Insn &tempNew = cgFunc->GetInsnBuilder()->BuildInsn(MOP_load_intrinsic_jump, insn->GetOperand(kFirstOpnd),
+                                                            insn->GetOperand(kSecondOpnd), insn->GetOperand(kThirdOpnd),
+                                                            insn->GetOperand(kFourthOpnd));
+        (void)bb->InsertInsnAfter(*insn, tempNew);
+        bb->RemoveInsn(*insn);
+        change = true;
+    }
+}
+
 /*
  * TBZ/TBNZ instruction is generated under -O2, these branch instructions only have a range of +/-32KB.
  * If the branch target is not reachable, we split tbz/tbnz into combination of ubfx and cbz/cbnz, which
@@ -114,13 +133,14 @@ void AArch64FixShortBranch::FixShortBranches() const
     bool change = false;
     do {
         change = false;
-        SetInsnId();
+        uint32 maxInsnId = SetInsnId();
         for (auto *bb = aarch64CGFunc->GetFirstBB(); bb != nullptr && !change; bb = bb->GetNext()) {
             /* Do a backward scan searching for short branches */
             for (auto *insn = bb->GetLastInsn(); insn != nullptr && !change; insn = insn->GetPrev()) {
                 if (!insn->IsMachineInstruction()) {
                     continue;
                 }
+                SolveLoadIntrinsic(change, maxInsnId, bb, insn);
                 MOperator thisMop = insn->GetMachineOpcode();
                 if (thisMop != MOP_wtbz && thisMop != MOP_wtbnz && thisMop != MOP_xtbz && thisMop != MOP_xtbnz) {
                     continue;

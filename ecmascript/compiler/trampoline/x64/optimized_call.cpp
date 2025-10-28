@@ -52,9 +52,7 @@ void OptimizedCall::JSFunctionEntry(ExtendedAssembler *assembler)
     Label lJSCallWithArgVAndPushArgv;
     Label lPopFrame;
     PushJSFunctionEntryFrame(assembler, prevFpReg);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Movq(Operand(glueReg, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
-#endif
+    __ UpdateReadBarrier(glueReg);
     __ Movq(argv, rbx);
     __ Movq(needPushArgv, r12);
     __ Movq(Operand(rbx, 0), rdx);
@@ -283,10 +281,8 @@ void OptimizedCall::CallBuiltinTrampoline(ExtendedAssembler *assembler, Register
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
     Register calleeSaveGlue = r15; // move glue to a callee-save register
     __ Movq(glueReg, calleeSaveGlue);
-    AsmInterpreterCall::CallNativeInternal(assembler, nativeCode, calleeSaveGlue);
-#else
-    AsmInterpreterCall::CallNativeInternal(assembler, nativeCode);
 #endif
+    AsmInterpreterCall::CallNativeInternal(assembler, nativeCode);
     __ Movq(Operand(rsp, DOUBLE_SLOT_SIZE), temp); // argc
     __ Movq(Immediate(0), Operand(rsp, DOUBLE_SLOT_SIZE)); // argv -> argc
     __ Movq(temp, Operand(rsp, FRAME_SLOT_SIZE)); // argc -> thread
@@ -1058,9 +1054,7 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Movq(rax, r15); // move glue to a callee-save register
 #endif
     __ Callq(r10);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Movq(Operand(r15, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
-#endif
+    __ UpdateReadBarrier();
 
     // 8: skip rax
     __ Addq(FRAME_SLOT_SIZE, rsp);
@@ -1126,9 +1120,7 @@ void OptimizedCall::CallRuntimeWithArgv(ExtendedAssembler *assembler)
     __ Movq(glueReg, r15); // move glue to a callee-save register
 #endif
     __ Callq(r9);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Movq(Operand(r15, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r15);
-#endif
+    __ UpdateReadBarrier();
     __ Popq(r8);
     __ Addq(FRAME_SLOT_SIZE, rsp); // 8: skip type
     __ Popq(rbp);

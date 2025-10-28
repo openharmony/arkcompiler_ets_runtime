@@ -397,7 +397,8 @@ protected:
 class ObjEmitter : public Emitter {
 public:
     ObjEmitter(CG &cg, const std::string &objFileName)
-        : Emitter(cg, objFileName), alloc(memPool), sections(alloc.Adapter()), contents(alloc.Adapter())
+        : Emitter(cg, objFileName), alloc(memPool), sections(alloc.Adapter()), contents(alloc.Adapter()),
+          commonBarrierSlowLabel(alloc.Adapter()), singleSlowLabelInfo(alloc.Adapter())
     {
         const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
         if (emitMemoryManager.codeSpace == nullptr) {
@@ -537,8 +538,9 @@ public:
 
 protected:
     virtual void InsertNopInsn(ObjFuncEmitInfo &objFuncEmitInfo) const = 0;
-    virtual void EmitIntrinsicInsn(const Insn &insn, const std::vector<uint32> &label2Offset,
+    virtual void EmitIntrinsicInsn(const Insn &insn, std::vector<uint32> &label2Offset,
                                    ObjFuncEmitInfo &objFuncEmitInfo) = 0;
+    virtual void EmitBarrierSlow(std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo) = 0;
     virtual void EmitSpinIntrinsicInsn(const Insn &insn, ObjFuncEmitInfo &objFuncEmitInfo) = 0;
 
     MapleString fileName;
@@ -556,6 +558,9 @@ protected:
     RelaSection *relaSection = nullptr;
     MapleVector<ObjFuncEmitInfo *> contents; /* each item is the code info of a cgfunc */
     Label2OffsetMap globalLabel2Offset;      /* record global info */
+    MapleMap<regno_t, LabelIdx> commonBarrierSlowLabel;
+    /* tuple<base reg, dst reg, offset, return label> */
+    MapleMap<LabelIdx, std::tuple<regno_t, regno_t, uint32_t, LabelIdx>> singleSlowLabelInfo;
 };
 } /* namespace maplebe */
 

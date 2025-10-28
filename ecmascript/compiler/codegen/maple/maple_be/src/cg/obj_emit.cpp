@@ -78,6 +78,9 @@ void ObjEmitter::EmitInstructions(ObjFuncEmitInfo &objFuncEmitInfo, std::vector<
             }
         }
     }
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    EmitBarrierSlow(label2Offset, objFuncEmitInfo);
+#endif
 }
 
 void ObjEmitter::EmitSwitchTable(ObjFuncEmitInfo &objFuncEmitInfo, const std::vector<uint32> &symbol2Offset)

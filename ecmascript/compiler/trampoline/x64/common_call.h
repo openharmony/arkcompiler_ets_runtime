@@ -185,6 +185,8 @@ public:
     static void ResumeRspAndRollback(ExtendedAssembler *assembler);
 
     static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
+
+    static void LoadBarrierCopyBack(ExtendedAssembler *assembler);
 private:
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSpRegister, Register fpRegister,
         Register callTargetRegister, Register thisRegister, Register methodRegister, Register pcRegister,
@@ -216,11 +218,7 @@ private:
     static void CallNativeEntry(ExtendedAssembler *assembler, bool isJSFunction);
     static void CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode, Register calleeSaveGlue);
-#else
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
-#endif
     static bool PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode, FrameTransitionType type);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);

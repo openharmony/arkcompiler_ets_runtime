@@ -419,6 +419,10 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
                 HandleLoad(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LOAD_WITHOUT_BARRIER);
                 break;
+            case OpCode::LOAD:
+                HandleLoadIntrinsic(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LOAD);
+                break;
             case OpCode::STORE_WITHOUT_BARRIER:
                 HandleStore(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::STORE_WITHOUT_BARRIER);
@@ -614,6 +618,20 @@ void LiteCGIRBuilder::Build()
     bbID2phiAssign.clear();
 
     lmirBuilder_->AppendBB(lmirBuilder_->GetLastPosBB());
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    RecordHLValueForBarrier();
+#endif
+}
+
+void LiteCGIRBuilder::RecordHLValueForBarrier()
+{
+    size_t getValueWithBarrierOffset = JSThread::GlueData::GetCOStubEntriesOffset(compCfg_->Is32Bit()) +
+                                       static_cast<size_t>(CommonStubCSigns::GetValueWithBarrier * slotSize_);
+    size_t loadBarrierCopyBackOffset =
+        JSThread::GlueData::GetRTStubEntriesOffset(compCfg_->Is32Bit()) + RTSTUB_ID(LoadBarrierCopyBack) * slotSize_;
+
+    lmirModule_->GetModule()->SetHLValue(maple::kGetValueWithBarrierOffset, getValueWithBarrierOffset);
+    lmirModule_->GetModule()->SetHLValue(maple::kLoadBarrierCopyBackOffset, loadBarrierCopyBackOffset);
 }
 
 void LiteCGIRBuilder::AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType,
@@ -1074,6 +1092,38 @@ void LiteCGIRBuilder::HandleTaggedIsHeapObjectIntrinsic(GateRef gate)
     SaveGate2Expr(gate, intrinsicOp);
 }
 
+void LiteCGIRBuilder::HandleLoadIntrinsic(GateRef gate)
+{
+    // valueIn 0: glue, skip
+    // valueIn 1: addr
+    VisitLoadIntrinsic(gate, acc_.GetValueIn(gate, 1));
+}
+
+void LiteCGIRBuilder::VisitLoadIntrinsic(GateRef gate, GateRef addr)
+{
+    CHECK_FATAL(acc_.GetOpCode(addr) == OpCode::ADD, "unexpected base gate, gate id: %d, addr id: %d", acc_.GetId(gate),
+                acc_.GetId(addr));
+    Expr baseAddr;
+    Expr fieldOffset;
+    auto right = acc_.GetValueIn(addr, 1);
+    if (acc_.GetOpCode(right) == OpCode::CONSTANT) {
+        baseAddr = GetExprFromGate(acc_.GetValueIn(addr, 0));
+        fieldOffset = GetExprFromGate(right);
+    } else {
+        baseAddr = GetDerivedrefExpr(addr);
+        Const &constVal = lmirBuilder_->CreateIntConst(lmirBuilder_->u8Type, 0);
+        fieldOffset = lmirBuilder_->ConstVal(constVal);
+    }
+    CHECK_FATAL(fieldOffset.IsConstValue(), "unexpected offset, addr id: %d, base id: %d, offset id: %d",
+                acc_.GetId(addr), acc_.GetId(acc_.GetValueIn(addr, 0)), acc_.GetId(acc_.GetValueIn(addr, 1)));
+
+    LiteCGType *returnType = ConvertLiteCGTypeFromGate(gate);
+
+    std::vector<Expr> args = {GetExprFromGate(glue_), baseAddr, fieldOffset};
+    auto intrinsicOp = lmirBuilder_->IntrinsicOp(IntrinsicId::INTRN_LOAD_INTRINSIC, returnType, args);
+    SaveGate2Expr(gate, intrinsicOp);
+}
+
 Expr LiteCGIRBuilder::CanonicalizeToPtr(Expr expr, LiteCGType *type)
 {
     if (lmirBuilder_->LiteCGGetTypeKind(expr.GetType()) == maple::litecg::kLiteCGTypePointer) {
@@ -1099,7 +1149,7 @@ void LiteCGIRBuilder::AddDerivedrefGate(GateRef gate, Expr result)
     acc_.GetOuts(gate, outGates);
     for (GateRef outGate : outGates) {
         auto op = acc_.GetOpCode(outGate);
-        if (op != OpCode::LOAD_WITHOUT_BARRIER && op != OpCode::STORE_WITHOUT_BARRIER) {
+        if (op != OpCode::LOAD_WITHOUT_BARRIER && op != OpCode::STORE_WITHOUT_BARRIER && op != OpCode::LOAD) {
             shouldSkip = false;
             break;
         }

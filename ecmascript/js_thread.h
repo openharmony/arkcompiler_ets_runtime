@@ -200,7 +200,12 @@ public:
     static constexpr int CONCURRENT_COPY_BITFIELD_NUM = 2;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_NUM = 1;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_MASK = 0x1;
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    static constexpr uint64_t GLUE_BIT_LENGTH = 56;
+    static constexpr uint64_t READ_BARRIER_STATE_BITFIELD_MASK = 0x1ULL << GLUE_BIT_LENGTH;
+#else
     static constexpr int READ_BARRIER_STATE_BITFIELD_MASK = 0x2;
+#endif
     static constexpr int CMC_GC_PHASE_BITFIELD_START = 8;
     static constexpr int CMC_GC_PHASE_BITFIELD_NUM = 8;
     static constexpr int CMC_GC_PHASE_BITFIELD_MASK =
@@ -215,7 +220,12 @@ public:
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
     using CCStatusBits = MarkStatusBits::NextField<CCStatus, CONCURRENT_COPY_BITFIELD_NUM>;
     using SharedMarkStatusBits = BitField<SharedMarkStatus, 0, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>; // 0
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    using GlueBits = BitField<void*, 0, GLUE_BIT_LENGTH>;
+    using ReadBarrierStateBit = GlueBits::NextFlag;
+#else
     using ReadBarrierStateBit = SharedMarkStatusBits::NextFlag; // 1
+#endif
     using CMCGCPhaseBits = BitField<common::GCPhase, CMC_GC_PHASE_BITFIELD_START, CMC_GC_PHASE_BITFIELD_NUM>; // 8-15
     using CMCGCReasonBits = CMCGCPhaseBits::NextField<common::GCReason, CMC_GC_REASON_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
@@ -654,12 +664,20 @@ public:
 
     bool NeedReadBarrier() const
     {
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        return ReadBarrierStateBit::Decode(glueData_.barrierAndglue_);
+#else
         return ReadBarrierStateBit::Decode(glueData_.sharedGCStateBitField_);
+#endif
     }
 
     void SetReadBarrierState(bool flag)
     {
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        ReadBarrierStateBit::Set(flag, &glueData_.barrierAndglue_);
+#else
         ReadBarrierStateBit::Set(flag, &glueData_.sharedGCStateBitField_);
+#endif
     }
 
     common::GCPhase GetCMCGCPhase() const
@@ -1223,6 +1241,7 @@ public:
                                                  BaselineStubEntries,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
+                                                 base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  JSTaggedValue,
                                                  base::AlignedUint64,
@@ -1280,6 +1299,7 @@ public:
             BaselineStubEntriesIndex,
             GCStateBitFieldIndex,
             SharedGCStateBitFieldIndex,
+            BarrierAndGlueIndex,
             FrameBaseIndex,
             CurrentEnvIndex,
             StackStartIndex,
@@ -1362,6 +1382,11 @@ public:
         static size_t GetSharedGCStateBitFieldOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::SharedGCStateBitFieldIndex)>(isArch32);
+        }
+
+        static size_t GetBarrierAndGlueOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::BarrierAndGlueIndex)>(isArch32);
         }
 
         static size_t GetCurrentFrameOffset(bool isArch32)
@@ -1635,6 +1660,7 @@ public:
         alignas(EAS) BaselineStubEntries baselineStubEntries_ {};
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) volatile uint64_t sharedGCStateBitField_ {0ULL};
+        alignas(EAS) volatile uint64_t barrierAndglue_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) JSTaggedValue currentEnv_ {JSTaggedValue::Hole()};
         alignas(EAS) uint64_t stackStart_ {0};

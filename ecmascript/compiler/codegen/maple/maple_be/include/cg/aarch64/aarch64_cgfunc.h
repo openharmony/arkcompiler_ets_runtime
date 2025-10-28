@@ -108,6 +108,7 @@ public:
     Operand *SelectCclz(IntrinsicopNode &intrinsicopNode) override;
     RegOperand *SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) override;
     RegOperand *SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) override;
+    RegOperand *SelectLoadIntrinsic(IntrinsicopNode &node, Operand &glue, Operand &base, Operand &fieldOffset) override;
     RegOperand *SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2) override;
     RegOperand *SelectHasPendingException(IntrinsicopNode &node, Operand &opnd0,
                                           Operand &opnd1, Operand &opnd2) override;

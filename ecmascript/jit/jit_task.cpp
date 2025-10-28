@@ -219,9 +219,11 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
 
 void DumpJitCode(const JSThread *thread, JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
 {
+#if !READ_BARRIER_INTRINSIC_DFX
     if (!ohos::JitTools::GetJitDumpObjEanble()) {
         return;
     }
+#endif
     JsJitDumpElf jitDumpElf;
     jitDumpElf.Init();
     char *funcAddr = reinterpret_cast<char *>(machineCode->GetFuncAddr());
@@ -236,6 +238,9 @@ void DumpJitCode(const JSThread *thread, JSHandle<MachineCode> &machineCode, JSH
     uintptr_t addr = machineCode->GetFuncAddr();
     fileName = fileName + "_" + std::to_string(addr) + "+" + std::to_string(len);
     jitDumpElf.AppendSymbolToSymTab(0, 0, len, std::string(filename));
+#if READ_BARRIER_INTRINSIC_DFX
+    std::string outFile = "./" + std::string(fileName);
+#else
     std::string realOutPath;
     std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(AotCrashInfo::GetSandBoxPath());
     if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
@@ -245,6 +250,7 @@ void DumpJitCode(const JSThread *thread, JSHandle<MachineCode> &machineCode, JSH
     if (!ecmascript::FileExist(outFile.c_str())) {
         return;
     }
+#endif
     int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
     jitDumpElf.WriteJitElfFile(fd);
@@ -342,6 +348,9 @@ void JitTask::InstallCode()
         // skip install
         return;
     }
+#if READ_BARRIER_INTRINSIC_DFX
+    DumpJitCode(hostThread_, machineCodeObj, methodHandle);
+#endif
     machineCodeObj->SetOSROffset(offset_);
     FillHeapConstantTable(machineCodeObj, codeDesc_);
 

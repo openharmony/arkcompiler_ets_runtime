@@ -882,6 +882,12 @@ bool PostSchedule::VisitLoad(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx, 
     switch (kind) {
         case MemoryAttribute::Barrier::UNKNOWN_BARRIER:
         case MemoryAttribute::Barrier::NEED_BARRIER: {
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+            if (compilationEnv_ != nullptr && compilationEnv_->SupportIntrinsic() &&
+                builder_.GetCompilationConfig()->IsAArch64()) {
+                break;
+            }
+#endif
             LoweringLoadWithBarrierAndPrepareScheduleGate(gate, currentBBGates, successBBGates,
                                                           failBBGates, endBBGates);
             ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
