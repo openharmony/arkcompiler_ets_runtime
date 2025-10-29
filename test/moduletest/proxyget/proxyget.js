@@ -203,4 +203,49 @@ function test10()
 }
 test10();
 
+function test11()
+{
+  const a = {b: 2}
+  const ap1 = new Proxy(a, {
+      name: "a1",
+      get(target, prop, receiver) {
+        assert_true(receiver === ap2);
+        return Reflect.get(target, prop)
+    }
+  })
+
+  const ap2 = new Proxy(ap1, {
+    name: "a2",
+    get(target, prop, receiver) {
+      assert_true(receiver === ap2);
+      return Reflect.get(target, prop, receiver)
+    }
+  })
+  assert_equal(ap2.b, 2);
+}
+test11();
+
+function test12()
+{
+  const a = { b: 2 };
+  const ap1 = new Proxy(a, {
+    name: "a1",
+    get(target, prop, receiver) {
+      assert_true(receiver === protoMid);
+      return Reflect.get(target, prop, receiver);
+    }
+  });
+  const protoMid = {};
+  Object.setPrototypeOf(protoMid, ap1);
+  const ap2 = new Proxy(protoMid, {
+    name: "a2",
+    get(target, prop) {
+      return Reflect.get(target, prop);
+    }
+  });
+
+  assert_equal(ap2.b, 2);
+}
+test12();
+
 test_end();

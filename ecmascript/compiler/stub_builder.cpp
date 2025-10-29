@@ -4051,8 +4051,13 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                 BRANCH(IsJSProxy(jsType), &isJsProxy, &notJsProxy);
                 Bind(&isJsProxy);
                 {
-                    result = CallCommonStub(glue, CommonStubCSigns::JSProxyGetProperty,
-                                            {glue, *holder, propKey, target, GetCurrentGlobalEnv()}, hir);
+                    if (receiver == Circuit::NullGate()) {
+                        result = CallCommonStub(glue, CommonStubCSigns::JSProxyGetProperty,
+                                                {glue, *holder, propKey, target, GetCurrentGlobalEnv()}, hir);
+                    } else {
+                        result = CallCommonStub(glue, CommonStubCSigns::JSProxyGetProperty,
+                                                {glue, *holder, propKey, receiver, GetCurrentGlobalEnv()}, hir);
+                    }
                     Label isPendingException(env);
                     Label noPendingException(env);
                     BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
