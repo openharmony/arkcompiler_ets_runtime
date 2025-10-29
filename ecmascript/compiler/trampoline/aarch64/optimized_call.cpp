@@ -1171,29 +1171,6 @@ void OptimizedCall::PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler)
     __ RestoreFpAndLr();
 }
 
-void OptimizedCall::PushAsmBridgeFrame(ExtendedAssembler *assembler)
-{
-    Register sp(SP);
-    TempRegister2Scope temp2Scope(assembler);
-    Register frameType = __ TempRegister2();
-    __ PushFpAndLr();
-    // construct frame
-    __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)));
-    // 2 : 2 means pairs. X19 means calleesave and 16bytes align
-    __ Stp(Register(X19), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
-}
-
-void OptimizedCall::PopAsmBridgeFrame(ExtendedAssembler *assembler)
-{
-    TempRegister2Scope temp2Scope(assembler);
-    Register sp(SP);
-    Register frameType = __ TempRegister2();
-    // 2 : 2 means pop call site sp and type
-    __ Ldp(Register(X19), frameType, MemoryOperand(sp, FRAME_SLOT_SIZE * 2, AddrMode::POSTINDEX));
-    __ RestoreFpAndLr();
-}
-
 // * uint64_t PushOptimizedUnfoldArgVFrame(uintptr_t glue, uint32_t argc, JSTaggedType calltarget,
 //                                         JSTaggedType new, JSTaggedType this, JSTaggedType argV[])
 // * cc calling convention call js function()

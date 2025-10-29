@@ -815,19 +815,6 @@ void OptimizedCall::FastCallToAsmInterBridge(ExtendedAssembler *assembler)
         assembler, JSCallMode::CALL_FROM_AOT, FrameTransitionType::OTHER_TO_OTHER);
 }
 
-void OptimizedCall::PushAsmBridgeFrame(ExtendedAssembler *assembler)
-{
-    __ Pushq(rbp);
-    __ Pushq(static_cast<int32_t>(FrameType::ASM_BRIDGE_FRAME));
-    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
-}
-
-void OptimizedCall::PopAsmBridgeFrame(ExtendedAssembler *assembler)
-{
-    __ Addq(FRAME_SLOT_SIZE, rsp);  // skip type
-    __ Popq(rbp);
-}
-
 void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
                                 Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall)
 {
