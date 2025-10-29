@@ -111,4 +111,10 @@ let v5 = String.fromCharCode(0).replaceAll(/(?<a>.)/ug);
 assert_equal("undefinedss".replace(undefined,v5),"undefinedss");
 assert_equal("undefinedss".replaceAll(undefined,v5),"undefinedss");
 
+{
+    let str = "dddd"
+    let res = str.replace("", "abc");
+    assert_equal(res, "abcdddd");
+}
+
 test_end();
