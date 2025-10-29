@@ -71,3 +71,6 @@ true
 {"value":{},"writable":false,"enumerable":false,"configurable":false}
 Cannot get source code of funtion
 {"key1":{"enumerable":false,"configurable":false}}
+false
+false
+false

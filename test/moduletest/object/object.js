@@ -340,3 +340,13 @@ Object.defineProperty(obj, "key1", {
 let res2 = Object.getOwnPropertyDescriptors(obj);
 print(res2["key1"].get);
 print(JSON.stringify(res2));
+
+{
+    const testBigint = 123n;
+    const testSymbol = Symbol('testSymbol');
+    const testStr = 'testString';
+
+    print(Object.isExtensible(testBigint));
+    print(Object.isExtensible(testSymbol));
+    print(Object.isExtensible(testStr));
+}

@@ -564,7 +564,7 @@ JSTaggedValue BuiltinsObject::IsExtensible(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Object, IsExtensible);
     // 1.If Type(O) is not Object, return false.
     JSTaggedValue obj = GetCallArg(argv, 0).GetTaggedValue();
-    if (!obj.IsHeapObject()) {
+    if (!obj.IsECMAObject()) {
         return GetTaggedBoolean(false);
     }
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
