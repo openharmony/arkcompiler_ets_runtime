@@ -5063,7 +5063,7 @@ void RuntimeStubs::FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedVal
 void RuntimeStubs::LoadNativeModuleFailed(JSTaggedValue curModule)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    LOG_FULL(WARN) << "Load native module failed, so is " << SourceTextModule::GetModuleName(curModule);
+    LOG_ECMA(WARN) << "Load native module failed: " << SourceTextModule::GetModuleName(curModule);
 }
 
 JSTaggedValue RuntimeStubs::GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index)

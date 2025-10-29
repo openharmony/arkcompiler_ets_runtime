@@ -465,7 +465,7 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleMayThrowError(JSThread
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     if (exportObject->IsNativeModuleFailureInfo() || exportObject->IsUndefined()) {
         CString errorMsg = "load native module failed.";
-        LOG_FULL(ERROR) << errorMsg.c_str();
+        LOG_FULL(DEBUG) << errorMsg.c_str();
         auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, thread->GlobalConstants()->GetHandledUndefined());
     }
@@ -481,12 +481,12 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     CString moduleName = requiredModule->GetEcmaModuleRecordNameString();
     if (UNLIKELY(exportObject->IsUndefined())) {
-        LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
+        LOG_ECMA(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
         return false;
     }
     if (UNLIKELY(exportObject->IsNativeModuleFailureInfo())) {
         SourceTextModule::StoreModuleValue(thread, requiredModule, 0, exportObject);
-        LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned, so name is " << moduleName;
+        LOG_ECMA(ERROR) << "loading fails, NativeModuleErrorObject is returned, so name is " << moduleName;
         return false;
     }
     ASSERT(!thread->HasPendingException());
@@ -501,7 +501,7 @@ bool SourceTextModule::EvaluateNativeModule(JSThread *thread, JSHandle<SourceTex
         return true;
     }
     if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {
-        LOG_FULL(INFO) << "LoadNativeModule " << nativeModule->GetEcmaModuleRecordNameString() << " failed";
+        LOG_FULL(DEBUG) << "LoadNativeModule " << nativeModule->GetEcmaModuleRecordNameString() << " failed";
         // LATER DO: add error status.
         return false;
     }

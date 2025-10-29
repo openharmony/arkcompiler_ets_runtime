@@ -37,7 +37,7 @@ bool JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile, c
 void JSPandaFileSnapshot::PostWriteDataToFileJob(const EcmaVM *vm, const CString &path, const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::PostWriteDataToFileJob", "");
-    LOG_ECMA(INFO) << "JSPandaFileSnapshot::PostWriteDataToFileJob";
+    LOG_ECMA(DEBUG) << "JSPandaFileSnapshot::PostWriteDataToFileJob";
     std::unordered_set<std::shared_ptr<JSPandaFile>> jspandaFiles =
         JSPandaFileManager::GetInstance()->GetHapJSPandaFiles();
     JSThread *thread = vm->GetJSThread();
@@ -80,7 +80,7 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile file already exist";
         return false;
     }
-    LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile: " << filename;
+    LOG_ECMA(DEBUG) << "JSPandaFileSnapshot::WriteDataToFile: " << filename;
     // calculate file size
     uint32_t checksumSize = sizeof(uint32_t);
     uint32_t fileSize = sizeof(uint32_t);
@@ -189,6 +189,7 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);
+    LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile success with: " << filename;
     return true;
 }
 
@@ -203,7 +204,7 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile open file failed:" << filename;
         return false;
     }
-    LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadDataFromFile: " << filename;
+    LOG_ECMA(DEBUG) << "JSPandaFileSnapshot::ReadDataFromFile: " << filename;
     MemMapScope memMapScope(fileMapMem);
     FileMemMapReader reader(fileMapMem, std::bind(RemoveSnapshotFiles, path), "JSPandaFileSnapshot::ReadDataFromFile");
 
