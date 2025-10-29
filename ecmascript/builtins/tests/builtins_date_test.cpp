@@ -506,7 +506,7 @@ HWTEST_F_L0(BuiltinsDateTest, UTC)
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
     result1 = BuiltinsDate::UTC(ecmaRuntimeCallInfo4);
     TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result1.GetRawData(), JSTaggedValue(static_cast<double>(base::NAN_VALUE)).GetRawData());
+    ASSERT_EQ(result1.GetRawData(), JSTaggedValue(base::NAN_VALUE).GetRawData());
 }
 
 void SetAllYearAndHours(JSThread *thread, const JSHandle<JSDate> &jsDate)
@@ -633,7 +633,7 @@ HWTEST_F_L0(BuiltinsDateTest, parse)
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo5);
     result1 = BuiltinsDate::Parse(ecmaRuntimeCallInfo5);
     TestHelper::TearDownFrame(thread, prev);
-    ASSERT_EQ(result1.GetRawData(), JSTaggedValue(static_cast<double>(base::NAN_VALUE)).GetRawData());
+    ASSERT_EQ(result1.GetRawData(), JSTaggedValue(base::NAN_VALUE).GetRawData());
 }
 
 HWTEST_F_L0(BuiltinsDateTest, ToDateString)
@@ -735,7 +735,8 @@ CString GetLocalTime(JSThread *thread, JSHandle<JSDate>& jsDate)
 {
     CString localTime;
     int localMin = 0;
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*jsDate)->GetTimeValue(thread).GetDouble()), true);
+    localMin = GetLocalOffsetFromOS(static_cast<int64_t>((*jsDate)->GetTimeValue(thread).GetDouble()), true) /
+               (MS_PER_SECOND * SEC_PER_MINUTE);
     if (localMin >= 0) {
         localTime += PLUS;
     } else if (localMin < 0) {
@@ -988,7 +989,7 @@ HWTEST_F_L0(BuiltinsDateTest, DateConstructor)
     ecmaRuntimeCallInfo11->SetFunction(date_func.GetTaggedValue());
     ecmaRuntimeCallInfo11->SetThis(jsDate.GetTaggedValue());
     ecmaRuntimeCallInfo11->SetCallArg(0, JSTaggedValue(static_cast<double>(2018)));
-    ecmaRuntimeCallInfo11->SetCallArg(1, JSTaggedValue(static_cast<double>(base::NAN_VALUE)));
+    ecmaRuntimeCallInfo11->SetCallArg(1, JSTaggedValue(base::NAN_VALUE));
 
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo11);
     JSTaggedValue result9 = BuiltinsDate::DateConstructor(ecmaRuntimeCallInfo11);

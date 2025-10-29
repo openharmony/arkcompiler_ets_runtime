@@ -42,7 +42,7 @@ HWTEST_F_L0(JSDateTest, Create)
     double tm = 0.0;
     JSHandle<JSDate> jsDate(thread, JSDateCreate(thread));
     EXPECT_EQ(jsDate->GetTimeValue(thread), JSTaggedValue(tm));
-    EXPECT_EQ(jsDate->GetLocalOffset(thread), JSTaggedValue(JSDate::MAX_DOUBLE));
+    EXPECT_EQ(jsDate->GetLocalOffset(thread), JSTaggedValue(base::NAN_VALUE));
     tm = 28 * 60 * 60 * 1000;
     jsDate->SetTimeValue(thread, JSTaggedValue(tm));
 
@@ -72,7 +72,7 @@ HWTEST_F_L0(JSDateTest, GetTimeFromString)
 
     str = "1880-12-30T23:59:59";
     ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());
-    EXPECT_EQ(ms.GetDouble(), -2808633901000.0);
+    EXPECT_EQ(ms.GetDouble(), -2808633944000.0);
 
     str = "2020-11-19Z";
     ms = ecmascript::JSDate::GetTimeFromString(str.c_str(), str.length());

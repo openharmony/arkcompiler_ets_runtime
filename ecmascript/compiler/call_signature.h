@@ -593,7 +593,7 @@ private:
     V(JSCallNew)                                \
     V(CallOptimized)                            \
     V(TimeClip)                                 \
-    V(SetDateValues)                            \
+    V(CalcTimeValue)                            \
     V(CallReturnWithArgv)                       \
     V(StartCallTimer)                           \
     V(EndCallTimer)                             \

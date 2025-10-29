@@ -71,3 +71,19 @@ let d15 = new Date('PM 2023-05-20 03:45:30')
 print(d15)
 let d16 = new Date('PM2023-05-20 03:45:30')
 print(d16)
+
+print(new Date("1986-05-04 01:00").getTime());
+{
+    let d1 = new Date(1949, 4, 1);
+    let d2 = new Date(1947, 9, 31, 16);
+    print(d1.getFullYear(), d1.getMonth(), d1.getDate(), d1.getHours());
+    print(d2.getFullYear(), d2.getMonth(), d2.getDate(), d2.getHours());
+}
+print(new Date(1900, 0, 1));
+print(new Date(-250, 1000, 10000));
+print(new Date(1942, 0, 31));
+{
+    let d1 = new Date('2019-03-09T07:20:20.666Z')
+    print(d1)
+    print(d1.getHours())
+}

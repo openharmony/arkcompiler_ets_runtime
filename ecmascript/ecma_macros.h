@@ -352,21 +352,21 @@
 #define ASSERT_NO_ABRUPT_COMPLETION(thread) ASSERT(!(thread)->HasPendingException());
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define SET_DATE_VALUE(name, code, isLocal)                                                       \
-    static JSTaggedValue name(EcmaRuntimeCallInfo *argv)                                          \
-    {                                                                                             \
-        ASSERT(argv);                                                                             \
-        JSThread *thread = argv->GetThread();                                                     \
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                     \
-        JSHandle<JSTaggedValue> msg = GetThis(argv);                                              \
-        if (!msg->IsDate()) {                                                                     \
-            THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception()); \
-        }                                                                                         \
-        JSHandle<JSDate> jsDate(msg);                                                             \
-        JSTaggedValue result = jsDate->SetDateValue(argv, code, isLocal);                         \
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                            \
-        jsDate->SetTimeValue(thread, result);                                                     \
-        return result;                                                                            \
+#define SET_DATE_VALUE(name, code, isLocal)                                                        \
+    static JSTaggedValue name(EcmaRuntimeCallInfo *argv)                                           \
+    {                                                                                              \
+        ASSERT(argv);                                                                              \
+        JSThread *thread = argv->GetThread();                                                      \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                      \
+        JSHandle<JSTaggedValue> msg = GetThis(argv);                                               \
+        if (!msg->IsDate()) {                                                                      \
+            THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());  \
+        }                                                                                          \
+        JSHandle<JSDate> jsDate(msg);                                                              \
+        JSTaggedValue result = JSDate::CalcTimeValueWithNewDateUnits(argv, jsDate, code, isLocal); \
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                             \
+        jsDate->SetTimeValue(thread, result);                                                      \
+        return result;                                                                             \
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -415,7 +415,7 @@
             THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());              \
         }                                                                                                      \
         JSHandle<JSDate> jsDate(msg);                                                                          \
-        double result = jsDate->GetDateValue(thread, jsDate->GetTimeValue(thread).GetDouble(), code, isLocal); \
+        double result = jsDate->GetDateUnit(thread, code, isLocal);                                            \
         return GetTaggedDouble(result);                                                                        \
     }
 

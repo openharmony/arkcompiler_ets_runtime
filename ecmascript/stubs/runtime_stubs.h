@@ -152,7 +152,7 @@ public:
     static JSTaggedValue StringToNumber(uintptr_t argGlue, JSTaggedType numberString, int32_t radix);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);
     static double TimeClip(double time);
-    static double SetDateValues(double year, double month, double day);
+    static double CalcTimeValue(double year, double month, double day);
     static void StartCallTimer(uintptr_t argGlue, JSTaggedType func, bool isAot);
     static void EndCallTimer(uintptr_t argGlue, JSTaggedType func);
     static JSTaggedValue RuntimeArraySort(JSThread *thread, JSHandle<JSTaggedValue> thisHandle);

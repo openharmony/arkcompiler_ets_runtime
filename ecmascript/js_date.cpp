@@ -234,20 +234,6 @@ bool JSDate::GetNumFromString(const CString &str, int len, int *index, int *num)
     return true;
 }
 
-// 20.4.1.7
-int64_t JSDate::GetLocalOffsetInMin(const JSThread *thread, int64_t timeMs, bool isLocal)
-{
-    if (!isLocal) {
-        return 0;
-    }
-    double localOffset = this->GetLocalOffset(thread).GetDouble();
-    if (localOffset == MAX_DOUBLE) {
-        localOffset = static_cast<double>(GetLocalOffsetFromOS(timeMs, isLocal));
-        SetLocalOffset(thread, JSTaggedValue(localOffset));
-    }
-    return localOffset;
-}
-
 // static
 JSTaggedValue JSDate::LocalParseStringToMs(const CString &str)
 {
@@ -283,7 +269,7 @@ JSTaggedValue JSDate::LocalParseStringToMs(const CString &str)
         GetNumFromString(str, len, &index, &minutes);
         GetNumFromString(str, len, &index, &seconds);
         isLocal = true;
-        localMs -= (GetLocalOffsetFromOS(localMs, true) * MS_PER_MINUTE);
+        localMs -= GetLocalOffsetFromOS(localMs, true);
     } else {
         indexPlus = str.find(PLUS, indexGmt);
         int indexLocal = static_cast<int>(indexGmt);
@@ -346,7 +332,7 @@ JSTaggedValue JSDate::UtcParseStringToMs(const CString &str)
         GetNumFromString(str, len, &index, &minutes);
         GetNumFromString(str, len, &index, &seconds);
         isLocal = true;
-        localMs -= (GetLocalOffsetFromOS(localMs, true) * MS_PER_MINUTE);
+        localMs -= GetLocalOffsetFromOS(localMs, true);
     } else {
         indexPlus = str.find(PLUS, indexGmt);
         int indexLocal = static_cast<int>(indexGmt);
@@ -442,7 +428,7 @@ JSTaggedValue JSDate::IsoParseStringToMs(const CString &str)
         }
     }
     if (indexEndFlag == 0 && indexT != CString::npos) {
-        localMs -= (GetLocalOffsetFromOS(localMs, true) * MS_PER_MINUTE);
+        localMs -= GetLocalOffsetFromOS(localMs, true);
     }
 
     double day = MakeDay(year, month - 1, date);
@@ -464,20 +450,19 @@ JSTaggedValue JSDate::GetTimeFromString(const char *str, int len)
     int time[TIMEZONE + 1] {0};
     bool res = DateParse::ParseDateString(str, len, time);
     if (res) {
-        double day = MakeDay(time[YEAR], time[MONTH], time[DAYS]);
-        double dateTime = MakeTime(time[HOUR], time[MIN], time[SEC], time[MS]);
-        double timeValue = TimeClip(MakeDate(day, dateTime));
-        if (std::isnan(timeValue)) {
-            return JSTaggedValue(timeValue);
-        }
-        int64_t localMs {0};
+        double timeValue = 0.0;
         if (time[TIMEZONE] == INT_MAX) {
-            localMs = GetLocalOffsetFromOS(static_cast<int64_t>(timeValue), true) * MS_PER_MINUTE;
+            int64_t tmpTimeVal = GetUTCTimestamp(time[YEAR] - NINETEEN_HUNDRED_YEAR, time[MONTH], time[DAYS],
+                                                 time[HOUR], time[MIN], time[SEC], time[MS]);
+            timeValue = static_cast<double>(tmpTimeVal);
         } else {
-            localMs = time[TIMEZONE] * MS_PER_SECOND;
+            double day = MakeDay(time[YEAR], time[MONTH], time[DAYS]);
+            double dateTime = MakeTime(time[HOUR], time[MIN], time[SEC], time[MS]);
+            timeValue = MakeDate(day, dateTime);
+            double timeZoneMs = static_cast<double>(time[TIMEZONE] * MS_PER_SECOND);
+            timeValue -= timeZoneMs;
         }
-        timeValue -= localMs;
-        return JSTaggedValue(timeValue);
+        return JSTaggedValue(TimeClip(timeValue));
     }
     return JSTaggedValue(base::NAN_VALUE);
 }
@@ -585,12 +570,6 @@ JSTaggedValue JSDate::UTC(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue(TimeClip(MakeDate(day, time)));
 }
 
-// 20.4.4.10
-JSTaggedValue JSDate::GetTime(const JSThread *thread) const
-{
-    return GetTimeValue(thread);
-}
-
 // static
 CString JSDate::StrToTargetLength(const CString &str, int length)
 {
@@ -638,21 +617,25 @@ void JSDate::AppendStrToTargetLength(const CString &str, int length, CString &ta
     }
 }
 
-bool JSDate::GetThisDateValues(JSThread *thread, std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const
+bool JSDate::CalcThisDateUnits(JSThread *thread, std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
 {
     double timeMs = this->GetTimeValue(thread).GetDouble();
     if (std::isnan(timeMs)) {
         return false;
     }
-    GetDateValues(thread, timeMs, date, isLocal);
+    int64_t tz = isLocal ? GetLocalOffsetSafely(thread) : 0;
+    int64_t timeMsInt = static_cast<int64_t>(timeMs) + tz;
+    thread->GetDateUtils()->TransferTimeToDate(timeMsInt, date);
+    (*date)[TIMEZONE] = -tz / MS_PER_MINUTE;
+
     return true;
 }
 
 // 20.4.4.35
-JSTaggedValue JSDate::ToDateString(JSThread *thread) const
+JSTaggedValue JSDate::ToDateString(JSThread *thread)
 {
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(thread, &fields, true)) {
+    if (!CalcThisDateUnits(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString str {""};
@@ -675,10 +658,10 @@ CString JSDate::ToDateString(JSThread *thread, double timeMs)
         return "Invalid Date";
     }
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    GetDateValues(thread, timeMs, &fields, true);
+    CalcDateUnits(thread, timeMs, &fields, true);
     CString localTime {""};
     int localMin = 0;
-    localMin = GetLocalOffsetFromOS(timeMs, true);
+    localMin = GetLocalOffsetFromOS(timeMs, true) / MS_PER_MINUTE;
     if (localMin >= 0) {
         localTime += PLUS;
     } else {
@@ -708,10 +691,10 @@ CString JSDate::ToDateString(JSThread *thread, double timeMs)
     return str;
 }
 // 20.4.4.36
-JSTaggedValue JSDate::ToISOString(JSThread *thread) const
+JSTaggedValue JSDate::ToISOString(JSThread *thread)
 {
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(thread, &fields, false)) {
+    if (!CalcThisDateUnits(thread, &fields, false)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString year = ToCString(fields[YEAR]);
@@ -742,15 +725,15 @@ JSTaggedValue JSDate::ToISOString(JSThread *thread) const
 }
 
 // 20.4.4.41
-JSTaggedValue JSDate::ToString(JSThread *thread) const
+JSTaggedValue JSDate::ToString(JSThread *thread)
 {
     int localMin = 0;
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(thread, &fields, true)) {
+    if (!CalcThisDateUnits(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString localTime {""};
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>(this->GetTimeValue(thread).GetDouble()), true);
+    localMin = GetLocalOffsetSafely(thread) / MS_PER_MINUTE;
     if (localMin >= 0) {
         localTime += PLUS;
     } else {
@@ -781,15 +764,15 @@ JSTaggedValue JSDate::ToString(JSThread *thread) const
 }
 
 // 20.4.4.42
-JSTaggedValue JSDate::ToTimeString(JSThread *thread) const
+JSTaggedValue JSDate::ToTimeString(JSThread *thread)
 {
     int localMin = 0;
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(thread, &fields, true)) {
+    if (!CalcThisDateUnits(thread, &fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString localTime {""};
-    localMin = GetLocalOffsetFromOS(static_cast<int64_t>(this->GetTimeValue(thread).GetDouble()), true);
+    localMin = GetLocalOffsetSafely(thread) / MS_PER_MINUTE;
     if (localMin >= 0) {
         localTime += PLUS;
     } else {
@@ -812,10 +795,10 @@ JSTaggedValue JSDate::ToTimeString(JSThread *thread) const
 }
 
 // 20.4.4.43
-JSTaggedValue JSDate::ToUTCString(JSThread *thread) const
+JSTaggedValue JSDate::ToUTCString(JSThread *thread)
 {
     std::array<int64_t, DATE_LENGTH> fields = {0};
-    if (!GetThisDateValues(thread, &fields, false)) {
+    if (!CalcThisDateUnits(thread, &fields, false)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
     CString str {""};
@@ -842,39 +825,52 @@ JSTaggedValue JSDate::ToUTCString(JSThread *thread) const
 // 20.4.4.44
 JSTaggedValue JSDate::ValueOf(const JSThread *thread) const
 {
-    return this->GetTimeValue(thread);
+    return GetTimeValue(thread);
 }
 
 // static
-void JSDate::GetDateValues(JSThread *thread, double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
+void JSDate::CalcDateUnits(JSThread *thread, double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
 {
     int64_t tz = 0;
     int64_t timeMsInt = static_cast<int64_t>(timeMs);
     if (isLocal) {  // timezone offset
-        tz = GetLocalOffsetFromOS(timeMsInt, isLocal);
-        timeMsInt += tz * MS_PER_SECOND * SEC_PER_MINUTE;
+        tz = GetLocalOffsetFromOS(timeMsInt, true);
+        timeMsInt += tz;
     }
 
     thread->GetDateUtils()->TransferTimeToDate(timeMsInt, date);
-    (*date)[TIMEZONE] = -tz;
+    (*date)[TIMEZONE] = -tz / MS_PER_MINUTE;
 }
 
-double JSDate::GetDateValue(JSThread *thread, double timeMs, uint8_t code, bool isLocal) const
+int64_t JSDate::GetLocalOffsetSafely(JSThread *thread)
 {
-    if (std::isnan(timeMs)) {
+    double localOffset = GetLocalOffset(thread).GetDouble();
+    if (std::isnan(localOffset)) {
+        int64_t localOffsetInt = GetLocalOffsetFromOS(static_cast<int64_t>(GetTimeValue(thread).GetDouble()), true);
+        SetLocalOffset(thread, JSTaggedValue(static_cast<double>(localOffsetInt)));
+        return localOffsetInt;
+    }
+    return static_cast<int64_t>(localOffset);
+}
+
+double JSDate::GetDateUnit(JSThread *thread, uint8_t code, bool isLocal)
+{
+    double timeMs = GetTimeValue(thread).GetDouble();
+    std::array<int64_t, DATE_LENGTH> date = {0};
+    if (!CalcThisDateUnits(thread, &date, isLocal)) {
         return base::NAN_VALUE;
     }
-    std::array<int64_t, DATE_LENGTH> date = {0};
-    GetDateValues(thread, timeMs, &date, isLocal);
     return static_cast<double>(date[code]);
 }
 
-JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, bool isLocal) const
+JSTaggedValue JSDate::CalcTimeValueWithNewDateUnits(EcmaRuntimeCallInfo *argv, JSHandle<JSDate> &jsDate, uint32_t code,
+                                                    bool isLocal)
 {
+    JSTaggedValue result(base::NAN_VALUE);
     // get values from argv.
     uint32_t argc = argv->GetArgsNumber();
     if (argc == 0) {
-        return JSTaggedValue(base::NAN_VALUE);
+        return result;
     }
 
     uint32_t firstValue = code & CODE_FLAG;
@@ -886,16 +882,17 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
 
     JSThread *thread = argv->GetThread();
     // get date values.
-    double timeMs = this->GetTimeValue(thread).GetDouble();
+    double timeMs = jsDate->GetTimeValue(thread).GetDouble();
     std::array<int64_t, DATE_LENGTH> date = {0};
     bool isSelectLocal = isLocal;
     // setUTCFullYear, setFullYear
     if (std::isnan(timeMs) && (firstValue == 0)) {
         timeMs = 0.0;
+        jsDate->SetTimeValue(thread, JSTaggedValue(timeMs));
         isSelectLocal = false;
     }
     if (!std::isnan(timeMs)) {
-        GetDateValues(thread, timeMs, &date, isSelectLocal);
+        jsDate->CalcThisDateUnits(thread, &date, isSelectLocal);
     }
     // When timeMs is NaN, the corresponding parameters still need to be obtained
     for (uint32_t i = 0; i < count; i++) {
@@ -904,52 +901,54 @@ JSTaggedValue JSDate::SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, boo
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         double temp = res.GetNumber();
         if (std::isnan(temp)) {
-            return JSTaggedValue(base::NAN_VALUE);
+            return result;
         }
         date[firstValue + i] = NumberHelper::TruncateDouble(temp);
     }
 
     if (std::isnan(timeMs)) {
-        return JSTaggedValue(base::NAN_VALUE);
+        return result;
     }
-    // set date values.
-    return JSTaggedValue(SetDateValues(&date, isLocal));
+
+    timeMs = CalcTimeValue(&date, isLocal);
+    // Before setting new timeValue, the localOffset field need to be set default value. Because this field will only be
+    // updated when it is retrieved for the first time.
+    if (isSelectLocal) {
+        jsDate->SetLocalOffset(thread, JSTaggedValue(base::NAN_VALUE));
+    }
+    result = JSTaggedValue(timeMs);
+    return result;
 }
 
 // static
-double JSDate::SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
+double JSDate::CalcTimeValue(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal)
 {
-    int64_t month = DateUtils::Mod((*date)[MONTH], MONTH_PER_YEAR);
-    int64_t year = (*date)[YEAR] + ((*date)[MONTH] - month) / MONTH_PER_YEAR;
-    int64_t days = DateUtils::GetDaysFromYear(year);
-    int index = DateUtils::IsLeap(year) ? 1 : 0;
-    days += DAYS_FROM_MONTH[index][month];
-
-    days += (*date)[DAYS] - 1;
-    int64_t millisecond =
-        (((*date)[HOUR] * MIN_PER_HOUR + (*date)[MIN]) * SEC_PER_MINUTE + (*date)[SEC]) * MS_PER_SECOND + (*date)[MS];
-    int64_t result = days * MS_PER_DAY + millisecond;
+    int64_t result = 0;
     if (isLocal) {
-        int64_t offset = GetLocalOffsetFromOS(result, isLocal) * SEC_PER_MINUTE * MS_PER_SECOND;
-        result -= offset;
+        result = GetUTCTimestamp((*date)[YEAR] - NINETEEN_HUNDRED_YEAR, (*date)[MONTH], (*date)[DAYS], (*date)[HOUR],
+                                 (*date)[MIN], (*date)[SEC], (*date)[MS]);
+    } else {
+        int64_t month = DateUtils::Mod((*date)[MONTH], MONTH_PER_YEAR);
+        int64_t year = (*date)[YEAR] + ((*date)[MONTH] - month) / MONTH_PER_YEAR;
+        int64_t days = DateUtils::GetDaysFromYear(year);
+        int index = DateUtils::IsLeap(year) ? 1 : 0;
+        days += DAYS_FROM_MONTH[index][month];
+        days += (*date)[DAYS] - 1;
+        int64_t millisecond =
+            (((*date)[HOUR] * MIN_PER_HOUR + (*date)[MIN]) * SEC_PER_MINUTE + (*date)[SEC]) * MS_PER_SECOND +
+            (*date)[MS];
+        result = days * MS_PER_DAY + millisecond;
     }
-    return TimeClip(result);
+
+    return TimeClip(static_cast<double>(result));
 }
 
-double JSDate::SetDateValues(int64_t year, int64_t month, int64_t day)
+double JSDate::CalcTimeValue(int64_t year, int64_t month, int64_t day)
 {
-    if (year >= 0 && year < HUNDRED) {
-        year += NINETEEN_HUNDRED_YEAR;
+    if (year < 0 || year >= HUNDRED) {
+        year -= NINETEEN_HUNDRED_YEAR;
     }
-    int64_t m = DateUtils::Mod(month, MONTH_PER_YEAR);
-    int64_t y = year + (month - m) / MONTH_PER_YEAR;
-    int64_t d = DateUtils::GetDaysFromYear(y);
-    int index = DateUtils::IsLeap(y) ? 1 : 0;
-    d += DAYS_FROM_MONTH[index][m] + day - 1;
-    int64_t result = d * MS_PER_DAY;
-
-    int64_t offset = GetLocalOffsetFromOS(result, true) * SEC_PER_MINUTE * MS_PER_SECOND;
-    result -= offset;
-    return TimeClip(result);
+    int64_t result = GetUTCTimestamp(year, month, day, 0, 0, 0, 0);
+    return TimeClip(static_cast<double>(result));
 }
 }  // namespace panda::ecmascript

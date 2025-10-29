@@ -3471,7 +3471,7 @@ double DateRef::GetTime(const EcmaVM *vm)
     if (!date->IsDate()) {
         LOG_ECMA(ERROR) << "Not a Date Object";
     }
-    return date->GetTime(vm->GetJSThread()).GetDouble();
+    return date->GetTimeValue(vm->GetJSThread()).GetDouble();
 }
 
 // ---------------------------------- TypedArray -----------------------------------
