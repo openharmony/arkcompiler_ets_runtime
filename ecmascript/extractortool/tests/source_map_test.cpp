@@ -383,6 +383,7 @@ HWTEST_F_L0(SourceMapTest, TranslateUrlPositionBySourceMapTest)
     url = "entry/src/main/ets/pages/Index.js";
     sourceMap = TestInit(sourceMapDataWithJsSources);
     EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column, packageName));
+    EXPECT_TRUE(packageName == "entry");
 }
 
 HWTEST_F_L0(SourceMapTest, Base64CharToIntTest)
