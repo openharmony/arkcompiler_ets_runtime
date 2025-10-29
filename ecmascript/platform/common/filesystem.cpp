@@ -61,7 +61,9 @@ std::string TempDirectoryPath()
 std::size_t FileSize(const std::string& path)
 {
     struct stat info;
-    stat(path.c_str(), &info);
+    if (stat(path.c_str(), &info) != 0) {
+        return 0;
+    }
     return info.st_size;
 }
 
