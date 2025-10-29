@@ -63,3 +63,6 @@ Log: [{"value":1,"index":0,"array":[1,2,-3]},{"value":2,"index":1,"array":[1,2,-
 Some Test Case 17:
 Log: [] Result: false
 ---
+Some Test Case 18:
+Result: true
+---

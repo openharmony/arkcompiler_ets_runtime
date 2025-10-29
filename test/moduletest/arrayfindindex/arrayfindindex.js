@@ -241,6 +241,19 @@ const findIndexTestCases = [
         });
        print("Log:", JSON.stringify(log), "Result:", JSON.stringify(result)); // Result: 0
     },
+
+    () => {
+        let arr = new Array(0, 1, 2);
+        let count = 0;
+        const result = arr.findIndex((e, idx) => {
+            if (idx == 0) {
+                arr.push(3);
+            }
+            count++;
+            return e === 3;
+        });
+        print("Count:", count, "Result:", result);
+    },
 ];
 
 findIndexTestCases.forEach((test, i) => {

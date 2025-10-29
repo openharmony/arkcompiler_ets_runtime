@@ -204,6 +204,23 @@ const testCases = [
         });
         print("Log:", JSON.stringify(log), "Result:", result);
     },
+
+    () => {
+        let arr = new Array(10000);
+        arr.fill(1);
+        const res = arr.every((e, idx) => {
+            if (idx == 1) {
+                for (let j = 0; j < 9990; ++j) {
+                    arr.pop();
+                }
+            }
+            if (idx == 2) {
+                arr.push(100);
+            }
+            return e < 50;
+        }, 0);
+        print("Result:", res);
+    },
 ];
 
 testCases.forEach((test, i) => {
