@@ -177,7 +177,6 @@ public:
     static void ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t length);
 
     static JSTaggedValue FindPatchModule(uintptr_t argGlue, JSTaggedValue resolvedModule);
-    static JSTaggedValue UpdateSharedModule(uintptr_t argGlue, JSTaggedValue resolvedModule);
     static void FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedValue curModule);
     static void LoadNativeModuleFailed(JSTaggedValue curModule);
     static void TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTaggedValue> func);
