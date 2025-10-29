@@ -1109,10 +1109,23 @@ double NumberHelper::Strtod(const char *str, int exponent, uint8_t radix)
 
     // cal pow
     int exponentAbs = exponent < 0 ? -exponent : exponent;
-    double powVal = ((radix == DECIMAL) && (exponentAbs < POWERS_OF_TEN_SIZE)) ?
-        POWERS_OF_TEN[exponentAbs] : std::pow(radix, exponentAbs);
+    double powVal = 1.0; // 1.0: default value of pow
+    double overflowPowVal = 1.0; // 1.0: default value, represent no overflow
+    if (radix == DECIMAL) {
+        if (exponentAbs < POWERS_OF_TEN_SIZE) {
+            powVal = POWERS_OF_TEN[exponentAbs];
+        } else if (exponent > 0 || exponentAbs <= DECIMAL_MAX_EXPONENT) {
+            powVal = std::pow(radix, exponentAbs);
+        } else {
+            powVal = DECIMAL_DOUBLE_MAX_POW_VAL;
+            overflowPowVal = std::pow(radix, exponentAbs - DECIMAL_MAX_EXPONENT);
+        }
+    } else {
+        powVal = std::pow(radix, exponentAbs);
+    }
     if (exponent < 0) {
         result = number / powVal;
+        result /= overflowPowVal;
     } else {
         result = number * powVal;
     }

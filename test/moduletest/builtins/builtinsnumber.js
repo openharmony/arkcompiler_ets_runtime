@@ -43,6 +43,7 @@ print(Number.parseFloat("1e0"))
 print(Number.parseFloat("10.0e-0"))
 print(Number.parseFloat("10.0e0"))
 print(Number.parseFloat("100.0E1"))
+print(Number.parseFloat("5e-324"))
 
 print("builtins global parsefloat");
 print(parseFloat())
@@ -57,6 +58,7 @@ print(parseFloat("-0.12"))
 print(parseFloat("  01 ", "1"))
 print(parseFloat("123456e10"))
 print(parseFloat("123456e10"))
+print(parseFloat("5e-324"))
 
 print("builtins number parseint");
 print(Number.parseInt())
