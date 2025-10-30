@@ -86,7 +86,7 @@
     do {                                                                                     \
         auto val = reinterpret_cast<JSTaggedValue *>(jsValueRef);                            \
         if (UNLIKELY(val->IsSpecial())) {                                                    \
-            LOG_FULL(WARN) << "JSNApi special value:0x" << val->GetRawData() << " checked"; \
+            LOG_FULL(DEBUG) << "JSNApi special value:0x" << val->GetRawData() << " checked"; \
             return;                                                                          \
         }                                                                                    \
     } while (false)
@@ -95,7 +95,7 @@
     do {                                                                                     \
         auto val = reinterpret_cast<JSTaggedValue *>(jsValueRef);                            \
         if (UNLIKELY(val->IsSpecial())) {                                                    \
-            LOG_FULL(WARN) << "JSNApi special value:0x" << val->GetRawData() << " checked"; \
+            LOG_FULL(DEBUG) << "JSNApi special value:0x" << val->GetRawData() << " checked"; \
             return (retValue);                                                               \
         }                                                                                    \
     } while (false)
