@@ -153,7 +153,7 @@ double JSDate::MakeDay(double year, double month, double date)
         }
 
         int64_t days = DateUtils::GetDaysFromYear(y);
-        int index = DateUtils::IsLeap(year) ? 1 : 0;
+        int index = DateUtils::IsLeap(y) ? 1 : 0;
         days += DAYS_FROM_MONTH[index][m];
         return static_cast<double>(days - 1) + NumberHelper::TruncateDouble(date);
     }

@@ -61,3 +61,7 @@ print(d10.getMonth(),d10.getDate(),d10.getHours());
 const testDate = new Date(Date.UTC(2024, 9, 1));
 const result = testDate.toLocaleString("zh-CN", { dateStyle: "full", timeZone: "UTC" });
 print(result);
+
+var timer1 = Date.UTC(2024, 17, 15);
+var timer2 = Date.UTC(2025, 5, 15);
+print(timer1 == timer2);
