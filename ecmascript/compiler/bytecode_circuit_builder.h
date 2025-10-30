@@ -221,6 +221,7 @@ public:
                            Bytecodes *bytecodes,
                            bool enableLog,
                            bool enableTypeLowering,
+                           bool enableTraceCallNum,
                            std::string name,
                            const CString &recordName,
                            PGOProfilerDecoder *decoder,
@@ -230,6 +231,7 @@ public:
           method_(methodLiteral), gateAcc_(circuit), argAcc_(circuit, method_),
           pgoTypeRecorder_(*decoder, jsPandaFile, method_->GetMethodId().GetOffset()),
           enableLog_(enableLog), enableTypeLowering_(enableTypeLowering),
+          enableTraceCallNum_(enableTraceCallNum),
           pcOffsets_(methodPCInfo.pcOffsets),
           frameStateBuilder_(this, circuit, methodLiteral),
           methodName_(name), recordName_(recordName),
@@ -325,6 +327,11 @@ public:
     bool IsTypeLoweringEnabled() const
     {
         return enableTypeLowering_;
+    }
+
+    bool IsEnableTraceCallNum() const
+    {
+        return enableTraceCallNum_;
     }
 
     [[nodiscard]] const std::vector<GateRef>& GetAsyncRelatedGates() const
@@ -720,6 +727,7 @@ private:
     int32_t osrOffset_ {MachineCode::INVALID_OSR_OFFSET};
     bool enableLog_ {false};
     bool enableTypeLowering_ {false};
+    bool enableTraceCallNum_ {false};
     std::vector<GateRef> suspendAndResumeGates_ {};
     std::vector<const uint8_t*> pcOffsets_;
     FrameStateBuilder frameStateBuilder_;

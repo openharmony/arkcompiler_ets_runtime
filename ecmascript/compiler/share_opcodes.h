@@ -56,7 +56,8 @@ namespace panda::ecmascript::kungfu {
     V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                                   \
     V(GetEnv, GET_ENV, GateFlags::NO_WRITE, 0, 1, 1)                                            \
     V(GetGlobalEnvByFunc, GET_GLOBAL_ENV_BY_FUNC, GateFlags::NO_WRITE, 0, 1, 1)                 \
-    V(GetGlobalEnvByLexicalEnv, GET_GLOBAL_ENV_BY_LEXICAL_ENV, GateFlags::NO_WRITE, 0, 1, 1)
+    V(GetGlobalEnvByLexicalEnv, GET_GLOBAL_ENV_BY_LEXICAL_ENV, GateFlags::NO_WRITE, 0, 1, 1)    \
+    V(CallNumTrace, CALL_NUM_TRACE, GateFlags::NO_WRITE, 0, 1, 1)
 
 #define SHARE_INTRINSIC_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                       \
     V(TaggedIsHeapObjectIntrinsic, TAGGED_IS_HEAPOBJECT_INTRINSIC, GateFlags::NONE_FLAG, 0, 0, 2)               \

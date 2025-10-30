@@ -1168,6 +1168,26 @@ DEF_RUNTIME_STUBS(ReportHiEvents)
     return JSTaggedValue(true).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CallNumTrace)
+{
+    RUNTIME_STUBS_HEADER(CallNumTrace);
+    constexpr uint32_t PER_PRINT_COUNT = 10;
+    JSHandle<JSTaggedValue> jsFunc = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    Method *method = Method::Cast(JSHandle<JSFunction>::Cast(jsFunc)->GetMethod(thread));
+    static std::unordered_map<std::string, int> methodCount;
+    const char *name = method->GetMethodName(thread);
+    methodCount[name] ++;
+    if (methodCount[name] % PER_PRINT_COUNT == 0) {
+        std::string s = "(Jit Call Trace) Function Name:";
+        s += name;
+        s += " Size: ";
+        s += std::to_string(method->GetCodeSize(thread));
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, s.c_str(), "");
+        LOG_ECMA(INFO) << s;
+    }
+    return JSTaggedValue(static_cast<uint64_t>(0)).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetCallSpreadArgs)
 {
     RUNTIME_STUBS_HEADER(GetCallSpreadArgs);

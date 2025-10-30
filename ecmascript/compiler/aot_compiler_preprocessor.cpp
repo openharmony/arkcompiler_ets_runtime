@@ -56,6 +56,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
     isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
     isEnableLazyDeopt_ = runtimeOptions.IsEnableAotLazyDeopt();
+    isEnableTraceCallNum_ = runtimeOptions.IsEnableTraceCallNum();
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
     isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
@@ -246,6 +247,7 @@ void AotCompilerPreprocessor::AnalyzeGraph(BCInfo &bytecodeInfo, CompilationOpti
     BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, &circuit,
                                     ctx.GetByteCodes(), false,
                                     cOptions.isEnableTypeLowering_,
+                                    cOptions.isEnableTraceCallNum_,
                                     fullName, bytecodeInfo.GetRecordNameWithIndex(0), decoder, false);
     {
         builder.SetPreAnalysis();

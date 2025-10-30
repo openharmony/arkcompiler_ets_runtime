@@ -57,6 +57,7 @@ public:
           enableLog_(enableLog),
           methodName_(name),
           enableTypeLowering_(ctx->GetCompilationEnv()->GetJSOptions().IsEnableTypeLowering()),
+          enableTraceCallNum_(ctx->GetCompilationEnv()->GetJSOptions().IsEnableTraceCallNum()),
           traceInline_(ctx->GetCompilationEnv()->GetJSOptions().GetTraceInline()),
           maxInlineBytecodesCount_(ctx->GetCompilationEnv()->GetJSOptions().GetMaxInlineBytecodes()),
           nativeAreaAllocator_(nativeAreaAllocator),
@@ -156,6 +157,7 @@ private:
     bool enableLog_ {false};
     std::string methodName_;
     bool enableTypeLowering_ {false};
+    bool enableTraceCallNum_{false};
     bool inlineSuccess_ {false};
     bool traceInline_ {false};
     size_t maxInlineBytecodesCount_ {0};

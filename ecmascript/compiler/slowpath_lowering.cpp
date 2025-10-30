@@ -102,6 +102,14 @@ void SlowPathLowering::CallRuntimeLowering()
             case OpCode::GET_GLOBAL_ENV_BY_LEXICAL_ENV:
                 globalEnvCache = gate;
                 break;
+            case OpCode::CALL_NUM_TRACE: {
+                // initialize label manager
+                Environment env(gate, circuit_, &builder_);
+                const int callID = RTSTUB_ID(CallNumTrace);
+                GateRef newGate = LowerCallRuntime(gate, callID, {acc_.GetValueIn(gate, 0)});
+                acc_.ReplaceHirDirectly(gate, builder_.GetStateDepend(), newGate);
+                break;
+            }
             default:
                 break;
         }

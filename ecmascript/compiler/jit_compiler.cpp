@@ -53,6 +53,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     profilerIn_ = std::string(runtimeOptions.GetPGOProfilerPath());
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
     isEnableTypeLowering_ = (runtimeOptions.IsEnableTypeLowering()) && (!runtimeOptions.IsEnableJitFastCompile());
+    isEnableTraceCallNum_ = runtimeOptions.IsEnableTraceCallNum();
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
@@ -83,6 +84,7 @@ void JitCompiler::Init(JSRuntimeOptions runtimeOptions)
     passOptions_ =
         optionsBuilder.EnableArrayBoundsCheckElimination(jitOptions_.isEnableArrayBoundsCheckElimination_)
             .EnableTypeLowering(jitOptions_.isEnableTypeLowering_)
+            .EnableTraceCallNum(jitOptions_.isEnableTraceCallNum_)
             .EnableEarlyElimination(jitOptions_.isEnableEarlyElimination_)
             .EnableLaterElimination(jitOptions_.isEnableLaterElimination_)
             .EnableValueNumbering(jitOptions_.isEnableValueNumbering_)
