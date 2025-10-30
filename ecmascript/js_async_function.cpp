@@ -29,67 +29,6 @@ namespace panda::ecmascript {
 using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 using BuiltinsPromise = builtins::BuiltinsPromise;
 
-void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSAsyncFuncObject> &asyncFuncObj,
-                                         const JSHandle<JSTaggedValue> &value)
-{
-    // 1.Let asyncContext be the running execution context.
-    auto vm = thread->GetEcmaVM();
-    ObjectFactory *factory = vm->GetFactory();
-
-    JSHandle<JSTaggedValue> asyncCtxt(thread, asyncFuncObj->GetGeneratorContext(thread));
-
-    // 2.Let promiseCapability be ! NewPromiseCapability(%Promise%).
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    JSHandle<PromiseCapability> pcap =
-        JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-
-    // 3.Let resolveResult be ! Call(promiseCapability.[[Resolve]], undefined, « value »).
-    JSHandle<JSTaggedValue> resolve(thread, pcap->GetResolve(thread));
-    JSHandle<JSTaggedValue> thisArg = globalConst->GetHandledUndefined();
-
-    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, thisArg, undefined, 1);
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(value.GetTaggedValue());
-    [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-
-    // 4.Let onFulfilled be a new built-in function object as defined in AsyncFunction Awaited Fulfilled.
-    JSHandle<JSAsyncAwaitStatusFunction> fulFunc = factory->NewJSAsyncAwaitStatusFunction(
-        MethodIndex::BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_FULFILLED);
-
-    // 5.Let onRejected be a new built-in function object as defined in AsyncFunction Awaited Rejected.
-    JSHandle<JSAsyncAwaitStatusFunction> rejFunc = factory->NewJSAsyncAwaitStatusFunction(
-        MethodIndex::BUILTINS_PROMISE_HANDLER_ASYNC_AWAIT_REJECTED);
-
-    // 6.Set onFulfilled.[[AsyncContext]] to asyncContext.
-    // 7.Set onRejected.[[AsyncContext]] to asyncContext.
-    fulFunc->SetAsyncContext(thread, asyncCtxt);
-    rejFunc->SetAsyncContext(thread, asyncCtxt);
-
-    // 8.Let throwawayCapability be ! NewPromiseCapability(%Promise%).
-    // 9.Set throwawayCapability.[[Promise]].[[PromiseIsHandled]] to true.
-    JSHandle<PromiseCapability> tcap =
-        JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
-    RETURN_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSPromise>(thread, tcap->GetPromise(thread))->SetPromiseIsHandled(true);
-
-    // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).
-    JSHandle<JSPromise> promise(thread, pcap->GetPromise(thread));
-    [[maybe_unused]] JSTaggedValue pres = BuiltinsPromise::PerformPromiseThen(
-        thread, promise, JSHandle<JSTaggedValue>::Cast(fulFunc), JSHandle<JSTaggedValue>::Cast(rejFunc), tcap);
-
-    // 11.Remove asyncContext from the execution context stack and restore the execution context that
-    //    is at the top of the execution context stack as the running execution context.
-    // 12.Set the code evaluation state of asyncContext such that when evaluation is resumed with a Completion
-    //    resumptionValue the following steps will be performed:
-    //   a.Return resumptionValue.
-    // 13.Return.
-}
-
 void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTaggedValue> &asyncFuncObj,
                                          const JSHandle<JSTaggedValue> &value)
 {
@@ -131,6 +70,20 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
 
     // 8.Let throwawayCapability be ! NewPromiseCapability(%Promise%).
     // 9.Set throwawayCapability.[[Promise]].[[PromiseIsHandled]] to true.
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    if (thread->GetEcmaVM()->GetJsDebuggerManager()->IsAsyncStackTrace() && asyncFuncObj->IsAsyncFuncObject()) {
+        JSHandle<JSAsyncFuncObject> asyncFun(thread,
+            JSHandle<GeneratorContext>::Cast(asyncCtxt)->GetGeneratorObject(thread));
+        thread->GetEcmaVM()->GetAsyncStackTrace()->InsertAsyncTaskStacks(
+            JSHandle<JSPromise>(thread, asyncFun->GetPromise(thread)), "await");
+    }
+    // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).
+    JSHandle<JSObject> promise = JSHandle<JSObject>::Cast(promiseValue);
+    BuiltinsPromise::PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise),
+                                        JSHandle<JSTaggedValue>::Cast(fulFunc),
+                                        JSHandle<JSTaggedValue>::Cast(rejFunc),
+                                        thread->GlobalConstants()->GetHandledUndefined());
+#else // ENABLE_NEXT_OPTIMIZATION
     JSHandle<PromiseCapability> tcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
     RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -145,6 +98,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
     BuiltinsPromise::PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise),
                                         JSHandle<JSTaggedValue>::Cast(fulFunc),
                                         JSHandle<JSTaggedValue>::Cast(rejFunc), tcap);
+#endif // ENABLE_NEXT_OPTIMIZATION
 
     // 11.Remove asyncContext from the execution context stack and restore the execution context that
     //    is at the top of the execution context stack as the running execution context.

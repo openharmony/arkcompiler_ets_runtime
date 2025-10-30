@@ -125,7 +125,11 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_001)
     JSHandle<JSTaggedValue> reject(thread, capbility->GetReject(thread));
 
     JSHandle<PromiseReaction> rejectReaction = factory->NewPromiseReaction();
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    rejectReaction->SetPromiseOrCapability(thread, capbility.GetTaggedValue());
+#else // ENABLE_NEXT_OPTIMIZATION
     rejectReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
+#endif // ENABLE_NEXT_OPTIMIZATION
     rejectReaction->SetHandler(thread, reject.GetTaggedValue());
 
     JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
@@ -161,7 +165,11 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_002)
     JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve(thread));
 
     JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    fulfillReaction->SetPromiseOrCapability(thread, capbility.GetTaggedValue());
+#else // ENABLE_NEXT_OPTIMIZATION
     fulfillReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
+#endif // ENABLE_NEXT_OPTIMIZATION
     fulfillReaction->SetHandler(thread, resolve.GetTaggedValue());
 
     JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
@@ -195,7 +203,11 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_003)
 
     JSHandle<PromiseCapability> capbility = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<PromiseReaction> rejectReaction = factory->NewPromiseReaction();
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    rejectReaction->SetPromiseOrCapability(thread, capbility.GetTaggedValue());
+#else // ENABLE_NEXT_OPTIMIZATION
     rejectReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
+#endif // ENABLE_NEXT_OPTIMIZATION
     rejectReaction->SetHandler(thread, paramMsg.GetTaggedValue());
 
     JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
@@ -244,7 +256,11 @@ HWTEST_F_L0(PendingJobTest, ExecutePendingJob_004)
     JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve(thread));
 
     JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    fulfillReaction->SetPromiseOrCapability(thread, capbility.GetTaggedValue());
+#else // ENABLE_NEXT_OPTIMIZATION
     fulfillReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
+#endif // ENABLE_NEXT_OPTIMIZATION
     fulfillReaction->SetHandler(thread, paramMsg.GetTaggedValue());
 
     JSHandle<JSFunction> testPromiseResolved =

@@ -309,6 +309,137 @@ JSTaggedValue BuiltinsPromise::Catch(EcmaRuntimeCallInfo *argv)
     return JSFunction::Invoke(info, thenKey);
 }
 
+#ifdef ENABLE_NEXT_OPTIMIZATION
+// 25.4.5.3 Promise.prototype.then ( onFulfilled , onRejected )
+JSTaggedValue BuiltinsPromise::Then(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), Promise, Then);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    auto ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+
+    // 1. Let promise be the this value.
+    JSHandle<JSTaggedValue> thisValue = GetThis(argv);
+    // 2. If IsPromise(promise) is false, throw a TypeError exception.
+    if (!thisValue->IsJSPromise()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Then: thisValue is not promise!", JSTaggedValue::Exception());
+    }
+    // 3. Let C be SpeciesConstructor(promise, %Promise%).
+    // 4. ReturnIfAbrupt(C).
+    JSHandle<JSObject> promise = JSHandle<JSObject>::Cast(thisValue);
+    JSHandle<JSTaggedValue> defaultFunc = JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction());
+    JSHandle<JSTaggedValue> constructor = JSObject::SpeciesConstructor(thread, promise, defaultFunc);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 5. Let resultCapability be NewPromiseCapability(C).
+    // 6. ReturnIfAbrupt(resultCapability).
+    JSMutableHandle<JSTaggedValue> promiseOrCapability(thread, thread->GlobalConstants()->GetHandledUndefined());
+    if (constructor == env->GetPromiseFunction()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSPromise> jsPromise = factory->NewJSPromise();
+        promiseOrCapability.Update(jsPromise);
+    } else {
+        JSHandle<PromiseCapability> capability = JSPromise::NewPromiseCapability(thread, constructor);
+        promiseOrCapability.Update(capability);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    }
+
+    JSHandle<JSTaggedValue> onFulfilled = BuiltinsBase::GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> onRejected = BuiltinsBase::GetCallArg(argv, 1);
+    if (ecmaVm->GetJsDebuggerManager()->IsAsyncStackTrace()) {
+        std::string description;
+        if (onRejected->IsUndefined()) {
+            description = "promise.then";
+        } else if (onFulfilled->IsUndefined()) {
+            description = "promise.catch";
+        } else {
+            description = "promise.finally";
+        }
+        if (promiseOrCapability->IsJSPromise()) {
+            ecmaVm->GetAsyncStackTrace()->InsertAsyncTaskStacks(JSHandle<JSPromise>::Cast(promiseOrCapability),
+                description);
+        } else {
+            auto capability = JSHandle<PromiseCapability>::Cast(promiseOrCapability);
+            ecmaVm->GetAsyncStackTrace()->InsertAsyncTaskStacks(
+                JSHandle<JSPromise>(thread, capability->GetPromise(thread)), description);
+        }
+    }
+
+    // 7. Return PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability).
+    return PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise), onFulfilled, onRejected,
+        promiseOrCapability);
+}
+
+JSTaggedValue BuiltinsPromise::PerformPromiseThen(JSThread *thread, const JSHandle<JSPromise> &promise,
+                                                  const JSHandle<JSTaggedValue> &onFulfilled,
+                                                  const JSHandle<JSTaggedValue> &onRejected,
+                                                  const JSHandle<JSTaggedValue> &promiseOrCapability)
+{
+    auto ecmaVm = thread->GetEcmaVM();
+    BUILTINS_API_TRACE(thread, Promise, PerformPromiseThen);
+    JSHandle<job::MicroJobQueue> job = ecmaVm->GetMicroJobQueue();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSMutableHandle<JSTaggedValue> fulfilled(thread, onFulfilled.GetTaggedValue());
+    auto globalConst = thread->GlobalConstants();
+    if (!fulfilled->IsCallable()) {
+        fulfilled.Update(globalConst->GetIdentityString());
+    }
+    JSMutableHandle<JSTaggedValue> rejected(thread, onRejected.GetTaggedValue());
+    if (!rejected->IsCallable()) {
+        rejected.Update(globalConst->GetThrowerString());
+    }
+    JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
+    fulfillReaction->SetPromiseOrCapability(thread, promiseOrCapability.GetTaggedValue());
+    fulfillReaction->SetHandler(thread, fulfilled.GetTaggedValue());
+
+    JSHandle<PromiseReaction> rejectReaction = factory->NewPromiseReaction();
+    rejectReaction->SetPromiseOrCapability(thread, promiseOrCapability.GetTaggedValue());
+    rejectReaction->SetHandler(thread, rejected.GetTaggedValue());
+
+    PromiseState state = promise->GetPromiseState();
+    if (state == PromiseState::PENDING) {
+        JSHandle<TaggedQueue> fulfillReactions(thread, promise->GetPromiseFulfillReactions(thread));
+        TaggedQueue *newQueue =
+            TaggedQueue::Push(thread, fulfillReactions, JSHandle<JSTaggedValue>::Cast(fulfillReaction));
+        promise->SetPromiseFulfillReactions(thread, JSTaggedValue(newQueue));
+
+        JSHandle<TaggedQueue> rejectReactions(thread, promise->GetPromiseRejectReactions(thread));
+        newQueue = TaggedQueue::Push(thread, rejectReactions, JSHandle<JSTaggedValue>::Cast(rejectReaction));
+        promise->SetPromiseRejectReactions(thread, JSTaggedValue(newQueue));
+    } else if (state == PromiseState::FULFILLED) {
+        JSHandle<TaggedArray> argv = factory->NewTaggedArray(2);  // 2: 2 means two args stored in array
+        argv->Set(thread, 0, fulfillReaction.GetTaggedValue());
+        argv->Set(thread, 1, promise->GetPromiseResult(thread));
+
+        JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
+        job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, promiseReactionsJob, argv);
+    } else if (state == PromiseState::REJECTED) {
+        JSHandle<TaggedArray> argv = factory->NewTaggedArray(2);  // 2: 2 means two args stored in array
+        argv->Set(thread, 0, rejectReaction.GetTaggedValue());
+        argv->Set(thread, 1, promise->GetPromiseResult(thread));
+        // When a handler is added to a rejected promise for the first time, it is called with its operation
+        // argument set to "handle".
+        if (!promise->GetPromiseIsHandled()) {
+            JSHandle<JSTaggedValue> reason(thread, JSTaggedValue::Null());
+            ecmaVm->PromiseRejectionTracker(promise, reason, PromiseRejectionEvent::HANDLE);
+        }
+        JSHandle<JSFunction> promiseReactionsJob(env->GetPromiseReactionJob());
+        job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, promiseReactionsJob, argv);
+    }
+    promise->SetPromiseIsHandled(true);
+    if (promiseOrCapability->IsUndefined()) {
+        return promiseOrCapability.GetTaggedValue();
+    }
+    if (promiseOrCapability->IsJSPromise()) {
+        return promiseOrCapability.GetTaggedValue();
+    }
+    return JSHandle<PromiseCapability>::Cast(promiseOrCapability)->GetPromise(thread);
+}
+
+#else // ENABLE_NEXT_OPTIMIZATION
 // 25.4.5.3 Promise.prototype.then ( onFulfilled , onRejected )
 JSTaggedValue BuiltinsPromise::Then(EcmaRuntimeCallInfo *argv)
 {
@@ -417,6 +548,7 @@ JSTaggedValue BuiltinsPromise::PerformPromiseThen(JSThread *thread, const JSHand
     return capability->GetPromise(thread);
 }
 
+#endif // ENABLE_NEXT_OPTIMIZATION
 JSTaggedValue BuiltinsPromise::PerformPromiseAll(JSThread *thread,
                                                  const JSHandle<PromiseIteratorRecord> &itRecord,
                                                  const JSHandle<JSTaggedValue> &ctor,

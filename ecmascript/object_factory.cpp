@@ -2751,7 +2751,11 @@ JSHandle<PromiseReaction> ObjectFactory::NewPromiseReaction()
     TaggedObject *header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetReactionsRecordClass().GetTaggedObject()));
     JSHandle<PromiseReaction> obj(thread_, header);
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    obj->SetPromiseOrCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+#else // ENABLE_NEXT_OPTIMIZATION
     obj->SetPromiseCapability<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+#endif // ENABLE_NEXT_OPTIMIZATION
     obj->SetHandler<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
     obj->SetType(PromiseType::RESOLVE);
     return obj;
