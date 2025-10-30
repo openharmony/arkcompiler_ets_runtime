@@ -90,7 +90,7 @@ public:
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 4_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
-            defaultNonMovableSpaceSize_ = 4_MB;
+            defaultNonMovableSpaceSize_ = 6_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
             defaultMachineCodeSpaceSize_ = 2_MB;
             defaultGlobalAllocLimit_ = 20_MB;
@@ -308,6 +308,31 @@ public:
     size_t GetMaxJSSerializerSize() const
     {
         return maxJSSerializerSize_;
+    }
+
+    void SetSharedHeapLimitGrowingFactor(size_t value)
+    {
+        sharedHeapLimitGrowingFactor_ = value;
+    }
+
+    void SetSharedHeapLimitGrowingStep(size_t value)
+    {
+        sharedHeapLimitGrowingStep_ = value;
+    }
+
+    void SetIncObjSizeThresholdInSensitive(size_t value)
+    {
+        incObjSizeThresholdInSensitive_ = value;
+    }
+
+    void SetStepNativeSizeInc(size_t value)
+    {
+        stepNativeSizeInc_ = value;
+    }
+
+    void SetDefaultGlobalAllocLimit(size_t value)
+    {
+        defaultGlobalAllocLimit_ = value;
     }
 
 private:

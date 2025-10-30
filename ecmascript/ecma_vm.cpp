@@ -87,6 +87,36 @@ extern "C" uintptr_t GetGlueFromThreadLocal()
     return reinterpret_cast<JSThread *>(g_currentThread)->GetGlueAddr();
 }
 
+void EcmaVM::InitConfigurableParam(EcmaParamConfiguration& config)
+{
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    size_t value = OHOS::system::GetUintParameter<size_t>("persist.ark.sheap.growfactor", 0);
+    if (value != 0) {
+        config.SetSharedHeapLimitGrowingFactor(value);
+    }
+
+    value = OHOS::system::GetUintParameter<size_t>("persist.ark.sheap.growstep", 0) * 1_MB;
+    if (value != 0) {
+        config.SetSharedHeapLimitGrowingStep(value);
+    }
+
+    value = OHOS::system::GetUintParameter<size_t>("persist.ark.sensitive.threshold", 0) * 1_MB;
+    if (value != 0) {
+        config.SetIncObjSizeThresholdInSensitive(value);
+    }
+
+    value = OHOS::system::GetUintParameter<size_t>("persist.ark.native.stepsize", 0) * 1_MB;
+    if (value != 0) {
+        config.SetStepNativeSizeInc(value);
+    }
+
+    value = OHOS::system::GetUintParameter<size_t>("persist.ark.global.alloclimit", 0) * 1_MB;
+    if (value != 0) {
+        config.SetDefaultGlobalAllocLimit(value);
+    }
+#endif
+}
+
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
     Runtime::CreateIfFirstVm(options);
@@ -112,6 +142,9 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     auto config = EcmaParamConfiguration(heapType,
                                          MemMapAllocator::GetInstance()->GetCapacity(),
                                          heapSize);
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    EcmaVM::InitConfigurableParam(config);
+#endif
     JSRuntimeOptions newOptions = options;
     // only define SUPPORT_ENABLE_ASM_INTERP can enable asm-interpreter
 #if !defined(SUPPORT_ENABLE_ASM_INTERP)
