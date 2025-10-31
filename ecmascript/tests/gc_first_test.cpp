@@ -238,6 +238,7 @@ HWTEST_F_L0(GCTest, SerializeGCCheck)
         chunk->Emplace(reinterpret_cast<JSTaggedType>(key2.GetTaggedValue().GetTaggedObject()));
         chunk->Emplace(reinterpret_cast<JSTaggedType>(msg.GetTaggedValue().GetTaggedObject()));
         index = Runtime::GetInstance()->PushSerializationRoot(thread, std::move(chunk));
+        EXPECT_NE(index, 0);
     }
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
@@ -253,12 +254,18 @@ HWTEST_F_L0(GCTest, StatisticHeapDetailTest)
         for (int i = 0; i < 1024; i++) {
             factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
         }
+        size_t nonMovableSpaceSize = heap->GetNonMovableSpace()->GetHeapObjectSize();
+        EXPECT_TRUE(nonMovableSpaceSize >= 1024);
         for (int i = 0; i < 1024; i++) {
             factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
         }
+        size_t oldSpaceSize = heap->GetOldSpace()->GetHeapObjectSize();
+        EXPECT_TRUE(oldSpaceSize >= 1024);
         for (int i = 0; i < 1024; i++) {
             factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::SEMI_SPACE);
         }
+        size_t newSpaceSize = heap->GetNewSpace()->GetHeapObjectSize();
+        EXPECT_TRUE(newSpaceSize >= 0);
     }
     heap->StatisticHeapDetail();
 };

@@ -429,7 +429,7 @@ HWTEST_F_L0(GCTest, CalculateGrowingFactorTest001)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMemGrowingType(MemGrowingType::CONSERVATIVE);
     auto controller = new MemController(heap);
-    controller->CalculateGrowingFactor(1, 1);
+    ASSERT_EQ(controller->CalculateGrowingFactor(1, 1), 2.0);
 }
 
 HWTEST_F_L0(GCTest, CalculateGrowingFactorTest002)
@@ -437,7 +437,7 @@ HWTEST_F_L0(GCTest, CalculateGrowingFactorTest002)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMemGrowingType(MemGrowingType::PRESSURE);
     auto controller = new MemController(heap);
-    controller->CalculateGrowingFactor(1, 1);
+    ASSERT_EQ(controller->CalculateGrowingFactor(1, 1), 1.1);
 }
 
 HWTEST_F_L0(GCTest, CalculateGrowingFactorTest003)
@@ -445,7 +445,7 @@ HWTEST_F_L0(GCTest, CalculateGrowingFactorTest003)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMemGrowingType(MemGrowingType::CONSERVATIVE);
     auto controller = new MemController(heap);
-    controller->CalculateGrowingFactor(1, 0);
+    ASSERT_EQ(controller->CalculateGrowingFactor(1, 1), 2.0);
 }
 
 HWTEST_F_L0(GCTest, StopCalculationAfterGCTest001)
@@ -454,7 +454,11 @@ HWTEST_F_L0(GCTest, StopCalculationAfterGCTest001)
     auto controller = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     controller->StartCalculationBeforeGC();
+    ASSERT_NE(controller->GetNewSpaceAllocSizeSinceGC(), 0);
+    ASSERT_NE(controller->GetOldSpaceAllocSizeSinceGC(), 0);
     controller->StopCalculationAfterGC(TriggerGCType::YOUNG_GC);
+    ASSERT_EQ(controller->GetNewSpaceAllocSizeSinceGC(), 0);
+    ASSERT_EQ(controller->GetOldSpaceAllocSizeSinceGC(), 0);
 }
 
 HWTEST_F_L0(GCTest, RecordAllocationForIdleTest003)
@@ -469,6 +473,7 @@ HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest001)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     heap->TryTriggerIdleCollection();
+    ASSERT_FALSE(heap->IsEmptyIdleTask());
 }
 
 HWTEST_F_L0(GCTest, WaitAllTasksFinishedTest001)
@@ -491,6 +496,7 @@ HWTEST_F_L0(GCTest, ChangeGCParamsTest001)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
     heap->ChangeGCParams(true);
+    ASSERT_TRUE(heap->IsInBackground());
 }
 
 HWTEST_F_L0(GCTest, ChangeGCParamsTest002)
@@ -499,6 +505,7 @@ HWTEST_F_L0(GCTest, ChangeGCParamsTest002)
     heap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
     heap->GetOldSpace()->IncreaseCommitted(31457300);
     heap->ChangeGCParams(true);
+    ASSERT_TRUE(heap->IsInBackground());
 }
 
 HWTEST_F_L0(GCTest, ChangeGCParamsTest003)
@@ -507,18 +514,22 @@ HWTEST_F_L0(GCTest, ChangeGCParamsTest003)
     auto sHeap = SharedHeap::GetInstance();
     sHeap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
     heap->ChangeGCParams(true);
+    ASSERT_TRUE(heap->IsInBackground());
 }
 
 HWTEST_F_L0(GCTest, ChangeGCParamsTest004)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMemGrowingType(MemGrowingType::HIGH_THROUGHPUT);
+    ASSERT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
     heap->ChangeGCParams(true);
+    ASSERT_TRUE(heap->IsInBackground());
 }
 
 HWTEST_F_L0(GCTest, IncrementMarkerTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_FALSE(heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
     heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
     heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
 }
@@ -526,6 +537,7 @@ HWTEST_F_L0(GCTest, IncrementMarkerTest001)
 HWTEST_F_L0(GCTest, IncrementMarkerTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_FALSE(heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
     heap->GetIncrementalMarker()->TriggerIncrementalMark(0);
 }
 
@@ -533,6 +545,7 @@ HWTEST_F_L0(GCTest, IncrementMarkerTest003)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetIncrementalMarker()->SetMarkingFinished(true);
+    ASSERT_FALSE(heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
     heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
 }
 
@@ -541,6 +554,7 @@ HWTEST_F_L0(GCTest, IncrementMarkerTest004)
     thread->GetEcmaVM()->GetJSOptions().SetArkProperties(0);
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetIncrementalMarker()->SetMarkingFinished(true);
+    ASSERT_FALSE(heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
     heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
 }
 
