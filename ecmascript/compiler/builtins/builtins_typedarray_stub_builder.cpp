@@ -3460,7 +3460,7 @@ void BuiltinsTypedArrayStubBuilder::FastCopyElementFromArray(Variable *result, G
     Bind(&copyElements);
     {
         Label check(env);
-        FastCopyFromArrayToTypedArray(glue, array, result, Int32(0), len, &check, slowPath, arrayType, true);
+        CopyArrayToTypedArrayForCtor(glue, array, result, Int32(0), len, &check, slowPath, arrayType, true);
         Bind(&check);
         BRANCH(HasPendingException(glue), &hasException, exit);
     }
@@ -3471,13 +3471,13 @@ void BuiltinsTypedArrayStubBuilder::FastCopyElementFromArray(Variable *result, G
     }
 }
 
-void BuiltinsTypedArrayStubBuilder::FastCopyFromArrayToTypedArray(GateRef glue, GateRef array, Variable *result,
+void BuiltinsTypedArrayStubBuilder::CopyArrayToTypedArrayForCtor(GateRef glue, GateRef array, Variable *result,
     GateRef targetOffset, GateRef srcLength, Label *check, Label *slowPath,
     const DataViewType arrayType, bool typedArrayFromCtor)
 {
     if (arrayType == DataViewType::UINT8_CLAMPED || arrayType == DataViewType::BIGINT64
         || arrayType == DataViewType::BIGUINT64) {
-        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(FastCopyFromArrayToTypedArray),
+        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(CopyArrayToTypedArrayForCtor),
             { result->ReadVariable(), IntToTaggedInt(srcLength), array });
         Jump(check);
         return;
@@ -3532,6 +3532,8 @@ void BuiltinsTypedArrayStubBuilder::CopyElementsToArrayBuffer(GateRef glue, Gate
     Label exit(env);
     Label copyElement(env);
     GateRef elementsArray = GetElementsArray(glue, array);
+    NewObjectStubBuilder newBuilder(this);
+    GateRef copyElements = newBuilder.CopyArray(glue, elementsArray, srcLength, srcLength);
     GateRef elementSize = Int32(base::TypedArrayHelper::GetSizeFromType(arrayType));
     Jump(&loopHead);
     LoopBegin(&loopHead);
@@ -3541,7 +3543,7 @@ void BuiltinsTypedArrayStubBuilder::CopyElementsToArrayBuffer(GateRef glue, Gate
         Bind(&storeValue);
         {
             GateRef value = getWithKind ? GetTaggedValueWithElementsKind(glue, array, *i)
-                                        : GetValueFromTaggedArray(glue, elementsArray, *i);
+                                        : GetValueFromTaggedArray(glue, copyElements, *i);
             GateRef val = ToNumber(glue, value);
             BRANCH(HasPendingException(glue), &exit, &copyElement);
             Bind(&copyElement);

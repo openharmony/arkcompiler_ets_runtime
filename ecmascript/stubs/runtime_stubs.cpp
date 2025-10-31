@@ -3283,13 +3283,13 @@ DEF_RUNTIME_STUBS(TryGetInternString)
     return RuntimeTryGetInternString(argGlue, string);
 }
 
-DEF_RUNTIME_STUBS(FastCopyFromArrayToTypedArray)
+DEF_RUNTIME_STUBS(CopyArrayToTypedArrayForCtor)
 {
-    RUNTIME_STUBS_HEADER(FastCopyFromArrayToTypedArray);
+    RUNTIME_STUBS_HEADER(CopyArrayToTypedArrayForCtor);
     JSHandle<JSTypedArray> targetArray = GetHArg<JSTypedArray>(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue len = GetArg(argv, argc, 1);  // 1: param index
     JSHandle<JSObject> obj = GetHArg<JSObject>(argv, argc, 2);  // 2: param index
-    return JSStableArray::FastCopyFromArrayToTypedArray(thread, targetArray,
+    return JSStableArray::CopyArrayToTypedArrayForCtor(thread, targetArray,
         base::TypedArrayHelper::GetType(targetArray), 0, len.GetInt(), obj).GetRawData();
 }
 
