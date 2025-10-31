@@ -90,28 +90,38 @@ extern "C" uintptr_t GetGlueFromThreadLocal()
 void EcmaVM::InitConfigurableParam(EcmaParamConfiguration& config)
 {
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    static constexpr uint32_t MIN_GROW_FACTOR = 2;
+    static constexpr uint32_t MAX_GROW_FACTOR = 8;
     size_t value = OHOS::system::GetUintParameter<size_t>("persist.ark.sheap.growfactor", 0);
-    if (value != 0) {
+    if (value >= MIN_GROW_FACTOR && value <= MAX_GROW_FACTOR) {
         config.SetSharedHeapLimitGrowingFactor(value);
     }
 
+    static constexpr uint32_t MIN_GROW_STEP = 5_MB;
+    static constexpr uint32_t MAX_GROW_STEP = 320_MB;
     value = OHOS::system::GetUintParameter<size_t>("persist.ark.sheap.growstep", 0) * 1_MB;
-    if (value != 0) {
+    if (value >= MIN_GROW_STEP && value <= MAX_GROW_STEP) {
         config.SetSharedHeapLimitGrowingStep(value);
     }
 
+    static constexpr uint32_t MIN_SENSITIVE_THRESHOLD = 5_MB;
+    static constexpr uint32_t MAX_SENSITIVE_THRESHOLD = 320_MB;
     value = OHOS::system::GetUintParameter<size_t>("persist.ark.sensitive.threshold", 0) * 1_MB;
-    if (value != 0) {
+    if (value >= MIN_SENSITIVE_THRESHOLD && value <= MAX_SENSITIVE_THRESHOLD) {
         config.SetIncObjSizeThresholdInSensitive(value);
     }
 
+    static constexpr uint32_t MIN_NATIVE_STEP_SIZE = 64_MB;
+    static constexpr uint32_t MAX_NATIVE_STEP_SIZE = 1024_MB;
     value = OHOS::system::GetUintParameter<size_t>("persist.ark.native.stepsize", 0) * 1_MB;
-    if (value != 0) {
+    if (value >= MIN_NATIVE_STEP_SIZE && value <= MAX_NATIVE_STEP_SIZE) {
         config.SetStepNativeSizeInc(value);
     }
 
+    static constexpr uint32_t MIN_GLOBAL_ALLOC_LIMIT = 5_MB;
+    static constexpr uint32_t MAX_GLOBAL_ALLOC_LIMIT = 128_MB;
     value = OHOS::system::GetUintParameter<size_t>("persist.ark.global.alloclimit", 0) * 1_MB;
-    if (value != 0) {
+    if (value >= MIN_GLOBAL_ALLOC_LIMIT && value <= MAX_GLOBAL_ALLOC_LIMIT) {
         config.SetDefaultGlobalAllocLimit(value);
     }
 #endif

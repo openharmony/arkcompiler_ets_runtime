@@ -16,6 +16,9 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/tests/test_helper.h"
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
 
 #include <csetjmp>
 #include <csignal>
@@ -219,4 +222,49 @@ HWTEST_F_L0(EcmaVMTest, TestHandleAlocate)
     ResetAbortFlag();
     JSNApi::DestroyJSVM(ecmaVm);
 }
+
+HWTEST_F_L0(EcmaVMTest, TestInitConfigurableParam)
+{
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    OHOS::system::SetParameter("persist.ark.sheap.growfactor", "1");
+    OHOS::system::SetParameter("persist.ark.sheap.growstep", "2");
+    OHOS::system::SetParameter("persist.ark.sensitive.threshold", "3");
+    OHOS::system::SetParameter("persist.ark.native.stepsize", "4");
+    OHOS::system::SetParameter("persist.ark.global.alloclimit", "4");
+
+    EcmaParamConfiguration cfg = EcmaParamConfiguration(EcmaParamConfiguration::HeapType::WORKER_HEAP,
+                                                        MAX_HEAP_SIZE, MAX_HEAP_SIZE);
+    EcmaVM::InitConfigurableParam(cfg);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingFactor() != 1);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() != 2);
+    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() != 3);
+    EXPECT_TRUE(cfg.GetStepNativeSizeInc() != 4);
+    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() != 4);
+
+    OHOS::system::SetParameter("persist.ark.sheap.growfactor", "4");
+    OHOS::system::SetParameter("persist.ark.sheap.growstep", "10");
+    OHOS::system::SetParameter("persist.ark.sensitive.threshold", "10");
+    OHOS::system::SetParameter("persist.ark.native.stepsize", "128");
+    OHOS::system::SetParameter("persist.ark.global.alloclimit", "10");
+    EcmaVM::InitConfigurableParam(cfg);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingFactor() == 4);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() == 10);
+    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() == 10);
+    EXPECT_TRUE(cfg.GetStepNativeSizeInc() == 128);
+    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() == 10);
+
+    OHOS::system::SetParameter("persist.ark.sheap.growfactor", "10");
+    OHOS::system::SetParameter("persist.ark.sheap.growstep", "640");
+    OHOS::system::SetParameter("persist.ark.sensitive.threshold", "640");
+    OHOS::system::SetParameter("persist.ark.native.stepsize", "2048");
+    OHOS::system::SetParameter("persist.ark.global.alloclimit", "256");
+    EcmaVM::InitConfigurableParam(cfg);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingFactor() != 10);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() != 640);
+    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() != 640);
+    EXPECT_TRUE(cfg.GetStepNativeSizeInc() != 2048);
+    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() != 256);
+#endif
+}
+
 }  // namespace panda::ecmascript
