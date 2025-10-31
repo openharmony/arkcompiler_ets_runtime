@@ -673,6 +673,11 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
             notifyDeferFreezeCallback(true);
         }
     }
+
+    Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+        ASSERT(!thread->IsInRunningState());
+        thread->SetPendingGCCallbacksFlag();
+    });
 }
 
 void SharedHeap::SetGCThreadQosPriority(common::PriorityMode mode)
@@ -1500,9 +1505,7 @@ void Heap::ProcessGCCallback()
 {
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
-    if (g_isEnableCMCGC) {
-        thread_->InvokeWeakNodeFreeGlobalCallBack();
-    }
+    thread_->InvokeWeakNodeFreeGlobalCallBack();
     thread_->InvokeWeakNodeNativeFinalizeCallback();
     // PostTask for ProcessNativeDelete
     CleanCallback();
