@@ -1348,6 +1348,11 @@ void SharedHeap::IteratorNativePointerList(WeakVisitor &visitor)
     ShrinkWithFactor(sharedNativePointerList_);
 }
 
+void SharedHeap::ProcessSharedExternalStringDelete(const WeakRootVisitor& visitor)
+{
+    externalStringTable_->ProcessSharedExternalStringDelete(visitor);
+}
+
 void SharedHeap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
 {
 #ifndef NDEBUG

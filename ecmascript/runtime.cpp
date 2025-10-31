@@ -620,6 +620,15 @@ void Runtime::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index
     });
 }
 
+void Runtime::ProcessSharedDelete(const WeakRootVisitor &visitor)
+{
+    auto sHeap = SharedHeap::GetInstance();
+
+    ProcessNativeDeleteInSharedGC(visitor);
+    sHeap->ProcessSharedNativeDelete(visitor);
+    sHeap->ProcessSharedExternalStringDelete(visitor);
+}
+
 void Runtime::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
 {
     SharedHeap::GetInstance()->ProcessSharedNativeDelete(visitor);
