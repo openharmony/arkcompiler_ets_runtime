@@ -27,3 +27,10 @@
   globalThis["Object"] = obj;
   print("---------------test createRealm suc!----------------")
 }
+
+{
+  var v0 = {};
+  let v2 = v0.createRealm();
+  v2[0 >> 0] = 0;
+  print("success");
+}
