@@ -1833,12 +1833,18 @@ void SourceTextModule::ExecuteAsyncModule(JSThread *thread, const JSHandle<Sourc
     JSHandle<JSAsyncModuleRejectedFunction> onRejected =
                     factory->CreateJSAsyncModuleRejectedFunction();
     onRejected->SetModule(thread, module);
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    builtins::BuiltinsPromise::PerformPromiseThen(
+        thread, promise, JSHandle<JSTaggedValue>::Cast(onFulfilled),
+        JSHandle<JSTaggedValue>::Cast(onRejected), thread->GlobalConstants()->GetHandledUndefined());
+#else // ENABLE_NEXT_OPTIMIZATION
     JSHandle<PromiseCapability> tcap =
                     JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
     RETURN_IF_ABRUPT_COMPLETION(thread);
     builtins::BuiltinsPromise::PerformPromiseThen(
         thread, promise, JSHandle<JSTaggedValue>::Cast(onFulfilled),
         JSHandle<JSTaggedValue>::Cast(onRejected), tcap);
+#endif // ENABLE_NEXT_OPTIMIZATION
 }
 
 void SourceTextModule::GatherAvailableAncestors(JSThread *thread, const JSHandle<SourceTextModule> &module,

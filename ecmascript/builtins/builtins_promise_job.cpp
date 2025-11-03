@@ -15,6 +15,8 @@
 
 #include "ecmascript/builtins/builtins_promise_job.h"
 
+#include "ecmascript/builtins/builtins_promise_handler.h"
+#include "ecmascript/builtins/builtins_promise.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
@@ -32,6 +34,79 @@ using ModulePathHelper = ecmascript::ModulePathHelper;
 using PathHelper = ecmascript::base::PathHelper;
 using StaticModuleLoader = ecmascript::StaticModuleLoader;
 
+#ifdef ENABLE_NEXT_OPTIMIZATION
+JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), PromiseJob, Reaction);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // 1. Assert: reaction is a PromiseReaction Record.
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+    ASSERT(value->IsPromiseReaction());
+    JSHandle<PromiseReaction> reaction = JSHandle<PromiseReaction>::Cast(value);
+    JSHandle<JSTaggedValue> argument = GetCallArg(argv, 1);
+
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    // 2. Let promiseCapability be reaction.[[Capabilities]].
+    JSHandle<JSTaggedValue> promiseOrCapability(thread, reaction->GetPromiseOrCapability(thread));
+    // 3. Let handler be reaction.[[Handler]].
+    JSHandle<JSTaggedValue> handler(thread, reaction->GetHandler(thread));
+    constexpr uint32_t argsLength = 1;
+    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
+    JSMutableHandle<JSTaggedValue> callArg(thread, undefined);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    bool isRejected = false;
+    if (handler->IsString()) {
+        // 4. If handler is "Identity", let handlerResult be NormalCompletion(argument).
+        // 5. Else if handler is "Thrower", let handlerResult be Completion{[[type]]: throw, [[value]]: argument,
+        // [[target]]: empty}.
+        callArg.Update(argument);
+        if (EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(),
+            JSHandle<EcmaString>(handler), JSHandle<EcmaString>(globalConst->GetHandledThrowerString()))) {
+            isRejected = true;
+        }
+    } else {
+        // 6. Else, let handlerResult be Call(handler, undefined, «argument»).
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, handler, undefined, undefined, argsLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(argument.GetTaggedValue());
+        JSTaggedValue taggedValue = JSFunction::Call(info);
+        // 7. If handlerResult is an abrupt completion, then
+        // a. Let status be Call(promiseCapability.[[Reject]], undefined, «handlerResult.[[value]]»).
+        // b. NextJob Completion(status).
+        if (thread->HasPendingException()) {
+            JSHandle<JSTaggedValue> throwValue = JSPromise::IfThrowGetThrowValue(thread);
+            callArg.Update(throwValue);
+            thread->ClearException();
+            isRejected = true;
+        } else {
+            callArg.Update(taggedValue);
+        }
+    }
+    if (promiseOrCapability->IsUndefined()) {
+        return undefined.GetTaggedValue();
+    }
+    if (promiseOrCapability->IsJSPromise()) {
+        if (isRejected) {
+            return JSPromise::RejectPromise(thread, JSHandle<JSPromise>::Cast(promiseOrCapability), callArg);
+        }
+        return BuiltinsPromiseHandler::InnerResolve(thread, JSHandle<JSPromise>::Cast(promiseOrCapability), callArg);
+    }
+    JSHandle<PromiseCapability> capability = JSHandle<PromiseCapability>::Cast(promiseOrCapability);
+    EcmaRuntimeCallInfo *runtimeInfo =
+       EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, undefined, undefined, argsLength);
+    if (isRejected) {
+        runtimeInfo->SetFunction(capability->GetReject(thread));
+    } else {
+        runtimeInfo->SetFunction(capability->GetResolve(thread));
+    }
+    runtimeInfo->SetCallArg(callArg.GetTaggedValue());
+    // 8. Let status be Call(promiseCapability.[[Resolve]], undefined, «handlerResult.[[value]]»).
+    return JSFunction::Call(runtimeInfo);
+}
+#else // ENABLE_NEXT_OPTIMIZATION
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -86,6 +161,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
     // 8. Let status be Call(promiseCapability.[[Resolve]], undefined, «handlerResult.[[value]]»).
     return JSFunction::Call(runtimeInfo);
 }
+#endif // ENABLE_NEXT_OPTIMIZATION
 
 JSTaggedValue BuiltinsPromiseJob::PromiseResolveThenableJob(EcmaRuntimeCallInfo *argv)
 {

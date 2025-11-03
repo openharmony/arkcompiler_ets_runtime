@@ -3006,8 +3006,13 @@ void JSSendableArrayBuffer::Dump(const JSThread *thread, std::ostream &os) const
 
 void PromiseReaction::Dump(const JSThread *thread, std::ostream &os) const
 {
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    os << " - promise-or-capability: ";
+    GetPromiseOrCapability(thread).Dump(thread, os);
+#else
     os << " - promise-capability: ";
     GetPromiseCapability(thread).Dump(thread, os);
+#endif
     os << " - type: " << static_cast<int>(GetType());
     os << " - handler: ";
     GetHandler(thread).Dump(thread, os);
@@ -5525,7 +5530,11 @@ void JSSendableArrayBuffer::DumpForSnapshot(const JSThread *thread, std::vector<
 
 void PromiseReaction::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
+#ifdef ENABLE_NEXT_OPTIMIZATION
+    vec.emplace_back(CString("promise-or-capability"), GetPromiseOrCapability(thread));
+#else // ENABLE_NEXT_OPTIMIZATION
     vec.emplace_back(CString("promise-capability"), GetPromiseCapability(thread));
+#endif // ENABLE_NEXT_OPTIMIZATION
     vec.emplace_back(CString("handler"), GetHandler(thread));
     vec.emplace_back(CString("type"), JSTaggedValue(static_cast<int>(GetType())));
 }

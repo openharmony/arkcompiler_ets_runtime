@@ -18,6 +18,8 @@
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_async_function.h"
+#include "ecmascript/js_generator_object.h"
 #include "ecmascript/platform/async_detect.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 
@@ -80,6 +82,38 @@ bool AsyncStackTrace::InsertAsyncTaskStacks(const JSHandle<JSPromise> &promise, 
     return true;
 }
 
+#ifdef ENABLE_NEXT_OPTIMIZATION
+bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseReaction)
+{
+    if (PromiseReaction.IsPromiseReaction()) {
+        uint32_t asyncTaskId = 0;
+        auto reaction = PromiseReaction::Cast(PromiseReaction);
+        auto handler = reaction->GetHandler(jsThread_);
+        if (handler.IsJSAsyncAwaitStatusFunction()) {
+            JSTaggedValue ctx = JSAsyncAwaitStatusFunction::Cast(handler)->GetAsyncContext(jsThread_);
+            JSTaggedValue asyncFuncObj = GeneratorContext::Cast(ctx)->GetGeneratorObject(jsThread_);
+            JSTaggedValue promise = JSAsyncFuncObject::Cast(asyncFuncObj)->GetPromise(jsThread_);
+            asyncTaskId = JSPromise::Cast(promise)->GetAsyncTaskId();
+        } else {
+            JSTaggedValue promiseOrCapability = reaction->GetPromiseOrCapability(jsThread_);
+            if (promiseOrCapability.IsJSPromise()) {
+                asyncTaskId = JSPromise::Cast(promiseOrCapability)->GetAsyncTaskId();
+            } else {
+                JSTaggedValue promise = PromiseCapability::Cast(promiseOrCapability)->GetPromise(jsThread_);
+                asyncTaskId = JSPromise::Cast(promise)->GetAsyncTaskId();
+            }
+        }
+        auto stackIt = asyncTaskStacks_.find(asyncTaskId);
+        if (stackIt != asyncTaskStacks_.end()) {
+            currentAsyncParent_.emplace_back(stackIt->second);
+        } else {
+            currentAsyncParent_.emplace_back();
+            LOG_DEBUGGER(ERROR) << "Promise: " << asyncTaskId << " is not in asyncTaskStacks";
+        }
+    }
+    return true;
+}
+#else // ENABLE_NEXT_OPTIMIZATION
 bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseReaction)
 {
     if (PromiseReaction.IsPromiseReaction()) {
@@ -96,6 +130,7 @@ bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseRe
     }
     return true;
 }
+#endif // ENABLE_NEXT_OPTIMIZATION
 
 bool AsyncStackTrace::RemoveAsyncTaskStack(const JSTaggedValue &PromiseReaction)
 {

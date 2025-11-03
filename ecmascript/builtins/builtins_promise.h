@@ -72,11 +72,17 @@ public:
     // 25.4.5.3 Promise.prototype.then ( onFulfilled , onRejected )
     static JSTaggedValue Then(EcmaRuntimeCallInfo *argv);
 
+#ifdef ENABLE_NEXT_OPTIMIZATION
     static JSTaggedValue PerformPromiseThen(JSThread *thread, const JSHandle<JSPromise> &promise,
                                             const JSHandle<JSTaggedValue> &onFulfilled,
                                             const JSHandle<JSTaggedValue> &onRejected,
-                                            const JSHandle<PromiseCapability> &capability);
-
+                                            const JSHandle<JSTaggedValue> &promiseOrCapability);
+#else // ENABLE_NEXT_OPTIMIZATION
+    static JSTaggedValue PerformPromiseThen(JSThread *thread, const JSHandle<JSPromise> &promise,
+                                         const JSHandle<JSTaggedValue> &onFulfilled,
+                                         const JSHandle<JSTaggedValue> &onRejected,
+                                         const JSHandle<PromiseCapability> &capability);
+#endif // ENABLE_NEXT_OPTIMIZATION
     static JSTaggedValue Any(EcmaRuntimeCallInfo *argv);
 
     static JSTaggedValue AllSettled(EcmaRuntimeCallInfo *argv);
