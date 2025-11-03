@@ -6,7 +6,8 @@
             "libpath": "libcompiler_service.z.so",
             "run-on-create": false,
             "distributed": false,
-            "dump-level": 1
+            "dump-level": 1,
+            "min_hdi_proxy_version": []
         }
     ]
 }
