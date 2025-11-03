@@ -998,4 +998,10 @@ try {
 } catch (e) {
   assert_equal(e.name, "RangeError");
 }
+
+{
+  const str = "table football";
+  const regex = new RegExp("foo*");
+  assert_equal(regex.test(str), true);
+}
 test_end();

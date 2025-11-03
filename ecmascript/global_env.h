@@ -337,7 +337,7 @@ public:
     DECL_VISIT_OBJECT(HEADER_SIZE, DATA_SIZE);
 
     // define BitField
-    static constexpr uint32_t DEFAULT_LAZY_BITFIELD_VALUE = 0x7fe; // 0000'...'0000'0111'1111'1110
+    static constexpr uint32_t DEFAULT_LAZY_BITFIELD_VALUE = 0x1fc; // 0000'...'0000'0001'1111'1100
     static constexpr size_t ARRAYPROTOTYPE_CHANGED_GUARDIANS = 1;
     static constexpr size_t DETECTOR_BITS = 1;
     FIRST_BIT_FIELD(BitField, ArrayPrototypeChangedGuardians, bool, ARRAYPROTOTYPE_CHANGED_GUARDIANS)
