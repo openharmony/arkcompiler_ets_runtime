@@ -64,6 +64,8 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::kungfu;
 
 static constexpr char16_t UTF_16[] = u"This is a char16 array";
+static constexpr char ASCII[] = "hello world!";
+static constexpr int TEST_REPEAT_COUNT = 32;
 static constexpr const char *DUPLICATE_KEY = "duplicateKey";
 static constexpr const char *SIMPLE_KEY = "simpleKey";
 static constexpr const char ERROR_MESSAGE[] = "ErrorTest";
@@ -795,10 +797,9 @@ HWTEST_F_L0(JSNApiTests, NewFromUtf16)
 HWTEST_F_L0(JSNApiTests, NewExternalFromAsciiLength)
 {
     LocalScope scope(vm_);
-    char utf8[] = "hello world!";
-    int length = strlen(utf8);
+    int length = strlen(ASCII);
     char *str = new char[length];
-    std::copy(utf8, utf8 + length, str);
+    std::copy(ASCII, ASCII + length, str);
     Local<StringRef> result = StringRef::NewExternalFromAscii(vm_, const_cast<char *>(str),
                                                               length, nullptr, nullptr);
     ASSERT_EQ(result->Utf8Length(vm_), length + 1);
@@ -808,10 +809,9 @@ HWTEST_F_L0(JSNApiTests, NewExternalFromAsciiLength)
 HWTEST_F_L0(JSNApiTests, NewExternalFromUtf16Length)
 {
     LocalScope scope(vm_);
-    char16_t utf16[] = u"This is a char16 array";
-    int length = sizeof(utf16) / sizeof(char16_t) - 1;
+    int length = sizeof(UTF_16) / sizeof(char16_t) - 1;
     char16_t *str = new char16_t[length];
-    std::copy(utf16, utf16 + length, str);
+    std::copy(UTF_16, UTF_16 + length, str);
     Local<StringRef> result = StringRef::NewExternalFromUtf16(vm_, const_cast<char16_t *>(str),
                                                               length, nullptr, nullptr);
     ASSERT_EQ(result->Length(vm_), length);
@@ -821,10 +821,9 @@ HWTEST_F_L0(JSNApiTests, NewExternalFromUtf16Length)
 HWTEST_F_L0(JSNApiTests, NewExternalFromAsciiContent)
 {
     LocalScope scope(vm_);
-    char utf8[] = "hello world!";
-    int length = strlen(utf8);
+    int length = strlen(ASCII);
     char *str = new char[length];
-    std::copy(utf8, utf8 + length, str);
+    std::copy(ASCII, ASCII + length, str);
     Local<StringRef> result = StringRef::NewExternalFromAscii(vm_, const_cast<char *>(str),
                                                               length, nullptr, nullptr);
     EXPECT_EQ(result->ToString(vm_), "hello world!");
@@ -834,14 +833,65 @@ HWTEST_F_L0(JSNApiTests, NewExternalFromAsciiContent)
 HWTEST_F_L0(JSNApiTests, NewExternalFromUtf16Content)
 {
     LocalScope scope(vm_);
-    char16_t utf16[] = u"This is a char16 array";
-    int length = sizeof(utf16) / sizeof(char16_t) - 1;
+    int length = sizeof(UTF_16) / sizeof(char16_t) - 1;
     char16_t *str = new char16_t[length];
-    std::copy(utf16, utf16 + length, str);
+    std::copy(UTF_16, UTF_16 + length, str);
     Local<StringRef> result = StringRef::NewExternalFromUtf16(vm_, const_cast<char16_t *>(str),
                                                               length, nullptr, nullptr);
     EXPECT_EQ(result->ToString(vm_), "This is a char16 array");
     delete[] str;
+}
+
+HWTEST_F_L0(JSNApiTests, NewExternalFromAsciiOnGC)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    auto callback = [] (void* data, void* hint) -> void {
+        *reinterpret_cast<int *>(hint) += 1;
+        delete[] reinterpret_cast<char *>(data);
+    };
+    int hintNum = 0;
+    {
+        LocalScope scope(vm_);
+        for (int i = 0; i < TEST_REPEAT_COUNT; i++) {
+            int length = strlen(ASCII);
+            char *str = new char[length];
+            std::copy(ASCII, ASCII + length, str);
+            Local<StringRef> result = StringRef::NewExternalFromAscii(vm_, const_cast<char *>(str),
+                                                                      length, callback, &hintNum);
+            EXPECT_EQ(result->ToString(vm_), "hello world!");
+        }
+        EXPECT_EQ(hintNum, 0);
+        EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), TEST_REPEAT_COUNT);
+    }
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(vm_->GetJSThread());
+    EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
+    EXPECT_EQ(hintNum, TEST_REPEAT_COUNT);
+}
+
+HWTEST_F_L0(JSNApiTests, NewExternalFromUtf16OnGC)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    auto callback = [] (void* data, void* hint) -> void {
+        *reinterpret_cast<int *>(hint) += 1;
+        delete[] reinterpret_cast<char16_t *>(data);
+    };
+    int hintNum = 0;
+    {
+        LocalScope scope(vm_);
+        for (int i = 0; i < TEST_REPEAT_COUNT; i++) {
+            int length = sizeof(UTF_16) / sizeof(char16_t) - 1;
+            char16_t *str = new char16_t[length];
+            std::copy(UTF_16, UTF_16 + length, str);
+            Local<StringRef> result = StringRef::NewExternalFromUtf16(vm_, const_cast<char16_t *>(str),
+                                                                      length, callback, &hintNum);
+            EXPECT_EQ(result->ToString(vm_), "This is a char16 array");
+        }
+        EXPECT_EQ(hintNum, 0);
+        EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), TEST_REPEAT_COUNT);
+    }
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(vm_->GetJSThread());
+    EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
+    EXPECT_EQ(hintNum, TEST_REPEAT_COUNT);
 }
 
 /*
