@@ -34,6 +34,7 @@ enum class PatchErrorCode : uint8_t {
 
 using JSValueRefInternals = ecmascript::JSTaggedValueInternals;
 using NativePointerCallback = void (*)(void *env, void* data, void* hint);
+using ExternalStringFinalizerCallback = void (*)(void* data, void* hint);
 
 } // namespace panda
 
