@@ -156,6 +156,21 @@ for (let idx in arr2) {
 print(res2);
 print(count2);
 
+// EnumCacheAll not Valid
+let makeKey = function () {};
+let scratch = [];
+let host = Number.prototype;
+let targets = [RegExp, []];
+
+for (let i in targets) {
+    let candidate = targets[i];
+    host.__proto__ = candidate;
+    host.__proto__ = scratch;
+    Object.defineProperty(candidate, makeKey(), {});
+    for (let k in scratch) {}
+}
+print("EnumCacheAll not Valid success")
+
 // Redefine testcast
 Object.prototype.prop0 = 0;
 let obj = {prop1:1,prop2:2};
