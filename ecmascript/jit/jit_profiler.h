@@ -166,6 +166,10 @@ private:
     bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
 		            JSHClass *exceptRecvHClassOnHeap, JSHClass *exceptHoldHClass,
 			    JSHClass *exceptPrototypeOfPrototypeHClass);
+    
+    // Debug
+    void TraceICState(int32_t bcOffset, std::string_view s);
+
     // Other
     void UpdatePGOType(uint32_t offset, const pgo::PGOType *type)
     {
@@ -208,6 +212,7 @@ private:
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     ApEntityId abcId_ { 0 };
     EntityId methodId_ {};
+    const uint8_t *pcStart_;
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_{};
