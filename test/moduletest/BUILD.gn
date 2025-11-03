@@ -467,6 +467,7 @@ group("ark_asm_assert_test") {
       "proxyget",
       "proxyrelease",
       "proxyset",
+      "Releasebindfunction",
       "releaseRegexp",
       "releaseAddProperty",
     ]
