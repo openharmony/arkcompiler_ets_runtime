@@ -920,10 +920,9 @@ void RegExpParser::ParseQuantifier(size_t atomBcStart, int captureStart, int cap
 
 bool RegExpParser::ParseGroupSpecifier(const uint8_t **pp, CString &name)
 {
+    name = "";
     const uint8_t *p = *pp;
     uint32_t c = 0;
-    char buffer[CACHE_SIZE] = {0};
-    char *q = buffer;
     while (true) {
         if (p <= end_) {
             c = *p;
@@ -947,7 +946,7 @@ bool RegExpParser::ParseGroupSpecifier(const uint8_t **pp, CString &name)
         } else {
             return false;
         }
-        if (q == buffer) {
+        if (name.length() == 0) {
             if (!IsIdentFirst(c)) {
                 return false;
             }
@@ -956,13 +955,10 @@ bool RegExpParser::ParseGroupSpecifier(const uint8_t **pp, CString &name)
                 return false;
             }
         }
-        if (q != nullptr) {
-            *q++ = c;
-        }
+        name += c;
     } // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     p++;
     *pp = p;
-    name = buffer;
     return true;
 }
 

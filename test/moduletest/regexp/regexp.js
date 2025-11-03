@@ -19,10 +19,19 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+
+{
+  let name = "x".repeat(1000)
+  let reg = new RegExp("(?<"+name+">asas)","d")
+  let res = reg.exec("asas");
+  assert_equal(res.groups[name], "asas");
+}
+
 {
   let reg = /a(?:|x)$/
   assert_equal(JSON.stringify(reg.exec("ax")), '["ax"]')
 }
+
 {
     let reg = /[+-\s]/
     assert_equal(JSON.stringify(reg.exec("-")), '["-"]')
