@@ -36,8 +36,27 @@ public:
 
     static void SetUpTestCase() {}
     static void TearDownTestCase() {}
-    void SetUp() override {}
-    void TearDown() override {};
+    void SetUp() override
+    {
+        mkdir(systemDir_, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        mkdir(systemFrameworkDir_, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        std::string bootpathJsonStr =
+            "{\"bootpath\":\"/system/framework/etsstdlib_bootabc.abc:/system/framework/arkoala.abc\"}";
+        std::ofstream file(bootPathJson_);
+        file << bootpathJsonStr << std::endl;
+        file.close();
+    }
+
+    void TearDown() override
+    {
+        unlink(bootPathJson_);
+        rmdir(systemFrameworkDir_);
+        rmdir(bootPathJson_);
+    };
+
+    const char *systemDir_ = "/system";
+    const char *systemFrameworkDir_ = "/system/framework";
+    const char *bootPathJson_ = "/system/framework/bootpath.json";
 };
 
 /**
@@ -169,6 +188,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_007, TestSize.Level0)
     std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
     argsMap.emplace(ArgsIdx::ARKTS_MODE, "dynamic");
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
     std::vector<const char*> argv = argsHandler->GetAotArgs();
@@ -185,6 +206,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_008, TestSize.Level0)
     std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
     argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
     std::vector<const char*> argv = argsHandler->GetAotArgs();
@@ -209,24 +232,16 @@ const std::unordered_map<std::string, std::string> framewordArgsMapForTest {
     {"outputPath", "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an"},
     {"anFileName", "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an"},
     {"isSysComp", "1"},
+    {ArgsIdx::ARKTS_MODE, "static"},
     {"sysCompPath", "/system/framework/etsstdlib_bootabc.abc"},
     {"ABC-Path", "/system/framework/etsstdlib_bootabc.abc"}
 };
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
 {
-    const char *systemDir = "/system";
-    const char *systemFrameworkDir = "/system/framework";
-    const char *bootPathJson = "/system/framework/bootpath.json";
-    mkdir(systemDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir(systemFrameworkDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::string bootpathJsonStr =
-        "{\"bootpath\":\"/system/framework/etsstdlib_bootabc.abc:/system/framework/arkoala.abc\"}";
-    std::ofstream file(bootPathJson);
-    file << bootpathJsonStr << std::endl;
-    file.close();
-
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsMapForTest);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(framewordArgsMapForTest);
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
     std::string fileName = argsHandler->GetFileName();
@@ -243,8 +258,75 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
             EXPECT_STREQ(arg, "--boot-panda-files=/system/framework/etsstdlib_bootabc.abc");
         }
     }
-    unlink(bootPathJson);
-    rmdir(systemFrameworkDir);
-    rmdir(systemDir);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_016, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "static"},
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"}
+    };
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+}
+ 
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_017, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "dynamic"},
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
+    };
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+}
+ 
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_018, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
+    };
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+}
+ 
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_019, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "static"},
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"}
+    };
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+}
+ 
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_020, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "static"},
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
+    };
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+}
+ 
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_021, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "INVALID_VALUE"}
+    };
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
 } // namespace OHOS::ArkCompiler
