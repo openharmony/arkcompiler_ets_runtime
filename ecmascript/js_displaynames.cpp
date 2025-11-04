@@ -363,6 +363,12 @@ JSHandle<EcmaString> JSDisplayNames::CanonicalCodeForDisplayNames(JSThread *thre
         icu::Locale locales = icuLocaldisplaynames->getLocale();
         std::unique_ptr<icu::DateTimePatternGenerator> generator(
             icu::DateTimePatternGenerator::createInstance(locales, status));
+        if (U_FAILURE(status) || generator == nullptr) {
+            if (status == UErrorCode::U_MISSING_RESOURCE_ERROR) {
+                THROW_REFERENCE_ERROR_AND_RETURN(thread, "can not find icu data resources", code);
+            }
+            THROW_RANGE_ERROR_AND_RETURN(thread, "create icu::DateTimePatternGenerator failed", code);
+        }
         icu::UnicodeString result = generator->getFieldDisplayName(field, width);
         return intl::LocaleHelper::UStringToString(thread, result);
     }
