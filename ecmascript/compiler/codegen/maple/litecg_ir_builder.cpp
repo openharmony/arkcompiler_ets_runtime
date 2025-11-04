@@ -2983,7 +2983,8 @@ void LiteCGIRBuilder::VisitDeoptCheck(GateRef gate)
             return *iter->second;
         }
         BB &falseBB = lmirBuilder_->CreateBB();
-        Expr constDeoptType = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u64Type, deoptType));
+        Expr constDeoptType = ConvertInt32ToTaggedInt(
+            lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(lmirBuilder_->u32Type, deoptType)));
         lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Regassign(constDeoptType, deoptBBInfo.deoptTypePreg));
         lmirBuilder_->AppendStmt(falseBB, lmirBuilder_->Goto(*deoptBBInfo.deoptBB));
         // deopt branch is not expected to be token as often,

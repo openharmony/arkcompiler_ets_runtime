@@ -21,7 +21,8 @@
 #define RETURN_ADDRESS_OFFSET_ARM64 168
 #define PRE_SP_OFFSET_X64 64
 #define RETURN_ADDRESS_OFFSET_X64 56
-#define LAZY_DEOPT_TYPE_OFFSET 1
+// must use taaged value to represent the deopt type
+#define LAZY_DEOPT_TYPE_OFFSET 0xffff000000000001
 
 #ifdef PANDA_TARGET_MACOS
     #define LazyDeoptEntryName _LazyDeoptEntry
