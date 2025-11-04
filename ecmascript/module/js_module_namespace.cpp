@@ -87,10 +87,16 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     if (key->IsSymbol()) {
         return JSObject::GetProperty(thread, obj, key);
     }
-    JSHandle<ModuleNamespace> moduleNamespace = JSHandle<ModuleNamespace>::Cast(obj);
-    // 3. Let exports be O.[[Exports]].
+    JSMutableHandle<ModuleNamespace> moduleNamespace(thread, JSHandle<ModuleNamespace>::Cast(obj));
+    // 3. Let m be O.[[Module]].
+    JSMutableHandle<SourceTextModule> mm(thread, moduleNamespace->GetModule(thread));
+    // When a module imported via `import * as ns` is hot-reloaded,
+    // the namespace and the module must be updated to the post-reload instance;
+    // otherwise the property may be wrong.
+    thread->GetEcmaVM()->GetQuickFixManager()->UpdateHotReloadModuleAndNamespace(thread, mm, moduleNamespace);
+    // 4. Let exports be O.[[Exports]].
     JSHandle<JSTaggedValue> exports(thread, moduleNamespace->GetExports(thread));
-    // 4. If P is not an element of exports, return undefined.
+    // 5. If P is not an element of exports, return undefined.
     if (exports->IsUndefined()) {
         return OperationResult(thread, thread->GlobalConstants()->GetUndefined(), PropertyMetaData(false));
     }
@@ -100,8 +106,6 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     } else if (exports->IsJSSharedArray() && !JSSharedArray::IncludeInSortedValue(thread, exports, key)) {
         return OperationResult(thread, thread->GlobalConstants()->GetUndefined(), PropertyMetaData(false));
     }
-    // 5. Let m be O.[[Module]].
-    JSHandle<SourceTextModule> mm(thread, moduleNamespace->GetModule(thread));
     // 6. Let binding be ! m.ResolveExport(P, « »).
     ResolvedMultiMap resolvedMap;
     JSHandle<JSTaggedValue> binding = SourceTextModule::ResolveExport(thread, mm, key, resolvedMap);
