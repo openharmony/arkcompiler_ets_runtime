@@ -39,7 +39,17 @@ public:
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
     JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
+    CString GetBaseFileName(const CString &fileName);
     CString GetBaseFileName(const JSHandle<SourceTextModule> &module);
+
+    inline CString GetBaseFileNameForHotReload(JSThread *thread, const CString &fileName)
+    {
+        if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+            return GetBaseFileName(fileName);
+        }
+        return fileName;
+    }
+
     inline void UpdateHotReloadModule(JSThread *thread, JSMutableHandle<SourceTextModule> &module)
     {
         if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
