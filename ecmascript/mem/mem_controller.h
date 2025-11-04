@@ -65,6 +65,7 @@ public:
     double GetCurrentOldSpaceAllocationThroughputPerMS(double timeMs = THROUGHPUT_TIME_FRAME_MS) const;
     double GetNewSpaceAllocationThroughputPerMS() const;
     double GetOldSpaceAllocationThroughputPerMS() const;
+    double GetSlotAndHugeSpaceAllocationThroughputPerMS() const;
     double GetNewSpaceConcurrentMarkSpeedPerMS() const;
     double GetFullSpaceConcurrentMarkSpeedPerMS() const;
 
@@ -175,6 +176,7 @@ private:
     double allocDurationSinceGc_ {0.0};
     size_t newSpaceAllocSizeSinceGC_ {0};
     size_t oldSpaceAllocSizeSinceGC_ {0};
+    size_t slotAndHugeSpaceAllocSizeSinceGC_ {0};
     size_t nonMovableSpaceAllocSizeSinceGC_ {0};
     size_t codeSpaceAllocSizeSinceGC_ {0};
     size_t hugeObjectAllocSizeSinceGC_{0};
@@ -183,8 +185,10 @@ private:
     double allocTimeMsIdle_ {0.0};
     size_t newSpaceRecordLastTimeSizeIdle_ {0};
     size_t oldSpaceRecordLastTimeSizeIdle_ {0};
+    size_t slotAndHugeSpaceRecordLastTimeSizeIdle_ {0};
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedIdleNewSpaceAllocations_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedIdleOldSpaceAllocations_;
+    base::GCRingBuffer<BytesAndDuration, LENGTH> recordedIdleSlotAndHugeSpaceAllocations_;
 
     int startCounter_ {0};
     double markCompactSpeedCache_ {0.0};
@@ -192,8 +196,10 @@ private:
     double predictedSurvivalRate_ {std::numeric_limits<double>::quiet_NaN()};
 
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedMarkCompacts_;
+    base::GCRingBuffer<BytesAndDuration, LENGTH> recordedSweep_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedNewSpaceAllocations_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedOldSpaceAllocations_;
+    base::GCRingBuffer<BytesAndDuration, LENGTH> recordedSlotAndHugeSpaceAllocations_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedNonmovableSpaceAllocations_;
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedCodeSpaceAllocations_;
 

@@ -89,6 +89,7 @@ public:
         if (maxHeapSize_ < MEDIUM_MEMORY) { // 64_MB ~ 128_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 4_MB;
+            minSlotSpaceSize_ = 4_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
             defaultNonMovableSpaceSize_ = 6_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
@@ -98,6 +99,7 @@ public:
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 4_MB;
             oldSpaceMaxOvershootSize_ = 8_MB;
+            slotSpaceTriggerConcurrentMark_ = 2_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 2_MB;
             minNativeLimitGrowingStep_ = 16_MB;
@@ -114,6 +116,7 @@ public:
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
+            minSlotSpaceSize_ = 4_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
             defaultNonMovableSpaceSize_ = 6_MB;
             defaultSnapshotSpaceSize_ = 512_KB;
@@ -123,6 +126,7 @@ public:
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 8_MB;
             oldSpaceMaxOvershootSize_ = 16_MB;
+            slotSpaceTriggerConcurrentMark_ = 2_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 4_MB;
             minNativeLimitGrowingStep_ = 32_MB;
@@ -139,6 +143,7 @@ public:
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
+            minSlotSpaceSize_ = 4_MB;
             defaultReadOnlySpaceSize_ = 256_KB;
             defaultNonMovableSpaceSize_ = 64_MB;
             defaultSnapshotSpaceSize_ = 4_MB;
@@ -148,6 +153,7 @@ public:
             semiSpaceStepOvershootSize_ = 2_MB;
             oldSpaceStepOvershootSize_ = 8_MB;
             oldSpaceMaxOvershootSize_ = 16_MB;
+            slotSpaceTriggerConcurrentMark_ = 2_MB;
             outOfMemoryOvershootSize_ = 2_MB;
             minAllocLimitGrowingStep_ = 8_MB;
             minNativeLimitGrowingStep_ = 64_MB;
@@ -178,6 +184,11 @@ public:
     size_t GetMaxSemiSpaceSize() const
     {
         return maxSemiSpaceSize_;
+    }
+
+    size_t GetMinSlotSpaceSize() const
+    {
+        return minSlotSpaceSize_;
     }
 
     size_t GetDefaultReadOnlySpaceSize() const
@@ -223,6 +234,11 @@ public:
     size_t GetOldSpaceMaxOvershootSize() const
     {
         return oldSpaceMaxOvershootSize_;
+    }
+
+    size_t GetSlotSpaceTriggerConcurrentMark() const
+    {
+        return slotSpaceTriggerConcurrentMark_;
     }
 
     size_t GetOutOfMemoryOvershootSize() const
@@ -346,6 +362,7 @@ private:
     size_t maxHeapSize_ {0};
     size_t minSemiSpaceSize_ {0};
     size_t maxSemiSpaceSize_ {0};
+    size_t minSlotSpaceSize_ {0};
     size_t defaultReadOnlySpaceSize_ {0};
     size_t defaultNonMovableSpaceSize_ {0};
     size_t defaultSnapshotSpaceSize_ {0};
@@ -355,6 +372,7 @@ private:
     size_t semiSpaceStepOvershootSize_ {0};
     size_t oldSpaceStepOvershootSize_ {0};
     size_t oldSpaceMaxOvershootSize_ {0};
+    size_t slotSpaceTriggerConcurrentMark_ {0};
     size_t outOfMemoryOvershootSize_ {0};
     size_t minAllocLimitGrowingStep_ {0};
     size_t minNativeLimitGrowingStep_ {0};

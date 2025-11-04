@@ -21,7 +21,8 @@
 
 namespace panda::ecmascript {
 SparseSpace::SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
-    : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
+    : MonoSpace(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
+      SweepableSpace(),
       sweepState_(SweepState::NO_SWEEP),
       localHeap_(heap),
       liveObjectSize_(0)
@@ -580,7 +581,7 @@ void OldSpace::ReclaimCSet()
         region->DeleteLocalToShareRSet();
         region->DeleteSweepingOldToNewRSet();
         region->DeleteSweepingLocalToShareRSet();
-        region->DestroyFreeObjectSets();
+        DefaultRegion::FromRegion(region)->DestroyFreeObjectSets();
         heapRegionAllocator_->FreeRegion(region, cachedSize);
     });
     collectRegionSet_.clear();
@@ -592,7 +593,7 @@ bool OldSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
         return false;
     }
     fromSpace->RemoveRegion(region);
-    region->InitializeFreeObjectSets();
+    DefaultRegion::FromRegion(region)->InitializeFreeObjectSets();
     region->ResetRegionFlag(RegionSpaceFlag::IN_OLD_SPACE, RegionGCFlags::IN_NEW_TO_OLD_SET);
 
     regionList_.AddNodeToFront(region);

@@ -114,6 +114,7 @@ HWTEST_F_L0(BaseRuntimeTest, RequestGC_Sync_CallsHeapManager) {
                                     << " produced unexpected stderr output.";
     }
     
+    runtime->WaitForGCFinish();
     runtime->Fini();
     BaseRuntime::DestroyInstance();
 }

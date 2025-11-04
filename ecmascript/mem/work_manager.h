@@ -18,6 +18,7 @@
 
 #include "common_components/taskpool/runner.h"
 #include "ecmascript/cross_vm/work_manager_hybrid.h"
+#include "ecmascript/mem/cms_mem/slot_gc_allocator.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/work_space_chunk.h"
@@ -39,7 +40,7 @@ class WorkSpaceChunk;
 class WorkManager;
 
 enum ParallelGCTaskPhase {
-    OLD_HANDLE_GLOBAL_POOL_TASK,
+    HANDLE_GLOBAL_POOL_TASK,
     COMPRESS_HANDLE_GLOBAL_POOL_TASK,
     CONCURRENT_HANDLE_GLOBAL_POOL_TASK,
     UNIFIED_HANDLE_GLOBAL_POOL_TASK,
@@ -170,7 +171,7 @@ public:
 
     inline TlabAllocator *GetTlabAllocator() const;
 
-    inline JSThread *GetJSThread() const;
+    inline SlotGCAllocator *GetSlotGCAllocator();
 private:
     Heap *heap_ {nullptr};
     WorkManager *workManager_ {nullptr};
@@ -185,6 +186,7 @@ private:
     ContinuousStack<JSTaggedType> *continuousQueue_ {nullptr};
     ContinuousStack<TaggedObject> *continuousJSWeakMapQueue_ {nullptr};
     TlabAllocator *allocator_ {nullptr};
+    SlotGCAllocator slotGCAllocator_ {};
     size_t aliveSize_ {0};
     size_t promotedSize_ {0};
 

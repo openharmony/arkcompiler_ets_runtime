@@ -43,8 +43,8 @@ public:
     NO_COPY_SEMANTIC(ConcurrentSweeper);
     NO_MOVE_SEMANTIC(ConcurrentSweeper);
 
-    void PostTask(bool fullGC = false);
-    void Sweep(bool fullGC = false);
+    void PostTask(TriggerGCType gcType);
+    void Sweep(TriggerGCType gcType);
     void SweepNewToOldRegions();
 
     void WaitAllTaskFinished();
@@ -93,8 +93,12 @@ public:
 private:
     class SweeperTask : public common::Task {
     public:
-        SweeperTask(int32_t id, ConcurrentSweeper *sweeper, MemSpaceType type, MemSpaceType startSpaceType)
-            : common::Task(id), sweeper_(sweeper), type_(type), startSpaceType_(startSpaceType) {};
+        SweeperTask(int32_t id, ConcurrentSweeper *sweeper, MemSpaceType type,
+                    MemSpaceType startSpaceType, MemSpaceType endSpaceType)
+            : common::Task(id), sweeper_(sweeper), type_(type),
+              startSpaceType_(startSpaceType), endSpaceType_(endSpaceType)
+        {
+        };
         ~SweeperTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -105,6 +109,7 @@ private:
         ConcurrentSweeper *sweeper_;
         MemSpaceType type_;
         MemSpaceType startSpaceType_;
+        MemSpaceType endSpaceType_;
     };
 
     void AsyncSweepSpace(MemSpaceType type, bool isMain);
@@ -113,12 +118,13 @@ private:
 
     std::array<Mutex, FREE_LIST_NUM> mutexs_;
     std::array<ConditionVariable, FREE_LIST_NUM> cvs_;
-    std::array<std::atomic_int, FREE_LIST_NUM> remainingTaskNum_ = {0, 0, 0};
+    std::array<std::atomic_int, FREE_LIST_NUM> remainingTaskNum_ = {0, 0, 0, 0};
 
     Heap *heap_;
     EnableConcurrentSweepType enableType_ {EnableConcurrentSweepType::CONFIG_DISABLE};
     bool isSweeping_ {false};
-    MemSpaceType startSpaceType_ = MemSpaceType::OLD_SPACE;
+    MemSpaceType startSpaceType_ {MemSpaceType::OLD_SPACE};
+    MemSpaceType endSpaceType_ {MemSpaceType::MACHINE_CODE_SPACE};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_CONCURRENT_SWEEPER_H

@@ -22,6 +22,7 @@
 #include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_object_resizing_strategy.h"
+#include "ecmascript/mem/cms_mem/slot_space-inl.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/mark_stack.h"
@@ -60,6 +61,7 @@ class IdleGCTrigger;
 class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
+class SweepGC;
 class RSetWorkListHandler;
 class SharedConcurrentMarker;
 class SharedConcurrentSweeper;
@@ -128,6 +130,7 @@ enum class VerifyKind {
     VERIFY_MARK_FULL,
     VERIFY_EVACUATE_OLD,
     VERIFY_EVACUATE_FULL,
+    VERIFY_MARK_SLOT_SPACE,
     VERIFY_SHARED_RSET_POST_FULL_GC,
     VERIFY_PRE_SHARED_GC,
     VERIFY_POST_SHARED_GC,
@@ -470,7 +473,7 @@ public:
 
     void Destroy() override;
 
-    void PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option);
+    void PostInitialization(const JSRuntimeOptions &option);
 
     void EnableParallelGC(JSRuntimeOptions &option);
 
@@ -1004,6 +1007,7 @@ public:
     void ResetLargeCapacity();
     void Resume(TriggerGCType gcType);
     void ResumeForAppSpawn();
+    void ResumeForCMS();
     void CompactHeapBeforeFork();
     void DisableParallelGC();
     void EnableParallelGC();
@@ -1032,6 +1036,11 @@ public:
     OldSpace *GetOldSpace() const
     {
         return oldSpace_;
+    }
+
+    SlotSpace *GetSlotSpace() const
+    {
+        return slotSpace_;
     }
 
     OldSpace *GetCompressSpace() const
@@ -1074,9 +1083,11 @@ public:
         return appSpawnSpace_;
     }
 
-    SparseSpace *GetSpaceWithType(MemSpaceType type) const
+    SweepableSpace *GetSweepableSpaceWithType(MemSpaceType type) const
     {
         switch (type) {
+            case MemSpaceType::SLOT_SPACE:
+                return slotSpace_;
             case MemSpaceType::OLD_SPACE:
                 return oldSpace_;
             case MemSpaceType::NON_MOVABLE:
@@ -1222,6 +1233,8 @@ public:
     inline TaggedObject *AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc *desc = nullptr);
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
+    // SlotSpace
+    inline TaggedObject *AllocateInSlotSpace(size_t size);
 
     // shared non movable space tlab
     inline TaggedObject *AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size_t size);
@@ -1295,9 +1308,6 @@ public:
 
     template<class Callback>
     void EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const;
-
-    template<class Callback>
-    void EnumerateNewSpaceRegions(const Callback &cb) const;
 
     template<class Callback>
     void EnumerateSnapshotSpaceRegions(const Callback &cb) const;
@@ -1562,6 +1572,10 @@ public:
 
     bool OldSpaceExceedCapacity(size_t size) const override
     {
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            return SlotSpaceExceedCapacity(size);
+        }
         size_t totalSize = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize() + size;
         return totalSize >= oldSpace_->GetMaximumCapacity() + oldSpace_->GetOvershootSize() +
                oldSpace_->GetOutOfMemoryOvershootSize();
@@ -1569,8 +1583,24 @@ public:
 
     bool OldSpaceExceedLimit() const override
     {
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            return SlotSpaceExceedLimit();
+        }
         size_t totalSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
         return totalSize >= oldSpace_->GetInitialCapacity() + oldSpace_->GetOvershootSize();
+    }
+
+    bool SlotSpaceExceedCapacity(size_t size = 0) const
+    {
+        size_t totalSize = slotSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize() + size;
+        return totalSize >= slotSpace_->GetMaximumCapacity();
+    }
+
+    bool SlotSpaceExceedLimit() const
+    {
+        size_t totalSize = slotSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize();
+        return totalSize >= slotSpace_->GetInitialCapacity();
     }
 
     void AdjustSpaceSizeForAppSpawn();
@@ -1702,6 +1732,7 @@ public:
     HEAP_PUBLIC_HYBRID_EXTENSION();
 
 private:
+    void InitializeSpaces();
     void CollectGarbageImpl(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
 
     static constexpr int MIN_JSDUMP_THRESHOLDS = 85;
@@ -1856,6 +1887,7 @@ private:
     // Old generation spaces where some long living objects are allocated or promoted.
     OldSpace *oldSpace_ {nullptr};
     OldSpace *compressSpace_ {nullptr};
+    SlotSpace *slotSpace_ {nullptr};
     ReadOnlySpace *readOnlySpace_ {nullptr};
     AppSpawnSpace *appSpawnSpace_ {nullptr};
     // Spaces used for special kinds of objects.
@@ -1877,6 +1909,11 @@ private:
      * and part of old spaces if needed determined by GC heuristics.
      */
     PartialGC *partialGC_ {nullptr};
+
+    /**
+     * An alternative sweep-only gc to `PartialGC`
+     */
+    SweepGC *sweepGC_ {nullptr};
 
     // Full collector which collects garbage in all valid heap spaces.
     FullGC *fullGC_ {nullptr};

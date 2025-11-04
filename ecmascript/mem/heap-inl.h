@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -130,9 +130,14 @@ void Heap::EnumerateSnapshotSpaceRegions(const Callback &cb) const
 template<class Callback>
 void Heap::EnumerateNonNewSpaceRegions(const Callback &cb) const
 {
-    oldSpace_->EnumerateRegions(cb);
-    if (!isCSetClearing_.load(std::memory_order_acquire)) {
-        oldSpace_->EnumerateCollectRegionSet(cb);
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        slotSpace_->EnumerateRegions(cb);
+    } else {
+        oldSpace_->EnumerateRegions(cb);
+        if (!isCSetClearing_.load(std::memory_order_acquire)) {
+            oldSpace_->EnumerateCollectRegionSet(cb);
+        }
     }
     appSpawnSpace_->EnumerateRegions(cb);
     snapshotSpace_->EnumerateRegions(cb);
@@ -145,18 +150,18 @@ void Heap::EnumerateNonNewSpaceRegions(const Callback &cb) const
 template<class Callback>
 void Heap::EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const
 {
-    oldSpace_->EnumerateRegionsWithRecord(cb);
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        // fixme: support record region
+        slotSpace_->EnumerateRegions(cb);
+    } else {
+        oldSpace_->EnumerateRegionsWithRecord(cb);
+    }
     snapshotSpace_->EnumerateRegionsWithRecord(cb);
     nonMovableSpace_->EnumerateRegionsWithRecord(cb);
     hugeObjectSpace_->EnumerateRegionsWithRecord(cb);
     machineCodeSpace_->EnumerateRegionsWithRecord(cb);
     hugeMachineCodeSpace_->EnumerateRegionsWithRecord(cb);
-}
-
-template<class Callback>
-void Heap::EnumerateNewSpaceRegions(const Callback &cb) const
-{
-    activeSemiSpace_->EnumerateRegions(cb);
 }
 
 template<class Callback>
@@ -173,10 +178,15 @@ void Heap::EnumerateNonMovableRegions(const Callback &cb) const
 template<class Callback>
 void Heap::EnumerateRegions(const Callback &cb) const
 {
-    activeSemiSpace_->EnumerateRegions(cb);
-    oldSpace_->EnumerateRegions(cb);
-    if (!isCSetClearing_.load(std::memory_order_acquire)) {
-        oldSpace_->EnumerateCollectRegionSet(cb);
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        slotSpace_->EnumerateRegions(cb);
+    } else {
+        activeSemiSpace_->EnumerateRegions(cb);
+        oldSpace_->EnumerateRegions(cb);
+        if (!isCSetClearing_.load(std::memory_order_acquire)) {
+            oldSpace_->EnumerateCollectRegionSet(cb);
+        }
     }
     appSpawnSpace_->EnumerateRegions(cb);
     snapshotSpace_->EnumerateRegions(cb);
@@ -189,8 +199,13 @@ void Heap::EnumerateRegions(const Callback &cb) const
 template<class Callback>
 void Heap::IterateOverObjects(const Callback &cb, bool isSimplify) const
 {
-    activeSemiSpace_->IterateOverObjects(cb);
-    oldSpace_->IterateOverObjects(cb);
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        slotSpace_->IterateOverObjects(cb);
+    } else {
+        activeSemiSpace_->IterateOverObjects(cb);
+        oldSpace_->IterateOverObjects(cb);
+    }
     nonMovableSpace_->IterateOverObjects(cb);
     hugeObjectSpace_->IterateOverObjects(cb);
     machineCodeSpace_->IterateOverObjects(cb);
@@ -218,6 +233,9 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
     if (size > g_maxRegularHeapObjectSize) {
         object = AllocateHugeObject(size);
     } else {
+        if constexpr (G_USE_CMS_GC) {
+            return AllocateInSlotSpace(size);
+        }
         object = AllocateInYoungSpace(size);
         if (object == nullptr) {
             if (!HandleExitHighSensitiveEvent()) {
@@ -232,6 +250,13 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
         }
     }
     return object;
+}
+
+TaggedObject *Heap::AllocateInSlotSpace(size_t size)
+{
+    ASSERT(!g_isEnableCMCGC);
+    ASSERT(G_USE_CMS_GC);
+    return reinterpret_cast<TaggedObject *>(slotSpace_->Allocate<true>(size));
 }
 
 TaggedObject *Heap::AllocateInYoungSpace(size_t size)
@@ -378,6 +403,9 @@ TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
         if (size > g_maxRegularHeapObjectSize) {
             object = AllocateHugeObject(size);
         } else {
+            if constexpr (G_USE_CMS_GC) {
+                return AllocateInSlotSpace(size);
+            }
             object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateFast(size));
             if (object == nullptr) {
                 bool gcSuccess = CheckAndTriggerOldGC();
@@ -805,23 +833,36 @@ void SharedHeap::SwapOldSpace()
 
 void Heap::ReclaimRegions(TriggerGCType gcType)
 {
-    activeSemiSpace_->EnumerateRegionsWithRecord([] (Region *region) {
-        region->ResetRegionTypeFlag();
-        region->ClearMarkGCBitset();
-        region->ClearCrossRegionRSet();
-        region->ResetAliveObject();
-        region->ClearGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
-    });
-    size_t cachedSize = inactiveSemiSpace_->GetInitialCapacity();
+    // fixme: refactor?
+    size_t cachedSize = 0;
+    if constexpr (!G_USE_CMS_GC) {
+        activeSemiSpace_->EnumerateRegionsWithRecord([] (Region *region) {
+            region->ResetRegionTypeFlag();
+            region->ClearMarkGCBitset();
+            region->ClearCrossRegionRSet();
+            region->ResetAliveObject();
+            region->ClearGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
+        });
+        cachedSize = inactiveSemiSpace_->GetInitialCapacity();
+    }
+    if constexpr (G_USE_CMS_GC) {
+        slotSpace_->ReclaimFromRegions();
+    }
     if (gcType == TriggerGCType::FULL_GC) {
-        compressSpace_->Reset();
+        // fixme: refactor?
+        if constexpr (!G_USE_CMS_GC) {
+            compressSpace_->Reset();
+        }
         cachedSize = 0;
     } else if (gcType == TriggerGCType::OLD_GC) {
         oldSpace_->ReclaimCSet();
         isCSetClearing_.store(false, std::memory_order_release);
     }
 
-    inactiveSemiSpace_->ReclaimRegions(cachedSize);
+    // fixme: refactor?
+    if constexpr (!G_USE_CMS_GC) {
+        inactiveSemiSpace_->ReclaimRegions(cachedSize);
+    }
     sweeper_->WaitAllTaskFinished();
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
@@ -853,29 +894,39 @@ void Heap::ClearSlotsRange(Region *current, uintptr_t freeStart, uintptr_t freeE
 
 size_t Heap::GetCommittedSize() const
 {
-    size_t result = activeSemiSpace_->GetCommittedSize() +
-                    oldSpace_->GetCommittedSize() +
-                    hugeObjectSpace_->GetCommittedSize() +
+    // fixme: refactor?
+    size_t result = hugeObjectSpace_->GetCommittedSize() +
                     nonMovableSpace_->GetCommittedSize() +
                     machineCodeSpace_->GetCommittedSize() +
                     hugeMachineCodeSpace_->GetCommittedSize() +
                     readOnlySpace_->GetCommittedSize() +
                     appSpawnSpace_->GetCommittedSize() +
                     snapshotSpace_->GetCommittedSize();
+    if constexpr (G_USE_CMS_GC) {
+        result += slotSpace_->GetCommittedSize();
+    } else {
+        result += activeSemiSpace_->GetCommittedSize() +
+                  oldSpace_->GetCommittedSize();
+    }
     return result;
 }
 
 size_t Heap::GetHeapObjectSize() const
 {
-    size_t result = activeSemiSpace_->GetHeapObjectSize() +
-                    oldSpace_->GetHeapObjectSize() +
-                    hugeObjectSpace_->GetHeapObjectSize() +
+    // fixme: refactor?
+    size_t result = hugeObjectSpace_->GetHeapObjectSize() +
                     nonMovableSpace_->GetHeapObjectSize() +
                     machineCodeSpace_->GetCommittedSize() +
                     hugeMachineCodeSpace_->GetCommittedSize() +
                     readOnlySpace_->GetCommittedSize() +
                     appSpawnSpace_->GetHeapObjectSize() +
                     snapshotSpace_->GetHeapObjectSize();
+    if constexpr (G_USE_CMS_GC) {
+        result += slotSpace_->GetHeapObjectSize();
+    } else {
+        result += activeSemiSpace_->GetHeapObjectSize() +
+                  oldSpace_->GetHeapObjectSize();
+    }
     return result;
 }
 
@@ -891,6 +942,17 @@ void Heap::NotifyRecordMemorySize()
 
 size_t Heap::GetRegionCount() const
 {
+    if constexpr (G_USE_CMS_GC) {
+        // fixme: support in slotSpace
+        size_t result = slotSpace_->GetRegionCount() +
+            appSpawnSpace_->GetRegionCount() +
+            snapshotSpace_->GetRegionCount() +
+            nonMovableSpace_->GetRegionCount() +
+            hugeObjectSpace_->GetRegionCount() +
+            machineCodeSpace_->GetRegionCount() +
+            hugeMachineCodeSpace_->GetRegionCount();
+        return result;
+    }
     size_t result = activeSemiSpace_->GetRegionCount() +
         oldSpace_->GetRegionCount() +
         oldSpace_->GetCollectSetRegionCount() +

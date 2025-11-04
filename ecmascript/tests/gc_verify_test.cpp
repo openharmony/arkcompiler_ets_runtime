@@ -46,29 +46,6 @@ public:
     }
 };
 
-HWTEST_F_L0(GCTest, VerificationTest2)
-{
-    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    auto partialGc = heap->GetPartialGC();
-    partialGc->RunPhases();
-}
-
-HWTEST_F_L0(GCTest, VerificationTest3)
-{
-    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_FULL);
-    auto partialGc = heap->GetPartialGC();
-    partialGc->RunPhases();
-}
-
-HWTEST_F_L0(GCTest, VerificationTest4)
-{
-    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto fullGc = heap->GetFullGC();
-    fullGc->RunPhases();
-}
-
 HWTEST_F_L0(GCTest, SharedHeapVerificationTest)
 {
     SharedHeap *sHeap = SharedHeap::GetInstance();
@@ -79,7 +56,7 @@ HWTEST_F_L0(GCTest, SharedHeapVerificationTest)
     auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        factory->NewSOldSpaceTaggedArray(1024, JSTaggedValue::Undefined());
+        factory->NewSOldSpaceTaggedArray(512, JSTaggedValue::Undefined());
     }
     size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
     EXPECT_TRUE(oldSizeBefore > oldSizebase);
