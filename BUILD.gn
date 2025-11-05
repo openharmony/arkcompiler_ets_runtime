@@ -768,6 +768,7 @@ ecma_source = [
   "ecmascript/string/base_string_table.cpp",
   "ecmascript/string/base_string.cpp",
   "ecmascript/string/composite_base_class.cpp",
+  "ecmascript/string/external_string_table.cpp",
   "ecmascript/builtin_entries.cpp",
   "ecmascript/builtins/builtins.cpp",
   "ecmascript/builtins/builtins_ark_tools.cpp",

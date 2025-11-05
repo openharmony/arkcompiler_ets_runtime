@@ -25,6 +25,7 @@
 #include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/string/external_string_table.h"
 
 namespace panda::ecmascript {
 /* static */
@@ -137,12 +138,17 @@ inline EcmaString *EcmaString::CreateFromExternalResource(const EcmaVM *vm, void
     bool canBeCompress, ExternalStringResourceCallback callback, void *hint)
 {
     auto *resource = new (std::nothrow) ExternalNonMovableStringResource(hint, callback);
+    if (resource == nullptr) {
+        LOG_ECMA(FATAL) << "create external string resource failed";
+        UNREACHABLE();
+    }
     auto allocator = [vm](size_t size, EcmaStringType stringType) -> BaseObject* {
         ASSERT(stringType == EcmaStringType::CACHED_EXTERNAL_STRING && "Can only allocate line string");
         EcmaString* string = vm->GetFactory()->AllocCachedExternalStringObject();
         return string;
     };
     BaseString *str = CachedExternalString::Create(std::move(allocator), resource, data, length, canBeCompress);
+    SharedHeap::GetInstance()->GetExternalStringTable()->AddString(reinterpret_cast<CachedExternalString*>(str));
     return EcmaString::FromBaseString(str);
 }
 

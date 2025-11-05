@@ -30,6 +30,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"
+#include "ecmascript/string/external_string_table.h"
 
 namespace panda::test {
 class GCTest_CallbackTask_Test;
@@ -839,6 +840,11 @@ public:
         return sharedGCMarker_;
     }
 
+    ExternalStringTable *GetExternalStringTable() const
+    {
+        return externalStringTable_;
+    }
+
     SharedGCMovableMarker *GetSharedGCMovableMarker() const
     {
         return sharedGCMovableMarker_;
@@ -896,6 +902,7 @@ public:
     void DumpHeapSnapshotBeforeOOM(JSThread *thread, SharedHeapOOMSource source);
 
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
+    inline void ProcessSharedExternalStringDelete(const WeakRootVisitor& visitor);
     inline void PushToSharedNativePointerList(JSNativePointer* pointer);
     inline void IteratorNativePointerList(WeakVisitor &visitor);
 
@@ -978,6 +985,7 @@ private:
     SharedGCMarker *sharedGCMarker_ {nullptr};
     SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
     SharedMemController *sharedMemController_ {nullptr};
+    ExternalStringTable* externalStringTable_ {nullptr};
     size_t growingFactor_ {0};
     size_t growingStep_ {0};
     size_t incNativeSizeTriggerSharedCM_ {0};

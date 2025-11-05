@@ -141,9 +141,8 @@ void SharedGC::Sweep()
     };
     auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
     stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
-    Runtime::GetInstance()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
-    Runtime::GetInstance()->ProcessSharedNativeDelete(gcUpdateWeak);
     bool needClearCache = sHeap_->HasCSetRegions();
+    Runtime::GetInstance()->ProcessSharedDelete(gcUpdateWeak);
     Runtime::GetInstance()->GCIterateThreadList([&gcUpdateWeak, needClearCache](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);

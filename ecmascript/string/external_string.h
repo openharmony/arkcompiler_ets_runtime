@@ -32,7 +32,9 @@ public:
     static void FreeResource([[maybe_unused]] void* env, void* rec, void* data)
     {
         auto* resource = reinterpret_cast<ExternalNonMovableStringResource*>(rec);
-        std::invoke(resource->callback_, data, resource->hint_);
+        if (resource->callback_ != nullptr) {
+            std::invoke(resource->callback_, data, resource->hint_);
+        }
         delete resource;
     }
 

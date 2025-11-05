@@ -208,6 +208,7 @@ public:
     void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
     void IteratorNativeDeleteInSharedGC(WeakVisitor &visitor);
 
+    void ProcessSharedDelete(const WeakRootVisitor &visitor);
     void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
     void InvokeSharedNativePointerCallbacks();
     void PushToSharedNativePointerList(JSNativePointer *pointer);

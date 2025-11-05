@@ -229,6 +229,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     sharedMemController_ = new SharedMemController(this);
+    externalStringTable_ = new ExternalStringTable();
     sAppSpawnSpace_ = new SharedAppSpawnSpace(this, oldSpaceCapacity);
     growingFactor_ = config_.GetSharedHeapLimitGrowingFactor();
     growingStep_ = config_.GetSharedHeapLimitGrowingStep();
@@ -309,6 +310,10 @@ void SharedHeap::Destroy()
     if (sharedMemController_ != nullptr) {
         delete sharedMemController_;
         sharedMemController_ = nullptr;
+    }
+    if (externalStringTable_ != nullptr) {
+        delete externalStringTable_;
+        externalStringTable_ = nullptr;
     }
     if (Runtime::GetInstance()->IsHybridVm() && unifiedGC_ != nullptr) {
         delete unifiedGC_;
