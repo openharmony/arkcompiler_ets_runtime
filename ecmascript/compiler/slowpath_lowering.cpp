@@ -3110,13 +3110,16 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
     if (methodObj->IsSendableMethod() || methodObj->IsNativeWithCallField() || methodObj->IsAotWithCallField()) {
         return false;
     }
-    
+
     auto func = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
+    if (!func) {
+        return false;
+    }
     auto profileTypeInfo = func->GetProfileTypeInfo(compilationEnv_->GetJSThread());
     if (profileTypeInfo.IsUndefined()) {
         return false;
     }
-    
+
     JSHandle<JSTaggedValue> hclass;
     int callTarget = CommonStubCSigns::NUM_OF_STUBS;
     auto kind = methodObj->GetFunctionKind();
