@@ -36,6 +36,11 @@
 #endif
 #endif
 
+#if defined(ENABLE_BACKTRACE_LOCAL)
+#include "dfx_frame_formatter.h"
+#include "fp_backtrace.h"
+#endif
+
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
 static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
@@ -149,5 +154,49 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
         stack << std::endl;
         stack << buf;
     }
+}
+
+#if defined(ENABLE_BACKTRACE_LOCAL)
+OHOS::HiviewDFX::FpBacktrace *FpBacktrace()
+{
+    static auto fp = OHOS::HiviewDFX::FpBacktrace::CreateInstance();
+    return fp;
+}
+#endif
+
+std::string SymbolicAddress(const void* const *pc,
+                            int size,
+                            const EcmaVM *vm)
+{
+    std::string stack;
+#if defined(ENABLE_BACKTRACE_LOCAL)
+    std::vector<OHOS::HiviewDFX::DfxFrame> frames;
+    int index = 0;
+    for (int i = 0; i < size; i++) {
+        auto dfx_frame = FpBacktrace()->SymbolicAddress(const_cast<void *>(pc[i]));
+        if (dfx_frame == nullptr) {
+            continue;
+        }
+        dfx_frame->index = index++;
+        if (dfx_frame->isJsFrame && vm != nullptr) {
+            auto cb = vm->GetSourceMapTranslateCallback();
+            if (cb != nullptr) {
+                cb(dfx_frame->mapName, dfx_frame->line, dfx_frame->column, dfx_frame->packageName);
+            }
+        }
+        frames.push_back(*dfx_frame);
+    }
+    stack = OHOS::HiviewDFX::DfxFrameFormatter::GetFramesStr(frames);
+#endif
+    return stack;
+}
+
+__attribute__((optnone)) int BacktraceHybrid(void** pcArray, uint32_t maxSize)
+{
+    int size = 0;
+#if defined(ENABLE_BACKTRACE_LOCAL)
+    size = FpBacktrace()->BacktraceFromFp(__builtin_frame_address(0), pcArray, maxSize);
+#endif
+    return size;
 }
 } // namespace panda::ecmascript

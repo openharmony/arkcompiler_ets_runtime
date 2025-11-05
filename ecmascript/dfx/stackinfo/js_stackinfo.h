@@ -185,7 +185,7 @@ private:
     };
 public:
     static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative,
-                                                bool needNativeStack = true, uint32_t depth = UINT32_MAX)
+                                                bool needNativeStack = false, uint32_t depth = UINT32_MAX)
     {
         // If jsErrorObj not be pass in, MachineCode object of its stack frame while not be keep alive
         JSHandle<JSObject> jsErrorObj;

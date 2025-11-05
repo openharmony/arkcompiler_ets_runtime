@@ -198,13 +198,21 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
             --depth;
         }
     }
-    if (data.empty() && needNativeStack) {
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
+    if (!needNativeStack) {
+        return data;
+    }
+    if (data.empty()) {
         std::ostringstream stack;
         Backtrace(stack, true);
         data = stack.str();
-#endif
+    } else if (thread->IsMainThread()) {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "BacktraceFromFp", "");
+        auto vm = thread->GetEcmaVM();
+        int size = BacktraceHybrid(vm->GetPcVectorData());
+        vm->SetPcVectorSize(size);
     }
+#endif
     return data;
 }
 

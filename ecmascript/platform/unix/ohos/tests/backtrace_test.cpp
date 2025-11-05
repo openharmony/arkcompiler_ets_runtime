@@ -61,4 +61,15 @@ HWTEST_F_L0(BacktraceTest, BacktraceTest2)
     Backtrace(stack);
     EXPECT_TRUE(!stack.str().empty());
 }
+
+HWTEST_F_L0(BacktraceTest, BacktraceHybrid1)
+{
+    auto vm = thread->GetEcmaVM();
+    int size = BacktraceHybrid(vm->GetPcVectorData());
+#if defined(ENABLE_EXCEPTION_BACKTRACE) && defined(ENABLE_BACKTRACE_LOCAL)
+    EXPECT_TRUE(size != 0);
+#else
+    EXPECT_TRUE(size == 0);
+#endif
+}
 }

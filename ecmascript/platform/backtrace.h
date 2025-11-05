@@ -19,7 +19,12 @@
 #include <cstdint>
 #include <string>
 
+#include "ecmascript/ecma_vm.h"
+
 namespace panda::ecmascript {
+static const int MAX_HYBRID_STACK_SIZE = 256;
 void Backtrace(std::ostringstream &stack, bool enableCache = false);
+int BacktraceHybrid(void** pcArray, uint32_t maxSize = MAX_HYBRID_STACK_SIZE);
+std::string SymbolicAddress(const void* const *pc, int size, const EcmaVM *vm = nullptr);
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_BACKTRACE_H

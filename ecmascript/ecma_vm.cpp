@@ -66,6 +66,7 @@
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/base/gc_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/platform/backtrace.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -356,6 +357,10 @@ bool EcmaVM::Initialize()
     asyncStackTrace_ = new AsyncStackTrace(this);
     aotFileManager_ = new AOTFileManager(this);
     abcBufferCache_ = new AbcBufferCache();
+    pcVector_.reserve(MAX_HYBRID_STACK_SIZE);
+    if (options_.GetEnableAsmInterpreter()) {
+        LoadStubFile();
+    }
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConst->Init(thread_);
     InitDataViewTypeTable(globalConst);
@@ -386,9 +391,6 @@ bool EcmaVM::Initialize()
     snapshotEnv_->AddGlobalConstToMap();
     GenerateInternalNativeMethods();
     quickFixManager_ = new QuickFixManager();
-    if (options_.GetEnableAsmInterpreter()) {
-        LoadStubFile();
-    }
 
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
@@ -630,6 +632,8 @@ EcmaVM::~EcmaVM()
         delete thread_;
         thread_ = nullptr;
     }
+
+    pcVector_.clear();
 
     if (g_isEnableCMCGC) {
         common::BaseRuntime::ExitGCCriticalSection();
