@@ -267,7 +267,7 @@ group("ark_js_assert_moduletest") {
     "typedarrayfilter",
     "typedarrayfindlast",
     "typedarrayfrom",
-
+    "displaynames",
     #"typedarrayfrom_in_api14",
     "typedarrayiterator",
     "typedarraymap",
@@ -411,7 +411,7 @@ group("ark_asm_assert_test") {
     "typedarrayfilter",
     "typedarrayfindlast",
     "typedarrayfrom",
-
+    "displaynames",
     #"typedarrayfrom_in_api14",
     "typedarrayiterator",
     "typedarraymap",
