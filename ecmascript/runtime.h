@@ -43,6 +43,7 @@ class EcmaStringTable;
 using AppFreezeFilterCallback =
     std::function<bool(const int32_t pid, const bool needDecreaseQuota, std::string &eventConfig)>;
 using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
+using NotifyDeferFreezeCallback = std::function<void(bool needFreeze)>;
 
 class Runtime {
 public:
@@ -148,6 +149,16 @@ public:
     BaseClassRoots &GetBaseClassRoots() const
     {
         return *baseClassRoots_;
+    }
+
+    void SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback)
+    {
+        notifyDeferFreezeCallback_ = callback;
+    }
+
+    NotifyDeferFreezeCallback GetNotifyDeferFreezeCallback()
+    {
+        return notifyDeferFreezeCallback_;
     }
 
     void IterateSharedRoot(RootVisitor &visitor);
@@ -397,6 +408,7 @@ private:
     GlobalEnvConstants globalConst_;
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSThread *mainThread_ {nullptr};
+    NotifyDeferFreezeCallback notifyDeferFreezeCallback_ {nullptr};
     // for shared heap.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;

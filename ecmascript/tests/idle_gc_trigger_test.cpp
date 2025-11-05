@@ -427,4 +427,24 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest020)
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
 }
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyNeedFreeze001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    bool freeze = false;
+    auto callback = [&freeze](bool needFreeze) {
+        if (needFreeze) {
+            freeze = true;
+        }
+    };
+    Runtime::GetInstance()->SetNotifyDeferFreezeCallback(callback);
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->NotifyHeapAliveSizeAfterGC(1);
+    sheap->GetOldSpace()->SetInitialCapacity(10000);
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+    sheap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    ASSERT_TRUE(freeze);
+}
 }  // namespace panda::test
