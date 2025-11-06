@@ -29,7 +29,7 @@ function PrintElems(v, k) {
     objkeys1.push('k:', k, 'v:', JSON.stringify(v))
 }
 map.forEach(PrintElems);
-assert_equal(JSON.stringify(objkeys1),'["k:",0,"v:","41","k:","key","v:","\\"value\\"","k:","object","v:","{\\"name\\":\\"John\\",\\"age\\":28,\\"height\\":178.3}"]');
+assert_equal(JSON.stringify(objkeys1), '["k:",0,"v:","41","k:","key","v:","\\"value\\"","k:","object","v:","{\\"name\\":\\"John\\",\\"age\\":28,\\"height\\":178.3}"]');
 
 try {
     let nonCallable = new Person();

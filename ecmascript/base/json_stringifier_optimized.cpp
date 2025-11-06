@@ -781,15 +781,19 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
     }
     if (len > 0) {
         Indent();
+        JSMutableHandle<JSTaggedValue> tagValHandle(thread_, JSTaggedValue::Undefined());
         for (uint32_t i = 0; i < len; i++) {
             JSTaggedValue tagVal = ObjectFastOperator::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);
+            tagValHandle.Update(tagVal);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             if (UNLIKELY(tagVal.IsAccessor())) {
-                tagVal = JSObject::CallGetter(thread_, AccessorData::Cast(tagVal.GetTaggedObject()), value);
+                JSTaggedValue getterResult = JSObject::CallGetter(
+                    thread_, AccessorData::Cast(tagVal.GetTaggedObject()), value);
+                tagValHandle.Update(getterResult);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
-            handleKey_.Update(JSTaggedValue(i));
-            handleValue_.Update(tagVal);
+            handleKey_.Update(JSTaggedValue::ToString(thread_, JSTaggedValue(i)));
+            handleValue_.Update(tagValHandle.GetTaggedValue());
 
             if (i > 0) {
                 AppendChar(',');
