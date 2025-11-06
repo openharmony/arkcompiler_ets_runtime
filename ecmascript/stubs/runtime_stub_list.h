@@ -377,6 +377,7 @@ namespace panda::ecmascript {
     V(OptCreateObjectWithExcludedKeys)                         \
     V(OptNewObjRange)                                          \
     V(SetTypeArrayPropertyByIndex)                             \
+    V(SetTypeArrayPropertyByIndexSlowPath)                     \
     V(FastCopyElementToArray)                                  \
     V(GetPropertyByName)                                       \
     V(JSObjectGetMethod)                                       \
