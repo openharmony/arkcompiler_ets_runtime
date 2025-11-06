@@ -24,7 +24,7 @@
 // BUILTINS_STUB_LIST is shared both ASM Interpreter and AOT.
 // AOT_BUILTINS_STUB_LIST is used in AOT only.
 #define BUILTINS_STUB_LIST(V, D, C)                 \
-    BUILTINS_METHOD_STUB_LIST(D, D, D, D)           \
+    BUILTINS_METHOD_STUB_LIST(D, D, D)              \
     BUILTINS_CONTAINERS_STUB_BUILDER(D)             \
     AOT_AND_BUILTINS_STUB_LIST(V)                   \
     BUILTINS_CONSTRUCTOR_STUB_LIST(C)               \
@@ -38,7 +38,7 @@
     V(ErrorConstructor)                             \
     V(GlobalDecodeURIComponent)
 
-#define BUILTINS_METHOD_STUB_LIST(V, T, D, K)       \
+#define BUILTINS_METHOD_STUB_LIST(V, T, D)          \
     BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
     BUILTINS_WITH_OBJECT_STUB_BUILDER(T)            \
     BUILTINS_WITH_ARRAY_STUB_BUILDER(V)             \
@@ -47,7 +47,7 @@
     BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)          \
     BUILTINS_WITH_NUMBER_STUB_BUILDER(T)            \
     BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)        \
-    BUILTINS_WITH_DATAVIEW_STUB_BUILDER(K)          \
+    BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)          \
     BUILTINS_WITH_REFLECT_STUB_BUILDER(T)           \
     BUILTINS_WITH_COLLATOR_STUB_BUILDER(V)          \
     BUILTINS_WITH_REGEXP_STUB_BUILDER(V)
@@ -200,10 +200,18 @@
     V(Map,             TypedArray,  Undefined(),   TYPED_ARRAY_MAP)                              \
     V(ToReversed,      TypedArray,  Undefined(),   TYPED_ARRAY_TO_REVERSED)
 
-#define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                                                   \
-    V(SetInt32,     DataView,  INT32,     SetTypedValue,   Undefined(),   DATA_VIEW_SET_INT32)   \
-    V(SetFloat32,   DataView,  FLOAT32,   SetTypedValue,   Undefined(),   DATA_VIEW_SET_FLOAT32) \
-    V(SetFloat64,   DataView,  FLOAT64,   SetTypedValue,   Undefined(),   DATA_VIEW_SET_FLOAT64)
+#define BUILTINS_WITH_DATAVIEW_STUB_BUILDER(V)                                                       \
+    V(SetInt32,     DataView,  Undefined(),   DATA_VIEW_SET_INT32)       \
+    V(SetFloat32,   DataView,  Undefined(),   DATA_VIEW_SET_FLOAT32)     \
+    V(SetFloat64,   DataView,  Undefined(),   DATA_VIEW_SET_FLOAT64)     \
+    V(GetFloat32,   DataView,  Undefined(),   DATA_VIEW_GET_FLOAT32)     \
+    V(GetFloat64,   DataView,  Undefined(),   DATA_VIEW_GET_FLOAT64)     \
+    V(GetInt8,      DataView,  Undefined(),   DATA_VIEW_GET_INT8)        \
+    V(GetUint8,     DataView,  Undefined(),   DATA_VIEW_GET_UINT8)       \
+    V(GetInt16,     DataView,  Undefined(),   DATA_VIEW_GET_INT16)       \
+    V(GetUint16,    DataView,  Undefined(),   DATA_VIEW_GET_UINT16)      \
+    V(GetInt32,     DataView,  Undefined(),   DATA_VIEW_GET_INT32)       \
+    V(GetUint32,    DataView,  Undefined(),   DATA_VIEW_GET_UINT32)
 
 #define BUILTINS_CONTAINERS_STUB_BUILDER(V)                             \
     BUILTINS_WITH_CONTAINERS_ARRAYLIST_STUB_BUILDER(V)                  \
@@ -360,14 +368,6 @@
     V(ArrayBufferIsView)                            \
     V(BigIntAsIntN)                                 \
     V(BigIntAsUintN)                                \
-    V(DataViewGetFloat32)                           \
-    V(DataViewGetFloat64)                           \
-    V(DataViewGetInt8)                              \
-    V(DataViewGetInt16)                             \
-    V(DataViewGetInt32)                             \
-    V(DataViewGetUint16)                            \
-    V(DataViewGetUint32)                            \
-    V(DataViewGetUint8)                             \
     V(DataViewSetInt8)                              \
     V(DataViewSetInt16)                             \
     V(DataViewSetUint8)                             \

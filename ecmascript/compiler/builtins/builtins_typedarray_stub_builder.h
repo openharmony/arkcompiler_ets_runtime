@@ -49,7 +49,6 @@ public:
     GateRef StoreTypedArrayElement(GateRef glue, GateRef array, GateRef index, GateRef value, GateRef jsType);
     GateRef CheckTypedArrayIndexInRange(GateRef array, GateRef index);
     GateRef GetValueFromBuffer(GateRef glue, GateRef buffer, GateRef index, GateRef offset, GateRef jsType);
-    GateRef GetDataPointFromBuffer(GateRef glue, GateRef arrBuf);
     GateRef CalculatePositionWithLength(GateRef position, GateRef length);
     void DoSort(GateRef glue, GateRef receiver, Variable *result, Label *exit, Label *slowPath);
     void FastSetPropertyByIndex(GateRef glue, GateRef value, GateRef array, GateRef index, GateRef jsType);
@@ -129,6 +128,8 @@ private:
     {
         return GetEnvironment()->GetBuilder()->ChangeTaggedPointerToInt64(x);
     }
+
+    inline GateRef GetDataPointFromBuffer(GateRef glue, GateRef arrBuf);
 
     void BuildArrayIterator(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath, IterationKind iteratorKind);

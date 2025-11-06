@@ -16,37 +16,16 @@
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 
 #include "ecmascript/base/typed_array_helper-inl.h"
+#include "ecmascript/compiler/builtins/builtins_arraybuffer_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
-GateRef BuiltinsTypedArrayStubBuilder::GetDataPointFromBuffer(GateRef glue, GateRef arrBuf)
+inline GateRef BuiltinsTypedArrayStubBuilder::GetDataPointFromBuffer(GateRef glue, GateRef arrBuf)
 {
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    env->SubCfgEntry(&entryPass);
-    Label isNull(env);
-    Label exit(env);
-    Label isByteArray(env);
-    Label notByteArray(env);
-    DEFVARIABLE(result, VariableType::NATIVE_POINTER(), IntPtr(0));
-    BRANCH(IsByteArray(glue, arrBuf), &isByteArray, &notByteArray);
-    Bind(&isByteArray);
-    {
-        result = ChangeByteArrayTaggedPointerToInt64(PtrAdd(arrBuf, IntPtr(ByteArray::DATA_OFFSET)));
-        Jump(&exit);
-    }
-    Bind(&notByteArray);
-    {
-        GateRef data = GetArrayBufferData(glue, arrBuf);
-        result = GetExternalPointer(data);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    BuiltinsArrayBufferStubBuilder arrayBufferStubBuilder(this, GetCurrentGlobalEnv());
+    return arrayBufferStubBuilder.GetDataPointFromBuffer(glue, arrBuf);
 }
 
 GateRef BuiltinsTypedArrayStubBuilder::CheckTypedArrayIndexInRange(GateRef array, GateRef index)

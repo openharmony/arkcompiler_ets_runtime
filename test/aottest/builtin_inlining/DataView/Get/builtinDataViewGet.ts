@@ -27,6 +27,7 @@ print(sample.getFloat32(0)) //: NaN
 print(sample.getFloat32(0, true)) //: 6.905458702346266e-41
 //aot: [trace] aot inline builtin: DataView.prototype.SetFloat64, caller function name:func_main_0@builtinDataViewGet
 sample.setFloat64(0)
+//aot: [trace] aot call builtin: DataView.prototype.GetFloat64, caller function name:func_main_0@builtinDataViewGet
 print(sample.getFloat64()) //: NaN
 //aot: [trace] aot inline builtin: DataView.prototype.GetFloat64, caller function name:func_main_0@builtinDataViewGet
 print(sample.getFloat64(0)) //: NaN

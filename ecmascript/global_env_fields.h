@@ -438,14 +438,6 @@
     V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX)             \
     V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX)                    \
     V(JSTaggedValue, ArrayBufferIsView, ARRAY_BUFFER_IS_VIEW_INDEX)                       \
-    V(JSTaggedValue, DataViewGetFloat32, DATA_VIEW_GET_FLOAT32_INDEX)                     \
-    V(JSTaggedValue, DataViewGetFloat64, DATA_VIEW_GET_FLOAT64_INDEX)                     \
-    V(JSTaggedValue, DataViewGetInt8, DATA_VIEW_GET_INT8_INDEX)                           \
-    V(JSTaggedValue, DataViewGetInt16, DATA_VIEW_GET_INT16_INDEX)                         \
-    V(JSTaggedValue, DataViewGetInt32, DATA_VIEW_GET_INT32_INDEX)                         \
-    V(JSTaggedValue, DataViewGetUint16, DATA_VIEW_GET_UINT16_INDEX)                       \
-    V(JSTaggedValue, DataViewGetUint32, DATA_VIEW_GET_UINT32_INDEX)                       \
-    V(JSTaggedValue, DataViewGetUint8, DATA_VIEW_GET_UINT8_INDEX)                         \
     V(JSTaggedValue, DataViewSetInt8, DATA_VIEW_SET_INT8_INDEX)                           \
     V(JSTaggedValue, DataViewSetInt16, DATA_VIEW_SET_INT16_INDEX)                         \
     V(JSTaggedValue, DataViewSetUint8, DATA_VIEW_SET_UINT8_INDEX)                         \
@@ -475,12 +467,11 @@
 namespace panda::ecmascript {
 #define GLOBAL_ENV_FIELD_ENUM_ITEM(Type, Name, INDEX) INDEX,
 #define INDEX_FILTER_BUILTIN4(ARG1, ARG2, ARG3, Index) Index##_INDEX,
-#define INDEX_FILTER_BUILTIN6(ARG1, ARG2, ARG3, ARG4, ARG5, Index) Index##_INDEX,
 // clang-format off
 enum class GlobalEnvField : uint16_t {
     GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ENUM_ITEM)
     BUILTINS_METHOD_STUB_LIST(INDEX_FILTER_BUILTIN4, INDEX_FILTER_BUILTIN4,
-                              INDEX_FILTER_BUILTIN4, INDEX_FILTER_BUILTIN6)
+                              INDEX_FILTER_BUILTIN4)
     FINAL_INDEX,
     INVALID = -1
 };

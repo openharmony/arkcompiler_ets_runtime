@@ -21,6 +21,7 @@ let sample = new DataView(buffer, 0);
 
 //aot: [trace] aot inline builtin: DataView.prototype.SetFloat64, caller function name:func_main_0@builtinDataViewFloat64
 sample.setFloat64(0)
+//aot: [trace] aot call builtin: DataView.prototype.GetFloat64, caller function name:func_main_0@builtinDataViewFloat64
 print(sample.getFloat64()) //: NaN
 //aot: [trace] aot inline builtin: DataView.prototype.GetFloat64, caller function name:func_main_0@builtinDataViewFloat64
 print(sample.getFloat64(0)) //: NaN

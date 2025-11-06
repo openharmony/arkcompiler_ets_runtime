@@ -330,33 +330,11 @@ DECLARE_BUILTINS(type##method)                                                  
     Return(*res);                                                                                   \
 }
 
-// map and set stub function
-#define DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER(method, type, numType, function, retDefaultValue, ...) \
-DECLARE_BUILTINS(type##method)                                                                        \
-{                                                                                                     \
-    auto env = GetEnvironment();                                                                      \
-    DEFVARIABLE(res, VariableType::JS_ANY(), retDefaultValue);                                        \
-    Label slowPath(env);                                                                              \
-    Label exit(env);                                                                                  \
-    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                         \
-    BuiltinsDataViewStubBuilder builder(this, globalEnv);                                             \
-    builder.function<DataViewType::numType>(glue, thisValue, numArgs, &res, &exit, &slowPath);        \
-    Bind(&slowPath);                                                                                  \
-    {                                                                                                 \
-        auto name = BuiltinsStubCSigns::GetName(BUILTINS_STUB_ID(type##method));                      \
-        res = CallSlowPath(nativeCode, glue, globalEnv, thisValue, numArgs, func, newTarget);         \
-        Jump(&exit);                                                                                  \
-    }                                                                                                 \
-    Bind(&exit);                                                                                      \
-    Return(*res);                                                                                     \
-}
-
 BUILTINS_METHOD_STUB_LIST(DECLARE_BUILTINS_STUB_BUILDER, DECLARE_BUILTINS_STUB_BUILDER1,
-                          DECLARE_BUILTINS_COLLECTION_STUB_BUILDER, DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER)
+                          DECLARE_BUILTINS_COLLECTION_STUB_BUILDER)
 #undef DECLARE_BUILTINS_STUB_BUILDER
 #undef DECLARE_BUILTINS_STUB_BUILDER1
 #undef DECLARE_BUILTINS_COLLECTION_STUB_BUILDER
-#undef DECLARE_BUILTINS_DATAVIEW_STUB_BUILDER
 
 DECLARE_BUILTINS(ArkToolsHashCode)
 {

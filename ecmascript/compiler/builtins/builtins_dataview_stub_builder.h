@@ -27,6 +27,47 @@ public:
     NO_MOVE_SEMANTIC(BuiltinsDataViewStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsDataViewStubBuilder);
     void GenerateCircuit() override {}
+
+#define DATAVIEW_SET_TYPES(V)    \
+    V(Int32,  INT32)             \
+    V(Float32, FLOAT32)          \
+    V(Float64, FLOAT64)
+
+    // Set methods
+#define DECLARE_DATAVIEW_SET_METHOD(name, type)                      \
+    void Set##name(GateRef glue, GateRef thisValue, GateRef numArgs, \
+        Variable* res, Label *exit, Label *slowPath);
+
+    DATAVIEW_SET_TYPES(DECLARE_DATAVIEW_SET_METHOD)
+#undef DECLARE_DATAVIEW_SET_METHOD
+
+// V(MethodName, DataViewType)
+#define DATAVIEW_GET_TYPES(V)       \
+    V(Float32,   FLOAT32)           \
+    V(Float64,   FLOAT64)           \
+    V(Int8,      INT8)              \
+    V(Int16,     INT16)             \
+    V(Int32,     INT32)             \
+    V(Uint8,     UINT8)             \
+    V(Uint16,    UINT16)            \
+    V(Uint32,    UINT32)
+
+    // Get methods
+#define DECLARE_DATAVIEW_GET_METHOD(name, type)                      \
+    void Get##name(GateRef glue, GateRef thisValue, GateRef numArgs, \
+        Variable* res, Label *exit, Label *slowPath);
+
+    DATAVIEW_GET_TYPES(DECLARE_DATAVIEW_GET_METHOD)
+#undef DECLARE_DATAVIEW_GET_METHOD
+
+    GateRef GetElementSize(DataViewType type);
+
+private:
+    template <DataViewType type>
+    void GetTypedValue(GateRef glue, GateRef thisValue, GateRef numArgs,
+        Variable* res, Label *exit, Label *slowPath);
+
+    // Set methods
     template <DataViewType type>
     void SetTypedValue(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable* res, Label *exit, Label *slowPath);
@@ -34,7 +75,6 @@ public:
         GateRef value, GateRef littleEndianHandle);
     void SetValueInBufferForInt64(GateRef glue, GateRef pointer, GateRef offset,
         GateRef value, GateRef littleEndianHandle);
-    GateRef GetElementSize(DataViewType type);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_DATAVIEW_STUB_BUILDER_H
