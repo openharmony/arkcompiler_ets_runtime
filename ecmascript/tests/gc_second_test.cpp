@@ -185,7 +185,9 @@ HWTEST_F_L0(GCTest, ColdStartNoConcurrentMark)
 
     heap->NotifyHighSensitive(true);
     heap->NotifyHighSensitive(false);
-    EXPECT_TRUE(heap->HandleExitHighSensitiveEvent());
+    heap->HandleExitHighSensitiveEvent();
+    heap->NotifyHighSensitive(true);
+    EXPECT_FALSE(heap->HandleExitHighSensitiveEvent());
 }
 
 HWTEST_F_L0(GCTest, ColdStartGCRestrainInternal)

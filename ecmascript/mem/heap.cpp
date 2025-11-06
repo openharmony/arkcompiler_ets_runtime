@@ -2506,7 +2506,7 @@ bool Heap::HandleExitHighSensitiveEvent()
             // set overshoot size to increase gc threashold larger 8MB than current heap size.
             TryIncreaseNewSpaceOvershootByConfigSize();
         }
-        return true;
+        return success;
     }
     return false;
 }
