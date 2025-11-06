@@ -107,9 +107,8 @@ static constexpr uint8_t UTF8_4B_SECOND_MAX = 0x8F;
 
 static constexpr uint8_t byteMask = 0xbf;
 static constexpr uint8_t byteMark = 0x80;
-
 static constexpr uint8_t latin1Limit = 0xFF;
-
+static constexpr uint16_t MaxNonSurrogateCharCode = 0xffff;
 static constexpr int32_t INVALID_UTF8 = -1;
 
 enum UtfLength : uint8_t { ONE = 1, TWO = 2, THREE = 3, FOUR = 4 };
@@ -242,5 +241,113 @@ static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind)
     return res;
 }
 }  // namespace common::utf_helper
+
+
+namespace common::utf_helper_replacement {
+
+struct Utf8Decoder {
+    enum State : uint8_t {
+        REJECT = 0,
+        ACCEPT = 12,
+        TWO_BYTE = 24,
+        THREE_BYTE = 36,
+        THREE_BYTE_LOW_MID = 48,
+        FOUR_BYTE = 60,
+        FOUR_BYTE_LOW = 72,
+        THREE_BYTE_HIGH = 84,
+        FOUR_BYTE_MID_HIGH = 96,
+    };
+
+    static inline void Decode(uint8_t byte, State *state, uint32_t *buffer)
+    {
+        // This first table maps bytes to character to a transition.
+        static constexpr uint8_t transitions[] = {
+            0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 00000000-00001111
+            0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 00010000-00011111
+            0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 00100000-00101111
+            0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 00110000-00111111
+            0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 01000000-01001111
+            0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 01010000-01011111
+            0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 01100000-01101111
+            0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  // 01110000-01111111
+            1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // 10000000-10001111
+            2,  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,  // 10010000-10011111
+            3,  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,  // 10100000-10101111
+            3,  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,  // 10110000-10111111
+            9,  9, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,  // 11000000-11001111
+            4,  4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,  // 11010000-11011111
+            10, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 5, 5,  // 11100000-11101111
+            11, 7, 7, 7, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,  // 11110000-11111111
+        };
+        // This second table maps a state to a new state when adding a transition.
+        static constexpr uint8_t states[] = {
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,   // REJECT = 0
+            12, 0,  0,  0,  24, 36, 48, 60, 72, 0, 84, 96,  // ACCEPT = 12
+            0,  12, 12, 12, 0,  0,  0,  0,  0,  0, 0,  0,   // 2-byte = 24
+            0,  24, 24, 24, 0,  0,  0,  0,  0,  0, 0,  0,   // 3-byte = 36
+            0,  24, 24, 0,  0,  0,  0,  0,  0,  0, 0,  0,   // 3-byte low/mid = 48
+            0,  36, 36, 36, 0,  0,  0,  0,  0,  0, 0,  0,   // 4-byte = 60
+            0,  36, 0,  0,  0,  0,  0,  0,  0,  0, 0,  0,   // 4-byte low = 72
+            0,  0,  0,  24, 0,  0,  0,  0,  0,  0, 0,  0,   // 3-byte high = 84
+            0,  0,  36, 36, 0,  0,  0,  0,  0,  0, 0,  0,   // 4-byte mid/high = 96
+        };
+        uint8_t type = transitions[byte];
+        *state = static_cast<State>(states[*state + type]);
+        *buffer = (*buffer << 6) | (byte & (0x7F >> (type >> 1))); // NOLINT 6: means shift left by 6 digits
+        // NOLINT 0x7F: means mask 0x7F, which is 01111111 in binary, to keep the lower 6 bits
+    }
+};
+static inline uint16_t LeadSurrogate(uint32_t charCode)
+{
+    return common::utf_helper::H_SURROGATE_START +
+        (((charCode - common::utf_helper::SURROGATE_RAIR_START) >> common::utf_helper::UTF16_OFFSET) &
+        common::utf_helper::BIT16_MASK);
+}
+static inline uint16_t TrailSurrogate(uint32_t charCode)
+{
+    return common::utf_helper::L_SURROGATE_START + (charCode & common::utf_helper::BIT16_MASK);
+}
+
+static inline size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8Data, size_t utf8Length, uint16_t *utf16Data)
+{
+    uint8_t *start = const_cast<uint8_t *>(utf8Data);
+    uint8_t *end = start + utf8Length;
+    uint32_t current = 0;
+    uint16_t *utf16Start = utf16Data;
+
+    Utf8Decoder::State state = Utf8Decoder::State::ACCEPT;
+    while (start < end) {
+        if (*start <= common::utf_helper::UTF8_1B_MAX && state == Utf8Decoder::State::ACCEPT) {
+            *utf16Data++ = static_cast<uint16_t>(*start);
+            start++;
+            continue;
+        }
+        auto previous_state = state;
+        Utf8Decoder::Decode(*start, &state, &current);
+        if (state < Utf8Decoder::State::ACCEPT) {
+            state = Utf8Decoder::State::ACCEPT;
+            *utf16Data++ = static_cast<uint16_t>(common::utf_helper::UTF16_REPLACEMENT_CHARACTER);
+            current = 0;
+            if (previous_state != Utf8Decoder::State::ACCEPT) {
+                continue;
+            }
+        } else if (state == Utf8Decoder::State::ACCEPT) {
+            if (current <= common::utf_helper::MaxNonSurrogateCharCode) {
+                *utf16Data++ = static_cast<uint16_t>(current);
+            } else {
+                *utf16Data++ = LeadSurrogate(current);
+                *utf16Data++ = TrailSurrogate(current);
+            }
+            current = 0;
+        }
+        start++;
+    }
+    if (state != Utf8Decoder::State::ACCEPT) {
+        *utf16Data++ = static_cast<uint16_t>(common::utf_helper::UTF16_REPLACEMENT_CHARACTER);
+    }
+    return utf16Data - utf16Start;
+}
+
+}
 
 #endif  // ECMASCRIPT_BASE_UTF_HELPER_H

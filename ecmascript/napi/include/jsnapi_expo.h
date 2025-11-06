@@ -1094,7 +1094,10 @@ public:
         return static_cast<StringRef *>(value);
     }
     static Local<StringRef> NewFromUtf8WithoutStringTable(const EcmaVM *vm, const char *utf8, int length = -1);
+    static Local<StringRef> NewFromUtf8WithoutStringTableReplacement(const EcmaVM *vm, const char *utf8,
+                                                                     int length = -1);
     static Local<StringRef> NewFromUtf8(const EcmaVM *vm, const char *utf8, int length = -1);
+    static Local<StringRef> NewFromUtf8Replacement(const EcmaVM *vm, const char *utf8, int length = -1);
     static Local<StringRef> NewFromUtf16WithoutStringTable(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     static Local<StringRef> NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     static Local<StringRef> NewExternalFromUtf16(const EcmaVM *vm,

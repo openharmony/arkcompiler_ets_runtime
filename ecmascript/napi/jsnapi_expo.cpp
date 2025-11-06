@@ -2243,6 +2243,21 @@ Local<StringRef> StringRef::NewFromUtf8(const EcmaVM *vm, const char *utf8, int 
     return JSNApiHelper::ToLocal<StringRef>(current);
 }
 
+Local<StringRef> StringRef::NewFromUtf8Replacement(const EcmaVM *vm, const char *utf8, int length)
+{
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    if (length < 0) {
+        JSHandle<JSTaggedValue> current(factory->NewFromUtf8Replacement(utf8));
+        return JSNApiHelper::ToLocal<StringRef>(current);
+    }
+    JSHandle<JSTaggedValue> current(factory->NewFromUtf8Replacement(reinterpret_cast<const uint8_t *>(utf8), length));
+    return JSNApiHelper::ToLocal<StringRef>(current);
+}
+
 Local<StringRef> StringRef::NewFromUtf8WithoutStringTable(const EcmaVM *vm, const char *utf8, int length)
 {
     // This only supports for napi_create_string_utf8
@@ -2253,8 +2268,23 @@ Local<StringRef> StringRef::NewFromUtf8WithoutStringTable(const EcmaVM *vm, cons
         JSHandle<JSTaggedValue> current(factory->NewFromUtf8WithoutStringTable(utf8));
         return JSNApiHelper::ToLocal<StringRef>(current);
     }
-    JSHandle<JSTaggedValue> current(factory->NewFromUtf8WithoutStringTable(reinterpret_cast<const uint8_t *>(utf8),
-                                                                           length));
+    JSHandle<JSTaggedValue> current(
+        factory->NewFromUtf8WithoutStringTable(reinterpret_cast<const uint8_t *>(utf8), length));
+    return JSNApiHelper::ToLocal<StringRef>(current);
+}
+
+Local<StringRef> StringRef::NewFromUtf8WithoutStringTableReplacement(const EcmaVM *vm, const char *utf8, int length)
+{
+    // This only supports for napi_create_string_utf8
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    if (length < 0) {
+        JSHandle<JSTaggedValue> current(factory->NewFromUtf8WithoutStringTableReplacement(utf8));
+        return JSNApiHelper::ToLocal<StringRef>(current);
+    }
+    JSHandle<JSTaggedValue> current(
+        factory->NewFromUtf8WithoutStringTableReplacement(reinterpret_cast<const uint8_t *>(utf8), length));
     return JSNApiHelper::ToLocal<StringRef>(current);
 }
 
