@@ -236,10 +236,10 @@ HWTEST_F_L0(EcmaVMTest, TestInitConfigurableParam)
                                                         MAX_HEAP_SIZE, MAX_HEAP_SIZE);
     EcmaVM::InitConfigurableParam(cfg);
     EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingFactor() != 1);
-    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() != 2);
-    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() != 3);
-    EXPECT_TRUE(cfg.GetStepNativeSizeInc() != 4);
-    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() != 4);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() != 2_MB);
+    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() != 3_MB);
+    EXPECT_TRUE(cfg.GetStepNativeSizeInc() != 4_MB);
+    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() != 4_MB);
 
     OHOS::system::SetParameter("persist.ark.sheap.growfactor", "4");
     OHOS::system::SetParameter("persist.ark.sheap.growstep", "10");
@@ -248,10 +248,10 @@ HWTEST_F_L0(EcmaVMTest, TestInitConfigurableParam)
     OHOS::system::SetParameter("persist.ark.global.alloclimit", "10");
     EcmaVM::InitConfigurableParam(cfg);
     EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingFactor() == 4);
-    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() == 10);
-    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() == 10);
-    EXPECT_TRUE(cfg.GetStepNativeSizeInc() == 128);
-    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() == 10);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() == 10_MB);
+    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() == 10_MB);
+    EXPECT_TRUE(cfg.GetStepNativeSizeInc() == 128_MB);
+    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() == 10_MB);
 
     OHOS::system::SetParameter("persist.ark.sheap.growfactor", "10");
     OHOS::system::SetParameter("persist.ark.sheap.growstep", "640");
@@ -260,10 +260,10 @@ HWTEST_F_L0(EcmaVMTest, TestInitConfigurableParam)
     OHOS::system::SetParameter("persist.ark.global.alloclimit", "256");
     EcmaVM::InitConfigurableParam(cfg);
     EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingFactor() != 10);
-    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() != 640);
-    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() != 640);
-    EXPECT_TRUE(cfg.GetStepNativeSizeInc() != 2048);
-    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() != 256);
+    EXPECT_TRUE(cfg.GetSharedHeapLimitGrowingStep() != 640_MB);
+    EXPECT_TRUE(cfg.GetIncObjSizeThresholdInSensitive() != 640_MB);
+    EXPECT_TRUE(cfg.GetStepNativeSizeInc() != 2048_MB);
+    EXPECT_TRUE(cfg.GetDefaultGlobalAllocLimit() != 256_MB);
 #endif
 }
 
