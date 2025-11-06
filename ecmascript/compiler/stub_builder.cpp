@@ -12197,7 +12197,7 @@ GateRef StubBuilder::ResolveExportObject(GateRef glue, GateRef module, GateRef e
             Label notEqualZero(env);
             GateRef hClass = LoadHClass(glue, exports);
             GateRef layoutInfo = GetLayoutFromHClass(glue, hClass);
-            GateRef eleNum = GetNumberOfPropsFromHClass(hClass);
+            GateRef eleNum = GetExtraLengthOfTaggedArray(layoutInfo);
             BRANCH(Int32NotEqual(eleNum, Int32(0)), &notEqualZero, &checkResultIsUndefined);
 
             Bind(&notEqualZero);
