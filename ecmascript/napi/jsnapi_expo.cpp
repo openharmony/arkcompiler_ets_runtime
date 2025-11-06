@@ -6274,6 +6274,7 @@ void JSNApi::SetReleaseSecureMemCallback(ReleaseSecureMemCallback releaseSecureM
 // Arkui trigger jsPandafile Seralize when cold start is end.
 void JSNApi::PandaFileSerialize(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     if (const_cast<EcmaVM *>(vm)->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
         return;
     }
@@ -6284,6 +6285,7 @@ void JSNApi::PandaFileSerialize(const EcmaVM *vm)
 // Arkui trigger module Seralize when cold start is end.
 void JSNApi::ModuleSerialize(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     JSRuntimeOptions &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
     if (options.DisableJSPandaFileAndModuleSnapshot() || options.DisableModuleSnapshot()) {
         return;
@@ -6295,6 +6297,7 @@ void JSNApi::ModuleSerialize(const EcmaVM *vm)
 // Ability Runtime trigger module Deseralize when application start.
 void JSNApi::ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion)
 {
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     if (vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
         return;
     }
