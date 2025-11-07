@@ -3450,13 +3450,6 @@ DEF_CALL_SIGNATURE(FindPatchModule)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(UpdateSharedModule)
-{
-    TWO_ARGS_CALL_SIGNATURE(UpdateSharedModule, VariableType::JS_ANY())
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 DEF_CALL_SIGNATURE(FatalPrintMisstakenResolvedBinding)
 {
     // 3 : 3 input parameters

@@ -2105,6 +2105,18 @@ DEF_RUNTIME_STUBS(GetResolvedRecordIndexBindingModule)
     return moduleManager->HostGetImportedModule(recordNameStr).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(UpdateSharedModule)
+{
+    RUNTIME_STUBS_HEADER(UpdateSharedModule);
+    JSHandle<SourceTextModule> module = GetHArg<SourceTextModule>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<SourceTextModule> sharedModule =
+        SharedModuleManager::GetInstance()->GetSModule(thread, module->GetEcmaModuleRecordNameString());
+    if (sharedModule.GetTaggedValue().IsSourceTextModule()) {
+        return sharedModule.GetTaggedValue().GetRawData();
+    }
+    return module.GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(GetResolvedRecordBindingModule)
 {
     RUNTIME_STUBS_HEADER(GetResolvedRecordBindingModule);
@@ -5036,19 +5048,6 @@ JSTaggedValue RuntimeStubs::FindPatchModule(uintptr_t argGlue, JSTaggedValue res
     auto thread = JSThread::GlueToJSThread(argGlue);
     JSHandle<SourceTextModule> module(thread, resolvedModule);
     return (thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString())).GetTaggedValue();
-}
-
-JSTaggedValue RuntimeStubs::UpdateSharedModule(uintptr_t argGlue, JSTaggedValue resolvedModule)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    JSHandle<SourceTextModule> module(thread, resolvedModule);
-    JSHandle<SourceTextModule> sharedModule =
-        SharedModuleManager::GetInstance()->GetSModule(thread, module->GetEcmaModuleRecordNameString());
-    if (sharedModule.GetTaggedValue().IsSourceTextModule()) {
-        return sharedModule.GetTaggedValue();
-    }
-    return module.GetTaggedValue();
 }
 
 void RuntimeStubs::FatalPrintMisstakenResolvedBinding(int32_t index, JSTaggedValue curModule)

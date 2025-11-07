@@ -12418,7 +12418,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
             Label notSharedModule(env);
             BRANCH(IsSharedModule(*resolvedModule), &isSharedModule, &notSharedModule);
             Bind(&isSharedModule);
-            resolvedModule = CallNGCRuntime(glue, RTSTUB_ID(UpdateSharedModule), {glue, *resolvedModule});
+            resolvedModule = CallRuntime(glue, RTSTUB_ID(UpdateSharedModule), {*resolvedModule});
             Jump(&notSharedModule);
             Bind(&notSharedModule);
             result = GetModuleValue(glue, *resolvedModule, idxOfResolvedBinding);

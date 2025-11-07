@@ -225,8 +225,7 @@ namespace panda::ecmascript {
     V(CopyArgvArray)                           \
     V(MarkRSetCardTable)                       \
     V(MarkInBuffer)                            \
-    V(BatchMarkInBuffer)                       \
-    V(UpdateSharedModule)
+    V(BatchMarkInBuffer)
 
 // When ASM enters C++ via CallNGCRuntime, if the C++ process requires GetGlobalEnv(),
 // the current globalenv in ASM must be set to glue before CallNGCRuntime!
@@ -548,7 +547,8 @@ namespace panda::ecmascript {
     V(GetNativePcOfstForBaseline)                              \
     V(AotCallBuiltinTrace)                                     \
     V(NumberBigIntNativePointerToString)                       \
-    V(ComputeHashcode)
+    V(ComputeHashcode)                                         \
+    V(UpdateSharedModule)
 
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)               \
