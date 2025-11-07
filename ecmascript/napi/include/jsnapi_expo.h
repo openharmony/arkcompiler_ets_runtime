@@ -1132,6 +1132,52 @@ public:
     uint32_t GetWordsArraySize(const EcmaVM *vm);
 };
 
+/**
+ * @brief A stack-allocated RAII class that governs a local Handle scope.
+ *
+ * LocalScope follows a strict "construct-to-enter / destruct-to-exit"
+ * pairing rule:
+ *
+ * 1. When a LocalScope instance is created on the stack, a new local
+ *    Handle scope is pushed onto the VM's internal scope chain.
+ * 2. Every Local<> handle created afterwards is allocated inside that
+ *    scope until the instance is destroyed.
+ * 3. When the instance goes out of scope (or is explicitly deleted),
+ *    its destructor pops the scope; the VM no longer keeps the handles
+ *    alive, and the garbage collector is free to reclaim the objects.
+ *
+ * If a second LocalScope is created while another is active, the new
+ * scope becomes the current one; destroying the innermost scope
+ * reverts to the previous scope.
+ *
+ * ACCESSING A Local<> AFTER ITS HANDLENS HAS BEEN DESTROYED IS
+ * UNDEFINED BEHAVIOUR.
+ *
+ * Therefore: **always** let LocalScope objects live on the stack,
+ * never heap-allocate them, and never leak the scope (e.g. via
+ * premature `return`, `goto`, or `throw`) without running its
+ * destructor.
+ *
+ * === EXAMPLES OF MISUSE ===
+ *
+ * // BAD: manual "open/close" calls destroy pairing order
+ * LocalScope* s1 = new LocalScope;     // "open1"
+ * LocalScope* s2 = new LocalScope;     // "open2"
+ * delete s1;                           // "close1"  – WRONG: inner scope
+ *                                      //            removed before outer
+ * delete s2;                           // "close2"
+ *
+ * // GOOD: rely on C++ scoping; destructors run in exact reverse order
+ * {
+ *   LocalScope s1;                     // open1
+ *   {
+ *     LocalScope s2;                   // open2
+ *   }                                  // close2 – automatic, guaranteed
+ * }                                    // close1 – automatic, guaranteed
+ *
+ * Any deviation from LIFO order (construct A, construct B, destroy A, destroy B)
+ * is undefined behaviour and will eventually crash or corrupt the VM.
+ */
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
 class PUBLIC_API LocalScope {
 public:

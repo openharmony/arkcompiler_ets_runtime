@@ -2555,6 +2555,9 @@ uint32_t BigIntRef::GetWordsArraySize(const EcmaVM *vm)
 // ----------------------------------- HandleScope -------------------------------------
 LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
 {
+#ifdef USE_HWASAN
+    (const_cast<EcmaVM*>(vm))->AddHandleScopeDepth();
+#endif
     // Only get handle ptr here. Do not need to swtich state.
     prevNext_ = vm->GetHandleScopeStorageNext();
     prevEnd_ = vm->GetHandleScopeStorageEnd();
@@ -2574,6 +2577,9 @@ LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
 LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJSThread())
 {
     ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
+#ifdef USE_HWASAN
+    (const_cast<EcmaVM*>(vm))->AddHandleScopeDepth();
+#endif
     // Simply reserve a slot on the handlescope. The escaped handle will still be retained in this slot.
     ecmascript::EcmaHandleScope::NewHandle(reinterpret_cast<JSThread *>(thread_), value);
     prevNext_ = vm->GetHandleScopeStorageNext();
@@ -2595,6 +2601,9 @@ LocalScope::~LocalScope()
 {
     ecmascript::ThreadManagedScope managedScope(reinterpret_cast<JSThread *>(thread_));
     auto vm = reinterpret_cast<JSThread *>(thread_)->GetEcmaVM();
+#ifdef USE_HWASAN
+    vm->DelHandleScopeDepth();
+#endif
     vm->SetHandleScopeStorageNext(static_cast<JSTaggedType *>(prevNext_));
     vm->SetPrimitiveScopeStorageNext(static_cast<JSTaggedType *>(prevPrimitiveNext_));
 
