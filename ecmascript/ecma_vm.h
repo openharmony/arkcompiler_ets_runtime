@@ -1643,7 +1643,7 @@ public:
 
     ~HandleScopeDepthScope()
     {
-        int32_t curDepth = vm_->GetHandleScopeDepth();
+        uint32_t curDepth = vm_->GetHandleScopeDepth();
         if (curDepth < initDepth_) {
             LOG_ECMA(ERROR) << "Handle scope not match! init depth: " << initDepth_ << " current depth: " << curDepth;
         }
