@@ -114,6 +114,7 @@ void RawHeapDump::MarkRootForDump(ObjectMarker &marker)
         rootVisitor.VisitHeapRoots(vm_->GetAssociatedJSThread(), marker);
         SharedModuleManager::GetInstance()->Iterate(marker);
         Runtime::GetInstance()->IterateCachedStringRoot(marker);
+        Runtime::GetInstance()->IterateSendableGlobalStorage(marker);
     }
 }
 

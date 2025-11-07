@@ -48,6 +48,8 @@ template<typename T>
 class CopyableGlobal;
 template<typename T>
 class Global;
+template<typename T>
+class SendableGlobal;
 class JSNApi;
 class SymbolRef;
 template<typename T>
@@ -263,6 +265,8 @@ public:
     Local(const EcmaVM *vm, const Global<T> &current);
 
     Local(const EcmaVM *vm, const CopyableGlobal<T> &current);
+
+    Local(const EcmaVM *vm, const SendableGlobal<T> &current);
 
     ~Local() = default;
 
@@ -515,6 +519,57 @@ private:
     const EcmaVM *vm_ {nullptr};
 };
 
+template<typename T>
+class PUBLIC_API SendableGlobal {  // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions
+public:
+    inline SendableGlobal() = default;
+
+    ECMA_DISALLOW_COPY(SendableGlobal);
+    ECMA_DISALLOW_MOVE(SendableGlobal);
+
+    template<typename S>
+    SendableGlobal(const EcmaVM *vm, const Local<S> &current);
+
+    ~SendableGlobal() = default;
+
+    Local<T> ToLocal(const EcmaVM *vm) const
+    {
+        if (IsEmpty()) {
+            return Local<T>();
+        }
+        return Local<T>(vm, *this);
+    }
+
+    void Empty()
+    {
+        address_ = 0;
+    }
+
+    inline T *operator*() const
+    {
+        return GetAddress();
+    }
+
+    inline T *operator->() const
+    {
+        return GetAddress();
+    }
+
+    inline bool IsEmpty() const
+    {
+        return GetAddress() == nullptr;
+    }
+
+    void FreeSendableGlobalHandleAddr(const EcmaVM *vm);
+
+private:
+    inline T *GetAddress() const
+    {
+        return reinterpret_cast<T *>(address_);
+    };
+    uintptr_t address_ = 0U;
+};
+
 class PUBLIC_API JSValueRef {
 public:
     static Local<PrimitiveRef> Undefined(const EcmaVM *vm);
@@ -672,6 +727,7 @@ public:
     void TryGetArrayLength(const EcmaVM *vm, bool *isPendingException,
         bool *isArrayOrSharedArray, uint32_t *arrayLength);
     bool IsJsGlobalEnv(const EcmaVM *vm);
+    bool IsSendable(const EcmaVM *vm);
 
 private:
     JSTaggedType value_;
@@ -1998,6 +2054,8 @@ private:
     static void GenerateTimeoutTraceIfNeeded(const EcmaVM *vm, std::chrono::system_clock::time_point &start,
                                      std::chrono::system_clock::time_point &end, bool isSerialization);
     static void UpdateAOTCompileStatus(ecmascript::JSRuntimeOptions &jsOption, const RuntimeOption &option);
+    static uintptr_t GetSendableGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
+    static void DisposeSendableGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr);
     template<typename T>
     friend class Global;
     template<typename T>
@@ -2009,6 +2067,8 @@ private:
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     JSNAPI_PRIVATE_HYBRID_MODE_EXTENSION();
 #endif // PANDA_JS_ETS_HYBRID_MODE
+    template<typename T>
+    friend class SendableGlobal;
 };
 
 class PUBLIC_API ProxyRef : public ObjectRef {
@@ -2214,6 +2274,25 @@ bool Global<T>::IsWeak() const
     return JSNApi::IsWeak(vm_, address_);
 }
 
+template<typename T>
+template<typename S>
+SendableGlobal<T>::SendableGlobal(const EcmaVM *vm, const Local<S> &current)
+{
+    if (!current.IsEmpty()) {
+        address_ = JSNApi::GetSendableGlobalHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
+    }
+}
+
+template<typename T>
+void SendableGlobal<T>::FreeSendableGlobalHandleAddr(const EcmaVM *vm)
+{
+    if (address_ == 0) {
+        return;
+    }
+    JSNApi::DisposeSendableGlobalHandleAddr(vm, address_);
+    address_ = 0;
+}
+
 // ---------------------------------- Local --------------------------------------------
 template<typename T>
 Local<T>::Local(const EcmaVM *vm, const CopyableGlobal<T> &current)
@@ -2230,5 +2309,11 @@ GLOBAL_PUBLIC_DEF_HYBRID_EXTENSION();
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     GLOBAL_PUBLIC_DEF_HYBRID_MODE_EXTENSION();
 #endif // PANDA_JS_ETS_HYBRID_MODE
+
+template<typename T>
+Local<T>::Local(const EcmaVM *vm, const SendableGlobal<T> &current)
+{
+    address_ = JSNApi::GetHandleAddr(vm, reinterpret_cast<uintptr_t>(*current));
+}
 }  // namespace panda
 #endif

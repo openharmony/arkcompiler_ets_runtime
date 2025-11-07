@@ -631,6 +631,7 @@ size_t SharedHeapVerification::VerifyRoot() const
     VerificationRootVisitor verificationRootVisitor(this, failCount);
     VerificationSerializeRootVisitor verificationSerializeRootVisitor(sHeap_, failCount);
     Runtime::GetInstance()->IterateSerializeRoot(verificationSerializeRootVisitor);
+    Runtime::GetInstance()->IterateSendableGlobalStorage(verificationSerializeRootVisitor);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();

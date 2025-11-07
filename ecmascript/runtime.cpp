@@ -23,6 +23,7 @@
 #include "ecmascript/cross_vm/dynamic_object_accessor.h"
 #include "ecmascript/cross_vm/dynamic_object_descriptor.h"
 #include "ecmascript/cross_vm/dynamic_type_converter.h"
+#include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_runtime_options.h"
@@ -74,6 +75,7 @@ Runtime::~Runtime()
             baseStringTable_ = nullptr;
         }
     }
+    DestroySendableGlobalStorage();
     LockHolder lock(constpoolLock_);
     auto iter = globalSharedConstpools_.begin();
     while (iter != globalSharedConstpools_.end()) {
@@ -192,6 +194,7 @@ void Runtime::PreInitialization(const EcmaVM *vm)
 
     SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get(),
         const_cast<EcmaVM*>(vm)->GetJSOptions(), DaemonThread::GetInstance());
+    InitSendableGlobalStorage();
 }
 
 void Runtime::PostInitialization(const EcmaVM *vm)
@@ -458,6 +461,7 @@ void Runtime::ResumeOtherThreadImpl(JSThread *current, JSThread *target)
 
 void Runtime::IterateSharedRoot(RootVisitor &visitor)
 {
+    IterateSendableGlobalStorage(visitor);
     IterateSerializeRoot(visitor);
     SharedModuleManager::GetInstance()->Iterate(visitor);
     IterateCachedStringRoot(visitor);
@@ -662,6 +666,66 @@ void Runtime::PostFork(bool enableWarmStartup)
 {
     if (g_isEnableCMCGC) {
         baseInstance_->PostFork(enableWarmStartup);
+    }
+}
+
+void Runtime::InitSendableGlobalStorage()
+{
+    sendableGlobalStorage_ = new EcmaGlobalStorage<Node>(nullptr, nativeAreaAllocator_.get());
+    newSendableGlobalHandle_ = [this](JSTaggedType value) {
+        return sendableGlobalStorage_->NewGlobalHandle<NodeKind::NORMAL_NODE>(value);
+    };
+    disposeSendableGlobalHandle_ = [this](uintptr_t nodeAddr) {
+        sendableGlobalStorage_->DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
+    };
+}
+
+void Runtime::DestroySendableGlobalStorage()
+{
+    if (sendableGlobalStorage_ != nullptr) {
+        delete sendableGlobalStorage_;
+        sendableGlobalStorage_ = nullptr;
+    }
+}
+
+uintptr_t Runtime::NewSendableGlobalHandle(JSTaggedType value)
+{
+    LockHolder locker(sendableGlobalStorageLock_);
+    ASSERT(JSTaggedValue(value).IsSendable());
+    if (++aliveSendableGlobalHandleCount_ > MAX_SENDABLE_GLOBAL_HANDLE_COUNT) {
+        LOG_ECMA(FATAL) << "The number of surviving ref exceeds the limit";
+        UNREACHABLE();
+    }
+    return newSendableGlobalHandle_(value);
+}
+
+void Runtime::DisposeSendableGlobalHandle(uintptr_t nodeAddr)
+{
+    LockHolder locker(sendableGlobalStorageLock_);
+    if (--aliveSendableGlobalHandleCount_ < 0) {
+        LOG_ECMA(FATAL) << "unreachable banch";
+        UNREACHABLE();
+    }
+    disposeSendableGlobalHandle_(nodeAddr);
+}
+
+void Runtime::IterateSendableGlobalStorage(RootVisitor &visitor)
+{
+    OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "Runtime::VisitRootSendableGlobalRefHandle", "");
+    size_t globalCount = 0;
+    auto callback = [&visitor, &globalCount](Node *node) {
+        JSTaggedValue value(node->GetObject());
+        if (value.IsHeapObject()) {
+            visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+        }
+        globalCount++;
+    };
+    sendableGlobalStorage_->IterateUsageGlobal(callback);
+    static bool hasCheckedGlobalCount = false;
+    if (!hasCheckedGlobalCount && globalCount >= MAX_SENDABLE_GLOBAL_HANDLE_COUNT) {
+        LOG_ECMA(WARN) << "Sendable global reference count is " << globalCount <<
+            ",It exceed the upper limit " << MAX_SENDABLE_GLOBAL_HANDLE_COUNT;
+        hasCheckedGlobalCount = true;
     }
 }
 }  // namespace panda::ecmascript

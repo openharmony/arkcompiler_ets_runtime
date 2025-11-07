@@ -1272,6 +1272,12 @@ bool JSValueRef::IsJsGlobalEnv(const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsJSGlobalEnv();
 }
 
+bool JSValueRef::IsSendable(const EcmaVM *vm)
+{
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    return JSNApiHelper::ToJSTaggedValue(this).IsSendable();
+}
+
 // ---------------------------------- DataView -----------------------------------
 Local<DataViewRef> DataViewRef::New(
     const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
@@ -6677,6 +6683,34 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm
     const std::string &module_path)
 {
     return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(vm, file, module_path);
+}
+
+uintptr_t JSNApi::GetSendableGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
+{
+    if (localAddress == 0) {
+        return 0;
+    }
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
+    JSHandle<JSTaggedValue> handle = JSHandle<JSTaggedValue>(localAddress);
+    if (!handle->IsSendable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot create a sendable reference with a non-sendable variable.", 0);
+    }
+
+    return ecmascript::Runtime::GetInstance()->NewSendableGlobalHandle(handle.GetTaggedType());
+}
+
+void JSNApi::DisposeSendableGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
+{
+    if (addr == 0) {
+        return;
+    }
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope scope(thread);
+    if (!reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
+        return;
+    }
+    ecmascript::Runtime::GetInstance()->DisposeSendableGlobalHandle(addr);
 }
 
 // ---------------------------------- Promise -------------------------------------

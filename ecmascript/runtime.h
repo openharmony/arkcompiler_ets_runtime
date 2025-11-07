@@ -344,6 +344,10 @@ public:
         return ++incompatibleEventMap_[type];
     }
 
+    uintptr_t NewSendableGlobalHandle(JSTaggedType value);
+    void DisposeSendableGlobalHandle(uintptr_t nodeAddr);
+    void IterateSendableGlobalStorage(RootVisitor &visitor);
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -447,6 +451,16 @@ private:
     // release secure mem after jspandafile released.
     ReleaseSecureMemCallback releaseSecureMemCallback_ {nullptr};
     Mutex releaseSecureMemCallbackLock_;
+
+    // sendable global reference
+    Mutex sendableGlobalStorageLock_;
+    EcmaGlobalStorage<Node> *sendableGlobalStorage_ {nullptr};
+    void InitSendableGlobalStorage();
+    void DestroySendableGlobalStorage();
+    std::function<uintptr_t(JSTaggedType value)> newSendableGlobalHandle_;
+    std::function<void(uintptr_t nodeAddr)> disposeSendableGlobalHandle_;
+    static constexpr int32_t MAX_SENDABLE_GLOBAL_HANDLE_COUNT = 51200;
+    int32_t aliveSendableGlobalHandleCount_ {0};
 
     friend class EcmaVM;
     friend class JSThread;
