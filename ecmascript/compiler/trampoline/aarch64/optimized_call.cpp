@@ -13,9 +13,12 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64_constants.h"
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/message_string.h"
 
 namespace panda::ecmascript::aarch64 {
@@ -1518,6 +1521,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     Register maybeAcc(X2);
     Register argC(X3);
     Register runtimeId(X4);
+    __ Orr(deoptType, deoptType.W(), LogicalImmediate::Create(JSTaggedValue::TAG_INT, RegXSize));
     __ Stp(deoptType, maybeAcc, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     __ Mov(argC, Immediate(2)); // 2: argc
     __ Mov(runtimeId, Immediate(RTSTUB_ID(DeoptHandler)));

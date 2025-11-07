@@ -3089,7 +3089,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
     params.push_back(glue); // glue
     GateRef deoptType = acc_.GetValueIn(gate, 2); // 2: deopt type
     uint64_t v = acc_.GetConstantValue(deoptType);
-    params.push_back(ConvertInt32ToTaggedInt(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(v), false)));  // deoptType
+    params.push_back(LLVMConstInt(GetInt32T(), static_cast<uint32_t>(v), false)); // deoptType
     LLVMValueRef undefined = LLVMConstInt(GetInt64T(), JSTaggedValue::VALUE_UNDEFINED, false);
     params.push_back(LLVMBuildIntToPtr(builder_, undefined, GetTaggedHPtrT(), "")); // maybeAcc
     LLVMValueRef callee = GetExperimentalDeopt(module_);
