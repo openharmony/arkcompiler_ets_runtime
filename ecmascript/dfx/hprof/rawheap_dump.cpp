@@ -53,6 +53,16 @@ void ObjectMarker::VisitObjectRangeImpl([[maybe_unused]]BaseObject *root, uintpt
 
 void ObjectMarker::ProcessMarkObjectsFromRoot()
 {
+    if (IsProcessDump()) {
+        CVector<JSTaggedType> heapObjects;
+        heapObjects.reserve(markedObjects_.size());
+        IterateOverObjects([&heapObjects](TaggedObject *object) {
+            heapObjects.push_back(reinterpret_cast<JSTaggedType>(object));
+        });
+        markedObjects_.swap(heapObjects);
+        return;
+    }
+
     while (!bfsQueue_.empty()) {
         JSTaggedType addr = bfsQueue_.front();
         bfsQueue_.pop();
@@ -83,12 +93,41 @@ void ObjectMarker::MarkObject(JSTaggedType addr)
     }
 }
 
+void ObjectMarker::MarkRootObjects()
+{
+    HeapRootVisitor rootVisitor;
+    if (IsProcessDump()) {
+        Runtime::GetInstance()->GCIterateThreadListWithoutLock([&rootVisitor, this](JSThread *thread) {
+            rootVisitor.VisitHeapRoots(thread, *this);
+        });
+        LOG_ECMA(INFO) << "rawheap dump, process dump";
+    } else {
+        rootVisitor.VisitHeapRoots(vm_->GetAssociatedJSThread(), *this);
+    }
+    SharedModuleManager::GetInstance()->Iterate(*this);
+    Runtime::GetInstance()->IterateCachedStringRoot(*this);
+    Runtime::GetInstance()->IterateSendableGlobalStorage(*this);
+}
+
+void ObjectMarker::IterateOverObjects(const std::function<void(TaggedObject *)> &visitor)
+{
+    if (IsProcessDump()) {
+        Runtime::GetInstance()->GCIterateThreadListWithoutLock([&visitor](JSThread *thread) {
+            thread->GetEcmaVM()->GetHeap()->IterateOverObjects(visitor, false);
+        });
+    } else {
+        vm_->GetHeap()->IterateOverObjects(visitor, false);
+    }
+    SharedHeap::GetInstance()->IterateOverObjects(visitor);
+    SharedHeap::GetInstance()->GetReadOnlySpace()->IterateOverObjects(visitor);
+    SharedHeap::GetInstance()->GetCompressSpace()->IterateOverObjects(visitor);
+}
+
 RawHeapDump::RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
                          EntryIdMap *entryIdMap, const DumpSnapShotOption &dumpOption)
-    : vm_(vm), writer_(stream), snapshot_(snapshot), entryIdMap_(entryIdMap)
+    : vm_(vm), dumpOption_(&dumpOption), snapshot_(snapshot), entryIdMap_(entryIdMap),
+      writer_(stream), marker_(vm, &dumpOption)
 {
-    isOOM_ = dumpOption.isDumpOOM;
-    isJSLeakWatcher_ = dumpOption.isJSLeakWatcher;
     startTime_ = std::chrono::steady_clock::now();
 }
 
@@ -101,27 +140,54 @@ RawHeapDump::~RawHeapDump()
     LOG_ECMA(INFO) << "rawheap dump success, cost " << duration << "s, " << "file size " << GetRawHeapFileOffset();
 }
 
-void RawHeapDump::MarkRootForDump(ObjectMarker &marker)
+/*
+ *  |--4 bytes--|--4 bytes--|
+ *  |-----------------------|
+ *  |       versionId       |
+ *  |-----------------------|
+ *  |       timestamp       |
+ *  |-----------------------|
+ *  |  rootCnt  |  rootUnit |
+ *  |-----------------------|
+ *  |                       |
+ *  |                       |
+ *  |-----------------------|
+ *  | stringCnt | 0(unused) |
+ *  |-----------------------|
+ *  |                       |
+ *  |                       |
+ *  |-----------------------|
+ *  |objTotalCnt| tableUnit |
+ *  |-----------------------|
+ *  |                       |
+ *  |                       |
+ *  |-----------------------|
+ *  | rootOffset|  rootSize |
+ *  |-----------------------|
+ *  | strOffset |  strSize  |
+ *  |-----------------------|
+ *  | objOffset |  objSize  |
+ *  |-----------------------|
+*/
+void RawHeapDump::BinaryDump()
 {
-    if (g_isEnableCMCGC) {
-        common::RefFieldVisitor visitor = [&marker](common::RefField<>& refField) {
-            BaseObject *oldObj = refField.GetTargetObject();
-            marker.MarkObject(reinterpret_cast<JSTaggedType>(oldObj));
-        };
-        common::VisitRoots(visitor);
-    } else {
-        HeapRootVisitor rootVisitor;
-        rootVisitor.VisitHeapRoots(vm_->GetAssociatedJSThread(), marker);
-        SharedModuleManager::GetInstance()->Iterate(marker);
-        Runtime::GetInstance()->IterateCachedStringRoot(marker);
-        Runtime::GetInstance()->IterateSendableGlobalStorage(marker);
-    }
+    DumpVersion(GetVersion());
+
+    marker_.MarkRootObjects();
+    DumpRootTable();
+
+    marker_.ProcessMarkObjectsFromRoot();
+    UpdateStringTable();
+    DumpStringTable();
+    DumpObjectTable();
+    DumpObjectMemory();
+
+    DumpSectionIndex();
 }
 
-void RawHeapDump::MarkHeapObjectForDump(ObjectMarker &marker)
+void RawHeapDump::IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor)
 {
-    marker.ProcessMarkObjectsFromRoot();
-    LOG_ECMA(INFO) << "rawheap dump, marked objects count " << marker.Count();
+    marker_.IterateMarkedObjects(visitor);
 }
 
 void RawHeapDump::DumpVersion(const std::string &version)
@@ -157,8 +223,8 @@ void RawHeapDump::DumpSectionIndex()
 */
 NodeId RawHeapDump::GenerateNodeId(JSTaggedType addr)
 {
-    NodeId nodeId = isOOM_ ? entryIdMap_->GetNextId() : entryIdMap_->FindOrInsertNodeId(addr);
-    if (!isJSLeakWatcher_) {
+    NodeId nodeId = dumpOption_->isDumpOOM ? entryIdMap_->GetNextId() : entryIdMap_->FindOrInsertNodeId(addr);
+    if (!dumpOption_->isJSLeakWatcher) {
         return nodeId;
     }
 
@@ -200,7 +266,7 @@ void RawHeapDump::WriteHeader(uint32_t offset, uint32_t size)
 
 void RawHeapDump::WritePadding()
 {
-    uint32_t padding = (8 - fileOffset_ % 8) % 8;
+    uint32_t padding = (8 - GetRawHeapFileOffset() % 8) % 8;
     if (padding > 0) {
         char pad[8] = {0};
         WriteChunk(pad, padding);
@@ -275,64 +341,24 @@ RawHeapDumpV1::~RawHeapDumpV1()
     strIdMapObjVec_.clear();
 }
 
-/*
- *  |--4 bytes--|--4 bytes--|
- *  |-----------------------|
- *  |       versionId       |
- *  |-----------------------|
- *  |       timestamp       |
- *  |-----------------------|
- *  |  rootCnt  |  rootUnit |
- *  |-----------------------|
- *  |                       |
- *  |                       |
- *  |-----------------------|
- *  | stringCnt | 0(unused) |
- *  |-----------------------|
- *  |                       |
- *  |                       |
- *  |-----------------------|
- *  |objTotalCnt| tableUnit |
- *  |-----------------------|
- *  |                       |
- *  |                       |
- *  |-----------------------|
- *  | rootOffset|  rootSize |
- *  |-----------------------|
- *  | strOffset |  strSize  |
- *  |-----------------------|
- *  | objOffset |  objSize  |
- *  |-----------------------|
-*/
-void RawHeapDumpV1::BinaryDump()
+std::string RawHeapDumpV1::GetVersion()
 {
-    DumpVersion(std::string(RAWHEAP_VERSION));
-
-    ObjectMarker marker;
-    MarkRootForDump(marker);
-    DumpRootTable(marker);
-
-    MarkHeapObjectForDump(marker);
-    DumpStringTable(marker);
-    DumpObjectTable(marker);
-    DumpObjectMemory(marker);
-    DumpSectionIndex();
+    return std::string(RAWHEAP_VERSION);
 }
 
-void RawHeapDumpV1::DumpRootTable(ObjectMarker &marker)
+void RawHeapDumpV1::DumpRootTable()
 {
     AddSectionOffset();
-    WriteHeader(marker.Count(), sizeof(JSTaggedType));
-    marker.IterateMarkedObjects([this](JSTaggedType addr) {
+    WriteHeader(GetObjectCount(), sizeof(JSTaggedType));
+    IterateMarkedObjects([this](JSTaggedType addr) {
         WriteU64(addr);
     });
     AddSectionBlockSize();
-    LOG_ECMA(INFO) << "rawheap dump, root count " << marker.Count();
+    LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
 }
 
-void RawHeapDumpV1::DumpStringTable(ObjectMarker &marker)
+void RawHeapDumpV1::DumpStringTable()
 {
-    UpdateStringTable(marker);
     auto strTable = GetEcmaStringTable();
     AddSectionOffset();
     WriteHeader(strTable->GetCapcity(), 0);
@@ -349,12 +375,12 @@ void RawHeapDumpV1::DumpStringTable(ObjectMarker &marker)
     LOG_ECMA(INFO) << "rawheap dump, string table capcity " << strTable->GetCapcity();
 }
 
-void RawHeapDumpV1::DumpObjectTable(ObjectMarker &marker)
+void RawHeapDumpV1::DumpObjectTable()
 {
     AddSectionOffset();
-    WriteHeader(marker.Count(), sizeof(AddrTableItem));
-    uint32_t memOffset = marker.Count() * sizeof(AddrTableItem);
-    marker.IterateMarkedObjects([this, &memOffset](JSTaggedType addr) {
+    WriteHeader(GetObjectCount(), sizeof(AddrTableItem));
+    uint32_t memOffset = GetObjectCount() * sizeof(AddrTableItem);
+    IterateMarkedObjects([this, &memOffset](JSTaggedType addr) {
         TaggedObject *obj = reinterpret_cast<TaggedObject *>(addr);
         AddrTableItem table = { addr, GenerateNodeId(addr), obj->GetSize(), memOffset };
         if (obj->GetClass()->IsString()) {
@@ -364,13 +390,13 @@ void RawHeapDumpV1::DumpObjectTable(ObjectMarker &marker)
         }
         WriteChunk(reinterpret_cast<char *>(&table), sizeof(AddrTableItem));
     });
-    LOG_ECMA(INFO) << "rawheap dump, objects total count " << marker.Count();
+    LOG_ECMA(INFO) << "rawheap dump, objects total count " << GetObjectCount();
 }
 
-void RawHeapDumpV1::DumpObjectMemory(ObjectMarker &marker)
+void RawHeapDumpV1::DumpObjectMemory()
 {
     uint32_t memSize = 0;
-    marker.IterateMarkedObjects([this, &memSize](JSTaggedType addr) {
+    IterateMarkedObjects([this, &memSize](JSTaggedType addr) {
         auto obj = reinterpret_cast<TaggedObject *>(addr);
         size_t size = obj->GetSize();
         memSize += size;
@@ -388,10 +414,10 @@ void RawHeapDumpV1::DumpObjectMemory(ObjectMarker &marker)
     LOG_ECMA(INFO) << "rawheap dump, objects memory size " << memSize;
 }
 
-void RawHeapDumpV1::UpdateStringTable(ObjectMarker &marker)
+void RawHeapDumpV1::UpdateStringTable()
 {
     uint32_t strCnt = 0;
-    marker.IterateMarkedObjects([&strCnt, this](JSTaggedType addr) {
+    IterateMarkedObjects([&strCnt, this](JSTaggedType addr) {
         JSTaggedValue value(addr);
         StringId strId = GenerateStringId(value.GetTaggedObject());
         if (strId == 1) {  // 1 : invalid str id
@@ -421,35 +447,24 @@ RawHeapDumpV2::~RawHeapDumpV2()
     regionIdMap_.clear();
 }
 
-void RawHeapDumpV2::BinaryDump()
+std::string RawHeapDumpV2::GetVersion()
 {
-    DumpVersion(std::string(RAWHEAP_VERSION_V2));
-
-    ObjectMarker marker;
-    MarkRootForDump(marker);
-    DumpRootTable(marker);
-
-    MarkHeapObjectForDump(marker);
-    DumpStringTable(marker);
-    DumpObjectTable(marker);
-    DumpObjectMemory(marker);
-    DumpSectionIndex();
+    return std::string(RAWHEAP_VERSION_V2);
 }
 
-void RawHeapDumpV2::DumpRootTable(ObjectMarker &marker)
+void RawHeapDumpV2::DumpRootTable()
 {
     AddSectionOffset();
-    WriteHeader(marker.Count(), sizeof(uint32_t));
-    marker.IterateMarkedObjects([this](JSTaggedType addr) {
+    WriteHeader(GetObjectCount(), sizeof(uint32_t));
+    IterateMarkedObjects([this](JSTaggedType addr) {
         WriteU32(GenerateSyntheticAddr(addr));
     });
     AddSectionBlockSize();
-    LOG_ECMA(INFO) << "rawheap dump, root count " << marker.Count();
+    LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
 }
 
-void RawHeapDumpV2::DumpStringTable(ObjectMarker &marker)
+void RawHeapDumpV2::DumpStringTable()
 {
-    UpdateStringTable(marker);
     auto strTable = GetEcmaStringTable();
     AddSectionOffset();
     WriteHeader(strTable->GetCapcity(), 0);
@@ -466,12 +481,12 @@ void RawHeapDumpV2::DumpStringTable(ObjectMarker &marker)
     LOG_ECMA(INFO) << "rawheap dump, string table capcity " << strTable->GetCapcity();
 }
 
-void RawHeapDumpV2::DumpObjectTable(ObjectMarker &marker)
+void RawHeapDumpV2::DumpObjectTable()
 {
     AddSectionOffset();
-    WriteHeader(marker.Count(), sizeof(AddrTableItem));
-    uint32_t memOffset = marker.Count() * sizeof(AddrTableItem);
-    marker.IterateMarkedObjects([this, &memOffset](JSTaggedType addr) {
+    WriteHeader(GetObjectCount(), sizeof(AddrTableItem));
+    uint32_t memOffset = GetObjectCount() * sizeof(AddrTableItem);
+    IterateMarkedObjects([this, &memOffset](JSTaggedType addr) {
         TaggedObject *obj = reinterpret_cast<TaggedObject *>(addr);
         AddrTableItem table = {
             GenerateSyntheticAddr(addr),
@@ -482,13 +497,13 @@ void RawHeapDumpV2::DumpObjectTable(ObjectMarker &marker)
         };
         WriteChunk(reinterpret_cast<char *>(&table), sizeof(AddrTableItem));
     });
-    LOG_ECMA(INFO) << "rawheap dump, objects total count " << marker.Count();
+    LOG_ECMA(INFO) << "rawheap dump, objects total count " << GetObjectCount();
 }
 
-void RawHeapDumpV2::DumpObjectMemory(ObjectMarker &marker)
+void RawHeapDumpV2::DumpObjectMemory()
 {
     uint32_t memSize = 0;
-    marker.IterateMarkedObjects([this, &memSize](JSTaggedType addr) {
+    IterateMarkedObjects([this, &memSize](JSTaggedType addr) {
         TaggedObject *object = reinterpret_cast<TaggedObject *>(addr);
         memSize += object->GetSize();
 
@@ -511,10 +526,10 @@ void RawHeapDumpV2::DumpObjectMemory(ObjectMarker &marker)
     LOG_ECMA(INFO) << "rawheap dump, objects memory size " << memSize;
 }
 
-void RawHeapDumpV2::UpdateStringTable(ObjectMarker &marker)
+void RawHeapDumpV2::UpdateStringTable()
 {
     uint32_t strCnt = 0;
-    marker.IterateMarkedObjects([&strCnt, this](JSTaggedType addr) {
+    IterateMarkedObjects([&strCnt, this](JSTaggedType addr) {
         uint32_t syntheticAddr = GenerateSyntheticAddr(addr);
         StringId strId = GenerateStringId(reinterpret_cast<TaggedObject *>(addr));
         if (strId == 1) {  // 1 : invalid str id

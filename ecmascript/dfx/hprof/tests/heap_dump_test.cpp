@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <chrono>
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
@@ -1757,6 +1758,67 @@ HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV2)
     std::string heapsnapshotPath("test_binary_dump_addrtable_size_min_V2.heapsnapshot");
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
     ASSERT_FALSE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV1)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread_);
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread_, undefined, undefined, undefined, 1);
+    info->SetCallArg(JSTaggedValue::True());
+    ecmascript::builtins::BuiltinsArkTools::EnableProcDumpInSharedOOM(info);
+
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_binary_dump_v1.rawheap");
+    DumpSnapShotOption dumpOption;
+    dumpOption.isForSharedOOM = true;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    Runtime::GetInstance()->EnableProcDumpInSharedOOM(false);
+
+    CSet<JSTaggedType> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawHeapPath, dumpObjects));
+    ASSERT_TRUE(tester.MatchHeapObjectReferencesV1(vec, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v1.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV2)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread_);
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread_, undefined, undefined, undefined, 1);
+    info->SetCallArg(JSTaggedValue::True());
+    ecmascript::builtins::BuiltinsArkTools::EnableProcDumpInSharedOOM(info);
+
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_binary_dump_v2.rawheap");
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    DumpSnapShotOption dumpOption;
+    dumpOption.isForSharedOOM = true;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    Runtime::GetInstance()->EnableProcDumpInSharedOOM(false);
+
+    CSet<uint32_t> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawHeapPath, dumpObjects));
+
+    ASSERT_TRUE(tester.MatchHeapObjectReferencesV2(vec, dumpObjects));
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::DEFAULT);
+
+    std::string heapsnapshotPath("test_binary_dump_v2.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
 }
 #endif
 

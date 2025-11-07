@@ -81,7 +81,8 @@
     V("stopRuntimeStat",                StopRuntimeStat,                0, INVALID)       \
     V("printMegaICStat",                PrintMegaICStat,                0, INVALID)       \
     V("iterateFrame",                   IterateFrame,                   0, INVALID)       \
-    V("triggerSharedGC",                TriggerSharedGC,                0, INVALID)
+    V("triggerSharedGC",                TriggerSharedGC,                0, INVALID)       \
+    V("enableProcDumpInSharedOOM",      EnableProcDumpInSharedOOM,      1, INVALID)
 
 // List of mock ArkTools extension builtins
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
@@ -476,6 +477,8 @@ public:
 
     static JSTaggedValue IterateFrame(EcmaRuntimeCallInfo *info);
     static JSTaggedValue TriggerSharedGC(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue EnableProcDumpInSharedOOM(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue InYoungSpace(EcmaRuntimeCallInfo *info);
     static JSTaggedValue InOldSpace(EcmaRuntimeCallInfo *info);
