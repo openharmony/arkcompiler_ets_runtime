@@ -2995,6 +2995,23 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
     return JSTypedArray::FastSetPropertyByIndex(thread, obj, idx.GetInt(), value, JSType(jsType.GetInt())).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndexSlowPath)
+{
+    RUNTIME_STUBS_HEADER(SetTypeArrayPropertyByIndex);
+    JSHandle<JSTaggedValue> objHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSTaggedValue> valueHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
+    JSHandle<JSTaggedValue> jsTypeHandle = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
+    JSTaggedValue resValue = JSTypedArray::FastSetPropertyByIndex(thread, objHandle.GetTaggedValue(),
+        keyHandle->GetInt(), valueHandle.GetTaggedValue(), JSType(jsTypeHandle->GetInt()));
+    if (resValue.IsHole()) {
+        JSTypedArray::SetProperty(thread, objHandle, keyHandle, valueHandle);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+    return resValue.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(FastCopyElementToArray)
 {
     RUNTIME_STUBS_HEADER(FastCopyElementToArray);

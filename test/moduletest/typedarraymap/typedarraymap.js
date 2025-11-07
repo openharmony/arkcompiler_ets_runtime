@@ -127,4 +127,27 @@ assert_equal(res3, true);
     assert_equal(result[1], 200);
 }
 
+{
+    let callCount = 0;
+    function f0(){
+        callCount++;
+        const o = {
+            toString(){
+                return BigInt64Array;
+            }
+        }
+        return o;
+    }
+    let hasException = false;
+    let arr = new Int8Array(5);
+    for(let i=0;i<1000;i++) {};
+    try {
+        arr.map(f0);
+    } catch (e) {
+        hasException = true;
+    }
+    assert_equal(hasException, true);
+    assert_equal(callCount, 1);
+}
+
 test_end();

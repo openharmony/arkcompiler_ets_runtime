@@ -2689,7 +2689,13 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
             Bind(&notHasException1);
             {
                 FastSetPropertyByIndex(glue, retValue, newArray, TruncInt64ToInt32(*i), newArrayType);
-                Jump(&loopEnd);
+                Label hasException2(env);
+                BRANCH(HasPendingException(glue), &hasException2, &loopEnd);
+                Bind(&hasException2);
+                {
+                    result->WriteVariable(Exception());
+                    Jump(exit);
+                }
             }
         }
         Bind(&loopEnd);
@@ -2814,7 +2820,7 @@ void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef
     }
     Bind(&slowPath);
     {
-        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypeArrayPropertyByIndex),
+        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypeArrayPropertyByIndexSlowPath),
             { array, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
         Jump(&exit);
     }
