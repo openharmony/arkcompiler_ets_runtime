@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/builtins/builtins_math.h"
-
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/builtins/builtins_math.h"
+#include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -146,7 +146,7 @@ HWTEST_F_L0(BuiltinsMathTest, Abs_5)
 // Math.abs(Number.MIN_VALUE)
 HWTEST_F_L0(BuiltinsMathTest, Abs_6)
 {
-    const double testValue = base::MIN_VALUE + 1;
+    const double testValue = BuiltinsNumber::MIN_VALUE + 1;
     auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread_, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());

@@ -45,7 +45,6 @@ static constexpr double HALF = 0.5;
 static constexpr double EPSILON = std::numeric_limits<double>::epsilon();
 static constexpr int64_t MAX_SAFE_INTEGER = 9007199254740991;
 static constexpr double MAX_VALUE = std::numeric_limits<double>::max();
-static constexpr double MIN_VALUE = std::numeric_limits<double>::min();
 static constexpr double POSITIVE_INFINITY = std::numeric_limits<double>::infinity();
 static constexpr double NAN_VALUE = std::numeric_limits<double>::quiet_NaN();
 static constexpr uint64_t MAX_UINT64_VALUE = std::numeric_limits<uint64_t>::max();
@@ -106,6 +105,9 @@ static constexpr int FORCE_FORMAT = 4;
 // means add the point char to buf
 static constexpr int POINT_INDEX = 3;
 static constexpr int DECIMAL_INDEX = 2;
+
+static constexpr int DECIMAL_MAX_EXPONENT = 308;
+static constexpr double DECIMAL_DOUBLE_MAX_POW_VAL = 1e308;
 
 class NumberHelper {
 public:

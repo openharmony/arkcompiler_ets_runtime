@@ -67,6 +67,7 @@ NaN
 10
 10
 1000
+5e-324
 builtins global parsefloat
 NaN
 123
@@ -80,6 +81,7 @@ NaN
 1
 1234560000000000
 1234560000000000
+5e-324
 builtins number parseint
 NaN
 NaN
