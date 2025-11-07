@@ -61,7 +61,7 @@ void ParallelEvacuator::SweepNewToOldRegions()
     }
     heap_->GetSweeper()->SweepNewToOldRegions();
     if (!heap_->IsConcurrentFullMark()) {
-        heap_->GetSweeper()->PostTask();
+        heap_->GetSweeper()->PostTask(TriggerGCType::YOUNG_GC);
     }
 }
 

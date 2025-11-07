@@ -113,6 +113,10 @@ bool FullGCRunner::NeedEvacuate(Region *region)
         return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace() &&
                !region->InSharedHeap();
     }
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        return region->InSlotSpace();
+    }
     return region->InYoungOrOldSpace();
 }
 
@@ -149,7 +153,13 @@ uintptr_t FullGCRunner::AllocateForwardAddress(size_t size)
 
 uintptr_t FullGCRunner::AllocateDstSpace(size_t size)
 {
-    uintptr_t forwardAddress = workNodeHolder_->GetTlabAllocator()->Allocate(size, COMPRESS_SPACE);
+    uintptr_t forwardAddress;
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        forwardAddress = workNodeHolder_->GetSlotGCAllocator()->Allocate(size);
+    } else {
+        forwardAddress = workNodeHolder_->GetTlabAllocator()->Allocate(size, MemSpaceType::COMPRESS_SPACE);
+    }
     if (UNLIKELY(forwardAddress == 0)) {
         LOG_ECMA_MEM(FATAL) << "EvacuateObject alloc failed: " << " size: " << size;
         UNREACHABLE();
@@ -264,6 +274,7 @@ void FullGCMarkObjectVisitor::VisitJSWeakMapImpl(BaseObject *rootObject)
 {
     TaggedObject *obj = TaggedObject::Cast(rootObject);
     ASSERT(JSTaggedValue(obj).IsJSWeakMap());
+    ASSERT(!Region::ObjectAddressToRange(obj)->InSharedHeap());
     runner_->RecordJSWeakMap(obj);
 }
 
