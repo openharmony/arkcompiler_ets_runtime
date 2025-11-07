@@ -54,4 +54,10 @@
     }
 }
 
+let arr = new Array(24036);
+for (let i = 0; i < 300; i++) {
+    let set = new Set(arr);
+    arr.fill(set, 0, 24036);
+}
+
 test_end();

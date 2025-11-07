@@ -2603,7 +2603,7 @@ void BuiltinsArrayStubBuilder::FastFill(GateRef glue, GateRef element, GateRef s
     env->SubCfgEntry(&entry);
     Label exit(env);
     GateRef dstAddr = GetDataPtrInTaggedArray(element, start);
-    CallNGCRuntime(glue, RTSTUB_ID(FillObject), {TaggedCastToIntPtr(dstAddr), value, count});
+    CallNGCRuntime(glue, RTSTUB_ID(FillObject), {glue, element, value, start, count});
     if (needBarrier) {
         CallCommonStub(glue, CommonStubCSigns::BatchBarrier,
             {glue, TaggedCastToIntPtr(element), TaggedCastToIntPtr(dstAddr), count});

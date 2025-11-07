@@ -4291,10 +4291,18 @@ void RuntimeStubs::FinishObjSizeTracking(uintptr_t argGlue, JSHClass *cls)
     }
 }
 
-void RuntimeStubs::FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count)
+void RuntimeStubs::FillObject(uintptr_t argGlue, JSTaggedType elements,
+                              JSTaggedType value, uint32_t start, uint32_t count)
 {
     DISALLOW_GARBAGE_COLLECTION;
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    JSTaggedType *dst = reinterpret_cast<JSTaggedType*>(elements) +
+                        (TaggedArray::DATA_OFFSET / sizeof(JSTaggedType)) + start;
     std::fill_n(dst, count, value);
+    if (g_isEnableCMCGC) {
+        Barriers::CMCWriteBarrier(thread, reinterpret_cast<TaggedObject*>(elements),
+                                  TaggedArray::DATA_OFFSET / sizeof(JSTaggedType), value);
+    }
 }
 
 bool RuntimeStubs::IsTargetBundleName(uintptr_t argGlue)
