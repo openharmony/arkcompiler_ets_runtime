@@ -166,4 +166,34 @@ function testExternalStringInObjectsAndArrays(isCompressed) {
 testExternalStringInObjectsAndArrays(true);
 testExternalStringInObjectsAndArrays(false);
 
+// Testing cases of construct an external String containing special characters
+// 1) Character traversal: !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~
+// 2) Escape characters: \a \b \f \n \r \t \v \\ \' \" \? \0 \d
+// 3) Emojis: 🀄 🏴
+// 4) Illegal encoding: \udc04
+function testExternalStringForSpecialCharacters(isCompressed) {
+    // 1) Character traversal
+    const specialChars = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+    let extSpecialChars = ArkTools.createCachedExternalString(specialChars, isCompressed);
+    for (let i = 0; i < specialChars.length; i++) {
+        assert_equal(extSpecialChars.charAt(i), specialChars.charAt(i));
+    }
+    if (!isCompressed) {
+        // 2) Escape characters
+        const escapeChars = "\a\b\f\n\r\t\v\\\'\"\\?\0\d";
+        let extEscapeChars = ArkTools.createCachedExternalString(escapeChars);
+        assert_equal(extEscapeChars, escapeChars);
+        // 3) Emojis
+        const emojis = "🀄 🏴";
+        let extEmojis = ArkTools.createCachedExternalString(emojis);
+        assert_equal(extEmojis, "🀄 🏴");
+        // 4) Illegal encoding
+        const illegalEncoding = "\udc04";
+        let extIllegalEncoding = ArkTools.createCachedExternalString(illegalEncoding);
+        assert_equal(extIllegalEncoding.isWellFormed(), false);
+    }
+}
+testExternalStringForSpecialCharacters(true);
+testExternalStringForSpecialCharacters(false);
+
 test_end();
