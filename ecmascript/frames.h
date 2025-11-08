@@ -2127,7 +2127,7 @@ public:
     bool IteratorStackMapAndDeopt(RootVisitor &visitor) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::pair<CallSiteInfo, bool> CalCallSiteInfo(uintptr_t retAddr, bool isDeopt) const;
-    CallSiteInfo TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr) const;
+    CallSiteInfo TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr, bool isDeopt) const;
 
     Method *CheckAndGetMethod() const;
     JSTaggedValue GetFunction() const;
