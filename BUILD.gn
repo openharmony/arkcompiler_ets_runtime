@@ -153,10 +153,6 @@ group("ark_js_unittest_suit") {
     "common_components/platform/unix/tests:unittest",
     "common_components/taskpool/tests:unittest",
   ]
-  # fixme: support aot
-  if (enable_cms_gc) {
-    deps -= [ "ecmascript/snapshot/tests:unittest" ]
-  }
   if (is_ohos && is_standard_system) {
     deps += [ "test/fuzztest:fuzztest" ]
   }
@@ -165,13 +161,6 @@ group("ark_js_unittest_suit") {
       "ecmascript/compiler/aot_file/tests:host_unittest",
       "ecmascript/pgo_profiler/tests:unittest",
     ]
-    # fixme: support aot
-    if (enable_cms_gc) {
-      deps -= [
-        "ecmascript/compiler/aot_file/tests:host_unittest",
-        "ecmascript/pgo_profiler/tests:unittest",
-      ]
-    }
   }
   if (current_cpu == "arm64" || current_cpu == "amd64") {
     deps += [ "ecmascript/jit/tests:unittest" ]
@@ -230,14 +219,6 @@ group("ark_unittest") {
     "common_components/taskpool/tests:host_unittest",
   ]
 
-  # fixme: support aot
-  if (enable_cms_gc) {
-    deps -= [
-      "ecmascript/compiler/aot_file/tests:host_unittest",
-      "ecmascript/snapshot/tests:host_unittest"
-    ]
-  }
-
   if (!run_with_asan) {
     if (!(ark_standalone_build && current_os == "ohos")) {
       deps += [
@@ -287,14 +268,6 @@ ohos_static_library("ark_runtime_host_unittest") {
       "$js_root/test/moduletest:ark_asm_assert_test",
       "$js_root/test/moduletest:ark_asm_test",
     ]
-
-    # fixme: support aot
-    if (enable_cms_gc) {
-      deps -= [
-        "$js_root/test/aottest:ark_aot_test",
-        "$js_root/test/deopttest:ark_deopt_test",
-      ]
-    }
 
     if (is_mac) {
       deps -= [
@@ -440,11 +413,6 @@ config("ark_jsruntime_common_config") {
     }
   } else {
     print("########## ets_runtime disable cmc-gc ##############")
-  }
-  if (enable_cms_gc) {
-    defines += [ "USE_CMS_GC=1" ]
-  } else {
-    defines += [ "USE_CMS_GC=0" ]
   }
 
   if (ark_standalone_build) {
@@ -1035,10 +1003,6 @@ ecma_source = [
   "ecmascript/mem/barriers.cpp",
   "ecmascript/mem/c_string.cpp",
   "ecmascript/mem/chunk.cpp",
-  "ecmascript/mem/cms_mem/cms_region_chain_manager.cpp",
-  "ecmascript/mem/cms_mem/slot_allocator.cpp",
-  "ecmascript/mem/cms_mem/slot_space.cpp",
-  "ecmascript/mem/cms_mem/sweep_gc.cpp",
   "ecmascript/mem/dyn_chunk.cpp",
   "ecmascript/mem/full_gc.cpp",
   "ecmascript/mem/concurrent_marker.cpp",

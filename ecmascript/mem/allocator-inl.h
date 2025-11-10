@@ -212,7 +212,7 @@ void FreeListAllocator<T>::RebuildFreeList()
 template <typename T>
 inline void FreeListAllocator<T>::CollectFreeObjectSet(Region *region)
 {
-    DefaultRegion::FromRegion(region)->EnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
+    region->EnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
         if (set == nullptr || set->Empty()) {
             return;
         }
@@ -225,7 +225,7 @@ template <typename T>
 inline bool FreeListAllocator<T>::MatchFreeObjectSet(Region *region, size_t size)
 {
     bool ret = false;
-    DefaultRegion::FromRegion(region)->REnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
+    region->REnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
         if (set == nullptr || set->Empty()) {
             return true;
         }
@@ -238,7 +238,7 @@ inline bool FreeListAllocator<T>::MatchFreeObjectSet(Region *region, size_t size
 template <typename T>
 inline void FreeListAllocator<T>::DetachFreeObjectSet(Region *region)
 {
-    DefaultRegion::FromRegion(region)->EnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
+    region->EnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
         if (set == nullptr || set->Empty()) {
             return;
         }

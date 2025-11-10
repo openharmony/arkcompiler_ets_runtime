@@ -40,7 +40,7 @@ if (addr <= 0) {
 }
 
 let spacetype = ArkTools.GC.getObjectSpaceType(myobj);
-if (spacetype != 8 && spacetype != 11 && spacetype != 17) {
+if (spacetype != 8 && spacetype != 11) {
     print("unexpected object space type");
 }
 
