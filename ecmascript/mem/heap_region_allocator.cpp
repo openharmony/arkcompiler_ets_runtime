@@ -19,6 +19,7 @@
 #include "ecmascript/mem/mem_map_allocator.h"
 
 namespace panda::ecmascript {
+constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
 
 HeapRegionAllocator::HeapRegionAllocator(JSRuntimeOptions &option)
 {
@@ -26,7 +27,7 @@ HeapRegionAllocator::HeapRegionAllocator(JSRuntimeOptions &option)
 }
 
 Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap,
-                                                   bool isFresh, size_t slotSize)
+                                                   bool isFresh)
 {
     if (capacity == 0) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "capacity must have a size bigger than 0";
@@ -85,22 +86,13 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
 
     uintptr_t mem = ToUintPtr(mapMem);
     // Check that the address is 256K byte aligned
-    LOG_ECMA_IF(AlignUp(mem, DEFAULT_REGION_SIZE) != mem, FATAL) << "region not align by " << DEFAULT_REGION_SIZE;
+    LOG_ECMA_IF(AlignUp(mem, PANDA_POOL_ALIGNMENT_IN_BYTES) != mem, FATAL) << "region not align by 256KB";
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+    uintptr_t end = mem + capacity;
 
-    Region *region = nullptr;
-    if (slotSize == 0) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        uintptr_t begin = AlignUp(mem + sizeof(DefaultRegion), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        uintptr_t end = mem + capacity;
-        region = new (ToVoidPtr(mem)) DefaultRegion(heap->GetNativeAreaAllocator(), mem, begin, end, flags, typeFlag);
-    } else {
-        ASSERT(G_USE_CMS_GC);
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        uintptr_t begin = AlignUp(mem + sizeof(CMSRegion), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        uintptr_t end = mem + capacity;
-        region = new (ToVoidPtr(mem)) CMSRegion(heap->GetNativeAreaAllocator(), mem, begin, end, flags, typeFlag,
-                                                slotSize);
-    }
+    Region *region = new (ToVoidPtr(mem)) Region(heap->GetNativeAreaAllocator(), mem, begin, end, flags, typeFlag);
+    region->Initialize();
     std::atomic_thread_fence(std::memory_order_seq_cst);
     return region;
 }
@@ -118,6 +110,7 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool ski
 
     DecreaseAnnoMemoryUsage(size);
     region->Invalidate();
+    region->ClearMembers();
 
     // Use the mmap interface to clean up the MAP_JIT tag bits on memory.
     // The MAP_JIT flag prevents the mprotect interface from setting PROT_WRITE for memory.
