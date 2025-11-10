@@ -127,6 +127,35 @@ try {
     print(err instanceof TypeError);
 }
 
+// decrease array length test
+let res = [];
+const arr = [1, 2, 3, 4]
+let count = 0;
+for (let idx in arr) {
+    if (idx === '1') {
+        arr.length = 2;
+        for (let idx in arr) {}
+    }
+    res.push(arr[idx]);
+    count++;
+}
+print(res);
+print(count);
+
+let res2 = [];
+const arr2 = [1, 2, 3, 4]
+let count2 = 0;
+for (let idx in arr2) {
+    if (idx === '1') {
+        arr2.pop();
+        for (let idx in arr) {}
+    }
+    res2.push(arr2[idx]);
+    count2++;
+}
+print(res2);
+print(count2);
+
 // Redefine testcast
 Object.prototype.prop0 = 0;
 let obj = {prop1:1,prop2:2};

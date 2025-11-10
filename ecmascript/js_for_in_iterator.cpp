@@ -83,13 +83,16 @@ bool JSForInIterator::HasProperty(JSThread *thread, JSHandle<JSTaggedValue> rece
 
 JSTaggedValue JSForInIterator::NextInternal(JSThread *thread, const JSHandle<JSForInIterator> &it)
 {
+    JSTaggedValue receiver = it->GetObject(thread);
+    if (receiver.IsJSArray()) {
+        return NextInternalSlowpath(thread, it);
+    }
     uint32_t length = it->GetLength();
     uint32_t index = it->GetIndex();
     if (index >= length) {
         return JSTaggedValue::Undefined();
     }
     JSTaggedValue taggedKeys = it->GetKeys(thread);
-    JSTaggedValue receiver = it->GetObject(thread);
     EnumCacheKind kind = static_cast<EnumCacheKind>(it->GetCacheKind());
     TaggedArray *keys = TaggedArray::Cast(taggedKeys.GetTaggedObject());
     if (IsEnumCacheValid(thread, receiver, it->GetCachedHClass(thread), kind)) {

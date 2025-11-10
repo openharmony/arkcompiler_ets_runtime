@@ -134,6 +134,24 @@ std::enable_if_t<std::is_floating_point_v<T>, CString> FloatToCString(T number)
     return strStream.str();
 }
 
+inline std::string_view IntToStringView(int n, char* buffer, int bufferSize)
+{
+    bool isNeg = true;
+    if (n >= 0) {
+        n = -n;
+        isNeg = false;
+    }
+    size_t position = bufferSize;
+    do {
+        buffer[--position] = '0' - (n % DEC_BASE);
+        n /= DEC_BASE;
+    } while (n);
+    if (isNeg) {
+        buffer[--position] = '-';
+    }
+    return {buffer + position, bufferSize - position};
+}
+
 template<class T>
 std::enable_if_t<std::is_integral_v<T>, CString> ToCString(T number)
 {
