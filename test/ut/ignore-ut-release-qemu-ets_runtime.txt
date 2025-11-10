@@ -80,6 +80,7 @@ obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/platform/unix/ohos/tests/BacktraceTestWithQemu
 tests/unittest/ets_runtime/Jsnapi_002_Test
 tests/unittest/ets_runtime/SerializerTest
+obj/arkcompiler/ets_runtime/ecmascript/tests/GC_First_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/tests/GC_Second_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_AsyncGengeratorObject_Test/js_async_generator_object_test.o
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Collator_TestWithQemu
