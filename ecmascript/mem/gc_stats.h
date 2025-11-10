@@ -37,8 +37,6 @@ enum class GCType : int {
     SHARED_GC,
     SHARED_PARTIAL_GC,
     SHARED_FULL_GC,
-    // fixme: support sticky
-    CMS_GC,
     OTHER,
     START,
 };
@@ -153,8 +151,6 @@ public:
                 return "SharedPartialGC";
             case GCType::SHARED_FULL_GC:
                 return "SharedCompressGC";
-            case GCType::CMS_GC:
-                return "CMSGC";
             default:
                 return "UnknownType";
         }

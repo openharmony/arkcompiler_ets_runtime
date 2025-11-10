@@ -199,21 +199,13 @@ void Runtime::PreInitialization(const EcmaVM *vm)
 
 void Runtime::PostInitialization(const EcmaVM *vm)
 {
-    globalEnv_ = vm->GetGlobalEnv().GetTaggedValue();
-    SharedHeap::GetInstance()->PostInitialization(const_cast<EcmaVM*>(vm)->GetJSOptions());
-    SharedModuleManager::GetInstance()->Initialize();
-}
-
-void Runtime::InitSharedConstIfNeed(GlobalEnvConstants *globalConst)
-{
-    if (sharedConstInited_) {
-        return;
-    }
     // Use the main thread's globalconst after it has initialized,
     // and copy shared parts to other thread's later.
     sharedConstInited_ = true;
+    globalEnv_ = vm->GetGlobalEnv().GetTaggedValue();
     globalConst_.CopySharedConstantsFrom(mainThread_->GlobalConstants());
-    SharedHeap::GetInstance()->SetGlobalEnvConstants(&globalConst_);
+    SharedHeap::GetInstance()->PostInitialization(&globalConst_, const_cast<EcmaVM*>(vm)->GetJSOptions());
+    SharedModuleManager::GetInstance()->Initialize();
 }
 
 void Runtime::InitGCConfig(const JSRuntimeOptions &options)
@@ -222,10 +214,6 @@ void Runtime::InitGCConfig(const JSRuntimeOptions &options)
     g_isEnableCMCGC = IsEnableCMCGC(defaultValue);
     if (g_isEnableCMCGC) {
         g_maxRegularHeapObjectSize = 32_KB;
-    }
-    if constexpr (G_USE_CMS_GC) {
-        // fixme: just a proto to test
-        g_maxRegularHeapObjectSize = SlotSpaceConfig::MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE;
     }
     g_isEnableCMCGCConcurrentRootMarking = options.IsEnableCMCGCConcurrentRootMarking();
 }

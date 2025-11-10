@@ -402,7 +402,6 @@ bool EcmaVM::Initialize()
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
     globalConst->Init(thread_);
     InitDataViewTypeTable(globalConst);
-    Runtime::GetInstance()->InitSharedConstIfNeed(globalConst);
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     thread_->SetReadyForGCIterating(true);
     thread_->SetSharedMarkStatus(DaemonThread::GetInstance()->GetSharedMarkStatus());

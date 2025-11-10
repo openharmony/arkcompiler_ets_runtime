@@ -96,14 +96,6 @@ bool PostSchedule::VisitHeapAlloc(GateRef gate, ControlFlowGraph &cfg, size_t bb
     std::vector<GateRef> successBBGates;
     std::vector<GateRef> failBBGates;
     std::vector<GateRef> endBBGates;
-    if constexpr (G_USE_CMS_GC) {
-        // fixme: refactor and support ir
-        if (flag == RegionSpaceFlag::IN_YOUNG_SPACE) {
-            LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
-            ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
-            return false;
-        }
-    }
     if (flag == RegionSpaceFlag::IN_OLD_SPACE) {
         LoweringHeapAllocate(gate, currentBBGates, successBBGates, failBBGates, endBBGates, flag);
         ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
@@ -273,7 +265,6 @@ void PostSchedule::LoweringHeapAllocAndPrepareScheduleGate(GateRef gate,
         endOffset = JSThread::GlueData::GetSNonMovableSpaceAllocationEndAddressOffset(false);
     } else {
         ASSERT(flag == RegionSpaceFlag::IN_YOUNG_SPACE);
-        ASSERT(!G_USE_CMS_GC);
         topOffset = JSThread::GlueData::GetNewSpaceAllocationTopAddressOffset(false);
         endOffset = JSThread::GlueData::GetNewSpaceAllocationEndAddressOffset(false);
     }

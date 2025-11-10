@@ -111,10 +111,6 @@ bool IdleGCTrigger::ReachIdleLocalOldGCThresholds()
     if (isNativeSizeLargeTrigger) {
         return true;
     }
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return false;
-    }
 
     OldSpace *oldSpace = heap_->GetOldSpace();
     HugeObjectSpace *hugeObjectSpace = heap_->GetHugeObjectSpace();
@@ -177,10 +173,6 @@ bool IdleGCTrigger::PostIdleGCTask(TRIGGER_IDLE_GC_TYPE gcType)
 
 bool IdleGCTrigger::CheckIdleYoungGC(bool isLongIdle) const
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return false;
-    }
     auto newSpace = heap_->GetNewSpace();
     size_t allocatedSizeSinceGC = newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop());
     LOG_GC(DEBUG) << "IdleGCTrigger: check young GC semi Space size since gc:" << allocatedSizeSinceGC;
@@ -194,10 +186,6 @@ bool IdleGCTrigger::CheckIdleYoungGC(bool isLongIdle) const
 
 bool IdleGCTrigger::CheckIdleLocalOldGC(const Heap *heap) const
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return false;
-    }
     size_t afterGCSize = heap->GetHeapAliveSizeExcludesYoungAfterGC();
     size_t currentSize = heap->GetHeapObjectSize() - heap->GetNewSpace()->GetHeapObjectSize();
     size_t expectSize = std::max(static_cast<size_t>(afterGCSize * IDLE_SPACE_SIZE_MIN_INC_RATIO),

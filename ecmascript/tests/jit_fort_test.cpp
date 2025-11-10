@@ -53,7 +53,7 @@ HWTEST_F_L0(JitFortTest, AddRegionTest001)
 HWTEST_F_L0(JitFortTest, AddRegionTest002)
 {
     JitFort *jitFort = new JitFort();
-    for (size_t i = 0; i < JitFort::MAX_JIT_FORT_REGIONS; i++) {
+    for (size_t i = 0; i < 16; i++) {
         jitFort->AddRegion();
     }
     ASSERT_EQ(jitFort->AddRegion(), false);

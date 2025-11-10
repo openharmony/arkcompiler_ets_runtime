@@ -130,8 +130,6 @@ public:
         return sharedConstInited_;
     }
 
-    void InitSharedConstIfNeed(GlobalEnvConstants *globalConst);
-
     JSTaggedValue GetGlobalEnv() const
     {
         return globalEnv_;
