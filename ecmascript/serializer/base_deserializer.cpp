@@ -132,10 +132,17 @@ void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingAttachInfo *i
     }
     JSTaggedType res = JSNApiHelper::ToJSHandle(attachVal).GetTaggedType();
     ObjectSlot slot = info->GetSlot();
+#ifdef USE_CMC_GC
     slot.Update(res);
     if (!JSTaggedValue(res).IsInvalidValue()) {
         WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(), res);
     }
+#else
+    if (!JSTaggedValue(res).IsInvalidValue()) {
+        WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(), res);
+    }
+    slot.Update(res);
+#endif
 }
 
 void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
@@ -147,11 +154,19 @@ void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(errorMsg), StackCheck::NO);
     ObjectSlot slot = info->GetSlot();
+#ifdef USE_CMC_GC
     slot.Update(errorTag.GetTaggedType());
     if (!errorTag.GetTaggedValue().IsInvalidValue()) {
         WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(),
                      errorTag.GetTaggedType());
     }
+#else
+    if (!errorTag.GetTaggedValue().IsInvalidValue()) {
+        WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(),
+                     errorTag.GetTaggedType());
+    }
+    slot.Update(errorTag.GetTaggedType());
+#endif
 }
 
 void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  uintptr_t objAddr, size_t fieldOffset)
@@ -207,9 +222,15 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         module->SetException(thread_, thread_->GlobalConstants()->GetHole());
         module->SetCycleRoot(thread_, JSTaggedValue(module));
     }
+#ifdef USE_CMC_GC
     UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
     WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                                                 static_cast<JSTaggedType>(addr));
+#else
+    WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
+                                                static_cast<JSTaggedType>(addr));
+    UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
+#endif
 }
 
 void BaseDeserializer::TransferArrayBufferAttach(uintptr_t objAddr)
@@ -281,9 +302,15 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         case (uint8_t)EncodeFlag::REFERENCE: {
             uint32_t valueIndex = data_->ReadUint32(position_);
             JSTaggedType valueAddr = objectVector_.at(valueIndex);
+#ifdef USE_CMC_GC
             UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
             WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                                                         valueAddr);
+#else
+            WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
+                                                        valueAddr);
+            UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
+#endif
             break;
         }
         case (uint8_t)EncodeFlag::WEAK: {

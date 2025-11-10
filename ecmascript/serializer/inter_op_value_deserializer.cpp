@@ -63,10 +63,17 @@ void InterOpValueDeserializer::DeserializeXRefBindingObject(XRefBindingAttachInf
     }
     JSTaggedType res = JSNApiHelper::ToJSHandle(attachVal).GetTaggedType();
     ObjectSlot slot = info->GetSlot();
+#ifdef USE_CMC_GC
     slot.Update(res);
     if (!JSTaggedValue(res).IsInvalidValue()) {
         WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(), res);
     }
+#else
+    if (!JSTaggedValue(res).IsInvalidValue()) {
+        WriteBarrier(thread_, reinterpret_cast<void *>(info->GetObjAddr()), info->GetFieldOffset(), res);
+    }
+    slot.Update(res);
+#endif
 }
 }  // namespace panda::ecmascript
 

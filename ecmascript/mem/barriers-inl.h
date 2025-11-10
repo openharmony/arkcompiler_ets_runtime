@@ -93,7 +93,26 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
 template<bool needWriteBarrier>
 inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
+#ifndef USE_CMC_GC
+    // If WriteBarrier comes after setting object field, gc thread will access uninitialized
+    // field value during concurrent mark when all the following conditions are satisfied.
+    // 1. the target field of [obj] is set to [value] and visible to gc thread
+    // 2. gc thread is visiting [obj] simultaneously and marks [value] one step ahead before current thread,
+    //    making that [value] is pushed to the work stack of gc thread but not the expected work stack of
+    //    main thread which will be processed later in remarking phase
+    // 3. [value] is a newly allocated object and its initialization is still not visible to gc thread
+    //    when [value] is popped from the work stack of gc thread and visited by gc thread
+    // To deal with the above problem, WriteBarrier is now ordered before setting object field,
+    // and atomic thread fence is added in marking barrier to prevent the instruction reordering.
+    if constexpr (needWriteBarrier) {
+        WriteBarrier(thread, obj, offset, value);
+    }
+    // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
+    *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
+#else
 #ifndef ARK_USE_SATB_BARRIER
+    // For CMC-GC, WriteBarrier is still after setting object field, because the current implementation of
+    // CMCWriteBarrier needs to load RefField. If the order is adjusted, CMCWriteBarrier will load an old value.
     // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
     if constexpr (needWriteBarrier) {
@@ -102,6 +121,7 @@ inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset
 #else
     WriteBarrier(thread, obj, offset, value);
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
+#endif
 #endif
 }
 
@@ -112,6 +132,13 @@ template void Barriers::SetObject<false>(const JSThread*, void*, size_t, JSTagge
 inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                             bool isPrimitive)
 {
+#ifndef USE_CMC_GC
+    if (!isPrimitive) {
+        WriteBarrier(thread, obj, offset, value);
+    }
+    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)->store(value,
+        std::memory_order_release);
+#else
 #ifndef ARK_USE_SATB_BARRIER
     reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)->store(value,
         std::memory_order_release);
@@ -122,6 +149,7 @@ inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, s
     WriteBarrier(thread, obj, offset, value);
     reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)->store(value,
         std::memory_order_release);
+#endif
 #endif
 }
 
