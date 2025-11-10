@@ -56,6 +56,15 @@ public:
             UpdateHotReloadModuleAfterLoad(thread, module);
         }
     }
+
+    inline void UpdateHotReloadModuleAndNamespace(JSThread *thread,
+                                                  JSMutableHandle<SourceTextModule> &module,
+                                                  JSMutableHandle<ModuleNamespace> &moduleNamespace)
+    {
+        if (thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+            UpdateHotReloadModuleAndNamespaceAfterLoad(thread, module, moduleNamespace);
+        }
+    }
 private:
     // check whether the callback is registered.
     bool HasQueryQuickFixInfoFunc() const
@@ -70,6 +79,19 @@ private:
             thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString());
         if (!moduleOfHotReload->IsHole()) {
             module.Update(moduleOfHotReload);
+        }
+    }
+
+    inline void UpdateHotReloadModuleAndNamespaceAfterLoad(JSThread *thread,
+                                                           JSMutableHandle<SourceTextModule> &module,
+                                                           JSMutableHandle<ModuleNamespace> &moduleNamespace)
+    {
+        ASSERT(thread->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+        const JSHandle<JSTaggedValue> moduleOfHotReload =
+            thread->GetEcmaVM()->FindPatchModule(module->GetEcmaModuleRecordNameString());
+        if (!moduleOfHotReload->IsHole()) {
+            module.Update(moduleOfHotReload);
+            moduleNamespace.Update(SourceTextModule::GetModuleNamespace(thread, module));
         }
     }
 
