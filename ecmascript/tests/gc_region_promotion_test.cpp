@@ -41,9 +41,6 @@ public:
 
 void NewToOldPromotionCase::Initialize()
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     // Disallow garbage collection
     heap_->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
     JSThread *thread = heap_->GetJSThread();
@@ -92,9 +89,6 @@ void NewToOldPromotionCase::Initialize()
 
 HWTEST_F_L0(GCTest, NewToOldPromotionYoungGCTest)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     instance->GetJSOptions().SetEnableForceGC(false);
     Heap *heap = const_cast<Heap *>(instance->GetHeap());
     heap->CollectGarbage(TriggerGCType::FULL_GC);
@@ -120,9 +114,6 @@ HWTEST_F_L0(GCTest, NewToOldPromotionYoungGCTest)
 
 HWTEST_F_L0(GCTest, NewToOldPromotionOldGCTest)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     instance->GetJSOptions().SetEnableForceGC(false);
     Heap *heap = const_cast<Heap *>(instance->GetHeap());
     heap->CollectGarbage(TriggerGCType::FULL_GC);

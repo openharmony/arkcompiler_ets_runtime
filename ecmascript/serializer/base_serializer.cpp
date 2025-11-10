@@ -35,8 +35,6 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
             case RegionSpaceFlag::IN_YOUNG_SPACE:
             case RegionSpaceFlag::IN_APPSPAWN_SPACE:
                 return SerializedObjectSpace::OLD_SPACE;
-            case RegionSpaceFlag::IN_SLOT_SPACE:
-                return SerializedObjectSpace::SLOT_SPACE;
             case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
             case RegionSpaceFlag::IN_READ_ONLY_SPACE:
                 return SerializedObjectSpace::NON_MOVABLE_SPACE;

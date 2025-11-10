@@ -84,9 +84,6 @@ HWTEST_F_L0(ConcurrentMarkingTest, PerformanceWithoutConcurrentMarking)
 
 HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithOldSpace)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     if (heap->GetConcurrentMarker()->IsEnabled()) {
         heap->SetFullMarkRequestedState(false);
@@ -127,9 +124,6 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithNewSpace)
 
 HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFreshRegion)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     if (heap->GetConcurrentMarker()->IsEnabled()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();

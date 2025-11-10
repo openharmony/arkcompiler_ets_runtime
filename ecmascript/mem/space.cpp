@@ -59,7 +59,14 @@ void Space::Destroy()
     ReclaimRegions();
 }
 
-// fixme: refactor space, memory management should be decoupled
+void Space::ReclaimRegions(size_t cachedSize)
+{
+    ASSERT(cachedSize >= 0);
+    EnumerateRegions([this, &cachedSize](Region *current) { ClearAndFreeRegion(current, cachedSize); });
+    regionList_.Clear();
+    committedSize_ = 0;
+}
+
 void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
 {
     ASSERT(region != nullptr);
@@ -75,37 +82,20 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
         spaceType_ == MemSpaceType::MACHINE_CODE_SPACE || spaceType_ == MemSpaceType::LOCAL_SPACE ||
         spaceType_ == MemSpaceType::APPSPAWN_SPACE || spaceType_ == MemSpaceType::SHARED_NON_MOVABLE ||
         spaceType_ == MemSpaceType::SHARED_OLD_SPACE || spaceType_ == MemSpaceType::SHARED_LOCAL_SPACE) {
-        if (region->GetFreeListType() == FreeListType::BUMP_POINTER_FREE_LIST) {
-            DefaultRegion::FromRegion(region)->DestroyFreeObjectSets();
-        }
+        region->DestroyFreeObjectSets();
     }
     heapRegionAllocator_->FreeRegion(region, cachedSize);
 }
 
-
-MonoSpace::MonoSpace(BaseHeap* heap, HeapRegionAllocator *regionAllocator,
-                     MemSpaceType spaceType, size_t initialCapacity, size_t maximumCapacity)
-    : Space(heap, regionAllocator, spaceType, initialCapacity, maximumCapacity)
-{
-}
-
-void MonoSpace::ReclaimRegions(size_t cachedSize)
-{
-    ASSERT(cachedSize >= 0);
-    EnumerateRegions([this, &cachedSize](Region *current) { ClearAndFreeRegion(current, cachedSize); });
-    regionList_.Clear();
-    committedSize_ = 0;
-}
-
 HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
                                  size_t initialCapacity, size_t maximumCapacity)
-    : MonoSpace(heap, heapRegionAllocator, MemSpaceType::HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)
+    : Space(heap, heapRegionAllocator, MemSpaceType::HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)
 {
 }
 
 HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
                                  size_t initialCapacity, size_t maximumCapacity, MemSpaceType spaceType)
-    : MonoSpace(heap, heapRegionAllocator, spaceType, initialCapacity, maximumCapacity)
+    : Space(heap, heapRegionAllocator, spaceType, initialCapacity, maximumCapacity)
 {
 }
 
@@ -174,7 +164,7 @@ Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, 
     //
     // allocation sizes for Huge Machine Code:
     //     a: mutable area size (aligned up to PageSize()) =
-    //         sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE + MachineCode::SIZE + payLoadSize - instructionsSize
+    //         sizeof(Region) + HUGE_OBJECT_BITSET_SIZE + MachineCode::SIZE + payLoadSize - instructionsSize
     //         (note: payLoadSize = funcDesc size + stackMap size + instructionsSize)
     //     b: immutable area (starts on native page boundary) size = instructionsSize
     //     c: size to mmap for huge machine code object = Alignup(a + b, 256 Kbyte)
@@ -186,8 +176,8 @@ Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, 
     ASSERT(pDesc != nullptr);
     MachineCodeDesc *desc = reinterpret_cast<MachineCodeDesc *>(pDesc);
     size_t mutableSize = AlignUp(
-        objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE - desc->instructionsSize, PageSize());
-    size_t allocSize = AlignUp(mutableSize + desc->instructionsSize, DEFAULT_REGION_SIZE);
+        objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE - desc->instructionsSize, PageSize());
+    size_t allocSize = AlignUp(mutableSize + desc->instructionsSize, PANDA_POOL_ALIGNMENT_IN_BYTES);
     if (heap_->OldSpaceExceedCapacity(allocSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
@@ -270,7 +260,7 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread, Allocat
     }
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
-    size_t alignedSize = AlignUp(objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, DEFAULT_REGION_SIZE);
+    size_t alignedSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
     if (heap_->OldSpaceExceedCapacity(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;

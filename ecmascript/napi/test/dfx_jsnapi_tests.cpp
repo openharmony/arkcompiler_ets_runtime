@@ -350,8 +350,8 @@ HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread_);
-        for (int i = 0; i < 512; i++) {
-            factory->NewTaggedArray(10 * 1024, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        for (int i = 0; i < 10240; i++) {
+            factory->NewTaggedArray(512, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
         }
         size_t newAllocateSize = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
         EXPECT_TRUE(oldAllocateSize < newAllocateSize);

@@ -19,7 +19,7 @@
 #include "ecmascript/mem/space-inl.h"
 
 namespace panda::ecmascript {
-class LinearSpace : public MonoSpace {
+class LinearSpace : public Space {
 public:
     LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     NO_COPY_SEMANTIC(LinearSpace);

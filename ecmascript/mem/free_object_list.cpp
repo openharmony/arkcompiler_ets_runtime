@@ -156,7 +156,7 @@ void FreeObjectList<T>::Free(uintptr_t start, size_t size, bool isAdd)
     }
 
     Region *region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(start));
-    auto set = DefaultRegion::FromRegion(region)->GetFreeObjectSet(type);
+    auto set = region->GetFreeObjectSet(type);
     if (set == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "The set of region is nullptr";
         return;

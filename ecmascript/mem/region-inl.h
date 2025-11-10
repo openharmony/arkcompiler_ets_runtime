@@ -35,7 +35,7 @@ inline RememberedSet *Region::CreateRememberedSet()
 inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
 {
     if (UNLIKELY(crossRegionSet_ == nullptr)) {
-        LockHolder lock(lock_);
+        LockHolder lock(*lock_);
         if (crossRegionSet_ == nullptr) {
             crossRegionSet_ = CreateRememberedSet();
         }
@@ -45,7 +45,7 @@ inline RememberedSet *Region::GetOrCreateCrossRegionRememberedSet()
 
 ARK_NOINLINE RememberedSet* Region::CreateOldToNewRememberedSet()
 {
-    LockHolder lock(lock_);
+    LockHolder lock(*lock_);
     if (packedData_.oldToNewSet_ == nullptr) {
         if (sweepingOldToNewRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             packedData_.oldToNewSet_ = sweepingOldToNewRSet_;
@@ -68,7 +68,7 @@ inline RememberedSet* Region::GetOrCreateOldToNewRememberedSet()
 
 ARK_NOINLINE RememberedSet* Region::CreateLocalToShareRememberedSet()
 {
-    LockHolder lock(lock_);
+    LockHolder lock(*lock_);
     if (packedData_.localToShareSet_ == nullptr) {
         if (sweepingLocalToShareRSet_ != nullptr && IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT)) {
             packedData_.localToShareSet_ = sweepingLocalToShareRSet_;

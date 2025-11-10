@@ -146,10 +146,6 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
 LexicalEnv *ObjectFactory::InlineNewLexicalEnv(int numSlots)
 {
     NewObjectHook();
-    // fixme: remove this function?
-    if constexpr (G_USE_CMS_GC) {
-        return nullptr;
-    }
     size_t size = LexicalEnv::ComputeSize(numSlots);
     auto header = heap_->TryAllocateYoungGeneration(
         JSHClass::Cast(thread_->GlobalConstants()->GetLexicalEnvClass().GetTaggedObject()), size);

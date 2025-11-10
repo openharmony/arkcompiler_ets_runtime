@@ -40,7 +40,6 @@ namespace ecmascript {
     V(ProcessSharedGCRSetWorkList)       \
     V(Sweep)                             \
     V(ClearNativeObject)                 \
-    V(ClearDeadReferences)               \
     V(Evacuate)                          \
     V(Finish)                            \
     V(UpdateReference)                   \
@@ -62,13 +61,22 @@ namespace ecmascript {
     V(START_COMMIT_SIZE)                 \
     V(END_COMMIT_SIZE)                   \
     V(START_YOUNG_OBJ_SIZE)              \
+    V(SEMI_ALIVE_SIZE)                   \
+    V(SEMI_COMMIT_SIZE)                  \
+    V(SEMI_PROMOTE_SIZE)                 \
+    V(YOUNG_ALIVE_SIZE)                  \
+    V(YOUNG_COMMIT_SIZE)                 \
+    V(YOUNG_PROMOTE_SIZE)                \
+    V(OLD_ALIVE_SIZE)                    \
+    V(OLD_COMMIT_SIZE)                   \
+    V(COMPRESS_ALIVE_SIZE)               \
+    V(COMPRESS_COMMIT_SIZE)              \
     V(START_NATIVE_POINTER_NUM)          \
     V(COLLECT_REGION_SET_SIZE)           \
     SEMI_RECORD_DATA(V)                  \
     PARTIAL_RECORD_DATA(V)               \
     FULL_RECORD_DATA(V)                  \
-    SHARED_RECORD_DATA(V)                \
-    SWEEP_RECORD_DATA(V)
+    SHARED_RECORD_DATA(V)
 
 #define RECORD_DURATION(V)               \
     V(SEMI_MIN_PAUSE)                    \
@@ -85,38 +93,25 @@ namespace ecmascript {
     V(COMPRESS_TOTAL_PAUSE)              \
     V(SHARED_MIN_PAUSE)                  \
     V(SHARED_MAX_PAUSE)                  \
-    V(SHARED_TOTAL_PAUSE)                \
-    V(SWEEP_MIN_PAUSE)                   \
-    V(SWEEP_MAX_PAUSE)                   \
-    V(SWEEP_TOTAL_PAUSE)
+    V(SHARED_TOTAL_PAUSE)
 
 #define SEMI_RECORD_DATA(V)              \
     V(SEMI_COUNT)                        \
-    V(SEMI_ALIVE_SIZE)                   \
-    V(SEMI_COMMIT_SIZE)                  \
-    V(SEMI_PROMOTE_SIZE)                 \
     V(SEMI_TOTAL_ALIVE)                  \
     V(SEMI_TOTAL_COMMIT)                 \
     V(SEMI_TOTAL_PROMOTE)
 
 #define PARTIAL_RECORD_DATA(V)           \
     V(YOUNG_COUNT)                       \
-    V(YOUNG_ALIVE_SIZE)                  \
-    V(YOUNG_COMMIT_SIZE)                 \
-    V(YOUNG_PROMOTE_SIZE)                \
     V(YOUNG_TOTAL_ALIVE)                 \
     V(YOUNG_TOTAL_COMMIT)                \
     V(YOUNG_TOTAL_PROMOTE)               \
     V(OLD_COUNT)                         \
-    V(OLD_ALIVE_SIZE)                    \
-    V(OLD_COMMIT_SIZE)                   \
     V(OLD_TOTAL_ALIVE)                   \
     V(OLD_TOTAL_COMMIT)
 
 #define FULL_RECORD_DATA(V)              \
     V(COMPRESS_COUNT)                    \
-    V(COMPRESS_ALIVE_SIZE)               \
-    V(COMPRESS_COMMIT_SIZE)              \
     V(COMPRESS_TOTAL_ALIVE)              \
     V(COMPRESS_TOTAL_COMMIT)
 
@@ -126,13 +121,6 @@ namespace ecmascript {
     V(SHARED_TOTAL_ALIVE)                \
     V(SHARED_COMMIT_SIZE)                \
     V(SHARED_TOTAL_COMMIT)
-
-#define SWEEP_RECORD_DATA(V)             \
-    V(SWEEP_COUNT)                       \
-    V(SWEEP_ALIVE_SIZE)                  \
-    V(SWEEP_TOTAL_ALIVE)                 \
-    V(SWEEP_COMMIT_SIZE)                 \
-    V(SWEEP_TOTAL_COMMIT)
 
 #define TRACE_GC_SPEED(V)                \
     V(UPDATE_REFERENCE_SPEED)            \

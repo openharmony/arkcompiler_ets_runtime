@@ -1088,7 +1088,7 @@ void SnapshotProcessor::WriteObjectToFile(std::fstream &writer)
     }
 }
 
-void SnapshotProcessor::WriteSpaceObjectToFile(MonoSpace* space, std::fstream &writer)
+void SnapshotProcessor::WriteSpaceObjectToFile(Space* space, std::fstream &writer)
 {
     size_t regionCount = space->GetRegionCount();
     if (regionCount > 0) {
@@ -1149,7 +1149,7 @@ std::vector<size_t> SnapshotProcessor::StatisticsObjectSize()
     return objSizeVector;
 }
 
-size_t SnapshotProcessor::StatisticsSpaceObjectSize(MonoSpace* space)
+size_t SnapshotProcessor::StatisticsSpaceObjectSize(Space* space)
 {
     size_t regionCount = space->GetRegionCount();
     size_t objSize = 0U;
@@ -1157,7 +1157,7 @@ size_t SnapshotProcessor::StatisticsSpaceObjectSize(MonoSpace* space)
         auto lastRegion = space->GetCurrentRegion();
         size_t lastRegionSize = lastRegion->highWaterMark_ - lastRegion->packedData_.begin_;
         objSize = (regionCount - 1) * (SnapshotRegionHeadInfo::RegionHeadInfoSize() +
-            DefaultRegion::GetRegionAvailableSize()) + SnapshotRegionHeadInfo::RegionHeadInfoSize() + lastRegionSize;
+            Region::GetRegionAvailableSize()) + SnapshotRegionHeadInfo::RegionHeadInfoSize() + lastRegionSize;
     }
     return objSize;
 }
@@ -1189,7 +1189,7 @@ void SnapshotProcessor::ProcessObjectQueue(CQueue<TaggedObject *> *queue,
     StopAllocate();
 }
 
-uintptr_t SnapshotProcessor::AllocateObjectToLocalSpace(MonoSpace *space, size_t objectSize)
+uintptr_t SnapshotProcessor::AllocateObjectToLocalSpace(Space *space, size_t objectSize)
 {
     uintptr_t newObj = 0;
     if (space->GetSpaceType() == MemSpaceType::HUGE_OBJECT_SPACE) {
@@ -1199,7 +1199,7 @@ uintptr_t SnapshotProcessor::AllocateObjectToLocalSpace(MonoSpace *space, size_t
     } else {
         newObj = reinterpret_cast<LocalSpace *>(space)->Allocate(objectSize);
     }
-    Region *current = space->GetCurrentRegion();
+    auto current = space->GetCurrentRegion();
     if (newObj == current->GetBegin()) {
         // region param snapshotData_ low 32 bits is reused to record regionIndex
         uint64_t snapshotData = regionIndex_;
@@ -1301,14 +1301,14 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
 {
     size_t numberOfRegions = 0U;
     if (spaceObjSize != 0) {
-        numberOfRegions = (spaceObjSize - 1) / (DefaultRegion::GetRegionAvailableSize() +
+        numberOfRegions = (spaceObjSize - 1) / (Region::GetRegionAvailableSize() +
             SnapshotRegionHeadInfo::RegionHeadInfoSize()) + 1;
     }
     for (size_t i = 0; i < numberOfRegions; i++) {
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
             space, DEFAULT_REGION_SIZE, vm_->GetAssociatedJSThread(), const_cast<Heap *>(vm_->GetHeap()));
         auto info = ToNativePtr<SnapshotRegionHeadInfo>(beginAddr +
-            i * (DefaultRegion::GetRegionAvailableSize() + SnapshotRegionHeadInfo::RegionHeadInfoSize()));
+            i * (Region::GetRegionAvailableSize() + SnapshotRegionHeadInfo::RegionHeadInfoSize()));
         uintptr_t objectBeginAddr = ToUintPtr(info) + SnapshotRegionHeadInfo::RegionHeadInfoSize();
         size_t regionIndex = info->regionIndex_;
         size_t liveObjectSize = info->aliveObjectSize_;
@@ -1351,13 +1351,12 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         // Retrieve the data beginning address based on the serialized data format.
         uintptr_t copyFrom = ToUintPtr(info) + SnapshotRegionHeadInfo::RegionHeadInfoSize();
         size_t objSize = info->aliveObjectSize_;
-        size_t alignedRegionObjSize = AlignUp(sizeof(DefaultRegion),
-                                              static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        size_t alignedRegionObjSize = AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
         size_t hugeRegionHeadSize = AlignUp(alignedRegionObjSize + GCBitset::BYTE_PER_WORD,
                                             static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
 
         ASSERT(objSize > g_maxRegularHeapObjectSize);
-        size_t alignedHugeRegionSize = AlignUp(objSize + hugeRegionHeadSize, DEFAULT_REGION_SIZE);
+        size_t alignedHugeRegionSize = AlignUp(objSize + hugeRegionHeadSize, PANDA_POOL_ALIGNMENT_IN_BYTES);
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
             space, alignedHugeRegionSize, vm_->GetAssociatedJSThread(), const_cast<Heap *>(vm_->GetHeap()));
         size_t regionIndex = info->regionIndex_;
@@ -1684,7 +1683,7 @@ void SnapshotProcessor::RelocateSpaceObject(std::vector<std::pair<uintptr_t, siz
     };
 }
 
-void SnapshotProcessor::RelocateSpaceObject(MonoSpace* space, SnapshotType type, MethodLiteral* methods,
+void SnapshotProcessor::RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
                                             size_t methodNums, size_t rootObjSize)
 {
     size_t others = 0;

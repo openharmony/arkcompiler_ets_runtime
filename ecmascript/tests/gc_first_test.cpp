@@ -73,9 +73,6 @@ private:
 
 HWTEST_F_L0(GCTest, FullGCOne)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto heap = thread->GetEcmaVM()->GetHeap();
     auto fullGc = heap->GetFullGC();
@@ -101,14 +98,15 @@ HWTEST_F_L0(GCTest, ChangeGCParams)
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
     EXPECT_TRUE(heap->GetSweeper()->ConcurrentSweepEnabled());
 
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
     heap->ChangeGCParams(true);
     heap->Prepare();
 
     EXPECT_TRUE(heap->GetSweeper()->ConcurrentSweepEnabled());
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::CONSERVATIVE);
 
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    partialGc->RunPhases();
     heap->ChangeGCParams(false);
     heap->Prepare();
 
@@ -125,7 +123,8 @@ HWTEST_F_L0(GCTest, ConfigDisable)
     EXPECT_FALSE(heap->GetConcurrentMarker()->IsEnabled());
     EXPECT_FALSE(heap->GetSweeper()->ConcurrentSweepEnabled());
 
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
     heap->ChangeGCParams(false);
     heap->Prepare();
 
@@ -138,14 +137,16 @@ HWTEST_F_L0(GCTest, NotifyMemoryPressure)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
 
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
+    heap->ChangeGCParams(true);
     heap->NotifyMemoryPressure(true);
     heap->Prepare();
 
     EXPECT_EQ(heap->GetMemGrowingType(), MemGrowingType::PRESSURE);
     EXPECT_TRUE(heap->GetSweeper()->ConcurrentSweepEnabled());
 
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    partialGc->RunPhases();
     heap->ChangeGCParams(false);
     heap->Prepare();
 
@@ -285,15 +286,13 @@ HWTEST_F_L0(GCTest, StatisticHeapDetailTest)
         for (int i = 0; i < 1024; i++) {
             factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
         }
-        if constexpr (!G_USE_CMS_GC) {
-            size_t oldSpaceSize = heap->GetOldSpace()->GetHeapObjectSize();
-            EXPECT_TRUE(oldSpaceSize >= 1024);
-            for (int i = 0; i < 1024; i++) {
-                factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::SEMI_SPACE);
-            }
-            size_t newSpaceSize = heap->GetNewSpace()->GetHeapObjectSize();
-            EXPECT_TRUE(newSpaceSize >= 0);
+        size_t oldSpaceSize = heap->GetOldSpace()->GetHeapObjectSize();
+        EXPECT_TRUE(oldSpaceSize >= 1024);
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::SEMI_SPACE);
         }
+        size_t newSpaceSize = heap->GetNewSpace()->GetHeapObjectSize();
+        EXPECT_TRUE(newSpaceSize >= 0);
     }
     heap->StatisticHeapDetail();
 };

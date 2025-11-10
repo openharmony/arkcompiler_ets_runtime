@@ -146,9 +146,6 @@ void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
         case VerifyKind::VERIFY_EVACUATE_FULL:
             VerifyEvacuateFull(object, slot, slotValue.GetTaggedObject());
             break;
-        case VerifyKind::VERIFY_MARK_SLOT_SPACE:
-            VerifyMarkSlotSpace(object, slot, slotValue.GetTaggedObject());
-            break;
         case VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC:
             VerifySharedRSetPostFullGC(object, slot, slotValue.GetTaggedObject());
             break;
@@ -265,25 +262,6 @@ void VerifyObjectVisitor::VerifyEvacuateFull([[maybe_unused]]TaggedObject *root,
                                              [[maybe_unused]]TaggedObject *value) const
 {
     VerifyEvacuateYoung(root, slot, value);
-}
-
-void VerifyObjectVisitor::VerifyMarkSlotSpace(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
-{
-    Region *objectRegion = Region::ObjectAddressToRange(object);
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    ASSERT(!objectRegion->InSharedHeap());
-    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
-            LogErrorForObjSlot(heap_, "Verify MarkSlopSpace: Local object, slot local_to_share bit = 0, "
-                "but SharedHeap object.", object, slot, value);
-        }
-    }
-    if (objectRegion->Test(object)) {
-        if (!valueRegion->InSharedHeap() && !valueRegion->Test(value)) {
-            LogErrorForObjSlot(heap_, "Verify MarkSlopSpace: Marked object, slot miss gc_mark bit.",
-                object, slot, value);
-        }
-    } // LCOV_EXCL_STOP
 }
 
 void VerifyObjectVisitor::VerifySharedObjectReference(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
@@ -418,11 +396,6 @@ void Verification::VerifyObjectSlot(const ObjectSlot &slot, size_t *failCount) c
 void Verification::VerifyMark(Heap *heap)
 {
     LOG_ECMA(DEBUG) << "start verify mark";
-    // fixme: support and refactor?
-    if constexpr (G_USE_CMS_GC) {
-        Verification(heap, VerifyKind::VERIFY_MARK_SLOT_SPACE).VerifyAll();
-        return;
-    }
     switch (heap->GetMarkType()) {
         case MarkType::MARK_YOUNG:
             Verification(heap, VerifyKind::VERIFY_MARK_YOUNG).VerifyAll();
@@ -436,10 +409,6 @@ void Verification::VerifyMark(Heap *heap)
 void Verification::VerifyEvacuate(Heap *heap)
 {
     LOG_ECMA(DEBUG) << "start verify evacuate and sweep";
-    // fixme: support and refactor?
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     switch (heap->GetMarkType()) {
         case MarkType::MARK_YOUNG:
             Verification(heap, VerifyKind::VERIFY_EVACUATE_YOUNG).VerifyAll();

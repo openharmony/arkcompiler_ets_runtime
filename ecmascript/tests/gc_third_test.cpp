@@ -102,9 +102,6 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
     }
     {
 #ifdef NDEBUG
-        if constexpr (G_USE_CMS_GC) {
-            return;
-        }
         size_t newSize = 0;
         size_t finalSize = 0;
         bool res = getSizeAfterCreateAndCallHintGC(newSize, finalSize);
@@ -115,9 +112,6 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
 
 HWTEST_F_L0(GCTest, LargeOverShootSizeTest)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     size_t originalYoungSize = heap->GetNewSpace()->GetCommittedSize();
 
@@ -240,9 +234,6 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest003)
 HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest004)
 {
 #ifdef NDEBUG
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -261,9 +252,6 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest004)
 HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest005)
 {
 #ifdef NDEBUG
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -371,6 +359,47 @@ HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest001)
     EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::OTHER);
 }
 
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::NO_TASK);
+    heap->TriggerIdleCollection(1000);
+    ASSERT_TRUE(heap->IsEmptyIdleTask());
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
+    heap->TriggerIdleCollection(1000);
+    ASSERT_FALSE(heap->IsEmptyIdleTask());
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
+    heap->TriggerIdleCollection(-1);
+    ASSERT_FALSE(heap->IsEmptyIdleTask());
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
+    heap->SetMarkType(MarkType::MARK_FULL);
+    heap->TriggerIdleCollection(1000);
+    ASSERT_TRUE(heap->IsEmptyIdleTask());
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest006)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->TriggerIdleCollection(1000);
+    ASSERT_TRUE(heap->IsEmptyIdleTask());
+}
+
 HWTEST_F_L0(GCTest, NotifyFinishColdStartTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -394,6 +423,17 @@ HWTEST_F_L0(GCTest, NeedStopCollectionTest001)
     ASSERT_EQ(heap->NeedStopCollection(), true);
 }
 
+HWTEST_F_L0(GCTest, ReclaimTest001)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->DisableParallelGC(thread);
+    heap->Reclaim(TriggerGCType::YOUNG_GC);
+    ASSERT_EQ(heap->GetMaxMarkTaskCount(), 0);
+    ASSERT_FALSE(heap->IsParallelGCEnabled());
+    ASSERT_TRUE(heap->GetSweeper()->IsDisabled());
+    ASSERT_TRUE(heap->GetConcurrentMarker()->IsConfigDisabled());
+}
+
 HWTEST_F_L0(GCTest, CollectGarbageTest003)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -415,6 +455,15 @@ HWTEST_F_L0(GCTest, NeedStopCollectionTest003)
     heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
     heap->GetOldSpace()->SetInitialCapacity(1000);
     ASSERT_EQ(heap->NeedStopCollection(), false);
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest007)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
+    ASSERT_EQ(heap->GetIncrementalMarker()->GetIncrementalGCStates(), IncrementalGCStates::ROOT_SCAN);
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(1000);
+    heap->TriggerIdleCollection(1000);
 }
 
 HWTEST_F_L0(GCTest, CheckAndTriggerSharedGCTest002)
@@ -477,9 +526,6 @@ HWTEST_F_L0(GCTest, CheckOngoingConcurrentMarkingTest002)
 
 HWTEST_F_L0(GCTest, SelectGCTypeTest001)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetOldSpace()->SetInitialCapacity(100);
     ASSERT_EQ(heap->SelectGCType(), OLD_GC);
@@ -487,14 +533,19 @@ HWTEST_F_L0(GCTest, SelectGCTypeTest001)
 
 HWTEST_F_L0(GCTest, SelectGCTypeTest002)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetOldSpace()->SetMaximumCapacity(1000);
     heap->GetOldSpace()->SetOvershootSize(1000);
     heap->GetNewSpace()->IncreaseCommitted(100000);
     ASSERT_EQ(heap->SelectGCType(), OLD_GC);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest008)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(1000);
+    heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
+    ASSERT_EQ(heap->GetIncrementalMarker()->GetIncrementalGCStates(), IncrementalGCStates::ROOT_SCAN);
 }
 
 HWTEST_F_L0(GCTest, CollectGarbageTest009)
@@ -507,6 +558,14 @@ HWTEST_F_L0(GCTest, CollectGarbageTest009)
     ASSERT_FALSE(heap->GetConcurrentMarker()->IsRequestDisabled());
 #endif
     heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
+}
+
+HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest007)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::NO_TASK);
+    heap->TryTriggerIdleCollection();
+    ASSERT_TRUE(heap->IsEmptyIdleTask());
 }
 
 HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest004)
@@ -530,6 +589,24 @@ HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest003)
     EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::ALLOCATION_LIMIT);
 }
 
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest008)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
+    heap->TriggerIdleCollection(1000);
+    ASSERT_FALSE(heap->IsEmptyIdleTask());
+    heap->ClearIdleTask();
+    heap->TriggerIdleCollection(1000);
+    ASSERT_TRUE(heap->IsEmptyIdleTask());
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest009)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->TriggerIdleCollection(5);
+    ASSERT_TRUE(heap->IsEmptyIdleTask());
+}
 
 HWTEST_F_L0(GCTest, NotifyFinishColdStartTest002)
 {
@@ -550,11 +627,8 @@ HWTEST_F_L0(GCTest, NeedStopCollectionTest004)
 
 HWTEST_F_L0(GCTest, TryToGetSuitableSweptRegionTest001)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    SparseSpace *space = static_cast<SparseSpace *>(heap->GetSweepableSpaceWithType(MemSpaceType::OLD_SPACE));
+    SparseSpace *space = heap->GetSpaceWithType(MemSpaceType::OLD_SPACE);
     space->FinishFillSweptRegion();
     ASSERT_EQ(space->TryToGetSuitableSweptRegion(100), nullptr);
 }
@@ -577,9 +651,6 @@ HWTEST_F_L0(GCTest, CalculateGrowingFactorTest002)
 
 HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest001)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     MemController *memController = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -648,9 +719,6 @@ HWTEST_F_L0(GCTest, InvokeAllocationInspectorTest001)
 
 HWTEST_F_L0(GCTest, OldSpaceValidCheck)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     static constexpr size_t kLength = 10 * 1024;
     static constexpr size_t kCount = 2;
     static constexpr size_t kLimit = 380 * 1024 * 1024;

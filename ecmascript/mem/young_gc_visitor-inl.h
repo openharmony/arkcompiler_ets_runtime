@@ -77,15 +77,16 @@ void YoungGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t 
     ObjectSlot start(startAddr);
     ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
+        JSThread *thread = workNodeHolder_->GetJSThread();
         JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_NO_RB>(nullptr).GetTaggedObject());
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            PropertyAttributes attr = layout->GetAttr<RBMode::FAST_NO_RB>(nullptr, index++);
+            PropertyAttributes attr = layout->GetAttr(thread, index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot);
             }
@@ -101,7 +102,6 @@ void YoungGCMarkObjectVisitor::VisitJSWeakMapImpl(BaseObject *rootObject)
 {
     TaggedObject *obj = TaggedObject::Cast(rootObject);
     ASSERT(JSTaggedValue(obj).IsJSWeakMap());
-    ASSERT(!Region::ObjectAddressToRange(obj)->InSharedHeap());
     workNodeHolder_->PushJSWeakMap(obj);
 }
 

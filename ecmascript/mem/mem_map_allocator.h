@@ -137,7 +137,7 @@ public:
     }
 
 private:
-    static constexpr size_t REGULAR_MMAP_SIZE = DEFAULT_REGION_SIZE;
+    static constexpr size_t REGULAR_MMAP_SIZE = 256_KB;
     Mutex lock_;
     std::deque<MemMap> memMapCache_;
     std::vector<MemMap> regularMapCommitted_;

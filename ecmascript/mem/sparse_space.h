@@ -51,7 +51,7 @@ namespace panda::ecmascript {
 class LocalSpace;
 class SemiSpace;
 
-class SparseSpace : public MonoSpace, public SweepableSpace {
+class SparseSpace : public Space {
 public:
     SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     ~SparseSpace() override
@@ -69,13 +69,13 @@ public:
     bool Expand();
 
     // For sweeping
-    void PrepareSweeping() override;
-    void Sweep() override;
-    void AsyncSweep(bool isMain) override;
+    virtual void PrepareSweeping();
+    virtual void Sweep();
+    virtual void AsyncSweep(bool isMain);
 
-    bool TryFillSweptRegion() override;
+    bool TryFillSweptRegion();
     // Ensure All region finished sweeping
-    bool FinishFillSweptRegion() override;
+    bool FinishFillSweptRegion();
 
     void AddSweepingRegion(Region *region);
     void SortSweepingRegion();

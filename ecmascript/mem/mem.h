@@ -18,7 +18,6 @@
 
 #include <cstdint>
 
-#include "ecmascript/base/config.h"
 #include "ecmascript/base/math_helper.h"
 #include "ecmascript/ecma_param_configuration.h"
 #include "ecmascript/mem/mem_common.h"
@@ -60,11 +59,7 @@ static constexpr size_t MIN_BACKGROUNG_GC_LIMIT = 30_MB;
 
 static constexpr size_t MAX_NONMOVABLE_LIVE_OBJ_SIZE = 60_MB;
 
-#if USE_CMS_GC
-static constexpr size_t REGION_SIZE_LOG2 = 14U;
-#else
 static constexpr size_t REGION_SIZE_LOG2 = 18U;
-#endif
 
 static constexpr size_t MIN_HEAP_SIZE = 5_MB;
 

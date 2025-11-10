@@ -15,7 +15,6 @@
 #ifndef ECMA_TEST_COMMON_H
 #define ECMA_TEST_COMMON_H
 #include <functional>
-#include "ecmascript/base/config.h"
 #include "ecmascript/containers/containers_private.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"

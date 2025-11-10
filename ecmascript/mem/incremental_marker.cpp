@@ -89,7 +89,7 @@ void IncrementalMarker::Initialize()
         current->ResetAliveObject();
     });
 
-    workManager_->Initialize(TriggerGCType::OLD_GC, ParallelGCTaskPhase::HANDLE_GLOBAL_POOL_TASK);
+    workManager_->Initialize(TriggerGCType::OLD_GC, ParallelGCTaskPhase::OLD_HANDLE_GLOBAL_POOL_TASK);
 }
 
 void IncrementalMarker::ProcessIncrementalMark(int64_t idleMicroSec)

@@ -70,6 +70,15 @@ public:
     }
 };
 
+HWTEST_F_L0(HandleLeakTest, HandleLeakCheck)
+{
+    EcmaHandleScope scope(thread);
+    std::vector<Global<ArrayRef>> result;
+    for (int i = 0; i < 75000; i++) {
+        result.emplace_back(Global<ArrayRef>(instance, ArrayRef::New(instance, 100)));
+    }
+}
+
 HWTEST_F_L0(HandleLeakTest, InitializeCheckOneProperty)
 {
     EcmaHandleScope scope(thread);

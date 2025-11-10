@@ -37,9 +37,6 @@ class MemControllerTest : public BaseTestWithScope<false> {
 HWTEST_F_L0(MemControllerTest, AllocationVerify)
 {
 #ifdef NDEBUG
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto ecmaVm = thread->GetEcmaVM();
     auto heap = const_cast<Heap *>(ecmaVm->GetHeap());
     auto objectFactory = ecmaVm->GetFactory();
@@ -71,9 +68,6 @@ HWTEST_F_L0(MemControllerTest, AllocationVerify)
 HWTEST_F_L0(MemControllerTest, VerifyMutatorSpeed)
 {
 #ifdef NDEBUG
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto ecmaVm = thread->GetEcmaVM();
     auto heap = const_cast<Heap *>(ecmaVm->GetHeap());
     auto objectFactory = ecmaVm->GetFactory();
@@ -143,9 +137,7 @@ HWTEST_F_L0(MemControllerTest, StartCalculationBeforeGC)
     objectFactory->NewTaggedArray(SIZE);
 
     double allocTimeMsBefore = memController->GetAllocTimeMs();
-#if !USE_CMS_GC
     size_t oldSpaceSizeBefore = memController->GetOldSpaceAllocAccumulatedSize();
-#endif
     size_t nonMovableSpaceSizeBefore = memController->GetNonMovableSpaceAllocAccumulatedSize();
     size_t codeSpaceSizeBefore = memController->GetCodeSpaceAllocAccumulatedSize();
     {
@@ -165,16 +157,12 @@ HWTEST_F_L0(MemControllerTest, StartCalculationBeforeGC)
     memController->CheckLowAllocationUsageState();
 
     double allocTimeMsAfter = memController->GetAllocTimeMs();
-#if !USE_CMS_GC
     size_t oldSpaceSizeAfter = memController->GetOldSpaceAllocAccumulatedSize();
-#endif
     size_t nonMovableSpaceSizeAfter = memController->GetNonMovableSpaceAllocAccumulatedSize();
     size_t codeSpaceSizeAfter = memController->GetCodeSpaceAllocAccumulatedSize();
 
     EXPECT_TRUE(allocTimeMsAfter - allocTimeMsBefore > 1000);
-#if !USE_CMS_GC
     EXPECT_TRUE(oldSpaceSizeAfter > oldSpaceSizeBefore);
-#endif
     EXPECT_TRUE(nonMovableSpaceSizeAfter > nonMovableSpaceSizeBefore);
     EXPECT_TRUE(codeSpaceSizeAfter == codeSpaceSizeBefore);
 }

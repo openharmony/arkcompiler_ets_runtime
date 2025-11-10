@@ -75,7 +75,7 @@ public:
                   uint64_t rootObjSize);
     void RelocateSpaceObject(std::vector<std::pair<uintptr_t, size_t>> &regions, SnapshotType type,
         MethodLiteral* methods, size_t methodNums, size_t rootObjSize);
-    void RelocateSpaceObject(MonoSpace* space, SnapshotType type, MethodLiteral* methods,
+    void RelocateSpaceObject(Space* space, SnapshotType type, MethodLiteral* methods,
                              size_t methodNums, size_t rootObjSize);
     void SerializePandaFileMethod();
     AllocResult GetNewObj(size_t objectSize, TaggedObject *objectHeader);
@@ -151,7 +151,7 @@ private:
     size_t GetMarkGCBitSetSize() const
     {
         return GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE -
-            AlignUp(sizeof(DefaultRegion), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION)));
+            AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION)));
     }
 
     bool VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index, VisitObjectArea area);
@@ -175,11 +175,11 @@ private:
     EncodeBit NativePointerToEncodeBit(void *nativePointer);
     size_t SearchNativeMethodIndex(void *nativePointer);
     uintptr_t TaggedObjectEncodeBitToAddr(EncodeBit taggedBit);
-    void WriteSpaceObjectToFile(MonoSpace* space, std::fstream &write);
+    void WriteSpaceObjectToFile(Space* space, std::fstream &write);
     void WriteHugeObjectToFile(HugeObjectSpace* space, std::fstream &writer);
-    size_t StatisticsSpaceObjectSize(MonoSpace* space);
+    size_t StatisticsSpaceObjectSize(Space* space);
     size_t StatisticsHugeObjectSize(HugeObjectSpace* space);
-    uintptr_t AllocateObjectToLocalSpace(MonoSpace *space, size_t objectSize);
+    uintptr_t AllocateObjectToLocalSpace(Space *space, size_t objectSize);
     SnapshotRegionHeadInfo GenerateRegionHeadInfo(Region *region);
     void ResetRegionUnusedRange(Region *region);
 

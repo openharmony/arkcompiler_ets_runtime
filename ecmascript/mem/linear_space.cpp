@@ -21,7 +21,7 @@
 
 namespace panda::ecmascript {
 LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
-    : MonoSpace(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
+    : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       localHeap_(heap),
       thread_(heap->GetJSThread()),
       waterLine_(0)

@@ -50,6 +50,76 @@ public:
     }
 };
 
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStartTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->NotifyLooperIdleStart(1, 1);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStartTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->Mark();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    trigger->NotifyLooperIdleStart(1, 1);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleEndTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->NotifyLooperIdleEnd(1);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerHandleMarkFinishedTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    heap->GetConcurrentMarker()->Mark();
+    heap->GetConcurrentMarker()->ProcessConcurrentMarkTask(0);
+    
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerHandleMarkFinished();
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMarkTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->SetIdleTask(IdleTaskType::NO_TASK);
+
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_FULL);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMarkTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->SetIdleTask(IdleTaskType::NO_TASK);
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_FULL);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMarkTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->SetIdleTask(IdleTaskType::NO_TASK);
+    thread->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_FULL);
+}
+
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -95,10 +165,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest004)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest001)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     heap->SetIdleTask(IdleTaskType::NO_TASK);
@@ -121,10 +187,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest002)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest003)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     heap->GetConcurrentMarker()->Mark();
@@ -137,10 +199,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest003)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest004)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     heap->SetIdleTask(IdleTaskType::NO_TASK);
@@ -169,10 +227,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest005)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest006)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
@@ -198,10 +252,6 @@ HWTEST_F_L0(IdleGCTriggerTest, ReachIdleLocalOldGCThresholdsTest001)
 
 HWTEST_F_L0(IdleGCTriggerTest, ReachIdleLocalOldGCThresholdsTest002)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     heap->GetNativeAreaAllocator()->IncreaseNativeMemoryUsage(1);
@@ -232,10 +282,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryPostHandleMarkFinishedTest002)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest002)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     sheap->NotifyHeapAliveSizeAfterGC(1);
@@ -247,10 +293,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest002)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest003)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->NotifyHeapAliveSizeAfterGC(1);
     heap->GetOldSpace()->SetInitialCapacity(10000);
@@ -278,10 +320,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest011)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest012)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     sheap->NotifyHeapAliveSizeAfterGC(0);
@@ -293,10 +331,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest012)
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest013)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     sheap->NotifyHeapAliveSizeAfterGC(0);
@@ -308,10 +342,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest013)
 
 HWTEST_F_L0(IdleGCTriggerTest, ShouldCheckIdleOldGCTest001)
 {
-    // fixme: adapt to cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
     heap->NotifyHeapAliveSizeAfterGC(0);

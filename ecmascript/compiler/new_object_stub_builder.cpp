@@ -1788,11 +1788,6 @@ void NewObjectStubBuilder::AllocateInYoungPrologue([[maybe_unused]] Variable *re
 {
     auto env = GetEnvironment();
     Label next(env);
-    // fixme: support ir
-    if constexpr (G_USE_CMS_GC) {
-        Jump(callRuntime);
-        return;
-    }
 #if defined(ARK_ASAN_ON)
     Jump(callRuntime);
 #else
