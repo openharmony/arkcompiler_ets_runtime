@@ -319,7 +319,7 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 return tagValue;
             }
             case JSType::JS_PRIMITIVE_REF: {
-                SerializePrimitiveRef(valHandle);
+                SerializePrimitiveRef(valHandle, replacer);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, JSTaggedValue::Exception());
                 return tagValue;
             }
@@ -843,7 +843,8 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
     return true;
 }
 
-void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef)
+void JsonStringifier::SerializePrimitiveRef(
+    const JSHandle<JSTaggedValue> &primitiveRef, const JSHandle<JSTaggedValue> &replacer)
 {
     JSTaggedValue primitive = JSPrimitiveRef::Cast(primitiveRef.GetTaggedValue().GetTaggedObject())->GetValue(thread_);
     if (primitive.IsString()) {
@@ -869,6 +870,11 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
             auto bigIntStr = BigInt::ToString(thread_, thisBigint);
             result_ += ConvertToString(thread_, *bigIntStr);
         }
+    } else {
+        ASSERT(primitive.IsSymbol());
+        CheckStackPushSameValue(primitiveRef);
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
+        SerializeJSONObject(primitiveRef, replacer);
     }
 }
 
