@@ -21,7 +21,6 @@
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/cross_vm/unified_gc/unified_gc.h"
 #include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
-#include "ecmascript/mem/cms_mem/sweep_gc.h"
 #include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/partial_gc.h"
@@ -324,8 +323,9 @@ void SharedHeap::Destroy()
     dThread_ = nullptr;
 }
 
-void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
+void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option)
 {
+    globalEnvConstants_ = globalEnvConstants;
     uint32_t totalThreadNum = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = totalThreadNum - 1;
     sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
@@ -855,11 +855,69 @@ void Heap::Initialize()
     memController_ = new MemController(this);
     nativeAreaAllocator_ = ecmaVm_->GetNativeAreaAllocator();
     heapRegionAllocator_ = ecmaVm_->GetHeapRegionAllocator();
+    size_t maxHeapSize = config_.GetMaxHeapSize();
+    size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
+    size_t maxSemiSpaceCapacity = config_.GetMaxSemiSpaceSize();
+    activeSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
+    activeSemiSpace_->Restart();
+    activeSemiSpace_->SetWaterLine();
 
-    InitializeSpaces();
+    auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
+    auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
+    thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
+    sOldTlab_ = new ThreadLocalAllocationBuffer(this);
+    thread_->ReSetSOldSpaceAllocationAddress(sOldTlab_->GetTopAddress(), sOldTlab_->GetEndAddress());
+    sNonMovableTlab_ = new ThreadLocalAllocationBuffer(this);
+    thread_->ReSetSNonMovableSpaceAllocationAddress(sNonMovableTlab_->GetTopAddress(),
+                                                    sNonMovableTlab_->GetEndAddress());
+    inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
 
     // whether should verify heap duration gc
     shouldVerifyHeap_ = ecmaVm_->GetJSOptions().EnableHeapVerify();
+    // not set up from space
+
+    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
+    readOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
+    appSpawnSpace_ = new AppSpawnSpace(this, maxHeapSize);
+    size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
+    if (ecmaVm_->GetJSOptions().WasSetMaxNonmovableSpaceCapacity()) { // LCOV_EXCL_BR_LINE
+        nonmovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
+    }
+    nonMovableSpace_ = new NonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
+    if (!g_isEnableCMCGC) {
+        nonMovableSpace_->Initialize();
+    }
+    size_t snapshotSpaceCapacity = config_.GetDefaultSnapshotSpaceSize();
+    snapshotSpace_ = new SnapshotSpace(this, snapshotSpaceCapacity, snapshotSpaceCapacity);
+    size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();
+    machineCodeSpace_ = new MachineCodeSpace(this, machineCodeSpaceCapacity, machineCodeSpaceCapacity);
+
+    size_t capacities = minSemiSpaceCapacity * 2 + nonmovableSpaceCapacity + snapshotSpaceCapacity +
+        machineCodeSpaceCapacity + readOnlySpaceCapacity;
+    if (maxHeapSize < capacities || maxHeapSize - capacities < MIN_OLD_SPACE_LIMIT) { // LOCV_EXCL_BR_LINE
+        LOG_ECMA_MEM(FATAL) << "HeapSize is too small to initialize oldspace, heapSize = " << maxHeapSize;
+    }
+    size_t oldSpaceCapacity = maxHeapSize - capacities;
+    globalSpaceAllocLimit_ = maxHeapSize - minSemiSpaceCapacity;
+    globalSpaceNativeLimit_ = INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT;
+    oldSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
+    compressSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
+    oldSpace_->Initialize();
+
+    hugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
+    hugeMachineCodeSpace_ = new HugeMachineCodeSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
+    maxEvacuateTaskCount_ = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
+        maxEvacuateTaskCount_ - 1);
+
+    LOG_GC(DEBUG) << "heap initialize: heap size = " << (maxHeapSize / 1_MB) << "MB"
+                 << ", semispace capacity = " << (minSemiSpaceCapacity / 1_MB) << "MB"
+                 << ", nonmovablespace capacity = " << (nonmovableSpaceCapacity / 1_MB) << "MB"
+                 << ", snapshotspace capacity = " << (snapshotSpaceCapacity / 1_MB) << "MB"
+                 << ", machinecodespace capacity = " << (machineCodeSpaceCapacity / 1_MB) << "MB"
+                 << ", oldspace capacity = " << (oldSpaceCapacity / 1_MB) << "MB"
+                 << ", globallimit = " << (globalSpaceAllocLimit_ / 1_MB) << "MB"
+                 << ", gcThreadNum = " << maxMarkTaskCount_;
     parallelGC_ = ecmaVm_->GetJSOptions().EnableParallelGC();
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
     markType_ = MarkType::MARK_YOUNG;
@@ -869,11 +927,7 @@ void Heap::Initialize()
     workManager_ = new WorkManager(this, common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1);
     fullGC_ = new FullGC(this);
 
-    if constexpr (G_USE_CMS_GC) {
-        sweepGC_ = new SweepGC(this);
-    } else {
-        partialGC_ = new PartialGC(this);
-    }
+    partialGC_ = new PartialGC(this);
     sweeper_ = new ConcurrentSweeper(this, ecmaVm_->GetJSOptions().EnableConcurrentSweep() ?
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
     concurrentMarker_ = new ConcurrentMarker(this, concurrentMarkerEnabled ? EnableConcurrentMarkType::ENABLE :
@@ -891,102 +945,6 @@ void Heap::Initialize()
     nativeSizeOvershoot_ = config_.GetNativeSizeOvershoot();
     asyncClearNativePointerThreshold_ = config_.GetAsyncClearNativePointerThreshold();
     idleGCTrigger_ = new IdleGCTrigger(this, sHeap_, thread_, GetEcmaVM()->GetJSOptions().EnableOptionalLog());
-}
-
-void Heap::InitializeSpaces()
-{
-    sOldTlab_ = new ThreadLocalAllocationBuffer(this);
-    thread_->ReSetSOldSpaceAllocationAddress(sOldTlab_->GetTopAddress(), sOldTlab_->GetEndAddress());
-    sNonMovableTlab_ = new ThreadLocalAllocationBuffer(this);
-    thread_->ReSetSNonMovableSpaceAllocationAddress(sNonMovableTlab_->GetTopAddress(),
-                                                    sNonMovableTlab_->GetEndAddress());
-
-    // not set up from space
-    size_t maxHeapSize = config_.GetMaxHeapSize();
-    size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
-    readOnlySpace_ = new ReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
-    appSpawnSpace_ = new AppSpawnSpace(this, maxHeapSize);
-    size_t nonmovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
-    if (ecmaVm_->GetJSOptions().WasSetMaxNonmovableSpaceCapacity()) { // LCOV_EXCL_BR_LINE
-        nonmovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
-    }
-    nonMovableSpace_ = new NonMovableSpace(this, nonmovableSpaceCapacity, nonmovableSpaceCapacity);
-    if (!g_isEnableCMCGC) {
-        nonMovableSpace_->Initialize();
-    }
-    size_t snapshotSpaceCapacity = config_.GetDefaultSnapshotSpaceSize();
-    snapshotSpace_ = new SnapshotSpace(this, snapshotSpaceCapacity, snapshotSpaceCapacity);
-    size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();
-    machineCodeSpace_ = new MachineCodeSpace(this, machineCodeSpaceCapacity, machineCodeSpaceCapacity);
-
-    size_t oldSpaceCapacity = 0;
-    if constexpr (!G_USE_CMS_GC) {
-        size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
-        size_t maxSemiSpaceCapacity = config_.GetMaxSemiSpaceSize();
-        activeSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
-        activeSemiSpace_->Restart();
-        activeSemiSpace_->SetWaterLine();
-        inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
-
-        auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
-        auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
-        thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
-
-        size_t capacities = minSemiSpaceCapacity * 2 + nonmovableSpaceCapacity + snapshotSpaceCapacity +
-            machineCodeSpaceCapacity + readOnlySpaceCapacity;
-        if (maxHeapSize < capacities || maxHeapSize - capacities < MIN_OLD_SPACE_LIMIT) { // LOCV_EXCL_BR_LINE
-            LOG_ECMA_MEM(FATAL) << "HeapSize is too small to initialize oldspace, heapSize = " << maxHeapSize;
-        }
-        oldSpaceCapacity = maxHeapSize - capacities;
-
-        oldSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
-        compressSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
-        oldSpace_->Initialize();
-
-        globalSpaceAllocLimit_ = maxHeapSize - minSemiSpaceCapacity;
-        globalSpaceNativeLimit_ = INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT;
-
-        LOG_GC(DEBUG) << "heap initialize: heap size = " << (maxHeapSize / 1_MB) << "MB"
-                    << ", semispace capacity = " << (minSemiSpaceCapacity / 1_MB) << "MB"
-                    << ", nonmovablespace capacity = " << (nonmovableSpaceCapacity / 1_MB) << "MB"
-                    << ", snapshotspace capacity = " << (snapshotSpaceCapacity / 1_MB) << "MB"
-                    << ", machinecodespace capacity = " << (machineCodeSpaceCapacity / 1_MB) << "MB"
-                    << ", oldspace capacity = " << (oldSpaceCapacity / 1_MB) << "MB"
-                    << ", globallimit = " << (globalSpaceAllocLimit_ / 1_MB) << "MB"
-                    << ", gcThreadNum = " << maxMarkTaskCount_;
-    } else {
-        // todo: remove this, adapt tlab
-        size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
-        size_t maxSemiSpaceCapacity = config_.GetMaxSemiSpaceSize();
-        activeSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
-        activeSemiSpace_->Restart();
-        auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
-        auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
-        thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
-
-        size_t capacities = nonmovableSpaceCapacity + snapshotSpaceCapacity + machineCodeSpaceCapacity +
-            readOnlySpaceCapacity;
-        oldSpaceCapacity = maxHeapSize - capacities;
-        size_t minSlotSpaceCapacity = config_.GetMinSlotSpaceSize();
-        slotSpace_ = new SlotSpace(this, minSlotSpaceCapacity, oldSpaceCapacity);
-
-        globalSpaceAllocLimit_ = maxHeapSize - minSemiSpaceCapacity;
-        globalSpaceNativeLimit_ = INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT;
-
-        LOG_GC(DEBUG) << "heap initialize: heap size = " << (maxHeapSize / 1_MB) << "MB"
-                    << ", nonmovablespace capacity = " << (nonmovableSpaceCapacity / 1_MB) << "MB"
-                    << ", snapshotspace capacity = " << (snapshotSpaceCapacity / 1_MB) << "MB"
-                    << ", machinecodespace capacity = " << (machineCodeSpaceCapacity / 1_MB) << "MB"
-                    << ", oldspace capacity = " << (oldSpaceCapacity / 1_MB) << "MB"
-                    << ", globallimit = " << (globalSpaceAllocLimit_ / 1_MB) << "MB"
-                    << ", gcThreadNum = " << maxMarkTaskCount_;
-    }
-
-    hugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
-    hugeMachineCodeSpace_ = new HugeMachineCodeSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
-    maxEvacuateTaskCount_ = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-    maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
-        maxEvacuateTaskCount_ - 1);
 }
 
 void Heap::ResetLargeCapacity()
@@ -1109,11 +1067,6 @@ void Heap::Destroy()
         delete compressSpace_;
         compressSpace_ = nullptr;
     }
-    if (slotSpace_ != nullptr) {
-        slotSpace_->Destroy();
-        delete slotSpace_;
-        slotSpace_ = nullptr;
-    }
     if (nonMovableSpace_ != nullptr) {
         nonMovableSpace_->Reset();
         delete nonMovableSpace_;
@@ -1153,10 +1106,6 @@ void Heap::Destroy()
     if (partialGC_ != nullptr) {
         delete partialGC_;
         partialGC_ = nullptr;
-    }
-    if (sweepGC_ != nullptr) {
-        delete sweepGC_;
-        sweepGC_ = nullptr;
     }
     if (fullGC_ != nullptr) {
         delete fullGC_;
@@ -1220,15 +1169,19 @@ void Heap::Resume(TriggerGCType gcType)
 {
     activeSemiSpace_->SetWaterLine();
 
-    if (mode_ != HeapMode::SPAWN) {
-        // fixme: refactor?
-        if constexpr (G_USE_CMS_GC) {
-            slotSpace_->AdjustCapacity(thread_);
+    if (mode_ != HeapMode::SPAWN &&
+        activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC(), thread_)) {
+        // if activeSpace capacity changes， oldSpace maximumCapacity should change, too.
+        size_t multiple = 2;
+        size_t oldSpaceMaxLimit = 0;
+        if (activeSemiSpace_->GetInitialCapacity() >= inactiveSemiSpace_->GetInitialCapacity()) {
+            size_t delta = activeSemiSpace_->GetInitialCapacity() - inactiveSemiSpace_->GetInitialCapacity();
+            oldSpaceMaxLimit = oldSpace_->GetMaximumCapacity() - delta * multiple;
         } else {
-            if (activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC(), thread_)) {
-                inactiveSemiSpace_->SetInitialCapacity(activeSemiSpace_->GetInitialCapacity());
-            }
+            size_t delta = inactiveSemiSpace_->GetInitialCapacity() - activeSemiSpace_->GetInitialCapacity();
+            oldSpaceMaxLimit = oldSpace_->GetMaximumCapacity() + delta * multiple;
         }
+        inactiveSemiSpace_->SetInitialCapacity(activeSemiSpace_->GetInitialCapacity());
     }
 
     PrepareRecordRegionsForReclaim();
@@ -1251,39 +1204,14 @@ void Heap::ResumeForAppSpawn()
     sweeper_->WaitAllTaskFinished();
     hugeObjectSpace_->ReclaimHugeRegion();
     hugeMachineCodeSpace_->ReclaimHugeRegion();
-    // fixme: reafactor?
-    if constexpr (G_USE_CMS_GC) {
-        slotSpace_->ReclaimFromRegions();
-    } else {
-        inactiveSemiSpace_->ReclaimRegions();
-        oldSpace_->Reset();
-    }
+    inactiveSemiSpace_->ReclaimRegions();
+    oldSpace_->Reset();
     auto cb = [] (Region *region) {
         region->ClearMarkGCBitset();
     };
     nonMovableSpace_->EnumerateRegions(cb);
     machineCodeSpace_->EnumerateRegions(cb);
     hugeObjectSpace_->EnumerateRegions(cb);
-    hugeMachineCodeSpace_->EnumerateRegions(cb);
-}
-
-void Heap::ResumeForCMS()
-{
-    ASSERT(G_USE_CMS_GC);
-    slotSpace_->AdjustCapacity(thread_);
-    // fixme: add impl
-    // fixme: support concurrent sweep
-    hugeObjectSpace_->ReclaimHugeRegion();
-    hugeMachineCodeSpace_->ReclaimHugeRegion();
-    auto cb = [] (Region *region) {
-        region->ClearMarkGCBitset();
-    };
-    sweeper_->WaitAllTaskFinished();
-    slotSpace_->EnumerateRegions(cb);
-    snapshotSpace_->EnumerateRegions(cb);
-    nonMovableSpace_->EnumerateRegions(cb);
-    hugeObjectSpace_->EnumerateRegions(cb);
-    machineCodeSpace_->EnumerateRegions(cb);
     hugeMachineCodeSpace_->EnumerateRegions(cb);
 }
 
@@ -1328,10 +1256,6 @@ void Heap::EnableParallelGC()
 
 TriggerGCType Heap::SelectGCType() const
 {
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        return OLD_GC;
-    }
     // If concurrent mark is enabled, the TryTriggerConcurrentMarking decide which GC to choose.
     if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToConcurrentMark()) {
         return YOUNG_GC;
@@ -1344,15 +1268,8 @@ TriggerGCType Heap::SelectGCType() const
     return OLD_GC;
 }
 
-// fixme: refactor, decouple gc from heap
 void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 {
-    // fixme: check gc type outside
-    if constexpr (G_USE_CMS_GC) {
-        if (gcType == TriggerGCType::YOUNG_GC || gcType == TriggerGCType::OLD_GC) {
-            gcType = TriggerGCType::CMS_GC;
-        }
-    }
     ASSERT("CollectGarbageImpl should not be called" && !g_isEnableCMCGC);
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
@@ -1381,10 +1298,10 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
 #if ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC
         gcType = TriggerGCType::FULL_GC;
 #endif
-        if (fullGCRequested_ && thread_->IsReadyToConcurrentMark() && gcType == TriggerGCType::YOUNG_GC) {
+        if (fullGCRequested_ && thread_->IsReadyToConcurrentMark() && gcType != TriggerGCType::FULL_GC) {
             gcType = TriggerGCType::FULL_GC;
         }
-        if (oldGCRequested_ && gcType == TriggerGCType::YOUNG_GC) {
+        if (oldGCRequested_ && gcType != TriggerGCType::FULL_GC) {
             gcType = TriggerGCType::OLD_GC;
         }
         if (shouldThrowOOMError_) {
@@ -1393,22 +1310,13 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
             gcType = TriggerGCType::FULL_GC;
         }
         oldGCRequested_ = false;
+        oldSpace_->AdjustOvershootSize();
 
-        // fixme: refactor?
-        size_t originalNewSpaceSize = 0;
-        if constexpr (!G_USE_CMS_GC) {
-            originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
-        }
-        // fixme: Discard SlotSpace before do statistic
-        // fixme: refactor?
-        if constexpr (G_USE_CMS_GC) {
-            GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
+        size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
+        if (!GetJSThread()->IsReadyToConcurrentMark() && markType_ == MarkType::MARK_FULL) {
+            GetEcmaGCStats()->SetGCReason(reason);
         } else {
-            if (GetJSThread()->IsConcurrentMarkingOrFinished() && markType_ == MarkType::MARK_FULL) {
-                GetEcmaGCStats()->SetGCReason(reason);
-            } else {
-                GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
-            }
+            GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
         }
         memController_->StartCalculationBeforeGC();
         StatisticHeapObject(gcType);
@@ -1417,7 +1325,6 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
             pgo::PGODumpPauseScope pscope(GetEcmaVM()->GetPGOProfiler());
             switch (gcType) {
                 case TriggerGCType::YOUNG_GC:
-                    oldSpace_->AdjustOvershootSize();
                     // Use partial GC for young generation.
                     if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
                         SetMarkType(MarkType::MARK_YOUNG);
@@ -1429,7 +1336,6 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
                     partialGC_->RunPhases();
                     break;
                 case TriggerGCType::OLD_GC: {
-                    oldSpace_->AdjustOvershootSize();
                     bool fullConcurrentMarkRequested = false;
                     // Check whether it's needed to trigger full concurrent mark instead of trigger old gc
                     if (concurrentMarker_->IsEnabled() &&
@@ -1459,15 +1365,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
                     partialGC_->RunPhases();
                     break;
                 }
-                case TriggerGCType::CMS_GC:
-                    // fixme: support cms gc
-                    sweepGC_->RunPhases();
-                    break;
                 case TriggerGCType::FULL_GC:
-                    // fixme: refactor?
-                    if constexpr (!G_USE_CMS_GC) {
-                        oldSpace_->AdjustOvershootSize();
-                    }
                     fullGC_->SetForAppSpawn(false);
                     fullGC_->RunPhases();
                     if (fullGCRequested_) {
@@ -1475,10 +1373,6 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
                     }
                     break;
                 case TriggerGCType::APPSPAWN_FULL_GC:
-                    // fixme: refactor?
-                    if constexpr (!G_USE_CMS_GC) {
-                        oldSpace_->AdjustOvershootSize();
-                    }
                     fullGC_->SetForAppSpawn(true);
                     fullGC_->RunPhasesForAppSpawn();
                     break;
@@ -1685,10 +1579,6 @@ void Heap::CheckNonMovableSpaceOOM()
 
 void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
 {
-    // fixme: support SlotSpace
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     promotedSize_ = GetEvacuator()->GetPromotedSize();
     if (originalNewSpaceSize <= 0) {
         return;
@@ -1729,25 +1619,17 @@ size_t Heap::VerifyHeapObjects(VerifyKind verifyKind) const
         if (verifyKind == VerifyKind::VERIFY_EVACUATE_YOUNG ||
             verifyKind == VerifyKind::VERIFY_EVACUATE_OLD ||
             verifyKind == VerifyKind::VERIFY_EVACUATE_FULL) {
-                // fixme: refactor?
-                if constexpr (!G_USE_CMS_GC) {
-                    inactiveSemiSpace_->EnumerateRegions([this](Region *region) {
-                        region->IterateAllMarkedBits([this](void *addr) {
-                            VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(this, addr);
-                        });
+                inactiveSemiSpace_->EnumerateRegions([this](Region *region) {
+                    region->IterateAllMarkedBits([this](void *addr) {
+                        VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(this, addr);
                     });
-                }
+                });
             }
     }
 
     {
         VerifyObjectVisitor verifier(this, &failCount, verifyKind);
-        // fixme: refactor?
-        if constexpr (G_USE_CMS_GC) {
-            slotSpace_->IterateOverObjects(verifier);
-        } else {
-            oldSpace_->IterateOverObjects(verifier);
-        }
+        oldSpace_->IterateOverObjects(verifier);
     }
 
     {
@@ -1869,34 +1751,24 @@ void Heap::DumpHeapSnapshotBeforeOOM()
 void Heap::AdjustSpaceSizeForAppSpawn()
 {
     SetHeapMode(HeapMode::SPAWN);
+    size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
+    activeSemiSpace_->SetInitialCapacity(minSemiSpaceCapacity);
     auto committedSize = appSpawnSpace_->GetCommittedSize();
     appSpawnSpace_->SetInitialCapacity(committedSize);
     appSpawnSpace_->SetMaximumCapacity(committedSize);
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        // fixme: add impl
-    } else {
-        size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
-        activeSemiSpace_->SetInitialCapacity(minSemiSpaceCapacity);
-        oldSpace_->SetInitialCapacity(oldSpace_->GetInitialCapacity() - committedSize);
-        oldSpace_->SetMaximumCapacity(oldSpace_->GetMaximumCapacity() - committedSize);
-    }
+    oldSpace_->SetInitialCapacity(oldSpace_->GetInitialCapacity() - committedSize);
+    oldSpace_->SetMaximumCapacity(oldSpace_->GetMaximumCapacity() - committedSize);
 }
 
 void Heap::AddAllocationInspectorToAllSpaces(AllocationInspector *inspector)
 {
     ASSERT(inspector != nullptr);
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        slotSpace_->AddAllocationInspector(inspector);
-    } else {
-        // activeSemiSpace_/inactiveSemiSpace_:
-        // only add an inspector to activeSemiSpace_, and while sweeping for gc, inspector need be swept.
-        activeSemiSpace_->AddAllocationInspector(inspector);
-        // oldSpace_/compressSpace_:
-        // only add an inspector to oldSpace_, and while sweeping for gc, inspector need be swept.
-        oldSpace_->AddAllocationInspector(inspector);
-    }
+    // activeSemiSpace_/inactiveSemiSpace_:
+    // only add an inspector to activeSemiSpace_, and while sweeping for gc, inspector need be swept.
+    activeSemiSpace_->AddAllocationInspector(inspector);
+    // oldSpace_/compressSpace_:
+    // only add an inspector to oldSpace_, and while sweeping for gc, inspector need be swept.
+    oldSpace_->AddAllocationInspector(inspector);
     // readOnlySpace_ need not allocationInspector.
     // appSpawnSpace_ need not allocationInspector.
     nonMovableSpace_->AddAllocationInspector(inspector);
@@ -1907,13 +1779,8 @@ void Heap::AddAllocationInspectorToAllSpaces(AllocationInspector *inspector)
 
 void Heap::ClearAllocationInspectorFromAllSpaces()
 {
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        slotSpace_->ClearAllocationInspector();
-    } else {
-        activeSemiSpace_->ClearAllocationInspector();
-        oldSpace_->ClearAllocationInspector();
-    }
+    activeSemiSpace_->ClearAllocationInspector();
+    oldSpace_->ClearAllocationInspector();
     nonMovableSpace_->ClearAllocationInspector();
     machineCodeSpace_->ClearAllocationInspector();
     hugeObjectSpace_->ClearAllocationInspector();
@@ -1922,10 +1789,6 @@ void Heap::ClearAllocationInspectorFromAllSpaces()
 
 void Heap::RecomputeLimits()
 {
-    // fixme: support cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     double gcSpeed = memController_->CalculateMarkCompactSpeedPerMS();
     double mutatorSpeed = memController_->GetCurrentOldSpaceAllocationThroughputPerMS();
     size_t oldSpaceSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize() +
@@ -1960,10 +1823,6 @@ void Heap::RecomputeLimits()
 
 bool Heap::CheckAndTriggerOldGC(size_t size)
 {
-    // fixme: just a proto impl
-    if constexpr (G_USE_CMS_GC) {
-        return false;
-    }
     bool isFullMarking = IsConcurrentFullMark() && GetJSThread()->IsMarking();
     bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimit();
     if (isFullMarking && oldSpace_->GetOvershootSize() == 0) {
@@ -2218,44 +2077,6 @@ bool Heap::TryTriggerConcurrentMarking(MarkReason markReason)
         return false;
     }
 
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        double slotSpaceAllocSpeed = memController_->GetSlotAndHugeSpaceAllocationThroughputPerMS();
-        double fullSpaceConcurrentMarkSpeed = memController_->GetFullSpaceConcurrentMarkSpeedPerMS();
-        size_t slotSpaceHeapObjectSize = slotSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize() +
-            hugeMachineCodeSpace_->GetHeapObjectSize();
-        size_t globalHeapObjectSize = GetHeapObjectSize();
-        size_t slotSpaceAllocLimit = slotSpace_->GetInitialCapacity();
-        if (slotSpaceAllocSpeed == 0 || fullSpaceConcurrentMarkSpeed == 0) {
-            if (slotSpace_->GetCommittedSize() >= config_.GetSlotSpaceTriggerConcurrentMark()) {
-                markType_ = MarkType::MARK_FULL;
-                TriggerConcurrentMarking(markReason);
-                OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first full mark" << fullGCRequested_;
-                return true;
-            }
-        } else {
-            if (slotSpaceHeapObjectSize >= slotSpaceAllocLimit || globalHeapObjectSize >= globalSpaceAllocLimit_ ||
-                GlobalNativeSizeLargerThanLimit()) {
-                markType_ = MarkType::MARK_FULL;
-                OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first full mark";
-                TriggerConcurrentMarking(markReason);
-                return true;
-            }
-            double slotSpaceUsableSize = slotSpaceAllocLimit - slotSpaceHeapObjectSize;
-            double slotSpaceAllocToLimitDuration = slotSpaceUsableSize / slotSpaceAllocSpeed;
-            double fullSpaceMarkDuration = globalHeapObjectSize / fullSpaceConcurrentMarkSpeed;
-            // slotSpaceRemainSize means the predicted size which can be allocated after the full concurrent mark.
-            double slotSpaceRemainSize = (slotSpaceAllocToLimitDuration - fullSpaceMarkDuration) * slotSpaceAllocSpeed;
-            if (slotSpaceRemainSize < DEFAULT_REGION_SIZE) {
-                markType_ = MarkType::MARK_FULL;
-                TriggerConcurrentMarking(markReason);
-                OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger full mark";
-                return true;
-            }
-        }
-        return false;
-    }
-
     double oldSpaceMarkDuration = 0;
     double newSpaceMarkDuration = 0;
     double newSpaceRemainSize = 0;
@@ -2431,13 +2252,8 @@ void Heap::DecreaseNativeBindingSize(size_t size)
 
 void Heap::PrepareRecordRegionsForReclaim()
 {
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        slotSpace_->SetRecordRegion();
-    } else {
-        activeSemiSpace_->SetRecordRegion();
-        oldSpace_->SetRecordRegion();
-    }
+    activeSemiSpace_->SetRecordRegion();
+    oldSpace_->SetRecordRegion();
     snapshotSpace_->SetRecordRegion();
     nonMovableSpace_->SetRecordRegion();
     hugeObjectSpace_->SetRecordRegion();
@@ -2833,7 +2649,7 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
     ASSERT(heap_->GetWorkManager()->HasInitialized());
     while (!heap_->GetWorkManager()->HasInitialized());
     switch (taskPhase_) {
-        case ParallelGCTaskPhase::HANDLE_GLOBAL_POOL_TASK:
+        case ParallelGCTaskPhase::OLD_HANDLE_GLOBAL_POOL_TASK:
             heap_->GetNonMovableMarker()->ProcessMarkStack(threadIndex);
             break;
         case ParallelGCTaskPhase::COMPRESS_HANDLE_GLOBAL_POOL_TASK:
@@ -3002,10 +2818,7 @@ void Heap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
         return;
     }
     heapAliveSizeAfterGC_ = GetHeapObjectSize();
-    // fixme: refactor?
-    if constexpr (!G_USE_CMS_GC) {
-        heapAliveSizeExcludesYoungAfterGC_ = heapAliveSizeAfterGC_ - activeSemiSpace_->GetHeapObjectSize();
-    }
+    heapAliveSizeExcludesYoungAfterGC_ = heapAliveSizeAfterGC_ - activeSemiSpace_->GetHeapObjectSize();
     fragmentSizeAfterGC_ = GetCommittedSize() - heapAliveSizeAfterGC_;
     if (gcType == TriggerGCType::FULL_GC) {
         heapBasicLoss_ = fragmentSizeAfterGC_;
@@ -3021,40 +2834,18 @@ void Heap::PrintHeapInfo(TriggerGCType gcType) const
                                 << ";ConcurrentMark Status:" << static_cast<int>(thread_->GetMarkStatus());
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
                                 << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsConcurrentFullMark();
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        OPTIONAL_LOG(ecmaVm_, INFO)
-            << "), SlotSpace(" << slotSpace_->GetHeapObjectSize()
-                << "/" << slotSpace_->GetCommittedSize() << "/" << slotSpace_->GetInitialCapacity()
-            << "), NonMovable(" << nonMovableSpace_->GetHeapObjectSize()
-                << "/" << nonMovableSpace_->GetCommittedSize() << "/" << nonMovableSpace_->GetInitialCapacity()
-            << "), HugeObject(" << hugeObjectSpace_->GetHeapObjectSize()
-                << "/" << hugeObjectSpace_->GetCommittedSize() << "/" << hugeObjectSpace_->GetInitialCapacity()
-            << "), ReadOnlySpace(" << readOnlySpace_->GetCommittedSize()
-                << "/" << readOnlySpace_->GetInitialCapacity()
-            << "), AppspawnSpace(" << appSpawnSpace_->GetHeapObjectSize()
-                << "/" << appSpawnSpace_->GetCommittedSize() << "/" << appSpawnSpace_->GetInitialCapacity()
-            << "), NativeBindingSize(" << nativeBindingSize_
-            << "), NativeLimitSize(" << globalSpaceNativeLimit_
-            << "), GlobalLimitSize(" << globalSpaceAllocLimit_ << ").";
-    } else {
-        OPTIONAL_LOG(ecmaVm_, INFO)
-            << "), ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()
-                << "/" << activeSemiSpace_->GetInitialCapacity()
-            << "), NonMovable(" << nonMovableSpace_->GetHeapObjectSize()
-                << "/" << nonMovableSpace_->GetCommittedSize() << "/" << nonMovableSpace_->GetInitialCapacity()
-            << "), Old(" << oldSpace_->GetHeapObjectSize()
-                << "/" << oldSpace_->GetCommittedSize() << "/" << oldSpace_->GetInitialCapacity()
-            << "), HugeObject(" << hugeObjectSpace_->GetHeapObjectSize()
-                << "/" << hugeObjectSpace_->GetCommittedSize() << "/" << hugeObjectSpace_->GetInitialCapacity()
-            << "), ReadOnlySpace(" << readOnlySpace_->GetCommittedSize()
-                << "/" << readOnlySpace_->GetInitialCapacity()
-            << "), AppspawnSpace(" << appSpawnSpace_->GetHeapObjectSize()
-                << "/" << appSpawnSpace_->GetCommittedSize() << "/" << appSpawnSpace_->GetInitialCapacity()
-            << "), NativeBindingSize(" << nativeBindingSize_
-            << "), NativeLimitSize(" << globalSpaceNativeLimit_
-            << "), GlobalLimitSize(" << globalSpaceAllocLimit_ << ").";
-    }
+    OPTIONAL_LOG(ecmaVm_, INFO) << "), ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize() << "/"
+                 << activeSemiSpace_->GetInitialCapacity() << "), NonMovable(" << nonMovableSpace_->GetHeapObjectSize()
+                 << "/" << nonMovableSpace_->GetCommittedSize() << "/" << nonMovableSpace_->GetInitialCapacity()
+                 << "), Old(" << oldSpace_->GetHeapObjectSize() << "/" << oldSpace_->GetCommittedSize() << "/"
+                 << oldSpace_->GetInitialCapacity() << "), HugeObject(" << hugeObjectSpace_->GetHeapObjectSize() << "/"
+                 << hugeObjectSpace_->GetCommittedSize() << "/" << hugeObjectSpace_->GetInitialCapacity()
+                 << "), ReadOnlySpace(" << readOnlySpace_->GetCommittedSize() << "/"
+                 << readOnlySpace_->GetInitialCapacity() << "), AppspawnSpace(" << appSpawnSpace_->GetHeapObjectSize()
+                 << "/" << appSpawnSpace_->GetCommittedSize() << "/" << appSpawnSpace_->GetInitialCapacity()
+                 << "), NativeBindingSize(" << nativeBindingSize_
+                 << "), NativeLimitSize(" << globalSpaceNativeLimit_
+                 << "), GlobalLimitSize(" << globalSpaceAllocLimit_ << ").";
 }
 
 void Heap::StatisticHeapObject(TriggerGCType gcType) const
@@ -3068,40 +2859,41 @@ void Heap::StatisticHeapObject(TriggerGCType gcType) const
 void Heap::StatisticHeapDetail()
 {
     Prepare();
-    static constexpr int JS_TYPE_SUM = static_cast<int>(JSType::TYPE_LAST) + 1;
+    static const int JS_TYPE_SUM = static_cast<int>(JSType::TYPE_LAST) + 1;
     int typeCount[JS_TYPE_SUM] = { 0 };
-    static constexpr int MIN_COUNT_THRESHOLD = 1000;
+    static const int MIN_COUNT_THRESHOLD = 1000;
 
-    auto CheckAndLog = [&typeCount]() {
-        for (int i = 0; i < JS_TYPE_SUM; i++) {
-            if (typeCount[i] > MIN_COUNT_THRESHOLD) {
-                LOG_ECMA(INFO) << "NonMovable space type " << JSHClass::DumpJSType(JSType(i))
-                            << " count:" << typeCount[i];
-            }
-            typeCount[i] = 0;
-        }
-    };
     nonMovableSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
         typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
     });
-    CheckAndLog();
+    for (int i = 0; i < JS_TYPE_SUM; i++) {
+        if (typeCount[i] > MIN_COUNT_THRESHOLD) {
+            LOG_ECMA(INFO) << "NonMovable space type " << JSHClass::DumpJSType(JSType(i))
+                           << " count:" << typeCount[i];
+        }
+        typeCount[i] = 0;
+    }
 
-    // fixme: refactor
-    if constexpr (G_USE_CMS_GC) {
-        slotSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
-            typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
-        });
-        CheckAndLog();
-    } else {
-        oldSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
-            typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
-        });
-        CheckAndLog();
+    oldSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
+        typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
+    });
+    for (int i = 0; i < JS_TYPE_SUM; i++) {
+        if (typeCount[i] > MIN_COUNT_THRESHOLD) {
+            LOG_ECMA(INFO) << "Old space type " << JSHClass::DumpJSType(JSType(i))
+                           << " count:" << typeCount[i];
+        }
+        typeCount[i] = 0;
+    }
 
-        activeSemiSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
-            typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
-        });
-        CheckAndLog();
+    activeSemiSpace_->IterateOverObjects([&typeCount] (TaggedObject *object) {
+        typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
+    });
+    for (int i = 0; i < JS_TYPE_SUM; i++) {
+        if (typeCount[i] > MIN_COUNT_THRESHOLD) {
+            LOG_ECMA(INFO) << "Active semi space type " << JSHClass::DumpJSType(JSType(i))
+                           << " count:" << typeCount[i];
+        }
+        typeCount[i] = 0;
     }
 }
 
@@ -3115,12 +2907,7 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     if (Runtime::GetInstance()->IsHybridVm()) {
         unifiedGCMarker_->workManager_ = workManager;
     }
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        sweepGC_->workManager_ = workManager;
-    } else {
-        partialGC_->workManager_ = workManager;
-    }
+    partialGC_->workManager_ = workManager;
 }
 
 MachineCode *Heap::GetMachineCodeObject(uintptr_t pc) const

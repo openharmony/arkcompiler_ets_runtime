@@ -73,8 +73,6 @@ declare_args() {
   ets_runtime_enable_cmc_gc = false
 
   enable_handle_leak_detect = false
-
-  enable_cms_gc = false
 }
 
 if (defined(enable_cmc_gc)) {

@@ -245,24 +245,6 @@ public:
         beforeGCOldMemCommitted_ = beforeGCOldMemCommitted;
     }
 
-    size_t GetBeforeGCSlotSpaceMemUsed() const
-    {
-        return beforeGCSlotSpaceMemUsed_;
-    }
-    void SetBeforeGCSlotSpaceMemUsed(size_t beforeGCSlotSpaceMemUsed)
-    {
-        beforeGCSlotSpaceMemUsed_ = beforeGCSlotSpaceMemUsed;
-    }
-
-    size_t GetBeforeGCSlotSpaceMemCommitted() const
-    {
-        return beforeGCSlotSpaceMemCommitted_;
-    }
-    void SetBeforeGCSlotSpaceMemCommitted(size_t beforeGCSlotSpaceMemCommitted)
-    {
-        beforeGCSlotSpaceMemCommitted_ = beforeGCSlotSpaceMemCommitted;
-    }
-
     size_t GetBeforeGCHugeMemUsed() const
     {
         return beforeGCHugeMemUsed_;
@@ -353,26 +335,6 @@ public:
         afterGCOldMemCommitted_ = afterGCOldMemCommitted;
     }
 
-    size_t GetAfterGCSlotSpaceMemUsed() const
-    {
-        return afterGCSlotSpaceMemUsed_;
-    }
-
-    void SetAfterGCSlotSpaceMemUsed(size_t afterGCSlotSpaceMemUsed)
-    {
-        afterGCSlotSpaceMemUsed_ = afterGCSlotSpaceMemUsed;
-    }
-
-    size_t GetAfterGCSlotSpaceMemCommitted() const
-    {
-        return afterGCSlotSpaceMemCommitted_;
-    }
-
-    void SetAfterGCSlotSpaceMemCommitted(size_t afterGCSlotSpaceMemCommitted)
-    {
-        afterGCSlotSpaceMemCommitted_ = afterGCSlotSpaceMemCommitted;
-    }
-
     size_t GetAfterGCHugeMemUsed() const
     {
         return afterGCHugeMemUsed_;
@@ -419,45 +381,41 @@ public:
     }
 
 private:
-    size_t gcType_ {0};
-    size_t gcReason_ {0};
-    size_t markReason_ {0};
-    bool gcIsSensitive_ = {false};
-    bool gcIsInBackground_ = {false};
-    float gcTotalTime_ = {0.0f};
-    float gcMarkTime_ = {0.0f};
-    float gcEvacuateTime_ = {0.0f};
-    float gcUpdateRootTime_ = {0.0f};
-    float gcUpdateWeekRefTime_ = {0.0f};
-    float gcUpdateReferenceTime_ = {0.0f};
-    float gcSweepNewToOldTime_ = {0.0f};
-    float gcFinalizeTime_ = {0.0f};
-    float gcInvokeCallbackTime_ = {0.0f};
-    size_t beforeGCTotalMemUsed_ {0};
-    size_t beforeGCTotalMemCommitted_ {0};
-    size_t beforeGCActiveMemUsed_ {0};
-    size_t beforeGCActiveMemCommitted_ {0};
-    size_t beforeGCOldMemUsed_ {0};
-    size_t beforeGCOldMemCommitted_ {0};
-    size_t beforeGCSlotSpaceMemUsed_ {0};
-    size_t beforeGCSlotSpaceMemCommitted_ {0};
-    size_t beforeGCHugeMemUsed_ {0};
-    size_t beforeGCHugeMemCommitted_ {0};
-    size_t beforeGCNativeBindingSize_ {0};
-    size_t beforeGCNativeLimit_ {0};
-    size_t afterGCTotalMemUsed_ {0};
-    size_t afterGCTotalMemCommitted_ {0};
-    size_t afterGCActiveMemUsed_ {0};
-    size_t afterGCActiveMemCommitted_ {0};
-    size_t afterGCOldMemUsed_ {0};
-    size_t afterGCOldMemCommitted_ {0};
-    size_t afterGCSlotSpaceMemUsed_ {0};
-    size_t afterGCSlotSpaceMemCommitted_ {0};
-    size_t afterGCHugeMemUsed_ {0};
-    size_t afterGCHugeMemCommitted_ {0};
-    size_t afterGCNativeBindingSize_ {0};
-    size_t afterGCNativeLimit_ {0};
-    double cpuLoad_ {0.0};
+    size_t gcType_ = 0;
+    size_t gcReason_ = 0;
+    size_t markReason_ = 0;
+    bool gcIsSensitive_ = false;
+    bool gcIsInBackground_ = false;
+    float gcTotalTime_ = 0.0f;
+    float gcMarkTime_ = 0.0f;
+    float gcEvacuateTime_ = 0.0f;
+    float gcUpdateRootTime_ = 0.0f;
+    float gcUpdateWeekRefTime_ = 0.0f;
+    float gcUpdateReferenceTime_ = 0.0f;
+    float gcSweepNewToOldTime_ = 0.0f;
+    float gcFinalizeTime_ = 0.0f;
+    float gcInvokeCallbackTime_ = 0.0f;
+    size_t beforeGCTotalMemUsed_ = 0;
+    size_t beforeGCTotalMemCommitted_ = 0;
+    size_t beforeGCActiveMemUsed_ = 0;
+    size_t beforeGCActiveMemCommitted_ = 0;
+    size_t beforeGCOldMemUsed_ = 0;
+    size_t beforeGCOldMemCommitted_ = 0;
+    size_t beforeGCHugeMemUsed_ = 0;
+    size_t beforeGCHugeMemCommitted_ = 0;
+    size_t beforeGCNativeBindingSize_ = 0;
+    size_t beforeGCNativeLimit_ = 0;
+    size_t afterGCTotalMemUsed_ = 0;
+    size_t afterGCTotalMemCommitted_ = 0;
+    size_t afterGCActiveMemUsed_ = 0;
+    size_t afterGCActiveMemCommitted_ = 0;
+    size_t afterGCOldMemUsed_ = 0;
+    size_t afterGCOldMemCommitted_ = 0;
+    size_t afterGCHugeMemUsed_ = 0;
+    size_t afterGCHugeMemCommitted_ = 0;
+    size_t afterGCNativeBindingSize_ = 0;
+    size_t afterGCNativeLimit_ = 0;
+    double cpuLoad_ = 0.0;
 };
 }  // namespace panda::ecmascript
 

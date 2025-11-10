@@ -83,12 +83,13 @@ void UnifiedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_
         JSHClass *hclass = TaggedObject::Cast(root)->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_NO_RB>(nullptr).GetTaggedObject());
+        JSThread *thread = workNodeHolder_->GetJSThread();
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
         ObjectSlot realEnd = start;
         realEnd += layout->GetPropertiesCapacity();
         end = end > realEnd ? realEnd : end;
         for (ObjectSlot slot = start; slot < end; slot++) {
-            PropertyAttributes attr = layout->GetAttr<RBMode::FAST_NO_RB>(nullptr, index++);
+            PropertyAttributes attr = layout->GetAttr(thread, index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot);
             }

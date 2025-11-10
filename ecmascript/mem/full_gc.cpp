@@ -91,14 +91,15 @@ void FullGC::Initialize()
         current->ClearMarkGCBitset();
         current->ClearCrossRegionRSet();
     });
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        heap_->GetSlotSpace()->PrepareCompact();
-    } else {
-        heap_->SwapNewSpace();
-    }
+    youngSpaceCommitSize_ = heap_->GetNewSpace()->GetCommittedSize();
+    heap_->SwapNewSpace();
     workManager_->Initialize(TriggerGCType::FULL_GC, ParallelGCTaskPhase::COMPRESS_HANDLE_GLOBAL_POOL_TASK);
     heap_->GetCompressGCMarker()->Initialize();
+
+    youngAndOldAliveSize_ = 0;
+    nonMoveSpaceFreeSize_ = 0;
+    oldSpaceCommitSize_ = heap_->GetOldSpace()->GetCommittedSize();
+    nonMoveSpaceCommitSize_ = heap_->GetNonMovableSpace()->GetCommittedSize();
 }
 
 void FullGC::MarkRoots()
@@ -161,21 +162,18 @@ void FullGC::Sweep()
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
 
-    heap_->GetSweeper()->Sweep(TriggerGCType::FULL_GC);
-    heap_->GetSweeper()->PostTask(TriggerGCType::FULL_GC);
+    heap_->GetSweeper()->Sweep(true);
+    heap_->GetSweeper()->PostTask(true);
 }
 
 void FullGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "FullGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
-    // fixme: refactor?
-    if constexpr (!G_USE_CMS_GC) {
-        if (!forAppSpawn_) {
-            heap_->SwapOldSpace();
-        }
+    if (!forAppSpawn_) {
+        heap_->SwapOldSpace();
     }
-    workManager_->Finish();
+    youngAndOldAliveSize_ = workManager_->Finish();
     if (forAppSpawn_) {
         heap_->ResumeForAppSpawn();
     } else {
@@ -191,10 +189,6 @@ bool FullGC::HasEvacuated(Region *region)
         return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace() &&
                !region->InSharedHeap();
     }
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        return region->InSlotSpace();
-    }
     return region->InYoungOrOldSpace();
 }
 
@@ -203,7 +197,7 @@ void FullGC::SetForAppSpawn(bool flag)
     forAppSpawn_ = flag;
 }
 
-void FullGC::ProcessSharedGCRSetWorkList()
+ARK_INLINE void FullGC::ProcessSharedGCRSetWorkList()
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessSharedGCRSetWorkList, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->ProcessSharedGCRSetWorkList();
