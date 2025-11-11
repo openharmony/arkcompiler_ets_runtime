@@ -173,7 +173,8 @@ public:
                             JSTaggedType *dst, JSTaggedType *src, uint32_t count);
     static void CopyObjectPrimitive(uintptr_t argGlue, JSTaggedType *dstObj,
                                     JSTaggedType *dst, JSTaggedType *src, uint32_t count);
-    static void FillObject(JSTaggedType *dst, JSTaggedType value, uint32_t count);
+    static void FillObject(uintptr_t argGlue, JSTaggedType elements,
+                            JSTaggedType value, uint32_t start, uint32_t count);
     static void ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t length);
 
     static JSTaggedValue FindPatchModule(uintptr_t argGlue, JSTaggedValue resolvedModule);

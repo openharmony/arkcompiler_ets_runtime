@@ -1990,7 +1990,7 @@ DEF_CALL_SIGNATURE(SortTypedArray)
 
 DEF_CALL_SIGNATURE(FillObject)
 {
-    constexpr size_t paramCount = 3;
+    constexpr size_t paramCount = 5;
     // 3 : 3 input parameters
     CallSignature ObjectFill("FillObject", 0, paramCount,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
@@ -1999,6 +1999,8 @@ DEF_CALL_SIGNATURE(FillObject)
     std::array<VariableType, paramCount> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
+        VariableType::JS_ANY(),
+        VariableType::INT32(),
         VariableType::INT32()
     };
     callSign->SetParameters(params.data());
