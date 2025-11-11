@@ -80,7 +80,6 @@ obj/arkcompiler/ets_runtime/ecmascript/jspandafile/tests/JSPandaFileTestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/platform/unix/ohos/tests/BacktraceTestWithQemu
 tests/unittest/ets_runtime/Jsnapi_002_Test
 tests/unittest/ets_runtime/SerializerTest
-obj/arkcompiler/ets_runtime/ecmascript/tests/GC_First_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/tests/GC_Second_TestWithQemu
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_AsyncGengeratorObject_Test/js_async_generator_object_test.o
 obj/arkcompiler/ets_runtime/ecmascript/tests/JS_Collator_TestWithQemu
@@ -272,3 +271,7 @@ obj/arkcompiler/ets_runtime/ecmascript/builtins/tests/Builtins_Regexp_TestWithQe
 
 #27549
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_Sendable_TestWithQemu
+
+#28652
+obj/arkcompiler/ets_runtime/ecmascript/tests/GC_First_TestWithQemu
+
