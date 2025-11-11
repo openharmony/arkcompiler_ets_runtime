@@ -6682,6 +6682,9 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForNormalApp(EcmaVM *vm
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm, const std::string &file,
     const std::string &module_path)
 {
+    if (module_path.empty()) {
+        return JSValueRef::Undefined(vm);
+    }
     return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(vm, file, module_path);
 }
 
