@@ -692,7 +692,9 @@ CString NumberHelper::IntToString(int number)
 JSHandle<EcmaString> NumberHelper::IntToEcmaString(const JSThread *thread, int number)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewFromASCII(ToCString(number));
+    static constexpr uint32_t BUFF_SIZE = std::numeric_limits<int>::digits10 + 3;
+    char buffer[BUFF_SIZE];
+    return factory->NewFromASCII(IntToStringView(number, buffer, BUFF_SIZE));
 }
 
 CString NumberHelper::DoubleToCString(double d)

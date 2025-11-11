@@ -28,5 +28,9 @@ hhh
 2
 true
 true
+1,2
+2
+1,2,3
+3
 prop1
 prop2

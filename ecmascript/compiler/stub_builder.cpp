@@ -8921,13 +8921,17 @@ GateRef StubBuilder::NextInternal(GateRef glue, GateRef iter)
     Label notEnumCacheValid(env);
     Label fastGetKey(env);
     Label slowpath(env);
+    Label fastPath(env);
 
+    GateRef receiver = GetObjectFromForInIterator(glue, iter);
+    Branch(LogicAndBuilder(env).And(TaggedIsHeapObject(receiver)).And(IsJsArray(glue, receiver)).Done(),
+        &slowpath, &fastPath);
+    Bind(&fastPath);
     GateRef index = GetIndexFromForInIterator(iter);
     GateRef length = GetLengthFromForInIterator(iter);
     BRANCH(Int32GreaterThanOrEqual(index, length), &exit, &notFinish);
     Bind(&notFinish);
     GateRef keys = GetKeysFromForInIterator(glue, iter);
-    GateRef receiver = GetObjectFromForInIterator(glue, iter);
     GateRef cachedHclass = GetCachedHClassFromForInIterator(glue, iter);
     GateRef kind = GetCacheKindFromForInIterator(iter);
     BRANCH(IsEnumCacheValid(glue, receiver, cachedHclass, kind), &fastGetKey, &notEnumCacheValid);
