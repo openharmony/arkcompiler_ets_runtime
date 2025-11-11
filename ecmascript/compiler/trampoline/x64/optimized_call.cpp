@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/assembler/x64/assembler_x64.h"
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/message_string.h"
 
 namespace panda::ecmascript::x64 {
@@ -1520,9 +1522,16 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     __ Push(glueReg);
     __ PushCppCalleeSaveRegisters();
 
-    __ Movq(rdi, rax); // glue
     Register deoptType = rsi;
     Register maybeAcc = rdx;
+    {
+        TempRegisterScope scope(assembler);
+        Register mark = __ TempRegister();
+        __ Movabs(JSTaggedValue::TAG_INT, mark);
+        __ Andl(-1, deoptType);
+        __ Orq(mark, deoptType);
+    }
+    __ Movq(rdi, rax);  // glue
     __ Subq(FRAME_SLOT_SIZE, rsp);
     __ Pushq(maybeAcc);   // acc
     __ Pushq(deoptType);  // argv[0]
