@@ -29,7 +29,6 @@ MemMapAllocator *MemMapAllocator::GetInstance()
 
 void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignment)
 {
-#ifdef NDEBUG
 #if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
     size_t initialRegularObjectCapacity = std::min(capacity_ / 3, INITIAL_REGULAR_OBJECT_CAPACITY);
     size_t i = 0;
@@ -50,13 +49,12 @@ void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignme
         i++;
     }
 #endif
-#endif
 }
 
 void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 {
     size_t initialHugeObjectCapacity = std::min(capacity_ / 3, INITIAL_HUGE_OBJECT_CAPACITY);
-#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM && defined(NDEBUG)
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
     size_t i = 0;
     while (i <= MEM_MAP_RETRY_NUM) {
         void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) +
@@ -96,7 +94,7 @@ void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
 #else
     size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity;
 #endif
-#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM && defined(NDEBUG)
+#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM
     size_t i = 0;
     while (i <= MEM_MAP_RETRY_NUM) {
         void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) +

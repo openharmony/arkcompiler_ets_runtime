@@ -31,7 +31,6 @@ enum MemSpaceType {
     OLD_SPACE = 0,
     NON_MOVABLE,
     MACHINE_CODE_SPACE,
-    SLOT_SPACE,
     HUGE_OBJECT_SPACE,
     SEMI_SPACE,
     SNAPSHOT_SPACE,
@@ -52,7 +51,7 @@ enum MemSpaceType {
     SHARED_BEGIN = SHARED_OLD_SPACE,
     SHARED_END = SHARED_HUGE_OBJECT_SPACE,
     // Free region means memory maybe always in use and can not be evacuated
-    FREE_LIST_NUM = SLOT_SPACE - OLD_SPACE + 1,
+    FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
     SHARED_SWEEPING_SPACE_BEGIN = SHARED_OLD_SPACE,
     SHARED_SWEEPING_SPACE_END = SHARED_NON_MOVABLE,
     SHARED_SWEEPING_SPACE_NUM = SHARED_SWEEPING_SPACE_END - SHARED_SWEEPING_SPACE_BEGIN + 1,
@@ -97,8 +96,6 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "appspawn space";
         case HUGE_MACHINE_CODE_SPACE:
             return "huge machine code space";
-        case SLOT_SPACE:
-            return "slot space";
         case SHARED_NON_MOVABLE:
             return "shared non movable space";
         case SHARED_OLD_SPACE:
@@ -203,68 +200,29 @@ public:
 
     inline RegionSpaceFlag GetRegionFlag() const;
 
-    virtual uint32_t GetRegionCount() const = 0;
-
-    bool IsOOMDumpSpace()
+    uintptr_t GetAllocateAreaBegin() const
     {
-        return spaceType_ == SEMI_SPACE || spaceType_ == OLD_SPACE || spaceType_ == NON_MOVABLE ||
-            spaceType_ == HUGE_OBJECT_SPACE;
+        return regionList_.GetLast()->GetBegin();
     }
 
-    // methods for allocation inspector
-    void AddAllocationInspector(AllocationInspector* inspector);
-    void ClearAllocationInspector();
-    void SwapAllocationCounter(Space *space);
-
-    virtual void Initialize() {};
-    void Destroy();
-
-    virtual void ReclaimRegions(size_t cachedSize = 0) = 0;
-
-protected:
-    void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
-
-    BaseHeap *heap_ {nullptr};
-    HeapRegionAllocator *heapRegionAllocator_ {nullptr};
-    MemSpaceType spaceType_ {};
-    size_t initialCapacity_ {0};
-    size_t maximumCapacity_ {0};
-    size_t committedSize_ {0};
-    size_t objectSize_ {0};
-    size_t outOfMemoryOvershootSize_ {0};
-    AllocationCounter allocationCounter_;
-};
-
-class SweepableSpace {
-public:
-    SweepableSpace() = default;
-    ~SweepableSpace() = default;
-
-    NO_COPY_SEMANTIC(SweepableSpace);
-    NO_MOVE_SEMANTIC(SweepableSpace);
-
-    // For sweeping
-    virtual void Sweep() = 0;
-
-    virtual void PrepareSweeping() = 0;
-
-    virtual void AsyncSweep(bool isMain) = 0;
-
-    virtual bool TryFillSweptRegion() = 0;
-
-    // Ensure All region finished sweeping
-    virtual bool FinishFillSweptRegion() = 0;
-};
-
-class MonoSpace : public Space {
-public:
-    MonoSpace(BaseHeap* heap, HeapRegionAllocator *regionAllocator, MemSpaceType spaceType, size_t initialCapacity,
-              size_t maximumCapacity);
-    ~MonoSpace() override = default;
+    uintptr_t GetAllocateAreaEnd() const
+    {
+        return regionList_.GetLast()->GetEnd();
+    }
 
     Region *GetCurrentRegion() const
     {
         return regionList_.GetLast();
+    }
+
+    Region *GetFirstRegion() const
+    {
+        return regionList_.GetFirst();
+    }
+
+    uint32_t GetRegionCount()
+    {
+        return regionList_.GetLength();
     }
 
     EcmaList<Region> &GetRegionList()
@@ -277,15 +235,21 @@ public:
         return regionList_;
     }
 
-    uint32_t GetRegionCount() const final
-    {
-        return regionList_.GetLength();
-    }
-
     void SetRecordRegion()
     {
         recordRegion_ = GetCurrentRegion();
     }
+
+    bool IsOOMDumpSpace()
+    {
+        return spaceType_ == SEMI_SPACE || spaceType_ == OLD_SPACE || spaceType_ == NON_MOVABLE ||
+            spaceType_ == HUGE_OBJECT_SPACE;
+    }
+
+    // methods for allocation inspector
+    void AddAllocationInspector(AllocationInspector* inspector);
+    void ClearAllocationInspector();
+    void SwapAllocationCounter(Space *space);
 
     template <class Callback>
     inline void EnumerateRegions(const Callback &cb, Region *region = nullptr) const;
@@ -295,14 +259,28 @@ public:
     inline void AddRegion(Region *region);
     inline void RemoveRegion(Region *region);
 
-    void ReclaimRegions(size_t cachedSize = 0) final;
+    virtual void Initialize() {};
+    void Destroy();
+
+    void ReclaimRegions(size_t cachedSize = 0);
 
 protected:
+    void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
+
+    BaseHeap *heap_ {nullptr};
+    HeapRegionAllocator *heapRegionAllocator_ {nullptr};
     EcmaList<Region> regionList_ {};
+    MemSpaceType spaceType_ {};
+    size_t initialCapacity_ {0};
+    size_t maximumCapacity_ {0};
+    size_t committedSize_ {0};
+    size_t objectSize_ {0};
+    size_t outOfMemoryOvershootSize_ {0};
     Region *recordRegion_ {nullptr};
+    AllocationCounter allocationCounter_;
 };
 
-class HugeObjectSpace : public MonoSpace {
+class HugeObjectSpace : public Space {
 public:
     HugeObjectSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity);

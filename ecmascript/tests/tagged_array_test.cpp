@@ -48,9 +48,6 @@ HWTEST_F_L0(TaggedArrayTest, Create)
 
 HWTEST_F_L0(TaggedArrayTest, SetAndGetIdx)
 {
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     EcmaVM *ecmaVM = thread->GetEcmaVM();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 2;

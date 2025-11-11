@@ -245,10 +245,6 @@ HWTEST_F_L0(BarrierTest, LocalToShareMixBatchCopy)
 
 HWTEST_F_L0(BarrierTest, OldToNewBatchCopy)
 {
-    // fixme: support stiky cms
-    if constexpr (G_USE_CMS_GC) {
-        return;
-    }
     ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
     uint32_t arrayLength = 10;
     // length 50 will be in old

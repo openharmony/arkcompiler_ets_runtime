@@ -79,7 +79,6 @@ private:
     void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateOld(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
-    void VerifyMarkSlotSpace(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifySharedRSetPostFullGC(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifySharedObjectReference(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
 

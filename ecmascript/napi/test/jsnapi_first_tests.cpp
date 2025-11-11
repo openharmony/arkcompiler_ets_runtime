@@ -1446,8 +1446,6 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
     // trigger gc
     JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::OLD_GC;
     JSNApi::TriggerGC(vm_, gcType);
-    gcType = JSNApi::TRIGGER_GC_TYPE::FULL_GC;
-    JSNApi::TriggerGC(vm_, gcType);
     gcType = JSNApi::TRIGGER_GC_TYPE::SHARED_GC;
     JSNApi::TriggerGC(vm_, gcType);
     gcType = JSNApi::TRIGGER_GC_TYPE::SHARED_FULL_GC;

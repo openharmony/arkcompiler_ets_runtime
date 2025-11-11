@@ -201,7 +201,7 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
             // by a page aligned nonmutable (JitFort space) area of JIT generated native instructions.
             // i.e.
             // mutableSize = align up to PageSize
-            //     (sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE +MachineCode::SIZE + payLoadSize - instructionsSize)
+            //     (sizeof(Region) + HUGE_OBJECT_BITSET_SIZE +MachineCode::SIZE + payLoadSize - instructionsSize)
             // immutableSize = instructionsSize (native page boundary aligned)
             // See comments at HugeMachineCodeSpace::Allocate()
             //

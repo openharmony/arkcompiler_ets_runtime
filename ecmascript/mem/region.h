@@ -50,12 +50,11 @@ enum RegionSpaceFlag {
     IN_READ_ONLY_SPACE = 0X0E,
     IN_APPSPAWN_SPACE = 0x0F,
     IN_HUGE_MACHINE_CODE_SPACE = 0x10,
-    IN_SLOT_SPACE = 0x11,
-    IN_SHARED_NON_MOVABLE = 0x12,
-    IN_SHARED_OLD_SPACE = 0x13,
-    IN_SHARED_APPSPAWN_SPACE = 0X14,
-    IN_SHARED_HUGE_OBJECT_SPACE = 0x15,
-    IN_SHARED_READ_ONLY_SPACE = 0x16,
+    IN_SHARED_NON_MOVABLE = 0x11,
+    IN_SHARED_OLD_SPACE = 0x12,
+    IN_SHARED_APPSPAWN_SPACE = 0X13,
+    IN_SHARED_HUGE_OBJECT_SPACE = 0x14,
+    IN_SHARED_READ_ONLY_SPACE = 0x15,
 
     VALID_SPACE_MASK = 0xFF,
 
@@ -133,8 +132,6 @@ static inline std::string ToSpaceTypeName(uint8_t space)
             return "huge object space";
         case RegionSpaceFlag::IN_OLD_SPACE:
             return "old space";
-        case RegionSpaceFlag::IN_SLOT_SPACE:
-            return "slot space";
         case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
             return "non movable space";
         case RegionSpaceFlag::IN_MACHINE_CODE_SPACE:
@@ -160,22 +157,17 @@ static inline std::string ToSpaceTypeName(uint8_t space)
     }
 }
 
-enum class FreeListType {
-    BUMP_POINTER_FREE_LIST,
-    SLOT_FREE_LIST,
-};
-
-// |----------------------------------------------------------------------------------------------|
-// |                                   Region (256 kb)                                            |
-// |----------------------------------------|--------------------------------|--------------------|
-// | Head (sizeof(DefaultRegion/CMSRegion)) |         Mark bitset (4kb)      |      Data          |
-// |----------------------------------------|--------------------------------|--------------------|
+// |---------------------------------------------------------------------------------------|
+// |                                   Region (256 kb)                                     |
+// |---------------------------------|--------------------------------|--------------------|
+// |     Head (sizeof(Region))       |         Mark bitset (4kb)      |      Data          |
+// |---------------------------------|--------------------------------|--------------------|
 
 class Region {
 public:
     Region(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t begin, uintptr_t end,
-        RegionSpaceFlag spaceType, RegionTypeFlag typeFlag, FreeListType freeListType)
-        : packedData_(begin, end, spaceType, typeFlag, freeListType),
+        RegionSpaceFlag spaceType, RegionTypeFlag typeFlag)
+        : packedData_(begin, end, spaceType, typeFlag),
           nativeAreaAllocator_(allocator),
           allocateBase_(allocateBase),
           end_(end),
@@ -269,6 +261,14 @@ public:
         Region& region_;
     };
 
+    void Initialize()
+    {
+        lock_ = new Mutex();
+        if (InSparseSpace()) {
+            InitializeFreeObjectSets();
+        }
+    }
+
     void LinkNext(Region *next)
     {
         next_ = next;
@@ -306,12 +306,12 @@ public:
 
     size_t GetCapacity() const
     {
-        return GetEnd() - allocateBase_;
+        return end_ - allocateBase_;
     }
 
     size_t GetSize() const
     {
-        return GetEnd() - GetBegin();
+        return end_ - packedData_.begin_;
     }
 
     bool IsGCFlagSet(RegionGCFlags flag) const
@@ -410,6 +410,21 @@ public:
         return reinterpret_cast<Region *>(objAddress & ~DEFAULT_REGION_MASK);
     }
 
+    static size_t GetRegionAvailableSize()
+    {
+        size_t regionHeaderSize = AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
+        size_t bitsetSize = GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE - regionHeaderSize);
+        return DEFAULT_REGION_SIZE - regionHeaderSize - bitsetSize;
+    }
+
+    void ClearMembers()
+    {
+        if (lock_ != nullptr) {
+            delete lock_;
+            lock_ = nullptr;
+        }
+    }
+
     void Invalidate()
     {
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(GetBegin()), GetSize());
@@ -481,11 +496,6 @@ public:
     bool InReadOnlySpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_READ_ONLY_SPACE;
-    }
-
-    bool InSlotSpace() const
-    {
-        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_SLOT_SPACE;
     }
 
     bool InSharedOldSpace() const
@@ -632,11 +642,6 @@ public:
         return GetRegionTypeFlag() == RegionTypeFlag::HALF_FRESH;
     }
 
-    FreeListType GetFreeListType() const
-    {
-        return packedData_.freeListType_;
-    }
-
     // ONLY used for heap verification.
     void SetInactiveSemiSpace()
     {
@@ -692,19 +697,61 @@ public:
         PageProtect(reinterpret_cast<void *>(allocateBase_), GetCapacity(), PAGE_PROT_READWRITE);
     }
 
+    void InitializeFreeObjectSets()
+    {
+        FreeObjectSet<FreeObject> **sets = new FreeObjectSet<FreeObject> *[FreeObjectList<FreeObject>::NumberOfSets()];
+        for (int i = 0; i < FreeObjectList<FreeObject>::NumberOfSets(); i++) {
+            sets[i] = new FreeObjectSet<FreeObject>(i);
+        }
+        freeObjectSets_ = Span<FreeObjectSet<FreeObject> *>(sets, FreeObjectList<FreeObject>::NumberOfSets());
+    }
+
+    void DestroyFreeObjectSets()
+    {
+        for (int i = 0; i < FreeObjectList<FreeObject>::NumberOfSets(); i++) {
+            delete freeObjectSets_[i];
+            freeObjectSets_[i] = nullptr;
+        }
+        delete[] freeObjectSets_.data();
+    }
+
+    FreeObjectSet<FreeObject> *GetFreeObjectSet(SetType type)
+    {
+        // Thread safe
+        if (freeObjectSets_[type] == nullptr) {
+            freeObjectSets_[type] = new FreeObjectSet<FreeObject>(type);
+        }
+        return freeObjectSets_[type];
+    }
+
+    template<class Callback>
+    void EnumerateFreeObjectSets(Callback cb)
+    {
+        for (auto set : freeObjectSets_) {
+            cb(set);
+        }
+    }
+
+    template<class Callback>
+    void REnumerateFreeObjectSets(Callback cb)
+    {
+        auto last = freeObjectSets_.crbegin();
+        auto first = freeObjectSets_.crend();
+        for (; last != first; last++) {
+            if (!cb(*last)) {
+                break;
+            }
+        }
+    }
+
     void IncreaseAliveObject(size_t size)
     {
         aliveObject_.fetch_add(size, std::memory_order_relaxed);
     }
 
-    void SetGCAliveSize()
+    void SetRegionAliveSize()
     {
         gcAliveSize_ = aliveObject_;
-    }
-
-    size_t GetGCAliveSize() const
-    {
-        return gcAliveSize_;
     }
 
     void ResetAliveObject()
@@ -715,6 +762,11 @@ public:
     size_t AliveObject() const
     {
         return aliveObject_.load(std::memory_order_relaxed);
+    }
+
+    size_t GetGCAliveSize() const
+    {
+        return gcAliveSize_;
     }
 
     bool MostObjectAlive() const
@@ -801,8 +853,7 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedSize,
-                                                 base::AlignedUint8,
-                                                 base::AlignedPointer> {
+                                                 base::AlignedUint8> {
         enum class Index : size_t {
             FlagsIndex = 0,
             TypeFlagIndex,
@@ -812,17 +863,16 @@ public:
             BeginIndex,
             BitSetSizeIndex,
             RSetSwapFlagIndex,
-            FreeListTypeIndex,
-            NumOfMembers,
+            NumOfMembers
         };
 
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
 
-        inline PackedData(uintptr_t begin, uintptr_t end, RegionSpaceFlag spaceType, RegionTypeFlag typeFlag,
-                          FreeListType freeListType) : typeFlag_(typeFlag), freeListType_(freeListType)
+        inline PackedData(uintptr_t begin, uintptr_t end, RegionSpaceFlag spaceType, RegionTypeFlag typeFlag)
         {
             flags_.spaceFlag_ = spaceType;
             flags_.gcFlags_ = 0;
+            typeFlag_ = typeFlag;
             bitsetSize_ = (spaceType == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE ||
                            spaceType == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE ||
                            spaceType == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE) ?
@@ -837,10 +887,10 @@ public:
         }
 
         inline PackedData(uintptr_t begin, RegionSpaceFlag spaceType)
-            : typeFlag_(RegionTypeFlag::DEFAULT), freeListType_(FreeListType::BUMP_POINTER_FREE_LIST)
         {
             flags_.spaceFlag_ = spaceType;
             flags_.gcFlags_ = 0;
+            typeFlag_ = RegionTypeFlag::DEFAULT;
             // no markGCBitset
             begin_ = begin;
             markGCBitset_ = nullptr;
@@ -881,11 +931,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::RSetSwapFlagIndex)>(isArch32);
         }
 
-        static size_t GetFreeListTypeOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::FreeListTypeIndex)>(isArch32);
-        }
-
         alignas(EAS) PackedPtr flags_;
         // Use different UIntPtr from flags_ to prevent the potential data race.
         // Be careful when storing to this value, currently this is only from JS_Thread during ConcurrentMarking,
@@ -899,14 +944,13 @@ public:
         // RSetSwapFlag_ represents if the oldToNewSet_ and localToShareSet_ are swapped, when they are swapped,
         // the data in it are untrusted.
         alignas(EAS) uint8_t RSetSwapFlag_ {0};
-        alignas(EAS) FreeListType freeListType_ {FreeListType::BUMP_POINTER_FREE_LIST};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(PackedData), PackedData::SizeArch32, PackedData::SizeArch64);
 
     static constexpr double MOST_OBJECT_ALIVE_THRESHOLD_PERCENT = 0.8;
     static constexpr double AVERAGE_REGION_EVACUATE_SIZE = MOST_OBJECT_ALIVE_THRESHOLD_PERCENT *
                                                            DEFAULT_REGION_SIZE / 2;  // 2 means half
-protected:
+private:
     static constexpr double COMPRESS_THREASHOLD_PERCENT = 0.1;
 
     RememberedSet *CreateRememberedSet();
@@ -931,7 +975,8 @@ protected:
     RememberedSet *crossRegionSet_ {nullptr};
     RememberedSet *sweepingOldToNewRSet_ {nullptr};
     RememberedSet *sweepingLocalToShareRSet_ {nullptr};
-    Mutex lock_;
+    Span<FreeObjectSet<FreeObject> *> freeObjectSets_;
+    Mutex *lock_ {nullptr};
     uint64_t wasted_;
     // snapshotdata_ is used to encode the region for snapshot. Its upper 32 bits are used to store the size of
     // the huge object, and the lower 32 bits are used to store the region index
@@ -942,137 +987,6 @@ protected:
     friend class SnapshotProcessor;
     friend class RuntimeStubs;
 };
-
-class BumpPointerFreeListWrapper {
-public:
-    void InitializeFreeObjectSets()
-    {
-        FreeObjectSet<FreeObject> **sets = new FreeObjectSet<FreeObject> *[FreeObjectList<FreeObject>::NumberOfSets()];
-        for (int i = 0; i < FreeObjectList<FreeObject>::NumberOfSets(); i++) {
-            sets[i] = new FreeObjectSet<FreeObject>(i);
-        }
-        freeObjectSets_ = Span<FreeObjectSet<FreeObject> *>(sets, FreeObjectList<FreeObject>::NumberOfSets());
-    }
-
-    void DestroyFreeObjectSets()
-    {
-        for (int i = 0; i < FreeObjectList<FreeObject>::NumberOfSets(); i++) {
-            delete freeObjectSets_[i];
-            freeObjectSets_[i] = nullptr;
-        }
-        delete[] freeObjectSets_.data();
-    }
-
-    FreeObjectSet<FreeObject> *GetFreeObjectSet(SetType type)
-    {
-        // Thread safe
-        if (freeObjectSets_[type] == nullptr) {
-            freeObjectSets_[type] = new FreeObjectSet<FreeObject>(type);
-        }
-        return freeObjectSets_[type];
-    }
-
-    template<class Callback>
-    void EnumerateFreeObjectSets(Callback cb)
-    {
-        for (auto set : freeObjectSets_) {
-            cb(set);
-        }
-    }
-
-    template<class Callback>
-    void REnumerateFreeObjectSets(Callback cb)
-    {
-        auto last = freeObjectSets_.crbegin();
-        auto first = freeObjectSets_.crend();
-        for (; last != first; last++) {
-            if (!cb(*last)) {
-                break;
-            }
-        }
-    }
-protected:
-    BumpPointerFreeListWrapper() = default;
-    ~BumpPointerFreeListWrapper() = default;
-
-    NO_COPY_SEMANTIC(BumpPointerFreeListWrapper);
-    NO_MOVE_SEMANTIC(BumpPointerFreeListWrapper);
-
-    Span<FreeObjectSet<FreeObject> *> freeObjectSets_;
-};
-
-class SlotFreeListWrapper {
-protected:
-    SlotFreeListWrapper() = default;
-    ~SlotFreeListWrapper() = default;
-
-    NO_COPY_SEMANTIC(SlotFreeListWrapper);
-    NO_MOVE_SEMANTIC(SlotFreeListWrapper);
-};
-
-template <FreeListType freeListType>
-using FreeListDispatcher = std::conditional_t<freeListType == FreeListType::BUMP_POINTER_FREE_LIST,
-                                              BumpPointerFreeListWrapper,
-                                              SlotFreeListWrapper>;
-
-template <FreeListType freeListType>
-class FreeListBasedRegion : public Region, public FreeListDispatcher<freeListType> {
-private:
-    using DerivedRegion = FreeListBasedRegion<freeListType>;
-public:
-    static size_t GetRegionAvailableSize()
-    {
-        size_t regionHeaderSize = AlignUp(sizeof(DerivedRegion), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        size_t bitsetSize = GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE - regionHeaderSize);
-        return DEFAULT_REGION_SIZE - regionHeaderSize - bitsetSize;
-    }
-
-    static DerivedRegion *FromRegion(Region *region)
-    {
-        if constexpr (freeListType == FreeListType::BUMP_POINTER_FREE_LIST) {
-            ASSERT(region->GetFreeListType() == FreeListType::BUMP_POINTER_FREE_LIST);
-        } else {
-            ASSERT(region->GetFreeListType() == FreeListType::SLOT_FREE_LIST);
-        }
-        return static_cast<DerivedRegion *>(region);
-    }
-
-    template <typename = std::enable_if<freeListType == FreeListType::SLOT_FREE_LIST>>
-    static size_t GetAllocatableEnd(FreeListBasedRegion<FreeListType::SLOT_FREE_LIST> *cmsRegion, size_t slotSize)
-    {
-        ASSERT(cmsRegion->GetFreeListType() == FreeListType::SLOT_FREE_LIST);
-        ASSERT(slotSize > 0);
-        size_t allocatableSize = cmsRegion->GetSize() / slotSize * slotSize;
-        return cmsRegion->GetBegin() + allocatableSize;
-    }
-
-    template <typename = std::enable_if<freeListType == FreeListType::BUMP_POINTER_FREE_LIST>>
-    FreeListBasedRegion(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t begin, uintptr_t end,
-                        RegionSpaceFlag spaceType, RegionTypeFlag typeFlag)
-        : Region(allocator, allocateBase, begin, end, spaceType, typeFlag, freeListType),
-          FreeListDispatcher<freeListType>()
-    {
-        if (InSparseSpace()) {
-            this->InitializeFreeObjectSets();
-        }
-    }
-
-    template <typename = std::enable_if<freeListType == FreeListType::SLOT_FREE_LIST>>
-    FreeListBasedRegion(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t begin, uintptr_t end,
-                        RegionSpaceFlag spaceType, RegionTypeFlag typeFlag, size_t slotSize)
-        : Region(allocator, allocateBase, begin, end, spaceType, typeFlag, freeListType),
-          FreeListDispatcher<freeListType>()
-    {
-    }
-
-    ~FreeListBasedRegion() = default;
-
-    NO_COPY_SEMANTIC(FreeListBasedRegion);
-    NO_MOVE_SEMANTIC(FreeListBasedRegion);
-};
-
-using DefaultRegion = FreeListBasedRegion<FreeListType::BUMP_POINTER_FREE_LIST>;
-using CMSRegion = FreeListBasedRegion<FreeListType::SLOT_FREE_LIST>;
 }  // namespace ecmascript
 }  // namespace panda
 #endif  // ECMASCRIPT_MEM_REGION_H
