@@ -48,12 +48,6 @@ public:
         LOG_GC(FATAL) << "can not call this method";
     }
 
-    virtual void ProcessIncrementalMarkStack([[maybe_unused]] uint32_t threadId,
-                                             [[maybe_unused]] uint32_t markStepSize)
-    {
-        LOG_GC(FATAL) << "can not call this method";
-    }
-
 protected:
     Heap *heap_ {nullptr};
     WorkManager *workManager_ {nullptr};
@@ -75,8 +69,6 @@ public:
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
     void MarkJitCodeMap(uint32_t threadId) override;
-
-    void ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize) override;
 private:
     void ProcessYoungGCMarkStack(uint32_t threadId);
     void ProcessOldGCMarkStack(uint32_t threadId);

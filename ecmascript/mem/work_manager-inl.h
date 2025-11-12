@@ -18,7 +18,6 @@
 
 #include "ecmascript/mem/work_manager.h"
 
-#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
@@ -98,8 +97,7 @@ void WorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
         if (cachedInNode_ == nullptr) {
             cachedInNode_ = workManager_->AllocateWorkNode();
         }
-        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() &&
-            !(heap_->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark())) {
+        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() && !heap_->IsMarking()) {
             heap_->PostParallelGCTask(parallelGCTaskPhase_);
         }
     }

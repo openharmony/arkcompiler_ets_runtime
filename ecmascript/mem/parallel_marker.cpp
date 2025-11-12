@@ -18,8 +18,6 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/object_xray.h"
 
-#include "ecmascript/mem/incremental_marker.h"
-#include "ecmascript/mem/incremental_gc_visitor-inl.h"
 #include "ecmascript/mem/old_gc_visitor-inl.h"
 #include "ecmascript/mem/young_gc_visitor-inl.h"
 #include "ecmascript/mem/full_gc-inl.h"
@@ -152,35 +150,6 @@ void NonMovableMarker::ProcessOldGCMarkStack(uint32_t threadId)
 
         oldGCMarkObjectVisitor.VisitHClass(jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, oldGCMarkObjectVisitor);
-    }
-}
-
-void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize)
-{
-    ASSERT(heap_->IsConcurrentFullMark());
-    WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
-    uint32_t visitAddrNum = 0;
-    IncrementalOldGCMarkObjectVisitor incrementalOldGCMarkObjectVisitor(workNodeHolder, visitAddrNum);
-    TaggedObject *obj = nullptr;
-    double startTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs();
-    double costTime = startTime;
-    while (workNodeHolder->Pop(&obj)) {
-        JSHClass *jsHclass = obj->GetClass();
-        Region *region = Region::ObjectAddressToRange(obj);
-        auto size = obj->GetSize();
-        region->IncreaseAliveObject(size);
-        incrementalOldGCMarkObjectVisitor.VisitHClass(jsHclass);
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, incrementalOldGCMarkObjectVisitor);
-        if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark() && visitAddrNum >= markStepSize) {
-            costTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs() - startTime;
-            heap_->GetIncrementalMarker()->UpdateMarkingSpeed(visitAddrNum, costTime);
-            return;
-        }
-    }
-    if (heap_->GetJSThread()->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
-        costTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs() - startTime;
-        heap_->GetIncrementalMarker()->UpdateMarkingSpeed(visitAddrNum, costTime);
-        heap_->GetIncrementalMarker()->SetMarkingFinished(true);
     }
 }
 

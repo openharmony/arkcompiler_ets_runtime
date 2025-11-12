@@ -30,7 +30,6 @@
 #include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/mem_controller_utils.h"
 #include "ecmascript/mem/mem_controller.h"
-#include "ecmascript/mem/incremental_marker.h"
 
 using namespace panda;
 
@@ -470,14 +469,6 @@ HWTEST_F_L0(GCTest, RecordAllocationForIdleTest003)
     controller->RecordAllocationForIdle();
 }
 
-HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
-    heap->TryTriggerIdleCollection();
-    ASSERT_FALSE(heap->IsEmptyIdleTask());
-}
-
 HWTEST_F_L0(GCTest, WaitAllTasksFinishedTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -526,38 +517,6 @@ HWTEST_F_L0(GCTest, ChangeGCParamsTest004)
     ASSERT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
     heap->ChangeGCParams(true);
     ASSERT_TRUE(heap->IsInBackground());
-}
-
-HWTEST_F_L0(GCTest, IncrementMarkerTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    ASSERT_FALSE(heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
-    heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
-    heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
-}
-
-HWTEST_F_L0(GCTest, IncrementMarkerTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    ASSERT_FALSE(heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
-    heap->GetIncrementalMarker()->TriggerIncrementalMark(0);
-}
-
-HWTEST_F_L0(GCTest, IncrementMarkerTest003)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetIncrementalMarker()->SetMarkingFinished(true);
-    ASSERT_FALSE(heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
-    heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
-}
-
-HWTEST_F_L0(GCTest, IncrementMarkerTest004)
-{
-    thread->GetEcmaVM()->GetJSOptions().SetArkProperties(0);
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetIncrementalMarker()->SetMarkingFinished(true);
-    ASSERT_FALSE(heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
-    heap->GetIncrementalMarker()->TriggerIncrementalMark(100);
 }
 
 HWTEST_F_L0(GCTest, NotifyWarmStartFalse001)

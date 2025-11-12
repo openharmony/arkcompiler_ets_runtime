@@ -22,7 +22,6 @@
 #include "ecmascript/cross_vm/unified_gc/unified_gc.h"
 #include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
 #include "ecmascript/mem/idle_gc_trigger.h"
-#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker.h"
@@ -938,7 +937,6 @@ void Heap::Initialize()
         unifiedGCMarker_ = new UnifiedGCMarker(this);
     }
     evacuator_ = new ParallelEvacuator(this);
-    incrementalMarker_ = new IncrementalMarker(this);
     gcListeners_.reserve(16U);
     nativeSizeTriggerGCThreshold_ = config_.GetMaxNativeSizeInc();
     incNativeSizeTriggerGC_ = config_.GetStepNativeSizeInc();
@@ -1126,10 +1124,6 @@ void Heap::Destroy()
     if (concurrentMarker_ != nullptr) {
         delete concurrentMarker_;
         concurrentMarker_ = nullptr;
-    }
-    if (incrementalMarker_ != nullptr) {
-        delete incrementalMarker_;
-        incrementalMarker_ = nullptr;
     }
     if (nonMovableMarker_ != nullptr) {
         delete nonMovableMarker_;
@@ -1326,7 +1320,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
             switch (gcType) {
                 case TriggerGCType::YOUNG_GC:
                     // Use partial GC for young generation.
-                    if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
+                    if (!concurrentMarker_->IsEnabled()) {
                         SetMarkType(MarkType::MARK_YOUNG);
                     }
                     if (markType_ == MarkType::MARK_FULL) {
@@ -1352,7 +1346,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
                         }
                     }
                     SetMarkType(MarkType::MARK_FULL);
-                    if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
+                    if (fullConcurrentMarkRequested) {
                         LOG_ECMA(INFO)
                             << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
                         oldSpace_->SetOvershootSize(config_.GetOldSpaceStepOvershootSize());
@@ -1384,7 +1378,6 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
             ASSERT(thread_->IsPropertyCacheCleared());
         }
         UpdateHeapStatsAfterGC(gcType_);
-        ClearIdleTask();
         // Adjust the old space capacity and global limit for the first partial GC with full mark.
         // Trigger full mark next time if the current survival rate is much less than half the average survival rates.
         AdjustBySurvivalRate(originalNewSpaceSize);
@@ -1930,122 +1923,9 @@ bool Heap::CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIn
     return true;
 }
 
-void Heap::ClearIdleTask()
-{
-    SetIdleTask(IdleTaskType::NO_TASK);
-    idleTaskFinishTime_ = incrementalMarker_->GetCurrentTimeInMs();
-}
-
-void Heap::TryTriggerIdleCollection()
-{
-    if (idleTask_ != IdleTaskType::NO_TASK || !GetJSThread()->IsReadyToConcurrentMark() || !enableIdleGC_) {
-        return;
-    }
-    if (thread_->IsMarkFinished() && concurrentMarker_->IsTriggeredConcurrentMark()) {
-        SetIdleTask(IdleTaskType::FINISH_MARKING);
-        EnableNotifyIdle();
-        CalculateIdleDuration();
-        return;
-    }
-
-    double newSpaceAllocSpeed = memController_->GetNewSpaceAllocationThroughputPerMS();
-    double newSpaceConcurrentMarkSpeed = memController_->GetNewSpaceConcurrentMarkSpeedPerMS();
-    double newSpaceAllocToLimitDuration = (static_cast<double>(activeSemiSpace_->GetInitialCapacity()) -
-                                           static_cast<double>(activeSemiSpace_->GetCommittedSize())) /
-                                           newSpaceAllocSpeed;
-    double newSpaceMarkDuration = activeSemiSpace_->GetHeapObjectSize() / newSpaceConcurrentMarkSpeed;
-    double newSpaceRemainSize = (newSpaceAllocToLimitDuration - newSpaceMarkDuration) * newSpaceAllocSpeed;
-    // 2 means double
-    if (newSpaceRemainSize < 2 * DEFAULT_REGION_SIZE) {
-        SetIdleTask(IdleTaskType::YOUNG_GC);
-        SetMarkType(MarkType::MARK_YOUNG);
-        EnableNotifyIdle();
-        CalculateIdleDuration();
-        return;
-    }
-}
-
-void Heap::CalculateIdleDuration()
-{
-    size_t updateReferenceSpeed = 0;
-    // clear native object duration
-    size_t clearNativeObjSpeed = 0;
-    if (markType_ == MarkType::MARK_YOUNG) {
-        updateReferenceSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_UPDATE_REFERENCE_SPEED);
-        clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED);
-    } else if (markType_ == MarkType::MARK_FULL) {
-        updateReferenceSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::UPDATE_REFERENCE_SPEED);
-        clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_CLEAR_NATIVE_OBJ_SPEED);
-    }
-
-    // update reference duration
-    idlePredictDuration_ = 0.0f;
-    if (updateReferenceSpeed != 0) {
-        idlePredictDuration_ += (float)GetHeapObjectSize() / updateReferenceSpeed;
-    }
-
-    if (clearNativeObjSpeed != 0) {
-        idlePredictDuration_ += (float)GetNativePointerListSize() / clearNativeObjSpeed;
-    }
-
-    // sweep and evacuate duration
-    size_t youngEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_EVACUATE_SPACE_SPEED);
-    double survivalRate = GetEcmaGCStats()->GetAvgSurvivalRate();
-    if (markType_ == MarkType::MARK_YOUNG && youngEvacuateSpeed != 0) {
-        idlePredictDuration_ += activeSemiSpace_->GetHeapObjectSize() * survivalRate / youngEvacuateSpeed;
-    } else if (markType_ == MarkType::MARK_FULL) {
-        size_t sweepSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::SWEEP_SPEED);
-        size_t oldEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_EVACUATE_SPACE_SPEED);
-        if (sweepSpeed != 0) {
-            idlePredictDuration_ += (float)GetHeapObjectSize() / sweepSpeed;
-        }
-        if (oldEvacuateSpeed != 0) {
-            size_t collectRegionSetSize = GetEcmaGCStats()->GetRecordData(
-                RecordData::COLLECT_REGION_SET_SIZE);
-            idlePredictDuration_ += (survivalRate * activeSemiSpace_->GetHeapObjectSize() + collectRegionSetSize) /
-                                    oldEvacuateSpeed;
-        }
-    }
-
-    // Idle YoungGC mark duration
-    size_t markSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::MARK_SPEED);
-    if (idleTask_ == IdleTaskType::YOUNG_GC && markSpeed != 0) {
-        idlePredictDuration_ += (float)activeSemiSpace_->GetHeapObjectSize() / markSpeed;
-    }
-    OPTIONAL_LOG(ecmaVm_, INFO) << "Predict idle gc pause: " << idlePredictDuration_ << "ms";
-}
-
-void Heap::TryTriggerIncrementalMarking()
-{
-    if (!GetJSThread()->IsReadyToConcurrentMark() || idleTask_ != IdleTaskType::NO_TASK || !enableIdleGC_) {
-        return;
-    }
-    size_t oldSpaceAllocLimit = oldSpace_->GetInitialCapacity();
-    size_t oldSpaceHeapObjectSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize() +
-        hugeMachineCodeSpace_->GetHeapObjectSize();
-    double oldSpaceAllocSpeed = memController_->GetOldSpaceAllocationThroughputPerMS();
-    double oldSpaceIncrementalMarkSpeed = incrementalMarker_->GetAverageIncrementalMarkingSpeed();
-    double oldSpaceAllocToLimitDuration = (oldSpaceAllocLimit - oldSpaceHeapObjectSize) / oldSpaceAllocSpeed;
-    double oldSpaceMarkDuration = GetHeapObjectSize() / oldSpaceIncrementalMarkSpeed;
-
-    double oldSpaceRemainSize = (oldSpaceAllocToLimitDuration - oldSpaceMarkDuration) * oldSpaceAllocSpeed;
-    // mark finished before allocate limit
-    if ((oldSpaceRemainSize < DEFAULT_REGION_SIZE) || GetHeapObjectSize() >= globalSpaceAllocLimit_) {
-        // The object allocated in incremental marking should lower than limit,
-        // otherwise select trigger concurrent mark.
-        size_t allocateSize = oldSpaceAllocSpeed * oldSpaceMarkDuration;
-        if (allocateSize < ALLOCATE_SIZE_LIMIT) {
-            EnableNotifyIdle();
-            SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
-        }
-    }
-}
-
 bool Heap::CheckCanTriggerConcurrentMarking()
 {
-    return concurrentMarker_->IsEnabled() && thread_->IsReadyToConcurrentMark() &&
-        !incrementalMarker_->IsTriggeredIncrementalMark() &&
-        (idleTask_ == IdleTaskType::NO_TASK || idleTask_ == IdleTaskType::YOUNG_GC);
+    return concurrentMarker_->IsEnabled() && thread_->IsReadyToConcurrentMark();
 }
 
 bool Heap::TryTriggerConcurrentMarking(MarkReason markReason)
@@ -2263,11 +2143,6 @@ void Heap::PrepareRecordRegionsForReclaim()
 
 void Heap::TriggerConcurrentMarking(MarkReason markReason)
 {
-    ASSERT(idleTask_ != IdleTaskType::INCREMENTAL_MARK);
-    if (idleTask_ == IdleTaskType::YOUNG_GC && IsConcurrentFullMark()) {
-        ClearIdleTask();
-        DisableNotifyIdle();
-    }
     if (concurrentMarker_->IsEnabled() && !fullGCRequested_ && ConcurrentMarker::TryIncreaseTaskCounts()) {
         GetEcmaGCStats()->SetMarkReason(markReason);
         concurrentMarker_->Mark();
@@ -2344,50 +2219,6 @@ GCKeyStats *Heap::GetEcmaGCKeyStats()
 JSObjectResizingStrategy *Heap::GetJSObjectResizingStrategy()
 {
     return ecmaVm_->GetJSObjectResizingStrategy();
-}
-
-void Heap::TriggerIdleCollection(int idleMicroSec)
-{
-    if (idleTask_ == IdleTaskType::NO_TASK) {
-        if (incrementalMarker_->GetCurrentTimeInMs() - idleTaskFinishTime_ > IDLE_MAINTAIN_TIME) {
-            DisableNotifyIdle();
-        }
-        return;
-    }
-
-    // Incremental mark initialize and process
-    if (idleTask_ == IdleTaskType::INCREMENTAL_MARK &&
-        incrementalMarker_->GetIncrementalGCStates() != IncrementalGCStates::REMARK) {
-        incrementalMarker_->TriggerIncrementalMark(idleMicroSec);
-        if (incrementalMarker_->GetIncrementalGCStates() == IncrementalGCStates::REMARK) {
-            CalculateIdleDuration();
-        }
-        return;
-    }
-
-    if (idleMicroSec < idlePredictDuration_ && idleMicroSec < IDLE_TIME_LIMIT) {
-        return;
-    }
-
-    switch (idleTask_) {
-        case IdleTaskType::FINISH_MARKING: {
-            if (markType_ == MarkType::MARK_FULL) {
-                CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
-            } else {
-                CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);
-            }
-            break;
-        }
-        case IdleTaskType::YOUNG_GC:
-            CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);
-            break;
-        case IdleTaskType::INCREMENTAL_MARK:
-            incrementalMarker_->TriggerIncrementalMark(idleMicroSec);
-            break;
-        default: // LCOV_EXCL_BR_LINE
-            break;
-    }
-    ClearIdleTask();
 }
 
 void Heap::NotifyMemoryPressure(bool inHighMemoryPressure)
@@ -2503,9 +2334,6 @@ bool Heap::HandleExitHighSensitiveEvent()
         // Set record heap obj size 0 after exit high senstive
         SetRecordHeapObjectSizeBeforeSensitive(0);
 
-        // fixme: IncrementalMarking and IdleCollection is currently not enabled
-        TryTriggerIncrementalMarking();
-        TryTriggerIdleCollection();
         bool success = TryTriggerConcurrentMarking(MarkReason::EXIT_HIGH_SENSITIVE);
         if (success) {
             // set overshoot size to increase gc threashold larger 8MB than current heap size.
@@ -2901,7 +2729,6 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
 {
     concurrentMarker_->workManager_ = workManager;
     fullGC_->workManager_ = workManager;
-    incrementalMarker_->workManager_ = workManager;
     nonMovableMarker_->workManager_ = workManager;
     compressGCMarker_->workManager_ = workManager;
     if (Runtime::GetInstance()->IsHybridVm()) {

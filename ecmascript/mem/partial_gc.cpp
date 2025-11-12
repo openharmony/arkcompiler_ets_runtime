@@ -17,7 +17,6 @@
 
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker.h"
 #include "ecmascript/mem/old_gc_visitor-inl.h"
@@ -80,7 +79,7 @@ void PartialGC::Initialize()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PartialGC::Initialize", "");
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap_->GetEcmaVM()->GetEcmaGCStats());
-    if (!markingInProgress_ && !heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
+    if (!markingInProgress_) {
         LOG_GC(DEBUG) << "No ongoing Concurrent marking. Initializing...";
         heap_->Prepare();
         if (heap_->IsConcurrentFullMark()) {
@@ -107,9 +106,7 @@ void PartialGC::Finish()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PartialGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->Resume(OLD_GC);
-    if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
-        heap_->GetIncrementalMarker()->Reset();
-    } else if (markingInProgress_) {
+    if (markingInProgress_) {
         auto marker = heap_->GetConcurrentMarker();
         marker->Reset(false);
     } else {

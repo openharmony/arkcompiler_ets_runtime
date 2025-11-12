@@ -32,7 +32,6 @@
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/mem_controller.h"
-#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/gc_key_stats.h"
@@ -285,32 +284,9 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest006)
 #endif
 }
 
-HWTEST_F_L0(GCTest, CalculateIdleDurationTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_YOUNG);
-    heap->CalculateIdleDuration();
-}
-
-HWTEST_F_L0(GCTest, CalculateIdleDurationTest003)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_FULL);
-    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
-    heap->CalculateIdleDuration();
-}
-
 HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    ASSERT_EQ(heap->TryTriggerFullMarkBySharedLimit(), false);
-}
-
-HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
     ASSERT_EQ(heap->TryTriggerFullMarkBySharedLimit(), false);
 }
 
@@ -354,66 +330,20 @@ HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMarkType(MarkType::MARK_FULL);
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     heap->TriggerConcurrentMarking();
     EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::OTHER);
-}
-
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::NO_TASK);
-    heap->TriggerIdleCollection(1000);
-    ASSERT_TRUE(heap->IsEmptyIdleTask());
-}
-
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
-    heap->TriggerIdleCollection(1000);
-    ASSERT_FALSE(heap->IsEmptyIdleTask());
-}
-
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest003)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
-    heap->TriggerIdleCollection(-1);
-    ASSERT_FALSE(heap->IsEmptyIdleTask());
-}
-
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest004)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
-    heap->SetMarkType(MarkType::MARK_FULL);
-    heap->TriggerIdleCollection(1000);
-    ASSERT_TRUE(heap->IsEmptyIdleTask());
-}
-
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest006)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
-    heap->TriggerIdleCollection(1000);
-    ASSERT_TRUE(heap->IsEmptyIdleTask());
 }
 
 HWTEST_F_L0(GCTest, NotifyFinishColdStartTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     heap->NotifyFinishColdStart(true);
-    ASSERT_FALSE(heap->IsEmptyIdleTask());
 }
 
 HWTEST_F_L0(GCTest, NotifyFinishColdStartSoonTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::NO_TASK);
     heap->NotifyFinishColdStartSoon();
-    ASSERT_TRUE(heap->IsEmptyIdleTask());
 }
 
 HWTEST_F_L0(GCTest, NeedStopCollectionTest001)
@@ -455,15 +385,6 @@ HWTEST_F_L0(GCTest, NeedStopCollectionTest003)
     heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
     heap->GetOldSpace()->SetInitialCapacity(1000);
     ASSERT_EQ(heap->NeedStopCollection(), false);
-}
-
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest007)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
-    ASSERT_EQ(heap->GetIncrementalMarker()->GetIncrementalGCStates(), IncrementalGCStates::ROOT_SCAN);
-    heap->GetIncrementalMarker()->TriggerIncrementalMark(1000);
-    heap->TriggerIdleCollection(1000);
 }
 
 HWTEST_F_L0(GCTest, CheckAndTriggerSharedGCTest002)
@@ -540,14 +461,6 @@ HWTEST_F_L0(GCTest, SelectGCTypeTest002)
     ASSERT_EQ(heap->SelectGCType(), OLD_GC);
 }
 
-HWTEST_F_L0(GCTest, CollectGarbageTest008)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetIncrementalMarker()->TriggerIncrementalMark(1000);
-    heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
-    ASSERT_EQ(heap->GetIncrementalMarker()->GetIncrementalGCStates(), IncrementalGCStates::ROOT_SCAN);
-}
-
 HWTEST_F_L0(GCTest, CollectGarbageTest009)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -558,14 +471,6 @@ HWTEST_F_L0(GCTest, CollectGarbageTest009)
     ASSERT_FALSE(heap->GetConcurrentMarker()->IsRequestDisabled());
 #endif
     heap->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::TRIGGER_BY_TASKPOOL);
-}
-
-HWTEST_F_L0(GCTest, TryTriggerIdleCollectionTest007)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::NO_TASK);
-    heap->TryTriggerIdleCollection();
-    ASSERT_TRUE(heap->IsEmptyIdleTask());
 }
 
 HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest004)
@@ -587,25 +492,6 @@ HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest003)
     heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
     heap->TriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT);
     EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::ALLOCATION_LIMIT);
-}
-
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest008)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
-    heap->TriggerIdleCollection(1000);
-    ASSERT_FALSE(heap->IsEmptyIdleTask());
-    heap->ClearIdleTask();
-    heap->TriggerIdleCollection(1000);
-    ASSERT_TRUE(heap->IsEmptyIdleTask());
-}
-
-HWTEST_F_L0(GCTest, TriggerIdleCollectionTest009)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
-    heap->TriggerIdleCollection(5);
-    ASSERT_TRUE(heap->IsEmptyIdleTask());
 }
 
 HWTEST_F_L0(GCTest, NotifyFinishColdStartTest002)
@@ -806,5 +692,42 @@ HWTEST_F_L0(GCTest, RawHeapSendSysEventDataSize)
     GCKeyStats *keystats = thread->GetEcmaVM()->GetEcmaGCKeyStats();
     int32_t ret = keystats->SendSysEventDataSize(filePaths, fileSizes);
     ASSERT_EQ(ret, 0);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest010)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
+    heap->GetEcmaGCStats()->SetMarkReason(MarkReason::IDLE);
+    heap->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
+    EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::OLD_GC_WITHOUT_FULLMARK);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest011)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
+    heap->GetEcmaGCStats()->SetMarkReason(MarkReason::IDLE);
+    heap->CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
+    EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::IDLE);
+}
+
+HWTEST_F_L0(GCTest, PartialGCRunPhases001)
+{
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    ASSERT_EQ(heap->CheckOngoingConcurrentMarking(), false);
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
+}
+
+HWTEST_F_L0(GCTest, PartialGCRunPhases002)
+{
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetConcurrentMarker()->Mark();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARKING);
+    ASSERT_EQ(heap->CheckOngoingConcurrentMarking(), true);
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
 }
 } // namespace panda::test

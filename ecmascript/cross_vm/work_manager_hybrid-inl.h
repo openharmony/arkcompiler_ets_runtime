@@ -15,7 +15,6 @@
 #ifndef ECMASCRIPT_CROSS_VM_WORK_MANAGER_INL_H
 #define ECMASCRIPT_CROSS_VM_WORK_MANAGER_INL_H
 
-#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
 #include "ecmascript/mem/work_manager.h"
 
