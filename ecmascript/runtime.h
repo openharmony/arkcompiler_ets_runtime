@@ -348,6 +348,16 @@ public:
     void DisposeSendableGlobalHandle(uintptr_t nodeAddr);
     void IterateSendableGlobalStorage(RootVisitor &visitor);
 
+    void EnableProcDumpInSharedOOM(bool flag)
+    {
+        enableProcDumpInSharedOOM_ = flag;
+    }
+
+    bool IsEnableProcDumpInSharedOOM()
+    {
+        return enableProcDumpInSharedOOM_;
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -461,6 +471,9 @@ private:
     std::function<void(uintptr_t nodeAddr)> disposeSendableGlobalHandle_;
     static constexpr int32_t MAX_SENDABLE_GLOBAL_HANDLE_COUNT = 51200;
     int32_t aliveSendableGlobalHandleCount_ {0};
+
+    // whether dump process when shared oom
+    bool enableProcDumpInSharedOOM_ {false};
 
     friend class EcmaVM;
     friend class JSThread;

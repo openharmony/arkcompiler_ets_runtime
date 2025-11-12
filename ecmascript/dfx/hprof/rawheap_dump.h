@@ -28,7 +28,7 @@
 namespace panda::ecmascript {
 class ObjectMarker : public HeapMarker, public RootVisitor, public BaseObjectVisitor<ObjectMarker> {
 public:
-    ObjectMarker() = default;
+    ObjectMarker(const EcmaVM *vm, const DumpSnapShotOption *option) : vm_(vm), option_(option) {}
     ~ObjectMarker() = default;
 
     void VisitRoot(Root type, ObjectSlot slot) override;
@@ -39,8 +39,22 @@ public:
     void ProcessMarkObjectsFromRoot();
     void IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor);
     void MarkObject(JSTaggedType addr);
+    void MarkRootObjects();
+    void IterateOverObjects(const std::function<void(TaggedObject *)> &visitor);
+
+    size_t GetMarkedObjects()
+    {
+        return markedObjects_.size();
+    }
 
 private:
+    bool IsProcessDump()
+    {
+        return Runtime::GetInstance()->IsEnableProcDumpInSharedOOM() && option_->isForSharedOOM;
+    }
+
+    const EcmaVM *vm_ {nullptr};
+    const DumpSnapShotOption *option_ {nullptr};
     CQueue<JSTaggedType> bfsQueue_ {};
     CVector<JSTaggedType> markedObjects_ {};
 };
@@ -51,15 +65,27 @@ public:
                 EntryIdMap* entryIdMap, const DumpSnapShotOption &dumpOption);
     virtual ~RawHeapDump();
 
-    virtual void BinaryDump() = 0;
+    void BinaryDump();
+
     uint32_t GetRawHeapFileOffset()
     {
         return static_cast<uint32_t>(writer_.GetCurrentFileSize());
     }
 
+    uint32_t GetObjectCount()
+    {
+        return static_cast<uint32_t>(marker_.GetMarkedObjects());
+    }
+
 protected:
-    void MarkRootForDump(ObjectMarker &marker);
-    void MarkHeapObjectForDump(ObjectMarker &marker);
+    virtual std::string GetVersion() = 0;
+    virtual void DumpRootTable() = 0;
+    virtual void DumpStringTable() = 0;
+    virtual void DumpObjectTable() = 0;
+    virtual void DumpObjectMemory() = 0;
+    virtual void UpdateStringTable() = 0;
+
+    void IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor);
     void DumpVersion(const std::string &version);
     void DumpSectionIndex();
     NodeId GenerateNodeId(JSTaggedType addr);
@@ -78,16 +104,15 @@ protected:
 
 private:
     const EcmaVM *vm_ {nullptr};
-    BinaryWriter writer_;
+    const DumpSnapShotOption *dumpOption_ {};
     HeapSnapshot *snapshot_ {nullptr};
     EntryIdMap *entryIdMap_ {nullptr};
+    BinaryWriter writer_;
+    ObjectMarker marker_;
     CVector<uint32_t> secIndexVec_ {};
     CUnorderedMap<JSTaggedType, StringId> objectStrIds_ {};
     CUnorderedMap<Method *, StringId> functionStrIds_ {};
-    uint32_t fileOffset_ {0};
     uint32_t preOffset_ {0};
-    bool isOOM_ {false};
-    bool isJSLeakWatcher_ {false};
     std::chrono::time_point<std::chrono::steady_clock> startTime_;
 };
 
@@ -97,8 +122,6 @@ public:
                   EntryIdMap* entryIdMap, const DumpSnapShotOption &dumpOption);
     ~RawHeapDumpV1();
 
-    void BinaryDump() override;
-
 private:
     struct AddrTableItem {
         uint64_t addr;
@@ -107,13 +130,15 @@ private:
         uint32_t offset; // offset to the file
     };
 
-    void DumpRootTable(ObjectMarker &marker);
-    void DumpStringTable(ObjectMarker &marker);
-    void DumpObjectTable(ObjectMarker &marker);
-    void DumpObjectMemory(ObjectMarker &marker);
-    void UpdateStringTable(ObjectMarker &marker);
+    std::string GetVersion() override;
+    void DumpRootTable() override;
+    void DumpStringTable() override;
+    void DumpObjectTable() override;
+    void DumpObjectMemory() override;
+    void UpdateStringTable() override;
 
     constexpr static const char *const RAWHEAP_VERSION = "1.0.0";
+
     CUnorderedMap<uint64_t, CVector<uint64_t>> strIdMapObjVec_ {};
 };
 
@@ -122,8 +147,6 @@ public:
     RawHeapDumpV2(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
                   EntryIdMap* entryIdMap, const DumpSnapShotOption &dumpOption);
     ~RawHeapDumpV2();
-
-    void BinaryDump() override;
 
 private:
     struct AddrTableItem {
@@ -134,16 +157,18 @@ private:
         uint32_t type;
     };
 
-    void DumpRootTable(ObjectMarker &marker);
-    void DumpStringTable(ObjectMarker &marker);
-    void DumpObjectTable(ObjectMarker &marker);
-    void DumpObjectMemory(ObjectMarker &marker);
-    void UpdateStringTable(ObjectMarker &marker);
+    std::string GetVersion() override;
+    void DumpRootTable() override;
+    void DumpStringTable() override;
+    void DumpObjectTable() override;
+    void DumpObjectMemory() override;
+    void UpdateStringTable() override;
 
     uint32_t GenerateRegionId(JSTaggedType addr);
     uint32_t GenerateSyntheticAddr(JSTaggedType addr);
 
     constexpr static const char *const RAWHEAP_VERSION_V2 = "2.0.0";
+
     CUnorderedMap<uint64_t, CVector<uint32_t>> strIdMapObjVec_ {};
     CUnorderedMap<Region *, uint32_t> regionIdMap_ {};
     uint32_t regionId_ {0};  // region id start from 0x10

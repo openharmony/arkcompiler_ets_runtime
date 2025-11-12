@@ -1688,6 +1688,18 @@ JSTaggedValue BuiltinsArkTools::TriggerSharedGC(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::Undefined();
 }
 
+JSTaggedValue BuiltinsArkTools::EnableProcDumpInSharedOOM(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> arg = GetCallArg(info, 0);
+    bool flag = arg->IsTrue();
+    Runtime::GetInstance()->EnableProcDumpInSharedOOM(flag);
+    LOG_ECMA(INFO) << "enable process dump in shared oom: " << flag;
+    return JSTaggedValue::Undefined();
+}
+
 JSTaggedValue BuiltinsArkTools::InYoungSpace(EcmaRuntimeCallInfo *info)
 {
     RETURN_IF_DISALLOW_ARKTOOLS(info->GetThread());

@@ -38,6 +38,7 @@ struct DumpSnapShotOption {
     bool isBeforeFill = true; // whether do fillmap on main thread.
     bool isDumpOOM = false; // whether dump oom heapdump.
     bool isJSLeakWatcher = false;  // whether dump from jsleak wather.
+    bool isForSharedOOM = false;   // for shared heap oom dump
 };
 
 enum class RawHeapDumpCropLevel {
