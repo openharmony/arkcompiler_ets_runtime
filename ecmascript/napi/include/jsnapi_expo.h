@@ -1098,15 +1098,15 @@ public:
     static Local<StringRef> NewFromUtf16WithoutStringTable(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     static Local<StringRef> NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     static Local<StringRef> NewExternalFromUtf16(const EcmaVM *vm,
-                                                const char16_t *utf16,
-                                                int length,
-                                                ExternalStringFinalizerCallback callback,
-                                                void *hint = nullptr);
+                                                 const char16_t *utf16,
+                                                 int length,
+                                                 ExternalStringFinalizerCallback callback,
+                                                 void *hint = nullptr);
     static Local<StringRef> NewExternalFromAscii(const EcmaVM *vm,
-                                                const char *ascii,
-                                                int length,
-                                                ExternalStringFinalizerCallback callback,
-                                                void *hint = nullptr);
+                                                 const char *ascii,
+                                                 int length,
+                                                 ExternalStringFinalizerCallback callback,
+                                                 void *hint = nullptr);
     std::string ToString(const EcmaVM *vm);
     std::string DebuggerToString(const EcmaVM *vm);
     uint32_t Length(const EcmaVM *vm);
