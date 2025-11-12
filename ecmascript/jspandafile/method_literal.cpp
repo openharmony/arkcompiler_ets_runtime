@@ -18,9 +18,9 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 
-#include "libpandafile/class_data_accessor.h"
-#include "libpandafile/code_data_accessor-inl.h"
-#include "libpandafile/method_data_accessor-inl.h"
+#include "class_data_accessor.h"
+#include "code_data_accessor-inl.h"
+#include "method_data_accessor-inl.h"
 
 namespace panda::ecmascript {
 MethodLiteral::MethodLiteral(EntityId methodId)

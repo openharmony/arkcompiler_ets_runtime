@@ -21,7 +21,7 @@
 
 #include "common_components/heap/allocator/alloc_buffer.h"
 #include "common_components/heap/collector/heuristic_gc_policy.h"
-#include "common_interfaces/base/runtime_param.h"
+#include "base/runtime_param.h"
 #include "common_components/heap/collector/utils.h"
 
 namespace common {

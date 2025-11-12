@@ -24,7 +24,7 @@
 #include <functional>
 
 #include "common_components/taskpool/task_queue.h"
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 
 namespace common {
 static constexpr uint32_t MIN_TASKPOOL_THREAD_NUM = 3;

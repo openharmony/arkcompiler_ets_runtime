@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/thread/thread_holder_manager.h"
+#include "thread/thread_holder_manager.h"
 
 #include <algorithm>
 
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/log/log.h"
-#include "common_interfaces/thread/thread_holder-inl.h"
+#include "thread/thread_holder-inl.h"
 
 namespace common {
 void ThreadHolderManager::RegisterThreadHolder([[maybe_unused]] ThreadHolder *holder)

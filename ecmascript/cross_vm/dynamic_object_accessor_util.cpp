@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/objects/dynamic_object_accessor_util.h"
+#include "objects/dynamic_object_accessor_util.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"

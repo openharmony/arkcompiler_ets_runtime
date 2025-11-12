@@ -15,7 +15,7 @@
 
 #include "common_components/log/log.h"
 #include "common_components/mutator/mutator_manager.h"
-#include "common_interfaces/profiler/heap_profiler_listener.h"
+#include "profiler/heap_profiler_listener.h"
 
 namespace common {
 HeapProfilerListener &HeapProfilerListener::GetInstance()

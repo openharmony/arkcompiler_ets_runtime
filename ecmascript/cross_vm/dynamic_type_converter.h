@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_CROSS_VM_DYNAMIC_TYPE_CONVERTER_H
 #define ECMASCRIPT_CROSS_VM_DYNAMIC_TYPE_CONVERTER_H
 
-#include "common_interfaces/objects/base_object.h"
-#include "common_interfaces/objects/base_type_converter.h"
+#include "objects/base_object.h"
+#include "objects/base_type_converter.h"
 
 namespace panda::ecmascript {
 using common::BaseType;

@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_CROSS_VM_DYNAMIC_OBJECT_ACCESSOR_H
 #define ECMASCRIPT_CROSS_VM_DYNAMIC_OBJECT_ACCESSOR_H
 
-#include "common_interfaces/objects/base_object.h"
-#include "common_interfaces/objects/base_object_accessor.h"
+#include "objects/base_object.h"
+#include "objects/base_object_accessor.h"
 
 namespace panda::ecmascript {
 using common::ThreadHolder;

@@ -15,7 +15,7 @@
 
 #include "ecmascript/serializer/base_deserializer.h"
 
-#include "common_interfaces/heap/heap_allocator.h"
+#include "heap/heap_allocator.h"
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"

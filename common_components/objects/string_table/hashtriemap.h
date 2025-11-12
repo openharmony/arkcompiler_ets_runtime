@@ -18,10 +18,10 @@
 
 #include "common_components/heap/heap.h"
 #include "common_components/log/log.h"
-#include "common_interfaces/base/common.h"
-#include "common_interfaces/objects/readonly_handle.h"
-#include "common_interfaces/objects/string/base_string.h"
-#include "common_interfaces/objects/string/base_string-inl.h"
+#include "base/common.h"
+#include "objects/readonly_handle.h"
+#include "objects/string/base_string.h"
+#include "objects/string/base_string-inl.h"
 
 namespace panda::ecmascript {
 class TaggedObject;

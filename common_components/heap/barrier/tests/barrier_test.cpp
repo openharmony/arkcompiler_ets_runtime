@@ -17,8 +17,8 @@
 
 #include "common_components/heap/barrier/barrier.h"
 #include "common_components/heap/collector/collector.h"
-#include "common_interfaces/objects/ref_field.h"
-#include "common_interfaces/objects/base_object.h"
+#include "objects/ref_field.h"
+#include "objects/base_object.h"
 
 #include "common_components/tests/test_helper.h"
 

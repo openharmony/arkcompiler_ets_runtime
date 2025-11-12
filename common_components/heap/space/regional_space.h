@@ -22,7 +22,7 @@
 #include <thread>
 #include <vector>
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 #include "common_components/heap/allocator/alloc_util.h"
 #include "common_components/heap/allocator/allocator.h"
 #include "common_components/heap/allocator/region_manager.h"

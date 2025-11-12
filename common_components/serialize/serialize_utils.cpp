@@ -16,7 +16,7 @@
 #include "common_components/serialize/serialize_utils.h"
 
 #include "common_components/heap/allocator/region_desc.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 namespace common {
 SerializedBaseObjectSpace SerializeUtils::GetSerializeObjectSpace(uintptr_t obj)

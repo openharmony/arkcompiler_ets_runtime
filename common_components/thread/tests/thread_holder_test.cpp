@@ -16,10 +16,10 @@
 #include "common_components/tests/test_helper.h"
 #include "common_components/mutator/mutator.h"
 #include "common_components/mutator/mutator_manager.h"
-#include "common_interfaces/base_runtime.h"
-#include "common_interfaces/thread/thread_holder-inl.h"
-#include "common_interfaces/thread/thread_holder.h"
-#include "common_interfaces/thread/thread_holder_manager.h"
+#include "base_runtime.h"
+#include "thread/thread_holder-inl.h"
+#include "thread/thread_holder.h"
+#include "thread/thread_holder_manager.h"
 
 using namespace common;
 

@@ -18,7 +18,7 @@
 
 #include "clang.h"
 #include "common_components/heap/heap_allocator-inl.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/mem/heap.h"
 

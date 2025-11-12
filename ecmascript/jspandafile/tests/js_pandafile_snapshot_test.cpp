@@ -17,7 +17,7 @@
 #include <unistd.h>
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
-#include "libpandafile/class_data_accessor-inl.h"
+#include "class_data_accessor-inl.h"
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function_kind.h"

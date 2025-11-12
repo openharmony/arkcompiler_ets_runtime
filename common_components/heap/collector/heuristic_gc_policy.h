@@ -17,7 +17,7 @@
 #define COMMON_COMPONENTS_HEAP_HEURISTIC_GC_POLICY_H
 
 #include "common_components/base/globals.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 #include "common_components/taskpool/taskpool.h"
 #include "common_components/log/log.h"
 

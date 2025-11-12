@@ -23,7 +23,7 @@
 #include "common_components/heap/space/nonmovable_space.h"
 #include "common_components/heap/space/readonly_space.h"
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 using namespace common;
 

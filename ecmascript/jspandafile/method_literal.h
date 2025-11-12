@@ -23,7 +23,7 @@
 #include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_string.h"
-#include "libpandafile/file.h"
+#include "file.h"
 
 static constexpr uint32_t CALL_TYPE_MASK = 0xF;  // 0xF: the last 4 bits are used as callType
 

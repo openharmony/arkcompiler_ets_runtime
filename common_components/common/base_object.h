@@ -16,7 +16,7 @@
 #ifndef COMMON_COMPONENTS_COMMON_BASE_OBJECT_H
 #define COMMON_COMPONENTS_COMMON_BASE_OBJECT_H
 
-#include "common_interfaces/objects/base_object.h"
+#include "objects/base_object.h"
 namespace common {
 using common::BaseObject;
 using ObjectPtr = BaseObject*;

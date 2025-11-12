@@ -39,7 +39,7 @@
 #if defined(COMMON_SANITIZER_SUPPORT)
 #include "common_components/sanitizer/sanitizer_interface.h"
 #endif
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 namespace common {
 class Taskpool;

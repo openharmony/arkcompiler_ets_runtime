@@ -17,7 +17,7 @@
 #include "common_components/heap/verification.cpp"
 #include "common_components/heap/heap_manager.h"
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/objects/base_object_operator.h"
+#include "objects/base_object_operator.h"
 
 using namespace common;
 namespace common::test {

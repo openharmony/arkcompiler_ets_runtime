@@ -17,7 +17,7 @@
 #define COMMON_COMPONENTS_MUTATOR_MUTATOR_INLINE_H
 
 #include "common_components/mutator/mutator_manager.h"
-#include "common_interfaces/thread/mutator_base-inl.h"
+#include "thread/mutator_base-inl.h"
 
 namespace common {
 inline void Mutator::DoEnterSaferegion()

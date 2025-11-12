@@ -22,7 +22,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 #include "libpandabase/utils/bit_field.h"
-#include "libpandafile/code_data_accessor-inl.h"
+#include "code_data_accessor-inl.h"
 
 namespace panda::ecmascript {
 class Program;

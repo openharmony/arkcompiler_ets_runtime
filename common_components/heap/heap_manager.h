@@ -18,7 +18,7 @@
 
 #include "common_components/common/type_def.h"
 #include "common_components/heap/collector/gc_request.h"
-#include "common_interfaces/base/runtime_param.h"
+#include "base/runtime_param.h"
 
 namespace common {
 class BaseObject;

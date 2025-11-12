@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_TAGGED_OBJECT_HEADER_H
 #define ECMASCRIPT_TAGGED_OBJECT_HEADER_H
 
-#include "common_interfaces/base/mem.h"
-#include "common_interfaces/objects/base_object.h"
+#include "base/mem.h"
+#include "objects/base_object.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/shared_heap/shared_value_helper.h"
 #include "ecmascript/mem/tagged_state_word.h"

@@ -18,8 +18,8 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 
-#include "libpandafile/code_data_accessor-inl.h"
-#include "libpandafile/method_data_accessor-inl.h"
+#include "code_data_accessor-inl.h"
+#include "method_data_accessor-inl.h"
 
 namespace panda::ecmascript::tooling {
 class PtMethod {

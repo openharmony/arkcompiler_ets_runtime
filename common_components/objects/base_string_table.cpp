@@ -13,25 +13,25 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/objects/base_string_table.h"
+#include "objects/base_string_table.h"
 
 #include "common_components/base/globals.h"
-#include "common_interfaces/objects/composite_base_class.h"
+#include "objects/composite_base_class.h"
 #include "common_components/objects/string_table/hashtriemap.h"
 #include "common_components/objects/string_table/hashtriemap-inl.h"
 #include "common_components/objects/string_table_internal.h"
 #include "common_components/taskpool/taskpool.h"
 #include "common_components/mutator/thread_local.h"
-#include "common_interfaces/objects/string/base_string.h"
-#include "common_interfaces/objects/string/base_string-inl.h"
-#include "common_interfaces/objects/string/line_string.h"
-#include "common_interfaces/objects/string/line_string-inl.h"
-#include "common_interfaces/objects/string/tree_string.h"
-#include "common_interfaces/objects/string/tree_string-inl.h"
-#include "common_interfaces/objects/string/sliced_string.h"
-#include "common_interfaces/objects/string/sliced_string-inl.h"
-#include "common_interfaces/thread/thread_holder.h"
-#include "common_interfaces/thread/thread_state_transition.h"
+#include "objects/string/base_string.h"
+#include "objects/string/base_string-inl.h"
+#include "objects/string/line_string.h"
+#include "objects/string/line_string-inl.h"
+#include "objects/string/tree_string.h"
+#include "objects/string/tree_string-inl.h"
+#include "objects/string/sliced_string.h"
+#include "objects/string/sliced_string-inl.h"
+#include "thread/thread_holder.h"
+#include "thread/thread_state_transition.h"
 #include "heap/heap_allocator.h"
 
 namespace common {

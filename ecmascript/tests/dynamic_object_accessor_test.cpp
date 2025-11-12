@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/thread/thread_holder-inl.h"
+#include "thread/thread_holder-inl.h"
 #include "ecmascript/cross_vm/dynamic_object_accessor.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/tests/test_helper.h"

@@ -41,7 +41,7 @@
 #include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/waiter_list.h"
-#include "libpandafile/bytecode_instruction-inl.h"
+#include "bytecode_instruction-inl.h"
 
 namespace panda {
 class JSNApi;

@@ -21,7 +21,7 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/compiler/aot_constantpool_patcher.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/builtins/builtins_collator.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"

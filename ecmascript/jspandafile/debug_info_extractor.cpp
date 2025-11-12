@@ -15,8 +15,8 @@
 
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 
-#include "libpandafile/debug_data_accessor-inl.h"
-#include "libpandafile/line_number_program.h"
+#include "debug_data_accessor-inl.h"
+#include "line_number_program.h"
 
 namespace panda::ecmascript {
 using panda::panda_file::ClassDataAccessor;

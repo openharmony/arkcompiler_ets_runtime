@@ -25,9 +25,9 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/platform/mutex.h"
 
-#include "libpandafile/file-inl.h"
-#include "libpandafile/file_items.h"
-#include "libpandafile/literal_data_accessor.h"
+#include "file-inl.h"
+#include "file_items.h"
+#include "literal_data_accessor.h"
 
 namespace panda {
 namespace ecmascript {

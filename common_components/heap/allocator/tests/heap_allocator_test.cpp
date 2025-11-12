@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/heap/heap_allocator.h"
+#include "heap/heap_allocator.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 using namespace common;
 

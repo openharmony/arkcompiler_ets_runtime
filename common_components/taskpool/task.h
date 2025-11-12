@@ -20,7 +20,7 @@
 #include <condition_variable>
 #include <mutex>
 
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 
 namespace common {
 enum class TaskType : uint8_t {

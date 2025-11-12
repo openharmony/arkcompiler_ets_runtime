@@ -15,7 +15,7 @@
 
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
-#include "libpandafile/class_data_accessor-inl.h"
+#include "class_data_accessor-inl.h"
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile.h"

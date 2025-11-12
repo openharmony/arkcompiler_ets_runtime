@@ -25,7 +25,7 @@
 #include "common_components/base/immortal_wrapper.h"
 #include "common_components/heap/collector/gc_request.h"
 #include "common_components/log/log.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 namespace common {
 // statistics for previous gc.

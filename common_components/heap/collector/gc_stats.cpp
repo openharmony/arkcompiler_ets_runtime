@@ -14,7 +14,7 @@
  */
 #include "common_components/heap/collector/gc_stats.h"
 
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 #include "common_components/base/time_utils.h"
 #include "common_components/heap/heap.h"
 #include "common_components/log/log.h"

@@ -12,10 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "common_interfaces/objects/string/base_string.h"
+#include "objects/string/base_string.h"
 
-#include "common_interfaces/objects/string/base_string-inl.h"
-#include "common_interfaces/objects/utils/utf_utils.h"
+#include "objects/string/base_string-inl.h"
+#include "objects/utils/utf_utils.h"
 #include "common_components/base/utf_helper.h"
 #include "common_components/platform/string_hash.h"
 #include "common_components/platform/string_hash_helper.h"

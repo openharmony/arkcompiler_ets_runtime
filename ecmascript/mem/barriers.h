@@ -20,8 +20,8 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/mem_common.h"
-#include "common_interfaces/base_runtime.h"
-#include "common_interfaces/thread/mutator_base.h"
+#include "base_runtime.h"
+#include "thread/mutator_base.h"
 
 namespace panda::ecmascript {
 class Region;

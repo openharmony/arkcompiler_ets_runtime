@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/heap/heap_visitor.h"
+#include "heap/heap_visitor.h"
 
 #include "common_components/common_runtime/hooks.h"
 #include "common_components/mutator/mutator.h"

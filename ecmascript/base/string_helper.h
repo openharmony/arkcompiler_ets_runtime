@@ -26,7 +26,7 @@
 
 #include "securec.h"
 #include "common_components/base/utf_helper.h"
-#include "common_interfaces/objects/utils/span.h"
+#include "objects/utils/span.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "libpandabase/utils/span.h"

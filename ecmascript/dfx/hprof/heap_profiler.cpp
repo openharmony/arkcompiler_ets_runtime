@@ -14,7 +14,7 @@
  */
 #include <sys/wait.h>
 #include <sys/prctl.h>
-#include "common_interfaces/profiler/heap_profiler_listener.h"
+#include "profiler/heap_profiler_listener.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"

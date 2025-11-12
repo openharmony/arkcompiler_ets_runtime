@@ -16,8 +16,8 @@
 #ifndef ECMASCRIPT_TAGGED_OBJECT_STATE_WORD_H
 #define ECMASCRIPT_TAGGED_OBJECT_STATE_WORD_H
 
-#include "common_interfaces/base/common.h"
-#include "common_interfaces/objects/base_state_word.h"
+#include "base/common.h"
+#include "objects/base_state_word.h"
 #include <atomic>
 
 using ClassWordType = uint64_t;

@@ -14,7 +14,7 @@
  */
 
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/objects/base_object.h"
+#include "objects/base_object.h"
 #include "ecmascript/string/composite_base_class.h"
 
 #include <vector>

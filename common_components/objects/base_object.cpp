@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "common_interfaces/objects/base_object.h"
+#include "objects/base_object.h"
 
 namespace common {
 BaseObjectOperator BaseObject::operator_;

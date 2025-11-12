@@ -18,7 +18,7 @@
 #include "common_components/mutator/mutator_manager.h"
 #include "common_components/tests/test_helper.h"
 #include "common_components/heap/heap_manager.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 using namespace common;
 

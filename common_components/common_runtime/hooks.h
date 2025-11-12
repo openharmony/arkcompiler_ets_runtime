@@ -18,9 +18,9 @@
 
 #include <cstdint>
 
-#include "common_interfaces/base/runtime_param.h"
-#include "common_interfaces/heap/heap_visitor.h"
-#include "common_interfaces/thread/mutator_base.h"
+#include "base/runtime_param.h"
+#include "heap/heap_visitor.h"
+#include "thread/mutator_base.h"
 
 // Visitor that iterate all `RefField`s in a TaggedObject and add them to
 // `LocalMarkStack` Should be moved to BaseRT and panda namespace later

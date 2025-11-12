@@ -17,7 +17,7 @@
 #include "common_components/heap/allocator/regional_heap.h"
 #include "common_components/mutator/satb_buffer.h"
 #include "common_components/tests/test_helper.h"
-#include "common_interfaces/base_runtime.h"
+#include "base_runtime.h"
 
 using namespace common;
 namespace common::test {

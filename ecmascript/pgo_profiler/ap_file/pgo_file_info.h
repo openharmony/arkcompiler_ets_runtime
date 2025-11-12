@@ -19,7 +19,7 @@
 #include <cstdint>
 
 #include "ecmascript/common.h"
-#include "libpandafile/file.h"
+#include "file.h"
 #include "libpandabase/macros.h"
 
 #include "ecmascript/base/file_header.h"

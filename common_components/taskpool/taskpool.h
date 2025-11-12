@@ -20,7 +20,7 @@
 #include <mutex>
 
 #include "common_components/taskpool/runner.h"
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 
 namespace common {
 class PUBLIC_API Taskpool {

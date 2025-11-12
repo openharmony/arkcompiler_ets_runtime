@@ -35,8 +35,8 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "libpandafile/class_data_accessor-inl.h"
-#include "libpandafile/index_accessor.h"
+#include "class_data_accessor-inl.h"
+#include "index_accessor.h"
 
 namespace panda {
 namespace ecmascript {

@@ -17,8 +17,8 @@
 #define COMMON_COMPONENTS_BASE_RUNTIME_BASE_RUNTIME_PARAM_H
 
 #include "common_components/base/globals.h"
-#include "common_interfaces/base/common.h"
-#include "common_interfaces/base/runtime_param.h"
+#include "base/common.h"
+#include "base/runtime_param.h"
 
 namespace common {
 class BaseRuntimeParam {

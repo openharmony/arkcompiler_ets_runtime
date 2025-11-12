@@ -19,7 +19,7 @@
 #include <cstddef>
 
 #include "common_components/base/ark_sanitizer.h"
-#include "common_interfaces/base/common.h"
+#include "base/common.h"
 
 namespace common {
 // Time Factors
