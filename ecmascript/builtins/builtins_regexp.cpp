@@ -609,7 +609,7 @@ JSTaggedValue BuiltinsRegExp::Match(EcmaRuntimeCallInfo *argv)
         // 2. If Type(rx) is not Object, throw a TypeError exception.
         THROW_TYPE_ERROR_AND_RETURN(thread, "this is not Object", JSTaggedValue::Exception());
     }
-    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue(), RegExpSymbol::MATCH);
     return RegExpMatch(thread, thisObj, string, isFastPath);
 }
 
@@ -765,7 +765,7 @@ JSTaggedValue BuiltinsRegExp::MatchAll(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> inputString = GetCallArg(argv, 0);
     JSHandle<EcmaString> stringHandle = JSTaggedValue::ToString(thread, inputString);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue(), RegExpSymbol::MATCHALL);
     return RegExpMatchAll(thread, thisObj, stringHandle, isFastPath);
 }
 
@@ -1044,7 +1044,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     bool isGlobal = false;
     bool fullUnicode = false;
-    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue(), RegExpSymbol::REPLACE);
     if (isFastPath) {
         isGlobal = GetOriginalFlag(thread, thisObj, RegExpParser::FLAG_GLOBAL);
         fullUnicode = GetOriginalFlag(thread, thisObj, RegExpParser::FLAG_UTF16);
@@ -1401,7 +1401,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSearch(JSThread *thread,
 {
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
     cacheTable->SetUseLastMatch(thread, false);
-    bool isFastPath = IsFastRegExp(thread, regexp.GetTaggedValue());
+    bool isFastPath = IsFastRegExp(thread, regexp.GetTaggedValue(), RegExpSymbol::SEARCH);
     if (isFastPath) {
         return RegExpSearchFast(thread, regexp, string);
     }
@@ -1701,7 +1701,7 @@ JSTaggedValue BuiltinsRegExp::Split(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
     cacheTable->SetUseLastMatch(thread, false);
-    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue());
+    bool isFastPath = IsFastRegExp(thread, thisObj.GetTaggedValue(), RegExpSymbol::SPLIT);
     return RegExpSplit(thread, thisObj, jsString, limit, isFastPath);
 }
 

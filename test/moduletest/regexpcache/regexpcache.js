@@ -46,4 +46,118 @@ const split_res1 = str.split(regex);
 const split_res2 = str.split(regex);
 assert_equal(split_res1, split_res2);
 
+{
+    // String.prototype.split
+    let count = 0;
+    const originalSplit = RegExp.prototype[Symbol.split];
+    RegExp.prototype[Symbol.split] = function (str) {
+        count++;
+        const original = originalSplit.call(this, str);
+        return original.map(item => `PROTOTYPE_${item}`);
+    }
+
+    const reg = /,/g
+    const result = "a,b".split(reg);
+    assert_equal(JSON.stringify(result), "[\"PROTOTYPE_a\",\"PROTOTYPE_b\"]")
+    const result2 = "a,b".split(reg);
+    assert_equal(JSON.stringify(result2), "[\"PROTOTYPE_a\",\"PROTOTYPE_b\"]")
+    assert_equal(count, 2);
+    RegExp.prototype[Symbol.split] = originalSplit;
+}
+
+{
+    // RegExp.prototype[Symbol.split]
+    let count = 0;
+    const originalSplit = RegExp.prototype[Symbol.split];
+    RegExp.prototype[Symbol.split] = function (str) {
+        count++;
+        const original = originalSplit.call(this, str);
+        return original.map(item => `PROTOTYPE_${item}`);
+    }
+    const result = RegExp.prototype[Symbol.split].call(/,/g, "a,b");
+    assert_equal(JSON.stringify(result), "[\"PROTOTYPE_a\",\"PROTOTYPE_b\"]")
+    const result2 = RegExp.prototype[Symbol.split].call(/,/g, "a,b");
+    assert_equal(JSON.stringify(result2), "[\"PROTOTYPE_a\",\"PROTOTYPE_b\"]")
+    assert_equal(count, 2);
+    RegExp.prototype[Symbol.split] = originalSplit;
+}
+
+{
+    // String.prototype.replace
+    let count = 0;
+    const originalReplace = RegExp.prototype[Symbol.replace];
+    RegExp.prototype[Symbol.replace] = function (str, replacement) {
+        count++;
+        const original = originalReplace.call(this, str, replacement);
+        return `PROTOTYPE_${original}`;
+    }
+
+    const reg = /,/g
+    const result = "a,b".replace(reg, "_");
+    assert_equal(JSON.stringify(result), "\"PROTOTYPE_a_b\"")
+    const result2 = "a,b".replace(reg, "_");
+    assert_equal(JSON.stringify(result2), "\"PROTOTYPE_a_b\"")
+    assert_equal(count, 2);
+    RegExp.prototype[Symbol.replace] = originalReplace;
+}
+
+{
+    // RegExp.prototype[Symbol.replace]
+    let count = 0;
+    const originalReplace = RegExp.prototype[Symbol.replace];
+    RegExp.prototype[Symbol.replace] = function (str, replacement) {
+        count++;
+        const original = originalReplace.call(this, str, replacement);
+        return `PROTOTYPE_${original}`;
+    }
+
+    const reg = /,/g
+    const result = RegExp.prototype[Symbol.replace].call(reg, "a,b", "_");
+    assert_equal(JSON.stringify(result), "\"PROTOTYPE_a_b\"")
+    const result2 = RegExp.prototype[Symbol.replace].call(reg, "a,b", "_");
+    assert_equal(JSON.stringify(result2), "\"PROTOTYPE_a_b\"")
+    assert_equal(count, 2);
+    RegExp.prototype[Symbol.replace] = originalReplace;
+}
+
+{
+    // String.prototype.matchAll
+    let count = 0;
+    const originalMatchAll = RegExp.prototype[Symbol.matchAll];
+    RegExp.prototype[Symbol.matchAll] = function (str) {
+        count++;
+        const original = [...originalMatchAll.call(this, str)];
+        return original.map(item => `PROTOTYPE_${item}`);
+    }
+
+    const reg = /[0-9]+/g
+    const str = "2025-11-11";
+    const result = [...str.matchAll(reg)];
+    assert_equal(JSON.stringify(result), "[\"PROTOTYPE_2025\",\"PROTOTYPE_11\",\"PROTOTYPE_11\"]")
+    const result2 = [...str.matchAll(reg)];
+    assert_equal(JSON.stringify(result2), "[\"PROTOTYPE_2025\",\"PROTOTYPE_11\",\"PROTOTYPE_11\"]")
+    assert_equal(count, 2);
+    RegExp.prototype[Symbol.matchAll] = originalMatchAll;
+}
+
+{
+    // String.prototype.matchAll
+    let count = 0;
+    const originalMatchAll = RegExp.prototype[Symbol.matchAll];
+    RegExp.prototype[Symbol.matchAll] = function (str) {
+        count++;
+        const original = [...originalMatchAll.call(this, str)];
+        return original.map(item => `PROTOTYPE_${item}`);
+    }
+
+    const reg = /[0-9]+/g
+    const str = "2025-11-11";
+    const result = [...RegExp.prototype[Symbol.matchAll].call(reg, str)];
+    assert_equal(JSON.stringify(result), "[\"PROTOTYPE_2025\",\"PROTOTYPE_11\",\"PROTOTYPE_11\"]")
+    const result2 = [...RegExp.prototype[Symbol.matchAll].call(reg, str)];
+    assert_equal(JSON.stringify(result2), "[\"PROTOTYPE_2025\",\"PROTOTYPE_11\",\"PROTOTYPE_11\"]")
+    assert_equal(count, 2);
+    RegExp.prototype[Symbol.matchAll] = originalMatchAll;
+}
+
 test_end();
