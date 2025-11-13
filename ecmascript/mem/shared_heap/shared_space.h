@@ -28,7 +28,7 @@ namespace panda::ecmascript {
 class SharedHeap;
 class SharedLocalSpace;
 
-class SharedSparseSpace : public Space {
+class SharedSparseSpace : public MonoSpace {
 public:
     SharedSparseSpace(SharedHeap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     ~SharedSparseSpace() override
@@ -208,7 +208,7 @@ private:
     void ForceExpandInSharedGC(JSThread *thread);
 };
 
-class SharedReadOnlySpace : public Space {
+class SharedReadOnlySpace : public MonoSpace {
 public:
     SharedReadOnlySpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SharedReadOnlySpace() override = default;
@@ -242,7 +242,7 @@ private:
     BumpPointerAllocator allocator_;
 };
 
-class SharedHugeObjectSpace : public Space {
+class SharedHugeObjectSpace : public MonoSpace {
 public:
     SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                     size_t maximumCapacity);
@@ -268,7 +268,7 @@ public:
 
     bool CheckOOM(size_t size) const
     {
-        size_t alignedSize = AlignUp(size + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
+        size_t alignedSize = AlignUp(size + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, DEFAULT_REGION_SIZE);
         return CommittedSizeExceed(alignedSize);
     }
 

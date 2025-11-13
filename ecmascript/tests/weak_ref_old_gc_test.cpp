@@ -170,8 +170,7 @@ HWTEST_F_L0(WeakRefOldGCTest, WeakRefTest)
             }
         }
     }
-    auto partialGc = heap->GetPartialGC();
-    partialGc->RunPhases();
+    heap->CollectGarbage(TriggerGCType::OLD_GC);
     for (auto it : dstOldArrayHandleRecord) {
         EXPECT_TRUE(it.GetTaggedValue() != JSTaggedValue::Undefined());
     }

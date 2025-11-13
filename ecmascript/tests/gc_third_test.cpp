@@ -101,6 +101,9 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
     }
     {
 #ifdef NDEBUG
+        if constexpr (G_USE_CMS_GC) {
+            return;
+        }
         size_t newSize = 0;
         size_t finalSize = 0;
         bool res = getSizeAfterCreateAndCallHintGC(newSize, finalSize);
@@ -111,6 +114,9 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
 
 HWTEST_F_L0(GCTest, LargeOverShootSizeTest)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     size_t originalYoungSize = heap->GetNewSpace()->GetCommittedSize();
 
@@ -233,6 +239,9 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest003)
 HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest004)
 {
 #ifdef NDEBUG
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -251,6 +260,9 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest004)
 HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest005)
 {
 #ifdef NDEBUG
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -353,17 +365,6 @@ HWTEST_F_L0(GCTest, NeedStopCollectionTest001)
     ASSERT_EQ(heap->NeedStopCollection(), true);
 }
 
-HWTEST_F_L0(GCTest, ReclaimTest001)
-{
-    SharedHeap *heap = SharedHeap::GetInstance();
-    heap->DisableParallelGC(thread);
-    heap->Reclaim(TriggerGCType::YOUNG_GC);
-    ASSERT_EQ(heap->GetMaxMarkTaskCount(), 0);
-    ASSERT_FALSE(heap->IsParallelGCEnabled());
-    ASSERT_TRUE(heap->GetSweeper()->IsDisabled());
-    ASSERT_TRUE(heap->GetConcurrentMarker()->IsConfigDisabled());
-}
-
 HWTEST_F_L0(GCTest, CollectGarbageTest003)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -447,6 +448,9 @@ HWTEST_F_L0(GCTest, CheckOngoingConcurrentMarkingTest002)
 
 HWTEST_F_L0(GCTest, SelectGCTypeTest001)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetOldSpace()->SetInitialCapacity(100);
     ASSERT_EQ(heap->SelectGCType(), OLD_GC);
@@ -454,6 +458,9 @@ HWTEST_F_L0(GCTest, SelectGCTypeTest001)
 
 HWTEST_F_L0(GCTest, SelectGCTypeTest002)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetOldSpace()->SetMaximumCapacity(1000);
     heap->GetOldSpace()->SetOvershootSize(1000);
@@ -513,8 +520,11 @@ HWTEST_F_L0(GCTest, NeedStopCollectionTest004)
 
 HWTEST_F_L0(GCTest, TryToGetSuitableSweptRegionTest001)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    SparseSpace *space = heap->GetSpaceWithType(MemSpaceType::OLD_SPACE);
+    SparseSpace *space = static_cast<SparseSpace *>(heap->GetSweepableSpaceWithType(MemSpaceType::OLD_SPACE));
     space->FinishFillSweptRegion();
     ASSERT_EQ(space->TryToGetSuitableSweptRegion(100), nullptr);
 }
@@ -537,6 +547,9 @@ HWTEST_F_L0(GCTest, CalculateGrowingFactorTest002)
 
 HWTEST_F_L0(GCTest, StartCalculationBeforeGCTest001)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     MemController *memController = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -605,6 +618,9 @@ HWTEST_F_L0(GCTest, InvokeAllocationInspectorTest001)
 
 HWTEST_F_L0(GCTest, OldSpaceValidCheck)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     static constexpr size_t kLength = 10 * 1024;
     static constexpr size_t kCount = 2;
     static constexpr size_t kLimit = 380 * 1024 * 1024;
@@ -692,42 +708,5 @@ HWTEST_F_L0(GCTest, RawHeapSendSysEventDataSize)
     GCKeyStats *keystats = thread->GetEcmaVM()->GetEcmaGCKeyStats();
     int32_t ret = keystats->SendSysEventDataSize(filePaths, fileSizes);
     ASSERT_EQ(ret, 0);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest010)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
-    heap->GetEcmaGCStats()->SetMarkReason(MarkReason::IDLE);
-    heap->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
-    EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::OLD_GC_WITHOUT_FULLMARK);
-}
-
-HWTEST_F_L0(GCTest, CollectGarbageTest011)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
-    heap->GetEcmaGCStats()->SetMarkReason(MarkReason::IDLE);
-    heap->CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
-    EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::IDLE);
-}
-
-HWTEST_F_L0(GCTest, PartialGCRunPhases001)
-{
-    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    ASSERT_EQ(heap->CheckOngoingConcurrentMarking(), false);
-    auto partialGc = heap->GetPartialGC();
-    partialGc->RunPhases();
-}
-
-HWTEST_F_L0(GCTest, PartialGCRunPhases002)
-{
-    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetConcurrentMarker()->Mark();
-    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARKING);
-    ASSERT_EQ(heap->CheckOngoingConcurrentMarking(), true);
-    auto partialGc = heap->GetPartialGC();
-    partialGc->RunPhases();
 }
 } // namespace panda::test

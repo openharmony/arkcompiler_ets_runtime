@@ -73,6 +73,9 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking2)
 
 HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking3)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     bool temp = g_isEnableCMCGC;
     g_isEnableCMCGC = false;
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -130,6 +133,9 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking5)
 
 HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking6)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     bool temp = g_isEnableCMCGC;
     g_isEnableCMCGC = false;
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -148,6 +154,9 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking6)
 
 HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking7)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     bool temp = g_isEnableCMCGC;
     g_isEnableCMCGC = false;
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());

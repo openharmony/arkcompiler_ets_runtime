@@ -88,6 +88,7 @@ enum class SerializedObjectSpace : uint8_t {
     OTHER,
 
     OLD_SPACE,
+    SLOT_SPACE,
     NON_MOVABLE_SPACE,
     MACHINE_CODE_SPACE,
     HUGE_SPACE,
@@ -149,9 +150,9 @@ public:
             return ((size - 1) / REGION_SIZE + 1) * REGION_SIZE; // 1: align up
         } else {
             if (size == 0) {
-                return Region::GetRegionAvailableSize();
+                return DefaultRegion::GetRegionAvailableSize();
             }
-            size_t regionAvailableSize = Region::GetRegionAvailableSize();
+            size_t regionAvailableSize = DefaultRegion::GetRegionAvailableSize();
             return ((size - 1) / regionAvailableSize + 1) * regionAvailableSize; // 1: align up
         }
     }
@@ -408,6 +409,9 @@ public:
             switch (space) {
                 case SerializedObjectSpace::OLD_SPACE:
                     AlignSpaceObjectSize(oldSpaceSize_, objectSize, SerializedObjectSpace::OLD_SPACE);
+                    break;
+                case SerializedObjectSpace::SLOT_SPACE:
+                    // fixme: support;
                     break;
                 case SerializedObjectSpace::NON_MOVABLE_SPACE:
                     AlignSpaceObjectSize(nonMovableSpaceSize_, objectSize, SerializedObjectSpace::NON_MOVABLE_SPACE);

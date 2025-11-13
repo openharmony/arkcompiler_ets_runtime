@@ -269,9 +269,11 @@ public:
                 ToUintPtr(this) + GetMachineCodeObjectSize(), VisitObjectArea::RAW_DATA);
         }
         if constexpr (visitType == VisitType::OLD_GC_VISIT) {
+            uintptr_t start = static_cast<uintptr_t>(GetHeapConstantTableAddr());
+            uintptr_t end = static_cast<uintptr_t>(GetHeapConstantTableAddr()) + GetHeapConstantTableSize();
             visitor(this,
-                    static_cast<uintptr_t>(GetHeapConstantTableAddr()),
-                    static_cast<uintptr_t>(GetHeapConstantTableAddr()) + GetHeapConstantTableSize(),
+                    start,
+                    end,
                     VisitObjectArea::NORMAL);
             this->ProcessMarkObject();
         }

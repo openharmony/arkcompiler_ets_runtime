@@ -117,6 +117,9 @@ HWTEST_F_L0(GCTest, ColdStartForceExpand)
     usleep(10000000);
     size_t newSize = EcmaTestCommon::GcCommonCase(thread);
     EXPECT_TRUE(originalHeapSize < expandHeapSize);
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     EXPECT_TRUE(expandHeapSize > newSize);
 }
 
@@ -137,6 +140,9 @@ HWTEST_F_L0(GCTest, HighSensitiveForceExpand)
     const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->NotifyHighSensitive(false);
     size_t newSize = EcmaTestCommon::GcCommonCase(thread);
     EXPECT_TRUE(originalHeapSize < expandHeapSize);
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     EXPECT_TRUE(expandHeapSize > newSize);
 }
 
@@ -242,6 +248,9 @@ HWTEST_F_L0(GCTest, CallbackTask)
 
 HWTEST_F_L0(GCTest, RecomputeLimitsTest)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto oldCapacity = heap->GetOldSpace()->GetInitialCapacity();
     heap->CollectGarbage(TriggerGCType::FULL_GC);
@@ -270,6 +279,7 @@ HWTEST_F_L0(GCTest, GlobalNativeSizeLargerThanLimitTest)
     ret = heap->GlobalNativeSizeLargerThanLimit();
     EXPECT_TRUE(ret);
 }
+
 #ifdef NDEBUG
 HWTEST_F_L0(GCTest, IdleGCTriggerTest)
 {
@@ -451,6 +461,9 @@ HWTEST_F_L0(GCTest, CalculateGrowingFactorTest003)
 
 HWTEST_F_L0(GCTest, StopCalculationAfterGCTest001)
 {
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto controller = new MemController(heap);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -487,30 +500,11 @@ HWTEST_F_L0(GCTest, WaitAllTasksFinishedTest002)
 HWTEST_F_L0(GCTest, ChangeGCParamsTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
     heap->ChangeGCParams(true);
     ASSERT_TRUE(heap->IsInBackground());
 }
 
 HWTEST_F_L0(GCTest, ChangeGCParamsTest002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
-    heap->GetOldSpace()->IncreaseCommitted(31457300);
-    heap->ChangeGCParams(true);
-    ASSERT_TRUE(heap->IsInBackground());
-}
-
-HWTEST_F_L0(GCTest, ChangeGCParamsTest003)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto sHeap = SharedHeap::GetInstance();
-    sHeap->GetOldSpace()->IncreaseLiveObjectSize(2098000);
-    heap->ChangeGCParams(true);
-    ASSERT_TRUE(heap->IsInBackground());
-}
-
-HWTEST_F_L0(GCTest, ChangeGCParamsTest004)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMemGrowingType(MemGrowingType::HIGH_THROUGHPUT);

@@ -19,51 +19,6 @@
 #include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
-void Space::AddRegion(Region *region)
-{
-    ASSERT(region != nullptr);
-    LOG_ECMA_MEM(DEBUG) << "Add region:" << region << " to " << ToSpaceTypeName(spaceType_);
-    regionList_.AddNode(region);
-    IncreaseCommitted(region->GetCapacity());
-    IncreaseObjectSize(region->GetSize());
-}
-
-void Space::RemoveRegion(Region *region)
-{
-    LOG_ECMA_MEM(DEBUG) << "Remove region:" << region << " to " << ToSpaceTypeName(spaceType_);
-    regionList_.RemoveNode(region);
-    DecreaseCommitted(region->GetCapacity());
-    DecreaseObjectSize(region->GetSize());
-}
-
-template<class Callback>
-void Space::EnumerateRegions(const Callback &cb, Region *end) const
-{
-    Region *current = regionList_.GetFirst();
-    if (current == nullptr) {
-        return;
-    }
-    if (end == nullptr) {
-        end = regionList_.GetLast();
-    }
-    while (current != end) {
-        auto next = current->GetNext();
-        cb(current);
-        current = next;
-    }
-
-    if (current != nullptr) {
-        cb(current);
-    }
-}
-
-template<class Callback>
-void Space::EnumerateRegionsWithRecord(const Callback &cb) const
-{
-    if (recordRegion_ != nullptr) {
-        EnumerateRegions(cb, recordRegion_);
-    }
-}
 
 RegionSpaceFlag Space::GetRegionFlag() const
 {
@@ -97,6 +52,9 @@ RegionSpaceFlag Space::GetRegionFlag() const
         case MemSpaceType::APPSPAWN_SPACE:
             flags = RegionSpaceFlag::IN_APPSPAWN_SPACE;
             break;
+        case MemSpaceType::SLOT_SPACE:
+            flags = RegionSpaceFlag::IN_SLOT_SPACE;
+            break;
         case MemSpaceType::SHARED_APPSPAWN_SPACE:
             flags = RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE;
             break;
@@ -120,6 +78,52 @@ RegionSpaceFlag Space::GetRegionFlag() const
             break;
     }
     return flags;
+}
+
+void MonoSpace::AddRegion(Region *region)
+{
+    ASSERT(region != nullptr);
+    LOG_ECMA_MEM(DEBUG) << "Add region:" << region << " to " << ToSpaceTypeName(spaceType_);
+    regionList_.AddNode(region);
+    IncreaseCommitted(region->GetCapacity());
+    IncreaseObjectSize(region->GetSize());
+}
+
+void MonoSpace::RemoveRegion(Region *region)
+{
+    LOG_ECMA_MEM(DEBUG) << "Remove region:" << region << " to " << ToSpaceTypeName(spaceType_);
+    regionList_.RemoveNode(region);
+    DecreaseCommitted(region->GetCapacity());
+    DecreaseObjectSize(region->GetSize());
+}
+
+template<class Callback>
+void MonoSpace::EnumerateRegions(const Callback &cb, Region *end) const
+{
+    Region *current = regionList_.GetFirst();
+    if (current == nullptr) {
+        return;
+    }
+    if (end == nullptr) {
+        end = regionList_.GetLast();
+    }
+    while (current != end) {
+        auto next = current->GetNext();
+        cb(current);
+        current = next;
+    }
+
+    if (current != nullptr) {
+        cb(current);
+    }
+}
+
+template<class Callback>
+void MonoSpace::EnumerateRegionsWithRecord(const Callback &cb) const
+{
+    if (recordRegion_ != nullptr) {
+        EnumerateRegions(cb, recordRegion_);
+    }
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SPACE_INL_H

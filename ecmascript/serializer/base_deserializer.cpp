@@ -267,6 +267,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         case (uint8_t)SerializedObjectSpace::PIN_SPACE:
         case (uint8_t)SerializedObjectSpace::LARGE_SPACE:
         case (uint8_t)SerializedObjectSpace::OLD_SPACE:
+        case (uint8_t)SerializedObjectSpace::SLOT_SPACE:
         case (uint8_t)SerializedObjectSpace::NON_MOVABLE_SPACE:
         case (uint8_t)SerializedObjectSpace::MACHINE_CODE_SPACE:
         case (uint8_t)SerializedObjectSpace::HUGE_SPACE:
@@ -481,6 +482,11 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             }
             res = oldSpaceBeginAddr_;
             oldSpaceBeginAddr_ += objSize;
+            break;
+        }
+        case SerializedObjectSpace::SLOT_SPACE: {
+            // fixme: add impl
+            res = heap_->GetSlotSpace()->Allocate<false>(objSize);
             break;
         }
         case SerializedObjectSpace::NON_MOVABLE_SPACE: {
@@ -799,11 +805,11 @@ bool BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
     ASSERT(spaceType != SerializedObjectSpace::NON_MOVABLE_SPACE);
     regionIndex = regionVector_.size();
     size_t regionAlignedSize = SerializeData::AlignUpRegionAvailableSize(spaceObjSize);
-    size_t regionNum = regionAlignedSize / Region::GetRegionAvailableSize();
+    size_t regionNum = regionAlignedSize / DefaultRegion::GetRegionAvailableSize();
     size_t index = 0;
     while (regionNum > 1) { // 1: one region have allocated before
         auto regionRemainSizeVector = data_->GetRegionRemainSizeVectors().at(static_cast<uint8_t>(spaceType));
-        auto regionAliveObjSize = Region::GetRegionAvailableSize() - regionRemainSizeVector[index++];
+        auto regionAliveObjSize = DefaultRegion::GetRegionAvailableSize() - regionRemainSizeVector[index++];
         space->GetCurrentRegion()->IncreaseAliveObject(regionAliveObjSize);
         space->ResetTopPointer(space->GetCurrentRegion()->GetBegin() + regionAliveObjSize);
         if (!space->Expand()) {
@@ -819,7 +825,7 @@ bool BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
         regionNum--;
     }
     size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
-    space->GetCurrentRegion()->IncreaseAliveObject(Region::GetRegionAvailableSize() - lastRegionRemainSize);
+    space->GetCurrentRegion()->IncreaseAliveObject(DefaultRegion::GetRegionAvailableSize() - lastRegionRemainSize);
     space->ResetTopPointer(space->GetCurrentRegion()->GetEnd() - lastRegionRemainSize);
     return true;
 }
@@ -836,7 +842,7 @@ bool BaseDeserializer::AllocateMultiNonmovableRegion(SparseSpace *space, size_t 
     size_t totalRegion = remainSize.size();
     while (allocatedSize < spaceObjSize) {
         size_t leftSize = spaceObjSize - allocatedSize;
-        size_t size = std::min(leftSize, Region::GetRegionAvailableSize());
+        size_t size = std::min(leftSize, DefaultRegion::GetRegionAvailableSize());
         uintptr_t obj = space->Allocate(size, false);
         if (obj == 0) {
             if (!isFirstAllocate) {
@@ -871,7 +877,7 @@ void BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_
 {
     regionIndex = regionVector_.size();
     size_t regionAlignedSize = SerializeData::AlignUpRegionAvailableSize(spaceObjSize);
-    size_t regionNum = regionAlignedSize / Region::GetRegionAvailableSize();
+    size_t regionNum = regionAlignedSize / DefaultRegion::GetRegionAvailableSize();
     auto regionRemainSizeVector = data_->GetRegionRemainSizeVectors().at(static_cast<uint8_t>(spaceType));
     std::vector<Region *> allocateRegions;
     size_t index = 0;

@@ -24,7 +24,7 @@ SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,
                                      MemSpaceType type,
                                      size_t initialCapacity,
                                      size_t maximumCapacity)
-    : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
+    : MonoSpace(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       sweepState_(SweepState::NO_SWEEP),
       sHeap_(heap),
       liveObjectSize_(0)
@@ -483,7 +483,7 @@ void SharedOldSpace::ReclaimCSets()
 {
     EnumerateCollectRegionSet([this](Region *region) {
         region->DeleteCrossRegionRSet();
-        region->DestroyFreeObjectSets();
+        DefaultRegion::FromRegion(region)->DestroyFreeObjectSets();
         heapRegionAllocator_->FreeRegion(region, 0, true);
     });
     collectRegionSet_.clear();
@@ -582,7 +582,7 @@ uintptr_t SharedLocalSpace::Allocate(size_t size, bool isExpand)
 }
 
 SharedReadOnlySpace::SharedReadOnlySpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)
-    : Space(
+    : MonoSpace(
           heap, heap->GetHeapRegionAllocator(), MemSpaceType::SHARED_READ_ONLY_SPACE, initialCapacity, maximumCapacity)
 {
 }
@@ -629,13 +629,16 @@ uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
 
 void SharedReadOnlySpace::IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor) const
 {
-    size_t size = allocator_.Available();
-    if (size != 0) {
-        FreeObject::FillFreeObject(heap_, allocator_.GetTop(), size);
-    }
-    EnumerateRegions([&](Region *region) {
+    Region *currentRegion = GetCurrentRegion();
+    EnumerateRegions([this, currentRegion, &visitor](Region *region) {
         uintptr_t curPtr = region->GetBegin();
-        uintptr_t endPtr = region->GetEnd();
+        uintptr_t endPtr = 0;
+        if (region == currentRegion) {
+            uintptr_t top = allocator_.GetTop();
+            endPtr = curPtr + region->GetAllocatedBytes(top);
+        } else {
+            endPtr = curPtr + region->GetAllocatedBytes();
+        }
         while (curPtr < endPtr) {
             auto freeObject = FreeObject::Cast(curPtr);
             size_t objSize;
@@ -659,7 +662,7 @@ void SharedReadOnlySpace::IterateOverObjects(const std::function<void(TaggedObje
 
 SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator *heapRegionAllocator,
                                              size_t initialCapacity, size_t maximumCapacity)
-    : Space(heap, heapRegionAllocator, MemSpaceType::SHARED_HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)
+    : MonoSpace(heap, heapRegionAllocator, MemSpaceType::SHARED_HUGE_OBJECT_SPACE, initialCapacity, maximumCapacity)
 {
     triggerLocalFullMarkLimit_ = maximumCapacity * HUGE_OBJECT_SIZE_RATIO;
 }
@@ -675,7 +678,7 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, A
 #endif
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
-    size_t alignedSize = AlignUp(objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE, PANDA_POOL_ALIGNMENT_IN_BYTES);
+    size_t alignedSize = AlignUp(objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, DEFAULT_REGION_SIZE);
     if (allocType == AllocateEventType::NORMAL) {
         thread->CheckSafepointIfSuspended();
         CheckAndTriggerLocalFullMark(thread, alignedSize);
