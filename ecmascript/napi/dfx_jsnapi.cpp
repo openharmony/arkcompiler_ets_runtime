@@ -31,6 +31,7 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/ohos/ohos_constants.h"
+#include "ecmascript/platform/backtrace.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -1131,6 +1132,12 @@ void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTrac
     if (sourceMapcb != nullptr && !stackTraceStr.empty()) {
         stackTraceStr = sourceMapcb(stackTraceStr);
     }
+}
+
+void DFXJSNApi::GetHybridStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
+{
+    // only for js crash
+    stackTraceStr = ecmascript::SymbolicAddress(vm->GetPcVectorData(), vm->GetPcVectorSize(), vm);
 }
 
 void DFXJSNApi::SetJsRawHeapCropLevel(CropLevel level)

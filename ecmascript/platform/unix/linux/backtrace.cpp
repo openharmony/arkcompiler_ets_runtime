@@ -42,4 +42,19 @@ void Backtrace(std::ostringstream &stack, [[maybe_unused]] bool enableCache)
 
     free(stackList);
 }
+
+int BacktraceHybrid([[maybe_unused]] void** pcArray, [[maybe_unused]] uint32_t maxSize)
+{
+    LOG_ECMA(INFO) << "BacktraceHybrid in linux not support";
+    return 0;
+}
+
+std::string SymbolicAddress([[maybe_unused]] const void* const *pc,
+                            [[maybe_unused]] int size,
+                            [[maybe_unused]] const EcmaVM *vm)
+{
+    std::string stack;
+    LOG_ECMA(INFO) << "SymbolicAddress in linux not support";
+    return stack;
+}
 } // namespace panda::ecmascript

@@ -24,6 +24,7 @@
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/tracing/tracing.h"
+#include "ecmascript/platform/backtrace.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
@@ -145,26 +146,16 @@ HWTEST_F_L0(DFXJSNApiTests, BuildNativeAndJsStackTrace)
     bool result = false;
     std::string stackTraceStr = "stack_trace_str";
     result = DFXJSNApi::BuildNativeAndJsStackTrace(vm_, stackTraceStr);
-#if defined(ENABLE_EXCEPTION_BACKTRACE)
-    EXPECT_FALSE(stackTraceStr.empty());
-    EXPECT_TRUE(result);
-#else
     EXPECT_TRUE(stackTraceStr.empty());
     EXPECT_FALSE(result);
-#endif
 }
 
 HWTEST_F_L0(DFXJSNApiTests, BuildJsStackTrace)
 {
     std::string stackTraceStr = "stack_trace_str";
     bool result = DFXJSNApi::BuildJsStackTrace(vm_, stackTraceStr);
-#if defined(ENABLE_EXCEPTION_BACKTRACE)
-    EXPECT_FALSE(stackTraceStr.empty());
-    EXPECT_TRUE(result);
-#else
     EXPECT_TRUE(stackTraceStr.empty());
     EXPECT_FALSE(result);
-#endif
 }
 
 HWTEST_F_L0(DFXJSNApiTests, Start_Stop_HeapTracking_001)
@@ -1006,5 +997,41 @@ HWTEST_F_L0(DFXJSNApiTests, LoadHookModule_1)
 {
     LocalScope scope(vm_);
     EXPECT_FALSE(DFXJSNApi::LoadHookModule(vm_));
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetHybridStackTrace1) {
+    RuntimeOption option;
+    std::thread t1([&]() {
+        auto vm1 = JSNApi::CreateJSVM(option);
+        int size = BacktraceHybrid(vm1->GetPcVectorData());
+        vm1->SetPcVectorSize(size);
+        std::string stackTraceStr;
+        DFXJSNApi::GetHybridStackTrace(vm1, stackTraceStr);
+#if defined(ENABLE_BACKTRACE_LOCAL)
+        EXPECT_TRUE(!stackTraceStr.empty());
+#else
+        EXPECT_TRUE(stackTraceStr.empty());
+#endif
+        JSNApi::DestroyJSVM(vm1);
+    });
+    t1.join();
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetHybridStackTrace2) {
+    std::string stackTraceStr;
+    int size = BacktraceHybrid(vm_->GetPcVectorData());
+    vm_->SetPcVectorSize(size);
+    DFXJSNApi::GetHybridStackTrace(vm_, stackTraceStr);
+#if defined(ENABLE_BACKTRACE_LOCAL)
+    EXPECT_TRUE(!stackTraceStr.empty());
+#else
+    EXPECT_TRUE(stackTraceStr.empty());
+#endif
+}
+
+HWTEST_F_L0(DFXJSNApiTests, GetHybridStackTrace3) {
+    std::string stackTraceStr;
+    DFXJSNApi::GetHybridStackTrace(vm_, stackTraceStr);
+    EXPECT_TRUE(stackTraceStr.empty());
 }
 } // namespace panda::test

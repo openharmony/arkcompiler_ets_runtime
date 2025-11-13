@@ -22,6 +22,7 @@
 #include "class_data_accessor-inl.h"
 #include "libziparchive/zip_archive.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -401,18 +402,6 @@ HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
     ret = ark_destory_js_symbol_extractor(extractorptr2);
     EXPECT_TRUE(!JsStackInfo::nameMap.empty());
     EXPECT_TRUE(ret == 1);
-}
-
-/**
- * @tc.name: BuildJsStackInfo
- * @tc.desc: Check whether the result returned through "BuildJsStackInfo" function is within expectations;
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo)
-{
-    auto jsFrame = JsStackInfo::BuildJsStackInfo(thread_);
-    EXPECT_TRUE(jsFrame.empty());
 }
 
 /**
@@ -1647,4 +1636,23 @@ HWTEST_F_L0(JsStackInfoTest, MatchLineAndRevisedOffset) {
     EXPECT_TRUE(lineNumber == 17);
 }
 
+HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo1)
+{
+    auto jsFrame = JsStackInfo::BuildJsStackInfo(thread_);
+    EXPECT_TRUE(jsFrame.empty());
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo4)
+{
+    JSHandle<JSObject> jsErrorObj;
+    std::string stack1 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, true);
+#if defined(ENABLE_BACKTRACE_LOCAL)
+    EXPECT_TRUE(!stack1.empty());
+#else
+    EXPECT_TRUE(stack1.empty());
+#endif
+
+    std::string stack2 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, false);
+    EXPECT_TRUE(stack2.empty());
+}
 }  // namespace panda::test

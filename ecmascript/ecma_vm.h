@@ -1237,6 +1237,26 @@ public:
         return abcBufferCache_;
     }
 
+    void **GetPcVectorData()
+    {
+        return pcVector_.data();
+    }
+
+    const void* const *GetPcVectorData() const
+    {
+        return pcVector_.data();
+    }
+
+    int GetPcVectorSize() const
+    {
+        return realSize_;
+    }
+
+    void SetPcVectorSize(int size)
+    {
+        realSize_ = size;
+    }
+
     void AddSustainingJSHandle(SustainingJSHandle *sustainingHandle);
     void RemoveSustainingJSHandle(SustainingJSHandle *sustainingHandle);
 
@@ -1562,6 +1582,10 @@ private:
     PromiseRejectCallback promiseRejectCallback_ {nullptr};
     HostPromiseRejectionTracker hostPromiseRejectionTracker_ {nullptr};
     void* data_{nullptr};
+
+    // for js error record hybrid stack pc
+    std::vector<void*> pcVector_ {};
+    int realSize_ = 0;
 
     JSTaggedValue finRegLists_ {JSTaggedValue::Hole()};
     JSTaggedValue registerSymbols_ {JSTaggedValue::Hole()};

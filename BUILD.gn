@@ -389,6 +389,9 @@ config("hiviewdfx_config") {
   if (enable_unwinder) {
     defines += [ "ENABLE_UNWINDER" ]
   }
+  if (enable_backtrace_local) {
+    defines += [ "ENABLE_BACKTRACE_LOCAL" ]
+  }
   include_dirs = [ "$hilog_root/include" ]
 }
 
@@ -1580,6 +1583,10 @@ ohos_source_set("libark_jsruntime_test_set") {
 
   if (enable_target_compilation) {
     external_deps += [ "c_utils:utils" ]
+  }
+
+  if (enable_backtrace_local) {
+    external_deps += [ "faultloggerd:libbacktrace_local" ]
   }
 
   # hiviewdfx libraries
