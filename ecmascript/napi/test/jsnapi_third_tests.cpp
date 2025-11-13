@@ -1859,4 +1859,102 @@ HWTEST_F_L0(JSNApiTests, InitHybridVMEnv)
 
     EXPECT_TRUE(instance->IsHybridVm());
 }
+HWTEST_F_L0(JSNApiTests, NewFromUtf8Replacement)
+{
+    uint8_t u8Data[1024] = {0xcc, 0x5c, 0x0};
+    uint8_t u8Out[1024] = {0};
+    size_t u8OutLen = 0;
+    
+    Local<StringRef> resStr = StringRef::NewFromUtf8Replacement(thread_->GetEcmaVM(),
+                                                                reinterpret_cast<char*>(u8Data), 2);
+    u8OutLen = resStr-> Utf8Length(thread_->GetEcmaVM());
+    resStr -> WriteUtf8(thread_->GetEcmaVM(), reinterpret_cast<char*>(u8Out), u8OutLen);
+    ASSERT_TRUE(u8Out[0] == 0xef);
+    ASSERT_TRUE(u8Out[1] == 0xbf);
+    ASSERT_TRUE(u8Out[2] == 0xbd);
+    ASSERT_TRUE(u8Out[3] == 0x5c);
+    ASSERT_TRUE(u8Out[4] == 0x0);
+    {
+        // test for utf8 decode
+        std::string input[4];
+        input[0] = "ahskdjashdjkasdhashiwyqoieysodahlkdhjaldqdwqwertyuiopp;kjsxcvbnm,kqqaxvbnkhd";
+        input[1] = "埃里克多少啊收到了賀卡收到和拉丁八點幺五i一起玩按時打算到i的後期維護公司付款就大概的";
+        input[2] = "🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗";
+        input[3] = input[0] + input[1] + input[2];
+        for (int i = 0; i < 3; i++) {
+            input[0] = input[0] + input[0];
+            input[1] = input[1] + input[1];
+            input[2] = input[2] + input[2];
+            input[3] = input[3] + input[3];
+        }
+        input[0] += "\0";
+        input[1] += "\0";
+        input[2] += "\0";
+        input[3] += "\0";
+        for (int i = 0; i < 4; i++) {
+            Local<StringRef> resStr = StringRef::NewFromUtf8Replacement(
+                thread_->GetEcmaVM(), input[i].c_str(), input[i].length());
+            u8OutLen = resStr-> Utf8Length(thread_->GetEcmaVM());
+            uint8_t *u8Out = static_cast<uint8_t *>(malloc(u8OutLen + 1));
+            resStr -> WriteUtf8(thread_->GetEcmaVM(), reinterpret_cast<char*>(u8Out), u8OutLen);
+            for (int j = 0; j <= input[i].size(); j++) {
+                ASSERT_TRUE(u8Out[j] == (uint8_t)input[i][j]);
+            }
+            free(u8Out);
+            Local<StringRef> resStr1 = StringRef::NewFromUtf8(
+                thread_->GetEcmaVM(), input[i].c_str(), input[i].length());
+            uint32_t u8OutLen2 = resStr1-> Utf8Length(thread_->GetEcmaVM());
+            ASSERT_TRUE(u8OutLen2 == u8OutLen);
+        }
+    }
+}
+HWTEST_F_L0(JSNApiTests, NewFromUtf8WithoutStringTableReplacement)
+{
+    uint8_t u8Data[1024] = {0xcc, 0x5c, 0x0};
+    uint8_t u8Out[1024] = {0};
+    size_t u8OutLen = 0;
+    
+    Local<StringRef> resStr = StringRef::NewFromUtf8Replacement(thread_->GetEcmaVM(),
+                                                                reinterpret_cast<char*>(u8Data), 2);
+    u8OutLen = resStr-> Utf8Length(thread_->GetEcmaVM());
+    resStr -> WriteUtf8(thread_->GetEcmaVM(), reinterpret_cast<char*>(u8Out), u8OutLen);
+    ASSERT_TRUE(u8Out[0] == 0xef);
+    ASSERT_TRUE(u8Out[1] == 0xbf);
+    ASSERT_TRUE(u8Out[2] == 0xbd);
+    ASSERT_TRUE(u8Out[3] == 0x5c);
+    ASSERT_TRUE(u8Out[4] == 0x0);
+    {
+        // test for utf8 decode
+        std::string input[4];
+        input[0] = "ahskdjashdjkasdhashiwyqoieysodahlkdhjaldqdwqwertyuiopp;kjsxcvbnm,kqqaxvbnkhd";
+        input[1] = "埃里克多少啊收到了賀卡收到和拉丁八點幺五i一起玩按時打算到i的後期維護公司付款就大概的";
+        input[2] = "🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗🤗";
+        input[3] = input[0] + input[1] + input[2];
+        for (int i = 0; i < 3; i++) {
+            input[0] = input[0] + input[0];
+            input[1] = input[1] + input[1];
+            input[2] = input[2] + input[2];
+            input[3] = input[3] + input[3];
+        }
+        input[0] += "\0";
+        input[1] += "\0";
+        input[2] += "\0";
+        input[3] += "\0";
+        for (int i = 0; i < 4; i++) {
+            Local<StringRef> resStr = StringRef::NewFromUtf8Replacement(
+                thread_->GetEcmaVM(), input[i].c_str(), input[i].length());
+            u8OutLen = resStr-> Utf8Length(thread_->GetEcmaVM());
+            uint8_t *u8Out = static_cast<uint8_t *>(malloc(u8OutLen + 1));
+            resStr -> WriteUtf8(thread_->GetEcmaVM(), reinterpret_cast<char*>(u8Out), u8OutLen);
+            for (int j = 0; j <= input[i].size(); j++) {
+                ASSERT_TRUE(u8Out[j] == (uint8_t)input[i][j]);
+            }
+            free(u8Out);
+            Local<StringRef> resStr1 = StringRef::NewFromUtf8(
+                thread_->GetEcmaVM(), input[i].c_str(), input[i].length());
+            uint32_t u8OutLen2 = resStr1-> Utf8Length(thread_->GetEcmaVM());
+            ASSERT_TRUE(u8OutLen2 == u8OutLen);
+        }
+    }
+}
 } // namespace panda::test

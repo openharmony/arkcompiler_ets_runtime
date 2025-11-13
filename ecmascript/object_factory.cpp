@@ -4454,6 +4454,30 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTable(std::string_vi
     return JSHandle<EcmaString>(thread_, str);
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTableReplacement(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
+    uint32_t utf8Len = data.length();
+    if (canBeCompress) {
+        EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len,
+                                                             canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+        uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+        str->SetMixHashcode(hashCode);
+        return JSHandle<EcmaString>(thread_, str);
+    } else {
+        std::vector<uint16_t> utf16Data(utf8Len);
+        uint32_t utf16Len = common::utf_helper_replacement::ConvertRegionUtf8ToUtf16(utf8Data, utf8Len,
+                                                                                     utf16Data.data());
+        ASSERT(utf16Len <= utf8Len);
+        EcmaString *str = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data.data(), utf16Len, canBeCompress,
+                                                              MemSpaceType::SHARED_OLD_SPACE);
+        uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(utf16Data.data(), utf16Len);
+        str->SetMixHashcode(hashCode);
+        return JSHandle<EcmaString>(thread_, str);
+    }
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)
 {
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
@@ -4461,11 +4485,42 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data)
     return GetStringFromStringTable(utf8Data, data.length(), canBeCompress);
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8Replacement(std::string_view data)
+{
+    auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    uint32_t utf8Len = data.length();
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, data.length());
+    if (canBeCompress) {
+        return GetStringFromStringTable(utf8Data, utf8Len, canBeCompress);
+    } else {
+        std::vector<uint16_t> utf16Data(utf8Len);
+        uint32_t utf16Len = common::utf_helper_replacement::ConvertRegionUtf8ToUtf16(utf8Data, utf8Len,
+                                                                                     utf16Data.data());
+        ASSERT(utf16Len <= utf8Len);
+        return GetStringFromStringTable(utf16Data.data(), utf16Len, canBeCompress);
+    }
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(std::string_view data, bool canBeCompress)
 {
     auto utf8Data = reinterpret_cast<const uint8_t *>(data.data());
     ASSERT(canBeCompress == EcmaStringAccessor::CanBeCompressed(utf8Data, data.length()));
     return GetStringFromStringTable(utf8Data, data.length(), canBeCompress);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8Replacement(std::string_view data, bool canBeCompress)
+{
+    auto *utf8Data = reinterpret_cast<const uint8_t *>(data.data());
+    uint32_t utf8Len = data.length();
+    if (canBeCompress) {
+        return GetStringFromStringTable(utf8Data, utf8Len, canBeCompress);
+    } else {
+        std::vector<uint16_t> utf16Data(utf8Len);
+        uint32_t utf16Len = common::utf_helper_replacement::ConvertRegionUtf8ToUtf16(utf8Data, utf8Len,
+                                                                                     utf16Data.data());
+        ASSERT(utf16Len <= utf8Len);
+        return GetStringFromStringTable(utf16Data.data(), utf16Len, canBeCompress);
+    }
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8ReadOnly(std::string_view data)
@@ -4520,10 +4575,46 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTable(const uint8_t 
     return JSHandle<EcmaString>(thread_, str);
 }
 
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8WithoutStringTableReplacement(const uint8_t *utf8Data, uint32_t utf8Len)
+{
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len);
+    if (canBeCompress) {
+        EcmaString *str = EcmaStringAccessor::CreateFromUtf8(vm_, utf8Data, utf8Len, canBeCompress,
+                                                             MemSpaceType::SHARED_OLD_SPACE);
+        uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
+        str->SetMixHashcode(hashCode);
+        return JSHandle<EcmaString>(thread_, str);
+    } else {
+        std::vector<uint16_t> utf16Data(utf8Len);
+        uint32_t utf16Len = common::utf_helper_replacement::ConvertRegionUtf8ToUtf16(utf8Data, utf8Len,
+                                                                                     utf16Data.data());
+        ASSERT(utf16Len <= utf8Len);
+        EcmaString *str = EcmaStringAccessor::CreateFromUtf16(vm_, utf16Data.data(), utf16Len, canBeCompress,
+                                                              MemSpaceType::SHARED_OLD_SPACE);
+        uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(utf16Data.data(), utf16Len);
+        str->SetMixHashcode(hashCode);
+        return JSHandle<EcmaString>(thread_, str);
+    }
+}
+
 JSHandle<EcmaString> ObjectFactory::NewFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len)
 {
     bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len);
     return GetStringFromStringTable(utf8Data, utf8Len, canBeCompress);
+}
+
+JSHandle<EcmaString> ObjectFactory::NewFromUtf8Replacement(const uint8_t *utf8Data, uint32_t utf8Len)
+{
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf8Data, utf8Len);
+    if (canBeCompress) {
+        return GetStringFromStringTable(utf8Data, utf8Len, canBeCompress);
+    } else {
+        std::vector<uint16_t> utf16Data(utf8Len);
+        uint32_t utf16Len = common::utf_helper_replacement::ConvertRegionUtf8ToUtf16(utf8Data, utf8Len,
+                                                                                     utf16Data.data());
+        ASSERT(utf16Len <= utf8Len);
+        return GetStringFromStringTable(utf16Data.data(), utf16Len, canBeCompress);
+    }
 }
 
 JSHandle<EcmaString> ObjectFactory::NewFromUtf16WithoutStringTable(const uint16_t *utf16Data, uint32_t utf16Len)
