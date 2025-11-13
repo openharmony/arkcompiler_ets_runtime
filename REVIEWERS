@@ -44,9 +44,10 @@ ecmascript/intl/             @weng-changcheng @chenjx-huawei
 ecmascript/jit/              @xiaoweidng @KasonChan @RyanZhou97_admin
 ecmascript/jobs/             @weng-changcheng @yingguofeng
 ecmascript/js_api/           @huanghello @yuan-yao14 @xliu-huanwei
-ecmascript/mem/              @dwhuawei @chentianyuu @lukai25 @xiongluo96 @yingguofeng
-ecmascript/module/           @daihn ^weng-changcheng
-ecmascript/napi/             @huanghello @yuan-yao14 @xliu-huanwei ^weng-changcheng
+ecmascript/jspandafile/      @shilei123 @weng-changcheng ^yingguofeng
+ecmascript/mem/              @dwhuawei @chentianyuu @lukai25 @xiongluo96 @yingguofeng @wanghuan2022
+ecmascript/module/           @yao_dashuai ^weng-changcheng @shilei123
+ecmascript/napi/             @huanghello @yuan-yao14 @xliu-huanwei ^weng-changcheng @shilei123
 ecmascript/patch/            @wanghuan2022 @lijiamin2019 ^weng-changcheng
 ecmascript/pgo_profiler/     @yingguofeng
 ecmascript/quick_fix/        @wanghuan2022 @lijiamin2019 ^weng-changcheng
