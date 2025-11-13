@@ -1521,7 +1521,8 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     Register maybeAcc(X2);
     Register argC(X3);
     Register runtimeId(X4);
-    __ Orr(deoptType, deoptType.W(), LogicalImmediate::Create(JSTaggedValue::TAG_INT, RegXSize));
+    __ And(deoptType, deoptType, LogicalImmediate::Create(0x00000000FFFFFFFFULL, RegXSize));
+    __ Orr(deoptType, deoptType, LogicalImmediate::Create(JSTaggedValue::TAG_INT, RegXSize));
     __ Stp(deoptType, maybeAcc, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
     __ Mov(argC, Immediate(2)); // 2: argc
     __ Mov(runtimeId, Immediate(RTSTUB_ID(DeoptHandler)));
