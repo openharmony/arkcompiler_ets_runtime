@@ -157,7 +157,11 @@ void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, ch
                 return;
             }
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
-            stream << addr;
+            if (addr == nullptr) {
+                stream << "0x0";
+            } else {
+                stream << addr;
+            }
             if (!CheckAndCopy(functionName, size, methodNameStr.c_str())) {
                 return;
             }
