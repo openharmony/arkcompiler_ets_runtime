@@ -821,7 +821,7 @@ JSHandle<TaggedArray> JSProxy::OwnPropertyKeys(JSThread *thread, const JSHandle<
 
     // 19.If extensibleTarget is true and targetNonconfigurableKeys is empty, then
     //     a.Return trapResult.
-    if (extensibleTarget && (cfigLength == 0)) {
+    if (extensibleTarget && (noCfigLength == 0)) {
         return trapRes;
     }
 
