@@ -3188,33 +3188,6 @@ host_unittest_action("GC_IdleGCTrigger_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("GC_IncrementalMarking_Test") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "incremental_marking_test.cpp",
-  ]
-
-  configs = [
-    "../../:asm_interp_enable_config",
-    "../../:ecma_test_config",
-  ]
-
-  deps = [ "../../:libark_jsruntime_test" ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  external_deps += [
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "runtime_core:libarkassembler_static",
-    "runtime_core:libarkverifier",
-    "zlib:libz",
-  ]
-  deps += hiviewdfx_deps
-}
-
 host_unittest_action("GC_JitFort_Test") {
   module_out_path = module_output_path
 
@@ -3591,7 +3564,6 @@ group("unittest") {
     ":GC_HeapHelper_Test",
     ":GC_HugeObject_Test",
     ":GC_IdleGCTrigger_Test",
-    ":GC_IncrementalMarking_Test",
     ":GC_JitFort_Test",
     ":GC_MachineCode_Test",
     ":GC_MemController_Test",
@@ -3765,7 +3737,6 @@ group("host_unittest") {
     ":GC_HeapHelper_TestAction",
     ":GC_HugeObject_TestAction",
     ":GC_IdleGCTrigger_TestAction",
-    ":GC_IncrementalMarking_TestAction",
     ":GC_JitFort_TestAction",
     ":GC_MachineCode_TestAction",
     ":GC_MemController_TestAction",
@@ -3901,7 +3872,6 @@ group("host_unittest") {
       ":GC_HeapHelper_TestAction",
       ":GC_HugeObject_TestAction",
       ":GC_IdleGCTrigger_TestAction",
-      ":GC_IncrementalMarking_TestAction",
       ":GC_JitFort_TestAction",
       ":GC_MachineCode_TestAction",
       ":GC_MemController_TestAction",

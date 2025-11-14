@@ -916,10 +916,6 @@ uint32_t Heap::GetHeapObjectCount() const
 void Heap::InitializeIdleStatusControl(std::function<void(bool)> callback)
 {
     notifyIdleStatusCallback = callback;
-    if (callback != nullptr) {
-        OPTIONAL_LOG(ecmaVm_, INFO) << "Received idle status control call back";
-        enableIdleGC_ = ecmaVm_->GetJSOptions().EnableIdleGC();
-    }
 }
 
 void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)

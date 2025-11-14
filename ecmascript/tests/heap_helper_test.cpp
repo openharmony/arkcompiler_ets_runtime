@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/mem/heap.h"
-#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/tests/ecma_test_common.h"
@@ -39,12 +38,6 @@ public:
     explicit HeapTestHelper(Heap *heap) : heap_(heap) {}
 
     ~HeapTestHelper() = default;
-
-    void SetIdleGCState(bool flag)
-    {
-        ASSERT_NE(heap_, nullptr);
-        heap_->enableIdleGC_ = flag;
-    }
 
     Heap *GetHeap()
     {
@@ -72,7 +65,7 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking2)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     ASSERT_NE(heap, nullptr);
 
-    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
     EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), false);
     EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), false);
     g_isEnableCMCGC = temp;
@@ -86,7 +79,6 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking3)
     ASSERT_NE(heap, nullptr);
 
     heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
 
     uint32_t length = 1000;
@@ -105,7 +97,6 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking4)
     ASSERT_NE(heap, nullptr);
 
     heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     heap->SetFullMarkRequestedState(false);
     EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
     EXPECT_EQ(heap->IsFullMarkRequested(), false);
@@ -126,7 +117,6 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking5)
     ASSERT_NE(heap, nullptr);
 
     heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     heap->SetFullMarkRequestedState(false);
     EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
     EXPECT_EQ(heap->IsFullMarkRequested(), false);
@@ -146,7 +136,6 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking6)
     ASSERT_NE(heap, nullptr);
 
     heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     heap->SetFullMarkRequestedState(false);
     EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
     EXPECT_EQ(heap->IsFullMarkRequested(), false);
@@ -165,7 +154,6 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking7)
     ASSERT_NE(heap, nullptr);
 
     heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
     heap->SetFullMarkRequestedState(false);
     EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
     EXPECT_EQ(heap->IsFullMarkRequested(), false);

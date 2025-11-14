@@ -19,7 +19,6 @@
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/parallel_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
@@ -51,12 +50,6 @@ void FullGC::RunPhases()
         heap_->GetConcurrentMarker()->Reset();  // HPPGC use mark result to move TaggedObject.
     }
 
-    if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
-        LOG_GC(DEBUG) << "FullGC after IncrementalMarking";
-        heap_->ClearIdleTask();
-        heap_->DisableNotifyIdle();
-        heap_->GetIncrementalMarker()->Reset();
-    }
     ProcessSharedGCRSetWorkList();
     Initialize();
     Mark();

@@ -603,7 +603,6 @@ void DFXJSNApi::NotifyIdleStatusControl(const EcmaVM *vm, std::function<void(boo
 void DFXJSNApi::NotifyIdleTime(const EcmaVM *vm, int idleMicroSec)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    const_cast<ecmascript::Heap *>(vm->GetHeap())->TriggerIdleCollection(idleMicroSec);
 }
 
 void DFXJSNApi::NotifyMemoryPressure(EcmaVM *vm, bool inHighMemoryPressure)

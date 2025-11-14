@@ -50,13 +50,11 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
         if (!isPromoted) {
             if (!localHeap_->NeedStopCollection() || localHeap_->IsNearGCInSensitive() ||
                 (localHeap_->IsJustFinishStartup() && localHeap_->ObjectExceedJustFinishStartupThresholdForCM())) {
-                localHeap_->TryTriggerIncrementalMarking();
-                localHeap_->TryTriggerIdleCollection();
                 localHeap_->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT);
             }
         }
         object = allocator_.Allocate(size);
-    } else if (localHeap_->IsMarking() || !localHeap_->IsEmptyIdleTask()) {
+    } else if (localHeap_->IsMarking()) {
         // Temporary adjust semi space capacity
         if (localHeap_->IsConcurrentFullMark()) {
             overShootSize_ = localHeap_->CalculateLinearSpaceOverShoot();

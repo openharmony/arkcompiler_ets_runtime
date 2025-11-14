@@ -94,7 +94,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMarkTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
-    heap->SetIdleTask(IdleTaskType::NO_TASK);
 
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_FULL);
@@ -104,7 +103,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMarkTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
-    heap->SetIdleTask(IdleTaskType::NO_TASK);
     heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_FULL);
@@ -114,7 +112,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMarkTest003)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
-    heap->SetIdleTask(IdleTaskType::NO_TASK);
     thread->SetMarkStatus(MarkStatus::MARK_FINISHED);
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_FULL);
@@ -167,7 +164,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
-    heap->SetIdleTask(IdleTaskType::NO_TASK);
     heap->GetOldSpace()->SetInitialCapacity(10000);
     heap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
     heap->NotifyHeapAliveSizeAfterGC(1);
@@ -201,7 +197,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest004)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
-    heap->SetIdleTask(IdleTaskType::NO_TASK);
     heap->GetOldSpace()->SetInitialCapacity(10000);
     heap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
     heap->NotifyHeapAliveSizeAfterGC(1);
@@ -229,7 +224,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest006)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     SharedHeap *sheap = SharedHeap::GetInstance();
-    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
     heap->GetOldSpace()->SetInitialCapacity(10000);
     heap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
     heap->NotifyHeapAliveSizeAfterGC(1);

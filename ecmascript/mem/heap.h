@@ -51,7 +51,6 @@ class HeapTracker;
 class HeapProfilerInterface;
 class HeapProfiler;
 #endif
-class IncrementalMarker;
 class JSNativePointer;
 class Marker;
 class UnifiedGC;
@@ -89,12 +88,6 @@ using AppFreezeFilterCallback =
 using BytesAndDuration = std::pair<uint64_t, double>;
 using MemoryReduceDegree = panda::JSNApi::MemoryReduceDegree;
 using NativePointerList = CVector<JSTaggedValue>;
-enum class IdleTaskType : uint8_t {
-    NO_TASK,
-    YOUNG_GC,
-    FINISH_MARKING,
-    INCREMENTAL_MARK
-};
 
 enum class MemGrowingType : uint8_t {
     HIGH_THROUGHPUT,
@@ -167,10 +160,6 @@ public:
     virtual bool OnStartupEvent() const = 0;
 
     virtual void NotifyPostFork() = 0;
-
-    virtual void TryTriggerIdleCollection() = 0;
-
-    virtual void TryTriggerIncrementalMarking() = 0;
 
     /*
      * Wait for existing concurrent marking tasks to be finished (if any).
@@ -619,18 +608,6 @@ public:
 
     // Use JSThread instead of DaemonThread to check if IsReadyToSharedConcurrentMark, to avoid an atomic load.
     bool CheckCanTriggerConcurrentMarking(JSThread *thread);
-
-    void TryTriggerIdleCollection() override
-    {
-        LOG_FULL(ERROR) << "SharedHeap TryTriggerIdleCollection() not support yet";
-        return;
-    }
-
-    void TryTriggerIncrementalMarking() override
-    {
-        LOG_FULL(ERROR) << "SharedHeap TryTriggerIncrementalMarking() not support yet";
-        return;
-    }
 
     void UpdateWorkManager(SharedGCWorkManager *sWorkManager);
 
@@ -1123,11 +1100,6 @@ public:
         return concurrentMarker_;
     }
 
-    IncrementalMarker *GetIncrementalMarker() const
-    {
-        return incrementalMarker_;
-    }
-
     Marker *GetNonMovableMarker() const
     {
         return nonMovableMarker_;
@@ -1264,17 +1236,12 @@ public:
 
     JSObjectResizingStrategy *GetJSObjectResizingStrategy();
 
-    void TriggerIdleCollection(int idleMicroSec);
     void NotifyMemoryPressure(bool inHighMemoryPressure);
 
     bool TryTriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
     void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
     bool CheckCanTriggerConcurrentMarking();
-
-    void TryTriggerIdleCollection() override;
-    void TryTriggerIncrementalMarking() override;
-    void CalculateIdleDuration();
     void UpdateWorkManager(WorkManager *workManager);
 
     bool CheckOngoingConcurrentMarking() override
@@ -1372,38 +1339,10 @@ public:
      */
     inline void InitializeIdleStatusControl(std::function<void(bool)> callback);
 
-    void DisableNotifyIdle()
-    {
-        if (notifyIdleStatusCallback != nullptr) {
-            notifyIdleStatusCallback(true);
-        }
-    }
-
-    void EnableNotifyIdle()
-    {
-        if (enableIdleGC_ && notifyIdleStatusCallback != nullptr) {
-            notifyIdleStatusCallback(false);
-        }
-    }
-
-    void SetIdleTask(IdleTaskType task)
-    {
-        idleTask_ = task;
-    }
-
-    void ClearIdleTask();
-
-    bool IsEmptyIdleTask()
-    {
-        return idleTask_ == IdleTaskType::NO_TASK;
-    }
-
     void SetOnSerializeEvent(bool isSerialize)
     {
         onSerializeEvent_ = isSerialize;
         if (!onSerializeEvent_ && !InSensitiveStatus()) {
-            TryTriggerIncrementalMarking();
-            TryTriggerIdleCollection();
             TryTriggerConcurrentMarking(MarkReason::EXIT_SERIALIZE);
         }
     }
@@ -1898,9 +1837,6 @@ private:
     // Parallel evacuator which evacuates objects from one space to another one.
     ParallelEvacuator *evacuator_ {nullptr};
 
-    // Incremental marker which coordinates actions of GC markers in idle time.
-    IncrementalMarker *incrementalMarker_ {nullptr};
-
     /*
      * Different kinds of markers used by different collectors.
      * Depending on the collector algorithm, some markers can do simple marking
@@ -1919,7 +1855,6 @@ private:
     bool fullGCRequested_ {false};
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
-    bool enableIdleGC_ {false};
     std::atomic_bool isCSetClearing_ {false};
     HeapMode mode_ { HeapMode::NORMAL };
 
@@ -1961,10 +1896,6 @@ private:
     // Application status
 
     IdleNotifyStatusCallback notifyIdleStatusCallback {nullptr};
-
-    IdleTaskType idleTask_ {IdleTaskType::NO_TASK};
-    float idlePredictDuration_ {0.0f};
-    double idleTaskFinishTime_ {0.0};
 
     /*
      * The listeners which are called at the end of GC

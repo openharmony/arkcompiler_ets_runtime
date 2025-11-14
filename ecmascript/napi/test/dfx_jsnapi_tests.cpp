@@ -426,28 +426,6 @@ HWTEST_F_L0(DFXJSNApiTests, GetAllocationProfile)
     EXPECT_TRUE(result != nullptr);
 }
 
-HWTEST_F_L0(DFXJSNApiTests, NotifyIdleStatusControl)
-{
-    bool receivedValue = false;
-    std::function<void(bool)> cb = [&](bool value) {
-        receivedValue = value;
-    };
-    DFXJSNApi::NotifyIdleStatusControl(vm_, cb);
-    const_cast<ecmascript::Heap *>(vm_->GetHeap())->DisableNotifyIdle();
-    EXPECT_TRUE(receivedValue);
-}
-
-HWTEST_F_L0(DFXJSNApiTests, NotifyIdleTime)
-{
-    if (g_isEnableCMCGC) {
-        return;
-    }
-    auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
-    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
-    DFXJSNApi::NotifyIdleTime(vm_, 10);
-    EXPECT_EQ(vm_->GetEcmaGCStats()->GetGCReason(), GCReason::IDLE);
-}
-
 HWTEST_F_L0(DFXJSNApiTests, NotifyHighSensitive)
 {
     auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
