@@ -32,6 +32,11 @@
 #include "faultloggerd_client.h"
 #endif
 
+#ifdef ENABLE_HISYSEVENT
+    #include "hisysevent.h"
+    #include "dfx_signal_handler.h"
+#endif
+
 namespace panda::ecmascript {
 
 std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
@@ -178,6 +183,9 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
     fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
     if (fd < 0) {
         LOG_ECMA(ERROR) << "OOM Dump Write FD failed, fd" << fd;
+        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1,
+                        "MESSAGE", "request fd from dfx failed.",
+                        "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
         return;
     }
     FileDescriptorStream stream(fd);
@@ -190,6 +198,9 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
     }
     if (fd < 0) {
         LOG_ECMA(ERROR) << "OOM Dump Write FD failed, fd" << fd;
+        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1,
+                        "MESSAGE", "request fd from dfx failed.",
+                        "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
         return;
     }
     FileDescriptorStream stream(fd);
@@ -323,10 +334,11 @@ bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOpti
     rawHeapDump->BinaryDump();
     filePaths.emplace_back(RAWHEAP_FILE_NAME);
     fileSizes.emplace_back(rawHeapDump->GetRawHeapFileOffset());
+    delete rawHeapDump;
+
     vm_->GetEcmaGCKeyStats()->SendSysEventDataSize(filePaths, fileSizes);
     chunk_.Delete<StringHashMap>(stringTable);
     chunk_.Delete<HeapSnapshot>(snapshot);
-    delete rawHeapDump;
     return true;
 }
 
