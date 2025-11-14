@@ -5045,6 +5045,11 @@ StartIdleMonitorCallback JSNApi::GetStartIdleMonitorCallback()
     return startIdleMonitorCallback_;
 }
 
+void JSNApi::SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback)
+{
+    ecmascript::Runtime::GetInstance()->SetNotifyDeferFreezeCallback(callback);
+}
+
 void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
 {
     auto thread = vm->GetJSThread();

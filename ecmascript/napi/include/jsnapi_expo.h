@@ -116,6 +116,7 @@ using NativePointerCallbackData = std::pair<NativePointerCallback, std::tuple<vo
 using TriggerGCData = std::pair<void*, uint8_t>;
 using TriggerGCTaskCallback = std::function<void(TriggerGCData& data)>;
 using StartIdleMonitorCallback = std::function<void()>;
+using NotifyDeferFreezeCallback = std::function<void(bool needFreeze)>;
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
@@ -1866,6 +1867,7 @@ public:
     static void TriggerIdleGC(const EcmaVM *vm, TRIGGER_IDLE_GC_TYPE gcType);
     static void SetStartIdleMonitorCallback(const StartIdleMonitorCallback& callback);
     static StartIdleMonitorCallback GetStartIdleMonitorCallback();
+    static void SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback);
     // Exception
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
     static void PrintExceptionInfo(const EcmaVM *vm);

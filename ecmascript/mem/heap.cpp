@@ -668,6 +668,12 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
         LOG_GC(FATAL) << "SharedHeap OOM";
         UNREACHABLE();
     }
+    if (gcType == TriggerGCType::SHARED_FULL_GC) {
+        auto notifyDeferFreezeCallback = Runtime::GetInstance()->GetNotifyDeferFreezeCallback();
+        if (notifyDeferFreezeCallback != nullptr) {
+            notifyDeferFreezeCallback(true);
+        }
+    }
 }
 
 void SharedHeap::SetGCThreadQosPriority(common::PriorityMode mode)
