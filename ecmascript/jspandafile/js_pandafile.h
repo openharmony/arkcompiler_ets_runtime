@@ -371,6 +371,12 @@ public:
     {
         return isBundlePack_;
     }
+    
+    // note : it only uses in TDD
+    void SetBundlePack(bool isBundlePack)
+    {
+        isBundlePack_ = isBundlePack;
+    }
 
     bool IsLoadedAOT() const
     {

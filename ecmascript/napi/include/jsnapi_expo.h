@@ -1853,6 +1853,9 @@ public:
     static bool ExecuteSecureWithOhmUrl(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &srcFilename,
                                         const std::string &ohmUrl);
 
+    static bool IsExecuteModuleInAbcFileSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &srcFilename,
+                                               const std::string &ohmUrl);
+
     // ObjectRef Operation
     static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm);
     static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm, const Local<JSValueRef> &context);
