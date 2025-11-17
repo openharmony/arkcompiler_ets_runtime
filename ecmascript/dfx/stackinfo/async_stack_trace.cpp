@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_generator_object.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/async_detect.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 
@@ -93,6 +94,14 @@ bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseRe
             JSTaggedValue ctx = JSAsyncAwaitStatusFunction::Cast(handler)->GetAsyncContext(jsThread_);
             JSTaggedValue asyncFuncObj = GeneratorContext::Cast(ctx)->GetGeneratorObject(jsThread_);
             JSTaggedValue promise = JSAsyncFuncObject::Cast(asyncFuncObj)->GetPromise(jsThread_);
+            asyncTaskId = JSPromise::Cast(promise)->GetAsyncTaskId();
+        } else if (handler.IsJSAsyncModuleFulfilledFunction()) {
+            JSTaggedValue module = JSAsyncModuleFulfilledFunction::Cast(handler)->GetModule(jsThread_);
+            JSTaggedValue promise = SourceTextModule::Cast(module)->GetTopLevelCapability(jsThread_);
+            asyncTaskId = JSPromise::Cast(promise)->GetAsyncTaskId();
+        } else if (handler.IsJSAsyncModuleRejectedFunction()) {
+            JSTaggedValue module = JSAsyncModuleRejectedFunction::Cast(handler)->GetModule(jsThread_);
+            JSTaggedValue promise = SourceTextModule::Cast(module)->GetTopLevelCapability(jsThread_);
             asyncTaskId = JSPromise::Cast(promise)->GetAsyncTaskId();
         } else {
             JSTaggedValue promiseOrCapability = reaction->GetPromiseOrCapability(jsThread_);
