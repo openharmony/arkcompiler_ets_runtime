@@ -14,6 +14,8 @@
  */
 
 #include <cstddef>
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
 #include "ecmascript/builtins/builtins.h"
 #include "ecmascript/builtins/builtins_function.h"
 #include "ecmascript/builtins/builtins_object.h"
@@ -43,8 +45,11 @@
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/napi/include/jsnapi_internals.h"
 #include "ecmascript/napi/jsnapi_helper.h"
@@ -142,6 +147,8 @@ public:
 
 protected:
     void RegisterStringCacheTable();
+    std::shared_ptr<JSPandaFile> NewMockJSPandaFile(const char *data, const CString &filename,
+        const CString &targetFileName, CString &entryPoint) const;
 
     JSThread *thread_ = nullptr;
     EcmaVM *vm_ = nullptr;
@@ -157,6 +164,22 @@ void JSNApiTests::RegisterStringCacheTable()
     } else {
         ASSERT_TRUE(res);
     }
+}
+
+std::shared_ptr<JSPandaFile> JSNApiTests::NewMockJSPandaFile(const char *data,
+    const CString &filename, const CString &targetFileName, CString &entryPoint) const
+{
+    panda::pandasm::Parser parser;
+    auto res = parser.Parse(data);
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const panda::panda_file::File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
+    pf->SetBundlePack(false);
+    entryPoint = panda::ecmascript::ModulePathHelper::ConcatFileNameWithMerge(thread_, pf.get(),
+        const_cast<CString &>(filename), "", targetFileName);
+    pf->InsertJSRecordInfo(entryPoint);
+    pfManager->AddJSPandaFile(pf);
+    return pf;
 }
 
 Local<JSValueRef> FunctionCallback(JsiRuntimeCallInfo *info)
@@ -1859,6 +1882,7 @@ HWTEST_F_L0(JSNApiTests, InitHybridVMEnv)
 
     EXPECT_TRUE(instance->IsHybridVm());
 }
+
 HWTEST_F_L0(JSNApiTests, NewFromUtf8Replacement)
 {
     uint8_t u8Data[1024] = {0xcc, 0x5c, 0x0};
@@ -1956,5 +1980,83 @@ HWTEST_F_L0(JSNApiTests, NewFromUtf8WithoutStringTableReplacement)
             ASSERT_TRUE(u8OutLen2 == u8OutLen);
         }
     }
+}
+
+HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure001)
+{
+    LocalScope scope(vm_);
+    const std::string filename = "data/storage/el1/bundle/modulename/ets/modules.abc";
+    const std::string ohmUrl1 = "@normalized:N&&&entry/build/generated/r/table";
+    uint8_t testData[] = {0x01, 0x02, 0x23};
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    CString entryPoint = "";
+    std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
+    bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl1);
+    EXPECT_TRUE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure002)
+{
+    LocalScope scope(vm_);
+    const std::string filename = "data/storage/el1/bundle/modulename/ets/test.abc";
+    const std::string ohmUrl1 = "@normalized:N&&&entry/build/generated/r/table";
+    const std::string ohmUrl2 = "@normalized:N&&&entry/build/generated/r/desk";
+    uint8_t testData[] = {0x01, 0x02, 0x23};
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    CString entryPoint = "";
+    std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
+    bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl2);
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure003)
+{
+    LocalScope scope(vm_);
+    const std::string filename = "data/storage/el1/bundle/modulename/ets/test1.abc";
+    const std::string ohmUrl1 = "@normalized:N&&&entry/build/generated/r/desk";
+    uint8_t testData[] = {0x01, 0x02, 0x23};
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    CString entryPoint = "";
+    std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
+    bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl1);
+    EXPECT_TRUE(res);
+}
+
+HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure004)
+{
+    LocalScope scope(vm_);
+    const std::string filename = "data/storage/el1/bundle/modulename/ets/test2.abc";
+    const std::string ohmUrl1 = "@normalized:N&&&entry/build/generated/r/box";
+    const std::string ohmUrl2 = "@normalized:N&&&entry/build/generated/r/desk";
+    uint8_t testData[] = {0x01, 0x02, 0x23};
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    CString entryPoint = "";
+    std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
+    bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl2);
+    EXPECT_FALSE(res);
 }
 } // namespace panda::test

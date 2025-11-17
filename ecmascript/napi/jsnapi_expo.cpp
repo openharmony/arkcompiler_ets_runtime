@@ -5746,6 +5746,20 @@ bool JSNApi::IsExecuteModuleInAbcFile(EcmaVM *vm, const std::string &bundleName,
     return result;
 }
 
+/*
+ * srcFilename: data/storage/el1/bundle/modulename/ets/modules.abc
+ * ohmUrl : @normalized:N&moduleName&bundleName&entryPath&
+ */
+bool JSNApi::IsExecuteModuleInAbcFileSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &srcFilename,
+    const std::string &ohmUrl)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope scope(thread);
+    bool result = ecmascript::JSPandaFileExecutor::IsExecuteModuleInAbcFileSecure(thread, data,
+        size, srcFilename.c_str(), ohmUrl.c_str());
+    return result;
+}
+
 // The security interface needs to be modified accordingly.
 bool JSNApi::ExecuteModuleBuffer(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &filename,
                                  bool needUpdate)

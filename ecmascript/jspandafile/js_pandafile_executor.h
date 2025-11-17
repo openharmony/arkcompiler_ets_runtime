@@ -77,9 +77,15 @@ public:
     static int ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread, const CString &bundleName,
         const CString &moduleName, const CString &entry, bool isSingletonPattern);
 
+    static bool IsExecuteModuleInAbcFileCommon(JSThread *thread, const std::shared_ptr<JSPandaFile> &jsPandaFile,
+        CString &abcFilePath, const CString &entry);
+
     static bool IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unused]] const CString &bundleName,
         const CString &moduleName, const CString &entry);
 
+    static bool IsExecuteModuleInAbcFileSecure(JSThread *thread, uint8_t *buffer,
+                                                                 size_t size, const CString &fileName,
+                                                                 const CString &entryPoint);
     static bool ExecuteInsecureAbcFile(JSThread *thread, const CString &fileName);
 };
 }  // namespace panda::ecmascript
