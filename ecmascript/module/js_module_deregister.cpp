@@ -48,7 +48,7 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
     LoadingTypes type = module->GetLoadingTypes();
     CString recordNameStr = SourceTextModule::GetModuleName(module.GetTaggedValue());
     if (type != LoadingTypes::DYNAMITC_MODULE) {
-        LOG_FULL(INFO) << "free stable module's ModuleNameSpace" << recordNameStr;
+        LOG_FULL(DEBUG) << "free stable module's ModuleNameSpace" << recordNameStr;
         return;
     }
 
@@ -58,7 +58,7 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
     if (counts == 0) {
         thread->GetEcmaVM()->RemoveFromDeregisterModuleList(recordNameStr);
     }
-    LOG_FULL(INFO) << "try to remove module " << recordNameStr << ", register counts is " << counts;
+    LOG_FULL(DEBUG) << "try to remove module " << recordNameStr << ", register counts is " << counts;
 }
 
 void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, const CString &moduleName)
@@ -164,7 +164,7 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
 
     uint16_t registerNum = num - 1;
     if (registerNum == 0) {
-        LOG_FULL(INFO) << "try to remove module " << SourceTextModule::GetModuleName(module.GetTaggedValue());
+        LOG_FULL(DEBUG) << "try to remove module " << SourceTextModule::GetModuleName(module.GetTaggedValue());
         RemoveModule(thread, module);
     }
     module->SetRegisterCounts(registerNum);
