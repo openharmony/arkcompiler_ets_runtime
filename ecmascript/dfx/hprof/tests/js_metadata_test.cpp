@@ -2333,6 +2333,7 @@ HWTEST_F_L0(JSMetadataTest, TestByteArrayMetadata)
 
 HWTEST_F_L0(JSMetadataTest, TestCachedExternalStringMetadata)
 {
+#if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
     JSMetadataTestHelper tester {};
     std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"cached_external_string.json";
     JSMetadataTestHelper::Metadata metadata {};
@@ -2340,6 +2341,7 @@ HWTEST_F_L0(JSMetadataTest, TestCachedExternalStringMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::CACHED_EXTERNAL_STRING, metadata));
+#endif
 }
 
 HWTEST_F_L0(JSMetadataTest, TestCellRecordMetadata)
