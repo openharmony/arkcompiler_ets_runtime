@@ -25,7 +25,9 @@ namespace panda::ecmascript {
     bool SharedHeap::TriggerUnifiedGCMark(JSThread *thread) const
     {
         ASSERT(gcType == TriggerGCType::UNIFIED_GC && gcReason == GCReason::CROSSREF_CAUSE);
-        return DaemonThread::GetInstance()->CheckAndPostTask(TriggerUnifiedGCMarkTask<gcType, gcReason>(thread));
+        DaemonThread::PostTaskResult res = DaemonThread::GetInstance()
+            ->CheckAndPostTask(TriggerUnifiedGCMarkTask<gcType, gcReason>(thread));
+        return res == DaemonThread::PostTaskResult::SUCCESS;
     }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_CROSS_VM_HEAP_HYBRID_INL_H

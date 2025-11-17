@@ -30,7 +30,7 @@ void TriggerUnifiedGCMarkTaskRunner()
 template<TriggerGCType gcType, GCReason gcReason>
 TriggerUnifiedGCMarkTask<gcType, gcReason>::TriggerUnifiedGCMarkTask(JSThread *thread)
     : DaemonTask(thread, DaemonTaskType::TRIGGER_UNIFIED_GC_MARK, DaemonTaskGroup::GC_GROUP,
-                 &TriggerUnifiedGCMarkTaskRunner<gcType, gcReason>) {}
+                 &TriggerUnifiedGCMarkTaskRunner<gcType, gcReason>, nullptr) {}
 
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_CROSS_VM_DAEMON_TASK_HYBRID_H

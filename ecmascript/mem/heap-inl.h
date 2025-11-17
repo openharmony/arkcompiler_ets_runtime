@@ -1200,7 +1200,8 @@ void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
     // lock is outside to prevent extreme case, maybe could move update gcFinished_ into CheckAndPostTask
     // instead of an outside locking.
     LockHolder lock(waitGCFinishedMutex_);
-    if (dThread_->CheckAndPostTask(TriggerConcurrentMarkTask<gcType, markReason>(thread))) {
+    if (dThread_->CheckAndPostTask(TriggerConcurrentMarkTask<gcType, markReason>(thread))
+        == DaemonThread::PostTaskResult::SUCCESS) {
         ASSERT(gcFinished_);
         gcFinished_ = false;
     }
@@ -1226,21 +1227,23 @@ void SharedHeap::CollectGarbage(JSThread *thread)
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif
-    if (UNLIKELY(!dThread_->IsRunning())) {
-        // Hope this will not happen, unless the AppSpawn run smth after PostFork
-        LOG_GC(ERROR) << "Try to collect garbage in shared heap, but daemon thread is not running.";
-        ForceCollectGarbageWithoutDaemonThread(gcType, gcReason, thread);
-        return;
-    }
+    DaemonThread::PostTaskResult result;
     {
         // lock here is outside post task to prevent the extreme case: another js thread succeeed posting a
         // concurrentmark task, so here will directly go into WaitGCFinished, but gcFinished_ is somehow
         // not set by that js thread before the WaitGCFinished done, and maybe cause an unexpected OOM
         LockHolder lock(waitGCFinishedMutex_);
-        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<gcType, gcReason>(thread))) {
+        result = dThread_->CheckAndPostTask(TriggerCollectGarbageTask<gcType, gcReason>(thread));
+        if (result == DaemonThread::PostTaskResult::SUCCESS) {
             ASSERT(gcFinished_);
             gcFinished_ = false;
         }
+    }
+    if (UNLIKELY(result == DaemonThread::PostTaskResult::DAEMON_THREAD_NOT_RUNNING)) {
+        // Hope this will not happen, unless the AppSpawn run smth after PostFork
+        LOG_GC(ERROR) << "Try to collect garbage in shared heap, but daemon thread is not running.";
+        ForceCollectGarbageWithoutDaemonThread(gcType, gcReason, thread);
+        return;
     }
     ASSERT(!gcFinished_);
     SetForceGC(true);
@@ -1256,7 +1259,8 @@ void SharedHeap::CompressCollectGarbageNotWaiting(JSThread *thread)
         // concurrentmark task, so here will directly go into WaitGCFinished, but gcFinished_ is somehow
         // not set by that js thread before the WaitGCFinished done, and maybe cause an unexpected OOM
         LockHolder lock(waitGCFinishedMutex_);
-        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<TriggerGCType::SHARED_FULL_GC, gcReason>(thread))) {
+        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<TriggerGCType::SHARED_FULL_GC, gcReason>(thread))
+            == DaemonThread::PostTaskResult::SUCCESS) {
             ASSERT(gcFinished_);
             gcFinished_ = false;
         }
@@ -1273,10 +1277,11 @@ void SharedHeap::PostGCTaskForTest(JSThread *thread)
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif
-    if (dThread_->IsRunning()) {
+    {
         // Some UT may run without Daemon Thread.
         LockHolder lock(waitGCFinishedMutex_);
-        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<gcType, gcReason>(thread))) {
+        if (dThread_->CheckAndPostTask(TriggerCollectGarbageTask<gcType, gcReason>(thread))
+            == DaemonThread::PostTaskResult::SUCCESS) {
             ASSERT(gcFinished_);
             gcFinished_ = false;
         }

@@ -94,7 +94,6 @@ void SharedHeap::DestroyInstance()
 
 void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread)
 {
-    ASSERT(!dThread_->IsRunning());
     SuspendAllScope scope(thread);
     SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
@@ -568,7 +567,7 @@ void SharedHeap::ReclaimRegions(TriggerGCType gcType)
 void SharedHeap::DisableParallelGC(JSThread *thread)
 {
     WaitAllTasksFinished(thread);
-    dThread_->WaitFinished();
+    dThread_->Stop();
     parallelGC_ = false;
     maxMarkTaskCount_ = 0;
     sSweeper_->ConfigConcurrentSweep(false);
