@@ -38,18 +38,23 @@ public:
 
     using ThreadId = uint32_t;
 
+    enum class PostTaskResult {
+        SUCCESS,
+        SAME_GROUP_TASK_ALREADY_POSTED,
+        DAEMON_THREAD_NOT_RUNNING,
+    };
+
     void StartRunning();
 
-    void EnsureRunning();
+    void Stop();                            // In JS thread, stop daemon thread, and then call `TaskPool.Destroy`
 
-    bool IsRunning() const;
+    void Terminate();                       // In daemon thread
 
-    void MarkTerminate();       // In daemon thread
+    bool HasRequestedTermination() const;
 
-    // Wait daemon thread finished, and then call TaskPool.Destroy
-    void WaitFinished();
+    void RequestTermination();
 
-    bool CheckAndPostTask(DaemonTask task);
+    PostTaskResult CheckAndPostTask(DaemonTask task);
 
     /**
      * Called in daemon thread, and manually call this in DaemonTask at the appropriate time,
@@ -86,6 +91,8 @@ private:
     DaemonThread() : JSThread(ThreadType::DAEMON_THREAD) {}
     ~DaemonThread() = default;
 
+    bool IsRunning() const;
+
     void Run();
 
     bool AddTaskGroup(DaemonTaskGroup taskGroup);
@@ -94,9 +101,13 @@ private:
 
     static DaemonThread *instance_;
 
-    // In js thread, load the running need atomic, but in daemon do not need, since only daemon thread
-    // will set running_ to false
-    std::atomic<bool> running_ {false};
+    // `terminationRequested_` means whether termination has beed requested, and is used in any threads except daemon
+    // inside `mtx_`.
+    bool terminationRequested_ {true};
+
+    // `running_` is only used in daemon thread, means whether the termination task has been executed,
+    // and need to stop running.
+    bool running_ {false};
 
     std::atomic<SharedMarkStatus> markStatus_ {SharedMarkStatus::READY_TO_CONCURRENT_MARK};
 

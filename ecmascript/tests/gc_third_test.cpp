@@ -353,17 +353,6 @@ HWTEST_F_L0(GCTest, NeedStopCollectionTest001)
     ASSERT_EQ(heap->NeedStopCollection(), true);
 }
 
-HWTEST_F_L0(GCTest, ReclaimTest001)
-{
-    SharedHeap *heap = SharedHeap::GetInstance();
-    heap->DisableParallelGC(thread);
-    heap->Reclaim(TriggerGCType::YOUNG_GC);
-    ASSERT_EQ(heap->GetMaxMarkTaskCount(), 0);
-    ASSERT_FALSE(heap->IsParallelGCEnabled());
-    ASSERT_TRUE(heap->GetSweeper()->IsDisabled());
-    ASSERT_TRUE(heap->GetConcurrentMarker()->IsConfigDisabled());
-}
-
 HWTEST_F_L0(GCTest, CollectGarbageTest003)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());

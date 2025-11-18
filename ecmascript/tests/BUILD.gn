@@ -3053,6 +3053,33 @@ host_unittest_action("GC_Third_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("GC_Daemon_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_daemon_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("GC_Verify_Test") {
   module_out_path = module_output_path
 
@@ -3574,6 +3601,7 @@ group("unittest") {
     ":GC_SharedPartialGC_Test",
     ":GC_Taskpool_Test",
     ":GC_Third_Test",
+    ":GC_Daemon_Test",
     ":GC_Verification_Test",
     ":GC_Verify_Test",
     ":GC_WeakRefOldGC_Test",
@@ -3695,6 +3723,7 @@ group("unittest") {
       ":GC_Second_Test",
       ":GC_SharedPartialGC_Test",
       ":GC_Third_Test",
+      ":GC_Daemon_Test",
       ":GC_Verification_Test",
       ":GC_Verify_Test",
       ":GC_WeakRefOldGC_Test",
