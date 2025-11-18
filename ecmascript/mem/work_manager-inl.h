@@ -18,6 +18,7 @@
 
 #include "ecmascript/mem/work_manager.h"
 
+#include "ecmascript/mem/cms_mem/slot_gc_allocator-inl.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
@@ -28,6 +29,10 @@ void WorkNodeHolder::Setup(Heap *heap, WorkManager *workManager, GlobalWorkStack
     workStack_ = workStack;
     continuousQueue_ = new ProcessQueue();
     continuousJSWeakMapQueue_ = new JSWeakMapProcessQueue();
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        slotGCAllocator_.Setup(heap->GetSlotSpace());
+    }
 }
 
 void WorkNodeHolder::Destroy()
@@ -53,8 +58,13 @@ void WorkNodeHolder::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPh
     aliveSize_ = 0;
     promotedSize_ = 0;
     parallelGCTaskPhase_ = taskPhase;
-    if (gcType != TriggerGCType::OLD_GC) {
-        allocator_ = new TlabAllocator(heap_);
+    if (gcType == TriggerGCType::FULL_GC) {
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            slotGCAllocator_.Initialize();
+        } else {
+            allocator_ = new TlabAllocator(heap_);
+        }
     }
 }
 
@@ -74,6 +84,10 @@ void WorkNodeHolder::Finish()
         allocator_->Finalize();
         delete allocator_;
         allocator_ = nullptr;
+    }
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        slotGCAllocator_.Finalize(heap_);
     }
     parallelGCTaskPhase_ = ParallelGCTaskPhase::UNDEFINED_TASK;
 }
@@ -163,9 +177,9 @@ TlabAllocator *WorkNodeHolder::GetTlabAllocator() const
     return allocator_;
 }
 
-JSThread *WorkNodeHolder::GetJSThread() const
+SlotGCAllocator *WorkNodeHolder::GetSlotGCAllocator()
 {
-    return heap_->GetJSThread();
+    return &slotGCAllocator_;
 }
 
 WorkManagerBase::WorkManagerBase(NativeAreaAllocator *allocator)

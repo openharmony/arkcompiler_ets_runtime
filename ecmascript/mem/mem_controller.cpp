@@ -83,63 +83,99 @@ void MemController::StartCalculationBeforeGC()
         return;
     }
 
-    // It's unnecessary to calculate newSpaceAllocAccumulatedSize. newSpaceAllocBytesSinceGC can be calculated directly.
-    auto newSpace = heap_->GetNewSpace();
-    size_t newSpaceAllocBytesSinceGC = newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop());
     size_t hugeObjectAllocSizeSinceGC = heap_->GetHugeObjectSpace()->GetHeapObjectSize() - hugeObjectAllocSizeSinceGC_;
-    size_t oldSpaceAllocAccumulatedSize = heap_->GetOldSpace()->GetTotalAllocatedSize();
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        size_t slotSpaceAllocSizeSinceGC = heap_->GetSlotSpace()->GetAllocateAfterLastGC();
+
+        slotAndHugeSpaceAllocSizeSinceGC_ += slotSpaceAllocSizeSinceGC;
+        slotAndHugeSpaceAllocSizeSinceGC_ += hugeObjectAllocSizeSinceGC;
+    } else {
+        // It's unnecessary to calculate newSpaceAllocAccumulatedSize. newSpaceAllocBytesSinceGC
+        // can be calculated directly.
+        auto newSpace = heap_->GetNewSpace();
+        size_t newSpaceAllocBytesSinceGC = newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop());
+        size_t oldSpaceAllocAccumulatedSize = heap_->GetOldSpace()->GetTotalAllocatedSize();
+
+        size_t oldSpaceAllocSize = oldSpaceAllocAccumulatedSize - oldSpaceAllocAccumulatedSize_;
+        oldSpaceAllocAccumulatedSize_ = oldSpaceAllocAccumulatedSize;
+    
+        newSpaceAllocSizeSinceGC_ += newSpaceAllocBytesSinceGC;
+        oldSpaceAllocSizeSinceGC_ += oldSpaceAllocSize;
+        oldSpaceAllocSizeSinceGC_ += hugeObjectAllocSizeSinceGC;
+    }
     size_t nonMovableSpaceAllocAccumulatedSize = heap_->GetNonMovableSpace()->GetTotalAllocatedSize();
     size_t codeSpaceAllocAccumulatedSize = heap_->GetMachineCodeSpace()->GetTotalAllocatedSize();
     double currentTimeInMs = GetSystemTimeInMs();
     gcStartTime_ = currentTimeInMs;
-    size_t oldSpaceAllocSize = oldSpaceAllocAccumulatedSize - oldSpaceAllocAccumulatedSize_;
     size_t nonMovableSpaceAllocSize = nonMovableSpaceAllocAccumulatedSize - nonMovableSpaceAllocAccumulatedSize_;
     size_t codeSpaceAllocSize = codeSpaceAllocAccumulatedSize - codeSpaceAllocAccumulatedSize_;
 
     double duration = currentTimeInMs - allocTimeMs_;
     allocTimeMs_ = currentTimeInMs;
-    oldSpaceAllocAccumulatedSize_ = oldSpaceAllocAccumulatedSize;
     nonMovableSpaceAllocAccumulatedSize_ = nonMovableSpaceAllocAccumulatedSize;
     codeSpaceAllocAccumulatedSize_ = codeSpaceAllocAccumulatedSize;
 
     allocDurationSinceGc_ += duration;
 
-    newSpaceAllocSizeSinceGC_ += newSpaceAllocBytesSinceGC;
-    oldSpaceAllocSizeSinceGC_ += oldSpaceAllocSize;
-    oldSpaceAllocSizeSinceGC_ += hugeObjectAllocSizeSinceGC;
     nonMovableSpaceAllocSizeSinceGC_ += nonMovableSpaceAllocSize;
     codeSpaceAllocSizeSinceGC_ += codeSpaceAllocSize;
 
     if (heap_->GetEcmaGCStats()->GetGCReason() != GCReason::IDLE) {
-        recordedIdleNewSpaceAllocations_.Push(MakeBytesAndDuration(
-            heap_->GetNewSpace()->GetHeapObjectSize() - newSpaceRecordLastTimeSizeIdle_,
-            currentTimeInMs - allocTimeMsIdle_));
-        recordedIdleOldSpaceAllocations_.Push(MakeBytesAndDuration(
-            heap_->GetOldSpace()->GetHeapObjectSize() - oldSpaceRecordLastTimeSizeIdle_,
-            currentTimeInMs - allocTimeMsIdle_));
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            size_t slotAndHugeSpaceHeapObjectSize = heap_->GetSlotSpace()->GetHeapObjectSize()
+                                                    + heap_->GetHugeObjectSpace()->GetHeapObjectSize();
+            recordedIdleSlotAndHugeSpaceAllocations_.Push(MakeBytesAndDuration(
+                slotAndHugeSpaceHeapObjectSize - slotAndHugeSpaceRecordLastTimeSizeIdle_,
+                currentTimeInMs - allocTimeMsIdle_));
+        } else {
+            recordedIdleNewSpaceAllocations_.Push(MakeBytesAndDuration(
+                heap_->GetNewSpace()->GetHeapObjectSize() - newSpaceRecordLastTimeSizeIdle_,
+                currentTimeInMs - allocTimeMsIdle_));
+            recordedIdleOldSpaceAllocations_.Push(MakeBytesAndDuration(
+                heap_->GetOldSpace()->GetHeapObjectSize() - oldSpaceRecordLastTimeSizeIdle_,
+                currentTimeInMs - allocTimeMsIdle_));
+        }
     }
 }
 
 void MemController::RecordAllocationForIdle()
 {
     double currentTimeInMs = GetSystemTimeInMs();
-    size_t currentNewSpaceObjectSize = heap_->GetNewSpace()->GetHeapObjectSize();
-    size_t currentOldSpaceObjectSize = heap_->GetOldSpace()->GetHeapObjectSize();
     double duration = currentTimeInMs - allocTimeMsIdle_;
     allocTimeMsIdle_ = currentTimeInMs;
-    if (currentNewSpaceObjectSize < newSpaceRecordLastTimeSizeIdle_ ||
-        currentOldSpaceObjectSize < oldSpaceRecordLastTimeSizeIdle_) {
-        newSpaceRecordLastTimeSizeIdle_ = currentNewSpaceObjectSize;
-        oldSpaceRecordLastTimeSizeIdle_ = currentOldSpaceObjectSize;
-        return;
-    }
 
-    size_t newSpaceAllocSizeSinceIdle = currentNewSpaceObjectSize - newSpaceRecordLastTimeSizeIdle_;
-    newSpaceRecordLastTimeSizeIdle_ = currentNewSpaceObjectSize;
-    size_t oldSpaceAllocSizeSinceIdle = currentOldSpaceObjectSize - oldSpaceRecordLastTimeSizeIdle_;
-    oldSpaceRecordLastTimeSizeIdle_ = currentOldSpaceObjectSize;
-    recordedIdleNewSpaceAllocations_.Push(MakeBytesAndDuration(newSpaceAllocSizeSinceIdle, duration));
-    recordedIdleOldSpaceAllocations_.Push(MakeBytesAndDuration(oldSpaceAllocSizeSinceIdle, duration));
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        size_t currentSlotAndHugeSpaceObjectSize = heap_->GetSlotSpace()->GetHeapObjectSize()
+                                                    + heap_->GetHugeObjectSpace()->GetHeapObjectSize();
+        if (currentSlotAndHugeSpaceObjectSize < slotAndHugeSpaceRecordLastTimeSizeIdle_) {
+            return;
+        }
+
+        size_t slotAndHugeSpaceAllocSizeSinceIdle = currentSlotAndHugeSpaceObjectSize
+                                                    - slotAndHugeSpaceRecordLastTimeSizeIdle_;
+        slotAndHugeSpaceRecordLastTimeSizeIdle_ = currentSlotAndHugeSpaceObjectSize;
+        recordedIdleSlotAndHugeSpaceAllocations_.Push(MakeBytesAndDuration(
+            slotAndHugeSpaceAllocSizeSinceIdle, duration));
+    } else {
+        size_t currentNewSpaceObjectSize = heap_->GetNewSpace()->GetHeapObjectSize();
+        size_t currentOldSpaceObjectSize = heap_->GetOldSpace()->GetHeapObjectSize();
+        if (currentNewSpaceObjectSize < newSpaceRecordLastTimeSizeIdle_ ||
+            currentOldSpaceObjectSize < oldSpaceRecordLastTimeSizeIdle_) {
+            newSpaceRecordLastTimeSizeIdle_ = currentNewSpaceObjectSize;
+            oldSpaceRecordLastTimeSizeIdle_ = currentOldSpaceObjectSize;
+            return;
+        }
+
+        size_t newSpaceAllocSizeSinceIdle = currentNewSpaceObjectSize - newSpaceRecordLastTimeSizeIdle_;
+        newSpaceRecordLastTimeSizeIdle_ = currentNewSpaceObjectSize;
+        size_t oldSpaceAllocSizeSinceIdle = currentOldSpaceObjectSize - oldSpaceRecordLastTimeSizeIdle_;
+        oldSpaceRecordLastTimeSizeIdle_ = currentOldSpaceObjectSize;
+        recordedIdleNewSpaceAllocations_.Push(MakeBytesAndDuration(newSpaceAllocSizeSinceIdle, duration));
+        recordedIdleOldSpaceAllocations_.Push(MakeBytesAndDuration(oldSpaceAllocSizeSinceIdle, duration));
+    }
 }
 
 bool MemController::CheckLowAllocationUsageState() const
@@ -174,9 +210,15 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
     gcEndTime_ = GetSystemTimeInMs();
     allocTimeMs_ = gcEndTime_;
     if (allocDurationSinceGc_ > 0) {
-        oldSpaceAllocSizeSinceGC_ += heap_->GetEvacuator()->GetPromotedSize();
-        recordedNewSpaceAllocations_.Push(MakeBytesAndDuration(newSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
-        recordedOldSpaceAllocations_.Push(MakeBytesAndDuration(oldSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            recordedSlotAndHugeSpaceAllocations_.Push(
+                MakeBytesAndDuration(slotAndHugeSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
+        } else {
+            oldSpaceAllocSizeSinceGC_ += heap_->GetEvacuator()->GetPromotedSize();
+            recordedNewSpaceAllocations_.Push(MakeBytesAndDuration(newSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
+            recordedOldSpaceAllocations_.Push(MakeBytesAndDuration(oldSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
+        }
         recordedNonmovableSpaceAllocations_.Push(
             MakeBytesAndDuration(nonMovableSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
         recordedCodeSpaceAllocations_.Push(MakeBytesAndDuration(codeSpaceAllocSizeSinceGC_, allocDurationSinceGc_));
@@ -205,13 +247,22 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
             recordedMarkCompacts_.Push(MakeBytesAndDuration(heap_->GetHeapObjectSize(), duration));
             break;
         }
+        case TriggerGCType::CMS_GC: {
+            recordedSweep_.Push(MakeBytesAndDuration(heap_->GetHeapObjectSize(), duration));
+        }
         default:
             break;
     }
 
     if (heap_->GetEcmaGCStats()->GetGCReason() != GCReason::IDLE) {
-        newSpaceRecordLastTimeSizeIdle_ = heap_->GetNewSpace()->GetHeapObjectSize();
-        oldSpaceRecordLastTimeSizeIdle_ = heap_->GetOldSpace()->GetHeapObjectSize();
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            slotAndHugeSpaceRecordLastTimeSizeIdle_ = heap_->GetSlotSpace()->GetHeapObjectSize()
+                                                        + heap_->GetHugeObjectSpace()->GetHeapObjectSize();
+        } else {
+            newSpaceRecordLastTimeSizeIdle_ = heap_->GetNewSpace()->GetHeapObjectSize();
+            oldSpaceRecordLastTimeSizeIdle_ = heap_->GetOldSpace()->GetHeapObjectSize();
+        }
         allocTimeMsIdle_ = gcEndTime_;
     }
 }
@@ -295,6 +346,11 @@ double MemController::GetOldSpaceAllocationThroughputPerMS() const
 double MemController::GetFullSpaceConcurrentMarkSpeedPerMS() const
 {
     return CalculateAverageSpeed(recordedConcurrentMarks_);
+}
+
+double MemController::GetSlotAndHugeSpaceAllocationThroughputPerMS() const
+{
+    return CalculateAverageSpeed(recordedSlotAndHugeSpaceAllocations_);
 }
 
 double MemController::GetIdleNewSpaceAllocationThroughputPerMS() const

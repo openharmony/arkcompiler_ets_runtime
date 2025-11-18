@@ -64,7 +64,7 @@ void PartialGC::RunPhases()
     Sweep();
     Evacuate();
     if (heap_->IsConcurrentFullMark()) {
-        heap_->GetSweeper()->PostTask();
+        heap_->GetSweeper()->PostTask(TriggerGCType::OLD_GC);
     }
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         Verification::VerifyEvacuate(heap_);
@@ -92,12 +92,7 @@ void PartialGC::Initialize()
                 current->ResetAliveObject();
             });
         }
-        workManager_->Initialize(TriggerGCType::OLD_GC, ParallelGCTaskPhase::OLD_HANDLE_GLOBAL_POOL_TASK);
-
-        freeSize_ = 0;
-        hugeSpaceFreeSize_ = 0;
-        oldSpaceCommitSize_ = heap_->GetOldSpace()->GetCommittedSize();
-        nonMoveSpaceCommitSize_ = heap_->GetNonMovableSpace()->GetCommittedSize();
+        workManager_->Initialize(TriggerGCType::OLD_GC, ParallelGCTaskPhase::HANDLE_GLOBAL_POOL_TASK);
     }
 }
 
@@ -163,10 +158,10 @@ void PartialGC::Sweep()
     ProcessNativeDelete();
     if (heap_->IsConcurrentFullMark()) {
         heap_->GetOldSpace()->EnumerateRegions([](Region *current) {
-            current->SetRegionAliveSize();
+            current->SetGCAliveSize();
         });
         TRACE_GC(GCStats::Scope::ScopeId::Sweep, heap_->GetEcmaVM()->GetEcmaGCStats());
-        heap_->GetSweeper()->Sweep();
+        heap_->GetSweeper()->Sweep(TriggerGCType::OLD_GC);
     }
 }
 
@@ -195,7 +190,7 @@ void PartialGC::Evacuate()
     heap_->GetEvacuator()->Evacuate();
 }
 
-ARK_INLINE void PartialGC::ProcessSharedGCRSetWorkList()
+void PartialGC::ProcessSharedGCRSetWorkList()
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessSharedGCRSetWorkList, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->ProcessSharedGCRSetWorkList();

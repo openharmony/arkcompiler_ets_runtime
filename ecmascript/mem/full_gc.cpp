@@ -35,8 +35,12 @@ void FullGC::RunPhases()
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
         + ";IsInBackground" + std::to_string(heap_->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))
+#if USE_CMS_GC  // fixme: refactor?
+        + ";Slot" + std::to_string(heap_->GetSlotSpace()->GetCommittedSize())
+#else
         + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
         + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
+#endif
         + ";huge" + std::to_string(heap_->GetHugeObjectSpace()->GetCommittedSize())
         + ";NonMov" + std::to_string(heap_->GetNonMovableSpace()->GetCommittedSize())
         + ";TotCommit" + std::to_string(heap_->GetCommittedSize())
@@ -84,15 +88,14 @@ void FullGC::Initialize()
         current->ClearMarkGCBitset();
         current->ClearCrossRegionRSet();
     });
-    youngSpaceCommitSize_ = heap_->GetNewSpace()->GetCommittedSize();
-    heap_->SwapNewSpace();
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        heap_->GetSlotSpace()->PrepareCompact();
+    } else {
+        heap_->SwapNewSpace();
+    }
     workManager_->Initialize(TriggerGCType::FULL_GC, ParallelGCTaskPhase::COMPRESS_HANDLE_GLOBAL_POOL_TASK);
     heap_->GetCompressGCMarker()->Initialize();
-
-    youngAndOldAliveSize_ = 0;
-    nonMoveSpaceFreeSize_ = 0;
-    oldSpaceCommitSize_ = heap_->GetOldSpace()->GetCommittedSize();
-    nonMoveSpaceCommitSize_ = heap_->GetNonMovableSpace()->GetCommittedSize();
 }
 
 void FullGC::MarkRoots()
@@ -155,18 +158,21 @@ void FullGC::Sweep()
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
 
-    heap_->GetSweeper()->Sweep(true);
-    heap_->GetSweeper()->PostTask(true);
+    heap_->GetSweeper()->Sweep(TriggerGCType::FULL_GC);
+    heap_->GetSweeper()->PostTask(TriggerGCType::FULL_GC);
 }
 
 void FullGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "FullGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
-    if (!forAppSpawn_) {
-        heap_->SwapOldSpace();
+    // fixme: refactor?
+    if constexpr (!G_USE_CMS_GC) {
+        if (!forAppSpawn_) {
+            heap_->SwapOldSpace();
+        }
     }
-    youngAndOldAliveSize_ = workManager_->Finish();
+    workManager_->Finish();
     if (forAppSpawn_) {
         heap_->ResumeForAppSpawn();
     } else {
@@ -182,6 +188,10 @@ bool FullGC::HasEvacuated(Region *region)
         return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace() &&
                !region->InSharedHeap();
     }
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        return region->InSlotSpace();
+    }
     return region->InYoungOrOldSpace();
 }
 
@@ -190,7 +200,7 @@ void FullGC::SetForAppSpawn(bool flag)
     forAppSpawn_ = flag;
 }
 
-ARK_INLINE void FullGC::ProcessSharedGCRSetWorkList()
+void FullGC::ProcessSharedGCRSetWorkList()
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessSharedGCRSetWorkList, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->ProcessSharedGCRSetWorkList();

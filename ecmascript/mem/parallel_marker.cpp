@@ -18,6 +18,7 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/object_xray.h"
 
+#include "ecmascript/mem/cms_mem/sweep_gc_visitor-inl.h"
 #include "ecmascript/mem/old_gc_visitor-inl.h"
 #include "ecmascript/mem/young_gc_visitor-inl.h"
 #include "ecmascript/mem/full_gc-inl.h"
@@ -95,6 +96,11 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
 
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        ProcessCMSGCMarkStack(threadId);
+        return;
+    }
     if (heap_->IsYoungMark()) {
         ProcessYoungGCMarkStack(threadId);
     } else {
@@ -150,6 +156,24 @@ void NonMovableMarker::ProcessOldGCMarkStack(uint32_t threadId)
 
         oldGCMarkObjectVisitor.VisitHClass(jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, oldGCMarkObjectVisitor);
+    }
+}
+
+void NonMovableMarker::ProcessCMSGCMarkStack(uint32_t threadId)
+{
+    WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
+    SweepGCMarkObjectVisitor sweepGCMarkObjectVisitor(workNodeHolder);
+    SlotSpace *slotSpace = heap_->GetSlotSpace();
+    TaggedObject *obj = nullptr;
+    while (workNodeHolder->Pop(&obj)) {
+        Region *region = Region::ObjectAddressToRange(obj);
+
+        JSHClass *jsHclass = obj->SynchronizedGetClass();
+        size_t size = jsHclass->SizeFromJSHClass(obj);
+        region->IncreaseAliveObject(size);
+
+        sweepGCMarkObjectVisitor.VisitHClass(jsHclass);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, sweepGCMarkObjectVisitor);
     }
 }
 

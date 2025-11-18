@@ -28,11 +28,11 @@ public:
     void CreateTaggedArray();
 };
 
-class SharedTestSpace : public Space {
+class SharedTestSpace : public MonoSpace {
 public:
     static constexpr size_t CAP = 10 * 1024 * 1024;
     explicit SharedTestSpace(SharedHeap *heap)
-        : Space(heap, heap->GetHeapRegionAllocator(), MemSpaceType::SHARED_OLD_SPACE, CAP, CAP), sHeap_(heap) {}
+        : MonoSpace(heap, heap->GetHeapRegionAllocator(), MemSpaceType::SHARED_OLD_SPACE, CAP, CAP), sHeap_(heap) {}
     ~SharedTestSpace() override = default;
     NO_COPY_SEMANTIC(SharedTestSpace);
     NO_MOVE_SEMANTIC(SharedTestSpace);

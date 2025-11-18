@@ -31,6 +31,18 @@ class FreeListAllocator;
 
 class JitFort {
 public:
+    // Fort memory space
+    static constexpr int MAP_JITFORT = 0x1000;
+    static constexpr size_t JIT_FORT_REG_SPACE_MAX = 4_MB;
+    static constexpr size_t JIT_FORT_HUGE_SPACE_MAX = 2_MB;
+    static constexpr size_t JIT_FORT_MEM_DESC_MAX = 40_KB;
+
+    // Fort regions
+    static constexpr uint32_t FORT_BUF_ALIGN = 32;
+    static constexpr uint32_t FORT_BUF_ALIGN_LOG2 = base::MathHelper::GetIntLog2(FORT_BUF_ALIGN);
+    static constexpr size_t FORT_BUF_ADDR_MASK = FORT_BUF_ALIGN - 1;
+    static constexpr size_t MAX_JIT_FORT_REGIONS = JIT_FORT_REG_SPACE_MAX / DEFAULT_REGION_SIZE;
+
     JitFort();
     ~JitFort();
     NO_COPY_SEMANTIC(JitFort);
@@ -79,20 +91,12 @@ private:
     FreeListAllocator<MemDesc> *allocator_ {nullptr};
 
     // Fort memory space
-    static constexpr int MAP_JITFORT = 0x1000;
-    static constexpr size_t JIT_FORT_REG_SPACE_MAX = 4_MB;
-    static constexpr size_t JIT_FORT_HUGE_SPACE_MAX = 2_MB;
-    static constexpr size_t JIT_FORT_MEM_DESC_MAX = 40_KB;
     MemMap jitFortMem_;
     uintptr_t jitFortBegin_ {0};
     size_t jitFortSize_ {0};
 
     // Fort regions
-    static constexpr uint32_t FORT_BUF_ALIGN = 32;
-    static constexpr uint32_t FORT_BUF_ALIGN_LOG2 = base::MathHelper::GetIntLog2(FORT_BUF_ALIGN);
-    static constexpr size_t FORT_BUF_ADDR_MASK = FORT_BUF_ALIGN - 1;
-    static constexpr size_t MAX_JIT_FORT_REGIONS = JIT_FORT_REG_SPACE_MAX/DEFAULT_REGION_SIZE;
-    std::array<JitFortRegion *, MAX_JIT_FORT_REGIONS>regions_;
+    std::array<JitFortRegion *, MAX_JIT_FORT_REGIONS> regions_ {};
     size_t nextFreeRegionIdx_ {0};
     EcmaList<JitFortRegion> regionList_ {}; // regions in use by Jit Fort allocator
 
