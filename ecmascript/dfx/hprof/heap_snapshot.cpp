@@ -109,7 +109,12 @@ void HeapSnapshot::UpdateNodes(bool isInFinish)
     for (Node *node : nodes_) {
         node->SetLive(false);
     }
-    FillNodes(isInFinish);
+    auto heap = vm_->GetHeap();
+    if (heap != nullptr) {
+        heap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
+            GenerateNode(JSTaggedValue(obj), 0, isInFinish);
+        });
+    }
     for (auto iter = nodes_.begin(); iter != nodes_.end();) {
         if (!(*iter)->IsLive()) {
             entryMap_.FindAndEraseNode((*iter)->GetAddress());
