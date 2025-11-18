@@ -49,6 +49,7 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
     }
     abcId_ = abcId;
     methodId_ = methodId;
+    pcStart_ = pcStart;
     BytecodeInstruction bcIns(pcStart);
     auto bcInsLast = bcIns.JumpTo(codeSize);
 
@@ -472,15 +473,84 @@ void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, [[maybe_un
     }
 }
 
+#if ECMASCRIPT_ENABLE_TRACE_JIT_IC_STATE
+void JITProfiler::TraceICState(int32_t bcOffset, std::string_view s)
+{
+    const uint8_t *pc = bcOffset + pcStart_;
+    auto opcode = kungfu::Bytecodes::GetOpcode(pc);
+    uint16_t slotId;
+    BCType type;
+    switch (opcode) {
+        case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::LDOBJBYNAME_IMM8_ID16: {
+            type = BCType::LOAD;
+            slotId = READ_INST_8_0();
+            break;
+        }
+        case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8: {
+            type = BCType::STORE;
+            slotId = READ_INST_8_0();
+            break;
+        }
+        case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
+        case EcmaOpcode::LDOBJBYNAME_IMM16_ID16: {
+            type = BCType::LOAD;
+            slotId = READ_INST_16_0();
+            break;
+        }
+        case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
+        case EcmaOpcode::STTHISBYNAME_IMM16_ID16: {
+            type = BCType::STORE;
+            slotId = READ_INST_16_0();
+            break;
+        }
+        default:
+            return;
+    }
+    std::string icType;
+    JSTaggedValue firstValue = profileTypeInfo_->Get(mainThread_, slotId);
+    if (s != "IC-All") {
+        if (!firstValue.IsHeapObject()) {
+        } else if (firstValue.IsWeak()) {
+            icType = "Mono";
+        } else {
+            icType = "Poly";
+        }
+    }
+    std::string out = "(JIT IC Trace) Function Name:";
+    out += Method::Cast(jsFunction_->GetMethod(mainThread_))->GetMethodName(mainThread_);
+    out += " ";
+    out += (type == BCType::LOAD) ? "LOAD" : "STORE";
+    out += " ";
+    out += icType;
+    out += " ";
+    out += s;
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, out.c_str(), "");
+    LOG_JIT(INFO) << out;
+}
+#else
+void JITProfiler::TraceICState(int32_t bcOffset, std::string_view s) {}
+#endif
+
 void JITProfiler::ConvertICByName(int32_t bcOffset, uint32_t slotId, BCType type)
 {
     ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
+    TraceICState(bcOffset, "IC-All");
     JSTaggedValue firstValue = profileTypeInfo_->Get(mainThread_, slotId);
     if (!firstValue.IsHeapObject()) {
         JSTaggedValue secondValue = profileTypeInfo_->Get(mainThread_, slotId + 1);
         if (firstValue.IsHole() && secondValue.IsString()) {
             // Mega state
+            TraceICState(bcOffset, "IC-Mega");
             AddObjectInfoWithMega(bcOffset);
+            return;
+        }
+        if (firstValue.IsHole()) {
+            TraceICState(bcOffset, "IC-Miss");
+        } else {
+            TraceICState(bcOffset, "IC-Uninitialized");
         }
         return;
     }
@@ -515,6 +585,8 @@ void JITProfiler::HandleLoadType(ApEntityId &abcId, int32_t &bcOffset,
         HandleLoadTypeInt(abcId, bcOffset, hclass, secondValue);
     } else if (secondValue.IsPrototypeHandler()) {
         HandleLoadTypePrototypeHandler(abcId, bcOffset, hclass, secondValue, slotId);
+    } else {
+        TraceICState(bcOffset, "IC-Other-Handler");
     }
 }
 
@@ -533,7 +605,9 @@ void JITProfiler::HandleLoadTypeInt(ApEntityId &abcId, int32_t &bcOffset,
         } else {
             AddObjectInfo(abcId, bcOffset, hclass, hclass, hclass);
         }
+        return;
     }
+    TraceICState(bcOffset, "IC-No-Use");
 }
 
 void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset, JSHClass *hclass,
@@ -542,16 +616,19 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
     auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
     auto cellValue = prototypeHandler->GetProtoCell(mainThread_);
     if (cellValue.IsUndefined()) {
+        TraceICState(bcOffset, "IC-Cell-Undefined");
         return;
     }
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
+        TraceICState(bcOffset, "IC-Cell-Changed");
         return;
     }
     JSTaggedValue handlerInfoVal = prototypeHandler->GetHandlerInfo(mainThread_);
     auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
     auto accessor = prototypeHandler->GetAccessorJSFunction(mainThread_);
     if (!handlerInfoVal.IsInt()) {
+        TraceICState(bcOffset, "IC-Handler-Invalid");
         return;
     }
     auto handlerInfo = static_cast<uint32_t>(handlerInfoVal.GetInt());
@@ -563,6 +640,7 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
     }
     if (!kungfu::LazyDeoptAllDependencies::CheckStableProtoChain(mainThread_, hclass, holderHClass,
                                                                  GetCurrentGlobalEnv().GetObject<GlobalEnv>())) {
+        TraceICState(bcOffset, "IC-Not-Stable");
         return;
     }
     if (accessor.IsJSFunction()) {
@@ -604,6 +682,7 @@ void JITProfiler::HandleOtherTypes(ApEntityId &abcId, int32_t &bcOffset,
         HandleOtherTypesPrototypeHandler(abcId, bcOffset, hclass, secondValue, slotId);
     } else if (secondValue.IsPropertyBox()) {
         // StoreGlobal
+        TraceICState(bcOffset, "IC-PropertyBox-Miss");
     } else if (secondValue.IsStoreAOTHandler()) {
         HandleStoreAOTHandler(abcId, bcOffset, hclass, secondValue);
     }
@@ -617,6 +696,8 @@ void JITProfiler::HandleTransitionHandler(ApEntityId &abcId, int32_t &bcOffset,
     if (transitionHClassVal.IsJSHClass()) {
         auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
         AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
+    } else {
+        TraceICState(bcOffset, "IC-Transition-Miss");
     }
 }
 
@@ -628,12 +709,15 @@ void JITProfiler::HandleTransWithProtoHandler(ApEntityId &abcId, int32_t &bcOffs
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
+        TraceICState(bcOffset, "IC-Cell-Changed");
         return;
     }
     auto transitionHClassVal = transWithProtoHandler->GetTransitionHClass(mainThread_);
     if (transitionHClassVal.IsJSHClass()) {
         auto transitionHClass = JSHClass::Cast(transitionHClassVal.GetTaggedObject());
         AddObjectInfo(abcId, bcOffset, hclass, hclass, transitionHClass);
+    } else {
+        TraceICState(bcOffset, "IC-Transition-Not-JSHClass");
     }
 }
 
@@ -643,10 +727,12 @@ void JITProfiler::HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &b
     auto prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
     auto cellValue = prototypeHandler->GetProtoCell(mainThread_);
     if (cellValue.IsUndefined()) {
+        TraceICState(bcOffset, "IC-Cell-Undefined");
         return;
     }
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
+        TraceICState(bcOffset, "IC-Cell-Changed");
         return;
     }
     auto holder = prototypeHandler->GetHolder(mainThread_);
@@ -672,6 +758,7 @@ void JITProfiler::HandleStoreAOTHandler(ApEntityId &abcId, int32_t &bcOffset,
     ASSERT(cellValue.IsProtoChangeMarker());
     ProtoChangeMarker *cell = ProtoChangeMarker::Cast(cellValue.GetTaggedObject());
     if (cell->GetHasChanged()) {
+        TraceICState(bcOffset, "IC-Cell-Changed");
         return;
     }
     auto holder = storeAOTHandler->GetHolder(mainThread_);
@@ -1021,7 +1108,8 @@ bool JITProfiler::AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *re
 {
     PGOSampleType accessor = PGOSampleType::CreateProfileType(abcId, accessorMethodId, ProfileType::Kind::MethodId);
     // case: obj = Object.create(null) => LowerProtoChangeMarkerCheck Crash
-    if (receiver->GetPrototype(mainThread_).IsNull()) {
+    if (UNLIKELY(receiver->GetPrototype(mainThread_).IsNull())) {
+        TraceICState(bcOffset, "IC-(receiver's prototype == Null)");
         return false;
     }
     return AddTranstionObjectInfo(bcOffset, receiver, hold, holdTra, accessor, primitiveType, name);
@@ -1129,6 +1217,7 @@ bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
             }
             return false;
         }
+        TraceICState(bcOffset, "IC-(receiver != expected)");
         return true;
     }
     AddBuiltinsInfo(abcId, bcOffset, receiver, receiver);
@@ -1146,6 +1235,7 @@ bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
     // Not support string not found ic now.
     if (isNonExist) {
         if (builtinsId == BuiltinTypeId::STRING) {
+            TraceICState(bcOffset, "IC-Non-Exist-String");
             return true;
         }
         return false;
@@ -1168,6 +1258,7 @@ bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
     if (builtinsId == BuiltinTypeId::ARRAY_ITERATOR) {
         if ((exceptRecvHClass != receiver) ||
             (exceptHoldHClass != hold && exceptPrototypeOfPrototypeHClass != hold)) {
+            TraceICState(bcOffset, "IC-(ARRAY_ITERATOR fail)");
             return true;
         }
     } else if (IsTypedArrayType(builtinsId.value())) {
@@ -1176,12 +1267,14 @@ bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
                      "must be on heap");
         if (JITProfiler::IsJSHClassNotEqual(receiver, hold, exceptRecvHClass, exceptRecvHClassOnHeap, exceptHoldHClass,
                                             exceptPrototypeOfPrototypeHClass)) {
+            TraceICState(bcOffset, "IC-TypedArray-(receiver != expected)");
             return true;
         }
     } else if (exceptRecvHClass != receiver || exceptHoldHClass != hold) {
         if (builtinsId == BuiltinTypeId::OBJECT) {
             return false;
         } else {
+            TraceICState(bcOffset, "IC-Prototype-(receiver != expected)");
             return true;
         }
     }
