@@ -17,7 +17,7 @@
 #define ECMASCRIPT_STRING_BASE_STRING_CLASS_H
 #include <cstdint>
 #include "base/bit_field.h"
-#include "common_interfaces/objects/base_class.h"
+#include "objects/base_class.h"
 
 namespace panda::ecmascript {
 

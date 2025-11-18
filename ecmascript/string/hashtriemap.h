@@ -18,8 +18,8 @@
 
 #include "common_components/heap/heap.h"
 #include "common_components/log/log.h"
-#include "common_interfaces/base/common.h"
-#include "common_interfaces/objects/readonly_handle.h"
+#include "base/common.h"
+#include "objects/readonly_handle.h"
 #include "ecmascript/string/base_string.h"
 #include "ecmascript/string/base_string-inl.h"
 

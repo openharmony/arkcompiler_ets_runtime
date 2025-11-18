@@ -19,7 +19,7 @@
 #include "common_components/base/globals.h"
 #include "common_components/platform/mutex.h"
 #include "common_components/taskpool/task.h"
-#include "common_interfaces/thread/thread_holder.h"
+#include "thread/thread_holder.h"
 #include "ecmascript/string/base_string_table.h"
 #include "ecmascript/string/hashtriemap.h"
 

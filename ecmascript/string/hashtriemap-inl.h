@@ -17,7 +17,7 @@
 #define ECMASCRIPT_STRING_TABLE_HASHTRIEMAP_INL_H
 
 #include "common_components/log/log.h"
-#include "common_interfaces/objects/readonly_handle.h"
+#include "objects/readonly_handle.h"
 #include "ecmascript/string/base_string.h"
 #include "ecmascript/string/line_string-inl.h"
 #include "hashtriemap.h"
