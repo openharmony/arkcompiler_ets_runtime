@@ -560,7 +560,7 @@ int32_t DebuggerApi::GetModuleVariableIndex(const EcmaVM *ecmaVm, const JSHandle
                 std::string localName = EcmaStringAccessor(localKey).ToStdString(thread);
                 std::string exportName = EcmaStringAccessor(exportKey).ToStdString(thread);
                 if (localName == name || exportName == name) {
-                    return idx;
+                    return ee->GetLocalIndex();
                 }
             }
         }
