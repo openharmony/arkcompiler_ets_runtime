@@ -330,14 +330,15 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
         return;
     }
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    auto globalConst = thread->GlobalConstants();
-    if (key == env->GetTaggedReplaceSymbol() &&
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    
+    if (key == globalConst->GetReplaceSymbol() &&
         (receiver.IsJSRegExp() || receiver == env->GetTaggedRegExpPrototype())) {
         if (env->GetRegExpReplaceDetector()) {
             return;
         }
         env->SetRegExpReplaceDetector(true);
-    } else if (key == env->GetTaggedIteratorSymbol()) {
+    } else if (key == globalConst->GetIteratorSymbol()) {
         if (receiver.IsJSMap() || receiver == env->GetTaggedMapPrototype()) {
             if (env->GetMapIteratorDetector()) {
                 return;
@@ -378,7 +379,7 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
             }
             env->SetTypedArrayIteratorDetector(true);
         }
-    } else if (key == env->GetTaggedSpeciesSymbol()) {
+    } else if (key == globalConst->GetSpeciesSymbol()) {
         if (receiver == env->GetTypedArrayFunction().GetTaggedValue()) {
             if (env->GetTypedArraySpeciesProtectDetector()) {
                 return;
@@ -391,9 +392,9 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
             }
             env->SetRegExpSpeciesDetector(true);
         }
-    } else if ((key == env->GetTaggedReplaceSymbol()) ||
-        (key == env->GetTaggedSplitSymbol()) ||
-        (key == env->GetTaggedMatchAllSymbol())) {
+    } else if ((key == globalConst->GetReplaceSymbol()) ||
+        (key == globalConst->GetSplitSymbol()) ||
+        (key == globalConst->GetMatchAllSymbol())) {
         if (env->GetNumberStringNotRegexpLikeDetector()) {
             return;
         }
@@ -402,7 +403,7 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
             (receiver.IsJSPrimitive() || receiver == env->GetTaggedObjectFunctionPrototype()))) {
             env->SetNumberStringNotRegexpLikeDetector(true);
         }
-    } else if (key == globalConst->GetHandledFlagsString().GetTaggedValue() &&
+    } else if (key == globalConst->GetFlagsString() &&
         (receiver.IsJSRegExp() || receiver == env->GetTaggedRegExpPrototype())) {
         if (env->GetRegExpFlagsDetector()) {
             return;
@@ -414,17 +415,11 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
 // static
 bool ObjectOperator::IsDetectorName(const JSThread *thread, JSTaggedValue key)
 {
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    uintptr_t start = GlobalEnv::GetFirstDetectorSymbolAddr(*env);
-    uintptr_t end = GlobalEnv::GetLastDetectorSymbolAddr(*env);
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    uintptr_t start = GlobalEnvConstants::GetFirstDetectorAddr(globalConst);
+    uintptr_t end = GlobalEnvConstants::GetLastDetectorAddr(globalConst);
     uintptr_t addr = key.GetRawData();
-    if ((start <= addr) && (addr <= end)) {
-        return true;
-    }
-    if (key == thread->GlobalConstants()->GetHandledFlagsString().GetTaggedValue()) {
-        return true;
-    }
-    return false;
+    return ((start <= addr) && (addr <= end));
 }
 
 SharedFieldType ObjectOperator::GetSharedFieldType() const

@@ -41,7 +41,7 @@ JSHandle<JSTaggedValue> JSIterator::GetIterator(JSThread *thread, const JSHandle
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, obj);
     // 2.If method was not passed, then
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> iteratorSymbol = thread->GlobalConstants()->GetHandledIteratorSymbol();
     JSHandle<JSTaggedValue> func = JSObject::GetMethod(thread, obj, iteratorSymbol);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, obj);
 
@@ -71,13 +71,13 @@ JSHandle<JSTaggedValue> JSIterator::GetAsyncIterator(JSThread *thread, const JSH
     // 3.If method is not present, then
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> asynciteratorSymbol = env->GetAsyncIteratorSymbol();
+    JSHandle<JSTaggedValue> asynciteratorSymbol = thread->GlobalConstants()->GetHandledAsyncIteratorSymbol();
     // i. Set method to ? GetMethod(obj, @@asyncIterator).
     // ii. If method is undefined, then
     JSHandle<JSTaggedValue> method = JSObject::GetMethod(thread, obj, asynciteratorSymbol);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, obj);
     if (method->IsUndefined()) {
-        JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+        JSHandle<JSTaggedValue> iteratorSymbol = thread->GlobalConstants()->GetHandledIteratorSymbol();
         JSHandle<JSTaggedValue> func = JSObject::GetMethod(thread, obj, iteratorSymbol);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         JSHandle<JSTaggedValue> syncIterator = GetIterator(thread, obj, func);

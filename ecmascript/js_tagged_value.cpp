@@ -795,7 +795,7 @@ JSTaggedValue JSTaggedValue::ToPrimitive(JSThread *thread, const JSHandle<JSTagg
 {
     if (tagged->IsECMAObject()) {
         EcmaVM *vm = thread->GetEcmaVM();
-        JSHandle<JSTaggedValue> keyString = vm->GetGlobalEnv()->GetToPrimitiveSymbol();
+        JSHandle<JSTaggedValue> keyString = thread->GlobalConstants()->GetHandledToPrimitiveSymbol();
 
         JSHandle<JSTaggedValue> exoticToprim = JSObject::GetMethod(thread, tagged, keyString);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());

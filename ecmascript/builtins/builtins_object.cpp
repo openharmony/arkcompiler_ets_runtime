@@ -969,7 +969,8 @@ JSTaggedValue BuiltinsObject::ToString(EcmaRuntimeCallInfo *argv)
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     auto factory = ecmaVm->GetFactory();
 
-    JSHandle<JSTaggedValue> tag = JSTaggedValue::GetProperty(thread, msg, env->GetToStringTagSymbol()).GetValue();
+    JSHandle<JSTaggedValue> tag = JSTaggedValue::GetProperty(thread, msg,
+        thread->GlobalConstants()->GetHandledToStringTagSymbol()).GetValue();
 
     // 17. ReturnIfAbrupt(tag).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

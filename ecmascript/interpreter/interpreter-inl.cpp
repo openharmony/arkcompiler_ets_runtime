@@ -2249,7 +2249,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
                     profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
                     profileTypeArray = ProfileTypeInfo::Cast(profileTypeInfo.GetTaggedObject());
                     EcmaVM *vm = thread->GetEcmaVM();
-                    JSTaggedValue key = vm->GetGlobalEnv()->GetHasInstanceSymbol().GetTaggedValue();
+                    JSTaggedValue key = thread->GlobalConstants()->GetHasInstanceSymbol();
                     instOfHandler = ICRuntimeStub::LoadICByName(thread, profileTypeArray, target, key, slotId);
                     RESTORE_ACC();
                     target = GET_ACC();

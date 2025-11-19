@@ -503,7 +503,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayBufferFunctionHClass(const JSHandle<Glo
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {
-            keyString = env->GetSpeciesSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -532,7 +532,7 @@ JSHandle<JSHClass> Builtins::CreateSSetFunctionHClass(const JSHandle<GlobalEnv> 
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {
-            keyString = env->GetSpeciesSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -561,7 +561,7 @@ JSHandle<JSHClass> Builtins::CreateSMapFunctionHClass(const JSHandle<GlobalEnv> 
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {
-            keyString = env->GetSpeciesSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -590,7 +590,7 @@ JSHandle<JSHClass> Builtins::CreateBitVectorFunctionHClass(const JSHandle<Global
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {
-            keyString = env->GetSpeciesSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -619,7 +619,7 @@ JSHandle<JSHClass> Builtins::CreateSFunctionPrototypeHClass(const JSHandle<Globa
         attributes.SetOffset(index);
         attributes.SetIsAccessor(each.GetIsAccessor());
         if (each.GetName() == "[Symbol.hasInstance]") {
-            keyString = env->GetHasInstanceSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledHasInstanceSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(each.GetName()));
         }
@@ -648,7 +648,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayBufferPrototypeHClass(const JSHandle<Gl
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.toStringTag]") {
-            keyString = env->GetToStringTagSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledToStringTagSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -677,9 +677,9 @@ JSHandle<JSHClass> Builtins::CreateSSetPrototypeHClass(const JSHandle<GlobalEnv>
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.iterator]") {
-            keyString = env->GetIteratorSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledIteratorSymbol();
         } else if (key == "[Symbol.toStringTag]") {
-            keyString = env->GetToStringTagSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledToStringTagSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -708,9 +708,9 @@ JSHandle<JSHClass> Builtins::CreateSMapPrototypeHClass(const JSHandle<GlobalEnv>
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.iterator]") {
-            keyString = env->GetIteratorSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledIteratorSymbol();
         } else if (key == "[Symbol.toStringTag]") {
-            keyString = env->GetToStringTagSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledToStringTagSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -739,9 +739,9 @@ JSHandle<JSHClass> Builtins::CreateBitVectorPrototypeHClass(const JSHandle<Globa
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.iterator]") {
-            keyString = env->GetIteratorSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledIteratorSymbol();
         } else if (key == "[Symbol.toStringTag]") {
-            keyString = env->GetToStringTagSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledToStringTagSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -770,9 +770,9 @@ JSHandle<JSHClass> Builtins::CreateSArrayPrototypeHClass(const JSHandle<GlobalEn
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.iterator]") {
-            keyString = env->GetIteratorSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledIteratorSymbol();
         } else if (key == "[Symbol.toStringTag]") {
-            keyString = env->GetToStringTagSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledToStringTagSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -801,7 +801,7 @@ JSHandle<JSHClass> Builtins::CreateSArrayFunctionHClass(const JSHandle<GlobalEnv
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {
-            keyString = env->GetSpeciesSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -907,53 +907,6 @@ void Builtins::SharedStrictModeForbiddenAccessCallerArguments(const JSHandle<Glo
     SetSAccessor(prototype, index++, JSHandle<JSTaggedValue>(func), JSHandle<JSTaggedValue>(func));
     // "arguments"
     SetSAccessor(prototype, index++, JSHandle<JSTaggedValue>(func), JSHandle<JSTaggedValue>(func));
-}
-
-void Builtins::InitializeSSymbolAttributes(const JSHandle<GlobalEnv> &env)
-{
-    JSHandle<JSTaggedValue> hasInstanceSymbol(
-        factory_->NewSWellKnownSymbolWithChar("Symbol.hasInstance"));
-    JSHandle<JSTaggedValue> isConcatSpreadableSymbol(
-        factory_->NewSWellKnownSymbolWithChar("Symbol.isConcatSpreadable"));
-    JSHandle<JSTaggedValue> toStringTagSymbol(
-        factory_->NewSWellKnownSymbolWithChar("Symbol.toStringTag"));
-    JSHandle<JSTaggedValue> asyncIteratorSymbol(
-        factory_->NewSPublicSymbolWithChar("Symbol.asyncIterator"));
-    JSHandle<JSTaggedValue> matchSymbol(
-        factory_->NewSPublicSymbolWithChar("Symbol.match"));
-    JSHandle<JSTaggedValue> searchSymbol(
-        factory_->NewSPublicSymbolWithChar("Symbol.search"));
-    JSHandle<JSTaggedValue> toPrimitiveSymbol(
-        factory_->NewSPublicSymbolWithChar("Symbol.toPrimitive"));
-    JSHandle<JSTaggedValue> unscopablesSymbol(
-        factory_->NewSPublicSymbolWithChar("Symbol.unscopables"));
-    JSHandle<JSTaggedValue> nativeBindingSymbol(
-        factory_->NewSPublicSymbolWithChar("Symbol.nativeBinding"));
-
-    // Symbol attributes with detectors
-    // Create symbol string before create symbol to allocate symbol continuously
-    // Attention: Symbol serialization & deserialization are not supported now and
-    // the order of symbols and symbol-strings must be maintained too when
-    // Symbol serialization & deserialization are ready.
-#define INIT_SYMBOL_STRING(name, description, key)                                                 \
-    {                                                                                              \
-        [[maybe_unused]] JSHandle<EcmaString> string = factory_->NewFromUtf8ReadOnly(description); \
-    }
-DETECTOR_SYMBOL_LIST(INIT_SYMBOL_STRING)
-#undef INIT_SYMBOL_STRING
-
-#define INIT_PUBLIC_SYMBOL(name, description, key)                                 \
-    JSHandle<JSSymbol> key##Symbol = factory_->NewSEmptySymbol();                  \
-    JSHandle<EcmaString> key##String = factory_->NewFromUtf8ReadOnly(description); \
-    key##Symbol->SetDescription(thread_, key##String.GetTaggedValue());            \
-    key##Symbol->SetHashField(SymbolTable::Hash(thread_, key##String.GetTaggedValue()));
-DETECTOR_SYMBOL_LIST(INIT_PUBLIC_SYMBOL)
-#undef INIT_PUBLIC_SYMBOL
-
-#define REGISTER_SYMBOL(name, Name)                                                \
-    env->Set##Name##Symbol(thread_, name##Symbol);
-BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
-#undef REGISTER_SYMBOL
 }
 
 JSHandle<JSObject> Builtins::InitializeArrayPrototype(JSHandle<JSHClass> &arrBaseFuncInstanceHClass) const
@@ -1231,9 +1184,9 @@ JSHandle<JSHClass> Builtins::CreateSTypedArrayPrototypeHClass(const JSHandle<Glo
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.iterator]") {
-            keyString = env->GetIteratorSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledIteratorSymbol();
         } else if (key == "[Symbol.toStringTag]") {
-            keyString = env->GetToStringTagSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledToStringTagSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }
@@ -1261,7 +1214,7 @@ JSHandle<JSHClass> Builtins::CreateSTypedArrayFunctionHClass(const JSHandle<Glob
         attributes.SetOffset(index);
         attributes.SetIsAccessor(isAccessor);
         if (key == "[Symbol.species]") {
-            keyString = env->GetSpeciesSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(key));
         }

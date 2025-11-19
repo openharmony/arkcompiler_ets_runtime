@@ -491,7 +491,7 @@ HWTEST_F_L0(BuiltinsRegExpTest, GetSpecies)
 {
     // invoke RegExpConstructor method
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     EXPECT_TRUE(!speciesSymbol.GetTaggedValue().IsUndefined());
 
     JSHandle<JSFunction> newTarget(env->GetRegExpFunction());

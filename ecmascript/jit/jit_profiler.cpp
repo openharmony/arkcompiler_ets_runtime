@@ -1002,7 +1002,7 @@ void JITProfiler::ConvertInstanceof(int32_t bcOffset, uint32_t slotId)
         if (object->GetClass()->IsHClass()) {
             JSHClass *hclass = JSHClass::Cast(object);
             // Since pgo does not support symbol, we choose to return if hclass having @@hasInstance
-            JSTaggedValue key = GetCurrentGlobalEnv()->GetHasInstanceSymbolWithBarrier().GetTaggedValue();
+            JSTaggedValue key = mainThread_->GlobalConstants()->GetHasInstanceSymbol();
             JSHClass *functionPrototypeHC =
                 JSObject::Cast(GetCurrentGlobalEnv()->GetFunctionPrototypeWithBarrier().GetTaggedValue())->GetClass();
             JSTaggedValue foundHClass = TryFindKeyInPrototypeChain(object, hclass, key);

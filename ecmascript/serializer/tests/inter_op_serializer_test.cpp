@@ -1561,10 +1561,9 @@ static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, v
 HWTEST_F_L0(InterOpSerializerTest, SerializeNativeBindingObject1)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
 
-    JSHandle<JSTaggedValue> key1 = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> key1 = thread->GlobalConstants()->GetHandledNativeBindingSymbol();
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("x"));
     auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(Attach), reinterpret_cast<void*>(Detach));
     JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(info)));
@@ -1590,11 +1589,10 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeNativeBindingObject1)
 HWTEST_F_L0(InterOpSerializerTest, SerializeNativeBindingObject2)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
     JSHandle<JSObject> obj2 = factory->NewEmptyJSObject();
 
-    JSHandle<JSTaggedValue> key1 = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> key1 = thread->GlobalConstants()->GetHandledNativeBindingSymbol();
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("x"));
     JSHandle<JSTaggedValue> key3(factory->NewFromASCII("xx"));
     auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(Attach), reinterpret_cast<void*>(Detach));
@@ -1624,10 +1622,9 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeNativeBindingObject2)
 HWTEST_F_L0(InterOpSerializerTest, SerializeNativeBindingObject3)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
     JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
 
-    JSHandle<JSTaggedValue> key1 = env->GetNativeBindingSymbol();
+    JSHandle<JSTaggedValue> key1 = thread->GlobalConstants()->GetHandledNativeBindingSymbol();
     JSHandle<JSTaggedValue> key2(factory->NewFromASCII("x"));
     auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(Attach), nullptr);
     JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(info)));

@@ -253,7 +253,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> iteratorSymbol = thread->GlobalConstants()->GetHandledIteratorSymbol();
     JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, items, iteratorSymbol);
     // 5. ReturnIfAbrupt(usingIterator).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

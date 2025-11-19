@@ -228,7 +228,6 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
 
     auto runtimeGlobalEnv = Runtime::GetInstance()->GetGlobalEnv();
     if (runtimeGlobalEnv.IsHole()) {
-        InitializeSSymbolAttributes(env);
         InitializeSObjectAndSFunction(env);
     } else {
         CopySObjectAndSFunction(env, runtimeGlobalEnv);
@@ -537,17 +536,20 @@ JSHandle<JSHClass> Builtins::CreateFunctionPrototypeHClass(const JSHandle<Global
     uint32_t length = properties.size();
     JSHandle<LayoutInfo> layout = factory_->CreateLayoutInfo(length);
     JSHandle<JSTaggedValue> keyString;
+    
     for (const base::BuiltinsPropertyConfig &each : properties) {
         attributes.SetOffset(index);
         attributes.SetIsAccessor(each.GetIsAccessor());
         attributes.SetWritable(each.GetWritable());
         attributes.SetEnumerable(each.GetEnumerable());
         attributes.SetConfigurable(each.GetConfigurable());
+        
         if (each.GetName() == "[Symbol.hasInstance]") {
-            keyString = env->GetHasInstanceSymbol();
+            keyString = thread_->GlobalConstants()->GetHandledHasInstanceSymbol();
         } else {
             keyString = JSHandle<JSTaggedValue>(factory_->NewFromUtf8ReadOnly(each.GetName()));
         }
+        
         layout->AddKey(thread_, index++, keyString.GetTaggedValue(), attributes);
     }
     JSHandle<JSHClass> objPrototypeHClass =
@@ -788,9 +790,10 @@ void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<J
 
     // Symbol attributes
 #define REGISTER_SYMBOL(name, Name) \
-    SetNoneAttributeProperty(symbolFunction, #name, env->Get##Name##Symbol());
+    SetNoneAttributeProperty(symbolFunction, #name, globalConst->GetHandled##Name##Symbol());
 
 BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
+#undef REGISTER_SYMBOL
     env->SetSymbolFunction(thread_, symbolFunction);
 
     // symbol.prototype.description
@@ -802,7 +805,7 @@ BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
 
     // Setup symbol.prototype[@@toPrimitive]
     SetFunctionAtSymbol<JSSymbol::SYMBOL_TO_PRIMITIVE_TYPE>(
-        env, symbolFuncPrototype, env->GetToPrimitiveSymbol(), "[Symbol.toPrimitive]",
+        env, symbolFuncPrototype, globalConst->GetHandledToPrimitiveSymbol(), "[Symbol.toPrimitive]",
         Symbol::ToPrimitive, FunctionLength::ONE);
     // install the Symbol.prototype methods
     SetFunction(env, symbolFuncPrototype, thread_->GlobalConstants()->GetHandledToStringString(), Symbol::ToString,
@@ -829,7 +832,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
                                          const JSHandle<JSHClass> &objFuncInstanceHClass)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
-    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // Symbol.prototype
     JSHandle<JSObject> symbolFuncPrototype = factory_->NewJSObjectWithInit(objFuncInstanceHClass);
     JSHandle<JSTaggedValue> symbolFuncPrototypeValue(symbolFuncPrototype);
@@ -846,7 +849,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
                                                      symbolFuncInstanceHClass.GetTaggedValue());
 
     // "constructor" property on the prototype
-    JSHandle<JSTaggedValue> constructorKey = thread_->GlobalConstants()->GetHandledConstructorString();
+    JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     PropertyDescriptor descriptor(thread_, JSHandle<JSTaggedValue>::Cast(symbolFunction), true, false, true);
     JSObject::DefineOwnProperty(thread_, symbolFuncPrototype, constructorKey, descriptor);
 
@@ -856,12 +859,11 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     }
 
 #define BUILTIN_SYMBOL_CREATE_WITH_REALM(name, Name)                            \
-    SetNoneAttributeProperty(symbolFunction, #name, env->Get##Name##Symbol());  \
-    realm->Set##Name##Symbol(thread_, env->Get##Name##Symbol());
+    SetNoneAttributeProperty(symbolFunction, #name, globalConst->GetHandled##Name##Symbol());
 
     realm->SetSymbolFunction(thread_, symbolFunction);
-    // Symbol attribute
-    BUILTIN_ALL_SYMBOLS(BUILTIN_SYMBOL_CREATE_WITH_REALM)
+    // Symbol attributes
+    BUILTIN_ALL_SYMBOLS(BUILTIN_SYMBOL_CREATE_WITH_REALM);
 
     // symbol.prototype.description
     PropertyDescriptor descriptionDesc(thread_);
@@ -871,7 +873,8 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     SetGetter(symbolFuncPrototype, getterKey, getter);
 
     // Setup symbol.prototype[@@toPrimitive]
-    SetFunctionAtSymbol<JSSymbol::SYMBOL_TO_PRIMITIVE_TYPE>(realm, symbolFuncPrototype, env->GetToPrimitiveSymbol(),
+    SetFunctionAtSymbol<JSSymbol::SYMBOL_TO_PRIMITIVE_TYPE>(realm, symbolFuncPrototype,
+                                                            globalConst->GetHandledToPrimitiveSymbol(),
                                                             "[Symbol.toPrimitive]", Symbol::ToPrimitive,
                                                             FunctionLength::ONE);
     // install the Symbol.prototype methods
@@ -886,6 +889,7 @@ void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
     realm->SetHoleySymbol(thread_, holeySymbol.GetTaggedValue());
     JSHandle<JSTaggedValue> elementIcSymbol(factory_->NewPrivateNameSymbolWithChar("element-ic"));
     realm->SetElementICSymbol(thread_, elementIcSymbol.GetTaggedValue());
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     if (Runtime::GetInstance()->IsHybridVm() && env->GetInterfaceTypeSymbol().GetTaggedValue().IsUndefined()) {
         JSHandle<JSTaggedValue> interfaceTypeSymbol(factory_->NewPrivateNameSymbolWithChar("interfaceType"));
         realm->SetInterfaceTypeSymbol(thread_, interfaceTypeSymbol.GetTaggedValue());
@@ -989,6 +993,8 @@ void Builtins::InitializeBigInt(const JSHandle<GlobalEnv> &env, const JSHandle<J
 void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> objFuncPrototypeVal) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
+    const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
+    
     // Date.prototype
     JSHandle<JSHClass> dateFuncPrototypeHClass = factory_->NewEcmaHClass(
         JSObject::SIZE, Date::GetNumPrototypeInlinedProperties(), JSType::JS_OBJECT, objFuncPrototypeVal);
@@ -1012,8 +1018,9 @@ void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedV
         SetFunction(env, dateFuncPrototype, entry.GetName(), entry.GetEntrypoint(),
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
-    SetFunctionAtSymbol(env, dateFuncPrototype, env->GetToPrimitiveSymbol(), "[Symbol.toPrimitive]", Date::ToPrimitive,
-                        FunctionLength::ONE);
+    
+    SetFunctionAtSymbol(env, dateFuncPrototype, globalConst->GetHandledToPrimitiveSymbol(),
+                        "[Symbol.toPrimitive]", Date::ToPrimitive, FunctionLength::ONE);
 
     // Date method
     for (const base::BuiltinFunctionEntry &entry: Date::GetDateFunctions()) {
@@ -1430,13 +1437,13 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     SetGetter(setFuncPrototype, sizeKey, sizeGetter);
 
     // 23.1.2.2get Set [ @@species ]
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, BuiltinsSet::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(JSHandle<JSObject>(setFunction), speciesSymbol, speciesGetter);
 
     // %SetPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> iteratorSymbol = thread_->GlobalConstants()->GetHandledIteratorSymbol();
     JSObject::DefineOwnProperty(thread_, setFuncPrototype, iteratorSymbol, descriptor);
 
     env->SetBuiltinsSetFunction(thread_, setFunction);
@@ -1502,13 +1509,13 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     SetGetter(mapFuncPrototype, sizeKey, sizeGetter);
 
     // 23.1.2.2get Map [ @@species ]
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, BuiltinsMap::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(JSHandle<JSObject>(mapFunction), speciesSymbol, speciesGetter);
 
     // %MapPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> iteratorSymbol = thread_->GlobalConstants()->GetHandledIteratorSymbol();
     JSHandle<JSTaggedValue> entries(factory_->NewFromASCIIReadOnly("entries"));
     JSHandle<JSTaggedValue> entriesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(mapFuncPrototype), entries);
@@ -1809,8 +1816,8 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
     JSHandle<JSTaggedValue> stringIter = SetAndReturnFunctionAtSymbol(env, stringFuncPrototype,
-        env->GetIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator, FunctionLength::ZERO,
-        BUILTINS_STUB_ID(StringGetStringIterator));
+        thread_->GlobalConstants()->GetHandledIteratorSymbol(), "[Symbol.iterator]", BuiltinsString::GetStringIterator,
+        FunctionLength::ZERO, BUILTINS_STUB_ID(StringGetStringIterator));
 
     // String method
     for (const base::BuiltinFunctionEntry &entry: BuiltinsString::GetStringFunctions()) {
@@ -1893,8 +1900,8 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
     // Iterator.prototype.throw()
     SetFunction(env, iteratorPrototype, "throw", BuiltinsIterator::Throw, FunctionLength::ONE);
     // %IteratorPrototype% [ @@iterator ]
-    SetFunctionAtSymbol(env, iteratorPrototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
-                        BuiltinsIterator::GetIteratorObj, FunctionLength::ZERO);
+    SetFunctionAtSymbol(env, iteratorPrototype, thread_->GlobalConstants()->GetHandledIteratorSymbol(),
+                        "[Symbol.iterator]", BuiltinsIterator::GetIteratorObj, FunctionLength::ZERO);
     env->SetIteratorPrototype(thread_, iteratorPrototype);
 
     // Iterator.hclass
@@ -1938,8 +1945,8 @@ void Builtins::InitializeAsyncIterator(const JSHandle<GlobalEnv> &env, const JSH
     // AsyncIterator.prototype.throw()
     SetFunction(env, asyncIteratorPrototype, "throw", BuiltinsAsyncIterator::Throw, FunctionLength::ONE);
     // %AsyncIteratorPrototype% [ @@AsyncIterator ]
-    SetFunctionAtSymbol(env, asyncIteratorPrototype, env->GetAsyncIteratorSymbol(), "[Symbol.asyncIterator]",
-                        BuiltinsAsyncIterator::GetAsyncIteratorObj, FunctionLength::ZERO);
+    SetFunctionAtSymbol(env, asyncIteratorPrototype, thread_->GlobalConstants()->GetHandledAsyncIteratorSymbol(),
+                        "[Symbol.asyncIterator]", BuiltinsAsyncIterator::GetAsyncIteratorObj, FunctionLength::ZERO);
     env->SetAsyncIteratorPrototype(thread_, asyncIteratorPrototype);
 }
 
@@ -2134,26 +2141,31 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
     SetGetter(regPrototype, unicodeKey, unicodeGetter);
 
     // Set RegExp [ @@species ]
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, BuiltinsMap::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(JSHandle<JSObject>(regexpFunction), speciesSymbol, speciesGetter);
 
     // Set RegExp.prototype[@@split]
     JSHandle<JSTaggedValue> splitFunc = SetAndReturnFunctionAtSymbol(
-        env, regPrototype, env->GetSplitSymbol(), "[Symbol.split]", RegExp::Split, FunctionLength::TWO);
+        env, regPrototype, thread_->GlobalConstants()->GetHandledSplitSymbol(),
+        "[Symbol.split]", RegExp::Split, FunctionLength::TWO);
     // Set RegExp.prototype[@@search]
     JSHandle<JSTaggedValue> searchFunc = SetAndReturnFunctionAtSymbol(
-        env, regPrototype, env->GetSearchSymbol(), "[Symbol.search]", RegExp::Search, FunctionLength::ONE);
+        env, regPrototype, thread_->GlobalConstants()->GetHandledSearchSymbol(),
+        "[Symbol.search]", RegExp::Search, FunctionLength::ONE);
     // Set RegExp.prototype[@@match]
     JSHandle<JSTaggedValue> matchFunc = SetAndReturnFunctionAtSymbol(
-        env, regPrototype, env->GetMatchSymbol(), "[Symbol.match]", RegExp::Match, FunctionLength::ONE);
+        env, regPrototype, thread_->GlobalConstants()->GetHandledMatchSymbol(),
+        "[Symbol.match]", RegExp::Match, FunctionLength::ONE);
     // Set RegExp.prototype[@@matchAll]
     JSHandle<JSTaggedValue> matchAllFunc = SetAndReturnFunctionAtSymbol(
-        env, regPrototype, env->GetMatchAllSymbol(), "[Symbol.matchAll]", RegExp::MatchAll, FunctionLength::ONE);
+        env, regPrototype, thread_->GlobalConstants()->GetHandledMatchAllSymbol(),
+        "[Symbol.matchAll]", RegExp::MatchAll, FunctionLength::ONE);
     // Set RegExp.prototype[@@replace]
     JSHandle<JSTaggedValue> replaceFunc = SetAndReturnFunctionAtSymbol(
-        env, regPrototype, env->GetReplaceSymbol(), "[Symbol.replace]", RegExp::Replace, FunctionLength::TWO);
+        env, regPrototype, thread_->GlobalConstants()->GetHandledReplaceSymbol(),
+        "[Symbol.replace]", RegExp::Replace, FunctionLength::TWO);
 
     env->SetRegExpFunction(thread_, regexpFunction);
     env->SetRegExpPrototype(thread_, regPrototype);
@@ -2222,7 +2234,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     // %ArrayPrototype% [ @@iterator ]
     JSHandle<JSTaggedValue> values(factory_->NewFromASCIIReadOnly("values"));
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> iteratorSymbol = thread_->GlobalConstants()->GetHandledIteratorSymbol();
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(arrFuncPrototype), values);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -2254,7 +2266,7 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
     JSObject::GetOwnProperty(thread_, arrFuncPrototype, valuesKey, desc);
 
     // Array.prototype [ @@unscopables ]
-    JSHandle<JSTaggedValue> unscopablesSymbol = env->GetUnscopablesSymbol();
+    JSHandle<JSTaggedValue> unscopablesSymbol = thread_->GlobalConstants()->GetHandledUnscopablesSymbol();
     JSHandle<JSTaggedValue> unscopables = CreateArrayUnscopables(thread_);
     PropertyDescriptor unscopablesDesc(thread_, unscopables, false, false, true);
     JSObject::DefineOwnProperty(thread_, arrFuncPrototype, unscopablesSymbol, unscopablesDesc);
@@ -2314,7 +2326,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JST
 
     // %TypedArray%.prototype [ @@iterator ] ( )
     JSHandle<JSTaggedValue> values(factory_->NewFromASCIIReadOnly("values"));
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> iteratorSymbol = thread_->GlobalConstants()->GetHandledIteratorSymbol();
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(typedArrFuncPrototype), values);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -2322,7 +2334,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JST
     JSObject::DefineOwnProperty(thread_, typedArrFuncPrototype, iteratorSymbol, iteartorDesc);
 
     // 22.2.3.31 get %TypedArray%.prototype [ @@toStringTag ]
-    JSHandle<JSTaggedValue> toStringTagSymbol = env->GetToStringTagSymbol();
+    JSHandle<JSTaggedValue> toStringTagSymbol = thread_->GlobalConstants()->GetHandledToStringTagSymbol();
     JSHandle<JSTaggedValue> toStringTagGetter =
         CreateGetter(env, BuiltinsTypedArray::ToStringTag, "[Symbol.toStringTag]", FunctionLength::ZERO);
     SetGetter(typedArrFuncPrototype, toStringTagSymbol, toStringTagGetter);
@@ -2334,7 +2346,7 @@ void Builtins::InitializeTypedArray(const JSHandle<GlobalEnv> &env, JSHandle<JST
     }
 
     // 22.2.2.4 get %TypedArray% [ @@species ]
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, BuiltinsTypedArray::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(JSHandle<JSObject>(typedArrayFunction), speciesSymbol, speciesGetter);
@@ -2467,7 +2479,7 @@ void Builtins::InitializeArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHan
     }
 
     // 24.1.3.3 get ArrayBuffer[@@species]
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, ArrayBuffer::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(JSHandle<JSObject>(arrayBufferFunction), speciesSymbol, speciesGetter);
@@ -2549,7 +2561,7 @@ void Builtins::InitializeSharedArrayBuffer(const JSHandle<GlobalEnv> &env,
                 "IsSharedArrayBuffer", SharedArrayBuffer::IsSharedArrayBuffer, FunctionLength::ONE);
 
     // 25.2.3.2 get SharedArrayBuffer [ @@species ]
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread_->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, SharedArrayBuffer::Species, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(JSHandle<JSObject>(SharedArrayBufferFunction), speciesSymbol, speciesGetter);
@@ -2607,7 +2619,7 @@ void Builtins::InitializePromise(const JSHandle<GlobalEnv> &env, const JSHandle<
     SetStringTagSymbol(env, promiseFuncPrototype, "Promise");
 
     // Set Promise [@@species]
-    JSHandle<JSTaggedValue> speciesSymbol(env->GetSpeciesSymbol());
+    JSHandle<JSTaggedValue> speciesSymbol(thread_->GlobalConstants()->GetHandledSpeciesSymbol());
     JSHandle<JSTaggedValue> speciesGetter =
         CreateGetter(env, Promise::GetSpecies, "[Symbol.species]", FunctionLength::ZERO);
     SetGetter(promiseFunction, speciesSymbol, speciesGetter);
@@ -2925,7 +2937,7 @@ void Builtins::SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle
                                   std::string_view key) const
 {
     JSHandle<JSTaggedValue> tag(factory_->NewFromUtf8ReadOnly(key));
-    JSHandle<JSTaggedValue> symbol = env->GetToStringTagSymbol();
+    JSHandle<JSTaggedValue> symbol = thread_->GlobalConstants()->GetHandledToStringTagSymbol();
     PropertyDescriptor desc(thread_, tag, false, false, true);
     JSObject::DefineOwnProperty(thread_, obj, symbol, desc);
 }
@@ -3681,7 +3693,8 @@ void Builtins::InitializeSegments(const JSHandle<GlobalEnv> &env)
     // %SegmentsPrototype%.containing ( index )
     SetFunction(env, segmentsPrototype, "containing", Segments::Containing, FunctionLength::ONE);
     SetAndReturnFunctionAtSymbol(env, segmentsPrototype,
-        env->GetIteratorSymbol(), "[Symbol.iterator]", Segments::GetSegmentIterator, FunctionLength::ZERO);
+        thread_->GlobalConstants()->GetHandledIteratorSymbol(), "[Symbol.iterator]",
+        Segments::GetSegmentIterator, FunctionLength::ZERO);
 }
 
 void Builtins::InitializeSegmentIterator(const JSHandle<GlobalEnv> &env,
@@ -3851,8 +3864,8 @@ JSHandle<JSTaggedValue> Builtins::InitializeTreeSet(const JSHandle<GlobalEnv> &e
     // @@ToStringTag
     SetStringTagSymbol(env, setFuncPrototype, "TreeSet");
     // %TreeSetPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
-    JSHandle<JSTaggedValue> values(thread_, globalConst->GetValuesString());
+    JSHandle<JSTaggedValue> iteratorSymbol = globalConst->GetHandledIteratorSymbol();
+    JSHandle<JSTaggedValue> values = globalConst->GetHandledValuesString();
     JSHandle<JSTaggedValue> valuesFunc =
         JSObject::GetMethod(thread_, JSHandle<JSTaggedValue>::Cast(setFuncPrototype), values);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);

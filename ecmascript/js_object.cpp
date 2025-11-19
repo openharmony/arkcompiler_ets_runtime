@@ -167,7 +167,7 @@ bool JSObject::IsRegExp(JSThread *thread, const JSHandle<JSTaggedValue> &argumen
     if (!argument->IsECMAObject()) {
         return false;
     }
-    JSHandle<JSTaggedValue> matchSymbol = thread->GetEcmaVM()->GetGlobalEnv()->GetMatchSymbol();
+    JSHandle<JSTaggedValue> matchSymbol = thread->GlobalConstants()->GetHandledMatchSymbol();
     JSTaggedValue isRegexp =  ObjectFastOperator::FastGetPropertyByValue(
         thread, argument.GetTaggedValue(), matchSymbol.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -2372,7 +2372,8 @@ bool JSObject::InstanceOf(JSThread *thread, const JSHandle<JSTaggedValue> &objec
 
     EcmaVM *vm = thread->GetEcmaVM();
     // 2. Let instOfHandler be GetMethod(target, @@hasInstance).
-    JSHandle<JSTaggedValue> instOfHandler = FastGetMethod(thread, target, vm->GetGlobalEnv()->GetHasInstanceSymbol());
+    JSHandle<JSTaggedValue> instOfHandler = FastGetMethod(thread, target,
+                                                          thread->GlobalConstants()->GetHandledHasInstanceSymbol());
 
     // 3. ReturnIfAbrupt(instOfHandler).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
@@ -2725,7 +2726,7 @@ JSHandle<JSTaggedValue> JSObject::SlowSpeciesConstructor(JSThread *thread,
                                     JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
     }
     // Let S be Get(C, @@species).
-    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    JSHandle<JSTaggedValue> speciesSymbol = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> speciesConstructor = GetProperty(thread, objConstructor, speciesSymbol).GetValue();
     // ReturnIfAbrupt(S).
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);

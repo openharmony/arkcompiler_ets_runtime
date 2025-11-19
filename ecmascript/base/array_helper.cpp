@@ -125,7 +125,7 @@ bool ArrayHelper::IsConcatSpreadable(JSThread *thread, const JSHandle<JSTaggedVa
     // 2. Let spreadable be Get(O, @@isConcatSpreadable).
     auto ecmaVm = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
-    JSHandle<JSTaggedValue> isConcatsprKey = env->GetIsConcatSpreadableSymbol();
+    JSHandle<JSTaggedValue> isConcatsprKey = thread->GlobalConstants()->GetHandledIsConcatSpreadableSymbol();
     JSTaggedValue spreadable = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(),
                                                                           isConcatsprKey.GetTaggedValue());
     // 3. ReturnIfAbrupt(spreadable).

@@ -109,9 +109,8 @@ HWTEST_F_L0(JSAPILightWeightMapTest, SetHasKeyGetHasValue)
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(4));
     JSAPILightWeightMap::Set(thread, lwm, key2, value2);
 
-     // test species
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> key3 = env->GetSpeciesSymbol();
+    // test species
+    JSHandle<JSTaggedValue> key3 = thread->GlobalConstants()->GetHandledSpeciesSymbol();
     JSHandle<JSTaggedValue> value3(thread, JSTaggedValue(5));
     JSAPILightWeightMap::Set(thread, lwm, key3, value3);
 

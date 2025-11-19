@@ -196,7 +196,7 @@ JSHandle<ModuleNamespace> JSSharedModule::SModuleNamespaceCreate(JSThread *threa
     mNp->SetExports(thread, sortedExports);
     // 9. Create own properties of M corresponding to the definitions in 26.3.
 
-    JSHandle<JSTaggedValue> toStringTag = thread->GetEcmaVM()->GetGlobalEnv()->GetToStringTagSymbol();
+    JSHandle<JSTaggedValue> toStringTag = thread->GlobalConstants()->GetHandledToStringTagSymbol();
     JSHandle<JSTaggedValue> moduleString = globalConst->GetHandledModuleString();
     PropertyDescriptor des(thread, moduleString, false, false, false);
     JSHandle<JSObject> mNpObj = JSHandle<JSObject>::Cast(mNp);

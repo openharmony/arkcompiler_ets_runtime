@@ -232,9 +232,10 @@ private:
                                                 const JSHandle<JSTaggedValue> &key)
     {
         auto env = thread->GetGlobalEnv();
+        auto globalConst = thread->GlobalConstants();
         // IR should use slow path after Object.defineProperty(Array, Symbol.species, {value: CustomArray})
         // When ArrayFunction has been modified, array won't be stable array, no need to set ChangedGuardians
-        if UNLIKELY(key == env->GetSpeciesSymbol() && obj == env->GetArrayFunction()) {
+        if UNLIKELY(key.GetTaggedValue() == globalConst->GetSpeciesSymbol() && obj == env->GetArrayFunction()) {
             env->SetArrayPrototypeChangedGuardians(false);
         }
     }

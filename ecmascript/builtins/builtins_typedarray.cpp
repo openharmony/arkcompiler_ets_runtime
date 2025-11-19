@@ -290,7 +290,7 @@ JSTaggedValue BuiltinsTypedArray::From(EcmaRuntimeCallInfo *argv)
     }
     // 5. Let usingIterator be ? GetMethod(source, @@iterator).
     JSHandle<JSTaggedValue> source = GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
+    JSHandle<JSTaggedValue> iteratorSymbol = thread->GlobalConstants()->GetHandledIteratorSymbol();
     JSHandle<JSTaggedValue> usingIterator = JSObject::GetMethod(thread, source, iteratorSymbol);
     // 6. If usingIterator is not undefined, then
     //   a. Let values be ? IterableToList(source, usingIterator).
