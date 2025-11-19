@@ -17,6 +17,10 @@
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
+
 using namespace panda::ecmascript;
 
 namespace panda::test {
@@ -103,7 +107,7 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking4)
 
     heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
     EXPECT_EQ(heap->InSensitiveStatus(), true);
-    heap->SetRecordHeapObjectSizeBeforeSensitive(1000000);
+    heap->SetRecordHeapObjectSizeBeforeSensitive(1 * 1024 * 1024);
     EXPECT_EQ(heap->ObjectExceedHighSensitiveThresholdForCM(), false);
     EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), false);
     g_isEnableCMCGC = temp;
@@ -163,5 +167,190 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking7)
     EXPECT_EQ(heap->GetMarkType(), MarkType::MARK_YOUNG);
     EXPECT_EQ(heap->GetEcmaGCStats()->GetMarkReason(), MarkReason::ALLOCATION_LIMIT);
     g_isEnableCMCGC = temp;
+}
+
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking8)
+{
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    OHOS::system::SetParameter("persist.ark.sensitive.threshold", "3");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_TRUE(heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive() == 40 * 1024 * 1024 ||
+           heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive() == 80 * 1024 * 1024)
+    << "Expected 40MB or 80MB, but got " << heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive();
+
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = false;
+
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->SetFullMarkRequestedState(false);
+    EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
+    EXPECT_EQ(heap->IsFullMarkRequested(), false);
+
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    EXPECT_EQ(heap->InSensitiveStatus(), true);
+    heap->SetRecordHeapObjectSizeBeforeSensitive(1 * 1024 * 1024);
+    EXPECT_EQ(heap->ObjectExceedHighSensitiveThresholdForCM(), false);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), false);
+
+    g_isEnableCMCGC = temp;
+    JSNApi::DestroyJSVM(vm);
+#endif
+}
+
+HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking9)
+{
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    OHOS::system::SetParameter("persist.ark.sensitive.threshold", "350");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_TRUE(heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive() == 40 * 1024 * 1024 ||
+           heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive() == 80 * 1024 * 1024)
+    << "Expected 40MB or 80MB, but got " << heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive();
+
+    bool temp = g_isEnableCMCGC;
+    g_isEnableCMCGC = false;
+
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->SetFullMarkRequestedState(false);
+    EXPECT_EQ(heap->CheckCanTriggerConcurrentMarking(), true);
+    EXPECT_EQ(heap->IsFullMarkRequested(), false);
+
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    EXPECT_EQ(heap->InSensitiveStatus(), true);
+    heap->SetRecordHeapObjectSizeBeforeSensitive(1 * 1024 * 1024);
+    EXPECT_EQ(heap->ObjectExceedHighSensitiveThresholdForCM(), false);
+    EXPECT_EQ(heap->TryTriggerConcurrentMarking(MarkReason::ALLOCATION_LIMIT), false);
+
+    g_isEnableCMCGC = temp;
+    JSNApi::DestroyJSVM(vm);
+#endif
+}
+
+HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM1)
+{
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    OHOS::system::SetParameter("persist.ark.sensitive.threshold", "5");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_EQ(heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive(), 5 * 1024 * 1024);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(500, JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
+        }
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(500, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        }
+    }
+
+    heap->SetRecordHeapObjectSizeBeforeSensitive(1 * 1024 * 1024);
+    EXPECT_EQ(heap->ObjectExceedHighSensitiveThresholdForCM(), true)
+    << "heap->GetHeapObjectSize() is " << heap->GetHeapObjectSize()
+    << ", heap->GetRecordHeapObjectSizeBeforeSensitive() is " << heap->GetRecordHeapObjectSizeBeforeSensitive()
+    << ", config_.GetIncObjSizeThresholdInSensitive() is "
+    << heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive();
+    JSNApi::DestroyJSVM(vm);
+#endif
+}
+
+HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM2)
+{
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    OHOS::system::SetParameter("persist.ark.sensitive.threshold", "50");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_EQ(heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive(), 50 * 1024 * 1024);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(5000, JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
+        }
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(5000, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        }
+    }
+
+    heap->SetRecordHeapObjectSizeBeforeSensitive(1 * 1024 * 1024);
+    EXPECT_EQ(heap->ObjectExceedHighSensitiveThresholdForCM(), true)
+    << "heap->GetHeapObjectSize() is " << heap->GetHeapObjectSize()
+    << ", heap->GetRecordHeapObjectSizeBeforeSensitive() is " << heap->GetRecordHeapObjectSizeBeforeSensitive()
+    << ", config_.GetIncObjSizeThresholdInSensitive() is "
+    << heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive();
+    JSNApi::DestroyJSVM(vm);
+#endif
+}
+
+HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM3)
+{
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    OHOS::system::SetParameter("persist.ark.sensitive.threshold", "320");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_EQ(heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive(), 320 * 1024 * 1024);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(500, JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
+        }
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(500, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        }
+    }
+
+    heap->SetRecordHeapObjectSizeBeforeSensitive(1 * 1024 * 1024);
+    EXPECT_EQ(heap->ObjectExceedHighSensitiveThresholdForCM(), false)
+    << "heap->GetHeapObjectSize() is " << heap->GetHeapObjectSize()
+    << ", heap->GetRecordHeapObjectSizeBeforeSensitive() is " << heap->GetRecordHeapObjectSizeBeforeSensitive()
+    << ", config_.GetIncObjSizeThresholdInSensitive() is "
+    << heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive();
+    JSNApi::DestroyJSVM(vm);
+#endif
 }
 }
