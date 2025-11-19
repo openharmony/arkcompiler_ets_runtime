@@ -393,8 +393,7 @@ void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass>
 }
 
 template<bool isForAot /* = false*/>
-void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                  JSTaggedValue addedKey)
+void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
     MarkProtoChanged<isForAot>(thread, jshclass);
@@ -412,7 +411,7 @@ void JSHClass::NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClas
         JSTaggedValue temp = listeners->Get(thread, i);
         if (temp.IsJSHClass()) {
             NoticeThroughChain<isForAot>(thread,
-                JSHandle<JSHClass>(thread, listeners->Get(thread, i).GetTaggedObject()), addedKey);
+                JSHandle<JSHClass>(thread, listeners->Get(thread, i).GetTaggedObject()));
         }
     }
 }

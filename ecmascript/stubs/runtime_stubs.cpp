@@ -835,7 +835,10 @@ DEF_RUNTIME_STUBS(NoticeThroughChainAndRefreshUser)
     JSHandle<JSHClass> oldHClassHandle = GetHArg<JSHClass>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSHClass> newHClassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
 
-    JSHClass::NotifyHClassNotPrototypeChanged(thread, newHClassHandle);
+    if (newHClassHandle->IsAOT() && !newHClassHandle->IsPrototype()) {
+        JSHClass::NotifyHClassNotPrototypeChanged(const_cast<JSThread *>(thread), newHClassHandle);
+    }
+    JSHClass::NotifyLeafHClassChanged(const_cast<JSThread *>(thread), oldHClassHandle);
     JSHClass::NoticeThroughChain(thread, oldHClassHandle);
     JSHClass::RefreshUsers(thread, oldHClassHandle, newHClassHandle);
     return JSTaggedValue::Hole().GetRawData();

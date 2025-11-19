@@ -3541,6 +3541,9 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     // Because we currently only supports Fast ElementsKind
     GateRef oldKind = GetElementsKindFromHClass(LoadHClass(glue, receiver));
     RestoreElementsKindToGeneric(glue, newHClass);
+#if ECMASCRIPT_ENABLE_IC
+    NotifyHClassChanged(glue, oldHClass, newHClass);
+#endif
     TransitionHClass(glue, receiver, newHClass);
     TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
     BRANCH(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
