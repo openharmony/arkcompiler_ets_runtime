@@ -186,6 +186,18 @@ const someTestCases = [
         });
         print("Result:", JSON.stringify(result)); // Result: true
     },
+
+    () => {
+        let arr = [];
+        arr[0] = {}
+        arr[2] = 0
+        arr.some((elem) => {
+            elem[0] = 0;
+            arr.pop();
+            return false;
+        })
+        print("success")
+    },
 ];
 
 someTestCases.forEach((test, i) => {

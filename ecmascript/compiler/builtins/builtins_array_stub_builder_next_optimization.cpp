@@ -1492,7 +1492,23 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
         LoopBegin(&loopHead);
         {
             Label callDispatch(env);
-            BRANCH_NO_WEIGHT(Int64LessThan(*i, *thisArrLen), &next, exit);
+            Label checkLength(env);
+            Label checkStable(env);
+            BRANCH_NO_WEIGHT(Int64LessThan(*i, *thisArrLen), &checkLength, exit);
+            Bind(&checkLength);
+            {
+                GateRef newLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+                BRANCH_LIKELY(Int64LessThan(*i, newLen), &checkStable, exit);
+            }
+            Bind(&checkStable);
+            {
+                Label changeToNotStable(env);
+                BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &next, &changeToNotStable);
+                Bind(&changeToNotStable);
+                {
+                    Jump(&thisNotStable);
+                }
+            }
             Bind(&next);
             kValue = GetTaggedValueWithElementsKind(glue, thisValue, *i);
             BRANCH_UNLIKELY(TaggedIsHole(*kValue), &loopEnd, &callDispatch);
@@ -1514,31 +1530,14 @@ void BuiltinsArrayStubBuilder::VisitAll(GateRef glue, GateRef thisValue, GateRef
                 }
                 Bind(&noException);
                 {
-                    Label checkLength(env);
-                    Label checkStable(env);
                     if (option.kind == Option::MethodEvery) {
-                        BRANCH_NO_WEIGHT(TaggedIsFalse(FastToBoolean(glue, retValue)), &returnFalse, &checkLength);
+                        BRANCH_NO_WEIGHT(TaggedIsFalse(FastToBoolean(glue, retValue)), &returnFalse, &loopEnd);
                     }
                     if (option.kind == Option::MethodSome) {
-                        BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(glue, retValue)), &returnTrue, &checkLength);
+                        BRANCH_NO_WEIGHT(TaggedIsTrue(FastToBoolean(glue, retValue)), &returnTrue, &loopEnd);
                     }
                     if (option.kind == Option::MethodForEach) {
-                        Jump(&checkLength);
-                    }
-                    Bind(&checkLength);
-                    {
-                        GateRef newLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
-                        BRANCH_LIKELY(Int64LessThan(Int64Add(*i, Int64(1)), newLen), &checkStable, exit);
-                    }
-                    Bind(&checkStable);
-                    {
-                        Label changeToNotStable(env);
-                        BRANCH_LIKELY(IsStableJSArray(glue, thisValue), &loopEnd, &changeToNotStable);
-                        Bind(&changeToNotStable);
-                        {
-                            i = Int64Add(*i, Int64(1));
-                            Jump(&thisNotStable);
-                        }
+                        Jump(&loopEnd);
                     }
                 }
             }

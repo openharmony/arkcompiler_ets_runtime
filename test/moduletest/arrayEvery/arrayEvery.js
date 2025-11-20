@@ -221,6 +221,18 @@ const testCases = [
         }, 0);
         print("Result:", res);
     },
+
+    () => {
+        let arr = [];
+        arr[0] = {}
+        arr[2] = 0
+        arr.every((elem) => {
+            elem[0] = 0;
+            arr.pop();
+            return true;
+        })
+        print("success")
+    },
 ];
 
 testCases.forEach((test, i) => {

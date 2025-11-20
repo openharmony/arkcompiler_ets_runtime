@@ -71,3 +71,6 @@ Log: [{"value":1,"index":0,"array":[1,2,3,4]},{"value":2,"index":1,"array":[1,2,
 Test case 20:
 Result: false
 ---
+Test case 21:
+success
+---
