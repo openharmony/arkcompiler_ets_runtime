@@ -452,10 +452,16 @@ void FrameStateBuilder::InitEntryBB(const BytecodeRegion &bb)
     // initialize argumnets
     ASSERT(bcBuilder_->IsFirstBasicBlock(1)); // 1: is firstBlock
     auto liveout = GetFrameLiveoutBefore(1); // 1: is firstBlock
+    
     GateRef frameArgs = bcBuilder_->GetFrameArgs();
+    GateRef jsFunc = acc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::FUNC));
+    if (bcBuilder_->IsEnableTraceCallNum()) {
+        GateRef callNumTrace = circuit_->NewGate(circuit_->CallNumTrace(), MachineType::NOVALUE,
+            {frameContext->currentDepend_, jsFunc}, GateType::AnyType());
+        frameContext->currentDepend_ = callNumTrace;
+    }
     GateRef lexicalEnv = Circuit::NullGate();
     if (liveout->TestBit(envIndex_)) {
-        GateRef jsFunc = acc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::FUNC));
         lexicalEnv = acc_.GetInitialEnvGate(frameContext->currentDepend_, jsFunc);
         frameContext->SetValuesAt(envIndex_, lexicalEnv);
         frameContext->currentDepend_ = lexicalEnv;

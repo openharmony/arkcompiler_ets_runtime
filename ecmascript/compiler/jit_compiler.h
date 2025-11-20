@@ -50,6 +50,7 @@ struct JitCompilationOptions {
     std::string profilerIn_;
     bool isEnableArrayBoundsCheckElimination_;
     bool isEnableTypeLowering_;
+    bool isEnableTraceCallNum_;
     bool isEnableEarlyElimination_;
     bool isEnableLaterElimination_;
     bool isEnableValueNumbering_;

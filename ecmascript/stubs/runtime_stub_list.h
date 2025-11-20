@@ -427,7 +427,8 @@ namespace panda::ecmascript {
     V(OptSuperCallForwardAllArgs)                              \
     V(ContinueFlatMapBeforeCall)                               \
     V(ContinueFlatMapAfterCall)                                \
-    V(ReportHiEvents)
+    V(ReportHiEvents)                                          \
+    V(CallNumTrace)
 
 // When ASM enters C++ via CallRuntime, if the C++ process requires GetGlobalEnv(),
 // the current globalenv in ASM must be set to glue before CallRuntime!

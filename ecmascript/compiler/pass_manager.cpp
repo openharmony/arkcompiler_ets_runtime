@@ -118,7 +118,8 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
 
         builder_ = new BytecodeCircuitBuilder(jsPandaFile, methodLiteral, methodPCInfo,
             circuit_, ctx_->GetByteCodes(), enableMethodLog && log_->OutputCIR(),
-            passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false, jitProfiler_);
+            passOptions_->EnableTypeLowering(), passOptions_->EnableTraceCallNum(),
+            fullName, recordName, decoder, false, jitProfiler_);
         builder_->SetOsrOffset(osrOffset);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
@@ -299,7 +300,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
 
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, &circuit,
                                        ctx.GetByteCodes(), enableMethodLog && log_->OutputCIR(),
-                                       passOptions_->EnableTypeLowering(), fullName, recordName, decoder, false);
+                                       passOptions_->EnableTypeLowering(), passOptions_->EnableTraceCallNum(),
+                                       fullName, recordName, decoder, false);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
             builder.BytecodeToCircuit();

@@ -52,6 +52,7 @@ module_test_list = [
   "bindfunction",
   "bitwiseop",
   "builtins",
+  "call",
   "callframe",
   "calltype",
   "changelistener",

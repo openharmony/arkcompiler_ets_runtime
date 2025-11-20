@@ -178,6 +178,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_CONSTANT_FOLDING,
     OPTION_COMPILER_ENABLE_LEXENV_SPECIALIZATION,
     OPTION_COMPILER_TRACE_INSTRUCTION_COMBINE,
+    OPTION_COMPILER_TRACE_CALL_NUM,
     OPTION_COMPILER_TRACE_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INSTRUCTIONE_COMBINE,
     OPTION_COMPILER_OPT_NEW_VALUE_NUMBERING,
@@ -1206,6 +1207,21 @@ public:
         enableTypeLowering_ = value;
     }
 
+    bool IsEnableTypeLowering() const
+    {
+        return enableTypeLowering_;
+    }
+
+    void SetEnableTraceCallNum(bool value)
+    {
+        enableTraceCallNum_ = value;
+    }
+
+    bool IsEnableTraceCallNum() const
+    {
+        return enableTraceCallNum_;
+    }
+
     bool IsEnableArrayBoundsCheckElimination() const
     {
         return enableArrayBoundsCheckElimination_;
@@ -1224,11 +1240,6 @@ public:
     void SetEnableFrameStateElimination(bool value)
     {
         enableFrameStateElimination_ = value;
-    }
-
-    bool IsEnableTypeLowering() const
-    {
-        return enableTypeLowering_;
     }
 
     void SetEnableEarlyElimination(bool value)
@@ -2478,6 +2489,7 @@ private:
     bool enableAotLazyDeopt_ {false};
     bool enableJitLazyDeopt_ {true};
     bool enableLazyDeoptTrace_{false};
+    bool enableTraceCallNum_{false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
     bool enableDFXHiSysEvent_ {true};

@@ -20,6 +20,7 @@ namespace panda::ecmascript::kungfu {
 #define OPTION_LIST(V)                                                           \
     V(ArrayBoundsCheckElimination, true)                                         \
     V(TypeLowering, true)                                                        \
+    V(TraceCallNum, false)                                                    \
     V(EarlyElimination, true)                                                    \
     V(LaterElimination, true)                                                    \
     V(ValueNumbering, false)                                                     \

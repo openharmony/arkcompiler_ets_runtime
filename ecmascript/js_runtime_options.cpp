@@ -247,6 +247,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-inline", required_argument, nullptr, OPTION_COMPILER_TRACE_INLINE},
         {"compiler-trace-value-numbering", required_argument, nullptr, OPTION_COMPILER_TRACE_VALUE_NUMBERING},
         {"compiler-trace-instruction-combine", required_argument, nullptr, OPTION_COMPILER_TRACE_INSTRUCTION_COMBINE},
+        {"compiler-trace-call-num", required_argument, nullptr, OPTION_COMPILER_TRACE_CALL_NUM},
         {"compiler-max-inline-bytecodes", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_BYTECODES},
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
         {"compiler-device-state", required_argument, nullptr, OPTION_COMPILER_DEVICE_STATE},
@@ -546,6 +547,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetTraceInstructionCombine(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_TRACE_CALL_NUM:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableTraceCallNum(argBool);
                 } else {
                     return false;
                 }
