@@ -1663,11 +1663,18 @@ public:
     void SetFullMarkRequest()
     {
         fullMarkRequest_ = true;
+        SetFlag(ThreadFlag::FULL_MARK_REQUEST);
     }
 
     void ResetFullMarkRequest()
     {
         fullMarkRequest_ = false;
+        ClearFlag(ThreadFlag::FULL_MARK_REQUEST);
+    }
+
+    void SetPendingGCCallbacksFlag()
+    {
+        SetFlag(ThreadFlag::PENDING_GC_CALLBACKS);
     }
 
     void SetProcessingLocalToSharedRset(bool processing)
