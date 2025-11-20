@@ -123,7 +123,7 @@ JSTaggedValue ModuleManager::HostGetImportedModule(void *src)
 {
     const char *str = reinterpret_cast<char *>(src);
     CString referencing(str, strlen(str));
-    LOG_FULL(INFO) << "current str during module deregister process : " << referencing;
+    LOG_FULL(DEBUG) << "current str during module deregister process : " << referencing;
     auto entry = resolvedModules_.Find(referencing);
     if (!entry) { // LCOV_EXCL_BR_LINE
         LOG_FULL(INFO) << "The module has been unloaded, " << referencing;

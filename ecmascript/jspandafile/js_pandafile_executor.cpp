@@ -433,7 +433,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSpecialModule(JSThread
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     JSThread *thread, const CString &recordName, const CString &filename, [[maybe_unused]]bool isMergedAbc)
 {
-    LOG_FULL(INFO) << "recordName : " << recordName << ", in abc : " << filename;
+    LOG_FULL(DEBUG) << "recordName : " << recordName << ", in abc : " << filename;
     CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
 
