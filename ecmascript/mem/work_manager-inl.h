@@ -111,7 +111,7 @@ void WorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
         if (cachedInNode_ == nullptr) {
             cachedInNode_ = workManager_->AllocateWorkNode();
         }
-        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() && !heap_->IsMarking()) {
+        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask()) {
             heap_->PostParallelGCTask(parallelGCTaskPhase_);
         }
     }
