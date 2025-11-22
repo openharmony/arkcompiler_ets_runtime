@@ -157,6 +157,35 @@ private:
 
 static constexpr uint32_t MAIN_THREAD_INDEX = 0;
 
+class LazyDeoptRecord {
+public:
+    LazyDeoptRecord(JSTaggedType jsFunctionAddr, JSTaggedType machineCodeAddr, uintptr_t frameType,
+                    uintptr_t returnAddr, uintptr_t textBegin, size_t textSize, const std::string &jsFunctionName)
+        : jsFunctionAddr_(jsFunctionAddr), machineCodeAddr_(machineCodeAddr), frameType_(frameType),
+          returnAddr_(returnAddr), textBegin_(textBegin), textSize_(textSize), jsFunctionName_(jsFunctionName) {}
+
+    void Dump()
+    {
+        LOG_ECMA(INFO) << "jsFunctionAddr: " << std::hex << jsFunctionAddr_
+                       << " machineCodeAddr: " << std::hex << machineCodeAddr_
+                       << " textBegin: " << std::hex << textBegin_
+                       << " textSize: " << std::hex << textSize_
+                       << " returnAddr: " << std::hex << returnAddr_
+                       << " frameType: " << std::hex << frameType_
+                       << " jsFunctionName: " << jsFunctionName_;
+    }
+private:
+    JSTaggedType jsFunctionAddr_;
+    JSTaggedType machineCodeAddr_;
+    uintptr_t frameType_;
+    uintptr_t returnAddr_;
+    uintptr_t textBegin_;
+    size_t textSize_;
+    std::string jsFunctionName_;
+};
+
+static constexpr size_t MAX_LAZYDEOPT_RECORD_NUM = 100;
+
 class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
@@ -2002,6 +2031,23 @@ public:
             << "---------------------------------------------------------";
         ClearMegaStat();
     }
+
+    void PushLazyDeoptRecord(const LazyDeoptRecord& lazyDeoptRecord)
+    {
+        lazyDeoptRecords.push(lazyDeoptRecord);
+        if (lazyDeoptRecords.size() > MAX_LAZYDEOPT_RECORD_NUM) {
+            lazyDeoptRecords.pop();
+        }
+    }
+
+    void DumpLazyDeoptRecord()
+    {
+        while (!lazyDeoptRecords.empty()) {
+            lazyDeoptRecords.front().Dump();
+            lazyDeoptRecords.pop();
+        }
+    }
+
     JSTHREAD_PUBLIC_HYBRID_EXTENSION();
 protected:
     void SetThreadId()
@@ -2139,6 +2185,8 @@ private:
     // It will be used to keep MachineCode objects alive (for dump) before JsError object be free.
     std::map<JSTaggedType, JitCodeVector*> jitCodeMaps_;
     std::unordered_map<uintptr_t, uintptr_t> callSiteSpToReturnAddrTable_;
+
+    std::queue<LazyDeoptRecord> lazyDeoptRecords;
 
     std::atomic<bool> needTermination_ {false};
     std::atomic<bool> hasTerminated_ {false};
