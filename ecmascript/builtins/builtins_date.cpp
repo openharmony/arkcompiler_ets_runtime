@@ -18,6 +18,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/platform/time.h"
 
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_date.h"
@@ -56,15 +57,14 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
         } else {
             JSHandle<JSTaggedValue> objValue(thread, JSTaggedValue::ToPrimitive(thread, value));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            if (objValue->IsString()) {  // The value is a string object.
+            if (objValue->IsString()) { // The value is a string object.
                 timeValue = JSDate::Parse(argv);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             } else {  // The value is a number.
                 JSTaggedNumber val = JSTaggedValue::ToNumber(thread, objValue);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                timeValue = JSTaggedValue(val.GetNumber());
+                timeValue = JSTaggedValue(JSDate::TimeClip(val.GetNumber()));
             }
-            timeValue = JSTaggedValue(JSDate::TimeClip(timeValue.GetDouble()));
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
     } else {  // two or more values
@@ -115,7 +115,7 @@ JSTaggedValue BuiltinsDate::GetTime(EcmaRuntimeCallInfo *argv)
         [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    return JSDate::Cast(msg->GetTaggedObject())->GetTime(thread);
+    return JSDate::Cast(msg->GetTaggedObject())->GetTimeValue(thread);
 }
 
 JSTaggedValue BuiltinsDate::SetTime(EcmaRuntimeCallInfo *argv)
@@ -234,7 +234,7 @@ JSTaggedValue BuiltinsDate::ToLocaleString(EcmaRuntimeCallInfo *argv)
     if (!msg->IsDate()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime(thread);
+    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTimeValue(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If x is NaN, return "Invalid Date".
@@ -315,7 +315,7 @@ JSTaggedValue BuiltinsDate::ToLocaleDateString(EcmaRuntimeCallInfo *argv)
     if (!msg->IsDate()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime(thread);
+    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTimeValue(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If x is NaN, return "Invalid Date".
@@ -396,7 +396,7 @@ JSTaggedValue BuiltinsDate::ToLocaleTimeString(EcmaRuntimeCallInfo *argv)
     if (!msg->IsDate()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTime(thread);
+    JSTaggedValue value = JSDate::Cast(msg->GetTaggedObject())->GetTimeValue(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // If x is NaN, return "Invalid Date".
@@ -483,7 +483,7 @@ JSTaggedValue BuiltinsDate::ExtractDateFields(JSThread *thread, uint32_t &length
             fields[0] += JSDate::NINETEEN_HUNDRED_YEAR;
         }
     }
-    timeValue = JSTaggedValue((i == length) ? JSDate::SetDateValues(&fields, true) : base::NAN_VALUE);
+    timeValue = JSTaggedValue((i == length) ? JSDate::CalcTimeValue(&fields, true) : base::NAN_VALUE);
     return timeValue;
 }
 }  // namespace panda::ecmascript::builtins

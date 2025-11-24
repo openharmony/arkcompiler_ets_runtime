@@ -48,6 +48,7 @@
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/platform/time.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/mutator/mutator.h"
 #include "ecmascript/platform/dfx_hisys_event.h"
@@ -3689,7 +3690,7 @@ double RuntimeStubs::TimeClip(double time)
     return JSDate::TimeClip(time);
 }
 
-double RuntimeStubs::SetDateValues(double year, double month, double day)
+double RuntimeStubs::CalcTimeValue(double year, double month, double day)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (std::isnan(year) || !std::isfinite(year) || std::isnan(month) || !std::isfinite(month) || std::isnan(day) ||
@@ -3697,7 +3698,7 @@ double RuntimeStubs::SetDateValues(double year, double month, double day)
         return base::NAN_VALUE;
     }
 
-    return JSDate::SetDateValues(static_cast<int64_t>(year), static_cast<int64_t>(month), static_cast<int64_t>(day));
+    return JSDate::CalcTimeValue(static_cast<int64_t>(year), static_cast<int64_t>(month), static_cast<int64_t>(day));
 }
 
 JSTaggedValue RuntimeStubs::NewObject(EcmaRuntimeCallInfo *info)

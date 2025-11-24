@@ -16,33 +16,46 @@
 #include "ecmascript/platform/time.h"
 
 #include <ctime>
+#include <cmath>
 
 namespace panda::ecmascript {
-static constexpr uint16_t THOUSAND = 1000;
-static constexpr int SEC_PER_MINUTE = 60;
+static constexpr int MS_PER_SECOND = 1000;
 
 int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal)
 {
     if (!isLocal) {
         return 0;
     }
-    timeMs /= THOUSAND;
+    timeMs /= MS_PER_SECOND;
     time_t tv = timeMs;
-    struct tm tm {
-    };
+    tm localTime {};
     // localtime_r is only suitable for linux.
-    struct tm *t = localtime_r(&tv, &tm);
+    tm *t = localtime_r(&tv, &localTime);
     // tm_gmtoff includes any daylight savings offset.
     if (t == nullptr) {
         return 0;
     }
 
-    return t->tm_gmtoff / SEC_PER_MINUTE;
+    return t->tm_gmtoff * MS_PER_SECOND;
+}
+
+int64_t GetUTCTimestamp(int year, int month, int day, int hour, int minute, int second, int millisecond)
+{
+    tm localTime = {
+        .tm_sec = second + (millisecond / MS_PER_SECOND),
+        .tm_min = minute,
+        .tm_hour = hour,
+        .tm_mday = day,
+        .tm_mon = month,
+        .tm_year = year,
+        .tm_isdst = -1 // -1: let the system decide whether to use DST.
+    };
+    return (mktime(&localTime) * MS_PER_SECOND) + (millisecond % MS_PER_SECOND);
 }
 
 bool IsDst(int64_t timeMs)
 {
-    timeMs /= THOUSAND;
+    timeMs /= MS_PER_SECOND;
     time_t tv = timeMs;
     struct tm tm {
     };

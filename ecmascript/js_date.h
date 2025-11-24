@@ -95,8 +95,10 @@ public:
     CAST_CHECK(JSDate, IsDate);
 
     static constexpr size_t TIME_VALUE_OFFSET = JSObject::SIZE;
+    // timestamp in milesecond
     ACCESSORS(TimeValue, TIME_VALUE_OFFSET, LOCAL_TIME_OFFSET)
-    ACCESSORS(LocalOffset, LOCAL_TIME_OFFSET, SIZE)  // localoffset in min
+    // local offset in milesecond, this field will only be updated when it is retrieved for the first time.
+    ACCESSORS(LocalOffset, LOCAL_TIME_OFFSET, SIZE)
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, TIME_VALUE_OFFSET, SIZE)
 
@@ -109,9 +111,6 @@ public:
     static JSTaggedValue IsoParseStringToMs(const CString &str);
     static int GetSignedNumFromString(const CString &str, int len, int *index);
     static bool GetNumFromString(const CString &str, int len, int *index, int *num);
-
-    // 20.4.1.7
-    int64_t GetLocalOffsetInMin(const JSThread *thread, int64_t timeMs, bool isLocal);
 
     // 20.4.1.8
     double LocalTime(double timeMs) const;
@@ -128,37 +127,34 @@ public:
     // 20.4.3.4
     static JSTaggedValue UTC(EcmaRuntimeCallInfo *argv);
 
-    // 20.4.4.10
-    JSTaggedValue GetTime(const JSThread *thread) const;
-
     // 20.4.4.19
     JSTaggedValue GetUTCSeconds();
 
     // 20.4.4.35
-    JSTaggedValue ToDateString(JSThread *thread) const;
+    JSTaggedValue ToDateString(JSThread *thread);
     static CString ToDateString(JSThread *thread, double timeMs);
 
     // 20.4.4.36
-    JSTaggedValue ToISOString(JSThread *thread) const;
+    JSTaggedValue ToISOString(JSThread *thread);
 
     // 20.4.4.41
-    JSTaggedValue ToString(JSThread *thread) const;
+    JSTaggedValue ToString(JSThread *thread);
 
     // 20.4.4.42
-    JSTaggedValue ToTimeString(JSThread *thread) const;
+    JSTaggedValue ToTimeString(JSThread *thread);
 
     // 20.4.4.43
-    JSTaggedValue ToUTCString(JSThread *thread) const;
+    JSTaggedValue ToUTCString(JSThread *thread);
 
     // 20.4.4.44
     JSTaggedValue ValueOf(const JSThread *thread) const;
 
-    JSTaggedValue SetDateValue(EcmaRuntimeCallInfo *argv, uint32_t code, bool isLocal) const;
-    double GetDateValue(JSThread *thread, double timeMs, uint8_t code, bool isLocal) const;
+    int64_t GetLocalOffsetSafely(JSThread *thread);
+    static JSTaggedValue CalcTimeValueWithNewDateUnits(EcmaRuntimeCallInfo *argv, JSHandle<JSDate> &jsDate,
+                                                       uint32_t code, bool isLocal);
+    double GetDateUnit(JSThread *thread, uint8_t code, bool isLocal);
     static JSTaggedValue GetTimeFromString(const char *str, int len);
 
-    static constexpr double MAX_DOUBLE = std::numeric_limits<double>::max();
-    static constexpr double MAX_INT = std::numeric_limits<int>::max();
     static constexpr uint16_t NINETEEN_HUNDRED_YEAR = 1900;
     static constexpr uint16_t THOUSAND = 1000;
     static constexpr uint16_t HUNDRED = 100;
@@ -166,15 +162,15 @@ public:
     static constexpr int NUM_NINE = 9;
     static constexpr int MONTH_PER_YEAR = 12;
     static constexpr int MAX_DAYS_MONTH = 31;
-    static double SetDateValues(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
-    static double SetDateValues(int64_t year, int64_t month, int64_t day);
-    static void GetDateValues(JSThread *thread, double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
+    static double CalcTimeValue(const std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
+    static double CalcTimeValue(int64_t year, int64_t month, int64_t day);
+    static void CalcDateUnits(JSThread *thread, double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
     static CString StrToTargetLength(const CString &str, int length);
     static void AppendStrToTargetLength(const CString &str, int length, CString &target);
     DECL_DUMP()
 
 private:
-    bool GetThisDateValues(JSThread *thread, std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const;
+    bool CalcThisDateUnits(JSThread *thread, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
     CString GetLocaleTimeStr(const std::array<int64_t, DATE_LENGTH> &fields) const;
     CString GetLocaleDateStr(const std::array<int64_t, DATE_LENGTH> &fields) const;
     static int64_t MathMod(int64_t a, int b);

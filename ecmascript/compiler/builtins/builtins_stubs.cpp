@@ -567,7 +567,7 @@ DECLARE_BUILTINS(DateConstructor)
                         GateRef y = GetDoubleOfTNumber(year);
                         GateRef m = GetDoubleOfTNumber(month);
                         GateRef d = GetDoubleOfTNumber(day);
-                        timeValue = CallNGCRuntime(glue, RTSTUB_ID(SetDateValues), {y, m, d});
+                        timeValue = CallNGCRuntime(glue, RTSTUB_ID(CalcTimeValue), {y, m, d});
                         Jump(&newJSDate);
                     }
                 }
@@ -583,6 +583,9 @@ DECLARE_BUILTINS(DateConstructor)
                     GateRef timeValueOffset = IntPtr(JSDate::TIME_VALUE_OFFSET);
                     Store(VariableType::JS_NOT_POINTER(), glue, *res, timeValueOffset,
                           DoubleToTaggedDoublePtr(*timeValue));
+                    GateRef localOffsetOffset = IntPtr(JSDate::LOCAL_TIME_OFFSET);
+                    Store(VariableType::JS_NOT_POINTER(), glue, *res, localOffsetOffset,
+                          DoubleToTaggedDoublePtr(Double(base::NAN_VALUE)));
                     Jump(&exit);
                 }
             }

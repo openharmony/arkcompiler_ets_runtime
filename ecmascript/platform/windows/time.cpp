@@ -20,7 +20,9 @@
 #include <windows.h>
 
 namespace panda::ecmascript {
-static constexpr uint16_t THOUSAND = 1000;
+static constexpr int MS_PER_SECOND = 1000;
+static constexpr int MS_PER_MINUTE = 60000;
+
 int64_t GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLocal)
 {
     if (!isLocal) {
@@ -29,12 +31,26 @@ int64_t GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLocal)
     TIME_ZONE_INFORMATION tmp;
     GetTimeZoneInformation(&tmp);
     int64_t res = -tmp.Bias;
-    return res;
+    return res * MS_PER_MINUTE;
+}
+
+int64_t GetUTCTimestamp(int year, int month, int day, int hour, int minute, int second, int millisecond)
+{
+    tm localTime = {
+        .tm_sec = second + (millisecond / MS_PER_SECOND),
+        .tm_min = minute,
+        .tm_hour = hour,
+        .tm_mday = day,
+        .tm_mon = month,
+        .tm_year = year,
+        .tm_isdst = -1 // -1: let the system decide whether to use DST.
+    };
+    return (mktime(&localTime) * MS_PER_SECOND) + (millisecond % MS_PER_SECOND);
 }
 
 bool IsDst(int64_t timeMs)
 {
-    timeMs /= THOUSAND;
+    timeMs /= MS_PER_SECOND;
     time_t tv = timeMs;
     struct tm nowtm;
     localtime_s(&nowtm, &tv);

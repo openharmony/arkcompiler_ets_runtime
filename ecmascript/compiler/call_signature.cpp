@@ -3014,10 +3014,10 @@ DEF_CALL_SIGNATURE(TimeClip)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(SetDateValues)
+DEF_CALL_SIGNATURE(CalcTimeValue)
 {
     // 3 : 3 input parameters
-    CallSignature index("SetDateValues", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
+    CallSignature index("CalcTimeValue", 0, 3, ArgumentsOrder::DEFAULT_ORDER, VariableType::FLOAT64());
     *callSign = index;
     // 3 : 3 input parameters
     std::array<VariableType, 3> params = {

@@ -1849,7 +1849,7 @@ void BigInt::Dump([[maybe_unused]] const JSThread *thread, std::ostream &os) con
 
 void JSDate::Dump(const JSThread *thread, std::ostream &os) const
 {
-    os << " - time: " << GetTime(const_cast<JSThread*>(thread)).GetDouble() << "\n";
+    os << " - time: " << GetTimeValue(const_cast<JSThread*>(thread)).GetDouble() << "\n";
     os << " - localOffset: " << GetLocalOffset(thread).GetDouble() << "\n";
     JSObject::Dump(thread, os);
 }
@@ -5025,7 +5025,7 @@ void BigInt::DumpForSnapshot([[maybe_unused]] const JSThread *thread, std::vecto
 
 void JSDate::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("time"), GetTime(thread));
+    vec.emplace_back(CString("time"), GetTimeValue(thread));
     vec.emplace_back(CString("localOffset"), GetLocalOffset(thread));
 
     JSObject::DumpForSnapshot(thread, vec);

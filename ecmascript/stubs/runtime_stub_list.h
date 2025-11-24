@@ -191,7 +191,7 @@ namespace panda::ecmascript {
     V(BigIntEquals)                            \
     V(TimeClip)                                \
     V(LazyDeoptEntry)                          \
-    V(SetDateValues)                           \
+    V(CalcTimeValue)                           \
     V(StartCallTimer)                          \
     V(EndCallTimer)                            \
     V(BigIntSameValueZero)                     \
