@@ -530,7 +530,7 @@ public:
                                           const PropertyDescriptor &desc,
                                           SCheckMode sCheckMode = SCheckMode::CHECK);
 
-    static bool IsCompatiblePropertyDescriptor(bool extensible, const PropertyDescriptor &desc,
+    static bool IsCompatiblePropertyDescriptor(JSThread *thread, bool extensible, const PropertyDescriptor &desc,
                                                const PropertyDescriptor &current);
 
     static bool ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool extensible, const PropertyDescriptor &desc,
