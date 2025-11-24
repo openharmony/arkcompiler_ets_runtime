@@ -3101,6 +3101,9 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
     auto jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
     auto methodOffset = acc_.TryGetMethodOffset(gate);
     auto constPool = jitCompilationEnv->GetConstantPoolByMethodOffset(methodOffset);
+    if (constPool.IsUndefined()) {
+        return false;
+    }
     auto unsharedConstPool = compilationEnv_->FindOrCreateUnsharedConstpool(constPool);
     auto methodIdValue = acc_.GetConstantValue(methodId);
     // not optimize if it may use ihc to define function
@@ -3121,7 +3124,7 @@ bool SlowPathLowering::OptimizeDefineFuncForJit(GateRef gate, GateRef jsFunc, Ga
     }
 
     auto func = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
-    if (!func) {
+    if (func.IsEmpty()) {
         return false;
     }
     auto profileTypeInfo = func->GetProfileTypeInfo(compilationEnv_->GetJSThread());

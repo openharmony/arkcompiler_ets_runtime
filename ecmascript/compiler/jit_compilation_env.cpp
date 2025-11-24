@@ -142,7 +142,7 @@ JSTaggedValue JitCompilationEnv::GetConstantPoolByMethodOffset([[maybe_unused]] 
     Method *currMethod = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
     if (methodOffset != currMethod->GetMethodId().GetOffset()) {
         auto calleeFunc = GetJsFunctionByMethodOffset(methodOffset);
-        if (!calleeFunc) {
+        if (calleeFunc.IsEmpty()) {
             return JSTaggedValue::Undefined();
         }
         constpool = Method::Cast(calleeFunc->GetMethod(thread_))->GetConstantPool(thread_);
@@ -199,58 +199,19 @@ JSTaggedValue JitCompilationEnv::GetStringFromConstantPool([[maybe_unused]] cons
     return ConstantPool::GetStringFromCacheForJit(GetJSThread(), constpool, cpIdx, allowAlloc);
 }
 
-JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset) const
+JSHandle<JSFunction> JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset) const
 {
     ASSERT(thread_->IsInRunningState());
     Method *currMethod = Method::Cast(jsFunction_->GetMethod(thread_).GetTaggedObject());
     auto currMethodOffset = currMethod->GetMethodId().GetOffset();
     if (methodOffset == currMethodOffset) {
-        return *jsFunction_;
+        return jsFunction_;
     }
-    std::vector<std::pair<uint32_t, uint32_t>> funcSlotChain;
-    uint32_t calleeOffset = methodOffset;
-    do {
-        if (functionSlotIdMap_.find(calleeOffset) == functionSlotIdMap_.end()) {
-            return nullptr;
-        }
-        funcSlotChain.push_back({functionSlotIdMap_.at(calleeOffset), callee2CallerMap_.at(calleeOffset)});
-        calleeOffset = callee2CallerMap_.at(calleeOffset);
-    } while (calleeOffset != currMethodOffset);
-    JSFunction *currFunc = *jsFunction_;
-    ProfileTypeInfo *currFuncPTI = *profileTypeInfo_;
-    for (int i = static_cast<int>(funcSlotChain.size()) - 1; i >= 0; --i) {
-        uint32_t slotId = funcSlotChain[i].first;
-        uint32_t callerOffset = funcSlotChain[i].second;
-        if (Method::Cast(currFunc->GetMethod(thread_))->GetMethodId().GetOffset() != callerOffset) {
-            return nullptr;
-        }
-        auto slotValue = currFuncPTI->Get(thread_, slotId);
-        if (slotValue.IsFuncSlot()) {
-            auto funcSlot = FuncSlot::Cast(slotValue);
-            slotValue = funcSlot->GetFunction(thread_);
-        }
-        if (slotValue.IsJSFunction()) {
-            currFunc = JSFunction::Cast(slotValue.GetTaggedObject());
-        } else if (slotValue.IsPrototypeHandler()) {
-            auto prototypeHandler = PrototypeHandler::Cast(slotValue.GetTaggedObject());
-            auto accessorFunction = prototypeHandler->GetAccessorJSFunction(thread_);
-            if (!accessorFunction.IsJSFunction()) {
-                return nullptr;
-            }
-            currFunc = JSFunction::Cast(accessorFunction.GetTaggedObject());
-        } else {
-            return nullptr;
-        }
-        auto profileTypeInfoVal = currFunc->GetProfileTypeInfo(thread_);
-        if (profileTypeInfoVal.IsUndefined()) {
-            return nullptr;
-        }
-        currFuncPTI = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
+    auto iter = calleeFunctions_.find(methodOffset);
+    if (iter != calleeFunctions_.end()) {
+        return iter->second;
     }
-    if (Method::Cast(currFunc->GetMethod(thread_))->GetMethodId().GetOffset() != methodOffset) {
-        return nullptr;
-    }
-    return currFunc;
+    return JSHandle<JSFunction>();
 }
 
 uint32_t JitCompilationEnv::RecordHeapConstant(

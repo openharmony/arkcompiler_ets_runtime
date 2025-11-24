@@ -27,20 +27,15 @@ JITProfiler::JITProfiler(EcmaVM *vm) : vm_(vm)
 {
 }
 
-void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeInfo> &profileTypeInfo,
-                                  ProfileTypeInfo *rawProfileTypeInfo,
-                                  EntityId methodId, ApEntityId abcId, const uint8_t *pcStart, uint32_t codeSize,
-                                  [[maybe_unused]]const panda_file::File::Header *header,
-                                  JSHandle<JSFunction> jsFunction, JSHandle<GlobalEnv> env, bool useRawProfileTypeInfo)
+void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeInfo> &profileTypeInfo, EntityId methodId,
+                                  ApEntityId abcId, const uint8_t *pcStart, uint32_t codeSize,
+                                  [[maybe_unused]] const panda_file::File::Header *header,
+                                  JSHandle<JSFunction> jsFunction, JSHandle<GlobalEnv> env)
 {
     Clear();
     jsFunction_ = jsFunction;
     SetCurrentGlobalEnv(env);
-    if (useRawProfileTypeInfo) {
-        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
-        JSHandle<JSTaggedValue> newProfileTypeInfo = jitCompilationEnv->NewJSHandle(JSTaggedValue(rawProfileTypeInfo));
-        profileTypeInfo_ = JSHandle<ProfileTypeInfo>::Cast(newProfileTypeInfo);
-    } else {
+    {
         Jit::JitLockHolder lock(thread);
         profileTypeInfo_ = profileTypeInfo;
         if (profileTypeInfo_.GetTaggedType() == 0) {
@@ -362,7 +357,9 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
         ASSERT(calleeMethodId <= 0);
         kind = ProfileType::Kind::BuiltinFunctionId;
     } else if (slotValue.IsJSFunction()) {
-        JSFunction *callee = JSFunction::Cast(slotValue);
+        auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
+        auto slotValueHandle = jitCompilationEnv->NewJSHandle(slotValue);
+        auto callee = JSHandle<JSFunction>::Cast(slotValueHandle);
         Method *calleeMethod = Method::Cast(callee->GetMethod(mainThread_));
         compilationEnv_->ProcessMethod(calleeMethod->GetMethodLiteral(mainThread_),
                                        calleeMethod->GetJSPandaFile(mainThread_));
@@ -370,18 +367,15 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
         if (compilationEnv_->SupportHeapConstant() &&
             calleeMethod->GetFunctionKind() != FunctionKind::ARROW_FUNCTION &&
             callee->IsCallable()) {
-            auto *jitCompilationEnv = static_cast<JitCompilationEnv*>(compilationEnv_);
-            JSHandle<JSTaggedValue> calleeHandle = jitCompilationEnv->NewJSHandle(JSTaggedValue(callee));
-            auto heapConstantIndex = jitCompilationEnv->RecordHeapConstant(calleeHandle);
+            auto heapConstantIndex = jitCompilationEnv->RecordHeapConstant(slotValueHandle);
             if (calleeMethod->GetMethodLiteral(mainThread_)->IsTypedCall() && callee->IsCompiledCode()) {
                 jitCompilationEnv->RecordCallMethodId2HeapConstantIndex(calleeMethodId, heapConstantIndex);
             } else {
                 jitCompilationEnv->RecordOnlyInlineMethodId2HeapConstantIndex(calleeMethodId, heapConstantIndex);
             }
         }
-        calleeAbcId = PGOProfiler::GetMethodAbcId(mainThread_, callee);
-        static_cast<JitCompilationEnv *>(compilationEnv_)
-            ->UpdateFuncSlotIdMap(calleeMethodId, methodId_.GetOffset(), slotId);
+        calleeAbcId = PGOProfiler::GetMethodAbcId(mainThread_, *callee);
+        jitCompilationEnv->SetCalleeJSFunction(calleeMethodId, callee);
         kind = ProfileType::Kind::MethodId;
     } else {
         return;
@@ -652,12 +646,12 @@ void JITProfiler::HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcO
         return;
     }
     if (accessor.IsJSFunction()) {
-        auto accessorFunction = JSFunction::Cast(accessor);
+        auto jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
+        auto accessorFunction = JSHandle<JSFunction>::Cast(jitCompilationEnv->NewJSHandle(accessor));
         auto methodId = Method::Cast(accessorFunction->GetMethod(mainThread_))->GetMethodId().GetOffset();
         ASSERT(accessorMethodId == methodId);
         accessorMethodId = methodId;
-        static_cast<JitCompilationEnv *>(compilationEnv_)
-            ->UpdateFuncSlotIdMap(accessorMethodId, methodId_.GetOffset(), slotId);
+        jitCompilationEnv->SetCalleeJSFunction(accessorMethodId, accessorFunction);
     }
     if (AddBuiltinsInfoByNameInProt(abcId, bcOffset, hclass, holderHClass, isNonExist)) {
         return;
@@ -748,12 +742,12 @@ void JITProfiler::HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &b
     auto accessorMethodId = prototypeHandler->GetAccessorMethodId();
     auto accessor = prototypeHandler->GetAccessorJSFunction(mainThread_);
     if (accessor.IsJSFunction()) {
-        auto accessorFunction = JSFunction::Cast(accessor);
+        auto jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
+        auto accessorFunction = JSHandle<JSFunction>::Cast(jitCompilationEnv->NewJSHandle(accessor));
         auto methodId = Method::Cast(accessorFunction->GetMethod(mainThread_))->GetMethodId().GetOffset();
         ASSERT(accessorMethodId == methodId);
         accessorMethodId = methodId;
-        static_cast<JitCompilationEnv *>(compilationEnv_)
-            ->UpdateFuncSlotIdMap(accessorMethodId, methodId_.GetOffset(), slotId);
+        jitCompilationEnv->SetCalleeJSFunction(accessorMethodId, accessorFunction);
     }
     AddObjectInfo(abcId, bcOffset, hclass, holderHClass, holderHClass, accessorMethodId);
 }

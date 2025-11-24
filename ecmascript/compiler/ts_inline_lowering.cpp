@@ -110,8 +110,8 @@ bool TSInlineLowering::JitCanInline(InlineTypeInfoAccessor &info, const CallerDe
     uint32_t callerMethodOffset = callerDetails.GetMethodOffset();
     auto jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
     JSThread *thread = jitCompilationEnv->GetJSThread();
-    JSFunction *callerFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(callerMethodOffset);
-    ASSERT(callerFunc);
+    auto callerFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(callerMethodOffset);
+    ASSERT(!callerFunc.IsEmpty());
     auto profileTIVal = callerFunc->GetProfileTypeInfo(thread);
     ASSERT(!profileTIVal.IsUndefined());
     auto profileTypeInfo = ProfileTypeInfo::Cast(profileTIVal.GetTaggedObject());
@@ -196,10 +196,10 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
     bool shouldRecordInlinedFunc = inlinedMethod != nullptr && inlineSuccess && compilationEnv_->IsJitCompiler();
     if (shouldRecordInlinedFunc) {
         JitCompilationEnv *jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
-        JSFunction *calleeFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
+        auto calleeFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
+        ASSERT(!calleeFunc.IsEmpty());
         JSThread *thread = compilationEnv_->GetJSThread();
-        JSHandle<JSFunction> calleeFuncHandle(thread, calleeFunc);
-        jitCompilationEnv->RecordInlinedFunctions(calleeFuncHandle);
+        jitCompilationEnv->RecordInlinedFunctions(calleeFunc);
     }
 
     if ((inlinedMethod != nullptr) && IsLogEnabled() && inlineSuccess) {
@@ -831,33 +831,32 @@ bool TSInlineLowering::CalleePFIProcess(uint32_t methodOffset)
     }
     auto jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
     JSThread *thread = jitCompilationEnv->GetJSThread();
-    JSFunction *calleeFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
-    if (!calleeFunc) {
+    auto calleeFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
+    if (calleeFunc.IsEmpty()) {
         return false;
     }
-    auto calleeMethodHandle = jitCompilationEnv->NewJSHandle(JSTaggedValue(calleeFunc));
     auto calleeMethod = Method::Cast(calleeFunc->GetMethod(thread));
     ASSERT(calleeMethod->GetMethodId().GetOffset() == methodOffset);
-    auto profileTIVal = calleeFunc->GetProfileTypeInfo(thread);
-    if (profileTIVal.IsUndefined()) {
+    auto profileHandle = jitCompilationEnv->NewJSHandle(calleeFunc->GetProfileTypeInfo(thread));
+    if (profileHandle->IsUndefined()) {
         return false;
     }
-    auto profileTypeInfo = ProfileTypeInfo::Cast(profileTIVal.GetTaggedObject());
 
     auto calleeLiteral = calleeMethod->GetMethodLiteral(thread);
     auto calleeFile = calleeMethod->GetJSPandaFile(thread);
-    auto calleeAbcId = PGOProfiler::GetMethodAbcId(thread, calleeFunc);
+    auto calleeAbcId = PGOProfiler::GetMethodAbcId(thread, *calleeFunc);
 
     auto callerFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(initMethodOffset_);
-    auto callerAbcId = PGOProfiler::GetMethodAbcId(thread, callerFunc);
+    ASSERT(!callerFunc.IsEmpty());
+    auto callerAbcId = PGOProfiler::GetMethodAbcId(thread, *callerFunc);
     if (callerAbcId != calleeAbcId) {
         return false;
     }
     auto calleeCodeSize = calleeLiteral->GetCodeSize(calleeFile, calleeMethod->GetMethodId());
     compilationEnv_->GetPGOProfiler()->GetJITProfile()->ProfileBytecode(
-        compilationEnv_->GetJSThread(), JSHandle<ProfileTypeInfo>(), profileTypeInfo, calleeMethod->GetMethodId(),
+        compilationEnv_->GetJSThread(), JSHandle<ProfileTypeInfo>::Cast(profileHandle), calleeMethod->GetMethodId(),
         calleeAbcId, calleeMethod->GetBytecodeArray(), calleeCodeSize, calleeFile->GetPandaFile()->GetHeader(),
-        JSHandle<JSFunction>::Cast(calleeMethodHandle), jitCompilationEnv->GetGlobalEnv(), true);
+        calleeFunc, jitCompilationEnv->GetGlobalEnv());
     return true;
 }
 
