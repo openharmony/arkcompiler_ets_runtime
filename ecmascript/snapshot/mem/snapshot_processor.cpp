@@ -1791,8 +1791,13 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
     if (!builtinsDeserialize_ && encodeBit.IsReference() && encodeBit.IsGlobalConstOrBuiltins()) {
         size_t index = encodeBit.GetNativePointerOrObjectIndex();
         auto object = vm_->GetSnapshotEnv()->RelocateRootObjectAddr(index);
+#ifdef USE_CMC_GC
         *value = object;
         WriteBarrier(vm_->GetJSThread(), reinterpret_cast<void *>(root), offset, object);
+#else
+        WriteBarrier(vm_->GetJSThread(), reinterpret_cast<void *>(root), offset, object);
+        *value = object;
+#endif
         return;
     }
 
@@ -1802,9 +1807,15 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
 
     if (encodeBit.IsReference() && !encodeBit.IsSpecial()) {
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
+#ifdef USE_CMC_GC
         *value = taggedObjectAddr;
         WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), reinterpret_cast<void *>(root), offset,
             static_cast<JSTaggedType>(taggedObjectAddr));
+#else
+        WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), reinterpret_cast<void *>(root), offset,
+            static_cast<JSTaggedType>(taggedObjectAddr));
+        *value = taggedObjectAddr;
+#endif
         return;
     }
 
@@ -1825,15 +1836,26 @@ void SnapshotProcessor::DeserializeClassWord(TaggedObject *object)
         auto globalConst = const_cast<GlobalEnvConstants *>(vm_->GetJSThread()->GlobalConstants());
         JSTaggedValue hclassValue = globalConst->GetGlobalConstantObject(hclassIndex);
         ASSERT(hclassValue.IsJSHClass());
+#ifdef USE_CMC_GC
         object->SetClassWithoutBarrier(JSHClass::Cast(hclassValue.GetTaggedObject()));
         WriteBarrier(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET, hclassValue.GetRawData());
+#else
+        WriteBarrier(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET, hclassValue.GetRawData());
+        object->SetClassWithoutBarrier(JSHClass::Cast(hclassValue.GetTaggedObject()));
+#endif
         return;
     }
     uintptr_t hclassAddr = TaggedObjectEncodeBitToAddr(encodeBit);
     JSHClass *hclass = reinterpret_cast<JSHClass *>(hclassAddr);
+#ifdef USE_CMC_GC
     object->SetClassWithoutBarrier(hclass);
     WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET,
                                                     JSTaggedValue(hclass).GetRawData());
+#else
+    WriteBarrier<WriteBarrierType::AOT_DESERIALIZE>(vm_->GetJSThread(), object, JSHClass::HCLASS_OFFSET,
+                                                    JSTaggedValue(hclass).GetRawData());
+    object->SetClassWithoutBarrier(hclass);
+#endif
 }
 
 SnapshotProcessor::DeserializeFieldVisitor::DeserializeFieldVisitor(SnapshotProcessor *processor)

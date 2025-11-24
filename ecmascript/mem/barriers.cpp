@@ -44,6 +44,7 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     if (valueRegion->IsFreshRegion()) {
         valueRegion->NonAtomicMark(heapValue);
     } else if (writeType == WriteBarrierType::NORMAL && valueRegion->AtomicMark(heapValue)) {
+        std::atomic_thread_fence(std::memory_order_seq_cst);
         heap->GetWorkManager()->GetWorkNodeHolder(MAIN_THREAD_INDEX)->Push(heapValue);
     }
 }
@@ -62,6 +63,7 @@ void Barriers::UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *
     // This conflict is solved by keeping alive weak reference. A small amount of floating garbage may be added.
     TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
     if (valueRegion->AtomicMark(heapValue)) {
+        std::atomic_thread_fence(std::memory_order_seq_cst);
         Heap *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
         WorkNode *&localBuffer = heap->GetMarkingObjectLocalBuffer();
         SharedHeap::GetInstance()->GetWorkManager()->PushToLocalMarkingBuffer(localBuffer, heapValue);

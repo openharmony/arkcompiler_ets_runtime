@@ -46,7 +46,7 @@ inline void TaggedObject::SetFreeObjectClass(JSHClass *hclass)
 
 inline void TaggedObject::SetClass(const JSThread *thread, JSHClass *hclass)
 {
-#ifndef ARK_USE_SATB_BARRIER
+#if defined(USE_CMC_GC) && !defined(ARK_USE_SATB_BARRIER)
     SetClassWithoutBarrier(hclass);
     WriteBarrier(thread, this, HCLASS_OFFSET, JSTaggedValue(hclass).GetRawData());
 #else
@@ -57,7 +57,7 @@ inline void TaggedObject::SetClass(const JSThread *thread, JSHClass *hclass)
 
 inline void TaggedObject::SynchronizedTransitionClass(const JSThread *thread, JSHClass *hclass)
 {
-#ifndef ARK_USE_SATB_BARRIER
+#if defined(USE_CMC_GC) && !defined(ARK_USE_SATB_BARRIER)
     reinterpret_cast<TaggedStateWord *>(this)->SynchronizedSetClass(reinterpret_cast<uintptr_t>(hclass));
     WriteBarrier(thread, this, HCLASS_OFFSET, JSTaggedValue(hclass).GetRawData());
 #else

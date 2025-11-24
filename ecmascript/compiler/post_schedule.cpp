@@ -696,8 +696,10 @@ void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, 
     GateRef addr = builder_.PtrAdd(base, offset);
     // If value isn't equal to compValue, It uses to store compress pointer.
     VariableType type = VariableType(acc_.GetMachineType(compValue), acc_.GetGateType(compValue));
+#if defined(USE_CMC_GC)
     builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
+#endif
     MemoryAttribute::ShareFlag share = GetShareKind(gate);
     std::string_view comment;
     int index;
@@ -709,11 +711,20 @@ void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, 
     GateRef storeBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
                                          {glue, base, offset, value, reseverdFrameState},
                                          Circuit::NullGate(), comment.data());
+#if !defined(USE_CMC_GC)
+    builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
+    GateRef store = builder_.GetDepend();
+#endif
     {
+#if !defined(USE_CMC_GC)
+        PrepareToScheduleNewGate(store, currentBBGates);
+#endif
         PrepareToScheduleNewGate(storeBarrier, currentBBGates);
         PrepareToScheduleNewGate(reseverdFrameState, currentBBGates);
         PrepareToScheduleNewGate(target, currentBBGates);
+#if defined(USE_CMC_GC)
         PrepareToScheduleNewGate(store, currentBBGates);
+#endif
         PrepareToScheduleNewGate(addr, currentBBGates);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
@@ -784,8 +795,10 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     GateRef compValue = acc_.GetValueIn(gate, 4);  // 3: value
     GateRef addr = builder_.PtrAdd(base, offset);
     VariableType type = VariableType(acc_.GetMachineType(compValue), acc_.GetGateType(compValue));
+#if defined(USE_CMC_GC)
     builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
+#endif
 
     Label exit(&builder_);
     Label isHeapObject(&builder_);
@@ -797,7 +810,9 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
             GateRef ifBranch = currentLabel->GetControl();
             PrepareToScheduleNewGate(ifBranch, currentBBGates);
             PrepareToScheduleNewGate(heapObjectCheck, currentBBGates);
+#if defined(USE_CMC_GC)
             PrepareToScheduleNewGate(store, currentBBGates);
+#endif
             PrepareToScheduleNewGate(addr, currentBBGates);
         }
     } else {
@@ -816,7 +831,9 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
             PrepareToScheduleNewGate(masked, currentBBGates);
             PrepareToScheduleNewGate(intVal, currentBBGates);
             PrepareToScheduleNewGate(objMask, currentBBGates);
+#if defined(USE_CMC_GC)
             PrepareToScheduleNewGate(store, currentBBGates);
+#endif
             PrepareToScheduleNewGate(addr, currentBBGates);
         }
     }
@@ -858,8 +875,15 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     }
     builder_.Bind(&exit);
     {
+#if !defined(USE_CMC_GC)
+        builder_.StoreWithoutBarrier(type, addr, compValue, acc_.GetMemoryAttribute(gate));
+        GateRef store = builder_.GetDepend();
+#endif
         GateRef merge = builder_.GetState();
         PrepareToScheduleNewGate(merge, endBBGates);
+#if !defined(USE_CMC_GC)
+        PrepareToScheduleNewGate(store, endBBGates);
+#endif
         PrepareToScheduleNewGate(ifFalse, endBBGates);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
