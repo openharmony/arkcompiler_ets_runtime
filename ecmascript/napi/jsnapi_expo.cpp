@@ -3084,7 +3084,7 @@ bool ObjectRef::GetOwnProperty(const EcmaVM *vm, Local<JSValueRef> key, Property
     LOG_IF_SPECIAL(obj, ERROR);
     JSHandle<JSTaggedValue> keyValue = JSNApiHelper::ToJSHandle(key);
     PropertyDescriptor desc(thread);
-    bool ret = JSObject::GetOwnProperty(thread, JSHandle<JSObject>(obj), keyValue, desc);
+    bool ret = JSTaggedValue::GetOwnProperty(thread, obj, keyValue, desc);
     if (!ret) {
         return false;
     }
