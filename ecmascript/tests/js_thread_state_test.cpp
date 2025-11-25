@@ -410,4 +410,22 @@ HWTEST_F_L0(StateTransitioningTest, PendingWeakCallbacksAndFullMarkTest)
         EXPECT_TRUE(callbackExecuted);
     }
 }
+
+HWTEST_F_L0(StateTransitioningTest, PendingWeakCallbacksAndFullMarkTest1)
+{
+    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    if (heap->GetConcurrentMarker()->IsEnabled()) {
+        thread->SetFullMarkRequest();
+        {
+            ecmascript::ThreadNativeScope nativeScope(thread);
+            EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::NATIVE);
+            for (size_t i = 0; i < 4; i++) {
+                ConcurrentMarker::TryIncreaseTaskCounts();
+            }
+            thread->SetMarkStatus(MarkStatus::READY_TO_MARK);
+            EXPECT_TRUE(thread->IsReadyToConcurrentMark());
+        }
+        EXPECT_TRUE(thread->FullMarkRequest());
+    }
+}
 }  // namespace panda::test
