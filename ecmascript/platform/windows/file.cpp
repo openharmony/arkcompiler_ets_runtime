@@ -222,4 +222,44 @@ void DeleteFilesWithSuffix(const std::string &dirPath, const std::string &suffix
 {
     LOG_ECMA(INFO) << "Unsupport dirPath: " << dirPath << ", suffix: " << suffix;
 }
+
+void FBUnsupportedPlatform()
+{
+    LOG_ECMA(WARN) << "PosixFile is not supported on this platform.";
+    _set_errno(ENOSYS);
+}
+
+template <typename T> T FBUnsupportedPlatform(T ret)
+{
+    FBUnsupportedPlatform();
+    return ret;
+}
+
+PosixFile::PosixFile([[maybe_unused]] const std::string_view &path,
+    [[maybe_unused]] const std::string_view &flags,
+    [[maybe_unused]] const std::string_view &mode)
+{
+    FBUnsupportedPlatform();
+}
+PosixFile::~PosixFile() {}
+
+int64_t PosixFile::Write([[maybe_unused]] const char *data, [[maybe_unused]] size_t size)
+{
+    return FBUnsupportedPlatform(-1);
+}
+
+int64_t PosixFile::Read([[maybe_unused]] char *buf, [[maybe_unused]] size_t size)
+{
+    return FBUnsupportedPlatform(-1);
+}
+
+int64_t PosixFile::Seek([[maybe_unused]] int64_t off, [[maybe_unused]] SeekOrigin whence)
+{
+    return FBUnsupportedPlatform(-1);
+}
+
+int64_t PosixFile::Tell() { return FBUnsupportedPlatform(-1); }
+
+int64_t PosixFile::Size() { return FBUnsupportedPlatform(-1); }
+
 }  // namespace panda::ecmascript

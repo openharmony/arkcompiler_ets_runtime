@@ -14,9 +14,10 @@
  */
 #include "ecmascript/ohos/js_pandafile_snapshot_interfaces.h"
 
-#include "ecmascript/ohos/ohos_version_info_tools.h"
 #include "ecmascript/jspandafile/js_pandafile_snapshot.h"
+#include "ecmascript/ohos/ohos_version_info_tools.h"
 #include "ecmascript/platform/filesystem.h"
+#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 
 namespace panda::ecmascript::ohos {
 
@@ -24,9 +25,9 @@ void JSPandaFileSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &p
 {
     LOG_ECMA(DEBUG) << "PandaFileSnapshotInterfaces::Serialize: " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PandaFileSnapshotInterfaces::Serialize", "");
-    // check application white list
-    if (!filesystem::Exists(path.c_str())) {
-        LOG_ECMA(INFO) << "PandaFileSnapshotInterfaces::Serialize: " << path << " is not exists";
+    if (ModulesSnapshotHelper::IsPandafileSnapshotDisabled(path)) {
+        LOG_ECMA(DEBUG) << "Serialize: PandaFile Snapshot is not enabled";
+        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
         return;
     }
     CString version = OhosVersionInfoTools::GetRomVersion();
@@ -34,6 +35,7 @@ void JSPandaFileSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &p
         LOG_ECMA(ERROR) << "PandaFileSnapshotInterfaces::Serialize rom version is empty";
         return;
     }
+    ModulesSnapshotHelper::MarkJSPandaFileSnapshotLoaded();
     JSPandaFileSnapshot::PostWriteDataToFileJob(vm, path, version);
 }
-} // namespace panda::ecmascript
+} // namespace panda::ecmascript::ohos

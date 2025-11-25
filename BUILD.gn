@@ -1134,6 +1134,7 @@ ecma_source = [
   "ecmascript/shared_objects/js_shared_set.cpp",
   "ecmascript/shared_objects/js_shared_set_iterator.cpp",
   "ecmascript/shared_objects/js_sendable_arraybuffer.cpp",
+  "ecmascript/snapshot/common/modules_snapshot_helper.cpp",
   "ecmascript/stackmap/ark_stackmap_builder.cpp",
   "ecmascript/stackmap/ark_stackmap_parser.cpp",
   "ecmascript/stackmap/litecg/litecg_stackmap_type.cpp",
@@ -1285,6 +1286,7 @@ ecma_platform_source += [
   "ecmascript/platform/common/mutex.cpp",
   "ecmascript/platform/common/filesystem.cpp",
   "ecmascript/platform/common/ffrt.cpp",
+  "ecmascript/platform/common/signal_manager.cpp",
 ]
 
 config("include_llvm") {
@@ -1418,10 +1420,15 @@ if (is_mingw) {
     ]
 
     if (is_ohos) {
+      ecma_platform_source -= [
+        "ecmascript/platform/common/signal_manager.cpp",
+      ]
       ecma_platform_source += [
         "ecmascript/platform/unix/ohos/pandafile.cpp",
         "ecmascript/platform/unix/ohos/ecma_context.cpp",
         "ecmascript/platform/unix/ohos/parameters.cpp",
+        "ecmascript/platform/unix/ohos/signal_manager.cpp",
+        "ecmascript/platform/unix/signal_manager_unix.cpp",
       ]
     } else {
       ecma_platform_source += [

@@ -77,7 +77,6 @@ protected:
 // +--------------------------------------+
     static JSHandle<TaggedArray> GetModuleSerializeArray(JSThread *thread);
     static void RestoreUpdatedBinding(JSThread* thread, JSHandle<TaggedArray> serializeArray);
-    static void RemoveSnapshotFiles(const CString &path);
     static std::unique_ptr<SerializeData> GetSerializeData(JSThread *thread);
     static bool ReadDataFromFile(JSThread *thread, std::unique_ptr<SerializeData>& data, const CString &path,
         const CString &version);

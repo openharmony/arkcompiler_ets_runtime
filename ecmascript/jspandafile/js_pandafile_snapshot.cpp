@@ -20,6 +20,7 @@
 #include "ecmascript/platform/filesystem.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "zlib.h"
 
 namespace panda::ecmascript {
@@ -64,11 +65,6 @@ CString JSPandaFileSnapshot::GetJSPandaFileFileName(const CString &fileName, con
 {
     CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
     return base::ConcatToCString(path, moduleName, JSPANDAFILE_FILE_NAME);
-}
-
-void JSPandaFileSnapshot::RemoveSnapshotFiles(const CString &path)
-{
-    DeleteFilesWithSuffix(path.c_str(), SNAPSHOT_FILE_SUFFIX.data());
 }
 
 bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
@@ -197,16 +193,22 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::ReadDataFromFile", "");
+    if (ModulesSnapshotHelper::IsPandafileSnapshotDisabled(path)) {
+        LOG_ECMA(DEBUG) << "ReadDataFromFile: Pandafile snapshot not enabled";
+        return false;
+    }
     CString filename = GetJSPandaFileFileName(jsPandaFile->GetJSPandaFileDesc(), path);
     MemMap fileMapMem = FileMap(filename.c_str(), FILE_RDONLY, PAGE_PROT_READ, 0);
     if (fileMapMem.GetOriginAddr() == nullptr) {
-        RemoveSnapshotFiles(path);
+        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile open file failed:" << filename;
         return false;
     }
+    ModulesSnapshotHelper::MarkJSPandaFileSnapshotLoaded();
     LOG_ECMA(DEBUG) << "JSPandaFileSnapshot::ReadDataFromFile: " << filename;
     MemMapScope memMapScope(fileMapMem);
-    FileMemMapReader reader(fileMapMem, std::bind(RemoveSnapshotFiles, path), "JSPandaFileSnapshot::ReadDataFromFile");
+    FileMemMapReader reader(fileMapMem, std::bind(ModulesSnapshotHelper::RemoveSnapshotFiles, path),
+        "JSPandaFileSnapshot::ReadDataFromFile");
 
     size_t checksumSize = sizeof(uint32_t);
     uint32_t contentSize = fileMapMem.GetSize() - checksumSize;
@@ -218,7 +220,7 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     if (checksum != readCheckSum) {
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile checksum compare failed, checksum: " << checksum
             << ", readCheckSum: " << readCheckSum;
-        RemoveSnapshotFiles(path);
+        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
         return false;
     }
     // verify version code
@@ -230,7 +232,7 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     if (appVersionCode != readAppVersionCode) {
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile version compare failed, appVersionCode: "
             << appVersionCode << ", readAppVersionCode: " << readAppVersionCode;
-        RemoveSnapshotFiles(path);
+        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
         return false;
     }
     uint32_t readVersionStrLen = 0;
@@ -244,7 +246,7 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     if (version != readVersionStr) {
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile version compare failed, version: " << version
             << ", readVersion: " << readVersionStr;
-        RemoveSnapshotFiles(path);
+        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
         return false;
     }
     // verify filesize
@@ -255,7 +257,7 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     if (fsize != jsPandaFile->GetFileSize()) {
         LOG_COMPILER(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile file size not equal, " << filename  << ", old = "
             << fsize << ", new = " << jsPandaFile->GetFileSize();
-        RemoveSnapshotFiles(path);
+        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
         return false;
     }
     // verify moduleName
@@ -273,7 +275,7 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
     if (readModuleName != curModuleName) {
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile moduleName check failed, read moduleName is: "
             << readModuleName << ", current moduleName is:" << curModuleName;
-        RemoveSnapshotFiles(path);
+        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
         return false;
     }
     // read numMethods
