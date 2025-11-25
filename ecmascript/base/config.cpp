@@ -17,9 +17,9 @@
 #include "base/common.h"
 
 namespace panda::ecmascript {
-
-uint32_t PUBLIC_API g_isEnableCMCGC = 0;
+#ifdef USE_CMC_GC
+uint32_t PUBLIC_API g_isEnableCMCGC = 1;
+#endif
 uint32_t PUBLIC_API g_isEnableCMCGCConcurrentRootMarking = 0;
-
 }  // namespace panda::ecmascript
 

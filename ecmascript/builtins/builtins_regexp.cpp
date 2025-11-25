@@ -263,7 +263,7 @@ JSTaggedValue BuiltinsRegExp::RegExpTestFast(JSThread *thread, JSHandle<JSTagged
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     if (useCache) {
         JSTaggedValue cacheResult;
-        if (UNLIKELY(g_isEnableCMCGC)) {
+        if (UNLIKELY(thread->NeedReadBarrier())) {
             cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, inputStr,
                                                                             RegExpExecResultCache::TEST_TYPE, regexp,
                                                                             JSTaggedValue(lastIndex), undefined);
@@ -638,7 +638,7 @@ JSTaggedValue BuiltinsRegExp::RegExpMatch(JSThread *thread, const JSHandle<JSTag
     if (useCache) {
         uint32_t lastIndex = static_cast<uint32_t>(GetLastIndex(thread, regexp, isFastPath));
         JSTaggedValue cacheResult;
-        if (UNLIKELY(g_isEnableCMCGC)) {
+        if (UNLIKELY(thread->NeedReadBarrier())) {
             cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, string,
                                                                             RegExpExecResultCache::MATCH_TYPE, regexp,
                                                                             JSTaggedValue(lastIndex), undefined);
@@ -869,7 +869,7 @@ JSTaggedValue BuiltinsRegExp::RegExpReplaceFast(JSThread *thread, JSHandle<JSTag
     JSHandle<JSTaggedValue> emptyString(thread, globalConst->GetEmptyString());
     if (useCache) {
         JSTaggedValue cacheResult;
-        if (UNLIKELY(g_isEnableCMCGC)) {
+        if (UNLIKELY(thread->NeedReadBarrier())) {
             cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, tagInputString,
                                                                             RegExpExecResultCache::REPLACE_TYPE, regexp,
                                                                             JSTaggedValue(lastIndexInput),
@@ -1092,7 +1092,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
             if (strLength > cacheTable->GetStrLenThreshold()) {
                 uint32_t lastIndexInput = static_cast<uint32_t>(GetLastIndex(thread, thisObj, isFastPath));
                 JSTaggedValue cacheResult;
-                if (UNLIKELY(g_isEnableCMCGC)) {
+                if (UNLIKELY(thread->NeedReadBarrier())) {
                     cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, string,
                         RegExpExecResultCache::REPLACE_TYPE, thisObj, JSTaggedValue(lastIndexInput),
                         inputReplaceValue);
@@ -1118,7 +1118,7 @@ JSTaggedValue BuiltinsRegExp::ReplaceInternal(JSThread *thread,
     JSTaggedValue cachedResultsList(JSTaggedValue::VALUE_UNDEFINED);
     if (useIntermediateCache) {
         uint32_t lastIndexInput = static_cast<uint32_t>(GetLastIndex(thread, thisObj, isFastPath));
-        if (UNLIKELY(g_isEnableCMCGC)) {
+        if (UNLIKELY(thread->NeedReadBarrier())) {
             cachedResultsList = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, string,
                 RegExpExecResultCache::INTERMEDIATE_REPLACE_TYPE, thisObj,
                 JSTaggedValue(lastIndexInput), undefined, true);
@@ -1444,7 +1444,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSearchFast(JSThread *thread,
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSTaggedValue cacheResult;
-    if (UNLIKELY(g_isEnableCMCGC)) {
+    if (UNLIKELY(thread->NeedReadBarrier())) {
         cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, string,
                                                                         RegExpExecResultCache::SEARCH_TYPE, regexp,
                                                                         JSTaggedValue(0), undefined);
@@ -1715,7 +1715,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
     if (useCache) {
         JSTaggedValue cacheResult;
-        if (UNLIKELY(g_isEnableCMCGC)) {
+        if (UNLIKELY(thread->NeedReadBarrier())) {
             cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, jsString,
                                                                             RegExpExecResultCache::SPLIT_TYPE, regexp,
                                                                             JSTaggedValue(0), undefined);
@@ -2070,7 +2070,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     cacheTable->SetUseLastMatch(thread, false);
     if (useCache) {
         JSTaggedValue cacheResult;
-        if (UNLIKELY(g_isEnableCMCGC)) {
+        if (UNLIKELY(thread->NeedReadBarrier())) {
             cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, inputStr,
                                                                             RegExpExecResultCache::EXEC_TYPE, regexp,
                                                                             JSTaggedValue(lastIndex), undefined);

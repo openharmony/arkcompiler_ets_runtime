@@ -194,6 +194,9 @@ Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, 
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, allocSize, thread, heap_);
     desc->instructionsAddr = region->GetAllocateBase() + mutableSize;
+    if (thread->IsConcurrentCopying()) {
+        region->SetRegionTypeFlag(RegionTypeFlag::TO);
+    }
 
     // Enabe JitFort rights control
     [[maybe_unused]] void *addr = PageMapExecFortSpace((void *)desc->instructionsAddr, allocSize - mutableSize,
@@ -282,6 +285,9 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread, Allocat
 #ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
     InvokeAllocationInspector(region->GetBegin(), objectSize);
 #endif
+    if (thread->IsConcurrentCopying()) {
+        region->SetRegionTypeFlag(RegionTypeFlag::TO);
+    }
     return region->GetBegin();
 }
 

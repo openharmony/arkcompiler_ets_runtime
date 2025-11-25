@@ -106,6 +106,7 @@ void HeapSnapshot::PrepareSnapshot()
 
 void HeapSnapshot::UpdateNodes(bool isInFinish)
 {
+    ASSERT(!vm_->GetAssociatedJSThread()->IsConcurrentCopying());
     for (Node *node : nodes_) {
         node->SetLive(false);
     }
@@ -131,6 +132,7 @@ void HeapSnapshot::UpdateNodes(bool isInFinish)
 
 bool HeapSnapshot::FinishSnapshot()
 {
+    ASSERT(!vm_->GetAssociatedJSThread()->IsConcurrentCopying());
     UpdateNodes(true);
     FillEdges();
     AddSyntheticRoot();

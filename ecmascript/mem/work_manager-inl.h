@@ -172,6 +172,11 @@ JSWeakMapProcessQueue *WorkNodeHolder::GetJSWeakMapQueue() const
     return jsWeakMapQueue_;
 }
 
+JSThread *WorkNodeHolder::GetJSThread() const
+{
+    return heap_->GetJSThread();
+}
+
 TlabAllocator *WorkNodeHolder::GetTlabAllocator() const
 {
     return allocator_;

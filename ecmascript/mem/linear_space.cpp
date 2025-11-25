@@ -105,6 +105,9 @@ bool LinearSpace::Expand(bool isPromoted)
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_,
                                                                  thread_->IsConcurrentMarkingOrFinished());
+    if (thread->IsConcurrentCopying()) {
+        region->SetRegionTypeFlag(RegionTypeFlag::TO);
+    }
     allocator_.Reset(region->GetBegin(), region->GetEnd());
     AddRegion(region);
     return true;
@@ -179,6 +182,9 @@ void SemiSpace::Initialize()
 {
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    if (thread->IsConcurrentCopying()) {
+        region->SetRegionTypeFlag(RegionTypeFlag::TO);
+    }
     AddRegion(region);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
 }

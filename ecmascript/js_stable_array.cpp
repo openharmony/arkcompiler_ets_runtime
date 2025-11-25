@@ -1126,7 +1126,7 @@ const JSTaggedType *JSStableArray::IndexOfString(JSThread *thread, Span<const JS
     if (!searchElement.IsString()) {
         return nullptr;
     }
-    if (g_isEnableCMCGC) {
+    if (UNLIKELY(thread->NeedReadBarrier())) {
         return IndexOfElements<RBMode::FAST_CMC_RB>(thread, elements, options,
             [searchElement, thread](JSTaggedType cur) {
             if (searchElement.GetRawData() == cur) {

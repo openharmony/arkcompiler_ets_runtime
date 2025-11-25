@@ -64,7 +64,6 @@ public:
     void Initialize() override;
     void Reset();
     void ResetTopPointer(uintptr_t top);
-
     uintptr_t Allocate(size_t size, bool allowGC = true);
     bool Expand();
 
@@ -153,6 +152,18 @@ private:
     size_t overshootSize_ {0};
 };
 
+class ToSpace : public SparseSpace {
+public:
+    ToSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    Region *ForceExpandSync();
+
+    NO_COPY_SEMANTIC(ToSpace);
+    NO_MOVE_SEMANTIC(ToSpace);
+
+private:
+    Mutex mutex_;
+};
+
 class OldSpace : public SparseSpace {
 public:
     OldSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
@@ -207,6 +218,20 @@ public:
         committedOverSizeLimit_ = 0;
     }
 
+    // Preserve memory for concurrent copy.
+    void SetPreservedSize(size_t liveSize)
+    {
+        liveObjectSize_ = liveSize;
+        preservedCommittedSize_ = AlignUp(liveSize, DEFAULT_REGION_SIZE);
+        committedSize_ = preservedCommittedSize_;
+    }
+
+    void ResetPreservedSize()
+    {
+        committedSize_ -= preservedCommittedSize_;
+        preservedCommittedSize_ = 0;
+    }
+
     template<class Callback>
     void EnumerateCollectRegionSet(const Callback &cb) const
     {
@@ -223,6 +248,7 @@ public:
     }
 
     void Merge(LocalSpace *localSpace);
+    void MergeToSpace(ToSpace *toSpace);
 private:
     static constexpr int64_t PARTIAL_GC_MAX_EVACUATION_SIZE_FOREGROUND = 2_MB;
     static constexpr int64_t PARTIAL_GC_MAX_EVACUATION_SIZE_BACKGROUND = 6_MB;
@@ -236,6 +262,7 @@ private:
     Mutex lock_;
     size_t mergeSize_ {0};
     size_t committedOverSizeLimit_ {0};
+    size_t preservedCommittedSize_ {0};
 };
 
 class NonMovableSpace : public SparseSpace {

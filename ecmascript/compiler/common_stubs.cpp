@@ -246,20 +246,12 @@ void NewFloat32ArrayStubBuilder::GenerateCircuit()
         GateRef thisObj = Undefined();
         GateRef argc = Int64(4); // 4: means func newtarget thisObj arg0
         GateRef argv = IntPtr(0);
-        Label isEnableCMCGC(env);
         Label skipReadBarrier(env);
-        BRANCH_UNLIKELY(LoadPrimitive(VariableType::BOOL(), glue,
-                                      IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-                        &isEnableCMCGC, &skipReadBarrier);
-        Bind(&isEnableCMCGC);
-        {
-            Label readBarrier(env);
-            BRANCH_LIKELY(NeedSkipReadBarrier(glue), &skipReadBarrier, &readBarrier);
-            Bind(&readBarrier);
-
-            CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), {glue, ctor});
-            Jump(&skipReadBarrier);
-        }
+        Label readBarrier(env);
+        BRANCH_LIKELY(NeedSkipReadBarrier(glue), &skipReadBarrier, &readBarrier);
+        Bind(&readBarrier);
+        CallNGCRuntime(glue, RTSTUB_ID(CopyCallTarget), {glue, ctor});
+        Jump(&skipReadBarrier);
         Bind(&skipReadBarrier);
         std::vector<GateRef> args { glue, argc, argv, ctor, ctor, thisObj, arg0 };
         const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(JSCallNew));
@@ -1419,12 +1411,7 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
 
-    Label isEnableCMCGC(env);
     Label skipReadBarrier(env);
-    BRANCH_UNLIKELY(
-        LoadPrimitive(VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsEnableCMCGCOffset(env->Is32Bit()))),
-        &isEnableCMCGC, &skipReadBarrier);
-    Bind(&isEnableCMCGC);
     {
         Label readBarrier(env);
         BRANCH_LIKELY(NeedSkipReadBarrier(glue), &skipReadBarrier, &readBarrier);

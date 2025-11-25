@@ -32,6 +32,7 @@
 #include "ecmascript/mem/allocator-inl.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/linear_space.h"
+#include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/shared_mem_controller.h"
@@ -164,6 +165,17 @@ void Heap::EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const
 }
 
 template<class Callback>
+void Heap::EnumerateNonmovableRegionsWithRecord(const Callback &cb) const
+{
+    snapshotSpace_->EnumerateRegionsWithRecord(cb);
+    appSpawnSpace_->EnumerateRegionsWithRecord(cb);
+    nonMovableSpace_->EnumerateRegionsWithRecord(cb);
+    hugeObjectSpace_->EnumerateRegionsWithRecord(cb);
+    machineCodeSpace_->EnumerateRegionsWithRecord(cb);
+    hugeMachineCodeSpace_->EnumerateRegionsWithRecord(cb);
+}
+
+template<class Callback>
 void Heap::EnumerateNonMovableRegions(const Callback &cb) const
 {
     snapshotSpace_->EnumerateRegions(cb);
@@ -198,6 +210,7 @@ void Heap::EnumerateRegions(const Callback &cb) const
 template<class Callback>
 void Heap::IterateOverObjects(const Callback &cb, bool isSimplify) const
 {
+    ASSERT(!thread_->IsConcurrentCopying());
     // fixme: refactor?
     if constexpr (G_USE_CMS_GC) {
         slotSpace_->IterateOverObjects(cb);
@@ -761,7 +774,8 @@ void Heap::SwapNewSpace()
 {
     activeSemiSpace_->Stop();
     size_t newOverShootSize = 0;
-    if (!inBackground_ && gcType_ != TriggerGCType::FULL_GC && gcType_ != TriggerGCType::APPSPAWN_FULL_GC) {
+    if (!inBackground_ && gcType_ != TriggerGCType::FULL_GC && gcType_ != TriggerGCType::APPSPAWN_FULL_GC &&
+        gcType_ != TriggerGCType::LOCAL_CC) {
         newOverShootSize = activeSemiSpace_->CalculateNewOverShootSize();
     }
     inactiveSemiSpace_->Restart(newOverShootSize);
@@ -845,7 +859,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
             region->ClearGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
         });
         cachedSize = inactiveSemiSpace_->GetInitialCapacity();
-        if (gcType == TriggerGCType::FULL_GC) {
+        if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::LOCAL_CC) {
             // fixme: refactor?
             if constexpr (!G_USE_CMS_GC) {
                 compressSpace_->Reset();
@@ -862,6 +876,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
         region->ClearCrossRegionRSet();
+        region->ResetRegionTypeFlag();
     });
     if (!clearTaskFinished_) {
         LockHolder holder(waitClearTaskFinishedMutex_);
@@ -962,7 +977,7 @@ size_t Heap::GetRegionCount() const
 uint32_t Heap::GetHeapObjectCount() const
 {
     uint32_t count = 0;
-    sweeper_->EnsureAllTaskFinished();
+    PrepareForIteration();
     this->IterateOverObjects([&count]([[maybe_unused]] TaggedObject *obj) {
         ++count;
     });

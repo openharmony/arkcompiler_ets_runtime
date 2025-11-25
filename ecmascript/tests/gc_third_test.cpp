@@ -118,6 +118,7 @@ HWTEST_F_L0(GCTest, LargeOverShootSizeTest)
         return;
     }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
     size_t originalYoungSize = heap->GetNewSpace()->GetCommittedSize();
 
     EXPECT_FALSE(heap->GetNewSpace()->CommittedSizeIsLarge());

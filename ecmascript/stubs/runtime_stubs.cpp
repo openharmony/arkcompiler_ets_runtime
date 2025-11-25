@@ -5069,20 +5069,23 @@ void RuntimeStubs::ObjectCopy(uintptr_t argGlue, JSTaggedType *dstObj,
         Barriers::CopyObject<true, true>(thread, reinterpret_cast<TaggedObject *>(dstObj),
             reinterpret_cast<JSTaggedValue *>(dst), reinterpret_cast<JSTaggedValue *>(src), count);
     } else {
-        (void)argGlue;
-        std::copy_n(src, count, dst);
+        auto thread = JSThread::GlueToJSThread(argGlue);
+        if (UNLIKELY(thread->NeedReadBarrier())) {
+            Barriers::CopyObjectPrimitive<true, true>(thread, reinterpret_cast<JSTaggedValue *>(dst),
+                reinterpret_cast<JSTaggedValue *>(src), count);
+        } else {
+            std::copy_n(src, count, dst);
+        }
     }
 }
 
 void RuntimeStubs::ReverseArray(uintptr_t argGlue, JSTaggedType *dst, uint32_t length)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    if (g_isEnableCMCGC) {
-        auto thread = JSThread::GlueToJSThread(argGlue);
-        if (thread->NeedReadBarrier()) {
-            for (uint32_t i = 0; i < length; i++) {
-                Barriers::UpdateSlot(thread, dst, i * sizeof(JSTaggedType));
-            }
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    if (thread->NeedReadBarrier()) {
+        for (uint32_t i = 0; i < length; i++) {
+            Barriers::UpdateSlot(thread, dst, i * sizeof(JSTaggedType));
         }
     }
     std::reverse(dst, dst + length);

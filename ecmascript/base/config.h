@@ -21,7 +21,11 @@
 #include <cstdint>
 
 namespace panda::ecmascript {
+#ifdef USE_CMC_GC
 extern uint32_t g_isEnableCMCGC;
+#else
+constexpr uint32_t g_isEnableCMCGC = 0;
+#endif
 extern uint32_t g_isEnableCMCGCConcurrentRootMarking;
 #if USE_CMS_GC
 constexpr bool G_USE_CMS_GC = true;

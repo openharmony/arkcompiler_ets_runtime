@@ -53,6 +53,7 @@ void PartialGC::RunPhases()
     if (mainThreadInForeground && needAjustGCThreadPrio) {
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::STW);
     }
+    ASSERT(!heap_->GetJSThread()->IsConcurrentCopying());
     markingInProgress_ = heap_->CheckOngoingConcurrentMarking();
     LOG_GC(DEBUG) << "markingInProgress_" << markingInProgress_;
     Initialize();

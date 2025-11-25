@@ -441,6 +441,7 @@ bool EcmaVM::Initialize()
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         Jit::GetInstance()->ConfigJit(this);
+        heap_->DisableLocalCC();
     }
     sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
@@ -501,9 +502,9 @@ EcmaVM::~EcmaVM()
         PGOProfilerManager::GetInstance()->Destroy(thread_, pgoProfiler_);
         pgoProfiler_ = nullptr;
     }
-    // clear c_address: c++ pointer delete
     ClearBufferData();
     heap_->WaitAllTasksFinished();
+    ASSERT(!thread_->IsConcurrentCopying());
     common::Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
@@ -1077,6 +1078,21 @@ void EcmaVM::IterateWeakGlobalEnvList(WeakVisitor &visitor)
     }
 }
 
+void EcmaVM::IterateWeakGlobalEnvList(WeakRootVisitor &visitor)
+{
+    for (auto it = globalEnvRecordList_.begin(); it != globalEnvRecordList_.end();) {
+        auto object = reinterpret_cast<TaggedObject*>(*it);
+        auto fwd = visitor(object);
+        if (fwd == nullptr) {
+            it = globalEnvRecordList_.erase(it);
+            continue;
+        } else if (fwd != object) {
+            *it = reinterpret_cast<JSTaggedType>(fwd);
+        }
+        it++;
+    }
+}
+
 void EcmaVM::IterateGlobalEnvField(RootVisitor &visitor)
 {
     for (auto value : globalEnvRecordList_) {
@@ -1181,6 +1197,7 @@ bool EcmaVM::LoadAOTFilesInternal(const std::string& aotFileName)
         return false;
     }
 #endif
+    heap_->DisableLocalCC();
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
     if (!aotFileManager_->LoadAnFile(anFile)) {
         LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
@@ -1880,7 +1897,7 @@ void EcmaVM::ResizeUnsharedConstpoolArray(int32_t oldCapacity, int32_t minCapaci
     if (g_isEnableCMCGC) {
         Barriers::CopyObject<true, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
     } else {
-        std::copy(unsharedConstpools_, unsharedConstpools_ + copyLen, newUnsharedConstpools);
+        Barriers::CopyObject<false, true>(thread_, nullptr, newUnsharedConstpools, unsharedConstpools_, copyLen);
     }
     ClearUnsharedConstpoolArray();
     unsharedConstpools_ = newUnsharedConstpools;

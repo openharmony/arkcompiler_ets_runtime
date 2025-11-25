@@ -15,7 +15,6 @@
 
 #include "ecmascript/mem/idle_gc_trigger.h"
 
-
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/heap-inl.h"
 
@@ -234,7 +233,9 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
             if (CheckIdleOrHintFullGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 NotifyIsNeedFreeze(false);
-                heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+                if (!TryTriggerLocalCC()) {
+                    heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+                }
             } else if (CheckLocalBindingNativeTriggerOldGC() && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger local old GC by native binding size.";
                 NotifyIsNeedFreeze(false);
@@ -302,5 +303,21 @@ void IdleGCTrigger::NotifyIsNeedFreeze(bool needFreeze)
     } else {
         LOG_GC(DEBUG) << "IdleGCTrigger: DeferFreezeCallback is nullptr";
     }
+}
+
+bool IdleGCTrigger::TryTriggerLocalCC() const
+{
+    if (!heap_->LocalCCEnabled() || !thread_->IsMainThreadFast() ||
+        heap_->GetHeapObjectSize() < IDLE_LOCAL_CC_LIMIT || thread_->GetLastLeaveFrame() != nullptr) {
+        return false;
+    }
+    if (heap_->IsCCMark()) {
+        heap_->CollectFromCCMark(GCReason::IDLE);
+    } else if (thread_->IsConcurrentCopying()) {
+        heap_->WaitAndHandleCCFinished();
+    } else if (!heap_->TryTriggerCCMarking(MarkReason::IDLE)) {
+        return false;
+    }
+    return true;
 }
 }

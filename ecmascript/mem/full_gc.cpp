@@ -53,7 +53,7 @@ void FullGC::RunPhases()
         LOG_GC(DEBUG) << "FullGC after ConcurrentMarking";
         heap_->GetConcurrentMarker()->Reset();  // HPPGC use mark result to move TaggedObject.
     }
-
+    ASSERT(!heap_->GetJSThread()->IsConcurrentCopying());
     ProcessSharedGCRSetWorkList();
     Initialize();
     Mark();
@@ -157,7 +157,7 @@ void FullGC::Sweep()
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
-
+    heap_->GetEcmaVM()->IterateWeakGlobalEnvList(gcUpdateWeak);
     heap_->GetSweeper()->Sweep(TriggerGCType::FULL_GC);
     heap_->GetSweeper()->PostTask(TriggerGCType::FULL_GC);
 }

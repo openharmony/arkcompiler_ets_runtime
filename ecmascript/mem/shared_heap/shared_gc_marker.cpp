@@ -15,6 +15,7 @@
 
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 
+#include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
 #include "ecmascript/mem/shared_heap/shared_gc_visitor-inl.h"
@@ -38,6 +39,7 @@ void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType
     runtime->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
+        ASSERT(!thread->IsConcurrentCopying());
         MarkLocalVMRoots(visitor, vm, markType);
         if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
             CollectLocalVMRSet(vm);

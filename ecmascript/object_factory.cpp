@@ -3365,7 +3365,7 @@ JSHandle<LayoutInfo> ObjectFactory::ExtendLayoutInfo(const JSHandle<LayoutInfo> 
     JSHandle<LayoutInfo>::Cast(newArray)->Initialize(thread_, oldArray->GetExtraLength());
 
     uint32_t oldLength = old->GetLength();
-    if (g_isEnableCMCGC) {
+    if (UNLIKELY(thread_->NeedReadBarrier())) {
         for (uint32_t i = 0; i < oldLength; i++) {
             JSTaggedValue value = oldArray->Get<RBMode::FAST_CMC_RB>(thread_, i);
             newArray->Set(thread_, i, value);
@@ -3395,7 +3395,7 @@ JSHandle<LayoutInfo> ObjectFactory::CopyAndReSort(const JSHandle<LayoutInfo> &ol
     void *propertiesObj = reinterpret_cast<void *>(old->GetProperties());
     size_t keyOffset = 0;
     size_t attrOffset = sizeof(JSTaggedType);
-    if (g_isEnableCMCGC) {
+    if (UNLIKELY(thread_->NeedReadBarrier())) {
         for (int i = 0; i < end; i++) {
             JSTaggedValue propKey(Barriers::GetTaggedValue<RBMode::FAST_CMC_RB>(
                 thread_, ToUintPtr(propertiesObj) + i * sizeof(Properties) + keyOffset));

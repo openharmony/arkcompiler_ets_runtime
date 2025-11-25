@@ -33,6 +33,7 @@ void GCStats::PrintStatisticResult()
     PrintGCSummaryStatistic(GCType::PARTIAL_YOUNG_GC);
     PrintGCSummaryStatistic(GCType::PARTIAL_OLD_GC);
     PrintGCSummaryStatistic(GCType::COMPRESS_GC);
+    PrintGCSummaryStatistic(GCType::LOCAL_CC);
     PrintGCMemoryStatistic();
 }
 
@@ -360,6 +361,26 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DESCRIPTION_FORMAT("Finish:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
             break;
+        case GCType::LOCAL_CC:
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ConcurrentMark pause:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ConcurrentMark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("WaitConcurrentMarkFinish:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::WaitConcurrentMarkFinished]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ReMark:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ReMark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("MarkRoots:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::MarkRoots]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ProcessSharedGCRSetWorkList:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessSharedGCRSetWorkList]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("UpdateWeakRef:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::UpdateWeekRef]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("UpdateRoot:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::UpdateRoot]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("Sweep:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms";
+            break;
         default: // LCOV_EXCL_BR_LINE
             break;
     }
@@ -377,6 +398,9 @@ bool GCStats::CheckIfNeedPrint(GCType type)
             break;
         case GCType::COMPRESS_GC:
             gcCount = GetRecordData(RecordData::COMPRESS_COUNT);
+            break;
+        case GCType::LOCAL_CC:
+            gcCount = GetRecordData(RecordData::LOCAL_CC_COUNT);
             break;
         default: // LCOV_EXCL_BR_LINE
             break;
@@ -460,6 +484,18 @@ void GCStats::PrintGCSummaryStatistic(GCType type)
                 << STATS_DESCRIPTION_FORMAT("Heap average alive rate:")
                 << STATS_DATA_FORMAT(double(GetRecordData(RecordData::SWEEP_TOTAL_ALIVE)) /
                                      GetRecordData(RecordData::SWEEP_TOTAL_COMMIT));
+            break;
+        }
+        case GCType::LOCAL_CC: {
+            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("LOCALCC occurs count")
+                << STATS_DATA_FORMAT(GetRecordData(RecordData::LOCAL_CC_COUNT)) << "\n"
+                << STATS_DESCRIPTION_FORMAT("LOCALCC max pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::LOCAL_CC_MAX_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("LOCALCC min pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::LOCAL_CC_MIN_PAUSE)) << "ms\n"
+                << STATS_DESCRIPTION_FORMAT("LOCALCC average pause:")
+                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::LOCAL_CC_TOTAL_PAUSE) /
+                                     GetRecordData(RecordData::LOCAL_CC_COUNT)) << "ms";
             break;
         }
         default: // LCOV_EXCL_BR_LINE
@@ -592,6 +628,20 @@ void GCStats::RecordStatisticAfterGC()
             size_t sweepAliveSize = heap_->GetHeapObjectSize();
             SetRecordData(RecordData::SWEEP_ALIVE_SIZE, sweepAliveSize);
             IncreaseRecordData(RecordData::SWEEP_TOTAL_ALIVE, sweepAliveSize);
+            break;
+        }
+        case GCType::LOCAL_CC: {
+            if (GetRecordData(RecordData::LOCAL_CC_COUNT) == 0) {
+                SetRecordDuration(RecordDuration::LOCAL_CC_MIN_PAUSE, duration);
+                SetRecordDuration(RecordDuration::LOCAL_CC_MAX_PAUSE, duration);
+            } else {
+                SetRecordDuration(RecordDuration::LOCAL_CC_MIN_PAUSE,
+                    std::min(GetRecordDuration(RecordDuration::LOCAL_CC_MIN_PAUSE), duration));
+                SetRecordDuration(RecordDuration::LOCAL_CC_MAX_PAUSE,
+                    std::max(GetRecordDuration(RecordDuration::LOCAL_CC_MAX_PAUSE), duration));
+            }
+            IncreaseRecordData(RecordData::LOCAL_CC_COUNT);
+            IncreaseRecordDuration(RecordDuration::LOCAL_CC_TOTAL_PAUSE, duration);
             break;
         }
         default:
@@ -749,6 +799,8 @@ GCType GCStats::GetGCType(TriggerGCType gcType)
             return GCType::PARTIAL_OLD_GC;
         case TriggerGCType::FULL_GC:
             return GCType::COMPRESS_GC;
+        case TriggerGCType::LOCAL_CC:
+            return GCType::LOCAL_CC;
         case TriggerGCType::SHARED_GC:
             return GCType::SHARED_GC;
         case TriggerGCType::SHARED_PARTIAL_GC:

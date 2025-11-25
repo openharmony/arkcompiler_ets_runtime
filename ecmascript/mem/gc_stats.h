@@ -33,6 +33,7 @@ class SharedHeap;
 enum class GCType : int {
     PARTIAL_YOUNG_GC,
     PARTIAL_OLD_GC,
+    LOCAL_CC,
     COMPRESS_GC,
     SHARED_GC,
     SHARED_PARTIAL_GC,
@@ -147,6 +148,8 @@ public:
                 return "HPP OldGC";
             case GCType::COMPRESS_GC:
                 return "CompressGC";
+            case GCType::LOCAL_CC:
+                return "LocalCCGC";
             case GCType::SHARED_GC:
                 return "SharedGC";
             case GCType::SHARED_PARTIAL_GC:
@@ -218,7 +221,7 @@ public:
     {
         return GetRecordData(RecordData::SEMI_COUNT) + GetRecordData(RecordData::YOUNG_COUNT) +
             GetRecordData(RecordData::OLD_COUNT) + GetRecordData(RecordData::COMPRESS_COUNT) +
-            GetRecordData(RecordData::SHARED_COUNT);
+            GetRecordData(RecordData::LOCAL_CC_COUNT) + GetRecordData(RecordData::SHARED_COUNT);
     }
 
     size_t GetGCDuration() const

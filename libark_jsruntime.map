@@ -174,6 +174,7 @@
       panda::ecmascript::AOTFileVersion::GetAOTVersion*;
       panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
+      panda::ecmascript::ReadBarrierImpl*;
       panda::ecmascript::BaseHeap::IsAlive*;
       panda::ecmascript::BigInt::SameValue*;
       panda::ecmascript::BigInt::DoubleToBigInt*;
@@ -185,6 +186,7 @@
       panda::ecmascript::SetSecurityLabel*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
       panda::ecmascript::Close*;
+      panda::ecmascript::ConcurrentCopyGC::WaitCCFinished*;
       panda::ecmascript::ConstantPool::GetMethodFromCache*;
       panda::ecmascript::ConstantPool::GetStringFromCacheForJit*;
       panda::ecmascript::ConstantPool::GetIhcFromAOTLiteralInfo*;
@@ -245,6 +247,7 @@
       panda::ecmascript::InterpreterAssembly::GetCallSize*;
       panda::ecmascript::Heap::AddGCListener*;
       panda::ecmascript::Heap::RemoveGCListener*;
+      panda::ecmascript::Heap::WaitCCFinished*;
       panda::ecmascript::LinkedHashMap::Create*;
       panda::ecmascript::JSAPIArrayList::Set*;
       panda::ecmascript::JSAPIDeque::Set*;

@@ -68,6 +68,9 @@ void SharedConcurrentMarker::Mark(TriggerGCType gcType)
         + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
         + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM())).c_str(), "");
         CHECK_DAEMON_THREAD();
+        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+            thread->GetEcmaVM()->GetHeap()->WaitAndHandleCCFinished();
+        });
         // TODO: support shared runtime state
         if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
             SharedHeapVerification(sHeap_, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();

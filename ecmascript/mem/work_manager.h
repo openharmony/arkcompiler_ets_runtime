@@ -169,6 +169,8 @@ public:
 
     inline JSWeakMapProcessQueue *GetJSWeakMapQueue() const;
 
+    inline JSThread *GetJSThread() const;
+
     inline TlabAllocator *GetTlabAllocator() const;
 
     inline SlotGCAllocator *GetSlotGCAllocator();

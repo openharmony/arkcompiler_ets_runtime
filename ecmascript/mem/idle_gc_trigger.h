@@ -104,6 +104,7 @@ public:
     bool TryTriggerIdleYoungGC();
     bool TryTriggerIdleLocalOldGC();
     bool TryTriggerIdleSharedOldGC();
+    bool TryTriggerLocalCC() const;
     bool ReachIdleLocalOldGCThresholds();
     bool ReachIdleSharedPartialGCThresholds();
     bool ReachIdleSharedGCThresholds();

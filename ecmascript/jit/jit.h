@@ -161,6 +161,8 @@ public:
                     isInManagedCode_ = true;
                 }
                 thread_->GetHostThread()->GetJitLock()->Lock();
+                auto hostHeap = thread_->GetHostThread()->GetEcmaVM()->GetHeap();
+                hostHeap->WaitCCFinished();
             }
         }
 
@@ -177,6 +179,8 @@ public:
                     isInManagedCode_ = true;
                 }
                 thread_->GetHostThread()->GetJitLock()->Lock();
+                auto hostHeap = thread_->GetHostThread()->GetEcmaVM()->GetHeap();
+                hostHeap->WaitCCFinished();
             }
         }
 

@@ -88,7 +88,11 @@ void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const BaseHeap *he
 void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
 {
     auto cb = [this] (ObjectSlot slot, TaggedObject *root) {
-        VerifyObjectSlotLegal(slot, root);
+        if (verifyKind_ == VerifyKind::VERIFY_WEAK_REF) {
+            VerifyWeakRef(slot, root);
+        } else {
+            VerifyObjectSlotLegal(slot, root);
+        }
     };
     VerifyVisitor verifyVisitor(cb);
     auto jsHclass = obj->GetClass();
@@ -110,6 +114,22 @@ void VerifyObjectVisitor::VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *o
         }
     } else if (value.IsHeapObject()) {
         VerifyHeapObjectSlotLegal(slot, value, object);
+    } // LCOV_EXCL_STOP
+}
+
+void VerifyObjectVisitor::VerifyWeakRef(ObjectSlot slot, TaggedObject *object) const
+{
+    JSTaggedValue slotValue(slot.GetTaggedType());
+    if (!slotValue.IsHeapObject()) { // LCOV_EXCL_START
+        return;
+    }
+    TaggedObject *value = slotValue.GetHeapObject();
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (objectRegion->Test(object)) {
+        if (!valueRegion->InSharedHeap() && !valueRegion->Test(value)) {
+            LogErrorForObjSlot(heap_, "VerifyWeakRef: slot miss gc_mark bit", object, slot, value);
+        }
     } // LCOV_EXCL_STOP
 }
 
@@ -148,6 +168,9 @@ void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
             break;
         case VerifyKind::VERIFY_MARK_SLOT_SPACE:
             VerifyMarkSlotSpace(object, slot, slotValue.GetTaggedObject());
+            break;
+        case VerifyKind::VERIFY_CONCURRENT_COPY:
+            VerifyConcurrentCopy(object, slot, slotValue.GetTaggedObject());
             break;
         case VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC:
             VerifySharedRSetPostFullGC(object, slot, slotValue.GetTaggedObject());
@@ -286,6 +309,28 @@ void VerifyObjectVisitor::VerifyMarkSlotSpace(TaggedObject *object, ObjectSlot s
     } // LCOV_EXCL_STOP
 }
 
+void VerifyObjectVisitor::VerifyConcurrentCopy(TaggedObject *root, ObjectSlot slot, TaggedObject *value) const
+{
+    Region *objectRegion = Region::ObjectAddressToRange(root);
+    Region *valueRegion = Region::ObjectAddressToRange(value);
+    if (objectRegion->IsFromRegion()) {  // LCOV_EXCL_START
+        LogErrorForObjSlot(heap_, "Verify CC: object in from region.", root, slot, value);
+    }
+    if (valueRegion->IsFromRegion()) {
+        LogErrorForObjSlot(heap_, "Verify CC: value in from region.", root, slot, value);
+    }
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InYoungSpace()) {
+        if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify CC: miss old_to_new bit.", root, slot, value);
+        }
+    }
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
+            LogErrorForObjSlot(heap_, "Verify CC: miss local_to_share bit. ", root, slot, value);
+        }
+    } // LCOV_EXCL_STOP
+}
+
 void VerifyObjectVisitor::VerifySharedObjectReference(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
@@ -318,6 +363,15 @@ void VerifyObjectVisitor::VerifySharedRSetPostFullGC(TaggedObject *object, Objec
 void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
 {
     ObjectSlot slot(reinterpret_cast<uintptr_t>(obj));
+    if (verifyKind_ == VerifyKind::VERIFY_CONCURRENT_COPY) { // LCOV_EXCL_START
+        if (value.IsHeapObject()) {
+            auto valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
+            if (valueRegion->IsFromRegion()) {
+                LOG_GC(FATAL) << "Verify old2new, value: " << value.GetTaggedObject() << " is in from region ";
+            }
+        }
+        return;
+    }
     if (!value.IsHeapObject()) {
         LOG_GC(DEBUG) << "Heap object(" << slot.SlotAddress() << ") old to new rset fail: value is "
                       << slot.GetTaggedType();
@@ -326,7 +380,7 @@ void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
 
     TaggedObject *object = value.GetRawTaggedObject();
     auto region = Region::ObjectAddressToRange(object);
-    if (region->InGeneralOldSpace() && failCount_ != nullptr) { // LCOV_EXCL_START
+    if (region->InGeneralOldSpace() && failCount_ != nullptr) {
         LOG_GC(ERROR) << "Heap object(" << slot.GetTaggedType() << ") old to new rset fail: value("
                       << slot.GetTaggedObject() << "/"
                       << JSHClass::DumpJSType(slot.GetTaggedObject()->GetClass()->GetObjectType())
@@ -428,9 +482,16 @@ void Verification::VerifyMark(Heap *heap)
             Verification(heap, VerifyKind::VERIFY_MARK_YOUNG).VerifyAll();
             break;
         case MarkType::MARK_FULL:
+        case MarkType::MARK_FOR_CC:
             Verification(heap, VerifyKind::VERIFY_MARK_FULL).VerifyAll();
             break;
     }
+}
+
+void Verification::VerifyCC(Heap *heap)
+{
+    Verification(heap, VerifyKind::VERIFY_CONCURRENT_COPY).VerifyAll();
+    Verification(heap, VerifyKind::VERIFY_CONCURRENT_COPY).VerifyOldToNewRSet();
 }
 
 void Verification::VerifyEvacuate(Heap *heap)
@@ -446,6 +507,8 @@ void Verification::VerifyEvacuate(Heap *heap)
             break;
         case MarkType::MARK_FULL:
             Verification(heap, VerifyKind::VERIFY_EVACUATE_OLD).VerifyAll();
+            break;
+        case MarkType::MARK_FOR_CC:
             break;
     }
 }
@@ -497,7 +560,7 @@ void SharedHeapVerification::VerifyMark(bool cm) const
     Runtime::GetInstance()->GCIterateThreadList([cm, &verifyVisitor1](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
         auto heap = vm->GetHeap();
-        heap->GetSweeper()->EnsureAllTaskFinished();
+        heap->PrepareForIteration();
         const_cast<Heap*>(heap)->FillBumpPointerForTlab();
         auto localBuffer = const_cast<Heap*>(heap)->GetMarkingObjectLocalBuffer();
         if (localBuffer != nullptr) { // LCOV_EXCL_START
@@ -578,7 +641,7 @@ void SharedHeapVerification::VerifySweep(bool cm) const
     Runtime::GetInstance()->GCIterateThreadList([&verifyVisitor1](JSThread *thread) {
         auto vm = thread->GetEcmaVM();
         auto heap = vm->GetHeap();
-        heap->GetSweeper()->EnsureAllTaskFinished();
+        heap->PrepareForIteration();
         const_cast<Heap*>(heap)->FillBumpPointerForTlab();
         heap->IterateOverObjects([&verifyVisitor1](TaggedObject *obj) {
             auto jsHclass = obj->GetClass();
@@ -667,7 +730,7 @@ size_t SharedHeapVerification::VerifyRoot() const
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
         auto localHeap = const_cast<Heap*>(vm->GetHeap());
-        localHeap->GetSweeper()->EnsureAllTaskFinished();
+        localHeap->PrepareForIteration();
         ObjectXRay::VisitVMRoots(vm, verificationRootVisitor);
         if (failCount > 0) {
             LOG_GC(ERROR) << "SharedHeap VerifyRoot detects deadObject count is " << failCount;
@@ -697,7 +760,7 @@ size_t SharedHeapVerification::VerifyHeap() const
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
         auto localHeap = const_cast<Heap*>(vm->GetHeap());
-        localHeap->GetSweeper()->EnsureAllTaskFinished();
+        localHeap->PrepareForIteration();
         if (localVerifyKind != VerifyKind::VERIFY_END) {
             Verification(localHeap, localVerifyKind).VerifyAll();
         }

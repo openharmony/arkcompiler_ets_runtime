@@ -1771,6 +1771,7 @@ public:
         SHARED_CONCURRENT_MARK = 1 << 4,
         SHARED_CONCURRENT_PARTIAL_MARK = 1 << 5,
         SHARED_FULL_GC = 1 << 6,
+        LOCAL_CC_GC = 1 << 7,
     };
 
     enum class PUBLIC_API MemoryReduceDegree : uint8_t {

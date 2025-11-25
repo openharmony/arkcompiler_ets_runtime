@@ -21,6 +21,7 @@
 #include "ecmascript/mem/barriers.h"
 
 namespace panda::ecmascript {
+#ifdef USE_CMC_GC
 static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *obj, size_t offset,
                                            const JSTaggedValue &value)
 {
@@ -81,6 +82,39 @@ inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *th
         return reinterpret_cast<JSTaggedType>(common::BaseRuntime::ReadBarrier((void*)slotAddress));
 #endif
 }
+#else
+PUBLIC_API JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress);
+static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *obj, size_t offset,
+                                           const JSTaggedValue &value)
+{
+    if (value.IsHeapObject()) {
+        return ReadBarrierImpl(thread, ToUintPtr(obj) + offset);
+    }
+    return value.GetRawData();
+}
+
+static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, uintptr_t slotAddress, const JSTaggedValue &value)
+{
+    if (value.IsHeapObject()) {
+        return ReadBarrierImpl(thread, slotAddress);
+    }
+    return value.GetRawData();
+}
+
+static ARK_INLINE JSTaggedType AtomicReadBarrier(const JSThread *thread, const void *obj, size_t offset,
+                                                 const JSTaggedValue &value)
+{
+    if (value.IsHeapObject()) {
+        return ReadBarrierImpl(thread, ToUintPtr(obj) + offset);
+    }
+    return value.GetRawData();
+}
+
+inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *thread, uintptr_t slotAddress)
+{
+    return ReadBarrierImpl(thread, slotAddress);
+}
+#endif
 
 inline ARK_INLINE JSTaggedType Barriers::GetTaggedValue(const JSThread *thread, const void *obj, size_t offset)
 {

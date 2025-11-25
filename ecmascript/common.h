@@ -68,7 +68,8 @@ namespace ecmascript {
     PARTIAL_RECORD_DATA(V)               \
     FULL_RECORD_DATA(V)                  \
     SHARED_RECORD_DATA(V)                \
-    SWEEP_RECORD_DATA(V)
+    SWEEP_RECORD_DATA(V)                 \
+    LOCAL_CC_RECORD_DATA(V)
 
 #define RECORD_DURATION(V)               \
     V(SEMI_MIN_PAUSE)                    \
@@ -83,6 +84,9 @@ namespace ecmascript {
     V(COMPRESS_MIN_PAUSE)                \
     V(COMPRESS_MAX_PAUSE)                \
     V(COMPRESS_TOTAL_PAUSE)              \
+    V(LOCAL_CC_MIN_PAUSE)                \
+    V(LOCAL_CC_MAX_PAUSE)                \
+    V(LOCAL_CC_TOTAL_PAUSE)              \
     V(SHARED_MIN_PAUSE)                  \
     V(SHARED_MAX_PAUSE)                  \
     V(SHARED_TOTAL_PAUSE)                \
@@ -119,6 +123,11 @@ namespace ecmascript {
     V(COMPRESS_COMMIT_SIZE)              \
     V(COMPRESS_TOTAL_ALIVE)              \
     V(COMPRESS_TOTAL_COMMIT)
+
+#define LOCAL_CC_RECORD_DATA(V)          \
+    V(LOCAL_CC_COUNT)                    \
+    V(LOCAL_CC_TOTAL_ALIVE)              \
+    V(LOCAL_CC_TOTAL_COMMIT)
 
 #define SHARED_RECORD_DATA(V)            \
     V(SHARED_COUNT)                      \

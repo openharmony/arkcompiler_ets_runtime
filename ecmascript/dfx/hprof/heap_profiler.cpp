@@ -160,6 +160,7 @@ void HeapProfiler::MoveEvent(uintptr_t address, TaggedObject *forwardAddress, si
 void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
 {
     SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
+    vm_->GetHeap()->WaitAndHandleCCFinished();
     snapshot->UpdateNodes();
 }
 
@@ -393,6 +394,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
                 const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
             });
         }
+        ASSERT(!vm_->GetAssociatedJSThread()->IsConcurrentCopying());
         // OOM and ThresholdReachedDump.
         if (dumpOption.isDumpOOM) {
             res = BinaryDump(stream, dumpOption);
@@ -608,6 +610,7 @@ HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, const DumpSn
         DISALLOW_GARBAGE_COLLECTION;
         const_cast<Heap *>(vm_->GetHeap())->Prepare();
     }
+    ASSERT(!vm_->GetAssociatedJSThread()->IsConcurrentCopying());
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
             auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), dumpOption,

@@ -29,7 +29,8 @@ enum CheckIdleGCType {
 
 enum class MarkType : uint8_t {
     MARK_YOUNG,
-    MARK_FULL
+    MARK_FULL,
+    MARK_FOR_CC
 };
 
 /*
@@ -46,6 +47,7 @@ enum TriggerGCType {
     FULL_GC,
     // GC is expected to compress objects into appspawn space;
     APPSPAWN_FULL_GC,
+    LOCAL_CC,
     SHARED_GC,
     SHARED_PARTIAL_GC,
     SHARED_FULL_GC,

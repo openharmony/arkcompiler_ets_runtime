@@ -402,7 +402,7 @@ HWTEST_F_L0(StateTransitioningTest, PendingWeakCallbacksAndFullMarkTest)
             EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::NATIVE);
         }
 
-        EXPECT_TRUE(thread->IsMarking());
+        EXPECT_TRUE(thread->IsConcurrentMarkingOrFinished());
 
         heap->WaitAllTasksFinished();
 
