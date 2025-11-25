@@ -33,6 +33,7 @@ std::unordered_map<EntityId, std::vector<uint8>> JsStackInfo::machineCodeMap;
 JSStackTrace *JSStackTrace::trace_ = nullptr;
 std::mutex JSStackTrace::mutex_;
 size_t JSStackTrace::count_ = 0;
+static std::mutex nameMapMutex;
 
 bool IsFastJitFunctionFrame(const FrameType frameType)
 {
@@ -513,6 +514,7 @@ std::optional<CodeInfo> JSStackTrace::TranslateByteCodePc(uintptr_t realPc, cons
 
 void SaveFuncName(EntityId entityId, const std::string &name)
 {
+    std::unique_lock<std::mutex> lock(nameMapMutex);
     size_t length = 256; // maximum stack length
     if (JsStackInfo::nameMap.size() > length) {
         auto it = JsStackInfo::nameMap.begin();
