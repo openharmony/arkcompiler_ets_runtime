@@ -82,7 +82,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFil
     const CString &filename, std::string_view entryPoint, bool needUpdate, const ExecuteTypes &executeType)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile filename " << filename;
-    CString traceInfo = "JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile " + filename;
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile " + filename +
+                    ", entryPoint:" + entryPoint.data() + ",";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     CString entry = entryPoint.data();
     CString name = filename;
@@ -94,7 +95,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *
     std::string_view entryPoint, bool needUpdate, const ExecuteTypes &executeType)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromAbcFile filename " << filename;
-    CString traceInfo = "JSPandaFileExecutor::ExecuteFromAbcFile " + filename;
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromAbcFile " + filename +
+                        ", entryPoint:" + entryPoint.data() + ",";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     CString entry;
     CString name;
@@ -115,7 +117,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
     const ExecuteTypes &executeType)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBuffer filename " << filename;
-    CString traceInfo = "JSPandaFileExecutor::ExecuteFromBuffer " + filename;
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromBuffer " + filename +
+                        ", entryPoint:" + entryPoint.data() + ",";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile =
@@ -272,7 +275,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
     size_t size, std::string_view entryPoint, const CString &filename, bool needUpdate, void *fileMapper)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteFromBufferSecure with secure buffer filename " << filename;
-    CString traceInfo = "JSPandaFileExecutor::ExecuteFromBufferSecure " + filename;
+    CString traceInfo = "JSPandaFileExecutor::ExecuteFromBufferSecure " + filename +
+                        ", entryPoint:" + entryPoint.data() + ",";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     CString normalName = PathHelper::NormalizePath(filename);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
@@ -387,7 +391,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSecureWithOhmUrl(JSThr
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteSecureWithOhmUrl with secure buffer filename:" << filename <<
                         ", entryPoint:" << entryPoint;
-    CString traceInfo = "JSPandaFileExecutor::ExecuteSecureWithOhmUrl " + filename;
+    CString traceInfo = "JSPandaFileExecutor::ExecuteSecureWithOhmUrl " + filename +
+                        ", entryPoint:" + entryPoint.data() + ",";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
 
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
@@ -434,7 +439,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     JSThread *thread, const CString &recordName, const CString &filename, [[maybe_unused]]bool isMergedAbc)
 {
     LOG_FULL(DEBUG) << "recordName : " << recordName << ", in abc : " << filename;
-    CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename;
+    CString traceInfo = "JSPandaFileExecutor::LazyExecuteModule " + filename +
+                        ", entryPoint:" + recordName + ",";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
 
     std::shared_ptr<JSPandaFile> jsPandaFile =

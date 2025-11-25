@@ -936,7 +936,9 @@ void SourceTextModule::HandleEvaluateResult(JSThread *thread, JSHandle<SourceTex
 JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<SourceTextModule> &moduleHdl,
                                          const void *buffer, size_t size, const ExecuteTypes &executeType)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SourceTextModule::Evaluate", "");
+    CString traceInfo = "SourceTextModule::Evaluate, entryPoint:" + GetModuleName(moduleHdl.GetTaggedValue()) +
+                        ",isLazy:" + CString(executeType == ExecuteTypes::LAZY ? "true" : "false");
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     // 1. Let module be this Source Text Module Record.
     // 2. Assert: module.[[Status]] is one of LINKED, EVALUATING-ASYNC, or EVALUATED.
     JSMutableHandle<SourceTextModule> module(thread, moduleHdl);
@@ -1519,6 +1521,8 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
     JSHandle<JSTaggedValue> resolution;
     if (UNLIKELY(isNativeModule || moduleType == ModuleTypes::CJS_MODULE)) {
         thread->GetEcmaVM()->GetJSOptions().SetDisableModuleSnapshot(true);
+        LOG_ECMA(DEBUG) << "ModuleSnapshot is disable: export * from "
+                << GetModuleName(importedModule.GetTaggedValue());
         resolution = isNativeModule
             ? SourceTextModule::ResolveNativeStarExport(thread, importedModule, exportName)
             : SourceTextModule::ResolveCjsStarExport(thread, importedModule, exportName);
