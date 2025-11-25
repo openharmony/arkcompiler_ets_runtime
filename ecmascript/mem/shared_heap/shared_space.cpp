@@ -18,6 +18,7 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+#include "ecmascript/runtime_lock.h"
 
 namespace panda::ecmascript {
 SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,
@@ -130,7 +131,7 @@ uintptr_t SharedSparseSpace::TryAllocate([[maybe_unused]] JSThread *thread, size
 
 uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
 {
-    LockHolder lock(allocateLock_);
+    RuntimeLockHolder lock(thread, allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
     CheckAndTriggerLocalFullMark();
     auto object = allocator_->Allocate(size);
@@ -616,7 +617,7 @@ uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
     }
 #endif
     thread->CheckSafepointIfSuspended();
-    LockHolder holder(allocateLock_);
+    RuntimeLockHolder holder(thread, allocateLock_);
     auto object = allocator_.Allocate(size);
     if (object != 0) {
         return object;
@@ -683,7 +684,7 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, A
         thread->CheckSafepointIfSuspended();
         CheckAndTriggerLocalFullMark(thread, alignedSize);
     }
-    LockHolder lock(allocateLock_);
+    RuntimeLockHolder lock(thread, allocateLock_);
     if (CommittedSizeExceed(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
