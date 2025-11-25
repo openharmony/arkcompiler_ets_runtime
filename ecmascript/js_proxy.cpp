@@ -350,7 +350,8 @@ bool JSProxy::GetOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
     // 19. Call CompletePropertyDescriptor(resultDesc).
     PropertyDescriptor::CompletePropertyDescriptor(thread, resultDesc);
     // 20. Let valid be IsCompatiblePropertyDescriptor (extensibleTarget, resultDesc, targetDesc).
-    bool valid = JSObject::IsCompatiblePropertyDescriptor(targetHandle->IsExtensible(thread), resultDesc, targetDesc);
+    bool valid =
+        JSObject::IsCompatiblePropertyDescriptor(thread, targetHandle->IsExtensible(thread), resultDesc, targetDesc);
     if (!valid) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::GetOwnProperty: TypeError of valid", false);
     }
@@ -436,7 +437,7 @@ bool JSProxy::DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy
     } else {
         // a. If IsCompatiblePropertyDescriptor(extensibleTarget, Desc , targetDesc) is false, throw a TypeError
         // exception.
-        if (!JSObject::IsCompatiblePropertyDescriptor(targetHandle->IsExtensible(thread), desc, targetDesc)) {
+        if (!JSObject::IsCompatiblePropertyDescriptor(thread, targetHandle->IsExtensible(thread), desc, targetDesc)) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::DefineOwnProperty: CompatiblePropertyDescriptor err", false);
         }
         // b. If settingConfigFalse is true and targetDesc.[[Configurable]] is true, throw a TypeError exception.

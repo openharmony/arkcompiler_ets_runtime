@@ -139,6 +139,8 @@ void ObjectOperator::StartGlobalLookUp(OperatorType type)
     }
 }
 
+ObjectOperator::ObjectOperator(JSThread* thread) : thread_(thread) {}
+
 ObjectOperator::ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &key, OperatorType type)
     : thread_(thread),
       holder_(thread, thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalObject()),

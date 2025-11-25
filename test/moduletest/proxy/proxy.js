@@ -172,3 +172,34 @@ print("test proxy getPrototype success!");
         print(err.name);
     }
 }
+{
+    let logs = [];
+
+    let count = 0;
+    class BaseProxy {
+        constructor() {
+            return new Proxy(this, {
+                defineProperty(target, key, desc) {
+                    try {
+                        logs.push(`defineProperty ${key}`);
+                        return Reflect.defineProperty(target, key, desc);
+                    } catch (e) {
+                        count++;
+                        if (count > 4) {
+                            throw e;
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    let baseProxy = new BaseProxy();
+    logs = baseProxy;
+    logs.__proto__ = [];
+    try {
+        logs.push();
+    } catch (e) {
+        print(e)
+    }
+}

@@ -38,6 +38,8 @@ class ObjectOperator final {
 public:
     ObjectOperator() = default;
 
+    explicit ObjectOperator(JSThread *thread);
+
     ObjectOperator(JSThread *thread, const JSHandle<JSTaggedValue> &key,
                    OperatorType type = OperatorType::PROTOTYPE_CHAIN);
 
