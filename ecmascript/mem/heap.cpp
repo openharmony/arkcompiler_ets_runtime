@@ -2550,9 +2550,9 @@ bool Heap::ObjectExceedJustFinishStartupThresholdForCM() const
 
 void Heap::TryIncreaseNewSpaceOvershootByConfigSize()
 {
-    if (InGC() || !IsReadyToConcurrentMark()) {
-        // overShootSize will be adjusted when resume heap during GC and
-        // no need to reserve space for newSpace if ConcurrentMark is already triggered
+    if (InGC()) {
+        // when handle finish startup by child thread, it is no need to adjust
+        // overshoot size here if main thread is currently performing GC
         return;
     }
     // need lock because conflict may occur when handle exit sensitive status by main thread
