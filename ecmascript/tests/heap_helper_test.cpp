@@ -178,9 +178,9 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking7)
     g_isEnableCMCGC = temp;
 }
 
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking8)
 {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     OHOS::system::SetParameter("persist.ark.sensitive.threshold", "3");
 
     JSRuntimeOptions options;
@@ -212,12 +212,10 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking8)
 
     g_isEnableCMCGC = temp;
     JSNApi::DestroyJSVM(vm);
-#endif
 }
 
 HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking9)
 {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     OHOS::system::SetParameter("persist.ark.sensitive.threshold", "350");
 
     JSRuntimeOptions options;
@@ -249,12 +247,10 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking9)
 
     g_isEnableCMCGC = temp;
     JSNApi::DestroyJSVM(vm);
-#endif
 }
 
 HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM1)
 {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     OHOS::system::SetParameter("persist.ark.sensitive.threshold", "5");
 
     JSRuntimeOptions options;
@@ -286,12 +282,10 @@ HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM1)
     << ", config_.GetIncObjSizeThresholdInSensitive() is "
     << heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive();
     JSNApi::DestroyJSVM(vm);
-#endif
 }
 
 HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM2)
 {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     OHOS::system::SetParameter("persist.ark.sensitive.threshold", "50");
 
     JSRuntimeOptions options;
@@ -323,12 +317,10 @@ HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM2)
     << ", config_.GetIncObjSizeThresholdInSensitive() is "
     << heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive();
     JSNApi::DestroyJSVM(vm);
-#endif
 }
 
 HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM3)
 {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     OHOS::system::SetParameter("persist.ark.sensitive.threshold", "320");
 
     JSRuntimeOptions options;
@@ -360,6 +352,195 @@ HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM3)
     << ", config_.GetIncObjSizeThresholdInSensitive() is "
     << heap->GetEcmaParamConfiguration().GetIncObjSizeThresholdInSensitive();
     JSNApi::DestroyJSVM(vm);
-#endif
 }
+
+HWTEST_F_L0(HeapTest, GlobalNativeSizeLargerToTriggerGC1)
+{
+    OHOS::system::SetParameter("persist.ark.native.stepsize", "64");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_EQ(heap->GetEcmaParamConfiguration().GetStepNativeSizeInc(), 64 * 1024 * 1024);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        for (int i = 0; i < 1024; i++) {
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+                auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(2048);
+            [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(
+                newData, NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1024 * 1024 * 1024);
+        }
+    }
+
+    heap->IncreaseNativeBindingSize(1 * 1024 * 1024);
+    heap->ResetNativeSizeAfterLastGC();
+    heap->IncreaseNativeBindingSize(11 * 1024 * 1024);
+    heap->IncNativeSizeAfterLastGC(60 * 1024 * 1024);
+    EXPECT_EQ(heap->GlobalNativeSizeLargerToTriggerGC(), true)
+    << "heap->GetGlobalNativeSize() is " << heap->GetGlobalNativeSize()
+    << ", nativeSizeTriggerGCThreshold_ is " << heap->GetEcmaParamConfiguration().GetMaxNativeSizeInc()
+    << ", nativeBindingSize_ is " << heap->GetNativeBindingSize()
+    << ", nativeBindingSizeAfterLastGC_ is " << heap->GetNativeBindingSizeAfterLastGC();
+    JSNApi::DestroyJSVM(vm);
+}
+
+HWTEST_F_L0(HeapTest, GlobalNativeSizeLargerToTriggerGC2)
+{
+    OHOS::system::SetParameter("persist.ark.native.stepsize", "1024");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_EQ(heap->GetEcmaParamConfiguration().GetStepNativeSizeInc(), 1024 * 1024 * 1024);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        for (int i = 0; i < 1024; i++) {
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+                auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(2048);
+            [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(
+                newData, NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1024 * 1024 * 1024);
+        }
+    }
+
+    heap->IncreaseNativeBindingSize(1 * 1024 * 1024);
+    heap->ResetNativeSizeAfterLastGC();
+    heap->IncreaseNativeBindingSize(11 * 1024 * 1024);
+    heap->IncNativeSizeAfterLastGC(300 * 1024 * 1024);
+    EXPECT_EQ(heap->GlobalNativeSizeLargerToTriggerGC(), false)
+    << "heap->GetGlobalNativeSize() is " << heap->GetGlobalNativeSize()
+    << ", nativeSizeTriggerGCThreshold_ is " << heap->GetEcmaParamConfiguration().GetMaxNativeSizeInc()
+    << ", nativeBindingSize_ is " << heap->GetNativeBindingSize()
+    << ", nativeBindingSizeAfterLastGC_ is " << heap->GetNativeBindingSizeAfterLastGC();
+    JSNApi::DestroyJSVM(vm);
+}
+
+HWTEST_F_L0(HeapTest, GlobalNativeSizeLargerToTriggerGC3)
+{
+    OHOS::system::SetParameter("persist.ark.native.stepsize", "63");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_TRUE(heap->GetEcmaParamConfiguration().GetStepNativeSizeInc() == 256 * 1024 * 1024 ||
+           heap->GetEcmaParamConfiguration().GetStepNativeSizeInc() == 300 * 1024 * 1024)
+    << "Expected 256MB or 300MB, but got " << heap->GetEcmaParamConfiguration().GetStepNativeSizeInc();
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        for (int i = 0; i < 1024; i++) {
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+                auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(2048);
+            [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(
+                newData, NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1024 * 1024 * 1024);
+        }
+    }
+
+    heap->IncreaseNativeBindingSize(1 * 1024 * 1024);
+    heap->ResetNativeSizeAfterLastGC();
+    heap->IncreaseNativeBindingSize(11 * 1024 * 1024);
+    heap->IncNativeSizeAfterLastGC(60 * 1024 * 1024);
+    EXPECT_EQ(heap->GlobalNativeSizeLargerToTriggerGC(), false)
+    << "heap->GetGlobalNativeSize() is " << heap->GetGlobalNativeSize()
+    << ", nativeSizeTriggerGCThreshold_ is " << heap->GetEcmaParamConfiguration().GetMaxNativeSizeInc()
+    << ", nativeBindingSize_ is " << heap->GetNativeBindingSize()
+    << ", nativeBindingSizeAfterLastGC_ is " << heap->GetNativeBindingSizeAfterLastGC();
+    JSNApi::DestroyJSVM(vm);
+}
+
+HWTEST_F_L0(HeapTest, GlobalNativeSizeLargerToTriggerGC4)
+{
+    OHOS::system::SetParameter("persist.ark.native.stepsize", "1025");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_TRUE(heap->GetEcmaParamConfiguration().GetStepNativeSizeInc() == 256 * 1024 * 1024 ||
+           heap->GetEcmaParamConfiguration().GetStepNativeSizeInc() == 300 * 1024 * 1024)
+    << "Expected 256MB or 300MB, but got " << heap->GetEcmaParamConfiguration().GetStepNativeSizeInc();
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        for (int i = 0; i < 1024; i++) {
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+                auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(2048);
+            [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(
+                newData, NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1024 * 1024 * 1024);
+        }
+    }
+
+    heap->IncreaseNativeBindingSize(1 * 1024 * 1024);
+    heap->ResetNativeSizeAfterLastGC();
+    heap->IncreaseNativeBindingSize(11 * 1024 * 1024);
+    heap->IncNativeSizeAfterLastGC(60 * 1024 * 1024);
+    EXPECT_EQ(heap->GlobalNativeSizeLargerToTriggerGC(), false)
+    << "heap->GetGlobalNativeSize() is " << heap->GetGlobalNativeSize()
+    << ", nativeSizeTriggerGCThreshold_ is " << heap->GetEcmaParamConfiguration().GetMaxNativeSizeInc()
+    << ", nativeBindingSize_ is " << heap->GetNativeBindingSize()
+    << ", nativeBindingSizeAfterLastGC_ is " << heap->GetNativeBindingSizeAfterLastGC();
+    JSNApi::DestroyJSVM(vm);
+}
+
+HWTEST_F_L0(HeapTest, GlobalNativeSizeLargerToTriggerGC5)
+{
+    OHOS::system::SetParameter("persist.ark.native.stepsize", "100");
+
+    JSRuntimeOptions options;
+    auto vm = JSNApi::CreateEcmaVM(options);
+    ASSERT_TRUE(vm != nullptr) << "Cannot create EcmaVM";
+    auto thread = vm->GetJSThread();
+    thread->ManagedCodeBegin();
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    EXPECT_TRUE(heap != nullptr);
+
+    EXPECT_EQ(heap->GetEcmaParamConfiguration().GetStepNativeSizeInc(), 100 * 1024 * 1024);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        for (int i = 0; i < 1024; i++) {
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+                auto newData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(2048);
+            [[maybe_unused]] JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(
+                newData, NativeAreaAllocator::FreeBufferFunc, nullptr, true, 1024 * 1024 * 1024);
+        }
+    }
+
+    heap->IncreaseNativeBindingSize(1 * 1024 * 1024);
+    heap->ResetNativeSizeAfterLastGC();
+    heap->IncreaseNativeBindingSize(11 * 1024 * 1024);
+    heap->IncNativeSizeAfterLastGC(100 * 1024 * 1024);
+    EXPECT_EQ(heap->GlobalNativeSizeLargerToTriggerGC(), true)
+    << "heap->GetGlobalNativeSize() is " << heap->GetGlobalNativeSize()
+    << ", nativeSizeTriggerGCThreshold_ is " << heap->GetEcmaParamConfiguration().GetMaxNativeSizeInc()
+    << ", nativeBindingSize_ is " << heap->GetNativeBindingSize()
+    << ", nativeBindingSizeAfterLastGC_ is " << heap->GetNativeBindingSizeAfterLastGC();
+    JSNApi::DestroyJSVM(vm);
+}
+#endif
 }
