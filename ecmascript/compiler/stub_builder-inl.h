@@ -3333,6 +3333,22 @@ inline GateRef StubBuilder::InYoungGeneration(GateRef region)
     return RegionInSpace(region, RegionSpaceFlag::IN_YOUNG_SPACE);
 }
 
+inline GateRef StubBuilder::InFromSpace(GateRef region)
+{
+    auto offset = Region::PackedData::GetTypeFlagOffset(env_->Is32Bit());
+    GateRef x = LoadPrimitive(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
+        IntPtr(0));
+    if (env_->Is32Bit()) {
+        return Int32Equal(Int32And(x,
+            Int32(static_cast<int32_t>(RegionTypeFlag::VALID_TYPE_MASK))),
+            Int32(static_cast<int32_t>(RegionTypeFlag::FROM)));
+    } else {
+        return Int64Equal(Int64And(x,
+            Int64(static_cast<int32_t>(RegionTypeFlag::VALID_TYPE_MASK))),
+            Int64(static_cast<int32_t>(RegionTypeFlag::FROM)));
+    }
+}
+
 inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag spaceBegin, RegionSpaceFlag spaceEnd)
 {
     auto offset = Region::PackedData::GetFlagsOffset(env_->Is32Bit());

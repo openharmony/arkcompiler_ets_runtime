@@ -55,6 +55,13 @@ public:
         *reinterpret_cast<JSTaggedType *>(slotAddress_) = value | JSTaggedValue::TAG_WEAK;
     }
 
+    void CASUpdate(TaggedObject *oldObject, TaggedObject *toRef)
+    {
+        std::atomic_compare_exchange_strong_explicit(
+            reinterpret_cast<volatile std::atomic<TaggedObject*> *>(slotAddress_),
+            &oldObject, toRef, std::memory_order_relaxed, std::memory_order_relaxed);
+    }
+
     void Clear()
     {
         *reinterpret_cast<JSTaggedType *>(slotAddress_) = JSTaggedValue::VALUE_UNDEFINED;

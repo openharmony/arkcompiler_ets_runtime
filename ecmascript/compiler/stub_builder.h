@@ -293,6 +293,7 @@ public:
     GateRef ObjectAddressToRange(GateRef x);
     GateRef RegionInSpace(GateRef region, RegionSpaceFlag space);
     GateRef RegionInSpace(GateRef region, RegionSpaceFlag spaceBegin, RegionSpaceFlag spaceEnd);
+    GateRef InFromSpace(GateRef region);
     GateRef InYoungGeneration(GateRef region);
     GateRef InGeneralOldGeneration(GateRef region);
     GateRef InSharedHeap(GateRef region);

@@ -42,6 +42,7 @@ void ConcurrentSweeper::PostTask(TriggerGCType gcType)
                     std::make_unique<SweeperTask>(tid, this, MemSpaceType::SLOT_SPACE, startSpaceType_,
                                                   endSpaceType_));
                 break;
+            case TriggerGCType::LOCAL_CC:
             case TriggerGCType::FULL_GC:
                 break;
             default:
@@ -57,7 +58,6 @@ void ConcurrentSweeper::PostTask(TriggerGCType gcType)
 
 void ConcurrentSweeper::Sweep(TriggerGCType gcType)
 {
-    MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ConcurrentSweepingInitialize);
     if (ConcurrentSweepEnabled()) {
         // Add all region to region list. Ensure all task finish
         switch (gcType) {
@@ -71,6 +71,7 @@ void ConcurrentSweeper::Sweep(TriggerGCType gcType)
                 endSpaceType_ = MemSpaceType::SLOT_SPACE;
                 heap_->GetSlotSpace()->PrepareSweeping();
                 break;
+            case TriggerGCType::LOCAL_CC:
             case TriggerGCType::FULL_GC:
                 startSpaceType_ = MemSpaceType::NON_MOVABLE;
                 endSpaceType_ = MemSpaceType::MACHINE_CODE_SPACE;

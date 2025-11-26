@@ -287,7 +287,7 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
         common::BaseRuntime::ForEachObj(heapVisitor, false);
     } else {
         const Heap *heap = thread->GetEcmaVM()->GetHeap();
-        heap->GetSweeper()->EnsureAllTaskFinished();
+        heap->PrepareForIteration();
         heap->IterateOverObjects(heapVisitor);
     }
 }
@@ -327,7 +327,7 @@ void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, 
         common::BaseRuntime::ForEachObj(heapVisitor, false);
     } else {
         const Heap *heap = thread->GetEcmaVM()->GetHeap();
-        heap->GetSweeper()->EnsureAllTaskFinished();
+        heap->PrepareForIteration();
         heap->IterateOverObjects(heapVisitor);
     }
 }

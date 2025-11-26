@@ -311,6 +311,7 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
     HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), dumpOption, traceAllocation,
                               heapProfiler.GetEntryIdMap());
     size_t beginNode = heapSnapshot.GetNodeCount();
+    instance->GetHeap()->WaitAndHandleCCFinished();
     heapSnapshot.UpdateNodes();
     size_t endNode = heapSnapshot.GetNodeCount();
     EXPECT_TRUE(beginNode != endNode);

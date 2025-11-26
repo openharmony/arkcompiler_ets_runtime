@@ -74,12 +74,14 @@ private:
     void VisitAllObjects(TaggedObject *obj);
     void VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *obj) const;
     void VerifyHeapObjectSlotLegal(ObjectSlot slot, JSTaggedValue value, TaggedObject *obj) const;
+    void VerifyWeakRef(ObjectSlot slot, TaggedObject *object) const;
     void VerifyMarkYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateOld(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkSlotSpace(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifyConcurrentCopy(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifySharedRSetPostFullGC(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifySharedObjectReference(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
 
@@ -96,6 +98,7 @@ public:
 
     static void VerifyMark(Heap *heap);
     static void VerifyEvacuate(Heap *heap);
+    static void VerifyCC(Heap *heap);
     void VerifyAll() const;
 
     size_t VerifyRoot() const;

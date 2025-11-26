@@ -19,6 +19,7 @@
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/linked_hash_table.h"
@@ -1684,6 +1685,25 @@ JSTaggedValue BuiltinsArkTools::TriggerSharedGC(EcmaRuntimeCallInfo *info)
         sHeap->WaitGCFinished(thread);
     } else if (JSTaggedValue::StrictEqual(thread, globalConst->GetSharedFullGcCause(), type)) {
         sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::TRIGGER_BY_JS>(thread);
+    }
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::TriggerLocalCCGC(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    Heap *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    if (heap->CheckOngoingConcurrentMarking()) {
+        heap->GetConcurrentMarker()->Reset();
+    }
+    if (heap->IsCCMark()) {
+        heap->CollectFromCCMark(GCReason::IDLE);
+    } else if (thread->IsConcurrentCopying()) {
+        heap->WaitAndHandleCCFinished();
+    } else {
+        DFXJSNApi::TriggerLocalCCWithVmForTest(thread->GetEcmaVM());
     }
     return JSTaggedValue::Undefined();
 }

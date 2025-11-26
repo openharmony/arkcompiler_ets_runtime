@@ -52,6 +52,7 @@ private:
     Heap *heap_{nullptr};
 };
 
+#ifdef USE_CMC_GC
 HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking1)
 {
     bool temp = g_isEnableCMCGC;
@@ -251,6 +252,7 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking9)
     JSNApi::DestroyJSVM(vm);
 #endif
 }
+#endif
 
 HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM1)
 {

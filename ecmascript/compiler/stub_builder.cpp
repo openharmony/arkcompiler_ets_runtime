@@ -405,7 +405,7 @@ GateRef StubBuilder::GetIndexFromPropertiesCache(GateRef glue, GateRef cache, Ga
     size_t propHclassOffset = PropertiesCache::PropertyKey::GetHclassOffset();
     size_t propKeyOffset = PropertiesCache::PropertyKey::GetKeyOffset();
     BRANCH(LogicAndBuilder(env)
-        .And(IntPtrEqual(cls, Load(VariableType::JS_POINTER(), glue, prop, IntPtr(propHclassOffset))))
+        .And(IntPtrEqual(cls, LoadPrimitive(VariableType::JS_POINTER(), prop, IntPtr(propHclassOffset))))
         .And(IntPtrEqual(key, Load(VariableType::JS_ANY(), glue, prop, IntPtr(propKeyOffset))))
         .Done(), &find, &exit);
     Bind(&find);
@@ -2411,6 +2411,7 @@ GateRef StubBuilder::GetValueWithBarrier(GateRef glue, GateRef addr)
     }
     Bind(&isHeapObject);
     {
+#ifdef USE_CMC_GC
         Label isHeapAddress(env);
         Label notHeapAddress(env);
         BRANCH(IsHeapAddress(glue, value), &isHeapAddress, &notHeapAddress);
@@ -2420,10 +2421,9 @@ GateRef StubBuilder::GetValueWithBarrier(GateRef glue, GateRef addr)
             Jump(&exit);
         }
         Bind(&isHeapAddress);
-        {
-            result = FastReadBarrier(glue, addr, value);
-            Jump(&exit);
-        }
+#endif
+        result = FastReadBarrier(glue, addr, value);
+        Jump(&exit);
     }
 
     Bind(&exit);
@@ -2432,6 +2432,7 @@ GateRef StubBuilder::GetValueWithBarrier(GateRef glue, GateRef addr)
     return ret;
 }
 
+#ifdef USE_CMC_GC
 GateRef StubBuilder::FastReadBarrier(GateRef glue, GateRef addr, GateRef value)
 {
     auto env = GetEnvironment();
@@ -2474,6 +2475,46 @@ GateRef StubBuilder::FastReadBarrier(GateRef glue, GateRef addr, GateRef value)
     env->SubCfgExit();
     return ret;
 }
+#else
+GateRef StubBuilder::FastReadBarrier(GateRef glue, GateRef addr, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), value);
+
+    Label isFromObj(env);
+    GateRef valueRegion = ObjectAddressToRange(value);
+    BRANCH_UNLIKELY(InFromSpace(valueRegion), &isFromObj, &exit);
+    Bind(&isFromObj);
+    {
+        GateRef intValue = ChangeTaggedPointerToInt64(value);
+        GateRef weakMask = Int64And(intValue, Int64(JSTaggedValue::TAG_WEAK));
+        GateRef obj = Int64And(intValue, Int64(~JSTaggedValue::TAG_WEAK));
+        GateRef forwardedAddr = LoadPrimitive(VariableType::INT64(), obj, IntPtr(0));
+        GateRef forwardState = Int64And(forwardedAddr, Int64(MarkWord::TAG_MARK_BIT));
+        Label forwarded(env);
+        Label notForwarded(env);
+        Branch(Int64Equal(forwardState, Int64(MarkWord::TAG_MARK_BIT)),
+            &forwarded, &notForwarded);
+        Bind(&forwarded);
+        {
+            result = Int64ToTaggedPtr(Int64Or(Int64And(forwardedAddr, Int64(~MarkWord::TAG_MARK_BIT)), weakMask));
+            Jump(&exit);
+        }
+        Bind(&notForwarded);
+        {
+            result = CallNGCRuntime(glue, RTSTUB_ID(ReadBarrier), { glue, addr });
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+#endif
 
 GateRef StubBuilder::IsHeapAddress(GateRef glue, GateRef value)
 {

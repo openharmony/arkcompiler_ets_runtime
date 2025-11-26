@@ -23,6 +23,8 @@
 #include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
 #include "ecmascript/mem/cms_mem/sweep_gc.h"
 #include "ecmascript/mem/idle_gc_trigger.h"
+#include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
+#include "ecmascript/mem/local_cmc/cc_marker-inl.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker.h"
@@ -500,6 +502,8 @@ void SharedHeap::Prepare(bool inTriggerGCThread)
 SharedHeap::SharedGCScope::SharedGCScope()
 {
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+        auto heap = thread->GetEcmaVM()->GetHeap();
+        heap->WaitAndHandleCCFinished();
         std::shared_ptr<pgo::PGOProfiler> pgoProfiler =  thread->GetEcmaVM()->GetPGOProfiler();
         if (pgoProfiler != nullptr) {
             pgoProfiler->SuspendByGC();
@@ -878,7 +882,7 @@ void Heap::Initialize()
 #endif
     workManager_ = new WorkManager(this, common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1);
     fullGC_ = new FullGC(this);
-
+    ccGC_ = new ConcurrentCopyGC(this);
     if constexpr (G_USE_CMS_GC) {
         sweepGC_ = new SweepGC(this);
     } else {
@@ -890,6 +894,9 @@ void Heap::Initialize()
         EnableConcurrentMarkType::CONFIG_DISABLE);
     nonMovableMarker_ = new NonMovableMarker(this);
     compressGCMarker_ = new CompressGCMarker(this);
+    ccMarker_ = new CCMarker(this);
+    auto localEvacuator = new CCEvacuator(this);
+    thread_->SetLocalCCEvacuator(localEvacuator);
     if (Runtime::GetInstance()->IsHybridVm()) {
         unifiedGCMarker_ = new UnifiedGCMarker(this);
     }
@@ -950,6 +957,7 @@ void Heap::InitializeSpaces()
 
         oldSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
         compressSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
+        toSpace_ = new ToSpace(this, oldSpaceCapacity, oldSpaceCapacity);
         oldSpace_->Initialize();
 
         globalSpaceAllocLimit_ = maxHeapSize - minSemiSpaceCapacity;
@@ -990,12 +998,28 @@ void Heap::InitializeSpaces()
                     << ", globallimit = " << (globalSpaceAllocLimit_ / 1_MB) << "MB"
                     << ", gcThreadNum = " << maxMarkTaskCount_;
     }
-
     hugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     hugeMachineCodeSpace_ = new HugeMachineCodeSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     maxEvacuateTaskCount_ = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
+}
+
+void Heap::SelectFromSpace()
+{
+    size_t liveObjectSize = 0;
+    activeSemiSpace_->EnumerateRegions([&liveObjectSize, this](Region *current) {
+        liveObjectSize += current->IsFreshRegion() ? current->GetAllocatedBytes() : current->AliveObject();
+        current->SetRegionTypeFlag(RegionTypeFlag::FROM);
+    });
+    liveObjectSize = std::min(activeSemiSpace_->GetHeapObjectSize(), liveObjectSize);
+    oldSpace_->EnumerateRegions([&liveObjectSize](Region *current) {
+        liveObjectSize += current->AliveObject();
+        current->SetRegionTypeFlag(RegionTypeFlag::FROM);
+    });
+    SwapOldSpace();
+    SwapNewSpace();
+    oldSpace_->SetPreservedSize(liveObjectSize);
 }
 
 void Heap::ResetLargeCapacity()
@@ -1123,6 +1147,11 @@ void Heap::Destroy()
         delete slotSpace_;
         slotSpace_ = nullptr;
     }
+    if (toSpace_ != nullptr) {
+        toSpace_->Destroy();
+        delete toSpace_;
+        toSpace_ = nullptr;
+    }
     if (nonMovableSpace_ != nullptr) {
         nonMovableSpace_->Reset();
         delete nonMovableSpace_;
@@ -1167,6 +1196,10 @@ void Heap::Destroy()
         delete sweepGC_;
         sweepGC_ = nullptr;
     }
+    if (ccGC_ != nullptr) {
+        delete ccGC_;
+        ccGC_ = nullptr;
+    }
     if (fullGC_ != nullptr) {
         delete fullGC_;
         fullGC_ = nullptr;
@@ -1195,6 +1228,10 @@ void Heap::Destroy()
         delete compressGCMarker_;
         compressGCMarker_ = nullptr;
     }
+    if (ccMarker_ != nullptr) {
+        delete ccMarker_;
+        ccMarker_ = nullptr;
+    }
     if (Runtime::GetInstance()->IsHybridVm() && unifiedGCMarker_ != nullptr) {
         delete unifiedGCMarker_;
         unifiedGCMarker_ = nullptr;
@@ -1208,9 +1245,16 @@ void Heap::Destroy()
 void Heap::Prepare()
 {
     MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, HeapPrepare);
+    WaitAndHandleCCFinished();
     WaitRunningTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
+}
+
+void Heap::PrepareForIteration() const
+{
+    WaitAndHandleCCFinished();
+    sweeper_->EnsureAllTaskFinished();
 }
 
 void Heap::GetHeapPrepare()
@@ -1250,6 +1294,18 @@ void Heap::Resume(TriggerGCType gcType)
             std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, gcType));
     } else {
         ReclaimRegions(gcType);
+    }
+}
+
+void Heap::ResumeCC()
+{
+    PrepareRecordRegionsForReclaim();
+    if (parallelGC_) {
+        clearTaskFinished_ = false;
+        common::Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, TriggerGCType::LOCAL_CC));
+    } else {
+        ReclaimRegions(TriggerGCType::LOCAL_CC);
     }
 }
 
@@ -1583,7 +1639,54 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         common::BaseRuntime::RequestGC(cmcReason, async, common::GC_TYPE_FULL);
         return;
     }
+    if (thread_->IsConcurrentCopying()) {
+        WaitAndHandleCCFinished();
+    } else if (IsCCMark()) {
+        if (gcType != TriggerGCType::FULL_GC && shouldThrowOOMError_) {
+            CollectFromCCMark(reason);
+            return;
+        }
+        CheckOngoingConcurrentMarking();
+        concurrentMarker_->Reset();
+        markType_ = MarkType::MARK_YOUNG;
+    }
     CollectGarbageImpl(gcType, reason);
+    ProcessGCCallback();
+}
+
+void Heap::CollectFromCCMark(GCReason reason)
+{
+    ASSERT(IsCCMark() && !thread_->IsConcurrentCopying());
+    if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent()) {
+        return;
+    }
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    [[maybe_unused]] GcStateScope scope(thread_);
+#endif
+    CHECK_NO_GC;
+    CheckOngoingConcurrentMarking();
+    ASSERT(thread_->IsMarkFinished());
+    gcType_ = TriggerGCType::LOCAL_CC;
+    GetEcmaGCStats()->RecordStatisticBeforeGC(gcType_, reason);
+    memController_->StartCalculationBeforeGC();
+    concurrentMarker_->ReMark();
+    ccGC_->RunPhase();
+    ASSERT(thread_->IsConcurrentCopying());
+
+    UpdateHeapStatsAfterGC(gcType_);
+    memController_->StopCalculationAfterGC(gcType_);
+    RecomputeLimits();
+    ResetNativeSizeAfterLastGC();
+    OPTIONAL_LOG(ecmaVm_, INFO) << " GC after: CCMark"
+                                << " global object size " << GetHeapObjectSize()
+                                << " global committed size " << GetCommittedSize()
+                                << " global limit " << globalSpaceAllocLimit_;
+    GetEcmaGCStats()->RecordStatisticAfterGC();
+#ifdef ENABLE_HISYSEVENT
+    GetEcmaGCKeyStats()->IncGCCount();
+#endif
+    GetEcmaGCStats()->PrintGCStatistic();
+    markType_ = MarkType::MARK_YOUNG;
     ProcessGCCallback();
 }
 
@@ -2041,11 +2144,13 @@ bool Heap::CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIn
         ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceName, "");
         if (threadType == ThreadType::JS_THREAD) {
             MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, WaitConcurrentMarkingFinished);
-            GetNonMovableMarker()->ProcessMarkStack(threadIndex);
+            Marker *marker = IsCCMark() ? GetCCMarker() : GetNonMovableMarker();
+            marker->ProcessMarkStack(threadIndex);
             WaitConcurrentMarkingFinished();
         } else if (threadType == ThreadType::DAEMON_THREAD) {
             CHECK_DAEMON_THREAD();
-            GetNonMovableMarker()->ProcessMarkStack(threadIndex);
+            Marker *marker = IsCCMark() ? GetCCMarker() : GetNonMovableMarker();
+            marker->ProcessMarkStack(threadIndex);
             WaitConcurrentMarkingFinished();
         }
     }
@@ -2196,6 +2301,23 @@ bool Heap::TryTriggerConcurrentMarking(MarkReason markReason)
     return false;
 }
 
+bool Heap::TryTriggerCCMarking(MarkReason markReason)
+{
+    if (!LocalCCEnabled()) {
+        return false;
+    }
+    if (CheckCanTriggerConcurrentMarking() && !fullGCRequested_ && ConcurrentMarker::TryIncreaseTaskCounts()) {
+        WaitAndHandleCCFinished();
+        GetEcmaGCStats()->SetMarkReason(markReason);
+        SetMarkType(MarkType::MARK_FOR_CC);
+        thread_->SwitchAllStub(false);
+        ASSERT(thread_->GetLastLeaveFrame() == nullptr);
+        GetConcurrentMarker()->Mark();
+        return true;
+    }
+    return false;
+}
+
 void Heap::TryTriggerFullMarkOrGCByNativeSize()
 {
     // In high sensitive scene and native size larger than limit, trigger old gc directly
@@ -2218,6 +2340,7 @@ bool Heap::TryTriggerFullMarkBySharedLimit()
         if (!CheckCanTriggerConcurrentMarking()) {
             return keepFullMarkRequest;
         }
+        WaitAndHandleCCFinished();
         markType_ = MarkType::MARK_FULL;
         if (ConcurrentMarker::TryIncreaseTaskCounts()) {
             GetEcmaGCStats()->SetMarkReason(MarkReason::SHARED_LIMIT);
@@ -2315,9 +2438,20 @@ void Heap::PrepareRecordRegionsForReclaim()
     hugeMachineCodeSpace_->SetRecordRegion();
 }
 
+void Heap::PrepareRecordNonmovableRegions()
+{
+    snapshotSpace_->SetRecordRegion();
+    appSpawnSpace_->SetRecordRegion();
+    nonMovableSpace_->SetRecordRegion();
+    hugeObjectSpace_->SetRecordRegion();
+    machineCodeSpace_->SetRecordRegion();
+    hugeMachineCodeSpace_->SetRecordRegion();
+}
+
 void Heap::TriggerConcurrentMarking(MarkReason markReason)
 {
     if (concurrentMarker_->IsEnabled() && !fullGCRequested_ && ConcurrentMarker::TryIncreaseTaskCounts()) {
+        WaitAndHandleCCFinished();
         GetEcmaGCStats()->SetMarkReason(markReason);
         concurrentMarker_->Mark();
     }
@@ -2325,6 +2459,7 @@ void Heap::TriggerConcurrentMarking(MarkReason markReason)
 
 void Heap::WaitAllTasksFinished()
 {
+    WaitAndHandleCCFinished();
     WaitRunningTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
@@ -2336,6 +2471,21 @@ void Heap::WaitAllTasksFinished()
 void Heap::WaitConcurrentMarkingFinished()
 {
     concurrentMarker_->WaitMarkingFinished();
+}
+
+void Heap::WaitCCFinished() const
+{
+    if (thread_->IsConcurrentCopying()) {
+        ccGC_->WaitFinished();
+    }
+}
+
+void Heap::WaitAndHandleCCFinished() const
+{
+    if (thread_->IsConcurrentCopying()) {
+        ccGC_->WaitFinished();
+        ccGC_->HandleUpdateFinished();
+    }
 }
 
 void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
@@ -2742,7 +2892,7 @@ bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
 size_t Heap::GetArrayBufferSize() const
 {
     size_t result = 0;
-    sweeper_->EnsureAllTaskFinished();
+    PrepareForIteration();
     this->IterateOverObjects([&result](TaggedObject *obj) {
         JSHClass* jsClass = obj->GetClass();
         result += jsClass->IsArrayBuffer() ? jsClass->GetObjectSize() : 0;
@@ -2753,7 +2903,7 @@ size_t Heap::GetArrayBufferSize() const
 size_t Heap::GetLiveObjectSize() const
 {
     size_t objectSize = 0;
-    sweeper_->EnsureAllTaskFinished();
+    PrepareForIteration();
     this->IterateOverObjects([&objectSize]([[maybe_unused]] TaggedObject *obj) {
         objectSize += obj->GetSize();
     });
@@ -2825,7 +2975,7 @@ void Heap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
         heapAliveSizeExcludesYoungAfterGC_ = heapAliveSizeAfterGC_ - activeSemiSpace_->GetHeapObjectSize();
     }
     fragmentSizeAfterGC_ = GetCommittedSize() - heapAliveSizeAfterGC_;
-    if (gcType == TriggerGCType::FULL_GC) {
+    if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::LOCAL_CC) {
         heapBasicLoss_ = fragmentSizeAfterGC_;
     }
 }
@@ -2929,6 +3079,7 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     fullGC_->workManager_ = workManager;
     nonMovableMarker_->workManager_ = workManager;
     compressGCMarker_->workManager_ = workManager;
+    ccMarker_->workManager_ = workManager;
     if (Runtime::GetInstance()->IsHybridVm()) {
         unifiedGCMarker_->workManager_ = workManager;
     }

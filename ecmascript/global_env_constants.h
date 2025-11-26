@@ -492,6 +492,7 @@ class ObjectFactory;
     V(SharedFullGcCause,              SHARED_FULL_GC_CAUSE,                  "shared_full")                 \
     V(AppSpawnSharedFullGcCause,      APP_SPAWN_SHARED_FULL_GC_CAUSE,        "app_spawn_shared_full")       \
     V(CMSGcCause,                     CMS_GC_CAUSE,                          "cms_gc")                      \
+    V(LocalCCGcCause,                 LOCALCC_GC_CAUSE,                      "local_cc")                    \
     V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")                     \
     V(InteropJsNapiString,            INTEROP_JS_NAPI,                       "ets_interop_js_napi")         \
     V(GetModuleString,                GET_MODULE,                            "getModule")                   \

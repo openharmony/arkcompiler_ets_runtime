@@ -16,6 +16,8 @@
 #include "ecmascript/js_thread.h"
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
+#include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
 #include "ecmascript/mem/tagged_state_word.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
@@ -286,6 +288,10 @@ JSThread::~JSThread()
     if (dateUtils_ != nullptr) {
         delete dateUtils_;
         dateUtils_ = nullptr;
+    }
+    if (localEvacuator_ != nullptr) {
+        delete localEvacuator_;
+        localEvacuator_ = nullptr;
     }
     if (glueData_.moduleLogger_ != nullptr) {
         delete glueData_.moduleLogger_;
@@ -971,6 +977,40 @@ void JSThread::SwitchStwCopyBuiltinsStubs(bool isStwCopy)
     }
 }
 
+JSThread::BCDebugStubSwitchScope::BCDebugStubSwitchScope(JSThread *thread) : thread_(thread)
+{
+    isDebugging_ = thread_->GetBCStubEntry(0) == thread_->GetBCStubEntry(1);
+    if (isDebugging_) {
+        SwitchStub();
+    }
+}
+
+void JSThread::BCDebugStubSwitchScope::SwitchStub()
+{
+    ASSERT(isDebugging_);
+    for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
+        auto stubEntry = thread_->GetBCStubEntry(i);
+        auto debuggerStubEbtry = thread_->GetBCDebugStubEntry(i);
+        thread_->SetBCDebugStubEntry(i, stubEntry);
+        thread_->SetBCStubEntry(i, debuggerStubEbtry);
+    }
+}
+
+JSThread::BCDebugStubSwitchScope::~BCDebugStubSwitchScope()
+{
+    if (isDebugging_) {
+        SwitchStub();
+    }
+}
+
+void JSThread::SwitchAllStub(bool isStwCopy)
+{
+    BCDebugStubSwitchScope scope(this);
+    SwitchStwCopyBCStubs(isStwCopy);
+    SwitchStwCopyCommonStubs(isStwCopy);
+    SwitchStwCopyBuiltinsStubs(isStwCopy);
+}
+
 void JSThread::TerminateExecution()
 {
     // set the TERMINATE_ERROR to exception
@@ -1003,11 +1043,13 @@ bool JSThread::PassSuspendBarrier()
     return false;
 }
 
-bool JSThread::ShouldHandleMarkingFinishedInSafepoint()
+bool JSThread::ShouldHandleMarkOrCopyFinishedInSafepoint()
 {
     auto heap = const_cast<Heap *>(vm_->GetHeap());
-    return IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
-           !heap->GetOnSerializeEvent() && !heap->InSensitiveStatus() && !heap->CheckIfNeedStopCollectionByStartup();
+    bool isMarkOrCopyFinished = IsCopyFinished() ||
+        (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
+    return isMarkOrCopyFinished && !heap->GetOnSerializeEvent() &&
+        !heap->InSensitiveStatus() && !heap->CheckIfNeedStopCollectionByStartup();
 }
 
 bool JSThread::CheckSafepoint()
@@ -1062,11 +1104,15 @@ bool JSThread::CheckSafepoint()
     }
     // After concurrent mark finish, should trigger gc here to avoid create much floating garbage
     // except in serialize or high sensitive event
-    if UNLIKELY(ShouldHandleMarkingFinishedInSafepoint()) {
-        heap->SetCanThrowOOMError(false);
-        heap->GetConcurrentMarker()->HandleMarkingFinished();
-        heap->SetCanThrowOOMError(true);
-        gcTriggered = true;
+    if UNLIKELY(ShouldHandleMarkOrCopyFinishedInSafepoint()) {
+        if (IsMarkFinished()) {
+            heap->SetCanThrowOOMError(false);
+            heap->GetConcurrentMarker()->HandleMarkingFinished();
+            heap->SetCanThrowOOMError(true);
+            gcTriggered = true;
+        } else {
+            heap->GetCCGC()->HandleUpdateFinished();
+        }
     }
     return gcTriggered;
 }

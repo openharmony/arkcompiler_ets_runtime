@@ -210,17 +210,12 @@ static ARK_INLINE bool CopyCodeToFort(MachineCodeDesc &desc)
 ARK_INLINE bool JitCompiler::AllocFromFortAndCopy(CompilationEnv &compilationEnv, MachineCodeDesc &desc)
 {
     ASSERT(compilationEnv.IsJitCompiler());
-    std::unique_ptr<Jit::JitLockBase> lock ;
     JSThread *hostThread = static_cast<JitCompilationEnv &>(compilationEnv).GetHostThread();
-    if (g_isEnableCMCGC) {
-        // For CMCGC, we require that the actual execution thread to be switched to managed state before doing the
-        // following steps. The actual execution thread here must be a jit thread
-        JSThread *jitThread = static_cast<JitCompilationEnv &>(compilationEnv).GetJSThread();
-        ASSERT(jitThread->IsJitThread());
-        lock.reset(new Jit::JitLockHolder(jitThread));
-    } else {
-        lock.reset(new Jit::JitGCLockHolder(hostThread));
-    }
+    // For CMCGC, we require that the actual execution thread to be switched to managed state before doing the
+    // following steps. The actual execution thread here must be a jit thread
+    JSThread *jitThread = static_cast<JitCompilationEnv &>(compilationEnv).GetJSThread();
+    ASSERT(jitThread->IsJitThread());
+    Jit::JitLockHolder jitlock(jitThread);
 
     size_t size = JitTask::ComputePayLoadSize(desc);
     const Heap *heap = hostThread->GetEcmaVM()->GetHeap();

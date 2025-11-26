@@ -217,8 +217,12 @@ void Runtime::InitSharedConstIfNeed(GlobalEnvConstants *globalConst)
 
 void Runtime::InitGCConfig(const JSRuntimeOptions &options)
 {
+#ifdef USE_CMC_GC
     bool defaultValue = options.IsEnableCMCGC();
     g_isEnableCMCGC = IsEnableCMCGC(defaultValue);
+#else
+    ASSERT(!g_isEnableCMCGC);
+#endif
     if (g_isEnableCMCGC) {
         g_maxRegularHeapObjectSize = 32_KB;
     }

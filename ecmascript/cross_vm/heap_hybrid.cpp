@@ -76,6 +76,7 @@ void SharedHeap::CreateUnifiedGC()
 
 void Heap::UnifiedGCPrepare()
 {
+    WaitAndHandleCCFinished();
     WaitRunningTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();

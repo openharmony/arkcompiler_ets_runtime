@@ -101,6 +101,9 @@ enum class RegionTypeFlag : uint8_t {
     HALF_FRESH = 0x08,
     // Region is allocated during concurrent marking.
     FRESH = 0x09,
+    FROM = 0X10,
+    TO = 0X11,
+    VALID_TYPE_MASK = 0xff,
 };
 
 enum RSetType {
@@ -361,6 +364,7 @@ public:
     bool HasLocalToShareRememberedSet() const;
     RememberedSet *CollectLocalToShareRSet();
     void InsertLocalToShareRSet(uintptr_t addr);
+    void InsertLocalToShareRSetForCC(uintptr_t addr);
     template<RegionSpaceKind kind>
     Updater<kind> GetBatchRSetUpdater(uintptr_t addr);
     void AtomicInsertLocalToShareRSet(uintptr_t addr);
@@ -632,6 +636,16 @@ public:
     bool IsFreshRegion() const
     {
         return GetRegionTypeFlag() == RegionTypeFlag::FRESH;
+    }
+
+    bool IsFromRegion() const
+    {
+        return GetRegionTypeFlag() == RegionTypeFlag::FROM;
+    }
+
+    bool IsToRegion() const
+    {
+        return GetRegionTypeFlag() == RegionTypeFlag::TO;
     }
 
     bool IsHalfFreshRegion() const
@@ -949,6 +963,7 @@ protected:
     friend class Snapshot;
     friend class SnapshotProcessor;
     friend class RuntimeStubs;
+    friend class ToSpace;
 };
 
 class BumpPointerFreeListWrapper {

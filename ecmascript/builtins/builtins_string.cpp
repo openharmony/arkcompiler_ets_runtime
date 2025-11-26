@@ -1039,7 +1039,7 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         if (isFastPath) {
             uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, searchTag, true));
             JSTaggedValue cacheResult;
-            if (g_isEnableCMCGC) {
+            if (UNLIKELY(thread->NeedReadBarrier())) {
                 cacheResult = cacheTable->FindCachedResult<RBMode::FAST_CMC_RB>(thread, thisTag,
                     RegExpExecResultCache::REPLACE_TYPE, searchTag, JSTaggedValue(lastIndex),
                     replaceTag);

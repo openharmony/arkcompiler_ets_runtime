@@ -115,6 +115,7 @@ static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP = 5_MB;
 static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP_FULL = 1_MB;
 static constexpr size_t IDLE_MIN_EXPECT_RECLAIM_SIZE = 1_MB;
 static constexpr size_t IDLE_BINDING_NATIVE_MIN_INC_SIZE = 10_MB;
+static constexpr size_t IDLE_LOCAL_CC_LIMIT = 200_MB;
 
 // cold start
 static constexpr uint64_t DEFAULT_STARTUP_DURATION_MS = 2000;

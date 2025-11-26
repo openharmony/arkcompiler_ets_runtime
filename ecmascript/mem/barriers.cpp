@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/mem/barriers_get-inl.h"
+#include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
 #include "ecmascript/mem/work_manager-inl.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "common_components/mutator/mutator.h"
@@ -32,7 +33,7 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
         if (valueRegion->InCollectSet() && !objectRegion->InYoungSpaceOrCSet()) {
             objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
         }
-    } else {
+    } else if (heap->IsYoungMark()) {
         if (!valueRegion->InYoungSpace()) {
             return;
         }
@@ -231,6 +232,39 @@ void Barriers::CMCArrayCopyReadBarrierBackward(const JSThread *thread, JSTaggedV
     }
 }
 
+#ifndef USE_CMC_GC
+JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
+{
+    ASSERT(!thread->IsJitThread());
+    ASSERT(thread->NeedReadBarrier());
+    ObjectSlot slot(slotAddress);
+    JSTaggedValue value = slot.GetTaggedValue();
+    auto object = value.GetHeapObject();
+    if (UNLIKELY(object == nullptr)) {
+        return slot.GetTaggedType();
+    }
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    if (objectRegion->InSharedHeap()) {
+        return slot.GetTaggedType();
+    }
+    if (objectRegion->IsFromRegion()) {
+        MarkWord markWord(object);
+        TaggedObject *toObject = nullptr;
+        if (markWord.IsForwardingAddress()) {
+            toObject = markWord.ToForwardingAddress();
+        } else {
+            toObject = thread->GetLocalCCEvacuator()->Copy(object, markWord);
+        }
+        if (value.IsWeak()) {
+            slot.UpdateWeak(ToUintPtr(toObject));
+        } else {
+            slot.Update(toObject);
+        }
+        return slot.GetTaggedType();
+    }
+    return slot.GetTaggedType();
+}
+#endif
 template bool BatchBitSet<Region::InYoung>(const JSThread*, Region*, JSTaggedValue*, size_t);
 template bool BatchBitSet<Region::InGeneralOld>(const JSThread*, Region*, JSTaggedValue*, size_t);
 template bool BatchBitSet<Region::Other>(const JSThread*, Region*, JSTaggedValue*, size_t);

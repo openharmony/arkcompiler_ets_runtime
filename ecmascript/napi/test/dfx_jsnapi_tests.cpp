@@ -452,6 +452,7 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyWarmStart)
     }
 }
 
+#ifdef USE_CMC_GC
 HWTEST_F_L0(DFXJSNApiTests, NotifyWarmStartCMC)
 {
     if (!g_isEnableCMCGC) {
@@ -461,6 +462,7 @@ HWTEST_F_L0(DFXJSNApiTests, NotifyWarmStartCMC)
         g_isEnableCMCGC = false;
     }
 }
+#endif
 
 HWTEST_F_L0(DFXJSNApiTests, GetGCCount)
 {

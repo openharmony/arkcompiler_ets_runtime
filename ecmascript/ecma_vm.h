@@ -466,6 +466,7 @@ public:
     // Concurrent roots supports being visited while GC is ongoing
     void IterateConcurrentRoots(RootVisitor &v);
     void IterateWeakGlobalEnvList(WeakVisitor &visitor);
+    void IterateWeakGlobalEnvList(WeakRootVisitor &visitor);
     void IterateGlobalEnvField(RootVisitor &visitor);
 
     const Heap *GetHeap() const

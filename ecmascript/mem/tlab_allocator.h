@@ -62,6 +62,23 @@ private:
     LocalSpace *localSpace_;
 };
 
+class CCTlabAllocator : public TlabAllocatorBase {
+public:
+    inline explicit CCTlabAllocator(Heap *heap);
+    inline ~CCTlabAllocator();
+    inline uintptr_t Allocate(size_t size);
+
+    NO_COPY_SEMANTIC(CCTlabAllocator);
+    NO_MOVE_SEMANTIC(CCTlabAllocator);
+private:
+    inline void Expand();
+
+    Heap *heap_ {nullptr};
+    BumpPointerAllocator bpAllocator_;
+    Region *tlabRegion_ {nullptr};
+    ToSpace *toSpace_ {nullptr};
+};
+
 class SharedTlabAllocator : public TlabAllocatorBase {
 public:
     SharedTlabAllocator() = delete;

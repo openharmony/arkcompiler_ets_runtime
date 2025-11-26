@@ -728,7 +728,7 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
 
     if (isInternalAccessor) {
         auto accessor = AccessorData::Cast(GetValue().GetTaggedObject());
-        if (accessor->HasSetter(thread_)) {
+        if (InternalAccessor::Cast(accessor)->HasSetter()) {
             bool res = accessor->CallInternalSet(thread_, JSHandle<JSObject>(receiver), value, mayThrow);
             if (receiver->GetJSHClass()->IsDictionaryMode()) {
                 SetIsInlinedProps(false);
@@ -815,7 +815,7 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
                 }
             }
             auto accessor = AccessorData::Cast(obj);
-            if (!accessor->IsInternal() || !accessor->HasSetter(thread_)) {
+            if (!accessor->IsInternal() || !InternalAccessor::Cast(accessor)->HasSetter()) {
                 attr.SetIsAccessor(false);
                 attrChanged = true;
             }

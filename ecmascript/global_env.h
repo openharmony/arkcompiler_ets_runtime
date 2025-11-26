@@ -74,6 +74,8 @@ public:
             JSTaggedValue value(reinterpret_cast<JSTaggedType>(
                 common::BaseRuntime::ReadBarrier(reinterpret_cast<void*>(address))));
             *reinterpret_cast<JSTaggedValue*>(address) = value;
+        } else {
+            Barriers::GetTaggedValue(GetJSThread(), address);
         }
 
         JSHandle<JSTaggedValue> result(address);
@@ -235,6 +237,8 @@ public:
             JSTaggedValue value(reinterpret_cast<JSTaggedType>(                                         \
                 common::BaseRuntime::ReadBarrier(reinterpret_cast<void*>(address))));                   \
             *reinterpret_cast<JSTaggedValue*>(address) = value;                                         \
+        } else {                                                                                        \
+            Barriers::GetTaggedValue(GetJSThread(), address);                                           \
         }                                                                                               \
         JSHandle<type> result(address);                                                                 \
         if (result.GetTaggedValue().IsInternalAccessor()) {                                             \

@@ -96,6 +96,9 @@ bool SparseSpace::Expand()
     }
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    if (thread->IsConcurrentCopying()) {
+        region->SetRegionTypeFlag(RegionTypeFlag::TO);
+    }
     region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
     AddRegion(region);
     allocator_->AddFree(region);
@@ -122,6 +125,7 @@ void SparseSpace::PrepareSweeping()
     ASSERT(GetSweepingRegionSafe() == nullptr);
     ASSERT(GetSweptRegionSafe() == nullptr);
     EnumerateRegions([this](Region *current) {
+        ASSERT(!current->IsToRegion());
         if (!current->InCollectSet()) {
             ASSERT(!current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
             if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
@@ -161,6 +165,7 @@ void SparseSpace::Sweep()
     liveObjectSize_ = 0;
     allocator_->RebuildFreeList();
     EnumerateRegions([this](Region *current) {
+        ASSERT(!current->IsToRegion());
         if (!current->InCollectSet()) {
             IncreaseLiveObjectSize(current->AliveObject());
             current->ResetWasted();
@@ -475,6 +480,34 @@ void OldSpace::Merge(LocalSpace *localSpace)
     allocator_->IncreaseAllocatedSize(localSpace->GetTotalAllocatedSize());
 }
 
+void OldSpace::MergeToSpace(ToSpace *toSpace)
+{
+    ResetPreservedSize();
+    size_t oldCommittedSize = committedSize_;
+    size_t totalAllocatedSize = 0;
+    toSpace->EnumerateRegions([&](Region *region) {
+        toSpace->RemoveRegion(region);
+        region->ResetSwept();
+        region->MergeLocalToShareRSetForCS();
+        AddRegion(region);
+        totalAllocatedSize += region->AliveObject();
+    });
+    size_t hugeSpaceCommitSize = localHeap_->GetHugeObjectSpace()->GetCommittedSize();
+    if (committedSize_ + hugeSpaceCommitSize > GetOverShootMaximumCapacity()) {
+        LOG_ECMA_MEM(ERROR) << "MergeToSpace::Committed size " << committedSize_ << " of old space is too big. ";
+        if (localHeap_->CanThrowOOMError()) {
+            localHeap_->ShouldThrowOOMError(true);
+        }
+        IncreaseMergeSize(committedSize_ - oldCommittedSize);
+        size_t committedOverSizeLimit = committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity();
+        IncreaseCommittedOverSizeLimit(committedOverSizeLimit);
+        // if throw OOM, temporarily increase space size to avoid vm crash
+        IncreaseOutOfMemoryOvershootSize(committedOverSizeLimit);
+    }
+    ASSERT(toSpace->GetRegionList().IsEmpty());
+    allocator_->IncreaseAllocatedSize(totalAllocatedSize);
+}
+
 void OldSpace::SelectCSet()
 {
     GCStats *gcStats = localHeap_->GetEcmaVM()->GetEcmaGCStats();
@@ -631,6 +664,27 @@ void OldSpace::SweepNewToOldRegions()
             FreeRegion(current);
         }
     });
+}
+
+ToSpace::ToSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
+    : SparseSpace(heap, MemSpaceType::OLD_SPACE, initialCapacity, maximumCapacity) {}
+
+Region* ToSpace::ForceExpandSync()
+{
+    LockHolder holder(mutex_);
+    if (CommittedSizeExceed()) {
+        localHeap_->ShouldThrowOOMError(true);
+    }
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    ASSERT(thread->IsConcurrentCopying());
+    region->SetRegionTypeFlag(RegionTypeFlag::TO);
+    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
+    // Forbidden batch rset update during concurrent copying.
+    region->CreateLocalToShareRememberedSet();
+    region->SwapLocalToShareRSetForCS();
+    AddRegion(region);
+    return region;
 }
 
 LocalSpace::LocalSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)

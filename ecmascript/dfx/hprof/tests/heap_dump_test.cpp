@@ -966,6 +966,7 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
     auto countCb = [&ObjMap](TaggedObject *obj) {
         ObjMap->emplace(obj, true);
     };
+    heap->PrepareForIteration();
     heap->IterateOverObjects(countCb);
 
     TestAllocationEventRootVisitor testAllocationEventRootVisitor(countCb);
@@ -977,6 +978,7 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
 
     std::unordered_map<TaggedObject *, bool> ObjAfterExecute;
     ObjMap = &ObjAfterExecute;
+    heap->WaitAndHandleCCFinished();
     heap->IterateOverObjects(countCb);
     ecmaVm_->Iterate(testAllocationEventRootVisitor);
     thread_->Iterate(testAllocationEventRootVisitor);

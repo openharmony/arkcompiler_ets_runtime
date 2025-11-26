@@ -242,6 +242,12 @@ inline void Region::InsertLocalToShareRSet(uintptr_t addr)
     set->Insert(ToUintPtr(this), addr);
 }
 
+inline void Region::InsertLocalToShareRSetForCC(uintptr_t addr)
+{
+    ASSERT(sweepingLocalToShareRSet_);
+    sweepingLocalToShareRSet_->Insert(ToUintPtr(this), addr);
+}
+
 template <Region::RegionSpaceKind kind>
 Region::Updater<kind> Region::GetBatchRSetUpdater(uintptr_t addr)
 {

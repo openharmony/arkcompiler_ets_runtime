@@ -140,6 +140,40 @@ bool TlabAllocator::ExpandCompressFromOld(size_t size)
     return false;
 }
 
+CCTlabAllocator::CCTlabAllocator(Heap *heap) : heap_(heap), toSpace_(heap->GetToSpace())
+{
+    bpAllocator_.Reset();
+}
+
+uintptr_t CCTlabAllocator::Allocate(size_t size)
+{
+    ASSERT(AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)) == size);
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    uintptr_t result = bpAllocator_.Allocate(size);
+    if (result == 0) {
+        Expand();
+        result = bpAllocator_.Allocate(size);
+    }
+    tlabRegion_->IncreaseAliveObject(size);
+    ASSERT(result != 0);
+    return result;
+}
+
+void CCTlabAllocator::Expand()
+{
+    tlabRegion_= toSpace_->ForceExpandSync();
+    FreeObject::FillFreeObject(heap_, bpAllocator_.GetTop(), bpAllocator_.Available());
+    bpAllocator_.Reset(tlabRegion_->GetBegin(), tlabRegion_->GetEnd());
+}
+
+CCTlabAllocator::~CCTlabAllocator()
+{
+    if (bpAllocator_.Available() != 0) {
+        FreeObject::FillFreeObject(heap_, bpAllocator_.GetTop(), bpAllocator_.Available());
+        bpAllocator_.Reset();
+    }
+}
+
 SharedTlabAllocator::SharedTlabAllocator(SharedHeap *sHeap)
     : sHeap_(sHeap)
 {

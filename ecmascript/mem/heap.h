@@ -40,6 +40,7 @@ class HeapTestHelper;
 }
 
 namespace panda::ecmascript {
+class ConcurrentCopyGC;
 class ConcurrentMarker;
 class ConcurrentSweeper;
 class EcmaVM;
@@ -122,9 +123,11 @@ enum class VerifyKind {
     VERIFY_MARK_YOUNG,
     VERIFY_EVACUATE_YOUNG,
     VERIFY_MARK_FULL,
+    VERIFY_WEAK_REF,
     VERIFY_EVACUATE_OLD,
     VERIFY_EVACUATE_FULL,
     VERIFY_MARK_SLOT_SPACE,
+    VERIFY_CONCURRENT_COPY,
     VERIFY_SHARED_RSET_POST_FULL_GC,
     VERIFY_PRE_SHARED_GC,
     VERIFY_POST_SHARED_GC,
@@ -213,6 +216,11 @@ public:
     bool IsConcurrentFullMark() const
     {
         return markType_ == MarkType::MARK_FULL;
+    }
+
+    bool IsCCMark() const
+    {
+        return markType_ == MarkType::MARK_FOR_CC;
     }
 
     TriggerGCType GetGCType() const
@@ -989,15 +997,18 @@ public:
     void Destroy() override;
     void Prepare();
     void GetHeapPrepare();
+    void PrepareForIteration() const;
     void ResetLargeCapacity();
     void Resume(TriggerGCType gcType);
     void ResumeForAppSpawn();
+    void ResumeCC();
     void CompactHeapBeforeFork();
     void DisableParallelGC();
     void EnableParallelGC();
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
     void SetJsDumpThresholds(size_t thresholds) const;
 #endif
+    void SelectFromSpace();
 
     // fixme: Rename NewSpace to YoungSpace.
     // This is the active young generation space that the new objects are allocated in
@@ -1030,6 +1041,11 @@ public:
     OldSpace *GetCompressSpace() const
     {
         return compressSpace_;
+    }
+
+    ToSpace *GetToSpace() const
+    {
+        return toSpace_;
     }
 
     NonMovableSpace *GetNonMovableSpace() const
@@ -1095,6 +1111,11 @@ public:
         return fullGC_;
     }
 
+    ConcurrentCopyGC *GetCCGC() const
+    {
+        return ccGC_;
+    }
+
     ConcurrentSweeper *GetSweeper() const
     {
         return sweeper_;
@@ -1118,6 +1139,11 @@ public:
     Marker *GetCompressGCMarker() const
     {
         return compressGCMarker_;
+    }
+
+    Marker *GetCCMarker() const
+    {
+        return ccMarker_;
     }
 
     EcmaVM *GetEcmaVM() const
@@ -1226,6 +1252,7 @@ public:
      * GC triggers.
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
+    void CollectFromCCMark(GCReason reason);
     void ProcessGCCallback();
     bool CheckAndTriggerOldGC(size_t size = 0);
     bool CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason = GCReason::OTHER);
@@ -1251,6 +1278,7 @@ public:
     void NotifyMemoryPressure(bool inHighMemoryPressure);
 
     bool TryTriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
+    bool TryTriggerCCMarking(MarkReason markReason);
     void AdjustBySurvivalRate(size_t originalNewSpaceSize);
     void TriggerConcurrentMarking(MarkReason markReason = MarkReason::OTHER);
     bool CheckCanTriggerConcurrentMarking();
@@ -1284,6 +1312,9 @@ public:
     void EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const;
 
     template<class Callback>
+    void EnumerateNonmovableRegionsWithRecord(const Callback &cb) const;
+
+    template<class Callback>
     void EnumerateSnapshotSpaceRegions(const Callback &cb) const;
 
     template<class Callback>
@@ -1296,6 +1327,8 @@ public:
 
     void WaitAllTasksFinished();
     void WaitConcurrentMarkingFinished();
+    PUBLIC_API void WaitCCFinished() const;
+    void WaitAndHandleCCFinished() const;
 
     MemGrowingType GetMemGrowingType() const
     {
@@ -1347,6 +1380,16 @@ public:
      * Receive callback function to control idletime.
      */
     inline void InitializeIdleStatusControl(std::function<void(bool)> callback);
+
+    bool LocalCCEnabled()
+    {
+        return enableLocalCC_;
+    }
+
+    void DisableLocalCC()
+    {
+        enableLocalCC_ = false;
+    }
 
     void SetOnSerializeEvent(bool isSerialize)
     {
@@ -1695,6 +1738,7 @@ private:
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
     void PrepareRecordRegionsForReclaim();
+    void PrepareRecordNonmovableRegions();
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
@@ -1834,6 +1878,7 @@ private:
     OldSpace *oldSpace_ {nullptr};
     OldSpace *compressSpace_ {nullptr};
     SlotSpace *slotSpace_ {nullptr};
+    ToSpace *toSpace_ {nullptr};
     ReadOnlySpace *readOnlySpace_ {nullptr};
     AppSpawnSpace *appSpawnSpace_ {nullptr};
     // Spaces used for special kinds of objects.
@@ -1864,6 +1909,7 @@ private:
     // Full collector which collects garbage in all valid heap spaces.
     FullGC *fullGC_ {nullptr};
 
+    ConcurrentCopyGC *ccGC_ {nullptr};
     // Concurrent marker which coordinates actions of GC markers and mutators.
     ConcurrentMarker *concurrentMarker_ {nullptr};
 
@@ -1880,7 +1926,7 @@ private:
      */
     Marker *nonMovableMarker_ {nullptr};
     Marker *compressGCMarker_ {nullptr};
-
+    Marker *ccMarker_ {nullptr};
     // Work manager managing the tasks mostly generated in the GC mark phase.
     WorkManager *workManager_ {nullptr};
 
@@ -1891,6 +1937,7 @@ private:
     bool fullGCRequested_ {false};
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
+    bool enableLocalCC_ {true};
     std::atomic_bool isCSetClearing_ {false};
     HeapMode mode_ { HeapMode::NORMAL };
 
@@ -1946,6 +1993,8 @@ private:
     NativePointerList concurrentNativePointerList_;
     HEAP_PRIVATE_HYBRID_EXTENSION();
 
+    friend class ConcurrentCopyGC;
+    friend class ConcurrentMarker;
     friend panda::test::HProfTestHelper;
     friend panda::test::GCTest_CallbackTask_Test;
     friend panda::test::HeapTestHelper;

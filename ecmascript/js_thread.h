@@ -65,6 +65,7 @@ class VmThreadControl;
 class GlobalEnvConstants;
 enum class ElementsKind : uint8_t;
 enum class NodeKind : uint8_t;
+class CCEvacuator;
 
 class MachineCode;
 class DependentInfos;
@@ -77,6 +78,12 @@ enum class MarkStatus : uint8_t {
     READY_TO_MARK,
     MARKING,
     MARK_FINISHED,
+};
+
+enum class CCStatus : uint8_t {
+    READY,
+    COPYING,
+    COPY_FINISHED,
 };
 
 enum class GCKind : uint8_t {
@@ -161,6 +168,7 @@ class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
     static constexpr int CONCURRENT_MARKING_BITFIELD_MASK = 0x3;
+    static constexpr int CONCURRENT_COPY_BITFIELD_NUM = 2;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_NUM = 1;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_MASK = 0x1;
     static constexpr int READ_BARRIER_STATE_BITFIELD_MASK = 0x2;
@@ -176,6 +184,7 @@ public:
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     static constexpr size_t DEFAULT_MAX_SYSTEM_STACK_SIZE = 8_MB;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
+    using CCStatusBits = MarkStatusBits::NextField<CCStatus, CONCURRENT_COPY_BITFIELD_NUM>;
     using SharedMarkStatusBits = BitField<SharedMarkStatus, 0, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>; // 0
     using ReadBarrierStateBit = SharedMarkStatusBits::NextFlag; // 1
     using CMCGCPhaseBits = BitField<common::GCPhase, CMC_GC_PHASE_BITFIELD_START, CMC_GC_PHASE_BITFIELD_NUM>; // 8-15
@@ -209,6 +218,17 @@ public:
     struct StackInfo {
         uint64_t stackLimit;
         uint64_t lastLeaveFrame;
+    };
+
+    class BCDebugStubSwitchScope {
+    public:
+        explicit BCDebugStubSwitchScope(JSThread *thread);
+        ~BCDebugStubSwitchScope();
+    private:
+        void SwitchStub();
+
+        JSThread *thread_ {nullptr};
+        bool isDebugging_ {false};
     };
 
     explicit JSThread(EcmaVM *vm);
@@ -494,6 +514,11 @@ public:
         glueData_.bcDebuggerStubEntries_.Set(id, entry);
     }
 
+    Address GetBCDebugStubEntry(size_t id) const
+    {
+        return glueData_.bcDebuggerStubEntries_.Get(id);
+    }
+
     Address *GetBytecodeHandler()
     {
         return glueData_.bcStubEntries_.GetAddr();
@@ -505,6 +530,7 @@ public:
     void SwitchStwCopyBCStubs(bool isStwCopy);
     void SwitchStwCopyCommonStubs(bool isStwCopy);
     void SwitchStwCopyBuiltinsStubs(bool isStwCopy);
+    void SwitchAllStub(bool isStwCopy);
 
     ThreadId GetThreadId() const
     {
@@ -535,6 +561,11 @@ public:
         MarkStatusBits::Set(status, &glueData_.gcStateBitField_);
     }
 
+    void SetCCStatus(CCStatus status)
+    {
+        CCStatusBits::Set(status, &glueData_.gcStateBitField_);
+    }
+
     bool IsConcurrentMarkingOrFinished() const
     {
         return !IsReadyToConcurrentMark();
@@ -556,6 +587,18 @@ public:
     {
         auto status = MarkStatusBits::Decode(glueData_.gcStateBitField_);
         return status == MarkStatus::MARK_FINISHED;
+    }
+
+    bool IsConcurrentCopying() const
+    {
+        auto status = CCStatusBits::Decode(glueData_.gcStateBitField_);
+        return status != CCStatus::READY;
+    }
+
+    bool IsCopyFinished() const
+    {
+        auto status = CCStatusBits::Decode(glueData_.gcStateBitField_);
+        return status == CCStatus::COPY_FINISHED;
     }
 
     SharedMarkStatus GetSharedMarkStatus() const
@@ -653,7 +696,7 @@ public:
         return BuiltinsStubStatusBits::Decode(glueData_.interruptVector_);
     }
 
-    bool ShouldHandleMarkingFinishedInSafepoint();
+    bool ShouldHandleMarkOrCopyFinishedInSafepoint();
 
     bool CheckSafepoint();
 
@@ -1112,6 +1155,16 @@ public:
     void OnHeapExtended(uintptr_t newEnd)
     {
         glueData_.heapCurrentEnd_ = newEnd;
+    }
+
+    CCEvacuator *GetLocalCCEvacuator() const
+    {
+        return localEvacuator_;
+    }
+
+    void SetLocalCCEvacuator(CCEvacuator *evacuator)
+    {
+        localEvacuator_ = evacuator;
     }
 
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
@@ -2063,7 +2116,7 @@ private:
     Mutator *mutator_ {nullptr};
     void *env_ {nullptr};
     Area *regExpCacheArea_ {nullptr};
-
+    CCEvacuator *localEvacuator_ {nullptr};
     // MM: handles, global-handles, and aot-stubs.
     int nestedLevel_ = 0;
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};

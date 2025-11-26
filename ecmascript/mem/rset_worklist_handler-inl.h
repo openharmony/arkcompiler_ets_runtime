@@ -47,6 +47,7 @@ inline void RSetWorkListHandler::EnumerateRegions(const Heap *heap)
             items_.emplace_back(region, rset);
         }
     });
+    ASSERT(!heap->GetJSThread()->IsConcurrentCopying());
 }
 
 inline void RSetWorkListHandler::CollectRSetItemsInHeap(const Heap *heap)
