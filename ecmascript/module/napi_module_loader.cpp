@@ -17,6 +17,7 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 
@@ -58,8 +59,10 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpace(EcmaVM *vm, CStrin
 {
     JSThread *thread = vm->GetJSThread();
     CString path = base::ConcatToCString(vm->GetBundleName(), PathHelper::SLASH_TAG);
-    // RequestPath starts with ets/xxx
+    // During hot reload, the base filename should be restored; otherwise the `path` may be incorrect
+    abcFilePath = vm->GetQuickFixManager()->GetBaseFileNameForHotReload(thread, abcFilePath);
 
+    // RequestPath starts with ets/xxx
     if (StringHelper::StringStartWith(requestPath, ModulePathHelper::PREFIX_ETS)) {
         path += moduleName;
         CString recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, path, requestPath);
