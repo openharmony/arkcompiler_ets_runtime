@@ -181,6 +181,13 @@ bool CompileDecision::IsGoodCompilationRequest() const
 
 bool CompileDecision::IsJsFunctionSupportCompile() const
 {
+    JSThread *thread = vm_->GetJSThread();
+    JSTaggedValue funcEnv = jsFunction_->GetLexicalEnv(thread);
+    JSTaggedValue globalEnv = BaseEnv::Cast(funcEnv.GetTaggedObject())->GetGlobalEnv(thread);
+    if (globalEnv.IsHole()) {
+        return false;
+    }
+
     if (!IsSupportFunctionKind()) {
         return false;
     }
