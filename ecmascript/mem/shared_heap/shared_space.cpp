@@ -18,7 +18,6 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-#include "ecmascript/runtime_lock.h"
 
 namespace panda::ecmascript {
 SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,
@@ -131,7 +130,7 @@ uintptr_t SharedSparseSpace::TryAllocate([[maybe_unused]] JSThread *thread, size
 
 uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
 {
-    RuntimeLockHolder lock(thread, allocateLock_);
+    LockHolder lock(allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
     CheckAndTriggerLocalFullMark();
     auto object = allocator_->Allocate(size);
@@ -148,7 +147,8 @@ bool SharedSparseSpace::Expand(JSThread *thread)
         LOG_ECMA_MEM(INFO) << "Expand::Committed size " << committedSize_ << " of Sparse Space is too big. ";
         return false;
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_,
+                                                                 false, 0, &allocateLock_);
     if (region == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "SharedSparseSpace::Expand:region is nullptr";
     }
@@ -599,7 +599,8 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
     if (currentRegion != nullptr) {
         currentRegion->SetHighWaterMark(top);
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, heap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, heap_,
+                                                                 false, 0, &allocateLock_);
     if (region == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "SharedReadOnlySpace::Expand:region is nullptr";
     }
@@ -617,7 +618,7 @@ uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
     }
 #endif
     thread->CheckSafepointIfSuspended();
-    RuntimeLockHolder holder(thread, allocateLock_);
+    LockHolder holder(allocateLock_);
     auto object = allocator_.Allocate(size);
     if (object != 0) {
         return object;
@@ -684,12 +685,13 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, A
         thread->CheckSafepointIfSuspended();
         CheckAndTriggerLocalFullMark(thread, alignedSize);
     }
-    RuntimeLockHolder lock(thread, allocateLock_);
+    LockHolder lock(allocateLock_);
     if (CommittedSizeExceed(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
     }
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread, heap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread, heap_,
+                                                                 false, 0, &allocateLock_);
     if (region == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "SharedHugeObjectSpace::Allocate:region is nullptr";
     }

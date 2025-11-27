@@ -20,6 +20,7 @@
 
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/mem/mem.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda::ecmascript {
 class BaseHeap;
@@ -34,7 +35,7 @@ public:
     virtual ~HeapRegionAllocator() = default;
 
     Region *AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap,
-                                  bool isFresh = false, size_t slotSize = 0);
+                                  bool isFresh = false, size_t slotSize = 0, Mutex *allocateLock = nullptr);
     void FreeRegion(Region *region, size_t cachedSize, bool skipCache = false);
 
     void IncreaseAnnoMemoryUsage(size_t bytes)
