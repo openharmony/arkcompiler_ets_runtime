@@ -114,4 +114,15 @@
     assert_equal(JSON.stringify(obj), '{"0":"spt","1":"xel","2":"sl","3":"ls"}');
 }
 
+{
+    function fn0(v0, v1) {}
+    {
+        let v12 = {
+            set 6000(v15) {}
+        };
+        let v13 = Object.assign({}, v12);
+        fn0(Object.values(v13));
+    }
+}
+
 test_end();
