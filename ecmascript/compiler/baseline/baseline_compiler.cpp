@@ -502,6 +502,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDGLOBAL)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }

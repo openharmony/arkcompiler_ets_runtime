@@ -67,7 +67,7 @@ DEFINE_PARAMETER_INDEX(BaselineCallArg1Imm8V8,
 DEFINE_PARAMETER_INDEX(BaselineLdsymbol,
     GLUE)
 DEFINE_PARAMETER_INDEX(BaselineLdglobal,
-    GLUE)
+    GLUE, SP)
 DEFINE_PARAMETER_INDEX(BaselinePoplexenv,
     GLUE, SP)
 DEFINE_PARAMETER_INDEX(BaselineGetunmappedargs,

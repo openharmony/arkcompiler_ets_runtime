@@ -116,12 +116,13 @@ DEF_CALL_SIGNATURE(BaselineLdsymbol)
 
 DEF_CALL_SIGNATURE(BaselineLdglobal)
 {
-    // 1 : 1 input parameters
-    CallSignature signature("BaselineLdglobal", 0, 1,
+    // 2 : 2 input parameters
+    CallSignature signature("BaselineLdglobal", 0, 2,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 1 : 1 input parameters
-    std::array<VariableType, 1> params = {
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
