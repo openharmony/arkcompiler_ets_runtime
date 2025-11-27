@@ -506,6 +506,8 @@ private:
                                                          const JSHandle<SourceTextModule> module,
                                                          const int index);
 
+    static void ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module);
+
     friend class EcmaModuleTest;
     friend class SharedModuleManager;
 };

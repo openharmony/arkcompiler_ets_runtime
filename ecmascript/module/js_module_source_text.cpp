@@ -1110,6 +1110,9 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
             // v. Otherwise, set requiredModule.[[Status]] to EVALUATING-ASYNC.
             if (!requiredModule->IsAsyncEvaluating()) {
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
+#if ENABLE_MEMORY_OPTIMIZATION
+                ClearImportEntriesIfNeeded(thread, requiredModule);
+#endif
             } else {
                 requiredModule->SetStatus(ModuleStatus::EVALUATING_ASYNC);
             }
@@ -1124,6 +1127,17 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
         }
     }
     return index;
+}
+
+void SourceTextModule::ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    if ((!vm->GetJsDebuggerManager()->IsDebugApp()) && thread->GetModuleLogger() == nullptr) {
+        // After the module is INSTANTIATED, requiredModule.[[ImportEntry]] is no longer meaningful.
+        // Set it to undefinedValue to allow the GC thread to reclaim the memory.
+        JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+        module->SetImportEntries(thread, undefinedValue);
+    }
 }
 
 bool SourceTextModule::IsEvaluatedModule(JSThread *thread, StateVisit &stateVisit,
