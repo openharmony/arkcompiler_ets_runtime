@@ -312,7 +312,7 @@ bool IdleGCTrigger::TryTriggerLocalCC() const
         return false;
     }
     if (heap_->IsCCMark()) {
-        heap_->CollectFromCCMark(GCReason::IDLE);
+        heap_->CollectGarbageFromCCMark(GCReason::IDLE);
     } else if (thread_->IsConcurrentCopying()) {
         heap_->WaitAndHandleCCFinished();
     } else if (!heap_->TryTriggerCCMarking(MarkReason::IDLE)) {

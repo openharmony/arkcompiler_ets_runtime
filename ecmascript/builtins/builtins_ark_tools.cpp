@@ -1695,14 +1695,14 @@ JSTaggedValue BuiltinsArkTools::TriggerLocalCCGC(EcmaRuntimeCallInfo *info)
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
     Heap *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-    if (heap->CheckOngoingConcurrentMarking()) {
-        heap->GetConcurrentMarker()->Reset();
-    }
     if (heap->IsCCMark()) {
-        heap->CollectFromCCMark(GCReason::IDLE);
+        heap->CollectGarbageFromCCMark(GCReason::IDLE);
     } else if (thread->IsConcurrentCopying()) {
         heap->WaitAndHandleCCFinished();
     } else {
+        if (heap->CheckOngoingConcurrentMarking()) {
+            heap->GetConcurrentMarker()->Reset();
+        }
         DFXJSNApi::TriggerLocalCCWithVmForTest(thread->GetEcmaVM());
     }
     return JSTaggedValue::Undefined();

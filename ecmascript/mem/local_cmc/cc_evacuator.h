@@ -23,16 +23,10 @@ namespace ecmascript {
 class CCTlabAllocator;
 class CCEvacuator {
 public:
-    explicit CCEvacuator(Heap *heap) : heap_(heap) {}
     CCEvacuator(Heap *heap, CCTlabAllocator *tlab) : heap_(heap), tlab_(tlab) {}
     ~CCEvacuator() = default;
     NO_COPY_SEMANTIC(CCEvacuator);
     NO_MOVE_SEMANTIC(CCEvacuator);
-
-    void Initialize(CCTlabAllocator *tlab)
-    {
-        tlab_ = tlab;
-    }
 
     TaggedObject* Copy(TaggedObject *fromObj, const MarkWord &markWord);
 private:
@@ -51,17 +45,16 @@ public:
 
     inline void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
                                         uintptr_t baseOldObject) override;
-    // WeakUpdator
-    inline TaggedObject* operator()(TaggedObject *header);
 private:
     inline void HandleSlot(ObjectSlot slot);
 
     CCEvacuator *evacuator_ {nullptr};
 };
 
-class CCUpdateVisitor final : public BaseObjectVisitor<CCUpdateVisitor> {
+template<bool needUpdateLocalToShare>
+class CCUpdateVisitor final : public BaseObjectVisitor<CCUpdateVisitor<needUpdateLocalToShare>> {
 public:
-    explicit CCUpdateVisitor(JSThread *thread, bool needBarrier) : thread_(thread), needBarrier_(needBarrier) {}
+    explicit CCUpdateVisitor(JSThread *thread) : thread_(thread) {}
     ~CCUpdateVisitor() = default;
 
     inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
@@ -70,7 +63,6 @@ private:
     inline void HandleSlot(ObjectSlot slot, Region *rootRegion);
 
     JSThread *thread_ {nullptr};
-    bool needBarrier_ {false};
 };
 }  // namespace ecmascript
 }  // namespace panda

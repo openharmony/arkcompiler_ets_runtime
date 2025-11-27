@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_MEM_LOCAL_CMC_CC_MARKER_INL_H
-#define ECMASCRIPT_MEM_LOCAL_CMC_CC_MARKER_INL_H
+#ifndef ECMASCRIPT_MEM_LOCAL_CMC_CC_GC_VISITOR_INL_H
+#define ECMASCRIPT_MEM_LOCAL_CMC_CC_GC_VISITOR_INL_H
 
-#include "ecmascript/mem/local_cmc/cc_marker.h"
+#include "ecmascript/mem/local_cmc/cc_gc_visitor.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/work_manager-inl.h"
 
@@ -61,17 +61,16 @@ void CCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t
     ObjectSlot endSlot(end);
     auto root = TaggedObject::Cast(rootObject);
     ASSERT(!Region::ObjectAddressToRange(rootObject)->InSharedHeap());
-    JSThread *thread = workNodeHolder_->GetJSThread();
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
         JSHClass *hclass = root->SynchronizedGetClass();
         ASSERT(!hclass->IsAllTaggedProp());
         int index = 0;
-        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout(thread).GetTaggedObject());
+        LayoutInfo *layout = LayoutInfo::UncheckCast(hclass->GetLayout<RBMode::FAST_NO_RB>(nullptr).GetTaggedObject());
         ObjectSlot realEnd(start);
         realEnd += layout->GetPropertiesCapacity();
         endSlot = endSlot > realEnd ? realEnd : endSlot;
         for (ObjectSlot slot = startSlot; slot < endSlot; slot++) {
-            PropertyAttributes attr = layout->GetAttr(thread, index++);
+            PropertyAttributes attr = layout->GetAttr<RBMode::FAST_NO_RB>(nullptr, index++);
             if (attr.IsTaggedRep()) {
                 HandleSlot(slot);
             }
@@ -134,4 +133,4 @@ void CCMarkObjectVisitor::RecordWeakReference(JSTaggedType *weak)
 }
 
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_MEM_LOCAL_CMC_CC_MARKER_INL_H
+#endif  // ECMASCRIPT_MEM_LOCAL_CMC_CC_GC_VISITOR_INL_H

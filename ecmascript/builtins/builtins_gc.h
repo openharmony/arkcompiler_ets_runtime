@@ -43,6 +43,8 @@ public:
 
     static JSTaggedValue AllocateArrayObject(EcmaRuntimeCallInfo *info);
 
+    static TriggerGCType StringToGcType(JSThread *thread, JSTaggedValue cause);
+
     static Span<const base::BuiltinFunctionEntry> GetGcFunctions()
     {
         return Span<const base::BuiltinFunctionEntry>(GC_FUNCTIONS);
@@ -75,7 +77,6 @@ private:
 #undef BUILTINS_GC_FUNCTION_ENTRY
 
     static void WaitAndHandleConcurrentMarkingFinished(Heap *heap);
-    static TriggerGCType StringToGcType(JSThread *thread, JSTaggedValue cause);
 };
 }  // namespace panda::ecmascript::builtins
 

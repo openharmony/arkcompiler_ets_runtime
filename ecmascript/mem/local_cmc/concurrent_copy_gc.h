@@ -17,10 +17,9 @@
 #define ECMASCRIPT_MEM_LOCAL_CMC_CONCURRENT_COPY_GC_H
 
 #include "ecmascript/mem/heap.h"
-
+#include "ecmascript/mem/tlab_allocator.h"
 namespace panda {
 namespace ecmascript {
-class CCTlabAllocator;
 class ConcurrentCopyGC {
 public:
     explicit ConcurrentCopyGC(Heap *heap);
@@ -52,17 +51,21 @@ private:
     void PostGC();
 
     int CalculateCopyThreadNum();
+    CCTlabAllocator *GetTlabAllocator(uint32_t threadIndex)
+    {
+        return &tlabAllocators_.at(threadIndex);
+    }
 
     Heap *heap_{nullptr};
     JSThread *thread_ {nullptr};
     bool ccUpdateFinished_{false};
-    CCTlabAllocator *allocator_ {nullptr};
+    std::array<CCTlabAllocator, common::MAX_TASKPOOL_THREAD_NUM + 1> tlabAllocators_;
     std::atomic<size_t> runningTaskCount_ {0};
     Mutex waitMutex_;
     ConditionVariable waitCV_;
 
-    std::vector<Region*> tasks_;
-    std::atomic<size_t> taskIter_;
+    std::vector<Region*> tasks_ {};
+    std::atomic<size_t> taskIter_ {0};
     friend class Heap;
     friend class ConcurrentCopyTask;
 };

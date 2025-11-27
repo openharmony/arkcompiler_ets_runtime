@@ -1191,7 +1191,7 @@ public:
         return localEvacuator_;
     }
 
-    void SetLocalCCEvacuator(CCEvacuator *evacuator)
+    void InstallLocalCCEvacuator(CCEvacuator *evacuator)
     {
         localEvacuator_ = evacuator;
     }

@@ -330,6 +330,11 @@ public:
         return shouldVerifyHeap_;
     }
 
+    void EnableHeapVerication(bool flag)
+    {
+        shouldVerifyHeap_ = flag;
+    }
+
     bool EnablePageTagThreadId() const
     {
         return enablePageTagThreadId_;
@@ -1141,11 +1146,6 @@ public:
         return compressGCMarker_;
     }
 
-    Marker *GetCCMarker() const
-    {
-        return ccMarker_;
-    }
-
     EcmaVM *GetEcmaVM() const
     {
         return ecmaVm_;
@@ -1252,7 +1252,7 @@ public:
      * GC triggers.
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
-    void CollectFromCCMark(GCReason reason);
+    void CollectGarbageFromCCMark(GCReason reason);
     void ProcessGCCallback();
     bool CheckAndTriggerOldGC(size_t size = 0);
     bool CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason = GCReason::OTHER);
@@ -1926,7 +1926,6 @@ private:
      */
     Marker *nonMovableMarker_ {nullptr};
     Marker *compressGCMarker_ {nullptr};
-    Marker *ccMarker_ {nullptr};
     // Work manager managing the tasks mostly generated in the GC mark phase.
     WorkManager *workManager_ {nullptr};
 

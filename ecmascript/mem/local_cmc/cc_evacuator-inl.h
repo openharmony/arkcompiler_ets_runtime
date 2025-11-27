@@ -64,31 +64,9 @@ void CCUpdateRootVisitor::HandleSlot(ObjectSlot slot)
     }
 }
 
-TaggedObject* CCUpdateRootVisitor::operator()(TaggedObject *header)
-{
-    Region *objectRegion = Region::ObjectAddressToRange(header);
-    if (UNLIKELY(objectRegion == nullptr)) {
-        return nullptr;
-    }
-    if (objectRegion->IsToRegion() || objectRegion->InSharedHeap()) {
-        return header;
-    } else if (!objectRegion->Test(header)) {
-        return nullptr;
-    } else if (objectRegion->IsFromRegion()) {
-        MarkWord markWord(header);
-        if (markWord.IsForwardingAddress()) {
-            return markWord.ToForwardingAddress();
-        } else {
-            TaggedObject *ref = evacuator_->Copy(header, markWord);
-            return ref;
-        }
-    } else {
-        return header;
-    }
-}
-
-void CCUpdateVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
-                                           VisitObjectArea area)
+template<bool needUpdateLocalToShare>
+void CCUpdateVisitor<needUpdateLocalToShare>::VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
+    VisitObjectArea area)
 {
     ObjectSlot startSlot(start);
     ObjectSlot endSlot(end);
@@ -116,7 +94,8 @@ void CCUpdateVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t start, ui
     }
 }
 
-void CCUpdateVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion)
+template<bool needUpdateLocalToShare>
+void CCUpdateVisitor<needUpdateLocalToShare>::HandleSlot(ObjectSlot slot, Region *rootRegion)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (!value.IsHeapObject()) {
@@ -124,7 +103,7 @@ void CCUpdateVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion)
     }
     Region *objectRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
     if (objectRegion->InSharedSweepableSpace()) {
-        if (needBarrier_) {
+        if constexpr (needUpdateLocalToShare) {
             rootRegion->InsertLocalToShareRSetForCC(slot.SlotAddress());
         }
         return;

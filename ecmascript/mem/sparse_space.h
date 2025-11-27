@@ -156,6 +156,7 @@ class ToSpace : public SparseSpace {
 public:
     ToSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
     Region *ForceExpandSync();
+    uintptr_t Allocate(size_t size, bool allowGC = true);
 
     NO_COPY_SEMANTIC(ToSpace);
     NO_MOVE_SEMANTIC(ToSpace);

@@ -22,14 +22,20 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
-#include "ecmascript/mem/local_cmc/cc_marker-inl.h"
+#include "ecmascript/mem/local_cmc/cc_gc_visitor-inl.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/work_manager-inl.h"
 #include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript {
-ConcurrentCopyGC::ConcurrentCopyGC(Heap *heap)
-    : heap_(heap), thread_(heap->GetJSThread()) {}
+ConcurrentCopyGC::ConcurrentCopyGC(Heap *heap) : heap_(heap), thread_(heap->GetJSThread())
+{
+    for (uint32_t i = 0; i < common::MAX_TASKPOOL_THREAD_NUM + 1; i++) {
+        tlabAllocators_.at(i).Setup(heap_);
+    }
+    auto mainEvacuator = new CCEvacuator(heap_, GetTlabAllocator(MAIN_THREAD_INDEX));
+    thread_->InstallLocalCCEvacuator(mainEvacuator);
+}
 
 void ConcurrentCopyGC::RunPhase()
 {
@@ -50,7 +56,6 @@ void ConcurrentCopyGC::RunPhase()
         + ";ObjSizeBeforeSensitive" + std::to_string(heap_->GetRecordHeapObjectSizeBeforeSensitive())).c_str(), "");
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
-    ASSERT(heap_->IsParallelGCEnabled());
     Jit::JitGCLockHolder lock(thread_);
     PreGC();
     ProcessWeakReference();
@@ -107,9 +112,26 @@ void ConcurrentCopyGC::UpdateRoot()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ConcurrentCopyGC::UpdateRoot", "");
     TRACE_GC(GCStats::Scope::ScopeId::UpdateRoot, heap_->GetEcmaVM()->GetEcmaGCStats());
     InitializeCopyPhase();
-    CCUpdateRootVisitor updateRoot(thread_->GetLocalCCEvacuator());
-    WeakRootVisitor weakVisitor = [&updateRoot](TaggedObject *object) -> TaggedObject* {
-        return updateRoot(object);
+    CCEvacuator *mainEvacuator = thread_->GetLocalCCEvacuator();
+    WeakRootVisitor weakVisitor = [mainEvacuator](TaggedObject *object) -> TaggedObject* {
+        Region *objectRegion = Region::ObjectAddressToRange(object);
+        ASSERT(objectRegion != nullptr);
+        ASSERT(!objectRegion->IsToRegion());
+        if (objectRegion->InSharedHeap()) {
+            return object;
+        } else if (!objectRegion->Test(object)) {
+            return nullptr;
+        } else if (objectRegion->IsFromRegion()) {
+            MarkWord markWord(object);
+            if (markWord.IsForwardingAddress()) {
+                return markWord.ToForwardingAddress();
+            } else {
+                TaggedObject *ref = mainEvacuator->Copy(object, markWord);
+                return ref;
+            }
+        } else {
+            return object;
+        }
     };
     heap_->GetEcmaVM()->ProcessReferences(weakVisitor);
     heap_->GetSweeper()->PostTask(TriggerGCType::LOCAL_CC);
@@ -117,6 +139,7 @@ void ConcurrentCopyGC::UpdateRoot()
     heap_->GetEcmaVM()->ProcessSnapShotEnv(weakVisitor);
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(weakVisitor);
     heap_->GetEcmaVM()->IterateWeakGlobalEnvList(weakVisitor);
+    CCUpdateRootVisitor updateRoot(mainEvacuator);
     ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), updateRoot);
     heap_->GetEcmaVM()->IterateGlobalEnvField(updateRoot);
 }
@@ -134,6 +157,7 @@ void ConcurrentCopyGC::ConcurrentCopy()
 
 void ConcurrentCopyGC::ReclaimHuge()
 {
+    TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->GetHugeObjectSpace()->ReclaimHugeRegion();
     heap_->GetHugeMachineCodeSpace()->ReclaimHugeRegion();
     heap_->GetSweeper()->TryFillSweptRegion();
@@ -148,14 +172,14 @@ void ConcurrentCopyGC::InitializeCopyPhase()
     thread_->SetReadBarrierState(true);
     thread_->SetCCStatus(CCStatus::COPYING);
     heap_->SelectFromSpace();
-    allocator_ = new CCTlabAllocator(heap_);
-    CCEvacuator *mainEvacuator = thread_->GetLocalCCEvacuator();
-    mainEvacuator->Initialize(allocator_);
+    ccUpdateFinished_ = false;
+    GetTlabAllocator(MAIN_THREAD_INDEX)->Initialize();
 }
 
 bool ConcurrentCopyTask::Run(uint32_t threadIndex)
 {
-    auto allocator = new CCTlabAllocator(cc_->GetHeap());
+    auto allocator = cc_->GetTlabAllocator(threadIndex);
+    allocator->Initialize();
     CCEvacuator evacuator(cc_->GetHeap(), allocator);
     Region *region = GetNextTask();
     while (region) {
@@ -173,7 +197,7 @@ bool ConcurrentCopyTask::Run(uint32_t threadIndex)
         });
         region = GetNextTask();
     }
-    delete allocator;
+    allocator->Finalize();
     if (runningTaskCount_.fetch_sub(1, std::memory_order_seq_cst) == 1) {
         cc_->RunUpdatePhase();
     }
@@ -256,7 +280,7 @@ void ConcurrentCopyGC::UpdateRecordJSWeakMap(uint32_t threadIndex)
 void ConcurrentCopyGC::RunUpdatePhase()
 {
     ASSERT(thread_->NeedReadBarrier());
-    CCUpdateVisitor updatorWithBarrier(thread_, true);
+    CCUpdateVisitor<true> updatorWithBarrier(thread_);
     heap_->GetToSpace()->EnumerateRegions([&](Region *region) {
         region->IterateAllMarkedBits([&](void *mem) {
             TaggedObject *object = reinterpret_cast<TaggedObject *>(mem);
@@ -265,7 +289,7 @@ void ConcurrentCopyGC::RunUpdatePhase()
         });
         region->SetSwept();
     });
-    CCUpdateVisitor updatorWithoutBarrier(thread_, false);
+    CCUpdateVisitor<false> updatorWithoutBarrier(thread_);
     heap_->EnumerateNonmovableRegionsWithRecord([&](Region *region) {
         region->IterateAllMarkedBits([&](void *mem) {
             TaggedObject *object = reinterpret_cast<TaggedObject *>(mem);
@@ -279,17 +303,15 @@ void ConcurrentCopyGC::RunUpdatePhase()
     thread_->SetCCStatus(CCStatus::COPY_FINISHED);
     thread_->SetCheckSafePointStatus();
     ccUpdateFinished_ = true;
-    waitCV_.Signal();
+    waitCV_.SignalAll();
 }
 
 void ConcurrentCopyGC::WaitFinished()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ConcurrentCopyGC::WaitFinished", "");
-    {
-        LockHolder lock(waitMutex_);
-        while (!ccUpdateFinished_) {
-            waitCV_.Wait(&waitMutex_);
-        }
+    LockHolder lock(waitMutex_);
+    while (!ccUpdateFinished_) {
+        waitCV_.Wait(&waitMutex_);
     }
 }
 
@@ -304,7 +326,7 @@ void ConcurrentCopyGC::HandleUpdateFinished()
 void ConcurrentCopyGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ConcurrentCopyGC::Finish", "");
-    delete allocator_;
+    GetTlabAllocator(MAIN_THREAD_INDEX)->Finalize();
     heap_->GetOldSpace()->MergeToSpace(heap_->GetToSpace());
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         Verification::VerifyCC(heap_);
@@ -316,7 +338,6 @@ void ConcurrentCopyGC::Finish()
     if (heap_->IsNearGCInSensitive()) {
         heap_->SetNearGCInSensitive(false);
     }
-    ccUpdateFinished_ = false;
 }
 
 void ConcurrentCopyGC::PostGC()
