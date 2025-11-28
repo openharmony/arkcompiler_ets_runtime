@@ -399,12 +399,12 @@ HWTEST_F_L0(IdleGCTriggerTest, NotifyNeedFreeze001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     bool freeze = false;
-    auto callback = [&freeze](bool needFreeze) {
-        if (needFreeze) {
+    auto callback = [&freeze](bool needNextGC, bool needFreeze) {
+        if (needFreeze && !needNextGC) {
             freeze = true;
         }
     };
-    Runtime::GetInstance()->SetNotifyDeferFreezeCallback(callback);
+    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
     SharedHeap *sheap = SharedHeap::GetInstance();
     sheap->NotifyHeapAliveSizeAfterGC(1);
     sheap->GetOldSpace()->SetInitialCapacity(10000);

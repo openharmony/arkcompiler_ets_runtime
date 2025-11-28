@@ -309,7 +309,9 @@ HWTEST_F_L0(GCTest, IdleGCTriggerTest)
             idleGCTrigger->NotifyVsyncIdleStart();
         }
     }
+    EXPECT_TRUE(idleGCTrigger->GetExpectedMemoryReclamationSize() >= 0);
     idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    EXPECT_TRUE(idleGCTrigger->GetExpectedMemoryReclamationSize() >= 0);
     idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
     int afterLocalGCCount = heap->GetEcmaGCStats()->GetGCCount();
     int afterSharedGCCount = sHeap->GetEcmaGCStats()->GetGCCount();
