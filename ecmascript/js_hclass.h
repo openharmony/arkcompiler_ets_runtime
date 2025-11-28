@@ -514,11 +514,10 @@ public:
     static JSHandle<JSTaggedValue> EnablePHCProtoChangeMarker(
         const JSThread *thread, const JSHandle<JSHClass> &protoClass);
 
-    static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
-                                    JSTaggedValue addedKey = JSTaggedValue::Undefined());
+    static void NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass);
 
     static void NotifyHClassChangedForAot(const JSThread *thread, const JSHandle<JSHClass> oldHclass,
-                                               const JSHandle<JSHClass> newHclass, const JSTaggedValue addedKey);
+                                          const JSHandle<JSHClass> newHclass);
 
     static void NotifyAccessorChanged(const JSThread *thread, JSHandle<JSHClass> hclass);
 
@@ -541,8 +540,7 @@ public:
     static void MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     template<bool isForAot = false>
-    static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                   JSTaggedValue addedKey = JSTaggedValue::Undefined());
+    static void NoticeThroughChain(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
 
     static void RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &oldHclass,
                              const JSHandle<JSHClass> &newHclass);
