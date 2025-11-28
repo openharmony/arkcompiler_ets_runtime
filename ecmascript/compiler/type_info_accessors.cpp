@@ -431,8 +431,10 @@ CallThisRangeTypeInfoAccessor::CallThisRangeTypeInfoAccessor(const CompilationEn
 }
 
 InlineTypeInfoAccessor::InlineTypeInfoAccessor(
-    const CompilationEnv *env, Circuit *circuit, GateRef gate, GateRef receiver, CallKind kind)
-    : TypeInfoAccessor(env, circuit, gate), receiver_(receiver), kind_(kind)
+    const CompilationEnv *env, Circuit *circuit, GateRef gate, GateRef receiver, CallKind kind,
+    const CallerDetails &callerDetails, size_t inlineDepth)
+    : TypeInfoAccessor(env, circuit, gate), receiver_(receiver), kind_(kind), callerDetails_(callerDetails),
+      inlineDepth_(inlineDepth)
 {
     if (IsCallAccessor()) {
         if (IsAot()) {

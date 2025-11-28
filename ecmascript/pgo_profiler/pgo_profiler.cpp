@@ -1406,6 +1406,10 @@ void PGOProfiler::DumpCall(ApEntityId abcId, const CString &recordName, EntityId
     ProfileType::Kind kind;
     int calleeMethodId = 0;
     ApEntityId calleeAbcId = 0;
+    if (slotValue.IsFuncSlot()) {
+        auto funcSlot = FuncSlot::Cast(slotValue);
+        slotValue = funcSlot->GetFunction(thread);
+    }
     if (slotValue.IsInt()) {
         calleeMethodId = slotValue.GetInt();
         calleeAbcId = abcId;
@@ -1454,6 +1458,10 @@ void PGOProfiler::DumpNewObjRange(ApEntityId abcId, const CString &recordName, E
     const JSThread *thread = vm_->GetJSThread();
     JSTaggedValue slotValue = profileTypeInfo->Get(thread, slotId);
     int ctorMethodId = 0;
+    if (slotValue.IsFuncSlot()) {
+        auto funcSlot = FuncSlot::Cast(slotValue);
+        slotValue = funcSlot->GetFunction(thread);
+    }
     if (slotValue.IsInt()) {
         ctorMethodId = slotValue.GetInt();
     } else if (slotValue.IsJSFunction()) {

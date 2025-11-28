@@ -73,6 +73,7 @@ public:
     GateRef NewJSProxy(GateRef glue, GateRef target, GateRef handler);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
+    GateRef NewFuncSlot(GateRef glue);
     GateRef NewTaggedArrayInOld(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArrayInOld(GateRef glue, GateRef len);
@@ -136,6 +137,7 @@ public:
     GateRef CreateArrayWithBuffer(GateRef glue, GateRef index, GateRef jsFunc, TraceIdInfo traceIdInfo,
                                   GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback);
     void NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
+    void NewFuncSlotChecked(Variable *result, Label *exit);
     void NewMutantTaggedArrayChecked(Variable *result, GateRef len, Label *exit);
     template <typename IteratorType, typename CollectionType>
     void CreateJSCollectionIterator(Variable *result, Label *exit, GateRef set, GateRef kind);

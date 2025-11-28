@@ -296,6 +296,11 @@ public:
         return !isInline_ && !method_->IsNoGC();
     }
 
+    bool NeedCheckSafePoint() const
+    {
+        return IsJitCompile() && !method_->IsNoGC();
+    }
+
     void UpdateBcIndexGate(GateRef gate, uint32_t bcIndex)
     {
         ASSERT(gateAcc_.GetOpCode(gate) == OpCode::JS_BYTECODE);

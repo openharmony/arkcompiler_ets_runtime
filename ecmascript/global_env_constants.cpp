@@ -207,6 +207,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
     // To reverse the order, the hclass of string needs to load default supers
     SetConstant(ConstantIndex::TAGGED_ARRAY_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::TAGGED_ARRAY));
+    SetConstant(ConstantIndex::FUNC_SLOT_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::FUNC_SLOT));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_NONE_FIELD_CLASS_INDEX,
                 factory->NewSEcmaReadOnlyHClass(hClass, FreeObject::NEXT_OFFSET, JSType::FREE_OBJECT_WITH_NONE_FIELD));
     SetConstant(ConstantIndex::FREE_OBJECT_WITH_ONE_FIELD_CLASS_INDEX,
@@ -371,6 +373,10 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         SetConstant(ConstantIndex::SHARED_TAGGED_ARRAY_CLASS_INDEX,
             factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::TAGGED_ARRAY));
         ASSERT(GetSharedTaggedArrayClass().IsInSharedHeap());
+        
+        SetConstant(ConstantIndex::SHARED_FUNC_SLOT_CLASS_INDEX,
+            factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::FUNC_SLOT));
+        ASSERT(GetSharedFuncSlotClass().IsInSharedHeap());
 
         SetConstant(ConstantIndex::SHARED_CONSTANT_POOL_CLASS_INDEX,
             factory->NewSEcmaReadOnlySharedHClass(hClass, 0, JSType::CONSTANT_POOL));

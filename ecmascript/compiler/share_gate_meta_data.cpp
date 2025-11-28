@@ -211,6 +211,11 @@ bool GateMetaData::IsDependSelector() const
     return (opcode_ == OpCode::DEPEND_SELECTOR);
 }
 
+bool GateMetaData::IsJSByteCode() const
+{
+    return opcode_ == OpCode::JS_BYTECODE;
+}
+
 GateMetaBuilder::GateMetaBuilder(Chunk* chunk)
     : cache_(), chunk_(chunk) {}
 

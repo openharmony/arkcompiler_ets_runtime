@@ -182,6 +182,7 @@ public:
     bool IsTypedOperator() const;
     bool IsCheckWithOneIn() const;
     bool IsCheckWithTwoIns() const;
+    bool IsJSByteCode() const;
     bool HasFrameState() const
     {
         return HasFlag(GateFlags::HAS_FRAME_STATE);

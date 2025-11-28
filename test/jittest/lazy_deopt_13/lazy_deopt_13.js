@@ -49,6 +49,13 @@ function ChangePrototypeValue(obj, shouldChange) {
     }
     print("sum:", sum);
     print("ChangeProto end.");
+    
+    // Additional code to prevent aggressive inlining.
+    let test = {};
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 

@@ -16,7 +16,6 @@ undefined
 1
 true
 ------------------------------------------------------
-[trace] aot inline builtin: Reflect.construct, caller function name:#*#f@lazy_deopt_19
 2
 [trace] Lazy Deoptimization occurred on function: "f"
 [trace] Lazy Deoptimize reason: PROTOTYPE_CHECK

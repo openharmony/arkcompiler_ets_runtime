@@ -205,6 +205,20 @@ void Circuit::GetAllGates(std::vector<GateRef>& gateList) const
     }
 }
 
+size_t Circuit::GetJSBytecodeGatesFrom(std::vector<GateRef>& gateList, size_t startPos) const
+{
+    gateList.clear();
+    size_t pos = startPos;
+    for (; pos < circuitSize_;
+        pos += Gate::GetGateSize(reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(pos)))->GetIndex() + 1)) {
+        auto gatePtr = reinterpret_cast<const Out *>(LoadGatePtrConst(GateRef(pos)))->GetGateConst();
+        if (gatePtr->GetMetaData()->IsJSByteCode()) {
+            gateList.push_back(GetGateRef(gatePtr));
+        }
+    }
+    return pos - startPos;
+}
+
 GateRef Circuit::GetGateRef(const Gate *gate) const
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)

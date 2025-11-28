@@ -172,6 +172,5 @@ public:
 private:
     friend class ObjectFactory;
 };
-
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_ARRAY_H

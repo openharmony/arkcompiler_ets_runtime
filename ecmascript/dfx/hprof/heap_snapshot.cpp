@@ -229,6 +229,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::TAGGED_ARRAY:
         case JSType::JS_SHARED_TYPED_ARRAY:
             return GetArrayString(TaggedArray::Cast(entry), "ArkInternalArray[");
+        case JSType::FUNC_SLOT:
+            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalFuncSlot[");
         case JSType::LEXICAL_ENV:
             return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
         case JSType::SFUNCTION_ENV:

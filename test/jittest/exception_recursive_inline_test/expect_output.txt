@@ -1,0 +1,118 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+=== Exception & Recursive Inline Testing ===
+Phase 1: Basic try-catch inlining tests
+=== Basic Try-Catch Inline Test ===
+BasicTryCatchInlineTest(10): 22
+BasicTryCatchInlineTest(-5): -8
+BasicTryCatchStringTest("test"): TEST_processed
+true
+=== Basic Try-Catch Inline Test ===
+BasicTryCatchInlineTest(10): 22
+BasicTryCatchInlineTest(-5): -8
+BasicTryCatchStringTest("test"): TEST_processed
+Phase 2: Complex nested try-catch tests
+=== Complex Nested Try-Catch Test ===
+ComplexNestedTryCatchTest(50): 209
+ComplexNestedTryCatchTest(200): 809
+ComplexNestedTryCatchStringTest("short"): SHORT_processed
+true
+=== Complex Nested Try-Catch Test ===
+ComplexNestedTryCatchTest(50): 209
+ComplexNestedTryCatchTest(200): 809
+ComplexNestedTryCatchStringTest("short"): SHORT_processed
+Phase 3: Exception throwing functions tests
+=== Exception Throwing Functions Test ===
+ProcessWithExceptions(-5) threw error
+ProcessWithExceptions(0): 3
+ProcessWithExceptions(5): 23
+ProcessWithExceptions(50): 203
+true
+=== Exception Throwing Functions Test ===
+ProcessWithExceptions(-5) threw error
+ProcessWithExceptions(0): 3
+ProcessWithExceptions(5): 23
+ProcessWithExceptions(50): 203
+Phase 4: Finally block inlining tests
+=== Finally Block Inlining Test ===
+FinallyBlockTest(3): 5
+FinallyBlockTest(6): 8
+FinallyBlockTest(9): 11
+true
+=== Finally Block Inlining Test ===
+FinallyBlockTest(3): 5
+FinallyBlockTest(6): 8
+FinallyBlockTest(9): 11
+Phase 5: Multiple catch blocks tests
+=== Multiple Catch Blocks Test ===
+MultipleCatchTest(-10): range_error_processed
+MultipleCatchTest(50): general_error_processed
+MultipleCatchTest(150): TYPE_ERROR
+true
+=== Multiple Catch Blocks Test ===
+MultipleCatchTest(-10): range_error_processed
+MultipleCatchTest(50): general_error_processed
+MultipleCatchTest(150): TYPE_ERROR
+Phase 6: Recursive functions tests
+=== Recursive Functions Test (should NOT inline recursive calls) ===
+SimpleRecursiveFunc(5): 5
+FactorialRecursive(5): 120
+FibonacciRecursive(6): 8
+TailRecursiveSum(10): 55
+true
+=== Recursive Functions Test (should NOT inline recursive calls) ===
+[trace] aot inline function name: #*#SimpleRecursiveFunc@exception_recursive_inline_test caller function name: #*#TestRecursiveFunctions@exception_recursive_inline_test
+SimpleRecursiveFunc(5): 5
+[trace] aot inline function name: #*#FactorialRecursive@exception_recursive_inline_test caller function name: #*#TestRecursiveFunctions@exception_recursive_inline_test
+FactorialRecursive(5): 120
+[trace] aot inline function name: #*#FibonacciRecursive@exception_recursive_inline_test caller function name: #*#TestRecursiveFunctions@exception_recursive_inline_test
+FibonacciRecursive(6): 8
+TailRecursiveSum(10): 55
+Phase 7: Mutual recursion tests
+=== Mutual Recursion Test ===
+MutualRecursionA(3): 4, MutualRecursionB(3): 5
+MutualRecursionA(5): 7, MutualRecursionB(5): 8
+true
+=== Mutual Recursion Test ===
+[trace] aot inline function name: #*#MutualRecursionA@exception_recursive_inline_test caller function name: #*#TestMutualRecursion@exception_recursive_inline_test
+[trace] aot inline function name: #*#MutualRecursionB@exception_recursive_inline_test caller function name: #*#TestMutualRecursion@exception_recursive_inline_test
+MutualRecursionA(3): 4, MutualRecursionB(3): 5
+[trace] aot inline function name: #*#MutualRecursionA@exception_recursive_inline_test caller function name: #*#TestMutualRecursion@exception_recursive_inline_test
+[trace] aot inline function name: #*#MutualRecursionB@exception_recursive_inline_test caller function name: #*#TestMutualRecursion@exception_recursive_inline_test
+MutualRecursionA(5): 7, MutualRecursionB(5): 8
+Phase 8: Recursive with non-recursive calls tests
+=== Recursive With Non-Recursive Calls Test ===
+RecursiveWithNonRecursiveCalls(3): 21
+RecursiveWithNonRecursiveCalls(5): 45
+true
+=== Recursive With Non-Recursive Calls Test ===
+[trace] aot inline function name: #*#RecursiveWithNonRecursiveCalls@exception_recursive_inline_test caller function name: #*#TestRecursiveWithNonRecursiveCalls@exception_recursive_inline_test
+RecursiveWithNonRecursiveCalls(3): 21
+[trace] aot inline function name: #*#RecursiveWithNonRecursiveCalls@exception_recursive_inline_test caller function name: #*#TestRecursiveWithNonRecursiveCalls@exception_recursive_inline_test
+RecursiveWithNonRecursiveCalls(5): 45
+Phase 9: Complex recursive patterns tests
+=== Complex Recursive Patterns Test ===
+ComplexRecursiveFunction([1, 2, 3, 4, 5]): 45
+true
+=== Complex Recursive Patterns Test ===
+ComplexRecursiveFunction([1, 2, 3, 4, 5]): 45
+Phase 10: Mixed exception and recursion tests
+=== Mixed Exception and Recursion Test ===
+MixedFunc(3): 8
+MixedFunc(8): 2
+true
+=== Mixed Exception and Recursion Test ===
+MixedFunc(3): 8
+MixedFunc(8): 2
+Exception & recursive inline testing completed

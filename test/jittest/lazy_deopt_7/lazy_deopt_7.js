@@ -36,6 +36,10 @@ function Test3(shouldChange)
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 function Test2(obj, shouldChange) {

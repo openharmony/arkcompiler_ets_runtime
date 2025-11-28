@@ -906,37 +906,52 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(Immediate(READ_INST_64_0()));
             break;
         }
+        case EcmaOpcode::CALLARG0_IMM8: {
+            uint16_t slotId = READ_INST_8_0();
+            info.slotId = ICSlotId(slotId);
+            break;
+        }
         case EcmaOpcode::CALLARG1_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint32_t a0 = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(a0));
             break;
         }
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint32_t startReg = READ_INST_8_1(); // this
             uint32_t a0 = READ_INST_8_2();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(startReg));
             info.inputs.emplace_back(VirtualRegister(a0));
             break;
         }
         case EcmaOpcode::CALLARGS2_IMM8_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint32_t a0 = READ_INST_8_1();
             uint32_t a1 = READ_INST_8_2();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(a0));
             info.inputs.emplace_back(VirtualRegister(a1));
             break;
         }
         case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint32_t a0 = READ_INST_8_1();
             uint32_t a1 = READ_INST_8_2();
             uint32_t a2 = READ_INST_8_3();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(a0));
             info.inputs.emplace_back(VirtualRegister(a1));
             info.inputs.emplace_back(VirtualRegister(a2));
             break;
         }
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint32_t actualNumArgs = READ_INST_8_1();
             uint32_t startReg = READ_INST_8_2();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(startReg));
             for (size_t i = 1; i <= actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
@@ -953,24 +968,30 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::CALLTHIS0_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             int32_t startReg = READ_INST_8_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(startReg));
             break;
         }
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             int32_t startReg = READ_INST_8_1();
             uint32_t a0 = READ_INST_8_2();
             uint32_t a1 = READ_INST_8_3();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(startReg));
             info.inputs.emplace_back(VirtualRegister(a0));
             info.inputs.emplace_back(VirtualRegister(a1));
             break;
         }
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             int32_t startReg = READ_INST_8_1();
             uint32_t a0 = READ_INST_8_2();
             uint32_t a1 = READ_INST_8_3();
             uint32_t a2 = READ_INST_8_4();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(startReg));
             info.inputs.emplace_back(VirtualRegister(a0));
             info.inputs.emplace_back(VirtualRegister(a1));
@@ -978,7 +999,9 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_1();
             int32_t startReg = READ_INST_8_2();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(VirtualRegister(startReg));
             break;
         }
@@ -991,8 +1014,10 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
             int32_t actualNumArgs = READ_INST_8_1();
             int32_t startReg = READ_INST_8_2();
+            info.slotId = ICSlotId(slotId);
             for (int i = 0; i < actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
             }
@@ -1845,6 +1870,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16: {
             uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
@@ -1852,6 +1878,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16: {
             uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
@@ -1859,6 +1886,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16: {
             uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
@@ -1866,6 +1894,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16: {
             uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
@@ -1880,6 +1909,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::LDOBJBYNAME_IMM8_ID16: {
             uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
@@ -1887,6 +1917,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16: {
             uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
@@ -1895,6 +1926,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
             uint32_t v0 = READ_INST_8_3();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -1904,6 +1936,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slotId = READ_INST_16_0();
             uint16_t stringId = READ_INST_16_2();
             uint32_t v0 = READ_INST_8_4();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -2013,7 +2046,16 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::DYNAMICIMPORT: {
             break;
         }
-        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8: {
+            uint16_t slotId = READ_INST_8_0();
+            uint16_t range = READ_INST_8_1();
+            uint16_t v0 = READ_INST_8_2();
+            info.slotId = ICSlotId(slotId);
+            for (size_t i = 0; i < range; i++) {
+                info.inputs.emplace_back(VirtualRegister(v0 + i));
+            }
+            break;
+        }
         case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8: {
             uint16_t range = READ_INST_8_1();
             uint16_t v0 = READ_INST_8_2();
@@ -2083,6 +2125,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             uint16_t slotId = READ_INST_8_0();
             uint16_t stringId = READ_INST_16_1();
             uint32_t v0 = READ_INST_8_3();
+            info.slotId = ICSlotId(slotId);
             info.inputs.emplace_back(ICSlotId(slotId));
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             info.inputs.emplace_back(VirtualRegister(v0));
@@ -2163,7 +2206,6 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
         case EcmaOpcode::LDTRUE:
         case EcmaOpcode::LDFALSE:
         case EcmaOpcode::LDHOLE:
-        case EcmaOpcode::CALLARG0_IMM8:
         case EcmaOpcode::GETUNMAPPEDARGS:
         case EcmaOpcode::ASYNCFUNCTIONENTER:
         case EcmaOpcode::TYPEOF_IMM8:

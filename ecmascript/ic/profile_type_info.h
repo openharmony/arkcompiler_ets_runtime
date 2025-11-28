@@ -105,7 +105,7 @@ private:
  *      |           ic slot              |              ^
  *      |            .....               |              |
  *      +--------------------------------+              |    --- Reserved Length
- *      |        extra info map          | 64 bits      |     ^   = 4 * 64 bits
+ *      |        extra info map          | 64 bits      |     ^   = 5 * 64bits
  *      +--------------------------------+              |     |
  *      |            jit osr             | 64 bits      |     |
  *      +--------------------------------+              |     |
@@ -121,7 +121,11 @@ private:
  *      +--------------------------------+              |     |
  *      | baselinejit hotness threshold  | 16 bits      |     |
  *      +--------------------------------+              |     |
- *      |          jit call cnt          | 16 bits      v     v
+ *      |          jit call cnt          | 16 bits      |     |
+ *      +--------------------------------+              |     |
+ *      |         invocation cnt         | 32 bits      |     |
+ *      +--------------------------------+              |     |
+ *      |           NOT IN USE           | 32 bits      v     v
  *      +--------------------------------+             ---   ---
  */
 class ProfileTypeInfo : public TaggedArray {
@@ -129,9 +133,9 @@ public:
     static const uint32_t MAX_FUNC_CACHE_INDEX = std::numeric_limits<uint32_t>::max();
     static constexpr uint32_t INVALID_SLOT_INDEX = 0xFF;
     static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
-    static constexpr size_t BIT_FIELD_INDEX = 2;
-    static constexpr size_t JIT_OSR_INDEX = 3;
-    static constexpr size_t EXTRA_INFO_MAP_INDEX = 4;
+    static constexpr size_t BIT_FIELD_INDEX = 3;
+    static constexpr size_t JIT_OSR_INDEX = 4;
+    static constexpr size_t EXTRA_INFO_MAP_INDEX = 5;
     static constexpr size_t RESERVED_LENGTH = EXTRA_INFO_MAP_INDEX;
     static constexpr size_t INITIAL_PERIOD_INDEX = 0;
     static constexpr size_t PRE_DUMP_PERIOD_INDEX = 1;
@@ -148,6 +152,7 @@ public:
     static constexpr size_t OSR_CNT_OFFSET_FROM_OSR_THRESHOLD = 2;  // 2 : 2 byte offset from osr hotness threshold
     static constexpr size_t BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 12; // 12: bytes offset from bitfield
     static constexpr size_t JIT_CALL_CNT_OFFSET_FROM_BITFIELD = 14;  // 14 : 14 byte offset from bitfield
+    static constexpr size_t INVOCATION_CNT_OFFSET_FROM_BITFIELD = 16;  // 16 : 16 byte offset from bitfield
 
     static ProfileTypeInfo *Cast(TaggedObject *object)
     {
@@ -201,6 +206,7 @@ public:
         SetOsrHotnessThreshold(INITIAL_OSR_HOTNESS_THRESHOLD);
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
         SetJitCallThreshold(INITIAL_JIT_CALL_THRESHOLD);
+        SetInvocationCnt(0);
     }
 
     inline void InitializeExtraInfoMap()
@@ -298,6 +304,11 @@ public:
         Barriers::SetPrimitive(GetData(), GetJitCallCntBitfieldOffset(), count);
     }
 
+    void SetInvocationCnt(uint32_t count)
+    {
+        Barriers::SetPrimitive(GetData(), GetInvocationCntBitfieldOffset(), count);
+    }
+
     uint16_t GetJitHotnessCnt() const
     {
         return Barriers::GetPrimitive<uint16_t>(GetData(), GetJitHotnessCntBitfieldOffset());
@@ -311,6 +322,11 @@ public:
     void SetOsrHotnessCnt(uint16_t count)
     {
         Barriers::SetPrimitive(GetData(), GetOsrHotnessCntBitfieldOffset(), count);
+    }
+
+    uint32_t GetInvocationCnt() const
+    {
+        return Barriers::GetPrimitive<uint32_t>(GetData(), GetInvocationCntBitfieldOffset());
     }
 
     inline JSTaggedValue GetIcSlot(const JSThread* thread, uint32_t idx) const
@@ -421,6 +437,11 @@ private:
     inline size_t GetJitCallCntBitfieldOffset() const
     {
         return GetBitfieldOffset() + JIT_CALL_CNT_OFFSET_FROM_BITFIELD;
+    }
+
+    inline size_t GetInvocationCntBitfieldOffset() const
+    {
+        return GetBitfieldOffset() + INVOCATION_CNT_OFFSET_FROM_BITFIELD;
     }
 };
 

@@ -611,6 +611,19 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
     return 0;
 }
 
+uint16_t GateAccessor::TryGetSlotId(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    switch (op) {
+        case OpCode::JS_BYTECODE:
+            return gatePtr->GetJSBytecodeMetaData()->GetSlotId();
+        default:
+            break;
+    }
+    return ICSlotId::INVALID_ID;
+}
+
 uint32_t GateAccessor::TryGetBcIndex(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);

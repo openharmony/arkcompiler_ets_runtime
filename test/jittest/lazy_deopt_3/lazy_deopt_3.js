@@ -38,6 +38,10 @@ function ChangePrototypeValue(obj, shouldChange) {
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 

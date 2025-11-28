@@ -969,8 +969,10 @@ void BytecodeCircuitBuilder::NewJSGate(BytecodeRegion &bb)
     bool hasFrameState = bytecodeInfo.HasFrameState();
     size_t pcOffset = GetPcOffset(iterator.Index());
     auto methodOffset = method_->GetMethodId().GetOffset();
+    uint16_t slotId = bytecodeInfo.slotId.GetId();
     auto meta = circuit_->JSBytecode(
-        numValueInputs, methodOffset, bytecodeInfo.GetOpcode(), pcOffset, iterator.Index(), writable, hasFrameState);
+        numValueInputs, methodOffset, bytecodeInfo.GetOpcode(), pcOffset, iterator.Index(), writable, hasFrameState,
+        slotId);
     std::vector<GateRef> inList = CreateGateInList(bytecodeInfo, meta);
     if (bytecodeInfo.IsDef()) {
         gate = circuit_->NewGate(meta, MachineType::I64, inList.size(),
@@ -1011,7 +1013,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
         size_t pcOffset = GetPcOffset(iterator.Index());
         auto methodOffset = method_->GetMethodId().GetOffset();
         auto meta = circuit_->JSBytecode(
-            numValueInputs, methodOffset, bytecodeInfo.GetOpcode(), pcOffset, iterator.Index(), false, false);
+            numValueInputs, methodOffset, bytecodeInfo.GetOpcode(), pcOffset, iterator.Index(), false, false, 0);
         auto numValues = meta->GetNumIns();
         GateRef gate = circuit_->NewGate(meta, std::vector<GateRef>(numValues, Circuit::NullGate()));
         gateAcc_.NewIn(gate, 0, state);
@@ -1125,10 +1127,14 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
         auto &bb = RegionAt(bbId);
         frameStateBuilder_.AdvanceToNextBB(bb);
         if (IsEntryBlock(bb.id)) {
+            GateRef state = frameStateBuilder_.GetCurrentState();
+            GateRef depend = frameStateBuilder_.GetCurrentDepend();
             if (NeedCheckSafePointAndStackOver()) {
-                GateRef state = frameStateBuilder_.GetCurrentState();
-                GateRef depend = frameStateBuilder_.GetCurrentDepend();
                 auto stackCheck = circuit_->NewGate(circuit_->CheckSafePointAndStackOver(), {state, depend});
+                bb.dependCache = stackCheck;
+                frameStateBuilder_.UpdateStateDepend(stackCheck, stackCheck);
+            } else if (NeedCheckSafePoint()) {
+                auto stackCheck = circuit_->NewGate(circuit_->CheckSafePoint(), {state, depend});
                 bb.dependCache = stackCheck;
                 frameStateBuilder_.UpdateStateDepend(stackCheck, stackCheck);
             }
@@ -1277,10 +1283,14 @@ void BytecodeCircuitBuilder::BuildOsrCircuit()
 
         frameStateBuilder_.AdvanceToNextBB(bb);
         if (IsEntryBlock(bb.id)) {
+            GateRef state = frameStateBuilder_.GetCurrentState();
+            GateRef depend = frameStateBuilder_.GetCurrentDepend();
             if (NeedCheckSafePointAndStackOver()) {
-                GateRef state = frameStateBuilder_.GetCurrentState();
-                GateRef depend = frameStateBuilder_.GetCurrentDepend();
                 auto stackCheck = circuit_->NewGate(circuit_->CheckSafePointAndStackOver(), {state, depend});
+                bb.dependCache = stackCheck;
+                frameStateBuilder_.UpdateStateDepend(stackCheck, stackCheck);
+            } else if (NeedCheckSafePoint()) {
+                auto stackCheck = circuit_->NewGate(circuit_->CheckSafePoint(), {state, depend});
                 bb.dependCache = stackCheck;
                 frameStateBuilder_.UpdateStateDepend(stackCheck, stackCheck);
             }

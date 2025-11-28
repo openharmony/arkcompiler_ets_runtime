@@ -42,7 +42,6 @@ private:
 
 class TSInlineLowering {
 public:
-    static constexpr size_t MAX_INLINE_CALL_ALLOWED = 6;
     TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string &name,
                      NativeAreaAllocator *nativeAreaAllocator, PassOptions *options, uint32_t methodOffset,
                      CallMethodFlagMap *callMethodFlagMap)
@@ -60,6 +59,11 @@ public:
           enableTraceCallNum_(ctx->GetCompilationEnv()->GetJSOptions().IsEnableTraceCallNum()),
           traceInline_(ctx->GetCompilationEnv()->GetJSOptions().GetTraceInline()),
           maxInlineBytecodesCount_(ctx->GetCompilationEnv()->GetJSOptions().GetMaxInlineBytecodes()),
+          minCallFreq_(ctx->GetCompilationEnv()->GetJSOptions().GetMinCallFreq()),
+          maxInlineDepthSmall_(ctx->GetCompilationEnv()->GetJSOptions().GetMaxInlineDepthSmall()),
+          maxInlineDepthLarge_(ctx->GetCompilationEnv()->GetJSOptions().GetMaxInlineDepthLarge()),
+          maxInlineCount_(ctx->GetCompilationEnv()->GetJSOptions().GetMaxInlineCount()),
+          maxInlineSizeLarge_(ctx->GetCompilationEnv()->GetJSOptions().GetMaxInlineSizeLarge()),
           nativeAreaAllocator_(nativeAreaAllocator),
           noCheck_(ctx->GetCompilationEnv()->GetJSOptions().IsCompilerNoCheck()),
           chunk_(circuit->chunk()),
@@ -90,7 +94,12 @@ private:
 
     bool IsInlineCountsOverflow(size_t inlineCount) const
     {
-        return inlineCount >= MAX_INLINE_CALL_ALLOWED;
+        return inlineCount >= maxInlineCount_;
+    }
+
+    bool IsInlineCallFreqLow(double callFreq) const
+    {
+        return callFreq < minCallFreq_;
     }
 
     void UpdateInlineCounts(GateRef frameArgs, size_t inlineCallCounts)
@@ -103,9 +112,47 @@ private:
         return kind == CallKind::CALL_SETTER;
     }
 
+    bool ShouldInline(size_t methodSize, size_t inlineCount, size_t inlineDepth) const
+    {
+        if (IsInlineCountsOverflow(inlineCount)) {
+            return false;
+        }
+        if (IsSmallMethod(methodSize)) {
+            if (!compilationEnv_->IsJitCompiler() || inlineDepth < maxInlineDepthSmall_) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        if (compilationEnv_->IsJitCompiler() &&
+            (largeInlinedSize_ + methodSize < maxInlineSizeLarge_ && inlineDepth < maxInlineDepthLarge_)) {
+            return true;
+        }
+        return false;
+    }
+
+    double GetCallFrequency(const JSThread* thread, uint32_t idx, const ProfileTypeInfo *profileTypeInfo) const
+    {
+        uint32_t callerCallCnt = profileTypeInfo->GetInvocationCnt();
+        ASSERT(callerCallCnt != 0);
+        JSTaggedValue slot = profileTypeInfo->GetIcSlot(thread, idx);
+        if (slot.IsWeak()) {
+            return 1.0;
+        }
+        if (!slot.IsFuncSlot()) {
+            return 0.0;
+        }
+        auto funcSlot = FuncSlot::Cast(slot);
+        JSTaggedValue callCnt = funcSlot->GetCallCnt(thread);
+        double callSiteCallCnt = static_cast<double>(callCnt.GetInt());  // 32: skip methodId
+        return callSiteCallCnt / callerCallCnt;
+    }
+
     void CollectInlineInfo();
     void GetInlinedMethodId(GateRef gate);
-    void CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList);
+    void CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList,
+                             const CallerDetails &callerDetails, int inlineDepth);
+    bool JitCanInline(InlineTypeInfoAccessor &info, const CallerDetails &callerDetails, double &callFrequency);
     void TryInline(InlineTypeInfoAccessor &info, ChunkQueue<InlineTypeInfoAccessor> &workList);
     bool FilterInlinedMethod(MethodLiteral* method, std::vector<const uint8_t*> pcOffsets);
     bool FilterCallInTryCatch(GateRef gate);
@@ -123,12 +170,16 @@ private:
     GateRef TraceInlineFunction(GateRef glue, GateRef depend, std::vector<GateRef> &args, GateRef callGate);
     void InlineFuncCheck(const InlineTypeInfoAccessor &info);
     void SupplementType(GateRef callGate, GateRef targetGate);
-    void UpdateWorkList(ChunkQueue<InlineTypeInfoAccessor> &workList);
+    void UpdateWorkList(ChunkQueue<InlineTypeInfoAccessor> &workList, const CallerDetails &callerDetails,
+                        int inlineDepth = 0);
     size_t GetOrInitialInlineCounts(GateRef frameArgs);
     bool IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t calleeMethodOffset);
-    void CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
-    void CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
-    void CandidateSuperCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
+    void CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind,
+                           const CallerDetails &callerDetails, int inlineDepth);
+    void CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind,
+                             const CallerDetails &callerDetails, int inlineDepth);
+    void CandidateSuperCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind,
+                            const CallerDetails &callerDetails, int inlineDepth);
     void InlineAccessorCheck(const InlineTypeInfoAccessor &info);
     void InlineAccessorCheckInJIT(const InlineTypeInfoAccessor &info);
     void InlineCheck(InlineTypeInfoAccessor &info);
@@ -158,14 +209,20 @@ private:
     std::string methodName_;
     bool enableTypeLowering_ {false};
     bool enableTraceCallNum_{false};
-    bool inlineSuccess_ {false};
     bool traceInline_ {false};
     size_t maxInlineBytecodesCount_ {0};
+    double minCallFreq_ {0.0};
+    size_t maxInlineDepthSmall_ {0};
+    size_t maxInlineDepthLarge_ {0};
+    size_t maxInlineCount_ {0};
+    size_t largeInlinedSize_ {0};
+    size_t maxInlineSizeLarge_ {0};
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
     bool noCheck_ {false};
     Chunk* chunk_ {nullptr};
     ChunkMap<GateRef, size_t> inlinedCallMap_;
     size_t lastCallId_ {0};
+    size_t gateListEnd_ {0};
     ArgumentAccessor argAcc_;
     uint32_t initMethodOffset_ {0};
     uint32_t initConstantPoolId_ {0};

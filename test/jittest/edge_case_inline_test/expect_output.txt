@@ -1,0 +1,297 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+=== Edge Case Inline Testing ===
+Phase 1: Empty and minimal function tests
+=== Empty and Minimal Functions Test ===
+MinimalFunc1(5): 5
+MinimalFunc2(5): 6
+MinimalFunc3(5, 6): 11
+MinimalFunc4(5): 5
+ReturnOnlyFunc1(5): 10
+ReturnOnlyFunc2("test_5"): TEST_5
+ReturnOnlyFunc3(true): false
+true
+=== Empty and Minimal Functions Test ===
+[trace] aot inline function name: #*#EmptyFunc1@edge_case_inline_test caller function name: #*#TestEmptyAndMinimalFunctions@edge_case_inline_test
+[trace] aot inline function name: #*#EmptyFunc2@edge_case_inline_test caller function name: #*#TestEmptyAndMinimalFunctions@edge_case_inline_test
+[trace] aot inline function name: #*#EmptyFunc3@edge_case_inline_test caller function name: #*#TestEmptyAndMinimalFunctions@edge_case_inline_test
+[trace] aot inline function name: #*#EmptyFunc4@edge_case_inline_test caller function name: #*#TestEmptyAndMinimalFunctions@edge_case_inline_test
+[trace] aot inline function name: #*#MinimalFunc1@edge_case_inline_test caller function name: #*#TestEmptyAndMinimalFunctions@edge_case_inline_test
+MinimalFunc1(5): 5
+[trace] aot inline function name: #*#MinimalFunc2@edge_case_inline_test caller function name: #*#TestEmptyAndMinimalFunctions@edge_case_inline_test
+MinimalFunc2(5): 6
+MinimalFunc3(5, 6): 11
+MinimalFunc4(5): 5
+ReturnOnlyFunc1(5): 10
+ReturnOnlyFunc2("test_5"): TEST_5
+ReturnOnlyFunc3(true): false
+Phase 2: Special values tests
+=== Special Values Test ===
+ProcessSpecialValues(null): null
+ProcessSpecialValues(undefined): undefined
+ProcessSpecialValues(NaN): nan
+SpecialValueFunc1(100): false
+SpecialValueFunc2(100): false
+SpecialValueFunc3(100): false
+SpecialValueFunc4(100): true
+SpecialValueFunc5(Infinity): true
+SpecialValueFunc6(-Infinity): true
+true
+=== Special Values Test ===
+[trace] aot inline function name: #*#ProcessSpecialValues@edge_case_inline_test caller function name: #*#TestSpecialValues@edge_case_inline_test
+[trace] aot inline function name: #*#SpecialValueFunc1@edge_case_inline_test caller function name: #*#ProcessSpecialValues@edge_case_inline_test
+ProcessSpecialValues(null): null
+[trace] aot inline function name: #*#ProcessSpecialValues@edge_case_inline_test caller function name: #*#TestSpecialValues@edge_case_inline_test
+[trace] aot inline function name: #*#SpecialValueFunc1@edge_case_inline_test caller function name: #*#ProcessSpecialValues@edge_case_inline_test
+ProcessSpecialValues(undefined): undefined
+[trace] aot inline function name: #*#ProcessSpecialValues@edge_case_inline_test caller function name: #*#TestSpecialValues@edge_case_inline_test
+[trace] aot inline function name: #*#SpecialValueFunc1@edge_case_inline_test caller function name: #*#ProcessSpecialValues@edge_case_inline_test
+ProcessSpecialValues(NaN): nan
+[trace] aot inline function name: #*#SpecialValueFunc1@edge_case_inline_test caller function name: #*#TestSpecialValues@edge_case_inline_test
+SpecialValueFunc1(100): false
+[trace] aot inline function name: #*#SpecialValueFunc2@edge_case_inline_test caller function name: #*#TestSpecialValues@edge_case_inline_test
+SpecialValueFunc2(100): false
+[trace] aot inline function name: #*#SpecialValueFunc3@edge_case_inline_test caller function name: #*#TestSpecialValues@edge_case_inline_test
+SpecialValueFunc3(100): false
+SpecialValueFunc4(100): true
+SpecialValueFunc5(Infinity): true
+SpecialValueFunc6(-Infinity): true
+Phase 3: Type conversion tests
+=== Type Conversion Test ===
+ComplexTypeConversion(123): null
+ComplexTypeConversion("456"): null
+ComplexTypeConversion(true): null
+TypeConversionFunc1(42): 42
+TypeConversionFunc2(42): 42
+TypeConversionFunc3(42): true
+true
+=== Type Conversion Test ===
+[trace] aot inline function name: #*#ComplexTypeConversion@edge_case_inline_test caller function name: #*#TestTypeConversions@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc1@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc2@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc3@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc4@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc5@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc6@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+ComplexTypeConversion(123): null
+[trace] aot inline function name: #*#ComplexTypeConversion@edge_case_inline_test caller function name: #*#TestTypeConversions@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc1@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc2@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc3@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc4@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc5@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc6@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+ComplexTypeConversion("456"): null
+[trace] aot inline function name: #*#ComplexTypeConversion@edge_case_inline_test caller function name: #*#TestTypeConversions@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc1@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc2@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc3@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc4@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc5@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+[trace] aot inline function name: #*#TypeConversionFunc6@edge_case_inline_test caller function name: #*#ComplexTypeConversion@edge_case_inline_test
+ComplexTypeConversion(true): null
+[trace] aot inline function name: #*#TypeConversionFunc1@edge_case_inline_test caller function name: #*#TestTypeConversions@edge_case_inline_test
+TypeConversionFunc1(42): 42
+[trace] aot inline function name: #*#TypeConversionFunc2@edge_case_inline_test caller function name: #*#TestTypeConversions@edge_case_inline_test
+TypeConversionFunc2(42): 42
+[trace] aot inline function name: #*#TypeConversionFunc3@edge_case_inline_test caller function name: #*#TestTypeConversions@edge_case_inline_test
+TypeConversionFunc3(42): true
+Phase 4: Closures and hoisting tests
+=== Closures and Hoisting Test ===
+ClosureTestFunc result: 60
+true
+=== Closures and Hoisting Test ===
+[trace] aot inline function name: #*#ClosureTestFunc@edge_case_inline_test caller function name: #*#TestClosuresAndHoisting@edge_case_inline_test
+[trace] aot inline function name: #*#OuterClosureFunc@edge_case_inline_test caller function name: #*#ClosureTestFunc@edge_case_inline_test
+[trace] aot inline function name: #*#OuterClosureFunc@edge_case_inline_test caller function name: #*#ClosureTestFunc@edge_case_inline_test
+ClosureTestFunc result: 60
+Phase 5: Deep chain tests
+=== Deep Chains Test ===
+DeepChain12(5): 83
+true
+=== Deep Chains Test ===
+[trace] aot inline function name: #*#DeepChain12@edge_case_inline_test caller function name: #*#TestDeepChains@edge_case_inline_test
+[trace] aot inline function name: #*#DeepChain11@edge_case_inline_test caller function name: #*#DeepChain12@edge_case_inline_test
+[trace] aot inline function name: #*#DeepChain10@edge_case_inline_test caller function name: #*#DeepChain11@edge_case_inline_test
+DeepChain12(5): 83
+Phase 6: Side effects tests
+=== Side Effects Test ===
+TestSideEffects(50): 202, counter: 0
+true
+=== Side Effects Test ===
+[trace] aot inline function name: #*#SideEffectFunc4@edge_case_inline_test caller function name: #*#TestSideEffects@edge_case_inline_test
+[trace] aot inline function name: #*#TestSideEffectsImpl@edge_case_inline_test caller function name: #*#TestSideEffects@edge_case_inline_test
+[trace] aot inline function name: #*#SideEffectFunc1@edge_case_inline_test caller function name: #*#TestSideEffectsImpl@edge_case_inline_test
+[trace] aot inline function name: #*#SideEffectFunc2@edge_case_inline_test caller function name: #*#TestSideEffectsImpl@edge_case_inline_test
+[trace] aot inline function name: #*#SideEffectFunc3@edge_case_inline_test caller function name: #*#TestSideEffectsImpl@edge_case_inline_test
+[trace] aot inline function name: #*#SideEffectFunc4@edge_case_inline_test caller function name: #*#TestSideEffectsImpl@edge_case_inline_test
+[trace] aot inline function name: #*#SideEffectFunc3@edge_case_inline_test caller function name: #*#TestSideEffects@edge_case_inline_test
+TestSideEffects(50): 202, counter: 0
+Phase 7: Conditional return tests
+=== Conditional Returns Test ===
+TestConditionalReturns(-10): 100
+TestConditionalReturns(0): 100
+TestConditionalReturns(1): 100
+TestConditionalReturns(50): 200
+TestConditionalReturns(100): 800
+true
+=== Conditional Returns Test ===
+TestConditionalReturns(-10): 100
+TestConditionalReturns(0): 100
+TestConditionalReturns(1): 100
+TestConditionalReturns(50): 200
+TestConditionalReturns(100): 800
+Phase 8: Destructuring tests
+=== Destructuring Test ===
+Destructuring result 0: ["test",1,true]
+Destructuring result 1: {"b":42,"a":"hello"}
+Destructuring result 2: {"arr":[1,2,3,4,5],"rest":[99,"rest"]}
+true
+=== Destructuring Test ===
+[trace] aot inline function name: #*#TestDestructuringImpl@edge_case_inline_test caller function name: #*#TestDestructuring@edge_case_inline_test
+[trace] aot inline function name: #*#DestructuringObjectFunc@edge_case_inline_test caller function name: #*#TestDestructuringImpl@edge_case_inline_test
+Destructuring result 0: ["test",1,true]
+Destructuring result 1: {"b":42,"a":"hello"}
+Destructuring result 2: {"arr":[1,2,3,4,5],"rest":[99,"rest"]}
+Phase 9: Arrow function tests
+=== Arrow Functions Test ===
+TestArrowFunctions(5): 2
+true
+=== Arrow Functions Test ===
+[trace] aot inline function name: #*#TestArrowFunctionsImpl@edge_case_inline_test caller function name: #*#TestArrowFunctions@edge_case_inline_test
+[trace] aot inline function name: #*#ArrowFunc1@edge_case_inline_test caller function name: #*#TestArrowFunctionsImpl@edge_case_inline_test
+[trace] aot inline function name: #*#ArrowFunc2@edge_case_inline_test caller function name: #*#TestArrowFunctionsImpl@edge_case_inline_test
+[trace] aot inline function name: #*#ArrowFunc3@edge_case_inline_test caller function name: #*#TestArrowFunctionsImpl@edge_case_inline_test
+TestArrowFunctions(5): 2
+Phase 10: Parameter type tests
+=== Parameter Types Test ===
+TestParameterTypes(5): 92
+true
+=== Parameter Types Test ===
+[trace] aot inline function name: #*#TestParameterTypesImpl@edge_case_inline_test caller function name: #*#TestParameterTypes@edge_case_inline_test
+[trace] aot inline function name: #*#DefaultParamFunc1@edge_case_inline_test caller function name: #*#TestParameterTypesImpl@edge_case_inline_test
+TestParameterTypes(5): 92
+Phase 11: Bitwise and comparison tests
+=== Bitwise and Comparisons Test ===
+TestBitwiseAndComparisons(5, 10): 252
+true
+=== Bitwise and Comparisons Test ===
+TestBitwiseAndComparisons(5, 10): 252
+Phase 12: Math edge case tests
+=== Math Edge Cases Test ===
+TestMathEdgeCases(0): 0
+TestMathEdgeCases(1): 0
+TestMathEdgeCases(25): 0
+true
+=== Math Edge Cases Test ===
+TestMathEdgeCases(0): 0
+TestMathEdgeCases(1): 0
+TestMathEdgeCases(25): 0
+Phase 13: String edge case tests
+=== String Edge Cases Test ===
+TestStringEdgeCases("hello"): 5olleh00005olleh0000
+TestStringEdgeCases("test"): 4tset000004tset00000
+true
+=== String Edge Cases Test ===
+TestStringEdgeCases("hello"): 5olleh00005olleh0000
+TestStringEdgeCases("test"): 4tset000004tset00000
+Phase 14: Extreme value tests
+=== Extreme Value Edge Case Tests ===
+ExtremeValueOrchestrator(100): 101
+true
+=== Extreme Value Edge Case Tests ===
+[trace] aot inline function name: #*#ExtremeValueOrchestrator@edge_case_inline_test caller function name: #*#TestExtremeValues@edge_case_inline_test
+[trace] aot inline function name: #*#ExtremeValueFunc1@edge_case_inline_test caller function name: #*#ExtremeValueOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#ExtremeValueFunc2@edge_case_inline_test caller function name: #*#ExtremeValueOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#ExtremeValueFunc5@edge_case_inline_test caller function name: #*#ExtremeValueOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#ExtremeValueFunc6@edge_case_inline_test caller function name: #*#ExtremeValueOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#ExtremeValueFunc3@edge_case_inline_test caller function name: #*#ExtremeValueOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#ExtremeValueFunc4@edge_case_inline_test caller function name: #*#ExtremeValueOrchestrator@edge_case_inline_test
+ExtremeValueOrchestrator(100): 101
+Phase 15: Prototype and inheritance tests
+=== Prototype and Inheritance Edge Case Tests ===
+PrototypeOrchestrator result: 70
+true
+=== Prototype and Inheritance Edge Case Tests ===
+[trace] aot inline function name: #*#PrototypeOrchestrator@edge_case_inline_test caller function name: #*#TestPrototypeAndInheritance@edge_case_inline_test
+[trace] aot inline function name: #*#PrototypeEdgeCase1@edge_case_inline_test caller function name: #*#PrototypeOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #~@2>#getValue@edge_case_inline_test caller function name: #*#PrototypeEdgeCase1@edge_case_inline_test
+[trace] aot inline function name: #*#PrototypeEdgeCase2@edge_case_inline_test caller function name: #*#PrototypeOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #~@3>#getTotal@edge_case_inline_test caller function name: #*#PrototypeEdgeCase2@edge_case_inline_test
+[trace] aot inline function name: #*#PrototypeEdgeCase3@edge_case_inline_test caller function name: #*#PrototypeOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#PrototypeEdgeCase3@edge_case_inline_test caller function name: #*#PrototypeOrchestrator@edge_case_inline_test
+PrototypeOrchestrator result: 70
+Phase 16: Generator and iterator tests
+=== Generator and Iterator Edge Case Tests ===
+IteratorOrchestrator result: 420
+true
+=== Generator and Iterator Edge Case Tests ===
+[trace] aot inline function name: #*#IteratorOrchestrator@edge_case_inline_test caller function name: #*#TestGeneratorsAndIterators@edge_case_inline_test
+IteratorOrchestrator result: 420
+Phase 17: Proxy tests
+=== Proxy Edge Case Tests ===
+ProxyOrchestrator result: 40
+true
+=== Proxy Edge Case Tests ===
+[trace] aot inline function name: #*#ProxyOrchestrator@edge_case_inline_test caller function name: #*#TestProxies@edge_case_inline_test
+[trace] aot inline function name: #*#ProxyEdgeCase1@edge_case_inline_test caller function name: #*#ProxyOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#ProxyEdgeCase2@edge_case_inline_test caller function name: #*#ProxyOrchestrator@edge_case_inline_test
+ProxyOrchestrator result: 40
+Phase 18: Symbol tests
+=== Symbol Edge Case Tests ===
+SymbolOrchestrator result: {"value1":100,"hasSymbol1":true,"description":"no symbol"}
+true
+=== Symbol Edge Case Tests ===
+[trace] aot inline function name: #*#SymbolOrchestrator@edge_case_inline_test caller function name: #*#TestSymbols@edge_case_inline_test
+[trace] aot inline function name: #*#SymbolEdgeCase1@edge_case_inline_test caller function name: #*#SymbolOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#SymbolEdgeCase2@edge_case_inline_test caller function name: #*#SymbolOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#SymbolEdgeCase3@edge_case_inline_test caller function name: #*#SymbolOrchestrator@edge_case_inline_test
+SymbolOrchestrator result: {"value1":100,"hasSymbol1":true,"description":"no symbol"}
+Phase 19: Simulated async tests
+=== Simulated Async Edge Case Tests ===
+SimulatedAsyncOrchestrator([1, 2, 3, 4, 5]): [8, 16, 24, 32, 40]
+true
+=== Simulated Async Edge Case Tests ===
+[trace] aot inline function name: #*#SimulatedAsyncOrchestrator@edge_case_inline_test caller function name: #*#TestSimulatedAsync@edge_case_inline_test
+SimulatedAsyncOrchestrator([1, 2, 3, 4, 5]): [8, 16, 24, 32, 40]
+Phase 20: Memory pressure tests
+=== Memory Pressure Edge Case Tests ===
+MemoryPressureOrchestrator result: 66250
+true
+=== Memory Pressure Edge Case Tests ===
+[trace] aot inline function name: #*#MemoryPressureOrchestrator@edge_case_inline_test caller function name: #*#TestMemoryPressure@edge_case_inline_test
+MemoryPressureOrchestrator result: 66250
+Phase 21: Unicode tests
+=== Unicode Edge Case Tests ===
+UnicodeOrchestrator result: [{"original":"Hello World","length":11,"reversed":"dlroW olleH","upper":"HELLO WORLD"},{"original":"Café","length":4,"reversed":"éfaC","upper":"CAFÉ"},{"original":"你好","length":2,"reversed":"好你","upper":"你好"},{"original":"🚀🎉🎊","length":3,"reversed":"🎊🎉🚀","upper":"🚀🎉🎊"},{"original":"العربية","length":7,"reversed":"ةيبرعلا","upper":"العربية"},{"original":"עברית","length":5,"reversed":"תירבע","upper":"עברית"},{"original":"العبرية","length":7,"reversed":"ةيربعلا","upper":"العبرية"},{"original":"Español","length":7,"reversed":"loñapsE","upper":"ESPAÑOL"}]
+true
+=== Unicode Edge Case Tests ===
+[trace] aot inline function name: #*#UnicodeOrchestrator@edge_case_inline_test caller function name: #*#TestUnicode@edge_case_inline_test
+UnicodeOrchestrator result: [{"original":"Hello World","length":11,"reversed":"dlroW olleH","upper":"HELLO WORLD"},{"original":"Café","length":4,"reversed":"éfaC","upper":"CAFÉ"},{"original":"你好","length":2,"reversed":"好你","upper":"你好"},{"original":"🚀🎉🎊","length":3,"reversed":"🎊🎉🚀","upper":"🚀🎉🎊"},{"original":"العربية","length":7,"reversed":"ةيبرعلا","upper":"العربية"},{"original":"עברית","length":5,"reversed":"תירבע","upper":"עברית"},{"original":"العبرية","length":7,"reversed":"ةيربعلا","upper":"العبرية"},{"original":"Español","length":7,"reversed":"loñapsE","upper":"ESPAÑOL"}]
+Phase 22: Computation tests
+=== Computation Edge Case Tests ===
+ComputationOrchestrator result: 6562.212165840046
+true
+=== Computation Edge Case Tests ===
+[trace] aot inline function name: #*#ComputationOrchestrator@edge_case_inline_test caller function name: #*#TestComputation@edge_case_inline_test
+[trace] aot inline function name: #*#ComputationEdgeCase1@edge_case_inline_test caller function name: #*#ComputationOrchestrator@edge_case_inline_test
+[trace] aot inline function name: #*#ComputationEdgeCase2@edge_case_inline_test caller function name: #*#ComputationOrchestrator@edge_case_inline_test
+ComputationOrchestrator result: 6562.212165840046
+Phase 23: Error boundary tests
+=== Error Boundary Edge Case Tests ===
+ErrorBoundaryOrchestrator result: [0, 0, 1, 2, 3, 4, Infinity, 100, 50, 33.333333333333336, 25, 100, , -1, -1, -1, -1]
+true
+=== Error Boundary Edge Case Tests ===
+ErrorBoundaryOrchestrator result: [0, 0, 1, 2, 3, 4, Infinity, 100, 50, 33.333333333333336, 25, 100, , -1, -1, -1, -1]
+Edge case inline testing completed

@@ -61,6 +61,10 @@ function Test2(obj, obj2, shouldChange) {
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 // Function Test calls Test2 to trigger deoptimization and then prints the value of 'x'.

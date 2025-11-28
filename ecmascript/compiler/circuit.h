@@ -62,6 +62,7 @@ public:
     void PrintAllGates() const;
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
+    size_t GetJSBytecodeGatesFrom(std::vector<GateRef>& gateList, size_t startPos) const;
     static GateRef NullGate();
     void Verify(GateRef gate, const std::string& methodName = "") const;
     panda::ecmascript::FrameType GetFrameType() const;
@@ -204,12 +205,12 @@ public:
     }
 
     const GateMetaData* JSBytecode(size_t valuesIn, uint32_t methodId, EcmaOpcode opcode,
-        uint32_t pcOffset, uint32_t bcIndex, bool writable, bool hasFrameState)
+        uint32_t pcOffset, uint32_t bcIndex, bool writable, bool hasFrameState, uint16_t slotId)
     {
         GateFlags writableFlags = writable ? GateFlags::NONE_FLAG : GateFlags::NO_WRITE;
         GateFlags frameStateFlags = hasFrameState ? GateFlags::HAS_FRAME_STATE : GateFlags::NONE_FLAG;
         GateFlags flags = static_cast<GateFlags>(writableFlags | frameStateFlags);
-        return metaBuilder_.JSBytecode(valuesIn, methodId, opcode, pcOffset, bcIndex, flags);
+        return metaBuilder_.JSBytecode(valuesIn, methodId, opcode, pcOffset, bcIndex, flags, slotId);
     }
 
     GateRef DeadGate()

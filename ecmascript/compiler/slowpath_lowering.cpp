@@ -86,6 +86,9 @@ void SlowPathLowering::CallRuntimeLowering()
             case OpCode::CHECK_SAFEPOINT_AND_STACKOVER:
                 LowerCheckSafePointAndStackOver(gate);
                 break;
+            case OpCode::CHECK_SAFEPOINT:
+                LowerCheckSafePoint(gate);
+                break;
             case OpCode::GET_ENV:
                 LowerGetEnv(gate);
                 break;
@@ -3900,6 +3903,36 @@ void SlowPathLowering::LowerCheckSafePointAndStackOver(GateRef gate)
             GateRef res = LowerCallRuntime(glue_, RTSTUB_ID(ThrowStackOverflowException), {}, true);
             builder_.Return(res);
         }
+    }
+    builder_.Bind(&dispatch);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void SlowPathLowering::LowerCheckSafePoint(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label slowPath(&builder_);
+    Label dispatch(&builder_);
+    GateRef checkSafePoint = Circuit::NullGate();
+    if (!g_isEnableCMCGC) {
+        GateRef interruptsFlag = builder_.LoadWithoutBarrier(VariableType::INT8(), glue_,
+            builder_.IntPtr(JSThread::GlueData::GetInterruptVectorOffset(builder_.GetCompilationConfig()->Is32Bit())));
+        checkSafePoint = builder_.Int8Equal(interruptsFlag, builder_.Int8(VmThreadControl::VM_NEED_SUSPENSION));
+    } else {
+        GateRef threadHolderOffset = builder_.IntPtr(JSThread::GlueData::GetThreadHolderOffset(env.IsArch32Bit()));
+        GateRef threadHolder = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), glue_, threadHolderOffset);
+        GateRef mutatorBase = builder_.LoadWithoutBarrier(VariableType::NATIVE_POINTER(), threadHolder,
+            builder_.IntPtr(ThreadHolder::GetMutatorBaseOffset()));
+        GateRef safepointActive = builder_.LoadWithoutBarrier(VariableType::INT32(), mutatorBase,
+            builder_.IntPtr(common::MutatorBase::GetSafepointActiveOffset()));
+        checkSafePoint = builder_.Int32Equal(builder_.Int32(ThreadFlag::SUSPEND_REQUEST), safepointActive);
+    }
+    builder_.Branch(checkSafePoint,
+                    &slowPath, &dispatch, BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "checkSafePoint");
+    builder_.Bind(&slowPath);
+    {
+        LowerCallRuntime(glue_, RTSTUB_ID(CheckSafePoint), {}, true);
+        builder_.Jump(&dispatch);
     }
     builder_.Bind(&dispatch);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());

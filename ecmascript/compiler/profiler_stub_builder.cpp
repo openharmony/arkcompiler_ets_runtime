@@ -252,40 +252,58 @@ void ProfilerStubBuilder::ProfileCall(
         {
             Label icSlotValid(env);
             Label isHeapObject(env);
+            Label uninitialized(env);
             Label updateSlot(env);
-            Label resetSlot(env);
-            Label notHeapObject(env);
-            Label notOverflow(env);
+            Label incrementCallCnt(env);
 
             GateRef slotId = GetSlotID(slotInfo);
             GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
             BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
             Bind(&icSlotValid);
             GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
-            BRANCH(TaggedIsHole(slotValue), &exit, &notOverflow);
-            Bind(&notOverflow);
-            BRANCH(TaggedIsHeapObject(slotValue), &isHeapObject, &notHeapObject);
-            Bind(&notHeapObject);
-            BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &resetSlot);
+            BRANCH(TaggedIsHeapObject(slotValue), &isHeapObject, &uninitialized);
             Bind(&isHeapObject);
             {
                 Label change(env);
-                BRANCH(Int64Equal(slotValue, target), &exit, &change);
+                Label resetSlot(env);
+                GateRef slotFunc = GetValueFromTaggedArray(glue, slotValue, Int32(0));
+                BRANCH(Int64Equal(slotFunc, target), &incrementCallCnt, &change);
                 Bind(&change);
                 {
-                    BRANCH(Int64Equal(ChangeTaggedPointerToInt64(slotValue), Int64(0)), &exit, &resetSlot);
+                    BRANCH(Int64Equal(ChangeTaggedPointerToInt64(slotFunc), Int64(0)), &exit, &resetSlot);
+                }
+                Bind(&resetSlot);
+                {
+                    // NOTICE-PGO: lx about poly
+                    GateRef nonType = TaggedInt(PGO_BUILTINS_STUB_ID(NONE));
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, nonType);
+                    TryPreDumpInner(glue, func, profileTypeInfo);
+                    Jump(&exit);
                 }
             }
-            Bind(&resetSlot);
+            Bind(&uninitialized);
             {
-                GateRef nonType = Int32(PGO_BUILTINS_STUB_ID(NONE));
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(nonType));
-                TryPreDumpInner(glue, func, profileTypeInfo);
-                Jump(&exit);
+                // Only when slot value is undefined, it means uninitialized, so we need to update the slot.
+                // When the slot value is hole, it means slot is overflow (0xff). Otherwise, do nothing.
+                BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &exit);
             }
             Bind(&updateSlot);
             {
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, target);
+                NewObjectStubBuilder newBuilder(env);
+                GateRef targetSlot = newBuilder.NewFuncSlot(glue);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, targetSlot, Int32(FuncSlot::FUNCTION_INDEX),
+                                      target);
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, targetSlot, Int32(FuncSlot::CALL_CNT_INDEX),
+                                      TaggedInt(1));
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, targetSlot);
+                TryPreDumpInner(glue, func, profileTypeInfo);
+                Jump(&exit);
+            }
+            Bind(&incrementCallCnt);
+            {
+                GateRef callCnt = TaggedGetInt(GetValueFromTaggedArray(glue, slotValue, Int32(1)));
+                GateRef newCallCnt = Int32Add(callCnt, Int32(1));
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(1), IntToTaggedInt(newCallCnt));
                 TryPreDumpInner(glue, func, profileTypeInfo);
                 Jump(&exit);
             }
@@ -363,7 +381,7 @@ void ProfilerStubBuilder::ProfileNativeCall(
         Label sameValueCheck(env);
         Label invalidate(env);
         Label notOverflow(env);
-        Label notInt(env);
+        Label incrementCallCnt(env);
 
         GateRef slotId = GetSlotID(slotInfo);
         GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
@@ -372,28 +390,40 @@ void ProfilerStubBuilder::ProfileNativeCall(
         GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
         BRANCH(TaggedIsHole(slotValue), &exit, &notOverflow); // hole -- slot is overflow
         Bind(&notOverflow);
-        BRANCH(TaggedIsInt(slotValue), &updateSlot, &notInt);
-        Bind(&notInt);
-        BRANCH(TaggedIsHeapObject(slotValue), &invalidate, &initSlot);
+        BRANCH(TaggedIsHeapObject(slotValue), &updateSlot, &initSlot);
         Bind(&updateSlot);
-        GateRef oldId = TaggedGetInt(slotValue);
+        GateRef oldId = TaggedGetInt(GetValueFromTaggedArray(glue, slotValue, Int32(0)));
         BRANCH(Int32Equal(oldId, Int32(PGO_BUILTINS_STUB_ID(NONE))), &exit, &sameValueCheck);
         Bind(&sameValueCheck);
         {
             GateRef newId = TryGetBuiltinFunctionId(glue, target);
-            BRANCH(Int32Equal(oldId, newId), &exit, &invalidate);
+            BRANCH(Int32Equal(oldId, newId), &incrementCallCnt, &invalidate);
+        }
+        Bind(&incrementCallCnt);
+        {
+            GateRef callCnt = TaggedGetInt(GetValueFromTaggedArray(glue, slotValue, Int32(1)));
+            GateRef newCallCnt = Int32Add(callCnt, Int32(1));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(1), IntToTaggedInt(newCallCnt));
+            TryPreDumpInner(glue, func, profileTypeInfo);
+            Jump(&exit);
         }
         Bind(&invalidate);
         {
             GateRef invalidId = Int32(PGO_BUILTINS_STUB_ID(NONE));
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(invalidId));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(0), IntToTaggedInt(invalidId));
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);
         }
         Bind(&initSlot);
         {
             GateRef newId = TryGetBuiltinFunctionId(glue, target);
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newId));
+            NewObjectStubBuilder newBuilder(env);
+            GateRef newSlot = newBuilder.NewFuncSlot(glue);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, newSlot, Int32(FuncSlot::FUNCTION_INDEX),
+                                  IntToTaggedInt(newId));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, newSlot, Int32(FuncSlot::CALL_CNT_INDEX),
+                                  TaggedInt(1));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newSlot);
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);
         }
@@ -913,6 +943,20 @@ GateRef ProfilerStubBuilder::GetJitCallCnt(GateRef profileTypeInfo)
     return ZExtInt16ToInt32(jitCallCnt);
 }
 
+GateRef ProfilerStubBuilder::GetInvocationCntOffset(GateRef profileTypeInfo)
+{
+    GateRef bitFieldOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
+    return PtrAdd(bitFieldOffset,
+                  IntPtr(ProfileTypeInfo::INVOCATION_CNT_OFFSET_FROM_BITFIELD));
+}
+
+GateRef ProfilerStubBuilder::GetInvocationCnt(GateRef profileTypeInfo)
+{
+    GateRef invocationCntOffset = GetInvocationCntOffset(profileTypeInfo);
+    GateRef invocationCnt = LoadPrimitive(VariableType::INT32(), profileTypeInfo, invocationCntOffset);
+    return invocationCnt;
+}
+
 GateRef ProfilerStubBuilder::GetOsrHotnessThresholdOffset(GateRef profileTypeInfo)
 {
     GateRef bitFieldOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
@@ -965,6 +1009,11 @@ GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, [[maybe_unused
 
     GateRef hotnessThreshold = GetJitHotnessThreshold(profileTypeInfo);
     GateRef jitCallCnt = GetJitCallCnt(profileTypeInfo);
+
+    GateRef invocationCnt = GetInvocationCnt(profileTypeInfo);
+    GateRef newInvocationCnt = Int32Add(invocationCnt, Int32(1));
+    GateRef invocationCntOffset = GetInvocationCntOffset(profileTypeInfo);
+    Store(VariableType::INT32(), glue, profileTypeInfo, invocationCntOffset, newInvocationCnt);
 
     Label cmpJitCallThreshold(env);
     Label jitCallNotEqualZero(env);
