@@ -26,3 +26,6 @@ obj/arkcompiler/ets_runtime/ecmascript/tests/Sendable_JsSharedArray_Test
 
 #26095
 obj/arkcompiler/ets_runtime/test/aottest/sharedset/sharedset/modules.ap
+
+#27602
+obj/arkcompiler/ets_runtime/ecmascript/tests/GC_ReadOnlySpace_Test
