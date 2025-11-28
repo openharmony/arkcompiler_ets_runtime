@@ -868,7 +868,6 @@ ecma_source = [
   "ecmascript/compiler/aot_file/elf_checker.cpp",
   "ecmascript/compiler/aot_file/an_file_data_manager.cpp",
   "ecmascript/compiler/aot_file/an_file_info.cpp",
-  "ecmascript/compiler/aot_file/aot_checksum_helper.cpp",
   "ecmascript/compiler/aot_file/aot_file_info.cpp",
   "ecmascript/compiler/aot_file/stub_file_info.cpp",
   "ecmascript/compiler/aot_file/gdb_jit.cpp",

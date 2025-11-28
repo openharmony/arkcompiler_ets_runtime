@@ -76,30 +76,6 @@ host_unittest_action("AOTFileTest") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("AOTChecksumTest") {
-  module_out_path = module_output_path
-
-  sources = [ "aot_checksum_test.cpp" ]
-
-  configs = [
-    "../../../../:asm_interp_enable_config",
-    "../../../../:ecma_test_config",
-  ]
-
-  deps = [
-    "../../:libark_jsoptimizer_set",
-    "../../../../:libark_jsruntime_test",
-  ]
-
-  external_deps = [
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "runtime_core:libarkassembler_static",
-  ]
-
-  external_deps += hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-}
 
 host_unittest_action("BinaryBufferParserTest") {
   module_out_path = module_output_path
@@ -155,7 +131,6 @@ group("unittest") {
   testonly = true
   deps = []
   deps += [
-    ":AOTChecksumTest",
     ":AOTFileTest",
     ":BinaryBufferParserTest",
     ":AnFileInfoTest",
@@ -169,14 +144,10 @@ group("unittest") {
 
 group("host_unittest") {
   testonly = true
-  deps = [
-    ":AOTChecksumTestAction",
-    ":AOTFileTestAction",
-  ]
+  deps = [ ":AOTFileTestAction" ]
 
   if (is_mac) {
     deps -= [
-      ":AOTChecksumTestAction",
       ":AOTFileTestAction",
     ]
   } else if (ets_runtime_enable_cmc_gc) {
