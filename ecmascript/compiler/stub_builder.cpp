@@ -8442,6 +8442,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
     Label entry(env);
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(rightUnboxed, VariableType::JS_ANY(), Hole());
     Label exit(env);
     Label leftIsNotSpecial(env);
     Label leftIsNotString(env);
@@ -8452,6 +8453,7 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
     Label stringLeftAddNumberRight(env);
     Label numberLeftAddStringRight(env);
     Label stringLeftAddStringRight(env);
+    Label stringLeftAddStringWrapperRight(env);
     Label notStringAdd(env);
     BRANCH(TaggedIsString(glue, left), &leftIsString, &leftIsNotString);
     Bind(&leftIsString);
@@ -8459,10 +8461,33 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
         BRANCH(TaggedIsString(glue, right), &stringLeftAddStringRight, &rightIsNotString);
         Bind(&rightIsNotString);
         {
+            Label checkStringWrapper(env);
             BRANCH(TaggedIsSpecial(right), &notStringAdd, &rightIsNotSpecial);
             Bind(&rightIsNotSpecial);
             {
-                BRANCH(TaggedIsNumber(right), &stringLeftAddNumberRight, &notStringAdd);
+                BRANCH(TaggedIsNumber(right), &stringLeftAddNumberRight, &checkStringWrapper);
+                Bind(&checkStringWrapper);
+                {
+                    Label isPrimitiveRef(env);
+                    BRANCH(IsJSPrimitiveRef(glue, right), &isPrimitiveRef, &notStringAdd);
+                    Bind(&isPrimitiveRef);
+                    {
+                        GateRef globalEnv = GetCurrentGlobalEnv();
+                        Label wrapperFastPath(env);
+                        BRANCH_UNLIKELY(GetStringWrapperToPrimitiveDetector(globalEnv), &notStringAdd, &wrapperFastPath);
+                        Bind(&wrapperFastPath);
+                        {
+                            GateRef value = Load(VariableType::JS_ANY(), glue, right, IntPtr(JSPrimitiveRef::VALUE_OFFSET));
+                            Label valueIsString(env);
+                            BRANCH(TaggedIsString(glue, value), &valueIsString, &notStringAdd);
+                            Bind(&valueIsString);
+                            {
+                                rightUnboxed = value;
+                                Jump(&stringLeftAddStringWrapperRight);
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -8497,6 +8522,17 @@ GateRef StubBuilder::TryStringAdd(Environment *env, GateRef glue, GateRef left, 
         callback.ProfileOpType(TaggedInt(PGOSampleType::NumberOrStringType()));
         BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
         result = builtinsStringStubBuilder.StringConcat(glue, NumberToString(glue, left), right);
+        BRANCH(HasPendingException(glue), &hasPendingException, &exit);
+        Bind(&hasPendingException);
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&stringLeftAddStringWrapperRight);
+    {
+        Label hasPendingException(env);
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(this, GetCurrentGlobalEnv());
+        GateRef right = *rightUnboxed;
+        result = builtinsStringStubBuilder.StringConcat(glue, left, right);
         BRANCH(HasPendingException(glue), &hasPendingException, &exit);
         Bind(&hasPendingException);
         result = Exception();

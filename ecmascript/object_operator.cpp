@@ -222,7 +222,7 @@ void ObjectOperator::FastAdd(JSThread *thread, const JSTaggedValue &receiver, co
 }
 
 // static
-void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTaggedValue receiver)
+void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue proto)
 {
     // skip env prepare
     if (!thread->IsReadyToUpdateDetector()) {
@@ -254,9 +254,13 @@ void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTagg
             return;
         }
         case JSType::JS_PRIMITIVE_REF: {
-            if (JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString(thread) &&
-                !env->GetStringIteratorDetector()) {
-                env->SetStringIteratorDetector(true);
+            if (JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString(thread)) {
+                if (!env->GetStringIteratorDetector()) {
+                    env->SetStringIteratorDetector(true);
+                }
+                if (!env->GetStringWrapperToPrimitiveDetector()) {
+                    env->SetStringWrapperToPrimitiveDetector(true);
+                }
             }
             return;
         }
@@ -306,9 +310,15 @@ void ObjectOperator::UpdateDetectorOnSetPrototype(const JSThread *thread, JSTagg
         return;
     }
     if ((!env->GetNumberStringNotRegexpLikeDetector() &&
-        JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() && receiver.IsJSPrimitive())) {
+        JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() && receiver.IsJSPrimitiveRef())) {
         env->SetNumberStringNotRegexpLikeDetector(true);
         return;
+    }
+
+    if (!env->GetStringWrapperToPrimitiveDetector() &&
+        proto.IsJSPrimitiveRef() &&
+        JSPrimitiveRef::Cast(proto.GetTaggedObject())->IsString(thread)) {
+        env->SetStringWrapperToPrimitiveDetector(true);
     }
 }
 
@@ -317,7 +327,7 @@ void ObjectOperator::UpdateDetector()
     if (IsElement()) {
         return;
     }
-    ObjectOperator::UpdateDetector(thread_, holder_.GetTaggedValue(), key_.GetTaggedValue());
+    ObjectOperator::UpdateDetector(thread_, receiver_.GetTaggedValue(), key_.GetTaggedValue());
 }
 
 // static
@@ -402,7 +412,7 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
         }
         // check String.prototype or Number.prototype or Object.prototype
         if ((JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() &&
-            (receiver.IsJSPrimitive() || receiver == env->GetTaggedObjectFunctionPrototype()))) {
+            (receiver.IsJSPrimitiveRef() || receiver == env->GetTaggedObjectFunctionPrototype()))) {
             env->SetNumberStringNotRegexpLikeDetector(true);
         }
     } else if (key == globalConst->GetFlagsString() &&
@@ -411,6 +421,22 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
             return;
         }
         env->SetRegExpFlagsDetector(true);
+    } else if (key == globalConst->GetToPrimitiveSymbol()) {
+        if (env->GetStringWrapperToPrimitiveDetector()) {
+            return;
+        }
+        if (receiver == env->GetTaggedStringPrototype() || receiver == env->GetTaggedObjectFunctionPrototype() ||
+            (receiver.IsJSPrimitiveRef() && JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString(thread))) {
+            env->SetStringWrapperToPrimitiveDetector(true);
+        }
+    } else if (key == globalConst->GetValueOfString()) {
+        if (env->GetStringWrapperToPrimitiveDetector()) {
+            return;
+        }
+        if (receiver == env->GetTaggedStringPrototype() ||
+            (receiver.IsJSPrimitiveRef() && JSPrimitiveRef::Cast(receiver.GetTaggedObject())->IsString(thread))) {
+            env->SetStringWrapperToPrimitiveDetector(true);
+        }
     }
 }
 

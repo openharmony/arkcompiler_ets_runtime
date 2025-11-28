@@ -67,7 +67,7 @@ public:
 
     void UpdateDetector();
     static void PUBLIC_API UpdateDetector(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
-    static void UpdateDetectorOnSetPrototype(const JSThread *thread, JSTaggedValue receiver);
+    static void UpdateDetectorOnSetPrototype(const JSThread *thread, JSTaggedValue receiver, JSTaggedValue proto);
     static bool IsDetectorName(const JSThread *thread, JSTaggedValue key);
 
     NO_COPY_SEMANTIC(ObjectOperator);

@@ -325,7 +325,8 @@ public:
     DECL_VISIT_OBJECT(HEADER_SIZE, DATA_SIZE);
 
     // define BitField
-    static constexpr uint32_t DEFAULT_LAZY_BITFIELD_VALUE = 0x1fc; // 0000'...'0000'0001'1111'1100
+    static constexpr uint32_t DEFAULT_LAZY_BITFIELD_VALUE = 0x9fc; // 0000'...'0000'1001'1111'1100
+    static constexpr uint32_t DEFAULT_MAIN_THREAD_BITFIELD_VALUE = 0x800; // 0000'...'0000'1000'0000'0000
     static constexpr size_t ARRAYPROTOTYPE_CHANGED_GUARDIANS = 1;
     static constexpr size_t DETECTOR_BITS = 1;
     FIRST_BIT_FIELD(BitField, ArrayPrototypeChangedGuardians, bool, ARRAYPROTOTYPE_CHANGED_GUARDIANS)
@@ -339,7 +340,8 @@ public:
     NEXT_BIT_FIELD(BitField, NumberStringNotRegexpLikeDetector, bool, DETECTOR_BITS, TypedArraySpeciesProtectDetector)
     NEXT_BIT_FIELD(BitField, RegExpFlagsDetector, bool, DETECTOR_BITS, NumberStringNotRegexpLikeDetector)
     NEXT_BIT_FIELD(BitField, RegExpSpeciesDetector, bool, DETECTOR_BITS, RegExpFlagsDetector)
-    NEXT_BIT_FIELD(BitField, LastBitField, bool, DETECTOR_BITS, RegExpSpeciesDetector)
+    NEXT_BIT_FIELD(BitField, StringWrapperToPrimitiveDetector, bool, DETECTOR_BITS, RegExpSpeciesDetector)
+    NEXT_BIT_FIELD(BitField, LastBitField, bool, DETECTOR_BITS, StringWrapperToPrimitiveDetector)
 
     bool GetDetectorValue(uint32_t detectorID)
     {

@@ -56,6 +56,7 @@
     V("isRegExpReplaceDetectorValid",   IsRegExpReplaceDetectorValid,   0, INVALID)       \
     V("isRegExpFlagsDetectorValid",     IsRegExpFlagsDetectorValid,     0, INVALID)       \
     V("isNumberStringNotRegexpLikeDetectorValid", IsNumberStringNotRegexpLikeDetectorValid, 0, INVALID)      \
+    V("isStringWrapperToPrimitiveDetectorValid", IsStringWrapperToPrimitiveDetectorValid, 0, INVALID)        \
     V("isSymbolIteratorDetectorValid",  IsSymbolIteratorDetectorValid,  1, INVALID)       \
     V("isTSHClass",                     IsTSHClass,                     1, INVALID)       \
     V("pgoAssertType",                  PGOAssertType,                  2, INVALID)       \
@@ -312,6 +313,8 @@ public:
     static JSTaggedValue IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsNumberStringNotRegexpLikeDetectorValid(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsStringWrapperToPrimitiveDetectorValid(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info);
 

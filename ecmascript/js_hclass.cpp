@@ -575,7 +575,8 @@ void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject>
         thread->GetEcmaVM()->GetGlobalEnv()->NotifyArrayPrototypeChangedGuardians(thread, object);
         newClass->SetIsJSArrayPrototypeModified(true);
     }
-    ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue());
+    ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue(),
+                                                 proto.GetTaggedValue());
 }
 
 void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto, bool isChangeProto)

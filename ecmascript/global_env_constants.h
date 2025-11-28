@@ -497,14 +497,14 @@ class ObjectFactory;
     V(InteropJsNapiString,            INTEROP_JS_NAPI,                       "ets_interop_js_napi")         \
     V(GetModuleString,                GET_MODULE,                            "getModule")                   \
     SHARED_GLOBAL_ENV_CONSTANT_STRING_HYBRID(V)
- 
-#define SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(V)                                                       \
-    V(FlagsString,                    FLAGS_STRING_INDEX,                    "flags")                       \
-    V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                 \
-    V(NextString,                     NEXT_STRING_INDEX,                     "next")                        \
-    V(PromiseThenString,              PROMISE_THEN_STRING_INDEX,             "then")                        \
-    V(PromiseResolveString,           PROMISE_RESOLVE_STRING_INDEX,          "resolve")                     \
-    V(ValueOfString,                  VALUE_OF_STRING_INDEX,                 "valueOf")
+
+#define SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(V)                                                              \
+    V(ValueOfString,                  VALUE_OF_STRING_INDEX,                 "valueOf")                            \
+    V(FlagsString,                    FLAGS_STRING_INDEX,                    "flags") /* end of string detector */ \
+    V(ConstructorString,              CONSTRUCTOR_STRING_INDEX,              "constructor")                        \
+    V(NextString,                     NEXT_STRING_INDEX,                     "next")                               \
+    V(PromiseThenString,              PROMISE_THEN_STRING_INDEX,             "then")                               \
+    V(PromiseResolveString,           PROMISE_RESOLVE_STRING_INDEX,          "resolve")
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(V)                                                    \
@@ -562,7 +562,6 @@ class ObjectFactory;
     V(JSTaggedValue, MatchSymbol, MATCH_SYMBOL_INDEX, ecma_roots_special)                         \
     V(JSTaggedValue, NativeBindingSymbol, NATIVE_BINDING_SYMBOL_INDEX, ecma_roots_special)        \
     V(JSTaggedValue, SearchSymbol, SEARCH_SYMBOL_INDEX, ecma_roots_special)                       \
-    V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX, ecma_roots_special)             \
     V(JSTaggedValue, UnscopablesSymbol, UNSCOPABLES_SYMBOL_INDEX, ecma_roots_special)             \
 
 #define SHARED_DETECTOR_CONSTANT_SYMBOL(V)                                                        \
@@ -571,18 +570,20 @@ class ObjectFactory;
     V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX, ecma_roots_special)                         \
     V(JSTaggedValue, MatchAllSymbol, MATCH_ALL_SYMBOL_INDEX, ecma_roots_special)                  \
     V(JSTaggedValue, IteratorSymbol, ITERATOR_SYMBOL_INDEX, ecma_roots_special)                   \
-    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX, ecma_roots_special)
+    V(JSTaggedValue, SpeciesSymbol, SPECIES_SYMBOL_INDEX, ecma_roots_special)                     \
+    V(JSTaggedValue, ToPrimitiveSymbol, TOPRIMITIVE_SYMBOL_INDEX, ecma_roots_special)
 
 #define SHARED_GLOBAL_ENV_CONSTANT_SYMBOL(V)     \
     SHARED_PUBLIC_CONSTANT_SYMBOL(V)             \
     SHARED_DETECTOR_CONSTANT_SYMBOL(V)
 
-#define DETECTOR_SYMBOL_LIST(V)                               \
-    V(replace,   REPLACE_SYMBOL_INDEX,    "Symbol.replace")   \
-    V(split,     SPLIT_SYMBOL_INDEX,      "Symbol.split")     \
-    V(matchAll,  MATCH_ALL_SYMBOL_INDEX,  "Symbol.matchAll")  \
-    V(iterator,  ITERATOR_SYMBOL_INDEX,   "Symbol.iterator")  \
-    V(species,   SPECIES_SYMBOL_INDEX,    "Symbol.species")
+#define DETECTOR_SYMBOL_LIST(V)                                               \
+    V(ReplaceSymbol,       REPLACE_SYMBOL_INDEX,        "Symbol.replace")     \
+    V(SplitSymbol,         SPLIT_SYMBOL_INDEX,          "Symbol.split")       \
+    V(MatchAllSymbol,      MATCH_ALL_SYMBOL_INDEX,      "Symbol.matchAll")    \
+    V(IteratorSymbol,      ITERATOR_SYMBOL_INDEX,       "Symbol.iterator")    \
+    V(SpeciesSymbol,       SPECIES_SYMBOL_INDEX,        "Symbol.species")     \
+    V(ToPrimitiveSymbol,   TOPRIMITIVE_SYMBOL_INDEX,    "Symbol.toPrimitive")
 
 #define SHARED_DETECTOR_LISTS(V)                   \
     DETECTOR_SYMBOL_LIST(V)                        \
@@ -623,7 +624,7 @@ enum class ConstantIndex : size_t {
     DETECTOR_END = FLAGS_STRING_INDEX,
 
     SHARED_BEGIN = HCLASS_CLASS_INDEX,
-    SHARED_END = VALUE_OF_STRING_INDEX,
+    SHARED_END = PROMISE_RESOLVE_STRING_INDEX,
 
     SHARED_HCLASS_BEGIN = HCLASS_CLASS_INDEX,
     SHARED_HCLASS_END = VTABLE_CLASS_INDEX,
@@ -676,7 +677,7 @@ public:
     SHARED_GLOBAL_ENV_CONSTANT_STRING(DECL_GET_STRING)
     SHARED_GLOBAL_ENV_CONSTANT_ACCESSOR(DECL_GET_WITH_TYPE)
     SHARED_GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
-    SHARED_GLOBAL_ENV_CONSTANT_SYMBOL(DECL_GET_WITH_TYPE)
+    SHARED_PUBLIC_CONSTANT_SYMBOL(DECL_GET_WITH_TYPE)
     SHARED_DETECTOR_LISTS(DECL_GET_STRING)
     GLOBAL_ENV_CONSTANT_CLASS(DECL_GET_WITH_TYPE)
     GLOBAL_ENV_CONSTANT_SPECIAL(DECL_GET_WITH_TYPE)
