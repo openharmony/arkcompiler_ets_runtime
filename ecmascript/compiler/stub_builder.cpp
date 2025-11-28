@@ -9724,8 +9724,19 @@ void StubBuilder::CalcHashcodeForDouble(GateRef x, Variable *res, Label *exit)
         }
         Bind(&calcHash);
         {
-            *res = env_->GetBuilder()->CalcHashcodeForInt(*value);
-            Jump(exit);
+            Label isNaN(env);
+            Label notNaN(env);
+            BRANCH(DoubleIsNAN(CastInt64ToFloat64(xInt64)), &isNaN, &notNaN);
+            Bind(&isNaN);
+            {
+                *res = Int32(base::NAN_HASH);
+                Jump(exit);
+            }
+            Bind(&notNaN);
+            {
+                *res = env_->GetBuilder()->CalcHashcodeForInt(*value);
+                Jump(exit);
+            }
         }
     }
 

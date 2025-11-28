@@ -47,6 +47,7 @@ static constexpr int64_t MAX_SAFE_INTEGER = 9007199254740991;
 static constexpr double MAX_VALUE = std::numeric_limits<double>::max();
 static constexpr double POSITIVE_INFINITY = std::numeric_limits<double>::infinity();
 static constexpr double NAN_VALUE = std::numeric_limits<double>::quiet_NaN();
+static constexpr int NAN_HASH = INT_MAX;
 static constexpr uint64_t MAX_UINT64_VALUE = std::numeric_limits<uint64_t>::max();
 static constexpr int MAX_INT_VALUE = std::numeric_limits<int>::max();
 
