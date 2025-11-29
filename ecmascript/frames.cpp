@@ -106,6 +106,20 @@ JSTaggedValue FrameIterator::GetFunction() const
     }
 }
 
+void FrameIterator::PrintText(uint32_t *jitTextBegin, uint32_t jitTextSize, std::string message)
+{
+    LOG_FULL(INFO) << "TextBegin: " << std::hex << reinterpret_cast<uintptr_t>(jitTextBegin)
+                   << ", TextSize: " << jitTextSize << ", " << message;
+    std::ostringstream oss;
+    for (size_t point = 0; point < jitTextSize; ++point) {
+        oss << std::hex << jitTextBegin[point] << " ";
+        if (point % PRINT_STEP == 0 && point != 0) {
+            LOG_FULL(INFO) << oss.str();
+            oss.str("");
+        }
+    }
+}
+
 AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr, bool isDeopt) const
 {
     FrameType type = GetFrameType();
@@ -114,6 +128,7 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
         type == FrameType::FASTJIT_FUNCTION_FRAME ||
         type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME) {
         MachineCode* machineCode = nullptr;
+        std::string methodName{""};
         if (isDeopt) {
             JSTaggedValue jsFunction = GetFunction();
             if (!jsFunction.IsJSFunction()) {
@@ -121,6 +136,9 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
                                 << std::hex << reinterpret_cast<JSTaggedType>(jsFunction.GetRawData());
                 UNREACHABLE();
             }
+            Method *method =
+                Method::Cast(JSFunction::Cast(jsFunction.GetTaggedObject())->GetMethod(thread_).GetTaggedObject());
+            methodName = method->GetMethodName(thread_);
             JSTaggedValue machineCodeObj = JSFunction::Cast(jsFunction.GetTaggedObject())->GetMachineCode(thread_);
             if (!machineCodeObj.IsMachineCodeObject()) {
                 LOG_FULL(FATAL) << "not machine code object. addr: "
@@ -136,9 +154,16 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
             UNREACHABLE();
         }
         if (!machineCode->IsInText(retAddr)) {
+            uint32_t *textBegin = reinterpret_cast<uint32_t *>(retAddr - machineCode->GetInstructionsSize());
+            uint32_t textSize = machineCode->GetInstructionsSize() * INSTRUCTION_CONTEXT / INSTRUCTION_LENGTH;
+            PrintText(textBegin, textSize, "print text begin:");
+            textBegin = reinterpret_cast<uint32_t *>(machineCode->GetInstructionsAddr());
+            textSize = machineCode->GetInstructionsSize() / INSTRUCTION_LENGTH;
+            PrintText(textBegin, textSize, "print machine code begin:");
             LOG_FULL(FATAL) << "retAddr not match machine code. retAddr: " << std::hex << retAddr
                             << ", test begin: " << std::hex << machineCode->GetText()
-                            << ", test size: " << std::hex << machineCode->GetTextSize();
+                            << ", test size: " << std::hex << machineCode->GetTextSize()
+                            << ", method name: " << methodName;
             UNREACHABLE();
         }
         const_cast<FrameIterator*>(this)->machineCode_ = reinterpret_cast<JSTaggedType>(machineCode);

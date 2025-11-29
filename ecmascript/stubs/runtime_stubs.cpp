@@ -975,6 +975,16 @@ DEF_RUNTIME_STUBS(InstanceOf)
     return RuntimeInstanceof(thread, obj, target).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CheckFatal)
+{
+    RUNTIME_STUBS_HEADER(CheckFatal);
+    JSHandle<JSFunction> jsFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    Method *method = Method::Cast(jsFunc->GetMethod(thread).GetTaggedObject());
+    LOG_ECMA(FATAL) << "[FATAL] should not be here, function addr: " << std::hex << jsFunc.GetTaggedValue().GetRawData()
+                    << ", function name: " << method->GetMethodName(thread);
+    return JSTaggedValue::True().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(DumpObject)
 {
     RUNTIME_STUBS_HEADER(DumpObject);

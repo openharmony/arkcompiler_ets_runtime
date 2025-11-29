@@ -136,7 +136,7 @@ public:
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);
-    void DumpMachineCode(JSTaggedValue jsFunction);
+    void DumpMachineCode(JSTaggedValue jsFunction, uintptr_t *prevReturnAddrAddress);
     void CollectDeoptBundleVec(std::vector<kungfu::ARKDeopt>& deoptBundle);
     bool IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction);
     JSTaggedType ConstructAsmInterpretFrame(JSHandle<JSTaggedValue> maybeAcc);

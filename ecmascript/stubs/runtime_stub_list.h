@@ -537,6 +537,7 @@ namespace panda::ecmascript {
     V(LinkedHashSetComputeCapacity)                            \
     V(JSObjectGrowElementsCapacity)                            \
     V(HClassCloneWithAddProto)                                 \
+    V(CheckFatal)                                              \
     V(DumpObject)                                              \
     V(DumpHeapObjectAddress)                                   \
     V(TryGetInternString)                                      \
