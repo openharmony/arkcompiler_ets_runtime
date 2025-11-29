@@ -85,7 +85,7 @@ void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
 {
 #if WIN_OR_MAC_OR_IOS_PLATFORM
     size_t initialNonmovableObjectCapacity =
-        AlignUp(std::min(capacity_ / 3, INITIAL_NONMOVALBE_OBJECT_CAPACITY), DEFAULT_REGION_SIZE);
+        AlignUp(std::min(capacity_ / 5, INITIAL_NONMOVALBE_OBJECT_CAPACITY), DEFAULT_REGION_SIZE);
 #else
     size_t initialNonmovableObjectCapacity =
         AlignUp(std::min(capacity_ / 2, INITIAL_NONMOVALBE_OBJECT_CAPACITY), DEFAULT_REGION_SIZE);
