@@ -193,10 +193,10 @@ std::string SymbolicAddress(const void* const *pc,
 
 __attribute__((optnone)) int BacktraceHybrid(void** pcArray, uint32_t maxSize)
 {
-    int size = 0;
+    uint32_t size = 0;
 #if defined(ENABLE_BACKTRACE_LOCAL)
     size = FpBacktrace()->BacktraceFromFp(__builtin_frame_address(0), pcArray, maxSize);
 #endif
-    return size;
+    return static_cast<int>(size);
 }
 } // namespace panda::ecmascript

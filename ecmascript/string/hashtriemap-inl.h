@@ -514,6 +514,7 @@ HashTrieMapLoadResult HashTrieMap<Mutex, ThreadHolder, SlotBarrier>::Load(ReadBa
 {
     uint32_t hash = key;
     Indirect* current = GetRootAndProcessHash(hash);
+    DCHECK_CC(!string.IsEmpty());
     const uint8_t* utf8Data = common::ReadOnlyHandle<LineString>::Cast(string)->GetDataUtf8() + offset;
     for (uint32_t hashShift = 0; hashShift < TrieMapConfig::TOTAL_HASH_BITS; hashShift +=
          TrieMapConfig::N_CHILDREN_LOG2) {

@@ -168,6 +168,10 @@ void Runtime::PreInitialization(const EcmaVM *vm)
 #if ENABLE_NEXT_OPTIMIZATION
     if (g_isEnableCMCGC) {
         baseStringTable_ = new (std::nothrow) BaseStringTableImpl();
+        if (baseStringTable_ == nullptr) {
+            LOG_ECMA(FATAL) << "create baseStringTable_ failed";
+            UNREACHABLE();
+        }
         baseStringTable_->Init();
         auto& baseStringTable = *baseStringTable_;
         common::BaseRuntime::GetInstance()->SetStringTableCleanUpCallback([] {
@@ -181,6 +185,10 @@ void Runtime::PreInitialization(const EcmaVM *vm)
             stringTableCleaner->JoinAndWaitSweepWeakRefTask(visitor);
         });
         baseClassRoots_ = new (std::nothrow) BaseClassRoots();
+        if (baseClassRoots_ == nullptr) {
+            LOG_ECMA(FATAL) << "create baseClassRoots_ failed";
+            UNREACHABLE();
+        }
         stringTable_ = std::make_unique<EcmaStringTable>(true, &baseStringTable,
                                                          &static_cast<BaseStringTableImpl*>(&baseStringTable)->
                                                           GetInternalTable()->GetHashTrieMap());
