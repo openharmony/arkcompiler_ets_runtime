@@ -229,6 +229,17 @@ HWTEST_F_L0(GCTest, ColdStartGCRestrainExternal)
     EXPECT_TRUE(startupStatus == StartupStatus::JUST_FINISH_STARTUP);
 }
 
+HWTEST_F_L0(GCTest, ColdStartGCRestrainInGC)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyPostFork();
+    heap->NotifyFinishColdStartSoon();
+    EXPECT_FALSE(heap->InGC());
+    heap->SetGCState(true);
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    heap->SetGCState(false);
+}
+
 HWTEST_F_L0(GCTest, CallbackTask)
 {
     auto vm = thread->GetEcmaVM();

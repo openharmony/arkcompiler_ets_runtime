@@ -2236,6 +2236,20 @@ static void* Attach([[maybe_unused]] void *enginePointer, [[maybe_unused]] void 
     return nullptr;
 }
 
+static void* Attach2([[maybe_unused]] void *enginePointer, [[maybe_unused]] void *buffer, [[maybe_unused]] void *hint,
+                     [[maybe_unused]] void *attachData)
+{
+    GTEST_LOG_(INFO) << "attach2 is running";
+    EcmaVM *vm = reinterpret_cast<EcmaVM *>(enginePointer);
+    ObjectFactory *factory = vm->GetFactory();
+    JSThread *thread = vm->GetJSThread();
+    ThreadManagedScope scope(thread);
+    JSHandle<JSTaggedValue> prototype(thread, JSTaggedValue::Undefined());
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, prototype);
+    JSHandle<JSObject> obj = factory->NewJSObject(hclass);
+    return reinterpret_cast<void *>(obj.GetAddress());
+}
+
 static panda::JSNApi::NativeBindingInfo* CreateNativeBindingInfo(void* attach, void* detach)
 {
     GTEST_LOG_(INFO) << "CreateNativeBindingInfo";
@@ -2330,6 +2344,33 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject3)
     BaseDeserializer deserializer(thread, data.release());
     JSHandle<JSTaggedValue> res = deserializer.ReadValue();
     EXPECT_TRUE(res.IsEmpty());
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject4)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> obj1 = factory->NewEmptyJSObject();
+
+    JSHandle<JSTaggedValue> key1 = thread->GlobalConstants()->GetHandledNativeBindingSymbol();
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("x"));
+    auto info = CreateNativeBindingInfo(reinterpret_cast<void*>(Attach2), reinterpret_cast<void*>(Detach));
+    JSHandle<JSTaggedValue> value1(factory->NewJSNativePointer(reinterpret_cast<void*>(info)));
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(1));
+
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key1, value1);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj1), key2, value2);
+    obj1->GetClass()->SetIsNativeBindingObject(true);
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj1),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize fail";
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    BaseDeserializer deserializer(thread, data.release(), ecmaVm);
+    JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+    EXPECT_FALSE(res.IsEmpty());
     delete serializer;
 }
 
