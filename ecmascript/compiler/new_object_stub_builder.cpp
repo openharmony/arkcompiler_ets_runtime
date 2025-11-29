@@ -1229,7 +1229,8 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef method, GateRe
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsEcmaObject), TaggedObjectIsEcmaObject(glue, homeObject));
 
     GateRef globalEnv = GetCurrentGlobalEnv();
-    GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
+    GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
+                                       GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
 
     GateRef jsFunc = NewJSFunctionByHClass(glue, method, hclass);
     SetHomeObjectToFunction(glue, jsFunc, homeObject);

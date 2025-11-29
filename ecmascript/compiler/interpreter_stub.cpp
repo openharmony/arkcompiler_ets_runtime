@@ -5163,7 +5163,8 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
             }
             Bind(&isNotSourceTextModule);
             SetModuleToFunction(glue, result, smodule, MemoryAttribute::DefaultWithShareBarrier());
-            GateRef emptySFunctionEnvHandle = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::EMPTY_SFUNCTION_ENV_INDEX);
+            GateRef emptySFunctionEnvHandle = GetGlobalConstantValue(VariableType::JS_ANY(),
+                                                                     glue, ConstantIndex::EMPTY_SFUNCTION_ENV_INDEX);
             SetLexicalEnvToFunction(glue, result, emptySFunctionEnvHandle);
             Jump(&afterSendableFunc);
         }

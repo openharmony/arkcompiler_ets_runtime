@@ -338,6 +338,10 @@ std::string StaticAOTArgsParser::ParseLocation(std::string &anFilePath)
 
 bool StaticAOTArgsParser::ParseProfilePath(std::string &pkgInfo, std::string &profilePath)
 {
+    if (!nlohmann::json::accept(pkgInfo)) {
+        LOG_SA(ERROR) << "invalid json when parse profile path";
+        return false;
+    }
     nlohmann::json jsonPkgInfo = nlohmann::json::parse(pkgInfo);
     if (jsonPkgInfo.is_null() || jsonPkgInfo.empty()) {
         LOG_SA(ERROR) << "invalid json when parse profile path";
