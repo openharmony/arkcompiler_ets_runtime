@@ -1047,6 +1047,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(array);
                 break;
             }
+            case JSType::FUNC_SLOT: {
+                JSHandle<FuncSlot> funcSlot = factory->NewFuncSlot();
+                DUMP_FOR_HANDLE(funcSlot);
+                break;
+            }
             case JSType::GLOBAL_ENV: {
                 DUMP_FOR_HANDLE(globalEnv);
                 break;

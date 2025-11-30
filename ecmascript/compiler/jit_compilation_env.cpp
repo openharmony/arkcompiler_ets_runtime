@@ -225,8 +225,12 @@ JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset
             return nullptr;
         }
         auto slotValue = currFuncPTI->Get(thread_, slotId);
+        if (slotValue.IsFuncSlot()) {
+            auto funcSlot = FuncSlot::Cast(slotValue);
+            slotValue = funcSlot->GetFunction(thread_);
+        }
         if (slotValue.IsJSFunction()) {
-            currFunc = JSFunction::Cast(currFuncPTI->Get(thread_, slotId).GetTaggedObject());
+            currFunc = JSFunction::Cast(slotValue.GetTaggedObject());
         } else if (slotValue.IsPrototypeHandler()) {
             auto prototypeHandler = PrototypeHandler::Cast(slotValue.GetTaggedObject());
             auto accessorFunction = prototypeHandler->GetAccessorJSFunction(thread_);

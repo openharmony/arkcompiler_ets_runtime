@@ -1,0 +1,260 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+=== Size-based Inline Testing ===
+Tiny Functions Test:
+11
+40
+27
+10
+0
+true
+[trace] aot inline function name: #*#TinyFunc1@size_based_inline_test caller function name: #*#TinyFuncTest@size_based_inline_test
+11
+[trace] aot inline function name: #*#TinyFunc2@size_based_inline_test caller function name: #*#TinyFuncTest@size_based_inline_test
+40
+[trace] aot inline function name: #*#TinyFunc3@size_based_inline_test caller function name: #*#TinyFuncTest@size_based_inline_test
+27
+[trace] aot inline function name: #*#TinyFunc4@size_based_inline_test caller function name: #*#TinyFuncTest@size_based_inline_test
+10
+[trace] aot inline function name: #*#TinyFunc5@size_based_inline_test caller function name: #*#TinyFuncTest@size_based_inline_test
+0
+Small Functions Test:
+12
+-7
+10
+3
+true
+true
+[trace] aot inline function name: #*#SmallFunc1@size_based_inline_test caller function name: #*#SmallFuncTest@size_based_inline_test
+12
+[trace] aot inline function name: #*#SmallFunc2@size_based_inline_test caller function name: #*#SmallFuncTest@size_based_inline_test
+-7
+[trace] aot inline function name: #*#SmallFunc3@size_based_inline_test caller function name: #*#SmallFuncTest@size_based_inline_test
+10
+[trace] aot inline function name: #*#SmallFunc4@size_based_inline_test caller function name: #*#SmallFuncTest@size_based_inline_test
+3
+[trace] aot inline function name: #*#SmallFunc5@size_based_inline_test caller function name: #*#SmallFuncTest@size_based_inline_test
+true
+Medium Functions Test:
+-104
+247315
+T44444BB44444fS444444tT44444Bt4444444444f4444444444B4444444444w4444444444x4444444444j4444444444y4444444444{4444444444|4444444444n4444444444}444444444444444444444444444444r4444444444444444444444444444444444444444v444444444444444444444444444444
+41
+1046.69288262808
+true
+-104
+247315
+T44444BB44444fS444444tT44444Bt4444444444f4444444444B4444444444w4444444444x4444444444j4444444444y4444444444{4444444444|4444444444n4444444444}444444444444444444444444444444r4444444444444444444444444444444444444444v444444444444444444444444444444
+41
+1046.69288262808
+Large Functions Test:
+1
+NaN
+true
+1
+NaN
+Mixed Size Test:
+22
+1
+6
+NaN
+-3
+true
+[trace] aot inline function name: #*#SmallFunc1@size_based_inline_test caller function name: #*#MixedSizeTest@size_based_inline_test
+22
+1
+[trace] aot inline function name: #*#TinyFunc1@size_based_inline_test caller function name: #*#MixedSizeTest@size_based_inline_test
+6
+NaN
+[trace] aot inline function name: #*#SmallFunc2@size_based_inline_test caller function name: #*#MixedSizeTest@size_based_inline_test
+-3
+Boundary Test:
+1
+true
+[trace] aot inline function name: #*#TinyFunc1@size_based_inline_test caller function name: #*#BoundaryTest@size_based_inline_test
+[trace] aot inline function name: #*#SmallFunc1@size_based_inline_test caller function name: #*#BoundaryTest@size_based_inline_test
+1
+Extended Tests:
+=== Extended Size-based Inline Testing ===
+Extended Phase 1: Boundary size function tests
+=== Boundary Size Function Tests ===
+BoundaryJustUnder45Func(0): 18
+BoundaryJustOver45Func(0): 5.385164807134504
+Extended Phase 2: Template-based size function tests
+=== Template-based Size Function Tests ===
+TemplateBasedSmall(0, 0): 0
+TemplateBasedMedium(0, 0): 0
+TemplateBasedLarge(0, 0): 0
+Extended Phase 3: String size function tests
+=== String Size Function Tests ===
+SmallStringFunc("short"): SHORT
+MediumStringFunc("short"): shortxxxxxxxxxxxxxxxxxxxxxxxxx
+LargeStringFunc("short"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("medium_length_string"): MEDIUM_LEN
+MediumStringFunc("medium_length_string"): medium_length_stringxxxxxxxxxx
+LargeStringFunc("medium_length_string"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("this_is_a_very_long_string_that_should_test_the_processing_capabilities"): THIS_IS_A_
+MediumStringFunc("this_is_a_very_long_string_that_should_test_the_processing_capabilities"): this_is_a_very_long_xxxxxxxxxx
+LargeStringFunc("this_is_a_very_long_string_that_should_test_the_processing_capabilities"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("UPPERcase lowerCase MiXeD"): UPPERCASE 
+MediumStringFunc("UPPERcase lowerCase MiXeD"): uppercase_lowercase_xxxxxxxxxx
+LargeStringFunc("UPPERcase lowerCase MiXeD"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("12345!@#$% special_chars"): 12345!@#$%
+MediumStringFunc("12345!@#$% special_chars"): 12345!@#$%_special_cxxxxxxxxxx
+LargeStringFunc("12345!@#$% special_chars"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("multi
+line
+string
+with
+newlines"): MULTI
+LINE
+MediumStringFunc("multi
+line
+string
+with
+newlines"): multi_line_string_wixxxxxxxxxx
+LargeStringFunc("multi
+line
+string
+with
+newlines"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("string with    multiple    spaces"): STRING WIT
+MediumStringFunc("string with    multiple    spaces"): string_with_multiplexxxxxxxxxx
+LargeStringFunc("string with    multiple    spaces"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("unicode_string_αβγδε_测试_🚀"): UNICODE_ST
+MediumStringFunc("unicode_string_αβγδε_测试_🚀"): unicode_string_αβγδεxxxxxxxxxx
+LargeStringFunc("unicode_string_αβγδε_测试_🚀"): 00010010010010000010010010010000010010010010000010...
+Extended Phase 4: Array size function tests
+=== Array Size Function Tests ===
+SmallArrayFunc([1, 2, 3, 4, 5]): 15
+MediumArrayFunc([1, 2, 3, 4, 5]): 144
+LargeArrayFunc([1, 2, 3, 4, 5...]): 432.1617425420824
+SmallArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]): 550
+MediumArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]): 36288000000000680
+LargeArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100...]): 1011262736309074600
+SmallArrayFunc([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]): 210
+MediumArrayFunc([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]): 2432902008176640500
+LargeArrayFunc([1, 2, 3, 4, 5, 6, 7, 8, 9, 10...]): 54784771281117260000
+SmallArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]): 1200
+MediumArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]): 1.3076743679999998e+27
+LargeArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100...]): 5.010756295274613e+29
+SmallArrayFunc([1, -1, 2, -2, 3, -3, 4, -4, 5, -5]): 0
+MediumArrayFunc([1, -1, 2, -2, 3, -3, 4, -4, 5, -5]): 14418
+LargeArrayFunc([1, -1, 2, -2, 3, -3, 4, -4, 5, -5...]): 1053.2205655821858
+Extended Phase 5: Object size function tests
+=== Object Size Function Tests ===
+SmallObjectFunc(obj0): 3
+MediumObjectFunc(obj0): 109
+LargeObjectFunc(obj0): 15
+SmallObjectFunc(obj1): 5
+MediumObjectFunc(obj1): 368
+LargeObjectFunc(obj1): 70.83370833070849
+SmallObjectFunc(obj2): 8
+MediumObjectFunc(obj2): 657
+LargeObjectFunc(obj2): 444
+SmallObjectFunc(obj3): 150
+MediumObjectFunc(obj3): 13680
+LargeObjectFunc(obj3): 13290.537
+Extended Phase 6: Size performance boundary tests
+=== Size Performance Boundary Tests ===
+BoundaryJustUnder45Func(0): 18
+BoundaryJustOver45Func(0): 5.385164807134504
+Extended size-based inline testing completed
+true
+=== Extended Size-based Inline Testing ===
+Extended Phase 1: Boundary size function tests
+=== Boundary Size Function Tests ===
+BoundaryJustUnder45Func(0): 18
+BoundaryJustOver45Func(0): 5.385164807134504
+Extended Phase 2: Template-based size function tests
+=== Template-based Size Function Tests ===
+TemplateBasedSmall(0, 0): 0
+TemplateBasedMedium(0, 0): 0
+TemplateBasedLarge(0, 0): 0
+Extended Phase 3: String size function tests
+=== String Size Function Tests ===
+SmallStringFunc("short"): SHORT
+MediumStringFunc("short"): shortxxxxxxxxxxxxxxxxxxxxxxxxx
+LargeStringFunc("short"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("medium_length_string"): MEDIUM_LEN
+MediumStringFunc("medium_length_string"): medium_length_stringxxxxxxxxxx
+LargeStringFunc("medium_length_string"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("this_is_a_very_long_string_that_should_test_the_processing_capabilities"): THIS_IS_A_
+MediumStringFunc("this_is_a_very_long_string_that_should_test_the_processing_capabilities"): this_is_a_very_long_xxxxxxxxxx
+LargeStringFunc("this_is_a_very_long_string_that_should_test_the_processing_capabilities"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("UPPERcase lowerCase MiXeD"): UPPERCASE 
+MediumStringFunc("UPPERcase lowerCase MiXeD"): uppercase_lowercase_xxxxxxxxxx
+LargeStringFunc("UPPERcase lowerCase MiXeD"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("12345!@#$% special_chars"): 12345!@#$%
+MediumStringFunc("12345!@#$% special_chars"): 12345!@#$%_special_cxxxxxxxxxx
+LargeStringFunc("12345!@#$% special_chars"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("multi
+line
+string
+with
+newlines"): MULTI
+LINE
+MediumStringFunc("multi
+line
+string
+with
+newlines"): multi_line_string_wixxxxxxxxxx
+LargeStringFunc("multi
+line
+string
+with
+newlines"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("string with    multiple    spaces"): STRING WIT
+MediumStringFunc("string with    multiple    spaces"): string_with_multiplexxxxxxxxxx
+LargeStringFunc("string with    multiple    spaces"): 00010010010010000010010010010000010010010010000010...
+SmallStringFunc("unicode_string_αβγδε_测试_🚀"): UNICODE_ST
+MediumStringFunc("unicode_string_αβγδε_测试_🚀"): unicode_string_αβγδεxxxxxxxxxx
+LargeStringFunc("unicode_string_αβγδε_测试_🚀"): 00010010010010000010010010010000010010010010000010...
+Extended Phase 4: Array size function tests
+=== Array Size Function Tests ===
+SmallArrayFunc([1, 2, 3, 4, 5]): 15
+MediumArrayFunc([1, 2, 3, 4, 5]): 144
+LargeArrayFunc([1, 2, 3, 4, 5...]): 432.1617425420824
+SmallArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]): 550
+MediumArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]): 36288000000000680
+LargeArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100...]): 1011262736309074600
+SmallArrayFunc([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]): 210
+MediumArrayFunc([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]): 2432902008176640500
+LargeArrayFunc([1, 2, 3, 4, 5, 6, 7, 8, 9, 10...]): 54784771281117260000
+SmallArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]): 1200
+MediumArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]): 1.3076743679999998e+27
+LargeArrayFunc([10, 20, 30, 40, 50, 60, 70, 80, 90, 100...]): 5.010756295274613e+29
+SmallArrayFunc([1, -1, 2, -2, 3, -3, 4, -4, 5, -5]): 0
+MediumArrayFunc([1, -1, 2, -2, 3, -3, 4, -4, 5, -5]): 14418
+LargeArrayFunc([1, -1, 2, -2, 3, -3, 4, -4, 5, -5...]): 1053.2205655821858
+Extended Phase 5: Object size function tests
+=== Object Size Function Tests ===
+SmallObjectFunc(obj0): 3
+MediumObjectFunc(obj0): 109
+LargeObjectFunc(obj0): 15
+SmallObjectFunc(obj1): 5
+MediumObjectFunc(obj1): 368
+LargeObjectFunc(obj1): 70.83370833070849
+SmallObjectFunc(obj2): 8
+MediumObjectFunc(obj2): 657
+LargeObjectFunc(obj2): 444
+SmallObjectFunc(obj3): 150
+MediumObjectFunc(obj3): 13680
+LargeObjectFunc(obj3): 13290.537
+Extended Phase 6: Size performance boundary tests
+=== Size Performance Boundary Tests ===
+BoundaryJustUnder45Func(0): 18
+BoundaryJustOver45Func(0): 5.385164807134504
+Extended size-based inline testing completed
+Size-based inline testing completed

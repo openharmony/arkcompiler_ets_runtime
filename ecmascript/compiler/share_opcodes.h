@@ -49,6 +49,7 @@ namespace panda::ecmascript::kungfu {
     V(GetGlobalEnv, GET_GLOBAL_ENV, GateFlags::NO_WRITE, 0, 1, 0)                               \
     V(GetSuperConstructor, GET_SUPER_CONSTRUCTOR, GateFlags::NO_WRITE, 1, 1, 1)                 \
     V(CheckSafePointAndStackOver, CHECK_SAFEPOINT_AND_STACKOVER, GateFlags::NO_WRITE, 1, 1, 0)  \
+    V(CheckSafePoint, CHECK_SAFEPOINT, GateFlags::NO_WRITE, 1, 1, 0)                            \
     V(DeoptCheck, DEOPT_CHECK, GateFlags::NO_WRITE, 1, 1, 3)                                    \
     V(LoopBack, LOOP_BACK, GateFlags::CONTROL, 1, 0, 0)                                         \
     V(Return, RETURN, GateFlags::HAS_ROOT, 1, 1, 1)                                             \

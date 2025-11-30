@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/enum_cache.h"
+#include "ecmascript/func_slot.h"
 #include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
@@ -407,6 +408,7 @@ public:
     // Copy on write array is allocated in nonmovable space by default.
     JSHandle<COWTaggedArray> NewCOWTaggedArray(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<COWMutantTaggedArray> NewCOWMutantTaggedArray(uint32_t length, JSTaggedType initVal = base::SPECIAL_HOLE);
+    JSHandle<FuncSlot> NewFuncSlot(JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<MutantTaggedArray> NewMutantTaggedArray(uint32_t length, JSTaggedType initVal = base::SPECIAL_HOLE);
     JSHandle<TaggedArray> PUBLIC_API NewDictionaryArray(uint32_t length);
     JSHandle<JSForInIterator> NewJSForinIterator(const JSHandle<JSTaggedValue> &obj,

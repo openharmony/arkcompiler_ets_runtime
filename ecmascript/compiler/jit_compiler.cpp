@@ -66,7 +66,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     isEnableOptLoopInvariantCodeMotion_ = runtimeOptions.IsEnableOptLoopInvariantCodeMotion();
     isEnableOptConstantFolding_ = runtimeOptions.IsEnableOptConstantFolding();
     isEnableLexenvSpecialization_ = runtimeOptions.IsEnableLexenvSpecialization();
-    isEnableNativeInline_ = runtimeOptions.IsEnableNativeInline();
+    isEnableNativeInline_ = false;
     isEnableLoweringBuiltin_ = runtimeOptions.IsEnableLoweringBuiltin();
     isEnableLazyDeopt_ = runtimeOptions.IsEnableJitLazyDeopt();
 }

@@ -4526,6 +4526,11 @@ DEF_RUNTIME_STUBS(TraceCallDetail)
         auto prof = JSHandle<ProfileTypeInfo>::Cast(profile);
         auto slot = slotId.GetInt();
         auto slotValue = prof->GetIcSlot(slot);
+        if (slotValue.IsFuncSlot()) {
+            auto funcSlot = FuncSlot::Cast(slotValue);
+            auto thread = JSThread::GlueToJSThread(argGlue);
+            slotValue = funcSlot->GetFunction(thread);
+        }
         if (slotValue.IsJSFunction()) {
             JSFunction *callee = JSFunction::Cast(slotValue);
             Method *calleeMethod = Method::Cast(callee->GetMethod());

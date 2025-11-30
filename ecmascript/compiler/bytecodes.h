@@ -578,6 +578,8 @@ private:
 
 class ICSlotId {
 public:
+    static constexpr uint16_t INVALID_ID = 0xFFFF;
+
     explicit ICSlotId(ICSlotIdType id) : id_(id)
     {
     }
@@ -673,6 +675,7 @@ public:
     // set of id, immediate and read register
     std::vector<std::variant<ConstDataId, ICSlotId, Immediate, VirtualRegister>> inputs {};
     std::vector<VRegIDType> vregOut {}; // write register
+    ICSlotId slotId {ICSlotId::INVALID_ID};
 
     bool Deopt() const
     {

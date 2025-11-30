@@ -20,7 +20,7 @@ void TSInlineLowering::RunTSInlineLowering()
 {
     circuit_->AdvanceTime();
     ChunkQueue<InlineTypeInfoAccessor> workList(chunk_);
-    UpdateWorkList(workList);
+    UpdateWorkList(workList, {initMethodOffset_, 1.0});
 
     while (!workList.empty()) {
         InlineTypeInfoAccessor &info = workList.front();
@@ -53,7 +53,8 @@ void TSInlineLowering::GetInlinedMethodId(GateRef gate)
     acc_.UpdateMethodOffset(gate, methodOffset);
 }
 
-void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList)
+void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList,
+                                           const CallerDetails &callerDetails, int inlineDepth)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
@@ -61,7 +62,7 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
         case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::LDTHISBYNAME_IMM16_ID16:
-            CandidateAccessor(gate, workList, CallKind::CALL_GETTER);
+            CandidateAccessor(gate, workList, CallKind::CALL_GETTER, callerDetails, inlineDepth);
             break;
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
@@ -69,37 +70,68 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
         case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
-            CandidateAccessor(gate, workList, CallKind::CALL_SETTER);
+            CandidateAccessor(gate, workList, CallKind::CALL_SETTER, callerDetails, inlineDepth);
             break;
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            CandidateNormalCall(gate, workList, CallKind::CALL_THIS, callerDetails, inlineDepth);
+            break;
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
-            CandidateNormalCall(gate, workList, CallKind::CALL_THIS);
+            CandidateNormalCall(gate, workList, CallKind::CALL_THIS_NO_IC, callerDetails, inlineDepth);
             break;
         case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
-            CandidateNormalCall(gate, workList, CallKind::CALL_INIT);
+            CandidateNormalCall(gate, workList, CallKind::CALL_INIT, callerDetails, inlineDepth);
             break;
         case EcmaOpcode::CALLARG0_IMM8:
         case EcmaOpcode::CALLARG1_IMM8_V8:
         case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
         case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8:
+            CandidateNormalCall(gate, workList, CallKind::CALL, callerDetails, inlineDepth);
+            break;
         case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-            CandidateNormalCall(gate, workList, CallKind::CALL);
+            CandidateNormalCall(gate, workList, CallKind::CALL_NO_IC, callerDetails, inlineDepth);
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
-            CandidateSuperCall(gate, workList, CallKind::SUPER_CALL);
+            CandidateSuperCall(gate, workList, CallKind::SUPER_CALL, callerDetails, inlineDepth);
             break;
         default:
             break;
     }
 }
 
+bool TSInlineLowering::JitCanInline(InlineTypeInfoAccessor &info, const CallerDetails &callerDetails,
+                                    double &callFrequency)
+{
+    if (!info.HasIcSlot()) {
+        return false;
+    }
+    uint32_t callerMethodOffset = callerDetails.GetMethodOffset();
+    auto jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
+    JSThread *thread = jitCompilationEnv->GetJSThread();
+    JSFunction *callerFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(callerMethodOffset);
+    ASSERT(callerFunc);
+    auto profileTIVal = callerFunc->GetProfileTypeInfo(thread);
+    ASSERT(!profileTIVal.IsUndefined());
+    auto profileTypeInfo = ProfileTypeInfo::Cast(profileTIVal.GetTaggedObject());
+    GateRef callSite = info.GetGate();
+    uint16_t slotId = acc_.TryGetSlotId(callSite);
+    if (slotId == ICSlotId::INVALID_ID) {
+        return false;
+    }
+    callFrequency *= GetCallFrequency(thread, slotId, profileTypeInfo);
+    if (IsInlineCallFreqLow(callFrequency)) {
+        return false;
+    }
+    return true;
+}
+
 void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<InlineTypeInfoAccessor> &workList)
 {
+    bool inlineSuccess = false;
     GateRef gate = info.GetCallGate();
     // inline doesn't support try-catch
     bool inTryCatch = FilterCallInTryCatch(gate);
@@ -129,13 +161,20 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
     if (info.IsNormalCall() && ctx_->FilterMethod(inlinedMethod, methodPcInfo)) {
         return;
     }
+    CallerDetails callerDetails = info.GetCallerDetails();
+    double callFrequency = callerDetails.GetCallFrequency();
+    if (compilationEnv_->IsJitCompiler() && !JitCanInline(info, callerDetails, callFrequency)) {
+        return;
+    }
 
     GateRef frameState = GetFrameState(info);
     GateRef frameArgs = acc_.GetValueIn(frameState);
     size_t inlineCallCounts = GetOrInitialInlineCounts(frameArgs);
-    if (IsSmallMethod(methodPcInfo.pcOffsets.size()) && !IsInlineCountsOverflow(inlineCallCounts)) {
-        inlineSuccess_ = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
-        if (inlineSuccess_) {
+    size_t methodSize = methodPcInfo.pcOffsets.size();
+    if (ShouldInline(methodSize, inlineCallCounts, info.GetInlineDepth())) {
+        inlineSuccess = FilterInlinedMethod(inlinedMethod, methodPcInfo.pcOffsets);
+        if (inlineSuccess) {
+            largeInlinedSize_ += methodSize;
             SetInitCallTargetAndConstPoolId(info);
             CircuitRootScope scope(circuit_);
             if (!noCheck_ && !info.IsCallInit()) {
@@ -148,14 +187,15 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
             InlineCall(methodInfo, methodPcInfo, inlinedMethod, info);
             UpdateInlineCounts(frameArgs, inlineCallCounts);
             if (!info.IsCallAccessor()) {
-                UpdateWorkList(workList);
+                UpdateWorkList(workList, {methodOffset, callFrequency},
+                    info.GetInlineDepth() + 1);  // 1: inline depth++
             } else {
                 lastCallId_ = circuit_->GetGateCount() - 1;
             }
         }
     }
 
-    bool shouldRecordInlinedFunc = inlinedMethod != nullptr && inlineSuccess_ && compilationEnv_->IsJitCompiler();
+    bool shouldRecordInlinedFunc = inlinedMethod != nullptr && inlineSuccess && compilationEnv_->IsJitCompiler();
     if (shouldRecordInlinedFunc) {
         JitCompilationEnv *jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
         JSFunction *calleeFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
@@ -164,8 +204,7 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
         jitCompilationEnv->RecordInlinedFunctions(calleeFuncHandle);
     }
 
-    if ((inlinedMethod != nullptr) && IsLogEnabled() && inlineSuccess_) {
-        inlineSuccess_ = false;
+    if ((inlinedMethod != nullptr) && IsLogEnabled() && inlineSuccess) {
         auto jsPandaFile = ctx_->GetJSPandaFile();
         const std::string methodName(
             MethodLiteral::GetMethodName(jsPandaFile, inlinedMethod->GetMethodId()));
@@ -656,18 +695,17 @@ void TSInlineLowering::SupplementType(GateRef callGate, GateRef targetGate)
     }
 }
 
-void TSInlineLowering::UpdateWorkList(ChunkQueue<InlineTypeInfoAccessor> &workList)
+void TSInlineLowering::UpdateWorkList(ChunkQueue<InlineTypeInfoAccessor> &workList, const CallerDetails &callerDetails,
+                                      int inlineDepth)
 {
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
+    std::vector<GateRef> callGateList;
+    size_t getGatesSize = circuit_->GetJSBytecodeGatesFrom(callGateList, gateListEnd_);
+    gateListEnd_ += getGatesSize;
+    for (const auto &gate : callGateList) {
         if (acc_.GetId(gate) <= lastCallId_) {
             continue;
         }
-        auto op = acc_.GetOpCode(gate);
-        if (op == OpCode::JS_BYTECODE) {
-            CandidateInlineCall(gate, workList);
-        }
+        CandidateInlineCall(gate, workList, callerDetails, inlineDepth);
     }
 }
 
@@ -703,33 +741,36 @@ bool TSInlineLowering::IsRecursiveFunc(InlineTypeInfoAccessor &info, size_t call
     return false;
 }
 
-void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
+void TSInlineLowering::CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind,
+                                         const CallerDetails &callerDetails, int inlineDepth)
 {
     GateRef receiver = GetAccessorReceiver(gate);
-    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, receiver, kind);
+    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, receiver, kind, callerDetails, inlineDepth);
     if (tacc.IsEnableAccessorInline()) {
-        workList.emplace(compilationEnv_, circuit_, gate, receiver, kind);
+        workList.emplace(tacc);
         lastCallId_ = acc_.GetId(gate);
     }
 }
 
-void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
+void TSInlineLowering::CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind,
+                                           const CallerDetails &callerDetails, int inlineDepth)
 {
     ASSERT(acc_.GetNumValueIn(gate) > 0);
     size_t funcIndex = acc_.GetNumValueIn(gate) - 1;
     auto func = acc_.GetValueIn(gate, funcIndex);
-    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, func, kind);
+    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, func, kind, callerDetails, inlineDepth);
     if (tacc.IsEnableNormalInline()) {
-        workList.push(tacc);
+        workList.emplace(tacc);
         lastCallId_ = acc_.GetId(gate);
     }
 }
 
-void TSInlineLowering::CandidateSuperCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind)
+void TSInlineLowering::CandidateSuperCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind,
+                                          const CallerDetails &callerDetails, int inlineDepth)
 {
     ArgumentAccessor argAcc(circuit_);
     GateRef thisFunc = argAcc.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, thisFunc, kind);
+    InlineTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, thisFunc, kind, callerDetails, inlineDepth);
     if (tacc.IsEnableSuperCallInline()) {
         workList.emplace(tacc);
         lastCallId_ = acc_.GetId(gate);

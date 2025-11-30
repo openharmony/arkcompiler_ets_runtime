@@ -1,0 +1,869 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+=== Frequency-based Inline Testing ===
+Phase 1: Gathering frequency data
+Gathering frequency data...
+Frequency data gathering complete
+true
+Gathering frequency data...
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#HighFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqComplex1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple3@frequency_based_inline_test caller function name: #*#HighFreqComplex1@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#LowFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq2@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#LowFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq2@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#HighFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqComplex1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple3@frequency_based_inline_test caller function name: #*#HighFreqComplex1@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#LowFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq2@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#LowFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq2@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#HighFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqComplex1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple3@frequency_based_inline_test caller function name: #*#HighFreqComplex1@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#LowFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq2@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#LowFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq2@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#GatherFrequencyData@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqMedium1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#HighFreqMedium1@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqComplex1@frequency_based_inline_test caller function name: #*#FrequencyTestMixed@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple3@frequency_based_inline_test caller function name: #*#HighFreqComplex1@frequency_based_inline_test
+Frequency data gathering complete
+Phase 2: Testing high frequency inlining
+=== High Frequency Inlining Test ===
+HighFreqSimple1(5): 8
+HighFreqSimple2(5): 30
+HighFreqSimple3(5): 12
+HighFreqMedium1(5): 236
+HighFreqComplex1(5, 6): 52
+true
+=== High Frequency Inlining Test ===
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestHighFrequencyInlining@frequency_based_inline_test
+HighFreqSimple1(5): 8
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#TestHighFrequencyInlining@frequency_based_inline_test
+HighFreqSimple2(5): 30
+[trace] aot inline function name: #*#HighFreqSimple3@frequency_based_inline_test caller function name: #*#TestHighFrequencyInlining@frequency_based_inline_test
+HighFreqSimple3(5): 12
+[trace] aot inline function name: #*#HighFreqMedium1@frequency_based_inline_test caller function name: #*#TestHighFrequencyInlining@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#HighFreqMedium1@frequency_based_inline_test
+HighFreqMedium1(5): 236
+[trace] aot inline function name: #*#HighFreqComplex1@frequency_based_inline_test caller function name: #*#TestHighFrequencyInlining@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple3@frequency_based_inline_test caller function name: #*#HighFreqComplex1@frequency_based_inline_test
+HighFreqComplex1(5, 6): 52
+Phase 3: Testing low frequency inlining
+=== Low Frequency Inlining Test ===
+LowFreqSimple1(3): 12
+LowFreqSimple2(3): -2
+LowFreqMedium1(3): -87
+LowFreqComplex1([3]): 15
+true
+=== Low Frequency Inlining Test ===
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#TestLowFrequencyInlining@frequency_based_inline_test
+LowFreqSimple1(3): 12
+[trace] aot inline function name: #*#LowFreqSimple2@frequency_based_inline_test caller function name: #*#TestLowFrequencyInlining@frequency_based_inline_test
+LowFreqSimple2(3): -2
+[trace] aot inline function name: #*#LowFreqMedium1@frequency_based_inline_test caller function name: #*#TestLowFrequencyInlining@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#LowFreqMedium1@frequency_based_inline_test
+LowFreqMedium1(3): -87
+[trace] aot inline function name: #*#LowFreqComplex1@frequency_based_inline_test caller function name: #*#TestLowFrequencyInlining@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#LowFreqComplex1@frequency_based_inline_test
+LowFreqComplex1([3]): 15
+Phase 4: Testing medium frequency inlining
+=== Medium Frequency Inlining Test ===
+MediumFreq1(5): 9
+MediumFreq2(5, 6): -10
+MediumFreq3("test"): 1
+true
+=== Medium Frequency Inlining Test ===
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestMediumFrequencyInlining@frequency_based_inline_test
+MediumFreq1(5): 9
+[trace] aot inline function name: #*#MediumFreq2@frequency_based_inline_test caller function name: #*#TestMediumFrequencyInlining@frequency_based_inline_test
+MediumFreq2(5, 6): -10
+MediumFreq3("test"): 1
+Phase 5: Testing frequency-based decisions
+=== Frequency-based Decision Test ===
+FrequencyTestBasic(10): 54
+FrequencyTestComplex(10): 159
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+FrequencyTestPattern(10): 32913899
+true
+=== Frequency-based Decision Test ===
+[trace] aot inline function name: #*#FrequencyTestBasic@frequency_based_inline_test caller function name: #*#TestFrequencyBasedDecisions@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestBasic@frequency_based_inline_test
+FrequencyTestBasic(10): 54
+FrequencyTestComplex(10): 159
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple2@frequency_based_inline_test caller function name: #*#FrequencyTestPattern@frequency_based_inline_test
+FrequencyTestPattern(10): 32913899
+Phase 6: Testing mixed frequency patterns
+=== Mixed Frequency Patterns Test ===
+FrequencyTestMixed(5, true): 56532
+FrequencyTestMixed(6, false): 5515
+FrequencyTestArray([1, 2, 3, 4, 5]): [0, 18, 92, 5, 6, 27, 236]
+FrequencyTestString("string_test"): äìūâŊÚń¼ūÈŨæ
+true
+=== Mixed Frequency Patterns Test ===
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#TestMixedFrequencyPatterns@frequency_based_inline_test
+FrequencyTestMixed(5, true): 56532
+[trace] aot inline function name: #*#FrequencyTestMixed@frequency_based_inline_test caller function name: #*#TestMixedFrequencyPatterns@frequency_based_inline_test
+FrequencyTestMixed(6, false): 5515
+FrequencyTestArray([1, 2, 3, 4, 5]): [0, 18, 92, 5, 6, 27, 236]
+FrequencyTestString("string_test"): äìūâŊÚń¼ūÈŨæ
+Phase 7: Testing frequency thresholds
+=== Frequency Threshold Test ===
+Frequency threshold test completed - check inline decisions in JIT output
+true
+=== Frequency Threshold Test ===
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#HighFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#MediumFreq1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+[trace] aot inline function name: #*#LowFreqSimple1@frequency_based_inline_test caller function name: #*#TestFrequencyThresholds@frequency_based_inline_test
+Frequency threshold test completed - check inline decisions in JIT output
+Phase 8: Dynamic frequency pattern tests
+=== Dynamic Frequency Pattern Tests ===
+DynamicFrequencyOrchestrator(100, "high-heavy"): 7.311070942714794e+79
+DynamicFrequencyOrchestrator(100, "balanced"): 1.4523625080651914e+62
+true
+=== Dynamic Frequency Pattern Tests ===
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc3@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+DynamicFrequencyOrchestrator(100, "high-heavy"): 7.311070942714794e+79
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicHighFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc1@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+[trace] aot inline function name: #*#DynamicLowFreqFunc2@frequency_based_inline_test caller function name: #*#DynamicFrequencyOrchestrator@frequency_based_inline_test
+DynamicFrequencyOrchestrator(100, "balanced"): 1.4523625080651914e+62
+Phase 9: Size frequency pattern tests
+=== Size Frequency Pattern Tests ===
+SizeFrequencyOrchestrator(50, "small-high"): 53
+SizeFrequencyOrchestrator(50, "medium-high"): 126
+SizeFrequencyOrchestrator(50, "mixed"): 88
+true
+=== Size Frequency Pattern Tests ===
+SizeFrequencyOrchestrator(50, "small-high"): 53
+SizeFrequencyOrchestrator(50, "medium-high"): 126
+SizeFrequencyOrchestrator(50, "mixed"): 88
+Phase 10: Type-based frequency tests
+=== Type-based Frequency Tests ===
+TypeBasedFrequencyOrchestrator(42, "number-heavy"): 9825993825174.846
+TypeBasedFrequencyOrchestrator("hello", "string-heavy"): "HELLO"
+TypeBasedFrequencyOrchestrator(25, "mixed-types"): "630"
+true
+=== Type-based Frequency Tests ===
+TypeBasedFrequencyOrchestrator(42, "number-heavy"): 9825993825174.846
+TypeBasedFrequencyOrchestrator("hello", "string-heavy"): "HELLO"
+TypeBasedFrequencyOrchestrator(25, "mixed-types"): "630"
+Phase 11: Conditional frequency pattern tests
+=== Conditional Frequency Pattern Tests ===
+ConditionalFrequencyOrchestrator(25, "simple-if"): 1000
+ConditionalFrequencyOrchestrator(100, "nested-if"): 500
+true
+=== Conditional Frequency Pattern Tests ===
+ConditionalFrequencyOrchestrator(25, "simple-if"): 1000
+ConditionalFrequencyOrchestrator(100, "nested-if"): 500
+Phase 12: Loop frequency pattern tests
+=== Loop Frequency Pattern Tests ===
+LoopFrequencyOrchestrator([1, 2, 3, 4, 5], "array-processing"): 60
+LoopFrequencyOrchestrator(15, "numeric-iteration"): 87
+true
+=== Loop Frequency Pattern Tests ===
+LoopFrequencyOrchestrator([1, 2, 3, 4, 5], "array-processing"): 60
+LoopFrequencyOrchestrator(15, "numeric-iteration"): 87
+Phase 13: Recursive frequency pattern tests
+=== Recursive Frequency Pattern Tests ===
+RecursiveFrequencyOrchestrator(5, "direct-recursion"): 15
+RecursiveFrequencyOrchestrator(5, "wrapper-recursion"): 30
+true
+=== Recursive Frequency Pattern Tests ===
+RecursiveFrequencyOrchestrator(5, "direct-recursion"): 15
+RecursiveFrequencyOrchestrator(5, "wrapper-recursion"): 30
+Phase 14: Allocation frequency pattern tests
+=== Allocation Frequency Pattern Tests ===
+AllocationFrequencyOrchestrator(8, "array-allocation"): []
+AllocationFrequencyOrchestrator(6, "mixed-allocation"): 2
+true
+=== Allocation Frequency Pattern Tests ===
+AllocationFrequencyOrchestrator(8, "array-allocation"): []
+AllocationFrequencyOrchestrator(6, "mixed-allocation"): 2
+Frequency-based inline testing completed

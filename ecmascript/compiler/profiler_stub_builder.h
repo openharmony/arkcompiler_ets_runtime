@@ -152,6 +152,8 @@ private:
     GateRef GetJitHotnessCntOffset(GateRef profileTypeInfo);
     GateRef GetJitCallCntOffset(GateRef profileTypeInfo);
     GateRef GetJitCallCnt(GateRef profileTypeInfo);
+    GateRef GetInvocationCntOffset(GateRef profileTypeInfo);
+    GateRef GetInvocationCnt(GateRef profileTypeInfo);
     GateRef GetOsrHotnessThresholdOffset(GateRef profileTypeInfo);
     GateRef GetOsrHotnessThreshold(GateRef profileTypeInfo);
     GateRef GetBaselineJitHotnessThresholdOffset(GateRef profileTypeInfo);

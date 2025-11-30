@@ -147,9 +147,10 @@ public:
     explicit GateMetaBuilder(Chunk* chunk);
 
     const GateMetaData *JSBytecode(
-        size_t valuesIn, uint32_t methodId, EcmaOpcode opcode, uint32_t pcOffset, uint32_t bcIndex, GateFlags flags)
+        size_t valuesIn, uint32_t methodId, EcmaOpcode opcode, uint32_t pcOffset, uint32_t bcIndex, GateFlags flags,
+        uint16_t slotId)
     {
-        return new (chunk_) JSBytecodeMetaData(valuesIn, methodId, opcode, pcOffset, bcIndex, flags);
+        return new (chunk_) JSBytecodeMetaData(valuesIn, methodId, opcode, pcOffset, bcIndex, flags, slotId);
     }
 
     const GateMetaData* Nop()

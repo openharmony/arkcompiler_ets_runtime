@@ -832,12 +832,38 @@ public:
 
 enum CallKind : uint8_t {
     CALL,
+    CALL_NO_IC,
     CALL_THIS,
+    CALL_THIS_NO_IC,
     CALL_INIT,
     CALL_SETTER,
     CALL_GETTER,
     SUPER_CALL,
     INVALID
+};
+
+class CallerDetails {
+public:
+    CallerDetails(uint32_t methodOffset, double callFrequency)
+        : methodOffset_(methodOffset), callFrequency_(callFrequency)
+    {
+    }
+
+    ~CallerDetails() = default;
+
+    uint32_t GetMethodOffset() const
+    {
+        return methodOffset_;
+    }
+
+    double GetCallFrequency() const
+    {
+        return callFrequency_;
+    }
+
+private:
+    uint32_t methodOffset_;
+    double callFrequency_;
 };
 
 class InlineTypeInfoAccessor final : public TypeInfoAccessor {
@@ -846,7 +872,9 @@ public:
                            Circuit *circuit,
                            GateRef gate,
                            GateRef receiver,
-                           CallKind kind);
+                           CallKind kind,
+                           const CallerDetails &callerDetails,
+                           size_t inlineDepth);
 
     bool IsEnableNormalInline() const
     {
@@ -907,12 +935,13 @@ public:
 
     bool IsCallThis() const
     {
-        return kind_ == CallKind::CALL_THIS || kind_ == CallKind::CALL_INIT;
+        return kind_ == CallKind::CALL_THIS || kind_ == CallKind::CALL_INIT || kind_ == CallKind::CALL_THIS_NO_IC;
     }
 
     bool IsNormalCall() const
     {
-        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS || kind_ == CallKind::CALL_INIT;
+        return kind_ == CallKind::CALL || kind_ == CallKind::CALL_THIS || kind_ == CallKind::CALL_INIT ||
+               kind_ == CallKind::CALL_NO_IC || kind_ == CallKind::CALL_THIS_NO_IC;
     }
 
     bool IsCallAccessor() const
@@ -933,6 +962,11 @@ public:
     bool IsSuperCall() const
     {
         return kind_ == CallKind::SUPER_CALL;
+    }
+
+    bool HasIcSlot() const
+    {
+        return kind_ != CallKind::CALL_NO_IC && kind_ != CallKind::CALL_THIS_NO_IC;
     }
 
     uint32_t GetType() const
@@ -965,6 +999,16 @@ public:
         thisObj_ = gate;
     }
 
+    CallerDetails GetCallerDetails() const
+    {
+        return callerDetails_;
+    }
+
+    size_t GetInlineDepth() const
+    {
+        return inlineDepth_;
+    }
+
 private:
     PropertyLookupResult GetAccessorPlr() const;
     PropertyLookupResult GetAccessorPlrInJIT() const;
@@ -974,6 +1018,8 @@ private:
     GateRef thisObj_;
     CallKind kind_ {CallKind::INVALID};
     PropertyLookupResult plr_ { PropertyLookupResult() };
+    CallerDetails callerDetails_;
+    size_t inlineDepth_ {0};
 };
 
 class ObjectAccessTypeInfoAccessor : public TypeInfoAccessor {

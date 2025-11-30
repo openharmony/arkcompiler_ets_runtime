@@ -1,0 +1,214 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+=== Depth-based Inline Testing ===
+Small Function Depth Test:
+=== Small Function Depth Test (up to 8 levels) ===
+Small depth chain result: 60
+true
+=== Small Function Depth Test (up to 8 levels) ===
+[trace] aot inline function name: #*#Depth1_Small@depth_based_inline_test caller function name: #*#TestSmallFunctionDepth@depth_based_inline_test
+[trace] aot inline function name: #*#Depth2_Small@depth_based_inline_test caller function name: #*#Depth1_Small@depth_based_inline_test
+[trace] aot inline function name: #*#Depth3_Small@depth_based_inline_test caller function name: #*#Depth2_Small@depth_based_inline_test
+Small depth chain result: 60
+Medium Function Depth Test:
+=== Medium Function Depth Test (up to 3 levels) ===
+Medium depth chain result: 66781587
+true
+=== Medium Function Depth Test (up to 3 levels) ===
+Medium depth chain result: 66781587
+Branching Depth Test:
+=== Branching Depth Test ===
+BranchLevel1(10): 34
+true
+=== Branching Depth Test ===
+[trace] aot inline function name: #*#BranchLevel1@depth_based_inline_test caller function name: #*#TestBranchingDepth@depth_based_inline_test
+[trace] aot inline function name: #*#BranchLevel2@depth_based_inline_test caller function name: #*#BranchLevel1@depth_based_inline_test
+[trace] aot inline function name: #*#BranchLevel3@depth_based_inline_test caller function name: #*#BranchLevel2@depth_based_inline_test
+BranchLevel1(10): 34
+Variable Depth Test:
+=== Variable Depth Test ===
+DepthChain1 (depth 4): 8
+DepthChain2 (depth 6): 12
+DepthChain3 (depth 9): 15
+true
+=== Variable Depth Test ===
+[trace] aot inline function name: #*#DepthChain1@depth_based_inline_test caller function name: #*#TestVariableDepth@depth_based_inline_test
+[trace] aot inline function name: #*#VariableDepthFunction@depth_based_inline_test caller function name: #*#DepthChain1@depth_based_inline_test
+DepthChain1 (depth 4): 8
+[trace] aot inline function name: #*#DepthChain2@depth_based_inline_test caller function name: #*#TestVariableDepth@depth_based_inline_test
+[trace] aot inline function name: #*#VariableDepthFunction@depth_based_inline_test caller function name: #*#DepthChain2@depth_based_inline_test
+DepthChain2 (depth 6): 12
+[trace] aot inline function name: #*#DepthChain3@depth_based_inline_test caller function name: #*#TestVariableDepth@depth_based_inline_test
+[trace] aot inline function name: #*#VariableDepthFunction@depth_based_inline_test caller function name: #*#DepthChain3@depth_based_inline_test
+DepthChain3 (depth 9): 15
+Mixed Size Depth Test:
+=== Mixed Size Depth Test ===
+MixedLevel1_Small(5): 970
+true
+=== Mixed Size Depth Test ===
+[trace] aot inline function name: #*#MixedLevel1_Small@depth_based_inline_test caller function name: #*#TestMixedSizeDepth@depth_based_inline_test
+[trace] aot inline function name: #*#MixedLevel2_Small@depth_based_inline_test caller function name: #*#MixedLevel1_Small@depth_based_inline_test
+[trace] aot inline function name: #*#MixedLevel3_Small@depth_based_inline_test caller function name: #*#MixedLevel2_Small@depth_based_inline_test
+MixedLevel1_Small(5): 970
+Complex Branching Depth Test:
+=== Complex Branching Depth Test ===
+ComplexLevel1_Small(15): 270
+true
+=== Complex Branching Depth Test ===
+[trace] aot inline function name: #*#ComplexLevel1_Small@depth_based_inline_test caller function name: #*#TestComplexBranchingDepth@depth_based_inline_test
+ComplexLevel1_Small(15): 270
+Recursive-like Depth Test:
+=== Recursive-like Depth Test ===
+RecursiveLike1(5): 41
+true
+=== Recursive-like Depth Test ===
+[trace] aot inline function name: #*#RecursiveLike1@depth_based_inline_test caller function name: #*#TestRecursiveLikeDepth@depth_based_inline_test
+[trace] aot inline function name: #*#RecursiveLike2@depth_based_inline_test caller function name: #*#RecursiveLike1@depth_based_inline_test
+[trace] aot inline function name: #*#RecursiveLike3@depth_based_inline_test caller function name: #*#RecursiveLike2@depth_based_inline_test
+RecursiveLike1(5): 41
+Wide But Not Deep Test:
+=== Wide But Not Deep Test ===
+WideCaller(10): 200
+true
+=== Wide But Not Deep Test ===
+[trace] aot inline function name: #*#WideCaller@depth_based_inline_test caller function name: #*#TestWideNotDeep@depth_based_inline_test
+[trace] aot inline function name: #*#WideFunctionA@depth_based_inline_test caller function name: #*#WideCaller@depth_based_inline_test
+[trace] aot inline function name: #*#WideFunctionB@depth_based_inline_test caller function name: #*#WideCaller@depth_based_inline_test
+[trace] aot inline function name: #*#WideFunctionC@depth_based_inline_test caller function name: #*#WideCaller@depth_based_inline_test
+[trace] aot inline function name: #*#WideFunctionD@depth_based_inline_test caller function name: #*#WideCaller@depth_based_inline_test
+[trace] aot inline function name: #*#WideFunctionE@depth_based_inline_test caller function name: #*#WideCaller@depth_based_inline_test
+WideCaller(10): 200
+Depth Boundary Conditions Test:
+=== Depth Boundary Conditions Test ===
+Small chain boundary test: 56
+Medium chain boundary test: 90193287
+true
+=== Depth Boundary Conditions Test ===
+[trace] aot inline function name: #*#Depth1_Small@depth_based_inline_test caller function name: #*#TestDepthBoundaryConditions@depth_based_inline_test
+[trace] aot inline function name: #*#Depth2_Small@depth_based_inline_test caller function name: #*#Depth1_Small@depth_based_inline_test
+[trace] aot inline function name: #*#Depth3_Small@depth_based_inline_test caller function name: #*#Depth2_Small@depth_based_inline_test
+Small chain boundary test: 56
+Medium chain boundary test: 90193287
+Extended Tests:
+=== Extended Depth-based Inline Testing ===
+Extended Phase 1: Ultra deep chain tests
+=== Ultra Deep Chain Tests ===
+UltraDeep1(5): 125
+Extended Phase 2: Medium depth function tests
+=== Medium Depth Function Tests ===
+MediumDepth1(5): NaN
+Extended Phase 3: Variable size depth tests
+=== Variable Size Depth Tests ===
+VariableSizeDepthSmall2(5): 13
+VariableSizeDepthMedium2(5): 118
+VariableSizeDepthLarge2(5): 21893
+Extended Phase 4: Complex branch depth tests
+=== Complex Branch Depth Tests ===
+ComplexBranchDepth1(15): 345
+Extended Phase 5: Loop depth pattern tests
+=== Loop Depth Pattern Tests ===
+LoopDepth1(5): 4547
+Extended Phase 6: Array depth chain tests
+=== Array Depth Chain Tests ===
+ArrayDepth1([1, 2, 3, 4, 5]): 60
+Extended Phase 7: String depth chain tests
+=== String Depth Chain Tests ===
+StringDepth1("hello"): 5
+Extended Phase 8: Mixed type depth chain tests
+=== Mixed Type Depth Chain Tests ===
+MixedTypeDepth1(10): small
+Extended Phase 9: Conditional depth chain tests
+=== Conditional Depth Chain Tests ===
+ConditionalDepth1(25): 23
+Extended Phase 10: Error depth chain tests
+=== Error Depth Chain Tests ===
+ErrorDepth1(10): 20
+Extended Phase 11: Object depth chain tests
+=== Object Depth Chain Tests ===
+ObjectDepth1(10): 60
+Extended Phase 12: Math depth chain tests
+=== Math Depth Chain Tests ===
+MathDepth1(1): 0.8867679487770309
+Extended Phase 13: Conversion depth chain tests
+=== Conversion Depth Chain Tests ===
+ConversionDepth1(42): true
+Extended Phase 14: Depth performance boundary tests
+=== Depth Performance Boundary Tests ===
+Performance boundaries test completed
+Extended depth-based inline testing completed
+true
+=== Extended Depth-based Inline Testing ===
+Extended Phase 1: Ultra deep chain tests
+[trace] aot inline function name: #*#TestUltraDepthChains@depth_based_inline_test caller function name: #*#ExecuteExtendedDepthTests@depth_based_inline_test
+=== Ultra Deep Chain Tests ===
+[trace] aot inline function name: #*#UltraDeep1@depth_based_inline_test caller function name: #*#TestUltraDepthChains@depth_based_inline_test
+[trace] aot inline function name: #*#UltraDeep2@depth_based_inline_test caller function name: #*#UltraDeep1@depth_based_inline_test
+UltraDeep1(5): 125
+Extended Phase 2: Medium depth function tests
+[trace] aot inline function name: #*#TestMediumDepthFunctions@depth_based_inline_test caller function name: #*#ExecuteExtendedDepthTests@depth_based_inline_test
+=== Medium Depth Function Tests ===
+MediumDepth1(5): NaN
+Extended Phase 3: Variable size depth tests
+=== Variable Size Depth Tests ===
+VariableSizeDepthSmall2(5): 13
+VariableSizeDepthMedium2(5): 118
+VariableSizeDepthLarge2(5): 21893
+Extended Phase 4: Complex branch depth tests
+[trace] aot inline function name: #*#TestComplexBranchDepth@depth_based_inline_test caller function name: #*#ExecuteExtendedDepthTests@depth_based_inline_test
+=== Complex Branch Depth Tests ===
+[trace] aot inline function name: #*#ComplexBranchDepth1@depth_based_inline_test caller function name: #*#TestComplexBranchDepth@depth_based_inline_test
+[trace] aot inline function name: #*#ComplexBranchDepth2@depth_based_inline_test caller function name: #*#ComplexBranchDepth1@depth_based_inline_test
+ComplexBranchDepth1(15): 345
+Extended Phase 5: Loop depth pattern tests
+[trace] aot inline function name: #*#TestLoopDepthPatterns@depth_based_inline_test caller function name: #*#ExecuteExtendedDepthTests@depth_based_inline_test
+=== Loop Depth Pattern Tests ===
+[trace] aot inline function name: #*#LoopDepth1@depth_based_inline_test caller function name: #*#TestLoopDepthPatterns@depth_based_inline_test
+[trace] aot inline function name: #*#LoopDepth2@depth_based_inline_test caller function name: #*#LoopDepth1@depth_based_inline_test
+[trace] aot inline function name: #*#LoopDepth3@depth_based_inline_test caller function name: #*#LoopDepth1@depth_based_inline_test
+LoopDepth1(5): 4547
+Extended Phase 6: Array depth chain tests
+[trace] aot inline function name: #*#TestArrayDepthChains@depth_based_inline_test caller function name: #*#ExecuteExtendedDepthTests@depth_based_inline_test
+=== Array Depth Chain Tests ===
+[trace] aot inline function name: #*#ArrayDepth1@depth_based_inline_test caller function name: #*#TestArrayDepthChains@depth_based_inline_test
+[trace] aot inline function name: #*#ArrayDepth2@depth_based_inline_test caller function name: #*#ArrayDepth1@depth_based_inline_test
+ArrayDepth1([1, 2, 3, 4, 5]): 60
+Extended Phase 7: String depth chain tests
+[trace] aot inline function name: #*#TestStringDepthChains@depth_based_inline_test caller function name: #*#ExecuteExtendedDepthTests@depth_based_inline_test
+=== String Depth Chain Tests ===
+[trace] aot inline function name: #*#StringDepth1@depth_based_inline_test caller function name: #*#TestStringDepthChains@depth_based_inline_test
+[trace] aot inline function name: #*#StringDepth2@depth_based_inline_test caller function name: #*#StringDepth1@depth_based_inline_test
+StringDepth1("hello"): 5
+Extended Phase 8: Mixed type depth chain tests
+=== Mixed Type Depth Chain Tests ===
+MixedTypeDepth1(10): small
+Extended Phase 9: Conditional depth chain tests
+=== Conditional Depth Chain Tests ===
+ConditionalDepth1(25): 23
+Extended Phase 10: Error depth chain tests
+=== Error Depth Chain Tests ===
+ErrorDepth1(10): 20
+Extended Phase 11: Object depth chain tests
+=== Object Depth Chain Tests ===
+ObjectDepth1(10): 60
+Extended Phase 12: Math depth chain tests
+=== Math Depth Chain Tests ===
+MathDepth1(1): 0.8867679487770309
+Extended Phase 13: Conversion depth chain tests
+=== Conversion Depth Chain Tests ===
+ConversionDepth1(42): true
+Extended Phase 14: Depth performance boundary tests
+=== Depth Performance Boundary Tests ===
+Performance boundaries test completed
+Extended depth-based inline testing completed
+Depth-based inline testing completed

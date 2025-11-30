@@ -74,7 +74,12 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-inline:              Enable tracing inline function for aot runtime. Default: 'false'\n"
     "--compiler-trace-builtins:            Enable tracing builtins function for aot runtime. Default: 'false'\n"
     "--compiler-trace-value-numbering:     Enable tracing value numbering for aot runtime. Default: 'false'\n"
-    "--compiler-max-inline-bytecodes       Set max bytecodes count which aot function can be inlined. Default: '25'\n"
+    "--compiler-max-inline-bytecodes       Set max bytecodes count which aot function can be inlined. Default: '45'\n"
+    "--compiler-min-inline-call-frequency  Set min call frequency which aot function can be inlined. Default: '0.95'\n"
+    "--compiler-max-inline-depth-small     Set max inline depth which small aot function can be inlined. Default: '3'\n"
+    "--compiler-max-inline-depth-large     Set max inline depth which large aot function can be inlined. Default: '1'\n"
+    "--compiler-max-inline-count           Set max inline count which aot function can be inlined. Default: '6'\n"
+    "--compiler-max-inline-size-large      Set max inline size which large aot function can be inlined. Default: '45'\n"
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
@@ -249,6 +254,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-trace-instruction-combine", required_argument, nullptr, OPTION_COMPILER_TRACE_INSTRUCTION_COMBINE},
         {"compiler-trace-call-num", required_argument, nullptr, OPTION_COMPILER_TRACE_CALL_NUM},
         {"compiler-max-inline-bytecodes", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_BYTECODES},
+        {"compiler-min-inline-call-frequency", required_argument, nullptr, OPTION_COMPILER_MIN_CALL_FREQ},
+        {"compiler-max-inline-depth-small", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_DEPTH_SMALL},
+        {"compiler-max-inline-depth-large", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_DEPTH_LARGE},
+        {"compiler-max-inline-count", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_COUNT},
+        {"compiler-max-inline-size-large", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_SIZE_LARGE},
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
         {"compiler-device-state", required_argument, nullptr, OPTION_COMPILER_DEVICE_STATE},
         {"compiler-thermal-level", required_argument, nullptr, OPTION_COMPILER_THERMAL_LEVEL},
@@ -563,6 +573,46 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseUint32Param("max-inline-bytecodes", &argUint32);
                 if (ret) {
                     SetMaxInlineBytecodes(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_MIN_CALL_FREQ:
+                ret = ParseDoubleParam("min-inline-call-frequency", &argDouble);
+                if (ret) {
+                    SetMinCallFreq(argDouble);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_MAX_INLINE_DEPTH_SMALL:
+                ret = ParseUint32Param("max-inline-depth-small", &argUint32);
+                if (ret) {
+                    SetMaxInlineDepthSmall(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_MAX_INLINE_DEPTH_LARGE:
+                ret = ParseUint32Param("max-inline-depth-large", &argUint32);
+                if (ret) {
+                    SetMaxInlineDepthLarge(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_MAX_INLINE_COUNT:
+                ret = ParseUint32Param("max-inline-count", &argUint32);
+                if (ret) {
+                    SetMaxInlineCount(argUint32);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_MAX_INLINE_SIZE_LARGE:
+                ret = ParseUint32Param("max-inline-size-large", &argUint32);
+                if (ret) {
+                    SetMaxInlineSizeLarge(argUint32);
                 } else {
                     return false;
                 }

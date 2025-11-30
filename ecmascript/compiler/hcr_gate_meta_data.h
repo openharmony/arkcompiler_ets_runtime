@@ -36,9 +36,10 @@ namespace panda::ecmascript::kungfu {
 class JSBytecodeMetaData : public GateMetaData {
 public:
     explicit JSBytecodeMetaData(
-        size_t valuesIn, uint32_t methodId, EcmaOpcode opcode, uint32_t pcOffset, uint32_t bcIndex, GateFlags flags)
+        size_t valuesIn, uint32_t methodId, EcmaOpcode opcode, uint32_t pcOffset, uint32_t bcIndex, GateFlags flags,
+        uint16_t slotId)
         : GateMetaData(OpCode::JS_BYTECODE, flags, 1, 1, valuesIn), methodId_(methodId), opcode_(opcode),
-          pcOffset_(pcOffset), bcIndex_(bcIndex)
+          pcOffset_(pcOffset), bcIndex_(bcIndex), slotId_(slotId)
     {
         SetKind(GateMetaData::Kind::JSBYTECODE);
     }
@@ -173,6 +174,11 @@ public:
         return onHeapMode_;
     }
 
+    uint16_t GetSlotId() const
+    {
+        return slotId_;
+    }
+
 private:
     uint32_t methodId_;
     EcmaOpcode opcode_;
@@ -184,6 +190,7 @@ private:
     std::vector<ElementsKind> transitionElementsKinds_ {};
     OnHeapMode onHeapMode_ {OnHeapMode::NONE};
     RegionSpaceFlag regionSpaceFlag_ {RegionSpaceFlag::IN_YOUNG_SPACE};
+    uint16_t slotId_ {ICSlotId::INVALID_ID};
 };
 
 

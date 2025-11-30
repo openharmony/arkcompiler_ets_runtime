@@ -33,6 +33,10 @@ class A {
         test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
         test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
         test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+        test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+        test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+        test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+        test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     }
 }
 let a2 = new A();

@@ -127,6 +127,11 @@ enum CommandValues {
     OPTION_COMPILER_TRACE_DEOPT,
     OPTION_COMPILER_TRACE_INLINE,
     OPTION_COMPILER_MAX_INLINE_BYTECODES,
+    OPTION_COMPILER_MIN_CALL_FREQ,
+    OPTION_COMPILER_MAX_INLINE_DEPTH_SMALL,
+    OPTION_COMPILER_MAX_INLINE_DEPTH_LARGE,
+    OPTION_COMPILER_MAX_INLINE_COUNT,
+    OPTION_COMPILER_MAX_INLINE_SIZE_LARGE,
     OPTION_COMPILER_DEOPT_THRESHOLD,
     OPTION_COMPILER_STRESS_DEOPT,
     OPTION_COMPILER_OPT_CODE_PROFILER,
@@ -1682,6 +1687,56 @@ public:
         return maxInlineBytecodes_;
     }
 
+    void SetMinCallFreq(double value)
+    {
+        minCallFreq_ = value;
+    }
+
+    double GetMinCallFreq()
+    {
+        return minCallFreq_;
+    }
+
+    void SetMaxInlineDepthSmall(size_t value)
+    {
+        maxInlineDepthSmall_ = value;
+    }
+
+    size_t GetMaxInlineDepthSmall()
+    {
+        return maxInlineDepthSmall_;
+    }
+
+    void SetMaxInlineDepthLarge(size_t value)
+    {
+        maxInlineDepthLarge_ = value;
+    }
+
+    size_t GetMaxInlineDepthLarge()
+    {
+        return maxInlineDepthLarge_;
+    }
+
+    void SetMaxInlineCount(size_t value)
+    {
+        maxInlineCount_ = value;
+    }
+
+    size_t GetMaxInlineCount()
+    {
+        return maxInlineCount_;
+    }
+
+    void SetMaxInlineSizeLarge(size_t value)
+    {
+        maxInlineSizeLarge_ = value;
+    }
+
+    size_t GetMaxInlineSizeLarge()
+    {
+        return maxInlineSizeLarge_;
+    }
+
     void SetCompilerFrameworkAbcPath(std::string frameworkAbcPath)
     {
         frameworkAbcPath_ = std::move(frameworkAbcPath);
@@ -2532,6 +2587,11 @@ private:
     bool traceInstructionCombine_ {false};
     bool compilerPipelineHostAOT_ {false};
     size_t maxInlineBytecodes_ {45};
+    double minCallFreq_ {0.95};
+    size_t maxInlineDepthSmall_ {3};
+    size_t maxInlineDepthLarge_ {1};
+    size_t maxInlineCount_ {6};
+    size_t maxInlineSizeLarge_ {45};
     std::string targetCompilerMode_ {""};
     std::string frameworkAbcPath_ {""};
     std::string hapPath_ {""};

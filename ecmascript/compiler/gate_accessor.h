@@ -430,6 +430,7 @@ public:
     bool TypedCallIsNoGC(GateRef gate) const;
     bool IsNoGC(GateRef gate) const;
     uint32_t TryGetPcOffset(GateRef gate) const;
+    uint16_t TryGetSlotId(GateRef gate) const;
     uint32_t TryGetBcIndex(GateRef gate) const;
     uint32_t TryGetMethodOffset(GateRef gate) const;
     GateRef GetFrameArgs(GateRef gate) const;

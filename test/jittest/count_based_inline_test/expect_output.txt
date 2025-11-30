@@ -1,0 +1,110 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+=== Inline Count Testing ===
+Basic Inline Count Test:
+=== Basic Inline Count Test (6 call limit) ===
+1024
+true
+=== Basic Inline Count Test (6 call limit) ===
+[trace] aot inline function name: #*#BasicInlineCountTest@count_based_inline_test caller function name: #*#TestBasicInlineCount@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo1@count_based_inline_test caller function name: #*#BasicInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo2@count_based_inline_test caller function name: #*#BasicInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo3@count_based_inline_test caller function name: #*#BasicInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo4@count_based_inline_test caller function name: #*#BasicInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo5@count_based_inline_test caller function name: #*#BasicInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo6@count_based_inline_test caller function name: #*#BasicInlineCountTest@count_based_inline_test
+1024
+Mixed Inline Count Test:
+=== Mixed Inline Count Test ===
+81920
+true
+=== Mixed Inline Count Test ===
+[trace] aot inline function name: #*#MixedInlineCountTest@count_based_inline_test caller function name: #*#TestMixedInlineCount@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo1@count_based_inline_test caller function name: #*#MixedInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo2@count_based_inline_test caller function name: #*#MixedInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo3@count_based_inline_test caller function name: #*#MixedInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo4@count_based_inline_test caller function name: #*#MixedInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo5@count_based_inline_test caller function name: #*#MixedInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo6@count_based_inline_test caller function name: #*#MixedInlineCountTest@count_based_inline_test
+81920
+Conditional Inline Count Test:
+=== Conditional Inline Count Test ===
+800
+9600
+153600
+true
+=== Conditional Inline Count Test ===
+800
+9600
+153600
+Composition Inline Count Test:
+=== Composition Inline Count Test ===
+1.4142135623730951
+true
+=== Composition Inline Count Test ===
+[trace] aot inline function name: #*#CompositionInlineTest@count_based_inline_test caller function name: #*#TestCompositionInlineCount@count_based_inline_test
+[trace] aot inline function name: #*#ComposeFunc1@count_based_inline_test caller function name: #*#CompositionInlineTest@count_based_inline_test
+[trace] aot inline function name: #*#ComposeFunc2@count_based_inline_test caller function name: #*#CompositionInlineTest@count_based_inline_test
+[trace] aot inline function name: #*#ComposeFunc3@count_based_inline_test caller function name: #*#CompositionInlineTest@count_based_inline_test
+[trace] aot inline function name: #*#ComposeFunc4@count_based_inline_test caller function name: #*#CompositionInlineTest@count_based_inline_test
+[trace] aot inline function name: #*#ComposeFunc5@count_based_inline_test caller function name: #*#CompositionInlineTest@count_based_inline_test
+[trace] aot inline function name: #*#ComposeFunc6@count_based_inline_test caller function name: #*#CompositionInlineTest@count_based_inline_test
+1.4142135623730951
+Nested Inline Count Test:
+=== Nested Inline Count Test ===
+80
+-40
+true
+=== Nested Inline Count Test ===
+[trace] aot inline function name: #*#NestedInlineOuter@count_based_inline_test caller function name: #*#TestNestedInlineCount@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo1@count_based_inline_test caller function name: #*#NestedInlineOuter@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo2@count_based_inline_test caller function name: #*#NestedInlineOuter@count_based_inline_test
+80
+[trace] aot inline function name: #*#NestedInlineOuter@count_based_inline_test caller function name: #*#TestNestedInlineCount@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo1@count_based_inline_test caller function name: #*#NestedInlineOuter@count_based_inline_test
+[trace] aot inline function name: #*#InlineFoo2@count_based_inline_test caller function name: #*#NestedInlineOuter@count_based_inline_test
+-40
+Array Inline Count Test:
+=== Array Inline Count Test ===
+271
+true
+=== Array Inline Count Test ===
+271
+String Inline Count Test:
+=== String Inline Count Test ===
+uffix
+true
+=== String Inline Count Test ===
+[trace] aot inline function name: #*#StringInlineCountTest@count_based_inline_test caller function name: #*#TestStringInlineCount@count_based_inline_test
+[trace] aot inline function name: #*#StringFunc1@count_based_inline_test caller function name: #*#StringInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#StringFunc2@count_based_inline_test caller function name: #*#StringInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#StringFunc3@count_based_inline_test caller function name: #*#StringInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#StringFunc4@count_based_inline_test caller function name: #*#StringInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#StringFunc5@count_based_inline_test caller function name: #*#StringInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#StringFunc6@count_based_inline_test caller function name: #*#StringInlineCountTest@count_based_inline_test
+uffix
+Math Inline Count Test:
+=== Math Inline Count Test ===
+0
+true
+=== Math Inline Count Test ===
+[trace] aot inline function name: #*#MathInlineCountTest@count_based_inline_test caller function name: #*#TestMathInlineCount@count_based_inline_test
+[trace] aot inline function name: #*#MathFunc1@count_based_inline_test caller function name: #*#MathInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#MathFunc2@count_based_inline_test caller function name: #*#MathInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#MathFunc3@count_based_inline_test caller function name: #*#MathInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#MathFunc4@count_based_inline_test caller function name: #*#MathInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#MathFunc5@count_based_inline_test caller function name: #*#MathInlineCountTest@count_based_inline_test
+[trace] aot inline function name: #*#MathFunc8@count_based_inline_test caller function name: #*#MathInlineCountTest@count_based_inline_test
+0
+Inline count testing completed

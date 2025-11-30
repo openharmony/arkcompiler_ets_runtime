@@ -280,6 +280,7 @@
       panda::ecmascript::JSTaggedValue::IsBoolean*;
       panda::ecmascript::JSTaggedValue::IsBigInt*;
       panda::ecmascript::JSTaggedValue::IsTaggedArray*;
+      panda::ecmascript::JSTaggedValue::IsFuncSlot*;
       panda::ecmascript::JSTaggedValue::IsJSProxy*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
       panda::ecmascript::JSTaggedValue::IsInSharedHeap*;

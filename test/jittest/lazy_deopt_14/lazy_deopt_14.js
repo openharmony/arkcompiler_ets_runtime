@@ -47,6 +47,13 @@ function ChangePrototypeValue2(obj, shouldChange) {
         });
     }
     print("ChangeProto2 end.");
+    
+    // Additional code to prevent aggressive inlining.
+    let test = {};
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
 }
 
 function ChangePrototypeValue(obj, shouldChange) {
@@ -57,6 +64,10 @@ function ChangePrototypeValue(obj, shouldChange) {
     print("ChangeProto end.");
     // Additional code to prevent aggressive inlining.
     let test = {};
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
+    test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
     test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x; test.x;
