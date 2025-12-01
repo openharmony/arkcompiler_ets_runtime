@@ -797,7 +797,7 @@ JSHandle<JSTaggedValue> JsonParser<T>::ParseStringWithBackslash(bool inObjOrArrO
 template<typename T>
 void JsonParser<T>::SkipEndWhiteSpace()
 {
-    while (current_ != end_) {
+    while (current_ != range_) {
         if (*end_ == ' ' || *end_ == '\r' || *end_ == '\n' || *end_ == '\t') {
             end_--;
         } else {
@@ -809,7 +809,7 @@ void JsonParser<T>::SkipEndWhiteSpace()
 template<typename T>
 void JsonParser<T>::SkipStartWhiteSpace()
 {
-    while (current_ != end_) {
+    while (current_ != range_) {
         if (*current_ == ' ' || *current_ == '\r' || *current_ == '\n' || *current_ == '\t') {
             Advance();
         } else {

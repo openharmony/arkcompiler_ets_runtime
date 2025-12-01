@@ -218,5 +218,206 @@ assert_equal(numParsedObj.numberval9, 0);// less than Number.MIN_VALUE, expect 0
 	const v21 = JSON.stringify(v12);
 	JSON.parse(v21, f14);
 }
+{
+  // Case 1: Unquoted string keys
+  try {
+    JSON.parse('{name: "John"}');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
 
+{
+  // Case 2: Trailing comma in object
+  try {
+    JSON.parse('{"a": 1,}');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 3: Trailing comma in array
+  try {
+    JSON.parse('[1, 2,]');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 4: Unescaped control characters
+  try {
+    JSON.parse('"\n"');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 5: Single quotes instead of double quotes
+  try {
+    JSON.parse("{'key': 'value'}");
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 6: Hexadecimal numbers (not supported in JSON)
+  try {
+    JSON.parse('0x1A');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 7: Unclosed string
+  try {
+    JSON.parse('"unclosed string');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 8: Unclosed array
+  try {
+    JSON.parse('[1, 2,');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 9: Unclosed object
+  try {
+    JSON.parse('{"a": 1');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 10: Leading zeros in numbers
+  try {
+    JSON.parse('0123');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 11: Multiple decimal points
+  try {
+    JSON.parse('123.45.67');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 12: Invalid escape character
+  try {
+    JSON.parse('"\\x"');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 13: Unescaped tab character
+  try {
+    JSON.parse('"\t"');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 14: Invalid Unicode escape
+  try {
+    JSON.parse('"\\uZZZZ"');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Case 15: Incomplete Unicode escape
+  try {
+    JSON.parse('"\\u123"');
+    assert_unreachable();
+  } catch (error) {
+    assert_equal(error instanceof SyntaxError, true);
+  }
+}
+
+{
+  // Parse basic types - string, number, boolean, null
+  const json = '{"str": "hello", "num": 42, "bool": true, "null": null}';
+  const result = JSON.parse(json);
+  assert_equal(result.str, "hello");
+  assert_equal(result.num, 42);
+  assert_equal(result.bool, true);
+  assert_equal(result.null, null);
+}
+
+{
+  // Parse nested objects and arrays
+  const json = '{"user": {"name": "John", "age": 30}, "tags": ["js", "json", "test"]}';
+  const result = JSON.parse(json);
+  assert_equal(result.user.name, "John");
+  assert_equal(result.user.age, 30);
+  assert_equal(Array.isArray(result.tags), true);
+  assert_equal(result.tags.length, 3);
+  assert_equal(result.tags[0], "js");
+  assert_equal(result.tags[1], "json");
+  assert_equal(result.tags[2], "test");
+}
+
+{
+  // Parse special characters and escaped sequences
+  const json = '{"message": "Line 1\\nLine 2\\tTab\\\\Backslash\\"Quote\\""}';
+  const result = JSON.parse(json);
+  assert_equal(result.message, "Line 1\nLine 2\tTab\\Backslash\"Quote\"");
+}
+
+{
+  // Parse numbers with different formats (integer, float, negative, scientific notation)
+  const json = '{"int": 123, "float": 3.14159, "negative": -42, "sci": 1.23e4}';
+  const result = JSON.parse(json);
+  assert_equal(result.int, 123);
+  assert_equal(result.float, 3.14159);
+  assert_equal(result.negative, -42);
+  assert_equal(result.sci, 12300);
+}
+
+{
+  // Parse empty structures and complex nested combinations
+  const json = '{"emptyObj": {}, "emptyArr": [], "mixed": [null, true, 1, "text", {"key": "value"}]}';
+  const result = JSON.parse(json);
+  assert_equal(Object.keys(result.emptyObj).length, 0);
+  assert_equal(result.emptyArr.length, 0);
+  assert_equal(result.mixed[0], null);
+  assert_equal(result.mixed[1], true);
+  assert_equal(result.mixed[2], 1);
+  assert_equal(result.mixed[3], "text");
+  assert_equal(result.mixed[4].key, "value");
+}
 test_end();
