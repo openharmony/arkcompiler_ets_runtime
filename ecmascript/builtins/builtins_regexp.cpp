@@ -2583,7 +2583,7 @@ JSTaggedValue RegExpExecResultCache::CreateCacheTable(JSThread *thread)
     return JSTaggedValue(table);
 }
 
-void RegExpExecResultCache::ShinkCacheTable(JSThread *thread, JSHandle<RegExpExecResultCache> table)
+void RegExpExecResultCache::ShrinkCacheTable(JSThread *thread, JSHandle<RegExpExecResultCache> table)
 {
     ASSERT(table->GetCacheLength() == DEFAULT_CACHE_NUMBER);
     int length = CACHE_TABLE_HEADER_SIZE + INITIAL_CACHE_NUMBER * ENTRY_SIZE;
@@ -2615,7 +2615,7 @@ void RegExpExecResultCache::ClearCache(JSThread* thread, JSHandle<JSTaggedValue>
     }
     if (regexpCache->GetCacheLength() == DEFAULT_CACHE_NUMBER) {
         // shrink size
-        ShinkCacheTable(thread, regexpCache);
+        ShrinkCacheTable(thread, regexpCache);
     }
     // clear cache
     regexpCache->SetCacheCount(thread, 0);

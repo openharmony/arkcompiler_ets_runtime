@@ -225,7 +225,7 @@ public:
         return reinterpret_cast<RegExpExecResultCache *>(object);
     }
     static JSTaggedValue CreateCacheTable(JSThread *thread);
-    static void ShinkCacheTable(JSThread *thread, JSHandle<RegExpExecResultCache> table);
+    static void ShrinkCacheTable(JSThread *thread, JSHandle<RegExpExecResultCache> table);
     static void ClearCache(JSThread* thread, JSHandle<JSTaggedValue> cache);
     // extend as an additional parameter to judge cached
     template <RBMode mode = RBMode::DEFAULT_RB>
