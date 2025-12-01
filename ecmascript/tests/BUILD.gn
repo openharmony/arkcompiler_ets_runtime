@@ -3581,7 +3581,6 @@ group("unittest") {
     ":ECMA_StringTable_Test",
 
     ":BASE_String_Test",
-    ":CMC_Barrier_Test",
     ":ECMA_VM_Test",
     ":GC_ModuleManagerMap_Test",
     ":GC_ConcurrentMarking_Test",
@@ -3739,6 +3738,7 @@ group("unittest") {
     ]
 
     deps += [
+      ":CMC_Barrier_Test",
       ":Dynamic_Object_Accessor_Test",
       ":JS_DynamicTypeConverter_Test",
     ]
@@ -4046,6 +4046,7 @@ group("host_unittest") {
     ]
 
     deps += [
+      ":CMC_Barrier_TestAction",
       ":Dynamic_Object_Accessor_TestAction",
       ":JS_DynamicTypeConverter_TestAction",
     ]
