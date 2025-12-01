@@ -125,4 +125,13 @@
     }
 }
 
+{
+    function fn1() {
+        var obj = {};
+        obj[2147483649] = 0;
+        Object.assign({}, obj);
+    }
+    fn1();
+}
+
 test_end();
