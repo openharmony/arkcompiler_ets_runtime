@@ -82,13 +82,20 @@ void ProfileTypeAccessor::AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHa
 
     auto factory = thread_->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> newArr = factory->NewTaggedArray(newLen);
-    uint32_t i = 0;
-    for (; i < arr->GetLength(); i += step) {
-        newArr->Set(thread_, i, arr->Get(thread_, i));
-        newArr->Set(thread_, i + 1, arr->Get(thread_, i + 1));
+    uint32_t newArrPos = 0;
+    for (uint32_t pos = 0; pos < arr->GetLength(); pos += step) {
+        if (arr->Get(thread_, pos).IsUndefined()) {
+            continue;
+        }
+        newArr->Set(thread_, newArrPos, arr->Get(thread_, pos));
+        newArr->Set(thread_, newArrPos + 1, arr->Get(thread_, pos + 1));
+        newArrPos += step;
     }
-    newArr->Set(thread_, i, GetWeakRef(hclass.GetTaggedValue()));
-    newArr->Set(thread_, i + 1, handler.GetTaggedValue());
+    newArr->Set(thread_, newArrPos++, GetWeakRef(hclass.GetTaggedValue()));
+    newArr->Set(thread_, newArrPos++, handler.GetTaggedValue());
+    if (newLen > newArrPos) {
+        newArr->Trim(thread_, newArrPos);
+    }
     profileTypeInfo_->SetMultiIcSlotLocked(thread_, index, newArr.GetTaggedValue(), index + 1, JSTaggedValue::Hole());
 }
 
