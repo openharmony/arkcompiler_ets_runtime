@@ -5293,6 +5293,12 @@ template("host_jit_test_action") {
         " --entry-point=${_target_name_} "
     _jit_run_options_ += common_options
 
+    if (defined(invoker.reset_jit_hotness)) {
+      _new_hotness_ = "--compiler-jit-hotness-threshold=" + invoker.reset_jit_hotness
+      _jit_run_options_ += _new_hotness_
+    } else {
+      _jit_run_options_ += "--compiler-jit-hotness-threshold=5 "
+    }
     if (defined(invoker.enable_osr) && invoker.enable_osr) {
       _jit_run_options_ += " --compiler-enable-osr=true "
       _jit_run_options_ += " --compiler-osr-hotness-threshold=1 "

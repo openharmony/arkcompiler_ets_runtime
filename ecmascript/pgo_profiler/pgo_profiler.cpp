@@ -659,7 +659,11 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString& recordName, J
     JSFunction *function = JSFunction::Cast(funcValue);
     JSThread *thread = vm_->GetAssociatedJSThread();
     JSTaggedValue funcEnv = function->GetLexicalEnv(thread);
-    SetCurrentGlobalEnv(BaseEnv::Cast(funcEnv.GetTaggedObject())->GetGlobalEnv(thread));
+    JSTaggedValue globalEnv = BaseEnv::Cast(funcEnv.GetTaggedObject())->GetGlobalEnv(thread);
+    if (globalEnv.IsHole()) {
+        return;
+    }
+    SetCurrentGlobalEnv(globalEnv);
     if (function->IsSendableOrConcurrentFunction(thread)) {
         return;
     }
