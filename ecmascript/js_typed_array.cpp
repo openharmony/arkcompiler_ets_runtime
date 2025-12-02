@@ -448,6 +448,11 @@ OperationResult JSTypedArray::IntegerIndexedElementGet(JSThread *thread, const J
     return OperationResult(thread, result, PropertyMetaData(true));
 }
 
+template OperationResult JSTypedArray::IntegerIndexedElementGet<true>(JSThread *, const JSHandle<JSTaggedValue> &,
+                                                                      JSTaggedValue);
+template OperationResult JSTypedArray::IntegerIndexedElementGet<false>(JSThread *, const JSHandle<JSTaggedValue> &,
+                                                                       JSTaggedValue);
+
 // s12 10.4.5.9 IsValidIntegerIndex ( O, index )
 bool JSTypedArray::IsValidIntegerIndex(JSThread *thread, const JSHandle<JSTaggedValue> &typedArray, JSTaggedValue index)
 {
