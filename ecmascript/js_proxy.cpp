@@ -112,18 +112,18 @@ bool JSProxy::SetPrototype(JSThread *thread, const JSHandle<JSProxy> &proxy, con
     // 1. Assert: Either Type(V) is Object or Type(V) is Null.
     ASSERT(proto->IsECMAObject() || proto->IsNull());
     // 2. Let handler be the value of the [[ProxyHandler]] internal slot of O.
-    JSTaggedValue handler = proxy->GetHandler(thread);
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
     // 3. If handler is null, throw a TypeError exception.
-    if (handler.IsNull()) {
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetPrototype: handler is null", false);
     }
     // 4. Assert: Type(handler) is Object.
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     // 5. Let target be the value of the [[ProxyTarget]] internal slot of O.
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     // 6. Let trap be GetMethod(handler, "setPrototypeOf").
     JSHandle<JSTaggedValue> name = globalConst->GetHandledSetPrototypeOfString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, name));
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
@@ -131,10 +131,10 @@ bool JSProxy::SetPrototype(JSThread *thread, const JSHandle<JSProxy> &proxy, con
     if (trap->IsUndefined()) {
         return JSTaggedValue::SetPrototype(thread, targetHandle, proto);
     }
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
+
     const uint32_t argsLength = 2;  // 2: target and proto
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), proto.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
@@ -173,18 +173,18 @@ bool JSProxy::IsExtensible(JSThread *thread, const JSHandle<JSProxy> &proxy)
     STACK_LIMIT_CHECK(thread, false);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // 1. Let handler be the value of the [[ProxyHandler]] internal slot of O.
-    JSTaggedValue handler = proxy->GetHandler(thread);
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
     // 2. If handler is null, throw a TypeError exception.
-    if (handler.IsNull()) {
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::IsExtensible: handler is null", false);
     }
     // 3. Assert: Type(handler) is Object.
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     // 4. Let target be the value of the [[ProxyTarget]] internal slot of O.
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     // 5. Let trap be GetMethod(handler, "isExtensible").
     JSHandle<JSTaggedValue> name = globalConst->GetHandledIsExtensibleString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, name));
     // 6. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
@@ -194,9 +194,8 @@ bool JSProxy::IsExtensible(JSThread *thread, const JSHandle<JSProxy> &proxy)
     }
     // 8. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target»)).
     JSHandle<JSTaggedValue> newTgt(thread, JSTaggedValue::Undefined());
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, 1);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
@@ -231,23 +230,23 @@ bool JSProxy::PreventExtensions(JSThread *thread, const JSHandle<JSProxy> &proxy
     // a. Return target.[[PreventExtensions]]().
     // 8. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target»)).
     // 9. ReturnIfAbrupt(booleanTrapResult).
-    JSTaggedValue handler = proxy->GetHandler(thread);
-    if (handler.IsNull()) {
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::PreventExtensions: handler is null", false);
     }
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     JSHandle<JSTaggedValue> name = globalConst->GetHandledPreventExtensionsString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, name));
     // 6. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
     if (trap->IsUndefined()) {
         return JSTaggedValue::PreventExtensions(thread, targetHandle);
     }
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
+
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, 1);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, 1);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
@@ -285,24 +284,24 @@ bool JSProxy::GetOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
     // 9. Let trapResultObj be Call(trap, handler, «target, P»).
     // 10. ReturnIfAbrupt(trapResultObj).
     // 11. If Type(trapResultObj) is neither Object nor Undefined, throw a TypeError exception
-    JSTaggedValue handler = proxy->GetHandler(thread);
-    if (handler.IsNull()) {
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::GetOwnProperty: handler is null", false);
     }
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     JSHandle<JSTaggedValue> name = globalConst->GetHandledGetOwnPropertyDescriptorString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, name));
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
 
     if (trap->IsUndefined()) {
         return JSTaggedValue::GetOwnProperty(thread, targetHandle, key, desc);
     }
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
+
     const uint32_t argsLength = 2;  // 2: target and key
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue());
     JSTaggedValue trapResultObj = JSFunction::Call(info);
@@ -379,14 +378,14 @@ bool JSProxy::DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 10 are almost same as GetOwnProperty
     ASSERT(JSTaggedValue::IsPropertyKey(key));
-    JSTaggedValue handler = proxy->GetHandler(thread);
-    if (handler.IsNull()) {
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::DefineOwnProperty: handler is Null", false);
     }
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     JSHandle<JSTaggedValue> name = globalConst->GetHandledDefinePropertyString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, name));
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (trap->IsUndefined()) {
@@ -395,10 +394,9 @@ bool JSProxy::DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy
 
     // 9. Let descObj be FromPropertyDescriptor(Desc).
     JSHandle<JSTaggedValue> descObj = JSObject::FromPropertyDescriptor(thread, desc);
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
     const uint32_t argsLength = 3;  // 3: target, key and desc
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue(), descObj.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
@@ -462,14 +460,14 @@ bool JSProxy::HasProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 10 are almost same as GetOwnProperty
     ASSERT(JSTaggedValue::IsPropertyKey(key));
-    JSTaggedValue handler = proxy->GetHandler(thread);
-    if (handler.IsNull()) {
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::HasProperty: handler is Null", false);
     }
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     JSHandle<JSTaggedValue> name = globalConst->GetHandledHasString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, name));
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (trap->IsUndefined()) {
@@ -477,11 +475,9 @@ bool JSProxy::HasProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     }
 
     // 9. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target, P»)).
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
-
     const uint32_t argsLength = 2;  // 2: target and key
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
@@ -563,16 +559,16 @@ OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 10 are almost same as GetOwnProperty
     ASSERT(JSTaggedValue::IsPropertyKey(key));
-    JSTaggedValue handler = proxy->GetHandler(thread);
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
     JSHandle<JSTaggedValue> exceptionHandle(thread, JSTaggedValue::Exception());
-    if (handler.IsNull()) {
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::GetProperty: handler is Null",
                                     OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
     }
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     JSHandle<JSTaggedValue> name = globalConst->GetHandledGetString();
-    JSHandle<JSTaggedValue> trap(JSObject::FastGetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::FastGetMethod(thread, handler, name));
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(
         thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
@@ -581,10 +577,9 @@ OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &
         return JSTaggedValue::GetProperty(thread, targetHandle, key, receiver);
     }
     // 9. Let trapResult be Call(trap, handler, «target, P, Receiver»).
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
     const uint32_t argsLength = 3;  // 3: «target, P, Receiver»
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(
         thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue(), receiver.GetTaggedValue());
@@ -633,14 +628,14 @@ bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 10 are almost same as GetOwnProperty
     ASSERT(JSTaggedValue::IsPropertyKey(key));
-    JSTaggedValue handler = proxy->GetHandler(thread);
-    if (handler.IsNull()) {
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::SetProperty: handler is Null", false);
     }
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     JSHandle<JSTaggedValue> name = globalConst->GetHandledSetString();
-    JSHandle<JSTaggedValue> trap(JSObject::FastGetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::FastGetMethod(thread, handler, name));
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (trap->IsUndefined()) {
@@ -648,10 +643,9 @@ bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     }
 
     // 9. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target, P, V, Receiver»))
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
     const uint32_t argsLength = 4;  // 4: «target, P, V, Receiver»
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(
         targetHandle.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), receiver.GetTaggedValue());
@@ -676,14 +670,14 @@ bool JSProxy::DeleteProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 13 are almost same as GetOwnProperty
     ASSERT(JSTaggedValue::IsPropertyKey(key));
-    JSTaggedValue handler = proxy->GetHandler(thread);
-    if (handler.IsNull()) {
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "JSProxy::DeleteProperty: handler is Null", false);
     }
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
     JSHandle<JSTaggedValue> name = globalConst->GetHandledDeletePropertyString();
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, JSHandle<JSTaggedValue>(thread, handler), name));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, name));
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (trap->IsUndefined()) {
@@ -691,11 +685,9 @@ bool JSProxy::DeleteProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
     }
 
     // 9. Let booleanTrapResult be ToBoolean(Call(trap, handler, «target, P»)).
-    JSHandle<JSTaggedValue> newTgt(thread, JSTaggedValue::Undefined());
-    JSHandle<JSTaggedValue> handlerTag(thread, proxy->GetHandler(thread));
     const uint32_t argsLength = 2;  // 2: target and key
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
@@ -730,19 +722,18 @@ JSHandle<TaggedArray> JSProxy::OwnPropertyKeys(JSThread *thread, const JSHandle<
     STACK_LIMIT_CHECK(thread, JSHandle<TaggedArray>(thread, JSTaggedValue::Exception()));
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     // step 1 ~ 4 get ProxyHandler and ProxyTarget
-    JSTaggedValue handler = proxy->GetHandler(thread);
-    if (handler.IsNull()) {
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "OwnPropertyKeys: handler is null",
                                     JSHandle<TaggedArray>(thread, JSTaggedValue::Exception()));
     }
 
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
 
     // 5.Let trap be GetMethod(handler, "ownKeys").
     JSHandle<JSTaggedValue> key = globalConst->GetHandledOwnKeysString();
-    JSHandle<JSTaggedValue> handlerHandle(thread, handler);
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handlerHandle, key));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, key));
 
     // 6.ReturnIfAbrupt(trap).
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
@@ -756,7 +747,7 @@ JSHandle<TaggedArray> JSProxy::OwnPropertyKeys(JSThread *thread, const JSHandle<
     // 8.Let trapResultArray be Call(trap, handler, «target»).
     JSHandle<JSFunction> tagFunc(targetHandle);
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerHandle, undefined, 1);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, 1);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
     info->SetCallArg(targetHandle.GetTaggedValue());
     JSTaggedValue res = JSFunction::Call(info);
@@ -876,18 +867,17 @@ JSHandle<TaggedArray> JSProxy::GetAllPropertyKeys(JSThread *thread, const JSHand
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
-    JSTaggedValue handler = proxy->GetHandler(thread);
-    if (handler.IsNull()) {
+    JSHandle<JSTaggedValue> handler(thread, proxy->GetHandler(thread));
+    if (handler->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "OwnPropertyKeys: handler is null",
                                     JSHandle<TaggedArray>(thread, JSTaggedValue::Exception()));
     }
 
-    ASSERT(handler.IsECMAObject());
+    ASSERT(handler->IsECMAObject());
     JSHandle<JSTaggedValue> targetHandle(thread, proxy->GetTarget(thread));
 
     JSHandle<JSTaggedValue> key = globalConst->GetHandledOwnKeysString();
-    JSHandle<JSTaggedValue> handlerHandle(thread, handler);
-    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handlerHandle, key));
+    JSHandle<JSTaggedValue> trap(JSObject::GetMethod(thread, handler, key));
 
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
 
@@ -896,7 +886,7 @@ JSHandle<TaggedArray> JSProxy::GetAllPropertyKeys(JSThread *thread, const JSHand
     }
 
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerHandle, undefined, 1);
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handler, undefined, 1);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(TaggedArray, thread);
     info->SetCallArg(targetHandle.GetTaggedValue());
     JSTaggedValue res = JSFunction::Call(info);
