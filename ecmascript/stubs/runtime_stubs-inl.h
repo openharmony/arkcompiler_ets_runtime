@@ -3206,7 +3206,8 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
         return obj.GetTaggedValue();
     }
     if (!resultValue.IsUndefined()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "function is non-constructor", JSTaggedValue::Exception());
+        THROW_TYPE_ERROR_AND_RETURN(
+            thread, "Derived constructor must return object or undefined", JSTaggedValue::Exception());
     }
     return obj.GetTaggedValue();
 }
