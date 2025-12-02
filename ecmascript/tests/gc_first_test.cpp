@@ -38,7 +38,7 @@ public:
 
     static inline void CallBackFn([[maybe_unused]] void *data, void *hint)
     {
-        free(hint);
+        free(data);
     }
 
     void SetUp() override
@@ -304,8 +304,8 @@ HWTEST_F_L0(GCTest, ExternalStringGCAddStringTest)
     EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        uint8_t *hint = (uint8_t *)std::malloc(TYPE_INFO_SIZE + UTF8_CACHED_DATA_SIZE);
-        uint8_t *cachedData = hint + TYPE_INFO_SIZE;
+        uint8_t *hint = (uint8_t *)std::malloc(TYPE_INFO_SIZE);
+        uint8_t *cachedData = (uint8_t *)std::malloc(UTF8_CACHED_DATA_SIZE);
         memset_s(cachedData, UTF16_CACHED_DATA_SIZE, 0xff, UTF16_CACHED_DATA_SIZE);
         EcmaString *ecmaString = EcmaStringAccessor::CreateFromExternalResource(
             instance, cachedData, UTF8_CACHED_DATA_SIZE, true, GCTest::CallBackFn, hint);
@@ -313,7 +313,7 @@ HWTEST_F_L0(GCTest, ExternalStringGCAddStringTest)
         EXPECT_NE(ecmaString, nullptr);
         EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 1);
     }
-
+ 
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
 };
@@ -325,8 +325,8 @@ HWTEST_F_L0(GCTest, ExternalStringGCAddStringHandleTest)
 
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        uint8_t *hint = (uint8_t *)std::malloc(TYPE_INFO_SIZE + UTF8_CACHED_DATA_SIZE);
-        uint8_t *cachedData = hint + TYPE_INFO_SIZE;
+        uint8_t *hint = (uint8_t *)std::malloc(TYPE_INFO_SIZE);
+        uint8_t *cachedData = (uint8_t *)std::malloc(UTF8_CACHED_DATA_SIZE);
         memset_s(cachedData, UTF16_CACHED_DATA_SIZE, 0xff, UTF16_CACHED_DATA_SIZE);
         EcmaString *ecmaString = EcmaStringAccessor::CreateFromExternalResource(
             instance, cachedData, UTF8_CACHED_DATA_SIZE, true, GCTest::CallBackFn, hint);
@@ -341,22 +341,22 @@ HWTEST_F_L0(GCTest, ExternalStringGCAddStringHandleTest)
     EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
 };
 
-HWTEST_F_L0(GCTest, ExternalStringGCCallBackSaveTest)
+HWTEST_F_L0(GCTest, ExternalStringSharedFullGCCallBackSaveTest)
 {
     auto sHeap = SharedHeap::GetInstance();
-    TestData *data = new TestData();
+    TestData *hint = new TestData();
     auto callback = [] (void* data, void* hint) -> void {
-        reinterpret_cast<TestData *>(data)->AddCount();
-        free(hint);
+        reinterpret_cast<TestData *>(hint)->AddCount();
+        free(data);
     };
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     size_t oldCount = sHeap->GetExternalStringTable()->GetListSize();
     EXPECT_EQ(oldCount, 0);
-    EXPECT_EQ(data->GetCount(), 0);
+    EXPECT_EQ(hint->GetCount(), 0);
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         for (int i = 0; i < 32; i++) {
-            uint8_t *hint = (uint8_t *)std::malloc(TYPE_INFO_SIZE + UTF8_CACHED_DATA_SIZE);
+            uint8_t *data = (uint8_t *)std::malloc(TYPE_INFO_SIZE + UTF8_CACHED_DATA_SIZE);
             EcmaString *ecmaString = EcmaStringAccessor::CreateFromExternalResource(
                 instance, data, UTF8_CACHED_DATA_SIZE, true, callback, hint);
 
@@ -365,16 +365,53 @@ HWTEST_F_L0(GCTest, ExternalStringGCCallBackSaveTest)
             CachedExternalString *cachedExternalString = cachedEcmaString->ToCachedExternalString();
             EXPECT_NE(cachedExternalString, nullptr);
         }
-        EXPECT_EQ(data->GetCount(), 0);
+        EXPECT_EQ(hint->GetCount(), 0);
         EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 32);
 
         sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
 
-        EXPECT_EQ(data->GetCount(), 0);
+        EXPECT_EQ(hint->GetCount(), 0);
         EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 32);
     }
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
-    EXPECT_EQ(data->GetCount(), 32);
+    EXPECT_EQ(hint->GetCount(), 32);
+    EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
+};
+
+HWTEST_F_L0(GCTest, ExternalStringSharedGCCallBackSaveTest)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    TestData *hint = new TestData();
+    auto callback = [] (void* data, void* hint) -> void {
+        reinterpret_cast<TestData *>(hint)->AddCount();
+        free(data);
+    };
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    size_t oldCount = sHeap->GetExternalStringTable()->GetListSize();
+    EXPECT_EQ(oldCount, 0);
+    EXPECT_EQ(hint->GetCount(), 0);
+    {
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
+        for (int i = 0; i < 32; i++) {
+            uint8_t *data = (uint8_t *)std::malloc(TYPE_INFO_SIZE + UTF8_CACHED_DATA_SIZE);
+            EcmaString *ecmaString = EcmaStringAccessor::CreateFromExternalResource(
+                instance, data, UTF8_CACHED_DATA_SIZE, true, callback, hint);
+
+            JSHandle<EcmaString> ecmaStrHandle(thread, ecmaString);
+            CachedExternalEcmaString *cachedEcmaString = CachedExternalEcmaString::Cast(ecmaString);
+            CachedExternalString *cachedExternalString = cachedEcmaString->ToCachedExternalString();
+            EXPECT_NE(cachedExternalString, nullptr);
+        }
+        EXPECT_EQ(hint->GetCount(), 0);
+        EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 32);
+
+        sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+
+        EXPECT_EQ(hint->GetCount(), 0);
+        EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 32);
+    }
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    EXPECT_EQ(hint->GetCount(), 32);
     EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
 };
 
