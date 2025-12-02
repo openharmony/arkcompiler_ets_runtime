@@ -26,6 +26,7 @@ config("module_private_config") {
     "-Wno-nested-anon-types",
     "-Wno-gnu-anonymous-struct",
     "-Wno-variadic-macros",
+    "-Wno-invalid-offsetof",
   ]
 }
 

@@ -27,6 +27,7 @@ ohos_fuzztest("AotCompilerArgsPrepareFuzzTest") {
     "-Wno-unused-variable",
     "-fno-omit-frame-pointer",
     "-Wno-variadic-macros",
+    "-Wno-invalid-offsetof",
   ]
   include_dirs = [
     "${compiler_service_root}/include",
