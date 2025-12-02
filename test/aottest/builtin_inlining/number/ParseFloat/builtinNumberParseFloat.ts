@@ -138,42 +138,58 @@ valueTest(testParseFloat)
 //: number,900719925474099300
 
 valueTest(testNumberParseFloat)
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: #*#valueTest@builtinNumberParseFloat
 //: number,12
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: #*#valueTest@builtinNumberParseFloat
 //: number,1.2
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: #*#valueTest@builtinNumberParseFloat
 //: number,0.2
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: #*#valueTest@builtinNumberParseFloat
 //: number,-0.2
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: #*#valueTest@builtinNumberParseFloat
 //: number,2
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: #*#valueTest@builtinNumberParseFloat
 //: number,-2
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,-0.2
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,-0.2
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,0.12
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,1.2
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,NaN
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,Infinity
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,Infinity
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,-Infinity
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,-Infinity
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
 //: exit testNumberParseFloat
 //: number,900719925474099300
 
@@ -189,6 +205,8 @@ test(testParseFloat(obj));
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: func_main_0@builtinNumberParseFloat
 //: number,22
 test(testNumberParseFloat(obj));
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
+//aot: [trace] Check Type: NotString1
 //: exit testNumberParseFloat
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: func_main_0@builtinNumberParseFloat
 //: number,22
@@ -201,6 +219,8 @@ test(testParseFloat(obj));
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: func_main_0@builtinNumberParseFloat
 //: number,22
 test(testNumberParseFloat(obj));
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
+//aot: [trace] Check Type: NotString1
 //: exit testNumberParseFloat
 //aot: [trace] aot inline function name: #*#test@builtinNumberParseFloat caller function name: func_main_0@builtinNumberParseFloat
 //: number,22
@@ -227,6 +247,8 @@ try {
 try {
     test(testNumberParseFloat(obj, 2));
 } catch (e) {}
+//aot: [trace] aot inline builtin: Number.parseFloat, caller function name:#*#testNumberParseFloat@builtinNumberParseFloat
+//aot: [trace] Check Type: NotString1
 //: catch 'Error: thr 2' in testNumberParseFloat
 //: exit testNumberParseFloat
 
@@ -245,5 +267,6 @@ try {
 } catch (e) {
     if (e != "CheckReplace") throw Error();
 }
+//aot: [trace] Check Type: NotCallTarget1
 //: catch 'CheckReplace' in testNumberParseFloat
 //: exit testNumberParseFloat
