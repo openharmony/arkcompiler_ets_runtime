@@ -58,6 +58,7 @@ public:
     Heap *heap_ {nullptr};
 };
 
+#ifdef PANDA_TARGET_64
 HWTEST_F_L0(LocalCCTest, IdleTriggerTest)
 {
     IdleGCTrigger *idleGCTrigger = heap_->GetIdleGCTrigger();
@@ -132,6 +133,7 @@ HWTEST_F_L0(LocalCCTest, ReadBarrierTest)
     JSTaggedType slotObj1 = ReadBarrier(thread, slotAddress1, slotValue1);
     EXPECT_TRUE(JSTaggedValue(slotObj1).IsWeak());
 }
+#endif
 
 HWTEST_F_L0(LocalCCTest, DisableTest)
 {
