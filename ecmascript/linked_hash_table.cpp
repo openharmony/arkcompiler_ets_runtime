@@ -302,6 +302,9 @@ int LinkedHash::Hash(const JSThread *thread, JSTaggedValue key)
         if (key.IsInt()) {
             return key.GetInt();
         }
+        if (std::isnan(key.GetDouble())) {
+            return base::NAN_HASH;
+        }
     }
     uint64_t keyValue = key.GetRawData();
     return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
