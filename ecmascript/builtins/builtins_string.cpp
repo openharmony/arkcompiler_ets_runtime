@@ -655,7 +655,7 @@ JSTaggedValue BuiltinsString::MatchAll(EcmaRuntimeCallInfo *argv)
     if (!regexp->IsUndefined() && !regexp->IsNull()) {
         // a. Let isRegExp be ? IsRegExp(searchValue).
         if (regexp->IsECMAObject() &&
-            BuiltinsRegExp::IsFastRegExp(thread, regexp.GetTaggedValue(), BuiltinsRegExp::RegExpSymbol::MATCH)) {
+            BuiltinsRegExp::IsFastRegExp(thread, regexp.GetTaggedValue(), BuiltinsRegExp::RegExpSymbol::MATCHALL)) {
             bool isGlobal = BuiltinsRegExp::GetOriginalFlag(thread, regexp, RegExpParser::FLAG_GLOBAL);
             if (!isGlobal) {
                 THROW_TYPE_ERROR_AND_RETURN(thread,
@@ -1035,7 +1035,8 @@ JSTaggedValue BuiltinsString::Replace(EcmaRuntimeCallInfo *argv)
         JSHandle<JSRegExp> re(searchTag);
         JSHandle<JSTaggedValue> pattern(thread, re->GetOriginalSource(thread));
         JSHandle<JSTaggedValue> flags(thread, re->GetOriginalFlags(thread));
-        bool isFastPath = BuiltinsRegExp::IsFastRegExp(thread, searchTag.GetTaggedValue());
+        bool isFastPath =
+            BuiltinsRegExp::IsFastRegExp(thread, searchTag.GetTaggedValue(), BuiltinsRegExp::RegExpSymbol::REPLACE);
         if (isFastPath) {
             uint32_t lastIndex = static_cast<uint32_t>(BuiltinsRegExp::GetLastIndex(thread, searchTag, true));
             JSTaggedValue cacheResult;
@@ -1607,7 +1608,7 @@ JSTaggedValue BuiltinsString::Split(EcmaRuntimeCallInfo *argv)
 
     if (thisTag->IsString() && seperatorTag->IsECMAObject()) {
         // this condition need change, all regexp should use RegExpSplit
-        if (BuiltinsRegExp::IsFastRegExp(thread, seperatorTag.GetTaggedValue())) {
+        if (BuiltinsRegExp::IsFastRegExp(thread, seperatorTag.GetTaggedValue(), BuiltinsRegExp::RegExpSymbol::SPLIT)) {
             return BuiltinsRegExp::RegExpSplit(thread, seperatorTag, thisTag, limitTag, true);
         }
     }
