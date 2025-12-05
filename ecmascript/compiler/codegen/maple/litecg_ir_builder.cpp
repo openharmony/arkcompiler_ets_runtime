@@ -547,6 +547,10 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
                 HandleReadSp(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::READSP);
                 break;
+            case OpCode::RESERVED_REG:
+                HandleReadReserveRegister(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::RESERVED_REG);
+                break;
             case OpCode::FINISH_ALLOCATE:
                 HandleFinishAllocate(gate);
                 InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FINISH_ALLOCATE);
@@ -2393,6 +2397,18 @@ void LiteCGIRBuilder::HandleReadSp(GateRef gate)
 void LiteCGIRBuilder::VisitReadSp(GateRef gate)
 {
     Expr result = lmirBuilder_->LiteCGGetPregSP();
+    SaveGate2Expr(gate, result);
+}
+
+void LiteCGIRBuilder::HandleReadReserveRegister(GateRef gate)
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::RESERVED_REG);
+    VisitReadReserveRegister(gate);
+}
+
+void LiteCGIRBuilder::VisitReadReserveRegister(GateRef gate)
+{
+    Expr result = lmirBuilder_->LiteCGGetPregReserved();
     SaveGate2Expr(gate, result);
 }
 

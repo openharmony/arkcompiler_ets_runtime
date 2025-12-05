@@ -124,7 +124,11 @@ public:
 
     bool IsReservedReg(regno_t regNO) const
     {
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        return (regNO == R16 || regNO == R28);
+#else
         return (regNO == R16);
+#endif
     }
 
     void Init() override;

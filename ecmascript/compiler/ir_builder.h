@@ -115,6 +115,7 @@ enum class CallInfoKind : bool {
     V(Ceil, (GateRef gate, GateRef e1))                                                   \
     V(Floor, (GateRef gate, GateRef e1))                                                  \
     V(ReadSp, (GateRef gate))                                                             \
+    V(ReadReserveRegister, (GateRef gate))                                                \
     V(InitVreg, (GateRef gate))                                                           \
     V(BitRev, (GateRef gate, GateRef e1))                                                 \
     V(FinishAllocate, (GateRef gate, GateRef e1))                                         \

@@ -318,6 +318,9 @@ void RegreadNode::Dump(int32) const
         case -kSregFp:
             LogInfo::MapleLogger() << "FP";
             break;
+        case -kSregReserve:
+            LogInfo::MapleLogger() << "Reserve";
+            break;
         default:
             int32 retValIdx = (-regIdx) - kSregRetval0;
             LogInfo::MapleLogger() << "retval" << retValIdx;
@@ -374,6 +377,9 @@ void RegassignNode::Dump(int32 indent) const
                 break;
             case -kSregRetval0:
                 LogInfo::MapleLogger() << "retval0";
+                break;
+            case -kSregReserve:
+                LogInfo::MapleLogger() << "Reserve";
                 break;
             // no default
             default:

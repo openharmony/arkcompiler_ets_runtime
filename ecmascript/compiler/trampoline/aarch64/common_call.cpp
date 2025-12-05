@@ -46,7 +46,11 @@ void CommonCall::PopAsmInterpBridgeFrame(ExtendedAssembler *assembler)
     Register sp(SP);
 
     if (!assembler->FromInterpreterHandler()) {
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+        __ CalleeRestoreNoReservedRegister();
+#else
         __ CalleeRestore();
+#endif
     }
     // 2: prevSp & pc
     __ Ldp(Register(Zero), Register(FP), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));

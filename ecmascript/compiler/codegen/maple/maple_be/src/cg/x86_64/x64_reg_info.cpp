@@ -23,7 +23,7 @@ void X64RegInfo::Init()
 {
     for (regno_t regNO = kRinvalid; regNO < kMaxRegNum; ++regNO) {
         /* when yieldpoint is enabled, the RYP(R12) can not be used. */
-        if (IsYieldPointReg(static_cast<X64reg>(regNO))) {
+        if (IsYieldPointReg(static_cast<X64reg>(regNO)) || IsReservedReg(regNO)) {
             continue;
         }
         if (!x64::IsAvailableReg(static_cast<X64reg>(regNO))) {
@@ -44,6 +44,15 @@ bool X64RegInfo::IsCalleeSavedReg(regno_t regno) const
     return x64::IsCalleeSavedReg(static_cast<X64reg>(regno));
 }
 
+bool X64RegInfo::IsReservedReg(regno_t regNO)
+{
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    return (regNO == R15);
+#else
+    return false;
+#endif
+}
+
 bool X64RegInfo::IsYieldPointReg(regno_t regno) const
 {
     return false;
@@ -58,6 +67,10 @@ bool X64RegInfo::IsUnconcernedReg(regno_t regNO) const
 
     /* when yieldpoint is enabled, the RYP(R12) can not be used. */
     if (IsYieldPointReg(reg)) {
+        return true;
+    }
+
+    if (IsReservedReg(regNO)) {
         return true;
     }
     return false;

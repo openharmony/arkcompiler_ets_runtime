@@ -33,6 +33,7 @@ public:
     void Init() override;
     void Fini() override;
     bool IsCalleeSavedReg(regno_t regno) const override;
+    static bool IsReservedReg(regno_t regNO) ;
     bool IsYieldPointReg(regno_t regNO) const override;
     bool IsUnconcernedReg(regno_t regNO) const override;
     RegOperand *GetOrCreatePhyRegOperand(regno_t regNO, uint32 size, RegType kind, uint32 flag) override;

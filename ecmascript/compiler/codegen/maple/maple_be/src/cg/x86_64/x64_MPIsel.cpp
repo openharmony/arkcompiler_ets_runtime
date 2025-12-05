@@ -183,6 +183,9 @@ RegOperand &X64MPIsel::SelectSpecialRegread(PregIdx pregIdx, PrimType primType)
         case kSregSp: {
             return cgFunc->GetOpndBuilder()->CreatePReg(x64::RSP, k64BitSize, cgFunc->GetRegTyFromPrimTy(primType));
         }
+        case kSregReserve: {
+            return cgFunc->GetOpndBuilder()->CreatePReg(x64::R15, k64BitSize, cgFunc->GetRegTyFromPrimTy(primType));
+        }
         default: {
             CHECK_FATAL(false, "ERROR: Not supported special register!");
         }

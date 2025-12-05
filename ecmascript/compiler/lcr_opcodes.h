@@ -68,6 +68,7 @@ namespace panda::ecmascript::kungfu {
 
 #define LCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
     V(ReadSp, READSP, GateFlags::NONE_FLAG, 0, 0, 0)                                            \
+    V(ReservedReg, RESERVED_REG, GateFlags::NONE_FLAG, 0, 0, 0)                                 \
     LCR_BINARY_GATE_META_DATA_CACHE_LIST(V)                                                     \
     LCR_UNARY_GATE_META_DATA_CACHE_LIST(V)
 

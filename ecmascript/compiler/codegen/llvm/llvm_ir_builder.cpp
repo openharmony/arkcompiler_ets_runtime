@@ -89,6 +89,9 @@ LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, 
         function_,
         LLVMAttributeFunctionIndex,
         LLVMCreateStringAttribute(context_, attrName, strlen(attrName), attrValue, strlen(attrValue)));
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    targetBuilder_->SetTargetFeature(context_, function_);
+#endif
 }
 
 LLVMMetadataRef LLVMIRBuilder::GetFunctionTypeMD(LLVMMetadataRef dFile)
@@ -223,6 +226,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::CEIL, &LLVMIRBuilder::HandleCeil},
         {OpCode::FLOOR, &LLVMIRBuilder::HandleFloor},
         {OpCode::READSP, &LLVMIRBuilder::HandleReadSp},
+        {OpCode::RESERVED_REG, &LLVMIRBuilder::HandleReadReserveRegister},
         {OpCode::BITREV, &LLVMIRBuilder::HandleBitRev},
         {OpCode::FINISH_ALLOCATE, &LLVMIRBuilder::HandleFinishAllocate},
     };
@@ -563,6 +567,12 @@ void LLVMIRBuilder::HandleReadSp(GateRef gate)
     VisitReadSp(gate);
 }
 
+void LLVMIRBuilder::HandleReadReserveRegister(GateRef gate)
+{
+    ASSERT(acc_.GetOpCode(gate) == OpCode::RESERVED_REG);
+    VisitReadReserveRegister(gate);
+}
+
 void LLVMIRBuilder::HandleBitRev(GateRef gate)
 {
     ASSERT(acc_.GetOpCode(gate) == OpCode::BITREV);
@@ -817,6 +827,20 @@ LLVMValueRef LLVMIRBuilder::GetCurrentSP()
     return spValue;
 }
 
+LLVMValueRef LLVMIRBuilder::ReadReserveRegister()
+{
+    LLVMMetadataRef meta;
+    if (compCfg_->IsAmd64()) {
+        meta = LLVMMDStringInContext2(context_, "r15", 3);   // 3 : 3 means len of "r15"
+    } else {
+        meta = LLVMMDStringInContext2(context_, "x28", 3);   // 3 : 3 means len of "x28"
+    }
+    LLVMMetadataRef metadataNode = LLVMMDNodeInContext2(context_, &meta, 1);
+    LLVMValueRef value = ReadRegister(module_, builder_, metadataNode);
+    return value;
+}
+
+
 LLVMValueRef LLVMIRBuilder::GetCurrentFrameType(LLVMValueRef currentSpFrameAddr)
 {
     LLVMValueRef tmp = LLVMBuildSub(builder_, currentSpFrameAddr, LLVMConstInt(slotType_, slotSize_, 1), "");
@@ -965,6 +989,17 @@ void LLVMIRBuilder::VisitReadSp(GateRef gate)
 {
     LLVMValueRef spValue = GetCurrentSP();
     Bind(gate, spValue);
+}
+
+void LLVMIRBuilder::VisitReadReserveRegister(GateRef gate)
+{
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    LLVMValueRef spValue = ReadReserveRegister();
+    Bind(gate, spValue);
+#else
+    (void)gate;
+    LOG_ECMA(FATAL) << "no reserved register to read";
+#endif
 }
 
 CallInfoKind LLVMIRBuilder::GetCallInfoKind(OpCode op, const std::vector<GateRef> &inList) const

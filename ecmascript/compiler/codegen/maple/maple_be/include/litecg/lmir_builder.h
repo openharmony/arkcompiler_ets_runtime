@@ -151,6 +151,7 @@ enum FuncAttr {     // visibility of the defined function
 enum GlobalRegister {
     kSregSp = -1,
     kSregFp = -2,
+    kSregReserve = -7,
 };
 
 enum ConvAttr {
@@ -293,6 +294,7 @@ public:
 
     Expr LiteCGGetPregFP(Function &func);
     Expr LiteCGGetPregSP();
+    Expr LiteCGGetPregReserved();
 
     Var &CreateLocalVar(Type *type, const String &name);
     Var *GetLocalVar(const String &name);

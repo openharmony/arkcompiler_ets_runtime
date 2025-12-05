@@ -76,6 +76,10 @@ bool AArch64RegInfo::IsUnconcernedReg(regno_t regNO) const
     if (IsYieldPointReg(regNO)) {
         return true;
     }
+
+    if (IsReservedReg(regNO)) {
+        return true;
+    }
     return false;
 }
 

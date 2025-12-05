@@ -34,6 +34,7 @@ public:
     void BindAssemblerStub(int id);
     void CalleeSave();
     void CalleeRestore();
+    void CalleeRestoreNoReservedRegister();
     void CallAssemblerStub(int id, bool isTail = false);
     void PushFpAndLr();
     void SaveFpAndLr();

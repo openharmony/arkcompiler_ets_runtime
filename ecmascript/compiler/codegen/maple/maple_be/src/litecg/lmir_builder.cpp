@@ -283,6 +283,11 @@ Expr LMIRBuilder::LiteCGGetPregSP()
     return Regread(kSregSp);
 }
 
+Expr LMIRBuilder::LiteCGGetPregReserved()
+{
+    return Regread(kSregReserve);
+}
+
 Var &LMIRBuilder::CreateLocalVar(Type *type, const String &name)
 {
     DEBUG_ASSERT(type != nullptr, "type should not be null");

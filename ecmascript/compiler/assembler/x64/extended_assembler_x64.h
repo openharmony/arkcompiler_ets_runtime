@@ -35,6 +35,7 @@ public:
     void PopAlignBytes();
     void PushCppCalleeSaveRegisters();
     void PopCppCalleeSaveRegisters();
+    void PopCppCalleeSaveNoReservedRegisters();
     void UpdateCalleeSaveRegisters();
     void PushGhcCalleeSaveRegisters();
     void PopGhcCalleeSaveRegisters();
@@ -81,6 +82,11 @@ public:
     Register GlueRegister()
     {
         return isGhcCallingConv_ ? r13 : rdi;
+    }
+
+    Register ReserveRegister()
+    {
+        return r15;
     }
 
     bool FromInterpreterHandler() const

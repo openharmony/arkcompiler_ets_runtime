@@ -224,6 +224,9 @@ ohos_source_set("libcgaarch64") {
   include_dirs = include_directories
   defines = []
   external_deps = [ "bounds_checking_function:libsec_static" ]
+  if (ets_runtime_enable_cmc_gc) {
+    # defines += [ "ENABLE_CMC_IR_FIX_REGISTER" ]
+  }
   if (enable_jit_code_sign) {
     defines += [ "JIT_ENABLE_CODE_SIGN" ]
     external_deps += [ "code_signature:libjit_code_sign" ]
@@ -248,7 +251,11 @@ ohos_source_set("libcgx8664") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgx8664
   include_dirs = include_directories
+  defines = []
   external_deps = [ "bounds_checking_function:libsec_static" ]
+  if (ets_runtime_enable_cmc_gc) {
+    # defines += [ "ENABLE_CMC_IR_FIX_REGISTER" ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -302,7 +309,11 @@ ohos_source_set("libcgphases") {
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgphases
   include_dirs = include_directories
+  defines = []
   external_deps = [ "bounds_checking_function:libsec_static" ]
+  if (ets_runtime_enable_cmc_gc) {
+    # defines += [ "ENABLE_CMC_IR_FIX_REGISTER" ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -324,6 +335,9 @@ ohos_static_library("libcg") {
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   defines = []
   external_deps = [ "bounds_checking_function:libsec_static" ]
+  if (ets_runtime_enable_cmc_gc) {
+    # defines += [ "ENABLE_CMC_IR_FIX_REGISTER" ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }

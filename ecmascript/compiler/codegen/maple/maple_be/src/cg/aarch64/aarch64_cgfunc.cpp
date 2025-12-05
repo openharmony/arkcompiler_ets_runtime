@@ -3685,6 +3685,8 @@ RegOperand &AArch64CGFunc::GetOrCreateSpecialRegisterOperand(PregIdx sregIdx, Pr
             return GetOrCreatePhysicalRegisterOperand(RSP, k64BitSize, kRegTyInt);
         case kSregFp:
             return GetOrCreatePhysicalRegisterOperand(RFP, k64BitSize, kRegTyInt);
+        case kSregReserve:
+            return GetOrCreatePhysicalRegisterOperand(R28, k64BitSize, kRegTyInt);
         default:
             break;
     }

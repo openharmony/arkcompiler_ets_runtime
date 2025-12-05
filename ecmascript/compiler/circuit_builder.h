@@ -975,6 +975,7 @@ public:
     MachineType GetMachineTypeOfValueType(ValueType type);
     GateRef Alloca(size_t size);
     GateRef ReadSp();
+    GateRef ReadReserveRegister();
     GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType, GateRef left,
                              GateRef right, GateType gateType = GateType::Empty(), const char* comment = nullptr);
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment = nullptr);
