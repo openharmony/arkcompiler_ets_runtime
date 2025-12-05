@@ -83,6 +83,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternStringFromCompr
     const common::ReadOnlyHandle<BaseString>& string,
     uint32_t offset, uint32_t utf8Len)
 {
+    DCHECK_CC(!string.IsEmpty());
     const uint8_t* utf8Data = common::ReadOnlyHandle<LineString>::Cast(string)->GetDataUtf8() + offset;
     uint32_t hashcode = BaseString::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
     auto readBarrier = [](void* obj, size_t offset)-> common::BaseObject* {
@@ -202,6 +203,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::TryGetInternString(
             reinterpret_cast<common::MAddress>(common::BaseRuntime::ReadBarrier(
                 obj, reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(obj) + offset))));
     };
+    DCHECK_CC(!string.IsEmpty());
     uint32_t hashcode = string->GetHashcode(readBarrier);
     return stringTable_.template Load<false>(readBarrier, hashcode, *string);
 }

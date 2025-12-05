@@ -171,7 +171,7 @@ LineString *LineString::CreateFromUtf8CompressedSubString(Allocator &&allocator,
 {
     LineString *subString = Create(std::forward<Allocator>(allocator), utf8Len, true);
     DCHECK_CC(subString != nullptr);
-
+    DCHECK_CC(!string.IsEmpty());
     auto *utf8Data = common::ReadOnlyHandle<LineString>::Cast(string)->GetDataUtf8() + offset;
     std::copy(utf8Data, utf8Data + utf8Len, subString->GetDataUtf8Writable());
     DCHECK_CC(LineString::CanBeCompressed(subString) && "String cannot be compressed!");
