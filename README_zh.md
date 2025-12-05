@@ -1,6 +1,6 @@
-# 方舟eTS运行时部件<a name="ZH-CN_TOPIC_0000001183610495"></a>
+# 方舟eTS运行时<a name="ZH-CN_TOPIC_0000001183610495"></a>
 
-- [方舟eTS运行时部件<a name="ZH-CN_TOPIC_0000001183610495"></a>](#方舟eTS运行时部件)
+- [方舟eTS运行时<a name="ZH-CN_TOPIC_0000001183610495"></a>](#方舟eTS运行时)
     - [简介<a name="section190813718209"></a>](#简介)
   - [目录<a name="section161941989596"></a>](#目录)
   - [约束<a name="section119744591305"></a>](#约束)
@@ -15,7 +15,7 @@
 
 更多信息请参考：[方舟运行时子系统](https://gitee.com/openharmony/docs/blob/master/zh-cn/readme/ARK-Runtime-Subsystem-zh.md)
 
-**图1** 方舟eTS运行时部件架构图：
+**图1** 方舟eTS运行时架构图：
 
 ![](/docs/figures/zh-cn_image_ark-ts-arch.png)
 
@@ -92,7 +92,7 @@ LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/arkcompiler/ets_runtime:out/hispark
 
 ```
 
-更多使用说明请参考：[方舟运行时使用指南](/docs/README_zh.md)
+更多使用说明请参考：[方舟运行时使用指南](https://gitcode.com/openharmony/arkcompiler_ets_runtime/blob/master/docs/README_zh.md)
 
 ## 相关仓<a name="section1371113476307"></a>
 
