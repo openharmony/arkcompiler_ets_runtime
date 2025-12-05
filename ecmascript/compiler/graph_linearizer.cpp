@@ -837,15 +837,13 @@ public:
 
     void Verify()
     {
-        std::vector<GateRef> gateList;
-        linearizer_->circuit_->GetAllGates(gateList);
-        for (const auto &gate : gateList) {
+        linearizer_->circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
             auto& gateInfo = linearizer_->GetGateInfo(gate);
             if (gateInfo.IsSchedulable()) {
                 ASSERT(linearizer_->IsScheduled(gate));
             }
             ASSERT(gateInfo.schedulableUseCount == 0);
-        }
+        });
     }
 
 private:

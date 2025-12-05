@@ -47,6 +47,7 @@ JitCompilationOptions::JitCompilationOptions(JSRuntimeOptions runtimeOptions)
     logOption_ = runtimeOptions.GetCompilerLogOption();
     logMethodsList_ = runtimeOptions.GetMethodsListForLog();
     compilerLogTime_ = runtimeOptions.IsEnableCompilerLogTime();
+    enableCompilerLogTimeMethods_ = runtimeOptions.IsEnableCompilerLogTimeMethods();
     deviceIsScreenOff_ = runtimeOptions.GetDeviceState();
     deviceThermalLevel_ = runtimeOptions.GetThermalLevel();
     hotnessThreshold_ = runtimeOptions.GetPGOHotnessThreshold();
@@ -80,6 +81,8 @@ void JitCompiler::Init(JSRuntimeOptions runtimeOptions)
 
     JitCompilationOptions jitOptions(runtimeOptions);
     jitOptions_ = jitOptions;
+    log_.SetEnableCompilerLogTime(jitOptions_.compilerLogTime_);
+    log_.SetEnableCompilerLogTimeMethods(jitOptions_.enableCompilerLogTimeMethods_);
     PassOptions::Builder optionsBuilder;
     passOptions_ =
         optionsBuilder.EnableArrayBoundsCheckElimination(jitOptions_.isEnableArrayBoundsCheckElimination_)

@@ -45,7 +45,7 @@ host_unittest_action("JIT_001_Test") {
     "icu:shared_icuuc",
   ]
   if (!ark_standalone_build && !is_arkui_x) {
-    external_deps += [ 
+    external_deps += [
       "runtime_core:arkassembler_public_headers",
       "runtime_core:arkfile_public_headers",
     ]
@@ -53,11 +53,38 @@ host_unittest_action("JIT_001_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("JitTimeScopeTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "jit_time_scope_test.cpp",
+  ]
+
+  configs = [
+    "../../../:asm_interp_enable_config",
+    "../../../:ecma_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":JIT_001_Test" ]
+  deps = [
+    ":JIT_001_Test",
+    ":JitTimeScopeTest",
+  ]
 }
 
 group("host_unittest") {
@@ -65,10 +92,16 @@ group("host_unittest") {
 
   # deps file
   if (is_linux) {
-    deps = [ ":JIT_001_TestAction" ]
+    deps = [
+      ":JIT_001_TestAction",
+      ":JitTimeScopeTestAction",
+    ]
   }
 
   if (is_mac) {
-    deps = [ ":JIT_001_TestAction" ]
+    deps = [
+      ":JIT_001_TestAction",
+      ":JitTimeScopeTestAction",
+    ]
   }
 }

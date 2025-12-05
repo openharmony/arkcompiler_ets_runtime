@@ -122,6 +122,7 @@ enum CommandValues {
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_COMPILER_LOG_SNAPSHOT,
     OPTION_COMPILER_LOG_TIME,
+    OPTION_COMPILER_LOG_TIME_METHODS,
     OPTION_ENABLE_WORKER,
     OPTION_COMPILER_TRACE_BC,
     OPTION_COMPILER_TRACE_DEOPT,
@@ -223,6 +224,7 @@ enum CommandValues {
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
+    OPTION_COMPILER_ENABLE_JIT_LITE_COMPILE,
     OPTION_COMPILER_ENABLE_MEGA_IC,
     OPTION_COMPILER_BASELINE_PGO,
     OPTION_ASYNC_LOAD_ABC,
@@ -2087,6 +2089,26 @@ public:
         return enableJitFastCompile_;
     }
 
+    void SetEnableJitLiteCompile(bool value)
+    {
+        enableJitLiteCompile_ = value;
+    }
+
+    bool IsEnableJitLiteCompile() const
+    {
+        return enableJitLiteCompile_;
+    }
+
+    bool IsEnableCompilerLogTimeMethods() const
+    {
+        return enableCompilerLogTimeMethods_;
+    }
+
+    void SetEnableCompilerLogTimeMethods(bool value)
+    {
+        enableCompilerLogTimeMethods_ = value;
+    }
+
     void SetEnableMegaIC(bool value)
     {
         enableMegaIC_ = value;
@@ -2509,6 +2531,7 @@ private:
     std::string compilerLogMethods_ {"none"};
     bool compilerLogSnapshot_ {false};
     bool compilerLogTime_ {false};
+    bool enableCompilerLogTimeMethods_ {false};
     bool enableRuntimeStat_ {false};
     bool isWorker_ {false};
     bool isRestrictedWorker_ {false};
@@ -2622,6 +2645,7 @@ private:
     bool enableMemoryAnalysis_ {true};
     bool checkPgoVersion_ {false};
     bool enableJitFastCompile_ {false};
+    bool enableJitLiteCompile_ {false};
     bool enableJitFrame_ {false};
     bool enableMegaIC_ {false};
     bool isMegaICInitialized {false};

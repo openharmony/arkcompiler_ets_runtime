@@ -62,7 +62,6 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
         const_cast<Heap*>(vm->GetHeap())->DisableLocalCC();
         bool isEnableFastJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
         bool isEnableBaselineJit = options.IsEnableBaselineJIT() && options.GetEnableAsmInterpreter();
-
         options.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
         options.SetEnableAPPJIT(true);
         isApp_ = true;
@@ -72,7 +71,6 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
         options.SetJitHotnessThreshold(threshold);
         hotnessThreshold_ = threshold;
         bundleName_ = bundleName;
-
         SetEnableOrDisable(options, isEnableFastJit, isEnableBaselineJit);
         if (fastJitEnable_ || baselineJitEnable_) {
             ConfigJit(vm);

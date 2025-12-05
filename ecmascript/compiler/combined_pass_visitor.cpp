@@ -103,7 +103,7 @@ void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, Gat
 #endif
 }
 
-void CombinedPassVisitor::VistDependSelectorForLoop(GateRef gate)
+void CombinedPassVisitor::VisitDependSelectorForLoop(GateRef gate)
 {
     auto use = acc_.Uses(gate);
     for (auto useIt = use.begin(); useIt != use.end(); useIt++) {
@@ -121,15 +121,13 @@ void CombinedPassVisitor::VisitGraph()
     circuit_->AdvanceTime();
     orderCount_ = 0;
     Resize(circuit_->GetMaxGateId() + 1, -1);
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (auto gate : gateList) {
+    circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
         if (acc_.GetOpCode(gate) == OpCode::LOOP_BEGIN) {
             PushChangedGate(gate);
             // For empty loop and no RETURN opcode
-            VistDependSelectorForLoop(gate);
+            VisitDependSelectorForLoop(gate);
         }
-    }
+    });
     // Visit gate needing to start from RETURN, otherwise it may lead to incomplete early elimination in some scenarios.
     GateRef returnList = acc_.GetReturnRoot();
     auto uses = acc_.Uses(returnList);

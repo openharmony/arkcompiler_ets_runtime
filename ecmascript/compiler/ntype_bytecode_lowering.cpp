@@ -26,14 +26,12 @@ namespace panda::ecmascript::kungfu {
 
 void NTypeBytecodeLowering::RunNTypeBytecodeLowering()
 {
-    std::vector<GateRef> gateList;
-    circuit_->GetAllGates(gateList);
-    for (const auto &gate : gateList) {
+    circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
         auto op = acc_.GetOpCode(gate);
         if (op == OpCode::JS_BYTECODE) {
             Lower(gate);
         }
-    }
+    });
 
     if (IsLogEnabled()) {
         LOG_COMPILER(INFO) << "";

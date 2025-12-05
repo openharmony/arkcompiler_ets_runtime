@@ -31,14 +31,13 @@ void UselessGateElimination::InitList()
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
         PushGate(*useIt);
     }
-    circuit_->GetAllGates(gateList_);
-    for (auto gate : gateList_) {
+    circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
         if (acc_.GetOpCode(gate) == OpCode::LOOP_BEGIN) {
             PushGate(gate);
         } else if (acc_.IsProlog(gate) || acc_.IsRoot(gate)) {
             acc_.SetMark(gate, MarkCode::VISITED);
         }
-    }
+    });
 }
 
 void UselessGateElimination::MarkGate()
@@ -46,13 +45,11 @@ void UselessGateElimination::MarkGate()
     while (!workList_.empty()) {
         GateRef gate = workList_.back();
         workList_.pop_back();
-        std::vector<GateRef> ins;
-        acc_.GetIns(gate, ins);
-        for (auto in : ins) {
+        acc_.ForEachIns(gate, [this](GateRef in) {
             if (acc_.GetMark(in) != MarkCode::VISITED) {
                 PushGate(in);
             }
-        }
+        });
     }
 }
 
@@ -67,11 +64,11 @@ void UselessGateElimination::ReplaceDead(GateRef gate)
 
 void UselessGateElimination::EliminateUnmarkedGate()
 {
-    for (auto gate : gateList_) {
+    circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
         if (acc_.GetMark(gate) != MarkCode::VISITED) {
             ReplaceDead(gate);
         }
-    }
+    });
 }
 
 std::string UselessGateElimination::GetMethodName()

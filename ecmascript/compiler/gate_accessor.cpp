@@ -930,10 +930,21 @@ void GateAccessor::GetInStates(GateRef gate, std::vector<GateRef>& ins) const
 
 void GateAccessor::GetIns(GateRef gate, std::vector<GateRef>& ins) const
 {
-    const Gate *curGate = circuit_->LoadGatePtrConst(gate);
-    for (size_t idx = 0; idx < curGate->GetNumIns(); idx++) {
-        ins.push_back(circuit_->GetGateRef(curGate->GetInGateConst(idx)));
-    }
+    ForEachIns(gate, [&ins](GateRef in) {
+        ins.push_back(in);
+    });
+}
+
+std::vector<GateRef> GateAccessor::GetIns(GateRef gate) const
+{
+    std::vector<GateRef> ins;
+    const Gate* curGate = circuit_->LoadGatePtrConst(gate);
+    const size_t numIns = curGate->GetNumIns();
+    ins.reserve(numIns);
+    ForEachIns(gate, [&ins](GateRef in) {
+        ins.push_back(in);
+    });
+    return ins;
 }
 
 void GateAccessor::GetOuts(GateRef gate, std::vector<GateRef>& outs) const

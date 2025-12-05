@@ -39,7 +39,6 @@ private:
     Circuit* circuit_;
     GateAccessor acc_;
     std::vector<GateRef> workList_;
-    std::vector<GateRef> gateList_;
 };
 
 }

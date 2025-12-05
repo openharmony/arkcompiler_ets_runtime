@@ -112,17 +112,14 @@ public:
 
     void DeleteUnusedGates()
     {
-        std::vector<GateRef> gateList;
         auto circuit = acc_.GetCircuit();
-        circuit->GetAllGates(gateList);
-
-        for (const auto &gate : gateList) {
+        circuit->ForEachGate([this](GateRef gate, const Gate* gatePtr) {
             if (acc_.GetMark(gate) == MarkCode::NO_MARK &&
                 !acc_.IsProlog(gate) && !acc_.IsRoot(gate) &&
                 acc_.GetId(gate) <= maxGateId_) {
                 acc_.DeleteGate(gate);
             }
-        }
+        });
     }
 
     void TryFindDependStart(GateRegion* curRegion)

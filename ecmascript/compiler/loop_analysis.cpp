@@ -191,11 +191,7 @@ size_t LoopAnalysis::ComputeLoopDepth(GateRef cur, GateRef nex, size_t curDep)
 
 void LoopAnalysis::LoopExitElimination()
 {
-    std::vector<GateRef> gateList;
-    acc_.GetAllGates(gateList);
-    ChunkQueue<GateRef> workList(chunk_);
-    ChunkSet<GateRef> inList(chunk_);
-    for (auto gate : gateList) {
+    acc_.ForEachGate([this](GateRef gate, const Gate* gatePtr) {
         auto op = acc_.GetOpCode(gate);
         switch (op) {
             case OpCode::LOOP_EXIT: {
@@ -212,6 +208,6 @@ void LoopAnalysis::LoopExitElimination()
             default:
                 break;
         }
-    }
+    });
 }
 }  // namespace panda::ecmascript::kungfu

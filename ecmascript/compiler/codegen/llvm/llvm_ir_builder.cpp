@@ -566,9 +566,7 @@ void LLVMIRBuilder::HandleReadSp(GateRef gate)
 void LLVMIRBuilder::HandleBitRev(GateRef gate)
 {
     ASSERT(acc_.GetOpCode(gate) == OpCode::BITREV);
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
-    VisitBitRev(gate, ins[0]);
+    VisitBitRev(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::VisitBitRev(GateRef gate, GateRef e1)
@@ -610,8 +608,7 @@ void LLVMIRBuilder::VisitBitRev(GateRef gate, GateRef e1)
 
 void LLVMIRBuilder::HandleCall(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL ||
         callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV ||
@@ -626,15 +623,13 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
 
 void LLVMIRBuilder::HandleBytecodeCall(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitBytecodeCall(gate, ins);
 }
 
 void LLVMIRBuilder::HandleRuntimeCall(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitRuntimeCall(gate, ins);
 }
 
@@ -769,8 +764,7 @@ bool LLVMIRBuilder::SetDebugInfo(GateRef g, LLVMValueRef r)
 
 void LLVMIRBuilder::HandleRuntimeCallWithArgv(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitRuntimeCallWithArgv(gate, ins);
 }
 
@@ -1264,8 +1258,7 @@ void LLVMIRBuilder::VisitAlloca(GateRef gate)
 
 void LLVMIRBuilder::HandlePhi(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitPhi(gate, ins);
 }
 
@@ -1293,8 +1286,7 @@ void LLVMIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &phiIns)
         Bind(gate, phi);
     }
     // Collect the states merges of this phi and note the 1-in is the merged states.
-    std::vector<GateRef> phiStates;
-    acc_.GetIns(phiIns.at(0), phiStates);
+    const auto& phiStates = acc_.GetIns(phiIns.at(0));
     ASSERT(phiStates.size() + 1 == phiIns.size());
     for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
         int bbIdx = LookupPredBB(phiStates.at(i - 1), currentBb_->GetId());
@@ -1347,8 +1339,7 @@ void LLVMIRBuilder::VisitReturn([[maybe_unused]] GateRef gate, [[maybe_unused]] 
 
 void LLVMIRBuilder::HandleReturn(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitReturn(gate, 1, ins);
 }
 
@@ -1498,16 +1489,12 @@ void LLVMIRBuilder::VisitRelocatableData(GateRef gate, uint64_t value)
 
 void LLVMIRBuilder::HandleZExtInt(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
-    VisitZExtInt(gate, ins[0]);
+    VisitZExtInt(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::HandleSExtInt(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
-    VisitSExtInt(gate, ins[0]);
+    VisitSExtInt(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::HandleParameter(GateRef gate)
@@ -1546,15 +1533,13 @@ void LLVMIRBuilder::SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value)
 
 void LLVMIRBuilder::HandleBranch(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
     std::vector<GateRef> outs;
     acc_.GetOutStates(gate, outs);
     GateRef bTrue = (acc_.GetOpCode(outs[0]) == OpCode::IF_TRUE) ? outs[0] : outs[1];
     GateRef bFalse = (acc_.GetOpCode(outs[0]) == OpCode::IF_FALSE) ? outs[0] : outs[1];
     int bbTrue = instID2bbID_[acc_.GetId(bTrue)];
     int bbFalse = instID2bbID_[acc_.GetId(bFalse)];
-    VisitBranch(gate, ins[1], bbTrue, bbFalse);
+    VisitBranch(gate, acc_.GetIn(gate, 1), bbTrue, bbFalse);
 }
 
 void LLVMIRBuilder::HandleMod(GateRef gate)
@@ -1640,11 +1625,9 @@ void LLVMIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfalse
 
 void LLVMIRBuilder::HandleSwitch(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
     std::vector<GateRef> outs;
     acc_.GetOutStates(gate, outs);
-    VisitSwitch(gate, ins[1], outs);
+    VisitSwitch(gate, acc_.GetIn(gate, 1), outs);
 }
 
 void LLVMIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector<GateRef> &outList)
@@ -1795,9 +1778,7 @@ LLVMValueRef LLVMIRBuilder::CanonicalizeToPtr(LLVMValueRef value) const
 
 void LLVMIRBuilder::HandleIntRev(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
-    VisitIntRev(gate, ins[0]);
+    VisitIntRev(gate, acc_.GetIn(gate, 0));
 }
 
 void LLVMIRBuilder::VisitIntRev(GateRef gate, GateRef e1)

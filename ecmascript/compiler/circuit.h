@@ -63,6 +63,20 @@ public:
     void PrintAllGatesWithBytecode() const;
     void GetAllGates(std::vector<GateRef>& gates) const;
     size_t GetJSBytecodeGatesFrom(std::vector<GateRef>& gateList, size_t startPos) const;
+    template<typename Visitor>
+    void ForEachGate(Visitor visitor) const
+    {
+        const auto size = circuitSize_;
+        for (size_t out = 0; out < size;) {
+            const Out* outPtr = reinterpret_cast<const Out*>(LoadGatePtrConst(GateRef(out)));
+            const Gate* gatePtr = outPtr->GetGateConst();
+            size_t gateSize = Gate::GetGateSize(outPtr->GetIndex() + 1);
+            if (!gatePtr->GetMetaData()->IsNop()) {
+                visitor(GetGateRef(gatePtr), gatePtr);
+            }
+            out += gateSize;
+        }
+    }
     static GateRef NullGate();
     void Verify(GateRef gate, const std::string& methodName = "") const;
     panda::ecmascript::FrameType GetFrameType() const;

@@ -376,6 +376,11 @@ public:
 
     ~GateAccessor() = default;
     void GetAllGates(std::vector<GateRef>& gates) const;
+    template<typename Visitor>
+    void ForEachGate(Visitor visitor) const
+    {
+        circuit_->ForEachGate(visitor);
+    }
     size_t GetNumIns(GateRef gate) const;
     OpCode GetOpCode(GateRef gate) const;
     bool IsGCRelated(GateRef gate) const;
@@ -624,6 +629,15 @@ public:
     void SetStoreNoBarrier(GateRef gate, bool isNoBarrier);
     bool IsNoBarrier(GateRef gate) const;
     void GetIns(GateRef gate, std::vector<GateRef>& ins) const;
+    std::vector<GateRef> GetIns(GateRef gate) const;
+    template<typename Callback>
+    void ForEachIns(GateRef gate, const Callback& callback) const
+    {
+        const Gate* curGate = circuit_->LoadGatePtrConst(gate);
+        for (size_t idx = 0; idx < curGate->GetNumIns(); idx++) {
+            callback(circuit_->GetGateRef(curGate->GetInGateConst(idx)));
+        }
+    }
 
     bool TryGetMegaProp(GateRef gate) const;
     TypedBinOp GetRevCompareOpForTypedBinOp(TypedBinOp op);

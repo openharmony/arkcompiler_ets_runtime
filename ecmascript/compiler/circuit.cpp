@@ -177,20 +177,16 @@ GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, Gate
 
 void Circuit::PrintAllGates() const
 {
-    std::vector<GateRef> gateList;
-    GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        LoadGatePtrConst(gate)->Print();
-    }
+    ForEachGate([this](GateRef gate, const Gate* gatePtr) {
+        gatePtr->Print();
+    });
 }
 
 void Circuit::PrintAllGatesWithBytecode() const
 {
-    std::vector<GateRef> gateList;
-    GetAllGates(gateList);
-    for (const auto &gate : gateList) {
-        LoadGatePtrConst(gate)->PrintWithBytecode(GetComment(gate));
-    }
+    ForEachGate([this](GateRef gate, const Gate* gatePtr) {
+        gatePtr->PrintWithBytecode(GetComment(gate));
+    });
 }
 
 void Circuit::GetAllGates(std::vector<GateRef>& gateList) const
@@ -250,11 +246,9 @@ void Circuit::AdvanceTime() const
 
 void Circuit::ResetAllGateTimeStamps() const
 {
-    std::vector<GateRef> gateList;
-    GetAllGates(gateList);
-    for (auto &gate : gateList) {
-        const_cast<Gate *>(LoadGatePtrConst(gate))->SetMark(MarkCode::NO_MARK, 0);
-    }
+    ForEachGate([this](GateRef gate, const Gate* gatePtr) {
+        const_cast<Gate*>(gatePtr)->SetMark(MarkCode::NO_MARK, 0);
+    });
 }
 
 TimeStamp Circuit::GetTime() const

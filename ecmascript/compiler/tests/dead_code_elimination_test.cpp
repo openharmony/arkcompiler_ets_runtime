@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
 #include "ecmascript/compiler/dead_code_elimination.h"
 #include "ecmascript/compiler/verifier.h"

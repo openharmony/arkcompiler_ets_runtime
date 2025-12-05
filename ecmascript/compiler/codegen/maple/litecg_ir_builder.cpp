@@ -573,7 +573,7 @@ void LiteCGIRBuilder::Build()
 {
     BuildInstID2BBIDMap();
     AddFunc();
-    LOG_COMPILER(INFO) << "============== building litecg ir=======" << std::endl;
+    LOG_COMPILER(INFO) << "============== Building LiteCG IR ==============";
 
     std::unordered_set<OpCode> usedOpcodeSet;
     for (size_t bbIdx = 0; bbIdx < scheduledGates_->size(); bbIdx++) {
@@ -1266,15 +1266,13 @@ void LiteCGIRBuilder::VisitCmp(GateRef gate, GateRef e1, GateRef e2)
 
 void LiteCGIRBuilder::HandleBranch(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
     std::vector<GateRef> outs;
     acc_.GetOutStates(gate, outs);
     GateRef bTrue = (acc_.GetOpCode(outs[0]) == OpCode::IF_TRUE) ? outs[0] : outs[1];
     GateRef bFalse = (acc_.GetOpCode(outs[0]) == OpCode::IF_FALSE) ? outs[0] : outs[1];
     int bbTrue = instID2bbID_[acc_.GetId(bTrue)];
     int bbFalse = instID2bbID_[acc_.GetId(bFalse)];
-    VisitBranch(gate, ins[1], bbTrue, bbFalse);
+    VisitBranch(gate, acc_.GetIn(gate, 1), bbTrue, bbFalse);
 }
 
 void LiteCGIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfalse)
@@ -1314,8 +1312,7 @@ void LiteCGIRBuilder::VisitBranch(GateRef gate, GateRef cmp, int btrue, int bfal
 
 void LiteCGIRBuilder::HandleReturn(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitReturn(gate, 1, ins);
 }
 
@@ -1356,8 +1353,7 @@ Expr LiteCGIRBuilder::GetBaselineStubOffset(Expr glue, int index) const
 
 void LiteCGIRBuilder::HandleRuntimeCall(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitRuntimeCall(gate, ins);
 };
 
@@ -1508,9 +1504,7 @@ void LiteCGIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> 
 
 void LiteCGIRBuilder::HandleZExtInt(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
-    VisitZExtInt(gate, ins[0]);
+    VisitZExtInt(gate, acc_.GetIn(gate, 0));
 }
 
 void LiteCGIRBuilder::VisitZExtInt(GateRef gate, GateRef e1)
@@ -1560,8 +1554,7 @@ Expr LiteCGIRBuilder::GetCallee(maple::litecg::BB &bb, const std::vector<GateRef
 
 void LiteCGIRBuilder::HandleRuntimeCallWithArgv(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitRuntimeCallWithArgv(gate, ins);
 }
 
@@ -1606,8 +1599,7 @@ void LiteCGIRBuilder::VisitRuntimeCallWithArgv(GateRef gate, const std::vector<G
 
 void LiteCGIRBuilder::HandleCall(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL || callOp == OpCode::BUILTINS_CALL ||
         callOp == OpCode::BUILTINS_CALL_WITH_ARGV || callOp == OpCode::CALL_OPTIMIZED ||
@@ -2128,9 +2120,7 @@ void LiteCGIRBuilder::VisitMul(GateRef gate, GateRef e1, GateRef e2)
 
 void LiteCGIRBuilder::HandleIntRev(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
-    VisitIntRev(gate, ins[0]);
+    VisitIntRev(gate, acc_.GetIn(gate, 0));
 }
 
 void LiteCGIRBuilder::VisitIntRev(GateRef gate, GateRef e1)
@@ -2246,9 +2236,7 @@ void LiteCGIRBuilder::VisitBinaryOpWithOverflow(GateRef gate, GateRef e1, GateRe
 
 void LiteCGIRBuilder::HandleSExtInt(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
-    VisitSExtInt(gate, ins[0]);
+    VisitSExtInt(gate, acc_.GetIn(gate, 0));
 }
 
 void LiteCGIRBuilder::VisitSExtInt(GateRef gate, GateRef e1)
@@ -2638,8 +2626,7 @@ void LiteCGIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef value)
 
 void LiteCGIRBuilder::HandlePhi(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
+    const auto& ins = acc_.GetIns(gate);
     VisitPhi(gate, ins);
 }
 
@@ -2672,10 +2659,8 @@ LiteCGIRBuilder::DerivedStatus LiteCGIRBuilder::CheckDerivedPhi(GateRef gate, st
     // cached gate doesn't need insert to visited set
     vis.insert(gate);
     DerivedStatus derivedStatus = DerivedStatus::IS_BASE;
-    std::vector<GateRef> phiIns;
-    acc_.GetIns(gate, phiIns);
-    std::vector<GateRef> phiStates;
-    acc_.GetIns(phiIns[0], phiStates);
+    const auto& phiIns = acc_.GetIns(gate);
+    const auto& phiStates = acc_.GetIns(phiIns[0]);
     ASSERT(phiStates.size() + 1 == phiIns.size());
     for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
         auto op = acc_.GetOpCode(phiIns[i]);
@@ -2708,12 +2693,13 @@ void LiteCGIRBuilder::FindBaseRefForPhi(GateRef gate, const std::vector<GateRef>
     LiteCGType *type = ConvertLiteCGTypeFromGate(gate);
     PregIdx basePregIdx = 0;
     bool isDerived = false;
+    int size = phiIns.size();
     std::set<GateRef> baseIns;
     std::vector<PhiDesc> phiDescs;
-    std::vector<GateRef> phiStates;
-    acc_.GetIns(phiIns[0], phiStates);
+    phiDescs.reserve(size - 1);
+    const auto& phiStates = acc_.GetIns(phiIns[0]);
     ASSERT(phiStates.size() + 1 == phiIns.size());
-    for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
+    for (int i = 1; i < size; i++) {
         int preBBId = LookupPredBB(phiStates[i - 1], curBBId);
         auto op = acc_.GetOpCode(phiIns[i]);
         if (op == OpCode::ADD) {
@@ -2774,8 +2760,7 @@ void LiteCGIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &phiIns)
         SaveGate2Expr(gate, lmirBuilder_->Regread(phiPregIdx));
     }
     // Collect the states merges of this phi and note the 1-in is the merged states.
-    std::vector<GateRef> phiStates;
-    acc_.GetIns(phiIns[0], phiStates);
+    const auto& phiStates = acc_.GetIns(phiIns[0]);
     ASSERT(phiStates.size() + 1 == phiIns.size());
     int curBBId = instID2bbID_[acc_.GetId(gate)];
     for (int i = 1; i < static_cast<int>(phiIns.size()); i++) {
@@ -2791,11 +2776,9 @@ void LiteCGIRBuilder::VisitPhi(GateRef gate, const std::vector<GateRef> &phiIns)
 
 void LiteCGIRBuilder::HandleSwitch(GateRef gate)
 {
-    std::vector<GateRef> ins;
-    acc_.GetIns(gate, ins);
     std::vector<GateRef> outs;
     acc_.GetOutStates(gate, outs);
-    VisitSwitch(gate, ins[1], outs);
+    VisitSwitch(gate, acc_.GetIn(gate, 1), outs);
 }
 
 void LiteCGIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector<GateRef> &outList)

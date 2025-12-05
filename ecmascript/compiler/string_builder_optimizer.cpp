@@ -27,11 +27,7 @@ void StringBuilderOptimizer::Run()
 
 void StringBuilderOptimizer::VisitGraph()
 {
-    std::vector<GateRef> gateList;
-    acc_.GetAllGates(gateList);
-    for (auto gate : gateList) {
-        FindBuilderBegin(gate);
-    }
+    circuit_->ForEachGate([this](GateRef gate, const Gate* gatePtr) { FindBuilderBegin(gate); });
     currentIndex_ = 0;
     for (auto &builder : stringBuilders_) {
         FindInBuilder(builder.start);
