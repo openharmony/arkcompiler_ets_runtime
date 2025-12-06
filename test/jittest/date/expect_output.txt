@@ -1,0 +1,127 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+testDateInheritance: success
+compile testDateConstructor: true
+compile testDateFromTimestamp: true
+compile testDateFromString: true
+compile testDateNow: true
+compile testDateParse: true
+compile testDateUTC: true
+compile testDateGetters: true
+compile testDateUTCGetters: true
+compile testDateGetTime: true
+compile testDateGetTimezoneOffset: true
+compile testDateSetFullYear: true
+compile testDateSetMonth: true
+compile testDateSetDate: true
+compile testDateSetHours: true
+compile testDateSetMinutes: true
+compile testDateSetSeconds: true
+compile testDateSetMilliseconds: true
+compile testDateSetTime: true
+compile testDateSetUTCFullYear: true
+compile testDateSetUTCMonth: true
+compile testDateSetUTCDate: true
+compile testDateSetUTCHours: true
+compile testDateToString: true
+compile testDateToDateString: true
+compile testDateToTimeString: true
+compile testDateToISOString: true
+compile testDateToJSON: true
+compile testDateToUTCString: true
+compile testDateToLocaleDateString: true
+compile testDateToLocaleTimeString: true
+compile testDateToLocaleString: true
+compile testDateAddDays: true
+compile testDateAddMonths: true
+compile testDateAddYears: true
+compile testDateDifference: true
+compile testDateMonthEnd: true
+compile testDateLeapYear: true
+compile testDateComparison: true
+compile testDateEquality: true
+compile testDateInvalidDate: true
+compile testDateOverflow: true
+compile testDateNegativeValues: true
+compile testDateYearZero: true
+compile testDateInheritance: true
+compile testDatePadding: true
+compile testDateDayOfYear: true
+compile testDateWeekOfYear: true
+testDateConstructor: 2024,0,15,10,30,45
+testDateFromTimestamp: 1970,0,1
+testDateFromString: 2024,2,15,10
+testDateNow: true,true
+testDateParse: true,true
+testDateUTC: 2024,2,15
+testDateGetters: 2024,2,15,5,14,30,45,500
+testDateUTCGetters: 2024,2,15,5,14,30,45,500
+testDateGetTime: true
+testDateGetTimezoneOffset: true
+testDateSetFullYear: 2027,6,20
+testDateSetMonth: 6,20
+testDateSetDate: 25
+testDateSetHours: 13,50,40,500
+testDateSetMinutes: 50,30,500
+testDateSetSeconds: 50,500
+testDateSetMilliseconds: 999
+testDateSetTime: 2024,0,1
+testDateSetUTCFullYear: 2025,5,20
+testDateSetUTCMonth: 6,25
+testDateSetUTCDate: 28
+testDateSetUTCHours: 15,30,45,500
+testDateToString: true,true
+testDateToDateString: true,true,true,true
+testDateToTimeString: true
+testDateToISOString: 2024-03-15T10:30:45.123Z
+testDateToJSON: true
+testDateToUTCString: true,true
+testDateToLocaleDateString: true
+testDateToLocaleTimeString: true
+testDateToLocaleString: true
+testDateAddDays: 0,25
+testDateAddMonths: 3,15
+testDateAddYears: 2026
+testDateDifference: 10
+testDateMonthEnd: 1,29
+testDateLeapYear: true,false,true,false
+testDateComparison: true,true,true
+testDateEquality: true,true,true
+testDateInvalidDate: true
+testDateOverflow: 1,1
+testDateNegativeValues: 11,26
+testDateYearZero: 0
+testDateInheritance: success
+testDatePadding: 2024-01-05 08:03:07
+testDateDayOfYear: 15
+testDateWeekOfYear: 3

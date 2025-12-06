@@ -95,14 +95,14 @@ public:
         enableMethodLog_ = enableMethodLog;
     }
 
-    bool GetEnableCompilerLogTimeMethods() const
+    bool GetEnableCompilerLogAllMethodsTime() const
     {
-        return enableCompilerLogTimeMethods_;
+        return enableCompilerLogAllMethodsTime_;
     }
 
-    void SetEnableCompilerLogTimeMethods(bool enable)
+    void SetEnableCompilerLogAllMethodsTime(bool enable)
     {
-        enableCompilerLogTimeMethods_ = enable;
+        enableCompilerLogAllMethodsTime_ = enable;
     }
 
     bool EnableMethodCIRLog() const
@@ -150,7 +150,7 @@ private:
     bool outputType_ {false};
     bool compilerLogTime_ {false};
     bool enableMethodLog_ {false};
-    bool enableCompilerLogTimeMethods_ {false};
+    bool enableCompilerLogAllMethodsTime_ {false};
     std::map<std::string, double> timePassMap_ {};
     std::map<std::pair<uint32_t, std::string>, double> timeMethodMap_ {};
 };

@@ -94,7 +94,7 @@ TimeScope::TimeScope(
       circuit_(circuit),
       log_(log)
 {
-    if (log_->GetEnableCompilerLogTime()) {
+    if (log_ != nullptr && log_->GetEnableCompilerLogTime()) {
         if (log_->nameIndex_.find(name_) == log_->nameIndex_.end()) {
             log_->nameIndex_[name_] = log_->GetIndex();
         }
@@ -107,7 +107,7 @@ TimeScope::TimeScope(
 TimeScope::TimeScope(std::string name, CompilerLog* log)
     : ClockScope(), name_(std::move(name)), log_(log)
 {
-    if (log_->GetEnableCompilerLogTime()) {
+    if (log_ != nullptr && log_->GetEnableCompilerLogTime()) {
         if (log_->nameIndex_.find(name_) == log_->nameIndex_.end()) {
             log_->nameIndex_[name_] = log_->GetIndex();
         }
@@ -116,9 +116,9 @@ TimeScope::TimeScope(std::string name, CompilerLog* log)
 
 TimeScope::~TimeScope()
 {
-    if (log_->GetEnableCompilerLogTime()) {
+    if (log_ != nullptr && log_->GetEnableCompilerLogTime()) {
         bool shouldPrint
-            = log_->GetEnableCompilerLogTimeMethods() || (log_->CertainMethod() && log_->GetEnableMethodLog());
+            = log_->GetEnableCompilerLogAllMethodsTime() || (log_->CertainMethod() && log_->GetEnableMethodLog());
         auto time = TotalSpentTime();
         if (shouldPrint) {
             int nodeIn = INVALID_NODE_COUNT;

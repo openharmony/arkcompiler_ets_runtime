@@ -1,0 +1,59 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testSimpleGenerator: true
+compile testGeneratorWithReturn: true
+compile testGeneratorWithParams: true
+compile testYieldExpression: true
+compile testGeneratorThrow: true
+compile testGeneratorReturn: true
+compile testDelegatingGenerator: true
+compile testDelegateToArray: true
+compile testDelegateToString: true
+compile testInfiniteSequence: true
+compile testFibonacci: true
+compile testGeneratorForOf: true
+compile testGeneratorSpread: true
+compile testGeneratorDestructuring: true
+compile testCustomIterable: true
+compile testRangeIterator: true
+compile testTakeHelper: true
+compile testFilterHelper: true
+compile testMapHelper: true
+compile testZipHelper: true
+compile testChainGenerator: true
+compile testFlattenGenerator: true
+compile testStateMachine: true
+testSimpleGenerator: 1,false,2,false,3,false,undefined,true
+testGeneratorWithReturn: 1,2,done
+testGeneratorWithParams: 5,6,7,8
+testYieldExpression: 1,15,120
+testGeneratorThrow: 1,100,3
+testGeneratorReturn: 1,99,true,undefined,true
+testDelegatingGenerator: 1,2,3,4
+testDelegateToArray: 0,1,2,3,4
+testDelegateToString: start,a,b,c,end
+testInfiniteSequence: 0,1,2,3,4
+testFibonacci: 0,1,1,2,3,5,8,13
+testGeneratorForOf: 1,2,3
+testGeneratorSpread: 1,2,3
+testGeneratorDestructuring: 1,2,3
+testCustomIterable: 10,20,30
+testRangeIterator: 1,2,3,4,5
+testTakeHelper: 1,2,3,4
+testFilterHelper: 2,4,6
+testMapHelper: 10,20,30
+testZipHelper: 1a,2b,3c
+testChainGenerator: 1,2,3,4,5,6
+testFlattenGenerator: 1,2,3,4,5,6
+testStateMachine: idle,running,paused,running,idle

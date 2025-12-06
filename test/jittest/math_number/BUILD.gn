@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-true
-success
-success
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_jit_test_action("math_number") {
+  deps = []
+}

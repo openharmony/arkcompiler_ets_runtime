@@ -1,0 +1,95 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile syncTestPromiseResolve: true
+compile syncTestPromiseReject: true
+compile syncTestPromiseThen: true
+compile syncTestPromiseCatch: true
+compile syncTestPromiseFinally: true
+compile syncTestPromiseFinallyReject: true
+compile syncTestPromiseConstructor: true
+compile syncTestPromiseConstructorReject: true
+compile syncTestPromiseAll: true
+compile syncTestPromiseAllReject: true
+compile syncTestPromiseAllEmpty: true
+compile syncTestPromiseAllMixed: true
+compile syncTestPromiseRace: true
+compile syncTestPromiseRaceReject: true
+compile syncTestPromiseAllSettled: true
+compile syncTestPromiseAllSettledValues: true
+compile syncTestPromiseAny: true
+compile syncTestPromiseAnyAllReject: true
+compile syncTestPromiseChain: true
+compile syncTestPromiseNestedThen: true
+compile syncTestPromiseLongChain: true
+compile syncTestPromiseChainWithCatch: true
+compile syncTestPromiseChainMultipleCatch: true
+compile syncTestPromiseResolveValue: true
+compile syncTestPromiseResolveThenable: true
+compile asyncBasic: true
+compile asyncMultipleAwait: true
+compile asyncSequential: true
+compile asyncReturnValue: true
+compile asyncReturnPromise: true
+compile asyncAwaitNonPromise: true
+compile asyncParallel: true
+compile asyncConditional: true
+compile asyncTryCatch: true
+compile asyncFinallyBlock: true
+compile asyncNestedTryCatch: true
+compile asyncTryCatchFinally: true
+compile asyncMultipleTryCatch: true
+compile asyncThrowInCatch: true
+compile asyncForLoop: true
+compile asyncWhileLoop: true
+compile asyncForOfLoop: true
+compile asyncMapSequential: true
+compile asyncMapParallel: true
+compile asyncReduceSequential: true
+compile asyncBreakInLoop: true
+compile asyncContinueInLoop: true
+compile testAsyncClass: true
+compile testAsyncClassStatic: true
+compile testAsyncClassInheritance: true
+compile testAsyncArrow: true
+compile testAsyncArrowMulti: true
+compile testAsyncIIFE: true
+compile testAsyncGenerator: true
+compile testDelay: true
+compile testTimeout: true
+compile testRetry: true
+syncTestPromiseResolve: pending
+syncTestPromiseReject: pending
+syncTestPromiseThen: pending
+syncTestPromiseCatch: pending
+syncTestPromiseFinally: pending
+syncTestPromiseFinallyReject: pending
+syncTestPromiseConstructor: pending
+syncTestPromiseConstructorReject: pending
+syncTestPromiseAll: pending
+syncTestPromiseAllReject: pending
+syncTestPromiseAllEmpty: pending
+syncTestPromiseAllMixed: pending
+syncTestPromiseRace: pending
+syncTestPromiseRaceReject: pending
+syncTestPromiseAllSettled: pending
+syncTestPromiseAllSettledValues: pending
+syncTestPromiseAny: pending
+syncTestPromiseAnyAllReject: pending
+syncTestPromiseChain: pending
+syncTestPromiseNestedThen: pending
+syncTestPromiseLongChain: pending
+syncTestPromiseChainWithCatch: pending
+syncTestPromiseChainMultipleCatch: pending
+syncTestPromiseResolveValue: pending
+syncTestPromiseResolveThenable: pending

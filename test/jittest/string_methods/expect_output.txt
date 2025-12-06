@@ -1,0 +1,63 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testPadStart: true
+compile testPadEnd: true
+compile testTrim: true
+compile testStartsWith: true
+compile testEndsWith: true
+compile testIncludes: true
+compile testIndexOf: true
+compile testLastIndexOf: true
+compile testSearch: true
+compile testAt: true
+compile testRepeat: true
+compile testReplace: true
+compile testReplaceAll: true
+compile testSplit: true
+compile testSlice: true
+compile testSubstring: true
+compile testToCase: true
+compile testConcat: true
+compile testCharAt: true
+compile testNormalize: true
+compile testFromCharCode: true
+compile testFromCodePoint: true
+compile testLocaleCompare: true
+compile testMatch: true
+compile testMatchAll: true
+testPadStart: 005,  5,5
+testPadEnd: 500,5  ,5
+testTrim: [hello],[hello  ],[  hello]
+testStartsWith: true,false,true
+testEndsWith: true,false,true
+testIncludes: true,false,true
+testIndexOf: 4,7,-1
+testLastIndexOf: 7,9
+testSearch: 6,6,-1
+testAt: H,o,undefined
+testRepeat: ababab,,ab
+testReplace: Hello JS World,Hello JS JS
+testReplaceAll: xxx bbb xxx
+testSplit: a-b-c-d,a-b
+testSlice: Hello,World,World
+testSubstring: Hello,World
+testToCase: HELLO WORLD,hello world
+testConcat: Hello World!
+testCharAt: H,o,72
+testNormalize: true
+testFromCharCode: Hello
+testFromCodePoint: Hello
+testLocaleCompare: true,true,true
+testMatch: ain,ain
+testMatchAll: 1,2,3

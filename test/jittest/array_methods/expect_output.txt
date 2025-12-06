@@ -1,0 +1,219 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testArrayMap: true
+compile testArrayMapWithIndex: true
+compile testArrayMapChained: true
+compile testArrayMapWithObject: true
+compile testArrayFilter: true
+compile testArrayFilterWithIndex: true
+compile testArrayFilterMultiCondition: true
+compile testArrayFilterEmpty: true
+compile testArrayReduce: true
+compile testArrayReduceWithoutInit: true
+compile testArrayReduceToObject: true
+compile testArrayReduceMax: true
+compile testArrayReduceRight: true
+compile testArrayReduceRightNested: true
+compile testArrayFlatMap: true
+compile testArrayFlatMapFilter: true
+compile testArrayFlatMapString: true
+compile testArrayFind: true
+compile testArrayFindWithObject: true
+compile testArrayFindIndex: true
+compile testArrayFindIndexWithObject: true
+compile testArrayFindLast: true
+compile testArrayFindLastWithCondition: true
+compile testArrayFindLastIndex: true
+compile testArrayFindLastIndexMultiple: true
+compile testArrayIncludes: true
+compile testArrayIncludesFromIndex: true
+compile testArrayIndexOf: true
+compile testArrayIndexOfNegative: true
+compile testArrayLastIndexOf: true
+compile testArrayLastIndexOfFromIndex: true
+compile testArraySome: true
+compile testArraySomeEmpty: true
+compile testArraySomeWithObject: true
+compile testArrayEvery: true
+compile testArrayEveryEmpty: true
+compile testArrayEveryWithObject: true
+compile testArrayIsArray: true
+compile testArrayIsArrayAdvanced: true
+compile testArraySort: true
+compile testArraySortStrings: true
+compile testArraySortByProperty: true
+compile testArraySortStable: true
+compile testArrayReverse: true
+compile testArrayReverseInPlace: true
+compile testArraySplice: true
+compile testArraySpliceDelete: true
+compile testArraySpliceInsert: true
+compile testArraySpliceNegative: true
+compile testArraySlice: true
+compile testArraySliceNegative: true
+compile testArraySliceCopy: true
+compile testArrayFill: true
+compile testArrayFillObject: true
+compile testArrayFillNegativeIndex: true
+compile testArrayCopyWithin: true
+compile testArrayCopyWithinNegative: true
+compile testArrayCopyWithinOverlap: true
+compile testArrayAt: true
+compile testArrayAtOutOfBounds: true
+compile testArrayFlat: true
+compile testArrayFlatDeep: true
+compile testArrayFlatEmpty: true
+compile testArrayFlatWithHoles: true
+compile testArrayFrom: true
+compile testArrayFromMapFn: true
+compile testArrayFromIterable: true
+compile testArrayOf: true
+compile testArrayOfSingle: true
+compile testArrayConstructor: true
+compile testArrayJoin: true
+compile testArrayJoinWithNull: true
+compile testArrayConcat: true
+compile testArrayConcatNested: true
+compile testArrayConcatSpread: true
+compile testArrayPush: true
+compile testArrayPop: true
+compile testArrayShift: true
+compile testArrayUnshift: true
+compile testArrayStackOperations: true
+compile testArrayQueueOperations: true
+compile testArrayForEach: true
+compile testArrayForEachIndex: true
+compile testArrayKeys: true
+compile testArrayKeysWithHoles: true
+compile testArrayValues: true
+compile testArrayEntries: true
+compile testArrayIterator: true
+compile testArrayToString: true
+compile testArrayToStringNested: true
+compile testArrayChaining: true
+compile testArrayUnique: true
+compile testArrayIntersection: true
+compile testArrayDifference: true
+compile testArrayGroupBy: true
+compile testArrayZip: true
+compile testArrayPartition: true
+compile testArrayChunk: true
+compile testArrayShuffle: true
+compile testArrayDeepCopy: true
+compile testArrayFillRange: true
+compile testArrayRange: true
+compile testArrayRepeat: true
+testArrayMap: 2,4,6,8,10
+testArrayMapWithIndex: 0:a,1:b,2:c
+testArrayMapChained: 3,5,7
+testArrayMapWithObject: 10,20,30
+testArrayFilter: 2,4,6,8
+testArrayFilterWithIndex: 10,30,50
+testArrayFilterMultiCondition: 4,6
+testArrayFilterEmpty: length:0
+testArrayReduce: 15,120
+testArrayReduceWithoutInit: 15
+testArrayReduceToObject: 1,2,3
+testArrayReduceMax: 9,1
+testArrayReduceRight: dcba
+testArrayReduceRightNested: 5,6,3,4,1,2
+testArrayFlatMap: 1,2,2,4,3,6
+testArrayFlatMapFilter: 2,20,4,40
+testArrayFlatMapString: h,e,l,l,o
+testArrayFind: 10,undefined
+testArrayFindWithObject: b
+testArrayFindIndex: 2,-1
+testArrayFindIndexWithObject: 1
+testArrayFindLast: 15
+testArrayFindLastWithCondition: 12
+testArrayFindLastIndex: 3
+testArrayFindLastIndexMultiple: 5
+testArrayIncludes: true,false,true
+testArrayIncludesFromIndex: true,false,true
+testArrayIndexOf: 1,3,-1
+testArrayIndexOfNegative: 3,-1,4
+testArrayLastIndexOf: 3,4
+testArrayLastIndexOfFromIndex: 3,1,3
+testArraySome: true,false
+testArraySomeEmpty: false
+testArraySomeWithObject: true
+testArrayEvery: true,true,false
+testArrayEveryEmpty: true
+testArrayEveryWithObject: true,false
+testArrayIsArray: true,false,false
+testArrayIsArrayAdvanced: true,true,false,false
+testArraySort: 1,1,2,3,9,6,5,4
+testArraySortStrings: apple,banana,cherry,date
+testArraySortByProperty: a,b,c
+testArraySortStable: a,c,b,d
+testArrayReverse: 5,4,3,2,1
+testArrayReverseInPlace: a,b,c,c,b,a
+testArraySplice: 3,4,1,2,a,b,c,5
+testArraySpliceDelete: 2,3,4,1,5
+testArraySpliceInsert: 1,2,3,4,5
+testArraySpliceNegative: 4,1,2,3,5
+testArraySlice: 2,3,4,4,5
+testArraySliceNegative: 3,4,3,4,5
+testArraySliceCopy: 100,1
+testArrayFill: 0,1,1,1,0
+testArrayFillObject: 1,1,1
+testArrayFillNegativeIndex: 1,2,0,0,5
+testArrayCopyWithin: 4,5,3,4,5
+testArrayCopyWithinNegative: 1,2,3,1,2
+testArrayCopyWithinOverlap: 1,3,4,5,5
+testArrayAt: 1,5,4
+testArrayAtOutOfBounds: undefined,undefined
+testArrayFlat: 1,2,3,4,5,6,1,2,3,4,5,6
+testArrayFlatDeep: 1,2,3,4,5
+testArrayFlatEmpty: 1,2,4,5
+testArrayFlatWithHoles: length:4,1,3,4,6
+testArrayFrom: a,b,c,1,2,3,0,2,4
+testArrayFromMapFn: 1,4,9
+testArrayFromIterable: a:1,b:2
+testArrayOf: 1,2,3,4,5
+testArrayOfSingle: 1,7
+testArrayConstructor: 3,1,2,3
+testArrayJoin: 1,2,3,1-2-3,123
+testArrayJoinWithNull: 1,,,4
+testArrayConcat: 1,2,3,4,5,6
+testArrayConcatNested: 4,2,3
+testArrayConcatSpread: 1,2,3,4,5
+testArrayPush: 5,1,2,3,4,5
+testArrayPop: 3,1,2
+testArrayShift: 1,2,3
+testArrayUnshift: 5,1,2,3,4,5
+testArrayStackOperations: 3,2,1
+testArrayQueueOperations: 1,2,3
+testArrayForEach: 6
+testArrayForEachIndex: 0:a,1:b,2:c
+testArrayKeys: 0,1,2
+testArrayKeysWithHoles: 0,1,2
+testArrayValues: a,b,c
+testArrayEntries: 0:a,1:b
+testArrayIterator: 2,4,6
+testArrayToString: 1,2,3
+testArrayToStringNested: 1,2,3,4
+testArrayChaining: 60
+testArrayUnique: 1,2,3,4
+testArrayIntersection: 3,4,5
+testArrayDifference: 1,2
+testArrayGroupBy: odd:1,3,5,even:2,4,6
+testArrayZip: 1a,2b,3c
+testArrayPartition: evens:2,4,6,odds:1,3,5
+testArrayChunk: 1,2,3|4,5,6|7
+testArrayShuffle: length:5,includes5:true
+testArrayDeepCopy: original:1,copy:100
+testArrayFillRange: 1,2,3,4,5
+testArrayRange: 5,6,7,8,9
+testArrayRepeat: 1,2,1,2,1,2

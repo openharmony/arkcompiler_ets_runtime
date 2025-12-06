@@ -1,0 +1,85 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testFunctionName: true
+compile testFunctionLength: true
+compile testFunctionToString: true
+compile testFunctionCall: true
+compile testFunctionApply: true
+compile testFunctionCallWithThis: true
+compile testFunctionApplyArray: true
+compile testFunctionBind: true
+compile testFunctionBindWithArgs: true
+compile testFunctionBindChained: true
+compile testClosureBasic: true
+compile testClosureCounter: true
+compile testClosurePrivateState: true
+compile testClosureLoop: true
+compile testHigherOrderMap: true
+compile testHigherOrderFilter: true
+compile testHigherOrderReduce: true
+compile testCompose: true
+compile testPipe: true
+compile testCurryManual: true
+compile testPartialApplication: true
+compile testMemoization: true
+compile testRecursiveFactorial: true
+compile testRecursiveFibonacci: true
+compile testTailRecursion: true
+compile testIIFE: true
+compile testIIFEWithState: true
+compile testArrowThis: true
+compile testArrowNoArguments: true
+compile testDefaultParams: true
+compile testDefaultParamsExpression: true
+compile testRestParams: true
+compile testRestWithRequired: true
+compile testGeneratorBasic: true
+compile testGeneratorWithReturn: true
+compile testFunctionAsObject: true
+testFunctionName: namedFunc,arrowFunc,method
+testFunctionLength: 0,1,2,2
+testFunctionToString: true,true
+testFunctionCall: Hello, Alice
+testFunctionApply: 6
+testFunctionCallWithThis: 20
+testFunctionApplyArray: 9,1
+testFunctionBind: Hello, Bob
+testFunctionBindWithArgs: 35,35
+testFunctionBindChained: 24
+testClosureBasic: 15,30
+testClosureCounter: 2
+testClosurePrivateState: Alice,Bob
+testClosureLoop: 0,1,2
+testHigherOrderMap: 2,4,6
+testHigherOrderFilter: 2,4,6
+testHigherOrderReduce: 10
+testCompose: 5
+testPipe: 9
+testCurryManual: 6
+testPartialApplication: 10,15
+testMemoization: 2
+testRecursiveFactorial: 120,1,1
+testRecursiveFibonacci: 0,1,5,55
+testTailRecursion: 120
+testIIFE: 10
+testIIFEWithState: 2
+testArrowThis: 42
+testArrowNoArguments: 1,2,3
+testDefaultParams: Hello, World,Hello, Alice,Hi, Bob
+testDefaultParamsExpression: 6,6,6,4,4
+testRestParams: 6,15
+testRestWithRequired: Numbers: 1, 2, 3
+testGeneratorBasic: 1,2,3
+testGeneratorWithReturn: 1,2,done
+testFunctionAsObject: value,0

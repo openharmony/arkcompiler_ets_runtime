@@ -1,0 +1,105 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testRegExpTest: true
+compile testRegExpExec: true
+compile testRegExpFlags: true
+compile testRegExpCaseInsensitive: true
+compile testRegExpGlobal: true
+compile testRegExpMultiline: true
+compile testRegExpDigits: true
+compile testRegExpNonDigits: true
+compile testRegExpWordChars: true
+compile testRegExpWhitespace: true
+compile testRegExpCharSet: true
+compile testRegExpNegatedCharSet: true
+compile testRegExpRange: true
+compile testRegExpStar: true
+compile testRegExpPlus: true
+compile testRegExpQuestion: true
+compile testRegExpExactCount: true
+compile testRegExpRangeCount: true
+compile testRegExpLazy: true
+compile testRegExpCapturingGroup: true
+compile testRegExpNonCapturingGroup: true
+compile testRegExpNamedGroup: true
+compile testRegExpBackreference: true
+compile testRegExpNamedBackreference: true
+compile testRegExpStartAnchor: true
+compile testRegExpEndAnchor: true
+compile testRegExpWordBoundary: true
+compile testRegExpPositiveLookahead: true
+compile testRegExpNegativeLookahead: true
+compile testRegExpPositiveLookbehind: true
+compile testRegExpNegativeLookbehind: true
+compile testStringMatch: true
+compile testStringMatchAll: true
+compile testStringSearch: true
+compile testStringReplace: true
+compile testStringReplaceAll: true
+compile testStringReplaceWithGroups: true
+compile testStringReplaceWithFunction: true
+compile testStringSplit: true
+compile testRegExpEmailValidation: true
+compile testRegExpPhoneValidation: true
+compile testRegExpUrlParsing: true
+compile testRegExpHexColor: true
+compile testRegExpIpAddress: true
+compile testRegExpUnicodeFlag: true
+compile testRegExpUnicodeEscape: true
+testRegExpTest: true,false
+testRegExpExec: hello world,hello,world
+testRegExpFlags: true,true,false,abc
+testRegExpCaseInsensitive: true,true,true
+testRegExpGlobal: 1,4,6,8,11
+testRegExpMultiline: 0,11
+testRegExpDigits: 123,456
+testRegExpNonDigits: abc,def
+testRegExpWordChars: hello,world_123
+testRegExpWhitespace: hello_world_tab
+testRegExpCharSet: e,o
+testRegExpNegatedCharSet: h,l,l
+testRegExpRange: ello,orld
+testRegExpStar: true,true,true
+testRegExpPlus: false,true,true
+testRegExpQuestion: true,true,false
+testRegExpExactCount: false,true,true
+testRegExpRangeCount: false,true,true,true
+testRegExpLazy: 4,a
+testRegExpCapturingGroup: 2024,03,15
+testRegExpNonCapturingGroup: true,true
+testRegExpNamedGroup: 2024,03,15
+testRegExpBackreference: true,false
+testRegExpNamedBackreference: true,false
+testRegExpStartAnchor: true,false
+testRegExpEndAnchor: true,false
+testRegExpWordBoundary: true,false,false
+testRegExpPositiveLookahead: 50
+testRegExpNegativeLookahead: 5,100
+testRegExpPositiveLookbehind: 100
+testRegExpNegativeLookbehind: 50,00
+testStringMatch: 123,456
+testStringMatchAll: 1,2,3
+testStringSearch: 6,-1
+testStringReplace: hello universe
+testStringReplaceAll: qux bar qux baz qux
+testStringReplaceWithGroups: 03/15/2024
+testStringReplaceWithFunction: HELLO WORLD
+testStringSplit: a,b,c,d
+testRegExpEmailValidation: true,false,true
+testRegExpPhoneValidation: true,false
+testRegExpUrlParsing: https,example.com,/path
+testRegExpHexColor: true,true,false
+testRegExpIpAddress: true,true,false
+testRegExpUnicodeFlag: Hello世界
+testRegExpUnicodeEscape: 世界

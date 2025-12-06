@@ -1,0 +1,75 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testProxyGet: true
+compile testProxySet: true
+compile testProxyHas: true
+compile testProxyDeleteProperty: true
+compile testProxyOwnKeys: true
+compile testProxyGetOwnPropertyDescriptor: true
+compile testProxyApply: true
+compile testProxyConstruct: true
+compile testProxyRevocable: true
+compile testProxyValidation: true
+compile testProxyLogging: true
+compile testReflectGet: true
+compile testReflectSet: true
+compile testReflectHas: true
+compile testReflectDeleteProperty: true
+compile testReflectOwnKeys: true
+compile testReflectGetPrototypeOf: true
+compile testReflectSetPrototypeOf: true
+compile testReflectIsExtensible: true
+compile testReflectPreventExtensions: true
+compile testReflectGetOwnPropertyDescriptor: true
+compile testReflectDefineProperty: true
+compile testReflectApply: true
+compile testReflectConstruct: true
+compile testReflectConstructNewTarget: true
+compile testProxyWithReflect: true
+compile testProxyForwarding: true
+compile testProxyNegativeArray: true
+compile testProxyDefaultValues: true
+compile testProxyReadOnly: true
+compile testProxyObservable: true
+testProxyGet: 1,2,default
+testProxySet: 1,10,20
+testProxyHas: true,true,false
+testProxyDeleteProperty: b,true,false,true
+testProxyOwnKeys: a,b
+testProxyGetOwnPropertyDescriptor: 1,true,true
+testProxyApply: 50
+testProxyConstruct: 10
+testProxyRevocable: 1,true
+testProxyValidation: true,30
+testProxyLogging: get:a,set:b
+testReflectGet: 1,2,undefined
+testReflectSet: true,2
+testReflectHas: true,false
+testReflectDeleteProperty: true,false,true
+testReflectOwnKeys: a,b,c
+testReflectGetPrototypeOf: true
+testReflectSetPrototypeOf: true,true
+testReflectIsExtensible: true,false
+testReflectPreventExtensions: true,false
+testReflectGetOwnPropertyDescriptor: 1,true,true
+testReflectDefineProperty: true,42
+testReflectApply: 6
+testReflectConstruct: Alice,30
+testReflectConstructNewTarget: true
+testProxyWithReflect: 2,4
+testProxyForwarding: 1,true,3
+testProxyNegativeArray: 5,4,1
+testProxyDefaultValues: 10,2,3
+testProxyReadOnly: 1,true,true
+testProxyObservable: x:1->10,y:2->20

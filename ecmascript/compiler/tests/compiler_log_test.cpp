@@ -37,10 +37,10 @@ HWTEST_F_L0(CompilerLogTest, TimeScope_ConstructorWithMethodInfo)
 {
     CompilerLog log("all");
     log.SetEnableCompilerLogTime(true);
-    log.SetEnableCompilerLogTimeMethods(true);
+    log.SetEnableCompilerLogAllMethodsTime(true);
 
     EXPECT_TRUE(log.GetEnableCompilerLogTime());
-    EXPECT_TRUE(log.GetEnableCompilerLogTimeMethods());
+    EXPECT_TRUE(log.GetEnableCompilerLogAllMethodsTime());
     EXPECT_TRUE(log.AllMethod());
 
     Circuit* circuit = nullptr;
@@ -122,7 +122,7 @@ HWTEST_F_L0(CompilerLogTest, TimeScope_MultipleScopes)
 {
     CompilerLog log("all");
     log.SetEnableCompilerLogTime(true);
-    log.SetEnableCompilerLogTimeMethods(true);
+    log.SetEnableCompilerLogAllMethodsTime(true);
 
     Circuit* circuit = nullptr;
     {
@@ -152,7 +152,7 @@ HWTEST_F_L0(CompilerLogTest, TimeScope_CircuitNodeCount)
 {
     CompilerLog log("all");
     log.SetEnableCompilerLogTime(true);
-    log.SetEnableCompilerLogTimeMethods(true);
+    log.SetEnableCompilerLogAllMethodsTime(true);
 
     // Test with null circuit - GetCurrentNodeCount should handle gracefully
     {
@@ -166,26 +166,26 @@ HWTEST_F_L0(CompilerLogTest, TimeScope_CircuitNodeCount)
 }
 
 /**
- * @tc.name: TimeScope_EnableCompilerLogTimeMethods_Flag
- * @tc.desc: Test new SetEnableCompilerLogTimeMethods flag
+ * @tc.name: TimeScope_EnableCompilerLogAllMethodsTime_Flag
+ * @tc.desc: Test new SetEnableCompilerLogAllMethodsTime flag
  * @tc.type: FUNC
  */
-HWTEST_F_L0(CompilerLogTest, TimeScope_EnableCompilerLogTimeMethods_Flag)
+HWTEST_F_L0(CompilerLogTest, TimeScope_EnableCompilerLogAllMethodsTime_Flag)
 {
     CompilerLog log("all");
 
     // Test flag is initially false
-    EXPECT_FALSE(log.GetEnableCompilerLogTimeMethods());
+    EXPECT_FALSE(log.GetEnableCompilerLogAllMethodsTime());
 
     // Test setting flag to true
     log.SetEnableCompilerLogTime(true);
-    log.SetEnableCompilerLogTimeMethods(true);
+    log.SetEnableCompilerLogAllMethodsTime(true);
     EXPECT_TRUE(log.GetEnableCompilerLogTime());
-    EXPECT_TRUE(log.GetEnableCompilerLogTimeMethods());
+    EXPECT_TRUE(log.GetEnableCompilerLogAllMethodsTime());
 
     // Test setting flag to false
-    log.SetEnableCompilerLogTimeMethods(false);
-    EXPECT_FALSE(log.GetEnableCompilerLogTimeMethods());
+    log.SetEnableCompilerLogAllMethodsTime(false);
+    EXPECT_FALSE(log.GetEnableCompilerLogAllMethodsTime());
 }
 
 /**
@@ -433,7 +433,7 @@ HWTEST_F_L0(CompilerLogTest, CompilerLog_Print)
 {
     CompilerLog log("all");
     log.SetEnableCompilerLogTime(true);
-    log.SetEnableCompilerLogTimeMethods(true);
+    log.SetEnableCompilerLogAllMethodsTime(true);
 
     // Add some data
     log.AddPassTime("Pass1", 10000.0);   // 10ms
@@ -443,13 +443,13 @@ HWTEST_F_L0(CompilerLogTest, CompilerLog_Print)
 
     // Capture state before print
     bool timeBefore = log.GetEnableCompilerLogTime();
-    bool timeMethodsBefore = log.GetEnableCompilerLogTimeMethods();
+    bool timeMethodsBefore = log.GetEnableCompilerLogAllMethodsTime();
 
     log.Print();
 
     // Verify state unchanged after print
     EXPECT_EQ(log.GetEnableCompilerLogTime(), timeBefore);
-    EXPECT_EQ(log.GetEnableCompilerLogTimeMethods(), timeMethodsBefore);
+    EXPECT_EQ(log.GetEnableCompilerLogAllMethodsTime(), timeMethodsBefore);
 }
 
 /**

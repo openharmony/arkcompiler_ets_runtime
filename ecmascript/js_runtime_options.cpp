@@ -66,7 +66,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
-    "--compiler-log-time-methods:          Enable timing statistics for all methods with node count.\n"
+    "--compiler-log-all-methods-time:      Enable timing statistics for all methods with node count.\n"
     "                                      Default: 'false'. When true, prints all method timings.\n"
     "                                      Use with --compiler-log-time.\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
@@ -247,7 +247,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
-        {"compiler-log-time-methods", required_argument, nullptr, OPTION_COMPILER_LOG_TIME_METHODS},
+        {"compiler-log-all-methods-time", required_argument, nullptr, OPTION_COMPILER_LOG_ALL_METHODS_TIME},
         {"compiler-type-threshold", required_argument, nullptr, OPTION_COMPILER_TYPE_THRESHOLD},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
         {"open-ark-tools", required_argument, nullptr, OPTION_OPEN_ARK_TOOLS},
@@ -503,10 +503,10 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_COMPILER_LOG_TIME_METHODS:
+            case OPTION_COMPILER_LOG_ALL_METHODS_TIME:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
-                    SetEnableCompilerLogTimeMethods(argBool);
+                    SetEnableCompilerLogAllMethodsTime(argBool);
                 } else {
                     return false;
                 }
