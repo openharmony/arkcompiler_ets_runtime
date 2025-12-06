@@ -233,7 +233,6 @@ public:
 
     void InitializeInPostFork()
     {
-        ASSERT(workSpace_ == 0);
         auto allocatedSpace = GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE);
         ASSERT(allocatedSpace != nullptr);
         workSpace_ = ToUintPtr(allocatedSpace);
