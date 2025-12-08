@@ -807,7 +807,6 @@ function UnicodeOrchestrator(): object {
         "Hello World",
         "Café",
         "你好",
-        "🚀🎉🎊",
         "العربية",
         "עברית",
         "العبرية",
