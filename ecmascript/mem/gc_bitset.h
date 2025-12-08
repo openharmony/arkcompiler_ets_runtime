@@ -96,10 +96,8 @@ public:
 
     bool SetBitRange(uintptr_t offset, uint32_t mask);
 
-    void ClearBit(uintptr_t offset)
-    {
-        Words()[Index(offset)] &= ~Mask(IndexInWord(offset));
-    }
+    template <AccessType mode = AccessType::NON_ATOMIC>
+    void ClearBit(uintptr_t offset);
 
     template <AccessType mode = AccessType::NON_ATOMIC>
     void ClearBitRange(uintptr_t offsetBegin, uintptr_t offsetEnd)
@@ -267,6 +265,28 @@ inline bool GCBitset::SetBit<AccessType::ATOMIC>(uintptr_t offset)
             std::memory_order_relaxed, std::memory_order_relaxed);
     } while (oldValue != oldValueBeforeCAS);
     return true;
+}
+
+template <>
+inline void GCBitset::ClearBit<AccessType::NON_ATOMIC>(uintptr_t offset)
+{
+    Words()[Index(offset)] &= ~Mask(IndexInWord(offset));
+}
+
+template <>
+inline void GCBitset::ClearBit<AccessType::ATOMIC>(uintptr_t offset)
+{
+    volatile auto word = reinterpret_cast<volatile std::atomic<GCBitsetWord> *>(&Words()[Index(offset)]);
+    GCBitsetWord mask = ~Mask(IndexInWord(offset));
+    GCBitsetWord oldValue = word->load(std::memory_order_relaxed);
+    GCBitsetWord oldValueBeforeCAS;
+    do {
+        oldValueBeforeCAS = oldValue;
+        if (!std::atomic_compare_exchange_strong_explicit(word, &oldValue, oldValue & mask,
+                                                          std::memory_order_relaxed, std::memory_order_relaxed)) {
+            LOG_JIT(FATAL) << "jit fort data race!";
+        }
+    } while (oldValue != oldValueBeforeCAS);
 }
 
 template <size_t BitSetNum, typename Enable = std::enable_if_t<(BitSetNum >= 1), int>>

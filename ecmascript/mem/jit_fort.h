@@ -129,7 +129,9 @@ public:
 
     inline void ClearMark(uintptr_t addr)
     {
-        ClearBit((addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+        // The byte offset of addr within the region.
+        uintptr_t offset = (addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG;
+        ClearBit<AccessType::ATOMIC>(offset);
     }
 
     inline bool Test(uintptr_t addr)
