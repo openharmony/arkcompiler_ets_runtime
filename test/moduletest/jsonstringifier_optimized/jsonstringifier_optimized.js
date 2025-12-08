@@ -69,4 +69,7 @@
     assert_equal(JSON.stringify(obj, null, space), expected);
 }
 
+{
+    assert_equal(JSON.stringify(Object(Symbol('aaa'))), '{}');
+}
 test_end();

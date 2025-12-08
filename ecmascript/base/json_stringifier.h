@@ -79,7 +79,7 @@ private:
 
     bool SerializeJSProxy(const JSHandle<JSTaggedValue> &object, const JSHandle<JSTaggedValue> &replacer);
 
-    void SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef);
+    void SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primitiveRef, const JSHandle<JSTaggedValue> &replacer);
 
     bool PushValue(const JSHandle<JSTaggedValue> &value);
 

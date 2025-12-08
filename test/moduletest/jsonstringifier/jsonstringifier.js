@@ -111,6 +111,7 @@ var v6="123456789\u0000";
 assert_equal(JSON.stringify([{}]),'[{}]')
 assert_equal(JSON.stringify([String]),'[null]')
 assert_equal(JSON.stringify(v6),'"123456789\\u0000"')
+assert_equal(JSON.stringify(Object(Symbol('aaa'))), '{}');
 
 
 var handler2 = {
