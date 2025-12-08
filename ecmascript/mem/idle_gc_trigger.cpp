@@ -157,6 +157,7 @@ bool IdleGCTrigger::ReachIdleSharedGCThresholds()
 void IdleGCTrigger::TryPostHandleMarkFinished()
 {
     if (IsIdleState()) {
+        LOG_GC(INFO) << "IdleGCTrigger: post concurrent mark finished local remark";
         PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
     }
 }
@@ -167,7 +168,7 @@ bool IdleGCTrigger::PostIdleGCTask(TRIGGER_IDLE_GC_TYPE gcType)
         std::pair<void*, uint8_t> data(heap_->GetEcmaVM(), static_cast<uint8_t>(gcType));
         triggerGCTaskCallback_(data);
         SetPostGCTask(gcType);
-        LOG_GC(INFO) << "IdleGCTrigger: post once " << GetGCTypeName(gcType) << " on idleTime";
+        LOG_GC(DEBUG) << "IdleGCTrigger: post once " << GetGCTypeName(gcType) << " on idleTime";
         return true;
     }
     LOG_GC(DEBUG) << "IdleGCTrigger: failed to post once " << GetGCTypeName(gcType);
@@ -249,14 +250,14 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
         case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK:
             if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && sHeap_->CheckCanTriggerConcurrentMarking(thread_)
                 && !sHeap_->NeedStopCollection()) {
-                LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
+                LOG_GC(DEBUG) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK:
             if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && sHeap_->CheckCanTriggerConcurrentMarking(thread_)
                 && !sHeap_->NeedStopCollection()) {
-                LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
+                LOG_GC(DEBUG) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::IDLE>(thread_);
             }
             break;
@@ -271,13 +272,13 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
             break;
         case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK:
             if (CheckIdleYoungGC() && !heap_->NeedStopCollection()) {
-                LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
+                LOG_GC(DEBUG) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 TryTriggerLocalConcurrentMark(MarkType::MARK_YOUNG);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK:
             if (CheckIdleLocalOldGC(heap_) && !heap_->NeedStopCollection()) {
-                LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
+                LOG_GC(DEBUG) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 TryTriggerLocalConcurrentMark(MarkType::MARK_FULL);
             }
             break;
