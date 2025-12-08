@@ -104,8 +104,6 @@ inline void RSetWorkListHandler::ProcessAllVisitor(const Visitor &visitor, int d
 template<class Visitor>
 inline void RSetWorkListHandler::ProcessAll(const Visitor &visitor)
 {
-    ASSERT(JSThread::GetCurrent()->IsDaemonThread() ||
-          (JSThread::GetCurrent() == heap_->GetEcmaVM()->GetJSThread() && JSThread::GetCurrent()->IsInRunningState()));
     // At this time, the items may be already cleared, but the ProcessNext will do nothing and return false,
     // it just means that there is nothing to work.
     int done = 0;
@@ -143,8 +141,6 @@ inline void RSetWorkListHandler::MergeBackForAllItem()
 
 inline bool RSetWorkListHandler::MergeBack()
 {
-    ASSERT((JSThread::GetCurrent()->IsJSThread() && JSThread::GetCurrent()->IsInRunningState()) ||
-           (JSThread::GetCurrent()->IsDaemonThread() && JSThread::GetCurrent()->IsInSuspendedState()));
     if (!TryMergeBack()) {
         // Is merged back by bound js thread.
         ASSERT(JSThread::GetCurrent()->IsDaemonThread());
