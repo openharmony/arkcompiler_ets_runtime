@@ -13,6 +13,7 @@
 
 6
 parent child
+TypeError: Derived constructor must return object or undefined
 PASS
 10
 1

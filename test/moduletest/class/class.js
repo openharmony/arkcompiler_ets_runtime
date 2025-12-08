@@ -48,6 +48,18 @@ var c = new Child(2, 3);
 print(c.value());
 print(Child.toString());
 
+class Child2 extends Parent {
+    constructor() {
+        return 1;
+    }
+}
+
+try {
+    print(new Child2());
+} catch (err) {
+    print(err);
+}
+
 try {
     class C {
         a = 1;
