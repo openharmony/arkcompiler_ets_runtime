@@ -52,11 +52,18 @@ struct NativeBindingAttachInfo {
 struct JSErrorInfo {
     uint8_t errorType_ {0};
     JSHandle<JSTaggedValue> errorMsg_;
+    JSHandle<JSTaggedValue> errorStack_;
     JSHandle<JSTaggedValue> obj_;
     size_t offset_ {0U};
 
-    JSErrorInfo(uint8_t errorType, JSHandle<JSTaggedValue> errorMsg, JSHandle<JSTaggedValue> obj, size_t offset)
-        : errorType_(errorType), errorMsg_(errorMsg), obj_(obj), offset_(offset) {}
+    enum class ErrorInfo: uint8_t {
+        IS_ERROR_MSG = 1,
+        IS_ERROR_MSG_AND_STACK = 2,
+    };
+
+    JSErrorInfo(uint8_t errorType, JSHandle<JSTaggedValue> errorMsg, JSHandle<JSTaggedValue> errorStack,
+                JSHandle<JSTaggedValue> obj, size_t offset)
+        : errorType_(errorType), errorMsg_(errorMsg), errorStack_(errorStack), obj_(obj), offset_(offset) {}
 
     uintptr_t GetObjAddr() const
     {
@@ -99,6 +106,7 @@ private:
     uintptr_t RelocateObjectAddr(SerializedObjectSpace space, size_t objSize);
     JSTaggedType RelocateObjectProtoAddr(uint8_t objectType);
     void DeserializeObjectField(uintptr_t start, uintptr_t end);
+    void SetErrorMsgAndStack(uint8_t flag, size_t &handledFieldSize);
     size_t ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset);
     virtual size_t DerivedExtraReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset);
     void HandleNewObjectEncodeFlag(SerializedObjectSpace space, uintptr_t objAddr, size_t fieldOffset);
@@ -164,6 +172,15 @@ private:
             isErrorMsg_ = false;
         }
         return isErrorMsg;
+    }
+
+    bool GetAndResetIsErrorStack()
+    {
+        bool isErrorStack = isErrorStack_;
+        if (isErrorStack_) {
+            isErrorStack_ = false;
+        }
+        return isErrorStack;
     }
 
     bool GetAndResetFunctionInShared()
@@ -271,6 +288,7 @@ private:
     bool isTransferArrayBuffer_ {false};
     bool isSharedArrayBuffer_ {false};
     bool isErrorMsg_ {false};
+    bool isErrorStack_ {false};
     void *bufferPointer_ {nullptr};
     bool functionInShared_ {false};
     CVector<NativeBindingAttachInfo> nativeBindingAttachInfos_;

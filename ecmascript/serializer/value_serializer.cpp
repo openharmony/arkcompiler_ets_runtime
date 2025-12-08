@@ -340,12 +340,20 @@ void ValueSerializer::SerializeJSError(TaggedObject *object)
     JSHandle<JSTaggedValue> handleMsg = globalConst->GetHandledMessageString();
     JSHandle<JSTaggedValue> msg =
         JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(thread_, object), handleMsg).GetValue();
+    JSHandle<JSTaggedValue> handleStack = globalConst->GetHandledStackString();
+    JSHandle<JSTaggedValue> stack =
+        JSObject::GetProperty(thread_, JSHandle<JSTaggedValue>(thread_, object), handleStack).GetValue();
     if (msg->IsString()) {
-        data_->WriteUint8(1); // 1: msg is string
-        // string must be shared
-        SerializeSharedObject(msg->GetTaggedObject());
+        if (needSerializeStack_ && stack->IsString()) {
+            data_->WriteUint8(static_cast<uint8_t>(SerializeErrorInfo::MSG_AND_STACK));
+            SerializeSharedObject(msg->GetTaggedObject());
+            SerializeSharedObject(stack->GetTaggedObject());
+        } else {
+            data_->WriteUint8(static_cast<uint8_t>(SerializeErrorInfo::ONLY_MSG));
+            SerializeSharedObject(msg->GetTaggedObject());
+        }
     } else {
-        data_->WriteUint8(0); // 0: msg is undefined
+        data_->WriteUint8(0);
     }
 }
 

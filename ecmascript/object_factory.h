@@ -221,9 +221,18 @@ public:
 
     JSHandle<JSObject> PUBLIC_API GetJSError(const ErrorType &errorType, const char *data = nullptr,
         StackCheck needCheckStack = StackCheck::YES);
+    
+    JSHandle<JSTaggedValue> GetConstructorByErrorType(const JSHandle<GlobalEnv> &env, const ErrorType &errorType);
 
     JSHandle<JSObject> NewJSError(const JSHandle<GlobalEnv> &env, const ErrorType &errorType,
+                                  const JSHandle<EcmaString> &message, const JSHandle<EcmaString> &stack,
+                                  StackCheck needCheckStack);
+    
+    JSHandle<JSObject> NewJSError(const JSHandle<GlobalEnv> &env, const ErrorType &errorType,
                                   const JSHandle<EcmaString> &message, StackCheck needCheckStack);
+    
+    JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
+        const JSHandle<EcmaString> &stack, StackCheck needCheckStack = StackCheck::YES);
 
     JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
         StackCheck needCheckStack = StackCheck::YES);

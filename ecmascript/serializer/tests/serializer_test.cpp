@@ -1996,6 +1996,112 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSError3)
     delete serializer;
 }
 
+HWTEST_F_L0(JSSerializerTest, SerializeJSError4)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
+    JSHandle<EcmaString> stack(factory->NewFromASCII("this is error stack"));
+    JSHandle<JSTaggedValue> errorTag =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg, stack, StackCheck::NO));
+
+    ValueSerializer *serializer = new (std::nothrow) ValueSerializer(thread, false, false, true);
+    if (serializer == nullptr) {
+        return;
+    }
+    serializer->WriteValue(thread, errorTag, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSErrorTest1, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSError5)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> obj = factory->NewEmptyJSObject();
+    JSHandle<EcmaString> key1(factory->NewFromASCII("error1"));
+    JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
+    JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
+    JSHandle<EcmaString> stack(factory->NewFromASCII("this is error stack"));
+    JSHandle<JSTaggedValue> errorTag =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::ERROR, msg, stack, StackCheck::NO));
+
+
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key1), errorTag);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2), errorTag);
+
+    ValueSerializer *serializer = new (std::nothrow) ValueSerializer(thread, false, false, true);
+    if (serializer == nullptr) {
+        return;
+    }
+    serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSErrorTest2, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeJSError6)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<JSObject> obj = factory->NewEmptyJSObject();
+    JSHandle<EcmaString> key1(factory->NewFromASCII("error1"));
+    JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
+    JSHandle<EcmaString> key3(factory->NewFromASCII("error3"));
+    JSHandle<EcmaString> key4(factory->NewFromASCII("error4"));
+    JSHandle<EcmaString> key5(factory->NewFromASCII("error5"));
+    JSHandle<EcmaString> key6(factory->NewFromASCII("error6"));
+    JSHandle<EcmaString> key7(factory->NewFromASCII("error7"));
+    JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
+    JSHandle<EcmaString> stack(factory->NewFromASCII("this is error stack"));
+    JSHandle<JSTaggedValue> error1 =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::RANGE_ERROR, msg, stack, StackCheck::NO));
+    JSHandle<JSTaggedValue> error2 =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg,
+                                                          stack, StackCheck::NO));
+    JSHandle<JSTaggedValue> error3 =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, stack, StackCheck::NO));
+    JSHandle<JSTaggedValue> error4 =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::URI_ERROR, msg, stack, StackCheck::NO));
+    JSHandle<JSTaggedValue> error5 =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::SYNTAX_ERROR, msg, stack, StackCheck::NO));
+    JSHandle<JSTaggedValue> error6 =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::OOM_ERROR, msg, stack, StackCheck::NO));
+    JSHandle<JSTaggedValue> error7 =
+        JSHandle<JSTaggedValue>::Cast(factory->NewJSError(base::ErrorType::TERMINATION_ERROR, msg,
+                                                          stack, StackCheck::NO));
+
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key1), error1);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key2), error2);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key3), error3);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key4), error4);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key5), error5);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key6), error6);
+    JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(key7), error7);
+
+    ValueSerializer *serializer = new (std::nothrow) ValueSerializer(thread, false, false, true);
+    if (serializer == nullptr) {
+        return;
+    }
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(obj),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::JSErrorTest3, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+}
+
 HWTEST_F_L0(JSSerializerTest, SerializeBigInt)
 {
     ObjectFactory *factory = ecmaVm->GetFactory();
