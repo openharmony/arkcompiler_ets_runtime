@@ -4464,7 +4464,7 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
     {
         GateRef oldLen = GetArrayLength(receiver);
         Label indexGreaterOrEq(env);
-        BRANCH(Int32GreaterThanOrEqual(index, oldLen), &indexGreaterOrEq, &notArray);
+        BRANCH(Int32UnsignedGreaterThanOrEqual(index, oldLen), &indexGreaterOrEq, &notArray);
         Bind(&indexGreaterOrEq);
         {
             Label isArrLenWritable(env);
@@ -4474,7 +4474,7 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
             {
                 SetArrayLength(glue, receiver, Int32Add(index, Int32(1)));
                 Label indexGreater(env);
-                BRANCH(Int32GreaterThan(index, oldLen), &indexGreater, &notArray);
+                BRANCH(Int32UnsignedGreaterThan(index, oldLen), &indexGreater, &notArray);
                 Bind(&indexGreater);
                 kind = Int32(Elements::ToUint(ElementsKind::HOLE));
                 Jump(&notArray);
@@ -4506,7 +4506,7 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
             GateRef notDefault = BoolNot(IsDefaultAttribute(attr));
             Label indexGreaterLen(env);
             Label notGreaterLen(env);
-            BRANCH(BitOr(notDefault, Int32GreaterThanOrEqual(index, capacity)), &indexGreaterLen, &notGreaterLen);
+            BRANCH(BitOr(notDefault, Int32UnsignedGreaterThanOrEqual(index, capacity)), &indexGreaterLen, &notGreaterLen);
             Bind(&indexGreaterLen);
             {
                 Label isTransToDict(env);
@@ -4577,7 +4577,7 @@ GateRef StubBuilder::ShouldTransToDict(GateRef capacity, GateRef index)
     DEFVARIABLE(result, VariableType::BOOL(), True());
     Label isGreaterThanCapcity(env);
     Label notGreaterThanCapcity(env);
-    BRANCH(Int32GreaterThanOrEqual(index, capacity), &isGreaterThanCapcity, &notGreaterThanCapcity);
+    BRANCH(Int32UnsignedGreaterThanOrEqual(index, capacity), &isGreaterThanCapcity, &notGreaterThanCapcity);
     Bind(&isGreaterThanCapcity);
     {
         Label isLessThanMax(env);
@@ -4588,12 +4588,12 @@ GateRef StubBuilder::ShouldTransToDict(GateRef capacity, GateRef index)
         {
             Label isLessThanInt32Max(env);
             Label notLessThanInt32Max(env);
-            BRANCH(Int32LessThan(index, Int32(INT32_MAX)), &isLessThanInt32Max, &notLessThanInt32Max);
+            BRANCH(Int32UnsignedLessThan(index, Int32(INT32_MAX)), &isLessThanInt32Max, &notLessThanInt32Max);
             Bind(&isLessThanInt32Max);
             {
                 Label isLessThanMin(env);
                 Label notLessThanMin(env);
-                BRANCH(Int32LessThan(capacity, Int32(JSObject::MIN_GAP)), &isLessThanMin, &notLessThanMin);
+                BRANCH(Int32UnsignedLessThan(capacity, Int32(JSObject::MIN_GAP)), &isLessThanMin, &notLessThanMin);
                 Bind(&isLessThanMin);
                 {
                     result = False();
@@ -4601,7 +4601,7 @@ GateRef StubBuilder::ShouldTransToDict(GateRef capacity, GateRef index)
                 }
                 Bind(&notLessThanMin);
                 {
-                    result = Int32GreaterThan(index, Int32Mul(capacity, Int32(JSObject::FAST_ELEMENTS_FACTOR)));
+                    result = Int32UnsignedGreaterThan(index, Int32Mul(capacity, Int32(JSObject::FAST_ELEMENTS_FACTOR)));
                     Jump(&exit);
                 }
             }
@@ -4920,9 +4920,9 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 GateRef length = GetLengthOfTaggedArray(elements);
                 Label inRange(env);
                 if (useOwn) {
-                    BRANCH(Int64LessThan(index, length), &inRange, &ifEnd);
+                    BRANCH(Int32UnsignedLessThan(index, length), &inRange, &ifEnd);
                 } else {
-                    BRANCH(Int64LessThan(index, length), &inRange, &loopExit);
+                    BRANCH(Int32UnsignedLessThan(index, length), &inRange, &loopExit);
                 }
                 Bind(&inRange);
                 {
