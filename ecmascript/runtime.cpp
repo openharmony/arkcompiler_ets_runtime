@@ -277,23 +277,21 @@ void Runtime::RegisterThread(JSThread* newThread)
         LockHolder lock(threadsLock_);
         ASSERT(std::find(threads_.begin(), threads_.end(), newThread) == threads_.end());
         threads_.emplace_back(newThread);
-
-        if (!g_isEnableCMCGC) {
-            // send all current suspended requests to the new thread
-            for (uint32_t i = 0; i < suspendNewCount_; i++) {
-                newThread->SuspendThread(true);
-            }
-            return;
+    }
+    if (g_isEnableCMCGC) {
+        ThreadHolder* threadHolder = newThread->GetThreadHolder();
+        threadHolder->BindMutator();
+        newThread->SetMutator(reinterpret_cast<common::Mutator*>(threadHolder->GetMutator()));
+        newThread->SetAllocBuffer(threadHolder->GetAllocBuffer());
+        newThread->OnHeapCreated(common::Heap::heapStartAddr_);
+        newThread->OnHeapExtended(common::Heap::heapCurrentEnd_);
+        threadHolder->RegisterJSThread(newThread);
+    } else {
+        // send all current suspended requests to the new thread
+        for (uint32_t i = 0; i < suspendNewCount_; i++) {
+            newThread->SuspendThread(true);
         }
     }
-    
-    ThreadHolder* threadHolder = newThread->GetThreadHolder();
-    threadHolder->BindMutator();
-    newThread->SetMutator(reinterpret_cast<common::Mutator*>(threadHolder->GetMutator()));
-    newThread->SetAllocBuffer(threadHolder->GetAllocBuffer());
-    newThread->OnHeapCreated(common::Heap::heapStartAddr_);
-    newThread->OnHeapExtended(common::Heap::heapCurrentEnd_);
-    threadHolder->RegisterJSThread(newThread);
 }
 
 // Note: currently only called when thread is to be destroyed.
