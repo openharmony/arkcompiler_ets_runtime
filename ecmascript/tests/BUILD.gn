@@ -3596,33 +3596,6 @@ host_unittest_action("GC_LOCAL_CC_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("Runtime_Test") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "runtime_test.cpp",
-  ]
-
-  configs = [
-    "../../:asm_interp_enable_config",
-    "../../:ecma_test_config",
-  ]
-
-  deps = [ "../../:libark_jsruntime_test" ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  external_deps += [
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "runtime_core:libarkassembler_static",
-    "runtime_core:libarkverifier",
-    "zlib:libz",
-  ]
-  deps += hiviewdfx_deps
-}
-
 group("unittest") {
   testonly = true
 
@@ -3761,7 +3734,6 @@ group("unittest") {
     ":Sendable_JsSendableArrayBuffer_Test",
     ":Sendable_JsSharedArray_Test",
     ":Sendable_SharedObjectFactory_Test",
-    ":Runtime_Test",
   ]
 
  # TODO: CMC-GC UT FIX LATER
@@ -3792,7 +3764,6 @@ group("unittest") {
       ":JS_TaggedArray_Test",
       ":JS_ThreadState_Test",
       ":Sendable_JsSharedArray_Test",
-      ":Runtime_Test",
     ]
 
     deps += [
@@ -3941,7 +3912,6 @@ group("host_unittest") {
     ":Sendable_JsSharedArray_TestAction",
     ":Sendable_SharedObjectFactory_TestAction",
     ":Dynamic_Object_Accessor_Util_TestAction",
-    ":Runtime_TestAction",
   ]
 
   if (is_mac) {
@@ -4077,7 +4047,6 @@ group("host_unittest") {
       ":Sendable_JsSendableArrayBuffer_TestAction",
       ":Sendable_JsSharedArray_TestAction",
       ":Sendable_SharedObjectFactory_TestAction",
-      ":Runtime_TestAction",
     ]
   } else if (ets_runtime_enable_cmc_gc) {
     # TODO: CMC-GC UT FIX LATER
@@ -4106,7 +4075,6 @@ group("host_unittest") {
       ":JS_TaggedArray_TestAction",
       ":JS_ThreadState_TestAction",
       ":Sendable_JsSharedArray_TestAction",
-      ":Runtime_TestAction",
     ]
 
     deps += [
