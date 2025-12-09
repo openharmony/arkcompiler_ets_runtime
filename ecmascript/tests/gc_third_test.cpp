@@ -39,6 +39,9 @@
 #include "ecmascript/mem/allocation_inspector.h"
 #include "ecmascript/dfx/hprof/heap_sampling.h"
 #include "ecmascript/tests/ecma_test_common.h"
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
 
 using namespace panda;
 
@@ -51,6 +54,13 @@ class GCTest : public BaseTestWithScope<false> {
 public:
     void SetUp() override
     {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+        OHOS::system::SetParameter("persist.ark.sheap.growfactor", "1");
+        OHOS::system::SetParameter("persist.ark.sheap.growstep", "2");
+        OHOS::system::SetParameter("persist.ark.sensitive.threshold", "3");
+        OHOS::system::SetParameter("persist.ark.native.stepsize", "4");
+        OHOS::system::SetParameter("persist.ark.global.alloclimit", "4");
+#endif
         JSRuntimeOptions options;
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";

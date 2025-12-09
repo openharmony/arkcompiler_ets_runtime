@@ -30,6 +30,9 @@
 #include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/mem_controller_utils.h"
 #include "ecmascript/mem/mem_controller.h"
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
 
 using namespace panda;
 
@@ -41,6 +44,13 @@ class GCTest : public BaseTestWithScope<false> {
 public:
     void SetUp() override
     {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+        OHOS::system::SetParameter("persist.ark.sheap.growfactor", "10");
+        OHOS::system::SetParameter("persist.ark.sheap.growstep", "640");
+        OHOS::system::SetParameter("persist.ark.sensitive.threshold", "640");
+        OHOS::system::SetParameter("persist.ark.native.stepsize", "2048");
+        OHOS::system::SetParameter("persist.ark.global.alloclimit", "256");
+#endif
         JSRuntimeOptions options;
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
