@@ -125,6 +125,11 @@ void EcmaVM::InitConfigurableParam(EcmaParamConfiguration& config)
     if (value >= MIN_GLOBAL_ALLOC_LIMIT && value <= MAX_GLOBAL_ALLOC_LIMIT) {
         config.SetDefaultGlobalAllocLimit(value);
     }
+
+    LOG_ECMA(DEBUG) << "InitConfigurableParam: growingFactor: " << config.GetSharedHeapLimitGrowingFactor() <<
+        " growingStep: " << config.GetSharedHeapLimitGrowingStep() << " sensitiveThreshold: " <<
+        config.GetIncObjSizeThresholdInSensitive() << " nativeStep: " << config.GetStepNativeSizeInc() <<
+        " globalAllocLimit: " << config.GetDefaultGlobalAllocLimit();
 #endif
 }
 
