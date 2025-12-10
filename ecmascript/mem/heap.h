@@ -277,6 +277,11 @@ public:
         return inBackground_;
     }
 
+    void SetInBackground(bool inBackground)
+    {
+        inBackground_ = inBackground;
+    }
+
     // ONLY used for heap verification.
     bool IsVerifying() const
     {
