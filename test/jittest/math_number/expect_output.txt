@@ -1,0 +1,145 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testMathFloor: true
+compile testMathCeil: true
+compile testMathRound: true
+compile testMathTrunc: true
+compile testMathAbs: true
+compile testMathSign: true
+compile testMathFloorEdgeCases: true
+compile testMathCeilEdgeCases: true
+compile testMathPow: true
+compile testMathSqrt: true
+compile testMathCbrt: true
+compile testMathExp: true
+compile testMathExpm1: true
+compile testMathLog: true
+compile testMathLog2: true
+compile testMathLog10: true
+compile testMathLog1p: true
+compile testMathHypot: true
+compile testMathHypotMultiple: true
+compile testMathPowEdgeCases: true
+compile testMathSin: true
+compile testMathCos: true
+compile testMathTan: true
+compile testMathAsin: true
+compile testMathAcos: true
+compile testMathAtan: true
+compile testMathAtan2: true
+compile testMathSinh: true
+compile testMathCosh: true
+compile testMathTanh: true
+compile testMathAsinh: true
+compile testMathAcosh: true
+compile testMathAtanh: true
+compile testMathMinMax: true
+compile testMathMinMaxArrays: true
+compile testMathRandom: true
+compile testMathClz32: true
+compile testMathImul: true
+compile testMathFround: true
+compile testMathConstants: true
+compile testMathConstants2: true
+compile testNumberIsNaN: true
+compile testNumberIsFinite: true
+compile testNumberIsInteger: true
+compile testNumberIsSafeInteger: true
+compile testParseInt: true
+compile testParseIntRadix: true
+compile testParseFloat: true
+compile testParseFloatEdgeCases: true
+compile testNumberToFixed: true
+compile testNumberToPrecision: true
+compile testNumberToExponential: true
+compile testNumberToString: true
+compile testNumberConstants: true
+compile testNumberConstants2: true
+compile testNumberValueOf: true
+compile testMathDistanceFormula: true
+compile testMathQuadraticFormula: true
+compile testMathDegreesToRadians: true
+compile testMathRadiansToDegrees: true
+compile testMathClamp: true
+compile testMathLerp: true
+compile testMathFactorial: true
+compile testMathGCD: true
+compile testMathLCM: true
+compile testMathIsPrime: true
+testMathFloor: 4,-5,4,0,-1
+testMathCeil: 5,-4,4,1,0
+testMathRound: 5,4,-4,-5,1
+testMathTrunc: 4,-4,0,0,13
+testMathAbs: 5,5,0,Infinity,3.14
+testMathSign: -1,1,0,-1,1
+testMathFloorEdgeCases: true,0,-1,0
+testMathCeilEdgeCases: 1,0,1,0
+testMathPow: 1024,3,0.5,1,-8
+testMathSqrt: 4,1.4142,0,1,10
+testMathCbrt: 3,-2,1,0,4
+testMathExp: 1,2.7183,0.3679,7.3891
+testMathExpm1: 0,1.7183,-0.6321,0.0000000001
+testMathLog: 0,1.0000,2.3026,4.6052
+testMathLog2: 0,1,3,10,-1
+testMathLog10: 0,1,2,3,-1
+testMathLog1p: 0,0.6931,1.0000,0.0000000001
+testMathHypot: 5,13,1.4142,5,0
+testMathHypotMultiple: 3.7417,2,5,0
+testMathPowEdgeCases: 1,NaN,true,1.4142
+testMathSin: 0,0.5000,0.7071,1.0000,0.0000000000
+testMathCos: 1,0.5000,0.7071,0.0000000000,-1.0000
+testMathTan: 0,1.0000,0.5774,-1.0000
+testMathAsin: 0,1.5708,-1.5708,0.5236
+testMathAcos: 0,1.5708,3.1416,1.0472
+testMathAtan: 0,0.7854,-0.7854,1.5708
+testMathAtan2: 0,0.7854,1.5708,-2.3562,3.1416
+testMathSinh: 0,1.1752,-1.1752,3.6269
+testMathCosh: 1,1.5431,1.5431,3.7622
+testMathTanh: 0,0.7616,-0.7616,1
+testMathAsinh: 0,0.8814,-0.8814,1.4436
+testMathAcosh: 0,1.3170,2.9932,1.0000
+testMathAtanh: 0,0.5493,-0.5493,1.4722
+testMathMinMax: 1,3,Infinity,-Infinity,-3
+testMathMinMaxArrays: 1,9,0,10
+testMathRandom: true
+testMathClz32: 31,30,32,0,0
+testMathImul: 8,-8,-5,-10,9
+testMathFround: 1.5,1.337000,1.5000000027488779e+38,0
+testMathConstants: 3.14159,2.71828,0.69315,2.30259,1.44270
+testMathConstants2: 0.43429,1.41421,0.70711
+testNumberIsNaN: true,false,false,true,true
+testNumberIsFinite: true,false,false,false,false
+testNumberIsInteger: true,true,false,true,true
+testNumberIsSafeInteger: true,false,true,true,false
+testParseInt: 42,42,42,42,true
+testParseIntRadix: 10,255,63,35,10
+testParseFloat: 3.14,3.14,3.14,0.5,-0.5
+testParseFloatEdgeCases: 10000000000,1e-10,Infinity,-Infinity,true
+testNumberToFixed: 3.14,3,3.1416,123.5,0.3
+testNumberToPrecision: 123.5,1.2e+2,123.456,0.00012,1.23e+6
+testNumberToExponential: 1.23e+4,1.23e-4,1.2e+2,1e+0,1.000e+6
+testNumberToString: ff,11111111,377,255,2s
+testNumberConstants: 9007199254740991,-9007199254740991,true,true,true
+testNumberConstants2: true,true,true
+testNumberValueOf: 42,42,42
+testMathDistanceFormula: 5,1.4142,5
+testMathQuadraticFormula: 3,2|-1,-1|2,-2
+testMathDegreesToRadians: 0,1.5708,3.1416,6.2832
+testMathRadiansToDegrees: 0,90.0000,180.0000,360.0000
+testMathClamp: 5,0,10,5
+testMathLerp: 0,10,5,0
+testMathFactorial: 1,1,120,3628800
+testMathGCD: 4,5,1,12
+testMathLCM: 12,15,36,77
+testMathIsPrime: true,true,false,true,false

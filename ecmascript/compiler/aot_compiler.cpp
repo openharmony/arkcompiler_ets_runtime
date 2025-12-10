@@ -92,6 +92,7 @@ int Main(const int argc, const char **argv)
 
         CompilerLog log(cOptions.logOption_);
         log.SetEnableCompilerLogTime(cOptions.compilerLogTime_);
+        log.SetEnableCompilerLogAllMethodsTime(cOptions.enableCompilerLogAllMethodsTime_);
         AotMethodLogList logList(cOptions.logMethodsList_);
         PGOProfilerDecoder profilerDecoder;
 

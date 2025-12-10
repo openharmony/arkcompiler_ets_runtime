@@ -36,6 +36,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     logOption_ = runtimeOptions.GetCompilerLogOption();
     logMethodsList_ = runtimeOptions.GetMethodsListForLog();
     compilerLogTime_ = runtimeOptions.IsEnableCompilerLogTime();
+    enableCompilerLogAllMethodsTime_ = runtimeOptions.IsEnableCompilerLogAllMethodsTime();
     deviceIsScreenOff_ = runtimeOptions.GetDeviceState();
     deviceThermalLevel_ = runtimeOptions.GetThermalLevel();
     maxAotMethodSize_ = runtimeOptions.GetMaxAotMethodSize();

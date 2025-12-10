@@ -1,0 +1,121 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile destructArrayBasic: true
+compile destructArrayNested: true
+compile destructArrayRest: true
+compile destructArrayDefault: true
+compile destructArraySkip: true
+compile destructArrayExpr: true
+compile destructArraySwap: true
+compile destructArrayString: true
+compile destructArrayUndefined: true
+compile destructArrayDeepNested: true
+compile destructArrayFuncCall: true
+compile destructArrayIterator: true
+compile destructArrayEmptyDefaults: true
+compile destructArrayRestEmpty: true
+compile destructArrayMultiRest: true
+compile destructObjectBasic: true
+compile destructObjectNested: true
+compile destructObjectRename: true
+compile destructObjectDefault: true
+compile destructObjectRest: true
+compile destructObjectComputed: true
+compile destructObjectExisting: true
+compile destructObjectDeepDefault: true
+compile destructObjectRenameDefault: true
+compile destructObjectPrototype: true
+compile destructObjectMultiComputed: true
+compile destructObjectNumericKeys: true
+compile destructObjectSymbolKey: true
+compile destructObjectWithArray: true
+compile destructObjectFromFunc: true
+compile destructParamArray: true
+compile destructParamObject: true
+compile destructParamDefault: true
+compile destructMixed: true
+compile destructForOf: true
+compile destructMapEntries: true
+compile destructArrayMethods: true
+compile destructCoercion: true
+compile destructMultiLevel: true
+compile destructOptionalFallback: true
+compile destructNestedParam: true
+compile destructInReduce: true
+compile destructInFilter: true
+compile destructInFind: true
+compile destructComplexNested: true
+compile destructSpreadRest: true
+compile destructObjectArraySpread: true
+compile destructConditional: true
+compile destructInClass: true
+compile destructAsyncResult: true
+compile destructWithGetter: true
+compile destructJSONLike: true
+compile destructObjectEntries: true
+compile destructArrayFrom: true
+destructArrayBasic: 1,2,3
+destructArrayNested: 1,2,3,4
+destructArrayRest: 1,2,3-4-5
+destructArrayDefault: 1,2,10,20
+destructArraySkip: 2,4
+destructArrayExpr: 10,20,30
+destructArraySwap: 2,1
+destructArrayString: h,e,3
+destructArrayUndefined: 1,99,3
+destructArrayDeepNested: 1,2,3,4,5
+destructArrayFuncCall: 42,hello,true
+destructArrayIterator: 1,2,3
+destructArrayEmptyDefaults: 1,2,3
+destructArrayRestEmpty: 1,0
+destructArrayMultiRest: 1,2,3,4,5
+destructObjectBasic: 10,20
+destructObjectNested: 42
+destructObjectRename: Alice,30
+destructObjectDefault: 1,100,200
+destructObjectRest: 1,2,2
+destructObjectComputed: dynamicValue
+destructObjectExisting: 100,200
+destructObjectDeepDefault: default
+destructObjectRenameDefault: Bob,25
+destructObjectPrototype: child,parent
+destructObjectMultiComputed: 1,2
+destructObjectNumericKeys: zero,one
+destructObjectSymbolKey: symbol value,normal value
+destructObjectWithArray: 1,2,3
+destructObjectFromFunc: Test,100
+testDestructParamArray: 60
+testDestructParamObject: Test:25
+testDestructParamDefault: 5,0|0,0
+destructMixed: 1,2,3
+destructForOf: 1a,2b,3c
+destructMapEntries: a=1,b=2,c=3
+destructArrayMethods: 3,7,11
+destructCoercion: number,string,boolean
+destructMultiLevel: Alice:90
+destructOptionalFallback: initial
+testDestructNestedParam: Alice:30
+destructInReduce: 1,2,3
+destructInFilter: a,c
+destructInFind: Bob
+destructComplexNested: Test,dark
+destructSpreadRest: 1,2,3,4,5
+destructObjectArraySpread: 1,2,3
+destructConditional: 42
+destructInClass: 30,12
+destructAsyncResult: success,1
+destructWithGetter: 42,value
+destructJSONLike: Test,100
+destructObjectEntries: a:1,b:2,c:3
+destructArrayFrom: a,b,c

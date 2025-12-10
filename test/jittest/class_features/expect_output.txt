@@ -1,0 +1,43 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testStaticProp: true
+compile testStaticMethod: true
+compile testStaticInherit: true
+compile testPrivateFields: true
+compile testPrivateMethods: true
+compile testPrivateStatic: true
+compile testBasicInherit: true
+compile testMultiLevelInherit: true
+compile testSuperCalls: true
+compile testAccessors: true
+compile testComputedAccessor: true
+compile testMixin: true
+compile testAbstractPattern: true
+compile testInstanceOf: true
+compile testMethodChaining: true
+testStaticProp: 3,StaticProp
+testStaticMethod: 7,12
+testStaticInherit: 100,100,200
+testPrivateFields: 10,20,secret,20
+testPrivateMethods: 10,15
+testPrivateStatic: hidden:1,hidden:2
+testBasicInherit: Rex barks,Rex is a German Shepherd
+testMultiLevelInherit: 100,4,Beep!,Turbo ON
+testSuperCalls: 15,Parent:10,Child:5
+testAccessors: 50,100,50
+testComputedAccessor: 42
+testMixin: 123,TestMixin,true
+testAbstractPattern: 78.54,16
+testInstanceOf: true,true,true,true
+testMethodChaining: >>> Hello World

@@ -1,0 +1,67 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile optionalChainBasic: true
+compile optionalChainNull: true
+compile optionalChainMethod: true
+compile optionalChainArray: true
+compile optionalChainAssign: true
+compile nullishBasic: true
+compile nullishWithOptional: true
+compile nullishAssignment: true
+compile nullishVsOr: true
+compile templateBasic: true
+compile templateMultiLine: true
+compile templateExpression: true
+compile templateNested: true
+compile templateTagged: true
+compile templateWithCall: true
+compile computedBasic: true
+compile computedExpression: true
+compile computedMethods: true
+compile computedSymbol: true
+compile symbolCreation: true
+compile symbolProperty: true
+compile symbolWellKnown: true
+compile symbolIterator: true
+compile symbolDescription: true
+compile logicalAndAssign: true
+compile logicalOrAssign: true
+compile combinedPatterns: true
+optionalChainBasic: 42,undefined
+optionalChainNull: undefined
+optionalChainMethod: Hello,undefined,10
+optionalChainArray: 2,undefined,undefined
+optionalChainAssign: 10,100
+nullishBasic: default,default,0,,false
+nullishWithOptional: fallback,fallback
+nullishAssignment: assigned,assigned,0
+nullishVsOr: or-default,0,or-default,
+templateBasic: Hello, World!
+templateMultiLine: 3
+templateExpression: Sum: 30, Product: 200
+templateNested: Items: [1], [2], [3]
+templateTagged: Value a is <1> and b is <2>
+templateWithCall: Result: TEST
+computedBasic: value,value2
+computedExpression: 1,2,3
+computedMethods: 3,42
+computedSymbol: symbolValue,normalValue
+symbolCreation: true,true,shared
+symbolProperty: hidden,1
+symbolWellKnown: [object CustomObject]
+symbolIterator: 1,2,3,4,5
+symbolDescription: test,undefined
+logicalAndAssign: 10,0
+logicalOrAssign: 10,1
+combinedPatterns: default

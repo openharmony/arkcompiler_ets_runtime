@@ -1,0 +1,81 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testErrorBasic: true
+compile testErrorWithCause: true
+compile testErrorStack: true
+compile testErrorToString: true
+compile testTypeError: true
+compile testRangeError: true
+compile testReferenceError: true
+compile testSyntaxError: true
+compile testURIError: true
+compile testEvalError: true
+compile testTryCatch: true
+compile testTryCatchFinally: true
+compile testTryFinallyNoError: true
+compile testNestedTryCatch: true
+compile testCatchErrorType: true
+compile testCatchNonError: true
+compile testCatchPrimitive: true
+compile testRethrow: true
+compile testConditionalRethrow: true
+compile testErrorInNestedFunction: true
+compile testErrorInCallback: true
+compile testErrorInMapCallback: true
+compile testCustomError: true
+compile testCustomErrorInstanceof: true
+compile testValidationError: true
+compile testErrorWithDefault: true
+compile testErrorChain: true
+compile testMultipleErrorTypes: true
+compile testFinallyReturn: true
+compile testFinallyWithThrow: true
+compile testFinallyOverridesReturn: true
+compile testErrorName: true
+compile testErrorMessage: true
+compile testErrorInheritance: true
+testErrorBasic: Error,test message
+testErrorWithCause: wrapper error,original error
+testErrorStack: true,true
+testErrorToString: Error: my message
+testTypeError: TypeError,type error message
+testRangeError: RangeError,range error message
+testReferenceError: ReferenceError,reference error message
+testSyntaxError: SyntaxError,syntax error message
+testURIError: URIError,uri error message
+testEvalError: EvalError,eval error message
+testTryCatch: true
+testTryCatchFinally: try,catch,finally
+testTryFinallyNoError: try,finally
+testNestedTryCatch: inner-catch,outer-catch
+testCatchErrorType: TypeError
+testCatchNonError: string
+testCatchPrimitive: 42,true,null
+testRethrow: 2
+testConditionalRethrow: caught,caught,rethrown
+testErrorInNestedFunction: true
+testErrorInCallback: true
+testErrorInMapCallback: true
+testCustomError: CustomError,custom message,500
+testCustomErrorInstanceof: true,true
+testValidationError: ValidationError,email,invalid email format
+testErrorWithDefault: 1,null
+testErrorChain: level2 error,level3 error
+testMultipleErrorTypes: type,range,error
+testFinallyReturn: finally
+testFinallyWithThrow: finally,caught
+testFinallyOverridesReturn: 2
+testErrorName: CustomName,CustomName: test
+testErrorMessage: true,Error
+testErrorInheritance: true,true

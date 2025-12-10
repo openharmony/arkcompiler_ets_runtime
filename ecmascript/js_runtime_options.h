@@ -122,7 +122,7 @@ enum CommandValues {
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_COMPILER_LOG_SNAPSHOT,
     OPTION_COMPILER_LOG_TIME,
-    OPTION_COMPILER_LOG_TIME_METHODS,
+    OPTION_COMPILER_LOG_ALL_METHODS_TIME,
     OPTION_ENABLE_WORKER,
     OPTION_COMPILER_TRACE_BC,
     OPTION_COMPILER_TRACE_DEOPT,
@@ -2099,14 +2099,14 @@ public:
         return enableJitLiteCompile_;
     }
 
-    bool IsEnableCompilerLogTimeMethods() const
+    bool IsEnableCompilerLogAllMethodsTime() const
     {
-        return enableCompilerLogTimeMethods_;
+        return enableCompilerLogAllMethodsTime_;
     }
 
-    void SetEnableCompilerLogTimeMethods(bool value)
+    void SetEnableCompilerLogAllMethodsTime(bool value)
     {
-        enableCompilerLogTimeMethods_ = value;
+        enableCompilerLogAllMethodsTime_ = value;
     }
 
     void SetEnableMegaIC(bool value)
@@ -2531,7 +2531,7 @@ private:
     std::string compilerLogMethods_ {"none"};
     bool compilerLogSnapshot_ {false};
     bool compilerLogTime_ {false};
-    bool enableCompilerLogTimeMethods_ {false};
+    bool enableCompilerLogAllMethodsTime_ {false};
     bool enableRuntimeStat_ {false};
     bool isWorker_ {false};
     bool isRestrictedWorker_ {false};

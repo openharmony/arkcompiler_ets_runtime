@@ -1,0 +1,95 @@
+# Copyright (c) 2025 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+compile testBigIntLiteral: true
+compile testBigIntConstructor: true
+compile testBigIntFromHex: true
+compile testBigIntFromBinary: true
+compile testBigIntFromOctal: true
+compile testBigIntAddition: true
+compile testBigIntSubtraction: true
+compile testBigIntMultiplication: true
+compile testBigIntDivision: true
+compile testBigIntRemainder: true
+compile testBigIntExponentiation: true
+compile testBigIntNegation: true
+compile testBigIntComparison: true
+compile testBigIntMixedComparison: true
+compile testBigIntSort: true
+compile testBigIntBitwiseAnd: true
+compile testBigIntBitwiseOr: true
+compile testBigIntBitwiseXor: true
+compile testBigIntBitwiseNot: true
+compile testBigIntLeftShift: true
+compile testBigIntRightShift: true
+compile testBigIntToString: true
+compile testBigIntToLocaleString: true
+compile testBigIntValueOf: true
+compile testBigIntAsIntN: true
+compile testBigIntAsUintN: true
+compile testBigIntTypeof: true
+compile testBigIntInstanceCheck: true
+compile testBigIntZero: true
+compile testBigIntLargeNumbers: true
+compile testBigIntNegative: true
+compile testBigIntFactorial: true
+compile testBigIntFibonacci: true
+compile testBigIntGCD: true
+compile testBigIntPower: true
+compile testBigIntIsPrime: true
+compile testBigIntInArray: true
+compile testBigIntArrayMap: true
+compile testBigIntArrayFilter: true
+compile testBigIntJSON: true
+compile testBigIntJSONWorkaround: true
+testBigIntLiteral: 123,9007199254740993
+testBigIntConstructor: 123,9007199254740993,255
+testBigIntFromHex: 26,255,256
+testBigIntFromBinary: 10,255
+testBigIntFromOctal: 10,255
+testBigIntAddition: 30,9007199254740993
+testBigIntSubtraction: 70,9007199254740992
+testBigIntMultiplication: 20000,18014398509481982
+testBigIntDivision: 33,4503599627370496
+testBigIntRemainder: 2,3
+testBigIntExponentiation: 1024,100000000000000000000
+testBigIntNegation: -100,50
+testBigIntComparison: true,false,true,true
+testBigIntMixedComparison: true,false,true,true
+testBigIntSort: 1,1,2,3,4
+testBigIntBitwiseAnd: 8,15
+testBigIntBitwiseOr: 14,255
+testBigIntBitwiseXor: 6,240
+testBigIntBitwiseNot: -1,-2,0
+testBigIntLeftShift: 1024,65280
+testBigIntRightShift: 128,255
+testBigIntToString: 255,11111111,ff
+testBigIntToLocaleString: true
+testBigIntValueOf: true
+testBigIntAsIntN: -1,0,-1
+testBigIntAsUintN: 255,0,255
+testBigIntTypeof: bigint
+testBigIntInstanceCheck: true,true
+testBigIntZero: true,true
+testBigIntLargeNumbers: true,true
+testBigIntNegative: -123,-9007199254740993
+testBigIntFactorial: 2432902008176640000
+testBigIntFibonacci: 12586269025
+testBigIntGCD: 6,5
+testBigIntPower: 1048576
+testBigIntIsPrime: true,true,false,true
+testBigIntInArray: 15,120
+testBigIntArrayMap: 2,4,6,8,10
+testBigIntArrayFilter: 2,4,6,8,10
+testBigIntJSON: error
+testBigIntJSONWorkaround: true

@@ -44,7 +44,7 @@ struct JitCompilationOptions {
     std::string logOption_;
     std::string logMethodsList_;
     bool compilerLogTime_;
-    bool enableCompilerLogTimeMethods_;
+    bool enableCompilerLogAllMethodsTime_;
     bool deviceIsScreenOff_;
     uint32_t hotnessThreshold_;
     int32_t deviceThermalLevel_;
