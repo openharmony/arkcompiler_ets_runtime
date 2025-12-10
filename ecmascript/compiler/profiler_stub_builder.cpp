@@ -266,8 +266,18 @@ void ProfilerStubBuilder::ProfileCall(
             {
                 Label change(env);
                 Label resetSlot(env);
-                GateRef slotFunc = GetValueFromTaggedArray(glue, slotValue, Int32(0));
+                GateRef slotFunc = GetValueFromTaggedArray(glue, slotValue, Int32(FuncSlot::FUNCTION_INDEX));
                 BRANCH(Int64Equal(slotFunc, target), &incrementCallCnt, &change);
+                Bind(&incrementCallCnt);
+                {
+                    GateRef callCnt = TaggedGetInt(GetValueFromTaggedArray(glue, slotValue,
+                                                                           Int32(FuncSlot::CALL_CNT_INDEX)));
+                    GateRef newCallCnt = Int32Add(callCnt, Int32(1));
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(FuncSlot::CALL_CNT_INDEX),
+                                          IntToTaggedInt(newCallCnt));
+                    TryPreDumpInner(glue, func, profileTypeInfo);
+                    Jump(&exit);
+                }
                 Bind(&change);
                 {
                     BRANCH(Int64Equal(ChangeTaggedPointerToInt64(slotFunc), Int64(0)), &exit, &resetSlot);
@@ -296,14 +306,6 @@ void ProfilerStubBuilder::ProfileCall(
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, targetSlot, Int32(FuncSlot::CALL_CNT_INDEX),
                                       TaggedInt(1));
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, targetSlot);
-                TryPreDumpInner(glue, func, profileTypeInfo);
-                Jump(&exit);
-            }
-            Bind(&incrementCallCnt);
-            {
-                GateRef callCnt = TaggedGetInt(GetValueFromTaggedArray(glue, slotValue, Int32(1)));
-                GateRef newCallCnt = Int32Add(callCnt, Int32(1));
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(1), IntToTaggedInt(newCallCnt));
                 TryPreDumpInner(glue, func, profileTypeInfo);
                 Jump(&exit);
             }
@@ -381,7 +383,6 @@ void ProfilerStubBuilder::ProfileNativeCall(
         Label sameValueCheck(env);
         Label invalidate(env);
         Label notOverflow(env);
-        Label incrementCallCnt(env);
 
         GateRef slotId = GetSlotID(slotInfo);
         GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
@@ -390,40 +391,26 @@ void ProfilerStubBuilder::ProfileNativeCall(
         GateRef slotValue = GetValueFromTaggedArray(glue, profileTypeInfo, slotId);
         BRANCH(TaggedIsHole(slotValue), &exit, &notOverflow); // hole -- slot is overflow
         Bind(&notOverflow);
-        BRANCH(TaggedIsHeapObject(slotValue), &updateSlot, &initSlot);
+        BRANCH(TaggedIsInt(slotValue), &updateSlot, &initSlot);
         Bind(&updateSlot);
-        GateRef oldId = TaggedGetInt(GetValueFromTaggedArray(glue, slotValue, Int32(0)));
+        GateRef oldId = TaggedGetInt(slotValue);
         BRANCH(Int32Equal(oldId, Int32(PGO_BUILTINS_STUB_ID(NONE))), &exit, &sameValueCheck);
         Bind(&sameValueCheck);
         {
             GateRef newId = TryGetBuiltinFunctionId(glue, target);
-            BRANCH(Int32Equal(oldId, newId), &incrementCallCnt, &invalidate);
-        }
-        Bind(&incrementCallCnt);
-        {
-            GateRef callCnt = TaggedGetInt(GetValueFromTaggedArray(glue, slotValue, Int32(1)));
-            GateRef newCallCnt = Int32Add(callCnt, Int32(1));
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(1), IntToTaggedInt(newCallCnt));
-            TryPreDumpInner(glue, func, profileTypeInfo);
-            Jump(&exit);
+            BRANCH(Int32Equal(oldId, newId), &exit, &invalidate);
         }
         Bind(&invalidate);
         {
             GateRef invalidId = Int32(PGO_BUILTINS_STUB_ID(NONE));
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(0), IntToTaggedInt(invalidId));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(invalidId));
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);
         }
         Bind(&initSlot);
         {
             GateRef newId = TryGetBuiltinFunctionId(glue, target);
-            NewObjectStubBuilder newBuilder(env);
-            GateRef newSlot = newBuilder.NewFuncSlot(glue);
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, newSlot, Int32(FuncSlot::FUNCTION_INDEX),
-                                  IntToTaggedInt(newId));
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, newSlot, Int32(FuncSlot::CALL_CNT_INDEX),
-                                  TaggedInt(1));
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newSlot);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newId));
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);
         }
