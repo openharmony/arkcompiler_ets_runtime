@@ -364,7 +364,6 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
         switch (type) {
             case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
-                prevReturnAddrAddress = it.GetReturnAddrAddress();
                 auto frame = it.GetFrame<OptimizedJSFunctionFrame>();
                 frame->GetDeoptBundleInfo(it, deoptBundle);
                 AssistCollectDeoptBundleVec(it, frame);
@@ -373,7 +372,6 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
             }
             case FrameType::FASTJIT_FUNCTION_FRAME:
             case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
-                prevReturnAddrAddress = it.GetReturnAddrAddress();
                 auto frame = it.GetFrame<FASTJITFunctionFrame>();
                 frame->GetDeoptBundleInfo(it, deoptBundle);
                 AssistCollectDeoptBundleVec(it, frame);
@@ -398,6 +396,7 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
                 UNREACHABLE();
             }
         }
+        prevReturnAddrAddress = it.GetReturnAddrAddress();
     }
     ASSERT(!it.Done());
     isRecursiveCall_ = IsRecursiveCall(it, jsFunction);
@@ -826,8 +825,13 @@ bool Deoptimizier::IsNeedLazyDeopt(const FrameIterator &it)
     return function.CheckIsJSFunctionBase() && !JSFunction::Cast(function)->IsCompiledCode();
 }
 
-void RecordLazyDeopt(const FrameIterator& it, JSThread* thread, FrameType frameType, uintptr_t returnAddr)
+void RecordLazyDeopt(const FrameIterator &it, JSThread *thread, FrameType *frameTypeAddr, uintptr_t *returnAddrAddr)
 {
+    if (frameTypeAddr == nullptr || returnAddrAddr == nullptr) {
+        LOG_FULL(FATAL) << "RecordLazyDeopt error, frameTypeAddr or returnAddrAddr is nullptr";
+    }
+    FrameType frameType = *frameTypeAddr;
+    uintptr_t returnAddr = *returnAddrAddr;
     if (it.IsOptimizedJSFunctionFrame()) {
         JSTaggedValue jsFunction = it.GetFunction();
         if (!jsFunction.IsJSFunction()) {
@@ -881,7 +885,7 @@ void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
     uintptr_t prevFrameCallSiteSp = 0;
     for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
         if (IsNeedLazyDeopt(it)) {
-            RecordLazyDeopt(it, thread, *prevFrameTypeAddress, *prevReturnAddrAddress);
+            RecordLazyDeopt(it, thread, prevFrameTypeAddress, prevReturnAddrAddress);
             ReplaceReturnAddrWithLazyDeoptTrampline(
                 thread, prevReturnAddrAddress, prevFrameTypeAddress, prevFrameCallSiteSp);
         }

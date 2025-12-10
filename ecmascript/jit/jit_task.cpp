@@ -391,8 +391,11 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
-        LOG_JIT(DEBUG) <<"Install fast jit machine code:" << GetMethodName() << ", code range:" <<
-            reinterpret_cast<void*>(codeAddr) <<"--" << reinterpret_cast<void*>(codeAddrEnd);
+        LOG_JIT(INFO) << "Install fast jit machine code, method name: " << GetMethodName()
+		      << ", function addr: " << std::hex << jsFunction_.GetTaggedType()
+                      << ", machine code addr: " << machineCodeObj.GetTaggedType()
+                      << ", code range: " << reinterpret_cast<void*>(codeAddr)
+                      << "--" << reinterpret_cast<void*>(codeAddrEnd);
 #if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
         auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
         if (profMap.find(GetMethodName()) != profMap.end()) {

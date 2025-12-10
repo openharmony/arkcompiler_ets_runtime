@@ -147,8 +147,9 @@ void JitFort::MarkJitFortMemAlive(MachineCode *obj)
     uint32_t regionIdx = AddrToFortRegionIdx(addr);
     regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr));
     regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(endAddr));
-    LOG_JIT(DEBUG) << "MarkFortMemAlive: addr " << (void *)addr << " size " << size
-        << " regionIdx " << regionIdx << " instructionsSize " << obj->GetInstructionsSize();
+    LOG_JIT(INFO) << "MarkFortMemAlive: addr " << (void *)addr << " size " << std::hex << size
+                  << " regionIdx " << regionIdx << " instructionsSize " << obj->GetInstructionsSize()
+                  << " mahine code addr: " << obj;
 }
 
 // Called by Jit Compile thread during JitFort Allocate to mark Fort buf
@@ -161,7 +162,7 @@ void JitFort::MarkJitFortMemAwaitInstall(uintptr_t addr, size_t size)
     regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr));
     regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr + sizeof(uint64_t))); // mark next bit
     regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(endAddr));
-    LOG_JIT(DEBUG) << "MarkFortMemAwaitInstall: addr " << (void *)addr << " size " << size
+    LOG_JIT(INFO) << "MarkFortMemAwaitInstall: addr " << (void *)addr << " size " << std::hex << size
         << " regionIdx " << regionIdx;
 }
 
@@ -173,8 +174,9 @@ void JitFort::MarkJitFortMemInstalled(MachineCode *obj)
     uintptr_t addr = obj->GetText();
     uint32_t regionIdx = AddrToFortRegionIdx(addr);
     regions_[regionIdx]->GetGCBitset()->ClearMark(addr + sizeof(uint64_t)); // clear next bit
-    LOG_JIT(DEBUG) << "MarkFortMemInstalled: addr " << (void *)addr << " size " << size
-        << " regionIdx " << regionIdx << " instructionsSize " << obj->GetInstructionsSize();
+    LOG_JIT(INFO) << "MarkFortMemInstalled: addr " << (void *)addr << " size " << std::hex << size
+                  << " regionIdx " << regionIdx << " instructionsSize " << obj->GetInstructionsSize()
+                  << " mahine code addr: " << obj;
 }
 
 uint32_t JitFort::AddrToFortRegionIdx(uint64_t addr)
@@ -238,12 +240,16 @@ void JitFort::FreeRegion(JitFortRegion *region)
             (void) region;
             uintptr_t freeEnd = ToUintPtr(mem);
             if (freeStart != freeEnd) {
+                LOG_JIT(INFO) << "JitFort::FreeRegion, freeStart: " << reinterpret_cast<void*>(freeStart)
+                              << ", size: " << std::hex << freeEnd - freeStart;
                 allocator_->Free(freeStart, freeEnd - freeStart, true);
             }
             freeStart = freeEnd + size;
         });
     uintptr_t freeEnd = region->GetEnd();
     if (freeStart != freeEnd) {
+        LOG_JIT(INFO) << "JitFort::FreeRegion, freeStart: " << reinterpret_cast<void*>(freeStart)
+                      << ", size: " << std::hex << freeEnd - freeStart;
         allocator_->Free(freeStart, freeEnd - freeStart, true);
     }
 }

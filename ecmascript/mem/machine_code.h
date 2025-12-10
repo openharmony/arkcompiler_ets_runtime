@@ -275,6 +275,9 @@ public:
                     start,
                     end,
                     VisitObjectArea::NORMAL);
+            LOG_JIT(INFO) << "MachineCode VisitRangeSlot, machine code addr: " << this
+                          << ", text begin: " << std::hex << GetText() << ", text size: " << GetTextSize()
+                          << ", visitor addr: " << reinterpret_cast<void *>(&visitor);
             this->ProcessMarkObject();
         }
     }
