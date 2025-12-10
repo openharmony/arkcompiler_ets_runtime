@@ -23,6 +23,9 @@
 #include "ecmascript/serializer/serialize_chunk.h"
 #include "ecmascript/tests/ecma_test_common.h"
 #include "ecmascript/string/external_string.h"
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
 
 using namespace panda;
 
@@ -43,6 +46,13 @@ public:
 
     void SetUp() override
     {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+        OHOS::system::SetParameter("persist.ark.sheap.growfactor", "1");
+        OHOS::system::SetParameter("persist.ark.sheap.growstep", "2");
+        OHOS::system::SetParameter("persist.ark.sensitive.threshold", "3");
+        OHOS::system::SetParameter("persist.ark.native.stepsize", "4");
+        OHOS::system::SetParameter("persist.ark.global.alloclimit", "4");
+#endif
         JSRuntimeOptions options;
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";

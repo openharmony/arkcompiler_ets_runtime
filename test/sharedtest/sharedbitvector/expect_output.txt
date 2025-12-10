@@ -13,3 +13,164 @@
 
 Start Test newsharedclassfrom
 bitvector pass
+TestBitVector  0
+TestBitVector  1
+TestBitVector  2
+TestBitVector  3
+TestBitVector  4
+TestBitVector  5
+TestBitVector  6
+TestBitVector  7
+TestBitVector  8
+TestBitVector  9
+TestBitVector  10
+TestBitVector  -1
+TestBitVector  -10
+TestBitVector  1
+TestBitVector  -10
+TestBitVectorPop pop  1
+TestBitVectorPop length  11
+TestBitVectorHas has  true
+TestBitVectorHas has  false
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorPop has  false
+TestBitVectorPop has  false
+TestBitVectorSetBitsByRange  0
+TestBitVectorSetBitsByRange  0
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  0
+TestBitVectorSetBitsByRange  0
+TestBitVectorSetBitsByRange  1
+setBitsByRange failed. code: 10200001
+setBitsByRange failed. code: 10200001
+setBitsByRange failed. code: 10200001
+setBitsByRange failed. code: 10200001
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetAllBits  0
+TestBitVectorSetAllBits  0
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  0
+TestBitVectorSetAllBits  0
+TestBitVectorSetAllBits  0
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorGetBitsByRange  0
+TestBitVectorGetBitsByRange  0
+TestBitVectorGetBitsByRange  0
+TestBitVectorGetBitsByRange  0
+TestBitVectorGetBitsByRange  0
+TestBitVectorGetBitsByRange  0
+TestBitVectorGetBitsByRange  0
+TestBitVectorGetBitsByRange length  6
+TestBitVectorGetBitsByRange length  20
+TestBitVectorGetBitsByRange failed. code: 10200001
+TestBitVectorGetBitsByRange failed. code: 10200001
+TestBitVectorGetBitsByRange failed. code: 10200001
+TestBitVectorGetBitsByRange failed. code: 10200001
+TestBitVectorResize length  20
+TestBitVectorResize length  5
+TestBitVectorResize failed. code: 10200001
+TestBitVectorResize length  0
+TestBitVectorGetBitCountByRange has  0
+TestBitVectorGetBitCountByRange has  0
+TestBitVectorGetBitCountByRange count  0
+getBitCountByRange failed. code: 10200001
+TestBitVectorGetBitCountByRange count  0
+TestBitVectorGetBitCountByRange count  10
+getBitCountByRange failed. code: 10200001
+getBitCountByRange failed. code: 10200001
+getBitCountByRange failed. code: 10200001
+TestBitVectorGetBitCountByRange count  0
+TestBitVectorGetBitCountByRange count  0
+TestBitVectorGetIndexOf has  0
+TestBitVectorGetIndexOf has  0
+TestBitVectorGetIndexOf count  -1
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf count  -1
+TestBitVectorGetIndexOf count  -1
+TestBitVectorGetLastIndexOf has  0
+TestBitVectorGetLastIndexOf has  0
+TestBitVectorGetLastIndexOf count  -1
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorGetIndexOf failed. code: 10200001
+TestBitVectorFlipBitByIndex  0
+TestBitVectorFlipBitByIndex  0
+TestBitVectorFlipBitByIndex  1
+TestBitVectorFlipBitByIndex  1
+TestBitVectorFlipBitByIndex failed. code: 10200001
+TestBitVectorFlipBitByIndex failed. code: 10200001
+TestBitVectorFlipBitByIndex failed. code: 10200001
+TestBitVectorFlipBitByIndex failed. code: 401
+TestBitVectorFlipBitByIndex failed. code: 401
+TestBitVectorFlipBitByRange  0
+TestBitVectorFlipBitByRange  0
+TestBitVectorFlipBitByRange  1
+TestBitVectorFlipBitByRange  1
+TestBitVectorFlipBitByRange  1
+TestBitVectorFlipBitByRange  0
+TestBitVectorFlipBitByRange  0
+TestBitVectorFlipBitByRange  1
+TestBitVectorFlipBitByRange failed. code: 10200001
+TestBitVectorFlipBitByRange failed. code: 10200001
+TestBitVectorFlipBitByRange failed. code: 10200001
+TestBitVectorFlipBitByRange failed. code: 10200001
+TestBitVectorFlipBitByRange failed. code: 10200001
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 1
+TestBitVectorValues 0
+TestBitVectorValues 1
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 0
+TestBitVectorValues 1
+TestBitVectorValues 1
+TestBitVectorValues 1

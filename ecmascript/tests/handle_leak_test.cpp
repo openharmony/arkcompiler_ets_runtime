@@ -27,6 +27,9 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tests/test_helper.h"
 #include "gtest/gtest.h"
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
 
 using namespace panda;
 
@@ -37,6 +40,13 @@ class HandleLeakTest : public BaseTestWithScope<false> {
 public:
     void SetUp() override
     {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+        OHOS::system::SetParameter("persist.ark.sheap.growfactor", "10");
+        OHOS::system::SetParameter("persist.ark.sheap.growstep", "640");
+        OHOS::system::SetParameter("persist.ark.sensitive.threshold", "640");
+        OHOS::system::SetParameter("persist.ark.native.stepsize", "2048");
+        OHOS::system::SetParameter("persist.ark.global.alloclimit", "256");
+#endif
         JSRuntimeOptions options;
         options.SetEnableForceGC(false);
         options.SetLogLevel("info");

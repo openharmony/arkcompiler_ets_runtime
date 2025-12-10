@@ -21,6 +21,9 @@
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/full_gc.h"
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#include "parameters.h"
+#endif
 
 using namespace panda;
 
@@ -33,6 +36,13 @@ class GCTest : public BaseTestWithScope<false> {
 public:
     void SetUp() override
     {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+        OHOS::system::SetParameter("persist.ark.sheap.growfactor", "10");
+        OHOS::system::SetParameter("persist.ark.sheap.growstep", "640");
+        OHOS::system::SetParameter("persist.ark.sensitive.threshold", "640");
+        OHOS::system::SetParameter("persist.ark.native.stepsize", "2048");
+        OHOS::system::SetParameter("persist.ark.global.alloclimit", "256");
+#endif
         JSRuntimeOptions options;
         options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
         instance = JSNApi::CreateEcmaVM(options);
