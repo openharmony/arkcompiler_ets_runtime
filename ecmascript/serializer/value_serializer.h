@@ -22,8 +22,10 @@ namespace panda::ecmascript {
 
 class ValueSerializer : public BaseSerializer {
 public:
-    explicit ValueSerializer(JSThread *thread, bool defaultTransfer = false, bool defaultCloneShared = false)
-        : BaseSerializer(thread), defaultTransfer_(defaultTransfer), defaultCloneShared_(defaultCloneShared) {}
+    explicit ValueSerializer(JSThread *thread, bool defaultTransfer = false, bool defaultCloneShared = false,
+                             bool needSerializeStack = false)
+        : BaseSerializer(thread), defaultTransfer_(defaultTransfer), defaultCloneShared_(defaultCloneShared),
+          needSerializeStack_(needSerializeStack) {}
     ~ValueSerializer() override
     {
         // clear transfer obj set after serialization
@@ -79,6 +81,7 @@ private:
     bool defaultTransfer_ {false};
     bool defaultCloneShared_ {false};
     bool supportJSNativePointer_ {false};
+    bool needSerializeStack_ {false};
     std::vector<std::pair<ssize_t, panda::JSNApi::NativeBindingInfo *>> detachCallbackInfo_;
     CUnorderedSet<uintptr_t> transferDataSet_;
     CUnorderedSet<uintptr_t> cloneArrayBufferSet_;

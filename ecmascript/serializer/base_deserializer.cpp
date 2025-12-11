@@ -151,8 +151,15 @@ void BaseDeserializer::DeserializeJSError(JSErrorInfo *info)
     uint8_t type = info->errorType_;
     base::ErrorType errorType = base::ErrorType(type - static_cast<uint8_t>(JSType::JS_ERROR_FIRST));
     JSHandle<JSTaggedValue> errorMsg = info->errorMsg_;
+    JSHandle<JSTaggedValue> errorStack = info->errorStack_;
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(errorMsg), StackCheck::NO);
+    JSHandle<JSObject> errorTag;
+    if (!errorStack->IsUndefined()) {
+        errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(errorMsg),
+                                       JSHandle<EcmaString>(errorStack), StackCheck::NO);
+    } else {
+        errorTag = factory->NewJSError(errorType, JSHandle<EcmaString>(errorMsg), StackCheck::NO);
+    }
     ObjectSlot slot = info->GetSlot();
 #ifdef USE_CMC_GC
     slot.Update(errorTag.GetTaggedType());
@@ -279,6 +286,26 @@ void BaseDeserializer::ResetNativePointerBuffer(uintptr_t objAddr, void *bufferP
     np->SetData(thread_->GetEcmaVM()->GetNativeAreaAllocator());
 }
 
+void BaseDeserializer::SetErrorMsgAndStack(uint8_t flag, size_t &handledFieldSize)
+{
+    switch (flag) {
+        case static_cast<uint8_t>(JSErrorInfo::ErrorInfo::IS_ERROR_MSG):
+            isErrorMsg_ = true;
+            isErrorStack_ = false;
+            handledFieldSize = 0;
+            break;
+        case static_cast<uint8_t>(JSErrorInfo::ErrorInfo::IS_ERROR_MSG_AND_STACK):
+            isErrorMsg_ = true;
+            isErrorStack_ = true;
+            handledFieldSize = 0;
+            break;
+        default:
+            isErrorMsg_ = false;
+            isErrorStack_ = false;
+            break;
+    }
+}
+
 size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objAddr, size_t fieldOffset)
 {
     size_t handledFieldSize = sizeof(JSTaggedType);
@@ -389,13 +416,11 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             ASSERT(type >= static_cast<uint8_t>(JSType::JS_ERROR_FIRST)
                 && type <= static_cast<uint8_t>(JSType::JS_ERROR_LAST));
             JSHandle<JSTaggedValue> obj(thread_, JSTaggedValue(static_cast<JSTaggedType>(objAddr)));
-            jsErrorInfos_.emplace_back(type, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined()), obj,
+            jsErrorInfos_.emplace_back(type, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined()),
+                                       JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Undefined()), obj,
                                        fieldOffset);
             uint8_t flag = data_->ReadUint8(position_);
-            if (flag == 1) { // error msg is string
-                isErrorMsg_ = true;
-                handledFieldSize = 0;
-            }
+            SetErrorMsgAndStack(flag, handledFieldSize);
             break;
         }
         case (uint8_t)EncodeFlag::SHARED_OBJECT: {
@@ -411,6 +436,14 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             if (isErrorMsg) {
                 // defer new js error
                 jsErrorInfos_.back().errorMsg_ = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(value));
+                if (isErrorStack_) {
+                    handledFieldSize = 0;
+                }
+                break;
+            }
+            bool isErrorStack = GetAndResetIsErrorStack();
+            if (isErrorStack) {
+                jsErrorInfos_.back().errorStack_ = JSHandle<JSTaggedValue>(thread_, JSTaggedValue(value));
                 break;
             }
             WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset, value);

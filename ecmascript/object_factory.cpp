@@ -1008,24 +1008,9 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
     return NewJSError(errorType, emptyString, needCheckStack);
 }
 
-JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, const ErrorType &errorType,
-                                             const JSHandle<EcmaString> &message, StackCheck needCheckStack)
+JSHandle<JSTaggedValue> ObjectFactory::GetConstructorByErrorType(const JSHandle<GlobalEnv> &env,
+                                                                 const ErrorType &errorType)
 {
-    // if there have exception in thread, then return current exception, no need to new js error.
-    if (thread_->HasPendingException()) {
-        JSHandle<JSObject> obj(thread_, thread_->GetException());
-        return obj;
-    }
-
-    // current frame may be entry frame, exception happened in JSFunction::Call and JSFunction::Construct,
-    // in this case sp = the prev frame (interpreter frame).
-    if (!thread_->IsAsmInterpreter()) {
-        FrameHandler frameHandler(thread_);
-        if (frameHandler.IsInterpretedEntryFrame()) {
-            thread_->SetCurrentSPFrame(frameHandler.GetPrevJSFrame());
-        }
-    }
-
     JSHandle<JSTaggedValue> nativeConstructor;
     switch (errorType) {
         case ErrorType::RANGE_ERROR:
@@ -1056,6 +1041,61 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, con
             nativeConstructor = env->GetErrorFunction();
             break;
     }
+    return nativeConstructor;
+}
+
+JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, const ErrorType &errorType,
+    const JSHandle<EcmaString> &message, const JSHandle<EcmaString> &stack, StackCheck needCheckStack)
+{
+    JSHandle<JSTaggedValue> nativeConstructor = GetConstructorByErrorType(env, errorType);
+    JSHandle<JSFunction> nativeFunc = JSHandle<JSFunction>::Cast(nativeConstructor);
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<JSObject> nativeInstanceObj = factory->NewJSObjectByConstructor(nativeFunc, nativeConstructor);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
+    auto globalConst = thread_->GlobalConstants();
+    if (!message.GetTaggedValue().IsUndefined()) {
+        if (errorType != ErrorType::OOM_ERROR) {
+            LOG_ECMA(DEBUG) << "Throw error: " << EcmaStringAccessor(message).ToCString(thread_);
+        }
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSObject, thread_);
+        JSHandle<JSTaggedValue> msgKey = globalConst->GetHandledMessageString();
+        PropertyDescriptor msgDesc(thread_, JSHandle<JSTaggedValue>::Cast(message), true, false, true);
+        [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread_, nativeInstanceObj, msgKey, msgDesc);
+        ASSERT_PRINT(status == true, "return result exception!");
+    }
+
+    PropertyDescriptor stackDesc(thread_, JSHandle<JSTaggedValue>::Cast(stack), true, false, true);
+    [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread_, nativeInstanceObj,
+        globalConst->GetHandledStackString(), stackDesc);
+    ASSERT_PRINT(status == true, "return result exception!");
+    // Uncaught exception parsing source code
+    PropertyDescriptor topStackDesc(thread_, JSHandle<JSTaggedValue>::Cast(stack), true, false, true);
+    [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread_, nativeInstanceObj,
+        globalConst->GetHandledTopStackString(), topStackDesc);
+    ASSERT_PRINT(topStackstatus == true, "return result exception!");
+
+    return nativeInstanceObj;
+}
+
+JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, const ErrorType &errorType,
+    const JSHandle<EcmaString> &message, StackCheck needCheckStack)
+{
+    // if there have exception in thread, then return current exception, no need to new js error.
+    if (thread_->HasPendingException()) {
+        JSHandle<JSObject> obj(thread_, thread_->GetException());
+        return obj;
+    }
+
+    // current frame may be entry frame, exception happened in JSFunction::Call and JSFunction::Construct,
+    // in this case sp = the prev frame (interpreter frame).
+    if (!thread_->IsAsmInterpreter()) {
+        FrameHandler frameHandler(thread_);
+        if (frameHandler.IsInterpretedEntryFrame()) {
+            thread_->SetCurrentSPFrame(frameHandler.GetPrevJSFrame());
+        }
+    }
+
+    JSHandle<JSTaggedValue> nativeConstructor = GetConstructorByErrorType(env, errorType);
     JSHandle<JSFunction> nativeFunc = JSHandle<JSFunction>::Cast(nativeConstructor);
     JSHandle<JSTaggedValue> nativePrototype(thread_, nativeFunc->GetFunctionPrototype(thread_));
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
@@ -1071,6 +1111,13 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, con
     auto prevEntry = InterpretedEntryFrame::GetFrameFromSp(sp)->GetPrevFrameFp();
     thread_->SetCurrentSPFrame(prevEntry);
     return handleNativeInstanceObj;
+}
+
+JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
+    const JSHandle<EcmaString> &stack, StackCheck needCheckStack)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    return NewJSError(env, errorType, message, stack, needCheckStack);
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,

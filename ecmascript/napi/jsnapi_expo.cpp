@@ -6196,7 +6196,8 @@ Local<JSValueRef> JSNApi::InterOpDeserializeValue(const EcmaVM *vm, void *recode
 }
 
 void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
-                             Local<JSValueRef> cloneList, bool defaultTransfer, bool defaultCloneShared)
+                             Local<JSValueRef> cloneList, bool defaultTransfer,
+                             bool defaultCloneShared, bool needSerializeStack)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
     ecmascript::ThreadManagedScope scope(thread);
@@ -6209,7 +6210,7 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
     if (serializationTimeoutCheckEnabled) {
         startTime = std::chrono::system_clock::now();
     }
-    ecmascript::ValueSerializer serializer(thread, defaultTransfer, defaultCloneShared);
+    ecmascript::ValueSerializer serializer(thread, defaultTransfer, defaultCloneShared, needSerializeStack);
     std::unique_ptr<ecmascript::SerializeData> data;
     if (serializer.WriteValue(thread, arkValue, arkTransfer, arkCloneList)) {
         data = serializer.Release();

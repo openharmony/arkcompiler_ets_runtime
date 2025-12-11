@@ -103,6 +103,11 @@ enum class SerializeType : uint8_t {
     PGO_SERIALIZE
 };
 
+enum class SerializeErrorInfo : uint8_t {
+    ONLY_MSG = 1,
+    MSG_AND_STACK = 2
+};
+
 class SerializeData {
 public:
     explicit SerializeData(JSThread *thread) : thread_(thread) {}
