@@ -5523,12 +5523,23 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &method
     return jsfunc;
 }
 
-JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<Method> &methodHandle,
-                                                  const JSHandle<JSTaggedValue> &homeObject)
+JSHandle<JSFunction> ObjectFactory::NewJSFunctionForDefineMethod(const JSHandle<Method> &methodHandle,
+                                                                 const JSHandle<JSTaggedValue> &homeObject)
 {
     ASSERT(homeObject->IsECMAObject());
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+    FunctionKind kind = methodHandle->GetFunctionKind();
+    JSHandle<JSHClass> hclass;
+    switch (kind) {
+        case FunctionKind::ASYNC_FUNCTION: {
+            hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            break;
+        }
+        default:{
+            hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+            break;
+        }
+    }
 
     JSHandle<JSFunction> jsFunc = NewJSFunctionByHClass(methodHandle, hclass);
     jsFunc->SetHomeObject(thread_, homeObject);

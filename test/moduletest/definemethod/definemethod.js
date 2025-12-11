@@ -89,3 +89,16 @@ let e1 = new(e.B_withoutPrivateField);
 let e2 = new(e.B_withPrivateField);
 print(e1.method(e));
 print(e2.method(e2));
+
+class Model {
+    get id(){
+        return "id";
+    }
+    set id(id) {
+        this.id = "new id"
+    }
+    async asyncFunction() {}
+}
+let m = new Model();
+
+print(ArkTools.isAsyncFunction(m.asyncFunction))

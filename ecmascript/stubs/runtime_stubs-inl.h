@@ -2607,7 +2607,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
                                                 const JSHandle<JSTaggedValue> &module)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> func = factory->NewJSFunction(methodHandle, homeObject);
+    JSHandle<JSFunction> func = factory->NewJSFunctionForDefineMethod(methodHandle, homeObject);
     func->SetLength(length);
     func->SetLexicalEnv(thread, env);
     func->SetModule(thread, module);
