@@ -29,3 +29,6 @@ regresstest/ark-regress/mjsunit/regress/regress-2073.js
 
 #26099
 regresstest/ark-regress/mjsunit/regress/regress-3612.js
+
+#32141
+regresstest/ark-regress/mjsunit/asm/regress-1013920.js
