@@ -298,6 +298,9 @@ void JitFortGCBitset::MarkStartAddr(bool awaitInstall, uintptr_t startAddr, uint
     } else {
         word &= ~(1u << index);
         word &= ~(1u << (index+1));
+        if (index + 1 == BIT_PER_WORD) {
+            LOG_JIT(FATAL) << "JitFort::MarkStartAddr";
+        }
     }
 }
 
