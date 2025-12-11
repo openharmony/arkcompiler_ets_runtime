@@ -20,8 +20,13 @@ namespace common {
     
 #if defined (NEXT_OPTIMIZATION_MACRO)
 #define ENABLE_NEXT_OPTIMIZATION 1
+
+// Latest optimization used for 6.1 version
+#define ENABLE_LATEST_OPTIMIZATION 1
+
 #else
 #define ENABLE_NEXT_OPTIMIZATION 0
+#define ENABLE_LATEST_OPTIMIZATION 0
 #endif
 
 #if ENABLE_NEXT_OPTIMIZATION

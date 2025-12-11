@@ -110,7 +110,7 @@ public:
     {
 #define BUILTINS_ID(METHOD, OBJECT, ...)  ID::OBJECT##METHOD,
         static std::unordered_set<BuiltinsStubCSigns::ID> callThisBuiltinsIds = {
-            BUILTINS_METHOD_STUB_LIST(BUILTINS_ID, BUILTINS_ID, BUILTINS_ID, BUILTINS_ID)
+            BUILTINS_METHOD_STUB_LIST(BUILTINS_ID, BUILTINS_ID, BUILTINS_ID)
         };
 #undef BUILTINS_ID
 #if ENABLE_NEXT_OPTIMIZATION
@@ -391,7 +391,7 @@ public:
         }
 #define ID_TO_STRING(Method, Object, ...)  {BuiltinsStubCSigns::ID::Object##Method, #Object"."#Method},
         static const std::unordered_map<BuiltinsStubCSigns::ID, const std::string> builtinId2Str2 = {
-            BUILTINS_METHOD_STUB_LIST(ID_TO_STRING, ID_TO_STRING, ID_TO_STRING, ID_TO_STRING)
+            BUILTINS_METHOD_STUB_LIST(ID_TO_STRING, ID_TO_STRING, ID_TO_STRING)
         };
 #undef ID_TO_STRING
         if (builtinId2Str2.count(id) > 0) {
@@ -408,17 +408,14 @@ public:
         return GlobalEnvField::index;
 #define GET_BUILTIN_METHOD_STUB_INDEX_IMPL4(name, builtin, unused, index) \
     GET_BUILTIN_GLOBAL_ENV_FIELD_INDEX(unused, builtin##name, index##_INDEX)
-#define GET_BUILTIN_METHOD_STUB_INDEX_IMPL6(name, builtin, unused0, unused1, unused2, index) \
-    GET_BUILTIN_GLOBAL_ENV_FIELD_INDEX(unused0, builtin##name, index##_INDEX)
         switch (builtinId) {
             GLOBAL_ENV_INLINED_BUILTINS(GET_BUILTIN_GLOBAL_ENV_FIELD_INDEX)
             BUILTINS_METHOD_STUB_LIST(GET_BUILTIN_METHOD_STUB_INDEX_IMPL4, GET_BUILTIN_METHOD_STUB_INDEX_IMPL4,
-                                      GET_BUILTIN_METHOD_STUB_INDEX_IMPL4, GET_BUILTIN_METHOD_STUB_INDEX_IMPL6)
+                                      GET_BUILTIN_METHOD_STUB_INDEX_IMPL4)
             default:
                 LOG_ECMA(DEBUG) << "GetGlobalEnvFieldIndex Invalid Id:" << builtinId;
                 return GlobalEnvField::INVALID;
         }
-#undef SET_BUILTIN_METHOD_STUB_IMPL6
 #undef SET_BUILTIN_METHOD_STUB_IMPL4
 #undef SET_BUILTIN_FUNCTION_CASE
     }

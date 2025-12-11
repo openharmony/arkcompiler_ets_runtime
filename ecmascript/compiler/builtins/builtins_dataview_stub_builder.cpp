@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,19 +16,32 @@
 #include "ecmascript/compiler/builtins/builtins_dataview_stub_builder.h"
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
+#include "ecmascript/compiler/builtins/builtins_arraybuffer_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 
 namespace panda::ecmascript::kungfu {
+
+#define DEFINE_DATAVIEW_SET_METHOD(name, type)                                         \
+void BuiltinsDataViewStubBuilder::Set##name(GateRef glue, GateRef thisValue,           \
+    GateRef numArgs, Variable* res, Label *exit, Label *slowPath)                      \
+{                                                                                      \
+    SetTypedValue<DataViewType::type>(glue, thisValue, numArgs, res, exit, slowPath);  \
+}
+
+DATAVIEW_SET_TYPES(DEFINE_DATAVIEW_SET_METHOD)
+#undef DEFINE_DATAVIEW_SET_METHOD
+
+
 template <DataViewType type>
 void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
     GateRef numArgs, [[maybe_unused]] Variable* res, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
-    Label thisIsHeapObject(env);
+    Label thisIsEcmaObject(env);
     Label thisIsDataView(env);
     Label indexIsInt(env);
-    BRANCH(TaggedIsHeapObject(thisValue), &thisIsHeapObject, slowPath);
-    Bind(&thisIsHeapObject);
+    BRANCH(IsEcmaObject(glue, thisValue), &thisIsEcmaObject, slowPath);
+    Bind(&thisIsEcmaObject);
     BRANCH(IsDataView(glue, thisValue), &thisIsDataView, slowPath);
     Bind(&thisIsDataView);
     GateRef indexTagged = GetCallArg0(numArgs);
@@ -75,7 +88,7 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
                     {
                         GateRef offset = ZExtInt32ToInt64(GetByteOffset(thisValue));
                         GateRef bufferIndex = TruncInt64ToInt32(Int64Add(indexInt64, offset));
-                        BuiltinsTypedArrayStubBuilder builder(this, GetCurrentGlobalEnv());
+                        BuiltinsArrayBufferStubBuilder builder(this, GetCurrentGlobalEnv());
                         GateRef pointer = builder.GetDataPointFromBuffer(glue, buffer);
                         GateRef doubleValue = TaggedGetNumber(value);
                         if constexpr (type == DataViewType::INT32 || type == DataViewType::UINT32) {
@@ -97,13 +110,6 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
         }
     }
 }
-
-template void BuiltinsDataViewStubBuilder::SetTypedValue<DataViewType::INT32>(GateRef glue, GateRef thisValue,
-    GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
-template void BuiltinsDataViewStubBuilder::SetTypedValue<DataViewType::FLOAT32>(GateRef glue, GateRef thisValue,
-    GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
-template void BuiltinsDataViewStubBuilder::SetTypedValue<DataViewType::FLOAT64>(GateRef glue, GateRef thisValue,
-    GateRef numArgs, Variable* res, Label *exit, Label *slowPath);
 
 void BuiltinsDataViewStubBuilder::SetValueInBufferForInt32(GateRef glue, GateRef pointer, GateRef offset,
     GateRef value, GateRef littleEndianHandle)
@@ -220,5 +226,102 @@ GateRef BuiltinsDataViewStubBuilder::GetElementSize(DataViewType type)
             UNREACHABLE();
     }
     return size;
+}
+
+#if ENABLE_LATEST_OPTIMIZATION
+#define DEFINE_DATAVIEW_GET_METHOD(name, type)                                         \
+void BuiltinsDataViewStubBuilder::Get##name(GateRef glue, GateRef thisValue,           \
+    GateRef numArgs, Variable* res, Label *exit, Label *slowPath)                      \
+{                                                                                      \
+    GetTypedValue<DataViewType::type>(glue, thisValue, numArgs, res, exit, slowPath);  \
+}
+#else
+#define DEFINE_DATAVIEW_GET_METHOD(name, type)                                                                       \
+void BuiltinsDataViewStubBuilder::Get##name([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef thisValue,       \
+    [[maybe_unused]] GateRef numArgs, [[maybe_unused]] Variable* res, [[maybe_unused]] Label *exit, Label *slowPath) \
+{                                                                                                                    \
+    Jump(slowPath);                                                                                                  \
+}
+#endif
+
+DATAVIEW_GET_TYPES(DEFINE_DATAVIEW_GET_METHOD)
+#undef DEFINE_DATAVIEW_GET_METHOD
+
+// BuiltinsDataView::GetTypedValue
+template <DataViewType type>
+void BuiltinsDataViewStubBuilder::GetTypedValue(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label thisIsEcmaObject(env);
+    Label thisIsDataView(env);
+    Label indexIsInt(env);
+    DEFVARIABLE(index, VariableType::INT64(), Int64(0));
+
+    // core logic in GetViewValue
+
+    // 1. If Type(view) is not Object, throw a TypeError exception by slowPath.
+    BRANCH(IsEcmaObject(glue, thisValue), &thisIsEcmaObject, slowPath);
+    Bind(&thisIsEcmaObject);
+    // 2. If view does not have a [[DataView]] internal slot, throw a TypeError exception by slowPath.
+    BRANCH(IsDataView(glue, thisValue), &thisIsDataView, slowPath);
+
+    Bind(&thisIsDataView);
+    // TaggedValue index
+    DEFVARIABLE(indexTagged, VariableType::JS_ANY(), GetCallArg0(numArgs));
+    BRANCH(TaggedIsInt(*indexTagged), &indexIsInt, slowPath);
+    Bind(&indexIsInt);
+    {
+        Label indexIsValid(env);
+        Label checkOffset(env);
+        Label getArrayBuffer(env);
+        Label getValue(env);
+        Label toBool(env);
+
+        index = GetInt64OfTInt(*indexTagged);
+        BRANCH(Int64LessThan(*index, Int64(0)), slowPath, &indexIsValid);
+        Bind(&indexIsValid);
+        {
+            // Handle littleEndian parameter
+            DEFVARIABLE(littleEndianHandle, VariableType::JS_ANY(), TaggedFalse());
+            if constexpr (type == DataViewType::UINT8 || type == DataViewType::INT8) {
+                littleEndianHandle = TaggedTrue();
+            } else {
+                littleEndianHandle = GetCallArg1(numArgs);
+            }
+            BRANCH(TaggedIsUndefined(*littleEndianHandle), &getArrayBuffer, &toBool);
+            Bind(&toBool);
+            {
+                littleEndianHandle = FastToBoolean(glue, *littleEndianHandle, 1);
+                Jump(&getArrayBuffer);
+            }
+
+            Bind(&getArrayBuffer);
+            {
+                GateRef buffer = GetViewedArrayBuffer(glue, thisValue);
+                BRANCH(IsDetachedBuffer(glue, buffer), slowPath, &checkOffset);
+                Bind(&checkOffset);
+                {
+                    // Bounds check: index + elementSize <= byteLength
+                    GateRef size = ZExtInt32ToInt64(GetByteLength(thisValue));
+                    GateRef elementSize = GetElementSize(type);
+                    BRANCH(Int64UnsignedGreaterThan(Int64Add(*index, elementSize), size), slowPath, &getValue);
+                    Bind(&getValue);
+                    {
+                        GateRef offset = ZExtInt32ToInt64(GetByteOffset(thisValue));
+                        GateRef bufferIndex = TruncInt64ToInt32(Int64Add(*index, offset));
+
+                        BuiltinsArrayBufferStubBuilder arrayBufferBuilder(this, GetCurrentGlobalEnv());
+                        GateRef pointer = arrayBufferBuilder.GetDataPointFromBuffer(glue, buffer);
+                        GateRef result = arrayBufferBuilder.GetValueFromBuffer(
+                            glue, pointer, bufferIndex,
+                            *littleEndianHandle, type);
+                        res->WriteVariable(result);
+                        Jump(exit);
+                    }
+                }
+            }
+        }
+    }
 }
 }  // namespace panda::ecmascript::kungfu

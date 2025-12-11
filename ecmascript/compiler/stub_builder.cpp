@@ -10582,7 +10582,7 @@ GateRef StubBuilder::ToIndex(GateRef glue, GateRef tagged)
         }
         Bind(&notUndef);
         {
-            result = CallRuntime(glue, RTSTUB_ID(ToIndex), { tagged });
+            result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(ToIndex), { tagged });
             Jump(&exit);
         }
     }

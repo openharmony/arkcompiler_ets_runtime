@@ -40,3 +40,1426 @@ RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
 RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
 RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
 RangeError: getIndex +elementSize > viewSize
+=== Testing GetInt8 ===
+127
+-128
+0
+-1
+42
+=== Testing GetUint8 ===
+255
+0
+128
+200
+=== Testing GetInt16 with endianness ===
+4660
+4660
+-12345
+-12345
+13330
+13330
+=== Testing GetUint16 with endianness ===
+43981
+43981
+65535
+0
+=== Testing GetInt32 with endianness ===
+305419896
+305419896
+-1234567890
+2018915346
+2018915346
+=== Testing GetUint32 with endianness ===
+4294967295
+2147483648
+1234567890
+=== Testing GetFloat32 with endianness ===
+3.141590118408203
+3.141590118408203
+-123.45600128173828
+=== Testing GetFloat64 with endianness ===
+3.141592653589793
+3.141592653589793
+-987.654321
+=== Testing special float values ===
+true
+Infinity
+-Infinity
+0
+0
+=== Testing boundary values ===
+32767
+-32768
+0
+65535
+2147483647
+-2147483648
+=== Testing mixed operations ===
+120
+86
+52
+18
+22136
+4660
+=== Testing offset access ===
+100
+200
+300
+=== Testing all Int8 values (-128 to 127) ===
+Int8 full range test passed
+=== Testing all Uint8 values (0 to 255) ===
+Uint8 full range test passed
+=== Testing Int16 boundary and special values ===
+Int16 LE: -32768 (expected: -32768)
+Int16 BE: -32768 (expected: -32768)
+Int16 LE: -32767 (expected: -32767)
+Int16 BE: -32767 (expected: -32767)
+Int16 LE: -32766 (expected: -32766)
+Int16 BE: -32766 (expected: -32766)
+Int16 LE: -32765 (expected: -32765)
+Int16 BE: -32765 (expected: -32765)
+Int16 LE: -16385 (expected: -16385)
+Int16 BE: -16385 (expected: -16385)
+Int16 LE: -16384 (expected: -16384)
+Int16 BE: -16384 (expected: -16384)
+Int16 LE: -16383 (expected: -16383)
+Int16 BE: -16383 (expected: -16383)
+Int16 LE: -8193 (expected: -8193)
+Int16 BE: -8193 (expected: -8193)
+Int16 LE: -8192 (expected: -8192)
+Int16 BE: -8192 (expected: -8192)
+Int16 LE: -8191 (expected: -8191)
+Int16 BE: -8191 (expected: -8191)
+Int16 LE: -2 (expected: -2)
+Int16 BE: -2 (expected: -2)
+Int16 LE: -1 (expected: -1)
+Int16 BE: -1 (expected: -1)
+Int16 LE: 0 (expected: 0)
+Int16 BE: 0 (expected: 0)
+Int16 LE: 1 (expected: 1)
+Int16 BE: 1 (expected: 1)
+Int16 LE: 2 (expected: 2)
+Int16 BE: 2 (expected: 2)
+Int16 LE: 8191 (expected: 8191)
+Int16 BE: 8191 (expected: 8191)
+Int16 LE: 8192 (expected: 8192)
+Int16 BE: 8192 (expected: 8192)
+Int16 LE: 8193 (expected: 8193)
+Int16 BE: 8193 (expected: 8193)
+Int16 LE: 16383 (expected: 16383)
+Int16 BE: 16383 (expected: 16383)
+Int16 LE: 16384 (expected: 16384)
+Int16 BE: 16384 (expected: 16384)
+Int16 LE: 16385 (expected: 16385)
+Int16 BE: 16385 (expected: 16385)
+Int16 LE: 32765 (expected: 32765)
+Int16 BE: 32765 (expected: 32765)
+Int16 LE: 32766 (expected: 32766)
+Int16 BE: 32766 (expected: 32766)
+Int16 LE: 32767 (expected: 32767)
+Int16 BE: 32767 (expected: 32767)
+=== Testing Uint16 boundary and special values ===
+Uint16 LE: 0
+Uint16 BE: 0
+Uint16 LE: 1
+Uint16 BE: 1
+Uint16 LE: 2
+Uint16 BE: 2
+Uint16 LE: 255
+Uint16 BE: 255
+Uint16 LE: 256
+Uint16 BE: 256
+Uint16 LE: 257
+Uint16 BE: 257
+Uint16 LE: 8191
+Uint16 BE: 8191
+Uint16 LE: 8192
+Uint16 BE: 8192
+Uint16 LE: 8193
+Uint16 BE: 8193
+Uint16 LE: 16383
+Uint16 BE: 16383
+Uint16 LE: 16384
+Uint16 BE: 16384
+Uint16 LE: 16385
+Uint16 BE: 16385
+Uint16 LE: 32767
+Uint16 BE: 32767
+Uint16 LE: 32768
+Uint16 BE: 32768
+Uint16 LE: 32769
+Uint16 BE: 32769
+Uint16 LE: 49151
+Uint16 BE: 49151
+Uint16 LE: 49152
+Uint16 BE: 49152
+Uint16 LE: 49153
+Uint16 BE: 49153
+Uint16 LE: 65533
+Uint16 BE: 65533
+Uint16 LE: 65534
+Uint16 BE: 65534
+Uint16 LE: 65535
+Uint16 BE: 65535
+=== Testing Int32 boundary and special values ===
+Int32 LE: -2147483648
+Int32 BE: -2147483648
+Int32 LE: -2147483647
+Int32 BE: -2147483647
+Int32 LE: -2147483646
+Int32 BE: -2147483646
+Int32 LE: -1073741825
+Int32 BE: -1073741825
+Int32 LE: -1073741824
+Int32 BE: -1073741824
+Int32 LE: -1073741823
+Int32 BE: -1073741823
+Int32 LE: -536870913
+Int32 BE: -536870913
+Int32 LE: -536870912
+Int32 BE: -536870912
+Int32 LE: -536870911
+Int32 BE: -536870911
+Int32 LE: -65537
+Int32 BE: -65537
+Int32 LE: -65536
+Int32 BE: -65536
+Int32 LE: -65535
+Int32 BE: -65535
+Int32 LE: -257
+Int32 BE: -257
+Int32 LE: -256
+Int32 BE: -256
+Int32 LE: -255
+Int32 BE: -255
+Int32 LE: -2
+Int32 BE: -2
+Int32 LE: -1
+Int32 BE: -1
+Int32 LE: 0
+Int32 BE: 0
+Int32 LE: 1
+Int32 BE: 1
+Int32 LE: 2
+Int32 BE: 2
+Int32 LE: 255
+Int32 BE: 255
+Int32 LE: 256
+Int32 BE: 256
+Int32 LE: 257
+Int32 BE: 257
+Int32 LE: 65535
+Int32 BE: 65535
+Int32 LE: 65536
+Int32 BE: 65536
+Int32 LE: 65537
+Int32 BE: 65537
+Int32 LE: 536870911
+Int32 BE: 536870911
+Int32 LE: 536870912
+Int32 BE: 536870912
+Int32 LE: 536870913
+Int32 BE: 536870913
+Int32 LE: 1073741823
+Int32 BE: 1073741823
+Int32 LE: 1073741824
+Int32 BE: 1073741824
+Int32 LE: 1073741825
+Int32 BE: 1073741825
+Int32 LE: 2147483645
+Int32 BE: 2147483645
+Int32 LE: 2147483646
+Int32 BE: 2147483646
+Int32 LE: 2147483647
+Int32 BE: 2147483647
+=== Testing Uint32 boundary and special values ===
+Uint32 LE: 0
+Uint32 BE: 0
+Uint32 LE: 1
+Uint32 BE: 1
+Uint32 LE: 2
+Uint32 BE: 2
+Uint32 LE: 255
+Uint32 BE: 255
+Uint32 LE: 256
+Uint32 BE: 256
+Uint32 LE: 257
+Uint32 BE: 257
+Uint32 LE: 65535
+Uint32 BE: 65535
+Uint32 LE: 65536
+Uint32 BE: 65536
+Uint32 LE: 65537
+Uint32 BE: 65537
+Uint32 LE: 16777215
+Uint32 BE: 16777215
+Uint32 LE: 16777216
+Uint32 BE: 16777216
+Uint32 LE: 16777217
+Uint32 BE: 16777217
+Uint32 LE: 536870911
+Uint32 BE: 536870911
+Uint32 LE: 536870912
+Uint32 BE: 536870912
+Uint32 LE: 536870913
+Uint32 BE: 536870913
+Uint32 LE: 1073741823
+Uint32 BE: 1073741823
+Uint32 LE: 1073741824
+Uint32 BE: 1073741824
+Uint32 LE: 1073741825
+Uint32 BE: 1073741825
+Uint32 LE: 2147483647
+Uint32 BE: 2147483647
+Uint32 LE: 2147483648
+Uint32 BE: 2147483648
+Uint32 LE: 2147483649
+Uint32 BE: 2147483649
+Uint32 LE: 3221225471
+Uint32 BE: 3221225471
+Uint32 LE: 3221225472
+Uint32 BE: 3221225472
+Uint32 LE: 3221225473
+Uint32 BE: 3221225473
+Uint32 LE: 4294967293
+Uint32 BE: 4294967293
+Uint32 LE: 4294967294
+Uint32 BE: 4294967294
+Uint32 LE: 4294967295
+Uint32 BE: 4294967295
+=== Testing Float32 special and boundary values ===
+Float32 LE: 0
+Float32 BE: 0
+Float32 LE: 0
+Float32 BE: 0
+Float32 LE: 1
+Float32 BE: 1
+Float32 LE: -1
+Float32 BE: -1
+Float32 LE: 2
+Float32 BE: 2
+Float32 LE: -2
+Float32 BE: -2
+Float32 LE: 0.5
+Float32 BE: 0.5
+Float32 LE: -0.5
+Float32 BE: -0.5
+Float32 LE: 0.25
+Float32 BE: 0.25
+Float32 LE: -0.25
+Float32 BE: -0.25
+Float32 LE: 3.1415927410125732
+Float32 BE: 3.1415927410125732
+Float32 LE: -3.1415927410125732
+Float32 BE: -3.1415927410125732
+Float32 LE: 2.7182817459106445
+Float32 BE: 2.7182817459106445
+Float32 LE: -2.7182817459106445
+Float32 BE: -2.7182817459106445
+Float32 LE: 1.4142135381698608
+Float32 BE: 1.4142135381698608
+Float32 LE: -1.4142135381698608
+Float32 BE: -1.4142135381698608
+Float32 LE: 100
+Float32 BE: 100
+Float32 LE: -100
+Float32 BE: -100
+Float32 LE: 1000
+Float32 BE: 1000
+Float32 LE: -1000
+Float32 BE: -1000
+Float32 LE: 0.10000000149011612
+Float32 BE: 0.10000000149011612
+Float32 LE: 0.009999999776482582
+Float32 BE: 0.009999999776482582
+Float32 LE: 0.0010000000474974513
+Float32 BE: 0.0010000000474974513
+Float32 LE: 0.00009999999747378752
+Float32 BE: 0.00009999999747378752
+Float32 LE: 1.2345670461654663
+Float32 BE: 1.2345670461654663
+Float32 LE: 9.876543045043945
+Float32 BE: 9.876543045043945
+Float32 LE: 123.45600128173828
+Float32 BE: 123.45600128173828
+Float32 LE: -123.45600128173828
+Float32 BE: -123.45600128173828
+Float32 LE: 10000000000
+Float32 BE: 10000000000
+Float32 LE: -10000000000
+Float32 BE: -10000000000
+Float32 LE: 1.000000013351432e-10
+Float32 BE: 1.000000013351432e-10
+Float32 LE: -1.000000013351432e-10
+Float32 BE: -1.000000013351432e-10
+Float32 LE: NaN
+Float32 BE: NaN
+Float32 LE: Infinity
+Float32 BE: Infinity
+Float32 LE: -Infinity
+Float32 BE: -Infinity
+=== Testing Float64 special and boundary values ===
+Float64 LE: 0
+Float64 BE: 0
+Float64 LE: 0
+Float64 BE: 0
+Float64 LE: 1
+Float64 BE: 1
+Float64 LE: -1
+Float64 BE: -1
+Float64 LE: 2
+Float64 BE: 2
+Float64 LE: -2
+Float64 BE: -2
+Float64 LE: 0.5
+Float64 BE: 0.5
+Float64 LE: -0.5
+Float64 BE: -0.5
+Float64 LE: 0.25
+Float64 BE: 0.25
+Float64 LE: -0.25
+Float64 BE: -0.25
+Float64 LE: 3.141592653589793
+Float64 BE: 3.141592653589793
+Float64 LE: -3.141592653589793
+Float64 BE: -3.141592653589793
+Float64 LE: 2.718281828459045
+Float64 BE: 2.718281828459045
+Float64 LE: -2.718281828459045
+Float64 BE: -2.718281828459045
+Float64 LE: 1.4142135623730951
+Float64 BE: 1.4142135623730951
+Float64 LE: -1.4142135623730951
+Float64 BE: -1.4142135623730951
+Float64 LE: 0.7071067811865476
+Float64 BE: 0.7071067811865476
+Float64 LE: -0.7071067811865476
+Float64 BE: -0.7071067811865476
+Float64 LE: 0.6931471805599453
+Float64 BE: 0.6931471805599453
+Float64 LE: 2.302585092994046
+Float64 BE: 2.302585092994046
+Float64 LE: 1.4426950408889634
+Float64 BE: 1.4426950408889634
+Float64 LE: 0.4342944819032518
+Float64 BE: 0.4342944819032518
+Float64 LE: 100
+Float64 BE: 100
+Float64 LE: -100
+Float64 BE: -100
+Float64 LE: 1000
+Float64 BE: 1000
+Float64 LE: -1000
+Float64 BE: -1000
+Float64 LE: 10000
+Float64 BE: 10000
+Float64 LE: -10000
+Float64 BE: -10000
+Float64 LE: 0.1
+Float64 BE: 0.1
+Float64 LE: 0.01
+Float64 BE: 0.01
+Float64 LE: 0.001
+Float64 BE: 0.001
+Float64 LE: 0.0001
+Float64 BE: 0.0001
+Float64 LE: 0.00001
+Float64 BE: 0.00001
+Float64 LE: 1.23456789012345
+Float64 BE: 1.23456789012345
+Float64 LE: 9.87654321098765
+Float64 BE: 9.87654321098765
+Float64 LE: 123.456789
+Float64 BE: 123.456789
+Float64 LE: -123.456789
+Float64 BE: -123.456789
+Float64 LE: 10000000000
+Float64 BE: 10000000000
+Float64 LE: -10000000000
+Float64 BE: -10000000000
+Float64 LE: 100000000000000000000
+Float64 BE: 100000000000000000000
+Float64 LE: -100000000000000000000
+Float64 BE: -100000000000000000000
+Float64 LE: 1e-10
+Float64 BE: 1e-10
+Float64 LE: -1e-10
+Float64 BE: -1e-10
+Float64 LE: 1e-20
+Float64 BE: 1e-20
+Float64 LE: -1e-20
+Float64 BE: -1e-20
+Float64 LE: 1.7976931348623157e+308
+Float64 BE: 1.7976931348623157e+308
+Float64 LE: 2.2250738585072014e-308
+Float64 BE: 2.2250738585072014e-308
+Float64 LE: NaN
+Float64 BE: NaN
+Float64 LE: Infinity
+Float64 BE: Infinity
+Float64 LE: -Infinity
+Float64 BE: -Infinity
+=== Testing cross-type reads (write one type, read another) ===
+Wrote Int32 0x12345678 (little-endian):
+  as Uint8[0]: 120
+  as Uint8[1]: 86
+  as Uint8[2]: 52
+  as Uint8[3]: 18
+  as Int8[0]: 120
+  as Int8[1]: 86
+  as Int8[2]: 52
+  as Int8[3]: 18
+  as Uint16[0] LE: 22136
+  as Uint16[0] BE: 30806
+  as Uint16[2] LE: 4660
+  as Uint16[2] BE: 13330
+  as Int32 LE: 305419896
+  as Int32 BE: 2018915346
+  as Uint32 LE: 305419896
+  as Uint32 BE: 2018915346
+Wrote Float32 1.5 (little-endian):
+  as Int32 LE: 1069547520
+  as Uint32 LE: 1069547520
+Wrote Float64 PI (little-endian):
+  as Int32[0] LE: 1413754136
+  as Int32[4] LE: 1074340347
+  as Uint32[0] LE: 1413754136
+  as Uint32[4] LE: 1074340347
+=== Testing sequential writes and reads ===
+Seq[0]: i8=0 ui8=0 i16=0 ui16=0 i32=0 ui32=0
+Seq[1]: i8=1 ui8=10 i16=100 ui16=1000 i32=10000 ui32=100000
+Seq[2]: i8=2 ui8=20 i16=200 ui16=2000 i32=20000 ui32=200000
+Seq[3]: i8=3 ui8=30 i16=300 ui16=3000 i32=30000 ui32=300000
+Seq[4]: i8=4 ui8=40 i16=400 ui16=4000 i32=40000 ui32=400000
+Seq[5]: i8=5 ui8=50 i16=500 ui16=5000 i32=50000 ui32=500000
+Seq[6]: i8=6 ui8=60 i16=600 ui16=6000 i32=60000 ui32=600000
+Seq[7]: i8=7 ui8=70 i16=700 ui16=7000 i32=70000 ui32=700000
+Seq[8]: i8=8 ui8=80 i16=800 ui16=8000 i32=80000 ui32=800000
+Seq[9]: i8=9 ui8=90 i16=900 ui16=9000 i32=90000 ui32=900000
+Seq[10]: i8=10 ui8=100 i16=1000 ui16=10000 i32=100000 ui32=1000000
+Seq[11]: i8=11 ui8=110 i16=1100 ui16=11000 i32=110000 ui32=1100000
+Seq[12]: i8=12 ui8=120 i16=1200 ui16=12000 i32=120000 ui32=1200000
+Seq[13]: i8=13 ui8=130 i16=1300 ui16=13000 i32=130000 ui32=1300000
+Seq[14]: i8=14 ui8=140 i16=1400 ui16=14000 i32=140000 ui32=1400000
+Seq[15]: i8=15 ui8=150 i16=1500 ui16=15000 i32=150000 ui32=1500000
+=== Testing endianness conversion patterns ===
+Pattern1 0x1: LE=1 BE=256
+Pattern1 0x102: LE=258 BE=513
+Pattern1 0x1234: LE=4660 BE=13330
+Pattern1 0xabcd: LE=43981 BE=52651
+Pattern1 0xffff: LE=65535 BE=65535
+Pattern2 0x1: LE=1 BE=16777216
+Pattern2 0x1020304: LE=16909060 BE=67305985
+Pattern2 0x12345678: LE=305419896 BE=2018915346
+Pattern2 0xabcdef00: LE=2882400000 BE=15715755
+Pattern2 0xffffffff: LE=4294967295 BE=4294967295
+=== Testing aligned vs unaligned access ===
+Aligned[0]: 0
+Aligned[4]: 1111
+Aligned[8]: 2222
+Aligned[12]: 3333
+Aligned[16]: 4444
+Aligned[20]: 5555
+Aligned[24]: 6666
+Aligned[28]: 7777
+Unaligned[33]: 0
+Unaligned[37]: 2222
+Unaligned[41]: 4444
+Unaligned[45]: 6666
+Unaligned[49]: 8888
+Unaligned[53]: 11110
+Unaligned[57]: 13332
+=== Testing with DataView at different offsets ===
+View offset 0, pos 0: 1000
+View offset 16, pos 0: 2000
+View offset 32, pos 0: 3000
+View offset 48, pos 0: 4000
+Main buffer at 0: 1000
+Main buffer at 16: 2000
+Main buffer at 32: 3000
+Main buffer at 48: 4000
+=== Testing negative values across all integer types ===
+Negative minus_one: i8=-1 i16=-1 i32=-1
+Negative minus_two: i8=-2 i16=-2 i32=-2
+Negative minus_127: i8=-127 i16=-127 i32=-127
+Negative int8_min: i8=-128 i16=-128 i32=-128
+Negative minus_255: i8=1 i16=-255 i32=-255
+Negative minus_256: i8=0 i16=-256 i32=-256
+Negative minus_32767: i8=1 i16=-32767 i32=-32767
+Negative int16_min: i8=0 i16=-32768 i32=-32768
+Negative minus_65535: i8=1 i16=1 i32=-65535
+Negative minus_65536: i8=0 i16=0 i32=-65536
+Negative minus_2147483647: i8=1 i16=1 i32=-2147483647
+Negative int32_min: i8=0 i16=0 i32=-2147483648
+=== Testing power-of-two values ===
+2^n 1: i16=1 i32=1 ui32=1
+2^n 2: i16=2 i32=2 ui32=2
+2^n 4: i16=4 i32=4 ui32=4
+2^n 8: i16=8 i32=8 ui32=8
+2^n 16: i16=16 i32=16 ui32=16
+2^n 32: i16=32 i32=32 ui32=32
+2^n 64: i16=64 i32=64 ui32=64
+2^n 128: i16=128 i32=128 ui32=128
+2^n 256: i16=256 i32=256 ui32=256
+2^n 512: i16=512 i32=512 ui32=512
+2^n 1024: i16=1024 i32=1024 ui32=1024
+2^n 2048: i16=2048 i32=2048 ui32=2048
+2^n 4096: i16=4096 i32=4096 ui32=4096
+2^n 8192: i16=8192 i32=8192 ui32=8192
+2^n 16384: i16=16384 i32=16384 ui32=16384
+2^n 32768: i16=-32768 i32=32768 ui32=32768
+=== Testing byte patterns (0x00, 0xFF, 0xAA, 0x55) ===
+Pattern all_zeros (0x0):
+  Int32 LE: 0, BE: 0
+  Uint32 LE: 0, BE: 0
+Pattern all_ones (0xff):
+  Int32 LE: -1, BE: -1
+  Uint32 LE: 4294967295, BE: 4294967295
+Pattern alternating_10 (0xaa):
+  Int32 LE: -1431655766, BE: -1431655766
+  Uint32 LE: 2863311530, BE: 2863311530
+Pattern alternating_01 (0x55):
+  Int32 LE: 1431655765, BE: 1431655765
+  Uint32 LE: 1431655765, BE: 1431655765
+Pattern high_nibble (0xf0):
+  Int32 LE: -252645136, BE: -252645136
+  Uint32 LE: 4042322160, BE: 4042322160
+Pattern low_nibble (0xf):
+  Int32 LE: 252645135, BE: 252645135
+  Uint32 LE: 252645135, BE: 252645135
+=== Testing maximum and minimum representable values ===
+Int8 max: 127
+Int8 min: -128
+Uint8 max: 255
+Uint8 min: 0
+Int16 max: 32767
+Int16 min: -32768
+Uint16 max: 65535
+Uint16 min: 0
+Int32 max: 2147483647
+Int32 min: -2147483648
+Uint32 max: 4294967295
+Uint32 min: 0
+=== Testing Float32 precision boundaries ===
+Float32 1 => 1
+Float32 1.5 => 1.5
+Float32 1.25 => 1.25
+Float32 1.125 => 1.125
+Float32 1.0625 => 1.0625
+Float32 0.1 => 0.10000000149011612
+Float32 0.2 => 0.20000000298023224
+Float32 0.3 => 0.30000001192092896
+Float32 0.4 => 0.4000000059604645
+Float32 0.5 => 0.5
+Float32 0.6 => 0.6000000238418579
+Float32 0.7 => 0.699999988079071
+Float32 0.8 => 0.800000011920929
+Float32 0.9 => 0.8999999761581421
+Float32 0.00001 => 0.000009999999747378752
+Float32 0.000001 => 9.999999974752427e-7
+Float32 1e-7 => 1.0000000116860974e-7
+Float32 1e-8 => 9.99999993922529e-9
+Float32 1e-9 => 9.999999717180685e-10
+Float32 100000 => 100000
+Float32 1000000 => 1000000
+Float32 10000000 => 10000000
+Float32 100000000 => 100000000
+Float32 1000000000 => 1000000000
+=== Testing Float64 precision boundaries ===
+Float64 1 => 1
+Float64 1.5 => 1.5
+Float64 1.25 => 1.25
+Float64 1.125 => 1.125
+Float64 1.0625 => 1.0625
+Float64 1.03125 => 1.03125
+Float64 0.1 => 0.1
+Float64 0.01 => 0.01
+Float64 0.001 => 0.001
+Float64 0.0001 => 0.0001
+Float64 0.00001 => 0.00001
+Float64 1e-10 => 1e-10
+Float64 1e-20 => 1e-20
+Float64 1e-30 => 1e-30
+Float64 1e-40 => 1e-40
+Float64 1e-50 => 1e-50
+Float64 10000000000 => 10000000000
+Float64 100000000000000000000 => 100000000000000000000
+Float64 1e+30 => 1e+30
+Float64 1e+40 => 1e+40
+Float64 1e+50 => 1e+50
+=== Testing consecutive overlapping writes ===
+Overlapping writes result:
+  Byte[0]: 0x11
+  Byte[1]: 0x11
+  Byte[2]: 0x22
+  Byte[3]: 0x22
+  Byte[4]: 0x33
+  Byte[5]: 0x33
+  Byte[6]: 0x33
+  Byte[7]: 0x33
+  Int32[0] LE: 0x22221111
+  Int32[2] LE: 0x33332222
+  Int32[4] LE: 0x33333333
+=== Testing random value patterns ===
+Seed 12345: i32_le=12345 i32_be=24690 ui32_le=37035 ui32_be=49380
+  f32=123.44999694824219 f64=12.345
+Seed 67890: i32_le=67890 i32_be=135780 ui32_le=203670 ui32_be=271560
+  f32=678.9000244140625 f64=67.89
+Seed 11111: i32_le=11111 i32_be=22222 ui32_le=33333 ui32_be=44444
+  f32=111.11000061035156 f64=11.111
+Seed 22222: i32_le=22222 i32_be=44444 ui32_le=66666 ui32_be=88888
+  f32=222.22000122070313 f64=22.222
+Seed 33333: i32_le=33333 i32_be=66666 ui32_le=99999 ui32_be=133332
+  f32=333.3299865722656 f64=33.333
+Seed 44444: i32_le=44444 i32_be=88888 ui32_le=133332 ui32_be=177776
+  f32=444.44000244140625 f64=44.444
+Seed 55555: i32_le=55555 i32_be=111110 ui32_le=166665 ui32_be=222220
+  f32=555.5499877929688 f64=55.555
+Seed 66666: i32_le=66666 i32_be=133332 ui32_le=199998 ui32_be=266664
+  f32=666.6599731445313 f64=66.666
+Seed 77777: i32_le=77777 i32_be=155554 ui32_le=233331 ui32_be=311108
+  f32=777.77001953125 f64=77.777
+Seed 88888: i32_le=88888 i32_be=177776 ui32_le=266664 ui32_be=355552
+  f32=888.8800048828125 f64=88.888
+=== Testing incremental byte fills ===
+Offset 0:
+  i8=0 ui8=0
+  i16: LE=256 BE=1
+  ui16: LE=256 BE=1
+  i32: LE=50462976 BE=66051
+Offset 16:
+  i8=16 ui8=16
+  i16: LE=4368 BE=4113
+  ui16: LE=4368 BE=4113
+  i32: LE=319951120 BE=269554195
+Offset 32:
+  i8=32 ui8=32
+  i16: LE=8480 BE=8225
+  ui16: LE=8480 BE=8225
+  i32: LE=589439264 BE=539042339
+Offset 48:
+  i8=48 ui8=48
+  i16: LE=12592 BE=12337
+  ui16: LE=12592 BE=12337
+  i32: LE=858927408 BE=808530483
+Offset 64:
+  i8=64 ui8=64
+  i16: LE=16704 BE=16449
+  ui16: LE=16704 BE=16449
+  i32: LE=1128415552 BE=1078018627
+Offset 80:
+  i8=80 ui8=80
+  i16: LE=20816 BE=20561
+  ui16: LE=20816 BE=20561
+  i32: LE=1397903696 BE=1347506771
+Offset 96:
+  i8=96 ui8=96
+  i16: LE=24928 BE=24673
+  ui16: LE=24928 BE=24673
+  i32: LE=1667391840 BE=1616994915
+Offset 112:
+  i8=112 ui8=112
+  i16: LE=29040 BE=28785
+  ui16: LE=29040 BE=28785
+  i32: LE=1936879984 BE=1886483059
+Offset 128:
+  i8=-128 ui8=128
+  i16: LE=-32384 BE=-32639
+  ui16: LE=33152 BE=32897
+  i32: LE=-2088599168 BE=-2138996093
+Offset 144:
+  i8=-112 ui8=144
+  i16: LE=-28272 BE=-28527
+  ui16: LE=37264 BE=37009
+  i32: LE=-1819111024 BE=-1869507949
+=== Testing bit manipulation results ===
+Bit pattern 0: LE=0x1 BE=0x1
+Bit pattern 1: LE=0x2 BE=0x2
+Bit pattern 2: LE=0x4 BE=0x4
+Bit pattern 3: LE=0x8 BE=0x8
+Bit pattern 4: LE=0x10 BE=0x10
+Bit pattern 5: LE=0x20 BE=0x20
+Bit pattern 6: LE=0x40 BE=0x40
+Bit pattern 7: LE=0x80 BE=0x80
+Bit pattern 8: LE=0x100 BE=0x100
+Bit pattern 9: LE=0x200 BE=0x200
+Bit pattern 10: LE=0x400 BE=0x400
+Bit pattern 11: LE=0x800 BE=0x800
+Bit pattern 12: LE=0x1000 BE=0x1000
+Bit pattern 13: LE=0x2000 BE=0x2000
+Bit pattern 14: LE=0x4000 BE=0x4000
+Bit pattern 15: LE=0x8000 BE=0x8000
+=== Testing arithmetic progression ===
+Prog[0]: i16=10 i32=98305000 f32=0
+Prog[1]: i16=15 i32=131073500 f32=0
+Prog[2]: i16=20 i32=163842000 f32=0
+Prog[3]: i16=25 i32=196610500 f32=0
+Prog[4]: i16=30 i32=229379000 f32=0
+Prog[5]: i16=35 i32=262147500 f32=0
+Prog[6]: i16=40 i32=294916000 f32=0
+Prog[7]: i16=45 i32=327684500 f32=0
+Prog[8]: i16=50 i32=360453000 f32=0
+Prog[9]: i16=55 i32=393221500 f32=0
+Prog[10]: i16=60 i32=425990000 f32=0
+Prog[11]: i16=65 i32=458758500 f32=0
+Prog[12]: i16=70 i32=491527000 f32=0
+Prog[13]: i16=75 i32=524295500 f32=0
+Prog[14]: i16=80 i32=557064000 f32=0
+Prog[15]: i16=85 i32=589832500 f32=0
+Prog[16]: i16=90 i32=622601000 f32=0
+Prog[17]: i16=95 i32=655369500 f32=0
+Prog[18]: i16=100 i32=688138000 f32=0
+Prog[19]: i16=105 i32=10500 f32=10.5
+=== Testing geometric progression ===
+Geom[0]: ui32=1 f64=0
+Geom[1]: ui32=2 f64=0
+Geom[2]: ui32=4 f64=0
+Geom[3]: ui32=8 f64=0
+Geom[4]: ui32=16 f64=0
+Geom[5]: ui32=32 f64=0
+Geom[6]: ui32=64 f64=0
+Geom[7]: ui32=128 f64=0
+Geom[8]: ui32=256 f64=0
+Geom[9]: ui32=512 f64=0
+Geom[10]: ui32=1024 f64=0
+Geom[11]: ui32=2048 f64=0
+Geom[12]: ui32=4096 f64=0
+Geom[13]: ui32=8192 f64=0
+Geom[14]: ui32=16384 f64=0
+Geom[15]: ui32=32768 f64=32768
+=== Testing alternating positive/negative values ===
+Alt[0]: 0
+Alt[1]: -100
+Alt[2]: 200
+Alt[3]: -300
+Alt[4]: 400
+Alt[5]: -500
+Alt[6]: 600
+Alt[7]: -700
+Alt[8]: 800
+Alt[9]: -900
+Alt[10]: 1000
+Alt[11]: -1100
+Alt[12]: 1200
+Alt[13]: -1300
+Alt[14]: 1400
+Alt[15]: -1500
+Alt[16]: 1600
+Alt[17]: -1700
+Alt[18]: 1800
+Alt[19]: -1900
+Alt[20]: 2000
+Alt[21]: -2100
+Alt[22]: 2200
+Alt[23]: -2300
+Alt[24]: 2400
+Alt[25]: -2500
+Alt[26]: 2600
+Alt[27]: -2700
+Alt[28]: 2800
+Alt[29]: -2900
+Alt[30]: 3000
+Alt[31]: -3100
+=== Testing Fibonacci-like sequence ===
+Fib[0]: 1
+Fib[1]: 1
+Fib[2]: 2
+Fib[3]: 3
+Fib[4]: 5
+Fib[5]: 8
+Fib[6]: 13
+Fib[7]: 21
+Fib[8]: 34
+Fib[9]: 55
+Fib[10]: 89
+Fib[11]: 144
+Fib[12]: 233
+Fib[13]: 377
+Fib[14]: 610
+Fib[15]: 987
+Fib[16]: 1597
+Fib[17]: 2584
+Fib[18]: 4181
+Fib[19]: 6765
+=== Testing prime number storage ===
+Prime[0]: 2, square=589828
+Prime[1]: 3, square=1638409
+Prime[2]: 5, square=3211289
+Prime[3]: 7, square=7929905
+Prime[4]: 11, square=11075705
+Prime[5]: 13, square=18940073
+Prime[6]: 17, square=23658785
+Prime[7]: 19, square=34668905
+Prime[8]: 23, square=55116305
+Prime[9]: 29, square=62980937
+Prime[10]: 31, square=89719745
+Prime[11]: 37, square=110167385
+Prime[12]: 41, square=121177745
+Prime[13]: 43, square=144770873
+Prime[14]: 47, square=184092833
+Prime[15]: 53, square=228133625
+Prime[16]: 59, square=243862937
+Prime[17]: 61, square=294194825
+Prime[18]: 67, square=330371465
+Prime[19]: 71, square=5041
+=== Testing factorial approximations ===
+Factorial[1]: ui32=1 f64=0
+Factorial[2]: ui32=2 f64=0
+Factorial[3]: ui32=6 f64=0
+Factorial[4]: ui32=24 f64=0
+Factorial[5]: ui32=120 f64=0
+Factorial[6]: ui32=720 f64=0
+Factorial[7]: ui32=5040 f64=0
+Factorial[8]: ui32=40320 f64=0
+Factorial[9]: ui32=362880 f64=0
+Factorial[10]: ui32=3628800 f64=0
+Factorial[11]: ui32=39916800 f64=0
+Factorial[12]: ui32=479001600 f64=479001600
+=== Testing scientific notation values ===
+Scientific: 1e-50 => 1e-50
+Scientific: 1e-40 => 1e-40
+Scientific: 1e-30 => 1e-30
+Scientific: 1e-20 => 1e-20
+Scientific: 1e-10 => 1e-10
+Scientific: 0.00001 => 0.00001
+Scientific: 0.0001 => 0.0001
+Scientific: 0.001 => 0.001
+Scientific: 0.01 => 0.01
+Scientific: 0.1 => 0.1
+Scientific: 1 => 1
+Scientific: 10 => 10
+Scientific: 100 => 100
+Scientific: 1000 => 1000
+Scientific: 10000 => 10000
+Scientific: 100000 => 100000
+Scientific: 10000000000 => 10000000000
+Scientific: 100000000000000000000 => 100000000000000000000
+Scientific: 1e+30 => 1e+30
+Scientific: 1e+40 => 1e+40
+Scientific: 1e+50 => 1e+50
+=== Testing mathematical constants ===
+Constant PI: LE=3.141592653589793 BE=3.141592653589793
+Constant E: LE=2.718281828459045 BE=2.718281828459045
+Constant LN2: LE=0.6931471805599453 BE=0.6931471805599453
+Constant LN10: LE=2.302585092994046 BE=2.302585092994046
+Constant LOG2E: LE=1.4426950408889634 BE=1.4426950408889634
+Constant LOG10E: LE=0.4342944819032518 BE=0.4342944819032518
+Constant SQRT1_2: LE=0.7071067811865476 BE=0.7071067811865476
+Constant SQRT2: LE=1.4142135623730951 BE=1.4142135623730951
+=== Testing trigonometric values ===
+Angle 0deg: sin=0 cos=1 tan=0
+Angle 30deg: sin=0.49999999999999994 cos=0.8660254037844387 tan=0.5773502691896257
+Angle 60deg: sin=0.8660254037844386 cos=0.5000000000000001 tan=1.7320508075688767
+Angle 90deg: sin=1 cos=6.123233995736766e-17 tan=16331239353195370
+Angle 120deg: sin=0.8660254037844387 cos=-0.4999999999999998 tan=-1.7320508075688783
+Angle 150deg: sin=0.49999999999999994 cos=-0.8660254037844387 tan=-0.5773502691896257
+Angle 180deg: sin=1.2246467991473532e-16 cos=-1 tan=-1.2246467991473532e-16
+Angle 210deg: sin=-0.5000000000000001 cos=-0.8660254037844386 tan=0.577350269189626
+Angle 240deg: sin=-0.8660254037844384 cos=-0.5000000000000004 tan=1.7320508075688754
+Angle 270deg: sin=-1 cos=-1.8369701987210297e-16 tan=5443746451065123
+Angle 300deg: sin=-0.8660254037844386 cos=0.5000000000000001 tan=-1.732050807568877
+Angle 330deg: sin=-0.5000000000000004 cos=0.8660254037844384 tan=-0.5773502691896265
+Angle 360deg: sin=-2.4492935982947064e-16 cos=1 tan=-2.4492935982947064e-16
+=== Testing square roots ===
+sqrt(1) = 1
+sqrt(2) = 1.4142135623730951
+sqrt(3) = 1.7320508075688772
+sqrt(4) = 2
+sqrt(5) = 2.23606797749979
+sqrt(6) = 2.449489742783178
+sqrt(7) = 2.6457513110645907
+sqrt(8) = 2.8284271247461903
+sqrt(9) = 3
+sqrt(10) = 3.1622776601683795
+sqrt(11) = 3.3166247903554
+sqrt(12) = 3.4641016151377544
+sqrt(13) = 3.605551275463989
+sqrt(14) = 3.7416573867739413
+sqrt(15) = 3.872983346207417
+sqrt(16) = 4
+sqrt(17) = 4.123105625617661
+sqrt(18) = 4.242640687119285
+sqrt(19) = 4.358898943540674
+sqrt(20) = 4.47213595499958
+sqrt(21) = 4.58257569495584
+sqrt(22) = 4.69041575982343
+sqrt(23) = 4.795831523312719
+sqrt(24) = 4.898979485566356
+sqrt(25) = 5
+=== Testing logarithmic values ===
+log(1): ln=0 log10=0 log2=0
+log(2): ln=0.6931471805599453 log10=0.3010299956639812 log2=1
+log(3): ln=1.0986122886681098 log10=0.47712125471966244 log2=1.584962500721156
+log(4): ln=1.3862943611198906 log10=0.6020599913279624 log2=2
+log(5): ln=1.6094379124341003 log10=0.6989700043360189 log2=2.321928094887362
+log(6): ln=1.791759469228055 log10=0.7781512503836436 log2=2.584962500721156
+log(7): ln=1.9459101490553132 log10=0.8450980400142568 log2=2.807354922057604
+log(8): ln=2.0794415416798357 log10=0.9030899869919435 log2=3
+log(9): ln=2.1972245773362196 log10=0.9542425094393249 log2=3.169925001442312
+log(10): ln=2.302585092994046 log10=1 log2=3.321928094887362
+log(11): ln=2.3978952727983707 log10=1.041392685158225 log2=3.4594316186372973
+log(12): ln=2.4849066497880004 log10=1.0791812460476249 log2=3.584962500721156
+log(13): ln=2.5649493574615367 log10=1.1139433523068367 log2=3.700439718141092
+log(14): ln=2.6390573296152584 log10=1.146128035678238 log2=3.807354922057604
+log(15): ln=2.70805020110221 log10=1.1760912590556813 log2=3.9068905956085187
+log(16): ln=2.772588722239781 log10=1.2041199826559248 log2=4
+log(17): ln=2.833213344056216 log10=1.2304489213782739 log2=4.087462841250339
+log(18): ln=2.8903717578961645 log10=1.255272505103306 log2=4.169925001442312
+log(19): ln=2.9444389791664403 log10=1.2787536009528289 log2=4.247927513443585
+log(20): ln=2.995732273553991 log10=1.3010299956639813 log2=4.321928094887363
+=== Testing exponential values ===
+exp(0) = 1
+exp(1) = 2.718281828459045
+exp(2) = 7.38905609893065
+exp(3) = 20.085536923187668
+exp(4) = 54.598150033144236
+exp(5) = 148.4131591025766
+exp(6) = 403.4287934927351
+exp(7) = 1096.6331584284585
+exp(8) = 2980.9579870417283
+exp(9) = 8103.083927575384
+exp(10) = 22026.465794806718
+exp(11) = 59874.14171519782
+exp(12) = 162754.79141900392
+exp(13) = 442413.3920089205
+exp(14) = 1202604.2841647768
+exp(15) = 3269017.3724721107
+exp(16) = 8886110.520507872
+exp(17) = 24154952.7535753
+exp(18) = 65659969.13733051
+exp(19) = 178482300.96318725
+exp(20) = 485165195.4097903
+=== Testing power function values ===
+2^0 = 1
+2^1 = 2
+2^2 = 4
+2^3 = 8
+2^4 = 16
+2^5 = 32
+2^6 = 64
+2^7 = 128
+2^8 = 256
+2^9 = 512
+2^10 = 1024
+3^0 = 1
+3^1 = 3
+3^2 = 9
+3^3 = 27
+3^4 = 81
+3^5 = 243
+3^6 = 729
+3^7 = 2187
+3^8 = 6561
+3^9 = 19683
+3^10 = 59049
+4^0 = 1
+4^1 = 4
+4^2 = 16
+4^3 = 64
+4^4 = 256
+4^5 = 1024
+4^6 = 4096
+4^7 = 16384
+4^8 = 65536
+4^9 = 262144
+4^10 = 1048576
+5^0 = 1
+5^1 = 5
+5^2 = 25
+5^3 = 125
+5^4 = 625
+5^5 = 3125
+5^6 = 15625
+5^7 = 78125
+5^8 = 390625
+5^9 = 1953125
+5^10 = 9765625
+=== Testing fractional values ===
+1/2 = 0.5
+1/3 = 0.3333333333333333
+1/4 = 0.25
+1/5 = 0.2
+2/2 = 1
+2/3 = 0.6666666666666666
+2/4 = 0.5
+2/5 = 0.4
+3/2 = 1.5
+3/3 = 1
+3/4 = 0.75
+3/5 = 0.6
+4/2 = 2
+4/3 = 1.3333333333333333
+4/4 = 1
+4/5 = 0.8
+5/2 = 2.5
+5/3 = 1.6666666666666667
+5/4 = 1.25
+5/5 = 1
+6/2 = 3
+6/3 = 2
+6/4 = 1.5
+6/5 = 1.2
+7/2 = 3.5
+7/3 = 2.3333333333333335
+7/4 = 1.75
+7/5 = 1.4
+8/2 = 4
+8/3 = 2.6666666666666665
+8/4 = 2
+8/5 = 1.6
+9/2 = 4.5
+9/3 = 3
+9/4 = 2.25
+9/5 = 1.8
+10/2 = 5
+10/3 = 3.3333333333333335
+10/4 = 2.5
+10/5 = 2
+=== Testing percentage values ===
+0%: f32=-8.511720814913333e-23 f64=2.0185743187379943e+184
+5%: f32=-324647328 f64=-1.671823762664901e-181
+10%: f32=1.8881808769230927e-38 f64=-6.950404768038616e+65
+15%: f32=-2.6635863221238497e-23 f64=8.431248992130761e-305
+20%: f32=7.171329485800015e-8 f64=-1.977256548947003e-183
+25%: f32=-188325888 f64=4.0454480102030136e-60
+30%: f32=4.8451850490275915e+23 f64=-8.063620147465494e+63
+35%: f32=9.44083221774455e-39 f64=1.5882304062052725e+187
+40%: f32=-134638800 f64=1.0147034857221428e-306
+45%: f32=-8.4786656497184e-23 f64=-1.9300032252999628e-183
+50%: f32=3.655130104485179e+23 f64=4.04520397042456e-60
+55%: f32=5.36918385307672e-8 f64=-8.063617626778741e+63
+60%: f32=4.7204168095215074e-39 f64=1.5882304049034638e+187
+65%: f32=-134428256 f64=1.014703485717982e-306
+70%: f32=-8.478633464193467e-23 f64=5.58449909586117e-310
+75%: f32=3.655130104485179e+23 f64=2.18144495932e-312
+80%: f32=5.36918385307672e-8 f64=8.52126937e-315
+85%: f32=4.7204168095215074e-39 f64=3.3286206e-317
+90%: f32=1.8438285193585943e-41 f64=1.30023e-319
+95%: f32=-7.146622168056567e-44 f64=-3.105036184601488e+231
+100%: f32=1 f64=1
+=== Testing byte reversal patterns ===
+Reversal[0]: LE=0x10203 BE=0x10203
+Reversal[1]: LE=0x1020304 BE=0x1020304
+Reversal[2]: LE=0x2030405 BE=0x2030405
+Reversal[3]: LE=0x3040506 BE=0x3040506
+Reversal[4]: LE=0x4050607 BE=0x4050607
+Reversal[5]: LE=0x5060708 BE=0x5060708
+Reversal[6]: LE=0x6070809 BE=0x6070809
+Reversal[7]: LE=0x708090a BE=0x708090a
+Reversal[8]: LE=0x8090a0b BE=0x8090a0b
+Reversal[9]: LE=0x90a0b0c BE=0x90a0b0c
+Reversal[10]: LE=0xa0b0c0d BE=0xa0b0c0d
+Reversal[11]: LE=0xb0c0d0e BE=0xb0c0d0e
+Reversal[12]: LE=0xc0d0e0f BE=0xc0d0e0f
+Reversal[13]: LE=0xd0e0f10 BE=0xd0e0f10
+Reversal[14]: LE=0xe0f1011 BE=0xe0f1011
+Reversal[15]: LE=0xf101112 BE=0xf101112
+=== Testing checksums and hashes (mock) ===
+Hash[0]: u8=17 u32=1850683409
+Hash[1]: u8=48 u32=2372816688
+Hash[2]: u8=79 u32=2894949967
+Hash[3]: u8=110 u32=3417083246
+Hash[4]: u8=141 u32=3939216525
+Hash[5]: u8=172 u32=166382508
+Hash[6]: u8=203 u32=671738571
+Hash[7]: u8=234 u32=1193806314
+Hash[8]: u8=9 u32=1715939337
+Hash[9]: u8=40 u32=2238072616
+Hash[10]: u8=71 u32=2760205895
+Hash[11]: u8=102 u32=3282339174
+Hash[12]: u8=133 u32=3804472453
+Hash[13]: u8=164 u32=31638436
+Hash[14]: u8=195 u32=536994499
+Hash[15]: u8=226 u32=1059062242
+Hash[16]: u8=1 u32=1581195265
+Hash[17]: u8=32 u32=2103328544
+Hash[18]: u8=63 u32=2625461823
+Hash[19]: u8=94 u32=3147595102
+Hash[20]: u8=125 u32=3669728381
+Hash[21]: u8=156 u32=4191861660
+Hash[22]: u8=187 u32=419027643
+Hash[23]: u8=218 u32=924383706
+Hash[24]: u8=249 u32=1446451449
+Hash[25]: u8=24 u32=1968584472
+Hash[26]: u8=55 u32=2490717751
+Hash[27]: u8=86 u32=3012851030
+Hash[28]: u8=117 u32=3534984309
+Hash[29]: u8=148 u32=13808532
+Hash[30]: u8=179 u32=3523269299
+Hash[31]: u8=210 u32=13762770
+=== Testing cumulative sums ===
+CumSum[1]: 1
+CumSum[2]: 3
+CumSum[3]: 6
+CumSum[4]: 10
+CumSum[5]: 15
+CumSum[6]: 21
+CumSum[7]: 28
+CumSum[8]: 36
+CumSum[9]: 45
+CumSum[10]: 55
+CumSum[11]: 66
+CumSum[12]: 78
+CumSum[13]: 91
+CumSum[14]: 105
+CumSum[15]: 120
+CumSum[16]: 136
+CumSum[17]: 153
+CumSum[18]: 171
+CumSum[19]: 190
+CumSum[20]: 210
+CumSum[21]: 231
+CumSum[22]: 253
+CumSum[23]: 276
+CumSum[24]: 300
+CumSum[25]: 325
+CumSum[26]: 351
+CumSum[27]: 378
+CumSum[28]: 406
+CumSum[29]: 435
+CumSum[30]: 465
+CumSum[31]: 496
+CumSum[32]: 528
+CumSum[33]: 561
+CumSum[34]: 595
+CumSum[35]: 630
+CumSum[36]: 666
+CumSum[37]: 703
+CumSum[38]: 741
+CumSum[39]: 780
+CumSum[40]: 820
+CumSum[41]: 861
+CumSum[42]: 903
+CumSum[43]: 946
+CumSum[44]: 990
+CumSum[45]: 1035
+CumSum[46]: 1081
+CumSum[47]: 1128
+CumSum[48]: 1176
+CumSum[49]: 1225
+CumSum[50]: 1275
+=== Testing alternating bit patterns ===
+AltBit[0]: LE=0xaaaaaaaa BE=0xaaaaaaaa
+AltBit[1]: LE=0x55555555 BE=0x55555555
+AltBit[2]: LE=0xcccccccc BE=0xcccccccc
+AltBit[3]: LE=0x33333333 BE=0x33333333
+AltBit[4]: LE=0xf0f0f0f0 BE=0xf0f0f0f0
+AltBit[5]: LE=0xf0f0f0f BE=0xf0f0f0f
+AltBit[6]: LE=0xff00ff00 BE=0xff00ff00
+AltBit[7]: LE=0xff00ff BE=0xff00ff
+=== Testing combined read/write stress patterns ===
+Stress[0]: i8=-32 ui8=0 i16=-7040 ui16=25600
+Stress[8]: i8=-24 ui8=8 i16=1184 ui16=33824
+Stress[16]: i8=-16 ui8=16 i16=9408 ui16=42048
+Stress[24]: i8=-8 ui8=24 i16=17632 ui16=50272
+Stress[32]: i8=0 ui8=32 i16=25600 ui16=58496
+Stress[40]: i8=8 ui8=40 i16=-31712 ui16=1184
+Stress[48]: i8=16 ui8=48 i16=-23488 ui16=9408
+Stress[56]: i8=24 ui8=56 i16=-15264 ui16=17632
+=== Testing mixed endianness in same buffer ===
+Mix[0]: i32_le=0 i32_be=0 f64_le=-2.3534379293677286e-185 f64_be=1.348554822130284e-309
+Mix[1]: i32_le=1000 i32_be=2000 f64_le=-2.3534387710225188e-185 f64_be=0.04999998953717295
+Mix[2]: i32_le=2000 i32_be=4000 f64_le=4.667262942078317e-62 f64_be=0.09999997908307705
+Mix[3]: i32_le=3000 i32_be=6000 f64_le=-2.3534382099193252e-185 f64_be=0.15000000586151144
+Mix[4]: i32_le=4000 i32_be=8000 f64_le=1.273197475e-314 f64_be=0.19999995818943717
+Mix[5]: i32_le=5000 i32_be=10000 f64_le=4.667260716554626e-62 f64_be=0.2500000594416633
+Mix[6]: i32_le=6000 i32_be=12000 f64_le=1.9035983069105702e+185 f64_be=0.300000011769589
+Mix[7]: i32_le=7000 i32_be=14000 f64_le=-2.3534384904709218e-185 f64_be=0.3499999640975147
+Mix[8]: i32_le=8000 i32_be=16000 f64_le=-9.255967058120369e+61 f64_be=0.3999999164254404
+Mix[9]: i32_le=9000 i32_be=18000 f64_le=1.697596633e-314 f64_be=0.4499998687533662
+Mix[10]: i32_le=10000 i32_be=20000 f64_le=-2.3534379293677286e-185 f64_be=0.5000001189881004
+Mix[11]: i32_le=11000 i32_be=22000 f64_le=4.667262942078317e-62 f64_be=0.549999832897447
+Mix[12]: i32_le=12000 i32_be=24000 f64_le=-9.255965096526076e+61 f64_be=0.6000000236439518
+Mix[13]: i32_le=13000 i32_be=26000 f64_le=1.9035990849447395e+185 f64_be=0.6499997375532984
+Mix[14]: i32_le=14000 i32_be=28000 f64_le=8.48798316e-315 f64_be=0.6999999282998033
+Mix[15]: i32_le=15000 i32_be=30000 f64_le=1.5 f64_be=0.75
+=== Testing buffer reuse patterns ===
+Reuse pass1[0]: 0
+Reuse pass1[1]: 100
+Reuse pass1[2]: 200
+Reuse pass1[3]: 300
+Reuse pass1[4]: 400
+Reuse pass1[5]: 500
+Reuse pass1[6]: 600
+Reuse pass1[7]: 700
+Reuse pass2[0]: 0
+Reuse pass2[1]: 0.5
+Reuse pass2[2]: 1
+Reuse pass2[3]: 1.5
+Reuse pass2[4]: 2
+Reuse pass2[5]: 2.5
+Reuse pass2[6]: 3
+Reuse pass2[7]: 3.5
+=== Testing descending value patterns ===
+Desc: i16=100 i32=622602000
+Desc: i16=95 i32=589833500
+Desc: i16=90 i32=557065000
+Desc: i16=85 i32=524296500
+Desc: i16=80 i32=491528000
+Desc: i16=75 i32=458759500
+Desc: i16=70 i32=425991000
+Desc: i16=65 i32=393222500
+Desc: i16=60 i32=360454000
+Desc: i16=55 i32=327685500
+Desc: i16=50 i32=294917000
+Desc: i16=45 i32=262148500
+Desc: i16=40 i32=229380000
+Desc: i16=35 i32=196611500
+Desc: i16=30 i32=163843000
+Desc: i16=25 i32=131074500
+Desc: i16=20 i32=98306000
+Desc: i16=15 i32=65537500
+Desc: i16=10 i32=32769000
+Desc: i16=5 i32=500
+=== Testing value doubling sequence ===
+Double[0]: 1
+Double[1]: 2
+Double[2]: 4
+Double[3]: 8
+Double[4]: 16
+Double[5]: 32
+Double[6]: 64
+Double[7]: 128
+Double[8]: 256
+Double[9]: 512
+Double[10]: 1024
+Double[11]: 2048
+Double[12]: 4096
+Double[13]: 8192
+Double[14]: 16384
+Double[15]: 32768
+Double[16]: 65536
+Double[17]: 131072
+Double[18]: 262144
+Double[19]: 524288
+=== Testing value halving sequence ===
+Halve[0]: 1024
+Halve[1]: 512
+Halve[2]: 256
+Halve[3]: 128
+Halve[4]: 64
+Halve[5]: 32
+Halve[6]: 16
+Halve[7]: 8
+Halve[8]: 4
+Halve[9]: 2
+Halve[10]: 1
+Halve[11]: 0.5
+Halve[12]: 0.25
+Halve[13]: 0.125
+Halve[14]: 0.0625
+Halve[15]: 0.03125
+Halve[16]: 0.015625
+Halve[17]: 0.0078125
+Halve[18]: 0.00390625
+Halve[19]: 0.001953125
+=== Testing negation patterns ===
+NegPat[1]: pos=1 neg=-1
+NegPat[5]: pos=5 neg=-5
+NegPat[9]: pos=9 neg=-9
+NegPat[13]: pos=13 neg=-13
+NegPat[17]: pos=17 neg=-17
+NegPat[21]: pos=21 neg=-21
+NegPat[25]: pos=25 neg=-25
+NegPat[29]: pos=29 neg=-29
+=== Testing reciprocal values ===
+1/1 = 1
+1/2 = 0.5
+1/3 = 0.3333333333333333
+1/4 = 0.25
+1/5 = 0.2
+1/6 = 0.16666666666666666
+1/7 = 0.14285714285714285
+1/8 = 0.125
+1/9 = 0.1111111111111111
+1/10 = 0.1
+1/11 = 0.09090909090909091
+1/12 = 0.08333333333333333
+1/13 = 0.07692307692307693
+1/14 = 0.07142857142857142
+1/15 = 0.06666666666666667
+1/16 = 0.0625
+1/17 = 0.058823529411764705
+1/18 = 0.05555555555555555
+1/19 = 0.05263157894736842
+1/20 = 0.05
+1/21 = 0.047619047619047616
+1/22 = 0.045454545454545456
+1/23 = 0.043478260869565216
+1/24 = 0.041666666666666664
+1/25 = 0.04
+=== Testing RangeError cases ===
+--- Testing offset out of range ---
+getInt8(16): RangeError - getIndex +elementSize > viewSize
+getInt8(-1): RangeError - getIndex < 0
+getUint8(16): RangeError - getIndex +elementSize > viewSize
+getInt16(15): RangeError - getIndex +elementSize > viewSize
+getInt16(16): RangeError - getIndex +elementSize > viewSize
+getUint16(15): RangeError - getIndex +elementSize > viewSize
+getInt32(13): RangeError - getIndex +elementSize > viewSize
+getInt32(16): RangeError - getIndex +elementSize > viewSize
+getUint32(13): RangeError - getIndex +elementSize > viewSize
+getFloat32(13): RangeError - getIndex +elementSize > viewSize
+getFloat64(9): RangeError - getIndex +elementSize > viewSize
+getFloat64(16): RangeError - getIndex +elementSize > viewSize
+--- Testing setXXX out of range ---
+setInt8(16, 100): RangeError - getIndex +elementSize > viewSize
+setInt8(-1, 100): RangeError - getIndex < 0
+setUint8(16, 200): RangeError - getIndex +elementSize > viewSize
+setInt16(15, 1000): RangeError - getIndex +elementSize > viewSize
+setUint16(15, 2000): RangeError - getIndex +elementSize > viewSize
+setInt32(13, 100000): RangeError - getIndex +elementSize > viewSize
+setUint32(13, 200000): RangeError - getIndex +elementSize > viewSize
+setFloat32(13, 3.14): RangeError - getIndex +elementSize > viewSize
+setFloat64(9, 2.718): RangeError - getIndex +elementSize > viewSize
+=== Testing invalid parameters ===
+--- Testing invalid offset types ---
+setFloat64(Symbol, 3.14): TypeError - Cannot convert a Symbol value to a number
+--- Testing invalid value types for setters ---
+setFloat32(0, Symbol): TypeError - Cannot convert a Symbol value to a number
+--- Testing BigInt values (should cause TypeError) ---
+setInt8(0, 1n): TypeError - Cannot convert a BigInt value to a number
+setInt32(0, 123n): TypeError - Cannot convert a BigInt value to a number
+setFloat64(0, 456n): TypeError - Cannot convert a BigInt value to a number
+--- Testing extremely large offsets ---
+getInt8(MAX_SAFE_INTEGER): RangeError - getIndex +elementSize > viewSize
+setInt32(0xFFFFFFFF, 100): RangeError - getIndex +elementSize > viewSize
+getFloat64(Infinity): RangeError - integerIndex < 0 or integerIndex > SAFE_NUMBER
+--- Testing NaN as offset ---
+--- Testing fractional offsets ---
+=== Testing DataView constructor errors ===
+--- Testing invalid ArrayBuffer ---
+new DataView(null): TypeError - buffer is not Object
+new DataView(undefined): TypeError - buffer is not Object
+new DataView('not a buffer'): TypeError - buffer is not Object
+new DataView({}): TypeError - buffer is not ArrayBuffer
+--- Testing invalid offset/length in constructor ---
+new DataView(buf, -1): RangeError - integerIndex < 0 or integerIndex > SAFE_NUMBER
+new DataView(buf, 33): RangeError - offset > bufferByteLength
+new DataView(buf, 16, -1): RangeError - integerIndex < 0 or integerIndex > SAFE_NUMBER
+new DataView(buf, 16, 17): RangeError - offset + viewByteLen > bufByteLen
+new DataView(buf, 0, 33): RangeError - offset + viewByteLen > bufByteLen
+=== Testing boundary conditions ===
+--- Testing valid boundary cases ---
+setInt8(7, 100): success - 100
+setInt16(6, 1000): success - 1000
+setInt32(4, 100000): success - 100000
+setFloat64(0, 3.14159): success - 3.14159
+--- Testing just over the boundary ---
+setInt8(8, 100): RangeError - getIndex +elementSize > viewSize
+setInt16(7, 1000): RangeError - getIndex +elementSize > viewSize
+setInt32(5, 100000): RangeError - getIndex +elementSize > viewSize
+setFloat64(1, 2.718): RangeError - getIndex +elementSize > viewSize
+=== Testing with detached ArrayBuffer ===
+--- Attempting operations on potentially detached buffer ---
+Operation on detached buffer succeeded (buffer not actually detached)
+=== Testing with zero-length ArrayBuffer ===
+getInt8(0) on zero-length buffer: RangeError - getIndex +elementSize > viewSize
+setInt8(0, 100) on zero-length buffer: RangeError - getIndex +elementSize > viewSize
+=== Testing special number values as parameters ===
+--- Testing Infinity and -Infinity as values ---
+setFloat32(0, Infinity): success - Infinity
+setFloat64(8, -Infinity): success - -Infinity
+--- Testing NaN as value ---
+setFloat32(0, NaN): success - NaN
+DataView RangeError and invalid parameter tests completed!

@@ -36,12 +36,10 @@ public:
     static constexpr uint16_t index = static_cast<uint16_t>(GlobalEnvField::index);
 #define GLOBAL_ENV_SLOT_FILTER_BUILTIN4(ARG1, ARG2, ARG3, Index) \
     static constexpr uint16_t Index##_INDEX = static_cast<uint16_t>(GlobalEnvField::Index##_INDEX);
-#define GLOBAL_ENV_SLOT_FILTER_BUILTIN6(ARG1, ARG2, ARG3, ARG4, ARG5, Index) \
-    static constexpr uint16_t Index##_INDEX = static_cast<uint16_t>(GlobalEnvField::Index##_INDEX);
 
     GLOBAL_ENV_FIELDS(GLOBAL_ENV_SLOT)
     BUILTINS_METHOD_STUB_LIST(GLOBAL_ENV_SLOT_FILTER_BUILTIN4, GLOBAL_ENV_SLOT_FILTER_BUILTIN4,
-                              GLOBAL_ENV_SLOT_FILTER_BUILTIN4, GLOBAL_ENV_SLOT_FILTER_BUILTIN6)
+                              GLOBAL_ENV_SLOT_FILTER_BUILTIN4)
 
     static constexpr uint16_t FINAL_INDEX = static_cast<uint16_t>(GlobalEnvField::FINAL_INDEX);
     static constexpr uint8_t RESERVED_LENGTH = 1; // divide the gc area
@@ -199,17 +197,14 @@ public:
         break;
 #define SET_BUILTIN_METHOD_STUB_IMPL4(name, builtin, unused, index) \
     SET_BUILTIN_FUNCTION_CASE(unused, builtin##name, index##_INDEX)
-#define SET_BUILTIN_METHOD_STUB_IMPL6(name, builtin, Unused0, Unused1, Unused2, index) \
-    SET_BUILTIN_FUNCTION_CASE(Unused0, builtin##name, index##_INDEX)
         switch (builtinId) {
             GLOBAL_ENV_INLINED_BUILTINS(SET_BUILTIN_FUNCTION_CASE)
             BUILTINS_METHOD_STUB_LIST(SET_BUILTIN_METHOD_STUB_IMPL4, SET_BUILTIN_METHOD_STUB_IMPL4,
-                                      SET_BUILTIN_METHOD_STUB_IMPL4, SET_BUILTIN_METHOD_STUB_IMPL6)
+                                      SET_BUILTIN_METHOD_STUB_IMPL4)
             default:
                 LOG_ECMA(FATAL) << "SetBuiltinFunction: invalid builtinId: " << builtinId;
                 UNREACHABLE();
         }
-#undef SET_BUILTIN_METHOD_STUB_IMPL6
 #undef SET_BUILTIN_METHOD_STUB_IMPL4
 #undef SET_BUILTIN_FUNCTION_CASE
     }
@@ -294,12 +289,9 @@ public:
 
 #define GLOBAL_ENV_BUILTIN_ACCESSORS4_IMPL(name, builtin, value, index) \
     GLOBAL_ENV_FIELD_ACCESSORS(JSTaggedValue, builtin##name, index##_INDEX)
-#define GLOBAL_ENV_BUILTIN_ACCESSORS6_IMPL(name, builtin, Unused0, Unused1, Unused2, Index) \
-    GLOBAL_ENV_FIELD_ACCESSORS(JSTaggedValue, builtin##name, Index##_INDEX)
     BUILTINS_METHOD_STUB_LIST(GLOBAL_ENV_BUILTIN_ACCESSORS4_IMPL, GLOBAL_ENV_BUILTIN_ACCESSORS4_IMPL,
-                              GLOBAL_ENV_BUILTIN_ACCESSORS4_IMPL, GLOBAL_ENV_BUILTIN_ACCESSORS6_IMPL)
+                              GLOBAL_ENV_BUILTIN_ACCESSORS4_IMPL)
     GLOBAL_ENV_FIELDS(GLOBAL_ENV_FIELD_ACCESSORS)
-#undef GLOBAL_ENV_BUILTIN_ACCESSORS6_IMPL
 #undef GLOBAL_ENV_BUILTIN_ACCESSORS4_IMPL
 #undef GLOBAL_ENV_FIELD_ACCESSORS
 
