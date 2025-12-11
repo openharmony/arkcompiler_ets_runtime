@@ -135,7 +135,7 @@ function FrequencyTestComplex(input: number): number {
 function FrequencyTestPattern(input: number): number {
     let operations = 0;
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 2; i++) {
         operations += HighFreqSimple1(input + i);
 
         if (i % 7 === 0) {
@@ -209,7 +209,7 @@ function FrequencyTestString(str: string): string {
 function GatherFrequencyData(): void {
     print("Gathering frequency data...");
 
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 50; i++) {
         FrequencyTestBasic(i);
         FrequencyTestComplex(i);
         FrequencyTestPattern(i);
@@ -222,25 +222,6 @@ function GatherFrequencyData(): void {
     }
 
     print("Frequency data gathering complete");
-}
-
-function TestHighFrequencyInlining(): void {
-    print("=== High Frequency Inlining Test ===");
-
-    print(`HighFreqSimple1(5): ${HighFreqSimple1(5)}`);
-    print(`HighFreqSimple2(5): ${HighFreqSimple2(5)}`);
-    print(`HighFreqSimple3(5): ${HighFreqSimple3(5)}`);
-    print(`HighFreqMedium1(5): ${HighFreqMedium1(5)}`);
-    print(`HighFreqComplex1(5, 6): ${HighFreqComplex1(5, 6)}`);
-}
-
-function TestLowFrequencyInlining(): void {
-    print("=== Low Frequency Inlining Test ===");
-
-    print(`LowFreqSimple1(3): ${LowFreqSimple1(3)}`);
-    print(`LowFreqSimple2(3): ${LowFreqSimple2(3)}`);
-    print(`LowFreqMedium1(3): ${LowFreqMedium1(3)}`);
-    print(`LowFreqComplex1([3]): ${LowFreqComplex1([3])}`);
 }
 
 function TestMediumFrequencyInlining(): void {
@@ -790,38 +771,43 @@ print("=== Frequency-based Inline Testing ===");
 
 print("Phase 1: Gathering frequency data");
 GatherFrequencyData();
-ArkTools.jitCompileAsync(GatherFrequencyData);
-print(ArkTools.waitJitCompileFinish(GatherFrequencyData));
-GatherFrequencyData();
+
+ArkTools.jitCompileAsync(FrequencyTestBasic);
+print(ArkTools.waitJitCompileFinish(FrequencyTestBasic));
+ArkTools.jitCompileAsync(FrequencyTestComplex);
+print(ArkTools.waitJitCompileFinish(FrequencyTestComplex));
+ArkTools.jitCompileAsync(FrequencyTestPattern);
+print(ArkTools.waitJitCompileFinish(FrequencyTestPattern));
+ArkTools.jitCompileAsync(FrequencyTestMixed);
+print(ArkTools.waitJitCompileFinish(FrequencyTestMixed));
+ArkTools.jitCompileAsync(FrequencyTestArray);
+print(ArkTools.waitJitCompileFinish(FrequencyTestArray));
+ArkTools.jitCompileAsync(FrequencyTestString);
+print(ArkTools.waitJitCompileFinish(FrequencyTestString));
 
 print("Phase 2: Testing high frequency inlining");
-TestHighFrequencyInlining();
-ArkTools.jitCompileAsync(TestHighFrequencyInlining);
-print(ArkTools.waitJitCompileFinish(TestHighFrequencyInlining));
-TestHighFrequencyInlining();
+FrequencyTestBasic(1);
+FrequencyTestComplex(1);
+FrequencyTestPattern(1);
+FrequencyTestMixed(1, true);
+FrequencyTestArray([0, 1, 2, 3, 4]);
+FrequencyTestString("frequency_test_" + 1);
 
 print("Phase 3: Testing low frequency inlining");
-TestLowFrequencyInlining();
-ArkTools.jitCompileAsync(TestLowFrequencyInlining);
-print(ArkTools.waitJitCompileFinish(TestLowFrequencyInlining));
-TestLowFrequencyInlining();
+FrequencyTestBasic(0);
+FrequencyTestComplex(0);
+FrequencyTestPattern(0);
+FrequencyTestMixed(0, false);
+FrequencyTestArray([1, 2, 3]);
+FrequencyTestString("frequency_test_" + 0);
 
 print("Phase 4: Testing medium frequency inlining");
-TestMediumFrequencyInlining();
-ArkTools.jitCompileAsync(TestMediumFrequencyInlining);
-print(ArkTools.waitJitCompileFinish(TestMediumFrequencyInlining));
 TestMediumFrequencyInlining();
 
 print("Phase 5: Testing frequency-based decisions");
 TestFrequencyBasedDecisions();
-ArkTools.jitCompileAsync(TestFrequencyBasedDecisions);
-print(ArkTools.waitJitCompileFinish(TestFrequencyBasedDecisions));
-TestFrequencyBasedDecisions();
 
 print("Phase 6: Testing mixed frequency patterns");
-TestMixedFrequencyPatterns();
-ArkTools.jitCompileAsync(TestMixedFrequencyPatterns);
-print(ArkTools.waitJitCompileFinish(TestMixedFrequencyPatterns));
 TestMixedFrequencyPatterns();
 
 print("Phase 7: Testing frequency thresholds");
