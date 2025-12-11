@@ -73,6 +73,7 @@ private:
     void ProcessYoungGCMarkStack(uint32_t threadId);
     void ProcessOldGCMarkStack(uint32_t threadId);
     void ProcessCMSGCMarkStack(uint32_t threadId);
+    void ProcessCCGCMarkStack(uint32_t threadId);
 };
 
 class CompressGCMarker final : public Marker {

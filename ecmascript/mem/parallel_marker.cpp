@@ -19,6 +19,7 @@
 #include "ecmascript/mem/object_xray.h"
 
 #include "ecmascript/mem/cms_mem/sweep_gc_visitor-inl.h"
+#include "ecmascript/mem/local_cmc/cc_gc_visitor-inl.h"
 #include "ecmascript/mem/old_gc_visitor-inl.h"
 #include "ecmascript/mem/young_gc_visitor-inl.h"
 #include "ecmascript/mem/full_gc-inl.h"
@@ -67,9 +68,8 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
 {
     // To keep MachineCode objects alive (for dump) before JsError object be free, we have to know which JsError is
     // alive first. So this method must be call after all other mark work finish.
-    TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::MarkJitCodeMap", "");
-    if (!heap_->IsFullMark()) {
+    if (heap_->IsYoungMark()) {
         return;
     }
     OldGCMarkObjectVisitor objectVisitor(workManager_->GetWorkNodeHolder(threadId));
@@ -103,8 +103,11 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
     }
     if (heap_->IsYoungMark()) {
         ProcessYoungGCMarkStack(threadId);
-    } else {
+    } else if (heap_->IsFullMark()) {
         ProcessOldGCMarkStack(threadId);
+    } else {
+        ASSERT(heap_->IsCCMark());
+        ProcessCCGCMarkStack(threadId);
     }
 }
 
@@ -174,6 +177,23 @@ void NonMovableMarker::ProcessCMSGCMarkStack(uint32_t threadId)
 
         sweepGCMarkObjectVisitor.VisitHClass(jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, sweepGCMarkObjectVisitor);
+    }
+}
+
+void NonMovableMarker::ProcessCCGCMarkStack(uint32_t threadId)
+{
+    WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
+    CCMarkObjectVisitor ccMarkObjectVisitor(workNodeHolder);
+    SemiSpace *newSpace = heap_->GetNewSpace();
+    TaggedObject *obj = nullptr;
+    while (workNodeHolder->Pop(&obj)) {
+        Region *region = Region::ObjectAddressToRange(obj);
+
+        auto jsHClass = obj->GetClass();
+        auto size = jsHClass->SizeFromJSHClass(obj);
+        region->IncreaseAliveObject(size);
+        ccMarkObjectVisitor.VisitObjectHClassImpl(jsHClass);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHClass, ccMarkObjectVisitor);
     }
 }
 

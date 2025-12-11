@@ -96,9 +96,6 @@ bool SparseSpace::Expand()
     }
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
-    if (thread->IsConcurrentCopying()) {
-        region->SetRegionTypeFlag(RegionTypeFlag::TO);
-    }
     region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
     AddRegion(region);
     allocator_->AddFree(region);
@@ -668,6 +665,12 @@ void OldSpace::SweepNewToOldRegions()
 
 ToSpace::ToSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, MemSpaceType::OLD_SPACE, initialCapacity, maximumCapacity) {}
+
+uintptr_t ToSpace::Allocate(size_t size, bool allowGC)
+{
+    LOG_FULL(FATAL) << "ToSpace::Allocate unreachable";
+    return 0;
+}
 
 Region* ToSpace::ForceExpandSync()
 {

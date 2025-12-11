@@ -1035,7 +1035,6 @@ ecma_source = [
   "ecmascript/linked_hash_table.cpp",
   "ecmascript/message_string.cpp",
   "ecmascript/mem/local_cmc/cc_evacuator.cpp",
-  "ecmascript/mem/local_cmc/cc_marker.cpp",
   "ecmascript/mem/local_cmc/concurrent_copy_gc.cpp",
   "ecmascript/mem/assert_scope.cpp",
   "ecmascript/mem/barriers.cpp",

@@ -24,7 +24,6 @@
 #include "ecmascript/mem/cms_mem/sweep_gc.h"
 #include "ecmascript/mem/idle_gc_trigger.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
-#include "ecmascript/mem/local_cmc/cc_marker-inl.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker.h"
@@ -894,9 +893,6 @@ void Heap::Initialize()
         EnableConcurrentMarkType::CONFIG_DISABLE);
     nonMovableMarker_ = new NonMovableMarker(this);
     compressGCMarker_ = new CompressGCMarker(this);
-    ccMarker_ = new CCMarker(this);
-    auto localEvacuator = new CCEvacuator(this);
-    thread_->SetLocalCCEvacuator(localEvacuator);
     if (Runtime::GetInstance()->IsHybridVm()) {
         unifiedGCMarker_ = new UnifiedGCMarker(this);
     }
@@ -1227,10 +1223,6 @@ void Heap::Destroy()
     if (compressGCMarker_ != nullptr) {
         delete compressGCMarker_;
         compressGCMarker_ = nullptr;
-    }
-    if (ccMarker_ != nullptr) {
-        delete ccMarker_;
-        ccMarker_ = nullptr;
     }
     if (Runtime::GetInstance()->IsHybridVm() && unifiedGCMarker_ != nullptr) {
         delete unifiedGCMarker_;
@@ -1642,8 +1634,8 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     if (thread_->IsConcurrentCopying()) {
         WaitAndHandleCCFinished();
     } else if (IsCCMark()) {
-        if (gcType != TriggerGCType::FULL_GC && shouldThrowOOMError_) {
-            CollectFromCCMark(reason);
+        if (gcType != TriggerGCType::FULL_GC && !shouldThrowOOMError_) {
+            CollectGarbageFromCCMark(reason);
             return;
         }
         CheckOngoingConcurrentMarking();
@@ -1654,7 +1646,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ProcessGCCallback();
 }
 
-void Heap::CollectFromCCMark(GCReason reason)
+void Heap::CollectGarbageFromCCMark(GCReason reason)
 {
     ASSERT(IsCCMark() && !thread_->IsConcurrentCopying());
     if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent()) {
@@ -1677,10 +1669,6 @@ void Heap::CollectFromCCMark(GCReason reason)
     memController_->StopCalculationAfterGC(gcType_);
     RecomputeLimits();
     ResetNativeSizeAfterLastGC();
-    OPTIONAL_LOG(ecmaVm_, INFO) << " GC after: CCMark"
-                                << " global object size " << GetHeapObjectSize()
-                                << " global committed size " << GetCommittedSize()
-                                << " global limit " << globalSpaceAllocLimit_;
     GetEcmaGCStats()->RecordStatisticAfterGC();
 #ifdef ENABLE_HISYSEVENT
     GetEcmaGCKeyStats()->IncGCCount();
@@ -2144,13 +2132,11 @@ bool Heap::CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIn
         ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceName, "");
         if (threadType == ThreadType::JS_THREAD) {
             MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, WaitConcurrentMarkingFinished);
-            Marker *marker = IsCCMark() ? GetCCMarker() : GetNonMovableMarker();
-            marker->ProcessMarkStack(threadIndex);
+            GetNonMovableMarker()->ProcessMarkStack(threadIndex);
             WaitConcurrentMarkingFinished();
         } else if (threadType == ThreadType::DAEMON_THREAD) {
             CHECK_DAEMON_THREAD();
-            Marker *marker = IsCCMark() ? GetCCMarker() : GetNonMovableMarker();
-            marker->ProcessMarkStack(threadIndex);
+            GetNonMovableMarker()->ProcessMarkStack(threadIndex);
             WaitConcurrentMarkingFinished();
         }
     }
@@ -3083,7 +3069,6 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     fullGC_->workManager_ = workManager;
     nonMovableMarker_->workManager_ = workManager;
     compressGCMarker_->workManager_ = workManager;
-    ccMarker_->workManager_ = workManager;
     if (Runtime::GetInstance()->IsHybridVm()) {
         unifiedGCMarker_->workManager_ = workManager;
     }

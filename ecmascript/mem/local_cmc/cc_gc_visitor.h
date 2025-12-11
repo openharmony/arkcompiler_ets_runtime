@@ -13,22 +13,12 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_MEM_LOCAL_CMC_CC_MARKER_H
-#define ECMASCRIPT_MEM_LOCAL_CMC_CC_MARKER_H
+#ifndef ECMASCRIPT_MEM_LOCAL_CMC_CC_GC_VISITOR_H
+#define ECMASCRIPT_MEM_LOCAL_CMC_CC_GC_VISITOR_H
 
 #include "ecmascript/mem/parallel_marker.h"
 
 namespace panda::ecmascript {
-class CCMarker final : public Marker {
-public:
-    explicit CCMarker(Heap *heap) : Marker(heap) {}
-    ~CCMarker() override = default;
-
-protected:
-    void MarkJitCodeMap(uint32_t threadId) override;
-    void ProcessMarkStack(uint32_t threadId) override;
-};
-
 class CCMarkRootVisitor final : public RootVisitor {
 public:
     inline explicit CCMarkRootVisitor(WorkNodeHolder *workNodeHolder) : workNodeHolder_(workNodeHolder) {}
@@ -69,4 +59,4 @@ private:
     friend class CCMarker;
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_MEM_LOCAL_CMC_CC_MARKER_H
+#endif  // ECMASCRIPT_MEM_LOCAL_CMC_CC_GC_VISITOR_H

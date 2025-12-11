@@ -18,7 +18,7 @@
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/cms_mem/sweep_gc_visitor-inl.h"
 #include "ecmascript/mem/idle_gc_trigger.h"
-#include "ecmascript/mem/local_cmc/cc_marker-inl.h"
+#include "ecmascript/mem/local_cmc/cc_gc_visitor-inl.h"
 #include "ecmascript/mem/old_gc_visitor-inl.h"
 #include "ecmascript/mem/parallel_marker.h"
 #include "ecmascript/mem/young_gc_visitor-inl.h"
@@ -82,7 +82,7 @@ void ConcurrentMarker::MarkRoots()
     } else {
         ASSERT(heap_->IsCCMark());
         CCMarkRootVisitor ccMarkRootVisitor(workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX));
-        heap_->GetCCMarker()->MarkRoots(ccMarkRootVisitor);
+        heap_->GetNonMovableMarker()->MarkRoots(ccMarkRootVisitor);
     }
 }
 
@@ -127,7 +127,7 @@ void ConcurrentMarker::ReMark()
     TRACE_GC(GCStats::Scope::ScopeId::ReMark, heap_->GetEcmaVM()->GetEcmaGCStats());
     LOG_GC(DEBUG) << "ConcurrentMarker: Remarking Begin";
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ReMarking);
-    Marker *marker = heap_->IsCCMark() ? heap_->GetCCMarker() : heap_->GetNonMovableMarker();
+    Marker *marker = heap_->GetNonMovableMarker();
     MarkRoots();
     marker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
@@ -138,7 +138,7 @@ void ConcurrentMarker::ReMark()
 void ConcurrentMarker::HandleMarkingFinished(GCReason gcReason)  // js-thread wait for sweep
 {
     if (heap_->IsCCMark()) {
-        heap_->CollectFromCCMark(gcReason);
+        heap_->CollectGarbageFromCCMark(gcReason);
     } else {
         TriggerGCType gcType = heap_->IsConcurrentFullMark() ? TriggerGCType::OLD_GC : TriggerGCType::YOUNG_GC;
         heap_->CollectGarbage(gcType, gcReason);
@@ -267,7 +267,7 @@ void ConcurrentMarker::FinishMarking()
 void ConcurrentMarker::ProcessConcurrentMarkTask(uint32_t threadId)
 {
     runningTaskCount_.fetch_add(1, std::memory_order_relaxed);
-    Marker *marker = heap_->IsCCMark() ? heap_->GetCCMarker() : heap_->GetNonMovableMarker();
+    Marker *marker = heap_->GetNonMovableMarker();
     marker->ProcessMarkStack(threadId);
     if (ShouldNotifyMarkingFinished()) {
         FinishMarking();

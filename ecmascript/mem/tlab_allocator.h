@@ -64,9 +64,12 @@ private:
 
 class CCTlabAllocator : public TlabAllocatorBase {
 public:
-    inline explicit CCTlabAllocator(Heap *heap);
-    inline ~CCTlabAllocator();
+    CCTlabAllocator() = default;
+    ~CCTlabAllocator() = default;
     inline uintptr_t Allocate(size_t size);
+    inline void Setup(Heap *heap);
+    inline void Initialize();
+    inline void Finalize();
 
     NO_COPY_SEMANTIC(CCTlabAllocator);
     NO_MOVE_SEMANTIC(CCTlabAllocator);

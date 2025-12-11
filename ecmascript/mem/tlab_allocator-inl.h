@@ -140,8 +140,22 @@ bool TlabAllocator::ExpandCompressFromOld(size_t size)
     return false;
 }
 
-CCTlabAllocator::CCTlabAllocator(Heap *heap) : heap_(heap), toSpace_(heap->GetToSpace())
+void CCTlabAllocator::Setup(Heap *heap)
 {
+    heap_ = heap;
+    toSpace_ = heap->GetToSpace();
+}
+
+void CCTlabAllocator::Initialize()
+{
+    bpAllocator_.Reset();
+}
+
+void CCTlabAllocator::Finalize()
+{
+    if (bpAllocator_.Available() != 0) {
+        FreeObject::FillFreeObject(heap_, bpAllocator_.GetTop(), bpAllocator_.Available());
+    }
     bpAllocator_.Reset();
 }
 
@@ -164,14 +178,6 @@ void CCTlabAllocator::Expand()
     tlabRegion_= toSpace_->ForceExpandSync();
     FreeObject::FillFreeObject(heap_, bpAllocator_.GetTop(), bpAllocator_.Available());
     bpAllocator_.Reset(tlabRegion_->GetBegin(), tlabRegion_->GetEnd());
-}
-
-CCTlabAllocator::~CCTlabAllocator()
-{
-    if (bpAllocator_.Available() != 0) {
-        FreeObject::FillFreeObject(heap_, bpAllocator_.GetTop(), bpAllocator_.Available());
-        bpAllocator_.Reset();
-    }
 }
 
 SharedTlabAllocator::SharedTlabAllocator(SharedHeap *sHeap)
