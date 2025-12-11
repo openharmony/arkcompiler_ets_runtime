@@ -13,27 +13,26 @@
 
 * @weng-changcheng ^yingguofeng
 
-common_components/                @weng-changcheng @dmitriitr ^Prof1983 ^igelhaus ^ragnvald
+common_components/                @weng-changcheng @dmitriitr ^igelhaus ^Prof
 common_components/BUILD.gn        @weng-changcheng
 common_components/base            @weng-changcheng @dmitriitr
 common_components/common          @weng-changcheng @dmitriitr
 compiler_service/                 @dingding5 @zhangyukun8 @chernykhsergey ^Prof
-ecmascript/*                      @xwcai98 @guobingbing
 common_components/base_runtime/   @weng-changcheng @igelhaus
 common_components/common_runtime/ @weng-changcheng @dmitriitr
 common_components/heap/           @weng-changcheng ^yingguofeng @dmitriitr ^udav ^ipetrov
-common_components/log/            @weng-changcheng @ragnvald ^igelhaus
+common_components/log/            @weng-changcheng @Prof ^igelhaus
 common_components/mutator/        @weng-changcheng @chentianyuu @dmitriitr ^konstanting
 common_components/objects/        @yingguofeng @weng-changcheng @dmitriitr ^udav ^ipetrov
 common_components/platform/       @weng-changcheng @igelhaus ^dmitriitr
-common_components/serialize/      @weng-changcheng @dwhuawei @igelhaus ^ragnvald
+common_components/serialize/      @weng-changcheng @dwhuawei @igelhaus ^Prof
 common_components/taskpool/       @weng-changcheng @chentianyuu @dmitriitr ^udav ^konstanting
 common_components/test/           @weng-changcheng
 common_components/thread/         @weng-changcheng @chentianyuu @dmitriitr ^konstanting
 
 ecmascript/builtins/         @xwcai98 @chenjx-huawei @guobingbing
 ecmascript/checkpoint/       @lukai25 ^dingding5 @chentianyuu
-ecmascript/compiler/         @ginxu @zhangyukun8 @yingguofeng @guobingbing @xwcai98
+ecmascript/compiler/         @ginxu @zhangyukun8 @yingguofeng ^guobingbing @xwcai98
 ecmascript/container/        @huanghello
 ecmascript/daemon/           @lukai25 @dingding5 @chentianyuu
 ecmascript/debugger/         @wanghuan2022 ^weng-changcheng
@@ -41,7 +40,7 @@ ecmascript/deoptimizer/      @ginxu @zhangyukun8
 ecmascript/dfx/              @wanghuan2022 ^weng-changcheng
 ecmascript/ic/               @xwcai98 @guobingbing
 ecmascript/interpreter/      @xwcai98 @zhangyukun8 @yingguofeng
-ecmascript/intl/             @xwcai98 @guobingbing
+ecmascript/intl/             ^xwcai98 @guobingbing
 ecmascript/jit/              @xiaoweidng @KasonChan @RyanZhou97_admin
 ecmascript/jobs/             @weng-changcheng @yingguofeng
 ecmascript/js_api/           @huanghello @yuan-yao14 @xliu-huanwei
@@ -52,14 +51,14 @@ ecmascript/napi/             @huanghello @yuan-yao14 @xliu-huanwei ^weng-changch
 ecmascript/patch/            @wanghuan2022 @lijiamin2019 ^weng-changcheng
 ecmascript/pgo_profiler/     @yingguofeng
 ecmascript/quick_fix/        @wanghuan2022 @lijiamin2019 ^weng-changcheng
-ecmascript/regexp/           @xwcai98  @chenjx-huawei
+ecmascript/regexp/           @xwcai98  @chenjx-huawei @hecunmao
 ecmascript/require/          @yao_dashuai ^weng-changcheng
 ecmascript/serializer/       @dwhuawei @chentianyuu @lukai25 ^weng-changcheng
 ecmascript/shared_mm/        @dwhuawei @chentianyuu @lukai25 @xiongluo96 @weng-changcheng
 ecmascript/shared_objects/   @chentianyuu @lukai25 @lijiamin2019 @weng-changcheng
 ecmascript/snapshot/         @dwhuawei @chentianyuu @lukai25 @yingguofeng
 ecmascript/stackmap/         @ginxu @zhangyukun8 @yingguofeng
-ecmascript/stubs/            @ginxu @zhangyukun8 @yingguofeng @guobingbing @xwcai98
+ecmascript/stubs/            @ginxu @zhangyukun8 @yingguofeng ^guobingbing @xwcai98
 ecmascript/taskpool/         @weng-changcheng @chentianyuu
 
 test/regresstest/*.json                  @shirunova_viktoria @weng-changcheng @HuangShengda
