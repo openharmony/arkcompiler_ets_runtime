@@ -212,7 +212,7 @@ private:
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     ApEntityId abcId_ { 0 };
     EntityId methodId_ {};
-    const uint8_t *pcStart_;
+    const uint8_t *pcStart_ {nullptr};
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_{};
