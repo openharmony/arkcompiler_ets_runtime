@@ -145,12 +145,16 @@ public:
 
     inline bool HandleOpLineStart(uint8_t opCode)
     {
-        if ((GetCurrentPtr() == input_) ||
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            ((flags_ & RegExpParser::FLAG_MULTILINE) != 0 && PeekPrevChar(currentPtr_, input_) == '\n')) {
+        if (GetCurrentPtr() == input_) {
             Advance(opCode);
+            return true;
         } else {
-            if (MatchFailed()) {
+            uint32_t prevChar = PeekPrevChar(currentPtr_, input_);
+             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if ((flags_ & RegExpParser::FLAG_MULTILINE) != 0 && (prevChar == '\n' || prevChar == '\r')) {
+                Advance(opCode);
+                return true;
+            } else if (MatchFailed()) {
                 return false;
             }
         }
@@ -159,12 +163,16 @@ public:
 
     inline bool HandleOpLineEnd(uint8_t opCode)
     {
-        if (IsEOF() ||
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            ((flags_ & RegExpParser::FLAG_MULTILINE) != 0 && PeekChar(currentPtr_, inputEnd_) == '\n')) {
+        if (IsEOF()) {
             Advance(opCode);
+            return true;
         } else {
-            if (MatchFailed()) {
+            uint32_t ch = PeekChar(currentPtr_, input_);
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if ((flags_ & RegExpParser::FLAG_MULTILINE) != 0 && (ch == '\n' || ch == '\r')) {
+                Advance(opCode);
+                return true;
+            } else if (MatchFailed()) {
                 return false;
             }
         }
