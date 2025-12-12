@@ -190,14 +190,17 @@ void DaemonThread::SetQosPriority(common::PriorityMode mode)
     switch (mode) {
         case common::PriorityMode::STW: {
             OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INTERACTIVE, GetThreadId());
+            OHOS::QOS::AddThreadToProcRtg(GetThreadId());
             return;
         }
         case common::PriorityMode::FOREGROUND: {
             OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, GetThreadId());
+            OHOS::QOS::RemoveThreadFromProcRtg(GetThreadId());
             return;
         }
         case common::PriorityMode::BACKGROUND: {
             OHOS::QOS::ResetQosForOtherThread(GetThreadId());
+            OHOS::QOS::RemoveThreadFromProcRtg(GetThreadId());
             return;
         }
         default:

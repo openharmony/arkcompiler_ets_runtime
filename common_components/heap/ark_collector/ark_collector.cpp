@@ -1178,14 +1178,17 @@ void ArkCollector::SetGCThreadQosPriority(common::PriorityMode mode)
     switch (mode) {
         case PriorityMode::STW: {
             OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INTERACTIVE, gettid());
+            OHOS::QOS::AddThreadToProcRtg(gettid());
             break;
         }
         case PriorityMode::FOREGROUND: {
             OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, gettid());
+            OHOS::QOS::RemoveThreadFromProcRtg(gettid());
             break;
         }
         case PriorityMode::BACKGROUND: {
             OHOS::QOS::ResetQosForOtherThread(gettid());
+            OHOS::QOS::RemoveThreadFromProcRtg(gettid());
             break;
         }
         default:
