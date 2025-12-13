@@ -26,7 +26,7 @@ HeapRegionAllocator::HeapRegionAllocator(JSRuntimeOptions &option)
 }
 
 Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap,
-                                                   bool isFresh, size_t slotSize)
+                                                   bool isFresh, size_t slotSize, Mutex *allocateLock)
 {
     if (capacity == 0) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "capacity must have a size bigger than 0";
@@ -65,6 +65,11 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
                 UNREACHABLE();
             }
         } else {
+            // allocateLock and suspendLock can lead to a deadlock, so allocateLock needs to unlock in advance.
+            // This solution is not perfect and will be improved in the future.
+            if (allocateLock != nullptr) {
+                allocateLock->Unlock();
+            }
             if (thread != nullptr && thread->GetEcmaVM()->IsInitialized()) {
                 Heap *localHeap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
                 localHeap->DumpHeapSnapshotBeforeOOM();
