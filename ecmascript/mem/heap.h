@@ -481,7 +481,7 @@ public:
 
     inline void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
 
-    void ResetLargeCapacity();
+    void ResetLargeCapacity(size_t heapSize);
 
     class ParallelMarkTask : public common::Task {
     public:
@@ -998,7 +998,7 @@ public:
     void Prepare();
     void GetHeapPrepare();
     void PrepareForIteration() const;
-    void ResetLargeCapacity();
+    void ResetLargeCapacity(size_t heapSize);
     void Resume(TriggerGCType gcType);
     void ResumeForAppSpawn();
     void ResumeCC();
@@ -1520,7 +1520,7 @@ public:
         size_t sharedSecond = sharedHeapConfig.GetMaxHeapSize()
                             * JUST_FINISH_STARTUP_SHARED_THRESHOLD_RATIO
                             * JUST_FINISH_STARTUP_SHARED_CONCURRENT_MARK_RATIO;
-        LOG_GC(INFO) << "SmartGC: startup GC restrain, "
+        LOG_GC(DEBUG) << "SmartGC: startup GC restrain, "
             << "phase 1 threshold: local " << localFirst / 1_MB << "MB, shared " << sharedFirst / 1_MB << "MB; "
             << "phase 2 threshold: local " << localSecond / 1_MB << "MB, shared " << sharedSecond / 1_MB << "MB";
     }

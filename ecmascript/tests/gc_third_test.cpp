@@ -710,4 +710,15 @@ HWTEST_F_L0(GCTest, RawHeapSendSysEventDataSize)
     int32_t ret = keystats->SendSysEventDataSize(filePaths, fileSizes);
     ASSERT_EQ(ret, 0);
 }
+
+HWTEST_F_L0(GCTest, ResetLargeHeapTest)
+{
+    static constexpr size_t heapSize = 512 * 1024 * 1024; // 512 MB
+    const Heap *heap = thread->GetEcmaVM()->GetHeap();
+    const_cast<Heap *>(heap)->ResetLargeCapacity(heapSize);
+    ASSERT_EQ(heap->GetEcmaParamConfiguration().GetMaxHeapSize(), heapSize);
+    auto sharedHeap = SharedHeap::GetInstance();
+    sharedHeap->ResetLargeCapacity(heapSize);
+    ASSERT_EQ(sharedHeap->GetEcmaParamConfiguration().GetMaxHeapSize(), heapSize);
+}
 } // namespace panda::test

@@ -1022,8 +1022,9 @@ void Heap::SelectFromSpace()
     oldSpace_->SetPreservedSize(liveObjectSize);
 }
 
-void Heap::ResetLargeCapacity()
+void Heap::ResetLargeCapacity(size_t heapSize)
 {
+    const_cast<EcmaParamConfiguration &>(config_).SetMaxHeapSize(heapSize);
     size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
     size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
     size_t nonMovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
@@ -1033,10 +1034,10 @@ void Heap::ResetLargeCapacity()
     size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();
     size_t capacities = minSemiSpaceCapacity * 2 + nonMovableSpaceCapacity +
         machineCodeSpaceCapacity + readOnlySpaceCapacity;
-    if (MAX_HEAP_SIZE < capacities || MAX_HEAP_SIZE - capacities < MIN_OLD_SPACE_LIMIT) {
+    if (heapSize < capacities || heapSize - capacities < MIN_OLD_SPACE_LIMIT) {
         LOG_ECMA_MEM(FATAL) << "Capacities is too big to reset oldspace: " << capacities;
     }
-    size_t newOldCapacity = MAX_HEAP_SIZE - capacities;
+    size_t newOldCapacity = heapSize - capacities;
     LOG_ECMA(INFO) << "Main thread heap reset old capacity size: " << newOldCapacity;
     oldSpace_->SetInitialCapacity(newOldCapacity);
     oldSpace_->SetMaximumCapacity(newOldCapacity);
@@ -1046,15 +1047,16 @@ void Heap::ResetLargeCapacity()
     hugeObjectSpace_->SetMaximumCapacity(newOldCapacity);
 }
 
-void SharedHeap::ResetLargeCapacity()
+void SharedHeap::ResetLargeCapacity(size_t heapSize)
 {
+    const_cast<EcmaParamConfiguration &>(config_).SetMaxHeapSize(heapSize);
     size_t nonMovableSpaceCapacity = config_.GetDefaultNonMovableSpaceSize();
     size_t readOnlySpaceCapacity = config_.GetDefaultReadOnlySpaceSize();
     size_t capacities = nonMovableSpaceCapacity + readOnlySpaceCapacity;
-    if (MAX_SHARED_HEAP_SIZE < capacities || MAX_SHARED_HEAP_SIZE - capacities < MIN_OLD_SPACE_LIMIT) {
+    if (heapSize < capacities || heapSize - capacities < MIN_OLD_SPACE_LIMIT) {
         LOG_ECMA_MEM(FATAL) << "Shared capacities is too big to reset oldspace: " << capacities;
     }
-    size_t newOldCapacity = AlignUp((MAX_SHARED_HEAP_SIZE - capacities) / 2, DEFAULT_REGION_SIZE);
+    size_t newOldCapacity = AlignUp((heapSize - capacities) / 2, DEFAULT_REGION_SIZE);
     LOG_ECMA(INFO) << "Shared heap reset old capacity size: " << newOldCapacity;
     sOldSpace_->SetInitialCapacity(newOldCapacity);
     sOldSpace_->SetMaximumCapacity(newOldCapacity);

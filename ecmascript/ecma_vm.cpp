@@ -215,8 +215,8 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
     if (Runtime::GetInstance()->GetEnableLargeHeap()) {
         // when enable large heap, reset some heap param which has initialized in appspawn
         MemMapAllocator::GetInstance()->ResetLargePoolSize();
-        SharedHeap::GetInstance()->ResetLargeCapacity();
-        heap_->ResetLargeCapacity();
+        SharedHeap::GetInstance()->ResetLargeCapacity(MAX_SHARED_HEAP_SIZE);
+        heap_->ResetLargeCapacity(MAX_HEAP_SIZE);
     }
     bool enableWarmStartup = option.GetEnableWarmStartupSmartGC();
     Runtime::GetInstance()->PostFork(enableWarmStartup);
