@@ -1160,6 +1160,36 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethod(GateRef glue, GateRef method)
     return ret;
 }
 
+GateRef NewObjectStubBuilder::LoadHClassFromMethodForDefineMethod(GateRef glue, GateRef method)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(hclass, VariableType::JS_ANY(), Undefined());
+    GateRef kind = GetFuncKind(method);
+    Label exit(env);
+    Label defaultLabel(env);
+
+    Label labelBuffer[1] = { Label(env) };
+    int64_t valueBuffer[1] = { static_cast<int64_t>(FunctionKind::ASYNC_FUNCTION) };
+    GateRef globalEnv = GetCurrentGlobalEnv();
+    Switch(kind, &defaultLabel, valueBuffer, labelBuffer, 1);
+    Bind(&labelBuffer[0]);
+    {
+        hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ASYNC_FUNCTION_CLASS);
+        Jump(&exit);
+    }
+    Bind(&defaultLabel);
+    {
+        hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *hclass;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::LoadSHClassFromMethod(GateRef glue, GateRef method)
 {
     auto env = GetEnvironment();
@@ -1263,13 +1293,11 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
     }
 }
 
-GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef method, GateRef homeObject)
+GateRef NewObjectStubBuilder::NewJSFunctionForDefineMethod(GateRef glue, GateRef method, GateRef homeObject)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsEcmaObject), TaggedObjectIsEcmaObject(glue, homeObject));
 
-    GateRef globalEnv = GetCurrentGlobalEnv();
-    GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
-                                       GlobalEnv::FUNCTION_CLASS_WITHOUT_PROTO);
+    GateRef hclass = LoadHClassFromMethodForDefineMethod(glue, method);
 
     GateRef jsFunc = NewJSFunctionByHClass(glue, method, hclass);
     SetHomeObjectToFunction(glue, jsFunc, homeObject);
@@ -1280,7 +1308,7 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef method, GateRe
 GateRef NewObjectStubBuilder::DefineMethod(GateRef glue, GateRef method, GateRef homeObject, GateRef length,
                                            GateRef lexEnv, GateRef module)
 {
-    GateRef func = NewJSFunction(glue, method, homeObject);
+    GateRef func = NewJSFunctionForDefineMethod(glue, method, homeObject);
 
     SetLengthToFunction(glue, func, length);
     SetLexicalEnvToFunction(glue, func, lexEnv);

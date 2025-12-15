@@ -113,6 +113,7 @@
     V("isArray",                                   IsArray,                                   1, INVALID)     \
     V("isStableHClass",                            IsStableHClass,                            1, INVALID)     \
     V("isStableJsArray",                           IsStableJsArray,                           1, INVALID)     \
+    V("isAsyncFunction",                           IsAsyncFunction,                           1, INVALID)     \
     V("createDataProperty",                        CreateDataProperty,                        3, INVALID)     \
     V("functionGetInferredName",                   FunctionGetInferredName,                   1, INVALID)     \
     V("stringLessThan",                            StringLessThan,                            2, INVALID)     \
@@ -236,6 +237,8 @@ public:
     static JSTaggedValue IsStableHClass(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsStableJsArray(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsAsyncFunction(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue HasConstructor(EcmaRuntimeCallInfo *info);
 

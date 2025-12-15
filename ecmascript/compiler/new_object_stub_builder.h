@@ -91,6 +91,7 @@ public:
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass,
                                GateRef EnumCacheKind);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
+    GateRef LoadHClassFromMethodForDefineMethod(GateRef glue, GateRef method);
     GateRef LoadSHClassFromMethod(GateRef glue, GateRef method);
     GateRef NewJSFunction(GateRef glue, GateRef method,
                           FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
@@ -99,7 +100,7 @@ public:
     void NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
                        Variable *result, Label *success, Label *failed, GateRef slotId,
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
-    GateRef NewJSFunction(GateRef glue, GateRef method, GateRef homeObject);
+    GateRef NewJSFunctionForDefineMethod(GateRef glue, GateRef method, GateRef homeObject);
     GateRef DefineFuncForJit(GateRef glue, GateRef method, GateRef hclass, FunctionKind targetKind);
     void NewJSFunctionForJit(GateRef glue, GateRef jsFunc, GateRef hclass, GateRef method, GateRef length,
                              GateRef lexEnv, Variable *result, Label *success, Label *failed, GateRef slotId,

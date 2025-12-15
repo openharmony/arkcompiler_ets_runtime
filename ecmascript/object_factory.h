@@ -278,8 +278,8 @@ public:
 
     JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle);
 
-    JSHandle<JSFunction> NewJSFunction(const JSHandle<Method> &methodHandle,
-                                       const JSHandle<JSTaggedValue> &homeObject);
+    JSHandle<JSFunction> NewJSFunctionForDefineMethod(const JSHandle<Method> &methodHandle,
+                                                      const JSHandle<JSTaggedValue> &homeObject);
 
     JSHandle<JSFunction> NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr);
 
