@@ -53,47 +53,47 @@ function TestBitVector() {
     let bitvector = new BitVector(10);
 
     try {
-        print("TestBitVector ",[0])
-        print("TestBitVector ",[1])
-        print("TestBitVector ",[2])
-        print("TestBitVector ",[3])
-        print("TestBitVector ",[4])
-        print("TestBitVector ",[5])
-        print("TestBitVector ",[6])
-        print("TestBitVector ",[7])
-        print("TestBitVector ",[8])
-        print("TestBitVector ",[9])
+        print("TestBitVector ", bitvector[0])
+        print("TestBitVector ", bitvector[1])
+        print("TestBitVector ", bitvector[2])
+        print("TestBitVector ", bitvector[3])
+        print("TestBitVector ", bitvector[4])
+        print("TestBitVector ", bitvector[5])
+        print("TestBitVector ", bitvector[6])
+        print("TestBitVector ", bitvector[7])
+        print("TestBitVector ", bitvector[8])
+        print("TestBitVector ", bitvector[9])
 
     } catch (error) {
         print("TestBitVector failed. code: " + error.code);
     }    
 
     try {
-        print("TestBitVector ",[10])
+        print("TestBitVector ", bitvector[10])
     } catch (error) {
         print("TestBitVector failed. code: " + error.code);
     }
 
     try {
-        print("TestBitVector ",[-1])
+        print("TestBitVector ", bitvector[-1])
     } catch (error) {
         print("TestBitVector failed. code: " + error.code);
     }
 
     try {
-        print("TestBitVector ",[-10])
+        print("TestBitVector ", bitvector[-10])
     } catch (error) {
         print("TestBitVector failed. code: " + error.code);
     }
 
     try {
-        print("TestBitVector ",['1'])
+        print("TestBitVector ", bitvector['1'])
     } catch (error) {
         print("TestBitVector failed. code: " + error.code);
     }
 
     try {
-        print("TestBitVector ",['-10'])
+        print("TestBitVector ", bitvector['-10'])
     } catch (error) {
         print("TestBitVector failed. code: " + error.code);
     }
@@ -172,6 +172,54 @@ function TestBitVectorHas() {
     } catch (error) {
         print("TestBitVectorHas has failed. code: " + error.code);
     }
+
+    try {
+        print("TestBitVectorPop has ",bitvector.has(1, 0, 0))
+    } catch (error) {
+        print("TestBitVectorHas has failed. code: " + error.code);
+    }
+
+    try {
+        print("TestBitVectorPop has ",bitvector.has(1, 1, 1))
+    } catch (error) {
+        print("TestBitVectorHas has failed. code: " + error.code);
+    }
+
+    try {
+        print("TestBitVectorPop has ",bitvector.has(0, 9, 9))
+    } catch (error) {
+        print("TestBitVectorHas has failed. code: " + error.code);
+    }
+
+    try {
+        print("TestBitVectorPop has ",bitvector.has(0, 6, 6))
+    } catch (error) {
+        print("TestBitVectorHas has failed. code: " + error.code);
+    }
+
+    try {
+        print("TestBitVectorPop has ",bitvector.has('1', 0, 0))
+    } catch (error) {
+        print("TestBitVectorHas has failed. code: " + error.code);
+    }
+
+    try {
+        print("TestBitVectorPop has ",bitvector.has('1', 1, 1))
+    } catch (error) {
+        print("TestBitVectorHas has failed. code: " + error.code);
+    }
+
+    try {
+        print("TestBitVectorPop has ",bitvector.has('0', 9, 9))
+    } catch (error) {
+        print("TestBitVectorHas has failed. code: " + error.code);
+    }
+
+    try {
+        print("TestBitVectorPop has ",bitvector.has('0', 6, 6))
+    } catch (error) {
+        print("TestBitVectorHas has failed. code: " + error.code);
+    }
 }
 
 function TestBitVectorSetBitsByRange() {
@@ -237,6 +285,66 @@ function TestBitVectorSetBitsByRange() {
 
     try {
         bitvector.setBitsByRange(1, -10, -7);
+        print("TestBitVectorSetBitsByRange ", bitvector[0])
+        print("TestBitVectorSetBitsByRange ", bitvector[1])
+    } catch (error) {
+        print("setBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setBitsByRange("0", 5, 10);
+        print("TestBitVectorSetBitsByRange ", bitvector[5])
+        print("TestBitVectorSetBitsByRange ", bitvector[6])
+        print("TestBitVectorSetBitsByRange ", bitvector[7])
+        print("TestBitVectorSetBitsByRange ", bitvector[8])
+        print("TestBitVectorSetBitsByRange ", bitvector[9])
+    } catch (error) {
+        print("TestBitVectorSetAllBits failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setBitsByRange('0', 6, 8);
+        print("TestBitVectorSetBitsByRange ", bitvector[6])
+        print("TestBitVectorSetBitsByRange ", bitvector[7])
+        print("TestBitVectorSetBitsByRange ", bitvector[8])
+    } catch (error) {
+        print("TestBitVectorSetAllBits failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setBitsByRange('1', 7, 100);
+        print("TestBitVectorSetBitsByRange ", bitvector[7])
+        print("TestBitVectorSetBitsByRange ", bitvector[8])
+    } catch (error) {
+        print("setBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setBitsByRange('1', 100, 7);
+        print("TestBitVectorSetBitsByRange ", bitvector[7])
+        print("TestBitVectorSetBitsByRange ", bitvector[8])
+    } catch (error) {
+        print("setBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setBitsByRange('1', -1, 7);
+        print("TestBitVectorSetBitsByRange ", bitvector[5])
+        print("TestBitVectorSetBitsByRange ", bitvector[6])
+    } catch (error) {
+        print("setBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setBitsByRange('1', -10, -7);
+        print("TestBitVectorSetBitsByRange ", bitvector[0])
+        print("TestBitVectorSetBitsByRange ", bitvector[1])
+    } catch (error) {
+        print("setBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setBitsByRange('[1, 0]', -10, -7);
         print("TestBitVectorSetBitsByRange ", bitvector[0])
         print("TestBitVectorSetBitsByRange ", bitvector[1])
     } catch (error) {
@@ -339,6 +447,33 @@ function TestBitVectorSetAllBits() {
     } catch (error) {
         print("setBitsByRange failed. code: " + error.code);
     }
+
+    try {
+        bitvector.setAllBits('-1');
+        print("TestBitVectorSetAllBits ", bitvector[0])
+        print("TestBitVectorSetAllBits ", bitvector[1])
+        print("TestBitVectorSetAllBits ", bitvector[9])
+    } catch (error) {
+        print("setBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setAllBits('true');
+        print("TestBitVectorSetAllBits ", bitvector[0])
+        print("TestBitVectorSetAllBits ", bitvector[1])
+        print("TestBitVectorSetAllBits ", bitvector[9])
+    } catch (error) {
+        print("setBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        bitvector.setAllBits('false');
+        print("TestBitVectorSetAllBits ", bitvector[0])
+        print("TestBitVectorSetAllBits ", bitvector[1])
+        print("TestBitVectorSetAllBits ", bitvector[9])
+    } catch (error) {
+        print("setBitsByRange failed. code: " + error.code);
+    }
 }
 
 function TestBitVectorGetBitsByRange() {
@@ -394,6 +529,88 @@ function TestBitVectorGetBitsByRange() {
 
     try {
         let subVec1 = bitvector.getBitsByRange(-10, -1);
+        print("TestBitVectorGetBitsByRange length ", subVec1.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        let subVec = bitvector.getBitsByRange("2", 8);
+        print("TestBitVectorGetBitsByRange ", subVec[0])
+        print("TestBitVectorGetBitsByRange ", subVec[1])
+        print("TestBitVectorGetBitsByRange ", subVec[2])
+        print("TestBitVectorGetBitsByRange ", subVec[3])
+        print("TestBitVectorGetBitsByRange ", bitvector[4])
+        print("TestBitVectorGetBitsByRange length ", subVec.length)
+        print("TestBitVectorGetBitsByRange length ", bitvector.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+    
+    try {
+        let subVec1 = bitvector.getBitsByRange("11", 100);
+        print("TestBitVectorGetBitsByRange length ", subVec1.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        let subVec1 = bitvector.getBitsByRange("-10", 0);
+        print("TestBitVectorGetBitsByRange length ", subVec1.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        let subVec1 = bitvector.getBitsByRange("100", 11);
+        print("TestBitVectorGetBitsByRange length ", subVec1.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        let subVec1 = bitvector.getBitsByRange("-10", -1);
+        print("TestBitVectorGetBitsByRange length ", subVec1.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        let subVec = bitvector.getBitsByRange("2", "8");
+        print("TestBitVectorGetBitsByRange ", subVec[0])
+        print("TestBitVectorGetBitsByRange ", subVec[1])
+        print("TestBitVectorGetBitsByRange ", subVec[2])
+        print("TestBitVectorGetBitsByRange ", subVec[3])
+        print("TestBitVectorGetBitsByRange ", bitvector[4])
+        print("TestBitVectorGetBitsByRange length ", subVec.length)
+        print("TestBitVectorGetBitsByRange length ", bitvector.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+    
+    try {
+        let subVec1 = bitvector.getBitsByRange("11", "100");
+        print("TestBitVectorGetBitsByRange length ", subVec1.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        let subVec1 = bitvector.getBitsByRange("-10", "0");
+        print("TestBitVectorGetBitsByRange length ", subVec1.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        let subVec1 = bitvector.getBitsByRange("100", "11");
+        print("TestBitVectorGetBitsByRange length ", subVec1.length)
+    } catch (error) {
+        print("TestBitVectorGetBitsByRange failed. code: " + error.code);
+    }
+
+    try {
+        let subVec1 = bitvector.getBitsByRange("-10", "-1");
         print("TestBitVectorGetBitsByRange length ", subVec1.length)
     } catch (error) {
         print("TestBitVectorGetBitsByRange failed. code: " + error.code);
