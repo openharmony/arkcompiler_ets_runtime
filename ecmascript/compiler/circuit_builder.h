@@ -743,6 +743,7 @@ public:
     inline GateRef GetMapIteratorDetector(GateRef env);
     inline GateRef GetSetIteratorDetector(GateRef env);
     inline GateRef GetStringIteratorDetector(GateRef env);
+    inline GateRef GetStringWrapperToPrimitiveDetector(GateRef env);
     inline GateRef GetArrayIteratorDetector(GateRef env);
     inline GateRef GetTypedArrayIteratorDetector(GateRef env);
     inline GateRef GetTypedArraySpeciesProtectDetector(GateRef env);

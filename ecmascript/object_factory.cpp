@@ -2602,6 +2602,11 @@ JSHandle<JSPrimitiveRef> ObjectFactory::NewJSString(const JSHandle<JSTaggedValue
         JSHandle<JSObject> newObject = NewJSObjectByConstructor(stringFunc, newTarget);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSPrimitiveRef, thread_);
         obj = JSHandle<JSPrimitiveRef>::Cast(newObject);
+        JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+        if (!env->GetStringWrapperToPrimitiveDetector() &&
+            newTarget.GetTaggedValue() != env->GetStringFunction().GetTaggedValue()) {
+            env->SetStringWrapperToPrimitiveDetector(true);
+        }
     }
     obj->SetValue(thread_, str);
     return obj;

@@ -54,6 +54,7 @@
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 #include "ecmascript/sendable_env.h"
 #include "ecmascript/template_string.h"
+#include "ecmascript/js_primitive_ref.h"
 
 namespace panda::ecmascript {
 using ArrayHelper = base::ArrayHelper;
@@ -1190,6 +1191,9 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassInheritanceRelationship(JSThread *thr
     JSHandle<JSObject> clsPrototype(thread, JSHandle<JSFunction>(ctor)->GetFunctionPrototype(thread));
     clsPrototype->GetClass()->SetPrototype(thread, parentPrototype);
 
+    ObjectOperator::UpdateDetectorOnSetPrototype(thread, clsPrototype.GetTaggedValue(),
+                                                 parentPrototype.GetTaggedValue());
+
     // ctor -> hclass -> EnableProtoChangeMarker
     auto constructor = JSFunction::Cast(ctor.GetTaggedValue().GetTaggedObject());
     if (constructor->GetClass()->IsAOT()) {
@@ -1905,6 +1909,19 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         return JSTaggedValue(resultStr);
     }
+    if (left->IsString() && right->IsJSPrimitiveRef()) {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSPrimitiveRef *primitiveRef = JSPrimitiveRef::Cast(right->GetTaggedObject());
+        if (!env->GetStringWrapperToPrimitiveDetector() && primitiveRef->IsString(thread)) {
+            JSTaggedValue value = primitiveRef->GetValue(thread);
+            if (value.IsString()) {
+                EcmaString *resultStr = EcmaStringAccessor::Concat(
+                    thread->GetEcmaVM(), JSHandle<EcmaString>(left), JSHandle<EcmaString>(thread, value));
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                return JSTaggedValue(resultStr);
+            }
+        }
+    }
     JSHandle<JSTaggedValue> primitiveA0(thread, JSTaggedValue::ToPrimitive(thread, left));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> primitiveA1(thread, JSTaggedValue::ToPrimitive(thread, right));
@@ -1935,7 +1952,6 @@ JSTaggedValue RuntimeStubs::RuntimeAdd2(JSThread *thread, const JSHandle<JSTagge
     double doubleA1 = valRight->GetNumber();
     return JSTaggedValue(doubleA0 + doubleA1);
 }
-
 JSTaggedValue RuntimeStubs::RuntimeShl2(JSThread *thread,
                                         const JSHandle<JSTaggedValue> &left,
                                         const JSHandle<JSTaggedValue> &right)

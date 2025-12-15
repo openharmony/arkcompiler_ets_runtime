@@ -55,7 +55,8 @@
 #include "ecmascript/string/composite_base_class.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/mem/region.h"
-#include "ecmascript/log_wrapper.h"
+#include "libpandabase/utils/logger.h"
+
 
 namespace panda::ecmascript {
 void GlobalEnvConstants::Init(JSThread *thread)
@@ -137,7 +138,7 @@ void GlobalEnvConstants::InitSharedDetectors(ObjectFactory *factory)
         SetConstant(ConstantIndex::key, factory->NewSPublicSymbolWithChar(description));
     DETECTOR_SYMBOL_LIST(INIT_PUBLIC_SYMBOL)
     #undef INIT_PUBLIC_SYMBOL
-
+    
     #define INIT_SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(Name, Index, Token)        \
         SetConstant(ConstantIndex::Index, factory->NewFromASCIIReadOnly(Token));
     SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(INIT_SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING)
@@ -145,18 +146,26 @@ void GlobalEnvConstants::InitSharedDetectors(ObjectFactory *factory)
 
 #ifndef NDEBUG
     Region* firstRegion = nullptr;
-    
+    uintptr_t expectedAddr = 0;
     #define CHECK_DETECTOR_REGION_IMPL(indexValue)                                      \
     do {                                                                                \
         JSTaggedValue obj = constants_[static_cast<int>(ConstantIndex::indexValue)];    \
         if (obj.IsHeapObject()) {                                                       \
-            Region* region = Region::ObjectAddressToRange(obj.GetTaggedObject());       \
+            TaggedObject* taggedObj = obj.GetTaggedObject();                            \
+            Region* region = Region::ObjectAddressToRange(taggedObj);                   \
+            uintptr_t currAddr = reinterpret_cast<uintptr_t>(taggedObj);                \
+            size_t currSize = taggedObj->GetClass()->SizeFromJSHClass(taggedObj);       \
             if (firstRegion == nullptr) {                                               \
                 firstRegion = region;                                                   \
+                expectedAddr = currAddr + currSize;                                     \
             } else {                                                                    \
                 if (firstRegion != region) {                                            \
                     LOG_ECMA(FATAL) << "Detector region mismatch";                      \
                 }                                                                       \
+                if (currAddr != expectedAddr) {                                         \
+                    LOG_ECMA(FATAL) << "Detector are not consecutively allocated.";     \
+                }                                                                       \
+                expectedAddr = currAddr + currSize;                                     \
             }                                                                           \
         }                                                                               \
     } while (0);

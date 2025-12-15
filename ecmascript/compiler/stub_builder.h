@@ -591,6 +591,7 @@ public:
     GateRef GetArrayIteratorDetector(GateRef env);
     GateRef GetMapIteratorDetector(GateRef env);
     GateRef GetSetIteratorDetector(GateRef env);
+    GateRef GetStringWrapperToPrimitiveDetector(GateRef env);
     void SetArrayElementsGuardians(GateRef glue, GateRef env, GateRef value);
     GateRef GetLengthFromString(GateRef value);
     GateRef CalcHashcodeForInt(GateRef value);

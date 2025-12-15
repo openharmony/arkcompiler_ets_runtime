@@ -4691,5 +4691,10 @@ inline GateRef StubBuilder::GetSetIteratorDetector(GateRef env)
 {
     return env_->GetBuilder()->GetSetIteratorDetector(env);
 }
+
+inline GateRef StubBuilder::GetStringWrapperToPrimitiveDetector(GateRef env)
+{
+    return env_->GetBuilder()->GetStringWrapperToPrimitiveDetector(env);
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

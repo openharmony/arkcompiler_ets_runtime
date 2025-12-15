@@ -904,6 +904,15 @@ GateRef CircuitBuilder::GetStringIteratorDetector(GateRef env)
         Int32((1LU << GlobalEnv::StringIteratorDetectorBits::SIZE) - 1)));
 }
 
+GateRef CircuitBuilder::GetStringWrapperToPrimitiveDetector(GateRef env)
+{
+    GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);
+    GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), env, offset);
+    return TruncInt32ToInt1(Int32And(Int32LSR(bitfield,
+        Int32(GlobalEnv::StringWrapperToPrimitiveDetectorBits::START_BIT)),
+        Int32((1LU << GlobalEnv::StringWrapperToPrimitiveDetectorBits::SIZE) - 1)));
+}
+
 GateRef CircuitBuilder::GetArrayIteratorDetector(GateRef env)
 {
     GateRef offset = IntPtr(GlobalEnv::BIT_FIELD_OFFSET);

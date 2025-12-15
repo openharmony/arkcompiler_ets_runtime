@@ -763,6 +763,16 @@ JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRun
     return JSTaggedValue(!env->GetNumberStringNotRegexpLikeDetector());
 }
 
+JSTaggedValue BuiltinsArkTools::IsStringWrapperToPrimitiveDetectorValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    return JSTaggedValue(!env->GetStringWrapperToPrimitiveDetector());
+}
+
 JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
