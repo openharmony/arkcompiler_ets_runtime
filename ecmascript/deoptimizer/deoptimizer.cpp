@@ -407,7 +407,7 @@ bool Deoptimizier::IsRecursiveCall(FrameIterator& it, JSTaggedValue& jsFunction)
     if (jsFunction.IsUndefined()) {
         return false;
     }
-    for (it.Advance<GCVisitedFlag::VISITED>(); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
         switch (it.GetFrameType()) {
             case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
