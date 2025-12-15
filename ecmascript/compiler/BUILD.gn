@@ -239,6 +239,15 @@ ohos_source_set("libark_jsoptimizer_set") {
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
+  defines = []
+
+  # init library for parameters.h
+  if (!ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) &&
+      is_ohos && is_standard_system) {
+    external_deps += [ "init:libbegetutil" ]
+    defines += [ "COMPILER_ENABLE_OHOS_PARAMETER" ]
+  }
+
   if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
     external_deps += [
       "icu:shared_icuuc",
@@ -318,6 +327,14 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
+
+  # init library for parameters.h
+  if (!ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) &&
+      is_ohos && is_standard_system) {
+    external_deps += [ "init:libbegetutil" ]
+    defines += [ "COMPILER_ENABLE_OHOS_PARAMETER" ]
+  }
+
   if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
     external_deps += [
       "icu:shared_icuuc",

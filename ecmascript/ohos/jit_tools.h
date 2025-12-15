@@ -22,7 +22,7 @@
 #if defined(JIT_ESCAPE_ENABLE) || defined(GET_PARAMETER_FOR_JIT) || defined(JIT_ENABLE_CODE_SIGN)
 #include "parameters.h"
 #endif
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#if defined(COMPILER_ENABLE_OHOS_PARAMETER)
 #include "parameters.h"
 #endif
 #if defined(JIT_ENABLE_CODE_SIGN)
@@ -148,7 +148,7 @@ public:
 
     static bool GetEnableJitLiteCompile()
     {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#if defined(COMPILER_ENABLE_OHOS_PARAMETER)
         return OHOS::system::GetBoolParameter("ark.jit.enable.liteCompile", false);
 #endif
         return false;
