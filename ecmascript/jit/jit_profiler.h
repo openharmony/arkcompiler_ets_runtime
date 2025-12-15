@@ -49,11 +49,9 @@ public:
 
     virtual ~JITProfiler();
     void PUBLIC_API ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeInfo> &profileTypeInfo,
-                                    ProfileTypeInfo *rawProfileTypeInfo,
                                     EntityId methodId, ApEntityId abcId, const uint8_t *pcStart,
                                     uint32_t codeSize, const panda_file::File::Header *header,
-                                    JSHandle<JSFunction> jsFunction, JSHandle<GlobalEnv> env,
-                                    bool useRawProfileTypeInfo = false);
+                                    JSHandle<JSFunction> jsFunction, JSHandle<GlobalEnv> env);
 
     std::unordered_map<int32_t, const PGOSampleType *> GetOpTypeMap()
     {
@@ -166,7 +164,7 @@ private:
     bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
 		            JSHClass *exceptRecvHClassOnHeap, JSHClass *exceptHoldHClass,
 			    JSHClass *exceptPrototypeOfPrototypeHClass);
-    
+
     // Debug
     void TraceICState(int32_t bcOffset, std::string_view s);
 

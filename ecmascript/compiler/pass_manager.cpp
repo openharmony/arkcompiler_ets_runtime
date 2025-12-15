@@ -202,7 +202,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             jitProfiler_->SetCompilationEnv(compilationEnv_);
             jitProfiler_->InitChunk(&chunk);
             TimeScope timescope("ProfileBytecode", log_);
-            jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo, nullptr,
+            jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo,
                                           methodLiteral->GetMethodId(), abcId, pcStart,
                                           methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),
                                           header, jitCompilationEnv->GetJsFunction(),

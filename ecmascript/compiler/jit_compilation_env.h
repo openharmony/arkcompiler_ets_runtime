@@ -153,23 +153,12 @@ public:
         return heapConstantInfo_.heapConstantTable;
     }
 
-    void UpdateFuncSlotIdMap(uint32_t calleeOffset, uint32_t callerOffset, uint32_t slotId)
-    {
-        if (functionSlotIdMap_.find(calleeOffset) != functionSlotIdMap_.end()) {
-            return;
-        }
-        if (callee2CallerMap_.find(calleeOffset) != callee2CallerMap_.end()) {
-            return;
-        }
-        functionSlotIdMap_[calleeOffset] = slotId;
-        callee2CallerMap_[calleeOffset] = callerOffset;
-    }
     JSHandle<JSFunction> GetJsFunction() const
     {
         return jsFunction_;
     }
 
-    JSFunction *GetJsFunctionByMethodOffset(uint32_t methodOffset) const;
+    JSHandle<JSFunction> GetJsFunctionByMethodOffset(uint32_t methodOffset) const;
 
     uint32_t RecordHeapConstant(const JSHandle<JSTaggedValue> &heapObj)
     {
@@ -293,9 +282,15 @@ public:
         }
         inlinedFunctions_.emplace_back(function);
     }
+
+    void SetCalleeJSFunction(uint32_t methodOffset, JSHandle<JSFunction> callee)
+    {
+        calleeFunctions_[methodOffset] = callee;
+    }
 private:
     JSThread *hostThread_ {nullptr};
     JSHandle<JSFunction> jsFunction_;
+    std::map<uint32_t, JSHandle<JSFunction>> calleeFunctions_;
     std::vector<JSHandle<JSFunction>> inlinedFunctions_;
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSPandaFile *jsPandaFile_ {nullptr};
@@ -304,8 +299,6 @@ private:
     pgo::ApEntityId abcId_ {0};
     JSHandle<ProfileTypeInfo> profileTypeInfo_;
     std::unordered_map<uint32_t, std::unordered_map<uint32_t, bool>> ldExtModuleVarResolved_;
-    std::unordered_map<uint32_t, uint32_t> functionSlotIdMap_;
-    std::unordered_map<uint32_t, uint32_t> callee2CallerMap_;
     struct HeapConstantInfo {
         std::vector<JSHandle<JSTaggedValue>> heapConstantTable;
         std::map<ConstantPoolHeapConstant, uint32_t> constPoolHeapConstant2Index;
