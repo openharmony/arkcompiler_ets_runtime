@@ -268,8 +268,15 @@ public:
 
     bool CheckOOM(size_t size) const
     {
-        size_t alignedSize = AlignUp(size + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, DEFAULT_REGION_SIZE);
+        size_t alignedSize = AlignUpHugeObjectSize(size);
         return CommittedSizeExceed(alignedSize);
+    }
+
+    // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
+    // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
+    static size_t AlignUpHugeObjectSize(size_t objectSize)
+    {
+        return AlignUp(objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, DEFAULT_REGION_SIZE);
     }
 
     void CheckAndTriggerLocalFullMark(JSThread *thread, size_t size);
