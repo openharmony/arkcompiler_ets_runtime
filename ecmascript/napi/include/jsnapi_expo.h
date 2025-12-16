@@ -116,7 +116,7 @@ using NativePointerCallbackData = std::pair<NativePointerCallback, std::tuple<vo
 using TriggerGCData = std::pair<void*, uint8_t>;
 using TriggerGCTaskCallback = std::function<void(TriggerGCData& data)>;
 using StartIdleMonitorCallback = std::function<void()>;
-using NotifyDeferFreezeCallback = std::function<void(bool needFreeze)>;
+using NotifyNextCompressGCCallback = std::function<void(bool isNeedNextGC, bool isNeedFreeze)>;
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
@@ -1869,9 +1869,10 @@ public:
         TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
     static void HintGC(const EcmaVM *vm, MemoryReduceDegree degree, ecmascript::GCReason reason);
     static void TriggerIdleGC(const EcmaVM *vm, TRIGGER_IDLE_GC_TYPE gcType);
+    static size_t GetEcmaVMExpectedMemoryReclamationSize(const EcmaVM *vm);
     static void SetStartIdleMonitorCallback(const StartIdleMonitorCallback& callback);
     static StartIdleMonitorCallback GetStartIdleMonitorCallback();
-    static void SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback);
+    static void SetNotifyNextCompressGCCallback(const NotifyNextCompressGCCallback& callback);
     // Exception
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
     static void PrintExceptionInfo(const EcmaVM *vm);

@@ -5035,6 +5035,11 @@ void JSNApi::TriggerIdleGC(const EcmaVM *vm, TRIGGER_IDLE_GC_TYPE gcType)
     }
 }
 
+size_t JSNApi::GetEcmaVMExpectedMemoryReclamationSize(const EcmaVM *vm)
+{
+    return vm->GetHeap()->GetIdleGCTrigger()->GetExpectedMemoryReclamationSize();
+}
+
 void JSNApi::SetStartIdleMonitorCallback(const StartIdleMonitorCallback& callback)
 {
     startIdleMonitorCallback_ = callback;
@@ -5045,9 +5050,9 @@ StartIdleMonitorCallback JSNApi::GetStartIdleMonitorCallback()
     return startIdleMonitorCallback_;
 }
 
-void JSNApi::SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback)
+void JSNApi::SetNotifyNextCompressGCCallback(const NotifyNextCompressGCCallback& callback)
 {
-    ecmascript::Runtime::GetInstance()->SetNotifyDeferFreezeCallback(callback);
+    ecmascript::Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
 }
 
 void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)

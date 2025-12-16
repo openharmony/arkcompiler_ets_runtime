@@ -95,7 +95,7 @@ public:
         triggerGCTaskCallback_ = callback;
     }
 
-    void NotifyIsNeedFreeze(bool needFreeze);
+    void NotifyNeedNextGC(bool isNeedNextGC, bool needFreeze);
     void NotifyVsyncIdleStart();
     bool NotifyLooperIdleStart(int64_t timestamp, int idleTime);
     void NotifyLooperIdleEnd(int64_t timestamp);
@@ -113,6 +113,7 @@ public:
     bool CheckIdleYoungGC(bool isLongIdle = false) const;
     bool CheckIdleLocalOldGC(const Heap *heap) const;
     bool CheckLocalBindingNativeTriggerOldGC() const;
+    size_t GetExpectedMemoryReclamationSize();
     template<class T>
     bool CheckIdleOrHintOldGC(const T *baseHeap) const
     {

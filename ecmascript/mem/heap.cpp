@@ -670,9 +670,9 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
         UNREACHABLE();
     }
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
-        auto notifyDeferFreezeCallback = Runtime::GetInstance()->GetNotifyDeferFreezeCallback();
-        if (notifyDeferFreezeCallback != nullptr) {
-            notifyDeferFreezeCallback(true);
+        auto notifyNextCompressGCCallback = Runtime::GetInstance()->GetNotifyNextCompressGCCallback();
+        if (notifyNextCompressGCCallback != nullptr) {
+            notifyNextCompressGCCallback(false, true);
         }
     }
 
