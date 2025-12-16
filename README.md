@@ -1,13 +1,13 @@
-# ArkCompiler ets Runtime
+# ArkCompiler_ets_Runtime
 
-- [ArkCompiler ets Runtime](#ArkCompiler_ets_Runtime)
+- [ArkCompiler_ets_Runtime](#ArkCompiler_ets_Runtime)
     - [Introduction](#Introduction)
-  - [Directory Structure](#Directory_Structure)
+  - [Directory_Structure](#Directory_Structure)
   - [Constraints](#Constraints)
   - [Building](#Building)
-    - [Available APIs](#Available_APIs)
+    - [Available_APIs](#Available_APIs)
     - [Usage](#Usage)
-  - [Repositories Involved](#Repositories_Involved)
+  - [Repositories_Involved](#Repositories_Involved)
 
 ### Introduction
 
@@ -19,7 +19,7 @@ For more information, see [ArkCompiler ets Runtime](https://gitee.com/openharmon
 
 ![](/docs/figures/en-us_image_ark-js-arch.png)
 
-## Directory Structure
+## Directory_Structure
 
 ```
 /arkcompiler/ets_runtime
@@ -78,7 +78,7 @@ For more information, see [ArkCompiler ets Runtime](https://gitee.com/openharmon
 $./build.sh --product-name hispark_taurus_standard --build-target ark_js_host_linux_tools_packages
 ```
 
-### Available APIs
+### Available_APIs
 
 See [NAPI](https://gitee.com/openharmony/arkui_napi/blob/master/README.md).
 
@@ -94,7 +94,7 @@ LD_LIBRARY_PATH=out/hispark_taurus/clang_x64/arkcompiler/ets_runtime:out/hispark
 
 For more information, see [ARK Runtime Usage Guide](https://gitcode.com/openharmony/arkcompiler_ets_runtime/blob/master/docs/README.md).
 
-## Repositories Involved
+## Repositories_Involved
 
 [arkcompiler\_runtime\_core](https://gitee.com/openharmony/arkcompiler_runtime_core)
 
