@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "ecmascript/string/base_string.h"
+#include "ecmascript/ecma_macros.h"
 #include "base/bit_field.h"
 
 namespace panda::ecmascript {
@@ -76,7 +77,8 @@ public:
     static_assert(StartIndexBits::SIZE == LengthBits::SIZE, "The size of startIndex should be same with Length");
 
     POINTER_FIELD(Parent, PARENT_OFFSET, STARTINDEX_AND_FLAGS_OFFSET)
-    PRIMITIVE_FIELD(StartIndexAndFlags, uint32_t, STARTINDEX_AND_FLAGS_OFFSET, SIZE);
+    PRIMITIVE_FIELD(StartIndexAndFlags, uint32_t, STARTINDEX_AND_FLAGS_OFFSET, LAST_OFFSET);
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
     /**
      * @brief Create a SlicedString backed by a parent BaseString.

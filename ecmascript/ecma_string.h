@@ -63,7 +63,7 @@ class FlatStringInfo;
 
 class EcmaString : public TaggedObject {
 private:
-    using TaggedObject::SIZE;
+    static constexpr size_t SIZE = BaseString::SIZE;
 
 public:
     CAST_CHECK(EcmaString, IsString);
@@ -447,7 +447,7 @@ private:
 // The LineEcmaString abstract class captures sequential string values, only LineEcmaString can store chars data
 class LineEcmaString : public EcmaString {
 private:
-    using TaggedObject::SIZE;
+    static constexpr size_t SIZE = LineString::SIZE;
 public:
     LineString* ToLineString()
     {
@@ -515,7 +515,7 @@ public:
 // The substrings of another string use SlicedString to describe.
 class SlicedEcmaString : public EcmaString {
 private:
-    using TaggedObject::SIZE;
+    static constexpr size_t SIZE = SlicedString::SIZE;
 public:
     DECL_VISIT_OBJECT(SlicedString::PARENT_OFFSET, SlicedString::STARTINDEX_AND_FLAGS_OFFSET);
 
@@ -614,7 +614,7 @@ private:
 
 class TreeEcmaString : public EcmaString {
 private:
-    using TaggedObject::SIZE;
+    static constexpr size_t SIZE = TreeString::SIZE;
 public:
     DECL_VISIT_OBJECT(TreeString::LEFT_OFFSET, TreeString::SIZE);
 
@@ -723,7 +723,7 @@ public:
 
 class CachedExternalEcmaString : public EcmaString {
 private:
-    using TaggedObject::SIZE;
+    static constexpr size_t SIZE = CachedExternalString::SIZE;
 public:
     DECL_VISIT_PRIMITIVE_OBJECT();
 
