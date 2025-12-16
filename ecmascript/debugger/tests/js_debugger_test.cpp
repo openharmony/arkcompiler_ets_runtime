@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -46,6 +46,33 @@ public:
     bool IsBreakpointCondSatisfiedTest(std::optional<JSBreakpoint> breakpoint) const
     {
         return jsDebugger_.IsBreakpointCondSatisfied(breakpoint);
+    }
+
+    void SetSymbolicBreakpoint(const std::unordered_set<std::string> &functionNamesSet)
+    {
+        jsDebugger_.SetSymbolicBreakpoint(functionNamesSet);
+    }
+
+    void SetBreakpoint(JSBreakpoint breakpoint)
+    {
+        jsDebugger_.breakpoints_.insert(breakpoint);
+    }
+
+    void SetSmartBreakpoint(JSBreakpoint breakpoint)
+    {
+        jsDebugger_.smartBreakpoints_.insert(breakpoint);
+    }
+
+    void RemoveAllBreakpoints()
+    {
+        jsDebugger_.RemoveAllBreakpoints();
+    }
+
+    bool HasBreakpoints() const
+    {
+        return !jsDebugger_.breakpoints_.empty() ||
+               !jsDebugger_.smartBreakpoints_.empty() ||
+               !jsDebugger_.symbolicBreakpoints_.empty();
     }
 
 private:
@@ -138,5 +165,51 @@ HWTEST_F_L0(JsDebuggerTest, JsDebuggerBreakpointNullTest)
     std::optional<ecmascript::tooling::JSBreakpoint> breakpoint;
     bool result = debuggerFriend.IsBreakpointCondSatisfiedTest(breakpoint);
     EXPECT_EQ(result, false);
+}
+
+HWTEST_F_L0(JsDebuggerTest, RemoveAllBreakpointsTest)
+{
+    JsDebuggerFriendTest debuggerFriend(ecmaVm);
+    Parser parser;
+    const char *filename = "__PandaFileTranslatorTest3.pa";
+    const char *data = R"(
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    auto res = parser.Parse(data);
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    const panda_file::File *testpf = pf.get()->GetPandaFile();
+    CString descriptor = "example_descriptor2";
+    std::shared_ptr<JSPandaFile> jspandaFilePtr = std::make_shared<JSPandaFile>(testpf, descriptor);
+    pfManager->AddJSPandaFile(jspandaFilePtr);
+    JSPandaFile* jspandaFilePtrTest = new JSPandaFile(testpf, descriptor);
+    panda_file::File::EntityId entityId(42);
+
+    std::string sourceFile;
+    PtMethod ptMethod(jspandaFilePtrTest, entityId, false);
+    uint32_t bcOffset = 0;
+    JSBreakpoint breakpoint(sourceFile, &ptMethod, bcOffset,
+                            Global<FunctionRef>(ecmaVm, FunctionRef::Undefined(ecmaVm)));
+
+    debuggerFriend.SetBreakpoint(breakpoint);
+    EXPECT_EQ(debuggerFriend.HasBreakpoints(), true);
+    debuggerFriend.RemoveAllBreakpoints();
+    EXPECT_EQ(debuggerFriend.HasBreakpoints(), false);
+
+    debuggerFriend.SetSmartBreakpoint(breakpoint);
+    EXPECT_EQ(debuggerFriend.HasBreakpoints(), true);
+    debuggerFriend.RemoveAllBreakpoints();
+    EXPECT_EQ(debuggerFriend.HasBreakpoints(), false);
+
+    std::unordered_set<std::string> functionNamesSet;
+    functionNamesSet.insert("foo");
+    debuggerFriend.SetSymbolicBreakpoint(functionNamesSet);
+    EXPECT_EQ(debuggerFriend.HasBreakpoints(), true);
+    debuggerFriend.RemoveAllBreakpoints();
+    EXPECT_EQ(debuggerFriend.HasBreakpoints(), false);
 }
 }  // namespace panda::test
