@@ -293,6 +293,9 @@ void HugeObjectSpace::Sweep()
         bool isMarked = false;
         currentRegion->IterateAllMarkedBits([&isMarked]([[maybe_unused]] void *mem) { isMarked = true; });
         if (!isMarked) {
+            DecreaseCommitted(currentRegion->GetCapacity());
+            DecreaseObjectSize(currentRegion->GetSize());
+            heapRegionAllocator_->DecreaseMemMapUsage(currentRegion);
             GetRegionList().RemoveNode(currentRegion);
             hugeNeedFreeList_.AddNode(currentRegion);
         }
@@ -311,6 +314,16 @@ void HugeObjectSpace::IterateOverObjects(const std::function<void(TaggedObject *
         uintptr_t curPtr = region->GetBegin();
         objectVisitor(reinterpret_cast<TaggedObject *>(curPtr));
     });
+}
+
+void HugeObjectSpace::ClearAndFreeRegion(Region *region, size_t cachedSize)
+{
+    ASSERT(region != nullptr);
+    LOG_ECMA_MEM(DEBUG) << "Free huge region:" << region;
+    region->DeleteCrossRegionRSet();
+    region->DeleteOldToNewRSet();
+    region->DeleteLocalToShareRSet();
+    heapRegionAllocator_->FreeRegion<true>(region, cachedSize);
 }
 
 void HugeObjectSpace::ReclaimHugeRegion()

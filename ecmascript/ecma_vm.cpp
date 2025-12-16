@@ -972,6 +972,7 @@ void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason re
 
 void EcmaVM::IterateConcurrentRoots(RootVisitor &v)
 {
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "IterateConcurrentRoots", "");
     moduleManagers_.Iterate(v);
 }
 
@@ -1006,7 +1007,7 @@ void EcmaVM::IterateSTWRoots(RootVisitor &v)
     if (!options_.EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         DISALLOW_HANDLE_ALLOC;
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "CMCGC::VisitRootHandleStorage", "");
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "VisitRootHandleStorage", "");
         int32_t nid = currentHandleStorageIndex_;
         for (int32_t i = 0; i <= nid; ++i) {
             auto node = handleStorageNodes_.at(i);

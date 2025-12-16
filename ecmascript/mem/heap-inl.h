@@ -871,7 +871,8 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         }
         inactiveSemiSpace_->ReclaimRegions(cachedSize);
     }
-
+    hugeObjectSpace_->ReclaimHugeRegion();
+    hugeMachineCodeSpace_->ReclaimHugeRegion();
     sweeper_->WaitAllTaskFinished();
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();

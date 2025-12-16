@@ -379,9 +379,7 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DESCRIPTION_FORMAT("UpdateRoot:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::UpdateRoot]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Sweep:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("Reclaim:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms";
             break;
         default: // LCOV_EXCL_BR_LINE
             break;

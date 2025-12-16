@@ -538,7 +538,6 @@ void SharedHeap::PrepareRecordRegionsForReclaim()
 void SharedHeap::Reclaim(TriggerGCType gcType)
 {
     PrepareRecordRegionsForReclaim();
-    sHugeObjectSpace_->ReclaimHugeRegion();
 
     if (parallelGC_) {
         clearTaskFinished_ = false;
@@ -554,6 +553,7 @@ void SharedHeap::ReclaimRegions(TriggerGCType gcType)
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
         sCompressSpace_->Reset();
     }
+    sHugeObjectSpace_->ReclaimHugeRegion();
     sOldSpace_->ReclaimCSets();
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
@@ -1273,8 +1273,6 @@ void Heap::Resume(TriggerGCType gcType)
     }
 
     PrepareRecordRegionsForReclaim();
-    hugeObjectSpace_->ReclaimHugeRegion();
-    hugeMachineCodeSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
         if constexpr (!G_USE_CMS_GC) {
             if (gcType == TriggerGCType::OLD_GC) {

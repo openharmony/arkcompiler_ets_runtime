@@ -232,10 +232,14 @@ public:
         return MemMap(memMap.GetMem(), size);
     }
 
+    void DecreaseFreeMemSize(size_t size)
+    {
+        freeListPoolSize_ -= size;
+    }
+
     void AddMemToList(MemMap memMap)
     {
         LockHolder lock(lock_);
-        freeListPoolSize_ -= memMap.GetSize();
         freeList_.emplace(memMap.GetSize(), memMap);
     }
 
@@ -298,6 +302,14 @@ public:
         ECMA_BYTRACE_COUNT_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "Heap size (KB)", memMapTotalSize_ / 1_KB);
     }
 
+    void DecreaseMemUsage(size_t bytes, bool isRegular)
+    {
+        DecreaseMemMapTotalSize(bytes);
+        if (!isRegular) {
+            memMapFreeList_.DecreaseFreeMemSize(bytes);
+        }
+    }
+
     static MemMapAllocator *GetInstance();
 
     MemMap Allocate(const uint32_t threadId, size_t size, size_t alignment,
@@ -306,6 +318,8 @@ public:
 
     void CacheOrFree(void *mem, size_t size, bool isRegular, bool isCompress, size_t cachedSize,
                      bool shouldPageTag, bool skipCache);
+
+    void AsyncFree(void *mem, size_t size, bool isRegular, bool isCompress, bool shouldPageTag);
 
     // This is only used when allocating region failed during GC, since it's unsafe to do HeapDump or throw OOM,
     // just make MemMapAllocator infinite to complete this GC, this will temporarily lead that all JSThread could
@@ -352,6 +366,8 @@ private:
 
     void AdapterSuitablePoolCapacity(bool isLargeHeap);
     void Free(void *mem, size_t size, bool isRegular, bool isCompress);
+    void ReleaseMemory(void *mem, size_t size, bool isRegular, bool isCompress);
+
     MemMapPool memMapPool_;
     MemMapPool compressMemMapPool_;
     MemMapFreeList memMapFreeList_;
