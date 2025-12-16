@@ -179,9 +179,9 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking7)
     g_isEnableCMCGC = temp;
 }
 
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking8)
 {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     OHOS::system::SetParameter("persist.ark.sensitive.threshold", "3");
 
     JSRuntimeOptions options;
@@ -213,10 +213,12 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking8)
 
     g_isEnableCMCGC = temp;
     JSNApi::DestroyJSVM(vm);
+#endif
 }
 
 HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking9)
 {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     OHOS::system::SetParameter("persist.ark.sensitive.threshold", "350");
 
     JSRuntimeOptions options;
@@ -248,9 +250,10 @@ HWTEST_F_L0(HeapTest, TryTriggerConcurrentMarking9)
 
     g_isEnableCMCGC = temp;
     JSNApi::DestroyJSVM(vm);
+#endif
 }
 #endif
-
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 HWTEST_F_L0(HeapTest, ObjectExceedHighSensitiveThresholdForCM1)
 {
     OHOS::system::SetParameter("persist.ark.sensitive.threshold", "5");
