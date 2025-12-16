@@ -21,6 +21,9 @@
 
 #include "ecmascript/string/base_string.h"
 #include <vector>
+#ifdef ENABLE_HISPEED_PLUGIN
+#include "common_components/base/utf_helper.h"
+#endif // ENABLE_HISPEED_PLUGIN
 #include "ecmascript/platform/string_hash.h"
 #include "ecmascript/platform/string_hash_helper.h"
 #include "ecmascript/string/external_string-inl.h"
@@ -708,7 +711,7 @@ uint32_t BaseString::CopyDataUtf16(ReadBarrier &&readBarrier, uint16_t *buf, uin
     }
     std::vector<uint8_t> tmpBuf;
     const uint8_t *data = GetUtf8DataFlat(std::forward<ReadBarrier>(readBarrier), this, tmpBuf);
-    return common::UtfUtils::ConvertRegionUtf8ToUtf16(data, buf, length, maxLength);
+    return common::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, length, maxLength);
 }
 
 template <typename ReadBarrier, typename Vec,
@@ -724,7 +727,7 @@ common::Span<const uint8_t> BaseString::ToUtf8Span(ReadBarrier &&readBarrier, Ve
         DCHECK_CC(common::UtfUtils::Utf16ToUtf8Size(data, strLen, modify, false, cesu8) > 0);
         size_t len = common::UtfUtils::Utf16ToUtf8Size(data, strLen, modify, false, cesu8) - 1;
         buf.reserve(len);
-        len = common::UtfUtils::ConvertRegionUtf16ToUtf8(data, buf.data(), strLen, len, 0, modify, false, cesu8);
+        len = common::utf_helper::ConvertRegionUtf16ToUtf8(data, buf.data(), strLen, len, 0, modify, false, cesu8);
         str = common::Span<const uint8_t>(buf.data(), len);
     } else {
         const uint8_t *data = BaseString::GetUtf8DataFlat(std::forward<ReadBarrier>(readBarrier), this, buf);
@@ -817,10 +820,10 @@ size_t BaseString::CopyDataRegionUtf8(ReadBarrier &&readBarrier, uint8_t *buf, s
     std::vector<uint16_t> tmpBuf;
     const uint16_t *data = GetUtf16DataFlat(std::forward<ReadBarrier>(readBarrier), this, tmpBuf);
     if (length > maxLength) {
-        return common::UtfUtils::ConvertRegionUtf16ToUtf8(data, buf, maxLength, maxLength, start, modify,
+        return common::utf_helper::ConvertRegionUtf16ToUtf8(data, buf, maxLength, maxLength, start, modify,
             isWriteBuffer);
     }
-    return common::UtfUtils::ConvertRegionUtf16ToUtf8(data, buf, length, maxLength, start, modify, isWriteBuffer);
+    return common::utf_helper::ConvertRegionUtf16ToUtf8(data, buf, length, maxLength, start, modify, isWriteBuffer);
 }
 
 template <typename ReadBarrier>
@@ -843,9 +846,9 @@ size_t BaseString::CopyDataToUtf16(ReadBarrier &&readBarrier, uint16_t *buf, uin
     std::vector<uint8_t> tmpBuf;
     const uint8_t *data = BaseString::GetUtf8DataFlat(std::forward<ReadBarrier>(readBarrier), this, tmpBuf);
     if (length > bufLength) {
-        return common::UtfUtils::ConvertRegionUtf8ToUtf16(data, buf, bufLength, bufLength);
+        return common::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, bufLength, bufLength);
     }
-    return common::UtfUtils::ConvertRegionUtf8ToUtf16(data, buf, length, bufLength);
+    return common::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, length, bufLength);
 }
 
 #ifdef PANDA_32_BIT_MANAGED_POINTER
@@ -941,6 +944,14 @@ int32_t BaseString::IndexOf(common::Span<const T1> &lhsSp, common::Span<const T2
 // CC-OFFNXT(G.FUD.06) perf critical
 inline bool BaseString::CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len)
 {
+#ifdef ENABLE_HISPEED_PLUGIN
+    auto hispeedUtf8CanBeCompressed =
+        common::utf_helper::HispeedLibSingleton::GetInstance().GetHispeedUtf8CanBeCompressed();
+    if (hispeedUtf8CanBeCompressed != nullptr) {
+        return hispeedUtf8CanBeCompressed(utf8Data, utf8Len);
+    }
+#endif // ENABLE_HISPEED_PLUGIN
+
     uint32_t index = 0;
     for (; index + 4 <= utf8Len; index += 4) {  // 4: process the data in chunks of 4 elements to improve speed
         // Check if all four characters in the current block are ASCII characters
@@ -965,6 +976,14 @@ inline bool BaseString::CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Le
 // CC-OFFNXT(G.FUD.06) perf critical
 inline bool BaseString::CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len)
 {
+#ifdef ENABLE_HISPEED_PLUGIN
+    auto hispeedUtf16CanBeCompressed =
+        common::utf_helper::HispeedLibSingleton::GetInstance().GetHispeedUtf16CanBeCompressed();
+    if (hispeedUtf16CanBeCompressed != nullptr) {
+        return hispeedUtf16CanBeCompressed(utf16Data, utf16Len);
+    }
+#endif // ENABLE_HISPEED_PLUGIN
+
     uint32_t index = 0;
     for (; index + 4 <= utf16Len; index += 4) {  // 4: process the data in chunks of 4 elements to improve speed
         // Check if all four characters in the current block are ASCII characters
@@ -1003,9 +1022,9 @@ inline uint32_t BaseString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t 
     if (canBeCompress) {
         return ComputeHashForData(utf8Data, utf8Len, 0);
     }
-    auto utf16Len = common::UtfUtils::Utf8ToUtf16Size(utf8Data, utf8Len);
+    auto utf16Len = common::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
     std::vector<uint16_t> tmpBuffer(utf16Len);
-    [[maybe_unused]] auto len = common::UtfUtils::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(),
+    [[maybe_unused]] auto len = common::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(),
         utf8Len, utf16Len);
     DCHECK_CC(len == utf16Len);
     return ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
@@ -1025,9 +1044,9 @@ inline uint32_t BaseString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t 
         uint32_t hash = ComputeHashForData(utf8Data, utf8Len, 0);
         return MixHashcode(hash, NOT_INTEGER);
     }
-    auto utf16Len = common::UtfUtils::Utf8ToUtf16Size(utf8Data, utf8Len);
+    auto utf16Len = common::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
     std::vector<uint16_t> tmpBuffer(utf16Len);
-    [[maybe_unused]] auto len = common::UtfUtils::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(),
+    [[maybe_unused]] auto len = common::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(),
         utf8Len, utf16Len);
     DCHECK_CC(len == utf16Len);
     uint32_t hash = ComputeHashForData(tmpBuffer.data(), utf16Len, 0);

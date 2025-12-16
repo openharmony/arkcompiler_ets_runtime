@@ -20,6 +20,7 @@
 
 #include <vector>
 
+#include "common_components/base/utf_helper.h"
 #include "ecmascript/string/base_string.h"
 #include "ecmascript/string/line_string.h"
 #include "objects/utils/utf_utils.h"
@@ -151,10 +152,10 @@ LineString *LineString::CreateFromUtf8(Allocator &&allocator, const uint8_t *utf
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         std::copy(utf8Data, utf8Data + utf8Len, LineString::Cast(string)->GetDataUtf8Writable());
     } else {
-        auto utf16Len = common::UtfUtils::Utf8ToUtf16Size(utf8Data, utf8Len);
+        auto utf16Len = common::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
         string = Create(allocator, utf16Len, false);
         DCHECK_CC(string != nullptr);
-        [[maybe_unused]] auto len = common::UtfUtils::ConvertRegionUtf8ToUtf16(
+        [[maybe_unused]] auto len = common::utf_helper::ConvertRegionUtf8ToUtf16(
             utf8Data, LineString::Cast(string)->GetDataUtf16Writable(), utf8Len, utf16Len);
         DCHECK_CC(len == utf16Len);
     }

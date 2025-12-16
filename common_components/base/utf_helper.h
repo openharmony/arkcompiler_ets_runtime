@@ -18,11 +18,89 @@
 
 #include <array>
 #include <cstdint>
+#ifdef ENABLE_HISPEED_PLUGIN
+#include <dlfcn.h>
+#endif // ENABLE_HISPEED_PLUGIN
 #include <vector>
 
 #include "base/common.h"
 
 namespace common::utf_helper {
+#ifdef ENABLE_HISPEED_PLUGIN
+class HispeedLibSingleton {
+public:
+    static HispeedLibSingleton& GetInstance();
+    HispeedLibSingleton(const HispeedLibSingleton&) = delete;
+    HispeedLibSingleton& operator=(const HispeedLibSingleton&) = delete;
+
+    using HSDPlugin_ConvertRegionUtf8ToUtf16 =
+        size_t(*)(const uint8_t *utf8In, uint16_t *utf16Out, size_t utf8Len, size_t utf16Len);
+    using HSDPlugin_ConvertRegionUtf16ToUtf8 =
+        size_t(*)(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
+                  size_t start, bool modify, bool isWriteBuffer, bool cesu8);
+    using HSDPlugin_Utf8ToUtf16Size = size_t(*)(const uint8_t *utf8, size_t utf8Len);
+    using HSDPlugin_Utf8CanBeCompressed = bool (*)(const uint8_t *utf8Data, uint32_t utf8Len);
+    using HSDPlugin_Utf16CanBeCompressed = bool (*)(const uint16_t *utf16Data, uint32_t utf16Len);
+
+    HSDPlugin_ConvertRegionUtf8ToUtf16 GetHispeedConvertRegionUtf8ToUtf16() const
+    {
+        return hispeedConvertRegionUtf8ToUtf16;
+    }
+
+    HSDPlugin_ConvertRegionUtf16ToUtf8 GetHispeedConvertRegionUtf16ToUtf8() const
+    {
+        return hispeedConvertRegionUtf16ToUtf8;
+    }
+
+    HSDPlugin_Utf8ToUtf16Size GetHispeedUtf8ToUtf16Size() const
+    {
+        return hispeedUtf8ToUtf16Size;
+    }
+
+    HSDPlugin_Utf8CanBeCompressed GetHispeedUtf8CanBeCompressed() const
+    {
+        return hispeedUtf8CanBeCompressed;
+    }
+
+    HSDPlugin_Utf16CanBeCompressed GetHispeedUtf16CanBeCompressed() const
+    {
+        return hispeedUtf16CanBeCompressed;
+    }
+private:
+    void *hispeedStrHandle = nullptr;
+    HSDPlugin_ConvertRegionUtf8ToUtf16 hispeedConvertRegionUtf8ToUtf16 = nullptr;
+    HSDPlugin_ConvertRegionUtf16ToUtf8 hispeedConvertRegionUtf16ToUtf8 = nullptr;
+    HSDPlugin_Utf8ToUtf16Size hispeedUtf8ToUtf16Size = nullptr;
+    HSDPlugin_Utf8CanBeCompressed hispeedUtf8CanBeCompressed = nullptr;
+    HSDPlugin_Utf16CanBeCompressed hispeedUtf16CanBeCompressed = nullptr;
+    const char *HISPEED_STR_SO_PATH = "libhispeed_string.so";
+
+    HispeedLibSingleton()
+    {
+        hispeedStrHandle = dlopen(HISPEED_STR_SO_PATH, RTLD_LAZY);
+        if (hispeedStrHandle == nullptr) {
+            return;
+        }
+        hispeedConvertRegionUtf8ToUtf16 = (HSDPlugin_ConvertRegionUtf8ToUtf16)dlsym(hispeedStrHandle,
+            "HSD_Str_ConvertRegionUtf8ToUtf16");
+        hispeedConvertRegionUtf16ToUtf8 = (HSDPlugin_ConvertRegionUtf16ToUtf8)dlsym(hispeedStrHandle,
+            "HSD_Str_ConvertRegionUtf16ToUtf8");
+        hispeedUtf8ToUtf16Size = (HSDPlugin_Utf8ToUtf16Size)dlsym(hispeedStrHandle, "HSD_Str_Utf8ToUtf16Size");
+        hispeedUtf8CanBeCompressed = (HSDPlugin_Utf8CanBeCompressed)dlsym(hispeedStrHandle,
+            "HSD_Str_Utf8CanBeCompressed");
+        hispeedUtf16CanBeCompressed = (HSDPlugin_Utf16CanBeCompressed)dlsym(hispeedStrHandle,
+            "HSD_Str_Utf16CanBeCompressed");
+    }
+
+    ~HispeedLibSingleton()
+    {
+        if (hispeedStrHandle != nullptr) {
+            dlclose(hispeedStrHandle);
+        }
+    }
+};
+#endif // ENABLE_HISPEED_PLUGIN
+
 constexpr size_t HI_SURROGATE_MIN = 0xd800;
 constexpr size_t HI_SURROGATE_MAX = 0xdbff;
 constexpr size_t LO_SURROGATE_MIN = 0xdc00;
