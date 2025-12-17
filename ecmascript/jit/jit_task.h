@@ -113,7 +113,6 @@ public:
     void Finalize();
     void PrepareCompile();
 
-    bool InStack();
     void InstallCode();
     void InstallOsrCode(JSHandle<MachineCode> &codeObj);
     void InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCode,

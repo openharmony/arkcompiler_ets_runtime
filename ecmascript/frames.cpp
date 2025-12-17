@@ -129,7 +129,7 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
         MachineCode* machineCode = thread_->GetEcmaVM()->GetHeap()->GetMachineCodeObject(retAddr);
         if (machineCode == nullptr) {
             std::ostringstream oss;
-            oss << "machine code is nullptr. retAddr: " << std::hex << retAddr;
+            oss << "machine code is nullptr. deopt type: " << std::hex << GetDeoptType() << ", retAddr: " << retAddr;
             if (!isDeopt) {
                 LOG_FULL(FATAL) << oss.str();
             }

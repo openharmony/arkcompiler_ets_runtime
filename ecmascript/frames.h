@@ -2194,6 +2194,16 @@ public:
         return const_cast<JSTaggedType*>(&machineCode_);
     }
 
+    void SetDeoptType(uint32_t deoptType)
+    {
+        deoptType_ = deoptType;
+    }
+
+    uint32_t GetDeoptType() const
+    {
+        return deoptType_;
+    }
+
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
@@ -2209,6 +2219,8 @@ private:
 
     // cache current machine code, it's nonmovable
     JSTaggedType machineCode_ {JSTaggedValue::VALUE_UNDEFINED};
+
+    uint32_t deoptType_{0};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_FRAMES_H
