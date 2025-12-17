@@ -5130,7 +5130,7 @@ GateRef StubBuilder::DefinePropertyByIndex(GateRef glue, GateRef receiver, GateR
             {
                 GateRef length = GetLengthOfTaggedArray(elements);
                 Label inRange(env);
-                BRANCH(Int64LessThan(index, length), &inRange, &ifEnd);
+                BRANCH(Int32UnsignedLessThan(index, length), &inRange, &ifEnd);
                 Bind(&inRange);
                 {
                     GateRef value1 = GetTaggedValueWithElementsKind(glue, *holder, index);

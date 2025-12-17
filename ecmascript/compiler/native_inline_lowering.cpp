@@ -964,15 +964,38 @@ void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, Built
     builder_.DeoptCheck(builder_.TaggedIsInt(index), frameState, DeoptType::INDEXNOTINT);
     GateRef indexInt = builder_.TaggedGetInt(index);
     if (argc == 1) { // if not provide isLittleEndian, default use big endian
-        ret = builder_.DataViewGet(thisObj, indexInt, dataViewCallID, builder_.False(), frameState);
+        ret = builder_.DataViewGet(thisObj, indexInt, dataViewCallID, GetMachineTypeFromCSignsID(id),
+                                   builder_.False(), frameState);
     } else if (argc == 2) { // 2: provide isLittleEndian
         GateRef isLittleEndian = acc_.GetValueIn(gate, 2); // 2: is little endian mode
-        ret = builder_.DataViewGet(thisObj, indexInt, dataViewCallID, isLittleEndian, frameState);
+        ret = builder_.DataViewGet(thisObj, indexInt, dataViewCallID, GetMachineTypeFromCSignsID(id),
+                                   isLittleEndian, frameState);
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
     acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+MachineType NativeInlineLowering::GetMachineTypeFromCSignsID(BuiltinsStubCSigns::ID id)
+{
+    switch (id) {
+        case BuiltinsStubCSigns::ID::DataViewGetInt8:
+        case BuiltinsStubCSigns::ID::DataViewGetUint8:
+            return MachineType::I8;
+        case BuiltinsStubCSigns::ID::DataViewGetInt16:
+        case BuiltinsStubCSigns::ID::DataViewGetUint16:
+            return MachineType::I16;
+        case BuiltinsStubCSigns::ID::DataViewGetInt32:
+        case BuiltinsStubCSigns::ID::DataViewGetUint32:
+            return MachineType::I32;
+        case BuiltinsStubCSigns::ID::DataViewGetFloat32:
+            return MachineType::F32;
+        case BuiltinsStubCSigns::ID::DataViewGetFloat64:
+            return MachineType::F64;
+        default:
+            UNREACHABLE();
+    }
 }
 
 void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
