@@ -53,14 +53,14 @@ void GCStats::PrintGCStatistic()
                         << ", MarkReason: " << MarkReasonToString();
         // fixme: refactor?
         if constexpr (G_USE_CMS_GC) {
-            LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground() << "; "
+            LOG_GC(INFO) << "IsInBackground: " << Runtime::GetInstance()->IsInBackground() << "; "
                 << "SensitiveStatus: " << static_cast<int>(heap_->GetSensitiveStatus()) << "; "
                 << "StartupStatus: " << std::to_string(static_cast<int>(heap_->GetStartupStatus())) << "; "
                 << "BundleName: " << heap_->GetEcmaVM()->GetBundleName()
                 << "; SlotSpace: " << std::to_string(heap_->GetSlotSpace()->GetCommittedSize())
                 << "; TotalCommit" << std::to_string(heap_->GetCommittedSize());
         } else {
-            LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground() << "; "
+            LOG_GC(INFO) << "IsInBackground: " << Runtime::GetInstance()->IsInBackground() << "; "
                 << "SensitiveStatus: " << static_cast<int>(heap_->GetSensitiveStatus()) << "; "
                 << "StartupStatus: " << std::to_string(static_cast<int>(heap_->GetStartupStatus())) << "; "
                 << "BundleName: " << heap_->GetEcmaVM()->GetBundleName()
@@ -173,7 +173,7 @@ void GCStats::GCFinishTrace()
         ("PartialGC::Finish" + std::to_string(heap_->IsConcurrentFullMark())
         + ";Reason" + std::to_string(static_cast<int>(gcReason_))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
-        + ";IsInBackground" + std::to_string(heap_->IsInBackground())
+        + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
         + ";Startup" + std::to_string(heap_->OnStartupEvent())
         + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
 #if USE_CMS_GC  // fixme: refactor?
@@ -664,12 +664,12 @@ void GCStats::ProcessAfterLongGCStats()
 {
     LongGCStats *longGCStats = GetLongGCStats();
     float gcTotalTime = GetScopeDuration(GCStats::Scope::ScopeId::TotalGC);
-    if (IsLongGC(gcReason_, heap_->InSensitiveStatus(), heap_->IsInBackground(), gcTotalTime)) {
+    if (IsLongGC(gcReason_, heap_->InSensitiveStatus(), Runtime::GetInstance()->IsInBackground(), gcTotalTime)) {
         longGCStats->SetGCType(static_cast<int>(gcType_));
         longGCStats->SetGCReason(static_cast<int>(gcReason_));
         longGCStats->SetMarkReason(static_cast<int>(markReason_));
         longGCStats->SetGCIsSensitive(heap_->InSensitiveStatus());
-        longGCStats->SetGCIsInBackground(heap_->IsInBackground());
+        longGCStats->SetGCIsInBackground(Runtime::GetInstance()->IsInBackground());
         longGCStats->SetGCTotalTime(gcTotalTime);
         longGCStats->SetGCMarkTime(GetScopeDuration(GCStats::Scope::ScopeId::Mark));
         longGCStats->SetGCEvacuateTime(GetScopeDuration(GCStats::Scope::ScopeId::Evacuate));
@@ -864,7 +864,7 @@ void SharedGCStats::SharedGCFinishTrace()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedGC::Finish;Reason"
         + std::to_string(static_cast<int>(gcReason_))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
-        + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
+        + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
         + ";Startup" + std::to_string(sHeap_->OnStartupEvent())
         + ";Old" + std::to_string(sHeap_->GetOldSpace()->GetCommittedSize())
         + ";huge" + std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize())
@@ -1004,12 +1004,12 @@ void SharedGCStats::ProcessAfterLongGCStats()
 {
     LongGCStats *longGCStats = GetLongGCStats();
     float gcTotalTime = GetScopeDuration(GCStats::Scope::ScopeId::TotalGC);
-    if (IsLongGC(gcReason_, sHeap_->InSensitiveStatus(), sHeap_->IsInBackground(), gcTotalTime)) {
+    if (IsLongGC(gcReason_, sHeap_->InSensitiveStatus(), Runtime::GetInstance()->IsInBackground(), gcTotalTime)) {
         longGCStats->SetGCType(static_cast<int>(gcType_));
         longGCStats->SetGCReason(static_cast<int>(gcReason_));
         longGCStats->SetMarkReason(static_cast<int>(markReason_));
         longGCStats->SetGCIsSensitive(sHeap_->InSensitiveStatus());
-        longGCStats->SetGCIsInBackground(sHeap_->IsInBackground());
+        longGCStats->SetGCIsInBackground(Runtime::GetInstance()->IsInBackground());
         longGCStats->SetGCTotalTime(gcTotalTime);
         longGCStats->SetGCMarkTime(GetScopeDuration(GCStats::Scope::ScopeId::Mark));
         longGCStats->SetAfterGCTotalMemUsed(sHeap_->GetHeapObjectSize());

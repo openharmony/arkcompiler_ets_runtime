@@ -27,7 +27,7 @@ void SharedFullGC::RunPhases()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedFullGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
-        + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
+        + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(sHeap_->GetStartupStatus()))
         + ";Old" + std::to_string(sHeap_->GetOldSpace()->GetCommittedSize())
         + ";huge" + std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize())

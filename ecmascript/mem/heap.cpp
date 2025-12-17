@@ -2484,11 +2484,6 @@ void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 void Heap::ChangeGCParams(bool inBackground)
 {
     const double doubleOne = 1.0;
-    sHeap_->SetInBackground(inBackground);
-    Runtime::GetInstance()->GCIterateThreadList([inBackground](JSThread *thread) {
-        Heap *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-        heap->SetInBackground(inBackground);
-    });
     if (g_isEnableCMCGC) {
         common::BaseRuntime::ChangeGCParams(inBackground);
         return;

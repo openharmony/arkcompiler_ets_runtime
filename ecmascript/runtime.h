@@ -371,6 +371,16 @@ public:
         return enableProcDumpInSharedOOM_;
     }
 
+    bool IsInBackground() const
+    {
+        return inBackground_;
+    }
+
+    void SetInBackground(bool inBackground)
+    {
+        inBackground_ = inBackground;
+    }
+
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
@@ -488,6 +498,8 @@ private:
 
     // whether dump process when shared oom
     bool enableProcDumpInSharedOOM_ {false};
+
+    bool inBackground_ {false};
 
     friend class EcmaVM;
     friend class JSThread;

@@ -33,7 +33,7 @@ void FullGC::RunPhases()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("FullGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(gcStats->GetGCReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
-        + ";IsInBackground" + std::to_string(heap_->IsInBackground())
+        + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))
 #if USE_CMS_GC  // fixme: refactor?
         + ";Slot" + std::to_string(heap_->GetSlotSpace()->GetCommittedSize())
