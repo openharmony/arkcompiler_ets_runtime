@@ -1060,7 +1060,7 @@ HWTEST_F_L0(JSNApiTests, GetAndClearException)
  * @tc.type: FUNC
  * @tc.require:  parameter
  */
-HWTEST_F_L0(JSNApiTests, TryCatch)
+HWTEST_F_L0(JSNApiTests, TryCatch001)
 {
     LocalScope scope(vm_);
     TryCatch tryCatch(vm_);
@@ -1068,6 +1068,20 @@ HWTEST_F_L0(JSNApiTests, TryCatch)
     EXPECT_FALSE(tryCatch.HasCaught());
     tryCatch.Rethrow();
     EXPECT_EQ(tryCatch.getrethrow_(), true);
+}
+
+/**
+ * @tc.number: ffi_interface_api_147
+ * @tc.name: Int32Array
+ * @tc.desc: trycatch class construction
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, TryCatch002)
+{
+    LocalScope scope(vm_);
+    TryCatch tryCatch(vm_);
+    EXPECT_EQ(JSNApi::GetEnv(vm_), tryCatch.GetEnv());
 }
 
 HWTEST_F_L0(JSNApiTests, NewObjectWithProperties)
@@ -2039,6 +2053,21 @@ HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure003)
     std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
     bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl1);
     EXPECT_TRUE(res);
+}
+
+void UncatchableErrorHandlerImpl([[maybe_unused]]panda::TryCatch& tryCatch)
+{
+    return;
+}
+
+HWTEST_F_L0(JSNApiTests, RegisterUncatchableErrorHandler001)
+{
+    LocalScope scope(vm_);
+    UncatchableErrorHandler func1 = JSNApi::GetUncatchableErrorHandler(vm_);
+    EXPECT_EQ(func1, nullptr);
+    JSNApi::RegisterUncatchableErrorHandler(vm_, UncatchableErrorHandlerImpl);
+    UncatchableErrorHandler func2 = JSNApi::GetUncatchableErrorHandler(vm_);
+    EXPECT_NE(func2, nullptr);
 }
 
 HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure004)

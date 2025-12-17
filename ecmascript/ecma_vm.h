@@ -884,6 +884,11 @@ public:
         uncatchableErrorHandler_ = uncatchableErrorHandler;
     }
 
+    UncatchableErrorHandler GetUncatchableErrorHandler() const
+    {
+        return uncatchableErrorHandler_;
+    }
+
     // handle uncatchable errors, such as oom
     void HandleUncatchableError();
 

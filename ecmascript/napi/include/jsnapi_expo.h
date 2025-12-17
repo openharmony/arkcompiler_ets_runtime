@@ -1161,6 +1161,7 @@ public:
     Local<ObjectRef> GetAndClearException();
     Local<ObjectRef> GetException();
     void ClearException();
+    void* GetEnv();
 
     ECMA_DISALLOW_COPY(TryCatch);
     ECMA_DISALLOW_MOVE(TryCatch);
@@ -1790,6 +1791,7 @@ public:
     static void DestroyJSVM(EcmaVM *ecmaVm);
     static void IgnoreFinalizeCallback(EcmaVM *ecmaVm);
     static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
+    static UncatchableErrorHandler GetUncatchableErrorHandler(const EcmaVM *ecmaVm);
 
     // aot load
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
