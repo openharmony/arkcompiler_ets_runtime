@@ -3027,7 +3027,7 @@ void JSSendableArrayBuffer::Dump(const JSThread *thread, std::ostream &os) const
 
 void PromiseReaction::Dump(const JSThread *thread, std::ostream &os) const
 {
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
     os << " - promise-or-capability: ";
     GetPromiseOrCapability(thread).Dump(thread, os);
 #else
@@ -5570,11 +5570,11 @@ void JSSendableArrayBuffer::DumpForSnapshot(const JSThread *thread, std::vector<
 
 void PromiseReaction::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
     vec.emplace_back(CString("promise-or-capability"), GetPromiseOrCapability(thread));
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
     vec.emplace_back(CString("promise-capability"), GetPromiseCapability(thread));
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
     vec.emplace_back(CString("handler"), GetHandler(thread));
     vec.emplace_back(CString("type"), JSTaggedValue(static_cast<int>(GetType())));
 }

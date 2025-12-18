@@ -197,11 +197,11 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_001)
     JSHandle<JSTaggedValue> resolve(thread, capbility->GetResolve(thread));
 
     JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
     fulfillReaction->SetPromiseOrCapability(thread, capbility.GetTaggedValue());
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
     fulfillReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
     fulfillReaction->SetHandler(thread, resolve.GetTaggedValue());
 
     JSHandle<TaggedArray> arguments = factory->NewTaggedArray(2);
@@ -210,11 +210,11 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_001)
     MicroJobQueue::EnqueueJob(thread, handleMicrojob, QueueType::QUEUE_PROMISE, promiseReactionsJob, arguments);
 
     JSHandle<PromiseReaction> rejectReaction = factory->NewPromiseReaction();
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
     rejectReaction->SetPromiseOrCapability(thread, capbility.GetTaggedValue());
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
     rejectReaction->SetPromiseCapability(thread, capbility.GetTaggedValue());
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
     rejectReaction->SetHandler(thread, resolve.GetTaggedValue());
 
     // get into the promise queue and execute PendingJob
@@ -248,11 +248,11 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_002)
     JSHandle<JSTaggedValue> resolve(thread, capbility1->GetResolve(thread));
 
     JSHandle<PromiseReaction> fulfillReaction = factory->NewPromiseReaction();
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
     fulfillReaction->SetPromiseOrCapability(thread, capbility1.GetTaggedValue());
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
     fulfillReaction->SetPromiseCapability(thread, capbility1.GetTaggedValue());
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
     fulfillReaction->SetHandler(thread, resolve.GetTaggedValue());
 
     JSHandle<TaggedArray> arguments1 = factory->NewTaggedArray(2);
@@ -263,11 +263,11 @@ HWTEST_F_L0(MicroJobQueueTest, ExecutePendingJob_002)
     JSHandle<PromiseCapability> capbility2 = JSPromise::NewPromiseCapability(thread, promiseFunc);
     JSHandle<JSTaggedValue> reject(thread, capbility2->GetReject(thread));
     JSHandle<PromiseReaction> rejectReaction = factory->NewPromiseReaction();
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
     rejectReaction->SetPromiseOrCapability(thread, capbility2.GetTaggedValue());
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
     rejectReaction->SetPromiseCapability(thread, capbility2.GetTaggedValue());
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
     rejectReaction->SetHandler(thread, reject.GetTaggedValue());
 
     JSHandle<TaggedArray> arguments2 = factory->NewTaggedArray(2);
