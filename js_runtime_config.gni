@@ -253,6 +253,7 @@ template("libark_jsruntime_common_set") {
 
     if (current_cpu == "arm64") {
       defines += [ "ENABLE_POSTFORK_FORCEEXPAND" ]
+      defines += [ "ENABLE_HISPEED_PLUGIN" ]
     }
 
     sources = invoker.ecma_source
