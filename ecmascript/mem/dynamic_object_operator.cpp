@@ -39,8 +39,7 @@ void DynamicObjectOperator::IterateXRef([[maybe_unused]] const BaseObject *objec
         if (value.IsJSXRefObject()) {
             Runtime::GetInstance()->GetSTSVMInterface()->MarkFromObject(
                 JSObject::Cast(TaggedObject::Cast(object))
-                    ->GetNativePointerField(
-                        Runtime::GetInstance()->GetMainThread(), 0), visitor);
+                    ->GetNativePointerField(Runtime::GetInstance()->GetMainThread(), 0), visitor);
         }
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";

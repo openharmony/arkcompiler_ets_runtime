@@ -248,7 +248,8 @@ void MarkingCollector::TracingImpl(GlobalMarkStack &globalMarkStack, bool parall
             if (gcReason_ == GCReason::GC_REASON_XREF) {
                 threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<true>>(0, *this, monitor, globalMarkStack));
             } else {
-                threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<false>>(0, *this, monitor, globalMarkStack));
+                threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<false>>(0, *this, monitor,
+                    globalMarkStack));
             }
 #else
             threadPool->PostTask(std::make_unique<ConcurrentMarkingTask<false>>(0, *this, monitor, globalMarkStack));
