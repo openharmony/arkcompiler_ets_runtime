@@ -3649,6 +3649,12 @@ void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, s
     }
 }
 
+void RuntimeStubs::TryFillSweptRegion(uintptr_t argGlue)
+{
+    JSThread *thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetHeap()->GetSlotSpace()->TryFillSweptRegion();
+}
+
 void RuntimeStubs::CMCGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue,
                                        [[maybe_unused]] uintptr_t object,
                                        [[maybe_unused]] size_t offset,

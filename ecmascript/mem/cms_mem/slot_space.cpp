@@ -28,12 +28,35 @@ SlotSpace::SlotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     InitializeAllocators();
 }
 
+SlotSpace::~SlotSpace()
+{
+    for (CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        delete regionChainManager;
+    }
+    for (SlotAllocator *allocator : allocatorInstances_) {
+        delete allocator;
+    }
+    regionChainManagerInstances_.clear();
+    allocatorInstances_.clear();
+}
+
 void SlotSpace::InitializeAllocators()
 {
+    size_t preSize = 0;
     for (size_t i = 0; i < SlotSpaceConfig::NUM_SLOTS; ++i) {
         size_t slotSize = GetSlotSizeByIdx(i);
-        regionChainManagers_[i].Initialize(localHeap_, slotSize);
-        allocators_[i].Initialize(slotSize, &regionChainManagers_[i]);
+        if (slotSize > preSize) {
+            SlotAllocator *allocator = new SlotAllocator();
+            CMSRegionChainManager *regionChainManager = new CMSRegionChainManager();
+            allocator->Initialize(slotSize, regionChainManager);
+            regionChainManager->Initialize(localHeap_, slotSize);
+
+            allocatorInstances_.emplace_back(allocator);
+            regionChainManagerInstances_.emplace_back(regionChainManager);
+        }
+        allocators_[i] = allocatorInstances_.back();
+        ASSERT(allocators_[i]->GetSlotSize() >= i * SlotSpaceConfig::SLOT_STEP_SIZE);
+        preSize = slotSize;
     }
 }
 
@@ -86,27 +109,38 @@ Region *SlotSpace::AllocateRegion(size_t slotSize)
 
 void SlotSpace::IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor)
 {
-    for (SlotAllocator &allocator : allocators_) {
-        allocator.Discard();
+    for (SlotAllocator *allocator : allocatorInstances_) {
+        allocator->Discard();
     }
-    for (CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        size_t slotSize = regionChainManager.GetSlotSize();
-        regionChainManager.EnumerateRegions([&visitor, slotSize](Region *region) {
+    for (CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        size_t slotSize = regionChainManager->GetSlotSize();
+        regionChainManager->EnumerateRegions([&visitor, slotSize](Region *region) {
             ASSERT(slotSize > 0);
             uintptr_t curPtr = region->GetBegin();
             uintptr_t endPtr = CMSRegion::GetAllocatableEnd(CMSRegion::FromRegion(region), slotSize);
             while (curPtr < endPtr) {
-                FreeObject *freeObject = FreeObject::Cast(curPtr);
+                SlotFreeSegment *freeSegment = SlotFreeSegment::Cast(curPtr);
                 size_t objSize;
-                ASAN_UNPOISON_MEMORY_REGION(freeObject, TaggedObject::TaggedObjectSize());
-                if (!freeObject->IsFreeObject()) {
-                    auto obj = reinterpret_cast<TaggedObject *>(curPtr);
-                    visitor(obj);
-                    objSize = slotSize;
+                ASAN_UNPOISON_MEMORY_REGION(freeSegment, TaggedObject::TaggedObjectSize());
+                if (!freeSegment->IsSlotFreeSegment()) {
+                    FreeObject *freeObject = FreeObject::Cast(curPtr);
+                    ASAN_UNPOISON_MEMORY_REGION(freeObject, TaggedObject::TaggedObjectSize());
+                    if (!freeObject->IsFreeObject()) {
+                        auto obj = reinterpret_cast<TaggedObject *>(curPtr);
+                        visitor(obj);
+                        objSize = slotSize;
+                    } else {
+                        // May be a FreeObject, only if in Compact GC, a CAS failed after copy caused by multi thread
+                        // competition in updating reference, and then call `FreeObject::FillFreeObject`.
+                        freeObject->AsanUnPoisonFreeObject();
+                        ASSERT(freeObject->Available() <= slotSize);
+                        objSize = slotSize;
+                        freeObject->AsanPoisonFreeObject();
+                    }
                 } else {
-                    freeObject->AsanUnPoisonFreeObject();
-                    objSize = freeObject->Available();
-                    freeObject->AsanPoisonFreeObject();
+                    freeSegment->AsanUnPoisonFreeSegment();
+                    objSize = freeSegment->GetSize();
+                    freeSegment->AsanPoisonFreeSegment();
                 }
                 curPtr += objSize;
                 ASSERT(objSize % slotSize == 0);
@@ -119,46 +153,62 @@ void SlotSpace::IterateOverObjects(const std::function<void(TaggedObject *object
 
 void SlotSpace::PrepareSweeping()
 {
-    for (SlotAllocator &allocator : allocators_) {
-        allocateAfterLastGC_ += allocator.Discard();
+    for (SlotAllocator *allocator : allocatorInstances_) {
+        allocateAfterLastGC_ += allocator->Discard();
     }
     size_t survivalObjectSize = 0;
-    for (CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        survivalObjectSize += regionChainManager.PrepareSweeping(pendingReclaimFromRegions_);
+    for (CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        survivalObjectSize += regionChainManager->PrepareSweeping(pendingReclaimFromRegions_);
     }
     SetSurvivalObjectSize(survivalObjectSize);
 }
 
 void SlotSpace::Sweep()
 {
-    for (SlotAllocator &allocator : allocators_) {
-        allocateAfterLastGC_ += allocator.Discard();
+    for (SlotAllocator *allocator : allocatorInstances_) {
+        allocateAfterLastGC_ += allocator->Discard();
     }
     size_t survivalObjectSize = 0;
-    for (CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        survivalObjectSize += regionChainManager.Sweep(pendingReclaimFromRegions_);
+    for (CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        survivalObjectSize += regionChainManager->Sweep(pendingReclaimFromRegions_);
     }
     SetSurvivalObjectSize(survivalObjectSize);
 }
 
 void SlotSpace::AsyncSweep([[maybe_unused]] bool isMain, [[maybe_unused]] bool releaseMemory)
 {
-    for (CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        regionChainManager.ConcurrentSweep(CMSRegionChainManager::SweepMode::SWEEP_ALL);
+    for (CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        regionChainManager->ConcurrentSweep(CMSRegionChainManager::SweepMode::SWEEP_ALL);
     }
+}
+
+void SlotSpace::AddSweptRegionChainManager(CMSRegionChainManager *sweptRegionChainManager)
+{
+    LockHolder holder(mutex_);
+    sweptRegionChainManagers_.emplace_back(sweptRegionChainManager);
 }
 
 bool SlotSpace::TryFillSweptRegion()
 {
-    // Implement of SlotAllocator do not need to pre-fetch swept free list
-    return false;
+    std::vector<CMSRegionChainManager *> sweptRegionChainManagers;
+
+    {
+        LockHolder holder(mutex_);
+        std::swap(sweptRegionChainManagers_, sweptRegionChainManagers);
+    }
+
+    for (CMSRegionChainManager *sweptRegionChainManager : sweptRegionChainManagers) {
+        sweptRegionChainManager->FinishSweeping();
+    }
+    return true;
 }
 
 bool SlotSpace::FinishFillSweptRegion()
 {
-    for (CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        regionChainManager.FinishSweeping();
+    for (CMSRegionChainManager *sweptRegionChainManager : sweptRegionChainManagers_) {
+        sweptRegionChainManager->FinishSweeping();
     }
+    sweptRegionChainManagers_.clear();
     return true;
 }
 
@@ -167,19 +217,22 @@ void SlotSpace::PrepareCompact()
     committedSize_ = 0;
     ASSERT(pendingReclaimFromRegions_.empty());
     pendingReclaimFromRegions_.reserve(GetRegionCount());
-    for (CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        regionChainManager.PrepareCompact(pendingReclaimFromRegions_);
+    for (CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        regionChainManager->PrepareCompact(pendingReclaimFromRegions_);
     }
-    for (SlotAllocator &allocator : allocators_) {
-        allocateAfterLastGC_ += allocator.Discard();
+    for (SlotAllocator *allocator : allocatorInstances_) {
+        allocateAfterLastGC_ += allocator->Discard();
     }
 }
 
-void SlotSpace::ReclaimFromRegions()
+void SlotSpace::ReclaimFromRegions(bool needCacheRegion)
 {
+    if (!needCacheRegion) {
+        cacheRegionSize_ = 0;
+    }
     for (Region *region : pendingReclaimFromRegions_) {
         region->DeleteLocalToShareRSet();
-        heapRegionAllocator_->FreeRegion(region, 0);
+        heapRegionAllocator_->FreeRegion(region, cacheRegionSize_);
     }
     pendingReclaimFromRegions_.clear();
 }
@@ -191,50 +244,29 @@ void SlotSpace::AdjustCapacity(JSThread *thread)
     double objectSurvivalRate = static_cast<double>(objectSize) / initialCapacity_;
     double allocSpeed = localHeap_->GetMemController()->GetSlotAndHugeSpaceAllocationThroughputPerMS();
     size_t newCapacity = std::min(maximumCapacity_,
-        objectSize + localHeap_->GetEcmaVM()->GetEcmaParamConfiguration().GetMinGrowingStep());
+        committedSize_ + localHeap_->GetEcmaVM()->GetEcmaParamConfiguration().GetMinGrowingStep());
+    initialCapacity_ = std::min(initialCapacity_, committedSize_);
     if (objectSurvivalRate > GROW_OBJECT_SURVIVAL_RATE) {
         newCapacity = std::max(newCapacity, initialCapacity_ * GROWING_FACTOR);
         while (committedSize_ >= newCapacity && newCapacity < maximumCapacity_) {
             newCapacity = newCapacity * GROWING_FACTOR;
         }
         newCapacity = std::min(newCapacity, maximumCapacity_);
-        if (newCapacity == maximumCapacity_) {
-            localHeap_->GetJSObjectResizingStrategy()->UpdateGrowStep(
-                thread,
-                JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2);   // 2: double
-        }
+        ASSERT(newCapacity >= committedSize_);
+        cacheRegionSize_ = newCapacity - committedSize_;
         SetInitialCapacity(newCapacity);
         return;
     }
     if (initialCapacity_ < (MIN_GC_INTERVAL_MS * allocSpeed) && initialCapacity_ < maximumCapacity_) {
         newCapacity = std::max(newCapacity, initialCapacity_ * GROWING_FACTOR);
         newCapacity = std::min(newCapacity, maximumCapacity_);
-        if (newCapacity == maximumCapacity_) {
-            localHeap_->GetJSObjectResizingStrategy()->UpdateGrowStep(
-                thread,
-                JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2);   // 2: double
-        }
+        ASSERT(newCapacity >= committedSize_);
+        cacheRegionSize_ = newCapacity - committedSize_;
         SetInitialCapacity(newCapacity);
         return;
     }
-    if (objectSurvivalRate < SHRINK_OBJECT_SURVIVAL_RATE) {
-        // fixme: only shrink if is compress gc
-        if constexpr (G_USE_CMS_GC) {
-            return;
-        }
-        if (initialCapacity_ <= minimumCapacity_) {
-            SetInitialCapacity(newCapacity);
-            return;
-        }
-        if (allocSpeed > LOW_ALLOCATION_SPEED_PER_MS) {
-            SetInitialCapacity(newCapacity);
-            return;
-        }
-        newCapacity = std::max(newCapacity, initialCapacity_ / GROWING_FACTOR);
-        newCapacity = std::max(newCapacity, minimumCapacity_);
-        localHeap_->GetJSObjectResizingStrategy()->UpdateGrowStep(thread);
-        SetInitialCapacity(newCapacity);
-        return;
-    }
+    ASSERT(newCapacity >= committedSize_);
+    cacheRegionSize_ = newCapacity - committedSize_;
+    SetInitialCapacity(newCapacity);
 }
 }  // namespace panda::ecmascript

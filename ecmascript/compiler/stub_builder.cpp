@@ -1191,8 +1191,17 @@ GateRef StubBuilder::ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef ol
     env->SubCfgEntry(&subEntry);
     Label exit(env);
     DEFVARIABLE(result, VariableType::INT32(), Int32(0));
-    GateRef propertiesStep = LoadPrimitive(VariableType::INT32(), glue,
-        IntPtr(JSThread::GlueData::GetPropertiesGrowStepOffset(env->Is32Bit())));
+    GateRef propertiesStep;
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        GateRef temp = Int32Div(oldLength, Int32(JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2));  // 2: double
+        temp = Int32Min(temp, Int32(1));
+        temp = Int32Add(temp, Int32(1));
+        propertiesStep = Int32Mul(temp, Int32(JSObjectResizingStrategy::PROPERTIES_GROW_SIZE));
+    } else {
+        propertiesStep = LoadPrimitive(VariableType::INT32(), glue,
+            IntPtr(JSThread::GlueData::GetPropertiesGrowStepOffset(env->Is32Bit())));
+    }
     GateRef newL = Int32Add(oldLength, propertiesStep);
     Label reachMax(env);
     Label notReachMax(env);

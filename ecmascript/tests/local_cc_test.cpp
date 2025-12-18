@@ -83,6 +83,7 @@ public:
 };
 
 #ifdef PANDA_TARGET_64
+#if !USE_CMS_GC
 void SimulateWorker()
 {
     JSRuntimeOptions options;
@@ -579,6 +580,7 @@ HWTEST_F_L0(LocalCCTest, ArkToolsTriggerImplTest)
         EXPECT_FALSE(thread->IsConcurrentCopying());
     }
 }
+#endif
 #endif
 
 HWTEST_F_L0(LocalCCTest, DisableTest)

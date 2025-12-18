@@ -18,19 +18,30 @@
 
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/mem/region.h"
 
 namespace panda::ecmascript {
 
 class SlotSpaceConfig {
 public:
-    // fixme: just a proto to test
     static constexpr size_t SLOT_STEP_SIZE = static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT);
-    static constexpr size_t MAX_SLOT_SIZE = DEFAULT_REGION_SIZE;
+
+    static constexpr size_t MAX_SLOT_SIZE = CMSRegion::GetRegionAvailableSize();
     static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE = MAX_SLOT_SIZE / 2;
-    static_assert(MAX_SLOT_SIZE % SLOT_STEP_SIZE == 0);
-    static_assert(MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE % SLOT_STEP_SIZE == 0);
-    static constexpr size_t NUM_SLOTS = MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE / SLOT_STEP_SIZE + 1;
+    static_assert(IsAligned(MAX_SLOT_SIZE, SLOT_STEP_SIZE));
+    static_assert(IsAligned(MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE, SLOT_STEP_SIZE));
     static constexpr size_t MAX_GC_TLAB_BUFFER_SIZE = MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE / 4;
+    static constexpr size_t NUM_SLOTS = MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE / SLOT_STEP_SIZE + 1;
+
+    // [8, 128] : step size = 8, num = 16
+    static constexpr size_t SMALL_SLOT_STEP_SIZE = SLOT_STEP_SIZE;
+    static constexpr size_t MAX_SMALL_SLOT_INSTANCE_SIZE = 128;
+    // [144, 512] : step size = 16, num = 24
+    static constexpr size_t MEDIAL_SLOT_STEP_SIZE = SLOT_STEP_SIZE * 2;
+    static constexpr size_t MAX_MEDIAL_SLOT_INSTANCE_SIZE = 512;
+    // (512, MAX_SLOT_SIZE] : multiple factor = 1.3 with adaption
+    static constexpr double LARGE_SLOT_STEP_GROW_FACTOR = 1.3;
+    static constexpr size_t MAX_LARGE_SLOT_INSTANCE_SIZE = MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_CMS_MEM_SLOT_SPACE_H

@@ -34,32 +34,30 @@ bool SlotFreeList::IsSoldOut() const
 
 void SlotFreeList::Reset(SlotFreeListMetaInfo slotFreeListMetaInfo)
 {
-    ASSERT(slotFreeListMetaInfo.firstFreeObject_->IsFreeObject());
-    ASSERT(slotFreeListMetaInfo.totalUsableSize_ > 0 && slotFreeListMetaInfo.totalUsableSize_ % slotSize_ == 0);
+    ASSERT(slotFreeListMetaInfo.totalUsableSize_ > 0);
+    ASSERT(slotFreeListMetaInfo.totalUsableSize_ % slotSize_ == 0);
     totalUsableSize_ = slotFreeListMetaInfo.totalUsableSize_;
-    FetchAndUpdateSegment(slotFreeListMetaInfo.firstFreeObject_);
+    FetchAndUpdateSegment(slotFreeListMetaInfo.firstFreeSegment_);
 }
 
-template <typename DiscardCurrentSegmentRemainMemory>
-size_t SlotFreeList::Discard(DiscardCurrentSegmentRemainMemory &&discardCurrentSegmentRemainMemory)
+size_t SlotFreeList::Discard()
 {
     size_t allocatedSize = totalUsableSize_;
     if (top_ < end_) {
         size_t size = end_ - top_;
         allocatedSize -= size;
-        discardCurrentSegmentRemainMemory(top_, size);
+        SlotFreeSegment::FillFreeSegment(top_, size);
     }
     {
-        FreeObject *unused = FreeObject::Cast(nextTop_);
-        while (unused != INVALID_OBJECT) {
-            allocatedSize -= unused->Available();
-            unused = unused->GetNext();
+        SlotFreeSegment *unused = SlotFreeSegment::Cast(nextTop_);
+        while (unused != nullptr) {
+            allocatedSize -= unused->GetSize();
+            unused = unused->GetNextFreeSegment();
         }
     }
     top_ = 0;
     end_ = 0;
-    nextTop_ = static_cast<uintptr_t>(JSTaggedValue::NULL_POINTER);
-    nextEnd_ = static_cast<uintptr_t>(JSTaggedValue::NULL_POINTER);
+    nextTop_ = 0;
     totalUsableSize_ = 0;
     return allocatedSize;
 }
@@ -76,7 +74,7 @@ uintptr_t SlotFreeList::TryAllocate()
         return 0;
     }
 
-    FetchAndUpdateSegment(FreeObject::Cast(nextTop_));
+    FetchAndUpdateSegment(reinterpret_cast<SlotFreeSegment *>(nextTop_));
     uintptr_t result = top_;
     top_ += slotSize_;
     return result;
@@ -84,27 +82,25 @@ uintptr_t SlotFreeList::TryAllocate()
 
 bool SlotFreeList::HasNextSegment() const
 {
-    return (nextTop_ & INVALID_OBJECT_FAST_CHECK_MASK) == 0;
+    return nextTop_ != 0;
 }
 
-void SlotFreeList::FetchAndUpdateSegment(FreeObject *freeObject)
+void SlotFreeList::FetchAndUpdateSegment(SlotFreeSegment *freeSegment)
 {
-    size_t size = freeObject->Available();
-    ASSERT(size >= slotSize_ && size % slotSize_ == 0);
+    size_t size = freeSegment->GetSize();
+    ASSERT(size >= slotSize_);
+    ASSERT(size % slotSize_ == 0);
 
-    top_ = reinterpret_cast<uintptr_t>(freeObject);
+    top_ = reinterpret_cast<uintptr_t>(freeSegment);
     end_ = top_ + size;
-    ASSERT(FreeObject::Cast(top_)->IsFreeObject() && top_ < end_);
+    ASSERT(top_ < end_);
 
-    FreeObject *nextFreeObject = freeObject->GetNext();
-    nextTop_ = reinterpret_cast<uintptr_t>(nextFreeObject);
-    // fixme: store next freeobject size in current freeobject?
-    if (LIKELY(nextFreeObject != INVALID_OBJECT)) {
-        size_t nextSize = nextFreeObject->Available();
-        ASSERT(nextSize >= slotSize_ && nextSize % slotSize_ == 0);
-        nextEnd_ = nextTop_ + nextSize;
-    } else {
-        nextEnd_ = nextTop_;
+    SlotFreeSegment *nextFreeSegment = freeSegment->GetNextFreeSegment();
+    nextTop_ = reinterpret_cast<uintptr_t>(nextFreeSegment);
+    if (LIKELY(nextFreeSegment != nullptr)) {
+        [[maybe_unused]] size_t nextSize = nextFreeSegment->GetSize();
+        ASSERT(nextSize >= slotSize_);
+        ASSERT(nextSize % slotSize_ == 0);
     }
 }
 

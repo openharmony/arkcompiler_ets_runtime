@@ -46,9 +46,10 @@ public:
     NO_COPY_SEMANTIC(GCBitset);
     NO_MOVE_SEMANTIC(GCBitset);
 
-    static size_t SizeOfGCBitset(size_t heapSize)
+    static constexpr size_t SizeOfGCBitset(size_t rangeSize)
     {
-        size_t bitSize = AlignUp(heapSize, TAGGED_TYPE_SIZE) >> TAGGED_TYPE_SIZE_LOG;
+        ASSERT(IsAligned(rangeSize, DEFAULT_REGION_SIZE));
+        size_t bitSize = AlignUp(rangeSize, TAGGED_TYPE_SIZE) >> TAGGED_TYPE_SIZE_LOG;
         return AlignUp(AlignUp(bitSize, BIT_PER_BYTE) >> BIT_PER_BYTE_LOG2, BYTE_PER_WORD);
     }
 

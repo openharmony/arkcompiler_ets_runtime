@@ -83,7 +83,7 @@ void SweepGC::Initialize()
             current->ClearMarkGCBitset();
         });
         heap_->EnumerateRegions([](Region *current) {
-            current->ResetAliveObject();
+            ASSERT(current->AliveObject() == 0);
         });
         workManager_->Initialize(TriggerGCType::CMS_GC, ParallelGCTaskPhase::HANDLE_GLOBAL_POOL_TASK);
     }
@@ -100,6 +100,7 @@ void SweepGC::Finish()
     } else {
         workManager_->Finish();
     }
+    heap_->GetSweeper()->TryFillSweptRegion();
     // fixme: check if need?
     if (heap_->IsNearGCInSensitive()) {
         heap_->SetNearGCInSensitive(false);

@@ -185,7 +185,7 @@ void WorkNodeHolder::Finish()
     }
     // fixme: refactor?
     if constexpr (G_USE_CMS_GC) {
-        slotGCAllocator_.Finalize(heap_);
+        slotGCAllocator_.Finalize();
     }
 }
 

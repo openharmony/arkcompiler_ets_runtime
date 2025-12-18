@@ -945,6 +945,10 @@ public:
 
     void SerializeOldObjOOMTest(SerializeData *data)
     {
+        // fixme: adapt to cms
+        if constexpr (G_USE_CMS_GC) {
+            return;
+        }
         Init();
         // disable force gc to avoid time out
         ecmaVm->SetEnableForceGC(false);

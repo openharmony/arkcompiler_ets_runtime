@@ -29,6 +29,7 @@ PartialGC::PartialGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManage
 
 void PartialGC::RunPhases()
 {
+    ASSERT(!G_USE_CMS_GC);
     ASSERT("PartialGC should be disabled" && !g_isEnableCMCGC);
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,

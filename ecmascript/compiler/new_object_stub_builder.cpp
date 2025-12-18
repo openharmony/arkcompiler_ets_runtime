@@ -1852,6 +1852,81 @@ void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef
     }
 }
 
+void NewObjectStubBuilder::AllocateInYoungPrologueImplForCMSGC(Variable *result, Label *callRuntime, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label tryAllocate(env);
+
+    BRANCH_UNLIKELY(IntPtrGreaterThan(size_, IntPtr(SlotSpaceConfig::MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE)),
+                    callRuntime, &tryAllocate);
+
+    Bind(&tryAllocate);
+    {
+        Label allocateFast(env);
+        Label tryFetchNextSegment(env);
+        GateRef slotIdx = IntPtrDiv(size_, IntPtr(SlotSpaceConfig::SLOT_STEP_SIZE));
+
+        size_t slotAllocatorsAddressOffset = JSThread::GlueData::GetSlotSpaceAllocatorsAddressOffset(env->Is32Bit());
+        GateRef slotAllocatorsAddress = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
+                                                      IntPtr(slotAllocatorsAddressOffset));
+        GateRef allocator = LoadPrimitive(VariableType::NATIVE_POINTER(), slotAllocatorsAddress,
+                                          PtrMul(slotIdx, IntPtrSize()));
+        size_t topOffsetToAllocator = SlotAllocator::GetSlotFreeListOffset()
+                                      + SlotFreeList::GetTopOffset(env->Is32Bit());
+        size_t endOffsetToAllocator = SlotAllocator::GetSlotFreeListOffset()
+                                      + SlotFreeList::GetEndOffset(env->Is32Bit());
+        size_t nextTopOffsetToAllocator = SlotAllocator::GetSlotFreeListOffset()
+                                          + SlotFreeList::GetNextTopOffset(env->Is32Bit());
+        size_t slotSizeOffsetToAllocator = SlotAllocator::GetSlotFreeListOffset()
+                                           + SlotFreeList::GetSlotSizeOffset(env->Is32Bit());
+
+        GateRef top = LoadPrimitive(VariableType::NATIVE_POINTER(), allocator, IntPtr(topOffsetToAllocator));
+        GateRef end = LoadPrimitive(VariableType::NATIVE_POINTER(), allocator, IntPtr(endOffsetToAllocator));
+        GateRef slotSize = LoadPrimitive(VariableType::NATIVE_POINTER(), allocator, IntPtr(slotSizeOffsetToAllocator));
+        BRANCH_LIKELY(IntPtrLessThan(top, end), &allocateFast, &tryFetchNextSegment);
+
+        Bind(&allocateFast);
+        {
+            GateRef newTop = PtrAdd(top, slotSize);
+            Store(VariableType::NATIVE_POINTER(), glue_, allocator, IntPtr(topOffsetToAllocator), newTop);
+            if (env->Is32Bit()) {
+                top = ZExtInt32ToInt64(top);
+            }
+            result->WriteVariable(Int64ToTaggedPtr(top));
+            Jump(exit);
+        }
+
+        Bind(&tryFetchNextSegment);
+        {
+            Label fetchNextSegmentAndAllocate(env);
+            GateRef nextTop = LoadPrimitive(VariableType::NATIVE_POINTER(), allocator,
+                                            IntPtr(nextTopOffsetToAllocator));
+            BRANCH_UNLIKELY(IntPtrEqual(nextTop, IntPtr(0)), callRuntime, &fetchNextSegmentAndAllocate);
+
+            Bind(&fetchNextSegmentAndAllocate);
+            {
+                GateRef encodedSegmentSize = LoadPrimitive(VariableType::NATIVE_POINTER(), nextTop,
+                    IntPtr(SlotFreeSegment::GetMaybeEncodedSizeIndex(env->Is32Bit())));
+                GateRef segmentSize = IntPtrAnd(encodedSegmentSize,
+                    IntPtrNot(IntPtr(SlotFreeSegment::SLOT_FREE_SEGMENT_MASK_IN_SIZE)));
+                GateRef nextSegment = LoadPrimitive(VariableType::NATIVE_POINTER(), nextTop,
+                    IntPtr(SlotFreeSegment::GetNextFreeSegmentIndex(env->Is32Bit())));
+                GateRef newTop = PtrAdd(nextTop, slotSize);
+                GateRef newEnd = PtrAdd(nextTop, segmentSize);
+                Store(VariableType::NATIVE_POINTER(), glue_, allocator, IntPtr(topOffsetToAllocator), newTop);
+                Store(VariableType::NATIVE_POINTER(), glue_, allocator, IntPtr(endOffsetToAllocator), newEnd);
+                Store(VariableType::NATIVE_POINTER(), glue_, allocator, IntPtr(nextTopOffsetToAllocator), nextSegment);
+                
+                if (env->Is32Bit()) {
+                    nextTop = ZExtInt32ToInt64(nextTop);
+                }
+                result->WriteVariable(Int64ToTaggedPtr(nextTop));
+                Jump(exit);
+            }
+        }
+    }
+}
+
 void NewObjectStubBuilder::AllocateInYoungPrologueImplForCMCGC(Variable *result, Label *callRuntime, Label *exit)
 {
     auto env = GetEnvironment();
@@ -1905,13 +1980,13 @@ void NewObjectStubBuilder::AllocateInYoungPrologueImpl(Variable *result, Label *
 void NewObjectStubBuilder::AllocateInYoungPrologue([[maybe_unused]] Variable *result,
     Label *callRuntime, [[maybe_unused]] Label *exit)
 {
-    auto env = GetEnvironment();
-    Label next(env);
-    // fixme: support ir
+    // fixme: refactor?
     if constexpr (G_USE_CMS_GC) {
-        Jump(callRuntime);
+        AllocateInYoungPrologueImplForCMSGC(result, callRuntime, exit);
         return;
     }
+    auto env = GetEnvironment();
+    Label next(env);
 #if defined(ARK_ASAN_ON)
     Jump(callRuntime);
 #else

@@ -221,7 +221,13 @@ void ConcurrentMarker::InitializeMarking()
             heap_->GetOldSpace()->SelectCSet();
         }
         heap_->EnumerateNonNewSpaceRegions([](Region *current) {
-            current->ResetAliveObject();
+            // fixme: refactor?
+            if constexpr (G_USE_CMS_GC) {
+                ASSERT(current->AliveObject() == 0);
+            } else {
+                // The alive object size of Region in OldSpace will be recalculated.
+                current->ResetAliveObject();
+            }
         });
     }
     MarkRoots();

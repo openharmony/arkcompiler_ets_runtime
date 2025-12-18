@@ -115,6 +115,7 @@ void SharedHeap::IterateOverObjects(const Callback &cb) const
 template<class Callback>
 void Heap::EnumerateOldSpaceRegions(const Callback &cb, Region *region) const
 {
+    ASSERT(!G_USE_CMS_GC);
     oldSpace_->EnumerateRegions(cb, region);
     appSpawnSpace_->EnumerateRegions(cb);
     nonMovableSpace_->EnumerateRegions(cb);
@@ -890,7 +891,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 {
     // fixme: refactor?
     if constexpr (G_USE_CMS_GC) {
-        slotSpace_->ReclaimFromRegions();
+        slotSpace_->ReclaimFromRegions(gcType != TriggerGCType::FULL_GC);
     } else {
         size_t cachedSize = 0;
         activeSemiSpace_->EnumerateRegionsWithRecord([] (Region *region) {
@@ -902,10 +903,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         });
         cachedSize = inactiveSemiSpace_->GetInitialCapacity();
         if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::LOCAL_CC) {
-            // fixme: refactor?
-            if constexpr (!G_USE_CMS_GC) {
-                compressSpace_->Reset();
-            }
+            compressSpace_->Reset();
             cachedSize = 0;
         } else if (gcType == TriggerGCType::OLD_GC) {
             oldSpace_->ReclaimCSet();
@@ -920,7 +918,18 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
         region->ClearMarkGCBitset();
         region->ClearCrossRegionRSet();
         region->ResetRegionTypeFlag();
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            ASSERT(!region->InSlotSpace() || region->AliveObject() == 0);
+            region->ResetAliveObject();
+        }
     });
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        appSpawnSpace_->EnumerateRegions([](Region *region) {
+            region->ResetAliveObject();
+        });
+    }
     if (!clearTaskFinished_) {
         LockHolder holder(waitClearTaskFinishedMutex_);
         clearTaskFinished_ = true;

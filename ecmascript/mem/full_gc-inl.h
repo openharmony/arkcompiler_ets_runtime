@@ -95,8 +95,11 @@ void FullGCRunner::HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object
     }
     if (!NeedEvacuate(objectRegion)) {
         if (objectRegion->AtomicMark(object)) {
-            size_t size = object->GetSize();
-            objectRegion->IncreaseAliveObject(size);
+            // fixme: refactor?
+            if constexpr (!G_USE_CMS_GC) {
+                size_t size = object->GetSize();
+                objectRegion->IncreaseAliveObject(size);
+            }
             PushObject(object);
         }
         return;

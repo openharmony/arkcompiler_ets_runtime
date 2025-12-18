@@ -572,6 +572,7 @@ private:
     V(UpdateFieldType)                          \
     V(MarkingBarrier)                           \
     V(SharedGCMarkingBarrier)                   \
+    V(TryFillSweptRegion)                       \
     V(CMCGCMarkingBarrier)                      \
     V(CallArg0)                                 \
     V(CallArg1)                                 \

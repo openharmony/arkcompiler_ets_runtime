@@ -24,8 +24,11 @@
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
     if (object != 0) {                                                                  \
         IncreaseLiveObjectSize(size);                                                   \
-        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {       \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
+        /* fixme: refactor? */                                                          \
+        if constexpr (!G_USE_CMS_GC) {                                                  \
+            if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {   \
+                Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);        \
+            }                                                                           \
         }                                                                               \
         InvokeAllocationInspector(object, size, size);                                  \
         return object;                                                                  \
@@ -34,8 +37,11 @@
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
     if (object != 0) {                                                                  \
         IncreaseLiveObjectSize(size);                                                   \
-        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {       \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
+        /* fixme: refactor? */                                                          \
+        if constexpr (!G_USE_CMS_GC) {                                                  \
+            if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {   \
+                Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);        \
+            }                                                                           \
         }                                                                               \
         return object;                                                                  \
     }

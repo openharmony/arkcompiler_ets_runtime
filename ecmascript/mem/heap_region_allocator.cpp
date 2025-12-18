@@ -176,8 +176,13 @@ bool HeapRegionAllocator::AllocateRegionShouldPageTag(Space *space) const
         return true;
     }
     MemSpaceType type = space->GetSpaceType();
-    // Both LocalSpace and OldSpace belong to OldSpace.
-    return type != MemSpaceType::OLD_SPACE && type != MemSpaceType::LOCAL_SPACE;
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        return type != MemSpaceType::SLOT_SPACE;
+    } else {
+        // Both LocalSpace and OldSpace belong to OldSpace.
+        return type != MemSpaceType::OLD_SPACE && type != MemSpaceType::LOCAL_SPACE;
+    }
 }
 
 bool HeapRegionAllocator::FreeRegionShouldPageTag(Region *region) const
@@ -185,8 +190,13 @@ bool HeapRegionAllocator::FreeRegionShouldPageTag(Region *region) const
     if (enablePageTagThreadId_) {
         return true;
     }
-    // There is no LocalSpace tag in region.
-    return !region->InOldSpace();
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        return !region->InSlotSpace();
+    } else {
+        // There is no LocalSpace tag in region.
+        return !region->InOldSpace();
+    }
 }
 
 template void HeapRegionAllocator::FreeRegion<true>(Region *region, size_t cachedSize, bool skipCache);
