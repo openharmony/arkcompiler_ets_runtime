@@ -39,7 +39,7 @@ public:
     static constexpr uint32_t UTF16_CACHED_DATA_SIZE = 8;
     static constexpr uint32_t UTF16_STRING_LENGTH = UTF16_CACHED_DATA_SIZE / sizeof(uint16_t);
 
-    static inline void CallBackFn([[maybe_unused]] void *data, void *hint)
+    static inline void CallBackFn(void *data, [[maybe_unused]]void *hint)
     {
         free(data);
     }
