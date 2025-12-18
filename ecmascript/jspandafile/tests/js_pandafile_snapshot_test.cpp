@@ -21,9 +21,13 @@
 
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function_kind.h"
+#define private public
+#define protected public
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_snapshot.h"
+#undef protected
+#undef private
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -351,4 +355,5 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ShouldDeSerializeFailedWhenModuleNameIsNotM
     // check file is deleted
     ASSERT_FALSE(FileExist(fileName.c_str()));
 }
+
 }
