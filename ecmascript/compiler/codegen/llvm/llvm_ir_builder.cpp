@@ -831,9 +831,9 @@ LLVMValueRef LLVMIRBuilder::ReadReserveRegister()
 {
     LLVMMetadataRef meta;
     if (compCfg_->IsAmd64()) {
-        meta = LLVMMDStringInContext2(context_, "r15", 3);   // 3 : 3 means len of "r15"
+        meta = LLVMMDStringInContext2(context_, "r15", 4);   // 4 : 4 means len of "r15"
     } else {
-        meta = LLVMMDStringInContext2(context_, "x28", 3);   // 3 : 3 means len of "x28"
+        meta = LLVMMDStringInContext2(context_, "x28", 4);   // 4 : 4 means len of "x28"
     }
     LLVMMetadataRef metadataNode = LLVMMDNodeInContext2(context_, &meta, 1);
     LLVMValueRef value = ReadRegister(module_, builder_, metadataNode);

@@ -25,6 +25,7 @@ class AArch64FixShortBranch {
 public:
     explicit AArch64FixShortBranch(CGFunc *cf) : cgFunc(cf) {}
     ~AArch64FixShortBranch() = default;
+    void SolveLoadIntrinsic(bool &change, uint32 &maxInsnId, BB *&bb, Insn *&insn) const;
     void FixShortBranches() const;
     // for long branch which exceeds size of imm19, we need to insert pad.
     // see InsertJumpPad to know how we do this.
@@ -43,7 +44,7 @@ private:
     //                              unconditional br target_label
     uint32 CalculateAlignRange(const BB &bb, uint32 addr) const;
     uint32 CalculateIfBBNum() const;
-    void SetInsnId() const;
+    uint32 SetInsnId() const;
     bool CheckFunctionSize(uint32 maxSize) const;
 }; /* class AArch64ShortBranch */
 

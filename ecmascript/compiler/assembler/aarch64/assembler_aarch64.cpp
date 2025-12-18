@@ -770,6 +770,20 @@ void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shif
     Ubfm(rd, rn, shift, imms);
 }
 
+void AssemblerAarch64::Adr(const Register &rd, Label *label)
+{
+    int32_t offsetImm = LinkAndGetInstOffsetToLabel(label);
+    // 2 : 2 means 4 bytes aligned.
+    offsetImm >>= 2;
+    Adr(rd, offsetImm);
+}
+
+void AssemblerAarch64::Adr(const Register &rd, int32_t imm)
+{
+    uint32_t code = AdrOpCode::Adr | ((imm << BRANCH_Imm19_LOWBITS) & BRANCH_Imm19_MASK) | rd.GetId();
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Add(const Register &rd, const Register &rn, const Operand &operand)
 {
     if (operand.IsImmediate()) {
@@ -1045,7 +1059,7 @@ void AssemblerAarch64::Bind(Label *target)
 {
     size_t pos = GetCurrentPosition();
     ASSERT(!target->IsBound());
-        if (target->IsLinked()) {
+    if (target->IsLinked()) {
         uint32_t linkPos = target->GetLinkedPos();
         while (linkPos != 0) {
             int32_t offset = GetLinkOffsetFromBranchInst(linkPos);
@@ -1095,6 +1109,8 @@ int32_t AssemblerAarch64::ImmBranch(uint32_t branchCode)
             // 31 : 31 means topmost bits of instruction "uint32_t"
             immOffset |= ((1 << (31 - BRANCH_Imm14_WIDTH)) - 1) << BRANCH_Imm14_WIDTH;
         }
+    } else if ((branchCode & AdrOpCode::AdrMask) == AdrOpCode::Adr) {
+        immOffset = (branchCode & BRANCH_Imm19_MASK) >> BRANCH_Imm19_LOWBITS;
     } else {
         UNREACHABLE();
     }
@@ -1119,6 +1135,9 @@ void AssemblerAarch64::SetRealOffsetToBranchInst(uint32_t linkPos, int32_t disp)
     } else if ((branchCode & BranchTestFMask) == BranchOpCode::TBZ) {
         branchCode &= ~BRANCH_Imm14_MASK;
         branchCode |= (immOffset << BRANCH_Imm14_LOWBITS) & BRANCH_Imm14_MASK;
+    } else if ((branchCode & AdrOpCode::AdrMask) == AdrOpCode::Adr) {
+        branchCode &= ~BRANCH_Imm19_MASK;
+        branchCode |= (immOffset << BRANCH_Imm19_LOWBITS) & BRANCH_Imm19_MASK;
     }
     PutI32(linkPos, branchCode);
 }

@@ -152,6 +152,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
     jsThread->glueData_.isEnableMutantArray_ = vm->IsEnableMutantArray();
     jsThread->glueData_.IsEnableElementsKind_ = vm->IsEnableElementsKind();
+    jsThread->glueData_.barrierAndglue_ = jsThread->GetGlueAddr();
     jsThread->SetThreadId();
 
     if (UNLIKELY(g_isEnableCMCGC)) {

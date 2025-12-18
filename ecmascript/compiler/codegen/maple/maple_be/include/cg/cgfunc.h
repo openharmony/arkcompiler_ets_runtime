@@ -189,8 +189,10 @@ public:
     virtual Operand *SelectCclz(IntrinsicopNode &intrinsicopNode) = 0;
     virtual RegOperand *SelectHeapConstant(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) = 0;
     virtual RegOperand *SelectTaggedIsHeapObject(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1) = 0;
-    virtual RegOperand *SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0,
-                                               Operand &opnd1, Operand &opnd2) = 0;
+    virtual RegOperand *SelectLoadIntrinsic(IntrinsicopNode &node, Operand &glue, Operand &base,
+                                            Operand &fieldOffset) = 0;
+    virtual RegOperand *SelectIsStableElements(IntrinsicopNode &node, Operand &opnd0, Operand &opnd1,
+                                               Operand &opnd2) = 0;
     virtual RegOperand *SelectHasPendingException(IntrinsicopNode &node, Operand &opnd0,
                                                   Operand &opnd1, Operand &opnd2) = 0;
     virtual RegOperand *SelectGetHeapConstantTable(IntrinsicopNode &node, Operand &opnd0,

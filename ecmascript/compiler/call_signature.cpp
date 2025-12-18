@@ -3527,4 +3527,15 @@ DEF_CALL_SIGNATURE(BatchMarkInBuffer)
     callSign->SetGCLeafFunction(true);
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
+
+DEF_CALL_SIGNATURE(LoadBarrierCopyBack)
+{
+    // 2 : 2 input parameters
+    CallSignature LoadBarrierCopyBack("LoadBarrierCopyBack", 0, 0, ArgumentsOrder::DEFAULT_ORDER,
+                                    VariableType::BOOL());
+    *callSign = LoadBarrierCopyBack;
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
 }  // namespace panda::ecmascript::kungfu

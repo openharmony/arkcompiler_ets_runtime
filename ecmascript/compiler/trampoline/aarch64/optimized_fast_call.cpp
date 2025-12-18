@@ -38,9 +38,7 @@ void OptimizedFastCall::OptimizedFastCallEntry(ExtendedAssembler *assembler)
     Register sp(SP);
 
     OptimizedCall::PushJSFunctionEntryFrame (assembler, prevFpReg);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Ldr(Register(X28), MemoryOperand(glueReg, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-#endif
+    __ UpdateGlueAndReadBarrier(glueReg);
     __ Mov(Register(X3), argc);
     __ Mov(Register(X4), argV);
     Register tmpArgc(X3);

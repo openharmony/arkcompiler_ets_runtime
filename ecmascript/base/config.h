@@ -41,6 +41,7 @@ enum class PUBLIC_API RBMode : uint8_t {
 
 #define ARK_INLINE __attribute__((always_inline))
 #define ARK_NOINLINE __attribute__((noinline))
+#define READ_BARRIER_INTRINSIC_DFX 0
 
 #define ECMASCRIPT_ENABLE_DEBUG_MODE 0
 #define ECMASCRIPT_ENABLE_ARK_CONTAINER 1

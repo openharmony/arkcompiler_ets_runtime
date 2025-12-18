@@ -719,6 +719,7 @@ private:
     V(MarkRSetCardTable)                             \
     V(MarkInBuffer)                                  \
     V(BatchMarkInBuffer)                             \
+    V(LoadBarrierCopyBack)                           \
     V(CMCSetValueWithBarrier)
 
 #define DECL_CALL_SIGNATURE(name)                                  \

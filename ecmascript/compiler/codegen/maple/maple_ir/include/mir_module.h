@@ -63,6 +63,11 @@ enum MIRSrcLang {
     // SrcLangSwift : when clang adds support for Swift.
 };
 
+enum HLValue {
+    kGetValueWithBarrierOffset,
+    kLoadBarrierCopyBackOffset,
+};
+
 class CalleePair {
 public:
     CalleePair(PUIdx id, int32_t index) : id(id), index(index) {}
@@ -812,6 +817,16 @@ public:
         return isAArch64;
     }
 
+    void SetHLValue(HLValue key, uint64 value)
+    {
+        highLevelValueMap.emplace(key, value);
+    }
+
+    uint64 GetHLValue(HLValue key)
+    {
+        return highLevelValueMap.at(key);
+    }
+
 private:
     MemPool *memPool;
     MemPool *pragmaMemPool;
@@ -896,6 +911,7 @@ private:
     std::string baseName = "";
     std::string outputFileName = "";
     MapleMap<uint32, MapleSet<uint32>> safetyWarningMap;  // <postion, stmt original id> indexed map for large module.
+    MapleMap<HLValue, uint64> highLevelValueMap;
     std::map<CalleePair, std::map<int64_t, std::vector<CallerSummary>>> calleeParamAboutInt;
     std::map<CalleePair, std::map<double, std::vector<CallerSummary>>> calleeParamAboutDouble;
     std::map<CalleePair, std::map<float, std::vector<CallerSummary>>> calleeParamAboutFloat;

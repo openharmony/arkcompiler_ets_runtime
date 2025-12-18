@@ -74,6 +74,11 @@ host_unittest_action("mapleallUT") {
     # defines += [ "ENABLE_CMC_IR_FIX_REGISTER" ]
   }
   libs = [ "pthread" ]
+  if (enable_jit_code_sign) {
+    defines += [ "JIT_ENABLE_CODE_SIGN" ]
+    external_deps += [ "code_signature:libjit_code_sign" ]
+    sources += [ "$js_root/ecmascript/compiler/jit_signcode.cpp" ]
+  }
 }
 group("host_unittest") {
   testonly = true

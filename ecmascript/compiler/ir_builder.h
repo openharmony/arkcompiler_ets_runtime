@@ -68,6 +68,7 @@ enum class CallInfoKind : bool {
     V(FPExt, (GateRef gate, GateRef e1))                                                  \
     V(FPTrunc, (GateRef gate, GateRef e1))                                                \
     V(Load, (GateRef gate, GateRef base))                                                 \
+    V(LoadIntrinsic, (GateRef gate, GateRef addr))                                        \
     V(Store, (GateRef gate, GateRef base, GateRef value))                                 \
     V(IntRev, (GateRef gate, GateRef e1))                                                 \
     V(Add, (GateRef gate, GateRef e1, GateRef e2))                                        \

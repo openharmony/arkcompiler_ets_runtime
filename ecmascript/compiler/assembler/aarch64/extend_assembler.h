@@ -17,6 +17,7 @@
 #define ECMASCRIPT_COMPILER_AARCH64_EXTEND_ASSEMBLER_H
 
 #include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
+#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64_constants.h"
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 
@@ -45,6 +46,7 @@ public:
     void PushArgc(int32_t argc, Register op, Register fp);
     void PushArgc(Register argc, Register op, Register fp);
     void Align16(Register fp);
+    void UpdateGlueAndReadBarrier(Register glueReg = X28);
 
     Register TempRegister1()
     {

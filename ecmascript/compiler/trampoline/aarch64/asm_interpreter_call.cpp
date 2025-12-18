@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64.h"
 #include "ecmascript/compiler/trampoline/aarch64/common_call.h"
 
 #include "ecmascript/js_generator_object.h"
@@ -109,9 +110,7 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
         __ Mov(Register(X28), glueRegister); // move glue to a callee-save register
 #endif
         __ Blr(trampoline);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-        __ Ldr(Register(X28), MemoryOperand(Register(X28), JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-#endif
+        __ UpdateGlueAndReadBarrier();
         __ Ret();
     }
 }
@@ -121,13 +120,11 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
 {
     Label stackOverflow;
     Register glueRegister = __ GlueRegister();
+    __ UpdateGlueAndReadBarrier(glueRegister);
     Register fpRegister = __ AvailableRegister1();
     Register currentSlotRegister = __ AvailableRegister3();
     Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
     Register argcRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::ARGC);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Ldr(Register(X28), MemoryOperand(glueRegister, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-#endif
     if (!kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode) || type == FrameTransitionType::BASELINE_TO_OTHER ||
         type == FrameTransitionType::BASELINE_TO_BASELINE_CHECK) {
         __ PushFpAndLr();
@@ -553,11 +550,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Align16(currentSlotRegister);
     __ Mov(spRegister, currentSlotRegister);
 
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    CallNativeInternal(assembler, nativeCode, calleeSaveGlue);
-#else
     CallNativeInternal(assembler, nativeCode);
-#endif
     __ Ret();
 
     __ Bind(&stackOverflow);
@@ -601,9 +594,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         __ Mov(Register(X28), glue); // move glue to a callee-save register
 #endif
         __ Blr(trampoline);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-        __ Ldr(Register(X28), MemoryOperand(Register(X28), JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-#endif
+        __ UpdateGlueAndReadBarrier();
 
         // resume rsp
         __ Mov(Register(SP), Register(FP));
@@ -664,10 +655,8 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
     Register calleeSaveGlue(X28);
     __ Mov(calleeSaveGlue, glue); // move glue to a callee-save register
-    CallNativeInternal(assembler, nativeCodeTemp, calleeSaveGlue);
-#else
-    CallNativeInternal(assembler, nativeCodeTemp);
 #endif
+    CallNativeInternal(assembler, nativeCodeTemp);
     __ Ret();
 }
 
@@ -705,24 +694,14 @@ bool AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
     }
 }
 
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode, Register calleeSaveGlue)
-{
-    __ Blr(nativeCode);
-    __ Ldr(Register(X28), MemoryOperand(calleeSaveGlue, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-    // resume rsp
-    __ Mov(Register(SP), Register(FP));
-    __ RestoreFpAndLr();
-}
-#else
 void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode)
 {
     __ Blr(nativeCode);
+    __ UpdateGlueAndReadBarrier();
     // resume rsp
     __ Mov(Register(SP), Register(FP));
     __ RestoreFpAndLr();
 }
-#endif
 
 // ResumeRspAndDispatch(uintptr_t glue, uintptr_t sp, uintptr_t pc, uintptr_t constantPool,
 //     uint64_t profileTypeInfo, uint64_t acc, uint32_t hotnessCounter, size_t jumpSize)
@@ -1356,6 +1335,60 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     }
 }
 
+void AsmInterpreterCall::LoadBarrierCopyBack(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(LoadBarrierCopyBack));
+    Label copyBackTable;
+    int ldrOffset = -4;
+    __ Ldur(Register(X1, W), MemoryOperand(X30, ldrOffset));
+    __ And(Register(X1, W), Register(X1, W), LogicalImmediate::Create(0x1F, RegWSize));
+    __ Adr(X2, &copyBackTable);
+    // every item in copyback table is 8 bytes.
+    int copyBackItemInsnShift = 3;
+    __ Add(X2, X2, Operand(Register(X1, W), UXTW, copyBackItemInsnShift));
+    __ Br(X2);
+
+    __ Bind(&copyBackTable);
+    {
+        auto MovX0ToXregAndBlLr = [&assembler](RegisterId xreg) {
+            __ Mov(xreg, Register(X0));
+            __ Br(X30);
+        };
+        MovX0ToXregAndBlLr(X0);
+        MovX0ToXregAndBlLr(X1);
+        MovX0ToXregAndBlLr(X2);
+        MovX0ToXregAndBlLr(X3);
+        MovX0ToXregAndBlLr(X4);
+        MovX0ToXregAndBlLr(X5);
+        MovX0ToXregAndBlLr(X6);
+        MovX0ToXregAndBlLr(X7);
+        MovX0ToXregAndBlLr(X8);
+        MovX0ToXregAndBlLr(X9);
+        MovX0ToXregAndBlLr(X10);
+        MovX0ToXregAndBlLr(X11);
+        MovX0ToXregAndBlLr(X12);
+        MovX0ToXregAndBlLr(X13);
+        MovX0ToXregAndBlLr(X14);
+        MovX0ToXregAndBlLr(X15);
+        MovX0ToXregAndBlLr(X16);
+        MovX0ToXregAndBlLr(X17);
+        MovX0ToXregAndBlLr(X18);
+        MovX0ToXregAndBlLr(X19);
+        MovX0ToXregAndBlLr(X20);
+        MovX0ToXregAndBlLr(X21);
+        MovX0ToXregAndBlLr(X22);
+        MovX0ToXregAndBlLr(X23);
+        MovX0ToXregAndBlLr(X24);
+        MovX0ToXregAndBlLr(X25);
+        MovX0ToXregAndBlLr(X26);
+        MovX0ToXregAndBlLr(X27);
+        MovX0ToXregAndBlLr(X28);
+        MovX0ToXregAndBlLr(X29);
+        MovX0ToXregAndBlLr(X30);
+        MovX0ToXregAndBlLr(SP);
+    }
+}
+
 // %x0 - glue
 // %x1 - obj
 // %x2 - offset
@@ -1714,9 +1747,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     }
     __ Add(tempRegister, glueRegister, Operand(bcIndexRegister.W(), UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Ldr(tempRegister, MemoryOperand(tempRegister, JSThread::GlueData::GetBCStubEntriesOffset(false)));
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Ldr(Register(X28), MemoryOperand(glueRegister, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-#endif
+    __ UpdateGlueAndReadBarrier(glueRegister);
     __ Br(tempRegister);
 }
 
@@ -1859,9 +1890,7 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newS
     // 3 : 3 means *8
     __ Add(temp, glue, Operand(temp.W(), UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Ldr(temp, MemoryOperand(temp, JSThread::GlueData::GetBCStubEntriesOffset(false)));
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Ldr(Register(X28), MemoryOperand(glue, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-#endif
+    __ UpdateGlueAndReadBarrier(glue);
     __ Br(temp);
 }
 
@@ -1908,11 +1937,7 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
     __ Mov(calleeSaveGlue, glue); // move glue to a callee-save register
 #endif
     __ Sub(Register(X0), temp, Immediate(2 * FRAME_SLOT_SIZE));  // 2: skip argc & thread
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    CallNativeInternal(assembler, nativeCode, calleeSaveGlue);
-#else
     CallNativeInternal(assembler, nativeCode);
-#endif
 
     // 4: skip function
     __ Add(sp, sp, Immediate(4 * FRAME_SLOT_SIZE));
@@ -2047,9 +2072,7 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
     __ Mov(Register(X28), glue); // move glue to a callee-save register
 #endif
     __ Blr(op);
-#ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Ldr(Register(X28), MemoryOperand(Register(X28), JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
-#endif
+    __ UpdateGlueAndReadBarrier();
     __ RestoreFpAndLr();
     __ Ret();
 }

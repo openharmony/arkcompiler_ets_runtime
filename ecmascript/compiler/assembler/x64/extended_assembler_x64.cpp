@@ -112,4 +112,12 @@ void ExtendedAssembler::PushArgc(Register argcRegister, Register tempArgcRegiste
     Orq(argcRegister, tempArgcRegister);
     Pushq(tempArgcRegister);
 }
+
+// x86 uses fixed register only for readbarrier, so use UpdateReadBarrier to distinguish from AArch64
+void ExtendedAssembler::UpdateReadBarrier(Register glueReg)
+{
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    Movq(Operand(glueReg, JSThread::GlueData::GetBarrierAndGlueOffset(false)), r15);
+#endif
+}
 }  // panda::ecmascript::x64

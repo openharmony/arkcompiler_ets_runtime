@@ -141,4 +141,11 @@ void ExtendedAssembler::Align16(Register fp)
     Sub(fp, fp, Immediate(8));
     Bind(&aligned);
 }
+
+void ExtendedAssembler::UpdateGlueAndReadBarrier(Register glueReg)
+{
+#ifdef ENABLE_CMC_IR_FIX_REGISTER
+    Ldr(Register(X28), MemoryOperand(glueReg, JSThread::GlueData::GetBarrierAndGlueOffset(false)));
+#endif
+}
 }  // namespace panda::ecmascript::aarch64

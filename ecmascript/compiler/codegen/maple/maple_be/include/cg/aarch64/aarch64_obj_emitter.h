@@ -85,8 +85,9 @@ public:
     void UpdateMachineAndFlags(FileHeader &header) override;
     void EmitDataToDynamic();
     void EmitDataToHash();
-    void EmitIntrinsicInsn(const Insn &insn, const std::vector<uint32_t> &label2Offset,
+    void EmitIntrinsicInsn(const Insn &insn, std::vector<uint32_t> &label2Offset,
                            ObjFuncEmitInfo &objFuncEmitInfo) override;
+    void EmitBarrierSlow(std::vector<uint32_t> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo) override;
     void EmitSpinIntrinsicInsn(const Insn &insn, ObjFuncEmitInfo &objFuncEmitInfo) override;
 
     uint32 GetBinaryCodeForInsn(const Insn &insn, const std::vector<uint32> &label2Offset,
@@ -196,6 +197,19 @@ private:
                                   ObjFuncEmitInfo &objFuncEmitInfo);
     void EmitIsCowArray(const Insn &insn, const std::vector<uint32> &label2Offset,
                         ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitLoadIntrinsic(const Insn &insn, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitLoadIntrinsic1(const Insn &insn, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitLoadIntrinsic3(const Insn &insn, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitLoadIntrinsic4(const Insn &insn, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitCommonBarrierSlowForReg(regno_t regNo, LabelIdx label, std::vector<uint32> &label2Offset,
+                                     ObjFuncEmitInfo &objFuncEmitInfo);
+    void EmitSingleBarrierSlow(LabelIdx label, const std::tuple<regno_t, regno_t, uint32_t, LabelIdx> &info,
+                               std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
+    LabelIdx CreateLabel(std::vector<uint32> &label2Offset);
+    LabelIdx GetOrCreateBarrierSlowPathLabel(regno_t reg, std::vector<uint32> &label2Offset);
+    LabelIdx CreateSingleBarrierSlowPathLabel(regno_t baseReg, regno_t dstReg, uint32_t offset, LabelIdx returnLabel,
+                                              std::vector<uint32> &label2Offset);
+    void BindLabel(LabelIdx label, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);
 
     void EmitInsn(MOperator mOp, Operand &opnd1, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo)
     {
