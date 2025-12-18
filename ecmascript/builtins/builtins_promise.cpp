@@ -309,7 +309,7 @@ JSTaggedValue BuiltinsPromise::Catch(EcmaRuntimeCallInfo *argv)
     return JSFunction::Invoke(info, thenKey);
 }
 
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
 // 25.4.5.3 Promise.prototype.then ( onFulfilled , onRejected )
 JSTaggedValue BuiltinsPromise::Then(EcmaRuntimeCallInfo *argv)
 {
@@ -439,7 +439,7 @@ JSTaggedValue BuiltinsPromise::PerformPromiseThen(JSThread *thread, const JSHand
     return JSHandle<PromiseCapability>::Cast(promiseOrCapability)->GetPromise(thread);
 }
 
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
 // 25.4.5.3 Promise.prototype.then ( onFulfilled , onRejected )
 JSTaggedValue BuiltinsPromise::Then(EcmaRuntimeCallInfo *argv)
 {
@@ -548,7 +548,7 @@ JSTaggedValue BuiltinsPromise::PerformPromiseThen(JSThread *thread, const JSHand
     return capability->GetPromise(thread);
 }
 
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
 JSTaggedValue BuiltinsPromise::PerformPromiseAll(JSThread *thread,
                                                  const JSHandle<PromiseIteratorRecord> &itRecord,
                                                  const JSHandle<JSTaggedValue> &ctor,

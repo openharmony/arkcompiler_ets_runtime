@@ -35,7 +35,7 @@ using ModulePathHelper = ecmascript::ModulePathHelper;
 using PathHelper = ecmascript::base::PathHelper;
 using StaticModuleLoader = ecmascript::StaticModuleLoader;
 
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -107,7 +107,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
     // 8. Let status be Call(promiseCapability.[[Resolve]], undefined, «handlerResult.[[value]]»).
     return JSFunction::Call(runtimeInfo);
 }
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
 JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
@@ -162,7 +162,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
     // 8. Let status be Call(promiseCapability.[[Resolve]], undefined, «handlerResult.[[value]]»).
     return JSFunction::Call(runtimeInfo);
 }
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
 
 JSTaggedValue BuiltinsPromiseJob::PromiseResolveThenableJob(EcmaRuntimeCallInfo *argv)
 {

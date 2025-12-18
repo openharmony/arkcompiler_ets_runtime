@@ -185,18 +185,18 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
                 onFulRejected->SetAsyncGeneratorObject(thread, generator);
 
                 // 11. Perform ! PerformPromiseThen(promise, onFulfilled, onRejected).
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
                 [[maybe_unused]] JSTaggedValue pres = BuiltinsPromise::PerformPromiseThen(
                     thread, handPromise, JSHandle<JSTaggedValue>::Cast(onFulfilled),
                     JSHandle<JSTaggedValue>::Cast(onFulRejected), thread->GlobalConstants()->GetHandledUndefined());
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
                 JSHandle<PromiseCapability> tcap =
                     JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 [[maybe_unused]] JSTaggedValue pres = BuiltinsPromise::PerformPromiseThen(
                     thread, handPromise, JSHandle<JSTaggedValue>::Cast(onFulfilled),
                     JSHandle<JSTaggedValue>::Cast(onFulRejected), tcap);
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
                 // 12. Return undefined.
                 return JSTaggedValue::Undefined();
             } else {

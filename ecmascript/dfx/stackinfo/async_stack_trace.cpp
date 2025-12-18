@@ -83,7 +83,7 @@ bool AsyncStackTrace::InsertAsyncTaskStacks(const JSHandle<JSPromise> &promise, 
     return true;
 }
 
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
 bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseReaction)
 {
     if (PromiseReaction.IsPromiseReaction()) {
@@ -122,7 +122,7 @@ bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseRe
     }
     return true;
 }
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
 bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseReaction)
 {
     if (PromiseReaction.IsPromiseReaction()) {
@@ -139,7 +139,7 @@ bool AsyncStackTrace::InsertCurrentAsyncTaskStack(const JSTaggedValue &PromiseRe
     }
     return true;
 }
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
 
 bool AsyncStackTrace::RemoveAsyncTaskStack(const JSTaggedValue &PromiseReaction)
 {

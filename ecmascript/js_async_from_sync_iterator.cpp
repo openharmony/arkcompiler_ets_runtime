@@ -79,15 +79,15 @@ JSTaggedValue JSAsyncFromSyncIterator::AsyncFromSyncIteratorContinuation(JSThrea
     onFulfilled->SetDone(thread, JSTaggedValue(done));
     // 11.Perform ! PerformPromiseThen(valueWrapper, onFulfilled, undefined, promiseCapability).
     JSHandle<JSTaggedValue> onFulRejected(thread, JSTaggedValue::Undefined());
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
     builtins::BuiltinsPromise::PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise),
                                                   JSHandle<JSTaggedValue>::Cast(onFulfilled),
                                                   onFulRejected, JSHandle<JSTaggedValue>::Cast(promiseCapability));
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
     builtins::BuiltinsPromise::PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise),
                                                   JSHandle<JSTaggedValue>::Cast(onFulfilled),
                                                   onFulRejected, promiseCapability);
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
     // 12.Return promiseCapability.[[Promise]].
     return promiseCapability->GetPromise(thread);
 }

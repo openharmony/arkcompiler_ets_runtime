@@ -448,7 +448,7 @@ void Builtins::InitializePropertyDetector(const JSHandle<GlobalEnv> &env, bool l
     if (lazyInit) {
         env->SetBitField(GlobalEnv::DEFAULT_LAZY_BITFIELD_VALUE);
     } else {
-#ifndef ENABLE_NEXT_OPTIMIZATION
+#if !ENABLE_LATEST_OPTIMIZATION
         env->SetBitField(GlobalEnv::DEFAULT_MAIN_THREAD_BITFIELD_VALUE);
 #endif
     }

@@ -70,7 +70,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
 
     // 8.Let throwawayCapability be ! NewPromiseCapability(%Promise%).
     // 9.Set throwawayCapability.[[Promise]].[[PromiseIsHandled]] to true.
-#ifdef ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
     if (thread->GetEcmaVM()->GetJsDebuggerManager()->IsAsyncStackTrace() && asyncFuncObj->IsAsyncFuncObject()) {
         JSHandle<JSAsyncFuncObject> asyncFun(thread,
             JSHandle<GeneratorContext>::Cast(asyncCtxt)->GetGeneratorObject(thread));
@@ -83,7 +83,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
                                         JSHandle<JSTaggedValue>::Cast(fulFunc),
                                         JSHandle<JSTaggedValue>::Cast(rejFunc),
                                         thread->GlobalConstants()->GetHandledUndefined());
-#else // ENABLE_NEXT_OPTIMIZATION
+#else // ENABLE_LATEST_OPTIMIZATION
     JSHandle<PromiseCapability> tcap =
         JSPromise::NewPromiseCapability(thread, JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()));
     RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -98,7 +98,7 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
     BuiltinsPromise::PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise),
                                         JSHandle<JSTaggedValue>::Cast(fulFunc),
                                         JSHandle<JSTaggedValue>::Cast(rejFunc), tcap);
-#endif // ENABLE_NEXT_OPTIMIZATION
+#endif // ENABLE_LATEST_OPTIMIZATION
 
     // 11.Remove asyncContext from the execution context stack and restore the execution context that
     //    is at the top of the execution context stack as the running execution context.
