@@ -199,6 +199,7 @@
     V(JSTaggedValue, FunctionClassWithProto, FUNCTION_CLASS_WITH_PROTO)                             \
     V(JSTaggedValue, FunctionClassWithoutProto, FUNCTION_CLASS_WITHOUT_PROTO)                       \
     V(JSTaggedValue, FunctionClassWithoutName, FUNCTION_CLASS_WITHOUT_NAME)                         \
+    V(JSTaggedValue, ApiFunctionClassWithoutName, API_FUNCTION_CLASS_WITHOUT_NAME)                  \
     V(JSTaggedValue, BoundFunctionClass, BOUND_FUNCTION_CLASS)                                      \
     V(JSTaggedValue, ArgumentsClass, ARGUMENTS_CLASS)                                               \
     V(JSTaggedValue, ArgumentsCallerAccessor, ARGUMENTS_CALLER_ACCESSOR)                            \
@@ -225,6 +226,7 @@
     V(JSTaggedValue, SpecificTypedArrayFunctionClass, SPERCIFIC_TYPED_ARRAY_FUNCTION_CLASS)         \
     V(JSTaggedValue, ConstructorFunctionClass, CONSTRUCTOR_FUNCTION_CLASS)                          \
     V(JSTaggedValue, NormalFunctionClass, NORMAL_FUNCTION_CLASS)                                    \
+    V(JSTaggedValue, NormalApiFunctionClass, NORMAL_API_FUNCTION_CLASS)                             \
     V(JSTaggedValue, JSIntlBoundFunctionClass, JS_INTL_BOUND_FUNCTION_CLASS)                        \
     V(JSTaggedValue, NumberFormatLocales, NUMBER_FORMAT_LOCALES_INDEX)                              \
     V(JSTaggedValue, DateTimeFormatLocales, DATE_TIMEFORMAT_LOCALES_INDEX)                          \

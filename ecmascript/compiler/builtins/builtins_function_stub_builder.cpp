@@ -562,6 +562,7 @@ void BuiltinsFunctionStubBuilder::InitializeSFunction(GateRef glue, GateRef func
     return;
 }
 
+template<bool isApiFunction>
 void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, GateRef kind, FunctionKind getKind)
 {
     auto env = GetEnvironment();
@@ -581,7 +582,9 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
 
     if (JSFunction::IsNormalFunctionAndCanSkipWbWhenInitialization(getKind)) {
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
-        SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+        if constexpr (!isApiFunction) {
+            SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+        }
         if (JSFunction::HasPrototype(getKind)) {
             auto funcprotoAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                             ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
@@ -625,7 +628,9 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
         SetLexicalEnvToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetHomeObjectToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
-        SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+        if constexpr (!isApiFunction) {
+            SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+        }
         SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
         BRANCH(HasPrototype(kind), &hasProto, &notProto);
@@ -688,13 +693,19 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
         }
     }
     Bind(&exit);
-    auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                           ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
-    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell, MemoryAttribute::NoBarrier());
+    if constexpr (!isApiFunction) {
+        auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+            ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
+        SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell, MemoryAttribute::NoBarrier());
+    }
     env->SubCfgExit();
     return;
 }
 
+template void BuiltinsFunctionStubBuilder::InitializeJSFunction<true>(GateRef, GateRef, GateRef, FunctionKind);
+template void BuiltinsFunctionStubBuilder::InitializeJSFunction<false>(GateRef, GateRef, GateRef, FunctionKind);
+
+template<bool isApiFunction>
 void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod(GateRef glue,
     GateRef func, GateRef method, GateRef hclass)
 {
@@ -707,7 +718,9 @@ void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod(GateRef glue,
     SetMethodToFunction(glue, func, method);
 
     SetBitFieldToFunction(glue, func, Int32(0));
-    SetMachineCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+    if constexpr (!isApiFunction) {
+        SetMachineCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+    }
 
     Label isNativeMethod(env);
     Label checkAotStatus(env);
@@ -739,4 +752,6 @@ void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod(GateRef glue,
     env->SubCfgExit();
     return;
 }
+template void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod<true>(GateRef, GateRef, GateRef, GateRef);
+template void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod<false>(GateRef, GateRef, GateRef, GateRef);
 }  // namespace panda::ecmascript::kungfu

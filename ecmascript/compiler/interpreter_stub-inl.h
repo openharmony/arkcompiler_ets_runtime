@@ -312,12 +312,14 @@ GateRef InterpreterStubBuilder::GetEnvFromFunction(GateRef glue, GateRef functio
 
 GateRef InterpreterStubBuilder::GetProfileTypeInfoFromFunction(GateRef glue, GateRef function)
 {
+    ASM_ASAN_ASSERT(GET_MESSAGE_STRING_ID(IsNotJSApiFunction), BoolNot(IsJSApiFunction(glue, function)));
     GateRef raw = Load(VariableType::JS_POINTER(), glue, function, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
     return Load(VariableType::JS_POINTER(), glue, raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
 }
 
 GateRef InterpreterStubBuilder::GetModuleFromFunction(GateRef glue, GateRef function)
 {
+    ASM_ASAN_ASSERT(GET_MESSAGE_STRING_ID(IsNotJSApiFunction), BoolNot(IsJSApiFunction(glue, function)));
     return Load(VariableType::JS_POINTER(), glue, function, IntPtr(JSFunction::ECMA_MODULE_OFFSET));
 }
 

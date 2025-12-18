@@ -3639,7 +3639,12 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, const Local<JSValueRef> &context
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSFunction> current(factory->NewNormalJSApiFunction(env,
+        reinterpret_cast<void *>(Callback::RegisterCallback)));
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc),
                                      deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
@@ -3663,7 +3668,12 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, const Local<JSValueRef
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSFunction> current(factory->NewNormalJSApiFunction(env,
+        reinterpret_cast<void *>(Callback::RegisterCallback)));
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(Callback::RegisterCallback)));
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc), deleter,
                                      data, nativeBindingsize, Concurrent::YES);
     current->SetCallNapi(callNapi);
@@ -3687,7 +3697,11 @@ Local<FunctionRef> FunctionRef::New(EcmaVM *vm, const Local<JSValueRef> &context
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSFunction> current(factory->NewNormalJSApiFunction(env, reinterpret_cast<void *>(nativeFunc)));
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     current->SetCallNapi(callNapi);
     current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
@@ -3730,7 +3744,11 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, const Local<JSValueRef
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSFunction> current(factory->NewNormalJSApiFunction(env, reinterpret_cast<void *>(nativeFunc)));
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     current->SetCallNapi(callNapi);
     current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
@@ -3763,14 +3781,22 @@ Local<FunctionRef> FunctionRef::NewConcurrentWithName(EcmaVM *vm, const Local<JS
     attr.SetRepresentation(ecmascript::Representation::TAGGED);
 
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNormalApiFunctionClass());
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNormalFunctionClass());
+#endif // ENABLE_MEMORY_OPTIMIZATION
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ecmascript::Representation rep =
         ecmascript::PropertyAttributes::TranslateToRep(nameDesc.GetValue().GetTaggedValue());
     hclass = JSHClass::SetPropertyOfObjHClass<true>(thread, hclass, globalConst->GetHandledNameString(), attr, rep,
                                                     true, JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSFunction> func = factory->NewNormalJSApiFunctionByHClass(hclass, reinterpret_cast<void *>(nativeFunc));
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> func = factory->NewNativeFunctionByHClass(hclass, reinterpret_cast<void *>(nativeFunc),
                                                                    ecmascript::FunctionKind::NORMAL_FUNCTION);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     func->SetPropertyInlinedProps<true>(thread, 0, nameDesc.GetValue().GetTaggedValue());
     JSFunction::SetFunctionExtraInfo(thread, func, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     ASSERT_PRINT(func->IsExtensible(), "Function must be extensible");
@@ -3788,10 +3814,16 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, const Local<JSValue
     EscapeLocalScope scope(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetApiFunctionClassWithoutName());
+    JSHandle<JSFunction> current =
+        factory->NewConstructorJSApiFunctionByHClass(reinterpret_cast<void *>(Callback::RegisterCallback), hclass);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
     JSHandle<JSFunction> current =
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(Callback::RegisterCallback),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSFunction::InitClassFunction(thread, current, callNapi);
     JSFunction::SetFunctionExtraInfo(thread, current, reinterpret_cast<void *>(nativeFunc),
                                      deleter, data, nativeBindingsize);
@@ -3818,10 +3850,16 @@ Local<FunctionRef> FunctionRef::NewConcurrentClassFunction(EcmaVM *vm, const Loc
     EscapeLocalScope scope(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetApiFunctionClassWithoutName());
+    JSHandle<JSFunction> current =
+        factory->NewConstructorJSApiFunctionByHClass(reinterpret_cast<void *>(nativeFunc), hclass);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
     JSHandle<JSFunction> current =
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSFunction::InitClassFunction(thread, current, callNapi);
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));
@@ -3881,10 +3919,16 @@ Local<FunctionRef> FunctionRef::NewClassFunction(EcmaVM *vm, const Local<JSValue
     EscapeLocalScope scope(vm);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetApiFunctionClassWithoutName());
+    JSHandle<JSFunction> current =
+        factory->NewConstructorJSApiFunctionByHClass(reinterpret_cast<void *>(nativeFunc), hclass);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutName());
     JSHandle<JSFunction> current =
         factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc),
         hclass, ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSFunction::InitClassFunction(thread, current, callNapi);
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize);
     Local<FunctionRef> result = JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(current));

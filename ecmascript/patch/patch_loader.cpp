@@ -261,9 +261,11 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
             if (replacedPatchMethods.count(replacedMethod) > 0) {
                 JSHandle<JSTaggedValue> moduleRecord =
                     thread->GetEcmaVM()->FindPatchModule(replacedPatchMethods[replacedMethod]);
-                function->SetModule(thread, moduleRecord.GetTaggedValue());
-                function->SetRawProfileTypeInfo<SKIP_BARRIER>(thread,
-                    thread->GlobalConstants()->GetEmptyProfileTypeInfoCell());
+                if (!function->IsJSApiFunction()) {
+                    function->SetModule(thread, moduleRecord.GetTaggedValue());
+                    function->SetRawProfileTypeInfo<SKIP_BARRIER>(thread,
+                        thread->GlobalConstants()->GetEmptyProfileTypeInfoCell());
+                }
             }
         } else if (JSTaggedValue(obj).IsFunctionTemplate()) {
             auto funcTemp = FunctionTemplate::Cast(obj);
@@ -303,10 +305,12 @@ void PatchLoader::UpdateModuleForColdPatch(JSThread *thread, EntityId methodId, 
             if (methodId == methodIdLoop) {
                 JSHandle<JSTaggedValue> moduleRecord =
                 thread->GetEcmaVM()->FindPatchModule(recordName);
-                if (hasModule) {
-                    function->SetModule(thread, moduleRecord.GetTaggedValue());
-                } else {
-                    function->SetModule(thread, JSTaggedValue::Undefined());
+                if (!function->IsJSApiFunction()) {
+                    if (hasModule) {
+                        function->SetModule(thread, moduleRecord.GetTaggedValue());
+                    } else {
+                        function->SetModule(thread, JSTaggedValue::Undefined());
+                    }
                 }
             }
         } else if (JSTaggedValue(obj).IsFunctionTemplate()) {

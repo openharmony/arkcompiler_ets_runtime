@@ -692,12 +692,18 @@ JSHandle<JSFunction> ObjectFactory::CloneJSFunction(JSHandle<JSFunction> func)
 {
     JSHandle<JSHClass> jshclass(thread_, func->GetJSHClass());
     JSHandle<Method> method(thread_, func->GetMethod(thread_));
-    JSHandle<JSFunction> cloneFunc = NewJSFunctionByHClass(method, jshclass);
-
+    JSHandle<JSFunction> cloneFunc;
+    if (func->IsJSApiFunction()) {
+        cloneFunc = NewJSApiFunctionByHClass(method, jshclass);
+    } else {
+        cloneFunc = NewJSFunctionByHClass(method, jshclass);
+    }
     JSTaggedValue length = func->GetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX);
     cloneFunc->SetPropertyInlinedProps(thread_, JSFunction::LENGTH_INLINE_PROPERTY_INDEX, length);
     cloneFunc->SetLength(func->GetLength());
-    cloneFunc->SetModule(thread_, func->GetModule(thread_));
+    if (!func->IsJSApiFunction()) {
+        cloneFunc->SetModule(thread_, func->GetModule(thread_));
+    }
     return cloneFunc;
 }
 
@@ -1695,6 +1701,9 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_GENERATOR_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             break;
+        case JSType::JS_API_FUNCTION:
+            JSApiFunction::InitializeJSApiFunction(thread_, JSHandle<JSFunction>(obj));
+            break;
         case JSType::JS_ASYNC_GENERATOR_FUNCTION:
             JSFunction::InitializeJSFunction(thread_, JSHandle<JSFunction>(obj));
             break;
@@ -1956,6 +1965,20 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env
     return NewNativeFunctionByHClass(hclass, nativeFunc, kind);
 }
 
+JSHandle<JSFunction> ObjectFactory::NewNormalJSApiFunction(const JSHandle<GlobalEnv>& env, const void* nativeFunc)
+{
+    constexpr FunctionKind kind = FunctionKind::NORMAL_FUNCTION;
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNormalApiFunctionClass());
+    JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(hclass));
+    hclass->SetCallable(true);
+    hclass->SetExtensible(true);
+    JSApiFunction::InitializeJSApiFunction(thread_, function, kind);
+    function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
+    function->SetNativePointer(const_cast<void *>(nativeFunc));
+    function->SetTaskConcurrentFuncFlag(0); // 0 : default value
+    return function;
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSFunction(const JSHandle<GlobalEnv> &env,
                                                   const JSHandle<Method> &method)
 {
@@ -2171,6 +2194,15 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const JSHandle<Method>
     return function;
 }
 
+JSHandle<JSFunction> ObjectFactory::NewJSApiFunctionByHClass(const JSHandle<Method>& method,
+    const JSHandle<JSHClass>& clazz, MemSpaceType type)
+{
+    JSHandle<JSFunction> function = CreateJSFunctionByType(clazz, type);
+    JSApiFunction::InitializeJSApiFunction(thread_, function, method->GetFunctionKind());
+    SetupJSFunctionByHClass(function, method);
+    return function;
+}
+
 JSHandle<JSFunction> ObjectFactory::NewJSBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
                                                                  const JSHandle<Method> &method,
                                                                  const JSHandle<JSHClass> &clazz, MemSpaceType type)
@@ -2251,6 +2283,19 @@ JSHandle<JSFunction> ObjectFactory::NewNativeFunctionByHClass(const JSHandle<JSH
     function->SetTaskConcurrentFuncFlag(0); // 0 : default value
     return function;
 }
+JSHandle<JSFunction> ObjectFactory::NewNormalJSApiFunctionByHClass(const JSHandle<JSHClass> &clazz,
+                                                                   const void *nativeFunc)
+{
+    constexpr FunctionKind kind = FunctionKind::NORMAL_FUNCTION;
+    JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
+    clazz->SetCallable(true);
+    clazz->SetExtensible(true);
+    JSApiFunction::InitializeJSApiFunction(thread_, function, kind);
+    function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
+    function->SetNativePointer(const_cast<void *>(nativeFunc));
+    function->SetTaskConcurrentFuncFlag(0); // 0 : default value
+    return function;
+}
 
 JSHandle<JSFunction> ObjectFactory::NewNativeBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
                                                                      const JSHandle<JSHClass> &clazz,
@@ -2273,6 +2318,18 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionByHClass(const void *func, cons
     clazz->SetCallable(true);
     clazz->SetExtensible(true);
     JSFunction::InitializeJSFunction(thread_, function, kind);
+    function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
+    function->SetNativePointer(const_cast<void *>(func));
+    return function;
+}
+JSHandle<JSFunction> ObjectFactory::NewConstructorJSApiFunctionByHClass(const void* func,
+                                                                        const JSHandle<JSHClass>& clazz)
+{
+    constexpr FunctionKind kind = FunctionKind::CLASS_CONSTRUCTOR;
+    JSHandle<JSFunction> function = JSHandle<JSFunction>::Cast(NewJSObject(clazz));
+    clazz->SetCallable(true);
+    clazz->SetExtensible(true);
+    JSApiFunction::InitializeJSApiFunction(thread_, function, kind);
     function->SetMethod(thread_, GetReadOnlyMethodForNativeFunction(kind));
     function->SetNativePointer(const_cast<void *>(func));
     return function;
@@ -5829,6 +5886,13 @@ JSHandle<JSHClass> ObjectFactory::CreateClassFuncHClass(const JSThread *thread, 
     JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
     size_t inlinedProps = inlinedStaticPropCount + JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
     return CreateFunctionClass(ecmascript::FunctionKind::CLASS_CONSTRUCTOR, JSFunction::SIZE, JSType::JS_FUNCTION,
+                               env->GetFunctionPrototype(), inlinedProps);
+}
+JSHandle<JSHClass> ObjectFactory::CreateApiClassFuncHClass(const JSThread* thread, size_t inlinedStaticPropCount)
+{
+    JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+    size_t inlinedProps = inlinedStaticPropCount + JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+    return CreateFunctionClass(FunctionKind::CLASS_CONSTRUCTOR, JSApiFunction::SIZE, JSType::JS_API_FUNCTION,
                                env->GetFunctionPrototype(), inlinedProps);
 }
 

@@ -1978,6 +1978,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/js_map.json",
   "ecmascript/js_type_metadata/js_map_iterator.json",
   "ecmascript/js_type_metadata/js_module_namespace.json",
+  "ecmascript/js_type_metadata/js_api_function.json",
   "ecmascript/js_type_metadata/js_native_pointer.json",
   "ecmascript/js_type_metadata/js_number_format.json",
   "ecmascript/js_type_metadata/js_object.json",

@@ -144,12 +144,24 @@
 #define ACCESSORS(name, offset, endOffset)                                                                    \
     ACCESSORS_WITH_DCHECK_BASE(name, offset, endOffset, false, DUMMY_FUNC)
 
+#if !defined(NDEBUG) || defined(ARK_ASAN_ON)
+#define FIELD_ACCESS_ASAN_CHECK(needCheck, name, check)                           \
+    if constexpr (needCheck) {                                                    \
+        if (!check()) {                                                           \
+            LOG_FULL(FATAL) << #name" field can't be used under check: "#check;   \
+            UNREACHABLE();                                                        \
+        };                                                                        \
+}
+#else
+    #define FIELD_ACCESS_ASAN_CHECK(needCheck, name, check)
+#endif
+
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ACCESSORS_AND_CHECK(name, offset, endOffset)                                                          \
+#define ACCESSORS_WITH_ASAN_CHECK_BASE(name, offset, endOffset, needCheck, check)                             \
     static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                           \
     JSTaggedValue Get##name(const JSThread *thread) const                                                     \
     {                                                                                                         \
-        FIELD_ACCESS_CHECK(false, name, DUMMY_FUNC);                                                          \
+        FIELD_ACCESS_ASAN_CHECK(needCheck, name, check);                                                      \
         /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
         /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
         return JSTaggedValue(Barriers::GetTaggedValue(thread, this, offset));                                 \
@@ -157,7 +169,51 @@
     template<BarrierMode mode = WRITE_BARRIER, typename T>                                                    \
     void Set##name(const JSThread *thread, JSHandle<T> value)                                                 \
     {                                                                                                         \
-        FIELD_ACCESS_CHECK(false, name, DUMMY_FUNC);                                                          \
+        FIELD_ACCESS_ASAN_CHECK(needCheck, name, check);                                                      \
+        if constexpr (mode == WRITE_BARRIER) {                                                                \
+            if (value.GetTaggedValue().IsHeapObject()) {                                                      \
+                Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());         \
+            } else {                                                                                          \
+                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());      \
+            }                                                                                                 \
+        } else {                                                                                              \
+            static_assert(mode == SKIP_BARRIER);                                                              \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());          \
+        }                                                                                                     \
+    }                                                                                                         \
+    template<BarrierMode mode = WRITE_BARRIER>                                                                \
+    void Set##name(const JSThread *thread, JSTaggedValue value)                                               \
+    {                                                                                                         \
+        FIELD_ACCESS_ASAN_CHECK(needCheck, name, check);                                                      \
+        if constexpr (mode == WRITE_BARRIER) {                                                                \
+            if (value.IsHeapObject()) {                                                                       \
+                Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                          \
+            } else {                                                                                          \
+                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                       \
+            }                                                                                                 \
+        } else {                                                                                              \
+            static_assert(mode == SKIP_BARRIER);                                                              \
+            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                           \
+        }                                                                                                     \
+    }
+
+#define ACCESSORS_ASAN_CHECK(name, offset, endOffset, check)                                                  \
+    ACCESSORS_WITH_ASAN_CHECK_BASE(name, offset, endOffset, true, check)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ACCESSORS_AND_CHECK(name, offset, endOffset, check)                                                   \
+    static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                           \
+    JSTaggedValue Get##name(const JSThread *thread) const                                                     \
+    {                                                                                                         \
+        FIELD_ACCESS_ASAN_CHECK(true, name, check);                                                           \
+        /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
+        /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
+        return JSTaggedValue(Barriers::GetTaggedValue(thread, this, offset));                                 \
+    }                                                                                                         \
+    template<BarrierMode mode = WRITE_BARRIER, typename T>                                                    \
+    void Set##name(const JSThread *thread, JSHandle<T> value)                                                 \
+    {                                                                                                         \
+        FIELD_ACCESS_ASAN_CHECK(true, name, check);                                                           \
         if (JSTaggedValue(Barriers::GetTaggedValue(thread, this, offset)).IsHeapObject() &&                   \
             value.GetTaggedValue().IsHeapObject()) {                                                          \
             LOG_FULL(FATAL) << #name" field has been overwritten, old: " << std::hex                          \
@@ -179,7 +235,7 @@
     template<BarrierMode mode = WRITE_BARRIER>                                                                \
     void Set##name(const JSThread *thread, JSTaggedValue value)                                               \
     {                                                                                                         \
-        FIELD_ACCESS_CHECK(false, name, DUMMY_FUNC);                                                          \
+        FIELD_ACCESS_ASAN_CHECK(true, name, check);                                                           \
         if constexpr (mode == WRITE_BARRIER) {                                                                \
             if (value.IsHeapObject()) {                                                                       \
                 Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                          \
@@ -276,6 +332,21 @@
         return Barriers::GetPrimitive<type>(this, offset);                                                             \
     }
 
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ACCESSORS_FIXED_SIZE_FIELD_ASAN_CHECK_BASE(name, type, sizeType, offset, endOffset, needCheck, check)          \
+    static_assert(sizeof(type) <= sizeof(sizeType));                                                                   \
+    static constexpr size_t endOffset = (offset) + sizeof(sizeType);                                                   \
+    inline void Set##name(type value)                                                                                  \
+    {                                                                                                                  \
+        FIELD_ACCESS_ASAN_CHECK(needCheck, name, check);                                                               \
+        Barriers::SetPrimitive<type>(this, offset, value);                                                             \
+    }                                                                                                                  \
+    inline type Get##name() const                                                                                      \
+    {                                                                                                                  \
+        FIELD_ACCESS_ASAN_CHECK(needCheck, name, check);                                                               \
+        return Barriers::GetPrimitive<type>(this, offset);                                                             \
+    }
+
 #define ACCESSORS_FIXED_SIZE_FIELD(name, type, sizeType, offset, endOffset)                                            \
     ACCESSORS_FIXED_SIZE_FIELD_DCHECK_BASE(name, type, sizeType, offset, endOffset, false, DUMMY_FUNC)
 
@@ -290,6 +361,10 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_PRIMITIVE_FIELD_DCHECK(name, type, offset, endOffset, check)                                         \
     ACCESSORS_FIXED_SIZE_FIELD_DCHECK_BASE(name, type, type, offset, endOffset, true, check)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ACCESSORS_PRIMITIVE_FIELD_ASAN_CHECK(name, type, offset, endOffset, check)                                     \
+    ACCESSORS_FIXED_SIZE_FIELD_ASAN_CHECK_BASE(name, type, type, offset, endOffset, true, check)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ACCESSORS_BIT_FIELD(name, offset, endOffset)                        \

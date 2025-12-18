@@ -214,4 +214,58 @@ HWTEST_F_L0(ObjectFactoryTest, NewAndCopyTaggedArrayNeedBarrier)
         EXPECT_EQ(copiedLong->Get(thread, i), JSTaggedValue::Hole());
     }
 }
+
+HWTEST_F_L0(ObjectFactoryTest, CloneJSFunction)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+
+    // check mem alloc
+    JSHandle<JSFunction> newFun = factory->NewJSFunction(env);
+    JSHandle<JSHClass> newFunCls(thread, newFun->GetJSHClass());
+    EXPECT_TRUE(*newFun != nullptr);
+    EXPECT_TRUE(*newFunCls != nullptr);
+
+    JSHandle<JSFunction> cloneFun = factory->CloneJSFunction(newFun);
+    JSHandle<JSHClass> cloneFunCls(thread, newFun->GetJSHClass());
+    EXPECT_TRUE(*cloneFun != nullptr);
+    EXPECT_TRUE(*cloneFunCls != nullptr);
+    EXPECT_EQ(newFunCls, cloneFunCls);
+
+    // check feild
+    EXPECT_EQ(newFun->GetMethod(thread), cloneFun->GetMethod(thread));
+    EXPECT_EQ(newFun->GetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
+        cloneFun->GetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
+    EXPECT_EQ(newFun->GetLength(), cloneFun->GetLength());
+    EXPECT_EQ(newFun->GetModule(thread), cloneFun->GetModule(thread));
+    EXPECT_TRUE(JSTaggedValue(*newFun).IsJSFunction());
+    EXPECT_TRUE(JSTaggedValue(*cloneFun).IsJSFunction());
+}
+
+HWTEST_F_L0(ObjectFactoryTest, CloneJSApiFunction)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+
+    // check mem alloc
+    JSHandle<JSFunction> newFun = factory->NewNormalJSApiFunction(env);
+    JSHandle<JSHClass> newFunCls(thread, newFun->GetJSHClass());
+    EXPECT_TRUE(*newFun != nullptr);
+    EXPECT_TRUE(*newFunCls != nullptr);
+
+    JSHandle<JSFunction> cloneFun = factory->CloneJSFunction(newFun);
+    JSHandle<JSHClass> cloneFunCls(thread, newFun->GetJSHClass());
+    EXPECT_TRUE(*cloneFun != nullptr);
+    EXPECT_TRUE(*cloneFunCls != nullptr);
+    EXPECT_EQ(newFunCls, cloneFunCls);
+
+    // check feild
+    EXPECT_EQ(newFun->GetMethod(thread), cloneFun->GetMethod(thread));
+    EXPECT_EQ(newFun->GetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
+        cloneFun->GetPropertyInlinedProps(thread, JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
+    EXPECT_EQ(newFun->GetLength(), cloneFun->GetLength());
+    EXPECT_TRUE(JSTaggedValue(*newFun).IsJSApiFunction());
+    EXPECT_TRUE(JSTaggedValue(*cloneFun).IsJSApiFunction());
+}
+
 }  // namespace panda::test

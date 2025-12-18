@@ -1644,6 +1644,7 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_map_iterator.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_module_namespace.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_native_pointer.json -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_api_function.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_number_format.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_object.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_oom_error.json -> /data/test" src="out"/>

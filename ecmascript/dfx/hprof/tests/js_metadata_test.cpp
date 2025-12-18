@@ -256,8 +256,8 @@ public:
             {JSType::JS_FLOAT32_ARRAY, {"ViewedArrayBufferOrByteArray", "TypedArrayName", "JS_FLOAT32_ARRAY"}},
             {JSType::JS_FLOAT64_ARRAY, {"ViewedArrayBufferOrByteArray", "TypedArrayName", "JS_FLOAT64_ARRAY"}},
             {JSType::JS_FORIN_ITERATOR, {"Object", "CachedHClass", "Keys", "JS_FORIN_ITERATOR"}},
-            {JSType::JS_FUNCTION, {"ProtoOrHClass", "LexicalEnv", "MachineCode", "BaselineCode", "RawProfileTypeInfo",
-                                   "HomeObject", "Module", "JS_FUNCTION"}},
+            {JSType::JS_FUNCTION, { "RawProfileTypeInfo", "MachineCode", "BaselineCode", "Module", "JS_FUNCTION"}},
+            {JSType::JS_API_FUNCTION, {"ProtoOrHClass", "LexicalEnv", "HomeObject", "JS_API_FUNCTION"}},
             {JSType::JS_FUNCTION_BASE, {"Method", "JS_FUNCTION_BASE"}},
             {JSType::JS_GENERATOR_CONTEXT, {"RegsArray", "Method", "This", "Acc",
                                             "GeneratorObject", "LexicalEnv", "JS_GENERATOR_CONTEXT"}},
@@ -670,14 +670,17 @@ public:
                                          JSForInIterator::CACHED_HCLASS_OFFSET,
                                          JSForInIterator::KEYS_OFFSET,
                                          JSForInIterator::LAST_OFFSET - JSForInIterator::OBJECT_OFFSET}},
-            {JSType::JS_FUNCTION, {JSFunction::PROTO_OR_DYNCLASS_OFFSET,
-                                   JSFunction::LEXICAL_ENV_OFFSET,
-                                   JSFunction::MACHINECODE_OFFSET,
-                                   JSFunction::BASELINECODE_OFFSET,
-                                   JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET,
-                                   JSFunction::HOME_OBJECT_OFFSET,
-                                   JSFunction::ECMA_MODULE_OFFSET,
-                                   JSFunction::LAST_OFFSET - JSFunction::PROTO_OR_DYNCLASS_OFFSET}},
+            {JSType::JS_FUNCTION, {
+                JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET,
+                JSFunction::MACHINECODE_OFFSET,
+                JSFunction::BASELINECODE_OFFSET,
+                JSFunction::ECMA_MODULE_OFFSET,
+                JSFunction::LAST_OFFSET - JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET}},
+            {JSType::JS_API_FUNCTION, {
+                JSFunction::PROTO_OR_DYNCLASS_OFFSET,
+                JSFunction::LEXICAL_ENV_OFFSET,
+                JSFunction::HOME_OBJECT_OFFSET,
+                JSApiFunction::LAST_OFFSET - JSApiFunction::PROTO_OR_DYNCLASS_OFFSET}},
             {JSType::JS_FUNCTION_BASE, {JSFunctionBase::METHOD_OFFSET,
                                         JSFunctionBase::LAST_OFFSET - JSFunctionBase::METHOD_OFFSET}},
             {JSType::JS_GENERATOR_CONTEXT, {
@@ -1121,7 +1124,8 @@ public:
             {JSType::JS_FLOAT32_ARRAY, {"JS_OBJECT"}},
             {JSType::JS_FLOAT64_ARRAY, {"JS_OBJECT"}},
             {JSType::JS_FORIN_ITERATOR, {"JS_OBJECT"}},
-            {JSType::JS_FUNCTION, {"JS_FUNCTION_BASE"}},
+            {JSType::JS_FUNCTION, {"JS_API_FUNCTION"}},
+            {JSType::JS_API_FUNCTION, {"JS_FUNCTION_BASE"}},
             {JSType::JS_FUNCTION_BASE, {"JS_OBJECT"}},
             {JSType::JS_GENERATOR_CONTEXT, {"TAGGED_OBJECT"}},
             {JSType::JS_GENERATOR_FUNCTION, {"JS_FUNCTION"}},
@@ -1456,13 +1460,15 @@ public:
                 JSForInIterator::KEYS_OFFSET - JSForInIterator::CACHED_HCLASS_OFFSET,
                 JSForInIterator::CACHE_KIND_OFFSET - JSForInIterator::KEYS_OFFSET}},
             {JSType::JS_FUNCTION, {
-                JSFunction::LEXICAL_ENV_OFFSET - JSFunction::PROTO_OR_DYNCLASS_OFFSET,
-                JSFunction::MACHINECODE_OFFSET - JSFunction::LEXICAL_ENV_OFFSET,
+                JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET - JSFunction::HOME_OBJECT_OFFSET,
+                JSFunction::MACHINECODE_OFFSET - JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET,
                 JSFunction::BASELINECODE_OFFSET - JSFunction::MACHINECODE_OFFSET,
-                JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET - JSFunction::BASELINECODE_OFFSET,
-                JSFunction::HOME_OBJECT_OFFSET - JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET,
-                JSFunction::ECMA_MODULE_OFFSET - JSFunction::HOME_OBJECT_OFFSET,
+                JSFunction::ECMA_MODULE_OFFSET - JSFunction::BASELINECODE_OFFSET,
                 JSFunction::WORK_NODE_POINTER_OFFSET - JSFunction::ECMA_MODULE_OFFSET}},
+            {JSType::JS_API_FUNCTION, {
+                JSApiFunction::LEXICAL_ENV_OFFSET - JSApiFunction::PROTO_OR_DYNCLASS_OFFSET,
+                JSApiFunction::HOME_OBJECT_OFFSET - JSApiFunction::LEXICAL_ENV_OFFSET,
+                JSApiFunction::SIZE - JSApiFunction::HOME_OBJECT_OFFSET}},
             {JSType::JS_FUNCTION_BASE, {JSFunctionBase::CODE_ENTRY_OFFSET - JSFunctionBase::METHOD_OFFSET}},
             {JSType::JS_GENERATOR_CONTEXT, {
                 GeneratorContext::GENERATOR_METHOD_OFFSET - GeneratorContext::GENERATOR_REGS_ARRAY_OFFSET,
@@ -3204,6 +3210,19 @@ HWTEST_F_L0(JSMetadataTest, TestJsFunctionBaseMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::JS_FUNCTION_BASE, metadata));
+#endif
+}
+
+HWTEST_F_L0(JSMetadataTest, TestJSApiFunctionMetadata)
+{
+#if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_api_function.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::JS_API_FUNCTION, metadata));
 #endif
 }
 

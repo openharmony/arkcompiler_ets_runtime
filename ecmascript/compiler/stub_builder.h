@@ -84,6 +84,17 @@ using namespace panda::ecmascript;
 #define ASM_ASSERT_WITH_LINE(messageId, ...) ((void)0)
 #endif
 
+#if !defined(NDEBUG) || defined(ARK_ASAN_ON) || defined(ENABLE_ASM_ASSERT)
+#define ASM_ASAN_ASSERT(messageId, condition)                                       \
+    if (!GetEnvironment()->GetCircuit()->IsOptimizedOrFastJit() &&                  \
+        !GetEnvironment()->IsBaselineBuiltin()) {                                   \
+        SUBENTRY(messageId, condition);                                             \
+        EXITENTRY();                                                                \
+    }
+#else
+#define ASM_ASAN_ASSERT(messageId, ...) ((void)0)
+#endif
+
 #ifndef NDEBUG
 #define EXITENTRY()                                                                 \
     GetEnvironment()->SubCfgExit()
@@ -1086,6 +1097,7 @@ public:
 
     // method operator
     GateRef IsJSFunction(GateRef glue, GateRef obj);
+    GateRef IsJSApiFunction(GateRef glue, GateRef obj);
     GateRef IsBoundFunction(GateRef glue, GateRef obj);
     GateRef IsJSOrBoundFunction(GateRef glue, GateRef obj);
     GateRef GetMethodFromJSFunctionOrProxy(GateRef glue, GateRef object);

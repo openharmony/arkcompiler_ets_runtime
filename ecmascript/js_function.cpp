@@ -836,6 +836,19 @@ bool JSFunction::SetFunctionLength(JSThread *thread, const JSHandle<JSFunction> 
     return JSTaggedValue::DefinePropertyOrThrow(thread, funcHandle, lengthKeyHandle, lengthDesc);
 }
 
+void JSApiFunction::InitializeJSApiFunction(JSThread* thread, const JSHandle<JSFunction>& func, FunctionKind kind)
+{
+    func->InitBitField();
+    func->SetProtoOrHClass<SKIP_BARRIER>(thread, JSTaggedValue::Hole());
+    func->SetHomeObject<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    func->SetMethod<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
+    func->ClearCompiledCodeFlags();
+    func->SetTaskConcurrentFuncFlag(0); // 0 : default value
+    func->SetCallNapi(false);
+    func->SetLexicalEnv<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    JSFunction::InitializeJSFunctionCommon(thread, func, kind);
+}
 // 9.4.1.2[[Construct]](argumentsList, newTarget)
 JSTaggedValue JSBoundFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 {
@@ -1351,7 +1364,8 @@ void JSFunction::ReplaceFunctionForHook(const JSThread *thread, JSHandle<JSFunct
         return;
     }
 
-    if (!oldFunc->GetMachineCode(thread).IsUndefined() || !newFunc->GetMachineCode(thread).IsUndefined()) {
+    if (!newFunc->GetMachineCode(thread).IsUndefined() ||
+        (!oldFunc->IsJSApiFunction() && !oldFunc->GetMachineCode(thread).IsUndefined())) {
         LOG_ECMA(WARN) << "ReplaceFunctionForHook failed";
         return;
     }
@@ -1364,12 +1378,14 @@ void JSFunction::ReplaceFunctionForHook(const JSThread *thread, JSHandle<JSFunct
     // Field in Function
     oldFunc->SetProtoOrHClass(thread, newFunc->GetProtoOrHClass(thread));
     oldFunc->SetLexicalEnv(thread, newFunc->GetLexicalEnv(thread));
-    oldFunc->SetMachineCode(thread, newFunc->GetMachineCode(thread));
-    oldFunc->SetBaselineCode(thread, newFunc->GetBaselineCode(thread));
-    oldFunc->SetRawProfileTypeInfo(thread, newFunc->GetRawProfileTypeInfo(thread));
     oldFunc->SetHomeObject(thread, newFunc->GetHomeObject(thread));
-    oldFunc->SetModule(thread, newFunc->GetModule(thread));
-    oldFunc->SetWorkNodePointer(newFunc->GetWorkNodePointer());
+    if (!oldFunc->IsJSApiFunction()) {
+        oldFunc->SetRawProfileTypeInfo(thread, newFunc->GetRawProfileTypeInfo(thread));
+        oldFunc->SetMachineCode(thread, newFunc->GetMachineCode(thread));
+        oldFunc->SetBaselineCode(thread, newFunc->GetBaselineCode(thread));
+        oldFunc->SetModule(thread, newFunc->GetModule(thread));
+        oldFunc->SetWorkNodePointer(newFunc->GetWorkNodePointer());
+    }
     auto newFuncHashField = Barriers::GetTaggedValue(thread, *newFunc, HASH_OFFSET);
     JSTaggedValue value(newFuncHashField);
     SET_VALUE_WITH_BARRIER(thread, *oldFunc, HASH_OFFSET, value);

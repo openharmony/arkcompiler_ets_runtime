@@ -156,35 +156,70 @@ GateRef NewObjectStubBuilder::NewJSFunctionByHClass(GateRef glue,
     SetExtensibleToBitfield(glue, hclass, true);
     GateRef kind = GetFuncKind(method);
     BuiltinsFunctionStubBuilder builtinsFunctionStubBuilder(this, GetCurrentGlobalEnv());
-    builtinsFunctionStubBuilder.InitializeJSFunction(glue, result, kind, targetKind);
-    builtinsFunctionStubBuilder.InitializeFunctionWithMethod(glue, result, method, hclass);
+    builtinsFunctionStubBuilder.InitializeJSFunction<false>(glue, result, kind, targetKind);
+    builtinsFunctionStubBuilder.InitializeFunctionWithMethod<false>(glue, result, method, hclass);
+    return result;
+}
+
+GateRef NewObjectStubBuilder::NewJSApiFunctionByHClass(GateRef glue, GateRef method, GateRef hclass,
+    FunctionKind targetKind)
+{
+    GateRef result = NewJSObject(glue, hclass);
+    SetExtensibleToBitfield(glue, hclass, true);
+    GateRef kind = GetFuncKind(method);
+    BuiltinsFunctionStubBuilder builtinsFunctionStubBuilder(this, GetCurrentGlobalEnv());
+    builtinsFunctionStubBuilder.InitializeJSFunction<true>(glue, result, kind, targetKind);
+    builtinsFunctionStubBuilder.InitializeFunctionWithMethod<true>(glue, result, method, hclass);
     return result;
 }
 
 GateRef NewObjectStubBuilder::NewSFunctionByHClass(GateRef glue,
-    GateRef method, GateRef hclass, FunctionKind targetKind)
+                                                   GateRef method, GateRef hclass, FunctionKind targetKind)
 {
     GateRef result = result = NewSObject(glue, hclass);
     GateRef kind = GetFuncKind(method);
     BuiltinsFunctionStubBuilder builtinsFunctionStubBuilder(this, GetCurrentGlobalEnv());
     builtinsFunctionStubBuilder.InitializeSFunction(glue, result, kind, targetKind);
-    builtinsFunctionStubBuilder.InitializeFunctionWithMethod(glue, result, method, hclass);
+    builtinsFunctionStubBuilder.InitializeFunctionWithMethod<false>(glue, result, method, hclass);
     return result;
 }
 
 GateRef NewObjectStubBuilder::CloneJSFunction(GateRef glue, GateRef value)
 {
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isNotJSApiFunction(env);
+    Label isJSApiFunction(env);
+    DEFVARIABLE(cloneFunc, VariableType::JS_ANY(), Undefined());
+    GateRef isJsApiFunction = IsJSApiFunction(glue, value);
     GateRef hclass = LoadHClass(glue, value);
     GateRef method = GetMethodFromFunction(glue, value);
-    GateRef cloneFunc = NewJSFunctionByHClass(glue, method, hclass);
     GateRef length = GetPropertyInlinedProps(glue, value, hclass,
                                              Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
     SetPropertyInlinedProps(glue, value, hclass, length,
                             Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
                             VariableType::JS_ANY());
-    SetLengthToFunction(glue, cloneFunc, GetLengthFromFunction(value));
-    SetModuleToFunction(glue, cloneFunc, GetModuleFromFunction(glue, value));
-    return cloneFunc;
+
+    BRANCH(isJsApiFunction, &isJSApiFunction, &isNotJSApiFunction);
+    Bind(&isJSApiFunction);
+    {
+        cloneFunc = NewJSApiFunctionByHClass(glue, method, hclass);
+        SetLengthToFunction(glue, *cloneFunc, GetLengthFromFunction(value));
+        Jump(&exit);
+    }
+    Bind(&isNotJSApiFunction);
+    {
+        cloneFunc = NewJSFunctionByHClass(glue, method, hclass);
+        SetLengthToFunction(glue, *cloneFunc, GetLengthFromFunction(value));
+        SetModuleToFunction(glue, *cloneFunc, GetModuleFromFunction(glue, value));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *cloneFunc;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef NewObjectStubBuilder::CloneProperties(GateRef glue, GateRef currentEnv,
