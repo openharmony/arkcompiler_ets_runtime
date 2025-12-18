@@ -1775,6 +1775,15 @@ ohos_shared_library("libark_jsruntime") {
     libs = [ "log" ]
     version_script = "libark_jsruntime.map"
   }
+
+  if (is_ohos && is_clang && target_cpu == "arm64" && defined(build_ext_path)) {
+    ldflags = [ 
+      "-Wl,--emit-relocs",
+      "-Wl,--no-relax", 
+      "-mno-fix-cortex-a53-843419" 
+    ]
+  }
+  
   if (ark_standalone_build || (defined(is_arkui_x) && is_arkui_x)) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",
