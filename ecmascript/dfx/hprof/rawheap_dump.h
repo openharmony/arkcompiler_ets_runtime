@@ -47,6 +47,11 @@ public:
         return markedObjects_.size();
     }
 
+    uint32_t GetHeapSize()
+    {
+        return heapSize_;
+    }
+
 private:
     bool IsProcessDump()
     {
@@ -57,6 +62,7 @@ private:
     const DumpSnapShotOption *option_ {nullptr};
     CQueue<JSTaggedType> bfsQueue_ {};
     CVector<JSTaggedType> markedObjects_ {};
+    uint32_t heapSize_ {0};
 };
 
 class RawHeapDump {
@@ -77,8 +83,12 @@ public:
         return static_cast<uint32_t>(marker_.GetMarkedObjects());
     }
 
+    std::string GetRawheapVersion()
+    {
+        return version_;
+    }
+
 protected:
-    virtual std::string GetVersion() = 0;
     virtual void DumpRootTable() = 0;
     virtual void DumpStringTable() = 0;
     virtual void DumpObjectTable() = 0;
@@ -102,6 +112,11 @@ protected:
     StringId GenerateStringId(TaggedObject *object);
     const StringHashMap *GetEcmaStringTable();
 
+    void SetRawheapVersion(const std::string &version)
+    {
+        version_ = version;
+    }
+
 private:
     const EcmaVM *vm_ {nullptr};
     const DumpSnapShotOption *dumpOption_ {};
@@ -113,6 +128,7 @@ private:
     CUnorderedMap<JSTaggedType, StringId> objectStrIds_ {};
     CUnorderedMap<Method *, StringId> functionStrIds_ {};
     uint32_t preOffset_ {0};
+    std::string version_;
     std::chrono::time_point<std::chrono::steady_clock> startTime_;
 };
 
@@ -130,7 +146,6 @@ private:
         uint32_t offset; // offset to the file
     };
 
-    std::string GetVersion() override;
     void DumpRootTable() override;
     void DumpStringTable() override;
     void DumpObjectTable() override;
@@ -157,7 +172,6 @@ private:
         uint32_t type;
     };
 
-    std::string GetVersion() override;
     void DumpRootTable() override;
     void DumpStringTable() override;
     void DumpObjectTable() override;

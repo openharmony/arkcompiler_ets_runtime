@@ -814,6 +814,8 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
                                                     GetHeapObjectSize(), eventConfig);
     if (!shouldDump) {
         LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, no dump quota.";
+        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1, "MESSAGE", "Dump not permitted.",
+                        "OOM_TYPE", "SHARED_OOM");
         return;
     }
 #endif
@@ -1911,6 +1913,8 @@ void Heap::DumpHeapSnapshotBeforeOOM()
     GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig);
     if (!shouldDump) {
         LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, no dump quota.";
+        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1, "MESSAGE", "Dump not permitted.",
+                        "OOM_TYPE", "LOCAL_OOM");
         return;
     }
 #endif

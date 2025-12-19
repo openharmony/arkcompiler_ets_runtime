@@ -19,6 +19,11 @@
 #include "ecmascript/dfx/hprof/rawheap_translate/common.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
+#ifdef ENABLE_HISYSEVENT
+    #include "hisysevent.h"
+    #include "dfx_signal_handler.h"
+#endif
+
 namespace panda::ecmascript {
 void ObjectMarker::VisitRoot([[maybe_unused]]Root type, ObjectSlot slot)
 {
@@ -56,8 +61,10 @@ void ObjectMarker::ProcessMarkObjectsFromRoot()
     if (IsProcessDump()) {
         CVector<JSTaggedType> heapObjects;
         heapObjects.reserve(markedObjects_.size());
-        IterateOverObjects([&heapObjects](TaggedObject *object) {
+        heapSize_ = 0;
+        IterateOverObjects([&heapObjects, this](TaggedObject *object) {
             heapObjects.push_back(reinterpret_cast<JSTaggedType>(object));
+            heapSize_ += object->GetSize();
         });
         markedObjects_.swap(heapObjects);
         return;
@@ -90,6 +97,7 @@ void ObjectMarker::MarkObject(JSTaggedType addr)
     if (Mark(addr)) {
         markedObjects_.push_back(addr);
         bfsQueue_.push(addr);
+        heapSize_ += reinterpret_cast<TaggedObject *>(addr)->GetSize();
     }
 }
 
@@ -138,6 +146,15 @@ RawHeapDump::~RawHeapDump()
     auto endTime = std::chrono::steady_clock::now();
     double duration = std::chrono::duration<double>(endTime - startTime_).count();
     LOG_ECMA(INFO) << "rawheap dump success, cost " << duration << "s, " << "file size " << GetRawHeapFileOffset();
+    if (dumpOption_->isDumpOOM) {
+        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 0, "MESSAGE", "OK",
+                        "OOM_TYPE", dumpOption_->isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM",
+                        "OBJ_COUNT", GetObjectCount(),
+                        "STR_COUNT", GetEcmaStringTable()->GetCapcity(),
+                        "HEAP_SIZE", marker_.GetHeapSize(),
+                        "FILE_SIZE", GetRawHeapFileOffset(),
+                        "DURATION", duration, "VERSION", GetRawheapVersion());
+    }
 }
 
 /*
@@ -171,7 +188,7 @@ RawHeapDump::~RawHeapDump()
 */
 void RawHeapDump::BinaryDump()
 {
-    DumpVersion(GetVersion());
+    DumpVersion(GetRawheapVersion());
 
     marker_.MarkRootObjects();
     DumpRootTable();
@@ -334,16 +351,12 @@ RawHeapDumpV1::RawHeapDumpV1(const EcmaVM *vm, Stream *stream, HeapSnapshot *sna
                              EntryIdMap *entryIdMap, const DumpSnapShotOption &dumpOption)
     : RawHeapDump(vm, stream, snapshot, entryIdMap, dumpOption)
 {
+    SetRawheapVersion(std::string(RAWHEAP_VERSION));
 }
 
 RawHeapDumpV1::~RawHeapDumpV1()
 {
     strIdMapObjVec_.clear();
-}
-
-std::string RawHeapDumpV1::GetVersion()
-{
-    return std::string(RAWHEAP_VERSION);
 }
 
 void RawHeapDumpV1::DumpRootTable()
@@ -440,16 +453,12 @@ RawHeapDumpV2::RawHeapDumpV2(const EcmaVM *vm, Stream *stream, HeapSnapshot *sna
                              EntryIdMap *entryIdMap, const DumpSnapShotOption &dumpOption)
     : RawHeapDump(vm, stream, snapshot, entryIdMap, dumpOption)
 {
+    SetRawheapVersion(std::string(RAWHEAP_VERSION_V2));
 }
 
 RawHeapDumpV2::~RawHeapDumpV2()
 {
     regionIdMap_.clear();
-}
-
-std::string RawHeapDumpV2::GetVersion()
-{
-    return std::string(RAWHEAP_VERSION_V2);
 }
 
 void RawHeapDumpV2::DumpRootTable()
