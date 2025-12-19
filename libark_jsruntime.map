@@ -224,6 +224,7 @@
       panda::ecmascript::EcmaVM::PrintAOTSnapShotStats*;
       panda::ecmascript::EcmaVM::GetAOTFileManager*;
       panda::ecmascript::EcmaVM::multiThreadCheck_;
+      panda::ecmascript::EcmaVM::checkCountApi_;
       panda::ecmascript::ElementAccessor::ConvertTaggedValueWithElementsKind*;
       panda::ecmascript::ElementAccessor::Get*;
       panda::ecmascript::Elements::FixElementsKind*;
