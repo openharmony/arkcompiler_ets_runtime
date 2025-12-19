@@ -171,6 +171,11 @@ public:
         }
     }
 
+    void SetMaxHeapSize(size_t heapSize)
+    {
+        maxHeapSize_ = heapSize;
+    }
+
     size_t GetMaxHeapSize() const
     {
         return maxHeapSize_;
