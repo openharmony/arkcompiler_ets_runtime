@@ -87,18 +87,21 @@ void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
         case PriorityMode::STW: {
             for (uint32_t threadId : gcThreadId_) {
                 OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INTERACTIVE, threadId);
+                OHOS::QOS::AddThreadToProcRtg(threadId);
             }
             return;
         }
         case PriorityMode::FOREGROUND: {
             for (uint32_t threadId : gcThreadId_) {
                 OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, threadId);
+                OHOS::QOS::RemoveThreadFromProcRtg(threadId);
             }
             return;
         }
         case PriorityMode::BACKGROUND: {
             for (uint32_t threadId : gcThreadId_) {
                 OHOS::QOS::ResetQosForOtherThread(threadId);
+                OHOS::QOS::RemoveThreadFromProcRtg(threadId);
             }
             return;
         }
