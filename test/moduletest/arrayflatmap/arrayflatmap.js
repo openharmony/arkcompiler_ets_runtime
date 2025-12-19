@@ -695,3 +695,34 @@ print(res.length)
     });
     print(res);
 }
+
+{
+    let arr = [1,2,3,4]
+    arr.flatMap((e,index,target)=>{
+      print(typeof index,'number')
+      return e;
+    })
+}
+
+{
+    class myArray extends Array{
+        constructor(...args) {
+            super(...args);
+            return new Proxy(this,{
+                get(target, prop, receiver) {
+                    print("get",prop,typeof prop);
+                    return Reflect.get(target, prop, receiver);
+                },
+                set(target, prop, value, receiver) {
+                    print("set",prop,value);
+                    return Reflect.set(target, prop, value, receiver);
+                }
+            })
+        }
+    }
+    let arr = new myArray(1,2,3,4);
+    arr.flatMap((e,index,target)=>{
+        print("flatMap",typeof index,'number')
+        return e;
+    });
+}

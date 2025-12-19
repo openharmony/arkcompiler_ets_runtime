@@ -75,3 +75,18 @@ true
 1,7
 1,2,3,4
 1,2,3,4,5,6,7,8
+number number
+number number
+number number
+number number
+get flatMap string
+get length string
+get constructor string
+get 0 string
+flatMap number number
+get 1 string
+flatMap number number
+get 2 string
+flatMap number number
+get 3 string
+flatMap number number
