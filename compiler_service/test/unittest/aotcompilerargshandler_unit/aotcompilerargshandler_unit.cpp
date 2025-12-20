@@ -410,4 +410,255 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_021, TestSize.Level0)
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_022, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string anFilePath = "/path/to/test";
+
+    std::string location = parser.ParseLocation(anFilePath);
+
+    const std::string APP_SANBOX_PATH_PREFIX = "/data/storage/el1/bundle/";
+    const std::string ETS_PATH = "/ets";
+    std::string expected = APP_SANBOX_PATH_PREFIX + "test" + ETS_PATH;
+    EXPECT_EQ(location, expected);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_023, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    // pgoDir field in json
+    std::string pkgInfo = R"(
+        {
+            "pgoDir": "/path/to",
+            "bundleName": "bundle",
+            "mode": "static"
+        }
+    )";
+    std::string profilePath;
+
+    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
+
+    EXPECT_TRUE(result);
+
+    std::string expectedPath = "/path/to/profile.ap";
+    EXPECT_EQ(profilePath, expectedPath);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_024, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    // invalid json
+    std::string pkgInfo = R"({invalidjson})";
+    std::string profilePath;
+
+    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
+
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_025, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    // empty json
+    std::string pkgInfo = R"({})";
+    std::string profilePath;
+
+    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
+
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_026, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    // no pgoDir field in json
+    std::string pkgInfo = R"(
+        {
+            "bundleName": "bundle",
+            "mode": "static"
+        }
+    )";
+    std::string profilePath;
+
+    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_027, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    HapArgs hapArgs;
+    // pgoDir field in json
+    std::string pkgInfo = R"(
+        {
+            "pgoDir": "/path/to",
+            "bundleName": "bundle",
+            "mode": "static"
+        }
+    )";
+
+    bool result = parser.ParseProfileUse(hapArgs, pkgInfo);
+
+    EXPECT_TRUE(result);
+
+    size_t expectedVecSize = 1;
+    EXPECT_EQ(hapArgs.argVector.size(), expectedVecSize);
+
+    std::string expectedProfileUse = "--paoc-use-profile:path=/path/to/profile.ap";
+    EXPECT_EQ(hapArgs.argVector[0], expectedProfileUse);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_028, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    HapArgs hapArgs;
+    // empty json
+    std::string pkgInfo = R"({})";
+
+    bool result = parser.ParseProfileUse(hapArgs, pkgInfo);
+
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_029, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {};
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_NE(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_030, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_NE(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_031, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_NE(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_032, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_NE(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_033, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_034, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_035, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "invalid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_036, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_NE(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_037, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_038, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_039, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "invalid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_040, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_NE(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_041, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_042, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_043, TestSize.Level0) {
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "invalid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
 } // namespace OHOS::ArkCompiler
