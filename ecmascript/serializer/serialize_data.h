@@ -377,6 +377,11 @@ public:
         return oldSpaceSize_;
     }
 
+    size_t GetHugeSpaceSize() const
+    {
+        return hugeSpaceSize_;
+    }
+
     size_t GetNonMovableSpaceSize() const
     {
         return nonMovableSpaceSize_;
@@ -424,6 +429,9 @@ public:
                 case SerializedObjectSpace::MACHINE_CODE_SPACE:
                     AlignSpaceObjectSize(machineCodeSpaceSize_, objectSize, SerializedObjectSpace::MACHINE_CODE_SPACE);
                     break;
+                case SerializedObjectSpace::HUGE_SPACE:
+                    AlignHugeSpaceObjectSize(objectSize);
+                    break;
                 case SerializedObjectSpace::SHARED_OLD_SPACE:
                     AlignSpaceObjectSize(sharedOldSpaceSize_, objectSize, SerializedObjectSpace::SHARED_OLD_SPACE);
                     break;
@@ -457,6 +465,12 @@ public:
         }
         spaceSize += objectSize;
         ASSERT(spaceSize <= SnapshotEnv::MAX_UINT_32);
+    }
+
+    void AlignHugeSpaceObjectSize(size_t objectSize)
+    {
+        size_t alignedSize = HugeObjectSpace::AlignUpHugeObjectSize(objectSize);
+        hugeSpaceSize_ += alignedSize;
     }
 
     void DecreaseSharedArrayBufferReference()
@@ -519,6 +533,7 @@ private:
     size_t regularSpaceSize_ {0};
     size_t pinSpaceSize_ {0};
     size_t oldSpaceSize_ {0};
+    size_t hugeSpaceSize_ {0};
     size_t nonMovableSpaceSize_ {0};
     size_t machineCodeSpaceSize_ {0};
     size_t sharedOldSpaceSize_ {0};

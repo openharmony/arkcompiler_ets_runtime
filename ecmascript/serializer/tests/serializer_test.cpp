@@ -966,6 +966,29 @@ public:
         Destroy();
     }
 
+    void SerializeHugeObjOOMTest(SerializeData *data)
+    {
+        Init();
+        // disable force gc to avoid time out
+        ecmaVm->SetEnableForceGC(false);
+        ObjectFactory *factory = ecmaVm->GetFactory();
+        BaseDeserializer deserializer(thread, data);
+        if (ecmaVm->GetHeap()->GetHeapLimitSize() >= 448_MB) { // 448_MB: default heap size
+            [[maybe_unused]] EcmaHandleScope handleScope(thread);
+            // allocate ~400MB array
+            for (int i = 0; i < 1450; i++) { // 1450: new array cycles
+                [[maybe_unused]] JSHandle<TaggedArray> element =
+                    factory->NewTaggedArray(100 * 1024 / 8, JSTaggedValue::Hole()); // 100 * 1024 / 8: array length
+                [[maybe_unused]] JSHandle<TaggedArray> property =
+                    factory->NewTaggedArray(100 * 1024 / 8, JSTaggedValue::Hole()); // 100 * 1024 / 8: array length
+            }
+        }
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        EXPECT_TRUE(!res.IsEmpty());
+        EXPECT_TRUE(res->IsTaggedArray());
+        Destroy();
+    }
+
     void SerializeNonMoveObjOOMTest(SerializeData *data)
     {
         Init();
@@ -1641,6 +1664,24 @@ HWTEST_F_L0(JSSerializerTest, SerializeOldObjOOMTest)
     std::unique_ptr<SerializeData> data = serializer->Release();
     JSDeserializerTest jsDeserializerTest;
     std::thread t1(&JSDeserializerTest::SerializeOldObjOOMTest, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+};
+
+HWTEST_F_L0(JSSerializerTest, SerializeHugeObjOOMTest)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+    JSHandle<TaggedArray> array =
+        factory->NewTaggedArray(10 * 1024 * 1024 / 8, JSTaggedValue::Hole()); // 15 * 1024 * 1024 / 8: array length
+    ValueSerializer *serializer = new ValueSerializer(thread, false, true);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(array),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SerializeHugeObjOOMTest, jsDeserializerTest, data.release());
     ecmascript::ThreadSuspensionScope scope(thread);
     t1.join();
     delete serializer;

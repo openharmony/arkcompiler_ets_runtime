@@ -680,7 +680,7 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, A
 #endif
     // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
     // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
-    size_t alignedSize = AlignUp(objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, DEFAULT_REGION_SIZE);
+    size_t alignedSize = AlignUpHugeObjectSize(objectSize);
     if (allocType == AllocateEventType::NORMAL) {
         thread->CheckSafepointIfSuspended();
         CheckAndTriggerLocalFullMark(thread, alignedSize);

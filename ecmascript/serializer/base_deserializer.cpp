@@ -729,6 +729,10 @@ void BaseDeserializer::AllocateToDifferentSpaces()
             heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
             AllocateToDifferentLocalSpaces(false);
         }
+        // Check huge obj size and decide whether it's needed to trigger old gc
+        if (heap_->OldSpaceExceedCapacity(data_->GetHugeSpaceSize())) {
+            heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+        }
         AllocateToDifferentSharedSpaces();
     }
 }

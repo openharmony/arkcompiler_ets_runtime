@@ -323,6 +323,13 @@ public:
 
     void InvokeAllocationInspector(Address object, size_t objectSize);
 
+    // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
+    // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
+    static size_t AlignUpHugeObjectSize(size_t objectSize)
+    {
+        return AlignUp(objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, DEFAULT_REGION_SIZE);
+    }
+
 protected:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
 private:

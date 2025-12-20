@@ -268,9 +268,7 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread, Allocat
     if (allocType == AllocateEventType::NORMAL) {
         thread->CheckSafepointIfSuspended();
     }
-    // In HugeObject allocation, we have a revervation of 8 bytes for markBitSet in objectSize.
-    // In case Region is not aligned by 16 bytes, HUGE_OBJECT_BITSET_SIZE is 8 bytes more.
-    size_t alignedSize = AlignUp(objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, DEFAULT_REGION_SIZE);
+    size_t alignedSize = AlignUpHugeObjectSize(objectSize);
     if (heap_->OldSpaceExceedCapacity(alignedSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
