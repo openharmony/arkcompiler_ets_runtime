@@ -168,6 +168,7 @@ public:
     static uint32_t GetCurrentThreadId();
     static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
     static void GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
+    static void SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled);
     static void GetHybridStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static void SetJsRawHeapCropLevel(CropLevel level);
 

@@ -1166,6 +1166,12 @@ void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTrac
     }
 }
 
+void DFXJSNApi::SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled)
+{
+    EcmaVM::SetMultiThreadCheck(enabled);
+    EcmaVM::SetCheckCountApi(enabled);
+}
+
 void DFXJSNApi::GetHybridStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
     // only for js crash

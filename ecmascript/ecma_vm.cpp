@@ -78,7 +78,8 @@ using PGOProfilerManager = pgo::PGOProfilerManager;
 using JitTools = ohos::JitTools;
 
 AOTFileManager *JsStackInfo::loader = nullptr;
-bool EcmaVM::multiThreadCheck_ = false;
+std::atomic<bool> EcmaVM::multiThreadCheck_ = false;
+std::atomic<bool> EcmaVM::checkCountApi_ = false;
 bool EcmaVM::errorInfoEnhanced_ = false;
 // To find the current js thread without parameters
 thread_local void *g_currentThread = nullptr;

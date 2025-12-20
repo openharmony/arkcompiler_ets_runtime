@@ -785,6 +785,20 @@ HWTEST_F_L0(DFXJSNApiTests, GetMainThreadStackTrace_1)
     ASSERT_TRUE(stackTraceStr.empty());
 }
 
+HWTEST_F_L0(DFXJSNApiTests, SetMultithreadingDetectionEnabled_1)
+{
+    DFXJSNApi::SetMultithreadingDetectionEnabled(vm_, true);
+    ASSERT_TRUE(EcmaVM::GetMultiThreadCheck());
+    ASSERT_TRUE(EcmaVM::GetCheckCountApi());
+}
+
+HWTEST_F_L0(DFXJSNApiTests, SetMultithreadingDetectionEnabled_2)
+{
+    DFXJSNApi::SetMultithreadingDetectionEnabled(vm_, false);
+    ASSERT_FALSE(EcmaVM::GetMultiThreadCheck());
+    ASSERT_FALSE(EcmaVM::GetCheckCountApi());
+}
+
 HWTEST_F_L0(DFXJSNApiTests, FindFunctionForHook_1)
 {
     std::string baseFileName = ABC_PATH "module_export.abc";

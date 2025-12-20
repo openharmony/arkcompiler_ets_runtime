@@ -85,6 +85,7 @@ void SuspendBarrier::Wait()
 }
 
 thread_local JSThread *currentThread = nullptr;
+thread_local ThreadId JSThread::currentThreadId_ = 0xFFFFFFFF;
 
 JSThread *JSThread::GetCurrent()
 {
@@ -153,6 +154,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.isEnableMutantArray_ = vm->IsEnableMutantArray();
     jsThread->glueData_.IsEnableElementsKind_ = vm->IsEnableElementsKind();
     jsThread->glueData_.barrierAndglue_ = jsThread->GetGlueAddr();
+    SetCurrentThreadId();
     jsThread->SetThreadId();
 
     if (UNLIKELY(g_isEnableCMCGC)) {
@@ -306,7 +308,10 @@ JSThread::~JSThread()
 
 ThreadId JSThread::GetCurrentThreadId()
 {
-    return GetCurrentThreadOrTaskId();
+    if (currentThreadId_ == 0xFFFFFFFF) {
+        SetCurrentThreadId();
+    }
+    return currentThreadId_;
 }
 
 void JSThread::SetException(JSTaggedValue exception)
@@ -1528,6 +1533,7 @@ inline void JSThread::StoreSuspendedState(ThreadState newState)
 
 void JSThread::PostFork()
 {
+    SetCurrentThreadId();
     SetThreadId();
     if (currentThread == nullptr) {
         currentThread = this;

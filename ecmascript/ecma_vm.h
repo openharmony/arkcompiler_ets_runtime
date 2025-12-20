@@ -18,6 +18,7 @@
 
 #include "ecmascript/cross_vm/ecma_vm_hybrid.h"
 
+#include <atomic>
 #include <mutex>
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
@@ -349,7 +350,7 @@ public:
 
     ARK_INLINE uint32_t GetThreadCheckStatus() const
     {
-        return options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck();
+        return EcmaVM::GetMultiThreadCheck() || options_.EnableThreadCheck();
     }
 
     ARK_INLINE JSThread *GetJSThread() const
@@ -359,7 +360,9 @@ public:
         CheckThread();
 #else
         if (GetThreadCheckStatus()) {
-            CheckThread();
+            if (!GetCheckCountApi() || CheckCountNum()) {
+                CheckThread();
+            }
         }
 #endif
         return thread_;
@@ -997,6 +1000,21 @@ public:
         return multiThreadCheck_;
     }
 
+    static void SetCheckCountApi(bool checkCountApi)
+    {
+        checkCountApi_ = checkCountApi;
+    }
+
+    PUBLIC_API static bool GetCheckCountApi()
+    {
+        return checkCountApi_;
+    }
+
+    bool CheckCountNum() const
+    {
+        return (count_++) % CHECKCOUNTNUM == 0;
+    }
+
     static void SetErrorInfoEnhance(bool errorInfoEnhance)
     {
         errorInfoEnhanced_ = errorInfoEnhance;
@@ -1441,7 +1459,10 @@ private:
     GCStats *gcStats_ {nullptr};
     GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
-    PUBLIC_API static bool multiThreadCheck_;
+    PUBLIC_API static std::atomic<bool> multiThreadCheck_;
+    PUBLIC_API static std::atomic<bool> checkCountApi_;
+    const static uint64_t CHECKCOUNTNUM = 100;
+    mutable std::atomic<uint64_t> count_{0};
     static bool errorInfoEnhanced_;
 
     // for constpool.The shared constpool includes string, method, sendable classLiteral, etc.

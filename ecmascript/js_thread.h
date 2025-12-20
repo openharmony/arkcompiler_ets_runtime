@@ -2182,6 +2182,11 @@ private:
 
     void DumpStack() DUMP_API_ATTR;
 
+    static void SetCurrentThreadId()
+    {
+        currentThreadId_ = GetCurrentThreadOrTaskId();
+    }
+
     GlueData glueData_;
     std::atomic<ThreadId> id_ {0};
     EcmaVM *vm_ {nullptr};
@@ -2189,6 +2194,7 @@ private:
     void *env_ {nullptr};
     Area *regExpCacheArea_ {nullptr};
     CCEvacuator *localEvacuator_ {nullptr};
+    static thread_local ThreadId currentThreadId_;
     // MM: handles, global-handles, and aot-stubs.
     int nestedLevel_ = 0;
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
