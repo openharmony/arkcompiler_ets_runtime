@@ -1440,6 +1440,13 @@ void JSThread::TransferToRunning()
     ASSERT(!IsDaemonThread());
     ASSERT(currentThread == this);
     StoreRunningState(ThreadState::RUNNING);
+    // Invoke free weak global callback when thread switch to running
+    if (!weakNodeFreeGlobalCallbacks_.empty()) {
+        InvokeWeakNodeFreeGlobalCallBack();
+    }
+    if (fullMarkRequest_) {
+        fullMarkRequest_ = const_cast<Heap*>(vm_->GetHeap())->TryTriggerFullMarkBySharedLimit();
+    }
 }
 
 void JSThread::TransferDaemonThreadToRunning()
@@ -1499,7 +1506,7 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
                 suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
             }
             ASSERT(!HasSuspendRequest());
-        } else {
+        } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_SHARED_HEAP_OOM) != 0) {
             ThreadStateAndFlags newStateAndFlags;
             newStateAndFlags.asNonvolatileStruct.flags = oldStateAndFlags.asNonvolatileStruct.flags;
             newStateAndFlags.asNonvolatileStruct.state = newState;
@@ -1507,18 +1514,8 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
             if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
                                                                            newStateAndFlags.asNonvolatileInt,
                                                                            std::memory_order_release)) {
-                if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_GC_CALLBACKS) != 0) {
-                    ClearFlag(ThreadFlag::PENDING_GC_CALLBACKS);
-                    const_cast<Heap*>(vm_->GetHeap())->ProcessGCCallback();
-                }
-                if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::FULL_MARK_REQUEST) != 0) {
-                    ClearFlag(ThreadFlag::FULL_MARK_REQUEST);
-                    fullMarkRequest_ = const_cast<Heap*>(vm_->GetHeap())->TryTriggerFullMarkBySharedLimit();
-                }
-                if (fullMarkRequest_) {
-                    SetFlag(ThreadFlag::FULL_MARK_REQUEST);
-                }
-                break;
+                ClearFlag(ThreadFlag::PENDING_SHARED_HEAP_OOM);
+                THROW_OOM_ERROR(this, "SharedHeap OOM");
             }
         }
     }
