@@ -415,7 +415,7 @@ void PropertyAccessor::PushRemainingKeys(JSHandle<JSObject> object, std::vector<
             PropertyDescriptor desc(thread_);
             JSProxy::GetOwnProperty(thread_, JSHandle<JSProxy>(object), value, desc);
             RETURN_IF_ABRUPT_COMPLETION(thread_);
-            if (!desc.IsEnumerable()) {
+            if (!desc.IsEnumerable() || !value->IsString()) {
                 proxyArr->Set(thread_, i, JSTaggedValue::Hole());
             } else {
                 remainingIndex++;

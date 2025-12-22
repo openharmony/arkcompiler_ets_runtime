@@ -31,3 +31,5 @@ TypeError: ProxyCreate: handler is not Object
 test proxy getPrototype success!
 TypeError
 RangeError: Stack overflow!
+1
+name
