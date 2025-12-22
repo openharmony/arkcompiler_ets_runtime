@@ -1918,6 +1918,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
 
     // iteratorPrototype hclass
     JSHandle<JSHClass> iteratorPrototypeHClass(thread_, iteratorPrototype->GetJSHClass());
+    SetStringTagSymbol(env, iteratorPrototype, "Iterator");
 
     InitializeForinIterator(env, iteratorFuncClass);
     InitializeSetIterator(env, iteratorFuncClass);

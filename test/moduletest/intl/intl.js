@@ -66,3 +66,16 @@ try {
         print(err instanceof TypeError);
     }
 }
+
+{
+    const nf = new Intl.NumberFormat([], {
+        style: "unit",
+        unit: "microsecond",
+    });
+
+    const nf2 = new Intl.NumberFormat([], {
+        style: "unit",
+        unit: "nanosecond",
+    });
+    print("new Intl.NumberFormat success");
+}

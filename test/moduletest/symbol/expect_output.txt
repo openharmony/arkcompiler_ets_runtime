@@ -17,3 +17,4 @@ test Symbol.prototype.valueOf successful !!!
 Symbol(foo)
 Symbol(foo)
 100
+[object Iterator]
