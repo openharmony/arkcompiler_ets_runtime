@@ -18,8 +18,33 @@
 
 #include <type_traits>
 #include <utility>
+#include "base_runtime.h"
 #include "objects/base_object.h"
 #include "ecmascript/string/base_string_class.h"
+
+// CC-OFFNXT(C_RULE_ID_DEFINE_LENGTH_LIMIT) solid logic
+// CC-OFFNXT(G.PRE.02) code readability
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define POINTER_FIELD(name, offset, endOffset)                                                       \
+    static constexpr size_t endOffset = (offset) + COMMON_POINTER_SIZE;                              \
+    template <typename PointerType, typename WriteBarrier,                                           \
+              objects_traits::enable_if_is_write_barrier<std::decay_t<WriteBarrier>> = 0>            \
+    inline void Set##name(WriteBarrier &&writeBarrier, PointerType value)                            \
+    {                                                                                                \
+        /* CC-OFFNXT(G.PRE.02) code readability */                                                   \
+        void *obj = static_cast<void *>(this);                                                       \
+        std::invoke(std::forward<WriteBarrier>(writeBarrier), obj, offset, value);                   \
+    }                                                                                                \
+                                                                                                     \
+    template <typename PointerType, typename ReadBarrier,                                            \
+              objects_traits::enable_if_is_read_barrier<std::decay_t<ReadBarrier>, PointerType> = 0> \
+    inline PointerType Get##name(ReadBarrier &&readBarrier) const                                    \
+    {                                                                                                \
+        /* CC-OFFNXT(G.PRE.02) code readability */                                                   \
+        /* CC-OFFNXT(G.PRE.05) C_RULE_ID_KEYWORD_IN_DEFINE */                                        \
+        return std::invoke(std::forward<ReadBarrier>(readBarrier),                                   \
+                           const_cast<void *>(static_cast<const void *>(this)), offset);             \
+    }
 
 // CC-OFFNXT(C_RULE_ID_DEFINE_LENGTH_LIMIT) solid logic
 // CC-OFFNXT(G.PRE.02) code readability
