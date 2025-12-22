@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/dfx/hprof/heap_sampling.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
@@ -23,6 +24,16 @@ namespace panda::test {
 class SharedTestSpace;
 class SharedPartialGCTest : public BaseTestWithScope<false> {
 public:
+    void SetUp() override
+    {
+        JSRuntimeOptions options;
+        instance = JSNApi::CreateEcmaVM(options);
+        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
+        thread = instance->GetJSThread();
+        thread->ManagedCodeBegin();
+        scope = new EcmaHandleScope(thread);
+        auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    }
     JSHandle<TaggedObject> CreateSharedObjectsInOneRegion(std::shared_ptr<SharedTestSpace> space, double aliveRate);
     void InitTaggedArray(TaggedObject *obj, size_t arrayLen);
     void CreateTaggedArray();
@@ -132,5 +143,88 @@ HWTEST_F_L0(SharedPartialGCTest, PartialGCTest)
         }
     }
     sHeap->WaitGCFinished(thread);
+}
+
+HWTEST_F_L0(SharedPartialGCTest, SharedOldSpace1)
+{
+    constexpr double ALIVE_RATE = 0.1;
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    SharedOldSpace *sOldSpace = sHeap->GetOldSpace();
+    size_t maxOldSpaceCapacity = sHeap->GetOldSpace()->GetMaximumCapacity();
+    std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap);
+    SharedLocalSpace *sLocalSpace = new SharedLocalSpace(sHeap, maxOldSpaceCapacity, maxOldSpaceCapacity);
+    ASSERT_TRUE(sLocalSpace != nullptr);
+    for (size_t i = 0; i < SharedOldSpace::MIN_COLLECT_REGION_SIZE; i++) {
+        auto obj = CreateSharedObjectsInOneRegion(space, ALIVE_RATE);
+        Region *region = Region::ObjectAddressToRange(*obj);
+        EXPECT_TRUE(sLocalSpace->AddRegionToList(region));
+    }
+    sLocalSpace->Stop();
+    sOldSpace->IncreaseCommitted(500 * 1024 * 1024);
+    EXPECT_TRUE(sOldSpace->GetCommittedSize() > sOldSpace->GetOverShootMaximumCapacity())
+        << "sOldSpace->GetCommittedSize() is " << sOldSpace->GetCommittedSize()
+        << "sOldSpace->GetOverShootMaximumCapacity()" << sOldSpace->GetOverShootMaximumCapacity();
+    sOldSpace->Merge(sLocalSpace);
+    delete sLocalSpace;
+    sLocalSpace = nullptr;
+}
+
+HWTEST_F_L0(SharedPartialGCTest, SharedOldSpace2)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    sHeap->SetCanThrowOOMError(true);
+    SharedOldSpace *sOldSpace = sHeap->GetOldSpace();
+    size_t maxOldSpaceCapacity = sHeap->GetOldSpace()->GetMaximumCapacity();
+    SharedLocalSpace *sLocalSpace = new SharedLocalSpace(sHeap, maxOldSpaceCapacity, maxOldSpaceCapacity);
+    ASSERT_TRUE(sLocalSpace != nullptr);
+    sLocalSpace->Stop();
+    sOldSpace->IncreaseCommitted(500 * 1024 * 1024);
+    EXPECT_TRUE(sOldSpace->GetCommittedSize() > sOldSpace->GetOverShootMaximumCapacity());
+    sOldSpace->Merge(sLocalSpace);
+    delete sLocalSpace;
+    sLocalSpace = nullptr;
+}
+
+HWTEST_F_L0(SharedPartialGCTest, Allocate)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    SharedSparseSpace *space = sHeap->GetSpaceWithType(MemSpaceType::SHARED_OLD_SPACE);
+    space->PrepareSweeping();
+    EXPECT_NE(space->Allocate(thread, 1000, true), 0);
+}
+
+HWTEST_F_L0(SharedPartialGCTest, InvokeAllocationInspector)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    SharedSparseSpace *space = sHeap->GetSpaceWithType(MemSpaceType::SHARED_OLD_SPACE);
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto profiler = new HeapSampling(thread->GetEcmaVM(), heap, 10, 3);
+    auto inspector = new AllocationInspector(heap, 10, profiler);
+    space->AddAllocationInspector(inspector);
+    space->InvokeAllocationInspector(10000, 100, 100);
+}
+
+HWTEST_F_L0(SharedPartialGCTest, CheckAndTriggerLocalFullMark)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    SharedSparseSpace *space = sHeap->GetSpaceWithType(MemSpaceType::SHARED_OLD_SPACE);
+    space->IncreaseLiveObjectSize(1000);
+    space->CheckAndTriggerLocalFullMark();
+}
+
+HWTEST_F_L0(SharedPartialGCTest, Expand1)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    SharedReadOnlySpace *sReadOnlySpace = sHeap->GetReadOnlySpace();
+    sReadOnlySpace->SetInitialCapacity(1 * 1024 * 1024);
+    EXPECT_TRUE(sReadOnlySpace->Expand(thread));
+}
+
+HWTEST_F_L0(SharedPartialGCTest, Expand2)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    SharedReadOnlySpace *sReadOnlySpace = sHeap->GetReadOnlySpace();
+    sReadOnlySpace->IncreaseCommitted(10000);
+    EXPECT_FALSE(sReadOnlySpace->Expand(thread));
 }
 } // namespace panda::test
