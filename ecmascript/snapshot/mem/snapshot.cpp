@@ -148,8 +148,8 @@ bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFil
                                    MemMap &fileMap)
 {
     if (fileMap.GetOriginAddr() == nullptr) {
-        LOG_FULL(FATAL) << "file mmap failed";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "file mmap failed";
+        return false;
     }
     auto readFile = ToUintPtr(fileMap.GetOriginAddr());
     auto hdr = *ToNativePtr<const SnapShotHeader>(readFile);
