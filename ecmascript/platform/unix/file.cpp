@@ -197,7 +197,8 @@ CString ResolveFilenameFromNative(JSThread *thread, const CString &dirname,
 
     std::string absPath = "";
     if (RealPath(relativePath.c_str(), absPath)) {
-        return absPath.c_str();
+        CString returnValue(absPath);
+        return returnValue;
     }
     THROW_REFERENCE_ERROR_AND_RETURN(thread, "resolve absolute path fail", CString());
 }
