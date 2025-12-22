@@ -90,3 +90,9 @@ function test6() {
 }
 test6();
 print(ArkTools.isAOTCompiled(test6));
+
+{
+    class A {
+    }
+    print(A.prototype instanceof A) // false
+}
