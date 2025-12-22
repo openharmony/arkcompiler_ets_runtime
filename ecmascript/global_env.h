@@ -317,7 +317,11 @@ public:
     DECL_VISIT_OBJECT(HEADER_SIZE, DATA_SIZE);
 
     // define BitField
+#if ENABLE_LATEST_OPTIMIZATION
     static constexpr uint32_t DEFAULT_LAZY_BITFIELD_VALUE = 0x9fc; // 0000'...'0000'1001'1111'1100
+#else // !ENABLE_NEXT_OPTIMIZATION
+    static constexpr uint32_t DEFAULT_LAZY_BITFIELD_VALUE = 0xffe; // 0000'...'0000'1111'1111'1110
+#endif // ENABLE_LATEST_OPTIMIZATION
     static constexpr uint32_t DEFAULT_MAIN_THREAD_BITFIELD_VALUE = 0x800; // 0000'...'0000'1000'0000'0000
     static constexpr size_t ARRAYPROTOTYPE_CHANGED_GUARDIANS = 1;
     static constexpr size_t DETECTOR_BITS = 1;

@@ -315,13 +315,13 @@ size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_
 size_t ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
                                 size_t start, bool modify, bool isWriteBuffer, bool cesu8)
 {
-#ifdef ENABLE_HISPEED_PLUGIN
+#if ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
     auto hispeedConvertRegionUtf16ToUtf8 = HispeedLibSingleton::GetInstance().GetHispeedConvertRegionUtf16ToUtf8();
     if (hispeedConvertRegionUtf16ToUtf8 != nullptr) {
         return hispeedConvertRegionUtf16ToUtf8(utf16In, utf8Out, utf16Len, utf8Len,
                                                start, modify, isWriteBuffer, cesu8);
     }
-#endif // ENABLE_HISPEED_PLUGIN
+#endif // ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
     if (utf16In == nullptr || utf8Out == nullptr || utf8Len == 0) {
         return 0;
     }
@@ -439,12 +439,12 @@ static inline size_t FixUtf8Len(const uint8_t* utf8, size_t utf8Len)
 
 size_t Utf8ToUtf16Size(const uint8_t *utf8, size_t utf8Len)
 {
-#ifdef ENABLE_HISPEED_PLUGIN
+#if ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
     auto hispeedUtf8ToUtf16Size = HispeedLibSingleton::GetInstance().GetHispeedUtf8ToUtf16Size();
     if (hispeedUtf8ToUtf16Size != nullptr) {
         return hispeedUtf8ToUtf16Size(utf8, utf8Len);
     }
-#endif // ENABLE_HISPEED_PLUGIN
+#endif // ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
     size_t safeUtf8Len = FixUtf8Len(utf8, utf8Len);
     size_t in_pos = 0;
     size_t res = 0;
@@ -491,12 +491,12 @@ size_t Utf8ToUtf16Size(const uint8_t *utf8, size_t utf8Len)
 
 size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_t utf8Len, size_t utf16Len)
 {
-#ifdef ENABLE_HISPEED_PLUGIN
+#if ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
     auto hispeedConvertRegionUtf8ToUtf16 = HispeedLibSingleton::GetInstance().GetHispeedConvertRegionUtf8ToUtf16();
     if (hispeedConvertRegionUtf8ToUtf16 != nullptr) {
         return hispeedConvertRegionUtf8ToUtf16(utf8In, utf16Out, utf8Len, utf16Len);
     }
-#endif // ENABLE_HISPEED_PLUGIN
+#endif // ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
     size_t safeUtf8Len = FixUtf8Len(utf8In, utf8Len);
     size_t in_pos = 0;
     size_t out_pos = 0;
