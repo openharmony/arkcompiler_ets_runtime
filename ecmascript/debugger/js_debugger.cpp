@@ -89,6 +89,8 @@ bool JSDebugger::RemoveBreakpoint(const JSPtLocation &location)
 void JSDebugger::RemoveAllBreakpoints()
 {
     breakpoints_.clear();
+    smartBreakpoints_.clear();
+    symbolicBreakpoints_.clear();
 }
 
 bool JSDebugger::RemoveBreakpointsByUrl(const std::string &url)
