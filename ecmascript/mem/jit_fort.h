@@ -130,6 +130,7 @@ public:
     inline void ClearMark(uintptr_t addr)
     {
         // The byte offset of addr within the region.
+        LOG_JIT(INFO) << "JitFortGCBitset::ClearMark, addr: " << reinterpret_cast<void*>(addr);
         uintptr_t offset = (addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG;
         ClearBit<AccessType::ATOMIC>(offset);
     }
