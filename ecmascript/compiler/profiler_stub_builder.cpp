@@ -275,7 +275,6 @@ void ProfilerStubBuilder::ProfileCall(
                     GateRef newCallCnt = Int32Add(callCnt, Int32(1));
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, slotValue, Int32(FuncSlot::CALL_CNT_INDEX),
                                           IntToTaggedInt(newCallCnt));
-                    TryPreDumpInner(glue, func, profileTypeInfo);
                     Jump(&exit);
                 }
                 Bind(&change);
