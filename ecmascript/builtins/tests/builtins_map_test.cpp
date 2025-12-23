@@ -367,4 +367,55 @@ HWTEST_F_L0(BuiltinsMapTest, Exception)
     TestHelper::TearDownFrame(thread, prev);
 }
 
+HWTEST_F_L0(BuiltinsMapTest, GetKeyTest001)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSMap> map(thread, CreateBuiltinsMap(thread));
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(map.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = BuiltinsMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_FALSE(result.IsJSSharedMap());
+        JSHandle<JSMap> jsSMap(thread, JSMap::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData())));
+        EXPECT_EQ(jsSMap->GetSize(thread), i + 1);
+    }
+    JSTaggedValue result = map->GetKey(thread, 0);
+    EXPECT_NE(result.GetRawData(), JSTaggedValue::Exception().GetRawData());
+}
+
+HWTEST_F_L0(BuiltinsMapTest, GetValueTest001)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSMap> map(thread, CreateBuiltinsMap(thread));
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(map.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = BuiltinsMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_FALSE(result.IsJSSharedMap());
+        JSHandle<JSMap> jsMap(thread, JSMap::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData())));
+        EXPECT_EQ(jsMap->GetSize(thread), i + 1);
+    }
+    JSTaggedValue result = map->GetValue(thread, 0);
+    EXPECT_NE(result.GetRawData(), JSTaggedValue::Exception().GetRawData());
+}
+
+HWTEST_F_L0(BuiltinsMapTest, DeleteTest001)
+{
+    JSHandle<JSMap> map(thread, CreateBuiltinsMap(thread));
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(10));
+    bool result = JSMap::Delete(thread, map, key);
+    ASSERT_EQ(result, false);
+}
 }  // namespace panda::test

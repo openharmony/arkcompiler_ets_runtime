@@ -426,3 +426,24 @@ one,two,three
 $123,456.79,$2,000.00
 123.456,79 $,2.000,00 $
 123.456,79 $,2.000,00 $,3,00 $,4,00 $,5,00 $
+Start Test subSendableArrayTest
+create SubSendableArray failed. err: TypeError: Callable is false, code: undefined
+An index of 1 returns 12
+An index of 2871622679 returns undefined
+false
+12
+5
+12
+8
+130
+44
+0
+1
+2
+3
+4
+findIndex failed. err: TypeError: the predicate is not callable., code: undefined
+5,12,0,0,44
+4
+5,12,0,0,10
+slice element failed. err: TypeError: Callable is false, code: undefined

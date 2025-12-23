@@ -564,6 +564,17 @@ function testOverInt32Key() {
     print(str1)
 }
 
+function testOverDoubleKey() {
+    let jsonText = '{"9007199254740992":{"number":"9007199254740992"}}';
+    let obj = JSON.parseSendable(jsonText);
+    let str = JSON.stringify(obj);
+    print(str)
+    let jsonText1 = '{"9007199254740999":{"number":"9007199254740992"}}';
+    let obj1 = JSON.parseSendable(jsonText1);
+    let str1 = JSON.stringify(obj1);
+    print(str1)
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
@@ -579,3 +590,4 @@ testASONStringifyMapAndSetAndObj();
 testASONStringifyAfterClearMapAndSet();
 testASONStringifyMapSetAddUndefined();
 testOverInt32Key();
+testOverDoubleKey();

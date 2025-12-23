@@ -358,4 +358,126 @@ HWTEST_F_L0(BuiltinsSetTest, Exception)
     EXPECT_TRUE(result->IsUndefined());
     TestHelper::TearDownFrame(thread, prev);
 }
+
+HWTEST_F_L0(BuiltinsSetTest, CreateSetIteratorTest001)
+{
+    JSHandle<JSTaggedValue> jsSet(thread, CreateBuiltinsSet(thread));
+    EXPECT_TRUE(*jsSet != nullptr);
+    JSHandle<JSTaggedValue> setIteratorValue1 =
+    JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
+    EXPECT_EQ(setIteratorValue1->IsJSSetIterator(), true);
+}
+
+HWTEST_F_L0(BuiltinsSetTest, NextInternalTest001)
+{
+    JSTaggedValue setIteratorValue1 =
+    JSSetIterator::NextInternal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_EQ(setIteratorValue1.IsJSSharedSetIterator(), false);
+}
+
+HWTEST_F_L0(BuiltinsSetTest, DeleteTest001)
+{
+    JSHandle<JSSet> set(thread, CreateBuiltinsSet(thread));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(0));
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(1));
+    JSSet::Add(thread, set, value1);
+    JSSet::Add(thread, set, value2);
+    JSSet::Delete(thread, set, JSHandle<JSTaggedValue>(thread, JSTaggedValue(20)));
+}
+
+HWTEST_F_L0(BuiltinsSetTest, GetValue)
+{
+    JSHandle<JSTaggedValue> set(thread, CreateBuiltinsSet(thread));
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(set.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    JSTaggedValue result = BuiltinsSet::Values(ecmaRuntimeCallInfo);
+    JSHandle<JSSetIterator> iter(thread, result);
+    EXPECT_TRUE(result.IsJSSetIterator());
+    EXPECT_EQ(IterationKind::VALUE, IterationKind(iter->GetIterationKind()));
+
+    JSTaggedValue result2 = BuiltinsSet::Entries(ecmaRuntimeCallInfo);
+    JSHandle<JSSetIterator> iter2(thread, result2);
+    EXPECT_TRUE(result2.IsJSSetIterator());
+    EXPECT_EQ(IterationKind::KEY_AND_VALUE, iter2->GetIterationKind());
+}
+
+HWTEST_F_L0(BuiltinsSetTest, KEY_AND_VALUE_Next)
+{
+    JSHandle<JSTaggedValue> index0(thread, JSTaggedValue(0));
+    JSHandle<JSTaggedValue> index1(thread, JSTaggedValue(1));
+    JSHandle<JSSetIterator> setIterator;
+    JSHandle<JSSet> set(thread, CreateBuiltinsSet(thread));
+    EXPECT_TRUE(*set != nullptr);
+
+    for (int i = 0; i < 3; i++) {  // 3 : 3 default numberOfElements
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSSet::Add(thread, set, key);
+    }
+    // set IterationKind(key or value)
+    JSHandle<JSTaggedValue> setIteratorValue =
+        JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(set), IterationKind::KEY_AND_VALUE);
+    setIterator = JSHandle<JSSetIterator>(setIteratorValue);
+    std::vector<JSTaggedValue> args{JSTaggedValue::Undefined()};
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, setIteratorValue.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    for (int i = 0; i <= 3; i++) { // 3 : 3 default numberOfElements
+        JSTaggedValue result = JSSetIterator::Next(ecmaRuntimeCallInfo);
+        JSHandle<JSTaggedValue> resultObj(thread, result);
+        if (i < 3) {
+            JSHandle<JSArray> arrayList(thread, JSIterator::IteratorValue(thread, resultObj).GetTaggedValue());
+            EXPECT_EQ(setIterator->GetNextIndex(), static_cast<uint32_t>(i+1));
+            EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(arrayList), index0).GetValue()->GetInt(), i);
+            EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(arrayList), index1).GetValue()->GetInt(), i);
+        }
+        else {
+            EXPECT_EQ(JSIterator::IteratorValue(thread, resultObj).GetTaggedValue(), JSTaggedValue::Undefined());
+        }
+    }
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+HWTEST_F_L0(BuiltinsSetTest, KeyNext)
+{
+    JSHandle<JSSetIterator> setIterator;
+    JSHandle<JSSet> jsSet(thread, CreateBuiltinsSet(thread));
+    EXPECT_TRUE(*jsSet != nullptr);
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(0));
+    JSSet::Add(thread, jsSet, key);
+    JSHandle<JSTaggedValue> setIteratorValue =
+    JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
+    setIterator = JSHandle<JSSetIterator>(setIteratorValue);
+    std::vector args{JSTaggedValue::Undefined()};
+    auto ecmaRuntimeCallInfo =
+    TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, setIteratorValue.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = JSSetIterator::Next(ecmaRuntimeCallInfo);
+    EXPECT_EQ(result.IsJSSetIterator(), false);
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+HWTEST_F_L0(BuiltinsSetTest, ValueNext)
+{
+    JSHandle<JSSetIterator> setIterator;
+    JSHandle<JSSet> jsSet(thread, CreateBuiltinsSet(thread));
+    EXPECT_TRUE(*jsSet != nullptr);
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(0));
+    JSSet::Add(thread, jsSet, key);
+    JSHandle<JSTaggedValue> setIteratorValue =
+    JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::VALUE);
+    setIterator = JSHandle<JSSetIterator>(setIteratorValue);
+    std::vector args{JSTaggedValue::Undefined()};
+    auto ecmaRuntimeCallInfo =
+    TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, setIteratorValue.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = JSSetIterator::Next(ecmaRuntimeCallInfo);
+    EXPECT_EQ(result.IsJSSetIterator(), false);
+    TestHelper::TearDownFrame(thread, prev);
+}
+
 }  // namespace panda::test

@@ -88,4 +88,197 @@ HWTEST_F_L0(BuiltinsArrayBufferTest, slice1)
     ASSERT_EQ(result2.GetRawData(), JSTaggedValue(4).GetRawData());
     TestHelper::TearDownFrame(thread, prev);
 }
+
+/*
+
+@tc.name: isView1
+
+@tc.desc: Judging input parameter
+
+@tc.type: FUNC
+*/
+HWTEST_F_L0(BuiltinsArrayBufferTest, isView1)
+{
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(arrBuf.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(1)));
+    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(5)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsArrayBuffer::IsView(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_FALSE(result.JSTaggedValue::ToBoolean());
+}
+
+/*
+
+@tc.name: isView2
+
+@tc.desc: Judging input parameter
+
+@tc.type: FUNC
+*/
+HWTEST_F_L0(BuiltinsArrayBufferTest, isView2)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread,
+    JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(arrBuf.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsArrayBuffer::IsView(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_FALSE(result.JSTaggedValue::ToBoolean());
+}
+
+/*
+
+@tc.name: isView2
+
+@tc.desc: Judging input parameter
+
+@tc.type: FUNC
+*/
+HWTEST_F_L0(BuiltinsArrayBufferTest, isView3)
+{
+    JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSTaggedValue> obj(thread, arr);
+
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(arrBuf.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsArrayBuffer::IsView(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_FALSE(result.JSTaggedValue::ToBoolean());
+}
+
+/*
+
+@tc.name: isView2
+
+@tc.desc: Judging input parameter
+
+@tc.type: FUNC
+*/
+HWTEST_F_L0(BuiltinsArrayBufferTest, isView4)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    [[maybe_unused]] JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
+    array->Set(thread, 0, JSTaggedValue(2));
+    array->Set(thread, 1, JSTaggedValue(3));
+    array->Set(thread, 2, JSTaggedValue(4));
+
+    [[maybe_unused]] JSHandle<JSTaggedValue> obj =
+    JSHandle<JSTaggedValue>(thread, BuiltTestUtil::CreateTypedArray(thread, array));
+
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(arrBuf.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsArrayBuffer::IsView(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_TRUE(result.JSTaggedValue::ToBoolean());
+}
+
+/*
+
+@tc.name: isView2
+
+@tc.desc: Judging input parameter
+
+@tc.type: FUNC
+*/
+HWTEST_F_L0(BuiltinsArrayBufferTest, isView5)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    [[maybe_unused]] JSHandle<TaggedArray> array(factory->NewSTaggedArray(3));
+    array->Set(thread, 0, JSTaggedValue(2));
+    array->Set(thread, 1, JSTaggedValue(3));
+    array->Set(thread, 2, JSTaggedValue(4));
+
+    [[maybe_unused]] JSHandle<JSTaggedValue> obj =
+    JSHandle<JSTaggedValue>(thread, BuiltTestUtil::CreateSharedTypedArray(thread, array));
+
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(arrBuf.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsArrayBuffer::IsView(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_FALSE(result.JSTaggedValue::ToBoolean());
+}
+
+/*
+
+@tc.name: Species
+
+@tc.desc: Species Function
+
+@tc.type: FUNC
+*/
+HWTEST_F_L0(BuiltinsArrayBufferTest, Species)
+{
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSArrayBuffer> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(arrBuf.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsArrayBuffer::Species(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_TRUE(result.IsECMAObject());
+}
+
+/*
+
+@tc.name: IsDetached
+@tc.desc: IsDetached Function
+@tc.type: FUNC
+*/
+HWTEST_F_L0(BuiltinsArrayBufferTest, IsDetached)
+{
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSTaggedValue> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    bool result = BuiltinsArrayBuffer::IsDetachedBuffer(thread, arrBuf.GetTaggedValue());
+    ASSERT_FALSE(result);
+}
+/*
+
+@tc.name: IsDetached
+@tc.desc: CloneArrayBuffer Function
+@tc.type: FUNC
+*/
+HWTEST_F_L0(BuiltinsArrayBufferTest, CloneArrayBuffer)
+{
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSTaggedValue> arrBuf(thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    JSHandle<JSTaggedValue> constructor(thread, JSTaggedValue::Undefined());
+    BuiltinsArrayBuffer::CloneArrayBuffer(thread, arrBuf, 0, constructor);
+    bool result = BuiltinsArrayBuffer::IsDetachedBuffer(thread, arrBuf.GetTaggedValue());
+    ASSERT_FALSE(result);
+}
 }  // namespace panda::test
