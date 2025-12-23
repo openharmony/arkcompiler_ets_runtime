@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1404,4 +1404,467 @@ DebuggerApi::DebuggerManagedScope::~DebuggerManagedScope()
         }
     }
 }
+
+void DebuggerApi::CalculateStartAndEndIndex(int32_t &start, int32_t &end, int32_t &count)
+{
+    if (start >= end) {
+        start = 0;
+        return;
+    }
+    end = (start + count <= end) ? (start + count) : end;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetArrayListValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                          Global<MapRef> internalObjects, int32_t start,
+                                                          int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIArrayList> arrayList(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    uint32_t size = static_cast<uint32_t>(arrayList->GetSize(thread));
+    
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    uint32_t index = 0;
+ 
+    while (startIndex < end) {
+        currentValue.Update(arrayList->Get(thread, startIndex++));
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetDequeValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                      Global<MapRef> internalObjects, int32_t start,
+                                                      int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIDeque> deque(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    uint32_t size = static_cast<uint32_t>(deque->GetSize(thread));
+    
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    uint32_t index = 0;
+ 
+    while (startIndex < end) {
+        currentValue.Update(deque->Get(thread, startIndex++));
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetHashMapValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                        Global<MapRef> internalObjects, int32_t start,
+                                                        int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIHashMap> hashMap(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSHandle<TaggedHashArray> table(thread, hashMap->GetTable(thread));
+    uint32_t length = table->GetLength();
+    uint32_t size = static_cast<uint32_t>(hashMap->GetSize());
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(length);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSMutableHandle<TaggedQueue> queue(thread, factory->NewTaggedQueue(0));
+    JSMutableHandle<TaggedNode> node(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> currentKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    Local<JSValueRef> jsKey = StringRef::NewFromUtf8(ecmaVm, "key");
+    Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
+ 
+    uint32_t pos = 0;
+    uint32_t index = static_cast<uint32_t>(startIndex);
+    uint32_t endIndex = static_cast<uint32_t>(end);
+    while (index < endIndex) {
+        node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, index));
+        if (!node.GetTaggedValue().IsHole()) {
+            currentKey.Update(node->GetKey(thread));
+            currentValue.Update(node->GetValue(thread));
+            Local<ObjectRef> objRef = ObjectRef::New(ecmaVm);
+            objRef->Set(ecmaVm, jsKey, JSNApiHelper::ToLocal<JSValueRef>(currentKey));
+            objRef->Set(ecmaVm, jsValue, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+            AddInternalProperties(ecmaVm, objRef, ArkInternalValueType::Entry, internalObjects);
+            ArrayRef::SetValueAt(ecmaVm, jsValueRef, pos++, objRef);
+        }
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetHashSetValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                        Global<MapRef> internalObjects, int32_t start,
+                                                        int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIHashSet> hashSet(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSHandle<TaggedHashArray> table(thread, hashSet->GetTable(thread));
+    uint32_t length = table->GetLength();
+    uint32_t size = static_cast<uint32_t>(hashSet->GetSize());
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(length);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSMutableHandle<TaggedQueue> queue(thread, factory->NewTaggedQueue(0));
+    JSMutableHandle<TaggedNode> node(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> currentKey(thread, JSTaggedValue::Undefined());
+    Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
+    uint32_t pos = 0;
+    uint32_t index = static_cast<uint32_t>(startIndex);
+    uint32_t endIndex = static_cast<uint32_t>(end);
+ 
+    while (index < endIndex) {
+        node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, index));
+        if (!node.GetTaggedValue().IsHole()) {
+            currentKey.Update(node->GetKey(thread));
+            if (currentKey->IsECMAObject()) {
+                Local<ObjectRef> objRef = ObjectRef::New(ecmaVm);
+                objRef->Set(ecmaVm, jsValue, JSNApiHelper::ToLocal<JSValueRef>(currentKey));
+                AddInternalProperties(ecmaVm, objRef, ArkInternalValueType::Entry, internalObjects);
+                ArrayRef::SetValueAt(ecmaVm, jsValueRef, pos++, objRef);
+            } else {
+                ArrayRef::SetValueAt(ecmaVm, jsValueRef, pos++, JSNApiHelper::ToLocal<JSValueRef>(currentKey));
+            }
+        }
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetLightWeightMapValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                               Global<MapRef> internalObjects, int32_t start,
+                                                               int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPILightWeightMap> lightweightMap(JSNApiHelper::ToJSHandle(value));
+    uint32_t size  = static_cast<uint32_t>(lightweightMap->GetSize());
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSMutableHandle<TaggedArray> keys(thread, lightweightMap->GetKeys(thread));
+    JSMutableHandle<TaggedArray> values(thread, lightweightMap->GetValues(thread));
+    JSMutableHandle<JSTaggedValue> currentKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    Local<JSValueRef> jsKey = StringRef::NewFromUtf8(ecmaVm, "key");
+    Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
+    uint32_t index = 0;
+    while (startIndex < end) {
+        currentKey.Update(keys->Get(thread, startIndex));
+        currentValue.Update(values->Get(thread, startIndex));
+        Local<ObjectRef> objRef = ObjectRef::New(ecmaVm);
+        objRef->Set(ecmaVm, jsKey, JSNApiHelper::ToLocal<JSValueRef>(currentKey));
+        objRef->Set(ecmaVm, jsValue, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+        AddInternalProperties(ecmaVm, objRef, ArkInternalValueType::Entry, internalObjects);
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, objRef);
+        startIndex++;
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetLightWeightSetValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                               Global<MapRef> internalObjects, int32_t start,
+                                                               int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPILightWeightSet> lightWeightSet(JSNApiHelper::ToJSHandle(value));
+    uint32_t size = static_cast<uint32_t>(lightWeightSet->GetSize());
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
+    uint32_t index = 0;
+    while (startIndex < end) {
+        currentValue.Update(lightWeightSet->GetValueAt(thread, startIndex++));
+        if (currentValue->IsECMAObject()) {
+            Local<ObjectRef> objRef = ObjectRef::New(ecmaVm);
+            objRef->Set(ecmaVm, jsValue, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+            AddInternalProperties(ecmaVm, objRef, ArkInternalValueType::Entry, internalObjects);
+            ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, objRef);
+        } else {
+            ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+        }
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetLinkedListValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                           Global<MapRef> internalObjects, int32_t start,
+                                                           int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPILinkedList> linkedList(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSHandle<TaggedDoubleList> doubleList(thread, linkedList->GetDoubleList(thread));
+    uint32_t size = static_cast<uint32_t>(linkedList->Length(thread));
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    int valueNode = TaggedDoubleList::ELEMENTS_START_INDEX;
+    int32_t index = 0;
+    // skip first startIndex's node
+    while (index < startIndex) {
+        valueNode = doubleList->GetNextDataIndex(valueNode);
+        index++;
+    }
+    index = 0;
+    while (startIndex < end) {
+        valueNode = doubleList->GetNextDataIndex(valueNode);
+        currentValue.Update(doubleList->GetElement(thread, valueNode));
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, static_cast<uint32_t>(index++),
+            JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+        startIndex++;
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetListValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                     Global<MapRef> internalObjects, int32_t start,
+                                                     int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIList> list(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList(thread));
+    uint32_t size = static_cast<uint32_t>(list->Length(thread));
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    int valueNode = TaggedDoubleList::ELEMENTS_START_INDEX;
+    int32_t index = 0;
+    // skip first startIndex's node
+    while (index < startIndex) {
+        valueNode = singleList->GetNextDataIndex(valueNode);
+        index++;
+    }
+    while (startIndex < end) {
+        valueNode = singleList->GetNextDataIndex(valueNode);
+        currentValue.Update(singleList->GetElement(thread, valueNode));
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, static_cast<uint32_t>(index++),
+            JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+        startIndex++;
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetPlainArrayValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                           Global<MapRef> internalObjects, int32_t start,
+                                                           int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIPlainArray> plainarray(JSNApiHelper::ToJSHandle(value));
+    uint32_t size = static_cast<uint32_t>(plainarray->GetSize());
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSHandle<TaggedArray> keyArray(thread, plainarray->GetKeys(thread));
+    JSHandle<TaggedArray> valueArray(thread, plainarray->GetValues(thread));
+    JSMutableHandle<JSTaggedValue> currentKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    Local<JSValueRef> jsKey = StringRef::NewFromUtf8(ecmaVm, "key");
+    Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
+    uint32_t index = 0;
+    while (startIndex < end) {
+        currentKey.Update(keyArray->Get(thread, startIndex));
+        currentValue.Update(valueArray->Get(thread, startIndex));
+        Local<ObjectRef> objRef = ObjectRef::New(ecmaVm);
+        objRef->Set(ecmaVm, jsKey, JSNApiHelper::ToLocal<JSValueRef>(currentKey));
+        objRef->Set(ecmaVm, jsValue, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+        AddInternalProperties(ecmaVm, objRef, ArkInternalValueType::Entry, internalObjects);
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, objRef);
+        startIndex++;
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetQueueValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                      Global<MapRef> internalObjects, int32_t start,
+                                                      int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIQueue> queue(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    uint32_t size = static_cast<uint32_t>(queue->GetSize(thread));
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    uint32_t index = 0;
+    while (startIndex < end) {
+        currentValue.Update(queue->Get(thread, startIndex));
+        startIndex = queue->GetNextPosition(thread, startIndex);
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetStackValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                      Global<MapRef> internalObjects, int32_t start,
+                                                      int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIStack> stack(JSNApiHelper::ToJSHandle(value));
+    uint32_t size = static_cast<uint32_t>(stack->GetSize() + 1);
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    
+    uint32_t index = 0;
+    while (startIndex < end) {
+        currentValue.Update(stack->Get(thread, startIndex++));
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetTreeMapValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                        Global<MapRef> internalObjects, int32_t start,
+                                                        int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPITreeMap> treeMap(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    uint32_t size = static_cast<uint32_t>(treeMap->GetSize(thread));
+    JSMutableHandle<TaggedTreeMap> iteratedMap(thread, treeMap->GetTreeMap(thread));
+    uint32_t elements = static_cast<uint32_t>(iteratedMap->NumberOfElements());
+ 
+    originalSize = elements;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(elements);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+ 
+    JSHandle<TaggedArray> entries = TaggedTreeMap::GetArrayFromMap(thread, iteratedMap);
+    JSMutableHandle<JSTaggedValue> currentKey(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    Local<JSValueRef> jsKey = StringRef::NewFromUtf8(ecmaVm, "key");
+    Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
+    uint32_t index = 0;
+    while (startIndex < end) {
+        int entriesIndex = entries->Get(thread, startIndex++).GetInt();
+        currentKey.Update(iteratedMap->GetKey(thread, entriesIndex));
+        currentValue.Update(iteratedMap->GetValue(thread, entriesIndex));
+        Local<ObjectRef> objRef = ObjectRef::New(ecmaVm);
+        objRef->Set(ecmaVm, jsKey, JSNApiHelper::ToLocal<JSValueRef>(currentKey));
+        objRef->Set(ecmaVm, jsValue, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+        AddInternalProperties(ecmaVm, objRef, ArkInternalValueType::Entry, internalObjects);
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, objRef);
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetTreeSetValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                        Global<MapRef> internalObjects, int32_t start,
+                                                        int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPITreeSet> treeSet(JSNApiHelper::ToJSHandle(value));
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSMutableHandle<TaggedTreeSet> iteratedSet(thread, treeSet->GetTreeSet(thread));
+    uint32_t elements = static_cast<uint32_t>(iteratedSet->NumberOfElements());
+ 
+    originalSize = elements;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(elements);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSHandle<TaggedArray> entries = TaggedTreeSet::GetArrayFromSet(thread, iteratedSet);
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
+    uint32_t index = 0;
+    while (startIndex < end) {
+        int entriesIndex = entries->Get(thread, startIndex++).GetInt();
+        currentValue.Update(iteratedSet->GetKey(thread, entriesIndex));
+        if (currentValue->IsECMAObject()) {
+            Local<ObjectRef> objRef = ObjectRef::New(ecmaVm);
+            objRef->Set(ecmaVm, jsValue, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+            AddInternalProperties(ecmaVm, objRef, ArkInternalValueType::Entry, internalObjects);
+            ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, objRef);
+        } else {
+            ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+        }
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+ 
+Local<JSValueRef> DebuggerApi::GetVectorValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                       Global<MapRef> internalObjects, int32_t start,
+                                                       int32_t count, uint32_t &originalSize)
+{
+    JSHandle<JSAPIVector> vector(JSNApiHelper::ToJSHandle(value));
+    uint32_t size = static_cast<uint32_t>(vector->GetSize());
+ 
+    originalSize = size;
+    int32_t startIndex = start;
+    int32_t end = static_cast<int32_t>(size);
+    CalculateStartAndEndIndex(startIndex, end, count);
+ 
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    JSThread *thread = ecmaVm->GetJSThread();
+    JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
+    uint32_t index = 0;
+    while (startIndex < end) {
+        currentValue.Update(vector->Get(thread, vector, startIndex++));
+        ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
+    }
+    AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+    return jsValueRef;
+}
+
 }  // namespace panda::ecmascript::tooling
