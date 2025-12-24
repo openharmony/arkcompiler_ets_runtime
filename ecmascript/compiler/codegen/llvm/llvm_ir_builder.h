@@ -110,6 +110,7 @@ public:
     void SetUpForBytecodeHandlerStubs();
     void SetUpForBytecodeStwCopyHandlerStubs();
     void SetUpForBuiltinsStubs();
+    void SetUpForBuiltinsStwCopyStubs();
     void SetUpForBaselineStubs();
 
     LLVMValueRef AddFunc(const panda::ecmascript::MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile);

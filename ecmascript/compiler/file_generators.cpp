@@ -514,6 +514,9 @@ Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::
         case StubFileKind::BC_STW_COPY:
             m->SetUpForBytecodeStwCopyHandlerStubs();
             break;
+        case StubFileKind::BUILTIN_STW_COPY:
+            m->SetUpForBuiltinsStwCopyStubs();
+            break;
         default:
             LOG_ECMA(FATAL) << "unsupported stub file kind";
             UNREACHABLE();

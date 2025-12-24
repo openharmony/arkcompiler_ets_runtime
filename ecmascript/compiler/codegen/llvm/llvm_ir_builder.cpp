@@ -3189,7 +3189,13 @@ void LLVMModule::SetUpForBytecodeStwCopyHandlerStubs()
 
 void LLVMModule::SetUpForBuiltinsStubs()
 {
-    BuiltinsStubCSigns::GetCSigns(callSigns_);
+    BuiltinsStubCSigns::GetNormalCSigns(callSigns_);
+    InitialLLVMFuncTypeAndFuncByModuleCSigns();
+}
+
+void LLVMModule::SetUpForBuiltinsStwCopyStubs()
+{
+    BuiltinsStubCSigns::GetStwCopyCSigns(callSigns_);
     InitialLLVMFuncTypeAndFuncByModuleCSigns();
 }
 
