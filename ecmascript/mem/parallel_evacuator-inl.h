@@ -70,7 +70,7 @@ bool ParallelEvacuator::TryWholeRegionEvacuate(Region *region, RegionEvacuateTyp
 
 bool ParallelEvacuator::UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlot &slot, bool isWeak)
 {
-    MarkWord markWord(object);
+    MarkWord markWord(object, RELAXED_LOAD);
     if (markWord.IsForwardingAddress()) {
         TaggedObject *dst = markWord.ToForwardingAddress();
         if (isWeak) {
@@ -149,7 +149,7 @@ void ParallelEvacuator::UpdateObjectSlot(ObjectSlot &slot)
             return UpdateWeakObjectSlot(value.GetTaggedWeakRef(), slot);
         }
         TaggedObject *object = value.GetTaggedObject();
-        MarkWord markWord(object);
+        MarkWord markWord(object, RELAXED_LOAD);
         if (markWord.IsForwardingAddress()) {
             TaggedObject *dst = markWord.ToForwardingAddress();
             slot.Update(dst);
@@ -235,7 +235,7 @@ void ParallelEvacuator::UpdateCrossRegionObjectSlot(ObjectSlot &slot)
 void ParallelEvacuator::UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &slot)
 {
     if (value.IsWeakForHeapObject()) {
-        MarkWord markWord(value.GetWeakReferent());
+        MarkWord markWord(value.GetWeakReferent(), RELAXED_LOAD);
         if (markWord.IsForwardingAddress()) {
             auto dst = static_cast<JSTaggedType>(ToUintPtr(markWord.ToForwardingAddress()));
             slot.Update(JSTaggedValue(dst).CreateAndGetWeakRef().GetRawData());
@@ -243,7 +243,7 @@ void ParallelEvacuator::UpdateObjectSlotValue(JSTaggedValue value, ObjectSlot &s
             slot.Clear();
         }
     } else {
-        MarkWord markWord(value.GetTaggedObject());
+        MarkWord markWord(value.GetTaggedObject(), RELAXED_LOAD);
         if (markWord.IsForwardingAddress()) {
             auto dst = reinterpret_cast<JSTaggedType>(markWord.ToForwardingAddress());
             slot.Update(dst);
@@ -345,7 +345,7 @@ TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAd
                 return oldAddress;
             }
         } else {
-            MarkWord markWord(oldAddress);
+            MarkWord markWord(oldAddress, RELAXED_LOAD);
             if (markWord.IsForwardingAddress()) {
                 return markWord.ToForwardingAddress();
             }

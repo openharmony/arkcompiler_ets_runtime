@@ -69,12 +69,12 @@ void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const BaseHeap *he
     if (!objectRegion->InInactiveSemiSpace()) { // LCOV_EXCL_START
         LogErrorForObj(heap, "Verify InactiveSemiSpaceMarkedObject: Object is not in InactiveSemiSpace.", object);
     } else {
-        MarkWord word(object);
-        if (!word.IsForwardingAddress()) {
+        MarkWord markWord(object, RELAXED_LOAD);
+        if (!markWord.IsForwardingAddress()) {
             LogErrorForObj(heap, "Verify InactiveSemiSpaceMarkedObject: not forwarding address.", object);
         } else {
             ObjectSlot slot(ToUintPtr(object));
-            TaggedObject *value = word.ToForwardingAddress();
+            TaggedObject *value = markWord.ToForwardingAddress();
             Region *valueRegion = Region::ObjectAddressToRange(value);
             if (valueRegion->InInactiveSemiSpace()) {
                 LogErrorForObjSlot(heap, "Verify InactiveSemiSpaceMarkedObject: forwarding address, "

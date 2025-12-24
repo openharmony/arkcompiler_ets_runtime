@@ -155,7 +155,7 @@ void DaemonThread::FinishRunningTask()
 {
     ASSERT(runningGroup_ != DaemonTaskGroup::NONE);
     ASSERT((postedGroups_ & static_cast<uint32_t>(runningGroup_)) != 0);
-    // Update to postedGroups_ is in DaemeanSuspendAll, and protected by the Runtime::mutatorLock_,
+    // Update to postedGroups_ is in DaemeanSuspendAll, and protected by `Runtime::SuspendAll`,
     // so do not need lock; the runningGroup_ is only used in daemon thread, so do not need lock too.
     postedGroups_ &= ~static_cast<uint32_t>(runningGroup_);
     runningGroup_ = DaemonTaskGroup::NONE;

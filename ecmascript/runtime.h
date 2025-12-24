@@ -68,16 +68,6 @@ public:
         return mainThread_;
     }
 
-    MutatorLock *GetMutatorLock()
-    {
-        return &mutatorLock_;
-    }
-
-    const MutatorLock *GetMutatorLock() const
-    {
-        return &mutatorLock_;
-    }
-
     template<class Callback>
     void GCIterateThreadList(const Callback &cb)
     {
@@ -419,7 +409,6 @@ private:
     std::list<JSThread*> threads_;
     uint32_t suspendNewCount_ {0};
     uint32_t serializeDataIndex_ {0};
-    MutatorLock mutatorLock_;
     std::atomic<bool> enableLargeHeap_ {false};
     bool sharedConstInited_ {false};
     GlobalEnvConstants globalConst_;

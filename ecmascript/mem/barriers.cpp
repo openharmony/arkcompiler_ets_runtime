@@ -248,7 +248,7 @@ JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
         return slot.GetTaggedType();
     }
     if (objectRegion->IsFromRegion()) {
-        MarkWord markWord(object);
+        MarkWord markWord(object, RELAXED_LOAD);
         TaggedObject *toObject = nullptr;
         if (markWord.IsForwardingAddress()) {
             toObject = markWord.ToForwardingAddress();

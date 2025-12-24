@@ -147,7 +147,7 @@ void FullGC::Sweep()
             return nullptr;
         }
 
-        MarkWord markWord(header);
+        MarkWord markWord(header, RELAXED_LOAD);
         if (markWord.IsForwardingAddress()) {
             return markWord.ToForwardingAddress();
         }
@@ -223,7 +223,7 @@ void FullGC::UpdateRecordWeakReference(uint32_t threadId)
                 slot.Clear();
             }
         } else {
-            MarkWord markWord(header);
+            MarkWord markWord(header, RELAXED_LOAD);
             if (markWord.IsForwardingAddress()) {
                 TaggedObject *dst = markWord.ToForwardingAddress();
                 auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawTaggedObject();

@@ -145,6 +145,7 @@ public:
     void PassStrongly()
     {
         [[maybe_unused]] int32_t oldCount = passBarrierCount_.fetch_sub(1, std::memory_order_seq_cst);
+        ASSERT(oldCount > 0);
 #if defined(PANDA_USE_FUTEX)
         if (oldCount == 1) {
             int32_t *addr = reinterpret_cast<int32_t*>(&passBarrierCount_);

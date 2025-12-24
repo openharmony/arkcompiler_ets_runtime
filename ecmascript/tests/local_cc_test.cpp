@@ -331,7 +331,7 @@ HWTEST_F_L0(LocalCCTest, EvacuatorCopyTest)
     constexpr size_t OBJ_SIZE = 3_KB;
     JSHandle<TaggedArray> testArray = AllocateWithoutGC(OBJ_SIZE);
     TaggedObject *testObject = testArray.GetTaggedValue().GetTaggedObject();
-    MarkWord markWord(testObject);
+    MarkWord markWord(testObject, RELAXED_LOAD);
     CCEvacuator *mainEvacuator = thread->GetLocalCCEvacuator();
     thread->SetReadBarrierState(true);
     thread->SetCCStatus(CCStatus::COPYING);

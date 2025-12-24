@@ -416,7 +416,7 @@ void ParallelEvacuator::UpdateWeakReferenceOpt()
                 return header;
             }
         } else {
-            MarkWord markWord(header);
+            MarkWord markWord(header, RELAXED_LOAD);
             if (markWord.IsForwardingAddress()) {
                 return markWord.ToForwardingAddress();
             }

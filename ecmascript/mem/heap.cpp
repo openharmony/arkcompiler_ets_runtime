@@ -649,7 +649,7 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
 #endif
         dThread_->FinishRunningTask();
         NotifyGCCompleted();
-        // Update to forceGC_ is in DaemeanSuspendAll, and protected by the Runtime::mutatorLock_,
+        // Update to forceGC_ is in DaemeanSuspendAll, and protected by the `Runtime::SuspendAll`,
         // so do not need lock.
         smartGCStats_.forceGC_ = false;
     }

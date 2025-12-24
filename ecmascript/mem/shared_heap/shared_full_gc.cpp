@@ -96,7 +96,7 @@ void SharedFullGC::Sweep()
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
         if (objectRegion->InSharedOldSpace()) {
-            MarkWord markWord(header);
+            MarkWord markWord(header, RELAXED_LOAD);
             if (markWord.IsForwardingAddress()) {
                 return markWord.ToForwardingAddress();
             }
@@ -159,7 +159,7 @@ void SharedFullGC::UpdateRecordWeakReference()
                     slot.Clear();
                 }
             } else {
-                MarkWord markWord(header);
+                MarkWord markWord(header, RELAXED_LOAD);
                 if (markWord.IsForwardingAddress()) {
                     TaggedObject *dst = markWord.ToForwardingAddress();
                     auto weakRef = JSTaggedValue(JSTaggedValue(dst).CreateAndGetWeakRef()).GetRawTaggedObject();
