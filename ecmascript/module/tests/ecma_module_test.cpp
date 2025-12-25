@@ -4614,4 +4614,760 @@ HWTEST_F_L0(EcmaModuleTest, MemoryReleasedAfterEvaluated4)
     delete moduleLogger;
 }
 
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_001)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    // Test AddImportEntry with large index
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1001, 2001);
+
+    // Test AddLocalExportEntry with distinct strings
+    CString localName = "stress_local_001";
+    CString exportName = "stress_export_001";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    // Test StoreModuleValue
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_001"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_001"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+
+    JSHandle<TaggedArray> importEntries(thread, module->GetImportEntries(thread));
+    EXPECT_TRUE(importEntries->GetLength() >= 1U);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_002)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1002, 2002);
+
+    CString localName = "stress_local_002";
+    CString exportName = "stress_export_002";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_002"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_002"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_003)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1003, 2003);
+
+    CString localName = "stress_local_003";
+    CString exportName = "stress_export_003";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_003"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_003"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_004)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1004, 2004);
+
+    CString localName = "stress_local_004";
+    CString exportName = "stress_export_004";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_004"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_004"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_005)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1005, 2005);
+
+    CString localName = "stress_local_005";
+    CString exportName = "stress_export_005";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_005"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_005"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_006)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1006, 2006);
+
+    CString localName = "stress_local_006";
+    CString exportName = "stress_export_006";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_006"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_006"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_007)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1007, 2007);
+
+    CString localName = "stress_local_007";
+    CString exportName = "stress_export_007";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_007"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_007"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_008)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1008, 2008);
+
+    CString localName = "stress_local_008";
+    CString exportName = "stress_export_008";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_008"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_008"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_009)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1009, 2009);
+
+    CString localName = "stress_local_009";
+    CString exportName = "stress_export_009";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_009"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_009"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_010)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1010, 2010);
+
+    CString localName = "stress_local_010";
+    CString exportName = "stress_export_010";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_010"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_010"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_011)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1011, 2011);
+
+    CString localName = "stress_local_011";
+    CString exportName = "stress_export_011";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_011"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_011"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_012)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1012, 2012);
+
+    CString localName = "stress_local_012";
+    CString exportName = "stress_export_012";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_012"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_012"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_013)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1013, 2013);
+
+    CString localName = "stress_local_013";
+    CString exportName = "stress_export_013";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_013"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_013"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_014)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1014, 2014);
+
+    CString localName = "stress_local_014";
+    CString exportName = "stress_export_014";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_014"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_014"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_015)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1015, 2015);
+
+    CString localName = "stress_local_015";
+    CString exportName = "stress_export_015";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_015"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_015"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_016)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1016, 2016);
+
+    CString localName = "stress_local_016";
+    CString exportName = "stress_export_016";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_016"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_016"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_017)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1017, 2017);
+
+    CString localName = "stress_local_017";
+    CString exportName = "stress_export_017";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_017"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_017"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_018)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1018, 2018);
+
+    CString localName = "stress_local_018";
+    CString exportName = "stress_export_018";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_018"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_018"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_019)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1019, 2019);
+
+    CString localName = "stress_local_019";
+    CString exportName = "stress_export_019";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_019"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_019"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_020)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1020, 2020);
+
+    CString localName = "stress_local_020";
+    CString exportName = "stress_export_020";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_020"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_020"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_021)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1021, 2021);
+
+    CString localName = "stress_local_021";
+    CString exportName = "stress_export_021";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_021"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_021"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_022)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1022, 2022);
+
+    CString localName = "stress_local_022";
+    CString exportName = "stress_export_022";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_022"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_022"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_023)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1023, 2023);
+
+    CString localName = "stress_local_023";
+    CString exportName = "stress_export_023";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_023"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_023"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_024)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1024, 2024);
+
+    CString localName = "stress_local_024";
+    CString exportName = "stress_export_024";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_024"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_024"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_025)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1025, 2025);
+
+    CString localName = "stress_local_025";
+    CString exportName = "stress_export_025";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_025"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_025"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_026)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1026, 2026);
+
+    CString localName = "stress_local_026";
+    CString exportName = "stress_export_026";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_026"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_026"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_027)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1027, 2027);
+
+    CString localName = "stress_local_027";
+    CString exportName = "stress_export_027";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_027"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_027"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_028)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1028, 2028);
+
+    CString localName = "stress_local_028";
+    CString exportName = "stress_export_028";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_028"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_028"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_029)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1029, 2029);
+
+    CString localName = "stress_local_029";
+    CString exportName = "stress_export_029";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_029"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_029"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_030)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<ImportEntry> importEntry1 = objectFactory->NewImportEntry();
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 1030, 2030);
+
+    CString localName = "stress_local_030";
+    CString exportName = "stress_export_030";
+    JSHandle<JSTaggedValue> localNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName));
+    JSHandle<JSTaggedValue> exportNameHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(exportNameHandle, localNameHandle, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                           SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry, 0, 10);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("key_030"));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val_030"));
+    SourceTextModule::StoreModuleValue(thread, module, storeKey, valueHandle);
+
+    JSTaggedValue loadValue = module->GetModuleValue(thread, storeKey.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
+}
+
 }  // namespace panda::test
