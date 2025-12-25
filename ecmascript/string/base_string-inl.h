@@ -944,13 +944,13 @@ int32_t BaseString::IndexOf(common::Span<const T1> &lhsSp, common::Span<const T2
 // CC-OFFNXT(G.FUD.06) perf critical
 inline bool BaseString::CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len)
 {
-#ifdef ENABLE_HISPEED_PLUGIN
+#if ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
     auto hispeedUtf8CanBeCompressed =
         common::utf_helper::HispeedLibSingleton::GetInstance().GetHispeedUtf8CanBeCompressed();
     if (hispeedUtf8CanBeCompressed != nullptr) {
         return hispeedUtf8CanBeCompressed(utf8Data, utf8Len);
     }
-#endif // ENABLE_HISPEED_PLUGIN
+#endif // ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
 
     uint32_t index = 0;
     for (; index + 4 <= utf8Len; index += 4) {  // 4: process the data in chunks of 4 elements to improve speed
@@ -976,13 +976,13 @@ inline bool BaseString::CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Le
 // CC-OFFNXT(G.FUD.06) perf critical
 inline bool BaseString::CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len)
 {
-#ifdef ENABLE_HISPEED_PLUGIN
+#if ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
     auto hispeedUtf16CanBeCompressed =
         common::utf_helper::HispeedLibSingleton::GetInstance().GetHispeedUtf16CanBeCompressed();
     if (hispeedUtf16CanBeCompressed != nullptr) {
         return hispeedUtf16CanBeCompressed(utf16Data, utf16Len);
     }
-#endif // ENABLE_HISPEED_PLUGIN
+#endif // ENABLE_LATEST_OPTIMIZATION && defined(ENABLE_HISPEED_PLUGIN)
 
     uint32_t index = 0;
     for (; index + 4 <= utf16Len; index += 4) {  // 4: process the data in chunks of 4 elements to improve speed
