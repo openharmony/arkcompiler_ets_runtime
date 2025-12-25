@@ -14,20 +14,20 @@
 Start Test newsharedclassfrom
 bitvector pass
 TestBitVector  0
-TestBitVector  1
-TestBitVector  2
-TestBitVector  3
-TestBitVector  4
-TestBitVector  5
-TestBitVector  6
-TestBitVector  7
-TestBitVector  8
-TestBitVector  9
-TestBitVector  10
-TestBitVector  -1
-TestBitVector  -10
-TestBitVector  1
-TestBitVector  -10
+TestBitVector  0
+TestBitVector  0
+TestBitVector  0
+TestBitVector  0
+TestBitVector  0
+TestBitVector  0
+TestBitVector  0
+TestBitVector  0
+TestBitVector  0
+TestBitVector failed. code: 10200001
+TestBitVector failed. code: 10200001
+TestBitVector failed. code: 10200001
+TestBitVector  undefined
+TestBitVector  undefined
 TestBitVectorPop pop  1
 TestBitVectorPop length  11
 TestBitVectorHas has  true
@@ -39,6 +39,14 @@ TestBitVectorHas has failed. code: 10200001
 TestBitVectorHas has failed. code: 10200001
 TestBitVectorPop has  false
 TestBitVectorPop has  false
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
+TestBitVectorHas has failed. code: 10200001
 TestBitVectorSetBitsByRange  0
 TestBitVectorSetBitsByRange  0
 TestBitVectorSetBitsByRange  1
@@ -49,6 +57,19 @@ TestBitVectorSetBitsByRange  1
 TestBitVectorSetBitsByRange  0
 TestBitVectorSetBitsByRange  0
 TestBitVectorSetBitsByRange  1
+setBitsByRange failed. code: 10200001
+setBitsByRange failed. code: 10200001
+setBitsByRange failed. code: 10200001
+setBitsByRange failed. code: 10200001
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+TestBitVectorSetBitsByRange  1
+setBitsByRange failed. code: 10200001
 setBitsByRange failed. code: 10200001
 setBitsByRange failed. code: 10200001
 setBitsByRange failed. code: 10200001
@@ -65,6 +86,15 @@ TestBitVectorSetAllBits  1
 TestBitVectorSetAllBits  0
 TestBitVectorSetAllBits  0
 TestBitVectorSetAllBits  0
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
+TestBitVectorSetAllBits  1
 TestBitVectorSetAllBits  1
 TestBitVectorSetAllBits  1
 TestBitVectorSetAllBits  1
@@ -93,6 +123,16 @@ TestBitVectorGetBitsByRange failed. code: 10200001
 TestBitVectorGetBitsByRange failed. code: 10200001
 TestBitVectorGetBitsByRange failed. code: 10200001
 TestBitVectorGetBitsByRange failed. code: 10200001
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
+TestBitVectorGetBitsByRange failed. code: 401
 TestBitVectorResize length  20
 TestBitVectorResize length  5
 TestBitVectorResize failed. code: 10200001
