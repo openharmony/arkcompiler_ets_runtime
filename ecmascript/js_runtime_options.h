@@ -538,8 +538,7 @@ public:
     int GetDefaultProperties()
     {
         return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP |
-               ArkProperties::ENABLE_ARKTOOLS | ArkProperties::ENABLE_IDLE_GC |
-               ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT;
+               ArkProperties::ENABLE_ARKTOOLS | ArkProperties::ENABLE_IDLE_GC;
     }
 
     int GetArkProperties()
