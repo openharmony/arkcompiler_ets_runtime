@@ -1208,4 +1208,23 @@ bool DFXJSNApi::LoadHookModule(const EcmaVM *vm)
     const CString path(ecmascript::ohos::OhosConstants::HOOK_FILE_PATH);
     return JSPandaFileExecutor::ExecuteInsecureAbcFile(vm->GetJSThread(), path);
 }
+
+void DFXJSNApi::SetEnableRuntimeAsyncStack(EcmaVM *vm, bool state)
+{
+#if defined(ENABLE_ASYNC_STACK)
+    vm->SetEnableRuntimeAsyncStack(state);
+#else
+    LOG_ECMA(ERROR) << "Not support runtime async stack trace";
+#endif
+}
+
+bool DFXJSNApi::GetEnableRuntimeAsyncStack(const EcmaVM *vm)
+{
+#if defined(ENABLE_ASYNC_STACK)
+    return vm->IsEnableRuntimeAsyncStack();
+#else
+    LOG_ECMA(ERROR) << "Not support runtime async stack trace";
+    return false;
+#endif
+}
 } // namespace panda

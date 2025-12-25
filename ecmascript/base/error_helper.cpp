@@ -18,6 +18,7 @@
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/platform/log.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 
 namespace panda::ecmascript::base {
 JSTaggedValue ErrorHelper::ErrorCommonToString(EcmaRuntimeCallInfo *argv, const ErrorType &errorType)
@@ -203,11 +204,20 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         globalConst->GetHandledStackString(), stackDesc);
     ASSERT_PRINT(status == true, "return result exception!");
 
-    // Uncaught exception parsing source code
-    PropertyDescriptor topStackDesc(thread, JSHandle<JSTaggedValue>::Cast(stackTraceStr), true, false, true);
-    [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
-        globalConst->GetHandledTopStackString(), topStackDesc);
-    ASSERT_PRINT(topStackstatus == true, "return result exception!");
+    // Add async stack trace
+    if (UNLIKELY(ecmaVm->IsEnableRuntimeAsyncStack())) {
+        std::string asyncStackTrace;
+        ecmaVm->GetAsyncStackTraceManager()->BuildAsyncStackTrace(asyncStackTrace);
+        if (!asyncStackTrace.empty()) {
+            JSHandle<EcmaString> asyncStackTraceStr = factory->NewFromStdString(asyncStackTrace);
+            PropertyDescriptor asyncStackDesc(thread,
+                JSHandle<JSTaggedValue>::Cast(asyncStackTraceStr), true, false, true);
+            [[maybe_unused]] bool asyncStackstatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
+                globalConst->GetHandledAsyncStackString(), asyncStackDesc);
+            ASSERT_PRINT(asyncStackstatus == true, "return result exception!");
+            PrintJSErrorInfo(thread, JSHandle<JSTaggedValue>::Cast(nativeInstanceObj));
+        }
+    }
 
     // 5. Return O.
     return nativeInstanceObj.GetTaggedValue();
@@ -224,6 +234,17 @@ void ErrorHelper::PrintJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedValu
                               ? stackBuffer
                               : std::regex_replace(stackBuffer, std::regex(".+(\n|$)"),
                                                    panda::ecmascript::previewerTag + "$0"));
+    if (UNLIKELY(thread->GetEcmaVM()->IsEnableRuntimeAsyncStack())) {
+        CString asyncStackBuffer = GetJSErrorInfo(thread, exceptionInfo, JSErrorProps::ASYNC_STACK);
+        std::ostringstream oss;
+        std::istringstream iss(asyncStackBuffer.c_str());
+        oss << "AsyncStack:\n";
+        std::string line;
+        while (std::getline(iss, line)) {
+            oss << "    " << line << "\n";
+        }
+        LOG_NO_TAG(ERROR) << oss.str();
+    }
 }
 
 // static
@@ -239,6 +260,9 @@ CString ErrorHelper::GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedVal
             break;
         case JSErrorProps::STACK:
             keyStr = thread->GlobalConstants()->GetHandledStackString();
+            break;
+        case JSErrorProps::ASYNC_STACK:
+            keyStr = thread->GlobalConstants()->GetHandledAsyncStackString();
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable " << key;

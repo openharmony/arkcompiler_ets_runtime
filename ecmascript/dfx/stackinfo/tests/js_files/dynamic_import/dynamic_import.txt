@@ -1,0 +1,2 @@
+index.js;index;esm;index.js;xxindexxx
+export.js;export;esm;export.js;xxexportxx

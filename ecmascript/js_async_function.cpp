@@ -77,6 +77,14 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
         thread->GetEcmaVM()->GetAsyncStackTrace()->InsertAsyncTaskStacks(
             JSHandle<JSPromise>(thread, asyncFun->GetPromise(thread)), "await");
     }
+
+    // For runtime async stack recording
+    if (UNLIKELY(vm->IsEnableRuntimeAsyncStack()) && asyncFuncObj->IsAsyncFuncObject()) {
+        JSHandle<JSAsyncFuncObject> asyncFun(thread,
+            JSHandle<GeneratorContext>::Cast(asyncCtxt)->GetGeneratorObject(thread));
+        vm->GetAsyncStackTraceManager()->SavePromiseNode(JSHandle<JSPromise>(thread, asyncFun->GetPromise(thread)));
+    }
+
     // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).
     JSHandle<JSObject> promise = JSHandle<JSObject>::Cast(promiseValue);
     BuiltinsPromise::PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise),
@@ -91,6 +99,10 @@ void JSAsyncFunction::AsyncFunctionAwait(JSThread *thread, const JSHandle<JSTagg
     if (thread->GetEcmaVM()->GetJsDebuggerManager()->IsAsyncStackTrace()) {
         thread->GetEcmaVM()->GetAsyncStackTrace()->InsertAsyncTaskStacks(
             JSHandle<JSPromise>(thread, tcap->GetPromise(thread)), "await");
+    }
+    // For runtime async stack recording
+    if (UNLIKELY(vm->IsEnableRuntimeAsyncStack())) {
+        vm->GetAsyncStackTraceManager()->SavePromiseNode(JSHandle<JSPromise>(thread, tcap->GetPromise(thread)));
     }
 
     // 10.Perform ! PerformPromiseThen(promiseCapability.[[Promise]], onFulfilled, onRejected, throwawayCapability).

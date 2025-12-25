@@ -177,6 +177,8 @@ public:
     static void ReplaceFunctionForHook(const EcmaVM *vm, ecmascript::JSHandle<JSTaggedValue> &target,
         ecmascript::JSHandle<JSTaggedValue> &hook, ecmascript::JSHandle<JSTaggedValue> &backup);
     static bool LoadHookModule(const EcmaVM *vm);
+    static void SetEnableRuntimeAsyncStack(EcmaVM *vm, bool state);
+    static bool GetEnableRuntimeAsyncStack(const EcmaVM *vm);
 };
 }
 #endif

@@ -64,6 +64,7 @@ class GCKeyStats;
 class CpuProfiler;
 class Tracing;
 class AsyncStackTrace;
+class AsyncStackTraceManager;
 class RegExpParserCache;
 class JSPromise;
 enum class PromiseRejectionEvent : uint8_t;
@@ -497,6 +498,11 @@ public:
     AsyncStackTrace *GetAsyncStackTrace() const
     {
         return asyncStackTrace_;
+    }
+
+    AsyncStackTraceManager *GetAsyncStackTraceManager() const
+    {
+        return asyncStackTraceManager_;
     }
 
     uint32_t GetAsyncTaskId();
@@ -1354,6 +1360,13 @@ public:
         return handleScopeDepth_;
     }
 
+    void SetEnableRuntimeAsyncStack(bool state);
+
+    bool IsEnableRuntimeAsyncStack() const
+    {
+        return enableRuntimeAsyncStack_;
+    }
+
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
 
@@ -1478,6 +1491,10 @@ private:
 
     // DFX
     AsyncStackTrace *asyncStackTrace_ {nullptr};
+
+    // For runtime async stack trace recording
+    bool enableRuntimeAsyncStack_ = false;
+    AsyncStackTraceManager *asyncStackTraceManager_ {nullptr};
 
     // isBundle means app compile mode is JSBundle
     bool isBundlePack_ {true};

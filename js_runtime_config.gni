@@ -169,6 +169,9 @@ enable_unwinder =
 enable_backtrace_local =
     !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
     is_standard_system && !is_qemu_runtime && (current_cpu == "arm64")
+enable_async_stack =
+    !ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
+    is_standard_system && !is_qemu_runtime && (current_cpu == "arm64")
 
 hiviewdfx_deps = []
 hiviewdfx_ext_deps = []
@@ -335,6 +338,10 @@ template("libark_jsruntime_common_set") {
   
     if (enable_backtrace_local) {
       external_deps += [ "faultloggerd:libbacktrace_local" ]
+    }
+
+    if (enable_async_stack) {
+      external_deps += [ "faultloggerd:libasync_stack" ]
     }
 
     # gc dfx options
