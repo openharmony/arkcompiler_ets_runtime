@@ -665,9 +665,10 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
         // LocalHeap could do FullGC later instead of Fatal at once if only set `shouldThrowOOMError_` because there
         // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
-        DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC);
-        LOG_GC(FATAL) << "SharedHeap OOM";
-        UNREACHABLE();
+        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+            ASSERT(!thread->IsInRunningState());
+            thread->NotifyPendingSharedHeapOOM();
+        });
     }
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
         auto notifyNextCompressGCCallback = Runtime::GetInstance()->GetNotifyNextCompressGCCallback();
@@ -675,11 +676,6 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
             notifyNextCompressGCCallback(false, true);
         }
     }
-
-    Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
-        thread->SetPendingGCCallbacksFlag();
-    });
 }
 
 void SharedHeap::SetGCThreadQosPriority(common::PriorityMode mode)
@@ -1686,7 +1682,9 @@ void Heap::ProcessGCCallback()
 {
     // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
     // even lead to another GC, so this have to invoke after this GC process.
-    thread_->InvokeWeakNodeFreeGlobalCallBack();
+    if (g_isEnableCMCGC) {
+        thread_->InvokeWeakNodeFreeGlobalCallBack();
+    }
     thread_->InvokeWeakNodeNativeFinalizeCallback();
     // PostTask for ProcessNativeDelete
     CleanCallback();

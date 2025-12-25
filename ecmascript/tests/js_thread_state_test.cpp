@@ -19,7 +19,6 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
@@ -372,60 +371,5 @@ HWTEST_F_L0(StateTransitioningTest, SuspendOtherNativeTransferToRunningTest)
     while (CheckThreadState(targetThread, ecmascript::ThreadState::NATIVE)) {}
     EXPECT_TRUE(CheckThreadState(targetThread, ecmascript::ThreadState::RUNNING));
     DestroyAllVMs();
-}
-
-HWTEST_F_L0(StateTransitioningTest, PendingWeakCallbacksAndFullMarkTest)
-{
-    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    if (heap->GetConcurrentMarker()->IsEnabled()) {
-        bool callbackExecuted {false};
-        
-        auto nativePointerCallback = []([[maybe_unused]] void *env, [[maybe_unused]] void *data, void *hint) {
-            if (hint != nullptr) {
-                *(reinterpret_cast<bool *>(hint)) = true;
-            }
-        };
-
-        {
-            ecmascript::ThreadManagedScope managedScope(thread);
-            LocalScope scope(thread->GetEcmaVM());
-            auto factory = thread->GetEcmaVM()->GetFactory();
-            
-            [[maybe_unused]] panda::ecmascript::JSHandle<panda::ecmascript::JSNativePointer> np =
-                factory->NewJSNativePointer(nullptr, nativePointerCallback, &callbackExecuted);
-        }
-
-        thread->SetFullMarkRequest();
-
-        {
-            ecmascript::ThreadNativeScope nativeScope(thread);
-            EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::NATIVE);
-        }
-
-        EXPECT_TRUE(thread->IsConcurrentMarkingOrFinished());
-
-        heap->WaitAllTasksFinished();
-
-        thread->CheckSafepoint();
-        EXPECT_TRUE(callbackExecuted);
-    }
-}
-
-HWTEST_F_L0(StateTransitioningTest, PendingWeakCallbacksAndFullMarkTest1)
-{
-    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    if (heap->GetConcurrentMarker()->IsEnabled()) {
-        thread->SetFullMarkRequest();
-        {
-            ecmascript::ThreadNativeScope nativeScope(thread);
-            EXPECT_TRUE(thread->GetState() == ecmascript::ThreadState::NATIVE);
-            for (size_t i = 0; i < 4; i++) {
-                ConcurrentMarker::TryIncreaseTaskCounts();
-            }
-            thread->SetMarkStatus(MarkStatus::READY_TO_MARK);
-            EXPECT_TRUE(thread->IsReadyToConcurrentMark());
-        }
-        EXPECT_TRUE(thread->FullMarkRequest());
-    }
 }
 }  // namespace panda::test
