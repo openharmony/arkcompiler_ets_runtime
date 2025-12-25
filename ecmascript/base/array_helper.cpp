@@ -334,7 +334,8 @@ JSTaggedValue ArrayHelper::FlattenIntoArray(JSThread *thread, const JSHandle<JSO
                 EcmaRuntimeCallInfo *info =
                     EcmaInterpreter::NewRuntimeCallInfo(thread, mapperFunctionHandle, thisArg, undefined, argsLength);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-                info->SetCallArg(element.GetTaggedValue(), p.GetTaggedValue(), thisObjVal.GetTaggedValue());
+                info->SetCallArg(element.GetTaggedValue(),
+                    sourceIndexHandle.GetTaggedValue(), thisObjVal.GetTaggedValue());
                 JSTaggedValue obj = JSFunction::Call(info);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 element.Update(obj);
@@ -404,7 +405,7 @@ JSTaggedValue ArrayHelper::FlatMapFromIndex(JSThread *thread, const JSHandle<JST
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread, mapFunc, thisArg, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            info->SetCallArg(element.GetTaggedValue(), sourceIndexStr.GetTaggedValue(), srcValue.GetTaggedValue());
+            info->SetCallArg(element.GetTaggedValue(), sourceIndexHandle.GetTaggedValue(), srcValue.GetTaggedValue());
             JSTaggedValue obj = JSFunction::Call(info);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             element.Update(obj);
