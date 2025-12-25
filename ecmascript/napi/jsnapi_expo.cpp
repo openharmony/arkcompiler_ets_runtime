@@ -4963,6 +4963,11 @@ void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableEr
     ecmaVm->RegisterUncatchableErrorHandler(handler);
 }
 
+JSNApi::UncatchableErrorHandler JSNApi::GetUncatchableErrorHandler(const EcmaVM *ecmaVm)
+{
+    return ecmaVm->GetUncatchableErrorHandler();
+}
+
 void JSNApi::TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType)
 {
     TriggerGC(vm, ecmascript::GCReason::EXTERNAL_TRIGGER, gcType);
@@ -7146,6 +7151,11 @@ Local<ObjectRef> TryCatch::GetException()
 void TryCatch::ClearException()
 {
     ecmaVm_->GetJSThread()->ClearException();
+}
+
+void* TryCatch::GetEnv()
+{
+    return ecmaVm_->GetJSThread()->GetEnv();
 }
 
 bool ExternalStringCache::RegisterStringCacheTable(const EcmaVM *vm, uint32_t size)
