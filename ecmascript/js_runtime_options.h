@@ -49,7 +49,7 @@ enum ArkProperties {
     CONCURRENT_MARK = 1 << 3, // default enable
     CONCURRENT_SWEEP = 1 << 4, // default enable
     THREAD_CHECK = 1 << 5,
-    ENABLE_ARKTOOLS = 1 << 6, // default enable
+    ENABLE_ARKTOOLS = 1 << 6, // default enable, this option is deprecated, please replace it with new option
     ENABLE_SNAPSHOT_SERIALIZE = 1 << 7,
     ENABLE_SNAPSHOT_DESERIALIZE = 1 << 8,
     EXCEPTION_BACKTRACE = 1 << 9,

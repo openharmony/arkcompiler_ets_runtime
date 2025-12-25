@@ -495,10 +495,8 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
     SetFunction(env, globalObject, "printFunctionCallStat", Global::PrintFunctionCallStat, 0);
 #endif
 
-    if (vm_->GetJSOptions().EnableArkTools()) {
-        JSHandle<JSTaggedValue> arkTools(InitializeArkTools(env));
-        SetConstantObject(globalObject, "ArkTools", arkTools);
-    }
+    JSHandle<JSTaggedValue> arkTools(InitializeArkTools(env));
+    SetConstantObject(globalObject, "ArkTools", arkTools);
 
 #if ECMASCRIPT_ENABLE_ARK_CONTAINER
     // Set ArkPrivate
