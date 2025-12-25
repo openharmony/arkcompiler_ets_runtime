@@ -1,51 +1,52 @@
 # Overview
 
-ArkCompiler is a built-in componentized and configurable multi-language compilation and runtime platform of OpenHarmony. It contains core components such as the compiler, toolchain, and runtime. It supports compilation and running of high-level programming languages on the multi-chip platform. ArkCompiler JS Runtime provides the capability of compiling and running the JavaScript (JS) language on the OpenHarmony operating system.
+ArkCompiler is a unified compilation and runtime platform that supports joint compilation and running across programming languages and chip platforms. It supports a variety of dynamic and static programming languages such as JS, TS, and ArkTS. It is the compilation and runtime base that enables OpenHarmony to run on multiple device forms such as mobile phones, PCs, tablets, TVs, automobiles, and wearables.
 
-ArkCompiler JS Runtime consists of two parts: JS compiler toolchain and JS runtime. The JS compiler toolchain compiles JS source code into ArkCompiler bytecodes. The JS runtime executes the generated ArkCompiler bytecodes. Unless otherwise specified, bytecodes refer to ArkCompiler bytecodes in this document.
+ArkCompiler consists of two parts: compiler toolchain and runtime.
+The following figure shows the architecture of the compiler toolchain.
 
-Figure 1 Architecture of the JS compiler toolchain
-![](figures/en-us_image_0000001197967897.png)
+**Figure 1** Architecture of the compilation toolchain
+![](figures/zh-cn_image_0000001197967897.png)
 
-The source code compiler of ArkCompiler JS Runtime receives JS source code, based on which ts2abc generates an abc file.
+The compiler toolchain compiles ArkTS, TS, and JS source code into abc files, that is, ArkCompiler bytecode.
+The following figure shows the architecture of the runtime.
 
-Figure 2 Architecture of ArkCompiler JS Runtime
+**Figure 2** Architecture of the ArkCompiler eTS runtime
 
-![](figures/en-us_image_ark-js-arch.png)
+![](figures/zh-cn_image_ark-ts-arch.png)
 
-ArkCompiler JS Runtime runs ArkCompiler bytecode files to implement JS semantic logic.
+The runtime runs the abc files to implement the corresponding semantic logic.
 
-**ArkCompiler JS Runtime consists of four subsystems:**
+**ArkCompiler eTS Runtime consists of four subsystems**:
 
 -   **Core Subsystem**
 
-    Core Subsystem consists of basic language-irrelevant runtime libraries, including ArkCompiler File, Tooling, and ArkCompiler Base. ArkCompiler File provides bytecodes. Tooling supports Debugger. ArkCompiler Base is responsible for implementing system calls.
+    Core Subsystem consists of the foundational runtime libraries that are language-agnostic, including the File component that carries bytecode, the Tooling component that supports Debugger functionality, and the Base library component responsible for adapting system calls.
 
--   **JS Execution Subsystem**
+-   **Execution Subsystem**
 
-    JS Execution Subsystem consists of an interpreter that executes bytecodes, inline caching that stores hidden classes, and Profiler that analyzes and records runtime types.
+    Execution Subsystem consists of the interpreter for executing bytecode, the inline caching, and the profiler for capturing runtime information.
 
--   **JS Compiler Subsystem**
+-   **Compiler Subsystem**
 
-    JS Compiler Subsystem consists of the Stub compiler, optimized compilation framework based on the Circuit IR, and code generator.
+    Compiler Subsystem consists of the stub compiler, circuit framework, and Ahead-of-Time (AOT) compiler.
 
--   **JS Runtime Subsystem**
+-   **Runtime subsystem**
 
-    JS Runtime Subsystem contains various modules related to JS runtime:
+    Runtime Subsystem contains modules related to the running of ArkTS, TS, and JS code.
     - Memory management: object allocator and garbage collector (CMS-GC and Partial-Compressing-GC for concurrent marking and partial memory compression)
-    - Analysis tools: DFX tool and CPU and heap profiling tool
-    - Concurrency management: abc file manager in the actor concurrency model
-    - Standard library: standard library defined by ECMAScript, efficient container library, and object model
-    - Others: asynchronous work queues, TypeScript (TS) type loading, and JS native APIs (JSNAPIs) for interacting with C++ interfaces
+    - Analysis tools: DFX, and profiling tools for CPU and heap analysis
+    - Concurrency management: .abc file manager in the Actor model
+    - Standard libraries: standard libraries defined by ECMAScript, efficient container libraries, and object models
+    - Others: asynchronous work queues, TypeScript type loading, and ArkTS native APIs for interacting with C++ interfaces
 
-**Design features of ArkCompiler JS Runtime:**
+**ArkCompiler features**:
 
-- ArkCompiler JS Runtime is designed to provide a JS/TS application execution engine for OpenHarmony rather than a JS execution engine for the browser.
+- **Native type support**:<br>Unlike conventional engines that execute TS by first converting it to JS, the ArkCompiler compiler toolchain analyzes and deduces the TS type information when compiling the TS source code and transfers the information to the runtime. The runtime uses the TS type information to pre-generate inline caches before running, which speeds up bytecode execution. The TS AOT compiler directly compiles and generates machine code based on the TS type information in the .abc file, so that an application can directly run the optimized machine code, thereby greatly improving the running performance.
 
-- To improve the application execution performance and security, ArkCompiler JS Runtime statically pre-compiles JS/TS programs into ArkCompiler bytecode (with static type information) to reduce the overhead caused by compilation and type information collection during runtime. To ensure security and performance, ArkCompiler JS Runtime selects the code that supports strict but not eval.
+-  **Optimized concurrency model and concurrency APIs**:
+The ECMAScript specification does not include concurrency semantic representation. Engines in the industry, such as browser or Node.js, usually provide the Worker APIs for multi-thread development based on the Actor concurrency model. In this model, executors do not share data objects. Instead, they communicate with each other using the messaging mechanism. The worker thread of the web engine or Node.js engine has defects such as slow startup and high memory usage.
+To address these defects, the ArkCompiler eTS runtime supports sharing of immutable objects (methods and bytecode) in Actor instances, greatly optimizing Actor startup performance and startup memory.
+In addition to the Worker APIs, the ArkCompiler eTS runtime provides TaskPool, a task pool function library that supports priority-based scheduling and automatic scaling of worker threads. With TaskPool, you do not need to care about the lifecycle of concurrent instances or create or destroy concurrent instances upon task load changes. This greatly simplifies the development of high-performance multithreaded OpenHarmony applications.
 
-- Native support for TS. The common way to process TS in the industry is to convert TS into JS and execute JS code with JS runtime. ts2abc is planned to analyze and obtain the TS type information when compiling the TS source code and send the information to ArkCompiler JS Runtime. ArkCompiler JS Runtime directly uses the type information to statically generate inline caching to accelerate bytecode execution. The TS Ahead of Time (AOT) compiler directly converts the source code into high-quality machine code based on the TS type information sent from ts2abc, which greatly improves the running performance.
-
-- Lightweight Actor concurrency model: ECMAScript does not provide concurrency specifications. The Actor concurrency model is commonly used in JS engines in the industry to implement concurrent processing. In this model, executors do not share data and communicate with each other using the messaging mechanism. The JS Actor model (web-worker) in the industry has defects such as slow startup and high memory usage. ArkCompiler JS Runtime is required to provide the Actor implementation that features fast startup and low memory usage to better leverage the device's multi-core feature to improve performance. Now ARK-JS is able to share immutable objects, methods, and bytecodes (built-in code blocks and constant strings in the future) in Actor instances based on the Actor memory isolation model to accelerate the startup of JS Actor, reduce memory overhead, and implement the lightweight Actor concurrency model.
-
-- Cross-language interaction of TS/C++: In the API implementation, it is common for C/C++ code to access and operate TS objects in OpenHarmony. ArkCompiler JS Runtime is planned to statically generate a C/C++ header file that contains the TS object layout description and the C/C++ implementation library for operating the TS object based on the class declaration and runtime conventions in the TS program. The C/C++ code usually includes the TS object layout description header file and the corresponding implementation library to implement the direct operation on the TS object. The TS type or its internal layout is not always fixed. Therefore, in the code implementation for TS object operations, type check is used. If the object type or layout changes during runtime, the common slow path is rolled back.
+-  **Security**:<br>The ArkCompiler compiler toolchain statically precompiles ArkTS, TS, and JS code into Ark bytecode and enhances the multi-obfuscation capability, effectively improving the security of your code assets. For security purposes, ArkCompiler does not support JS code in sloppy mode or dynamic execution functions like eval.
