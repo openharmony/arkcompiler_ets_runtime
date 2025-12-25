@@ -6821,34 +6821,33 @@ GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef o
                     Label loopEnd(env);
                     Label afterLoop(env);
                     Label strictEqual1(env);
-                    Label notStrictEqual1(env);
+                    Label checkProto(env);
                     Label shouldReturn(env);
                     Label shouldContinue(env);
-
-                    BRANCH(TaggedIsNull(*object), &afterLoop, &loopHead);
+                    Jump(&loopHead);
                     LoopBegin(&loopHead);
                     {
-                        GateRef isEqual = SameValue(glue, *object, *constructorPrototype);
-
-                        BRANCH(isEqual, &strictEqual1, &notStrictEqual1);
-                        Bind(&strictEqual1);
-                        {
-                            result = TaggedTrue();
-                            Jump(&exit);
-                        }
-                        Bind(&notStrictEqual1);
+                        BRANCH(TaggedIsNull(*object), &afterLoop, &checkProto);
+                        Bind(&checkProto);
                         {
                             object = GetPrototype(glue, *object);
-
                             BRANCH(HasPendingException(glue), &shouldReturn, &shouldContinue);
                             Bind(&shouldReturn);
                             {
                                 result = Exception();
                                 Jump(&exit);
                             }
+                            Bind(&shouldContinue);
+                            {
+                                GateRef isEqual = SameValue(glue, *object, *constructorPrototype);
+                                BRANCH(isEqual, &strictEqual1, &loopEnd);
+                                Bind(&strictEqual1);
+                                {
+                                    result = TaggedTrue();
+                                    Jump(&exit);
+                                }
+                            }
                         }
-                        Bind(&shouldContinue);
-                        BRANCH(TaggedIsNull(*object), &afterLoop, &loopEnd);
                     }
                     Bind(&loopEnd);
                     LoopEndWithCheckSafePoint(&loopHead, env, glue);
