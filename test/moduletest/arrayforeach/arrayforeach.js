@@ -87,3 +87,25 @@ var arr3 = new Array(10);
 arr3[1] = undefined;
 arr3.forEach(callbackfn3);
 print(callCnt3)
+
+{
+    let arr = [];
+    arr[0] = {}
+    arr[2] = 0
+    arr.forEach((elem) => {
+        elem[0] = 0;
+        arr.pop();
+    })
+    print("success")
+}
+
+{
+    let arr = new Array(5)
+    arr.fill(1);
+    arr.forEach((elem, idx) => {
+        print(idx)
+        if (idx == 2) {
+            delete arr[3] // trans to dictionary mode
+        }
+    })
+}

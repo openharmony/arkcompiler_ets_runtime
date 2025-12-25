@@ -66,3 +66,6 @@ Log: [] Result: false
 Some Test Case 18:
 Result: true
 ---
+Some Test Case 19:
+success
+---
