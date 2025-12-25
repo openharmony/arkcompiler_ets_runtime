@@ -204,13 +204,23 @@ print("test proxy getPrototype success!");
     }
 }
 
-
-
 {
     let syk = Symbol("syk");
     let obj = {[syk]:"symbol",name:"tom",1:"1"};
     let px = new Proxy(obj,{});
     for(let x in px) {
         print(x.toString())
+    }
+}
+
+{
+    try {
+        let arr = [1,2,3,4];
+        Object.seal(arr);
+        let px = new Proxy(arr,{});
+        px.length = 1;
+        print("test fail");
+    } catch (error) {
+        print(error.name)
     }
 }

@@ -1270,10 +1270,10 @@ bool JSTaggedValue::DefinePropertyOrThrow(JSThread *thread, const JSHandle<JSTag
 
 bool JSTaggedValue::DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                       const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
-                                      SCheckMode sCheckMode)
+                                      SCheckMode sCheckMode, bool mayThrow)
 {
     if (obj->IsJSArray()) {
-        return JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
+        return JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc, mayThrow);
     }
 
     if (obj->IsJSSharedArray()) {

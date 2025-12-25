@@ -33,3 +33,4 @@ TypeError
 RangeError: Stack overflow!
 1
 name
+TypeError

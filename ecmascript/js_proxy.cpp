@@ -372,7 +372,7 @@ bool JSProxy::GetOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, c
 
 // ES6 9.5.6 [[DefineOwnProperty]] (P, Desc)
 bool JSProxy::DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, const JSHandle<JSTaggedValue> &key,
-                                const PropertyDescriptor &desc)
+                                const PropertyDescriptor &desc, bool mayThrow)
 {
     STACK_LIMIT_CHECK(thread, false);
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -389,7 +389,7 @@ bool JSProxy::DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy
     // 7. ReturnIfAbrupt(trap).
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (trap->IsUndefined()) {
-        return JSTaggedValue::DefineOwnProperty(thread, targetHandle, key, desc);
+        return JSTaggedValue::DefineOwnProperty(thread, targetHandle, key, desc, SCheckMode::CHECK, mayThrow);
     }
 
     // 9. Let descObj be FromPropertyDescriptor(Desc).

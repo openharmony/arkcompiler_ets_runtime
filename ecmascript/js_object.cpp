@@ -1004,7 +1004,7 @@ bool JSObject::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
 
 bool JSObject::SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
                                                  const JSHandle<JSTaggedValue> &value,
-                                                 JSHandle<JSTaggedValue> &receiver)
+                                                 JSHandle<JSTaggedValue> &receiver, bool mayThrow)
 {
     ASSERT(receiver->IsJSProxy());
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -1027,7 +1027,7 @@ bool JSObject::SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperato
         }
 
         PropertyDescriptor valueDesc(thread, value);
-        return JSProxy::DefineOwnProperty(thread, JSHandle<JSProxy>::Cast(receiver), key, valueDesc);
+        return JSProxy::DefineOwnProperty(thread, JSHandle<JSProxy>::Cast(receiver), key, valueDesc, mayThrow);
     }
     return CreateDataProperty(thread, JSHandle<JSObject>(receiver), key, value);
 }
@@ -1084,7 +1084,7 @@ bool JSObject::SetPropertyForDataDescriptor(ObjectOperator *op, JSHandle<JSTagge
     }
 
     if (receiver->IsJSProxy()) {
-        return SetPropertyForDataDescriptorProxy(thread, op, value, receiver);
+        return SetPropertyForDataDescriptorProxy(thread, op, value, receiver, mayThrow);
     }
 
     // 5e. If existingDescriptor is not undefined, then

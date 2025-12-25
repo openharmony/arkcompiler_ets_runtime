@@ -41,7 +41,7 @@ public:
                                PropertyDescriptor &desc);
     // ES6 9.5.6 [[DefineOwnProperty]] (P, Desc)
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, const JSHandle<JSTaggedValue> &key,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, bool mayThrow = false);
     // ES6 9.5.7 [[HasProperty]] (P)
     static bool HasProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, const JSHandle<JSTaggedValue> &key);
     // ES6 9.5.8 [[Get]] (P, Receiver)
