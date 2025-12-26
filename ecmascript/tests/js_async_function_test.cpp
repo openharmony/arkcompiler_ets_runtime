@@ -67,11 +67,7 @@ HWTEST_F_L0(JSAsyncFunctionTest, AsyncFunctionAwait)
     JSHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue(33));
     // asyncContext is undefined
     JSHandle<JSAsyncFuncObject> asyncFuncObj = factory->NewJSAsyncFuncObject();
-#if ENABLE_LATEST_OPTIMIZATION
     JSAsyncFunction::AsyncFunctionAwait(thread, JSHandle<JSTaggedValue>::Cast(asyncFuncObj), valueHandle);
-#else // ENABLE_LATEST_OPTIMIZATION
-    JSAsyncFunction::AsyncFunctionAwait(thread, asyncFuncObj, valueHandle);
-#endif // ENABLE_LATEST_OPTIMIZATION
 
     // check AsyncPromise queue and queue cannot execute
     auto microJobQueue = thread->GetEcmaVM()->GetMicroJobQueue();
