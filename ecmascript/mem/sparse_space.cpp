@@ -517,7 +517,7 @@ void OldSpace::SelectCSet()
     CheckRegionSize();
     // 1、Select region which alive object larger than limit
     int64_t evacuateSizeLimit = 0;
-    if (!localHeap_->IsInBackground()) {
+    if (!Runtime::GetInstance()->IsInBackground()) {
         evacuateSizeLimit = PARTIAL_GC_MAX_EVACUATION_SIZE_FOREGROUND;
         EnumerateRegions([this](Region *region) {
             if (!region->MostObjectAlive()) {

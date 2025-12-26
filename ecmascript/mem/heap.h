@@ -272,16 +272,6 @@ public:
         return canThrowOOMError_;
     }
 
-    bool IsInBackground() const
-    {
-        return inBackground_;
-    }
-
-    void SetInBackground(bool inBackground)
-    {
-        inBackground_ = inBackground;
-    }
-
     // ONLY used for heap verification.
     bool IsVerifying() const
     {
@@ -449,7 +439,6 @@ protected:
     Mutex waitClearTaskFinishedMutex_;
     ConditionVariable waitClearTaskFinishedCV_;
     bool clearTaskFinished_ {true};
-    bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
     // Diffs from `shouldThrowOOMError_`, this is set due to allocating region failed during GC, and thus make
     // MemMapAllocator infinite to complete this GC. After GC, if this flag is set, we MUST throw OOM force.

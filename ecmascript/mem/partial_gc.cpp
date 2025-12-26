@@ -36,7 +36,7 @@ void PartialGC::RunPhases()
         + ";GCReason" + std::to_string(static_cast<int>(gcStats->GetGCReason()))
         + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
-        + ";IsInBackground" + std::to_string(heap_->IsInBackground())
+        + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))
         + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
         + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
@@ -47,7 +47,7 @@ void PartialGC::RunPhases()
         + ";ObjSizeBeforeSensitive" + std::to_string(heap_->GetRecordHeapObjectSizeBeforeSensitive())).c_str(), "");
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
-    bool mainThreadInForeground = heap_->GetJSThread()->IsMainThreadFast() && !heap_->IsInBackground();
+    bool mainThreadInForeground = heap_->GetJSThread()->IsMainThreadFast() && !Runtime::GetInstance()->IsInBackground();
     bool needAjustGCThreadPrio = heap_->GetGCType() == TriggerGCType::OLD_GC ||
         heap_->GetNewSpace()->GetCommittedSize() >= heap_->GetNewSpace()->GetMaximumCapacity();
     if (mainThreadInForeground && needAjustGCThreadPrio) {

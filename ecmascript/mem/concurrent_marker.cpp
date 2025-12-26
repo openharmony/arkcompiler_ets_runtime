@@ -96,7 +96,7 @@ void ConcurrentMarker::Mark()
         ("ConcurrentMarker::Mark" + std::to_string(heap_->IsFullMarkRequested())
         + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
-        + ";IsInBackground" + std::to_string(heap_->IsInBackground())
+        + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))
         + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
 #if USE_CMS_GC  // fixme: refactor?

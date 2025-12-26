@@ -60,4 +60,61 @@ HWTEST_F_L0(RuntimeTest, RegisterTest)
         t2.join();
     }
 }
+
+HWTEST_F_L0(RuntimeTest, SetInBackground1)
+{
+    Runtime::GetInstance()->SetInBackground(true);
+    ASSERT_TRUE(Runtime::GetInstance()->IsInBackground());
+
+    Runtime::GetInstance()->SetInBackground(false);
+    ASSERT_FALSE(Runtime::GetInstance()->IsInBackground());
+}
+
+HWTEST_F_L0(RuntimeTest, SetInBackground2)
+{
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool paramsChanged = false;
+
+    RuntimeOption option;
+    std::thread t1([&]() {
+        auto vm1 = JSNApi::CreateJSVM(option);
+        ASSERT_TRUE(vm1 != nullptr) << "Cannot create EcmaVM1";
+        auto thread1 = vm1->GetJSThread();
+        ASSERT_TRUE(thread1 != nullptr);
+        
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [&]() { return paramsChanged; });
+
+        ASSERT_TRUE(Runtime::GetInstance()->IsInBackground());
+        JSNApi::DestroyJSVM(vm1);
+    });
+    
+    std::thread t2([&]() {
+        auto vm2 = JSNApi::CreateJSVM(option);
+        ASSERT_TRUE(vm2 != nullptr) << "Cannot create EcmaVM2";
+        auto thread2 = vm2->GetJSThread();
+        ASSERT_TRUE(thread2 != nullptr);
+
+        std::unique_lock<std::mutex> lock(mtx);
+        cv.wait(lock, [&]() { return paramsChanged; });
+
+        ASSERT_TRUE(Runtime::GetInstance()->IsInBackground());
+        JSNApi::DestroyJSVM(vm2);
+    });
+
+    sleep(1);
+    Runtime::GetInstance()->SetInBackground(true);
+    {
+        std::unique_lock<std::mutex> lock(mtx);
+        paramsChanged = true;
+        cv.notify_all();
+    }
+    {
+        ecmascript::ThreadSuspensionScope scope(thread);
+        t1.join();
+        t2.join();
+    }
+    ASSERT_TRUE(Runtime::GetInstance()->IsInBackground());
+}
 }

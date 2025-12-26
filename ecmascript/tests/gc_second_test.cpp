@@ -509,20 +509,11 @@ HWTEST_F_L0(GCTest, WaitAllTasksFinishedTest002)
     heap->WaitAllTasksFinished();
 }
 
-HWTEST_F_L0(GCTest, ChangeGCParamsTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->ChangeGCParams(true);
-    ASSERT_TRUE(heap->IsInBackground());
-}
-
 HWTEST_F_L0(GCTest, ChangeGCParamsTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->SetMemGrowingType(MemGrowingType::HIGH_THROUGHPUT);
     ASSERT_EQ(heap->GetMemGrowingType(), MemGrowingType::HIGH_THROUGHPUT);
-    heap->ChangeGCParams(true);
-    ASSERT_TRUE(heap->IsInBackground());
 }
 
 HWTEST_F_L0(GCTest, NotifyWarmStartFalse001)

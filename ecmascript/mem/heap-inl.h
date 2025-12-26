@@ -774,8 +774,8 @@ void Heap::SwapNewSpace()
 {
     activeSemiSpace_->Stop();
     size_t newOverShootSize = 0;
-    if (!inBackground_ && gcType_ != TriggerGCType::FULL_GC && gcType_ != TriggerGCType::APPSPAWN_FULL_GC &&
-        gcType_ != TriggerGCType::LOCAL_CC) {
+    if (!Runtime::GetInstance()->IsInBackground() && gcType_ != TriggerGCType::FULL_GC &&
+        gcType_ != TriggerGCType::APPSPAWN_FULL_GC && gcType_ != TriggerGCType::LOCAL_CC) {
         newOverShootSize = activeSemiSpace_->CalculateNewOverShootSize();
     }
     inactiveSemiSpace_->Restart(newOverShootSize);
