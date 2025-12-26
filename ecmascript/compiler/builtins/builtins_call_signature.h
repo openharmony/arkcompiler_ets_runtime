@@ -48,6 +48,10 @@ public:
 #undef DEF_STUB_ID_DYN
 #undef DEF_STUB_ID
         NUM_OF_BUILTINS_STUBS_EXTEND,
+        CSID_STW_COPY_START = ID_StringCharAtStwCopy,
+        CSID_STW_COPY_END = NUM_OF_BUILTINS_STUBS_EXTEND,
+        CSID_NORMAL_START = ID_NONE + 1,
+        CSID_NORMAL_END = CSID_STW_COPY_START
     };
     static_assert(CALL_SIGNATURE_ID::ID_NONE == 0);
 #define ASSERT_ID_EQUAL(name) \
@@ -63,6 +67,8 @@ public:
     static void Initialize();
 
     static void GetCSigns(std::vector<const CallSignature*>& callSigns);
+    static void GetNormalCSigns(std::vector<const CallSignature*>& callSigns);
+    static void GetStwCopyCSigns(std::vector<const CallSignature*>& callSigns);
 
     static const CallSignature *Get(size_t index)
     {

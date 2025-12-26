@@ -87,6 +87,20 @@ void BuiltinsStubCSigns::GetCSigns(std::vector<const CallSignature*>& outCSigns)
     }
 }
 
+void BuiltinsStubCSigns::GetNormalCSigns(std::vector<const CallSignature*>& outCSigns)
+{
+    for (size_t i = CSID_NORMAL_START; i < CSID_NORMAL_END; i++) {
+        outCSigns.push_back(&callSigns_[i]);
+    }
+}
+
+void BuiltinsStubCSigns::GetStwCopyCSigns(std::vector<const CallSignature*>& outCSigns)
+{
+    for (size_t i = CSID_STW_COPY_START; i < CSID_STW_COPY_END; i++) {
+        outCSigns.push_back(&callSigns_[i]);
+    }
+}
+
 size_t BuiltinsStubCSigns::GetGlobalEnvIndex(ID builtinId)
 {
     static const std::map<ID, GlobalEnvField> globalEnvIndex = {
