@@ -97,6 +97,7 @@ struct Reference;
         V(JS_REALM),         /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_FUNCTION_BASE), /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_FUNCTION),      /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
+        V(JS_API_FUNCTION),  /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_SHARED_FUNCTION),            /* //////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_PROXY_REVOC_FUNCTION),       /* //////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_PROMISE_REACTIONS_FUNCTION), /* //////////////////////////////////////////////////////////////-PADDING */ \
@@ -1112,6 +1113,11 @@ public:
     bool IsJSFunction() const
     {
         return GetObjectType() >= JSType::JS_FUNCTION_FIRST && GetObjectType() <= JSType::JS_FUNCTION_LAST;
+    }
+
+    bool IsJSApiFunction() const
+    {
+        return GetObjectType() == JSType::JS_API_FUNCTION;
     }
 
     bool IsJSSharedFunction() const

@@ -32,6 +32,7 @@ bool InterOpValueSerializer::TrySerializeInterOpObject(TaggedObject *object, boo
     switch (type) {
         case JSType::JS_OBJECT:
         case JSType::JS_FUNCTION:
+        case JSType::JS_API_FUNCTION:
             break;
         case JSType::JS_PROXY:
             target = JSProxy::Cast(object)->GetSourceTarget(thread_);

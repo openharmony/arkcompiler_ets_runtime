@@ -1959,6 +1959,25 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeFunction)
     delete serializer;
 }
 
+HWTEST_F_L0(InterOpSerializerTest, SerializeApiFunction)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> function = factory->NewNormalJSApiFunction(env, nullptr);
+    EXPECT_TRUE(function->IsJSFunction());
+
+    InterOpValueSerializer *serializer = new InterOpValueSerializer(thread);
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(function),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                          JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_FALSE(success);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    InterOpValueDeserializer deserializer(thread, data.release());
+    JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+    EXPECT_TRUE(res.IsEmpty());
+    delete serializer;
+}
+
 // Test transfer JSArrayBuffer
 HWTEST_F_L0(InterOpSerializerTest, TransferJSArrayBuffer1)
 {

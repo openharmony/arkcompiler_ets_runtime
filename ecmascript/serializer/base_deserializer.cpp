@@ -216,8 +216,11 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
             JSHandle<JSFunction> funcHandle(thread_, func);
             concurrentFunctions_.push_back(funcHandle);
         }
-        func->SetRawProfileTypeInfo<SKIP_BARRIER>(thread_, thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell());
-        func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
+        if (!object->GetClass()->IsJSApiFunction()) {
+            func->SetRawProfileTypeInfo<SKIP_BARRIER>(thread_,
+                thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell());
+            func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
+        }
     } else if (object->GetClass()->IsSourceTextModule()) {
         SourceTextModule* module = reinterpret_cast<SourceTextModule *>(object);
         module->SetEcmaModuleFilenameStringForDeserialize(moduleFileName);

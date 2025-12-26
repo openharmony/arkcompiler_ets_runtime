@@ -926,6 +926,11 @@ inline bool JSTaggedValue::IsJSFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSFunction();
 }
 
+inline bool JSTaggedValue::IsJSApiFunction() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSApiFunction();
+}
+
 inline bool JSTaggedValue::IsJSFunctionBase() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSFunctionBase();

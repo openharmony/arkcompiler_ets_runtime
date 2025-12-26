@@ -261,6 +261,9 @@ public:
                                        FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                        kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
                                        MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
+
+    JSHandle<JSFunction> NewNormalJSApiFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr);
+
     JSHandle<JSFunction> NewJSBuiltinFunction(const JSHandle<GlobalEnv> env, const void *nativeFunc = nullptr,
                                               FunctionKind kind = FunctionKind::NORMAL_FUNCTION,
                                               kungfu::BuiltinsStubCSigns::ID builtinId = BUILTINS_STUB_ID(INVALID),
@@ -590,6 +593,8 @@ public:
     // only use for creating Function.prototype and Function
     JSHandle<JSFunction> NewJSFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
                                                MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<JSFunction> NewJSApiFunctionByHClass(const JSHandle<Method> &method, const JSHandle<JSHClass> &clazz,
+                                               MemSpaceType type = MemSpaceType::SEMI_SPACE);
     JSHandle<JSFunction> NewJSBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
                                                       const JSHandle<Method> &method,
                                                       const JSHandle<JSHClass> &clazz,
@@ -600,6 +605,8 @@ public:
                                                    const void *nativeFunc,
                                                    FunctionKind kind,
                                                    MemSpaceType type = MemSpaceType::SEMI_SPACE);
+    JSHandle<JSFunction> NewNormalJSApiFunctionByHClass(const JSHandle<JSHClass> &clazz,
+                                                           const void *nativeFunc);
     JSHandle<JSFunction> NewNativeBuiltinFunctionByHClass(const JSHandle<GlobalEnv> env,
                                                           const JSHandle<JSHClass> &clazz,
                                                           const void *nativeFunc,
@@ -609,6 +616,7 @@ public:
     void SetupJSFunctionByHClass(const JSHandle<JSFunction> &function, const JSHandle<Method> &method);
     JSHandle<JSFunction> NewJSFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz,
                                                FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSFunction> NewConstructorJSApiFunctionByHClass(const void *func, const JSHandle<JSHClass> &clazz);
     JSHandle<JSFunction> NewJSFunctionByHClassWithoutAccessor(const JSHandle<GlobalEnv> &env, const void *func,
         const JSHandle<JSHClass> &clazz, FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
 
@@ -807,6 +815,7 @@ public:
                                                               const Local<JSValueRef> *values);
     JSHandle<JSHClass> CreateClassFuncProtoHClass(const JSThread *thread, size_t inlNonStaticPropCount);
     JSHandle<JSHClass> CreateClassFuncHClass(const JSThread *thread, size_t inlinedStaticPropCount);
+    JSHandle<JSHClass> CreateApiClassFuncHClass(const JSThread *thread, size_t inlinedStaticPropCount);
     // Fill the given free memory range with special zam value.
     void FillFreeMemoryRange(uintptr_t start, uintptr_t end);
 

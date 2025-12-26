@@ -63,6 +63,8 @@ public:
     GateRef NewSObject(GateRef glue, GateRef hclass);
     GateRef NewJSFunctionByHClass(GateRef glue, GateRef method, GateRef hclass,
                                   FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
+    GateRef NewJSApiFunctionByHClass(GateRef glue, GateRef method, GateRef hclass,
+                                     FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     GateRef NewSFunctionByHClass(GateRef glue, GateRef method, GateRef hclass,
                                  FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     GateRef CloneJSFunction(GateRef glue, GateRef value);

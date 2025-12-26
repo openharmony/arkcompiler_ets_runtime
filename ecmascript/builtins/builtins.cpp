@@ -277,6 +277,10 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
     env->SetFunctionClassWithoutName(thread_, functionClass);
 
+    functionClass = factory_->CreateFunctionClass(FunctionKind::CLASS_CONSTRUCTOR, JSApiFunction::SIZE,
+                                                  JSType::JS_API_FUNCTION, env->GetFunctionPrototype());
+    env->SetApiFunctionClassWithoutName(thread_, functionClass);
+
     thread->CheckSafepointIfSuspended();
     InitializeBoundFunctionClass(env);
     if (!isRealm) {
@@ -721,6 +725,10 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTag
     JSHandle<JSHClass> normalFuncClass =
         factory_->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, env->GetFunctionPrototype());
     env->SetNormalFunctionClass(thread_, normalFuncClass);
+
+    JSHandle<JSHClass> normalApiFuncClass =
+        factory_->NewEcmaHClass(JSApiFunction::SIZE, JSType::JS_API_FUNCTION, env->GetFunctionPrototype());
+    env->SetNormalApiFunctionClass(thread_, normalApiFuncClass);
 
     JSHandle<JSHClass> jSIntlBoundFunctionClass =
         factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSIntlBoundFunction::SIZE,

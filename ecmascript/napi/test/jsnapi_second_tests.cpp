@@ -1780,6 +1780,12 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentWithName)
             return **StringRef::NewFromUtf8WithoutStringTable(vm, "funcResult");
         },
         nullptr, name.c_str());
+    JSHandle<JSTaggedValue> handle = JSNApiHelper::ToJSHandle(func);
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     Local<JSValueRef> res = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
     ASSERT_EQ("funcResult", res->ToString(vm_)->ToString(vm_));
     Local<StringRef> funcName = func->GetName(vm_);
@@ -1802,7 +1808,12 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase0)
     std::string name = "MyClassFunction";
     Local<FunctionRef> cls = FunctionRef::NewConcurrentClassFunctionWithName(vm_, context, InternalFunctionCallback,
                                                                              nullptr, name.c_str(), nullptr);
-
+    JSHandle<JSTaggedValue> funcHandle = JSNApiHelper::ToJSHandle(cls);
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
     // Asserting that obj is a class constructor
     ASSERT_TRUE(obj->IsClassConstructor());
@@ -1891,5 +1902,198 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase1)
             ASSERT_EQ(realVal, expectedVals[trueIdx]);
         }
     }
+}
+
+/**
+ * @tc.number: ffi_interface_api_148
+ * @tc.name: NewNormalFunctionUseApiFunctionType
+ * @tc.desc: NewNormalFunctionUseApiFunctionType
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewNormalFunctionUseApiFunctionType)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> func = FunctionRef::New(vm_, FunctionCallback);
+    JSHandle<JSTaggedValue> handle = JSNApiHelper::ToJSHandle(func);
+    JSHClass* hClass = handle.GetTaggedValue().GetTaggedObject()->GetClass();
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+    JSHClass* normalApiFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalApiFunctionClass().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(hClass, normalApiFunctionClass);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    JSHClass* normalFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalFunctionClass().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+    ASSERT_EQ(hClass, normalFunctionClass);
+#endif // ENABLE_MEMORY_OPTIMIZATION
+    // Call will not crash
+    Local<JSValueRef> res = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
+    ASSERT_TRUE(res->IsArray(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_149
+ * @tc.name: NewConcurrentNormalFunctionUseApiFunctionType
+ * @tc.desc: NewConcurrentNormalFunctionUseApiFunctionType
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewConcurrentNormalFunctionUseApiFunctionType)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> concurrentFunc = FunctionRef::NewConcurrent(vm_, FunctionCallback);
+    JSHandle<JSTaggedValue> funcHandle = JSNApiHelper::ToJSHandle(concurrentFunc);
+    JSHClass* hClass = funcHandle.GetTaggedValue().GetTaggedObject()->GetClass();
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+    JSHClass* normalApiFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalApiFunctionClass().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(hClass, normalApiFunctionClass);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    JSHClass* normalFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalFunctionClass().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+    ASSERT_EQ(hClass, normalFunctionClass);
+#endif // ENABLE_MEMORY_OPTIMIZATION
+    // Call will not crash
+    Local<JSValueRef> res = concurrentFunc->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
+    ASSERT_TRUE(res->IsArray(vm_));
+}
+/**
+ * @tc.number: ffi_interface_api_150
+ * @tc.name: NewInternalNormalFunctionUseApiFunctionType
+ * @tc.desc: NewInternalNormalFunctionUseApiFunctionType
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewInternalNormalFunctionUseApiFunctionType)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> func = FunctionRef::New(vm_, InternalFunctionCallback, nullptr);
+    JSHandle<JSTaggedValue> handle = JSNApiHelper::ToJSHandle(func);
+    JSHClass* hClass = handle.GetTaggedValue().GetTaggedObject()->GetClass();
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+    JSHClass* normalApiFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalApiFunctionClass().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(hClass, normalApiFunctionClass);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    JSHClass* normalFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalFunctionClass().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+    ASSERT_EQ(hClass, normalFunctionClass);
+#endif // ENABLE_MEMORY_OPTIMIZATION
+    // Call will not crash
+    Local<JSValueRef> res = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
+    ASSERT_TRUE(res->IsArray(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_151
+ * @tc.name: NewInternalConcurrentNormalFunctionUseApiFunctionType
+ * @tc.desc: NewInternalConcurrentNormalFunctionUseApiFunctionType
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewInternalConcurrentNormalFunctionUseApiFunctionType)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> concurrentFunc = FunctionRef::NewConcurrent(vm_, InternalFunctionCallback, nullptr);
+    JSHandle<JSTaggedValue> funcHandle = JSNApiHelper::ToJSHandle(concurrentFunc);
+    JSHClass* hClass = funcHandle.GetTaggedValue().GetTaggedObject()->GetClass();
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+    JSHClass* normalApiFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalApiFunctionClass().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(hClass, normalApiFunctionClass);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    JSHClass* normalFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalFunctionClass().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+    ASSERT_EQ(hClass, normalFunctionClass);
+#endif // ENABLE_MEMORY_OPTIMIZATION
+    // Call will not crash
+    Local<JSValueRef> res = concurrentFunc->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
+    ASSERT_TRUE(res->IsArray(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_152
+ * @tc.name: NewConstructorFunctionUseApiFunctionType
+ * @tc.desc: NewConstructorFunctionUseApiFunctionType
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewConstructorFunctionUseApiFunctionType)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> func = FunctionRef::NewClassFunction(vm_, FunctionCallback, nullptr, nullptr);
+    JSHandle<JSTaggedValue> funcHandle = JSNApiHelper::ToJSHandle(func);
+    JSHClass* hClass = funcHandle.GetTaggedValue().GetTaggedObject()->GetClass();
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+    JSHClass* constructorApiFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetApiFunctionClassWithoutName().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(hClass, constructorApiFunctionClass);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    JSHClass* constructorFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetFunctionClassWithoutName().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+    ASSERT_EQ(hClass, constructorFunctionClass);
+#endif // ENABLE_MEMORY_OPTIMIZATION
+}
+
+/**
+ * @tc.number: ffi_interface_api_153
+ * @tc.name: NewInternalConstructorFunctionUseApiFunctionType
+ * @tc.desc: NewInternalConstructorFunctionUseApiFunctionType
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewInternalConstructorFunctionUseApiFunctionType)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> func = FunctionRef::NewClassFunction(vm_, InternalFunctionCallback, nullptr, nullptr);
+    JSHandle<JSTaggedValue> funcHandle = JSNApiHelper::ToJSHandle(func);
+    JSHClass* hClass = funcHandle.GetTaggedValue().GetTaggedObject()->GetClass();
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+    JSHClass* constructorApiFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetApiFunctionClassWithoutName().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(hClass, constructorApiFunctionClass);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    JSHClass* constructorFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetFunctionClassWithoutName().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+    ASSERT_EQ(hClass, constructorFunctionClass);
+#endif // ENABLE_MEMORY_OPTIMIZATION
+}
+
+/**
+ * @tc.number: ffi_interface_api_154
+ * @tc.name: NewInternalConcurrentConstructorFunctionUseApiFunctionType
+ * @tc.desc: NewInternalConcurrentConstructorFunctionUseApiFunctionType
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewInternalConcurrentConstructorFunctionUseApiFunctionType)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> func = FunctionRef::NewConcurrentClassFunction(vm_, InternalFunctionCallback, nullptr, nullptr);
+    JSHandle<JSTaggedValue> funcHandle = JSNApiHelper::ToJSHandle(func);
+    JSHClass* hClass = funcHandle.GetTaggedValue().GetTaggedObject()->GetClass();
+#if ENABLE_MEMORY_OPTIMIZATION
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
+    JSHClass* constructorApiFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetApiFunctionClassWithoutName().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(hClass, constructorApiFunctionClass);
+#else // ENABLE_MEMORY_OPTIMIZATION
+    JSHClass* constructorFunctionClass =
+        JSHClass::Cast(vm_->GetGlobalEnv()->GetFunctionClassWithoutName().GetTaggedValue().GetTaggedObject());
+    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
+    ASSERT_EQ(hClass, constructorFunctionClass);
+#endif // ENABLE_MEMORY_OPTIMIZATION
 }
 } // namespace panda::test

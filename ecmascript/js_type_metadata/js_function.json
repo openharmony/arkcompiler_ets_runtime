@@ -2,43 +2,28 @@
     "name": "JS_FUNCTION",
     "offsets": [
         {
-            "name": "ProtoOrHClass",
+            "name": "RawProfileTypeInfo",
             "offset": 0,
             "size": 8
         },
         {
-            "name": "LexicalEnv",
+            "name": "MachineCode",
             "offset": 8,
             "size": 8
         },
         {
-            "name": "MachineCode",
+            "name": "BaselineCode",
             "offset": 16,
             "size": 8
         },
         {
-            "name": "BaselineCode",
-            "offset": 24,
-            "size": 8
-        },
-        {
-            "name": "RawProfileTypeInfo",
-            "offset": 32,
-            "size": 8
-        },
-        {
-            "name": "HomeObject",
-            "offset": 40,
-            "size": 8
-        },
-        {
             "name": "Module",
-            "offset": 48,
+            "offset": 24,
             "size": 8
         }
     ],
-    "end_offset": 64,
+    "end_offset": 40,
     "parents": [
-        "JS_FUNCTION_BASE"
+        "JS_API_FUNCTION"
     ]
 }

@@ -86,6 +86,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Function Base";
         case JSType::JS_FUNCTION:
             return "Function";
+        case JSType::JS_API_FUNCTION:
+            return "API Function";
         case JSType::JS_SHARED_FUNCTION:
             return "Shared Function";
         case JSType::JS_ERROR:
@@ -774,6 +776,10 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
         case JSType::JS_FUNCTION:
             needDumpHClass = true;
             JSFunction::Cast(obj)->Dump(thread, os);
+            break;
+        case JSType::JS_API_FUNCTION:
+            needDumpHClass = true;
+            JSApiFunction::Cast(obj)->Dump(thread, os);
             break;
         case JSType::JS_BOUND_FUNCTION:
             needDumpHClass = true;
@@ -1823,6 +1829,30 @@ void JSFunction::Dump(const JSThread *thread, std::ostream &os) const
     os << "\n";
     os << " - Module: ";
     GetModule(thread).Dump(thread, os);
+    os << "\n";
+    JSObject::Dump(thread, os);
+}
+
+void JSApiFunction::Dump(const JSThread *thread, std::ostream &os) const
+{
+    os << " - ProtoOrHClass: ";
+    GetProtoOrHClass(thread).Dump(thread, os);
+    os << "\n";
+    os << " - LexicalEnv: ";
+    if (GetLexicalEnv(thread).IsLexicalEnv()) {
+        GetLexicalEnv(thread).Dump(thread, os);
+    } else {
+        GetLexicalEnv(thread).DumpTaggedValue(thread, os); // reduce circular calls
+    }
+    os << "\n";
+    os << " - HomeObject: ";
+    GetHomeObject(thread).Dump(thread, os);
+    os << "\n";
+    os << " - FunctionExtraInfo: ";
+    GetFunctionExtraInfo(thread).Dump(thread, os);
+    os << "\n";
+    os << " - Method: ";
+    GetMethod(thread).Dump(thread, os);
     os << "\n";
     JSObject::Dump(thread, os);
 }
@@ -4150,6 +4180,9 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::JS_SHARED_FUNCTION:
             JSFunction::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
+        case JSType::JS_API_FUNCTION:
+            JSApiFunction::Cast(obj)->DumpForSnapshot(thread, vec);
+            break;
         case JSType::JS_BOUND_FUNCTION:
             JSBoundFunction::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
@@ -4950,7 +4983,20 @@ void JSFunction::DumpForSnapshot(const JSThread *thread, std::vector<Reference> 
         vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind(thread))));
     }
     vec.emplace_back(CString("FunctionExtraInfo"), GetFunctionExtraInfo(thread));
+    JSObject::DumpForSnapshot(thread, vec);
+}
+
+void JSApiFunction::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("ProtoOrHClass"), GetProtoOrHClass(thread));
+    vec.emplace_back(CString("LexicalEnv"), GetLexicalEnv(thread));
+    vec.emplace_back(CString("HomeObject"), GetHomeObject(thread));
     vec.emplace_back(CString("Method"), GetMethod(thread));
+    if ((!GetMethod(thread).IsNull()) && (!GetMethod(thread).IsUndefined())) {
+        vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind(thread))));
+    }
+    vec.emplace_back(CString("FunctionExtraInfo"), GetFunctionExtraInfo(thread));
+    vec.emplace_back(CString("IsCallNapi"), JSTaggedValue(IsCallNapi()));
     JSObject::DumpForSnapshot(thread, vec);
 }
 

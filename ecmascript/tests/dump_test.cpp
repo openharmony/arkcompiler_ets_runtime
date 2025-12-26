@@ -546,6 +546,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsFunc);
                 break;
             }
+            case JSType::JS_API_FUNCTION: {
+                CHECK_DUMP_FIELDS(JSFunctionBase::SIZE, JSApiFunction::SIZE, 3U);
+                JSHandle<JSFunction> commonFunc = factory->NewNormalJSApiFunction(globalEnv);
+                DUMP_FOR_HANDLE(commonFunc);
+                break;
+            }
             case JSType::JS_PROXY_REVOC_FUNCTION: {
                 CHECK_DUMP_FIELDS(JSFunction::SIZE, JSProxyRevocFunction::SIZE, 1U);
                 JSHandle<JSHClass> proxyRevocClass =

@@ -606,6 +606,7 @@ public:
     bool IsClassConstructor() const;
     bool IsClassPrototype() const;
     bool IsJSFunction() const;
+    bool IsJSApiFunction() const;
     bool IsJSFunctionBase() const;
     bool CheckIsJSFunctionBase() const;
     bool IsECMAObject() const;

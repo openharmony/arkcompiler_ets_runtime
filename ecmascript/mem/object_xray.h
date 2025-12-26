@@ -221,6 +221,11 @@ public:
                 jsFunctionBase->VisitRangeSlot<visitType>(visitor);
                 break;
             }
+            case JSType::JS_API_FUNCTION: {
+                auto jSApiFunction = JSApiFunction::Cast(object);
+                jSApiFunction->VisitRangeSlot<visitType>(visitor);
+                break;
+            }
             case JSType::JS_FUNCTION: {
                 auto jsFunction = JSFunction::Cast(object);
                 jsFunction->VisitRangeSlot<visitType>(visitor);

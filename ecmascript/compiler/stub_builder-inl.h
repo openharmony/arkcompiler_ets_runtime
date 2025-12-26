@@ -3565,6 +3565,7 @@ inline void StubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function,
 inline void StubBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value,
                                              MemoryAttribute mAttr)
 {
+    ASM_ASAN_ASSERT(GET_MESSAGE_STRING_ID(IsNotJSApiFunction), BoolNot(IsJSApiFunction(glue, function)));
     GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, function, offset, value, mAttr);
 }
@@ -3572,6 +3573,7 @@ inline void StubBuilder::SetModuleToFunction(GateRef glue, GateRef function, Gat
 inline void StubBuilder::SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value,
                                                       MemoryAttribute mAttr)
 {
+    ASM_ASAN_ASSERT(GET_MESSAGE_STRING_ID(IsNotJSApiFunction), BoolNot(IsJSApiFunction(glue, function)));
     GateRef offset = IntPtr(JSFunction::WORK_NODE_POINTER_OFFSET);
     Store(VariableType::NATIVE_POINTER(), glue, function, offset, value, mAttr);
 }
@@ -3619,6 +3621,7 @@ inline GateRef StubBuilder::GetLengthFromFunction(GateRef function)
 inline void StubBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value,
                                                          MemoryAttribute mAttr)
 {
+    ASM_ASAN_ASSERT(GET_MESSAGE_STRING_ID(IsNotJSApiFunction), BoolNot(IsJSApiFunction(glue, function)));
     GateRef offset = IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
@@ -3714,6 +3717,7 @@ inline void StubBuilder::SetBitFieldToFunction(GateRef glue, GateRef function, G
 
 inline void StubBuilder::SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value, MemoryAttribute mAttr)
 {
+    ASM_ASAN_ASSERT(GET_MESSAGE_STRING_ID(IsNotJSApiFunction), BoolNot(IsJSApiFunction(glue, function)));
     GateRef offset = IntPtr(JSFunction::MACHINECODE_OFFSET);
     Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
@@ -3810,6 +3814,11 @@ inline GateRef StubBuilder::IsJSFunction(GateRef glue, GateRef obj)
     GateRef less = Int32LessThanOrEqual(objectType,
         Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
     return BitAnd(greater, less);
+}
+inline GateRef StubBuilder::IsJSApiFunction(GateRef glue, GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(glue, obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_FUNCTION)));
 }
 
 inline GateRef StubBuilder::IsBoundFunction(GateRef glue, GateRef obj)

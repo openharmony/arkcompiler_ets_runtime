@@ -204,7 +204,56 @@ public:
 static_assert((JSFunctionBase::SIZE % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
 static_assert(JSFunctionBase::METHOD_OFFSET == JSProxy::METHOD_OFFSET);
 
-class JSFunction : public JSFunctionBase {
+class JSApiFunction : public JSFunctionBase {
+public:
+    CAST_CHECK(JSApiFunction, IsJSApiFunction);
+    static constexpr size_t PROTO_OR_DYNCLASS_OFFSET = JSFunctionBase::SIZE;
+    ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
+    // For runtime native function, the LexicalEnv field is used to store GlobalEnv, such as RegExp's native function
+    ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, HOME_OBJECT_OFFSET)
+    ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunctionBase, PROTO_OR_DYNCLASS_OFFSET, LAST_OFFSET)
+    DECL_DUMP()
+
+    static void InitializeJSApiFunction(JSThread *thread, const JSHandle<JSFunction> &func,
+                                 FunctionKind kind = FunctionKind::NORMAL_FUNCTION);
+};
+
+/*
+ *      JSFunction Layout
+ *      +--------------------------+ <-------- JSObject
+ *      | ......                   |
+ *      +--------------------------+ <-------- JSFunctionBase
+ *      | Method                   |
+ *      +--------------------------+
+ *      | CodeEntryOrNativePointer |
+ *      +--------------------------+
+ *      | Length                   |
+ *      +--------------------------+
+ *      | BitField                 |
+ *      +--------------------------+ <-------- JSApiFunction (Functions created by napi use this class)
+ *      | ProtoOrHClass            |
+ *      +--------------------------+
+ *      | LexicalEnv               |
+ *      +--------------------------+
+ *      | HomeObject               |
+ *      +--------------------------+ <-------- JSFunction (Functions created by napi doesn't need the following fields)
+ *      | RawProfileTypeInfo       |
+ *      +--------------------------+
+ *      | MachineCode              |
+ *      +--------------------------+
+ *      | BaselineCode             |
+ *      +--------------------------+
+ *      | Module                   |
+ *      +--------------------------+
+ *      | WorkNodePointer          |
+ *      +--------------------------+
+ *
+ */
+
+class JSFunction : public JSApiFunction {
 public:
     static constexpr int LENGTH_OF_INLINE_PROPERTIES = 3;
     static constexpr int LENGTH_INLINE_PROPERTY_INDEX = 0;
@@ -425,19 +474,25 @@ public:
         return JSFunction::SIZE + index * JSTaggedValue::TaggedTypeSize();
     }
 
-    static constexpr size_t PROTO_OR_DYNCLASS_OFFSET = JSFunctionBase::SIZE;
-    ACCESSORS(ProtoOrHClass, PROTO_OR_DYNCLASS_OFFSET, LEXICAL_ENV_OFFSET)
-    // For runtime native function, the LexicalEnv field is used to store GlobalEnv, such as RegExp's native function
-    ACCESSORS(LexicalEnv, LEXICAL_ENV_OFFSET, MACHINECODE_OFFSET)
-    ACCESSORS_AND_CHECK(MachineCode, MACHINECODE_OFFSET, BASELINECODE_OFFSET)
-    ACCESSORS(BaselineCode, BASELINECODE_OFFSET, RAW_PROFILE_TYPE_INFO_OFFSET)
-    ACCESSORS(RawProfileTypeInfo, RAW_PROFILE_TYPE_INFO_OFFSET, HOME_OBJECT_OFFSET)
-    ACCESSORS(HomeObject, HOME_OBJECT_OFFSET, ECMA_MODULE_OFFSET)
-    ACCESSORS(Module, ECMA_MODULE_OFFSET, WORK_NODE_POINTER_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(WorkNodePointer, uintptr_t, WORK_NODE_POINTER_OFFSET, LAST_OFFSET)
+    bool IsNotJSApiFunction() const
+    {
+        return GetJSHClass()->GetObjectType() != JSType::JS_API_FUNCTION;
+    }
+    bool IsJSApiFunction() const
+    {
+        return GetJSHClass()->GetObjectType() == JSType::JS_API_FUNCTION;
+    }
+
+    static constexpr size_t RAW_PROFILE_TYPE_INFO_OFFSET = JSApiFunction::SIZE;
+    ACCESSORS_ASAN_CHECK(RawProfileTypeInfo, RAW_PROFILE_TYPE_INFO_OFFSET, MACHINECODE_OFFSET, IsNotJSApiFunction)
+    ACCESSORS_AND_CHECK(MachineCode, MACHINECODE_OFFSET, BASELINECODE_OFFSET, IsNotJSApiFunction)
+    ACCESSORS_ASAN_CHECK(BaselineCode, BASELINECODE_OFFSET, ECMA_MODULE_OFFSET, IsNotJSApiFunction)
+    ACCESSORS_ASAN_CHECK(Module, ECMA_MODULE_OFFSET, WORK_NODE_POINTER_OFFSET, IsNotJSApiFunction)
+    ACCESSORS_PRIMITIVE_FIELD_ASAN_CHECK(WorkNodePointer, uintptr_t, WORK_NODE_POINTER_OFFSET, LAST_OFFSET,
+        IsNotJSApiFunction)
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunctionBase, PROTO_OR_DYNCLASS_OFFSET, WORK_NODE_POINTER_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSApiFunction, RAW_PROFILE_TYPE_INFO_OFFSET, WORK_NODE_POINTER_OFFSET)
     DECL_DUMP()
 
 private:
