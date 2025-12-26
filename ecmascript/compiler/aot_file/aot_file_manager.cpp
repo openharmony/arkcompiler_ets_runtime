@@ -477,7 +477,7 @@ void AOTFileManager::LoadingByteCodeStubsLog(size_t id, Address entry)
 
 void AOTFileManager::LoadingBuiltinsStubsLog(size_t id, Address entry)
 {
-    int start = GET_MESSAGE_STRING_ID(StringCharCodeAt);
+    int start = GET_MESSAGE_STRING_ID(StringCharAt);
     std::string format = MessageString::GetMessageString(id + start - 1);  // -1: NONE
     LOG_ECMA(INFO) << "builtins index: " << std::dec << id << " :" << format
                     << " addr: 0x" << std::hex << entry;
@@ -501,6 +501,9 @@ void AOTFileManager::LoadingRuntimeStubsLog(size_t id, Address entry)
 
 void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEntryDes> &stubs)
 {
+#ifndef NDEBUG
+    MessageString::CheckStubNameInfo();
+#endif
     auto thread = vm_->GetAssociatedJSThread();
     size_t len = stubs.size();
     for (size_t i = 0; i < len; i++) {
