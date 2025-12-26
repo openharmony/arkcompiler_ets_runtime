@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MODULE_TOOLS_H
 
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/module_logger.h"
 
 namespace panda::ecmascript {
 
@@ -39,5 +40,28 @@ public:
 private:
     bool enableESMTrace_ {false};
 };
+
+class ModuleLoggerTimeScope {
+public:
+    ModuleLoggerTimeScope(JSThread *thread, const CString &moduleRequestName)
+        : moduleRequestName_(moduleRequestName), moduleLogger_(thread->GetModuleLogger())
+    {
+        if (moduleLogger_ != nullptr) {
+            startTime_ = moduleLogger_->now();
+        }
+    }
+
+    ~ModuleLoggerTimeScope()
+    {
+        if (moduleLogger_ != nullptr) {
+            moduleLogger_->SetDuration(moduleRequestName_, startTime_);
+        }
+    }
+private:
+    double startTime_ {};
+    CString moduleRequestName_;
+    ModuleLogger *moduleLogger_ {nullptr};
+};
+
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_TOOLS_H

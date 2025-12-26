@@ -236,6 +236,13 @@ void ModuleLogger::ProcessModuleExecuteTime()
     unusedFileTime_ = static_cast<int64_t>(unusedFileTime);
 }
 
+size_t ModuleLogger::now() const
+{
+    return std::chrono::duration_cast<std::chrono::microseconds>
+               (std::chrono::high_resolution_clock::now().time_since_epoch())
+               .count();
+}
+
 ModuleLoadInfo *ModuleLogger::GetModuleLoadInfo(const CString &recordName)
 {
     auto info = jsModuleLoadInfo_.find(recordName);
@@ -247,7 +254,7 @@ ModuleLoadInfo *ModuleLogger::GetModuleLoadInfo(const CString &recordName)
     return newInfo;
 }
 
-void ModuleLogger::SetStartTime(const CString &recordName)
+void ModuleLogger::SetDuration(const CString &recordName, double startTime)
 {
     // func_main_0/_GLOBAL::func_main_0 is system abc or so js/abc, need to exclude.
     if (recordName == ModulePathHelper::ENTRY_FUNCTION_NAME ||
@@ -256,23 +263,11 @@ void ModuleLogger::SetStartTime(const CString &recordName)
     }
     RuntimeLockHolder locker(vm_->GetJSThread(), mutex_);
     ModuleLoadInfo *info = GetModuleLoadInfo(recordName);
-    info->time = std::chrono::duration_cast<std::chrono::microseconds>
-                 (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
-}
-
-void ModuleLogger::SetEndTime(const CString &recordName)
-{
-    // func_main_0/_GLOBAL::func_main_0 is system abc or so js/abc, need to exclude.
-    if (recordName == ModulePathHelper::ENTRY_FUNCTION_NAME ||
-        recordName == ModulePathHelper::ENTRY_MAIN_FUNCTION) {
+    if (info->time > 0) {
+        // record found and time has already been set, no need to set new one
         return;
     }
-    RuntimeLockHolder locker(vm_->GetJSThread(), mutex_);
-    ModuleLoadInfo *info = GetModuleLoadInfo(recordName);
-    double time = info->time;
-    info->time = (std::chrono::duration_cast<std::chrono::microseconds>
-                    (std::chrono::high_resolution_clock::now().time_since_epoch())
-                    .count() - time) / DOUBLE_MILLISECONDS_PER_SEC;
+    info->time = (now() - startTime) / DOUBLE_MILLISECONDS_PER_SEC;
 }
 
 std::string ModuleLogger::ToStringWithPrecision(const double num, const uint8_t n)
@@ -294,7 +289,8 @@ void ModuleLogger::PrintModuleLoadInfoTask(void *data)
 void ModuleLogger::SetModuleLoggerTask(EcmaVM *vm)
 {
     ModuleLogger *moduleLogger = nullptr;
-    if (vm->GetJSOptions().EnableModuleLog()) {
+    if (vm->GetJSOptions().EnableModuleLog() &&
+        vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
         moduleLogger = new ModuleLogger(vm);
         vm->GetJSThread()->SetModuleLogger(moduleLogger);
     }

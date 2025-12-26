@@ -2542,48 +2542,103 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule2)
     EXPECT_NE(res.GetTaggedValue(), JSTaggedValue::Undefined());
 }
 
-HWTEST_F_L0(EcmaModuleTest, ModuleLogger) {
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
-    CString baseFileName = "modules.abc";
-    module1->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName1 = "a";
-    module1->SetEcmaModuleRecordNameString(recordName1);
-    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName2 = "b";
-    module2->SetEcmaModuleRecordNameString(recordName2);
-    JSHandle<JSTaggedValue> importName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("ccc"));
-    JSHandle<JSTaggedValue> localName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("ccc"));
-    JSHandle<SourceTextModule> module3 = objectFactory->NewSourceTextModule();
-    module2->SetEcmaModuleFilenameString(baseFileName);
-    CString recordName3 = "c";
-    module2->SetEcmaModuleRecordNameString(recordName3);
-    JSHandle<TaggedArray> requestedModules = objectFactory->NewTaggedArray(1);
-    requestedModules->Set(thread, 0, module3);
-    module1->SetRequestedModules(thread, requestedModules.GetTaggedValue());
-    JSHandle<ImportEntry> importEntry = objectFactory->NewImportEntry(0, importName,
-                                                                      localName, SharedTypes::UNSENDABLE_MODULE);
-    SourceTextModule::AddImportEntry(thread, module2, importEntry, 0, 1);
-
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger1) {
     ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
-    moduleLogger->SetStartTime(recordName1);
-    moduleLogger->SetEndTime(recordName1);
-    moduleLogger->SetStartTime(recordName2);
-    moduleLogger->SetEndTime(recordName2);
-    moduleLogger->SetStartTime(recordName3);
-    moduleLogger->InsertEntryPointModule(module1);
-    moduleLogger->InsertParentModule(module1, module2);
-    moduleLogger->InsertModuleLoadInfo(module2, module3, -1);
-    moduleLogger->InsertModuleLoadInfo(module2, module3, 0);
+    thread->SetModuleLogger(moduleLogger);
+    {
+        ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+        CString baseFileName = "modules.abc";
+        module1->SetEcmaModuleFilenameString(baseFileName);
+        CString recordName1 = "a";
+        ModuleLoggerTimeScope timeScope1(thread, recordName1);
+        module1->SetEcmaModuleRecordNameString(recordName1);
+        JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+        module2->SetEcmaModuleFilenameString(baseFileName);
+        CString recordName2 = "b";
+        ModuleLoggerTimeScope timeScope2(thread, recordName2);
+        module2->SetEcmaModuleRecordNameString(recordName2);
+        JSHandle<JSTaggedValue> importName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("ccc"));
+        JSHandle<JSTaggedValue> localName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("ccc"));
+        JSHandle<SourceTextModule> module3 = objectFactory->NewSourceTextModule();
+        module2->SetEcmaModuleFilenameString(baseFileName);
+        CString recordName3 = "c";
+        ModuleLoggerTimeScope timeScope3(thread, recordName3);
+        module2->SetEcmaModuleRecordNameString(recordName3);
+        JSHandle<TaggedArray> requestedModules = objectFactory->NewTaggedArray(1);
+        requestedModules->Set(thread, 0, module3);
+        module1->SetRequestedModules(thread, requestedModules.GetTaggedValue());
+        JSHandle<ImportEntry> importEntry = objectFactory->NewImportEntry(0, importName,
+                                                                        localName, SharedTypes::UNSENDABLE_MODULE);
+        SourceTextModule::AddImportEntry(thread, module2, importEntry, 0, 1);
+        moduleLogger->InsertEntryPointModule(module1);
+        moduleLogger->InsertParentModule(module1, module2);
+        moduleLogger->InsertModuleLoadInfo(module2, module3, -1);
+        moduleLogger->InsertModuleLoadInfo(module2, module3, 0);
+
+        auto globalConstants = thread->GetEcmaVM()->GetJSThread()->GlobalConstants();
+        auto funcName = (module3->GetTypes() == ModuleTypes::NATIVE_MODULE) ?
+            globalConstants->GetHandledRequireNativeModuleString() :
+            globalConstants->GetHandledRequireNapiString();
+        JSTaggedValue nativeFunc = funcName.GetTaggedValue();
+        bool isFunc = nativeFunc.IsJSFunction();
+        EXPECT_EQ(isFunc, false);
+    }
     moduleLogger->PrintModuleLoadInfo();
-    auto globalConstants = thread->GetEcmaVM()->GetJSThread()->GlobalConstants();
-    auto funcName = (module3->GetTypes() == ModuleTypes::NATIVE_MODULE) ?
-        globalConstants->GetHandledRequireNativeModuleString() :
-        globalConstants->GetHandledRequireNapiString();
-    JSTaggedValue nativeFunc = funcName.GetTaggedValue();
-    bool isFunc = nativeFunc.IsJSFunction();
-    EXPECT_EQ(isFunc, false);
+    delete moduleLogger;
+    thread->SetModuleLogger(nullptr);
+    moduleLogger = nullptr;
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableModuleLoggerAndSnapshot) {
+    auto vm = thread->GetEcmaVM();
+    thread->SetModuleLogger(nullptr);
+    int arkProperties = vm->GetJSOptions().GetArkProperties();
+    vm->GetJSOptions().SetArkProperties((arkProperties |
+        ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) & (~ArkProperties::ENABLE_MODULE_LOG));
+    ModuleLogger::SetModuleLoggerTask(vm);
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
+    EXPECT_EQ(moduleLogger, nullptr);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableSnapshot) {
+    auto vm = thread->GetEcmaVM();
+    int arkProperties = vm->GetJSOptions().GetArkProperties();
+    vm->GetJSOptions().SetArkProperties((arkProperties |
+        ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) | ArkProperties::ENABLE_MODULE_LOG);
+    ModuleLogger::SetModuleLoggerTask(vm);
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
+    EXPECT_NE(moduleLogger, nullptr);
+    delete moduleLogger;
+    thread->SetModuleLogger(nullptr);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableModuleLogger) {
+    auto vm = thread->GetEcmaVM();
+    int arkProperties = vm->GetJSOptions().GetArkProperties();
+    vm->GetJSOptions().SetArkProperties((arkProperties &
+        (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT)) & (~ArkProperties::ENABLE_MODULE_LOG));
+    ModuleLogger::SetModuleLoggerTask(vm);
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
+    EXPECT_EQ(moduleLogger, nullptr);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_EnableModuleLoggerAndSnapshot) {
+    auto vm = thread->GetEcmaVM();
+    int arkProperties = vm->GetJSOptions().GetArkProperties();
+    vm->GetJSOptions().SetArkProperties((arkProperties &
+        (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT)) | ArkProperties::ENABLE_MODULE_LOG);
+    ModuleLogger::SetModuleLoggerTask(vm);
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
+    EXPECT_EQ(moduleLogger, nullptr);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_now) {
+    auto vm = thread->GetEcmaVM();
+    ModuleLogger *moduleLogger = new ModuleLogger(vm);
+    size_t time = moduleLogger->now();
+    ASSERT_GT(time, 0);
+    delete moduleLogger;
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetRequireNativeModuleFunc) {

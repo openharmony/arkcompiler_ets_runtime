@@ -38,8 +38,8 @@ public:
         }
         jsModuleLoadInfo_.clear();
     }
-    void SetStartTime(const CString &recordName);
-    void SetEndTime(const CString &recordName);
+    size_t now() const;
+    void SetDuration(const CString &recordName, double startTime);
     static void SetModuleLoggerTask(EcmaVM *vm);
     static void PrintModuleLoadInfoTask(void *data);
     void InsertModuleLoadInfo(JSHandle<SourceTextModule> currentModule,

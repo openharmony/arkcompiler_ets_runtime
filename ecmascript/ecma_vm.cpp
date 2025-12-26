@@ -47,7 +47,7 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
-#include "ecmascript/module/module_logger.h"
+#include "ecmascript/module/module_tools.h"
 #include "ecmascript/ohos/aot_tools.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
@@ -2064,10 +2064,7 @@ Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFi
         THROW_REFERENCE_ERROR_AND_RETURN(thread_, msg.c_str(), Unexpected(false));
     }
 
-    ModuleLogger *moduleLogger = thread_->GetModuleLogger();
-    if (moduleLogger != nullptr) {
-        moduleLogger->SetStartTime(entry);
-    }
+    ModuleLoggerTimeScope moduleLoggerTimeScope(thread_, entry);
     if (jsPandaFile->IsModule(recordInfo)) {
         global = undefined;
         CString moduleName = jsPandaFile->GetJSPandaFileDesc();
@@ -2094,9 +2091,6 @@ Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFi
     JSTaggedValue result;
     if (jsPandaFile->IsCjs(recordInfo)) {
         CJSExecution(func, global, jsPandaFile, entryPoint);
-        if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(entry);
-        }
     } else {
         if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
             EcmaRuntimeStatScope runtimeStatScope(this);
@@ -2116,9 +2110,6 @@ Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFi
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>(func), global, undefined, 0);
             EcmaRuntimeStatScope runtimeStatScope(this);
             result = EcmaInterpreter::Execute(info);
-        }
-        if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(entry);
         }
 
         if (!thread_->HasPendingException() && IsStaticImport(executeType)) {
