@@ -1030,6 +1030,28 @@ host_unittest_action("Sendable_BuiltinsSharedArray_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("Sendable_BuiltinsSharedArray_One_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_shared_array_one_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("Sendable_BuiltinsSharedArrayBuffer_Test") {
   module_out_path = module_output_path
 
@@ -1243,6 +1265,7 @@ group("unittest") {
     ":Sendable_BuiltinsSharedObject_Test",
     ":Sendable_BuiltinsSharedSet_Test",
     ":Sendable_BuiltinsSharedTypedArray_Test",
+    ":Sendable_BuiltinsSharedArray_One_Test",
   ]
 }
 
@@ -1302,6 +1325,7 @@ group("host_unittest") {
     ":Sendable_BuiltinsSharedObject_TestAction",
     ":Sendable_BuiltinsSharedSet_TestAction",
     ":Sendable_BuiltinsSharedTypedArray_TestAction",
+    ":Sendable_BuiltinsSharedArray_One_TestAction",
   ]
   if (is_mac) {
     deps -= [

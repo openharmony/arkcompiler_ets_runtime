@@ -426,4 +426,43 @@ HWTEST_F_L0(BuiltinsSharedMapTest, NextInternalTest001)
         JSSharedMapIterator::NextInternal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_EQ(result2.IsJSSharedSetIterator(), false);
 }
+
+HWTEST_F_L0(BuiltinsSharedMapTest, GetIterator1)
+{
+    JSHandle<JSTaggedValue> map(thread, CreateSBuiltinsMap(thread));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    // test Values()
+    JSTaggedValue result = BuiltinsSharedMap::Values(ecmaRuntimeCallInfo);
+    JSHandle<JSTaggedValue> iter(thread, result);
+    EXPECT_FALSE(iter->IsJSMapIterator());
+
+    // test Keys()
+    JSTaggedValue result1 = BuiltinsSharedMap::Keys(ecmaRuntimeCallInfo);
+    JSHandle<JSTaggedValue> iter1(thread, result1);
+    EXPECT_FALSE(iter1->IsJSMapIterator());
+    // test entries()
+    JSTaggedValue result2 = BuiltinsSharedMap::Entries(ecmaRuntimeCallInfo);
+    JSHandle<JSTaggedValue> iter2(thread, result2);
+    EXPECT_FALSE(iter2->IsJSMapIterator());
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+HWTEST_F_L0(BuiltinsSharedMapTest, Exception)
+{
+    JSHandle<JSTaggedValue> map(thread, CreateSBuiltinsMap(thread));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    auto result = JSSharedMapIterator::CreateMapIterator(thread, map, IterationKind::KEY);
+    EXPECT_FALSE(result->IsUndefined());
+    auto result1 = JSSharedMapIterator::NextInternal(thread, map);
+    EXPECT_EQ(result1, JSTaggedValue::Exception());
+    TestHelper::TearDownFrame(thread, prev);
+}
+
 }

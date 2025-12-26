@@ -228,6 +228,42 @@ public:
         EXPECT_TRUE(result.IsJSListFormat());
         return result;
     }
+
+    static std::vector<JSHandle<JSTaggedValue>> SharedArrayDefineOwnPropertyTest(JSThread* thread,
+        JSHandle<JSObject>& obj, std::vector<int>& vals)
+    {
+        std::vector<JSHandle<JSTaggedValue>> keys;
+        for (size_t i = 0; i < vals.size(); i++) {
+            keys.push_back(JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))));
+            PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(vals[i])),
+                                     true, true, true);
+            JSArray::DefineOwnProperty(thread, obj, keys[i], desc0);
+        }
+        return keys;
+    }
+
+    static std::vector<JSHandle<JSTaggedValue>> SharedArrayDefineOwnPropertyTest(JSThread* thread,
+        JSHandle<JSTaggedValue>& obj, std::vector<int>& vals)
+    {
+        JSHandle<JSObject> jsObj(obj);
+        std::vector<JSHandle<JSTaggedValue>> keys;
+        for (size_t i = 0; i < vals.size(); i++) {
+            keys.push_back(JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))));
+            PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(vals[i])),
+                                     true, true, true);
+            JSArray::DefineOwnProperty(thread, jsObj, keys[i], desc0);
+        }
+        return keys;
+    }
+
+    static void SharedArrayCheckKeyValueCommon(JSThread* thread, JSHandle<JSObject>& valueHandle,
+        PropertyDescriptor& descRes, std::vector<JSHandle<JSTaggedValue>>& keys, std::vector<int32_t>& vals)
+    {
+        for (size_t i = 0; i < vals.size(); i++) {
+            JSObject::GetOwnProperty(thread, valueHandle, keys[i], descRes);
+            ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(vals[i]));
+        }
+    }
 };
 };  // namespace panda::test
 #endif

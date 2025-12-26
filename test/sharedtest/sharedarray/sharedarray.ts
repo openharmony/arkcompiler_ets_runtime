@@ -1490,6 +1490,70 @@ function toLocaleStringTest() {
     print(array6.toLocaleString('de-DE', {style: 'currency', currency: 'USD'}));
 }
 
+class SubSendableArray<T> extends SendableArray<T> {
+    desc: string = "I'am SubSendableSet";
+    constructor(entries: T[]) {
+        'use sendable';
+        super(...entries);
+    }
+}
+
+function subSendableArrayTest() {
+    print("Start Test subSendableArrayTest")
+
+    try {
+        const tmpArr = new SubSendableArray<number>(5, 12, 8, 130, 44);
+        print("create SubSendableArray success " + tmpArr.length);
+    } catch (err) {
+        print("create SubSendableArray failed. err: " + err + ", code: " + err.code);
+    }
+
+    const array1 = new SubSendableArray<number>([5, 12, 8, 130, 44]);
+    let index = 1;
+    print(`An index of ${index} returns ${array1.at(index)}`);
+
+    index = 2871622679;
+    print(`An index of 2871622679 returns ${array1.at(index)}`);
+
+    print("" + array1.includes(2));
+    const found = array1.find((element: number) => element > 10);
+
+    print("" + found);
+    let iterator = array1.values();
+    for (const value of iterator) {
+        print("" + value);
+    }
+
+    iterator = array1.keys();
+    for (const key of iterator) {
+        print("" + key);
+    }
+
+    try {
+        print("" + array1.findIndex(array1.length - 1));
+    } catch (err) {
+        print("findIndex failed. err: " + err + ", code: " + err.code);
+    }
+
+    array1.fill(0, 2, 4);
+    print(array1);
+
+    array1.pop();
+    print(array1.length);
+
+    array1.push(10);
+
+    print(array1.join());
+
+    try {
+        let a1 = array1.slice(1.5, 4);
+        print("slice(1.5, 4) element success");
+        print(a1);
+    } catch (err) {
+        print("slice element failed. err: " + err + ", code: " + err.code);
+    }
+}
+
 at()
 
 entries()
@@ -1578,3 +1642,4 @@ reverse();
 
 toStringTest();
 toLocaleStringTest();
+subSendableArrayTest();
