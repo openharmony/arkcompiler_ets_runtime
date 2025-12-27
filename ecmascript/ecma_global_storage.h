@@ -102,7 +102,9 @@ public:
         SetObject(value);
         SetUsing(isUsing);
 #ifdef HOOK_ENABLE
-        memtrace((void *)next, sizeof(Node), "ArkJsGlobalHandle", isUsing);
+        if (!IsWeak()) {
+            restrace(RES_ARK_GLOBAL_HANDLE, (void *)this, sizeof(Node), TAG_RES_ARK_GLOBAL_HANDLE, isUsing);
+        }
 #endif
     }
 
