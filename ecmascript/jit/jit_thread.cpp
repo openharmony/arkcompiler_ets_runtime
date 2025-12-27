@@ -43,7 +43,9 @@ JSHandle<JSTaggedValue> JitThread::NewHandle(JSTaggedValue value) const
 JitVM *JitVM::Create()
 {
     auto vm = new JitVM();
+    LOG_JIT(INFO) << "Create JitVm addr: " << vm;
     JitThread *thread = new JitThread(vm);
+    LOG_JIT(INFO) << "JitVm create thread addr: " << thread;
     vm->jitThread_ = thread;
 
     // super ecmavm

@@ -48,6 +48,7 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     jitCompileMode_(mode),
     runState_(RunState::INIT)
 {
+    LOG_JIT(INFO) << "JitTask compilerThread addr: " << compilerThread_;
     jit->IncJitTaskCnt(hostThread);
     dependencies_ = new kungfu::LazyDeoptAllDependencies();
     sustainingJSHandle_ = std::make_unique<SustainingJSHandle>(hostThread->GetEcmaVM());
