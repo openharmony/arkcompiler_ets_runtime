@@ -49,9 +49,10 @@ public:
                                                             uint32_t inlinePropIndex);
     static JSTaggedValue ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObject> &originalArray,
                                             JSTaggedNumber length);
-    static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc);
+    static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc,
+                               bool mayThrow = false);
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, const JSHandle<JSTaggedValue> &key,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, bool mayThrow = false);
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, uint32_t index,
                                   const PropertyDescriptor &desc);
 

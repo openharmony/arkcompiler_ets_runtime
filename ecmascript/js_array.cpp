@@ -373,7 +373,8 @@ void JSArray::TransformElementsKindAfterSetCapacity(JSThread *thread, const JSHa
     }
 }
 
-bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc)
+bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array,
+                             const PropertyDescriptor &desc, bool mayThrow)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle(thread->GlobalConstants()->GetHandledLengthString());
 
@@ -443,7 +444,11 @@ bool JSArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, 
 
     // Steps 19d-v, 21. Return false if there were non-deletable elements.
     uint32_t arrayLength = JSArray::Cast(*array)->GetArrayLength();
-    return arrayLength == newLen;
+    bool succ = arrayLength == newLen;
+    if (!succ && mayThrow) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "Not all array elements is configurable", false);
+    }
+    return succ;
 }
 
 bool JSArray::PropertyKeyToArrayIndex(JSThread *thread, const JSHandle<JSTaggedValue> &key, uint32_t *output)
@@ -453,14 +458,14 @@ bool JSArray::PropertyKeyToArrayIndex(JSThread *thread, const JSHandle<JSTaggedV
 
 // 9.4.2.1 [[DefineOwnProperty]] ( P, Desc)
 bool JSArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, const JSHandle<JSTaggedValue> &key,
-                                const PropertyDescriptor &desc)
+                                const PropertyDescriptor &desc, bool mayThrow)
 {
     // 1. Assert: IsPropertyKey(P) is true.
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key!");
     // 2. If P is "length", then
     if (IsLengthString(thread, key)) {
         // a. Return ArraySetLength(A, Desc).
-        return ArraySetLength(thread, array, desc);
+        return ArraySetLength(thread, array, desc, mayThrow);
     }
     // 3. Else if P is an array index, then
     // already do in step 4.

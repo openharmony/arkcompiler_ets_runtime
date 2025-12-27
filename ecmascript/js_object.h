@@ -861,7 +861,8 @@ private:
                                              JSHandle<JSTaggedValue> &receiver, bool mayThrow, bool isInternalAccessor);
     static bool SetPropertyForDataDescriptorProxy(JSThread *thread, ObjectOperator *op,
                                                   const JSHandle<JSTaggedValue> &value,
-                                                  JSHandle<JSTaggedValue> &receiver);
+                                                  JSHandle<JSTaggedValue> &receiver,
+                                                  bool mayThrow);
     static bool ThrowTypeErrorInextensiableAddProperty(ObjectOperator *op);
 };
 }  // namespace ecmascript
