@@ -367,6 +367,17 @@ JSTaggedValue BuiltinsPromise::Then(EcmaRuntimeCallInfo *argv)
         }
     }
 
+    // For runtime async stack recording
+    if (UNLIKELY(ecmaVm->IsEnableRuntimeAsyncStack())) {
+        if (promiseOrCapability->IsJSPromise()) {
+            ecmaVm->GetAsyncStackTraceManager()->SavePromiseNode(JSHandle<JSPromise>::Cast(promiseOrCapability));
+        } else {
+            auto capability = JSHandle<PromiseCapability>::Cast(promiseOrCapability);
+            ecmaVm->GetAsyncStackTraceManager()->SavePromiseNode(JSHandle<JSPromise>(thread,
+                capability->GetPromise(thread)));
+        }
+    }
+
     // 7. Return PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability).
     return PerformPromiseThen(thread, JSHandle<JSPromise>::Cast(promise), onFulfilled, onRejected,
         promiseOrCapability);
@@ -481,6 +492,11 @@ JSTaggedValue BuiltinsPromise::Then(EcmaRuntimeCallInfo *argv)
         }
         ecmaVm->GetAsyncStackTrace()->InsertAsyncTaskStacks(
             JSHandle<JSPromise>(thread, resultCapability->GetPromise(thread)), description);
+    }
+    // For runtime async stack recording
+    if (UNLIKELY(ecmaVm->GetEnableRuntimeAsyncStack())) {
+        ecmaVm->GetAsyncStackTraceManager()->SaveAsyncStackInfo(JSHandle<JSPromise>(thread,
+            resultCapability->GetPromise(thread)));
     }
 
     // 7. Return PerformPromiseThen(promise, onFulfilled, onRejected, resultCapability).

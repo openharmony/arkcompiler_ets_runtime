@@ -1845,6 +1845,11 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     argv->Set(thread, 3, specifier);                         // 3 : request module's path
     argv->Set(thread, 4, recordName);                        // 4 : js recordName or undefined
 
+    // For runtime async stack recording
+    if (UNLIKELY(ecmaVm->IsEnableRuntimeAsyncStack())) {
+        JSTaggedValue promise = promiseCapability->GetPromise(thread);
+        ecmaVm->GetAsyncStackTraceManager()->SavePromiseNode(JSHandle<JSPromise>(thread, promise));
+    }
     JSHandle<JSFunction> dynamicImportJob(env->GetDynamicImportJob());
     job::MicroJobQueue::EnqueueJob(thread, job, job::QueueType::QUEUE_PROMISE, dynamicImportJob, argv);
 

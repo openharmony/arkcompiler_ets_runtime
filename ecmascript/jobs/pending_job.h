@@ -47,16 +47,25 @@ public:
         JSHandle<TaggedArray> argv(thread, pendingJob->GetArguments(thread));
         const uint32_t argsLength = argv->GetLength();
         JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-        bool stackTrace = thread->GetEcmaVM()->GetJsDebuggerManager()->IsAsyncStackTrace();
+        EcmaVM *vm = thread->GetEcmaVM();
+        bool stackTrace = vm->GetJsDebuggerManager()->IsAsyncStackTrace();
         if (stackTrace && argsLength >= 1) {
-            thread->GetEcmaVM()->GetAsyncStackTrace()->InsertCurrentAsyncTaskStack(argv->Get(thread, 0));
+            vm->GetAsyncStackTrace()->InsertCurrentAsyncTaskStack(argv->Get(thread, 0));
+        }
+        // For runtime async stack recording
+        if (UNLIKELY(vm->IsEnableRuntimeAsyncStack()) && argsLength >= 1) {
+            vm->GetAsyncStackTraceManager()->SetCurrentPromiseTask(argv->Get(thread, 0));
         }
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, job, undefined, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         info->SetCallArg(argsLength, argv);
         JSTaggedValue result = JSFunction::Call(info);
         if (stackTrace && argsLength >= 1) {
-            thread->GetEcmaVM()->GetAsyncStackTrace()->RemoveAsyncTaskStack(argv->Get(thread, 0));
+            vm->GetAsyncStackTrace()->RemoveAsyncTaskStack(argv->Get(thread, 0));
+        }
+        // For runtime async stack recording
+        if (UNLIKELY(vm->IsEnableRuntimeAsyncStack()) && argsLength >= 1) {
+            vm->GetAsyncStackTraceManager()->ResetCurrentPromiseJob(argv->Get(thread, 0));
         }
         return result;
     }

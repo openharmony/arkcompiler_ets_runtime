@@ -22,6 +22,10 @@
 #include "ecmascript/js_promise.h"
 #include "ecmascript/mem/c_containers.h"
 
+namespace panda::test {
+class AsyncStackTestHelper;
+}
+
 namespace panda::ecmascript {
 class JSPromise;
 class EcmaVM;
@@ -181,6 +185,54 @@ private:
 
     std::vector<std::shared_ptr<AsyncStack>> currentAsyncParent_;
     CMap<uint32_t, std::shared_ptr<AsyncStack>> asyncTaskStacks_;
+};
+
+struct PromiseNode {
+    uint32_t promiseId;
+    uint32_t parentPromiseId;
+    uint64_t stackId;
+};
+
+class AsyncStackTraceManager {
+public:
+    static constexpr uint32_t MAX_ASYNC_TASK_STACK_DEPTH = 8;
+
+    explicit AsyncStackTraceManager(EcmaVM *vm) : vm_(vm)
+    {
+        thread_ = vm_->GetJSThread();
+    }
+    ~AsyncStackTraceManager() = default;
+
+    void SetAsyncStackType();
+    void ResetAsyncStackType();
+
+    void SavePromiseNode(const JSHandle<JSPromise> &promise);
+    uint32_t GetParentPromiseId(uint32_t promiseId);
+    uint64_t GetStackId(uint32_t promiseId);
+    void SetCurrentPromiseTask(const JSTaggedValue &value);
+    void ResetCurrentPromiseJob(const JSTaggedValue &value);
+    uint32_t GetCurrentPromiseId() const
+    {
+        return currentPromiseId_;
+    }
+    void BuildAsyncStackTrace(std::string &asyncStackTrace);
+    void Clear();
+
+private:
+    static constexpr uint32_t MAX_ASYNC_CALL_STACKS = 4 * 1024;
+    static constexpr uint32_t MAX_CALL_STACK_SIZE_TO_CAPTURE = 48;
+
+    EcmaVM *vm_ {nullptr};
+    JSThread *thread_ {nullptr};
+    CDeque<uint32_t> promiseQueue_;
+    CUnorderedMap<uint32_t, PromiseNode> promiseMap_;
+    uint32_t currentPromiseId_ {0};
+    uint64_t defaultAsyncStackType_ {0};
+
+    void CollectOldPromiseNodeIfNeeded();
+    JSTaggedValue GetPromise(const JSTaggedValue &value);
+
+    friend class test::AsyncStackTestHelper;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STACKINFO_STACK_TRACE_H

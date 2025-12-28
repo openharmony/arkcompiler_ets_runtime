@@ -13,16 +13,23 @@
  * limitations under the License.
  */
 
-#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
+#include <iomanip>
 
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/js_promise.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/async_detect.h"
-#include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/platform/backtrace.h"
+
+#if defined(ENABLE_ASYNC_STACK)
+#include "async_stack.h"
+#include "unique_stack_table.h"
+#endif
 
 namespace panda::ecmascript {
 AsyncStackTrace::AsyncStackTrace(EcmaVM *vm) : vm_(vm)
@@ -147,5 +154,172 @@ bool AsyncStackTrace::RemoveAsyncTaskStack(const JSTaggedValue &PromiseReaction)
         currentAsyncParent_.pop_back();
     }
     return true;
+}
+
+void AsyncStackTraceManager::SetAsyncStackType()
+{
+#if defined(ENABLE_ASYNC_STACK)
+    defaultAsyncStackType_ = DfxSetAsyncStackType(ASYNC_TYPE_PROMISE);
+    DfxSetAsyncStackType(defaultAsyncStackType_ | ASYNC_TYPE_PROMISE);
+#endif
+}
+
+void AsyncStackTraceManager::ResetAsyncStackType()
+{
+#if defined(ENABLE_ASYNC_STACK)
+    if (defaultAsyncStackType_ != 0) {
+        DfxSetAsyncStackType(defaultAsyncStackType_);
+    }
+#endif
+}
+
+void AsyncStackTraceManager::SavePromiseNode(const JSHandle<JSPromise> &promise)
+{
+#if defined(ENABLE_ASYNC_STACK)
+    CollectOldPromiseNodeIfNeeded();
+    uint64_t stackId = DfxCollectStackWithDepth(ASYNC_TYPE_PROMISE, MAX_CALL_STACK_SIZE_TO_CAPTURE);
+    if (stackId == 0) {
+        LOG_ECMA(DEBUG) << "DFX collect async stack failed, return 0";
+        return;
+    }
+    uint32_t promiseId = promise->GetAsyncTaskId();
+    promiseMap_[promiseId] = {promiseId, GetCurrentPromiseId(), stackId};
+    promiseQueue_.push_back(promiseId);
+#endif
+}
+
+uint32_t AsyncStackTraceManager::GetParentPromiseId(uint32_t promiseId)
+{
+    auto it = promiseMap_.find(promiseId);
+    if (it != promiseMap_.end()) {
+        return it->second.parentPromiseId;
+    }
+    return 0;
+}
+
+uint64_t AsyncStackTraceManager::GetStackId(uint32_t promiseId)
+{
+    auto it = promiseMap_.find(promiseId);
+    if (it != promiseMap_.end()) {
+        return it->second.stackId;
+    }
+    return 0;
+}
+
+JSTaggedValue AsyncStackTraceManager::GetPromise(const JSTaggedValue &value)
+{
+    JSTaggedValue promise = JSTaggedValue::Hole();
+    if (value.IsPromiseReaction()) {
+        auto reaction = PromiseReaction::Cast(value);
+        auto handler = reaction->GetHandler(thread_);
+        if (handler.IsJSAsyncAwaitStatusFunction()) {
+            // async await
+            JSTaggedValue ctx = JSAsyncAwaitStatusFunction::Cast(handler)->GetAsyncContext(thread_);
+            JSTaggedValue asyncFuncObj = GeneratorContext::Cast(ctx)->GetGeneratorObject(thread_);
+            promise = JSAsyncFuncObject::Cast(asyncFuncObj)->GetPromise(thread_);
+        } else if (handler.IsJSAsyncModuleFulfilledFunction()) {
+            // top-level await fulfill
+            JSTaggedValue module = JSAsyncModuleFulfilledFunction::Cast(handler)->GetModule(thread_);
+            promise = SourceTextModule::Cast(module)->GetTopLevelCapability(thread_);
+        } else if (handler.IsJSAsyncModuleRejectedFunction()) {
+            // top-level await reject
+            JSTaggedValue module = JSAsyncModuleRejectedFunction::Cast(handler)->GetModule(thread_);
+            promise = SourceTextModule::Cast(module)->GetTopLevelCapability(thread_);
+        } else {
+            JSTaggedValue promiseOrCapability = reaction->GetPromiseOrCapability(thread_);
+            if (promiseOrCapability.IsJSPromise()) {
+                // builtin promise
+                promise = promiseOrCapability;
+            } else {
+                // promise like
+                promise = PromiseCapability::Cast(promiseOrCapability)->GetPromise(thread_);
+            }
+        }
+    }
+    if (value.IsJSPromiseReactionFunction()) {
+        // dynamic import
+        promise = JSPromiseReactionsFunction::Cast(value)->GetPromise(thread_);
+    }
+    return promise;
+}
+
+void AsyncStackTraceManager::SetCurrentPromiseTask(const JSTaggedValue &value)
+{
+#if defined(ENABLE_ASYNC_STACK)
+    JSTaggedValue promise = GetPromise(value);
+    if (!promise.IsHole()) {
+        currentPromiseId_ = JSPromise::Cast(promise)->GetAsyncTaskId();
+        uint64_t stackId = GetStackId(currentPromiseId_);
+        if (stackId != 0) {
+            DfxSetSubmitterStackId(stackId);
+        }
+    }
+#endif
+}
+
+void AsyncStackTraceManager::ResetCurrentPromiseJob(const JSTaggedValue &value)
+{
+#if defined(ENABLE_ASYNC_STACK)
+    if (value.IsPromiseReaction() || value.IsJSPromiseReactionFunction()) {
+        currentPromiseId_ = 0;
+        DfxSetSubmitterStackId(0);
+    }
+#endif
+}
+
+void AsyncStackTraceManager::CollectOldPromiseNodeIfNeeded()
+{
+    // Clear the outdated data
+    if (promiseMap_.size() <= MAX_ASYNC_CALL_STACKS) return;
+    size_t half = promiseMap_.size() / 2;
+    for (size_t i = 0; i < half; ++i) {
+        uint32_t promiseId = promiseQueue_.front();
+        promiseQueue_.pop_front();
+        promiseMap_.erase(promiseId);
+    }
+}
+
+void AsyncStackTraceManager::BuildAsyncStackTrace(std::string &asyncStackTrace)
+{
+#if defined(ENABLE_ASYNC_STACK)
+    uint32_t depth = 0;
+    uint32_t promiseId = GetCurrentPromiseId();
+
+    while (promiseId != 0 && depth < MAX_ASYNC_TASK_STACK_DEPTH) {
+        ++depth;
+        uint64_t stackId = GetStackId(promiseId);
+        if (stackId == 0) {
+            LOG_ECMA(DEBUG) << "StackId of the current promise is 0";
+            promiseId = GetParentPromiseId(promiseId);
+            continue;
+        }
+
+        std::vector<uintptr_t> pcs;
+        OHOS::HiviewDFX::StackId id;
+        id.value = stackId;
+        if (!OHOS::HiviewDFX::UniqueStackTable::Instance()->GetPcsByStackId(id, pcs)) {
+            LOG_ECMA(ERROR) << "Failed to get pcs by stackId";
+            promiseId = GetParentPromiseId(promiseId);
+            continue;
+        }
+        std::string stackStr = SymbolicAddress(
+            reinterpret_cast<const void* const *>(pcs.data()),
+            pcs.size(),
+            vm_);
+
+        std::ostringstream banner;
+        banner << "submitter#" << std::setw(2) << std::setfill('0') << (depth - 1);
+        asyncStackTrace.append(banner.str() + ":\n");
+        asyncStackTrace.append(stackStr);
+
+        promiseId = GetParentPromiseId(promiseId);
+    }
+#endif
+}
+
+void AsyncStackTraceManager::Clear()
+{
+    promiseQueue_.clear();
+    promiseMap_.clear();
 }
 }  // namespace panda::ecmascript

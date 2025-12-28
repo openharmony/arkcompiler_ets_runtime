@@ -31,7 +31,6 @@
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/builtins/builtins_proxy.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
@@ -59,13 +58,7 @@
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/sustaining_js_handle.h"
 #include "ecmascript/symbol_table.h"
-#include "ecmascript/ohos/jit_tools.h"
-#include "ecmascript/ohos/aot_tools.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 #include "ecmascript/base/gc_helper.h"
-#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/platform/backtrace.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
@@ -179,6 +172,7 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     vm->GetJSOptions().SetArkProperties(arkProperties);
 #endif
+    vm->SetEnableRuntimeAsyncStack(vm->GetJSOptions().EnableRuntimeAsyncStack());
     return vm;
 }
 
@@ -403,6 +397,7 @@ bool EcmaVM::Initialize()
     }
     debuggerManager_ = new tooling::JsDebuggerManager(this);
     asyncStackTrace_ = new AsyncStackTrace(this);
+    asyncStackTraceManager_ = new AsyncStackTraceManager(this);
     aotFileManager_ = new AOTFileManager(this);
     abcBufferCache_ = new AbcBufferCache();
     pcVector_.reserve(MAX_HYBRID_STACK_SIZE);
@@ -598,6 +593,11 @@ EcmaVM::~EcmaVM()
     if (asyncStackTrace_ != nullptr) {
         delete asyncStackTrace_;
         asyncStackTrace_ = nullptr;
+    }
+
+    if (asyncStackTraceManager_ != nullptr) {
+        delete asyncStackTraceManager_;
+        asyncStackTraceManager_ = nullptr;
     }
 
     if (aotFileManager_ != nullptr) {
@@ -2338,5 +2338,17 @@ void EcmaVM::InitDataViewTypeTable(const GlobalEnvConstants *constant)
         constant->GetBigUint64ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::BIGUINT64));
     dataViewTypeTable_.emplace(
         constant->GetSharedBigUint64ArrayString().GetRawData(), static_cast<int8_t>(DataViewType::BIGUINT64));
+}
+
+void EcmaVM::SetEnableRuntimeAsyncStack(const bool state)
+{
+    if (enableRuntimeAsyncStack_ == false && state == true) {
+        asyncStackTraceManager_->SetAsyncStackType();
+    }
+    if (enableRuntimeAsyncStack_ == true && state == false) {
+        asyncStackTraceManager_->ResetAsyncStackType();
+        asyncStackTraceManager_->Clear();
+    }
+    enableRuntimeAsyncStack_ = state;
 }
 }  // namespace panda::ecmascript

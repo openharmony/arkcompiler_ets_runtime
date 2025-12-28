@@ -419,6 +419,9 @@ config("hiviewdfx_config") {
   if (enable_backtrace_local) {
     defines += [ "ENABLE_BACKTRACE_LOCAL" ]
   }
+  if (enable_async_stack) {
+    defines += [ "ENABLE_ASYNC_STACK" ]
+  }
   include_dirs = [ "$hilog_root/include" ]
 }
 
@@ -1624,6 +1627,10 @@ ohos_source_set("libark_jsruntime_test_set") {
 
   if (enable_backtrace_local) {
     external_deps += [ "faultloggerd:libbacktrace_local" ]
+  }
+
+  if (enable_async_stack) {
+    external_deps += [ "faultloggerd:libasync_stack" ]
   }
 
   # hiviewdfx libraries

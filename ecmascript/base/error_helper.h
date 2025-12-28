@@ -31,7 +31,8 @@ public:
     enum JSErrorProps {
         NAME,
         MESSAGE,
-        STACK
+        STACK,
+        ASYNC_STACK
     };
 
     static JSTaggedValue ErrorCommonToString(EcmaRuntimeCallInfo *argv, const ErrorType &errorType);

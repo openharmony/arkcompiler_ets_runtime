@@ -67,6 +67,7 @@ enum ArkProperties {
     ENABLE_MULTI_CONTEXT = 1 << 21,
     // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
     DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
+    ENABLE_RUNTIME_ASYNC_STACK = 1 << 23,
     ENABLE_ESM_TRACE = 1 << 24,
     ENABLE_MODULE_LOG = 1 << 25,
     ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26,
@@ -585,6 +586,11 @@ public:
     {
         // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::DISABLE_SHARED_CONCURRENT_MARK) == 0;
+    }
+
+    bool EnableRuntimeAsyncStack() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_RUNTIME_ASYNC_STACK) != 0;
     }
 
     bool EnableExceptionBacktrace() const
