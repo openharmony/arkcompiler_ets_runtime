@@ -14,10 +14,12 @@
  */
 
 #include "ecmascript/js_object-inl.h"
+#include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_snapshot.h"
 #include "ecmascript/module/module_value_accessor.h"
+#include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -122,7 +124,6 @@ public:
         JSHandle<ImportEntry> importEntry3 =
             objectFactory->NewImportEntry(index2, config, config, SharedTypes::UNSENDABLE_MODULE);
         SourceTextModule::AddImportEntry(thread, module, importEntry3, index2, importEntryArrayLen);
-
         size_t localExportEntryLen = 1;
         JSHandle<LocalExportEntry> localExportEntry =
             objectFactory->NewLocalExportEntry(val, val, index0, SharedTypes::UNSENDABLE_MODULE);
@@ -308,20 +309,8 @@ public:
         EXPECT_EQ(serializeModule->GetEcmaModuleFilenameString(), deserializeModule->GetEcmaModuleFilenameString());
         EXPECT_EQ(serializeModule->GetEcmaModuleRecordNameString(), deserializeModule->GetEcmaModuleRecordNameString());
         EXPECT_EQ(serializeModule->GetTypes(), deserializeModule->GetTypes());
-        if (serializeModule->GetStatus() > ModuleStatus::INSTANTIATED &&
-            serializeModule->GetTypes() != ModuleTypes::JSON_MODULE) {
+        if (serializeModule->GetStatus() > ModuleStatus::INSTANTIATED) {
             EXPECT_EQ(deserializeModule->GetStatus(), ModuleStatus::INSTANTIATED);
-        } else {
-            auto vm = thread->GetEcmaVM();
-            ObjectFactory *objectFactory = vm->GetFactory();
-            if (serializeModule->GetTypes() == ModuleTypes::JSON_MODULE) {
-                JSHandle<JSTaggedValue> jsonVal = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("jsonVal"));
-                JSHandle<JSTaggedValue> data(thread, deserializeModule->GetNameDictionary(thread));
-                JSHandle<TaggedArray> arr(data);
-                JSTaggedValue jsonString = arr->Get(thread, index0);
-                EXPECT_EQ(jsonVal.GetTaggedValue(), jsonString);
-            }
-            EXPECT_EQ(serializeModule->GetStatus(), deserializeModule->GetStatus());
         }
         // check request module
         if (!serializeModule->GetRequestedModules(thread).IsUndefined() &&
@@ -618,5 +607,94 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldRestoreUpdatedBindingBeforeSerializeWhenIs
 HWTEST_F_L0(ModuleSnapshotTest, ShouldRestoreUpdatedBindingBeforeSerializeWhenIsNotDictionaryMode)
 {
     CheckRestoreUpdatedBindingBeforeSerialize(false);
+}
+
+HWTEST_F_L0(ModuleSnapshotTest, SerializeJsonModule)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    CString baseFileName = MODULE_ABC_PATH "deregister_test.abc";
+    CString recordName = "serialize_json";
+    CString recordNameA = "1";
+    
+    Expected<JSTaggedValue, bool> result =
+        JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordName);
+    EXPECT_TRUE(result);
+
+    JSHandle<JSTaggedValue> value = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8("orverride json"));
+    JSHandle<JSTaggedValue> nameKey = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8("name"));
+    JSHandle<SourceTextModule> moduleA =
+        thread->GetModuleManager()->GetImportedModule(recordNameA);
+    JSTaggedValue jsonObj = ModuleValueAccessor::GetModuleValueInner(thread, 0, JSHandle<JSTaggedValue>(moduleA));
+    JSTaggedValue res = ObjectFastOperator::FastGetPropertyByName(thread, jsonObj, nameKey.GetTaggedValue());
+    // json value change after execution
+    EXPECT_EQ(value.GetTaggedValue(), res);
+
+    CString path = GetSnapshotPath();
+    CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
+    CString version = "version 205.0.1.120(SP20)";
+    ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
+    ASSERT_TRUE(FileExist(fileName.c_str()));
+    // switch moduleManager mock in different process
+    ModuleManager *moduleManager1 = thread->GetModuleManager();
+    ModuleManager *moduleManager2 = new ModuleManager(vm);
+    JSHandle<JSNativePointer> nativePointer(vm->GetGlobalEnv()->GetModuleManagerNativePointer());
+    nativePointer->SetExternalPointer(moduleManager2);
+    vm->AddModuleManager(moduleManager2);
+    EXPECT_NE(moduleManager1, thread->GetModuleManager());
+    EXPECT_EQ(thread->GetModuleManager()->GetResolvedModulesSize(), 0);
+
+    ASSERT_TRUE(ModuleSnapshot::DeserializeData(vm, path, version));
+    moduleA = thread->GetModuleManager()->GetImportedModule(recordNameA);
+    res = moduleA->GetNameDictionary(thread);
+    EXPECT_TRUE(res.IsUndefined());
+
+    result = JSPandaFileExecutor::ExecuteFromFile(thread, baseFileName, recordName);
+    EXPECT_TRUE(result);
+
+    moduleA = thread->GetModuleManager()->GetImportedModule(recordNameA);
+    jsonObj = ModuleValueAccessor::GetModuleValueInner(thread, 0, JSHandle<JSTaggedValue>(moduleA));
+    res = ObjectFastOperator::FastGetPropertyByName(thread, jsonObj, nameKey.GetTaggedValue());
+    EXPECT_EQ(value.GetTaggedValue(), res);
+}
+
+HWTEST_F_L0(ModuleSnapshotTest, SerializeSlicedString)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    CString recordName = "SlicedString";
+    module->SetEcmaModuleFilenameString(recordName);
+    module->SetEcmaModuleRecordNameString(recordName);
+    thread->GetModuleManager()->AddResolveImportedModule(recordName, module.GetTaggedValue());
+    // create subString
+    JSHandle<EcmaString> fullString(factory->NewFromUtf8("Imcreateformoduleserializetotestforsubstring"));
+    JSHandle<JSTaggedValue> subString(thread,
+        JSTaggedValue(EcmaStringAccessor::GetSubString(vm, fullString, 5, 15))); // 5, 15 : create substring
+    module->SetImportEntries(thread, subString.GetTaggedValue());
+    ASSERT_TRUE(EcmaStringAccessor(JSHandle<EcmaString>(subString)).IsSlicedString());
+
+    // serialize SlicedString
+    CString path = GetSnapshotPath();
+    CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
+    CString version = "version 205.0.1.120(SP20)";
+    ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
+    ASSERT_TRUE(FileExist(fileName.c_str()));
+    // switch moduleManager mock in different process
+    ModuleManager *moduleManager1 = thread->GetModuleManager();
+    ModuleManager *moduleManager2 = new ModuleManager(vm);
+    JSHandle<JSNativePointer> nativePointer(vm->GetGlobalEnv()->GetModuleManagerNativePointer());
+    nativePointer->SetExternalPointer(moduleManager2);
+    vm->AddModuleManager(moduleManager2);
+    EXPECT_NE(moduleManager1, thread->GetModuleManager());
+    EXPECT_EQ(thread->GetModuleManager()->GetResolvedModulesSize(), 0);
+
+    ASSERT_TRUE(ModuleSnapshot::DeserializeData(vm, path, version));
+    EXPECT_EQ(thread->GetModuleManager()->GetResolvedModulesSize(), 1);
+    module = thread->GetModuleManager()->GetImportedModule(recordName);
+    JSTaggedValue res = module->GetImportEntries(thread);
+    ASSERT_TRUE(res.IsSlicedString());
+    EXPECT_TRUE(JSTaggedValue::SameValue(thread, subString.GetTaggedValue(), res));
 }
 }  // namespace panda::test

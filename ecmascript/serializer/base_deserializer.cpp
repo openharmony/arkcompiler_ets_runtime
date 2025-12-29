@@ -226,7 +226,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         module->SetEcmaModuleFilenameStringForDeserialize(moduleFileName);
         module->SetEcmaModuleRecordNameStringForDeserialize(moduleRecordName);
         module->SetLazyImportArrayForDeserialize(lazyArray);
-        if (module->GetStatus() > ModuleStatus::INSTANTIATED && module->GetTypes() != ModuleTypes::JSON_MODULE) {
+        if (module->GetStatus() > ModuleStatus::INSTANTIATED) {
             module->SetStatus(ModuleStatus::INSTANTIATED);
         }
         module->SetException(thread_, thread_->GlobalConstants()->GetHole());

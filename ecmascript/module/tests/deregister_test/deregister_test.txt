@@ -5,3 +5,5 @@ C.js;C;esm;C.js;xxCxx
 circularA.js;circularA;esm;circularA.js;xxcircularAxx
 circularB.js;circularB;esm;circularB.js;xxcircularBxx
 circular_entry.js;circular_entry;esm;circular_entry.js;xxcircular_entryxx
+1.json;1;esm;1.json;xx1xx
+serialize_json.js;serialize_json;esm;serialize_json.js;xxserialize_jsonxx

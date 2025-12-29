@@ -15,6 +15,7 @@ ReferenceError: a is not initialized
 3
 check
 esmJsonFile
+override cjsJsonFile
 cjsJsonFile
 moduleCircularCheck
 中文路径

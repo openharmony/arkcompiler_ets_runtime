@@ -55,8 +55,8 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
             }
         } else {
             // json
-            moduleRecord = JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseJsonModule(
-                thread, jsPandaFile, jsPandaFile->GetJSPandaFileDesc(), specifierString));
+            moduleRecord = SourceTextModule::LoadJsonModule(
+                thread, jsPandaFile, jsPandaFile->GetJSPandaFileDesc(), specifierString);
             SourceTextModule::RecordEvaluatedOrError(thread, moduleRecord);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
                 BuiltinsPromiseJob::HandleModuleException(thread, resolve, reject, specifierString));

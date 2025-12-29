@@ -60,6 +60,8 @@ test_multi_files = [
   "deregister_test/circularA.js",
   "deregister_test/circularB.js",
   "deregister_test/circular_entry.js",
+  "deregister_test/serialize_json.js",
+  "deregister_test/1.json",
 ]
 
 _test_js_file_name_ = [

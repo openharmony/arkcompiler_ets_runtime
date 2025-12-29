@@ -454,6 +454,9 @@ public:
                                                            const std::string &className,
                                                            const std::string &funcName);
 
+    static JSHandle<SourceTextModule> LoadJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                     const CString &filename, CString recordName);
+
 private:
     static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread,
                                                      const JSHandle<JSTaggedValue> &exportName,
@@ -507,6 +510,9 @@ private:
                                                          const int index);
 
     static void ClearImportEntriesIfNeeded(JSThread *thread, JSHandle<SourceTextModule> &module);
+
+    static void EvaluateJsonModule(JSThread *thread, JSHandle<SourceTextModule> module,
+                                   const JSPandaFile *jsPandaFile, CString recordName);
 
     friend class EcmaModuleTest;
     friend class SharedModuleManager;

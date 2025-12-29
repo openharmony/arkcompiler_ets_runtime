@@ -335,7 +335,7 @@ JSHandle<JSTaggedValue> ModuleResolver::ResolveModuleWithMerge(JSThread *thread,
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordName, moduleFileName, recordInfo);
     } else if (jsPandaFile->IsJson(recordInfo)) {
-        moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName, recordName);
+        moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName);
     } else {
         ASSERT(jsPandaFile->IsCjs(recordInfo));
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
