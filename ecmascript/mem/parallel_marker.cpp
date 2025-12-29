@@ -27,11 +27,11 @@
 namespace panda::ecmascript {
 Marker::Marker(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {}
 
-void Marker::MarkRoots(RootVisitor &rootVisitor)
+void Marker::MarkRoots(RootVisitor &rootVisitor, GlobalVisitType visitType)
 {
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::MarkRoots", "");
-    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), rootVisitor);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), rootVisitor, visitType);
 }
 
 void NonMovableMarker::ProcessOldToNew(uint32_t threadId)

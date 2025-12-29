@@ -24,6 +24,7 @@
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
+using namespace testing::ext;
 constexpr int32_t INT_VALUE_0 = 0;
 constexpr int32_t INT_VALUE_1 = 1;
 constexpr int32_t INT_VALUE_2 = 2;
@@ -137,6 +138,48 @@ HWTEST_F_L0(EcmaGlobalStorageTest, EcmaGlobalStorage)
     CalculateGlobalNodeCount(allGlobalNodeCountAfter, normalGlobalNodeCountAfter, globalStorage);
     EXPECT_TRUE(allGlobalNodeCountAfter == allGlobalNodeCountBefore);
     EXPECT_TRUE(normalGlobalNodeCountAfter == normalGlobalNodeCountBefore);
+
+    chunk->Delete(globalStorage);
+}
+
+HWTEST_F(EcmaGlobalStorageTest, EcmaGlobalStorageYoungGC, TestSize.Level0)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto chunk = vm->GetChunk();
+    EcmaGlobalStorage<Node> *globalStorage =
+        chunk->New<EcmaGlobalStorage<Node>>(nullptr, vm->GetNativeAreaAllocator());
+
+    [[maybe_unused]] JSHandle<JSTaggedValue> xRefArray = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
+    [[maybe_unused]] JSHandle<JSTaggedValue> normalArray = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_2));
+
+    uint64_t allGlobalNodeCountBefore = INT_VALUE_0;
+    uint64_t normalGlobalNodeCountBefore = INT_VALUE_0;
+    ASSERT(globalStorage->GetNodeKind() == NodeKind::NORMAL_NODE);
+    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(TriggerGCType::YOUNG_GC);
+    CalculateGlobalNodeCount(allGlobalNodeCountBefore, normalGlobalNodeCountBefore, globalStorage);
+    EXPECT_TRUE(normalGlobalNodeCountBefore == allGlobalNodeCountBefore);
+
+    chunk->Delete(globalStorage);
+}
+
+HWTEST_F(EcmaGlobalStorageTest, EcmaGlobalStorageFullGC, TestSize.Level0)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    auto chunk = vm->GetChunk();
+    EcmaGlobalStorage<Node> *globalStorage =
+        chunk->New<EcmaGlobalStorage<Node>>(nullptr, vm->GetNativeAreaAllocator());
+
+    [[maybe_unused]] JSHandle<JSTaggedValue> xRefArray = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
+    [[maybe_unused]] JSHandle<JSTaggedValue> normalArray = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_2));
+
+    uint64_t allGlobalNodeCountBefore = INT_VALUE_0;
+    uint64_t normalGlobalNodeCountBefore = INT_VALUE_0;
+    ASSERT(globalStorage->GetNodeKind() == NodeKind::NORMAL_NODE);
+    auto *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    CalculateGlobalNodeCount(allGlobalNodeCountBefore, normalGlobalNodeCountBefore, globalStorage);
+    EXPECT_TRUE(normalGlobalNodeCountBefore == allGlobalNodeCountBefore);
 
     chunk->Delete(globalStorage);
 }

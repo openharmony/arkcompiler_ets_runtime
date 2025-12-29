@@ -374,6 +374,8 @@ void ParallelEvacuator::UpdateReference()
     if (heap_->GetJSThread()->IsPGOProfilerEnable()) {
         UpdateTrackInfo();
     }
+    heap_->GetJSThread()->UpdateYoungGlobalList();
+    heap_->GetJSThread()->ClearToBeDeletedNodes();
 }
 
 void ParallelEvacuator::UpdateRoot()

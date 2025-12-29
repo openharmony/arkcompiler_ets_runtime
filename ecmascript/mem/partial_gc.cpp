@@ -121,7 +121,7 @@ void PartialGC::MarkRoots()
 {
     if (heap_->IsYoungMark()) {
         YoungGCMarkRootVisitor youngGCMarkRootVisitor(workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX));
-        heap_->GetNonMovableMarker()->MarkRoots(youngGCMarkRootVisitor);
+        heap_->GetNonMovableMarker()->MarkRoots(youngGCMarkRootVisitor, GlobalVisitType::YOUNG_GLOBAL_VISIT);
     } else {
         OldGCMarkRootVisitor oldGCMarkRootVisitor(workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX));
         heap_->GetNonMovableMarker()->MarkRoots(oldGCMarkRootVisitor);

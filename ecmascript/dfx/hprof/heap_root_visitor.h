@@ -28,7 +28,8 @@ public:
     ~HeapRootVisitor() = default;
     NO_MOVE_SEMANTIC(HeapRootVisitor);
     NO_COPY_SEMANTIC(HeapRootVisitor);
-    void VisitHeapRoots(JSThread *thread, RootVisitor &visitor);
+    void VisitHeapRoots(JSThread *thread, RootVisitor &visitor,
+        GlobalVisitType visitType = GlobalVisitType::ALL_GLOBAL_VISIT);
 
 private:
     EcmaVM *GetVMInstance(JSThread *thread) const;

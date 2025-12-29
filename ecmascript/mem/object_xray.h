@@ -132,10 +132,11 @@ public:
     ~ObjectXRay() = default;
 
     // Visit all roots of the EcmaVM, including those on the associated js thread.
-    static inline void VisitVMRoots(EcmaVM *vm, RootVisitor &visitor)
+    static inline void VisitVMRoots(EcmaVM *vm, RootVisitor &visitor,
+        GlobalVisitType visitType = GlobalVisitType::ALL_GLOBAL_VISIT)
     {
         vm->Iterate(visitor);
-        vm->GetAssociatedJSThread()->Iterate(visitor);
+        vm->GetAssociatedJSThread()->Iterate(visitor, visitType);
     }
 
     // Visit only those roots within the EcmaVM that support concurrent garbage collection.
@@ -147,10 +148,11 @@ public:
 
     // Visit all roots within the EcmaVM that require a STW during GC.
     // This includes roots directly managed by the VM and all roots residing on the JS thread.
-    static inline void VisitSTWVMRoots(EcmaVM *vm, RootVisitor &visitor)
+    static inline void VisitSTWVMRoots(EcmaVM *vm, RootVisitor &visitor,
+        GlobalVisitType visitType = GlobalVisitType::ALL_GLOBAL_VISIT)
     {
         vm->IterateSTWRoots(visitor);
-        vm->GetAssociatedJSThread()->Iterate(visitor);
+        vm->GetAssociatedJSThread()->Iterate(visitor, visitType);
     }
 
     static inline void VisitJitCodeMap(EcmaVM *vm, const JitCodeMapVisitor &updater)

@@ -385,14 +385,14 @@ public:
         glueData_.isTracing_ = isTracing;
     }
 
-    void Iterate(RootVisitor &visitor);
+    void Iterate(RootVisitor &visitor, GlobalVisitType visitType = GlobalVisitType::ALL_GLOBAL_VISIT);
 
     void IterateJitCodeMap(const JitCodeMapVisitor &updater);
 
     void IterateMegaIC(RootVisitor &v);
     void ClearMegaIC();
 
-    void IterateHandleWithCheck(RootVisitor &visitor);
+    void IterateHandleWithCheck(RootVisitor &visitor, GlobalVisitType visitType);
 
     void ClearCache();
 
@@ -1868,6 +1868,9 @@ public:
         return oldState;
     }
 
+    void UpdateYoungGlobalList();
+    void ClearYoungGlobalList();
+    void ClearToBeDeletedNodes();
     // newState must be running
     ThreadState PUBLIC_API TransferToRunningIfNonRunning()
     {
