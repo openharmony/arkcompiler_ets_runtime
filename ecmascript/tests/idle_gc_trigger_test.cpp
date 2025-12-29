@@ -35,6 +35,7 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
+        options.SetEnableForceGC(false);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
@@ -413,5 +414,544 @@ HWTEST_F_L0(IdleGCTriggerTest, NotifyNeedFreeze001)
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
     sheap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     ASSERT_TRUE(freeze);
+}
+
+
+/**
+ * @tc.name: NotifyNextGC001
+ * @tc.desc: NotifyNextGC
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    bool freeze = false;
+    bool nextGC = false;
+    auto callback = [&freeze, &nextGC](bool needNextGC, bool needFreeze) {
+        if (needNextGC) {
+            nextGC = true;
+            return;
+        }
+        if (needFreeze && !needNextGC) {
+            nextGC = false;
+            freeze = true;
+            return;
+        }
+        if (!needNextGC) {
+            nextGC = false;
+            return;
+        }
+    };
+    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    ASSERT_TRUE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    ASSERT_TRUE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+    ASSERT_FALSE(nextGC);
+    ASSERT_TRUE(freeze);
+}
+
+/**
+ * @tc.name: NotifyNextGC002
+ * @tc.desc: NotifyNextGC
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    bool freeze = false;
+    bool nextGC = false;
+    auto callback = [&freeze, &nextGC](bool needNextGC, bool needFreeze) {
+        if (needNextGC) {
+            nextGC = true;
+            return;
+        }
+        if (needFreeze && !needNextGC) {
+            nextGC = false;
+            freeze = true;
+            return;
+        }
+        if (!needNextGC) {
+            nextGC = false;
+            return;
+        }
+    };
+    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
+
+    auto oldSpace = heap->GetOldSpace();
+    oldSpace->IncreaseLiveObjectSize(100_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    ASSERT_TRUE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    oldSpace->IncreaseLiveObjectSize(100_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    ASSERT_TRUE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(200_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+    ASSERT_FALSE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    sheap->WaitAllTasksFinished(thread);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ASSERT_FALSE(nextGC);
+    ASSERT_TRUE(freeze);
+}
+
+/**
+ * @tc.name: NotifyNextGC003
+ * @tc.desc: NotifyNextGC
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    bool freeze = false;
+    bool nextGC = false;
+    auto callback = [&freeze, &nextGC](bool needNextGC, bool needFreeze) {
+        if (needNextGC) {
+            nextGC = true;
+            return;
+        }
+        if (needFreeze && !needNextGC) {
+            nextGC = false;
+            freeze = true;
+            return;
+        }
+        if (!needNextGC) {
+            nextGC = false;
+            return;
+        }
+    };
+    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
+
+    auto oldSpace = heap->GetOldSpace();
+    oldSpace->IncreaseLiveObjectSize(100_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    ASSERT_TRUE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    oldSpace->IncreaseLiveObjectSize(100_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    ASSERT_TRUE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(200_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+    ASSERT_FALSE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    sheap->WaitAllTasksFinished(thread);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ASSERT_FALSE(nextGC);
+    ASSERT_TRUE(freeze);
+}
+
+/**
+ * @tc.name: NotifyNextGC004
+ * @tc.desc: NotifyNextGC
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    bool freeze = false;
+    bool nextGC = false;
+    auto callback = [&freeze, &nextGC](bool needNextGC, bool needFreeze) {
+        if (needNextGC) {
+            nextGC = true;
+            return;
+        }
+        if (needFreeze && !needNextGC) {
+            nextGC = false;
+            freeze = true;
+            return;
+        }
+        if (!needNextGC) {
+            nextGC = false;
+            return;
+        }
+    };
+    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
+
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(200_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
+    ASSERT_FALSE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    sheap->WaitAllTasksFinished(thread);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ASSERT_FALSE(nextGC);
+    ASSERT_TRUE(freeze);
+
+    freeze = false;
+    auto oldSpace = heap->GetOldSpace();
+    oldSpace->IncreaseLiveObjectSize(100_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    ASSERT_TRUE(nextGC);
+    ASSERT_FALSE(freeze);
+
+    oldSpace->IncreaseLiveObjectSize(100_MB);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    ASSERT_TRUE(nextGC);
+    ASSERT_FALSE(freeze);
+}
+/**
+ * @tc.name: ExpectedMemoryReclamationSize001
+ * @tc.desc: ExpectedMemoryReclamationSize
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, ExpectedMemoryReclamationSize001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+    auto oldExceptedSize = idleGCTrigger->GetExpectedMemoryReclamationSize();
+    ASSERT_TRUE(oldExceptedSize < 100_MB);
+
+    size_t oldAliveSizeAfterGC = heap->GetHeapAliveSizeAfterGC();
+    size_t oldHeapObjSize = heap->GetHeapObjectSize();
+    ASSERT_TRUE(oldHeapObjSize >= oldAliveSizeAfterGC);
+
+    size_t oldFragmentSizeAfterGC = heap->GetFragmentSizeAfterGC();
+    size_t heapBasicLoss = heap->GetHeapBasicLoss();
+    ASSERT_TRUE(oldFragmentSizeAfterGC >= heapBasicLoss);
+
+    heap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    size_t newHeapObjSize = heap->GetHeapObjectSize();
+    ASSERT_EQ(newHeapObjSize, oldHeapObjSize + 100_MB);
+    auto newExceptedSize = idleGCTrigger->GetExpectedMemoryReclamationSize();
+    ASSERT_TRUE(newExceptedSize >= 100_MB);
+}
+
+/**
+ * @tc.name: ExpectedMemoryReclamationSize002
+ * @tc.desc: ExpectedMemoryReclamationSize
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, ExpectedMemoryReclamationSize002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+    auto oldExceptedSize = idleGCTrigger->GetExpectedMemoryReclamationSize();
+
+    size_t oldAliveSizeAfterGC = heap->GetHeapAliveSizeAfterGC();
+    size_t oldHeapObjSize = heap->GetHeapObjectSize();
+    ASSERT_TRUE(oldHeapObjSize >= oldAliveSizeAfterGC);
+
+    size_t oldFragmentSizeAfterGC = heap->GetFragmentSizeAfterGC();
+    size_t heapBasicLoss = heap->GetHeapBasicLoss();
+    ASSERT_TRUE(oldFragmentSizeAfterGC >= heapBasicLoss);
+
+    ASSERT_TRUE(oldExceptedSize == 0);
+
+    ASSERT_TRUE(oldAliveSizeAfterGC <= 100_MB);
+    heap->NotifyHeapAliveSizeAfterGC(100_MB);
+    auto newExceptedSize = idleGCTrigger->GetExpectedMemoryReclamationSize();
+    ASSERT_TRUE(newExceptedSize == 0);
+}
+
+/**
+ * @tc.name: PossiblePostGCTaskTest001
+ * @tc.desc: PossiblePostGCTaskTest
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    sheap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    sheap->NotifyHeapAliveSizeAfterGC(1);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK));
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK));
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK));
+}
+
+/**
+ * @tc.name: PossiblePostGCTaskTest002
+ * @tc.desc: PossiblePostGCTaskTest
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    sheap->NotifyHeapAliveSizeAfterGC(1);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK));
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK));
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK));
+}
+
+
+/**
+ * @tc.name: PossiblePostGCTaskTest003
+ * @tc.desc: PossiblePostGCTaskTest
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK));
+    idleGCTrigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    ASSERT_FALSE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK));
+
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 100; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK));
+
+    idleGCTrigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    ASSERT_FALSE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK));
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK));
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
+}
+
+/**
+ * @tc.name: PossiblePostGCTaskTest004
+ * @tc.desc: PossiblePostGCTaskTest
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+    idleGCTrigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_FALSE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+
+    heap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    heap->NotifyHeapAliveSizeAfterGC(1_MB);
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+
+    idleGCTrigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_FALSE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
+}
+
+/**
+ * @tc.name: PossiblePostGCTaskTest005
+ * @tc.desc: PossiblePostGCTaskTest
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest005)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 720; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+
+    auto newSpace = heap->GetNewSpace();
+    newSpace->SetInitialCapacity(1);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK));
+    ASSERT_TRUE(idleGCTrigger->TryTriggerIdleYoungGC());
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK));
+}
+
+/**
+ * @tc.name: TryTriggerIdleLocalOldGCTest1
+ * @tc.desc: TryTriggerIdleLocalOldGCTest1
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    heap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    heap->NotifyHeapAliveSizeAfterGC(1_MB);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+    ASSERT_TRUE(idleGCTrigger->TryTriggerIdleLocalOldGC());
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+}
+
+/**
+ * @tc.name: TryTriggerIdleSharedOldGCTest1
+ * @tc.desc: TryTriggerIdleSharedOldGC
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    sheap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    sheap->NotifyHeapAliveSizeAfterGC(1_MB);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK));
+    ASSERT_TRUE(idleGCTrigger->TryTriggerIdleSharedOldGC());
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK));
+}
+
+
+/**
+ * @tc.name: ReachIdleLocalOldGCThresholdsTest1
+ * @tc.desc: ReachIdleLocalOldGCThresholdsTest1
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, ReachIdleLocalOldGCThresholdsTest1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    heap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    heap->NotifyHeapAliveSizeAfterGC(1_MB);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+    ASSERT_TRUE(idleGCTrigger->ReachIdleLocalOldGCThresholds());
+    ASSERT_TRUE(idleGCTrigger->TryTriggerIdleLocalOldGC());
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+}
+
+
+/**
+ * @tc.name: ReachIdleSharedGCThresholdsTest1
+ * @tc.desc: ReachIdleSharedGCThresholdsTest1
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, ReachIdleSharedGCThresholdsTest1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    sheap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    sheap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    sheap->NotifyHeapAliveSizeAfterGC(1_MB);
+    sheap->GetOldSpace()->SetInitialCapacity(1);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK));
+    ASSERT_TRUE(idleGCTrigger->ReachIdleSharedGCThresholds());
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK));
+}
+
+
+/**
+ * @tc.name: TryPostHandleMarkFinishedTest2
+ * @tc.desc: TryPostHandleMarkFinishedTest2
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(IdleGCTriggerTest, TryPostHandleMarkFinishedTest2)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    sheap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    idleGCTrigger->NotifyLooperIdleStart(1, 1);
+    idleGCTrigger->NotifyLooperIdleEnd(2);
+
+    heap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    heap->NotifyHeapAliveSizeAfterGC(1_MB);
+
+    idleGCTrigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK));
+
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK));
+    idleGCTrigger->NotifyLooperIdleStart(10, 1);
+    idleGCTrigger->TryPostHandleMarkFinished();
+    ASSERT_FALSE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK));
+
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
+    ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK));
+    idleGCTrigger->NotifyLooperIdleEnd(20);
 }
 }  // namespace panda::test

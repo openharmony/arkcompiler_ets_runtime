@@ -5086,6 +5086,10 @@ void JSNApi::TriggerIdleGC(const EcmaVM *vm, TRIGGER_IDLE_GC_TYPE gcType)
 
 size_t JSNApi::GetEcmaVMExpectedMemoryReclamationSize(const EcmaVM *vm)
 {
+    if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "get expected memory reclamation size but vm is nullptr";
+        return 0;
+    }
     return vm->GetHeap()->GetIdleGCTrigger()->GetExpectedMemoryReclamationSize();
 }
 

@@ -2945,6 +2945,33 @@ host_unittest_action("GC_First_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("GC_External_Strig_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_external_string_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("GC_ReadOnlySpace_Test") {
   module_out_path = module_output_path
 
@@ -3720,6 +3747,7 @@ group("unittest") {
     ":GC_ModuleManagerMap_Test",
     ":GC_ConcurrentMarking_Test",
     ":GC_ConcurrentSweep_Test",
+    ":GC_External_Strig_Test",
     ":GC_First_Test",
     ":GC_HandleLeak_Test",
     ":GC_HeapHelper_Test",
@@ -3851,6 +3879,7 @@ group("unittest") {
   if (ets_runtime_enable_cmc_gc) {
     deps -= [
       ":GC_ConcurrentMarking_Test",
+      ":GC_External_Strig_Test",
       ":GC_First_Test",
       ":GC_HeapHelper_Test",
       ":GC_IdleGCTrigger_Test",
@@ -3903,6 +3932,7 @@ group("host_unittest") {
     ":GC_ModuleManagerMap_TestAction",
     ":GC_ConcurrentMarking_TestAction",
     ":GC_ConcurrentSweep_TestAction",
+    ":GC_External_Strig_TestAction",
     ":GC_First_TestAction",
     ":GC_HandleLeak_TestAction",
     ":GC_HeapHelper_TestAction",
@@ -4042,6 +4072,7 @@ group("host_unittest") {
       ":ECMA_VM_TestAction",
       ":GC_ConcurrentMarking_TestAction",
       ":GC_ConcurrentSweep_TestAction",
+      ":GC_External_Strig_TestAction",
       ":GC_First_TestAction",
       ":GC_HandleLeak_TestAction",
       ":GC_HeapHelper_TestAction",
@@ -4170,6 +4201,7 @@ group("host_unittest") {
     # TODO: CMC-GC UT FIX LATER
     deps -= [
       ":GC_ConcurrentMarking_TestAction",
+      ":GC_External_Strig_TestAction",
       ":GC_First_TestAction",
       ":GC_HeapHelper_TestAction",
       ":GC_IdleGCTrigger_TestAction",
