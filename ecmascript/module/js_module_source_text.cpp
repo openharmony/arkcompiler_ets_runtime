@@ -157,7 +157,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
     if (exports->IsJSObject()) {
-        JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Hole());
+        JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Undefined());
         JSObject *exportObject = JSObject::Cast(exports.GetTaggedValue().GetTaggedObject());
         TaggedArray *properties = TaggedArray::Cast(exportObject->GetProperties(thread).GetTaggedObject());
         if (!properties->IsDictionaryMode()) {

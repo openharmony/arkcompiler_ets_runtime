@@ -12325,7 +12325,7 @@ GateRef StubBuilder::ResolveExportObject(GateRef glue, GateRef module, GateRef e
     Label subentry(env);
     env->SubCfgEntry(&subentry);
 
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     Label defaultCallNewBindingRecord(env);
     Label notSameVal(env);
     Label exportsIsHeapObj(env);
