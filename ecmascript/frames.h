@@ -2027,6 +2027,10 @@ public:
     static constexpr uintptr_t CLEARD_LAZY_DEOPT_FLAG =
         static_cast<uintptr_t>(~0ULL & ~(1ULL << LAZY_DEOPT_FLAG_BIT));
 
+    static constexpr size_t INSTRUCTION_CONTEXT = 2;
+    static constexpr size_t PRINT_STEP = 32;
+    static constexpr size_t INSTRUCTION_LENGTH = 4;
+
     inline static void TryRemoveLazyDeoptFlag(uintptr_t& type)
     {
         type &= CLEARD_LAZY_DEOPT_FLAG;
@@ -2127,6 +2131,7 @@ public:
     bool IteratorStackMapAndDeopt(RootVisitor &visitor) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
     std::pair<CallSiteInfo, bool> CalCallSiteInfo(uintptr_t retAddr, bool isDeopt) const;
+    static void PrintText(uint32_t *jitTextBegin, uint32_t jitTextSize, std::string message);
     CallSiteInfo TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr, bool isDeopt) const;
 
     Method *CheckAndGetMethod() const;

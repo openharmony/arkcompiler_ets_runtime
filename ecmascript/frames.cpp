@@ -106,40 +106,57 @@ JSTaggedValue FrameIterator::GetFunction() const
     }
 }
 
+void FrameIterator::PrintText(uint32_t *jitTextBegin, uint32_t jitTextSize, std::string message)
+{
+    LOG_FULL(INFO) << "TextBegin: " << std::hex << reinterpret_cast<uintptr_t>(jitTextBegin)
+                   << ", TextSize: " << jitTextSize << ", " << message;
+    std::ostringstream oss;
+    for (size_t point = 0; point < jitTextSize; ++point) {
+        oss << std::hex << jitTextBegin[point] << " ";
+        if (point % PRINT_STEP == 0 && point != 0) {
+            LOG_FULL(INFO) << oss.str();
+            oss.str("");
+        }
+    }
+    LOG_FULL(INFO) << oss.str();
+}
+
 AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr, bool isDeopt) const
 {
     FrameType type = GetFrameType();
-    if (type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
-        type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
-        type == FrameType::FASTJIT_FUNCTION_FRAME ||
-        type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME) {
-        MachineCode* machineCode = nullptr;
-        if (isDeopt) {
+    if (type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME || type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+        type == FrameType::FASTJIT_FUNCTION_FRAME || type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME) {
+        MachineCode* machineCode = thread_->GetEcmaVM()->GetHeap()->GetMachineCodeObject(retAddr);
+        if (machineCode == nullptr) {
+            std::ostringstream oss;
+            oss << "machine code is nullptr. retAddr: " << std::hex << retAddr;
+            if (!isDeopt) {
+                LOG_FULL(FATAL) << oss.str();
+            }
+            oss << ", isDeopt";
             JSTaggedValue jsFunction = GetFunction();
             if (!jsFunction.IsJSFunction()) {
-                LOG_FULL(FATAL) << "call target is not js function object. addr: "
-                                << std::hex << reinterpret_cast<JSTaggedType>(jsFunction.GetRawData());
-                UNREACHABLE();
+                oss << ", not js function object. addr: " << jsFunction.GetRawData();
+                LOG_FULL(FATAL) << oss.str();
             }
+            std::string methodName =
+                Method::Cast(JSFunction::Cast(jsFunction)->GetMethod(thread_))->GetMethodName(thread_);
+            oss << ", method name: " << methodName << ", function addr: " << jsFunction.GetRawData();
             JSTaggedValue machineCodeObj = JSFunction::Cast(jsFunction.GetTaggedObject())->GetMachineCode(thread_);
             if (!machineCodeObj.IsMachineCodeObject()) {
-                LOG_FULL(FATAL) << "not machine code object. addr: "
-                                << std::hex << reinterpret_cast<JSTaggedType>(machineCodeObj.GetRawData());
-                UNREACHABLE();
+                oss << ", not machine code object. addr: " << machineCodeObj.GetRawData();
+                LOG_FULL(FATAL) << oss.str();
             }
             machineCode = MachineCode::Cast(machineCodeObj.GetTaggedObject());
-        } else {
-            machineCode = thread_->GetEcmaVM()->GetHeap()->GetMachineCodeObject(retAddr);
-        }
-        if (machineCode == nullptr) {
-            LOG_FULL(FATAL) << "machine code is nullptr. sp: " << std::hex << current_;
-            UNREACHABLE();
-        }
-        if (!machineCode->IsInText(retAddr)) {
-            LOG_FULL(FATAL) << "retAddr not match machine code. retAddr: " << std::hex << retAddr
-                            << ", test begin: " << std::hex << machineCode->GetText()
-                            << ", test size: " << std::hex << machineCode->GetTextSize();
-            UNREACHABLE();
+            uint32_t *textBegin = reinterpret_cast<uint32_t *>(retAddr - machineCode->GetInstructionsSize());
+            uint32_t textSize = machineCode->GetInstructionsSize() * INSTRUCTION_CONTEXT / INSTRUCTION_LENGTH;
+            PrintText(textBegin, textSize, "print text begin:");
+            textBegin = reinterpret_cast<uint32_t *>(machineCode->GetInstructionsAddr());
+            textSize = machineCode->GetInstructionsSize() / INSTRUCTION_LENGTH;
+            PrintText(textBegin, textSize, "print machine code begin:");
+            oss << ", machine code addr: " << machineCode << ", text begin: " << machineCode->GetText()
+                << ", text size: " << machineCode->GetTextSize();
+            LOG_FULL(FATAL) << oss.str();
         }
         const_cast<FrameIterator*>(this)->machineCode_ = reinterpret_cast<JSTaggedType>(machineCode);
         return reinterpret_cast<MachineCode*>(machineCode_)->CalCallSiteInfo();
