@@ -1543,6 +1543,95 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="TextFormatterTest">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/sample_test.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/string_equal.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/object_literal.abc -> /data/test" src="out"/>
+        </preparer>
+    </target>
+    <target name="PGOProfilerTestOne">
+        <preparer>
+            <option name="push"
+                value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/call_test.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/class_test.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/merge_file_1.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/merge_file_2.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/merge_file_3.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/builtins_test.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/op_type_test.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/array_test.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/object_literal.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/sample_test.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/string_equal.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/array_size_test.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/truck.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/vehicle.abc -> /data/test"
+                src="out" />
+            <option name="push"
+                value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/typedarray_length.abc -> /data/test"
+                src="out" />
+        </preparer>
+    </target>
+    <target name="PGOMethodTypeSetTest">
+        <preparer>
+            <option name="push"
+                value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out" />
+        </preparer>
+    </target>
+    <target name="PGOProfilerManagerTest">
+        <preparer>
+            <option name="push"
+                value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out" />
+        </preparer>
+    </target>
+    <target name="PGOProfilerInfoTest">
+        <preparer>
+            <option name="push"
+                value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out" />
+        </preparer>
+    </target>
+    <target name="PGOInfoTest">
+        <preparer>
+            <option name="push"
+                value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out" />
+        </preparer>
+    </target>
+    <target name="PGOProfilerDecoderTest">
+        <preparer>
+            <option name="push"
+                value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out" />
+        </preparer>
+    </target>
     <target name="HeapTrackerFirstTest">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
@@ -3589,11 +3678,6 @@
         </preparer>
     </target>
     <target name="ObjectSetFuzzTest">
-        <preparer>
-            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
-    <target name="ParseFromTextFuzzTest">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>

@@ -76,9 +76,9 @@ public:
             return 1;
         }
 
-        bool ProcessToText(std::ofstream &stream) override
+        bool ProcessToText(TextFormatter &fmt) override
         {
-            stream << type_.GetTypeString();
+            fmt.Text(type_.GetTypeString());
             return true;
         }
 

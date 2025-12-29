@@ -151,12 +151,14 @@ bool PGOProfilerDecoder::SaveAPTextFile(const std::string &outPath)
     if (header_ == nullptr) {
         LOG_PGO(FATAL) << "PGOProfilerDecoder::SaveAPTextFile:header_ is nullptr";
     }
-    if (!header_->ProcessToText(fileStream)) {
+    TextFormatter fmt;
+    if (!header_->ProcessToText(fmt)) {
         return false;
     }
-    pandaFileInfos_.ProcessToText(fileStream);
-    recordDetailInfos_->ProcessToText(fileStream);
-    abcFilePool_->GetPool()->ProcessToText(fileStream);
+    pandaFileInfos_.ProcessToText(fmt);
+    recordDetailInfos_->ProcessToText(fmt);
+    abcFilePool_->GetPool()->ProcessToText(fmt);
+    fileStream << fmt.Str();
     return true;
 }
 

@@ -17,20 +17,6 @@
 
 namespace panda::ecmascript::pgo {
 
-const std::string DumpUtils::ELEMENT_SEPARATOR = "/";
-const std::string DumpUtils::BLOCK_SEPARATOR = ",";
-const std::string DumpUtils::TYPE_SEPARATOR = "|";
-const std::string DumpUtils::BLOCK_START = ":";
-const std::string DumpUtils::ARRAY_START = "[";
-const std::string DumpUtils::ARRAY_END = "]";
-const std::string DumpUtils::NEW_LINE = "\n";
-const std::string DumpUtils::SPACE = " ";
-const std::string DumpUtils::ALIGN = "  ";
-const std::string DumpUtils::BLOCK_AND_ARRAY_START = BLOCK_START + SPACE + ARRAY_START + SPACE;
-const std::string DumpUtils::VERSION_HEADER = "Profiler Version" + BLOCK_START + SPACE;
-const std::string DumpUtils::PANDA_FILE_INFO_HEADER = "Panda file sumcheck list" + BLOCK_AND_ARRAY_START;
-const uint32_t DumpUtils::HEX_FORMAT_WIDTH_FOR_32BITS = 10;  // for example, 0xffffffff is 10 characters
-
 const std::string ApNameUtils::AP_SUFFIX = ".ap";
 const std::string ApNameUtils::RUNTIME_AP_PREFIX = "rt_";
 const std::string ApNameUtils::MERGED_AP_PREFIX = "merged_";

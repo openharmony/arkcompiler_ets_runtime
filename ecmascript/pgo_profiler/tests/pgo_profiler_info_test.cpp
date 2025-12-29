@@ -14,9 +14,7 @@
  */
 
 #include <cstdint>
-#include <fstream>
 #include <memory>
-#include <sstream>
 #include <string>
 #include <utility>
 
@@ -93,73 +91,6 @@ HWTEST_F_L0(PGOProfilerInfoTest, VerifyChecksumNoOverlapTest)
     ASSERT_TRUE(result);
 }
 
-HWTEST_F_L0(PGOProfilerInfoTest, PGOPandaFileInfosProcessToTextEmptyTest)
-{
-    PGOPandaFileInfos fileInfos;
-    std::string tempFile = "test_output_1.txt";
-    std::ofstream stream(tempFile);
-    ASSERT_TRUE(stream.is_open());
-    fileInfos.ProcessToText(stream);
-    stream.close();
-    std::ifstream readStream(tempFile);
-    std::string output((std::istreambuf_iterator<char>(readStream)),
-                       std::istreambuf_iterator<char>());
-    ASSERT_TRUE(output.find("Panda file sumcheck list") != std::string::npos);
-    readStream.close();
-    std::remove(tempFile.c_str());
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, PGOPandaFileInfosProcessToTextSingleSampleTest)
-{
-    PGOPandaFileInfos fileInfos;
-    fileInfos.Sample(12345, 1);
-    std::string tempFile = "test_output_2.txt";
-    std::ofstream stream(tempFile);
-    ASSERT_TRUE(stream.is_open());
-    fileInfos.ProcessToText(stream);
-    stream.close();
-    std::ifstream readStream(tempFile);
-    std::string output((std::istreambuf_iterator<char>(readStream)),
-                       std::istreambuf_iterator<char>());
-    ASSERT_TRUE(output.find("1") != std::string::npos);
-    ASSERT_TRUE(output.find("12345") != std::string::npos);
-    readStream.close();
-    std::remove(tempFile.c_str());
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, PGOPandaFileInfosProcessToTextMultipleSamplesTest)
-{
-    PGOPandaFileInfos fileInfos;
-    fileInfos.Sample(100, 1);
-    fileInfos.Sample(200, 2);
-    fileInfos.Sample(300, 3);
-    std::string tempFile = "test_output_3.txt";
-    std::ofstream stream(tempFile);
-    ASSERT_TRUE(stream.is_open());
-    fileInfos.ProcessToText(stream);
-    stream.close();
-    std::ifstream readStream(tempFile);
-    std::string output((std::istreambuf_iterator<char>(readStream)),
-                       std::istreambuf_iterator<char>());
-    ASSERT_TRUE(output.find("100") != std::string::npos);
-    ASSERT_TRUE(output.find("200") != std::string::npos);
-    ASSERT_TRUE(output.find("300") != std::string::npos);
-    readStream.close();
-    std::remove(tempFile.c_str());
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, PGOMethodInfoProcessToTextTest)
-{
-    PGOMethodId methodId(100);
-    PGOMethodInfo methodInfo(methodId);
-    methodInfo.IncreaseCount();
-    std::string text;
-    methodInfo.ProcessToText(text);
-    ASSERT_FALSE(text.empty());
-    ASSERT_TRUE(text.find("100") != std::string::npos);
-    ASSERT_TRUE(text.find("1") != std::string::npos);
-}
-
 HWTEST_F_L0(PGOProfilerInfoTest, PGOMethodInfoProcessToJsonTest)
 {
     PGOMethodId methodId(200);
@@ -171,111 +102,17 @@ HWTEST_F_L0(PGOProfilerInfoTest, PGOMethodInfoProcessToJsonTest)
     ASSERT_TRUE(function.find("functionName") != function.end());
 }
 
-HWTEST_F_L0(PGOProfilerInfoTest, PGOMethodInfoParseFromTextTest)
-{
-    {
-        std::string infoString = "100/5/CALL/testMethod";
-        auto result = PGOMethodInfo::ParseFromText(infoString);
-        ASSERT_FALSE(result.empty());
-        ASSERT_EQ(result.size(), 4U);
-        ASSERT_EQ(result[0], "100");
-        ASSERT_EQ(result[1], "5");
-        ASSERT_EQ(result[2], "CALL");
-        ASSERT_EQ(result[3], "testMethod");
-    }
-    {
-        std::string infoString = "";
-        auto result = PGOMethodInfo::ParseFromText(infoString);
-        ASSERT_TRUE(result.empty());
-    }
-    {
-        std::string infoString = "100";
-        auto result = PGOMethodInfo::ParseFromText(infoString);
-        ASSERT_EQ(result.size(), 1U);
-        ASSERT_EQ(result[0], "100");
-    }
-    {
-        std::string infoString = "100/5/CALL/testMethod/extra";
-        auto result = PGOMethodInfo::ParseFromText(infoString);
-        ASSERT_EQ(result.size(), 5U);
-        ASSERT_EQ(result[4], "extra");
-    }
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextCountBelowThresholdTest)
-{
-    auto chunk = std::make_unique<Chunk>();
-    PGOMethodInfoMap methodMap;
-    std::vector<std::string> content;
-    content.push_back("100/1/CALL/testMethod");  // Count=1, threshold=5
-    bool result = methodMap.ParseFromText(chunk.get(), 5, content);
-    EXPECT_FALSE(result);  // Actual behavior based on code flow
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextInvalidModeTest)
-{
-    auto chunk = std::make_unique<Chunk>();
-    PGOMethodInfoMap methodMap;
-    std::vector<std::string> content;
-    content.push_back("100/5/INVALID_MODE/testMethod");  // Invalid mode
-    bool result = methodMap.ParseFromText(chunk.get(), 5, content);
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextInvalidCountTest)
-{
-    auto chunk = std::make_unique<Chunk>();
-    PGOMethodInfoMap methodMap;
-    std::vector<std::string> content;
-    content.push_back("100/abc/INVALID_MODE/testMethod");  // Invalid count
-    bool result = methodMap.ParseFromText(chunk.get(), 5, content);
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextInvalidMethodIdTest)
-{
-    auto chunk = std::make_unique<Chunk>();
-    PGOMethodInfoMap methodMap;
-    std::vector<std::string> content;
-    content.push_back("invalid_id/5/CALL/testMethod");  // Invalid method ID
-    bool result = methodMap.ParseFromText(chunk.get(), 5, content);
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextInvalidTypeInfoFormatTest)
-{
-    auto chunk = std::make_unique<Chunk>();
-    PGOMethodInfoMap methodMap;
-    std::vector<std::string> content;
-    content.push_back("100/5/CALL/testMethod/[invalid_format");  // Invalid type info format
-    bool result = methodMap.ParseFromText(chunk.get(), 5, content);
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextTypeInfoParseFailedTest)
-{
-    auto chunk = std::make_unique<Chunk>();
-    PGOMethodInfoMap methodMap;
-    std::vector<std::string> content;
-    content.push_back("100/5/CALL/testMethod/[100:INVALID_TYPE]");  // Invalid type
-    bool result = methodMap.ParseFromText(chunk.get(), 5, content);
-    EXPECT_FALSE(result);
-}
-
-
 HWTEST_F_L0(PGOProfilerInfoTest, ProcessToTextEmptyMethodInfosTest)
 {
     PGOMethodInfoMap methodMap;
-    std::string tempFile = "test_output.txt";
-    std::ofstream stream(tempFile);
-    methodMap.ProcessToText(5, "testRecord", stream);
-    stream.close();
-    std::ifstream readStream(tempFile);
-    std::string output((std::istreambuf_iterator<char>(readStream)),
-                      std::istreambuf_iterator<char>());
-    readStream.close();
-    std::remove(tempFile.c_str());
-    EXPECT_TRUE(output.empty());
+    TextFormatter fmt;
+    methodMap.ProcessToText(5, "testRecord", fmt);
+    std::string output = fmt.Str();
+    // Even empty method map outputs header with record name and zero stats
+    EXPECT_TRUE(output.find("Record:") != std::string::npos);
+    EXPECT_TRUE(output.find("testRecord") != std::string::npos);
+    EXPECT_TRUE(output.find("Methods:") != std::string::npos);
+    EXPECT_TRUE(output.find("Total Calls:") != std::string::npos);
 }
 
 HWTEST_F_L0(PGOProfilerInfoTest, UpdateFileInfosAbcIDTest)
@@ -299,26 +136,6 @@ HWTEST_F_L0(PGOProfilerInfoTest, MergeEmptyRecordInfosTest)
     PGORecordSimpleInfos recordInfos1(5);
     PGORecordSimpleInfos recordInfos2(5);
     recordInfos1.Merge(recordInfos2);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextEmptyMethodNameTest)
-{
-    auto chunk = std::make_unique<Chunk>();
-    PGOMethodInfoMap methodMap;
-    std::vector<std::string> content;
-    content.push_back("100/5/CALL/");  // Empty method name
-    bool result = methodMap.ParseFromText(chunk.get(), 5, content);
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextExtraDataTest)
-{
-    auto chunk = std::make_unique<Chunk>();
-    PGOMethodInfoMap methodMap;
-    std::vector<std::string> content;
-    content.push_back("100/5/CALL/testMethod/extra/data");
-    bool result = methodMap.ParseFromText(chunk.get(), 5, content);
-    EXPECT_FALSE(result);
 }
 
 HWTEST_F_L0(PGOProfilerInfoTest, ChecksumMismatchTest)
@@ -370,23 +187,6 @@ HWTEST_F_L0(PGOProfilerInfoTest, MergeEmptyRecordDetailInfosTest)
     PGORecordDetailInfos recordInfos1(5);
     PGORecordDetailInfos recordInfos2(5);
     recordInfos1.Merge(recordInfos2);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ProcessToTextEmptyRecordPoolTest)
-{
-    PGORecordDetailInfos recordInfos(5);
-    std::string tempFile = "test_output_empty_pool.txt";
-    std::ofstream stream(tempFile);
-    ASSERT_TRUE(stream.is_open());
-    recordInfos.ProcessToText(stream);
-    stream.close();
-    std::ifstream readStream(tempFile);
-    std::string output((std::istreambuf_iterator<char>(readStream)),
-                      std::istreambuf_iterator<char>());
-    readStream.close();
-    std::remove(tempFile.c_str());
-
-    EXPECT_TRUE(true);
 }
 
 HWTEST_F_L0(PGOProfilerInfoTest, ClearOperationTest)
@@ -448,29 +248,6 @@ HWTEST_F_L0(PGOProfilerInfoTest, CalcChecksumBothNullTest)
 {
     uint32_t checksum = PGOMethodInfo::CalcChecksum(nullptr, nullptr, 0);
     EXPECT_EQ(checksum, 0U);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextEmptyStringTest)
-{
-    auto result = PGOMethodInfo::ParseFromText("");
-    EXPECT_TRUE(result.empty());
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ParseFromTextSingleElementTest)
-{
-    auto result = PGOMethodInfo::ParseFromText("100");
-    EXPECT_EQ(result.size(), 1U);
-    EXPECT_EQ(result[0], "100");
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, ProcessToTextCountZeroTest)
-{
-    PGOMethodId methodId(100);
-    PGOMethodInfo methodInfo(methodId);
-    std::string text;
-    methodInfo.ProcessToText(text);
-    EXPECT_FALSE(text.empty());
-    EXPECT_TRUE(text.find("100") != std::string::npos);
 }
 
 HWTEST_F_L0(PGOProfilerInfoTest, MergeSafeOperationTest)

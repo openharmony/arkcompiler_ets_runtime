@@ -84,23 +84,23 @@ public:
     static constexpr int WEIGHT_THRESHOLD = WEIGHT_MASK; // 2047
 
     enum class Type : uint32_t {
-        NONE = 0x0ULL,
-        INT = 0x1ULL,                        // 00000001
-        INT_OVERFLOW = (0x1ULL << 1) | INT,  // 00000011
-        DOUBLE = 0x1ULL << 2,                // 00000100
-        NUMBER = INT | DOUBLE,               // 00000101
-        NUMBER1 = INT_OVERFLOW | DOUBLE,     // 00000111
-        BOOLEAN = 0x1ULL << 3,
-        UNDEFINED_OR_NULL = 0x1ULL << 4,
-        SPECIAL = 0x1ULL << 5,
-        BOOLEAN_OR_SPECIAL = BOOLEAN | SPECIAL,
-        INTERN_STRING = 0x1ULL << 9,
-        STRING = (0x1ULL << 6) | INTERN_STRING,
-        NUMBER_OR_STRING = NUMBER | STRING,
-        BIG_INT = 0x1ULL << 7,
-        HEAP_OBJECT = 0x1ULL << 8,
-        HEAP_OR_UNDEFINED_OR_NULL = HEAP_OBJECT | UNDEFINED_OR_NULL,
-        ANY = (0x1ULL << WEIGHT_START_BIT) - 1,
+        NONE = 0x0ULL,                                                  // 0    = 0000000000
+        INT = 0x1ULL,                                                   // 1    = 0000000001
+        INT_OVERFLOW = (0x1ULL << 1) | INT,                             // 3    = 0000000011
+        DOUBLE = 0x1ULL << 2,                                           // 4    = 0000000100
+        NUMBER = INT | DOUBLE,                                          // 5    = 0000000101
+        NUMBER1 = INT_OVERFLOW | DOUBLE,                                // 7    = 0000000111
+        BOOLEAN = 0x1ULL << 3,                                          // 8    = 0000001000
+        UNDEFINED_OR_NULL = 0x1ULL << 4,                                // 16   = 0000010000
+        SPECIAL = 0x1ULL << 5,                                          // 32   = 0000100000
+        BOOLEAN_OR_SPECIAL = BOOLEAN | SPECIAL,                         // 40   = 0000101000
+        INTERN_STRING = 0x1ULL << 9,                                    // 512  = 1000000000
+        STRING = (0x1ULL << 6) | INTERN_STRING,                         // 576  = 1001000000
+        NUMBER_OR_STRING = NUMBER | STRING,                             // 581  = 1001000101
+        BIG_INT = 0x1ULL << 7,                                          // 128  = 0010000000
+        HEAP_OBJECT = 0x1ULL << 8,                                      // 256  = 0100000000
+        HEAP_OR_UNDEFINED_OR_NULL = HEAP_OBJECT | UNDEFINED_OR_NULL,    // 272  = 0100010000
+        ANY = (0x1ULL << WEIGHT_START_BIT) - 1,                         // 1023 = 1111111111
     };
 
     PGOSampleTemplate() : type_(Type::NONE) {};
@@ -250,10 +250,18 @@ public:
     std::string GetTypeString() const
     {
         if (IsPrimitiveType()) {
-            return std::to_string(static_cast<uint32_t>(std::get<Type>(type_)));
-        } else {
-            return std::get<PGOProfileType>(type_).GetTypeString();
+            std::string result = ToString();
+            if (result == "UNKNOWN_PRIMITIVE_TYPE") {
+                auto typeValue = static_cast<uint32_t>(std::get<Type>(type_));
+                return std::to_string(typeValue) + " (UNKNOWN_PRIMITIVE_TYPE)";
+            }
+            if (GetWeight() > 0) {
+                result += " (weight: true=" + std::to_string(GetTrueWeight())
+                          + ", false=" + std::to_string(GetFalseWeight()) + ")";
+            }
+            return result;
         }
+        return std::get<PGOProfileType>(type_).GetTypeString();
     }
 
     void GetTypeJson(ProfileType::StringMap &type) const
@@ -275,7 +283,7 @@ public:
     std::string ToString() const
     {
         if (IsPrimitiveType()) {
-            auto type = std::get<Type>(type_);
+            auto type = GetPrimitiveType();
             switch (type) {
                 case Type::NONE:
                     return "none";
@@ -286,9 +294,9 @@ public:
                 case Type::DOUBLE:
                     return "double";
                 case Type::NUMBER:
-                    return "number";
+                    return "int_or_double";
                 case Type::NUMBER1:
-                    return "number1";
+                    return "int_overflow_or_double";
                 case Type::BOOLEAN:
                     return "boolean";
                 case Type::UNDEFINED_OR_NULL:
@@ -297,8 +305,12 @@ public:
                     return "special";
                 case Type::BOOLEAN_OR_SPECIAL:
                     return "boolean_or_special";
+                case Type::INTERN_STRING:
+                    return "intern_string";
                 case Type::STRING:
                     return "string";
+                case Type::NUMBER_OR_STRING:
+                    return "number_or_string";
                 case Type::BIG_INT:
                     return "big_int";
                 case Type::HEAP_OBJECT:
@@ -308,7 +320,7 @@ public:
                 case Type::ANY:
                     return "any";
                 default:
-                    return "";
+                    return "UNKNOWN_PRIMITIVE_TYPE";
             }
         }
         return "";
@@ -316,7 +328,7 @@ public:
 
     bool IsProfileType() const
     {
-        return type_.index() == 1;
+        return std::holds_alternative<PGOProfileType>(type_);
     }
 
     PGOProfileType GetProfileType() const
@@ -327,7 +339,7 @@ public:
 
     bool IsPrimitiveType() const
     {
-        return type_.index() == 0;
+        return std::holds_alternative<Type>(type_);
     }
 
     Type GetPrimitiveType() const
@@ -342,6 +354,16 @@ public:
         ASSERT(IsPrimitiveType());
         auto type = static_cast<uint32_t>(std::get<Type>(type_));
         return type >> WEIGHT_START_BIT;
+    }
+
+    uint32_t GetTrueWeight() const
+    {
+        return GetWeight() >> WEIGHT_BITS;
+    }
+
+    uint32_t GetFalseWeight() const
+    {
+        return GetWeight() & WEIGHT_MASK;
     }
 
     bool IsAny() const
@@ -607,18 +629,20 @@ public:
         protoChainMarker_ = from.GetProtoChainMarker();
     }
 
-    std::string GetInfoString() const
+    void GetInfoString(TextFormatter& fmt) const
     {
-        std::string result = "      ";
-        result += "(\n        receiverRoot" + receiverRootType_.GetTypeString();
-        result += ",\n        receiver" + receiverType_.GetTypeString();
-        result += ",\n        holdRoot" + holdRootType_.GetTypeString();
-        result += ",\n        hold" + holdType_.GetTypeString();
-        result += ",\n        holdTraRoot" + holdTraRootType_.GetTypeString();
-        result += ",\n        holdTra" + holdTraType_.GetTypeString();
-        result += ",\n        accessorMethod:" + accessorMethod_.GetTypeString();
-        result += "\n      )";
-        return result;
+        fmt.SetLabelWidth(TextFormatter::LABEL_WIDTH_MEDIUM);
+        fmt.Text("(").NewLine();
+        fmt.PushIndent();
+        fmt.AutoIndent().Label("receiverRoot").Value(receiverRootType_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("receiver").Value(receiverType_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("holdRoot").Value(holdRootType_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("hold").Value(holdType_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("holdTraRoot").Value(holdTraRootType_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("holdTra").Value(holdTraType_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("accessorMethod").Value(accessorMethod_.GetTypeString()).NewLine();
+        fmt.PopIndent();
+        fmt.AutoIndent().Text(")");
     }
 
     template <typename T>
@@ -896,18 +920,38 @@ public:
         spaceFlag_ = from.GetSpaceFlag();
     }
 
-    std::string GetTypeString() const
+    static const char* ElementsKindToString(ElementsKind kind)
     {
-        std::string result = "";
-        result += "      local" + type_.GetTypeString();
-        result += ",\n      ctor" + ctorPt_.GetTypeString();
-        result += ",\n      proto" + protoPt_.GetTypeString();
-        result += ",\n      elementsKind:" + std::to_string(static_cast<int32_t>(kind_));
-        if (elementsLength_ > 0 && spaceFlag_ != RegionSpaceFlag::UNINITIALIZED) {
-            result += ",\n      size: " + std::to_string(elementsLength_);
-            result += ",\n      space; " + ToSpaceTypeName(spaceFlag_);
+        switch (kind) {
+            case ElementsKind::NONE: return "NONE";
+            case ElementsKind::HOLE: return "HOLE";
+            case ElementsKind::INT: return "INT";
+            case ElementsKind::HOLE_INT: return "HOLE_INT";
+            case ElementsKind::NUMBER: return "NUMBER";
+            case ElementsKind::HOLE_NUMBER: return "HOLE_NUMBER";
+            case ElementsKind::STRING: return "STRING";
+            case ElementsKind::HOLE_STRING: return "HOLE_STRING";
+            case ElementsKind::OBJECT: return "OBJECT";
+            case ElementsKind::HOLE_OBJECT: return "HOLE_OBJECT";
+            case ElementsKind::TAGGED: return "TAGGED";
+            case ElementsKind::HOLE_TAGGED: return "HOLE_TAGGED";
+            default: return "UNKNOWN";
         }
-        return result;
+    }
+
+    void GetTypeString(TextFormatter& fmt) const
+    {
+        fmt.SetLabelWidth(TextFormatter::LABEL_WIDTH_MEDIUM);
+        fmt.NewLine();
+        IndentScope scope(fmt);
+        fmt.AutoIndent().Label("local").Value(type_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("ctor").Value(ctorPt_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("proto").Value(protoPt_.GetTypeString()).NewLine();
+        fmt.AutoIndent().Label("elementsKind").Value(ElementsKindToString(kind_));
+        if (elementsLength_ > 0 && spaceFlag_ != RegionSpaceFlag::UNINITIALIZED) {
+            fmt.NewLine().AutoIndent().Label("size").Value(elementsLength_).NewLine();
+            fmt.AutoIndent().Label("space").Value(ToSpaceTypeName(spaceFlag_));
+        }
     }
 
     template <typename T>
@@ -1032,18 +1076,14 @@ public:
 
     std::string GetTypeString() const
     {
-        std::string result = "(ihc";
-        result += ihcType_.GetTypeString();
-        result += ", baseRoot";
-        result += baseRootPt_.GetTypeString();
-        result += ", base";
-        result += basePt_.GetTypeString();
-        result += ", transIhc";
-        result += transIhcType_.GetTypeString();
-        result += ", transProto";
-        result += transProtoPt_.GetTypeString();
-        result += ")";
-        return result;
+        TextFormatter fmt;
+        fmt.Text("(ihc: ").Text(ihcType_.GetTypeString());
+        fmt.Text(", baseRoot: ").Text(baseRootPt_.GetTypeString());
+        fmt.Text(", base: ").Text(basePt_.GetTypeString());
+        fmt.Text(", transIhc: ").Text(transIhcType_.GetTypeString());
+        fmt.Text(", transProto: ").Text(transProtoPt_.GetTypeString());
+        fmt.Text(")");
+        return fmt.Str();
     }
 
     bool IsNone() const

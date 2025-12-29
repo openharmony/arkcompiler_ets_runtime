@@ -23,7 +23,6 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/ap_file/pool_template.h"
@@ -82,23 +81,16 @@ public:
         return 1;
     }
 
-    bool ProcessToText(std::ofstream &stream) override
+    bool ProcessToText(TextFormatter& fmt) override
     {
-        bool isFirst = true;
+        if (pool_.empty()) {
+            return true;
+        }
+        fmt.Text("[Proto Transition Pool] (").Text(std::to_string(pool_.size())).Text(" entries)").NewLine();
         for (auto &entry : pool_) {
-            if (isFirst) {
-                stream << DumpUtils::NEW_LINE;
-                stream << "ProtoTransitionPool";
-                stream << DumpUtils::BLOCK_START;
-                isFirst = false;
-            }
-            stream << DumpUtils::NEW_LINE;
-            stream << entry.second.GetTypeString();
-            stream << DumpUtils::SPACE;
+            fmt.AutoIndent().Text(entry.second.GetTypeString()).NewLine();
         }
-        if (!isFirst) {
-            stream << (DumpUtils::SPACE + DumpUtils::NEW_LINE);
-        }
+        fmt.NewLine();
         return true;
     }
 

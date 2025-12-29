@@ -149,78 +149,51 @@ bool PGOMethodTypeSet::ProcessToBinary(PGOContext &context, std::stringstream &s
     return false;
 }
 
-bool PGOMethodTypeSet::ParseFromText(const std::string &typeString)
+void PGOMethodTypeSet::ProcessToText(TextFormatter& fmt) const
 {
-    std::vector<std::string> typeInfoVector = StringHelper::SplitString(typeString, DumpUtils::TYPE_SEPARATOR);
-    if (typeInfoVector.size() > 0) {
-        for (const auto &iter : typeInfoVector) {
-            std::vector<std::string> typeStrings = StringHelper::SplitString(iter, DumpUtils::BLOCK_START);
-            if (typeStrings.size() < METHOD_TYPE_INFO_COUNT) {
-                return false;
-            }
+    bool hasOutput = false;
+    fmt.SetLabelWidth(TextFormatter::LABEL_WIDTH_SMALL);
 
-            uint32_t offset = 0;
-            if (!StringHelper::StrToUInt32(typeStrings[METHOD_OFFSET_INDEX].c_str(), &offset)) {
-                return false;
-            }
-            uint32_t type = 0;
-            if (!StringHelper::StrToUInt32(typeStrings[METHOD_TYPE_INDEX].c_str(), &type)) {
-                return false;
-            }
-            scalarOpTypeInfos_.emplace(offset, PGOSampleType(type));
-        }
-    }
-    return true;
-}
-
-void PGOMethodTypeSet::ProcessToText(std::string &text) const
-{
-    bool isFirst = true;
+    IndentScope indentScope(fmt);
+    // Output scalar op types
     for (auto typeInfoIter : scalarOpTypeInfos_) {
         if (typeInfoIter.GetType().IsNone()) {
             continue;
         }
-        if (isFirst) {
-            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
-            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
-            isFirst = false;
-        } else {
-            text += DumpUtils::SPACE + DumpUtils::TYPE_SEPARATOR + DumpUtils::NEW_LINE;
-            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
-        }
-        text += std::to_string(typeInfoIter.GetOffset());
-        text += DumpUtils::BLOCK_START;
-        text += typeInfoIter.GetType().GetTypeString();
+        fmt.NewLine().AutoIndent().Label("Offset").Value(typeInfoIter.GetOffset(), true);
+        fmt.Indent().Label("Type").Value(typeInfoIter.GetType().GetTypeString());
+        hasOutput = true;
     }
+
+    // Output RW scalar op types
     for (auto rwScalarOpTypeInfoIter : rwScalarOpTypeInfos_) {
         if (rwScalarOpTypeInfoIter.GetCount() == 0) {
             continue;
         }
-        if (isFirst) {
-            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
-            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
+        fmt.NewLine().AutoIndent().Label("Offset").Value(rwScalarOpTypeInfoIter.GetOffset(), true);
+        fmt.Indent().Label("RWType").Value("[");
+        bool isFirst = true;
+        for (uint32_t i = 0; i < rwScalarOpTypeInfoIter.GetTypeRef().GetCount(); i++) {
+            if (!isFirst) {
+                fmt.Text(", ");
+            }
             isFirst = false;
-        } else {
-            text += DumpUtils::SPACE + DumpUtils::TYPE_SEPARATOR + DumpUtils::NEW_LINE;
-            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
+            rwScalarOpTypeInfoIter.GetTypeRef().GetObjectInfo(i).GetInfoString(fmt);
         }
-        rwScalarOpTypeInfoIter.ProcessToText(text);
+        fmt.Text("]");
+        hasOutput = true;
     }
-    for (const auto &defTypeInfoIter : objDefOpTypeInfos_) {
-        if (isFirst) {
-            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
-            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
-            isFirst = false;
-        } else {
-            text += DumpUtils::SPACE + DumpUtils::TYPE_SEPARATOR + DumpUtils::NEW_LINE;
-            text += DumpUtils::ALIGN + DumpUtils::ALIGN;
-        }
-        defTypeInfoIter.ProcessToText(text);
+
+    // Output object define types
+    for (const auto& defTypeInfoIter: objDefOpTypeInfos_) {
+        fmt.NewLine().AutoIndent().Label("Offset").Value(defTypeInfoIter.GetOffset(), true);
+        fmt.Indent().Label("DefType");
+        defTypeInfoIter.GetType().GetTypeString(fmt);
+        hasOutput = true;
     }
-    if (!isFirst) {
-        text += DumpUtils::NEW_LINE;
-        text += DumpUtils::ALIGN;
-        text += DumpUtils::ARRAY_END;
+
+    if (hasOutput) {
+        fmt.NewLine();
     }
 }
 

@@ -109,8 +109,7 @@ public:
     bool ParseFromBinary(PGOContext& context, void** addr, size_t bufferSize);
     bool ProcessToBinary(PGOContext &context, std::stringstream &stream) const;
 
-    bool ParseFromText(const std::string &typeString);
-    void ProcessToText(std::string &text) const;
+    void ProcessToText(TextFormatter &fmt) const;
 
     void ProcessToJson(ProfileType::VariantVector &typeArray) const;
 
@@ -194,22 +193,6 @@ private:
             return type_;
         }
 
-        void ProcessToText(std::string &text) const
-        {
-            text += std::to_string(GetOffset());
-            text += DumpUtils::BLOCK_START;
-            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
-            bool isFirst = true;
-            for (uint32_t i = 0; i < type_.GetCount(); i++) {
-                if (!isFirst) {
-                    text += DumpUtils::SPACE + DumpUtils::BLOCK_SEPARATOR + DumpUtils::NEW_LINE;
-                }
-                isFirst = false;
-                text += type_.GetObjectInfo(i).GetInfoString();
-            }
-            text += DumpUtils::NEW_LINE + DumpUtils::ALIGN + DumpUtils::ALIGN + DumpUtils::ARRAY_END;
-        }
-
         void ProcessToJson(ProfileType::MapVector &typeArray) const
         {
             for (uint32_t i = 0; i < type_.GetCount(); i++) {
@@ -281,15 +264,6 @@ private:
                 return this->offset_ < right.GetOffset();
             }
             return this->GetType() < right.GetType();
-        }
-
-        void ProcessToText(std::string &text) const
-        {
-            text += std::to_string(this->GetOffset());
-            text += DumpUtils::BLOCK_START;
-            text += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
-            text += this->GetType().GetTypeString();
-            text += DumpUtils::NEW_LINE + DumpUtils::ALIGN + DumpUtils::ALIGN + DumpUtils::ARRAY_END;
         }
 
         void ProcessToJson(std::vector<ProfileType::StringMap> &sameOffsetTypeArray) const

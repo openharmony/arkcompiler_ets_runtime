@@ -26,7 +26,6 @@
 #include "ecmascript/global_index.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/on_heap.h"
@@ -412,14 +411,46 @@ public:
         return type_ == right.type_;
     }
 
+    static const char* KindToString(Kind kind)
+    {
+        switch (kind) {
+            case Kind::ClassId: return "ClassId";
+            case Kind::ObjectLiteralId: return "ObjectLiteralId";
+            case Kind::ArrayLiteralId: return "ArrayLiteralId";
+            case Kind::BuiltinsId: return "BuiltinsId";
+            case Kind::MethodId: return "MethodId";
+            case Kind::BuiltinFunctionId: return "BuiltinFunctionId";
+            case Kind::RecordClassId: return "RecordClassId";
+            case Kind::PrototypeId: return "PrototypeId";
+            case Kind::ConstructorId: return "ConstructorId";
+            case Kind::MegaStateKinds: return "MegaStateKinds";
+            case Kind::TotalKinds: return "TotalKinds";
+            case Kind::UnknowId: return "UnknowId";
+            case Kind::GlobalsId: return "GlobalsId";
+            case Kind::JITClassId: return "JITClassId";
+            case Kind::TransitionClassId: return "TransitionClassId";
+            case Kind::TransitionPrototypeId: return "TransitionPrototypeId";
+            case Kind::NapiId: return "NapiId";
+            case Kind::InvalidId: return "InvalidId";
+            default: return "Unknown";
+        }
+    }
+
     std::string GetTypeString() const
     {
-        std::stringstream stream;
-        stream << "Type: " << "(isRoot: " << IsRootType() <<
-                ", ever out of bounds: " << IsEverOutOfBounds() <<
-                ", kind: " << std::showbase << std::dec << static_cast<uint32_t>(GetKind()) <<
-                ", abcId: " << GetAbcId() << ", id: " << GetId() << ")";
-        return stream.str();
+        TextFormatter fmt;
+        fmt.Text("(kind: ")
+            .Text(KindToString(GetKind()))
+            .Text(", abcId: ")
+            .Text(GetAbcId())
+            .Text(", id: ")
+            .Text(GetId())
+            .Text(", root: ")
+            .Text(IsRootType() ? "Y" : "N")
+            .Text(", everOOB: ")
+            .Text(IsEverOutOfBounds() ? "Y" : "N")
+            .Text(")");
+        return fmt.Str();
     }
 
     void GetTypeJson(StringMap &type) const
