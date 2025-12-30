@@ -21,6 +21,7 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_shared_module_manager.h"
+#include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
@@ -1283,6 +1284,11 @@ Expected<JSTaggedValue, bool> SourceTextModule::ModuleExecution(JSThread *thread
     if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " <<  moduleFilenameStr;
     }
+    if (module->GetTypes() == ModuleTypes::JSON_MODULE) {
+        Expected<JSTaggedValue, bool> result;
+        EvaluateJsonModule(thread, module, jsPandaFile.get(), CString(entryPoint));
+        return result;
+    }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entryPoint, executeType);
 }
 
@@ -2326,9 +2332,7 @@ void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<Sou
     fields.Exception = module->GetException(thread);
     fields.Namespace = module->GetNamespace(thread);
     module->SetTopLevelCapability(thread, undefinedValue);
-    if (module->GetTypes() != ModuleTypes::JSON_MODULE) {
-        module->SetNameDictionary(thread, undefinedValue);
-    }
+    module->SetNameDictionary(thread, undefinedValue);
     module->SetCycleRoot(thread, undefinedValue);
     module->SetAsyncParentModules(thread, undefinedValue);
     module->SetSendableEnv(thread, undefinedValue);
@@ -2397,5 +2401,24 @@ JSHandle<JSTaggedValue> SourceTextModule::FindFuncInModuleForHook(JSThread* thre
         return functionNotFound;
     }
     return JSObject::FindFuncInObjectForHook(thread, exportEntity, className, funcName);
+}
+
+JSHandle<SourceTextModule> SourceTextModule::LoadJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                            const CString &filename, CString recordName)
+{
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(
+        ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, filename));
+    EvaluateJsonModule(thread, module, jsPandaFile, recordName);
+    return module;
+}
+
+void SourceTextModule::EvaluateJsonModule(JSThread *thread, JSHandle<SourceTextModule> module,
+                                          const JSPandaFile *jsPandaFile, CString recordName)
+{
+    JSTaggedValue jsonData = ModuleDataExtractor::JsonParse(thread, jsPandaFile, recordName);
+    RETURN_IF_ABRUPT_COMPLETION(thread);
+    SourceTextModule::StoreModuleValue(thread, module, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
+    RETURN_IF_ABRUPT_COMPLETION(thread);
+    module->SetStatus(ModuleStatus::EVALUATED);
 }
 } // namespace panda::ecmascript

@@ -121,7 +121,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
 }
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                             const CString &moduleFilename, const CString &recordName)
+                                                             const CString &moduleFilename)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
@@ -130,13 +130,9 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
         defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);
     SourceTextModule::AddLocalExportEntry(thread, moduleRecord, localExportEntry, 0, 1); // 1 means len
-    JSTaggedValue jsonData = JsonParse(thread, jsPandaFile, recordName);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    SourceTextModule::StoreModuleValue(thread, moduleRecord, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
 
     moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
-
-    moduleRecord->SetStatus(ModuleStatus::EVALUATED);
+    moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::JSON_MODULE);
     moduleRecord->SetIsNewBcVersion(jsPandaFile->IsNewVersion());
 

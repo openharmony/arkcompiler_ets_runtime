@@ -40,7 +40,7 @@ public:
                                                JSPandaFile::JSRecordInfo *recordInfo);
     static JSHandle<JSTaggedValue> ParseCjsModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     static JSHandle<JSTaggedValue> ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                   const CString &moduleFilename, const CString &recordName);
+                                                   const CString &moduleFilename);
     static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread, const CString &moduleRequestName,
                                                      const CString &baseFileName, ModuleTypes moduleType);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);

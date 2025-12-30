@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,23 +13,6 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:importJson
- * @tc.desc:test import Json
- * @tc.type: FUNC
- * @tc.require: issueI5NO8G
- */
-import data from "./1.json"
-import "./override_2_json"
-import compareEsm from "./2.json"
-import { fun } from "./cjsImportJson";
-import {a} from './moduleCircularCheck';
-import {chinese} from './中文路径';
-import lazy data4 from "./4.json"
+import data from './1.json'
 
-print(data.name);
-print(compareEsm.name);
-fun();
-print(a);
-print(chinese);
-print(data4.name);
+data.name = 'orverride json'

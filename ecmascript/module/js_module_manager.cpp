@@ -312,8 +312,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteJsonModule(JSThread *thread, const
         requiredModule.Update(moduleRecord);
     } else {
         JSHandle<SourceTextModule> moduleRecord =
-            JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, filename,
-                                                                                  recordName));
+            SourceTextModule::LoadJsonModule(thread, jsPandaFile, filename, recordName);
         SourceTextModule::RecordEvaluatedOrError(thread, moduleRecord);
         requiredModule.Update(moduleRecord);
         UpdateResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
