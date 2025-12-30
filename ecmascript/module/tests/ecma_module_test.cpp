@@ -4588,12 +4588,14 @@ HWTEST_F_L0(EcmaModuleTest, MemoryReleasedAfterEvaluated3)
     JSTaggedValue moduleImportEntry_c = module_c->GetImportEntries(thread);
     EXPECT_NE(undefinedValue, moduleImportEntry_c);
 }
+
 HWTEST_F_L0(EcmaModuleTest, MemoryReleasedAfterEvaluated4)
 {
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
     JSNApi::EnableUserUncaughtErrorHandler(instance);
     instance->GetJsDebuggerManager()->SetIsDebugApp(true);
     ModuleLogger *moduleLogger = new ModuleLogger(instance);
+    thread->SetModuleLogger(moduleLogger);
     JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
     ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<SourceTextModule> module_c = moduleManager->HostGetImportedModule("module_test_module_test_C");
@@ -4612,6 +4614,245 @@ HWTEST_F_L0(EcmaModuleTest, MemoryReleasedAfterEvaluated4)
     EXPECT_NE(undefinedValue, moduleImportEntry_c);
     thread->SetModuleLogger(nullptr);
     delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, MemoryReleasedAfterEvaluated_ReExecuteShouldKeepUndefined)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJsDebuggerManager()->SetIsDebugApp(false);
+    thread->SetModuleLogger(nullptr);
+
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module_c = moduleManager->HostGetImportedModule("module_test_module_test_C");
+
+    ASSERT_EQ(module_c->GetStatus(), ModuleStatus::EVALUATED);
+
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+    EXPECT_EQ(undefinedValue, module_c->GetImportEntries(thread));
+
+    // re-execute
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+
+    JSHandle<SourceTextModule> module_c2 = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    ASSERT_EQ(module_c2->GetStatus(), ModuleStatus::EVALUATED);
+    EXPECT_EQ(undefinedValue, module_c2->GetImportEntries(thread));
+}
+
+
+HWTEST_F_L0(EcmaModuleTest, MemoryReleasedAfterEvaluated_AllModulesCleared_WhenNotDebugAndNoLogger)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJsDebuggerManager()->SetIsDebugApp(false);
+    thread->SetModuleLogger(nullptr);
+
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module_c = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    JSHandle<SourceTextModule> module_b = moduleManager->HostGetImportedModule("module_test_module_test_B");
+    JSHandle<SourceTextModule> module_test = moduleManager->HostGetImportedModule("module_test_module_test_module");
+    // c imports b and test module
+    ASSERT_EQ(module_c->GetStatus(), ModuleStatus::EVALUATED);
+    ASSERT_EQ(module_b->GetStatus(), ModuleStatus::EVALUATED);
+    ASSERT_EQ(module_test->GetStatus(), ModuleStatus::EVALUATED);
+
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+    EXPECT_EQ(undefinedValue, module_c->GetImportEntries(thread));
+    EXPECT_EQ(undefinedValue, module_b->GetImportEntries(thread));
+    EXPECT_EQ(undefinedValue, module_test->GetImportEntries(thread));
+}
+
+HWTEST_F_L0(EcmaModuleTest, MemoryNotReleasedAfterEvaluated_AllModulesKept_WhenLoggerEnabled)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJsDebuggerManager()->SetIsDebugApp(false);
+
+    ModuleLogger *moduleLogger = new ModuleLogger(instance);
+    thread->SetModuleLogger(moduleLogger);
+
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module_c = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    JSHandle<SourceTextModule> module_b = moduleManager->HostGetImportedModule("module_test_module_test_B");
+    JSHandle<SourceTextModule> module_test = moduleManager->HostGetImportedModule("module_test_module_test_module");
+    // c imports b and test module
+    if (module_c->GetStatus() != ModuleStatus::EVALUATED ||
+        module_b->GetStatus() != ModuleStatus::EVALUATED ||
+        module_test->GetStatus() != ModuleStatus::EVALUATED) {
+        thread->SetModuleLogger(nullptr);
+        delete moduleLogger;
+        ASSERT_TRUE(false);
+    }
+
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+    EXPECT_NE(undefinedValue, module_c->GetImportEntries(thread));
+    EXPECT_EQ(undefinedValue, module_b->GetImportEntries(thread));
+    EXPECT_EQ(undefinedValue, module_test->GetImportEntries(thread));
+
+    thread->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, MemoryNotReleasedAfterEvaluated_AllModulesKept_WhenDebugAppEnabled)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJsDebuggerManager()->SetIsDebugApp(true);
+
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module_c = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    JSHandle<SourceTextModule> module_b = moduleManager->HostGetImportedModule("module_test_module_test_B");
+    JSHandle<SourceTextModule> module_test = moduleManager->HostGetImportedModule("module_test_module_test_module");
+    // c imports b and test module
+    if (module_c->GetStatus() != ModuleStatus::EVALUATED ||
+        module_b->GetStatus() != ModuleStatus::EVALUATED ||
+        module_test->GetStatus() != ModuleStatus::EVALUATED) {
+        ASSERT_TRUE(false);
+    }
+
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+    EXPECT_NE(undefinedValue, module_c->GetImportEntries(thread));
+    EXPECT_EQ(undefinedValue, module_b->GetImportEntries(thread));
+    EXPECT_EQ(undefinedValue, module_test->GetImportEntries(thread));
+}
+
+HWTEST_F_L0(EcmaModuleTest, MemoryReleasedAfterEvaluated_SwitchLoggerOff_ReExecuteShouldClear)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJsDebuggerManager()->SetIsDebugApp(false);
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+
+    // 1) enable logger -> should not clear
+    ModuleLogger *moduleLogger = new ModuleLogger(instance);
+    thread->SetModuleLogger(moduleLogger);
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    JSHandle<SourceTextModule> module_c1 = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    JSHandle<SourceTextModule> module_b = moduleManager->HostGetImportedModule("module_test_module_test_B");
+    JSHandle<SourceTextModule> module_test = moduleManager->HostGetImportedModule("module_test_module_test_module");
+    // c imports b and test module
+    if (module_c1->GetStatus() != ModuleStatus::EVALUATED ||
+        module_b->GetStatus() != ModuleStatus::EVALUATED ||
+        module_test->GetStatus() != ModuleStatus::EVALUATED) {
+        thread->SetModuleLogger(nullptr);
+        delete moduleLogger;
+        ASSERT_TRUE(false);
+    }
+    EXPECT_NE(undefinedValue, module_c1->GetImportEntries(thread));
+
+    // 2) disable logger -> execute again -> should clear
+    thread->SetModuleLogger(nullptr);
+    delete moduleLogger;
+    moduleLogger = nullptr;
+
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    JSHandle<SourceTextModule> module_c2 = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    ASSERT_EQ(module_c2->GetStatus(), ModuleStatus::EVALUATED);
+    EXPECT_EQ(undefinedValue, module_c2->GetImportEntries(thread));
+}
+
+HWTEST_F_L0(EcmaModuleTest, MemoryReleasedAfterEvaluated_SwitchDebugAppOff_ReExecuteShouldClear)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJsDebuggerManager()->SetIsDebugApp(true);
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+
+    // 1) enable debugapp -> should not clear
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    JSHandle<SourceTextModule> module_c1 = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    JSHandle<SourceTextModule> module_b = moduleManager->HostGetImportedModule("module_test_module_test_B");
+    JSHandle<SourceTextModule> module_test = moduleManager->HostGetImportedModule("module_test_module_test_module");
+    // c imports b and test module
+    if (module_c1->GetStatus() != ModuleStatus::EVALUATED ||
+        module_b->GetStatus() != ModuleStatus::EVALUATED ||
+        module_test->GetStatus() != ModuleStatus::EVALUATED) {
+        ASSERT_TRUE(false);
+    }
+    EXPECT_NE(undefinedValue, module_c1->GetImportEntries(thread));
+
+    // 2) disable debugapp -> execute again -> should clear
+    instance->GetJsDebuggerManager()->SetIsDebugApp(false);
+
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    JSHandle<SourceTextModule> module_c2 = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    ASSERT_EQ(module_c2->GetStatus(), ModuleStatus::EVALUATED);
+    EXPECT_EQ(undefinedValue, module_c2->GetImportEntries(thread));
+}
+
+HWTEST_F_L0(EcmaModuleTest, ImportEntriesStructureCorrect_WhenLoggerEnabled_EntryModuleC)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJsDebuggerManager()->SetIsDebugApp(false);
+
+    ModuleLogger *moduleLogger = new ModuleLogger(instance);
+    thread->SetModuleLogger(moduleLogger);
+
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module_c = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    ASSERT_EQ(module_c->GetStatus(), ModuleStatus::EVALUATED);
+
+    // C imports B and module_test_module_test_module
+    JSTaggedValue entriesVal = module_c->GetImportEntries(thread);
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+    ASSERT_NE(entriesVal, undefinedValue);
+    ASSERT_TRUE(entriesVal.IsTaggedArray());
+    JSHandle<TaggedArray> entries(thread, entriesVal);
+    ASSERT_GT(entries->GetLength(), 0U);
+
+    std::set<std::string> actualSpecifiers;
+
+    for (uint32_t i = 0; i < entries->GetLength(); i++) {
+        JSTaggedValue entryVal = entries->Get(thread, i);
+        ASSERT_FALSE(entryVal.IsUndefined());
+        ASSERT_FALSE(entryVal.IsHole());
+        ASSERT_TRUE(entryVal.IsHeapObject());
+    }
+    thread->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, ImportEntriesStructureCorrect_WhenDebugAppEnabled_EntryModuleC)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    instance->GetJsDebuggerManager()->SetIsDebugApp(true);
+
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    JSHandle<SourceTextModule> module_c = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    ASSERT_EQ(module_c->GetStatus(), ModuleStatus::EVALUATED);
+
+    // C imports B and module_test_module_test_module
+    JSTaggedValue entriesVal = module_c->GetImportEntries(thread);
+    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
+    ASSERT_NE(entriesVal, undefinedValue);
+    ASSERT_TRUE(entriesVal.IsTaggedArray());
+    JSHandle<TaggedArray> entries(thread, entriesVal);
+    ASSERT_GT(entries->GetLength(), 0U);
+
+    for (uint32_t i = 0; i < entries->GetLength(); i++) {
+        JSTaggedValue entryVal = entries->Get(thread, i);
+        ASSERT_FALSE(entryVal.IsUndefined());
+        ASSERT_FALSE(entryVal.IsHole());
+        ASSERT_TRUE(entryVal.IsHeapObject());
+    }
 }
 
 HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_001)
