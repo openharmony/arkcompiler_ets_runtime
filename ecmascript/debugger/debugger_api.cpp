@@ -1473,13 +1473,15 @@ Local<JSValueRef> DebuggerApi::GetHashMapValueWithRange(const EcmaVM *ecmaVm, Lo
     JSHandle<TaggedHashArray> table(thread, hashMap->GetTable(thread));
     uint32_t length = table->GetLength();
     uint32_t size = static_cast<uint32_t>(hashMap->GetSize());
- 
+    uint32_t allocateSize = start >= size ? 0 : start + count > size ? size - start : count;
     originalSize = size;
-    int32_t startIndex = start;
-    int32_t end = static_cast<int32_t>(length);
-    CalculateStartAndEndIndex(startIndex, end, count);
- 
-    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, allocateSize);
+    if (allocateSize == 0) {
+        // no need to traverse and copy anything
+        AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+        return jsValueRef;
+    }
+
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<TaggedQueue> queue(thread, factory->NewTaggedQueue(0));
     JSMutableHandle<TaggedNode> node(thread, JSTaggedValue::Undefined());
@@ -1487,12 +1489,18 @@ Local<JSValueRef> DebuggerApi::GetHashMapValueWithRange(const EcmaVM *ecmaVm, Lo
     JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
     Local<JSValueRef> jsKey = StringRef::NewFromUtf8(ecmaVm, "key");
     Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
- 
-    uint32_t pos = 0;
-    uint32_t index = static_cast<uint32_t>(startIndex);
-    uint32_t endIndex = static_cast<uint32_t>(end);
-    while (index < endIndex) {
-        node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, index));
+    
+    uint32_t pos = 0; // index of resulting Arrayref
+    uint32_t nodeIndex = 0; // index of traversed nodes
+    uint32_t skipNodeCount = 0; // count of skipping nodes
+    // traverse first # of start nodes
+    while (skipNodeCount < start && nodeIndex < length) {
+        node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, nodeIndex));
+        skipNodeCount++;
+    }
+
+    while (nodeIndex < length && pos < allocateSize) {
+        node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, nodeIndex));
         if (!node.GetTaggedValue().IsHole()) {
             currentKey.Update(node->GetKey(thread));
             currentValue.Update(node->GetValue(thread));
