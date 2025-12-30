@@ -419,6 +419,20 @@ HWTEST_F_L0(GCTest, GCReasonToStringTest001)
     ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_ABILITY), "Trigger by AbilityRuntime"), 0);
     ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_MEM_TOOLS), "Trigger by Mem tools"), 0);
     ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::TRIGGER_BY_TASKPOOL), "Trigger by taskPool"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::NATIVE_LIMIT), "Native reach limit"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::SHARED_LIMIT), "Shared reach limit"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::IDLE_NATIVE), "Idle time task by native"), 0);
+    ASSERT_EQ(strcmp(stats->GCReasonToString(GCReason::HANDLE_MARKING_FINISHED), "ConcurrentMark finished"), 0);
+
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::IDLE), "Idle time task"), 0);
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::EXIT_HIGH_SENSITIVE), "Exit high sensitive"), 0);
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::EXTERNAL_TRIGGER), "Externally triggered"), 0);
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::WORKER_DESTRUCTION), "Worker Destruction"), 0);
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::TRIGGER_BY_JS), "Trigger by JS"), 0);
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::HINT_GC), "Trigger by hint"), 0);
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::NATIVE_LIMIT), "Native reach limit"), 0);
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::SHARED_LIMIT), "Shared reach limit"), 0);
+    ASSERT_EQ(strcmp(stats->MarkReasonToString(MarkReason::EXIT_SERIALIZE), "Exit serialize"), 0);
 }
 
 HWTEST_F_L0(GCTest, PrintGCMemoryStatisticTest002)

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/builtins/builtins_finalization_registry.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -24,9 +25,18 @@
 using namespace panda;
 
 using namespace panda::ecmascript;
+using namespace panda::ecmascript::builtins;
 
 namespace panda::test {
 class JSSharedArrayTest : public BaseTestWithScope<false> {
+public:
+    class TestClass : public base::BuiltinsBase {
+    public:
+        static JSTaggedValue callbackTest()
+        {
+            return JSTaggedValue::Undefined();
+        }
+    };
 };
 
 HWTEST_F_L0(JSSharedArrayTest, SetCapacityTest001)
@@ -271,4 +281,93 @@ HWTEST_F_L0(JSSharedArrayTest, CheckAndCopyArray)
     ASSERT_EQ(hclass->GetObjectType(), JSType::COW_TAGGED_ARRAY);
     JSSharedArray::CheckAndCopyArray(thread, jsArray);
 }
+
+std::vector<JSHandle<JSTaggedValue>> SharedArrayDefineOwnPropertyTest(JSThread* thread, JSHandle<JSObject>& obj,
+    std::vector<int>& vals)
+{
+    std::vector<JSHandle<JSTaggedValue>> keys;
+    for (size_t i = 0; i < vals.size(); i++) {
+        keys.push_back(JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))));
+        PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(vals[i])), true, true, true);
+        JSArray::DefineOwnProperty(thread, obj, keys[i], desc0);
+    }
+    return keys;
+}
+
+HWTEST_F_L0(JSSharedArrayTest, Sort1)
+{
+    auto vm = thread->GetEcmaVM();
+    auto factory = vm->GetFactory();
+    auto env = vm->GetGlobalEnv();
+
+    JSHandle<JSFunction> callbackFunc = factory->NewJSFunction(env, reinterpret_cast<void *>(
+        JSSharedArrayTest::TestClass::callbackTest));
+
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    std::vector<int> descVals{3, 2, 1};
+    auto keys = SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+    
+    JSTaggedValue result =
+        JSSharedArray::Sort(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(callbackFunc));
+
+    JSHandle<JSTaggedValue> resultArr =
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[0], SCheckMode::SKIP).GetValue()->GetInt(), 3);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[1], SCheckMode::SKIP).GetValue()->GetInt(), 2);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[2], SCheckMode::SKIP).GetValue()->GetInt(), 1);
+}
+
+HWTEST_F_L0(JSSharedArrayTest, Sort2)
+{
+    auto vm = thread->GetEcmaVM();
+    auto factory = vm->GetFactory();
+    auto env = vm->GetGlobalEnv();
+
+    JSHandle<JSFunction> callbackFunc = factory->NewJSFunction(env, reinterpret_cast<void *>(
+        JSSharedArrayTest::TestClass::callbackTest));
+
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    std::vector<int> descVals{3};
+    auto keys = SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+    
+    JSTaggedValue result =
+        JSSharedArray::Sort(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(callbackFunc));
+
+    JSHandle<JSTaggedValue> resultArr =
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[0], SCheckMode::SKIP).GetValue()->GetInt(), 3);
+    EXPECT_EQ(result, obj.GetTaggedValue());
+}
+
+HWTEST_F_L0(JSSharedArrayTest, Sort3)
+{
+    auto vm = thread->GetEcmaVM();
+    auto factory = vm->GetFactory();
+    auto env = vm->GetGlobalEnv();
+
+    JSHandle<JSFunction> callbackFunc = factory->NewJSFunction(env, reinterpret_cast<void *>(
+        JSSharedArrayTest::TestClass::callbackTest));
+
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(1)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    std::vector<int> descVals{};
+    auto keys = SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+    
+    JSTaggedValue result =
+        JSSharedArray::Sort(thread, JSHandle<JSTaggedValue>(obj), JSHandle<JSTaggedValue>(callbackFunc));
+
+    EXPECT_EQ(result, obj.GetTaggedValue());
+}
+
 } // namespace panda::test
