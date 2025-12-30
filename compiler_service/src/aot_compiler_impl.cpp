@@ -29,8 +29,12 @@
 #ifdef ENABLE_HISYSEVENT
 #include "ecmascript/compiler/aot_compiler_stats.h"
 #endif
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+#include "parameters.h"
+#endif
 
 namespace OHOS::ArkCompiler {
+const std::string USER_MODE_UNSLEEP = "unsleep";
 AotCompilerImpl& AotCompilerImpl::GetInstance()
 {
     static AotCompilerImpl aotCompiler;
@@ -157,6 +161,16 @@ bool AotCompilerImpl::VerifyCompilerModeAndPkgInfo(const std::unordered_map<std:
 }
 // LCOV_EXCL_STOP
 
+bool AotCompilerImpl::IsSleepTime()
+{
+#ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
+    std::string state = OHOS::system::GetParameter("persist.device_standby_ext.sleep.user_mode_not_care_charge",
+        USER_MODE_UNSLEEP);
+    return USER_MODE_UNSLEEP != state;
+#endif
+    return false;
+}
+
 int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                                std::vector<int16_t> &sigData)
 {
@@ -168,6 +182,10 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     if (!VerifyCompilerModeAndPkgInfo(argsMap) && !IsSystemComponent(argsMap)) {
         LOG_SA(ERROR) << "aot compiler mode or pkginfo arguments error";
         return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+    if (IsSleepTime()) {
+        LOG_SA(ERROR) << "aot compiler is not allowed in night time";
+        return ERR_AOT_COMPILER_CALL_CANCELLED;
     }
 
     argsHandler_ = std::make_unique<AOTArgsHandler>(argsMap);
