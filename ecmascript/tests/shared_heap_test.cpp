@@ -204,4 +204,43 @@ HWTEST_F_L0(SharedHeapTest, SharedConcurrentSweeper8)
     sHeap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
     EXPECT_TRUE(sHeap->GetSweeper()->IsRequestDisabled());
 }
+
+HWTEST_F_L0(SharedHeapTest, CheckIfNeedStopCollectionByStartup1)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    EXPECT_TRUE(sHeap->CheckIfNeedStopCollectionByStartup());
+}
+
+HWTEST_F_L0(SharedHeapTest, CheckIfNeedStopCollectionByStartup2)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+
+    SharedHugeObjectSpace *sharedHugeObjectSpace = sHeap->GetHugeObjectSpace();
+    sharedHugeObjectSpace->IncreaseCommitted(500 * 1024 *1024);
+    EXPECT_TRUE(sharedHugeObjectSpace->CommittedSizeExceed());
+    EXPECT_FALSE(sHeap->CheckIfNeedStopCollectionByStartup());
+}
+
+HWTEST_F_L0(SharedHeapTest, CheckIfNeedStopCollectionByStartup3)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->FinishStartupEvent();
+
+    EXPECT_TRUE(sHeap->CheckIfNeedStopCollectionByStartup());
+}
+
+HWTEST_F_L0(SharedHeapTest, CheckIfNeedStopCollectionByStartup4)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->FinishStartupEvent();
+
+    SharedHugeObjectSpace *sharedHugeObjectSpace = sHeap->GetHugeObjectSpace();
+    sharedHugeObjectSpace->IncreaseCommitted(500 * 1024 *1024);
+    EXPECT_TRUE(sharedHugeObjectSpace->CommittedSizeExceed());
+    EXPECT_FALSE(sHeap->CheckIfNeedStopCollectionByStartup());
+}
 }  // namespace panda::test

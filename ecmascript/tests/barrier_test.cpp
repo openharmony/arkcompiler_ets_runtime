@@ -296,4 +296,47 @@ HWTEST_F_L0(BarrierTest, OldToNewBatchCopy)
         EXPECT_EQ(dstArray->Get(thread, i), srcArray->Get(thread, i));
     }
 }
+
+HWTEST_F_L0(BarrierTest, BarrierTest1)
+{
+    common::GCPhase gcPhase;
+    gcPhase = common::GCPhase::GC_PHASE_ENUM;
+    EXPECT_TRUE(Barriers::ShouldProcessSATB(gcPhase));
+    EXPECT_TRUE(Barriers::ShouldGetGCReason(gcPhase));
+    
+    gcPhase = common::GCPhase::GC_PHASE_START;
+    EXPECT_FALSE(Barriers::ShouldProcessSATB(gcPhase));
+    EXPECT_FALSE(Barriers::ShouldGetGCReason(gcPhase));
+}
+
+HWTEST_F_L0(BarrierTest, BarrierTest2)
+{
+    common::GCPhase gcPhase;
+    gcPhase = common::GCPhase::GC_PHASE_START;
+    EXPECT_TRUE(Barriers::ShouldUpdateRememberSet(gcPhase));
+}
+
+HWTEST_F_L0(BarrierTest, BarrierTest3)
+{
+    common::GCPhase gcPhase;
+    gcPhase = common::GCPhase::GC_PHASE_ENUM;
+    common::Heap::GetHeap().SetGCReason(common::GC_REASON_YOUNG);
+    EXPECT_TRUE(Barriers::ShouldUpdateRememberSet(gcPhase));
+}
+
+HWTEST_F_L0(BarrierTest, BarrierTest4)
+{
+    common::GCPhase gcPhase;
+    gcPhase = common::GCPhase::GC_PHASE_START;
+    common::Heap::GetHeap().SetGCReason(common::GC_REASON_YOUNG);
+    EXPECT_TRUE(Barriers::ShouldUpdateRememberSet(gcPhase));
+}
+
+HWTEST_F_L0(BarrierTest, BarrierTest5)
+{
+    common::GCPhase gcPhase;
+    gcPhase = common::GCPhase::GC_PHASE_ENUM;
+    common::Heap::GetHeap().SetGCReason(common::GC_REASON_NATIVE);
+    EXPECT_FALSE(Barriers::ShouldUpdateRememberSet(gcPhase));
+}
 } // namespace panda::ecmascript
