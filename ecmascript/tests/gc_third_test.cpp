@@ -731,4 +731,18 @@ HWTEST_F_L0(GCTest, ResetLargeHeapTest)
     sharedHeap->ResetLargeCapacity(heapSize);
     ASSERT_EQ(sharedHeap->GetEcmaParamConfiguration().GetMaxHeapSize(), heapSize);
 }
+
+HWTEST_F_L0(GCTest, SharedMarkingBarrier)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    JSHandle<TaggedArray> array(factory->NewSTaggedArray(16));
+    sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, MarkReason::OTHER>(thread);
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    thread->CheckSafepoint();
+    JSHandle<TaggedArray> obj(factory->NewSTaggedArray(16));
+    for (int i = 0; i < 10; i++) {
+        array->Set(thread, i, obj);
+    }
+}
 } // namespace panda::test

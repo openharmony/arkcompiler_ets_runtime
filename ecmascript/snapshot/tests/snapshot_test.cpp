@@ -364,6 +364,21 @@ HWTEST_F_L0(SnapshotTest, SerializeHugeObject)
     std::remove(fileName.c_str());
 }
 
+HWTEST_F_L0(SnapshotTest, SerializeObject)
+{
+    auto factory = ecmaVm->GetFactory();
+    JSHandle<JSTaggedValue> prototype(thread, JSTaggedValue::Undefined());
+    JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, prototype);
+    JSHandle<JSObject> obj = factory->NewJSObject(hclass);
+    CString fileName = "snapshot";
+    // serialize
+    Snapshot snapshotSerialize(ecmaVm);
+    snapshotSerialize.Serialize(*obj, nullptr, fileName);
+    // deserialize
+    Snapshot snapshotDeserialize(ecmaVm);
+    snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
+}
+
 HWTEST_F_L0(SnapshotTest, BackwardCompatibility)
 {
     base::FileHeaderBase::VersionType oldVersion = {0, 0, 0, 1};
