@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,13 +17,17 @@
 #include "assembler/assembly-parser.h"
 #include "class_data_accessor-inl.h"
 #include "libziparchive/zip_archive.h"
-
 #include "ecmascript/global_env.h"
+#include "ecmascript/tests/test_helper.h"
+#define private public
+#define protected public
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/tests/test_helper.h"
+#undef protected
+#undef private
+
 
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
@@ -452,4 +456,140 @@ HWTEST_F_L0(JSPandaFileManagerTest, LoadInsecureJSPandaFile_2)
     EXPECT_TRUE(jsPandaFile == nullptr);
     pfManager->RemoveJSPandaFile(jsPandaFile.get());
 }
+
+/**
+ * @tc.name: FindJSPandaFileWithChecksum
+ * @tc.desc: Test FindJSPandaFileWithChecksum method to validate finding JSPandaFile by filename and checksum
+ * @tc.type: FUNC
+ * @tc.require: issue#12131
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, FindJSPandaFileWithChecksum)
+{
+    const char *filename = "__JSPandaFileManagerTestWithChecksum.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    pfManager->AddJSPandaFile(pf);
+
+    // Get the checksum of the loaded file
+    uint32_t checksum = pf->GetChecksum();
+
+    // Test FindJSPandaFileWithChecksum with correct checksum
+    std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFileWithChecksum(filename, checksum);
+    EXPECT_TRUE(foundPf != nullptr);
+    EXPECT_STREQ(foundPf->GetJSPandaFileDesc().c_str(), filename);
+
+    // Test with wrong checksum - should return nullptr and obsolete the file
+    std::shared_ptr<JSPandaFile> wrongChecksumPf = pfManager->FindJSPandaFileWithChecksum(filename, checksum + 1);
+    EXPECT_TRUE(wrongChecksumPf == nullptr);
+
+    pfManager->RemoveJSPandaFile(pf.get());
+}
+
+/**
+ * @tc.name: GetJSPandaFile
+ * @tc.desc: Test GetJSPandaFile method to validate finding JSPandaFile by panda file pointer
+ * @tc.type: FUNC
+ * @tc.require: issue#12132
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, GetJSPandaFile)
+{
+    const char *filename = "__JSPandaFileManagerTestGetJSPandaFile.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    pfManager->AddJSPandaFile(pf);
+
+    // Test GetJSPandaFile by panda file pointer
+    const panda_file::File *pandaFilePtr = pf->GetPandaFile();
+    std::shared_ptr<JSPandaFile> foundPf = pfManager->GetJSPandaFile(pandaFilePtr);
+    EXPECT_TRUE(foundPf != nullptr);
+    EXPECT_STREQ(foundPf->GetJSPandaFileDesc().c_str(), filename);
+    EXPECT_EQ(foundPf.get(), pf.get());
+
+    // Test with nullptr panda file pointer
+    std::shared_ptr<JSPandaFile> nullPf = pfManager->GetJSPandaFile(nullptr);
+    EXPECT_TRUE(nullPf == nullptr);
+
+    pfManager->RemoveJSPandaFile(pf.get());
+}
+
+/**
+ * @tc.name: ObsoleteLoadedJSPandaFile
+ * @tc.desc: Test ObsoleteLoadedJSPandaFile method to validate moving loaded JSPandaFile to old files set
+ * @tc.type: FUNC
+ * @tc.require: issue#12133
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, ObsoleteLoadedJSPandaFile)
+{
+    const char *filename = "__JSPandaFileManagerTestObsolete.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    pfManager->AddJSPandaFile(pf);
+
+    // Verify the file exists in loaded files
+    std::shared_ptr<JSPandaFile> foundPfBefore = pfManager->FindJSPandaFile(filename);
+    EXPECT_TRUE(foundPfBefore != nullptr);
+
+    // Obsolete the loaded file
+    pfManager->ObsoleteLoadedJSPandaFile(filename);
+
+    // Verify the file no longer exists in loaded files
+    std::shared_ptr<JSPandaFile> foundPfAfter = pfManager->FindJSPandaFile(filename);
+    EXPECT_TRUE(foundPfAfter == nullptr);
+
+    pfManager->RemoveJSPandaFile(pf.get());
+}
+
+/**
+ * @tc.name: OpenJSPandaFileFromBuffer
+ * @tc.desc: Test OpenJSPandaFileFromBuffer method to validate opening JSPandaFile from memory buffer
+ * @tc.type: FUNC
+ * @tc.require: issue#12136
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFileFromBuffer)
+{
+    const char *filename = "__JSPandaFileManagerTestFromBuffer.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+
+    // Get buffer and size
+    const void *buffer = pfPtr->GetBase();
+    size_t size = pfPtr->GetHeader()->file_size;
+
+    // Cast to uint8_t* for the method
+    uint8_t *uintBuffer = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(buffer));
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+
+    // Test OpenJSPandaFileFromBuffer
+    std::shared_ptr<JSPandaFile> pf = pfManager->OpenJSPandaFileFromBuffer(uintBuffer, size, CString(filename));
+    EXPECT_TRUE(pf != nullptr);
+    EXPECT_STREQ(pf->GetJSPandaFileDesc().c_str(), filename);
+
+    // Clean up
+
+    pfManager->RemoveJSPandaFile(pf.get());
+}
+
 }  // namespace panda::test
