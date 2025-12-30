@@ -207,7 +207,7 @@ def check_args(args):
     else:
         args.ld_library_path = RegressTestConfig.DEFAULT_LIBS_DIR
     if args.icu_path is None:
-        args.icu_path = RegressTestConfig.ICU_PATH
+        args.icu_path = RegressTestConfig.ICU_PATH_DATA
     if args.out_dir is None:
         args.out_dir = RegressTestConfig.PROJECT_BASE_OUT_DIR
     else:
@@ -490,21 +490,27 @@ class RegressTestCompile(RegressTestStep):
         return results
 
     def gen_abc_file(self, test_report: TestReport) -> Optional[TestReport]:
-        if test_report.src_path == RegressTestConfig.REGRESS_TEST_TOOL_DIR:
-            return None
         file_info_path, file_info_content = self.create_files_info(test_report)
         out_file = change_extension(test_report.src_path, '.out')
         expect_file_exists = os.path.exists(out_file)
         output_file = change_extension(
             os.path.join(test_report.out_path, Utils.get_file_name(test_report.test_id)),
             ".abc")
-        command = [
-            self.args.ark_frontend_binary,
-            f"@{file_info_path}",
-            "--merge-abc",
-            "--module",
-            f'--output={output_file}'
-        ]
+        if test_report.src_path == RegressTestConfig.REGRESS_TEST_TOOL_DIR:
+            # generate abc file for mjsunit.js
+            command = [
+                self.args.ark_frontend_binary,
+                test_report.src_path,
+                f'--output={output_file}'
+            ]
+        else:
+            command = [
+                self.args.ark_frontend_binary,
+                f"@{file_info_path}",
+                "--merge-abc",
+                "--module",
+                f'--output={output_file}'
+            ]
         step_result = StepResult(self.name, command=command, fileinfo=file_info_content)
         Utils.exec_command(command, test_report.test_id, step_result, self.args.timeout,
                            lambda rt, _, _2: get_extra_error_message(rt))
@@ -829,9 +835,10 @@ class RegressTestRun(RegressTestStep):
         abc_file = change_extension(
             os.path.join(test_report.out_path, Utils.get_file_name(test_report.test_id)),
             ".abc")
+        tool_abc_file = os.path.join(self.args.test_case_out_dir, RegressTestConfig.TEST_TOOL_FILE_NAME)
         aot_file = change_extension(abc_file, "")
         expect_file = change_extension(abc_file, ".out")
-        entry_point = Utils.get_file_only_name(RegressTestConfig.TEST_TOOL_FILE_JS_NAME)
+        entry_point = Utils.get_file_only_name(test_report.src_path)
 
         os.environ["LD_LIBRARY_PATH"] = self.args.ld_library_path
 
@@ -856,8 +863,9 @@ class RegressTestRun(RegressTestStep):
             command.append("--enable-force-gc=false")
         else:
             command.extend(get_test_options(test_name, self.test_groups, RegressOption.NO_FORCE_GC))
+        command.append("--open-ark-tools=true")
         command.extend(get_test_options(test_name, self.test_groups, RegressOption.ELEMENTS_KIND))
-        command.append(abc_file)
+        command.append(tool_abc_file + ":" + abc_file)
 
         return self.run_test_case_file(command, test_report, expect_file)
 
