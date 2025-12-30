@@ -243,7 +243,7 @@ public:
 
     inline void DestoryLazyImportArray()
     {
-        delete GetLazyImportStatusArray();
+        delete[] GetLazyImportStatusArray();
         SetLazyImportStatus(ToUintPtr(nullptr));
     }
 
