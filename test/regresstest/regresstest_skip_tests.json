@@ -3675,5 +3675,32 @@
         "mjsunit/harmony/optional-catch-binding-breaks.js",
         "mjsunit/try.js"
       ]
+    },
+    {
+      "reason": "skip template test cases",
+      "files": [
+        "mjsunit/regress/regress-crbug-397662.js",
+        "mjsunit/optimized-array-findindex.js",
+        "mjsunit/array-methods-read-only-length.js",
+        "mjsunit/regress/regress-1238033.js",
+        "mjsunit/regress/regress-353004.js",
+        "mjsunit/es6/array-spread-holey.js",
+        "mjsunit/es6/typedarray-construct-by-buffer-ordering.js",
+        "mjsunit/es6/typedarray-sort.js",
+        "intl/regress-527926.js",
+        "intl/date-format/hour_cycle.js",
+        "mjsunit/empirical_max_arraybuffer.js",
+        "mjsunit/tzoffset-seoul-noi18n.js",
+        "mjsunit/sin-cos.js",
+        "mjsunit/regress/regress-319722-ArrayBuffer.js",
+        "mjsunit/regress/regress-1432470.js",
+        "mjsunit/regress/regress-852258.js",
+        "mjsunit/regress/regress-crbug-869313.js",
+        "mjsunit/regress/regress-667603.js",
+        "mjsunit/regress/wasm/regress-873600.js",
+        "mjsunit/regress/regress-446389.js",
+        "mjsunit/regress/regress-crbug-820312.js",
+        "intl/regress-1130489.js"
+      ]
     }
 ]
