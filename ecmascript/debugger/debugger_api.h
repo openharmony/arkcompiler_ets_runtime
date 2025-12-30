@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -208,6 +208,65 @@ public:
     static bool CheckIsSendableMethod(const EcmaVM *ecmaVm);
     static bool IsMainThread();
     static void DropLastFrame(const EcmaVM *ecmaVm);
+
+    // Container with range request
+    static void CalculateStartAndEndIndex(int32_t &start, int32_t &end, int32_t &count);
+ 
+    static Local<JSValueRef> GetArrayListValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                        Global<MapRef> internalObjects, int32_t start,
+                                                        int32_t count, uint32_t &originalSize);
+    
+    static Local<JSValueRef> GetDequeValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                    Global<MapRef> internalObjects, int32_t start,
+                                                    int32_t count, uint32_t &originalSize);
+    
+    static Local<JSValueRef> GetHashMapValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                      Global<MapRef> internalObjects, int32_t start,
+                                                      int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetHashSetValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                      Global<MapRef> internalObjects, int32_t start,
+                                                      int32_t count, uint32_t &originalSize);
+    
+    static Local<JSValueRef> GetLightWeightMapValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                             Global<MapRef> internalObjects, int32_t start,
+                                                             int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetLightWeightSetValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                             Global<MapRef> internalObjects, int32_t start,
+                                                             int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetLinkedListValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                         Global<MapRef> internalObjects, int32_t start,
+                                                         int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetListValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                   Global<MapRef> internalObjects, int32_t start,
+                                                   int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetPlainArrayValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                         Global<MapRef> internalObjects, int32_t start,
+                                                         int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetQueueValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                    Global<MapRef> internalObjects, int32_t start,
+                                                    int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetStackValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                    Global<MapRef> internalObjects, int32_t start,
+                                                    int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetTreeMapValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                      Global<MapRef> internalObjects, int32_t start,
+                                                      int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetTreeSetValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                      Global<MapRef> internalObjects, int32_t start,
+                                                      int32_t count, uint32_t &originalSize);
+ 
+    static Local<JSValueRef> GetVectorValueWithRange(const EcmaVM *ecmaVm, Local<JSValueRef> value,
+                                                     Global<MapRef> internalObjects, int32_t start,
+                                                     int32_t count, uint32_t &originalSize);
 };
 }  // namespace panda::ecmascript::tooling
 
