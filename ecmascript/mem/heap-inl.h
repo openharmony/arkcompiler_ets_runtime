@@ -1453,10 +1453,12 @@ void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
 {
     // ProcessNativeDelete should be limited to OldGC or FullGC only
     if (!IsYoungGC()) {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+            ("ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size())
+            + ";ConcurrentNum:" + std::to_string(concurrentNativePointerList_.size())).c_str(), "");
+
         auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         auto iter = nativePointerList_.begin();
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
-            ("ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size())).c_str(), "");
         while (iter != nativePointerList_.end()) {
             JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*iter).GetTaggedObject());
             auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
@@ -1494,12 +1496,14 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
 {
     // process native ref should be limited to OldGC or FullGC only
     if (!IsYoungGC()) {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+            ("ProcessReferencesNum:" + std::to_string(nativePointerList_.size())
+            + ";ConcurrentNum:" + std::to_string(concurrentNativePointerList_.size())).c_str(), "");
+
         auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         ResetNativeBindingSize();
         // array buffer
         auto iter = nativePointerList_.begin();
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
-            ("ProcessReferencesNum:" + std::to_string(nativePointerList_.size())).c_str(), "");
         while (iter != nativePointerList_.end()) {
             JSNativePointer *object = reinterpret_cast<JSNativePointer *>((*iter).GetTaggedObject());
             auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
@@ -1556,10 +1560,12 @@ void Heap::PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent)
 
 void Heap::IteratorNativePointerList(WeakVisitor &visitor)
 {
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+        ("IteratorNativePointerListNum:" + std::to_string(nativePointerList_.size())
+        + ";ConcurrentNum:" + std::to_string(concurrentNativePointerList_.size())).c_str(), "");
+
     auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
     auto iter = nativePointerList_.begin();
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
-        ("ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size())).c_str(), "");
     while (iter != nativePointerList_.end()) {
         ObjectSlot slot(reinterpret_cast<uintptr_t>(&(*iter)));
         bool isAlive = visitor.VisitRoot(Root::ROOT_VM, slot);
