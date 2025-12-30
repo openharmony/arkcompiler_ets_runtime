@@ -199,7 +199,9 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
             // Let value be Call(toJSON, value, «key»).
             EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread_, toJsonFun, value, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-            info->SetCallArg(key.GetTaggedValue());
+            JSTaggedValue keyArg = key->IsNumber() ?
+                JSTaggedValue::ToString(thread_, key).GetTaggedValue() : key.GetTaggedValue();
+            info->SetCallArg(keyArg);
             tagValue = JSFunction::Call(info);
             // ii. ReturnIfAbrupt(value).
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -215,7 +217,9 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread_, replacer, holder, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        info->SetCallArg(key.GetTaggedValue(), handleValue_.GetTaggedValue());
+        JSTaggedValue keyArg = key->IsNumber() ?
+            JSTaggedValue::ToString(thread_, key).GetTaggedValue() : key.GetTaggedValue();
+        info->SetCallArg(keyArg, handleValue_.GetTaggedValue());
         tagValue = JSFunction::Call(info);
         // b. ReturnIfAbrupt(value).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -793,7 +797,7 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
                 tagValHandle.Update(getterResult);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
-            handleKey_.Update(JSTaggedValue::ToString(thread_, JSTaggedValue(i)));
+            handleKey_.Update(JSTaggedValue(i));
             handleValue_.Update(tagValHandle.GetTaggedValue());
 
             if (i > 0) {
