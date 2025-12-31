@@ -18,7 +18,6 @@
 #include <charconv>
 #include <cstdio>
 #include <fstream>
-#include <nlohmann/json.hpp>
 
 #include "aot_args_list.h"
 #include "aot_compiler_constants.h"
@@ -42,6 +41,8 @@ const std::string STATIC_PAOC_LOCATION = "paoc-location";
 const std::string STATIC_PAOC_OUTPUT = "paoc-output";
 const std::string STATIC_PAOC_USE_PROFILE = "paoc-use-profile";
 const std::string STATIC_BOOT_PATH = "/system/framework/bootpath.json";
+const std::string STATIC_COMPILER_REGEX = "compiler-regex";
+const std::string STATIC_PAOC_BLACK_LIST_PATH = "/etc/ark/static_aot_methods_black_list.json";
 
 const std::string ARKTS_DYNAMIC = "dynamic";
 const std::string ARKTS_STATIC = "static";
@@ -223,6 +224,46 @@ void AOTArgsParser::AddExpandArgs(std::vector<std::string> &argVector, int32_t t
     argVector.emplace_back(thermalLevelArg);
 }
 
+void StaticAOTArgsParser::ProcessArgsMap(const std::unordered_map<std::string, std::string> &argsMap,
+                                         std::string &anfilePath, std::string &pkgInfo, bool &partialMode,
+                                         HapArgs &hapArgs)
+{
+    for (auto &argPair : argsMap) {
+        // for 1.2, replace aot-file by paoc-output
+        if (argPair.first == AOT_FILE) {
+            anfilePath = argPair.second;
+            std::string anFileName = anfilePath + AN_SUFFIX;
+            hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_OUTPUT + Symbols::EQ + anFileName);
+            continue;
+        }
+
+        if (argPair.first == COMPILER_MODE && argPair.second == PARTIAL) {
+            partialMode = true;
+            continue;
+        }
+
+        if (argPair.first == COMPILER_PKG_INFO) {
+            pkgInfo = argPair.second;
+            continue;
+        }
+
+        if (staticAOTArgsList.find(argPair.first) != staticAOTArgsList.end()) {
+            hapArgs.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
+        }
+    }
+}
+
+void StaticAOTArgsParser::ProcessBlackListMethods(const std::string &pkgInfo, const std::string &anfilePath,
+                                                  HapArgs &hapArgs)
+{
+    std::string moduleName = ParseModuleName(anfilePath);
+    std::string blackListMethods = ParseBlackListMethods(pkgInfo, moduleName);
+    if (!blackListMethods.empty()) {
+        // Use the generated regex pattern instead of comma-separated list
+        hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_COMPILER_REGEX + Symbols::EQ + blackListMethods);
+    }
+}
+
 int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::string> &argsMap,
                                    HapArgs &hapArgs, [[maybe_unused]] int32_t thermalLevel)
 {
@@ -252,29 +293,10 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
     std::string anfilePath;
     std::string pkgInfo;
     bool partialMode = false;
-    for (auto &argPair : argsMap) {
-        // for 1.2, replace aot-file by paoc-output
-        if (argPair.first == AOT_FILE) {
-            anfilePath = argPair.second;
-            std::string anFileName = anfilePath + AN_SUFFIX;
-            hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_OUTPUT + Symbols::EQ + anFileName);
-            continue;
-        }
 
-        if (argPair.first == COMPILER_MODE && argPair.second == PARTIAL) {
-            partialMode = true;
-            continue;
-        }
+    ProcessArgsMap(argsMap, anfilePath, pkgInfo, partialMode, hapArgs);
 
-        if (argPair.first == COMPILER_PKG_INFO) {
-            pkgInfo = argPair.second;
-            continue;
-        }
-
-        if (staticAOTArgsList.find(argPair.first) != staticAOTArgsList.end()) {
-            hapArgs.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
-        }
-    }
+    ProcessBlackListMethods(pkgInfo, anfilePath, hapArgs);
 
     std::string location = ParseLocation(anfilePath);
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_LOCATION + Symbols::EQ + location);
@@ -336,6 +358,16 @@ std::string StaticAOTArgsParser::ParseLocation(std::string &anFilePath)
     return location;
 }
 
+std::string StaticAOTArgsParser::ParseModuleName(const std::string &anFilePath)
+{
+    size_t pos = anFilePath.find_last_of("/");
+    if (pos == std::string::npos) {
+        LOG_SA(FATAL) << "aot sa parse invalid location";
+    }
+    std::string moduleName = anFilePath.substr(pos + 1);
+    return moduleName;
+}
+
 bool StaticAOTArgsParser::ParseProfilePath(std::string &pkgInfo, std::string &profilePath)
 {
     if (!nlohmann::json::accept(pkgInfo)) {
@@ -356,6 +388,183 @@ bool StaticAOTArgsParser::ParseProfilePath(std::string &pkgInfo, std::string &pr
 
     profilePath = jsonPkgInfo[pgoDir].get<std::string>() + "/profile.ap";
     return true;
+}
+
+bool AOTArgsParserBase::ParseBundleName(const std::string &pkgInfo, std::string &bundleName)
+{
+    nlohmann::json jsonPkgInfo = nlohmann::json::parse(pkgInfo);
+    if (jsonPkgInfo.is_discarded()) {
+        LOG_SA(ERROR) << "json discarded error";
+        return false;
+    }
+    if (jsonPkgInfo.is_null() || jsonPkgInfo.empty()) {
+        LOG_SA(ERROR) << "invalid json when parse profile path";
+        return false;
+    }
+
+    std::string bundleNameKey = "bundleName";
+    if (!jsonPkgInfo.contains(bundleNameKey) ||
+        jsonPkgInfo[bundleNameKey].is_null() ||
+        !jsonPkgInfo[bundleNameKey].is_string()) {
+        LOG_SA(ERROR) << "invalid bundleNameKey when parse bundleName path";
+        return false;
+    }
+
+    bundleName = jsonPkgInfo[bundleNameKey].get<std::string>();
+    return true;
+}
+
+bool AOTArgsParserBase::ParseBlackListJson(nlohmann::json &jsonObject)
+{
+    if (!IsFileExists(STATIC_PAOC_BLACK_LIST_PATH)) {
+        return false;
+    }
+    std::ifstream inFile;
+    inFile.open(STATIC_PAOC_BLACK_LIST_PATH, std::ios::in);
+    if (!inFile.is_open()) {
+        LOG_SA(ERROR) << "read json error";
+        return false;
+    }
+    jsonObject = nlohmann::json::parse(inFile);
+    if (jsonObject.is_discarded()) {
+        LOG_SA(ERROR) << "json discarded error";
+        inFile.close();
+        return false;
+    }
+    if (jsonObject.is_null() || jsonObject.empty()) {
+        LOG_SA(ERROR) << "invalid json";
+        inFile.close();
+        return false;
+    }
+    inFile.close();
+    return true;
+}
+
+std::vector<std::string> AOTArgsParserBase::JoinMethodList(const nlohmann::json &methodLists)
+{
+    std::vector<std::string> methodVec;
+    for (size_t i = 0; i < methodLists.size(); ++i) {
+        if (!methodLists[i].is_string()) {
+            continue;
+        }
+        methodVec.emplace_back(methodLists[i].get<std::string>());
+    }
+    return methodVec;
+}
+
+std::string AOTArgsParserBase::BuildRegexPattern(const std::vector<std::string> &blacklistedMethods)
+{
+    if (blacklistedMethods.empty()) {
+        return "";
+    }
+
+    // Build the regex pattern that excludes these methods
+    std::string regexPattern = "^(?!(";
+    for (size_t i = 0; i < blacklistedMethods.size(); ++i) {
+        if (i > 0) {
+            regexPattern += "|";
+        }
+        // Escape special regex characters in method names
+        for (char c : blacklistedMethods[i]) {
+            if (c == '\\' || c == '.' || c == '^' || c == '$' || c == '*' ||
+                c == '+' || c == '?' || c == '(' || c == ')' || c == '[' ||
+                c == ']' || c == '{' || c == '}' || c == '|' || c == '/') {
+                regexPattern += "\\";
+            }
+            regexPattern += c;
+        }
+    }
+    regexPattern += ")$).*";
+
+    return regexPattern;
+}
+
+bool StaticAOTArgsParser::CheckBundleNameAndModuleList(const nlohmann::json &item,
+    const std::string &bundleName)
+{
+    if (!item.contains("bundleName") || !item["bundleName"].is_string()) {
+        return false;
+    }
+    if (item["bundleName"].get<std::string>() != bundleName) {
+        return false;
+    }
+    if (!item.contains("moduleLists") || !item["moduleLists"].is_array()) {
+        return false;
+    }
+    return true;
+}
+
+bool StaticAOTArgsParser::CheckModuleNameAndMethodList(const nlohmann::json &moduleItem,
+    const std::string &moduleName)
+{
+    if (!moduleItem.contains("name") || !moduleItem["name"].is_string()) {
+        return false;
+    }
+    if (moduleItem["name"].get<std::string>() != moduleName) {
+        return false;
+    }
+    if (!moduleItem.contains("methodLists") || !moduleItem["methodLists"].is_array()) {
+        return false;
+    }
+    return true;
+}
+
+std::string StaticAOTArgsParser::ProcessBlackListForBundleAndModule(const nlohmann::json &jsonObject,
+                                                                    const std::string &bundleName,
+                                                                    const std::string &moduleName)
+{
+    if (!jsonObject.contains("blackMethodList") || !jsonObject["blackMethodList"].is_array()) {
+        return "";
+    }
+    if (jsonObject["blackMethodList"].empty()) {
+        return "";
+    }
+    std::vector<std::string> blacklistedMethods;
+    for (const auto& item : jsonObject["blackMethodList"]) {
+        if (!CheckBundleNameAndModuleList(item, bundleName)) {
+            continue;
+        }
+        std::vector<std::string> moduleResults = ProcessMatchingModules(item, moduleName);
+        blacklistedMethods.insert(blacklistedMethods.end(), moduleResults.begin(), moduleResults.end());
+    }
+
+    if (blacklistedMethods.empty()) {
+        return "";
+    }
+
+    return AOTArgsParserBase::BuildRegexPattern(blacklistedMethods);
+}
+
+std::vector<std::string> StaticAOTArgsParser::ProcessMatchingModules(
+    const nlohmann::json &item,
+    const std::string &moduleName)
+{
+    std::vector<std::string> resultVec;
+    for (const auto& moduleItem : item["moduleLists"]) {
+        if (!CheckModuleNameAndMethodList(moduleItem, moduleName)) {
+            continue;
+        }
+        const auto& methodLists = moduleItem["methodLists"];
+        std::vector<std::string> currentMethodVec = JoinMethodList(methodLists);
+        resultVec.insert(resultVec.end(), currentMethodVec.begin(), currentMethodVec.end());
+    }
+    return resultVec;
+}
+
+std::string StaticAOTArgsParser::ParseBlackListMethods(const std::string &pkgInfo,
+    const std::string &moduleName)
+{
+    nlohmann::json jsonObject;
+    if (!ParseBlackListJson(jsonObject)) {
+        return "";
+    }
+
+    std::string bundleName;
+    if (!ParseBundleName(pkgInfo, bundleName) || bundleName.empty()) {
+        return "";
+    }
+
+    return ProcessBlackListForBundleAndModule(jsonObject, bundleName, moduleName);
 }
 
 bool StaticAOTArgsParser::ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo)
@@ -401,7 +610,7 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
     return std::nullopt;
 }
 
-bool StaticFrameworkAOTArgsParser::IsFileExists(const std::string &fileName)
+bool AOTArgsParserBase::IsFileExists(const std::string &fileName)
 {
     std::string realPath;
     if (!panda::ecmascript::RealPath(fileName, realPath)) {
@@ -449,13 +658,63 @@ int32_t StaticFrameworkAOTArgsParser::Parse(const std::unordered_map<std::string
     }
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_BOOT_PANDA_FILES + Symbols::EQ + bootfiles);
 
+    std::string bundleName = abcPath;
     for (auto &argPair : argsMap) {
         if (argPair.first == AN_FILE_NAME) {
             hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_OUTPUT + Symbols::EQ + argPair.second);
         }
     }
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_PANDA_FILES + Symbols::EQ + abcPath);
+
+    std::string blackListMethods = ParseBlackListMethods(bundleName);
+    if (!blackListMethods.empty()) {
+        // Use the generated regex pattern instead of comma-separated list
+        hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_COMPILER_REGEX + Symbols::EQ + blackListMethods);
+    }
     return ERR_OK;
+}
+
+bool StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList(const nlohmann::json &item,
+    const std::string &bundleName)
+{
+    if (!item.contains("bundleName") || !item["bundleName"].is_string()) {
+        return false;
+    }
+    if (item["bundleName"].get<std::string>() != bundleName) {
+        return false;
+    }
+    if (!item.contains("methodLists") || !item["methodLists"].is_array()) {
+        return false;
+    }
+    return true;
+}
+
+std::string StaticFrameworkAOTArgsParser::ParseBlackListMethods(const std::string &bundleName)
+{
+    nlohmann::json jsonObject;
+    if (!ParseBlackListJson(jsonObject)) {
+        return "";
+    }
+    std::vector<std::string> blacklistedMethods;
+    if (!jsonObject.contains("blackMethodList") || !jsonObject["blackMethodList"].is_array()) {
+        return "";
+    }
+    if (jsonObject["blackMethodList"].empty()) {
+        return "";
+    }
+    for (const auto& item : jsonObject["blackMethodList"]) {
+        if (!CheckBundleNameAndMethodList(item, bundleName)) {
+            continue;
+        }
+        const auto& methodLists = item["methodLists"];
+        std::vector<std::string> currentMethodVec = JoinMethodList(methodLists);
+        blacklistedMethods.insert(blacklistedMethods.end(), currentMethodVec.begin(), currentMethodVec.end());
+    }
+    if (blacklistedMethods.empty()) {
+        return "";
+    }
+
+    return AOTArgsParserBase::BuildRegexPattern(blacklistedMethods);
 }
 
 std::string StaticFrameworkAOTArgsParser::ParseFrameworkBootPandaFiles(const std::string &bootfiles,

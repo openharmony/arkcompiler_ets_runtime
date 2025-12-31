@@ -17,6 +17,7 @@
 #define OHOS_ARKCOMPILER_AOT_ARGS_HANDLER_H
 
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -81,6 +82,12 @@ public:
 
     static int32_t FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
                                        const std::string &keyName, std::string &bundleArg);
+
+    static bool IsFileExists(const std::string &fileName);
+    static bool ParseBundleName(const std::string &pkgInfo, std::string &bundleName);
+    static bool ParseBlackListJson(nlohmann::json &jsonObject);
+    static std::vector<std::string> JoinMethodList(const nlohmann::json &methodLists);
+    static std::string BuildRegexPattern(const std::vector<std::string> &blacklistedMethods);
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
     static bool IsEnableStaticCompiler();
 #endif
@@ -107,10 +114,25 @@ public:
     bool ParseBootPandaFiles(std::string &bootfiles);
 
     std::string ParseLocation(std::string &anfilePath);
+    std::string ParseModuleName(const std::string &anFilePath);
 
     bool ParseProfilePath(std::string &pkgInfo, std::string &profilePath);
 
     bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo);
+
+    std::string ParseBlackListMethods(const std::string &pkgInfo, const std::string &moduleName);
+    std::string ProcessBlackListForBundleAndModule(const nlohmann::json &jsonObject,
+                                                   const std::string &bundleName,
+                                                   const std::string &moduleName);
+    std::vector<std::string> ProcessMatchingModules(const nlohmann::json &item,
+                                       const std::string &moduleName);
+    void ProcessArgsMap(const std::unordered_map<std::string, std::string> &argsMap,
+                       std::string &anfilePath, std::string &pkgInfo, bool &partialMode,
+                       HapArgs &hapArgs);
+    void ProcessBlackListMethods(const std::string &pkgInfo, const std::string &anfilePath,
+                                 HapArgs &hapArgs);
+    bool CheckBundleNameAndModuleList(const nlohmann::json &item, const std::string &bundleName);
+    bool CheckModuleNameAndMethodList(const nlohmann::json &moduleItem, const std::string &moduleName);
 };
 
 class StaticFrameworkAOTArgsParser final : public StaticAOTArgsParser {
@@ -120,7 +142,8 @@ public:
 
     std::string ParseFrameworkBootPandaFiles(const std::string &bootfiles, const std::string &paocPandaFiles);
 
-    bool IsFileExists(const std::string &fileName);
+    std::string ParseBlackListMethods(const std::string &bundleName);
+    bool CheckBundleNameAndMethodList(const nlohmann::json &item, const std::string &bundleName);
 };
 
 class AOTArgsParserFactory {
