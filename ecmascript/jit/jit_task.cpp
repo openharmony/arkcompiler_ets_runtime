@@ -284,29 +284,6 @@ static void FillHeapConstantTable(JSHandle<MachineCode> &machineCodeObj, const M
     }
 }
 
-bool JitTask::InStack()
-{
-    JSTaggedType *lastLeave = const_cast<JSTaggedType *>(hostThread_->GetLastLeaveFrame());
-    FrameIterator it(lastLeave, hostThread_);
-    for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
-        switch (it.GetFrameType()) {
-            case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
-            case FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
-            case FrameType::FASTJIT_FUNCTION_FRAME:
-            case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
-                if (it.GetFunction() == jsFunction_.GetTaggedValue()) {
-                    return true;
-                }
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-    }
-    return false;
-}
-
 // This should only be entered from hostVM, i.e., execution jsthread
 void JitTask::InstallCode()
 {
@@ -315,10 +292,6 @@ void JitTask::InstallCode()
     }
     [[maybe_unused]] EcmaHandleScope handleScope(hostThread_);
     JSHandle<Method> methodHandle(hostThread_, Method::Cast(jsFunction_->GetMethod(hostThread_).GetTaggedObject()));
-    if (InStack()) {
-        LOG_JIT(FATAL) << "js function int stack, name: " << std::string(methodHandle->GetMethodName(hostThread_));
-        return;
-    }
     size_t size = ComputePayLoadSize(codeDesc_);
     codeDesc_.isAsyncCompileMode = IsAsyncTask();
 
@@ -400,12 +373,13 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
         jsFunction_->SetCompiledFuncEntry(codeAddr, machineCodeObj->GetIsFastCall());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
+        jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
-        LOG_JIT(INFO) << "Install fast jit machine code, method name: " << GetMethodName()
-		      << ", function addr: " << std::hex << jsFunction_.GetTaggedType()
-                      << ", machine code addr: " << machineCodeObj.GetTaggedType()
-                      << ", code range: " << reinterpret_cast<void*>(codeAddr)
-                      << "--" << reinterpret_cast<void*>(codeAddrEnd);
+        LOG_JIT(DEBUG) << "Install fast jit machine code, method name: " << GetMethodName()
+		               << ", function addr: " << std::hex << jsFunction_.GetTaggedType()
+                       << ", machine code addr: " << machineCodeObj.GetTaggedType()
+                       << ", code range: " << reinterpret_cast<void*>(codeAddr)
+                       << "--" << reinterpret_cast<void*>(codeAddrEnd);
 #if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER
         auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
         if (profMap.find(GetMethodName()) != profMap.end()) {

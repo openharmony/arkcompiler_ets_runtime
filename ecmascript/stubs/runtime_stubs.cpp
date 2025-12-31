@@ -975,16 +975,6 @@ DEF_RUNTIME_STUBS(InstanceOf)
     return RuntimeInstanceof(thread, obj, target).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(CheckFatal)
-{
-    RUNTIME_STUBS_HEADER(CheckFatal);
-    JSHandle<JSFunction> jsFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
-    Method *method = Method::Cast(jsFunc->GetMethod(thread).GetTaggedObject());
-    LOG_ECMA(FATAL) << "[FATAL] should not be here, function addr: " << std::hex << jsFunc.GetTaggedValue().GetRawData()
-                    << ", function name: " << method->GetMethodName(thread);
-    return JSTaggedValue::True().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(DumpObject)
 {
     RUNTIME_STUBS_HEADER(DumpObject);
@@ -3818,7 +3808,7 @@ DEF_RUNTIME_STUBS(DeoptHandler)
     ASSERT(GetArg(argv, argc, 0).IsInt());
     kungfu::DeoptType type = static_cast<kungfu::DeoptType>(GetArg(argv, argc, 0).GetInt());
     JSHandle<JSTaggedValue> maybeAcc = GetHArg<JSTaggedValue>(argv, argc, 1);
-    size_t depth = Deoptimizier::GetInlineDepth(thread);
+    size_t depth = Deoptimizier::GetInlineDepth(thread, static_cast<uint32_t>(type));
     Deoptimizier deopt(thread, depth, type);
     std::vector<kungfu::ARKDeopt> deoptBundle;
     deopt.CollectDeoptBundleVec(deoptBundle);

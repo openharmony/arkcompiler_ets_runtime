@@ -12722,7 +12722,6 @@ void StubBuilder::TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRe
                 BRANCH(TaggedIsUndefined(weakMachineCode), &machineCodeIsUndefine, &machineCodeIsNotUndefine);
                 Bind(&machineCodeIsUndefine);
                 {
-                    CallRuntime(glue, RTSTUB_ID(CheckFatal), {jsFunc});
                     ProfilerStubBuilder(env_).SetJitHotnessCnt(glue, profileTypeInfo, Int16(0));
                     Store(VariableType::JS_POINTER(), glue, profileTypeInfoCell,
                         IntPtr(ProfileTypeInfoCell::MACHINE_CODE_OFFSET), Hole());

@@ -146,7 +146,7 @@ public:
     static PUBLIC_API size_t ComputeShift(size_t depth);
     static int32_t DecodeVregIndex(OffsetType id, size_t shift);
     static size_t DecodeDeoptDepth(OffsetType id, size_t shift);
-    static size_t GetInlineDepth(JSThread *thread);
+    static size_t GetInlineDepth(JSThread *thread, uint32_t deoptType = 0);
     static void ClearCompiledCodeStatusWhenDeopt(JSThread *thread, JSFunction *fun,
                                                  Method *method, kungfu::DeoptType type, bool resetJitHotness);
     static void ReplaceReturnAddrWithLazyDeoptTrampline(JSThread *thread, uintptr_t *returnAddraddress,

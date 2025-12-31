@@ -185,9 +185,9 @@ static ARK_INLINE bool CopyCodeToFort(MachineCodeDesc &desc)
             return false;
         }
     } else {
-        LOG_JIT(INFO) << "Copy: "
-                      << std::hex << (uintptr_t)pText << " <- "
-                      << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
+        LOG_JIT(DEBUG) << "Copy: "
+                       << std::hex << (uintptr_t)pText << " <- "
+                       << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
         LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
         OHOS::Security::CodeSign::JitCodeSigner *signer =
             reinterpret_cast<OHOS::Security::CodeSign::JitCodeSigner*>(desc.codeSigner);

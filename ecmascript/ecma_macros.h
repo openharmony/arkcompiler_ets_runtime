@@ -200,54 +200,6 @@
 #define ACCESSORS_ASAN_CHECK(name, offset, endOffset, check)                                                  \
     ACCESSORS_WITH_ASAN_CHECK_BASE(name, offset, endOffset, true, check)
 
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ACCESSORS_AND_CHECK(name, offset, endOffset, check)                                                   \
-    static constexpr size_t endOffset = (offset) + JSTaggedValue::TaggedTypeSize();                           \
-    JSTaggedValue Get##name(const JSThread *thread) const                                                     \
-    {                                                                                                         \
-        FIELD_ACCESS_ASAN_CHECK(true, name, check);                                                           \
-        /* Note: We can't statically decide the element type is a primitive or heap object, especially for */ \
-        /*       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.          */ \
-        return JSTaggedValue(Barriers::GetTaggedValue(thread, this, offset));                                 \
-    }                                                                                                         \
-    template<BarrierMode mode = WRITE_BARRIER, typename T>                                                    \
-    void Set##name(const JSThread *thread, JSHandle<T> value)                                                 \
-    {                                                                                                         \
-        FIELD_ACCESS_ASAN_CHECK(true, name, check);                                                           \
-        if (JSTaggedValue(Barriers::GetTaggedValue(thread, this, offset)).IsHeapObject() &&                   \
-            value.GetTaggedValue().IsHeapObject()) {                                                          \
-            LOG_FULL(FATAL) << #name" field has been overwritten, old: " << std::hex                          \
-                            << JSTaggedValue(Barriers::GetTaggedValue(thread, this, offset)).GetRawData()     \
-                            << ", new: " << value.GetTaggedValue().GetRawData()                               \
-                            << ", js function: " << reinterpret_cast<uintptr_t>(this);                        \
-        }                                                                                                     \
-        if constexpr (mode == WRITE_BARRIER) {                                                                \
-            if (value.GetTaggedValue().IsHeapObject()) {                                                      \
-                Barriers::SetObject<true>(thread, this, offset, value.GetTaggedValue().GetRawData());         \
-            } else {                                                                                          \
-                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());      \
-            }                                                                                                 \
-        } else {                                                                                              \
-            static_assert(mode == SKIP_BARRIER);                                                              \
-            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetTaggedValue().GetRawData());          \
-        }                                                                                                     \
-    }                                                                                                         \
-    template<BarrierMode mode = WRITE_BARRIER>                                                                \
-    void Set##name(const JSThread *thread, JSTaggedValue value)                                               \
-    {                                                                                                         \
-        FIELD_ACCESS_ASAN_CHECK(true, name, check);                                                           \
-        if constexpr (mode == WRITE_BARRIER) {                                                                \
-            if (value.IsHeapObject()) {                                                                       \
-                Barriers::SetObject<true>(thread, this, offset, value.GetRawData());                          \
-            } else {                                                                                          \
-                Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                       \
-            }                                                                                                 \
-        } else {                                                                                              \
-            static_assert(mode == SKIP_BARRIER);                                                              \
-            Barriers::SetPrimitive<JSTaggedType>(this, offset, value.GetRawData());                           \
-        }                                                                                                     \
-    }
-
 #define ACCESSORS_WITH_RB_MODE(name, offset, endOffset)                                                       \
     ACCESSORS(name, offset, endOffset)                                                                        \
     template <RBMode mode = RBMode::DEFAULT_RB>                                                               \
