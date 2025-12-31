@@ -44,20 +44,24 @@ bool ArkCollector::IsUnmovableFromObject(BaseObject* obj) const
 bool ArkCollector::MarkObject(BaseObject* obj) const
 {
     bool marked = RegionalHeap::MarkObject(obj);
+#ifndef CMC_LCOV_EXCL
     if (!marked) {
         RegionDesc* region = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
         DCHECK_CC(!region->IsGarbageRegion());
         DLOG(TRACE, "mark obj %p<%p> in region %p(%u)@%#zx, live %u", obj, obj->GetTypeInfo(),
              region, region->GetRegionType(), region->GetRegionStart(), region->GetLiveByteCount());
     }
+#endif
     return marked;
 }
 
 // this api updates current pointer as well as old pointer, caller should take care of this.
-template<bool copy>
-bool ArkCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, BaseObject*& fromObj,
-                                         BaseObject*& toObj) const
+template <bool copy>
+bool ArkCollector::TryUpdateRefFieldImpl([[maybe_unused]] BaseObject *obj, [[maybe_unused]] RefField<> &field,
+                                         [[maybe_unused]] BaseObject *&fromObj,
+                                         [[maybe_unused]] BaseObject *&toObj) const
 {
+#ifndef CMC_LCOV_EXCL
     RefField<> oldRef(field);
     fromObj = oldRef.GetTargetObject();
     if (IsFromObject(fromObj)) { //LCOV_EXCL_BR_LINE
@@ -98,6 +102,7 @@ bool ArkCollector::TryUpdateRefFieldImpl(BaseObject* obj, RefField<>& field, Bas
         }
     }
 
+#endif
     return false;
 }
 
@@ -114,8 +119,10 @@ bool ArkCollector::TryForwardRefField(BaseObject* obj, RefField<>& field, BaseOb
 }
 
 // this api untags current pointer as well as old pointer, caller should take care of this.
-bool ArkCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObject*& target) const
+bool ArkCollector::TryUntagRefField([[maybe_unused]] BaseObject *obj, [[maybe_unused]] RefField<> &field,
+                                    [[maybe_unused]] BaseObject *&target) const
 {
+#ifndef CMC_LCOV_EXCL
     for (;;) { //LCOV_EXCL_BR_LINE
         RefField<> oldRef(field);
         if (oldRef.IsTagged()) { //LCOV_EXCL_BR_LINE
@@ -135,7 +142,7 @@ bool ArkCollector::TryUntagRefField(BaseObject* obj, RefField<>& field, BaseObje
             return false;
         }
     }
-
+#endif
     return false;
 }
 
@@ -191,11 +198,12 @@ static void MarkingRefField(BaseObject *obj, BaseObject *targetObj, RefField<> &
     markStack.Push(targetObj);
 }
 
-MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFieldsVisitor(
-    ParallelLocalMarkStack &markStack, WeakStack &weakStack)
+MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFieldsVisitor([[maybe_unused]]
+    ParallelLocalMarkStack &markStack, [[maybe_unused]] WeakStack &weakStack)
 {
     MarkingRefFieldVisitor visitor;
 
+#ifndef CMC_LCOV_EXCL
     if (gcReason_ == GCReason::GC_REASON_YOUNG) {
         visitor.SetVisitor([obj = visitor.GetClosure(), &markStack, &weakStack](RefField<> &field) {
             const GCReason gcReason = GCReason::GC_REASON_YOUNG;
@@ -207,13 +215,16 @@ MarkingCollector::MarkingRefFieldVisitor ArkCollector::CreateMarkingObjectRefFie
             MarkingRefField(*obj, field, markStack, weakStack, gcReason);
         });
     }
+#endif
     return visitor;
 }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
 // note each ref-field will not be traced twice, so each old pointer the tracer meets must come from previous gc.
-void ArkCollector::MarkingXRef(RefField<> &field, ParallelLocalMarkStack &workStack) const
+void ArkCollector::MarkingXRef([[maybe_unused]] RefField<> &field,
+                               [[maybe_unused]] ParallelLocalMarkStack &workStack) const
 {
+#ifndef CMC_LCOV_EXCL
     BaseObject* targetObj = field.GetTargetObject();
     auto region = RegionDesc::GetRegionDescAt(reinterpret_cast<MAddress>(targetObj));
     // field is tagged object, should be in heap
@@ -228,6 +239,7 @@ void ArkCollector::MarkingXRef(RefField<> &field, ParallelLocalMarkStack &workSt
     if (!region->MarkObject(targetObj)) {
         workStack.Push(targetObj);
     }
+#endif
 }
 
 void ArkCollector::MarkingObjectXRef(BaseObject *obj, ParallelLocalMarkStack &workStack)
@@ -317,8 +329,9 @@ public:
     RemarkAndPreforwardVisitor(LocalCollectStack &collectStack, ArkCollector *collector)
         : collectStack_(collectStack), collector_(collector) {}
 
-    void operator()(RefField<> &refField)
+    void operator()([[maybe_unused]] RefField<> &refField)
     {
+#ifndef CMC_LCOV_EXCL
         RefField<> oldField(refField);
         BaseObject* oldObj = oldField.GetTargetObject();
         DLOG(FIX, "visit raw-ref @%p: %p", &refField, oldObj);
@@ -350,9 +363,11 @@ public:
                 MarkObject(oldObj);
             }
         }
+#endif
     }
 
 private:
+#ifndef CMC_LCOV_EXCL
     void MarkObject(BaseObject *object)
     {
         if (!RegionalHeap::IsNewObjectSinceMarking(object) && !collector_->MarkObject(object)) {
@@ -370,10 +385,11 @@ private:
             collectStack_.Push(toVersion);
         }
     }
+#endif
 
 private:
-    LocalCollectStack &collectStack_;
-    ArkCollector *collector_;
+    LocalCollectStack &collectStack_ [[maybe_unused]];
+    ArkCollector *collector_ [[maybe_unused]];
 };
 
 class RemarkingAndPreforwardTask : public common::Task {
@@ -459,6 +475,7 @@ void ArkCollector::RemarkAndPreforwardStaticRoots(GlobalMarkStack &globalMarkSta
 
 void ArkCollector::PreforwardConcurrentRoots()
 {
+#ifndef CMC_LCOV_EXCL
     RefFieldVisitor visitor = [this](RefField<> &refField) {
         RefField<> oldField(refField);
         BaseObject *oldObj = oldField.GetTargetObject();
@@ -477,10 +494,12 @@ void ArkCollector::PreforwardConcurrentRoots()
         }
     };
     VisitConcurrentRoots(visitor);
+#endif
 }
 
 void ArkCollector::PreforwardStaticWeakRoots()
 {
+#ifndef CMC_LCOV_EXCL
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::PreforwardStaticRoots", "");
 
     WeakRefFieldVisitor weakVisitor = GetWeakRefFieldVisitor();
@@ -495,6 +514,7 @@ void ArkCollector::PreforwardStaticWeakRoots()
     if (LIKELY_CC(allocBuffer != nullptr)) {
         allocBuffer->ClearRegions();
     }
+#endif
 }
 
 void ArkCollector::PreforwardConcurrencyModelRoots()
@@ -522,6 +542,7 @@ EnumRootsBuffer::EnumRootsBuffer() : buffer_(bufferSize_)
 
 void EnumRootsBuffer::UpdateBufferSize()
 {
+#ifndef CMC_LCOV_EXCL
     if (buffer_.empty()) {
         return;
     }
@@ -535,6 +556,7 @@ void EnumRootsBuffer::UpdateBufferSize()
         LOG_COMMON(INFO) << "too many roots, allocated buffer too large: " << buffer_.size() << ", allocate "
                          << (static_cast<double>(buffer_.capacity()) / MB);
     }
+#endif
 }
 
 template <ArkCollector::EnumRootsPolicy policy>
@@ -590,6 +612,7 @@ void ArkCollector::PostMarking()
 WeakRefFieldVisitor ArkCollector::GetWeakRefFieldVisitor()
 {
     return [this](RefField<> &refField) -> bool {
+#ifndef CMC_LCOV_EXCL
         RefField<> oldField(refField);
         BaseObject *oldObj = oldField.GetTargetObject();
         if (gcReason_ == GC_REASON_YOUNG) {
@@ -617,6 +640,7 @@ WeakRefFieldVisitor ArkCollector::GetWeakRefFieldVisitor()
                 DLOG(FIX, "fix weak raw-ref @%p: %p -> %p", &refField, oldObj, toVersion);
             }
         }
+#endif
         return true;
     };
 }
@@ -624,6 +648,7 @@ WeakRefFieldVisitor ArkCollector::GetWeakRefFieldVisitor()
 RefFieldVisitor ArkCollector::GetPrefowardRefFieldVisitor()
 {
     return [this](RefField<> &refField) -> void {
+#ifndef CMC_LCOV_EXCL
         RefField<> oldField(refField);
         BaseObject *oldObj = oldField.GetTargetObject();
         if (IsFromObject(oldObj)) {
@@ -639,6 +664,7 @@ RefFieldVisitor ArkCollector::GetPrefowardRefFieldVisitor()
                 DLOG(FIX, "fix raw-ref @%p: %p -> %p", &refField, oldObj, toVersion);
             }
         }
+#endif
     };
 }
 
@@ -797,6 +823,7 @@ void ArkCollector::FixHeap()
 
 void ArkCollector::CollectGarbageWithXRef()
 {
+#ifndef CMC_LCOV_EXCL
     const bool isNotYoungGC = gcReason_ != GCReason::GC_REASON_YOUNG;
 #ifdef ENABLE_CMC_RB_DFX
     WVerify::DisableReadBarrierDFX(*this);
@@ -841,12 +868,14 @@ void ArkCollector::CollectGarbageWithXRef()
     WVerify::EnableReadBarrierDFX(*this);
 #endif
     GetGCStats().recordSTWTime(stwParam.GetElapsedNs());
+#endif
 }
 
 void ArkCollector::DoGarbageCollection()
 {
     const bool isNotYoungGC = gcReason_ != GCReason::GC_REASON_YOUNG;
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::DoGarbageCollection", "");
+#ifndef CMC_LCOV_EXCL
     if (gcReason_ == GCReason::GC_REASON_XREF) {
         CollectGarbageWithXRef();
         return;
@@ -927,6 +956,7 @@ void ArkCollector::DoGarbageCollection()
         CollectSmallSpace();
         return;
     }
+#endif
 
     auto collectedRoots = EnumRoots<EnumRootsPolicy::STW_AND_FLIP_MUTATOR>();
     MarkingHeap(collectedRoots);
@@ -983,6 +1013,7 @@ void ArkCollector::ProcessStringTable()
 #ifdef GC_STW_STRINGTABLE
     return;
 #endif
+#ifndef CMC_LCOV_EXCL
     if (Heap::GetHeap().GetGCReason() == GC_REASON_YOUNG) {
         // no need to fix weak ref in young gc
         return;
@@ -1025,6 +1056,7 @@ void ArkCollector::ProcessStringTable()
         return true;
     };
     BaseRuntime::GetInstance()->ProcessStringTable(weakVisitor);
+#endif
 }
 
 
@@ -1075,6 +1107,7 @@ BaseObject* ArkCollector::CopyObjectImpl(BaseObject* obj)
             return toObj;
         }
 
+#ifndef CMC_LCOV_EXCL
         // ConcurrentGC
         // 2. object is being forwarded, spin until it is forwarded (or gets its own forwarded address)
         if (oldWord.IsForwarding()) {
@@ -1086,14 +1119,16 @@ BaseObject* ArkCollector::CopyObjectImpl(BaseObject* obj)
         if (obj->TryLockExclusive(oldWord)) {
             return CopyObjectAfterExclusive(obj);
         }
+#endif
     } while (true);
     LOG_COMMON(FATAL) << "forwardObject exit in wrong path";
     UNREACHABLE_CC();
     return nullptr;
 }
 
-BaseObject* ArkCollector::CopyObjectAfterExclusive(BaseObject* obj)
+BaseObject* ArkCollector::CopyObjectAfterExclusive([[maybe_unused]] BaseObject* obj)
 {
+#ifndef CMC_LCOV_EXCL
     size_t size = RegionalHeap::GetAllocSize(*obj);
     // 8: size of free object, but free object can not be copied.
     if (size == 8) {
@@ -1119,6 +1154,9 @@ BaseObject* ArkCollector::CopyObjectAfterExclusive(BaseObject* obj)
     std::atomic_thread_fence(std::memory_order_release);
     obj->SetForwardingPointerAfterExclusive(toObj);
     return toObj;
+#else
+    return nullptr;
+#endif
 }
 
 void ArkCollector::ClearAllGCInfo()

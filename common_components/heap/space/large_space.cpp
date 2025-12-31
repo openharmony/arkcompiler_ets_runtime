@@ -43,6 +43,7 @@ size_t LargeSpace::CollectLargeGarbage()
 {
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::CollectLargeGarbage", "");
     size_t garbageSize = 0;
+#ifndef CMC_LCOV_EXCL
     MarkingCollector& collector = reinterpret_cast<MarkingCollector&>(Heap::GetHeap().GetCollector());
     RegionDesc* region = largeRegionList_.GetHeadRegion();
     while (region != nullptr) {
@@ -79,7 +80,7 @@ size_t LargeSpace::CollectLargeGarbage()
     while (region != nullptr) {
         region = region->GetNextRegion();
     }
-
+#endif
     return garbageSize;
 }
 

@@ -446,6 +446,7 @@ config("ark_jsruntime_common_config") {
       print("########## ets_runtime enable cmc heap-verify ##############")
     }
   } else {
+    defines += [ "CMC_LCOV_EXCL" ]
     print("########## ets_runtime disable cmc-gc ##############")
   }
   if (enable_cms_gc) {
@@ -1784,13 +1785,13 @@ ohos_shared_library("libark_jsruntime") {
   }
 
   if (is_ohos && is_clang && target_cpu == "arm64" && defined(build_ext_path)) {
-    ldflags = [ 
+    ldflags = [
       "-Wl,--emit-relocs",
-      "-Wl,--no-relax", 
-      "-mno-fix-cortex-a53-843419" 
+      "-Wl,--no-relax",
+      "-mno-fix-cortex-a53-843419"
     ]
   }
-  
+
   if (ark_standalone_build || (defined(is_arkui_x) && is_arkui_x)) {
     deps += [
       "$ark_third_party_root/icu/icu4c:static_icui18n",

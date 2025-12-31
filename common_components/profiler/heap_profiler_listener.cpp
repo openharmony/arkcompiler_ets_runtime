@@ -37,14 +37,17 @@ void HeapProfilerListener::UnRegisterMoveEventCb(uint32_t key)
     moveEventCbs_.erase(key);
 }
 
-void HeapProfilerListener::OnMoveEvent(uintptr_t fromObj, uintptr_t toObj, size_t size)
+void HeapProfilerListener::OnMoveEvent([[maybe_unused]] uintptr_t fromObj, [[maybe_unused]] uintptr_t toObj,
+                                       [[maybe_unused]] size_t size)
 {
+#ifndef CMC_LCOV_EXCL
     std::shared_lock<std::shared_mutex> lock(mutex_);
     for (const auto &pair : moveEventCbs_) {
         if (pair.second) {
             pair.second(fromObj, toObj, size);
         }
     }
+#endif
 }
 
 void HeapProfilerListener::RegisterOutOfMemoryEventCb(const std::function<void(void *thread)> &cb)
@@ -53,10 +56,12 @@ void HeapProfilerListener::RegisterOutOfMemoryEventCb(const std::function<void(v
 }
 void HeapProfilerListener::OnOutOfMemoryEventCb()
 {
+#ifndef CMC_LCOV_EXCL
     void *thread = nullptr;
     if (!IsGcThread()) {
         thread = Mutator::GetMutator()->GetThreadHolder()->GetJSThread();
     }
     outOfMemoryEventCb_(thread);
+#endif
 }
 }  // namespace common

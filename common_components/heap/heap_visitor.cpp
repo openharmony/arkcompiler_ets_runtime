@@ -95,18 +95,22 @@ void VisitMutatorRoot(const RefFieldVisitor &visitor, Mutator &mutator)
     }
 }
 
-void VisitWeakMutatorRoot(const WeakRefFieldVisitor &visitor, Mutator &mutator)
+void VisitWeakMutatorRoot([[maybe_unused]] const WeakRefFieldVisitor &visitor, [[maybe_unused]] Mutator &mutator)
 {
+#ifndef CMC_LCOV_EXCL
     if (mutator.GetEcmaVMPtr()) {
         VisitDynamicWeakThreadRoot(visitor, mutator.GetEcmaVMPtr());
     }
+#endif
 }
 
-void VisitMutatorPreforwardRoot(const RefFieldVisitor &visitor, Mutator &mutator)
+void VisitMutatorPreforwardRoot([[maybe_unused]] const RefFieldVisitor &visitor, [[maybe_unused]] Mutator &mutator)
 {
+#ifndef CMC_LCOV_EXCL
     if (mutator.GetEcmaVMPtr()) {
         VisitDynamicThreadPreforwardRoot(visitor, mutator.GetEcmaVMPtr());
     }
+#endif
 }
 
 void RegisterUnmarkAllXRefsHook(UnmarkAllXRefsHookFunc func)

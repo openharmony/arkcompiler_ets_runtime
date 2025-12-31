@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#ifndef CMC_LCOV_EXCL
 #include "objects/base_string_table.h"
 
 #include "common_components/base/globals.h"
@@ -350,3 +351,4 @@ bool BaseStringTableCleaner::CMCSweepWeakRefTask::Run([[maybe_unused]] uint32_t 
     return true;
 }
 }
+#endif

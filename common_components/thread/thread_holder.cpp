@@ -28,20 +28,28 @@ namespace common {
 InterOpCoroutineToNativeHookFunc interOpCoroutineToNativeHook = nullptr;
 InterOpCoroutineToRunningHookFunc interOpCoroutineToRunningHook = nullptr;
 
-bool InterOpCoroutineToNative(ThreadHolder *current)
+bool InterOpCoroutineToNative([[maybe_unused]] ThreadHolder *current)
 {
+#ifndef CMC_LCOV_EXCL
     if (interOpCoroutineToNativeHook == nullptr) {
         return false;
     }
     return interOpCoroutineToNativeHook(current);
+#else
+    return false;
+#endif
 }
 
-bool InterOpCoroutineToRunning(ThreadHolder *current)
+bool InterOpCoroutineToRunning([[maybe_unused]] ThreadHolder *current)
 {
+#ifndef CMC_LCOV_EXCL
     if (interOpCoroutineToRunningHook == nullptr) {
         return false;
     }
     return interOpCoroutineToRunningHook(current);
+#else
+    return false;
+#endif
 }
 
 void RegisterInterOpCoroutineToNativeHook(InterOpCoroutineToNativeHookFunc func)
@@ -113,8 +121,9 @@ void ThreadHolder::RegisterJSThread(JSThread *jsThread)
     TransferToNative();
 }
 
-void ThreadHolder::UnregisterJSThread(JSThread *jsThread)
+void ThreadHolder::UnregisterJSThread([[maybe_unused]] JSThread *jsThread)
 {
+#ifndef CMC_LCOV_EXCL
     DCHECK_CC(!IsInRunningState());
     TransferToRunning();
     DCHECK_CC(jsThread_ == jsThread);
@@ -123,6 +132,7 @@ void ThreadHolder::UnregisterJSThread(JSThread *jsThread)
     if (coroutines_.empty()) {
         ThreadHolder::DestroyThreadHolder(this);
     }
+#endif
 }
 
 void ThreadHolder::RegisterCoroutine(Coroutine *coroutine)
@@ -133,8 +143,9 @@ void ThreadHolder::RegisterCoroutine(Coroutine *coroutine)
     coroutines_.insert(coroutine);
 }
 
-void ThreadHolder::UnregisterCoroutine(Coroutine *coroutine)
+void ThreadHolder::UnregisterCoroutine([[maybe_unused]] Coroutine *coroutine)
 {
+#ifndef CMC_LCOV_EXCL
     DCHECK_CC(!IsInRunningState());
     TransferToRunning();
     DCHECK_CC(coroutines_.find(coroutine) != coroutines_.end());
@@ -142,6 +153,7 @@ void ThreadHolder::UnregisterCoroutine(Coroutine *coroutine)
     if (coroutines_.empty() && jsThread_ == nullptr) {
         ThreadHolder::DestroyThreadHolder(this);
     }
+#endif
 }
 
 bool ThreadHolder::TryBindMutator()
@@ -159,10 +171,12 @@ bool ThreadHolder::TryBindMutator()
 
 void ThreadHolder::BindMutator()
 {
+#ifndef CMC_LCOV_EXCL
     if (!TryBindMutator()) {
         LOG_COMMON(FATAL) << "BindMutator fail";
         return;
     }
+#endif
 }
 
 void ThreadHolder::UnbindMutator()

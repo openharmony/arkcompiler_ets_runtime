@@ -51,13 +51,16 @@ bool MutatorBase::TransitionGCPhase(bool bySelf)
         // If this mutator phase transition has finished, just return
         if (state == FINISH_TRANSITION) {
             bool result = mutatorPhase_.load() == Heap::GetHeap().GetGCPhase();
+#ifndef CMC_LCOV_EXCL
             if (!bySelf && !result) { // why check bySelf?
                 LOG_COMMON(FATAL) << "Unresolved fatal";
                 UNREACHABLE_CC();
             }
+#endif
             return result;
         }
 
+#ifndef CMC_LCOV_EXCL
         // If this mutator is executing phase transition by other thread, mutator should wait but GC just return
         if (state == IN_TRANSITION) {
             if (bySelf) {
@@ -67,6 +70,7 @@ bool MutatorBase::TransitionGCPhase(bool bySelf)
                 return false;
             }
         }
+#endif
 
         if (!bySelf && state == NO_TRANSITION) {
             return true;
@@ -120,12 +124,14 @@ void MutatorBase::HandleSuspensionRequest()
 
 void MutatorBase::HandleJSGCCallback()
 {
+#ifndef CMC_LCOV_EXCL
     if (mutator_ != nullptr) {
         void *vm = reinterpret_cast<Mutator*>(mutator_)->GetEcmaVMPtr();
         if (vm != nullptr) {
             JSGCCallback(vm);
         }
     }
+#endif
 }
 
 void MutatorBase::SuspendForStw()

@@ -28,8 +28,9 @@ namespace common {
 const size_t MarkingCollector::MAX_MARKING_WORK_SIZE = 16; // fork task if bigger
 const size_t MarkingCollector::MIN_MARKING_WORK_SIZE = 8;  // forbid forking task if smaller
 
-void StaticRootTable::VisitRoots(const RefFieldVisitor& visitor)
+void StaticRootTable::VisitRoots([[maybe_unused]] const RefFieldVisitor& visitor)
 {
+#ifndef CMC_LCOV_EXCL
     std::lock_guard<std::mutex> lock(gcRootsLock_);
     uint32_t gcRootsSize = 0;
     std::unordered_set<RefField<>*> visitedSet;
@@ -46,6 +47,7 @@ void StaticRootTable::VisitRoots(const RefFieldVisitor& visitor)
             visitor(*root);
         }
     }
+#endif
 }
 
 template <bool ProcessXRef>
@@ -79,8 +81,9 @@ private:
     GlobalMarkStack &globalMarkStack_;
 };
 
-static void ClearWeakRef(WeakStack::value_type *begin, WeakStack::value_type *end)
+static void ClearWeakRef([[maybe_unused]] WeakStack::value_type *begin, [[maybe_unused]] WeakStack::value_type *end)
 {
+#ifndef CMC_LCOV_EXCL
     for (auto iter = begin; iter != end; ++iter) {
         RefField<> *fieldPointer = iter->first;
         size_t offset = iter->second;
@@ -113,6 +116,7 @@ static void ClearWeakRef(WeakStack::value_type *begin, WeakStack::value_type *en
         }
         field.ClearRef(oldField.GetFieldValue());
     }
+#endif
 }
 
 void MarkingCollector::ProcessWeakStack(WeakStack &weakStack)
@@ -123,8 +127,10 @@ void MarkingCollector::ProcessWeakStack(WeakStack &weakStack)
 }
 
 template <bool ProcessXRef>
-void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, ParallelLocalMarkStack &markStack)
+void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex,
+                                        [[maybe_unused]] ParallelLocalMarkStack &markStack)
 {
+#ifndef CMC_LCOV_EXCL
     size_t nNewlyMarked = 0;
     WeakStack weakStack;
     auto visitor = CreateMarkingObjectRefFieldsVisitor(markStack, weakStack);
@@ -173,6 +179,7 @@ void MarkingCollector::ProcessMarkStack([[maybe_unused]] uint32_t threadIndex, P
     // newly marked statistics.
     markedObjectCount_.fetch_add(nNewlyMarked, std::memory_order_relaxed);
     MergeWeakStack(weakStack);
+#endif
 }
 
 void MarkingCollector::MergeWeakStack(WeakStack &weakStack)
@@ -225,8 +232,10 @@ private:
     bool worldStopped_;
 };
 
-void MarkingCollector::TracingImpl(GlobalMarkStack &globalMarkStack, bool parallel, bool Remark)
+void MarkingCollector::TracingImpl([[maybe_unused]] GlobalMarkStack &globalMarkStack, [[maybe_unused]] bool parallel,
+                                   [[maybe_unused]] bool Remark)
 {
+#ifndef CMC_LCOV_EXCL
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, ("CMCGC::TracingImpl_" + std::to_string(globalMarkStack.Count())).c_str(),
         "");
 
@@ -289,10 +298,13 @@ void MarkingCollector::TracingImpl(GlobalMarkStack &globalMarkStack, bool parall
             ProcessMarkStack<false>(0, markStack);
 #endif
     }
+#endif
 }
 
-bool MarkingCollector::PushRootToWorkStack(LocalCollectStack &collectStack, BaseObject *obj)
+bool MarkingCollector::PushRootToWorkStack([[maybe_unused]] LocalCollectStack &collectStack,
+                                           [[maybe_unused]] BaseObject *obj)
 {
+#ifndef CMC_LCOV_EXCL
     RegionDesc *regionInfo = RegionDesc::GetAliveRegionDescAt(reinterpret_cast<HeapAddress>(obj));
     if (gcReason_ == GCReason::GC_REASON_YOUNG && !regionInfo->IsInYoungSpace()) {
         DLOG(ENUM, "enum: skip old object %p<%p>(%zu)", obj, obj->GetTypeInfo(), obj->GetSize());
@@ -310,6 +322,9 @@ bool MarkingCollector::PushRootToWorkStack(LocalCollectStack &collectStack, Base
     } else {
         return false;
     }
+#else
+    return false;
+#endif
 }
 
 void MarkingCollector::PushRootsToWorkStack(LocalCollectStack &collectStack,
@@ -373,6 +388,7 @@ void MarkingCollector::Remark()
     VLOG(DEBUG, "mark %zu objects", markedObjectCount_.load(std::memory_order_relaxed));
 }
 
+#ifndef CMC_LCOV_EXCL
 class ClearWeakRefTask : public ArrayTaskDispatcher::ArrayTask {
 public:
     using T = WeakStack::value_type;
@@ -389,9 +405,11 @@ public:
     }
     CArrayList<T> *data_;
 };
+#endif
 
-void MarkingCollector::ClearWeakStack(bool parallel)
+void MarkingCollector::ClearWeakStack([[maybe_unused]] bool parallel)
 {
+#ifndef CMC_LCOV_EXCL
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::ProcessGlobalWeakStack", "");
     if (gcReason_ == GC_REASON_YOUNG || globalWeakStack_.empty()) {
         return;
@@ -411,10 +429,12 @@ void MarkingCollector::ClearWeakStack(bool parallel)
     } else {
         ProcessWeakStack(globalWeakStack_);
     }
+#endif
 }
 
-bool MarkingCollector::MarkSatbBuffer(GlobalMarkStack &globalMarkStack)
+bool MarkingCollector::MarkSatbBuffer([[maybe_unused]] GlobalMarkStack &globalMarkStack)
 {
+#ifndef CMC_LCOV_EXCL
     OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "CMCGC::MarkSatbBuffer", "");
     COMMON_PHASE_TIMER("MarkSatbBuffer");
     auto visitSatbObj = [this, &globalMarkStack]() {
@@ -441,11 +461,14 @@ bool MarkingCollector::MarkSatbBuffer(GlobalMarkStack &globalMarkStack)
     };
 
     visitSatbObj();
+#endif
     return true;
 }
 
-void MarkingCollector::MarkRememberSetImpl(BaseObject* object, LocalCollectStack &collectStack)
+void MarkingCollector::MarkRememberSetImpl([[maybe_unused]] BaseObject *object,
+                                           [[maybe_unused]] LocalCollectStack &collectStack)
 {
+#ifndef CMC_LCOV_EXCL
     object->ForEachRefField([this, &collectStack, &object](RefField<>& field) {
         BaseObject* targetObj = field.GetTargetObject();
         if (Heap::IsHeapAddress(targetObj)) {
@@ -458,6 +481,7 @@ void MarkingCollector::MarkRememberSetImpl(BaseObject* object, LocalCollectStack
             }
         }
     });
+#endif
 }
 
 void MarkingCollector::ConcurrentRemark(GlobalMarkStack &globalMarkStack, bool parallel)

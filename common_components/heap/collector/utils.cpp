@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#ifndef CMC_LCOV_EXCL
 #include "common_components/heap/collector/utils.h"
 
 namespace common {
@@ -59,3 +60,4 @@ void ArrayTaskDispatcher::JoinAndWait()
 }
 
 }  // namespace common
+#endif

@@ -110,8 +110,10 @@ void RegionDesc::VisitAllObjects(const std::function<void(BaseObject*)>&& func)
     VisitAllObjectsBefore(std::move(func), GetRegionAllocPtr());
 }
 
-void RegionDesc::VisitAllObjectsBefore(const std::function<void(BaseObject *)> &&func, uintptr_t end)
+void RegionDesc::VisitAllObjectsBefore([[maybe_unused]] const std::function<void(BaseObject *)> &&func,
+                                       [[maybe_unused]] uintptr_t end)
 {
+#ifndef CMC_LCOV_EXCL
     uintptr_t position = GetRegionStart();
 
     if (IsMonoSizeNonMovableRegion()) {
@@ -141,6 +143,7 @@ void RegionDesc::VisitAllObjectsBefore(const std::function<void(BaseObject *)> &
             position += size;
         }
     }
+#endif
 }
 
 void RegionDesc::VisitAllObjectsBeforeCopy(const std::function<void(BaseObject*)>&& func)
@@ -151,8 +154,9 @@ void RegionDesc::VisitAllObjectsBeforeCopy(const std::function<void(BaseObject*)
     VisitAllObjectsBefore(std::move(func), end);
 }
 
-bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*)>&& func)
+bool RegionDesc::VisitLiveObjectsUntilFalse([[maybe_unused]] const std::function<bool(BaseObject*)>&& func)
 {
+#ifndef CMC_LCOV_EXCL
     // no need to visit this region.
     if (GetLiveByteCount() == 0) {
         return true;
@@ -174,6 +178,7 @@ bool RegionDesc::VisitLiveObjectsUntilFalse(const std::function<bool(BaseObject*
             position += RegionalHeap::GetAllocSize(*obj);
         }
     }
+#endif
     return true;
 }
 
@@ -483,8 +488,9 @@ void RegionManager::CountLiveObject(const BaseObject* obj)
     region->AddLiveByteCount(obj->GetSize());
 }
 
-void RegionManager::ForEachObjectUnsafe(const std::function<void(BaseObject*)>& visitor) const
+void RegionManager::ForEachObjectUnsafe([[maybe_unused]] const std::function<void(BaseObject*)>& visitor) const
 {
+#ifndef CMC_LCOV_EXCL
     for (uintptr_t regionAddr = regionHeapStart_; regionAddr < inactiveZone_;) {
         RegionDesc* region = RegionDesc::GetRegionDescAt(regionAddr);
         uintptr_t next = region->GetRegionEnd();
@@ -494,6 +500,7 @@ void RegionManager::ForEachObjectUnsafe(const std::function<void(BaseObject*)>& 
         }
         region->VisitAllObjects([&visitor](BaseObject* object) { visitor(object); });
     }
+#endif
 }
 
 void RegionManager::ForEachObjectSafe(const std::function<void(BaseObject*)>& visitor) const

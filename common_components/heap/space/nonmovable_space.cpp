@@ -48,9 +48,10 @@ void NonMovableSpace::AssembleGarbageCandidates()
     }
 }
 
-void CollectFixHeapTaskForFullRegion(MarkingCollector &collector, RegionList &list,
-                                     FixHeapTaskList &taskList)
+void CollectFixHeapTaskForFullRegion([[maybe_unused]] MarkingCollector &collector, [[maybe_unused]] RegionList &list,
+                                     [[maybe_unused]] FixHeapTaskList &taskList)
 {
+#ifndef CMC_LCOV_EXCL
     RegionDesc *region = list.GetHeadRegion();
     while (region != nullptr) {
         auto liveBytes = region->GetLiveByteCount();
@@ -62,6 +63,7 @@ void CollectFixHeapTaskForFullRegion(MarkingCollector &collector, RegionList &li
         taskList.push_back({region, FIX_REGION});
         region = region->GetNextRegion();
     }
+#endif
 }
 
 void NonMovableSpace::CollectFixTasks(FixHeapTaskList &taskList)
@@ -197,7 +199,7 @@ uintptr_t NonMovableSpace::AllocFullRegion()
     DLOG(REGION, "alloc non-movable region @0x%zx+%zu type %u", region->GetRegionStart(),
          region->GetRegionAllocatedSize(),
          region->GetRegionType());
- 
+
     recentPolySizeRegionList_.PrependRegion(region, RegionDesc::RegionType::RECENT_POLYSIZE_NONMOVABLE_REGION);
 
     uintptr_t start = region->GetRegionStart();

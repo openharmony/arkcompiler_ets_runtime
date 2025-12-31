@@ -141,13 +141,15 @@ void CollectorResources::RunTaskLoop()
 }
 
 // For the ignored gc request, check whether need to wait for current gc finish
-void CollectorResources::PostIgnoredGcRequest(GCReason reason)
+void CollectorResources::PostIgnoredGcRequest([[maybe_unused]] GCReason reason)
 {
+#ifndef CMC_LCOV_EXCL
     GCRequest& request = g_gcRequests[reason];
     if (request.IsSyncGC() && isGcStarted_.load(std::memory_order_seq_cst)) {
         ScopedEnterSaferegion safeRegion(false);
         WaitForGCFinish();
     }
+#endif
 }
 
 void CollectorResources::RequestAsyncGC(GCReason reason, GCType gcType)

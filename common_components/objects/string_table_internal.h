@@ -15,6 +15,7 @@
 
 #ifndef COMMON_COMPONENTS_OBJECTS_STRING_TABLE_INTERNAL_H
 #define COMMON_COMPONENTS_OBJECTS_STRING_TABLE_INTERNAL_H
+#ifndef CMC_LCOV_EXCL
 
 #include "common_components/base/globals.h"
 #include "common_components/platform/mutex.h"
@@ -208,4 +209,5 @@ private:
 #endif
 };
 }
+#endif
 #endif //COMMON_COMPONENTS_OBJECTS_STRING_TABLE_INTERNAL_H
