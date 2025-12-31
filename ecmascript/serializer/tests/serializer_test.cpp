@@ -1103,7 +1103,6 @@ public:
     {
         Init();
         JSHandle<EcmaString> pattern = thread->GetEcmaVM()->GetFactory()->NewFromASCII("key2");
-        JSHandle<EcmaString> flags = thread->GetEcmaVM()->GetFactory()->NewFromASCII("i");
         char buffer[] = "1234567";  // use char buffer to simulate byteCodeBuffer
         uint32_t bufferSize = 7;
 
@@ -1118,9 +1117,9 @@ public:
         JSHandle<JSTaggedValue> originalSource(thread, resJSRegexp->GetOriginalSource(thread));
         EXPECT_TRUE(originalSource->IsString());
         JSHandle<JSTaggedValue> originalFlags(thread, resJSRegexp->GetOriginalFlags(thread));
-        EXPECT_TRUE(originalFlags->IsString());
         EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *JSHandle<EcmaString>(originalSource), *pattern));
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *JSHandle<EcmaString>(originalFlags), *flags));
+        EXPECT_TRUE(originalFlags->IsInt());
+        EXPECT_TRUE(originalFlags->GetInt() == 0);
         JSHandle<JSTaggedValue> resBufferData(thread, resJSRegexp->GetByteCodeBuffer(thread));
         JSHandle<JSNativePointer> resNp = JSHandle<JSNativePointer>::Cast(resBufferData);
         void *resBuffer = resNp->GetExternalPointer();
@@ -2494,12 +2493,11 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSRegExp)
     JSHandle<JSRegExp> jsRegexp =
         JSHandle<JSRegExp>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(target), target));
     JSHandle<EcmaString> pattern = thread->GetEcmaVM()->GetFactory()->NewFromASCII("key2");
-    JSHandle<EcmaString> flags = thread->GetEcmaVM()->GetFactory()->NewFromASCII("i");
     char buffer[] = "1234567";  // use char to simulate bytecode
     uint32_t bufferSize = 7;
     factory->NewJSRegExpByteCodeData(jsRegexp, static_cast<void *>(buffer), bufferSize);
     jsRegexp->SetOriginalSource(thread, JSHandle<JSTaggedValue>(pattern));
-    jsRegexp->SetOriginalFlags(thread, JSHandle<JSTaggedValue>(flags));
+    jsRegexp->SetOriginalFlags(thread, JSTaggedValue(0));
 
     ValueSerializer *serializer = new ValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsRegexp),
