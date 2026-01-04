@@ -330,6 +330,7 @@ void SharedSparseSpace::FreeLiveRange(uintptr_t freeStart, uintptr_t freeEnd, bo
 {
     // No need to clear rememberset here, because shared region has no remember set now.
     allocator_->Free(freeStart, freeEnd - freeStart, isMain);
+    MEMORY_TRACE_FREEREGION(freeStart, freeEnd - freeStart);
 }
 
 void SharedSparseSpace::IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor) const

@@ -145,6 +145,7 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool ski
         MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase), size, isRegular, isCompress, cachedSize,
                                                     shouldPageTag, skipCache);
     }
+    MEMORY_TRACE_FREEREGION(allocateBase, size);
 }
 
 // Only decrease memory usage here. And the memory will be released at background thread later.
