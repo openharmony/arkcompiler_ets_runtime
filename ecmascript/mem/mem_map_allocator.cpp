@@ -297,6 +297,15 @@ MemMap MemMapAllocator::InitialMemPool(MemMap &mem, const uint32_t threadId, siz
     return mem;
 }
 
+// MemUsage has been decreased for async free mem.
+void MemMapAllocator::AsyncFree(void *mem, size_t size, bool isRegular, bool isCompress, bool shouldPageTag)
+{
+    if (shouldPageTag) {
+        PageTag(mem, size, PageTagType::HEAP);
+    }
+    ReleaseMemory(mem, size, isRegular, isCompress);
+}
+
 void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, bool isCompress, size_t cachedSize,
                                   bool shouldPageTag, bool skipCache)
 {
@@ -325,7 +334,12 @@ void MemMapAllocator::CacheOrFree(void *mem, size_t size, bool isRegular, bool i
 
 void MemMapAllocator::Free(void *mem, size_t size, bool isRegular, bool isCompress)
 {
-    DecreaseMemMapTotalSize(size);
+    DecreaseMemUsage(size, isRegular);
+    ReleaseMemory(mem, size, isRegular, isCompress);
+}
+
+void MemMapAllocator::ReleaseMemory(void *mem, size_t size, bool isRegular, bool isCompress)
+{
     if (!PageProtect(mem, size, PAGE_PROT_NONE)) { // LCOV_EXCL_BR_LINE
         return;
     }

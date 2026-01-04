@@ -68,4 +68,20 @@ HWTEST_F_L0(MemMapAllocatorTest, GetMemOverflow)
     EXPECT_EQ(mem.GetSize(), 0_MB);
 }
 
+HWTEST_F_L0(MemMapAllocatorTest, AsyncFreeTest)
+{
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    HugeObjectSpace *space = heap->GetHugeObjectSpace();
+    constexpr size_t TEST_SIZE = 2_MB;
+    MemMap mem = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), TEST_SIZE, DEFAULT_REGION_SIZE,
+                                                         ToSpaceTypeName(space->GetSpaceType()),
+                                                         false, false, false, false, false);
+    EXPECT_EQ(mem.GetSize(), TEST_SIZE);
+    MemMapAllocator::GetInstance()->DecreaseMemUsage(TEST_SIZE, false);
+    MemMapAllocator::GetInstance()->AsyncFree(mem.GetMem(), TEST_SIZE, false, false, false);
+    MemMap mem2 = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), TEST_SIZE, DEFAULT_REGION_SIZE,
+                                                         ToSpaceTypeName(space->GetSpaceType()),
+                                                         false, false, false, false, false);
+    EXPECT_EQ(mem2.GetSize(), TEST_SIZE);
+}
 }  // namespace panda::test

@@ -36,7 +36,11 @@ public:
 
     Region *AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap,
                                   bool isFresh = false, size_t slotSize = 0, Mutex *allocateLock = nullptr);
+
+    template<bool asyncFreeMem = false>
     void FreeRegion(Region *region, size_t cachedSize, bool skipCache = false);
+
+    void DecreaseMemMapUsage(Region *region);
 
     void IncreaseAnnoMemoryUsage(size_t bytes)
     {

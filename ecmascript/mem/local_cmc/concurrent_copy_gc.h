@@ -42,7 +42,6 @@ private:
     void UpdateRoot();
     void ConcurrentCopy();
     void RunUpdatePhase();
-    void ReclaimHuge();
     void Finish();
 
     void UpdateRecordWeakReference(uint32_t threadIndex);

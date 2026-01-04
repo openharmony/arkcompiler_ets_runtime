@@ -110,6 +110,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     return region;
 }
 
+template<bool asyncFreeMem>
 void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool skipCache)
 {
     auto size = region->GetCapacity();
@@ -138,8 +139,20 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool ski
         UNREACHABLE();
     }
 #endif
-    MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase), size, isRegular, isCompress, cachedSize,
-                                                shouldPageTag, skipCache);
+    if constexpr (asyncFreeMem) {
+        MemMapAllocator::GetInstance()->AsyncFree(ToVoidPtr(allocateBase), size, isRegular, isCompress, shouldPageTag);
+    } else {
+        MemMapAllocator::GetInstance()->CacheOrFree(ToVoidPtr(allocateBase), size, isRegular, isCompress, cachedSize,
+                                                    shouldPageTag, skipCache);
+    }
+}
+
+// Only decrease memory usage here. And the memory will be released at background thread later.
+void HeapRegionAllocator::DecreaseMemMapUsage(Region *region)
+{
+    bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace() &&
+        !region->InSharedHugeObjectSpace();
+    MemMapAllocator::GetInstance()->DecreaseMemUsage(region->GetCapacity(), isRegular);
 }
 
 void HeapRegionAllocator::TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *heap)
@@ -167,4 +180,7 @@ bool HeapRegionAllocator::FreeRegionShouldPageTag(Region *region) const
     // There is no LocalSpace tag in region.
     return !region->InOldSpace();
 }
+
+template void HeapRegionAllocator::FreeRegion<true>(Region *region, size_t cachedSize, bool skipCache);
+template void HeapRegionAllocator::FreeRegion<false>(Region *region, size_t cachedSize, bool skipCache);
 }  // namespace panda::ecmascript

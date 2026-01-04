@@ -61,7 +61,6 @@ void ConcurrentCopyGC::RunPhase()
     ProcessWeakReference();
     Sweep();
     UpdateRoot();
-    ReclaimHuge();
     ConcurrentCopy();
 }
 
@@ -153,14 +152,6 @@ void ConcurrentCopyGC::ConcurrentCopy()
         common::Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<ConcurrentCopyTask>(tasks_, taskIter_, runningTaskCount_, this));
     }
-}
-
-void ConcurrentCopyGC::ReclaimHuge()
-{
-    TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
-    heap_->GetHugeObjectSpace()->ReclaimHugeRegion();
-    heap_->GetHugeMachineCodeSpace()->ReclaimHugeRegion();
-    heap_->GetSweeper()->TryFillSweptRegion();
 }
 
 void ConcurrentCopyGC::InitializeCopyPhase()
