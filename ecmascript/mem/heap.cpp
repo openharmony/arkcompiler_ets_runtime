@@ -665,6 +665,7 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
         // LocalHeap could do FullGC later instead of Fatal at once if only set `shouldThrowOOMError_` because there
         // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
+        DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC);
         Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
             ASSERT(!thread->IsInRunningState());
             thread->NotifyPendingSharedHeapOOM();
