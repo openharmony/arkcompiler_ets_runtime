@@ -102,9 +102,7 @@ public:
         SetObject(value);
         SetUsing(isUsing);
 #ifdef HOOK_ENABLE
-        if (!IsWeak()) {
-            restrace(RES_ARK_GLOBAL_HANDLE, (void *)this, sizeof(Node), TAG_RES_ARK_GLOBAL_HANDLE, isUsing);
-        }
+        restraceExt(RES_ARK_GLOBAL_HANDLE, (void *)this, sizeof(Node), TAG_RES_ARK_GLOBAL_HANDLE, isUsing, IsWeak());
 #endif
     }
 
