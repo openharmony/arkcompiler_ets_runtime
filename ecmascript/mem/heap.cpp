@@ -2946,7 +2946,7 @@ void SharedHeap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
 {
     heapAliveSizeAfterGC_ = GetHeapObjectSize();
     fragmentSizeAfterGC_ = GetCommittedSize() - GetHeapObjectSize();
-    if (gcType == TriggerGCType::SHARED_FULL_GC) {
+    if (gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::APPSPAWN_SHARED_FULL_GC) {
         heapBasicLoss_ = fragmentSizeAfterGC_;
     }
 }
@@ -2962,7 +2962,8 @@ void Heap::UpdateHeapStatsAfterGC(TriggerGCType gcType)
         heapAliveSizeExcludesYoungAfterGC_ = heapAliveSizeAfterGC_ - activeSemiSpace_->GetHeapObjectSize();
     }
     fragmentSizeAfterGC_ = GetCommittedSize() - heapAliveSizeAfterGC_;
-    if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::LOCAL_CC) {
+    if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::LOCAL_CC
+        || gcType == TriggerGCType::APPSPAWN_FULL_GC) {
         heapBasicLoss_ = fragmentSizeAfterGC_;
     }
 }
