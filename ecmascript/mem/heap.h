@@ -1679,6 +1679,11 @@ public:
 
     bool IsReadyToConcurrentMark() const override;
 
+    bool IsProcessingLocalToSharedRSet()
+    {
+        return thread_->IsProcessingLocalToSharedRset();
+    }
+
     bool IsYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC;
