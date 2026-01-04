@@ -172,6 +172,7 @@ print("test proxy getPrototype success!");
         print(err.name);
     }
 }
+
 {
     let logs = [];
 
@@ -222,5 +223,19 @@ print("test proxy getPrototype success!");
         print("test fail");
     } catch (error) {
         print(error.name)
+    }
+}
+
+{
+    const proxyGetter = new Proxy(function () { }, {});
+    const target = {};
+    Object.defineProperty(target, 'byteOffset', { get: proxyGetter });
+    function Ctor() { }
+    Ctor.prototype = target;
+    const obj = new Ctor();
+    for (let i = 0; i < 10000; i++) {
+        if (i == 5000) {
+            print(obj.byteOffset)
+        }
     }
 }

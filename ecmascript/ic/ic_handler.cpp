@@ -175,7 +175,17 @@ JSHandle<JSTaggedValue> PrototypeHandler::LoadPrototype(const JSThread *thread, 
         if (!accessor->IsInternal()) {
             JSTaggedValue getter = accessor->GetGetter(thread);
             if (!getter.IsUndefined()) {
-                JSHandle<JSFunction> func(thread, getter);
+                JSHandle<JSFunction> func;
+                if (LIKELY(getter.IsJSFunction())) {
+                    func = JSHandle<JSFunction>(thread, getter);
+                } else if (getter.IsJSProxy()) {
+                    JSHandle<JSTaggedValue> target(thread, JSProxy::Cast(getter)->GetTarget(thread));
+                    func = JSHandle<JSFunction>::Cast(target);
+                } else {
+                    ASSERT(getter.IsBoundFunction());
+                    JSHandle<JSTaggedValue> target(thread, JSBoundFunction::Cast(getter)->GetBoundTarget(thread));
+                    func = JSHandle<JSFunction>::Cast(target);
+                }
                 uint32_t methodOffset = Method::Cast(func->GetMethod(thread))->GetMethodId().GetOffset();
                 handler->SetAccessorMethodId(methodOffset);
                 handler->SetAccessorJSFunction(thread, getter);
