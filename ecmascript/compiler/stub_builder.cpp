@@ -9634,6 +9634,7 @@ GateRef StubBuilder::TryGetEnumCache(GateRef glue, GateRef obj)
     Label notSimpleEnumCache(env);
     Label checkEnumCacheWithProtoChainInfo(env);
     Label enumCacheValid(env);
+    Label enumCacheAllNotValid(env);
 
     BRANCH(IsSlowKeysObject(glue, obj), &exit, &notSlowKeys);
     Bind(&notSlowKeys);
@@ -9662,6 +9663,11 @@ GateRef StubBuilder::TryGetEnumCache(GateRef glue, GateRef obj)
     Bind(&enumCacheValid);
     {
         result = GetEnumCacheAllFromEnumCache(glue, enumCache);
+        BRANCH(TaggedIsNull(*result), &enumCacheAllNotValid, &exit);
+        Bind(&enumCacheAllNotValid);
+        {
+            result = Undefined();
+        }
         Jump(&exit);
     }
     Bind(&exit);
