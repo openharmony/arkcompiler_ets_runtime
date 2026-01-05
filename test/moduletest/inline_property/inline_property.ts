@@ -1120,3 +1120,26 @@ for(let i = 0 ;i < 5; i++) {
     new A();
 }
 
+let number = new Number(10);
+print("number:", ArkTools.getInlinedPropertiesCount(number));
+let date = new Date();
+print("date:", ArkTools.getInlinedPropertiesCount(date));
+let bool = new Boolean(true);
+print("bool:", ArkTools.getInlinedPropertiesCount(bool));
+let set = new Set();
+print("set:", ArkTools.getInlinedPropertiesCount(set));
+let map = new Map();
+print("map:", ArkTools.getInlinedPropertiesCount(map));
+let weakSet = new WeakSet();
+print("weakSet:", ArkTools.getInlinedPropertiesCount(weakSet));
+let weakMap = new WeakMap();
+print("weakMap:", ArkTools.getInlinedPropertiesCount(weakMap));
+let buffer = new ArrayBuffer(100);
+let dataview = new DataView(buffer);
+print("dataview:", ArkTools.getInlinedPropertiesCount(dataview));
+let str = new String("123");
+print("str:", ArkTools.getInlinedPropertiesCount(str));
+let arr = new Array(10);
+print("arr:", ArkTools.getInlinedPropertiesCount(arr));
+let execResult = /123/.exec("123");
+print("execResult:", ArkTools.getInlinedPropertiesCount(execResult));

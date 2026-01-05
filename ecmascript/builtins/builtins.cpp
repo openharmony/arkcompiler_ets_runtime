@@ -920,9 +920,13 @@ void Builtins::InitializeNumber(const JSHandle<GlobalEnv> &env, const JSHandle<J
     JSHandle<JSTaggedValue> numFuncPrototypeValue(numFuncPrototype);
 
     // Number.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> numFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, 0, JSType::JS_PRIMITIVE_REF, numFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> numFuncInstanceHClass =
         factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, numFuncPrototypeValue);
-
+#endif // ENABLE_MEMORY_OPTIMIZATION
     // Number = new Function()
     JSHandle<JSObject> numFunction(
         NewBuiltinConstructor(env, numFuncPrototype, Number::NumberConstructor, "Number", FunctionLength::ONE,
@@ -1012,9 +1016,13 @@ void Builtins::InitializeDate(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedV
     JSHandle<JSTaggedValue> dateFuncPrototypeValue(dateFuncPrototype);
 
     // Date.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> dateFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSDate::SIZE, 0, JSType::JS_DATE, dateFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> dateFuncInstanceHClass =
         factory_->NewEcmaHClass(JSDate::SIZE, JSType::JS_DATE, dateFuncPrototypeValue);
-
+#endif // ENABLE_MEMORY_OPTIMIZATION
     // Date = new Function()
     JSHandle<JSObject> dateFunction(
         NewBuiltinConstructor(env, dateFuncPrototype, Date::DateConstructor, "Date", FunctionLength::ONE,
@@ -1069,9 +1077,13 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
     JSHandle<JSTaggedValue> booleanFuncPrototypeValue(booleanFuncPrototype);
 
     // Boolean.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> booleanFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, 0, JSType::JS_PRIMITIVE_REF, booleanFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> booleanFuncInstanceHClass =
         factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, booleanFuncPrototypeValue);
-
+#endif // ENABLE_MEMORY_OPTIMIZATION
     // new Boolean Function()
     JSHandle<JSFunction> booleanFunction = NewBuiltinConstructor(env, booleanFuncPrototype, Boolean::BooleanConstructor,
         "Boolean", FunctionLength::ONE, BUILTINS_STUB_ID(BooleanConstructor));
@@ -1409,8 +1421,13 @@ void Builtins::InitializeSet(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     JSHandle<JSObject> setFuncPrototype = factory_->NewJSObjectWithInit(setFuncPrototypeHClass);
     JSHandle<JSTaggedValue> setFuncPrototypeValue(setFuncPrototype);
     // Set.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> setFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSSet::SIZE, 0, JSType::JS_SET, setFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> setFuncInstanceHClass =
         factory_->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, setFuncPrototypeValue);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     env->SetSetClass(thread_, setFuncInstanceHClass);
     // Set() = new Function()
     JSHandle<JSTaggedValue> setFunction(
@@ -1488,8 +1505,13 @@ void Builtins::InitializeMap(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedVa
     JSHandle<JSObject> mapFuncPrototype = factory_->NewJSObjectWithInit(mapFuncPrototypeHClass);
     JSHandle<JSTaggedValue> mapFuncPrototypeValue(mapFuncPrototype);
     // Map.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> mapFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSMap::SIZE, 0, JSType::JS_MAP, mapFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> mapFuncInstanceHClass =
         factory_->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, mapFuncPrototypeValue);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     env->SetMapClass(thread_, mapFuncInstanceHClass);
 
     // Map() = new Function()
@@ -1563,8 +1585,13 @@ void Builtins::InitializeWeakMap(const JSHandle<GlobalEnv> &env, const JSHandle<
     JSHandle<JSObject> weakMapFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
     JSHandle<JSTaggedValue> weakMapFuncPrototypeValue(weakMapFuncPrototype);
     // WeakMap.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> weakMapFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSWeakMap::SIZE, 0, JSType::JS_WEAK_MAP, weakMapFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> weakMapFuncInstanceHClass =
         factory_->NewEcmaHClass(JSWeakMap::SIZE, JSType::JS_WEAK_MAP, weakMapFuncPrototypeValue);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     // WeakMap() = new Function()
     JSHandle<JSTaggedValue> weakMapFunction(NewBuiltinConstructor(
         env, weakMapFuncPrototype, BuiltinsWeakMap::WeakMapConstructor, "WeakMap", FunctionLength::ZERO));
@@ -1606,13 +1633,18 @@ void Builtins::InitializeWeakSet(const JSHandle<GlobalEnv> &env, const JSHandle<
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
-    // Set.prototype
+    // WeakSet.prototype
     JSHandle<JSObject> weakSetFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
     JSHandle<JSTaggedValue> weakSetFuncPrototypeValue(weakSetFuncPrototype);
-    // Set.prototype_or_hclass
+    // WeakSet.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> weakSetFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSWeakSet::SIZE, 0, JSType::JS_WEAK_SET, weakSetFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> weakSetFuncInstanceHClass =
         factory_->NewEcmaHClass(JSWeakSet::SIZE, JSType::JS_WEAK_SET, weakSetFuncPrototypeValue);
-    // Set() = new Function()
+#endif // ENABLE_MEMORY_OPTIMIZATION
+    // WeakSet() = new Function()
     JSHandle<JSTaggedValue> weakSetFunction(NewBuiltinConstructor(
         env, weakSetFuncPrototype, BuiltinsWeakSet::WeakSetConstructor, "WeakSet", FunctionLength::ZERO));
     JSHandle<JSFunction>(weakSetFunction)->SetProtoOrHClass(thread_, weakSetFuncInstanceHClass.GetTaggedValue());
@@ -1621,11 +1653,11 @@ void Builtins::InitializeWeakSet(const JSHandle<GlobalEnv> &env, const JSHandle<
     JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
     JSObject::SetProperty(thread_, JSHandle<JSTaggedValue>(weakSetFuncPrototype), constructorKey, weakSetFunction);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
-    // set.prototype.add()
+    // WeakSet.prototype.add()
     SetFunction(env, weakSetFuncPrototype, "add", BuiltinsWeakSet::Add, FunctionLength::ONE);
-    // set.prototype.delete()
+    // WeakSet.prototype.delete()
     SetFunction(env, weakSetFuncPrototype, "delete", BuiltinsWeakSet::Delete, FunctionLength::ONE);
-    // set.prototype.has()
+    // WeakSet.prototype.has()
     SetFunction(env, weakSetFuncPrototype, "has", BuiltinsWeakSet::Has, FunctionLength::ONE);
 
     // @@ToStringTag
@@ -1673,8 +1705,13 @@ void Builtins::InitializeWeakRef(const JSHandle<GlobalEnv> &env, const JSHandle<
     JSHandle<JSObject> weakRefFuncPrototype = factory_->NewJSObject(objFuncClass);
     JSHandle<JSTaggedValue> weakRefFuncPrototypeValue(weakRefFuncPrototype);
     // WeakRef.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> weakRefFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSWeakRef::SIZE, 0, JSType::JS_WEAK_REF, weakRefFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> weakRefFuncInstanceHClass =
         factory_->NewEcmaHClass(JSWeakRef::SIZE, JSType::JS_WEAK_REF, weakRefFuncPrototypeValue);
+#endif // ENABLE_MEMORY_OPTIMIZATION
     // WeakRef() = new Function()
     JSHandle<JSTaggedValue> weakRefFunction(NewBuiltinConstructor(
         env, weakRefFuncPrototype, BuiltinsWeakRef::WeakRefConstructor, "WeakRef", FunctionLength::ONE));
@@ -1810,9 +1847,13 @@ void Builtins::InitializeString(const JSHandle<GlobalEnv> &env, JSHandle<JSTagge
     JSHandle<JSTaggedValue> stringFuncPrototypeValue(stringFuncPrototype);
 
     // String.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> stringFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, 1, JSType::JS_PRIMITIVE_REF, stringFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> stringFuncInstanceHClass =
         factory_->NewEcmaHClass(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, stringFuncPrototypeValue);
-
+#endif // ENABLE_MEMORY_OPTIMIZATION
     // String = new Function()
     JSHandle<JSObject> stringFunction(NewBuiltinConstructor(env, stringFuncPrototype, BuiltinsString::StringConstructor,
                                                             "String", FunctionLength::ONE));
@@ -2211,8 +2252,14 @@ void Builtins::InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JS
 
     //  Array.prototype_or_hclass
     JSMutableHandle<JSHClass> arrFuncInstanceHClass(thread_, JSTaggedValue::Undefined());
+#if ENABLE_MEMORY_OPTIMIZATION
+    arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(env, arrFuncPrototypeValue, 1));
+#else // ENABLE_MEMORY_OPTIMIZATION
     arrFuncInstanceHClass.Update(factory_->CreateJSArrayInstanceClass(env, arrFuncPrototypeValue));
+#endif // ENABLE_MEMORY_OPTIMIZATION
     env->SetArrayClass(thread_, arrFuncInstanceHClass);
+    JSHandle<JSHClass> arrFuncDefaultInstanceHClass = factory_->CreateJSArrayInstanceClass(env, arrFuncPrototypeValue);
+    env->SetDefaultArrayClass(thread_, arrFuncDefaultInstanceHClass);
     env->InitElementKindHClass(thread_, arrFuncInstanceHClass);
     if (thread_->GetEcmaVM()->IsEnableElementsKind()) {
         // for all JSArray, the initial ElementsKind should be NONE
@@ -2725,9 +2772,13 @@ void Builtins::InitializeDataView(const JSHandle<GlobalEnv> &env, JSHandle<JSTag
     JSHandle<JSTaggedValue> dataViewFuncPrototypeValue(dataViewFuncPrototype);
 
     //  DataView.prototype_or_hclass
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> dataViewFuncInstanceHClass =
+        factory_->NewEcmaHClass(JSDataView::SIZE, 0, JSType::JS_DATA_VIEW, dataViewFuncPrototypeValue);
+#else // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> dataViewFuncInstanceHClass =
         factory_->NewEcmaHClass(JSDataView::SIZE, JSType::JS_DATA_VIEW, dataViewFuncPrototypeValue);
-
+#endif // ENABLE_MEMORY_OPTIMIZATION
     // DataView = new Function()
     JSHandle<JSObject> dataViewFunction(NewBuiltinConstructor(env, dataViewFuncPrototype, DataView::DataViewConstructor,
                                                               "DataView", FunctionLength::ONE));
