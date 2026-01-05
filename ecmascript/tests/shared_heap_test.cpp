@@ -39,11 +39,11 @@ public:
         thread = instance->GetJSThread();
         thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
-        auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     }
 };
 
 static SharedMarkStatus g_sharedMarkStatus = SharedMarkStatus::READY_TO_CONCURRENT_MARK;
+static bool g_setDone = false;
 
 void SetSharedMarkStatusRunner()
 {
@@ -51,6 +51,7 @@ void SetSharedMarkStatusRunner()
     {
         SuspendAllScope scope(dThread);
         dThread->SetSharedMarkStatus(g_sharedMarkStatus);
+        g_setDone = true;
     }
 }
 
@@ -62,8 +63,35 @@ public:
     ~SetSharedMarkStatusTask() override = default;
 };
 
+HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker1)
+{
+    g_setDone = false;
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    auto dThread = DaemonThread::GetInstance();
+    
+    g_sharedMarkStatus = SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
+    dThread->CheckAndPostTask(SetSharedMarkStatusTask(thread));
+    while (!g_setDone) {
+        thread->CheckSafepointIfSuspended();
+    }
+
+    auto sharedConcurrentMarker = sHeap->GetConcurrentMarker();
+    sharedConcurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    EXPECT_TRUE(sHeap->GetConcurrentMarker()->IsRequestDisabled());
+}
+
+HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker2)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    EXPECT_TRUE(sHeap->GetConcurrentMarker()->IsConfigDisabled());
+}
+
 HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker3)
 {
+    g_setDone = false;
     auto sHeap = SharedHeap::GetInstance();
     sHeap->GetConcurrentMarker()->ConfigConcurrentMark(true);
     sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
@@ -72,6 +100,9 @@ HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker3)
     // 使用自定义任务设置共享标记状态，而不是直接调用SetSharedMarkStatus
     g_sharedMarkStatus = SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
     dThread->CheckAndPostTask(SetSharedMarkStatusTask(thread));
+    while (!g_setDone) {
+        thread->CheckSafepointIfSuspended();
+    }
     
     sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
     EXPECT_TRUE(sHeap->GetConcurrentMarker()->IsEnabled());
@@ -79,6 +110,7 @@ HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker3)
 
 HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker4)
 {
+    g_setDone = false;
     auto sHeap = SharedHeap::GetInstance();
     sHeap->GetConcurrentMarker()->ConfigConcurrentMark(true);
     sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
@@ -87,6 +119,9 @@ HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker4)
     // 使用自定义任务设置共享标记状态，而不是直接调用SetSharedMarkStatus
     g_sharedMarkStatus = SharedMarkStatus::READY_TO_CONCURRENT_MARK;
     dThread->CheckAndPostTask(SetSharedMarkStatusTask(thread));
+    while (!g_setDone) {
+        thread->CheckSafepointIfSuspended();
+    }
     
     sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
     EXPECT_TRUE(sHeap->GetConcurrentMarker()->IsDisabled());
@@ -94,32 +129,41 @@ HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker4)
 
 HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker5)
 {
+    g_setDone = false;
     auto sHeap = SharedHeap::GetInstance();
     auto dThread = DaemonThread::GetInstance();
     sHeap->GetConcurrentMarker()->ConfigConcurrentMark(true);
     
     g_sharedMarkStatus = SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
     dThread->CheckAndPostTask(SetSharedMarkStatusTask(thread));
-    
+    while (!g_setDone) {
+        thread->CheckSafepointIfSuspended();
+    }
+
     sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
     EXPECT_TRUE(sHeap->GetConcurrentMarker()->IsEnabled());
 }
 
 HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker6)
 {
+    g_setDone = false;
     auto sHeap = SharedHeap::GetInstance();
     auto dThread = DaemonThread::GetInstance();
     sHeap->GetConcurrentMarker()->ConfigConcurrentMark(true);
     
     g_sharedMarkStatus = SharedMarkStatus::READY_TO_CONCURRENT_MARK;
     dThread->CheckAndPostTask(SetSharedMarkStatusTask(thread));
-    
+    while (!g_setDone) {
+        thread->CheckSafepointIfSuspended();
+    }
+
     sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
     EXPECT_TRUE(sHeap->GetConcurrentMarker()->IsDisabled());
 }
 
 HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker7)
 {
+    g_setDone = false;
     auto sHeap = SharedHeap::GetInstance();
     sHeap->GetConcurrentMarker()->ConfigConcurrentMark(true);
     sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
@@ -127,7 +171,10 @@ HWTEST_F_L0(SharedHeapTest, SharedConcurrentMarker7)
     
     g_sharedMarkStatus = SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
     dThread->CheckAndPostTask(SetSharedMarkStatusTask(thread));
-    
+    while (!g_setDone) {
+        thread->CheckSafepointIfSuspended();
+    }
+
     sHeap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
     EXPECT_TRUE(sHeap->GetConcurrentMarker()->IsDisabled());
 }
