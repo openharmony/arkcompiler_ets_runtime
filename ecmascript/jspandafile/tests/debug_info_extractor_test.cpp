@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -116,7 +116,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetLineNumberTable_EmptyM
 {
     // Create invalid entity ID
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     const auto& lineTable = extractor->GetLineNumberTable(invalidId);
@@ -132,7 +132,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetColumnNumberTable_Empt
 {
     // Create invalid entity ID
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     const auto& columnTable = extractor->GetColumnNumberTable(invalidId);
@@ -148,7 +148,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetLocalVariableTable_Emp
 {
     // Create invalid entity ID
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     const auto& localVarTable = extractor->GetLocalVariableTable(invalidId);
@@ -164,7 +164,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetSourceFile_EmptyMethod
 {
     // Create invalid entity ID
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     const auto& sourceFile = extractor->GetSourceFile(invalidId);
@@ -180,7 +180,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetSourceCode_EmptyMethod
 {
     // Create invalid entity ID
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     const auto& sourceCode = extractor->GetSourceCode(invalidId);
@@ -196,7 +196,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_ExtractorMethodDebugInfo_
 {
     // Create invalid entity ID
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0);
     bool result = extractor->ExtractorMethodDebugInfo(invalidId);
@@ -213,7 +213,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_ExtractorMethodDebugInfo_
     // Create entity ID with offset beyond file size
     uint32_t largeOffset = 10000; // Use a large constant value
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(largeOffset);
     bool result = extractor->ExtractorMethodDebugInfo(invalidId);
@@ -229,7 +229,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetFristLine_TableSizeZer
 {
     // Create invalid entity ID to get empty line table
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     int32_t firstLine = extractor->GetFristLine(invalidId);
@@ -247,7 +247,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetFristLine_TableSizeOne
     // The branch logic exists in the GetFristLine method
     
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     
@@ -265,7 +265,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetFristColumn_TableSizeZ
 {
     // Create invalid entity ID to get empty column table
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     int32_t firstColumn = extractor->GetFristColumn(invalidId);
@@ -281,7 +281,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetFristColumn_TableSizeO
 {
     // Similar to GetFristLine, testing the logic path
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     int32_t firstColumn = extractor->GetFristColumn(invalidId);
@@ -297,7 +297,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Extract_EmptyClasses)
 {
     // Call Extract to exercise the empty classes path
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     extractor->Extract();
 }
@@ -314,12 +314,11 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchLineWithOff
     };
     // Use an invalid ID to test the path where iter == lineTable.begin()
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     bool result = extractor->MatchLineWithOffset(callback, invalidId, 0);
     EXPECT_TRUE(result);
-
 }
 
 /**
@@ -336,7 +335,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchLineAndRevi
     uintptr_t offset = 0;
 
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     bool result = extractor->MatchLineAndRevisedOffset(callback, invalidId, offset);
@@ -354,7 +353,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchColumnWithO
         return true;
     };
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     bool result = extractor->MatchColumnWithOffset(callback, invalidId, 0);
@@ -371,12 +370,8 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetLineNumberTable_ValidP
     // Create an entity ID that would trigger method extraction
     // Since we can't create a real debug info entry without a real file,
     // this tests the control path
-    const char *source = R"(
-        .function void foo() {}
-    )";
-    const CString fileName = "test.pa";
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId id(1);
     const auto& lineTable = extractor->GetLineNumberTable(id);
@@ -392,7 +387,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetLineNumberTable_ValidP
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchWithLocation)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     auto callback = [](const JSPtLocation &location) -> bool {
         return true;
@@ -419,7 +414,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetFristLine_SpecialMark)
     // Since we can't easily populate the table with SPECIAL_LINE_MARK values,
     // we test the control flow
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     int32_t firstLine = extractor->GetFristLine(invalidId);
@@ -435,7 +430,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetFristColumn_SpecialMar
 {
     // Similar to GetFristLine, test control flow
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     int32_t firstCol = extractor->GetFristColumn(invalidId);
@@ -457,7 +452,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchLineAndRevi
     // Using invalid ID to test the conditional branches in MatchLineAndRevisedOffset
 
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     bool result = extractor->MatchLineAndRevisedOffset(callback, invalidId, offset);
@@ -472,7 +467,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchLineAndRevi
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_ExtractorMethodDebugInfo_ValidIdNotExists)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     // Create a valid-like but non-existent entity ID
     panda_file::File::EntityId validId(1);
@@ -489,7 +484,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetLineNumberTable_Cached
 {
     // First call - will try to add to cache (but likely fail due to minimal file)
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId id(200);
     const auto& lineTable1 = extractor->GetLineNumberTable(id);
@@ -508,7 +503,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetLineNumberTable_Cached
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetColumnNumberTable_CachedPath)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId id(1);
     const auto& colTable1 = extractor->GetColumnNumberTable(id);
@@ -525,7 +520,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetColumnNumberTable_Cach
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetLocalVariableTable_CachedPath)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId id(1);
     const auto& varTable1 = extractor->GetLocalVariableTable(id);
@@ -542,7 +537,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetLocalVariableTable_Cac
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetSourceFile_CachedPath)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId id(1);
     const auto& sourceFile1 = extractor->GetSourceFile(id);
@@ -560,7 +555,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetSourceFile_CachedPath)
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetSourceCode_CachedPath)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId id(1);
     const auto& sourceCode1 = extractor->GetSourceCode(id);
@@ -577,7 +572,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_GetSourceCode_CachedPath)
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchWithLocation_ValidPath)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     auto callback = [](const JSPtLocation &location) -> bool {
         return true;
@@ -602,7 +597,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchWithLocatio
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchWithLocation_ExternalClass)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     auto callback = [](const JSPtLocation &location) -> bool {
         return true;
@@ -625,7 +620,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchWithLocatio
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchWithLocation_FindMinColumn)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
 
     auto callback = [](const JSPtLocation &location) -> bool {
@@ -649,7 +644,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchWithLocatio
 HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchWithLocation_FindCurrentOffset)
 {
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     auto callback = [](const JSPtLocation &location) -> bool {
         return true;
@@ -677,7 +672,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchLineAndRevi
     uintptr_t offset = 100; // non-zero offset
 
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     bool result = extractor->MatchLineAndRevisedOffset(callback, invalidId, offset);
@@ -699,7 +694,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_Template_MatchLineAndRevi
     uintptr_t offset = 50;
 
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId invalidId(0xFFFFFFFF);
     bool result = extractor->MatchLineAndRevisedOffset(callback, invalidId, offset);
@@ -716,7 +711,7 @@ HWTEST_F_L0(DebugInfoExtractorTest, DebugInfoExtractor_ExtractorMethodDebugInfo_
     // Use an ID that would have no debug info in the minimal file
 
     std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile();
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     auto extractor = std::make_unique<DebugInfoExtractor>(pf.get());
     panda_file::File::EntityId id(1);
     bool result = extractor->ExtractorMethodDebugInfo(id);

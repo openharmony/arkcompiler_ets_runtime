@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -141,6 +141,34 @@ HWTEST_F_L0(StaticModuleLoaderTest, GetStaticModuleLoadFunc)
     EXPECT_FALSE(func->IsUndefined());
 }
 
+
+/**
+ * @tc.name: GetStaticModuleLoadFunc_NotAFunction
+ * @tc.desc: getModuleRef->IsFunction(vm) returns false, causing the function to return JSValueRef::Undefined(vm)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleLoaderTest, GetStaticModuleLoadFunc_NotAFunction)
+{
+    auto vm = thread->GetEcmaVM();
+    auto globalConstants = thread->GlobalConstants();
+    JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSTaggedValue> pandaObject(thread, arr);
+
+    // Set the getModule property to a non-function value to trigger the branch at line 59
+    JSTaggedValue::SetProperty(thread, pandaObject,
+        globalConstants->GetHandledGetModuleString(),
+        JSNApiHelper::ToJSHandle(StringRef::NewFromUtf8(vm, "not_a_function")));
+
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm,
+        JSNApiHelper::ToLocal<StringRef>(globalConstants->GetHandledPandaString()),
+        JSNApiHelper::ToLocal<JSValueRef>(pandaObject));
+
+    Local<JSValueRef> func = StaticModuleLoader::GetStaticModuleLoadFunc(vm);
+    EXPECT_TRUE(func->IsUndefined());  // Should return undefined when getModule is not a function
+}
+
 HWTEST_F_L0(StaticModuleLoaderTest, LoadStaticModule)
 {
     auto vm = thread->GetEcmaVM();
@@ -176,5 +204,32 @@ HWTEST_F_L0(StaticModuleLoaderTest, LoadStaticModuleError)
     EXPECT_EQ(JSTaggedValue::SameValue(thread, message, specifier), true);
     thread->ClearException();
 }
+
+
+/**
+ * @tc.name: LoadStaticModule_FromCache
+ * @tc.desc: moduleManager->IsModuleLoaded(key) returns true, causing the function to return cached module
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleLoaderTest, LoadStaticModule_FromCache)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+
+    // First, load a module to put it in the cache
+    Local<FunctionRef> func = FunctionRef::New(const_cast<panda::EcmaVM *>(vm), MockGetModule);
+    JSHandle<JSTaggedValue> specifier(factory->NewFromASCII("cachedModule"));
+    JSHandle<EcmaString> specifierString = JSTaggedValue::ToString(thread, specifier);
+    CString path = ModulePathHelper::Utf8ConvertToString(thread, specifierString.GetTaggedValue());
+
+    // Load the module first to put it in cache
+    JSHandle<JSTaggedValue> firstResult = StaticModuleLoader::LoadStaticModule(thread, func, path);
+    EXPECT_EQ(firstResult->IsJSProxy(), true);
+
+    // Now load the same module again - this should trigger the branch at line 68 (module already loaded)
+    JSHandle<JSTaggedValue> secondResult = StaticModuleLoader::LoadStaticModule(thread, func, path);
+    EXPECT_EQ(secondResult->IsJSProxy(), true);  // Should still return a proxy
+}
+
 
 }  // namespace panda::test
