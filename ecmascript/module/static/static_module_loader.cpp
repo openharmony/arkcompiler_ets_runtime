@@ -31,6 +31,9 @@
 namespace panda::ecmascript {
 bool StaticModuleLoader::CanTryLoadStaticModulePath(const CString &requestPath)
 {
+    if (requestPath.empty()) {
+        return false;
+    }
     // Filters the 1.0 ohmurl that can be determined
     if (ModulePathHelper::IsOhmUrl(requestPath) || ModulePathHelper::IsImportFile(requestPath)
         || StringHelper::StringStartWith(requestPath, ModulePathHelper::PREFIX_MODULE)
