@@ -494,8 +494,8 @@ JSTaggedValue BuiltinsPromise::Then(EcmaRuntimeCallInfo *argv)
             JSHandle<JSPromise>(thread, resultCapability->GetPromise(thread)), description);
     }
     // For runtime async stack recording
-    if (UNLIKELY(ecmaVm->GetEnableRuntimeAsyncStack())) {
-        ecmaVm->GetAsyncStackTraceManager()->SaveAsyncStackInfo(JSHandle<JSPromise>(thread,
+    if (UNLIKELY(ecmaVm->IsEnableRuntimeAsyncStack())) {
+        ecmaVm->GetAsyncStackTraceManager()->SavePromiseNode(JSHandle<JSPromise>(thread,
             resultCapability->GetPromise(thread)));
     }
 
