@@ -160,6 +160,8 @@ void FullGC::Sweep()
     heap_->GetEcmaVM()->IterateWeakGlobalEnvList(gcUpdateWeak);
     heap_->GetSweeper()->Sweep(TriggerGCType::FULL_GC);
     heap_->GetSweeper()->PostTask(TriggerGCType::FULL_GC);
+    heap_->GetJSThread()->ClearYoungGlobalList();
+    heap_->GetJSThread()->ClearToBeDeletedNodes();
 }
 
 void FullGC::Finish()

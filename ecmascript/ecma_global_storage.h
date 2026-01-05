@@ -17,10 +17,10 @@
 #define ECMASCRIPT_ECMA_GLOBAL_STORAGE_H
 
 #include "ecmascript/cross_vm/ecma_global_storage_hybrid.h"
-
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/platform/backtrace.h"
 #ifdef HOOK_ENABLE
 #include "memory_trace.h"
@@ -79,6 +79,11 @@ public:
         isWeak_ = isWeak;
     }
 
+    void SetInYoungList(bool isInYoungList)
+    {
+        isInYoungList_ = isInYoungList;
+    }
+
     bool IsUsing() const
     {
         return isUsing_;
@@ -87,6 +92,11 @@ public:
     bool IsWeak() const
     {
         return isWeak_;
+    }
+
+    bool IsInYoungList() const
+    {
+        return isInYoungList_;
     }
 
     uintptr_t GetObjectAddress() const
@@ -115,6 +125,7 @@ private:
     uint32_t index_ {0};
     bool isUsing_ {false};
     bool isWeak_ {false};
+    bool isInYoungList_ {false};
 };
 
 class DebugNode : public Node {
@@ -415,12 +426,14 @@ public:
     {
         auto clearWeakNodeCallback = [] (WeakNode *node) {
             node->SetUsing(false);
+            ASSERT(!node->IsInYoungList());
             node->SetObject(JSTaggedValue::Undefined().GetRawData());
             node->CallFreeGlobalCallback();
             node->CallNativeFinalizeCallback();
         };
         auto clearNodeCallback = [] (T *node) {
             node->SetUsing(false);
+            node->SetInYoungList(false);
             node->SetObject(JSTaggedValue::Undefined().GetRawData());
         };
 
@@ -449,7 +462,9 @@ public:
     inline uintptr_t NewGlobalHandle(JSTaggedType value)
     {
         if constexpr(nodeKind == NodeKind::NORMAL_NODE) {
-            return NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
+            uintptr_t addr = NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
+            CheckAndAddToYoungGlobalNodes(reinterpret_cast<T *>(addr), value);
+            return addr;
         } else if constexpr(nodeKind == NodeKind::UNIFIED_NODE) {
             return NewGlobalHandleImplement(&lastXRefGlobalNodes_, &xRefFreeListNodes_, value);
         }
@@ -470,7 +485,58 @@ public:
                 DisposeGlobalHandleInner(reinterpret_cast<WeakNode *>(node), &weakFreeListNodes_, &topWeakGlobalNodes_,
                     &lastWeakGlobalNodes_);
             } else {
-                DisposeGlobalHandleInner(node, &freeListNodes_, &topGlobalNodes_, &lastGlobalNodes_);
+                DisposeGlobalHandleInner<T, false>(node, &freeListNodes_, &topGlobalNodes_, &lastGlobalNodes_);
+            }
+        }
+    }
+
+    void UpdateYoungGlobalList()
+    {
+        size_t index = 0;
+        for (T* node : youngGlobalNodes_) {
+            ASSERT(!node->IsWeak());
+            if (node->IsUsing() && JSTaggedValue(node->GetObject()).IsHeapObject()) {
+                Region* region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(node->GetObject()));
+                if (!region->InYoungSpace()) {
+                    node->SetInYoungList(false);
+                } else {
+                    youngGlobalNodes_[index++] = node;
+                }
+            } else {
+                node->SetInYoungList(false);
+            }
+        }
+        ASSERT(index <= youngGlobalNodes_.size());
+        youngGlobalNodes_.resize(index);
+        youngGlobalNodes_.shrink_to_fit();
+    }
+
+    void ClearYoungGlobalList()
+    {
+        for (T* node : youngGlobalNodes_) {
+            node->SetInYoungList(false);
+        }
+        youngGlobalNodes_.clear();
+        youngGlobalNodes_.shrink_to_fit();
+    }
+
+    void ClearToBeDeletedNodes()
+    {
+        for (uintptr_t addr : toBeDeletedNodes_) {
+            allocator_->Delete(reinterpret_cast<NodeList<Node> *>(addr));
+        }
+        toBeDeletedNodes_.clear();
+        toBeDeletedNodes_.shrink_to_fit();
+    }
+    
+    template<typename S>
+    inline void CheckAndAddToYoungGlobalNodes(S *node, JSTaggedType value)
+    {
+        if (JSTaggedValue(value).IsHeapObject()) {
+            Region* region = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value));
+            if (region->InYoungSpace() && !node->IsInYoungList()) {
+                youngGlobalNodes_.push_back(node);
+                node->SetInYoungList(true);
             }
         }
     }
@@ -493,6 +559,7 @@ public:
         auto value = reinterpret_cast<T *>(nodeAddr)->GetObject();
         DisposeGlobalHandle<NodeKind::NORMAL_NODE>(nodeAddr);
         uintptr_t ret = NewGlobalHandleImplement(&lastGlobalNodes_, &freeListNodes_, value);
+        CheckAndAddToYoungGlobalNodes(reinterpret_cast<T *>(ret), value);
         return ret;
     }
 
@@ -518,11 +585,44 @@ public:
         IterateNodeList<Callback, WeakNode>(callback, topWeakGlobalNodes_, false);
     }
 
+    template<class Callback>
+    void IterateYoungUsageGlobal(Callback callback)
+    {
+        ASSERT(!CheckYoungGlobalNodesUnique());
+        VisitRange(youngGlobalNodes_.begin(), youngGlobalNodes_.end(), callback);
+        if (nodeKind_ == NodeKind::UNIFIED_NODE) {
+            return;
+        }
+        IterateNodeList<Callback, T>(callback, topXRefGlobalNodes_, false);
+    }
+
+    template <typename Iter, typename Callback>
+    void VisitRange(Iter begin, Iter end, Callback callback)
+    {
+        for (auto it = begin; it != end; ++it) {
+            callback(*it);
+        }
+    }
+
+    bool CheckYoungGlobalNodesUnique()
+    {
+        std::unordered_set<T*> visited;
+        bool hasDuplicate = false;
+
+        VisitRange(youngGlobalNodes_.begin(), youngGlobalNodes_.end(), [&](T* node) {
+            if (!visited.insert(node).second) {
+                hasDuplicate = true;
+                return;
+            }
+        });
+        return hasDuplicate;
+    }
+
     ECMAGLOBALSTORAGE_PUBLIC_HYBRID_EXTENSION()
 private:
     NO_COPY_SEMANTIC(EcmaGlobalStorage);
     NO_MOVE_SEMANTIC(EcmaGlobalStorage);
-    template<typename S>
+    template<typename S, bool isDeleteNodes = true>
     inline void DisposeGlobalHandleInner(S *node, NodeList<S> **freeList, NodeList<S> **topNodes,
                                     NodeList<S> **lastNodes)
     {
@@ -541,7 +641,11 @@ private:
             if (*lastNodes == list) {
                 *lastNodes = list->GetPrev();
             }
-            allocator_->Delete(list);
+            if constexpr (isDeleteNodes) {
+                allocator_->Delete(list);
+            } else {
+                toBeDeletedNodes_.push_back(reinterpret_cast<uintptr_t>(list));
+            }
         } else {
             // Add to freeList
             if (list != *freeList && list->GetFreeNext() == nullptr && list->GetFreePrev() == nullptr) {
@@ -602,6 +706,8 @@ private:
     NodeList<T> *topGlobalNodes_ {nullptr};
     NodeList<T> *lastGlobalNodes_ {nullptr};
     NodeList<T> *freeListNodes_ {nullptr};
+    std::vector<T*> youngGlobalNodes_;
+    std::vector<uintptr_t> toBeDeletedNodes_;
 
     NodeList<WeakNode> *topWeakGlobalNodes_ {nullptr};
     NodeList<WeakNode> *lastWeakGlobalNodes_ {nullptr};

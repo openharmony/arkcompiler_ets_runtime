@@ -523,7 +523,7 @@ void JSThread::ClearMegaIC()
     }
 }
 
-void JSThread::Iterate(RootVisitor &visitor)
+void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
 {
     if (!glueData_.exception_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
@@ -542,7 +542,7 @@ void JSThread::Iterate(RootVisitor &visitor)
     frameHandler.Iterate(visitor);
     // visit tagged handle storage roots
     if (vm_->GetJSOptions().EnableGlobalLeakCheck()) {
-        IterateHandleWithCheck(visitor);
+        IterateHandleWithCheck(visitor, visitType);
     } else {
         OHOS_HITRACE(HITRACE_LEVEL_COMMERCIAL, "VisitRootGlobalRefHandle", "");
         size_t globalCount = 0;
@@ -553,7 +553,11 @@ void JSThread::Iterate(RootVisitor &visitor)
             }
             globalCount++;
         };
-        globalStorage_->IterateUsageGlobal(callback);
+        if (visitType == GlobalVisitType::YOUNG_GLOBAL_VISIT) {
+            globalStorage_->IterateYoungUsageGlobal(callback);
+        } else {
+            globalStorage_->IterateUsageGlobal(callback);
+        }
         static bool hasCheckedGlobalCount = false;
         static const size_t WARN_GLOBAL_COUNT = 100000;
         if (!hasCheckedGlobalCount && globalCount >= WARN_GLOBAL_COUNT) {
@@ -586,7 +590,7 @@ void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
     jitCodeMapVisitor(jitCodeMaps_);
 }
 
-void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
+void JSThread::IterateHandleWithCheck(RootVisitor &visitor, GlobalVisitType visitType)
 {
     size_t handleCount = vm_->IterateHandle(visitor);
 
@@ -626,7 +630,11 @@ void JSThread::IterateHandleWithCheck(RootVisitor &visitor)
         }
         globalCount++;
     };
-    globalDebugStorage_->IterateUsageGlobal(callback);
+    if (visitType == GlobalVisitType::YOUNG_GLOBAL_VISIT) {
+        globalDebugStorage_->IterateYoungUsageGlobal(callback);
+    } else {
+        globalDebugStorage_->IterateUsageGlobal(callback);
+    }
     if (isStopObjectLeakCheck || isStopPrimitiveLeakCheck) {
         buffer << "Global leak check success!";
         WriteToStackTraceFd(buffer);
@@ -1604,5 +1612,32 @@ JSTaggedValue JSThread::GetCurrentGlobalEnv(JSTaggedValue currentEnv)
         return GetGlueGlobalEnv();
     }
     return globalEnv;
+}
+
+void JSThread::UpdateYoungGlobalList()
+{
+    if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        globalStorage_->UpdateYoungGlobalList();
+    } else {
+        globalDebugStorage_->UpdateYoungGlobalList();
+    }
+}
+
+void JSThread::ClearYoungGlobalList()
+{
+    if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        globalStorage_->ClearYoungGlobalList();
+    } else {
+        globalDebugStorage_->ClearYoungGlobalList();
+    }
+}
+
+void JSThread::ClearToBeDeletedNodes()
+{
+    if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
+        globalStorage_->ClearToBeDeletedNodes();
+    } else {
+        globalDebugStorage_->ClearToBeDeletedNodes();
+    }
 }
 }  // namespace panda::ecmascript

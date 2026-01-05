@@ -36,7 +36,7 @@ public:
         LOG_GC(DEBUG) << "Marker::Initialize do nothing";
     }
 
-    void MarkRoots(RootVisitor &rootVisitor);
+    void MarkRoots(RootVisitor &rootVisitor, GlobalVisitType visitType = GlobalVisitType::ALL_GLOBAL_VISIT);
 
     virtual void MarkJitCodeMap([[maybe_unused]] uint32_t threadId)
     {

@@ -3303,6 +3303,7 @@ host_unittest_action("Sendable_JsSharedArray_Test") {
     # test file
     "barrier_test.cpp",
     "ecma_global_storage_test.cpp",
+    "ecma_global_storage_generation_test.cpp",
     "js_shared_array_test.cpp",
   ]
 

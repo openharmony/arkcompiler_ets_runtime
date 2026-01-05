@@ -18,11 +18,11 @@
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-void HeapRootVisitor::VisitHeapRoots(JSThread *thread, RootVisitor &visitor)
+void HeapRootVisitor::VisitHeapRoots(JSThread *thread, RootVisitor &visitor, GlobalVisitType visitType)
 {
     auto ecmaVm = GetVMInstance(thread);
     ecmaVm->Iterate(visitor);
-    thread->Iterate(visitor);
+    thread->Iterate(visitor, visitType);
 
     // SerializeRoot from shared heap
     Runtime::GetInstance()->IterateSerializeRoot(visitor);
