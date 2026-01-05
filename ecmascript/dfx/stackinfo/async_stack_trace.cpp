@@ -206,6 +206,7 @@ uint64_t AsyncStackTraceManager::GetStackId(uint32_t promiseId)
     return 0;
 }
 
+#if ENABLE_LATEST_OPTIMIZATION
 JSTaggedValue AsyncStackTraceManager::GetPromise(const JSTaggedValue &value)
 {
     JSTaggedValue promise = JSTaggedValue::Hole();
@@ -242,6 +243,17 @@ JSTaggedValue AsyncStackTraceManager::GetPromise(const JSTaggedValue &value)
     }
     return promise;
 }
+#else // ENABLE_LATEST_OPTIMIZATION
+JSTaggedValue AsyncStackTraceManager::GetPromise(const JSTaggedValue &value)
+{
+    JSTaggedValue promise = JSTaggedValue::Hole();
+    if (value.IsPromiseReaction()) {
+        JSTaggedValue promiseCapability = PromiseReaction::Cast(value)->GetPromiseCapability(thread_);
+        promise = PromiseCapability::Cast(promiseCapability)->GetPromise(thread_);
+    }
+    return promise;
+}
+#endif // ENABLE_LATEST_OPTIMIZATION
 
 void AsyncStackTraceManager::SetCurrentPromiseTask(const JSTaggedValue &value)
 {
