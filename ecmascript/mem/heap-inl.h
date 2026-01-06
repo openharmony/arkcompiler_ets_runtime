@@ -810,6 +810,7 @@ void Heap::SwapOldSpace()
 void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
                        [[maybe_unused]] size_t size)
 {
+    MEMORY_TRACE_MOVE(address, forwardAddress, size);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     HeapProfilerInterface *profiler = GetEcmaVM()->GetHeapProfile();
     if (profiler != nullptr) {
@@ -822,6 +823,7 @@ void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] Tagg
 void SharedHeap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
                              [[maybe_unused]] size_t size)
 {
+    MEMORY_TRACE_MOVE(address, forwardAddress, size);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     Runtime::GetInstance()->GCIterateThreadListWithoutLock([&](JSThread *thread) {
         HeapProfilerInterface *profiler = thread->GetEcmaVM()->GetHeapProfile();

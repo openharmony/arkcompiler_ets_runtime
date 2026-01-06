@@ -278,6 +278,7 @@ void SparseSpace::FreeLiveRange(Region *current, uintptr_t freeStart, uintptr_t 
 {
     localHeap_->GetSweeper()->ClearRSetInRange(current, freeStart, freeEnd);
     allocator_->Free(freeStart, freeEnd - freeStart, isMain);
+    MEMORY_TRACE_FREEREGION(freeStart, freeEnd - freeStart);
 }
 
 void SparseSpace::IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor) const

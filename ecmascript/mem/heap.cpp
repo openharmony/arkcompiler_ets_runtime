@@ -1892,6 +1892,7 @@ void Heap::AdjustOldSpaceLimit()
 void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]] TaggedObject* address,
                                [[maybe_unused]] size_t size)
 {
+    MEMORY_TRACE_ALLOCATE(address, size);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     HeapProfilerInterface *profiler = ecmaVm->GetHeapProfile();
     if (profiler != nullptr) {

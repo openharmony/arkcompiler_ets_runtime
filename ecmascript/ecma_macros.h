@@ -30,6 +30,20 @@
 #define OPTIONAL_LOG(vm, level) LOG_ECMA_IF(vm->IsOptionalLogEnabled(), level)
 #define OPTIONAL_LOG_COMPILER(level) LOG_ECMA_IF(IsLogEnabled(), level)
 
+#ifdef HOOK_ENABLE
+#include "memory_trace.h"
+#define MEMORY_TRACE_ALLOCATE(object, size) \
+    restrace(RES_ARKTS_HEAP_MASK, reinterpret_cast<void *>(object), size, TAG_RES_ARKTS_HEAP_MASK, true)
+#define MEMORY_TRACE_MOVE(from, to, size) \
+    resTraceMove(RES_ARKTS_HEAP_MASK, reinterpret_cast<void *>(from), reinterpret_cast<void *>(to), size)
+#define MEMORY_TRACE_FREEREGION(start, size) \
+    resTraceFreeRegion(RES_ARKTS_HEAP_MASK, reinterpret_cast<void *>(start), size)
+#else
+#define MEMORY_TRACE_ALLOCATE(object, size)
+#define MEMORY_TRACE_MOVE(from, to, size)
+#define MEMORY_TRACE_FREEREGION(start, size)
+#endif  // HOOK_ENABLE
+
 #if !defined(ENABLE_BYTRACE)
     #define ECMA_BYTRACE_NAME(level, tag, name, customArgs)
     #define ECMA_BYTRACE_START_TRACE(level, tag, msg)
