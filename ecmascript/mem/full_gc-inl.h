@@ -98,7 +98,7 @@ void FullGCRunner::HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object
         return;
     }
 
-    MarkWord markWord(object);
+    MarkWord markWord(object, ACQUIRE_LOAD);
     if (markWord.IsForwardingAddress()) {
         TaggedObject *dst = markWord.ToForwardingAddress();
         slot.Update(dst);

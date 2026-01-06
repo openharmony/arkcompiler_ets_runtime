@@ -235,7 +235,7 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
                     ++it;
                 }
             } else {
-                MarkWord markWord(jsErrorObj);
+                MarkWord markWord(jsErrorObj, ACQUIRE_LOAD);
                 if (markWord.IsForwardingAddress()) {
                     TaggedObject *dst = markWord.ToForwardingAddress();
                     tempVec.emplace(JSTaggedValue(dst).GetRawData(), it->second);

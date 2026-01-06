@@ -53,7 +53,7 @@ void CCUpdateRootVisitor::HandleSlot(ObjectSlot slot)
         return;
     }
     if (objectRegion->IsFromRegion()) {
-        MarkWord markWord(object);
+        MarkWord markWord(object, RELAXED_LOAD);
         if (markWord.IsForwardingAddress()) {
             TaggedObject *dst = markWord.ToForwardingAddress();
             slot.Update(dst);
@@ -111,7 +111,7 @@ void CCUpdateVisitor<needUpdateLocalToShare>::HandleSlot(ObjectSlot slot, Region
     if (objectRegion->IsFromRegion()) {
         TaggedObject *rawObject = value.GetRawHeapObject();
         TaggedObject *object = value.GetHeapObject();
-        MarkWord markWord(object);
+        MarkWord markWord(object, RELAXED_LOAD);
         ASSERT(markWord.IsForwardingAddress());
         TaggedObject *dst = markWord.ToForwardingAddress();
         if (value.IsWeakForHeapObject()) {

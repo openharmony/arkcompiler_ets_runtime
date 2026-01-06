@@ -29,6 +29,14 @@ class JSHClass;
 
 using MarkWordType = uint64_t;
 
+struct RelaxedLoad {
+};
+struct AcquireLoad {
+};
+
+static constexpr RelaxedLoad RELAXED_LOAD;
+static constexpr AcquireLoad ACQUIRE_LOAD;
+
 class MarkWord {
 public:
     // ForwardingAddress mark, this object has been moved and the address points to the newly allocated space.
@@ -44,7 +52,11 @@ public:
         return reinterpret_cast<TaggedObject *>(value & (~TAG_MARK_BIT));
     }
 
-    explicit MarkWord(TaggedObject *header)
+    explicit MarkWord(TaggedObject *header, [[maybe_unused]] RelaxedLoad relaxedLoad)
+    {
+        value_ = reinterpret_cast<volatile std::atomic<MarkWordType> *>(header)->load(std::memory_order_relaxed);
+    }
+    explicit MarkWord(TaggedObject *header, [[maybe_unused]] AcquireLoad acquireLoad)
     {
         value_ = reinterpret_cast<volatile std::atomic<MarkWordType> *>(header)->load(std::memory_order_acquire);
     }

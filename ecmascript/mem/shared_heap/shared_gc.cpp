@@ -128,7 +128,7 @@ void SharedGC::Sweep()
             return header;
         }
         if (objectRegion->InSCollectSet()) {
-            MarkWord markWord(header);
+            MarkWord markWord(header, RELAXED_LOAD);
             if (markWord.IsForwardingAddress()) {
                 return markWord.ToForwardingAddress();
             }

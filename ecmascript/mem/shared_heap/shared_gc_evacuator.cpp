@@ -145,7 +145,7 @@ bool SharedGCEvacuator::UpdateObjectSlot(ObjectSlot slot)
     ASSERT(region->InSharedHeap());
     bool isWeak = value.IsWeakForHeapObject();
     TaggedObject *object = value.GetHeapObject();
-    MarkWord markWord(object);
+    MarkWord markWord(object, RELAXED_LOAD);
     if (markWord.IsForwardingAddress()) {
         TaggedObject *dst = markWord.ToForwardingAddress();
         if (isWeak) {
@@ -233,7 +233,7 @@ void SharedGCEvacuator::UpdateRootVisitor::UpdateObjectSlotRoot(ObjectSlot slot)
             ASSERT(region->InSharedHeap());
             ASSERT(!value.IsWeakForHeapObject());
             TaggedObject *object = value.GetHeapObject();
-            MarkWord markWord(object);
+            MarkWord markWord(object, RELAXED_LOAD);
             if (markWord.IsForwardingAddress()) {
                 TaggedObject *dst = markWord.ToForwardingAddress();
                 slot.Update(dst);

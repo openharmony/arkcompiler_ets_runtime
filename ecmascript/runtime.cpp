@@ -338,29 +338,34 @@ void Runtime::ResumeAll(JSThread *current)
 
 void Runtime::SuspendAllThreadsImpl(JSThread *current)
 {
+    // fixme: support suspend in a non JS Thread.
+    ASSERT(current != nullptr);
     if (g_isEnableCMCGC) {
         common::BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(current->GetThreadHolder());
         return;
     }
+    bool suspendMainThreadLater = false;
     SuspendBarrier barrier;
     for (uint32_t iterCount = 1U;; ++iterCount) {
         {
             LockHolder lock(threadsLock_);
+            // fixme: use a different lock from threadsLock_ for suspend count?
             if (suspendNewCount_ == 0) {
                 suspendNewCount_++;
-                if (threads_.size() == 1) {
-                    ASSERT(current == mainThread_ || current->IsDaemonThread());
-                    return;
-                }
-                if (threads_.size() < 1) {
-                    return;
-                }
+                ASSERT(threads_.size() > 0);
                 barrier.Initialize(threads_.size() - 1);
                 for (const auto& thread: threads_) {
                     if (thread == current) {
                         continue;
                     }
-                    thread->SuspendThread(+1, &barrier);
+                    if (thread == mainThread_) {
+                        // a fake pass barrier to skip main thread, or to check if main thread is alive
+                        // before initialize barrier.
+                        barrier.PassStrongly();
+                        suspendMainThreadLater = true;
+                        continue;
+                    }
+                    thread->SuspendThread(true, &barrier);
                     // The two flags, SUSPEND_REQUEST and ACTIVE_BARRIER, are set by Suspend-Thread guarded by
                     // suspendLock_, so the target thread-I may do not see these two flags in time. As a result, it
                     // can switch its state freely without responding to the ACTIVE_BARRIER flag and the
@@ -396,6 +401,28 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
         }
     }
     barrier.Wait();
+    if (suspendMainThreadLater) {
+        SuspendBarrier mainThreadBarrier(1);
+        {
+            // fixme: optimize by set thread exit flag?
+            bool mainThreadAlive = false;
+            LockHolder lock(threadsLock_);
+            for (JSThread *thread : threads_) {
+                if (thread == mainThread_) {
+                    mainThreadAlive = true;
+                    break;
+                }
+            }
+            if (!mainThreadAlive) {
+                return;
+            }
+            mainThread_->SuspendThread(true, &mainThreadBarrier);
+            if (mainThread_->IsSuspended()) {
+                mainThread_->PassSuspendBarrier();
+            }
+        }
+        mainThreadBarrier.Wait();
+    }
 }
 
 void Runtime::ResumeAllThreadsImpl(JSThread *current)
@@ -437,7 +464,7 @@ void Runtime::ResumeOther(JSThread *current, JSThread *target)
 
 void Runtime::SuspendOtherThreadImpl(JSThread *current, JSThread *target)
 {
-    SuspendBarrier barrier;
+    SuspendBarrier barrier(1);
     for (uint32_t iterCount = 1U;; ++iterCount) {
         {
             LockHolder lock(threadsLock_);
@@ -448,8 +475,7 @@ void Runtime::SuspendOtherThreadImpl(JSThread *current, JSThread *target)
                     LOG_ECMA(FATAL) << "Invalid target thread!";
                     UNREACHABLE();
                 }
-                barrier.Initialize(1);
-                target->SuspendThread(+1, &barrier);
+                target->SuspendThread(true, &barrier);
                 if (target->IsSuspended()) {
                     target->PassSuspendBarrier();
                 }

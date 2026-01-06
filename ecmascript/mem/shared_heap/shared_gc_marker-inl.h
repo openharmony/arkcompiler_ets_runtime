@@ -203,7 +203,7 @@ void SharedGCMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object, 
         return;
     }
 
-    MarkWord markWord(object);
+    MarkWord markWord(object, ACQUIRE_LOAD);
     if (markWord.IsForwardingAddress()) {
         TaggedObject *dst = markWord.ToForwardingAddress();
         slot.Update(dst);
@@ -288,7 +288,7 @@ void SharedGCMovableMarker::UpdateForwardAddressIfFailed(TaggedObject *object, u
     ObjectSlot slot)
 {
     FreeObject::FillFreeObject(sHeap_, toAddress, size);
-    TaggedObject *dst = MarkWord(object).ToForwardingAddress();
+    TaggedObject *dst = MarkWord(object, ACQUIRE_LOAD).ToForwardingAddress();
     slot.Update(dst);
 }
 

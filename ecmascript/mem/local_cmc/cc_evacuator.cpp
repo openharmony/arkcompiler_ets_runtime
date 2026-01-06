@@ -41,7 +41,6 @@ TaggedObject *CCEvacuator::Copy(TaggedObject *fromObj, const MarkWord &markWord)
     if (result == oldValue) {
         TaggedObject *toObject = reinterpret_cast<TaggedObject*>(forwardAddress);
         heap_->OnMoveEvent(reinterpret_cast<uintptr_t>(fromObj), toObject, size);
-        MarkWord m(toObject);
         return toObject;
     }
     ASSERT(MarkWord::IsForwardingAddress(result));

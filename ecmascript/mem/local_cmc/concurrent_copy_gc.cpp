@@ -121,7 +121,7 @@ void ConcurrentCopyGC::UpdateRoot()
         } else if (!objectRegion->Test(object)) {
             return nullptr;
         } else if (objectRegion->IsFromRegion()) {
-            MarkWord markWord(object);
+            MarkWord markWord(object, RELAXED_LOAD);
             if (markWord.IsForwardingAddress()) {
                 return markWord.ToForwardingAddress();
             } else {
@@ -177,7 +177,7 @@ bool ConcurrentCopyTask::Run(uint32_t threadIndex)
         ASSERT(region->IsFromRegion());
         region->IterateAllMarkedBits([&](void *mem) {
             TaggedObject *object = reinterpret_cast<TaggedObject *>(mem);
-            MarkWord markWord(object);
+            MarkWord markWord(object, RELAXED_LOAD);
             if (!markWord.IsForwardingAddress()) {
                 TaggedObject *toObject = evacuator.Copy(object, markWord);
                 Region::ObjectAddressToRange(toObject)->AtomicMark(toObject);
