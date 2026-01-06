@@ -222,7 +222,7 @@ public:
     virtual void ReclaimRegions(size_t cachedSize = 0) = 0;
 
 protected:
-    virtual void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
+    void ClearAndFreeRegion(Region *region, size_t cachedSize = 0);
 
     BaseHeap *heap_ {nullptr};
     HeapRegionAllocator *heapRegionAllocator_ {nullptr};
@@ -333,7 +333,7 @@ public:
 protected:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
 private:
-    virtual void ClearAndFreeRegion(Region *region, size_t cachedSize = 0) override;
+    void AsyncClearAndFreeRegion(Region *region, size_t cachedSize = 0);
 
     EcmaList<Region> hugeNeedFreeList_ {};
 };

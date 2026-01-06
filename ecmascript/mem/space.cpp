@@ -314,10 +314,10 @@ void HugeObjectSpace::IterateOverObjects(const std::function<void(TaggedObject *
     });
 }
 
-void HugeObjectSpace::ClearAndFreeRegion(Region *region, size_t cachedSize)
+void HugeObjectSpace::AsyncClearAndFreeRegion(Region *region, size_t cachedSize)
 {
     ASSERT(region != nullptr);
-    LOG_ECMA_MEM(DEBUG) << "Free huge region:" << region;
+    LOG_ECMA_MEM(DEBUG) << "Async free huge region:" << region;
     region->DeleteCrossRegionRSet();
     region->DeleteOldToNewRSet();
     region->DeleteLocalToShareRSet();
@@ -331,7 +331,7 @@ void HugeObjectSpace::ReclaimHugeRegion()
     }
     do {
         Region *last = hugeNeedFreeList_.PopBack();
-        ClearAndFreeRegion(last);
+        AsyncClearAndFreeRegion(last);
     } while (!hugeNeedFreeList_.IsEmpty());
 }
 
