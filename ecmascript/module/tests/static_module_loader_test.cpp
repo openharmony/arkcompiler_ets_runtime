@@ -118,6 +118,10 @@ HWTEST_F_L0(StaticModuleLoaderTest, CanTryLoadStaticModulePath)
     inputFileName = "@package:";
     bool res8 = StaticModuleLoader::CanTryLoadStaticModulePath(inputFileName);
     EXPECT_FALSE(res8);
+
+    inputFileName = "";
+    bool res9 = StaticModuleLoader::CanTryLoadStaticModulePath(inputFileName);
+    EXPECT_FALSE(res9);
 }
 
 HWTEST_F_L0(StaticModuleLoaderTest, GetStaticModuleLoadFunc)

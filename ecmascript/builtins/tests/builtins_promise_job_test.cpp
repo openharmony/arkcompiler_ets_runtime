@@ -175,4 +175,65 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException2)
     EXPECT_EQ(JSTaggedValue::SameValue(thread, message, specifier), true);
     thread->ClearException();
 }
+
+
+// dynamic import static module after load 1.0 module failed
+HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException3)
+{
+    /**
+     * Both the handle and the stack are allocated using maloc.
+     * When newJsError is called, the C interpreter will step back one frame before executing.
+     * In the UT, there is only one frame, and stepping back causes it to step on the handle address.
+     * This is a special scenario caused by the UT, and it would not occur during normal execution.
+     */
+    if (!thread->IsAsmInterpreter()) {
+        return;
+    }
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+
+    auto globalConstants = thread->GlobalConstants();
+    JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSTaggedValue> pandaObject(thread, arr);
+    JSTaggedValue::SetProperty(thread, pandaObject,
+        globalConstants->GetHandledGetModuleString(),
+        JSNApiHelper::ToJSHandle(FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockGetModule)));
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm,
+        JSNApiHelper::ToLocal<StringRef>(globalConstants->GetHandledPandaString()),
+        JSNApiHelper::ToLocal<JSValueRef>(pandaObject));
+    
+    JSHandle<JSTaggedValue> promiseFunc = env->GetPromiseFunction();
+    JSHandle<JSPromise> jsPromise =
+        JSHandle<JSPromise>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(promiseFunc), promiseFunc));
+    JSHandle<ResolvingFunctionsRecord> resolvingFunctions =
+        JSPromise::CreateResolvingFunctions(thread, jsPromise);
+    JSHandle<JSPromiseReactionsFunction> resolve(thread, resolvingFunctions->GetResolveFunction(thread));
+    JSHandle<JSPromiseReactionsFunction> reject(thread, resolvingFunctions->GetRejectFunction(thread));
+    JSHandle<JSTaggedValue> dirPath(factory->NewFromASCII("./main.abc"));
+    JSHandle<JSTaggedValue> specifier(factory->NewFromASCII(""));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 14);
+    Local<JSValueRef> contextValue = JSNApi::GetCurrentContext(vm);
+    JSHandle<LexicalEnv> lexicalEnv(JSNApiHelper::ToJSHandle(contextValue));
+    JSHandle<JSFunction> funHandle = factory->NewJSFunction(env);
+    funHandle->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetFunction(funHandle.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, resolve.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, reject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, dirPath.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(3, specifier.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(4, JSTaggedValue::Undefined());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsPromiseJob::DynamicImportJob(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    JSHandle<JSTaggedValue> result(thread, jsPromise->GetPromiseResult(thread));
+    EXPECT_EQ(result->IsJSProxy(), true);
+    JSHandle<JSTaggedValue> requestPath(factory->NewFromASCII("requestPath"));
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSTaggedValue::GetProperty(thread, result, requestPath).GetValue(),
+                                       specifier), true);
+}
+
 }
