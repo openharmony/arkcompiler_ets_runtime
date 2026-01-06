@@ -472,19 +472,6 @@ JSHandle<EcmaString> BigInt::ToString(JSThread *thread, JSHandle<BigInt> bigint,
     return factory->NewFromASCII(result.c_str());
 }
 
-template <typename DstType>
-void BigInt::AppendToCString(DstType &str, BigInt *bigint, uint32_t conversionToRadix)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    if (bigint->GetSign()) {
-        AppendChar(str, '-');
-    }
-    CString res = BigIntHelper::Conversion(BigIntHelper::GetBinary(bigint), conversionToRadix, BINARY);
-    AppendCString(str, res);
-}
-
-template void BigInt::AppendToCString<CString>(CString &str, BigInt *bigint, uint32_t conversionToRadix);
-template void BigInt::AppendToCString<C16String>(C16String &str, BigInt *bigint, uint32_t conversionToRadix);
 
 CString BigInt::ToStdString(uint32_t conversionToRadix) const
 {

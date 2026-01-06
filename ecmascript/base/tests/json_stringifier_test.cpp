@@ -15,6 +15,7 @@
 
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/json_stringifier.h"
+#include "ecmascript/base/json_stringifier_optimized.cpp"
 #include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_array.h"
@@ -811,12 +812,12 @@ HWTEST_F_L0(JsonStringifierTest, AppendSpecialDouble_01)
         { INFINITY, "Infinity" },
         { -INFINITY, "-Infinity" },
     };
-    CString str;
     for (const auto& testCase : testCases) {
-        bool appended = AppendSpecialDouble(str, testCase.value);
-        ASSERT_TRUE(appended);
-        EXPECT_STREQ(testCase.expected, str.c_str());
-        str.clear();
+        JsonStringifier::FastStringBuilder<uint8_t> str;
+        bool appendSpecial = JsonStringifier::AppendSpecialDoubleToFastStringBuilder(str, testCase.value);
+        ASSERT_TRUE(appendSpecial);
+        std::string result(reinterpret_cast<const char*>(str.GetBuffer()), str.GetLength());
+        EXPECT_STREQ(testCase.expected, result.c_str());
     }
 }
 
@@ -838,11 +839,11 @@ HWTEST_F_L0(JsonStringifierTest, AppendDoubleToString_01)
         { 0.00000000123, "1.23e-9" },
         { -0.0000000456, "-4.56e-8" }
     };
-    CString str;
     for (const auto& testCase : testCases) {
-        AppendDoubleToString(str, testCase.value);
-        EXPECT_STREQ(testCase.expected, str.c_str());
-        str.clear();
+        JsonStringifier::FastStringBuilder<uint8_t> str;
+        JsonStringifier::AppendDoubleToFastStringBuilder(str, testCase.value);
+        std::string result(reinterpret_cast<const char*>(str.GetBuffer()), str.GetLength());
+        EXPECT_STREQ(testCase.expected, result.c_str());
     }
 }
 
@@ -858,11 +859,15 @@ HWTEST_F_L0(JsonStringifierTest, ConvertToCStringAndAppend_01)
         { JSTaggedValue(42), "42" },
         { JSTaggedValue(-3.14), "-3.14" }
     };
-    CString str;
     for (const auto& testCase : testCases) {
-        ConvertNumberToCStringAndAppend(str, testCase.value);
-        EXPECT_STREQ(testCase.expected, str.c_str());
-        str.clear();
+        JsonStringifier::FastStringBuilder<uint8_t> str;
+        if (testCase.value.IsInt()) {
+            JsonStringifier::AppendIntToFastStringBuilder(str, testCase.value.GetInt());
+        } else {
+            JsonStringifier::AppendDoubleToFastStringBuilder(str, testCase.value.GetDouble());
+        }
+        std::string result(reinterpret_cast<const char*>(str.GetBuffer()), str.GetLength());
+        EXPECT_STREQ(testCase.expected, result.c_str());
     }
 }
 #endif

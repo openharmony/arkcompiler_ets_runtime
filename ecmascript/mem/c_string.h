@@ -60,19 +60,6 @@ std::string PUBLIC_API ConvertToStdString(const CString &str);
 CString PUBLIC_API ConvertToString(const JSThread *thread, const ecmascript::EcmaString *s,
     StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
 
-#if ENABLE_NEXT_OPTIMIZATION
-template <typename DstType>
-bool AppendSpecialDouble(DstType &str, double d);
-template <typename DstType>
-void AppendDoubleToString(DstType &str, double d);
-template <typename DstType>
-void AppendIntToCString(DstType &str, int number);
-template <typename DstType>
-void ConvertNumberToCStringAndAppend(DstType &str, JSTaggedValue num);
-void ConvertQuotedAndAppendToCString(const JSThread *thread, CString &str, const EcmaString *s);
-void ConvertQuotedAndAppendToC16String(const JSThread *thread, C16String &str, const EcmaString *s);
-#endif
-
 CString ConvertToString(const JSThread *thread, ecmascript::JSTaggedValue key);
 
 // append char to CString to C16String.

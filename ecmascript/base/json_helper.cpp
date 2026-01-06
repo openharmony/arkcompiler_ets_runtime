@@ -14,13 +14,14 @@
  */
 
 #include "ecmascript/base/json_helper.h"
+#include "ecmascript/base/json_stringifier.h"
 #include "common_components/base/utf_helper.h"
 #include "libpandabase/utils/span.h"
 
 
 namespace panda::ecmascript::base {
 
-#if ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
 constexpr int K_JSON_ESCAPE_TABLE_ENTRY_SIZE = 8;
 
 // Table for escaping Latin1 characters.
@@ -38,6 +39,15 @@ constexpr const char* const JSON_ESCAPE_TABLE =
     "H\0      I\0      J\0      K\0      L\0      M\0      N\0      O\0      "
     "P\0      Q\0      R\0      S\0      T\0      U\0      V\0      W\0      "
     "X\0      Y\0      Z\0      [\0      \\\\\0     ]\0      ^\0      _\0      ";
+ 
+constexpr uint8_t JSON_ESCAPE_LENGTH_TABLE[] = {
+    6, 6, 6, 6, 6, 6, 6, 6, 2, 2, 2, 6, 2, 2, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1,
+};
 
 constexpr bool JSON_DO_NOT_ESCAPE_FLAG_TABLE[] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -105,62 +115,77 @@ bool JsonHelper::IsFastValueToQuotedString(const CString& str)
 }
 #endif
 
-#if ENABLE_NEXT_OPTIMIZATION
-void JsonHelper::AppendQuotedValueToC16String(const common::Span<const uint16_t>& sp, uint32_t& index,
-                                              C16String& output)
+#if ENABLE_LATEST_OPTIMIZATION
+template <typename SrcType, typename T>
+bool JsonHelper::AppendValueToQuotedString(const common::Span<const SrcType> &sp, T &output)
 {
-    auto ch = sp[index];
-    if (common::utf_helper::IsUTF16Surrogate(ch)) {
-        // utf-16 to quoted string
-        if (ch <= common::utf_helper::DECODE_LEAD_HIGH) {
-            if (index + 1 < sp.size() && common::utf_helper::IsUTF16LowSurrogate(sp[index + 1])) {
-                AppendChar(output, ch);
-                AppendChar(output, sp[index + 1]);
-                ++index;
-            } else {
-                AppendUnicodeEscape(static_cast<uint32_t>(ch), output);
-            }
-        } else {
-            AppendUnicodeEscape(static_cast<uint32_t>(ch), output);
-        }
-    } else {
-        ASSERT(ch < 0x60);
-        AppendString(output, &JSON_ESCAPE_TABLE[ch * K_JSON_ESCAPE_TABLE_ENTRY_SIZE]);
-    }
-}
-
-template <typename SrcType, typename DstType>
-void JsonHelper::AppendValueToQuotedString(const common::Span<const SrcType> &sp, DstType &output)
-{
-    static_assert(sizeof(typename DstType::value_type) >= sizeof(SrcType));
-    AppendString(output, "\"");
+    using CharType [[maybe_unused]] = typename T::value_type;
+    ASSERT(sizeof(CharType) >= sizeof(SrcType));
+    output.Append('"');
     if constexpr (sizeof(SrcType) == 1) {
         if (IsFastValueToQuotedString(sp)) {
-            AppendString(output, reinterpret_cast<const char *>(sp.data()), sp.size());
-            AppendString(output, "\"");
-            return;
+            output.AppendString(reinterpret_cast<const char *>(sp.data()), sp.size());
+            output.Append('"');
+            return true;
         }
     }
     uint32_t len = sp.size();
+    uint32_t lastNonEscapePos = 0;
+
     for (uint32_t i = 0; i < len; ++i) {
         auto ch = sp[i];
         if (DoNotEscape(ch)) {
-            AppendChar(output, ch);
-        } else if constexpr (sizeof(SrcType) != 1) {
-            AppendQuotedValueToC16String(sp, i, output);
+            continue;
+        }
+
+        if (LIKELY(i > lastNonEscapePos)) {
+            output.AppendString(sp.data() + lastNonEscapePos, i - lastNonEscapePos);
+        }
+
+        if constexpr (sizeof(SrcType) != 1) {
+            auto utf16Ch = ch;
+            if (common::utf_helper::IsUTF16Surrogate(utf16Ch)) {
+                if (utf16Ch <= common::utf_helper::DECODE_LEAD_HIGH) {
+                    if (i + 1 < len && common::utf_helper::IsUTF16LowSurrogate(sp[i + 1])) {
+                        output.Append(utf16Ch);
+                        output.Append(sp[i + 1]);
+                        ++i;
+                    } else {
+                        AppendUnicodeEscape(static_cast<uint32_t>(utf16Ch), output);
+                    }
+                } else {
+                    AppendUnicodeEscape(static_cast<uint32_t>(utf16Ch), output);
+                }
+            } else {
+                ASSERT(ch < 0x60);
+                const char* escapeStr = &JSON_ESCAPE_TABLE[ch * K_JSON_ESCAPE_TABLE_ENTRY_SIZE];
+                output.AppendString(escapeStr, JSON_ESCAPE_LENGTH_TABLE[ch]);
+            }
         } else {
             ASSERT(ch < 0x60);
-            AppendString(output, &JSON_ESCAPE_TABLE[ch * K_JSON_ESCAPE_TABLE_ENTRY_SIZE]);
+            const char* escapeStr = &JSON_ESCAPE_TABLE[ch * K_JSON_ESCAPE_TABLE_ENTRY_SIZE];
+            output.AppendString(escapeStr, JSON_ESCAPE_LENGTH_TABLE[ch]);
         }
+
+        lastNonEscapePos = i + 1;
     }
-    AppendString(output, "\"");
+
+    if (len > lastNonEscapePos) {
+        output.AppendString(sp.data() + lastNonEscapePos, len - lastNonEscapePos);
+    }
+
+    output.Append('"');
+    return false;
 }
-template void JsonHelper::AppendValueToQuotedString<uint8_t, CString>(
-    const common::Span<const uint8_t> &sp, CString &output);
-template void JsonHelper::AppendValueToQuotedString<uint8_t, C16String>(
-    const common::Span<const uint8_t> &sp, C16String &output);
-template void JsonHelper::AppendValueToQuotedString<uint16_t, C16String>(
-    const common::Span<const uint16_t> &sp, C16String &output);
+
+template bool JsonHelper::AppendValueToQuotedString<uint8_t, JsonStringifier::FastStringBuilder<uint8_t>>(
+    const common::Span<const uint8_t> &sp, JsonStringifier::FastStringBuilder<uint8_t> &output);
+template bool JsonHelper::AppendValueToQuotedString<uint8_t, JsonStringifier::FastStringBuilder<uint16_t>>(
+    const common::Span<const uint8_t> &sp, JsonStringifier::FastStringBuilder<uint16_t> &output);
+template bool JsonHelper::AppendValueToQuotedString<uint16_t, JsonStringifier::FastStringBuilder<uint8_t>>(
+    const common::Span<const uint16_t> &sp, JsonStringifier::FastStringBuilder<uint8_t> &output);
+template bool JsonHelper::AppendValueToQuotedString<uint16_t, JsonStringifier::FastStringBuilder<uint16_t>>(
+    const common::Span<const uint16_t> &sp, JsonStringifier::FastStringBuilder<uint16_t> &output);
 
 #else
 void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
