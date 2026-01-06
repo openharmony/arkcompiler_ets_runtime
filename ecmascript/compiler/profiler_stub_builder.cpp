@@ -642,17 +642,23 @@ void ProfilerStubBuilder::TryPreDumpInner(GateRef glue, GateRef func, GateRef pr
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
+    Label setPreDump(env);
     Label setPreDumpPeriodIndex(env);
-    Label addPredumpWorkList(env);
+    Label setAndAddPredumpWorkList(env);
     Label exit(env);
-    BRANCH(IsProfileTypeInfoPreDumped(profileTypeInfo), &exit, &setPreDumpPeriodIndex);
+    BRANCH(IsProfileTypeInfoPreDumped(profileTypeInfo), &exit, &setPreDump);
+    Bind(&setPreDump);
+    {
+        BRANCH(IsProfileTypeInfoInit(profileTypeInfo), &setAndAddPredumpWorkList, &setPreDumpPeriodIndex);
+    }
     Bind(&setPreDumpPeriodIndex);
     {
         SetPreDumpPeriodIndex(glue, profileTypeInfo);
-        Jump(&addPredumpWorkList);
+        Jump(&exit);
     }
-    Bind(&addPredumpWorkList);
+    Bind(&setAndAddPredumpWorkList);
     {
+        SetPreDumpPeriodIndex(glue, profileTypeInfo);
         CallRuntime(glue, RTSTUB_ID(PGOPreDump), { func });
         Jump(&exit);
     }
@@ -816,6 +822,13 @@ GateRef ProfilerStubBuilder::GetBitFieldOffsetFromProfileTypeInfo(GateRef profil
     auto index = Int32Sub(length, Int32(ProfileTypeInfo::BIT_FIELD_INDEX));
     auto indexOffset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     return PtrAdd(indexOffset, IntPtr(TaggedArray::DATA_OFFSET));
+}
+
+GateRef ProfilerStubBuilder::IsProfileTypeInfoInit(GateRef profileTypeInfo)
+{
+    GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
+    GateRef count = LoadPrimitive(VariableType::INT32(), profileTypeInfo, periodCounterOffset);
+    return Int32Equal(count, Int32(ProfileTypeInfo::INITIAL_PERIOD_INDEX));
 }
 
 GateRef ProfilerStubBuilder::IsProfileTypeInfoDumped(GateRef profileTypeInfo)

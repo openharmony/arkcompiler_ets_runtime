@@ -508,7 +508,9 @@ void BuiltinsFunctionStubBuilder::InitializeSFunction(GateRef glue, GateRef func
 
     if (JSFunction::IsNormalFunctionAndCanSkipWbWhenInitialization(getKind)) {
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+#if !ENABLE_MEMORY_OPTIMIZATION
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+#endif
         if (JSFunction::HasAccessor(getKind)) {
             auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
@@ -524,7 +526,9 @@ void BuiltinsFunctionStubBuilder::InitializeSFunction(GateRef glue, GateRef func
         SetLexicalEnvToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetHomeObjectToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+#if !ENABLE_MEMORY_OPTIMIZATION
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+#endif
         SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
         BRANCH(BitOr(HasAccessor(kind), IsBaseConstructorKind(kind)), &hasAccessOrIsBaseConstructor, &exit);
@@ -582,9 +586,11 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
 
     if (JSFunction::IsNormalFunctionAndCanSkipWbWhenInitialization(getKind)) {
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+#if !ENABLE_MEMORY_OPTIMIZATION
         if constexpr (!isApiFunction) {
             SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
         }
+#endif
         if (JSFunction::HasPrototype(getKind)) {
             auto funcprotoAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                             ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
@@ -628,9 +634,11 @@ void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef fun
         SetLexicalEnvToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetHomeObjectToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+#if !ENABLE_MEMORY_OPTIMIZATION
         if constexpr (!isApiFunction) {
             SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
         }
+#endif
         SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
         BRANCH(HasPrototype(kind), &hasProto, &notProto);

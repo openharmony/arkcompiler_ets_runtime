@@ -138,6 +138,7 @@ private:
 
     GateRef GetSlotID(const SlotIDInfo &slotInfo);
     GateRef GetBitFieldOffsetFromProfileTypeInfo(GateRef profileTypeInfo);
+    GateRef IsProfileTypeInfoInit(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoPreDumped(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoWithBigMethod(GateRef profileTypeInfo);

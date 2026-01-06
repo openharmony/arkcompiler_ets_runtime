@@ -208,12 +208,14 @@ void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, Obj
                 slot++;
                 break;
             }
+#if !ENABLE_MEMORY_OPTIMIZATION
             case JSFunction::WORK_NODE_POINTER_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
                 data_->WriteUint32(sizeof(uintptr_t));
                 data_->WriteRawData(reinterpret_cast<uint8_t *>(slot.SlotAddress()), sizeof(uintptr_t));
                 break;
             }
+#endif
             default: {
                 SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
                 slot++;
@@ -339,6 +341,7 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 data_->WriteEncodeFlag(EncodeFlag::GLOBAL_ENV);
                 slot++;
                 break;
+#if !ENABLE_MEMORY_OPTIMIZATION
             case JSFunction::WORK_NODE_POINTER_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::MULTI_RAW_DATA);
                 data_->WriteUint32(sizeof(uintptr_t));
@@ -346,6 +349,7 @@ void BaseSerializer::SerializeAsyncFunctionFieldIndividually(TaggedObject *root,
                 slot++;
                 break;
             }
+#endif
             default: {
                 SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
                 slot++;

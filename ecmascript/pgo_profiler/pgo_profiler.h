@@ -277,6 +277,7 @@ private:
     bool IsSkippableObjectTypeSafe(ProfileType type);
     bool IsSkippableCtor(uint32_t entityId);
     bool InsertDefinedCtor(uint32_t entityId);
+    bool IsProfileTypeInfoDumped(JSThread *thread, JSFunction *function);
 
     inline void SetCurrentGlobalEnv(JSTaggedValue globalEnv);
     inline JSHandle<GlobalEnv> GetCurrentGlobalEnv() const;
