@@ -283,7 +283,7 @@ public:
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
     static constexpr double HUGE_OBJECT_SIZE_RATIO = 0.8;
-    virtual void ClearAndFreeRegion(Region *region, size_t cachedSize = 0) override;
+    void AsyncClearAndFreeRegion(Region *region, size_t cachedSize = 0);
 
     size_t triggerLocalFullMarkLimit_ {0};
     EcmaList<Region> hugeNeedFreeList_ {};
