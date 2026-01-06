@@ -871,6 +871,7 @@ ecma_source = [
   "ecmascript/builtins/shared_builtins.cpp",
   "ecmascript/byte_array.cpp",
   "ecmascript/base/config.cpp",
+  "ecmascript/ohos/adapter/modulemanager/module_pkg_parser.cpp",
   "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/ohos/enable_aot_list_helper.cpp",
   "ecmascript/ohos/js_pandafile_snapshot_interfaces.cpp",
@@ -1585,6 +1586,7 @@ ohos_source_set("libark_jsruntime_test_set") {
   external_deps = [
     "libuv:uv",
     "zlib:libz",
+    "json:nlohmann_json_static"
   ]
   if (enable_hilog) {
     external_deps += [ "hilog:libhilog" ]

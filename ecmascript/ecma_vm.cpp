@@ -1656,6 +1656,39 @@ void EcmaVM::StopPreLoadSoOrAbc()
     }
 }
 
+void EcmaVM::SetOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
+    CUnorderedSet<CString>>> &ohExportsMap)
+{
+    WriteLockHolder lock(ohExportListLock_);
+    ohExportsList_ = ohExportsMap;
+}
+
+void EcmaVM::UpdateOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
+                                 CUnorderedSet<CString>>> &ohExportsMap)
+{
+    WriteLockHolder lock(ohExportListLock_);
+    ohExportsList_.insert(ohExportsMap.begin(), ohExportsMap.end());
+}
+
+bool EcmaVM::CheckOhExportsWithOhmurl(const CString &moduleName, const CString &packageName, const CString &ohmurl)
+{
+    ReadLockHolder lock(ohExportListLock_);
+    if (packageName.empty()) {
+        return true;
+    }
+    auto moduleIt = ohExportsList_.find(moduleName);
+    if (moduleIt == ohExportsList_.end()) {
+        return true;
+    }
+    const CUnorderedMap<CString, CUnorderedSet<CString>> &moduleExportsList = moduleIt->second;
+    auto packageIt = moduleExportsList.find(packageName);
+    if (packageIt == moduleExportsList.end()) {
+        return true;
+    }
+    const CUnorderedSet<CString> &packageExportsList = packageIt->second;
+    return (packageExportsList.find(ohmurl) != packageExportsList.end());
+}
+
 // Initialize IcuData Path
 void EcmaVM::InitializeIcuData(const JSRuntimeOptions &options)
 {

@@ -55,7 +55,8 @@
               "common_event_service",
               "ffrt",
               "cJSON",
-              "hiview"
+              "hiview",
+              "json"
             ],
             "third_party": [
             ]

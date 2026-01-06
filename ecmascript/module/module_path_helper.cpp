@@ -1188,4 +1188,48 @@ std::pair<std::string, std::string> ModulePathHelper::ResolveOhmUrlStartWithNorm
     }
     return {path, bundleName + PathHelper::SLASH_TAG + moduleName};
 }
+
+bool ModulePathHelper::CheckExportsWithOhmurl(EcmaVM *vm, const CString &baseFileName, const CString &currentOhmurl,
+                                              const CString &importOhmurl)
+{
+    // Only check normalized ohmurl
+    // Starting with '&' indicates a relative path within the package.
+    if (!vm->IsNormalizedOhmUrlPack() ||
+        StringHelper::StringStartWith(importOhmurl, PathHelper::NORMALIZED_OHMURL_TAG)) {
+        return true;
+    }
+    CString importPkgName = GetPkgNameWithNormalizedOhmurl(importOhmurl);
+    CString currentPkgName = GetPkgNameWithNormalizedOhmurl(currentOhmurl);
+    if (importPkgName == currentPkgName) {
+        return true;
+    }
+    CString moduleName = GetModuleNameWithBaseFile(baseFileName);
+    if (moduleName.empty()) {
+        moduleName = vm->GetModuleName();
+    }
+    return vm->CheckOhExportsWithOhmurl(moduleName, importPkgName, importOhmurl);
+}
+
+/*
+ * Before: @normalized:N&[<module name?>]&[<bundle name>?]&<pkg name + /src/main + path>&[<version>?]
+ * After:  1. @groupName/packageName
+ *         2. packageName
+ */
+CString ModulePathHelper::GetPkgNameWithNormalizedOhmurl(const CString &ohmurl)
+{
+    CString packageName {};
+    CVector<CString> res = SplitNormalizedRecordName(ohmurl);
+    const CString &importPath = res[NORMALIZED_IMPORT_PATH_INDEX];
+    size_t slashPos = importPath.find(PathHelper::SLASH_TAG);
+    if (slashPos == CString::npos) {
+        return packageName;
+    }
+    if (StringHelper::StringStartWith(importPath, PathHelper::NAME_SPACE_TAG)) {
+        slashPos = importPath.find(PathHelper::SLASH_TAG, slashPos + 1);
+    }
+    if (slashPos != CString::npos) {
+        packageName = importPath.substr(0, slashPos);
+    }
+    return packageName;
+}
 }  // namespace panda::ecmascript

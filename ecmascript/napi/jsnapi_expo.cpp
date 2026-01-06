@@ -35,6 +35,7 @@
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/napi_module_loader.h"
 #include "ecmascript/napi/jsnapi_class_creation_helper.h"
+#include "ecmascript/ohos/adapter/modulemanager/module_pkg_parser.h"
 #include "ecmascript/ohos/js_pandafile_snapshot_interfaces.h"
 #include "ecmascript/ohos/module_snapshot_interfaces.h"
 #include "ecmascript/ohos/ohos_constants.h"
@@ -4774,6 +4775,43 @@ void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm,
         workerVm->UpdatePkgContextInfoList(pkgContextInfoList);
     }
 }
+
+void JSNApi::SetPkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
+    std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CMap<ecmascript::CString,
+        ecmascript::CVector<ecmascript::CString>>> pkgContextInfoList;
+    ecmascript::CMap <ecmascript::CString, ecmascript::CString> pkgAliasList;
+    ecmascript::CUnorderedMap<ecmascript::CString, ecmascript::CUnorderedMap<ecmascript::CString,
+        ecmascript::CUnorderedSet<ecmascript::CString>>> ohExportsList;
+    ecmascript::ohos::ModulePkgParser::ParseModulePkgJson(vm, pkgInfoMap, pkgContextInfoList, pkgAliasList,
+        ohExportsList);
+    vm->SetpkgContextInfoList(pkgContextInfoList);
+    vm->SetPkgAliasList(pkgAliasList);
+    vm->SetOhExportsList(ohExportsList);
+}
+
+void JSNApi::UpdatePkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
+    std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap)
+{
+    ecmascript::CMap<ecmascript::CString, ecmascript::CMap<ecmascript::CString,
+        ecmascript::CVector<ecmascript::CString>>> pkgContextInfoList;
+    ecmascript::CMap <ecmascript::CString, ecmascript::CString> pkgAliasList;
+    ecmascript::CUnorderedMap<ecmascript::CString, ecmascript::CUnorderedMap<ecmascript::CString,
+        ecmascript::CUnorderedSet<ecmascript::CString>>> ohExportsMap;
+    ecmascript::ohos::ModulePkgParser::ParseModulePkgJson(vm, pkgInfoMap, pkgContextInfoList, pkgAliasList,
+        ohExportsMap);
+    vm->UpdatePkgContextInfoList(pkgContextInfoList);
+    vm->UpdatePkgAliasList(pkgAliasList);
+    vm->UpdateOhExportsList(ohExportsMap);
+    ecmascript::CMap<uint32_t, EcmaVM *> workerList = vm->GetWorkList();
+    for (auto &[_, workerVm]: workerList) {
+        workerVm->UpdatePkgContextInfoList(pkgContextInfoList);
+        workerVm->UpdatePkgAliasList(pkgAliasList);
+        workerVm->UpdateOhExportsList(ohExportsMap);
+    }
+}
+
 // Only used for env created by napi to set module execution mode
 void JSNApi::SetExecuteBufferMode(const EcmaVM *vm)
 {
@@ -4911,6 +4949,7 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetPkgNameList(const_cast<EcmaVM *>(hostVM)->GetPkgNameList());
     vm->SetPkgAliasList(const_cast<EcmaVM *>(hostVM)->GetPkgAliasList());
     vm->SetpkgContextInfoList(const_cast<EcmaVM *>(hostVM)->GetPkgContextInfoList());
+    vm->SetOhExportsList(const_cast<EcmaVM *>(hostVM)->GetOhExportList());
 
     ecmascript::ModuleManager *vmModuleManager =
         vm->GetAssociatedJSThread()->GetModuleManager();

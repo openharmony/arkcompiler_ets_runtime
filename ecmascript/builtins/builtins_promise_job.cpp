@@ -258,7 +258,13 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         return DynamicImport::ExecuteNativeOrJsonModule(thread, requestPath,
             SourceTextModule::GetNativeModuleType(requestPath), resolve, reject);
     }
-
+    bool isExport = ModulePathHelper::CheckExportsWithOhmurl(vm, fileName, recordNameStr, requestPath);
+    if (!isExport) {
+        CString normalizeStr = ModulePathHelper::ReformatPath(requestPath);
+        CString msg = "Cannot find dynamic-import module in oh-exports:'" + normalizeStr;
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(),
+            HandleModuleException(thread, resolve, reject, specifierString));
+    }
     CString moduleName;
     if (recordName->IsUndefined()) {
         fileName = ResolveFilenameFromNative(thread, fileName, requestPath);
