@@ -74,6 +74,7 @@ public:
     void ClearMarkBits();
 
     JitFortRegion *ObjectAddressToRange(uintptr_t objAddress);
+    static void InitJitFort();
     static void InitJitFortResource();
     void PrepareSweeping();
     void AsyncSweep();
