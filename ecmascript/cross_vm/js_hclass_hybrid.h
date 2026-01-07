@@ -15,10 +15,10 @@
 #ifndef ECMASCRIPT_CROSS_VM_JS_HCLASS_HYBRID_H
 #define ECMASCRIPT_CROSS_VM_JS_HCLASS_HYBRID_H
 
-#define JSHCLASS_PUBLIC_HYBRID_EXTENSION()                    \
-    inline bool IsJSXRefObject() const                        \
-    {                                                         \
-        return GetObjectType() == JSType::JS_XREF_OBJECT;     \
+#define JSHCLASS_PUBLIC_HYBRID_EXTENSION()                                                                            \
+    inline bool IsJSXRefObject() const                                                                                \
+    {                                                                                                                 \
+        return (GetObjectType() >= JSType::JS_XREF_OBJECT && GetObjectType() <= JSType::JS_XREF_WRAPPED_NAPI_OBJECT); \
     }
 
 #endif  // ECMASCRIPT_CROSS_VM_JS_HCLASS_HYBRID_H

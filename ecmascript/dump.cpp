@@ -78,8 +78,12 @@ CString JSHClass::DumpJSType(JSType type)
             return "NativePointer";
         case JSType::JS_OBJECT:
             return "Object";
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
+            return "WrappedNapiObject";
         case JSType::JS_XREF_OBJECT:
             return "XRefObject";
+        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT:
+            return "XRefWrappedNapiObject";
         case JSType::JS_SHARED_OBJECT:
             return  "SharedObject";
         case JSType::JS_FUNCTION_BASE:
@@ -771,6 +775,11 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
             GlobalEnv::Cast(obj)->Dump(thread, os);
             break;
         case JSType::ACCESSOR_DATA:
+            break;
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
+        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT:
+            needDumpHClass = true;
+            JSWrappedNapiObject::Cast(obj)->Dump(thread, os);
             break;
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_FUNCTION:
@@ -1663,6 +1672,14 @@ void JSObject::Dump(const JSThread *thread, std::ostream &os, bool isPrivacy) co
         os << " <NameDictionary[" << std::dec << dict->EntriesCount() << "]>\n";
         dict->Dump(thread, os, isPrivacy);
     }
+}
+
+void JSWrappedNapiObject::Dump(const JSThread *thread, std::ostream &os) const
+{
+    os << " - NativePointers: ";
+    GetNativePointers(thread).Dump(thread, os);
+    os << "\n";
+    JSObject::Dump(thread, os);
 }
 
 void TaggedArray::Dump(const JSThread *thread, std::ostream &os) const
@@ -4175,6 +4192,10 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::JS_SHARED_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
+        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT:
+            JSWrappedNapiObject::Cast(obj)->DumpForSnapshot(thread, vec);
+            break;
         case JSType::JS_FUNCTION_BASE:
         case JSType::JS_FUNCTION:
         case JSType::JS_SHARED_FUNCTION:
@@ -4954,6 +4975,12 @@ void JSObject::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &v
         NameDictionary *dict = NameDictionary::Cast(properties);
         dict->DumpForSnapshot(thread, vec);
     }
+}
+
+void JSWrappedNapiObject::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("NativePointers"), GetNativePointers(thread));
+    JSObject::DumpForSnapshot(thread, vec);
 }
 
 void JSHClass::DumpForSnapshot(const JSThread *thread, [[maybe_unused]] std::vector<Reference> &vec) const

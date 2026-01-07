@@ -388,13 +388,14 @@ public:
         Barriers::SetPrimitive<JSTaggedType>(this, ECMAObject::HASH_OFFSET, JSTaggedValue(0).GetRawData());
     }
 
-    JSTaggedValue GetNativePointerByIndex(const JSThread *thread, int32_t index) const;
-    void* GetNativePointerField(const JSThread *thread, int32_t index) const;
-    static void SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
-                                      void *nativePointer, const NativePointerCallback &callBack, void *data,
-                                      size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
-    int32_t GetNativePointerFieldCount(const JSThread *thread) const;
-    static void SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t count);
+    JSTaggedValue GetNativePointerByIndexOnHashField(const JSThread *thread, int32_t index) const;
+    static void SetNativePointerFieldOnHashField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
+                                                 void *nativePointer, const NativePointerCallback &callBack, void *data,
+                                                 size_t nativeBindingsize = 0,
+                                                 Concurrent isConcurrent = Concurrent::NO);
+    int32_t GetNativePointerFieldCountOnHashField(const JSThread *thread) const;
+    static void SetNativePointerFieldCountOnHashField(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                                      int32_t count);
 
     DECL_VISIT_OBJECT(HASH_OFFSET, SIZE);
 
@@ -810,7 +811,16 @@ public:
 
     // Find function in JsObject For Hook
     static JSHandle<JSTaggedValue> FindFuncInObjectForHook(JSThread *thread, JSHandle<JSTaggedValue> object,
-                                                const std::string &className, const std::string &funcName);
+                                                           const std::string &className, const std::string &funcName);
+
+    JSTaggedValue GetNativePointerByIndex(const JSThread *thread, int32_t index) const;
+    void* GetNativePointerField(const JSThread *thread, int32_t index) const;
+    static void SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
+                                      void *nativePointer, const NativePointerCallback &callBack, void *data,
+                                      size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
+    int32_t GetNativePointerFieldCount(const JSThread *thread) const;
+    static void SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                           int32_t count);
 
 private:
     friend class ObjectOperator;
@@ -864,6 +874,22 @@ private:
                                                   JSHandle<JSTaggedValue> &receiver,
                                                   bool mayThrow);
     static bool ThrowTypeErrorInextensiableAddProperty(ObjectOperator *op);
+};
+
+class JSWrappedNapiObject : public JSObject {
+public:
+    CAST_CHECK(JSWrappedNapiObject, IsJSWrappedNapiObject);
+    static constexpr size_t NATIVE_POINTERS_OFFSET = JSObject::SIZE;
+    ACCESSORS(NativePointers, NATIVE_POINTERS_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, NATIVE_POINTERS_OFFSET, LAST_OFFSET)
+    DECL_DUMP()
+
+    static inline void InitializeNativePointersField(const JSThread *thread, const JSHandle<JSObject> &obj)
+    {
+        JSHandle<JSWrappedNapiObject>::Cast(obj)->SetNativePointers<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+    }
 };
 }  // namespace ecmascript
 }  // namespace panda

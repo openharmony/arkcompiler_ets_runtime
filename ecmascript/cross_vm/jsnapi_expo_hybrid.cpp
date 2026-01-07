@@ -49,6 +49,15 @@ Local<ObjectRef> ObjectRef::NewJSXRefObject(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
+Local<ObjectRef> ObjectRef::NewJSXRefWrappedNapiObject(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> object(factory->NewJSXRefWrappedNapiObject());
+    return JSNApiHelper::ToLocal<ObjectRef>(object);
+}
+
 void JSNApi::SetStackInfo(const EcmaVM *vm, const panda::StackInfo &info)
 {
     JSThread *thread = vm->GetJSThread();

@@ -19,7 +19,8 @@
     V(ProxyNapiWrapperString,         PROXY_NAPI_WRAPPER_INDEX,              "_proxynapiwrapper")           \
     V(UnifiedGcCause,                 UNIFIED_GC_CAUSE,                      "unified")
 
-#define GLOBAL_ENV_CONSTANT_CLASS_HYBRID(V)                                        \
-    V(JSTaggedValue, XRefObjectClass, XREF_OBJECT_HCLASS_INDEX, ecma_roots_class)
+#define GLOBAL_ENV_CONSTANT_CLASS_HYBRID(V)                                                                 \
+    V(JSTaggedValue, XRefObjectClass, XREF_OBJECT_HCLASS_INDEX, ecma_roots_class)                           \
+    V(JSTaggedValue, XRefWrappedNapiObjectClass, XREF_WRAPPED_NAPI_OBJECT_HCLASS_INDEX, ecma_roots_class)
 
 #endif  // ECMASCRIPT_CROSS_VM_GLOBAL_ENV_CONSTANTS_HYBRID_H

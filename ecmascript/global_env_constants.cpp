@@ -554,6 +554,8 @@ void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory
     if (Runtime::GetInstance()->IsHybridVm()) {
         SetConstant(ConstantIndex::XREF_OBJECT_HCLASS_INDEX,
                     factory->NewEcmaHClass(hClass, JSObject::SIZE, JSType::JS_XREF_OBJECT));
+        SetConstant(ConstantIndex::XREF_WRAPPED_NAPI_OBJECT_HCLASS_INDEX,
+                    factory->NewEcmaHClass(hClass, JSWrappedNapiObject::SIZE, JSType::JS_XREF_WRAPPED_NAPI_OBJECT));
     }
 }
 

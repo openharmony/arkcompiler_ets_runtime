@@ -5377,7 +5377,7 @@ HWTEST_F_L0(JSNApiSplTest, ObjectRef_SetNativePointerFieldCount)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<ObjectRef> object = ObjectRef::NewWrappedNapiObject(vm_);
     int32_t input = 34; // 34 = random number
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
@@ -5391,7 +5391,7 @@ HWTEST_F_L0(JSNApiSplTest, ObjectRef_GetNativePointerFieldCount)
 {
     LocalScope scope(vm_);
     CalculateForTime();
-    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<ObjectRef> object = ObjectRef::NewWrappedNapiObject(vm_);
     int32_t input = 34; // 34 = random number
     object->SetNativePointerFieldCount(vm_, input);
     gettimeofday(&g_beginTime, nullptr);

@@ -212,6 +212,12 @@ public:
                 jsSharedObject->VisitRangeSlot<visitType>(visitor);
                 break;
             }
+            case JSType::JS_XREF_WRAPPED_NAPI_OBJECT:
+            case JSType::JS_WRAPPED_NAPI_OBJECT: {
+                auto jsWrappedNapiObj = JSWrappedNapiObject::Cast(object);
+                jsWrappedNapiObj->VisitRangeSlot<visitType>(visitor);
+                break;
+            }
             case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
                 JSAsyncFromSyncIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;

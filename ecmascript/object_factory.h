@@ -293,7 +293,7 @@ public:
 
     JSHandle<JSObject> OrdinaryNewJSObjectCreate(const JSHandle<JSTaggedValue> &proto);
 
-    JSHandle<JSObject> CreateNapiObject();
+    JSHandle<JSObject> CreateNapiObject(bool isWrapped = false);
     JSHandle<JSObject> CreateNullJSObject();
 
     JSHandle<JSFunction> NewAotFunction(uint32_t numArgs, uintptr_t codeEntry);

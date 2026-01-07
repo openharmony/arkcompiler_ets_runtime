@@ -1278,6 +1278,12 @@ bool JSValueRef::IsSendable(const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsSendable();
 }
 
+bool JSValueRef::IsWrappedNapiObject(const EcmaVM *vm)
+{
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSWrappedNapiObject();
+}
+
 // ---------------------------------- DataView -----------------------------------
 Local<DataViewRef> DataViewRef::New(
     const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
@@ -2704,6 +2710,15 @@ Local<ObjectRef> ObjectRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ObjectRef>(object);
 }
 
+Local<ObjectRef> ObjectRef::NewWrappedNapiObject(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSTaggedValue> object(factory->CreateNapiObject(true));
+    return JSNApiHelper::ToLocal<ObjectRef>(object);
+}
+
 uintptr_t ObjectRef::NewObject(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm,
@@ -3285,7 +3300,7 @@ void ObjectRef::SetNativePointerFieldCount(const EcmaVM *vm, int32_t count)
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    ECMAObject::SetNativePointerFieldCount(thread, object, count);
+    JSObject::SetNativePointerFieldCount(thread, object, count);
 }
 
 int32_t ObjectRef::GetNativePointerFieldCount(const EcmaVM *vm)
@@ -3317,7 +3332,7 @@ void ObjectRef::SetNativePointerField(const EcmaVM *vm, int32_t index, void *nat
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    ECMAObject::SetNativePointerField(thread, object, index, nativePointer, callBack, data, nativeBindingsize);
+    JSObject::SetNativePointerField(thread, object, index, nativePointer, callBack, data, nativeBindingsize);
 }
 
 void ObjectRef::SetConcurrentNativePointerField(const EcmaVM *vm, int32_t index, void *nativePointer,
@@ -3329,8 +3344,8 @@ void ObjectRef::SetConcurrentNativePointerField(const EcmaVM *vm, int32_t index,
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
-    ECMAObject::SetNativePointerField(thread, object, index, nativePointer, callBack, data,
-                                      nativeBindingsize, Concurrent::YES);
+    JSObject::SetNativePointerField(thread, object, index, nativePointer, callBack, data, nativeBindingsize,
+                                    Concurrent::YES);
 }
 
 // -------------------------------- NativePointerRef ------------------------------------

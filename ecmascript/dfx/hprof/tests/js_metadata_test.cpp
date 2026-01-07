@@ -282,6 +282,7 @@ public:
                                               "MinimumSignificantDigits", "MaximumSignificantDigits",
                                               "UseGrouping", "BoundFormat", "IcuField", "JS_NUMBER_FORMAT"}},
             {JSType::JS_OBJECT, {"Properties", "Elements", "JS_OBJECT"}},
+            {JSType::JS_WRAPPED_NAPI_OBJECT, {"NativePointers", "JS_WRAPPED_NAPI_OBJECT"}},
             {JSType::JS_OOM_ERROR, {"Properties", "Elements", "JS_OOM_ERROR"}},
             {JSType::JS_PLURAL_RULES, {"Locale", "MinimumIntegerDigits",
                                        "MinimumFractionDigits", "MaximumFractionDigits",
@@ -390,6 +391,7 @@ public:
             {JSType::SENDABLE_ENV, {"SENDABLE_ENV"}},
             {JSType::SFUNCTION_ENV, {"SFUNCTION_ENV"}},
             {JSType::JS_XREF_OBJECT, {"JS_XREF_OBJECT"}},
+            {JSType::JS_XREF_WRAPPED_NAPI_OBJECT, {"JS_XREF_WRAPPED_NAPI_OBJECT"}},
             {JSType::SLICED_STRING, {"Parent", "SLICED_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"Environment", "Namespace", "ModuleRequests", "RequestedModules",
                                                  "ImportEntries", "LocalExportEntries",
@@ -746,6 +748,9 @@ public:
             {JSType::JS_OBJECT, {JSObject::PROPERTIES_OFFSET,
                                  JSObject::ELEMENTS_OFFSET,
                                  JSObject::SIZE - JSObject::PROPERTIES_OFFSET}},
+            {JSType::JS_WRAPPED_NAPI_OBJECT, {
+                JSWrappedNapiObject::NATIVE_POINTERS_OFFSET,
+                JSWrappedNapiObject::LAST_OFFSET - JSWrappedNapiObject::NATIVE_POINTERS_OFFSET}},
             {JSType::JS_OOM_ERROR, {JSObject::PROPERTIES_OFFSET,
                                     JSObject::ELEMENTS_OFFSET,
                                     JSObject::SIZE - JSObject::PROPERTIES_OFFSET}},
@@ -994,6 +999,7 @@ public:
             {JSType::SENDABLE_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
             {JSType::SFUNCTION_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
             {JSType::JS_XREF_OBJECT, {JSObject::SIZE - JSObject::SIZE}},
+            {JSType::JS_XREF_WRAPPED_NAPI_OBJECT, {JSWrappedNapiObject::SIZE - JSWrappedNapiObject::SIZE}},
             {JSType::SLICED_STRING, {SlicedString::PARENT_OFFSET, SlicedString::SIZE - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -1145,6 +1151,7 @@ public:
             {JSType::JS_NATIVE_POINTER, {"TAGGED_OBJECT"}},
             {JSType::JS_NUMBER_FORMAT, {"JS_OBJECT"}},
             {JSType::JS_OBJECT, {"ECMA_OBJECT"}},
+            {JSType::JS_WRAPPED_NAPI_OBJECT, {"JS_OBJECT"}},
             {JSType::JS_OOM_ERROR, {"ECMA_OBJECT"}},
             {JSType::JS_PLURAL_RULES, {"JS_OBJECT"}},
             {JSType::JS_PRIMITIVE_REF, {"JS_OBJECT"}},
@@ -1239,6 +1246,7 @@ public:
             {JSType::SENDABLE_ENV, {"TAGGED_ARRAY"}},
             {JSType::SFUNCTION_ENV, {"TAGGED_ARRAY"}},
             {JSType::JS_XREF_OBJECT, {"JS_OBJECT"}},
+            {JSType::JS_XREF_WRAPPED_NAPI_OBJECT, {"JS_WRAPPED_NAPI_OBJECT"}},
             {JSType::SLICED_STRING, {"ECMA_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"MODULE_RECORD"}},
             {JSType::STAR_EXPORTENTRY_RECORD, {"RECORD"}},
@@ -1525,6 +1533,7 @@ public:
             {JSType::JS_OBJECT, {
                 JSObject::ELEMENTS_OFFSET - JSObject::PROPERTIES_OFFSET,
                 JSObject::SIZE - JSObject::ELEMENTS_OFFSET}},
+            {JSType::JS_WRAPPED_NAPI_OBJECT, {JSWrappedNapiObject::SIZE - JSWrappedNapiObject::NATIVE_POINTERS_OFFSET}},
             {JSType::JS_OOM_ERROR, {
                 JSObject::ELEMENTS_OFFSET - JSObject::PROPERTIES_OFFSET,
                 JSObject::SIZE - JSObject::ELEMENTS_OFFSET}},
@@ -1737,6 +1746,7 @@ public:
             {JSType::SENDABLE_ENV, {}},
             {JSType::SFUNCTION_ENV, {}},
             {JSType::JS_XREF_OBJECT, {}},
+            {JSType::JS_XREF_WRAPPED_NAPI_OBJECT, {}},
             {JSType::SLICED_STRING, {SlicedString::STARTINDEX_AND_FLAGS_OFFSET - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::NAMESPACE_OFFSET - SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -3428,6 +3438,17 @@ HWTEST_F_L0(JSMetadataTest, TestJsObjectMetadata)
     ASSERT_TRUE(tester.Test(JSType::JS_OBJECT, metadata));
 }
 
+HWTEST_F_L0(JSMetadataTest, TestJSWrappedNapiObjectMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_wrapped_napi_object.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::JS_WRAPPED_NAPI_OBJECT, metadata));
+}
+
 HWTEST_F_L0(JSMetadataTest, TestJsOomErrorMetadata)
 {
     JSMetadataTestHelper tester {};
@@ -4446,13 +4467,22 @@ HWTEST_F_L0(JSMetadataTest, TestSFunctionEnvMetadata)
 
 HWTEST_F_L0(JSMetadataTest, TestJsXrefObjectMetadata) {
     JSMetadataTestHelper tester{};
-    std::string metadataFilePath =
-        METADATA_SOURCE_FILE_DIR "js_xref_object.json";
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_xref_object.json";
     JSMetadataTestHelper::Metadata metadata{};
 
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::JS_XREF_OBJECT, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestJsXRefWrappedNapiObjectMetadata) {
+    JSMetadataTestHelper tester{};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_xref_wrapped_napi_object.json";
+    JSMetadataTestHelper::Metadata metadata{};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::JS_XREF_WRAPPED_NAPI_OBJECT, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestSlicedStringMetadata)

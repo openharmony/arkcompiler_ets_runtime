@@ -3170,7 +3170,7 @@ bool ECMAObject::HasHash(const JSThread *thread) const
     return true;
 }
 
-JSTaggedValue ECMAObject::GetNativePointerByIndex(const JSThread *thread, int32_t index) const
+JSTaggedValue ECMAObject::GetNativePointerByIndexOnHashField(const JSThread *thread, int32_t index) const
 {
     JSTaggedType hashField = Barriers::GetTaggedValue(thread, this, HASH_OFFSET);
     JSTaggedValue value(hashField);
@@ -3188,29 +3188,10 @@ JSTaggedValue ECMAObject::GetNativePointerByIndex(const JSThread *thread, int32_
     return JSTaggedValue::Undefined();
 }
 
-void *ECMAObject::GetNativePointerField(const JSThread *thread, int32_t index) const
-{
-    JSTaggedType hashField = Barriers::GetTaggedValue(thread, this, HASH_OFFSET);
-    JSTaggedValue value(hashField);
-    if (value.IsTaggedArray()) {
-        auto array = TaggedArray::Cast(value);
-        if (static_cast<int32_t>(array->GetExtraLength()) > index) {
-            auto jsValue = array->Get(thread, index);
-            if (UNLIKELY(!jsValue.IsJSNativePointer())) {
-                LOG_FULL(ERROR) << "jsValue is not js native pointer";
-                return nullptr;
-            }
-            auto pointer = JSNativePointer::Cast(jsValue.GetTaggedObject());
-            return pointer->GetExternalPointer();
-        }
-    }
-    return nullptr;
-}
-
 // static
-void ECMAObject::SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
-                                       void *nativePointer, const NativePointerCallback &callBack, void *data,
-                                       size_t nativeBindingsize, Concurrent isConcurrent)
+void ECMAObject::SetNativePointerFieldOnHashField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
+                                                  void *nativePointer, const NativePointerCallback &callBack,
+                                                  void *data, size_t nativeBindingsize, Concurrent isConcurrent)
 {
     JSTaggedType hashField = Barriers::GetTaggedValue(thread, *obj, HASH_OFFSET);
     JSTaggedValue value(hashField);
@@ -3236,7 +3217,7 @@ void ECMAObject::SetNativePointerField(const JSThread *thread, const JSHandle<JS
     }
 }
 
-int32_t ECMAObject::GetNativePointerFieldCount(const JSThread *thread) const
+int32_t ECMAObject::GetNativePointerFieldCountOnHashField(const JSThread *thread) const
 {
     int32_t len = 0;
     JSTaggedType hashField = Barriers::GetTaggedValue(thread, this, HASH_OFFSET);
@@ -3249,7 +3230,8 @@ int32_t ECMAObject::GetNativePointerFieldCount(const JSThread *thread) const
 }
 
 // static
-void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t count)
+void ECMAObject::SetNativePointerFieldCountOnHashField(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                                       int32_t count)
 {
     if (count == 0) {
         return;
@@ -3289,6 +3271,203 @@ void ECMAObject::SetNativePointerFieldCount(const JSThread *thread, const JSHand
         newArray->SetExtraLength(count);
         newArray->Set(thread, count + HASH_INDEX, value);
         Barriers::SetObject<true>(thread, *obj, HASH_OFFSET, newArray.GetTaggedValue().GetRawData());
+    }
+}
+
+/*
+ *                    Three kinds of storage locations of nativepointers
+ *
+ *   1.In JSWrappedNapiObject                       2.In Sendable JSObject               3.In common JSObject
+ *
+ *      +----------------+                            +----------------+                  +----------------+
+ *      |    JSHclass    |                            |    JSHclass    |                  |    JSHclass    |
+ *      +----------------+                            +----------------+                  +----------------+
+ *      |   HashField    |                            |   HashField    |            ------|   HashField    |
+ *      +----------------+                            +----------------+            |     +----------------+
+ *      |   Properties   |              --------------|   Properties   |            |     |   Properties   |
+ *      +----------------+              |             |       or       |            |     +----------------+
+ *      |    Elements    |              V             | NativePointers |            V
+ *      +----------------+     +----------------+     +----------------+    +------------------+
+ *      | NativePointers |---->| nativepointer0 |                           |  nativepointer0  |
+ *      +----------------+     +----------------+                           +------------------+
+ *                             | nativepointer1 |                           |  nativepointer1  |
+ *                             +----------------+                           +------------------+
+ *                             |     ......     |                           |      ......      |
+ *                             +----------------+                           +------------------+
+ *                             | naitvepointerN |                           |  naitvepointerN  |
+ *                             +----------------+                           +------------------+
+ *                 A TaggedArray which stores nativepointers.               |       hash       |
+ *                                                                          +------------------+
+ *                                                                          | functionExtraInfo|
+ *                                                                          +------------------+
+ *                                                          A TaggedArray which stores nativepointers, hash and
+ *                                                          functionExtraInfo.
+ */
+JSTaggedValue JSObject::GetNativePointerByIndex(const JSThread *thread, int32_t index) const
+{
+    JSTaggedValue value = JSTaggedValue::Undefined();
+    if (JSTaggedValue(this).IsJSSharedObject()) {
+        if (IsPropertiesDict(thread) || GetClass()->IsNonInlinedPropExist()) {
+            return GetNativePointerByIndexOnHashField(thread, index);
+        } else {
+            // For a Sendable object, if its Properties is not in dictionary mode and there are no non-inlined
+            // properties, then it can be considered that the Properties field is not used and thus can be used to store
+            // NativePointers.
+            value = GetProperties(thread);
+        }
+    } else if (JSTaggedValue(this).IsJSWrappedNapiObject()) {
+        value = JSWrappedNapiObject::ConstCast(this)->GetNativePointers(thread);
+    } else {
+        // Currently, ArkUI will call SetNativePointerFieldCount to store NativePointers, and in this case, it is
+        // impossible to store NativePointers by extending a field through the subclass of JSObject.
+        return GetNativePointerByIndexOnHashField(thread, index);
+    }
+
+    if (value.IsTaggedArray()) {
+        auto array = TaggedArray::Cast(value);
+        if (static_cast<int32_t>(array->GetExtraLength()) > index) {
+            auto jsValue = array->Get(thread, index);
+            if (UNLIKELY(!jsValue.IsJSNativePointer())) {
+                LOG_FULL(ERROR) << "jsValue is not js native pointer";
+                return JSTaggedValue::Undefined();
+            }
+            return jsValue;
+        }
+    }
+
+    return JSTaggedValue::Undefined();
+}
+
+void *JSObject::GetNativePointerField(const JSThread *thread, int32_t index) const
+{
+    JSTaggedValue jsValue = GetNativePointerByIndex(thread, index);
+    if LIKELY (jsValue.IsJSNativePointer()) {
+        return JSNativePointer::Cast(jsValue.GetTaggedObject())->GetExternalPointer();
+    }
+    return nullptr;
+}
+
+void JSObject::SetNativePointerField(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t index,
+                                     void *nativePointer, const NativePointerCallback &callBack, void *data,
+                                     size_t nativeBindingsize, Concurrent isConcurrent)
+{
+    JSHandle<JSTaggedValue> value;
+    if (obj.GetTaggedValue().IsJSSharedObject()) {
+        JSHandle<JSHClass> objHClass(thread, obj->GetJSHClass());
+        if (obj->IsPropertiesDict(thread) || objHClass->IsNonInlinedPropExist()) {
+            SetNativePointerFieldOnHashField(thread, obj, index, nativePointer, callBack, data, nativeBindingsize,
+                                             isConcurrent);
+            return;
+        } else {
+            // For a Sendable object, if its Properties is not in dictionary mode and there are no non-inlined
+            // properties, then it can be considered that the Properties field is not used and thus can be used to store
+            // NativePointers.
+            value = JSHandle<JSTaggedValue>(thread, obj->GetProperties(thread));
+        }
+    } else if (obj.GetTaggedValue().IsJSWrappedNapiObject()) {
+        value = JSHandle<JSTaggedValue>(thread, JSHandle<JSWrappedNapiObject>(obj)->GetNativePointers(thread));
+    } else {
+        // Currently, ArkUI will call SetNativePointerFieldCount to store NativePointers, and in this case, it is
+        // impossible to store NativePointers by extending a field through the subclass of JSObject.
+        SetNativePointerFieldOnHashField(thread, obj, index, nativePointer, callBack, data, nativeBindingsize,
+                                         isConcurrent);
+        return;
+    }
+
+    if (value->IsTaggedArray()) {
+        JSHandle<TaggedArray> array(value);
+        if (static_cast<int32_t>(array->GetExtraLength()) > index) {
+            EcmaVM *vm = thread->GetEcmaVM();
+            JSHandle<JSTaggedValue> current = JSHandle<JSTaggedValue>(thread, array->Get(thread, index));
+            if (!current->IsHole() && nativePointer == nullptr) {
+                // Try to remove native pointer if exists.
+                vm->RemoveFromNativePointerList(*JSHandle<JSNativePointer>(current));
+                array->Set(thread, index, JSTaggedValue::Hole());
+            } else if (obj->IsJSShared()) {
+                JSHandle<JSNativePointer> pointer =
+                    vm->GetFactory()->NewSJSNativePointer(nativePointer, callBack, data, false, nativeBindingsize);
+                array->Set(thread, index, pointer.GetTaggedValue());
+            } else {
+                JSHandle<JSNativePointer> pointer = vm->GetFactory()->NewJSNativePointer(
+                    nativePointer, callBack, data, false, nativeBindingsize, isConcurrent);
+                array->Set(thread, index, pointer.GetTaggedValue());
+            }
+        }
+    }
+}
+
+int32_t JSObject::GetNativePointerFieldCount(const JSThread *thread) const
+{
+    JSTaggedValue value;
+    if (JSTaggedValue(this).IsJSSharedObject()) {
+        if (IsPropertiesDict(thread) || GetClass()->IsNonInlinedPropExist()) {
+            return GetNativePointerFieldCountOnHashField(thread);
+        } else {
+            // For a Sendable object, if its Properties is not in dictionary mode and there are no non-inlined
+            // properties, then it can be considered that the Properties field is not used and thus can be used to store
+            // NativePointers.
+            value = GetProperties(thread);
+        }
+    } else if (JSTaggedValue(this).IsJSWrappedNapiObject()) {
+        value = JSWrappedNapiObject::ConstCast(this)->GetNativePointers(thread);
+    } else {
+        // Currently, ArkUI will call SetNativePointerFieldCount to store NativePointers, and in this case, it is
+        // impossible to store NativePointers by extending a field through the subclass of JSObject.
+        return GetNativePointerFieldCountOnHashField(thread);
+    }
+
+    int32_t len = 0;
+    if (value.IsTaggedArray()) {
+        TaggedArray *array = TaggedArray::Cast(value.GetTaggedObject());
+        len = static_cast<int32_t>(array->GetExtraLength());
+    }
+    return len;
+}
+
+void JSObject::SetNativePointerFieldCount(const JSThread *thread, const JSHandle<JSObject> &obj, int32_t count)
+{
+    if (count == 0) {
+        return;
+    }
+
+    if (obj.GetTaggedValue().IsJSSharedObject()) {
+        JSHandle<JSHClass> objHClass(thread, obj->GetJSHClass());
+        if (obj->IsPropertiesDict(thread) || objHClass->IsNonInlinedPropExist()) {
+            SetNativePointerFieldCountOnHashField(thread, obj, count);
+        } else {
+            // For a Sendable object, if its Properties is not in dictionary mode and there are no non-inlined
+            // properties, then it can be considered that the Properties field is not used and thus can be used to store
+            // NativePointers.
+            ASSERT(obj->GetProperties(thread).IsTaggedArray());
+            JSHandle<TaggedArray> array(thread, obj->GetProperties(thread));
+            if (array->GetExtraLength() == 0) {
+                JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewSTaggedArray(count);
+                newArray->SetExtraLength(count);
+                obj->SetProperties(thread, newArray);
+            }
+        }
+    } else if (obj.GetTaggedValue().IsJSWrappedNapiObject()) {
+        JSHandle<JSWrappedNapiObject> wrappedObj(obj);
+        JSHandle<JSTaggedValue> value = JSHandle<JSTaggedValue>(thread, wrappedObj->GetNativePointers(thread));
+        if (!value->IsHeapObject()) {
+            JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count);
+            newArray->SetExtraLength(count);
+            wrappedObj->SetNativePointers(thread, newArray);
+        } else if (value->IsTaggedArray()) {
+            JSHandle<TaggedArray> array(value);
+            if (array->GetExtraLength() == 0) {
+                JSHandle<TaggedArray> newArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(count);
+                newArray->SetExtraLength(count);
+                wrappedObj->SetNativePointers(thread, newArray);
+            }
+        } else {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    } else {
+        // Currently, ArkUI will call SetNativePointerFieldCount to store NativePointers, and in this case, it is
+        // impossible to store NativePointers by extending a field through the subclass of JSObject.
+        SetNativePointerFieldCountOnHashField(thread, obj, count);
     }
 }
 

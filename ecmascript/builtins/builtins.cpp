@@ -464,6 +464,9 @@ void Builtins::InitializeNapiHClass(const JSHandle<GlobalEnv> &env,
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread_, objFuncClass);
     env->SetObjectFunctionNapiClass(thread_, newJsHClass);
     env->SetObjectFunctionTsNapiClass(thread_, newJsHClass);
+    JSHandle<JSHClass> wrappedObjHClass = JSHClass::CloneWithNewSizeAndType(
+        thread_, newJsHClass, JSWrappedNapiObject::SIZE, JSType::JS_WRAPPED_NAPI_OBJECT);
+    env->SetWrappedObjectFunctionClass(thread_, wrappedObjHClass);
 }
 
 void Builtins::SetLazyAccessor(const JSHandle<JSObject> &object, const JSHandle<JSTaggedValue> &key,
