@@ -110,24 +110,28 @@ void HeapSnapshot::UpdateNodes(bool isInFinish)
     for (Node *node : nodes_) {
         node->SetLive(false);
     }
+
+    // Collect alive objects
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
         heap->IterateOverObjects([this, isInFinish](TaggedObject *obj) {
             GenerateNode(JSTaggedValue(obj), 0, isInFinish);
         });
     }
-    for (auto iter = nodes_.begin(); iter != nodes_.end();) {
-        if (!(*iter)->IsLive()) {
-            entryMap_.FindAndEraseNode((*iter)->GetAddress());
-            entryIdMap_->EraseId((*iter)->GetAddress());
-            DecreaseNodeSize((*iter)->GetSelfSize());
-            chunk_.Delete(*iter);
-            iter = nodes_.erase(iter);
+
+    // Remove all dead objects
+    auto newEnd = std::remove_if(nodes_.begin(), nodes_.end(), [this](Node *node) {
+        if (!node->IsLive()) {
+            entryMap_.FindAndEraseNode(node->GetAddress());
+            entryIdMap_->EraseId(node->GetAddress());
+            DecreaseNodeSize(node->GetSelfSize());
+            chunk_.Delete(node);
             nodeCount_--;
-        } else {
-            iter++;
+            return true;
         }
-    }
+        return false;
+    });
+    nodes_.erase(newEnd, nodes_.end());
 }
 
 bool HeapSnapshot::FinishSnapshot()
@@ -1291,7 +1295,7 @@ void HeapSnapshot::AddSyntheticRoot()
                                         NodeType::SYNTHETIC, 0, 0, 0);
     InsertNodeAt(0, syntheticRoot);
     CUnorderedSet<JSTaggedType> values {};
-    CList<Edge *> rootEdges;
+    CVector<Edge *> rootEdges;
 
     HandleRoots(syntheticRoot, values, rootEdges);
 
@@ -1306,7 +1310,7 @@ void HeapSnapshot::AddSyntheticRoot()
 }
 
 void HeapSnapshot::NewRootEdge(Node *syntheticRoot, JSTaggedValue value,
-                               CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges)
+                               CUnorderedSet<JSTaggedType> &values, CVector<Edge *> &rootEdges)
 {
     if (!value.IsHeapObject()) {
         return;
@@ -1322,12 +1326,12 @@ void HeapSnapshot::NewRootEdge(Node *syntheticRoot, JSTaggedValue value,
     }
 }
 
-void HeapSnapshot::HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges)
+void HeapSnapshot::HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CVector<Edge *> &rootEdges)
 {
     class EdgeBuilderRootVisitor final : public RootVisitor {
     public:
         explicit EdgeBuilderRootVisitor(HeapSnapshot &snapshot, Node *syntheticRoot,
-                                        CList<Edge *> &rootEdges, CUnorderedSet<JSTaggedType> &values)
+                                        CVector<Edge *> &rootEdges, CUnorderedSet<JSTaggedType> &values)
             : snapshot_(snapshot), syntheticRoot_(syntheticRoot), rootEdges_(rootEdges), values_(values) {}
         ~EdgeBuilderRootVisitor() = default;
 
@@ -1349,7 +1353,7 @@ void HeapSnapshot::HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> 
     private:
         HeapSnapshot &snapshot_;
         Node *syntheticRoot_;
-        CList<Edge *> &rootEdges_;
+        CVector<Edge *> &rootEdges_;
         CUnorderedSet<JSTaggedType> &values_;
     };
 
@@ -1357,7 +1361,7 @@ void HeapSnapshot::HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> 
     class EdgeBuilderWithLeakDetectRootVisitor final : public RootVisitor {
     public:
         explicit EdgeBuilderWithLeakDetectRootVisitor(HeapSnapshot &snapshot, Node *syntheticRoot,
-                                                      CList<Edge *> &rootEdges, CUnorderedSet<JSTaggedType> &values)
+                                                      CVector<Edge *> &rootEdges, CUnorderedSet<JSTaggedType> &values)
             : snapshot_(snapshot), syntheticRoot_(syntheticRoot), rootEdges_(rootEdges), values_(values) {}
         ~EdgeBuilderWithLeakDetectRootVisitor() = default;
 
@@ -1380,7 +1384,7 @@ void HeapSnapshot::HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> 
     private:
         HeapSnapshot &snapshot_;
         Node *syntheticRoot_;
-        CList<Edge *> &rootEdges_;
+        CVector<Edge *> &rootEdges_;
         CUnorderedSet<JSTaggedType> &values_;
     };
 

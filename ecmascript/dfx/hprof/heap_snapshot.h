@@ -541,8 +541,8 @@ private:
     Edge *InsertEdgeUnique(Edge *edge);
     void AddSyntheticRoot();
     void NewRootEdge(Node *syntheticRoot, JSTaggedValue value,
-                     CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges);
-    void HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CList<Edge *> &rootEdges);
+                     CUnorderedSet<JSTaggedType> &values, CVector<Edge *> &rootEdges);
+    void HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CVector<Edge *> &rootEdges);
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
