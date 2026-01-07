@@ -2509,7 +2509,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateRegExpWithLiteral(JSThread *thread,
                                                            const JSHandle<JSTaggedValue> &pattern, uint8_t flags)
 {
     JSHandle<JSTaggedValue> flagsHandle(thread, JSTaggedValue(flags));
-    return builtins::BuiltinsRegExp::RegExpCreate(thread, pattern, flagsHandle);
+    return builtins::BuiltinsRegExp::RegExpCreateWithRawFlags(thread, pattern, flagsHandle);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeThrowIfSuperNotCorrectCall(JSThread *thread, uint16_t index,

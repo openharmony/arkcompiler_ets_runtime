@@ -74,6 +74,8 @@ public:
     // 21.2.3.2.3 Runtime Semantics: RegExpCreate ( P, F )
     static JSTaggedValue RegExpCreate(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                       const JSHandle<JSTaggedValue> &flags);
+    static JSTaggedValue RegExpCreateWithRawFlags(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
+                                                  const JSHandle<JSTaggedValue> &flags);
     static JSTaggedValue FlagsBitsToString(JSThread *thread, uint8_t flags);
     // 21.2.5.2.1 Runtime Semantics: RegExpExec ( R, S )
     static JSTaggedValue RegExpExec(JSThread *thread, const JSHandle<JSTaggedValue> &regexp,
@@ -177,6 +179,7 @@ private:
     static uint32_t UpdateExpressionFlags(JSThread *thread, const CString &checkStr);
 
     // 21.2.3.2.2 Runtime Semantics: RegExpInitialize ( obj, pattern, flags )
+    template <bool needFlagsTransition = true>
     static JSTaggedValue RegExpInitialize(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                           const JSHandle<JSTaggedValue> &pattern, const JSHandle<JSTaggedValue> &flags);
     // 21.2.3.2.4 Runtime Semantics: EscapeRegExpPattern ( P, F )

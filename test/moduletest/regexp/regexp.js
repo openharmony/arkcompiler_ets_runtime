@@ -1013,4 +1013,21 @@ try {
   const regex = new RegExp("foo*");
   assert_equal(regex.test(str), true);
 }
+
+{
+  class C3 extends Array {
+  }
+  const o7 = {
+    get(a5, a6) {
+      return 4;
+    },
+  };
+  const v9 = new Proxy(C3, o7);
+  try {
+    RegExp(v9).toString();
+    assert_unreachable();
+  } catch (e) {
+    assert_equal(e instanceof SyntaxError, true);
+  }
+}
 test_end();

@@ -83,11 +83,17 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
         if (flags->IsUndefined()) {
             // 5.b If flags is undefined, let F be the value of pattern’s [[OriginalFlags]] internal slot.
             flagsTemp = JSHandle<JSTaggedValue>(thread, patternReg->GetOriginalFlags(thread));
+            
+            JSHandle<JSTaggedValue> object(thread, RegExpAlloc(thread, newTarget));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            // flags are inherited from pattern JSRegExp, so it is a valid taggedint and can omit the flags check.
+            JSTaggedValue result = RegExpInitialize<false>(thread, object, patternTemp, flagsTemp);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            return JSTaggedValue(result);
         } else {
             // 5.c Else, let F be flags.
-            flagsTemp = JSHandle<JSTaggedValue>(thread, *JSTaggedValue::ToString(thread, flags));
+            flagsTemp = flags;
         }
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // 6. Else if patternIsRegExp is true
     } else if (patternIsRegExp) {
         JSHandle<JSTaggedValue> sourceString(globalConst->GetHandledSourceString());
@@ -104,19 +110,13 @@ JSTaggedValue BuiltinsRegExp::RegExpConstructor(EcmaRuntimeCallInfo *argv)
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         } else {
             // 6.d Else, let F be flags.
-            flagsTemp = JSHandle<JSTaggedValue>(thread, *JSTaggedValue::ToString(thread, flags));
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            flagsTemp = flags;
         }
     } else {
         // 7.a Let P be pattern.
         patternTemp = pattern;
         // 7.b Let F be flags.
-        if (flags->IsUndefined()) {
-            flagsTemp = flags;
-        } else {
-            flagsTemp = JSHandle<JSTaggedValue>(thread, *JSTaggedValue::ToString(thread, flags));
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        }
+        flagsTemp = flags;
     }
     // 8. Let O be RegExpAlloc(newTarget).
     JSHandle<JSTaggedValue> object(thread, RegExpAlloc(thread, newTarget));
@@ -779,7 +779,7 @@ JSTaggedValue BuiltinsRegExp::RegExpMatchAll(JSThread *thread, const JSHandle<JS
         JSHandle<JSRegExp> jsRegExp = JSHandle<JSRegExp>::Cast(regexp);
         JSHandle<JSTaggedValue> pattern(thread, jsRegExp->GetOriginalSource(thread));
         JSHandle<JSTaggedValue> flags(thread, jsRegExp->GetOriginalFlags(thread));
-        matcher.Update(BuiltinsRegExp::RegExpCreate(thread, pattern, flags));
+        matcher.Update(BuiltinsRegExp::RegExpCreateWithRawFlags(thread, pattern, flags));
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         SetLastIndex(thread, matcher,
             JSHandle<JSObject>::Cast(jsRegExp)->GetPropertyInlinedProps(thread, LAST_INDEX_OFFSET), isFastPath);
@@ -2367,7 +2367,7 @@ uint32_t BuiltinsRegExp::UpdateExpressionFlags(JSThread *thread, const CString &
 
 JSTaggedValue BuiltinsRegExp::FlagsBitsToString(JSThread *thread, uint8_t flags)
 {
-    ASSERT((flags & 0x80) == 0);  // 0x80: first bit of flags must be 0
+    ASSERT(flags < (1 << RegExpParser::FLAG_NUM));
     BUILTINS_API_TRACE(thread, RegExp, FlagsBitsToString);
     uint8_t *flagsStr = new uint8_t[RegExpParser::FLAG_NUM + 1];  // FLAG_NUM flags + '\0'
     size_t flagsLen = 0;
@@ -2407,6 +2407,7 @@ JSTaggedValue BuiltinsRegExp::FlagsBitsToString(JSThread *thread, uint8_t flags)
 }
 
 // 21.2.3.2.2
+template <bool needFlagsTransition>
 JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                const JSHandle<JSTaggedValue> &pattern,
                                                const JSHandle<JSTaggedValue> &flags)
@@ -2414,7 +2415,6 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
     BUILTINS_API_TRACE(thread, RegExp, RegExpInitialize);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> patternStrHandle;
-    uint8_t flagsBits = 0;
     // 1. If pattern is undefined, let P be the empty String.
     if (pattern->IsUndefined()) {
         patternStrHandle = factory->GetEmptyString();
@@ -2424,23 +2424,27 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
         // 3. ReturnIfAbrupt(P).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    // 4. If flags is undefined, let F be the empty String.
-    if (flags->IsUndefined()) {
-        flagsBits = 0;
-    } else if (flags->IsInt()) {
+    uint8_t flagsBits = 0;
+    if constexpr (needFlagsTransition == false) {
+        ASSERT(flags->IsInt());
         flagsBits = static_cast<uint8_t>(flags->GetInt());
     } else {
-        // 5. Else, let F be ToString(flags).
-        JSHandle<EcmaString> flagsStrHandle = JSTaggedValue::ToString(thread, flags);
-        // 6. ReturnIfAbrupt(F).
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        /**
-         * 7. If F contains any code unit other than "d", "g", "i", "m", "u", or "y" or if it contains the same code
-         * unit more than once, throw a SyntaxError exception.
-         **/
-        CString checkStr = ConvertToString(thread, *flagsStrHandle, StringConvertedUsage::LOGICOPERATION);
-        flagsBits = static_cast<uint8_t>(UpdateExpressionFlags(thread, checkStr));
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        // 4. If flags is undefined, let F be the empty String.
+        if (flags->IsUndefined()) {
+            flagsBits = 0;
+        } else {
+            // 5. Else, let F be ToString(flags).
+            JSHandle<EcmaString> flagsStrHandle = JSTaggedValue::ToString(thread, flags);
+            // 6. ReturnIfAbrupt(F).
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            /**
+             * 7. If F contains any code unit other than "d", "g", "i", "m", "u", or "y" or if it contains the same code
+             * unit more than once, throw a SyntaxError exception.
+             **/
+            CString checkStr = ConvertToString(thread, *flagsStrHandle, StringConvertedUsage::LOGICOPERATION);
+            flagsBits = static_cast<uint8_t>(UpdateExpressionFlags(thread, checkStr));
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
     }
     // 9. 10.
     Chunk chunk(thread->GetNativeAreaAllocator());
@@ -2467,10 +2471,6 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
     // 11. Set the value of obj’s [[OriginalSource]] internal slot to P.
     regexp->SetOriginalSource(thread, patternStrHandle.GetTaggedValue());
     // 12. Set the value of obj’s [[OriginalFlags]] internal slot to F.
-    if (flagsBits & 0x80) { // 0x80: first bit of flags must be 0
-        THROW_SYNTAX_ERROR_AND_RETURN(thread, "Invalid flags supplied to RegExp constructor",
-            JSTaggedValue::Exception());
-    }
     regexp->SetOriginalFlags(thread, JSTaggedValue(flagsBits));
     if (!groupName.empty()) {
         JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(groupName.size());
@@ -2510,6 +2510,21 @@ JSTaggedValue BuiltinsRegExp::RegExpCreate(JSThread *thread, const JSHandle<JSTa
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. Return RegExpInitialize(obj, P, F).
     return RegExpInitialize(thread, object, pattern, flags);
+}
+
+JSTaggedValue BuiltinsRegExp::RegExpCreateWithRawFlags(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
+                                                       const JSHandle<JSTaggedValue> &flags)
+{
+    BUILTINS_API_TRACE(thread, RegExp, Create);
+    auto ecmaVm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
+    JSHandle<JSTaggedValue> newTarget = env->GetRegExpFunction();
+    // 1. Let obj be RegExpAlloc(%RegExp%).
+    JSHandle<JSTaggedValue> object(thread, RegExpAlloc(thread, newTarget));
+    // 2. ReturnIfAbrupt(obj).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 3. Return RegExpInitialize(obj, P, F).
+    return RegExpInitialize<false>(thread, object, pattern, flags);
 }
 
 // 21.2.3.2.4
