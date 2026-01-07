@@ -73,10 +73,10 @@ const std::vector<std::string> JSNumberFormat::COMPACT_DISPLAY_OPTION_NAME = {"s
 const std::set<std::string> SANCTIONED_UNIT({ "acre", "bit", "byte", "celsius", "centimeter", "day", "degree",
                                             "fahrenheit", "fluid-ounce", "foot", "gallon", "gigabit", "gigabyte",
                                             "gram", "hectare", "hour", "inch", "kilobit", "kilobyte", "kilogram",
-                                            "kilometer", "liter", "megabit", "megabyte", "meter", "mile",
+                                            "kilometer", "liter", "megabit", "megabyte", "meter", "microsecond", "mile",
                                             "mile-scandinavian", "millimeter", "milliliter", "millisecond",
-                                            "minute", "month", "ounce", "percent", "petabyte", "pound", "second",
-                                            "stone", "terabit", "terabyte", "week", "yard", "year" });
+                                            "minute", "month", "nanosecond", "ounce", "percent", "petabyte", "pound",
+                                            "second", "stone", "terabit", "terabyte", "week", "yard", "year" });
 
 JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, StyleOption style)
 {
