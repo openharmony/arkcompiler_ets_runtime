@@ -954,4 +954,278 @@ HWTEST_F_L0(IdleGCTriggerTest, TryPostHandleMarkFinishedTest2)
     ASSERT_TRUE(idleGCTrigger->IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK));
     idleGCTrigger->NotifyLooperIdleEnd(20);
 }
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->Mark();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    heap->GetJSThread()->SetSharedMarkStatus(SharedMarkStatus::READY_TO_CONCURRENT_MARK);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart2)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart3)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->Mark();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart4)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetJSThread()->SetSharedMarkStatus(SharedMarkStatus::READY_TO_CONCURRENT_MARK);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart5)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    heap->GetConcurrentMarker()->Mark();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart6)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    heap->GetJSThread()->SetSharedMarkStatus(SharedMarkStatus::READY_TO_CONCURRENT_MARK);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart7)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->Mark();
+    heap->GetJSThread()->SetSharedMarkStatus(SharedMarkStatus::READY_TO_CONCURRENT_MARK);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart8)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    EXPECT_TRUE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart9)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    EXPECT_TRUE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart10)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    EXPECT_TRUE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart11)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    EXPECT_TRUE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart12)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    EXPECT_TRUE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart13)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    EXPECT_TRUE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, NotifyLooperIdleStart14)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+    EXPECT_FALSE(trigger->NotifyLooperIdleStart(1, 1));
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerHandleMarkFinished1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetJSThread()->SetSharedMarkStatus(SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerHandleMarkFinished();
+    EXPECT_FALSE(heap->GetJSThread()->IsReadyToSharedConcurrentMark());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerHandleMarkFinished2)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetJSThread()->SetSharedMarkStatus(SharedMarkStatus::READY_TO_CONCURRENT_MARK);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerHandleMarkFinished();
+    EXPECT_TRUE(heap->GetJSThread()->IsReadyToSharedConcurrentMark());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerHandleMarkFinished3)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    heap->SetOnSerializeEvent(true);
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerHandleMarkFinished();
+    EXPECT_TRUE(heap->GetJSThread()->IsMarkFinished());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerHandleMarkFinished4)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->Mark();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    heap->SetOnSerializeEvent(true);
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerHandleMarkFinished();
+    EXPECT_TRUE(heap->GetJSThread()->IsMarkFinished());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerHandleMarkFinished5)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->Mark();
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    heap->SetOnSerializeEvent(false);
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerHandleMarkFinished();
+    EXPECT_TRUE(heap->GetJSThread()->IsMarkFinished());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMark1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
+    EXPECT_TRUE(heap->GetConcurrentMarker()->IsEnabled());
+    EXPECT_TRUE(heap->CheckCanTriggerConcurrentMarking());
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_YOUNG);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMark2)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARKING);
+    EXPECT_TRUE(heap->GetConcurrentMarker()->IsEnabled());
+    EXPECT_FALSE(heap->CheckCanTriggerConcurrentMarking());
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_YOUNG);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalConcurrentMark3)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::MARKING);
+    EXPECT_FALSE(heap->GetConcurrentMarker()->IsEnabled());
+    EXPECT_FALSE(heap->CheckCanTriggerConcurrentMarking());
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerLocalConcurrentMark(MarkType::MARK_YOUNG);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGC1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    thread->SetFullMarkRequest();
+    heap->SetOnSerializeEvent(false);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->TryTriggerIdleLocalOldGC());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGC1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    sheap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    sheap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    ASSERT_EQ(trigger->TryTriggerIdleSharedOldGC(), false);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGC1)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CC_GC);
+    sheap->NotifyHeapAliveSizeAfterGC(0);
+    sheap->GetConcurrentMarker()->ConfigConcurrentMark(true);
+    heap->GetJSThread()->SetSharedMarkStatus(SharedMarkStatus::READY_TO_CONCURRENT_MARK);
+    EXPECT_FALSE(heap->NeedStopCollection());
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+}
 }  // namespace panda::test
