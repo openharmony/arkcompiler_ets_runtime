@@ -54,7 +54,11 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
             }
         }
         object = allocator_.Allocate(size);
+#if ENABLE_LATEST_OPTIMIZATION
     } else if (localHeap_->IsMarking() || localHeap_->IsProcessingLocalToSharedRSet()) {
+#else
+    } else if (localHeap_->IsMarking()) {
+#endif
         // Temporary adjust semi space capacity
         if (localHeap_->IsConcurrentFullMark()) {
             overShootSize_ = localHeap_->CalculateLinearSpaceOverShoot();
