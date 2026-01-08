@@ -37,7 +37,11 @@ VTable::Tuple VTable::CreateTuple(const JSThread *thread, JSTaggedValue phc,
 
     // get offset
     uint32_t propsNumber = phcPoint->NumberOfProps();
+#if ENABLE_V70_OPTIMIZATION
+    int entry = layoutInfo->FindElement(thread, phcPoint, name.GetTaggedValue(), propsNumber);
+#else
     int entry = layoutInfo->FindElementWithCache(thread, phcPoint, name.GetTaggedValue(), propsNumber);
+#endif
     ASSERT(entry != -1);
     uint32_t offsetInt = phcPoint->GetInlinedPropertiesOffset(static_cast<uint32_t>(entry));
     JSHandle<JSTaggedValue> offset(thread, JSTaggedValue(offsetInt));

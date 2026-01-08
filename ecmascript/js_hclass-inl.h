@@ -340,7 +340,11 @@ inline int JSHClass::FindPropertyEntry(const JSThread *thread, JSHClass *hclass,
     DISALLOW_GARBAGE_COLLECTION;
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
     uint32_t propsNumber = hclass->NumberOfProps();
+#if ENABLE_V70_OPTIMIZATION
+    int entry = layout->FindElement(thread, hclass, key, propsNumber);
+#else
     int entry = layout->FindElementWithCache(thread, hclass, key, propsNumber);
+#endif
     return entry;
 }
 

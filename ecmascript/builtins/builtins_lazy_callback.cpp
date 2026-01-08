@@ -232,7 +232,11 @@ void BuiltinsLazyCallback::ResetLazyInternalAttr(JSThread *thread, const JSHandl
     if (LIKELY(!hclass->IsDictionaryMode())) {
         LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout(thread).GetTaggedObject());
         uint32_t propsNumber = hclass->NumberOfProps();
+#if ENABLE_V70_OPTIMIZATION
+        int entry = layoutInfo->FindElement(thread, hclass, key.GetTaggedValue(), propsNumber);
+#else
         int entry = layoutInfo->FindElementWithCache(thread, hclass, key.GetTaggedValue(), propsNumber);
+#endif
         if (entry != -1) {
             PropertyAttributes attr(layoutInfo->GetAttr(thread, entry));
             attr.SetIsAccessor(false);

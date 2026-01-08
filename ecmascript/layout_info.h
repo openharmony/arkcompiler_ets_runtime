@@ -95,7 +95,13 @@ public:
         return new_capacity > MAX_PROPERTIES_LENGTH ? MAX_PROPERTIES_LENGTH : new_capacity;
     }
 
+#if ENABLE_V70_OPTIMIZATION
+    int FindElement(const JSThread *thread, JSHClass *cls, JSTaggedValue key, int propertiesNumber);
+    template <bool withCache>
     int FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key, int propertiesNumber);
+#else
+    int FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key, int propertiesNumber);
+#endif
     int BinarySearch(const JSThread *thread, JSTaggedValue key, int propertiesNumber);
     void GetAllKeys(const JSThread *thread, int end, int offset, TaggedArray *keyArray);
     void GetAllKeysForSerialization(const JSThread *thread, int end, std::vector<JSTaggedValue> &keyVector);

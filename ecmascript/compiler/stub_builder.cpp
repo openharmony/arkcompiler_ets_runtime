@@ -327,6 +327,109 @@ void StubBuilder::MatchFieldType(
 }
 
 // FindElementWithCache in ecmascript/layout_info-inl.h
+#if ENABLE_V70_OPTIMIZATION
+GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hclass,
+    GateRef key, GateRef propsNum, GateRef hir)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    Label exit(env);
+    Label cacheHit(env);
+    Label cacheMiss(env);
+    constexpr int32_t maxPropsNum = 9; // 9 : Builtins Object properties number is nine
+    GateRef cache = GetPropertiesCache(glue);
+    GateRef cacheIndex = GetIndexFromPropertiesCache(glue, cache, hclass, key, hir);
+    BRANCH(Int32Equal(cacheIndex, Int32(PropertiesCache::NOT_CACHED)), &cacheMiss, &cacheHit);
+    Bind(&cacheHit);
+    {
+        result = cacheIndex;
+        Jump(&exit);
+    }
+    Bind(&cacheMiss);
+    {
+        Label notExceedUpper(env);
+        Label exceedUpper(env);
+        BRANCH(Int32LessThanOrEqual(propsNum, Int32(maxPropsNum)), &notExceedUpper, &exceedUpper);
+        Bind(&notExceedUpper);
+        {
+            Label linearFound(env);
+            Label labels[maxPropsNum] = {Label(env), Label(env), Label(env), Label(env), Label(env), Label(env),
+                                         Label(env), Label(env), Label(env)};
+            Label notFount(env);
+            GateRef elementAddr = GetPropertiesAddrFromLayoutInfo(layoutInfo);
+            Jump(&labels[0]);
+            for (int32_t idx = 0; idx < maxPropsNum; idx++) {
+                bool isLast = (idx == maxPropsNum - 1);
+                Label check(env);
+                Bind(&labels[idx]);
+                {
+                    BRANCH_LIKELY(Int32LessThan(Int32(idx), propsNum), &check, &notFount);
+                    // Not real "likely", just to make the code layout of labels and check block tightly.
+                }
+                Bind(&check);
+                {
+                    result = Int32(idx);
+                    GateRef keyInProperty = Load(VariableType::JS_ANY(), glue, elementAddr,
+                                                 PtrMul(ZExtInt32ToPtr(Int32(idx)),
+                                                        IntPtr(sizeof(panda::ecmascript::Properties))));
+                    if (!isLast) {
+                        BRANCH_UNLIKELY(Equal(keyInProperty, key), &linearFound, &labels[idx + 1]);
+                        // Not real "unlikely", just to make the code layout of labels and check block tightly.
+                    } else {
+                        BRANCH(Equal(keyInProperty, key), &linearFound, &notFount);
+                    }
+                }
+            }
+            Bind(&linearFound);
+            {
+                SetToPropertiesCache(glue, cache, hclass, key, *result, hir);
+                Jump(&exit);
+            }
+            Bind(&notFount);
+            {
+                Label notShared(env);
+                Label doneNotFound(env);
+                BRANCH_UNLIKELY(IsSharedHClass(hclass), &doneNotFound, &notShared);
+                Bind(&notShared);
+                SetToPropertiesCache(glue, cache, hclass, key, Int32(PropertiesCache::NOT_FOUND), hir);
+                Jump(&doneNotFound);
+                Bind(&doneNotFound);
+            }
+            result = Int32(PropertiesCache::NOT_FOUND);
+            Jump(&exit);
+        }
+        Bind(&exceedUpper);
+        {
+            result = BinarySearch(glue, layoutInfo, key, propsNum, hir);
+            Label notShared2(env);
+            Label isShared2(env);
+            Label doneCache2(env);
+            BRANCH_UNLIKELY(IsSharedHClass(hclass), &isShared2, &notShared2);
+            Bind(&notShared2);
+            {
+                SetToPropertiesCache(glue, cache, hclass, key, *result, hir);
+                Jump(&doneCache2);
+            }
+            Bind(&isShared2);
+            {
+                Label foundForShared(env);
+                BRANCH(Int32Equal(*result, Int32(PropertiesCache::NOT_FOUND)), &doneCache2, &foundForShared);
+                Bind(&foundForShared);
+                SetToPropertiesCache(glue, cache, hclass, key, *result, hir);
+                Jump(&doneCache2);
+            }
+            Bind(&doneCache2);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+#else
 GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hclass,
     GateRef key, GateRef propsNum, GateRef hir)
 {
@@ -337,8 +440,7 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
     Label exit(env);
     Label notExceedUpper(env);
     Label exceedUpper(env);
-    // 9 : Builtins Object properties number is nine
-    constexpr int32_t maxPropsNum = 9;
+    constexpr int32_t maxPropsNum = 9; // 9 : Builtins Object properties number is nine
     BRANCH(Int32LessThanOrEqual(propsNum, Int32(maxPropsNum)), &notExceedUpper, &exceedUpper);
     Bind(&notExceedUpper);
     {
@@ -398,13 +500,18 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
     env->SubCfgExit();
     return ret;
 }
+#endif
 
 GateRef StubBuilder::GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef hir)
 {
     auto env = GetEnvironment();
     Label subentry(env);
     env->SubCfgEntry(&subentry);
+#if ENABLE_V70_OPTIMIZATION
+    DEFVARIABLE(result, VariableType::INT32(), Int32(PropertiesCache::NOT_CACHED));
+#else
     DEFVARIABLE(result, VariableType::INT32(), Int32(PropertiesCache::NOT_FOUND));
+#endif
 
     Label exit(env);
     Label find(env);

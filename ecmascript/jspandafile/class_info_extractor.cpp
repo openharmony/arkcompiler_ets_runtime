@@ -1007,7 +1007,11 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
         key.Update(fieldTypeArray->Get(thread, i));
         ASSERT(key->IsString());
         SharedFieldType type = FromFieldType(FieldType(fieldTypeArray->Get(thread, i + 1).GetInt()));
+#if ENABLE_V70_OPTIMIZATION
+        int entry = layout->FindElement(thread, *hclass, key.GetTaggedValue(), index);
+#else
         int entry = layout->FindElementWithCache(thread, *hclass, key.GetTaggedValue(), index);
+#endif
         if (entry != -1) {
             attributes = layout->GetAttr(thread, entry);
             attributes.SetSharedFieldType(type);
