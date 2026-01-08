@@ -16,6 +16,7 @@
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/async_generator_helper.h"
 #include "ecmascript/builtins/builtins_promise.h"
+#include "ecmascript/builtins/builtins_promise_handler.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_iterator.h"
@@ -23,6 +24,7 @@
 
 namespace panda::ecmascript {
 using BuiltinsPromise = builtins::BuiltinsPromise;
+using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;
 
 // AsyncGeneratorValidate ( generator, generatorBrand )
 void JSAsyncGeneratorObject::AsyncGeneratorValidate(JSThread *thread, const JSHandle<JSTaggedValue> &gen,
@@ -161,8 +163,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResumeNext(JSThread *thread,
                 // 2. Let promise be ? PromiseResolve(%Promise%, completion.[[Value]]).
                 JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
                 JSHandle<JSTaggedValue> val(thread, completion->GetValue(thread));
-                JSTaggedValue promise = PromiseResolve(thread,
-                                                       JSHandle<JSTaggedValue>::Cast(env->GetPromiseFunction()), val);
+                JSTaggedValue promise = PromiseResolve(thread, val);
                 JSHandle<JSPromise> handPromise(thread, promise);
                 // 3. Let stepsFulfilled be the algorithm steps defined in
                 //    AsyncGeneratorResumeNext Return Processor Fulfilled Functions.
@@ -307,33 +308,21 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
     return promise.GetTaggedValue();
 }
 
-JSTaggedValue JSAsyncGeneratorObject::PromiseResolve(JSThread *thread, const JSHandle<JSTaggedValue> promise,
-                                                     const JSHandle<JSTaggedValue> value)
+JSTaggedValue JSAsyncGeneratorObject::PromiseResolve(JSThread *thread, const JSHandle<JSTaggedValue> value)
 {
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    ASSERT(promise->IsECMAObject());
     if (value->IsJSPromise()) {
         JSHandle<JSTaggedValue> ctorKey(globalConst->GetHandledConstructorString());
         JSHandle<JSTaggedValue> ctorValue = JSObject::GetProperty(thread, value, ctorKey).GetValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (JSTaggedValue::SameValue(thread, ctorValue.GetTaggedValue(), promise.GetTaggedValue())) {
+        JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
+        if (JSTaggedValue::SameValue(thread, ctorValue.GetTaggedValue(), env->GetPromiseFunction().GetTaggedValue())) {
             return value.GetTaggedValue();
         }
     }
-    JSHandle<PromiseCapability> promiseCapability = JSPromise::NewPromiseCapability(thread, promise);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> resolve(thread, promiseCapability->GetResolve(thread));
-    JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
-    JSHandle<JSTaggedValue> thisArg = globalConst->GetHandledUndefined();
-    EcmaRuntimeCallInfo* info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, resolve, thisArg, undefined, 1);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(value.GetTaggedValue());
-    [[maybe_unused]] JSTaggedValue res = JSFunction::Call(info);
-
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSPromise> promiseObj(thread, promiseCapability->GetPromise(thread));
-    return promiseObj.GetTaggedValue();
+    JSHandle<JSPromise> promise = thread->GetEcmaVM()->GetFactory()->NewJSPromise();
+    BuiltinsPromiseHandler::InnerResolve(thread, promise, value);
+    return promise.GetTaggedValue();
 }
 
 JSTaggedValue JSAsyncGeneratorObject::ProcessorFulfilledFunc(EcmaRuntimeCallInfo *argv)
