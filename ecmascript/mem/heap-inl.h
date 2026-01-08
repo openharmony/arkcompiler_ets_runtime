@@ -342,6 +342,11 @@ TaggedObject *BaseHeap::AllocateOldForCMC(JSThread *thread, size_t size) const
         common::HeapAllocator::AllocateInOldOrHuge(size, common::LanguageType::DYNAMIC));
 }
 
+bool BaseHeap::CheckCanDistributeTask() const
+{
+    return markTaskMonitor_->FastCheckCanDistributeTask();
+}
+
 uintptr_t Heap::AllocateYoungSync(size_t size)
 {
     ASSERT(!g_isEnableCMCGC);

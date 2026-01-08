@@ -160,7 +160,7 @@ HWTEST_F_L0(UnifiedGCTest, MarkFromObjectTest)
 
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     vm->GetCrossVMOperator()->MarkFromObject(arrayInXRefRoot->GetRawData());
-    heap->WaitRunningTaskFinished();
+    heap->WaitAllMarkTaskFinished();
     EXPECT_TRUE(IsObjectMarked(arrayInXRefRoot->GetHeapObject()));
     EXPECT_TRUE(IsObjectMarked(arrayRefByXRefRoot->GetHeapObject()));
 

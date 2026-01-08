@@ -77,7 +77,7 @@ void SharedHeap::CreateUnifiedGC()
 void Heap::UnifiedGCPrepare()
 {
     WaitAndHandleCCFinished();
-    WaitRunningTaskFinished();
+    WaitAllMarkTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
 }
@@ -87,9 +87,8 @@ void Heap::CreateUnifiedGCMarker()
     unifiedGCMarker_ = new UnifiedGCMarker(this);
 }
 
-uint32_t BaseHeap::GetRunningTaskCount()
+uint32_t BaseHeap::GetTotalMarkTaskCount()
 {
-    LockHolder holder(waitTaskFinishedMutex_);
-    return runningTaskCount_;
+    return markTaskMonitor_->GetTotalTaskCount();
 }
 }  // namespace panda::ecmascript

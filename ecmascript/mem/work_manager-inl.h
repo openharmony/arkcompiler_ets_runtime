@@ -112,7 +112,7 @@ void WorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
             cachedInNode_ = workManager_->AllocateWorkNode();
         }
         if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask()) {
-            heap_->PostParallelGCTask(parallelGCTaskPhase_);
+            heap_->TryPostParallelGCTask(parallelGCTaskPhase_);
         }
     }
 }
@@ -340,7 +340,7 @@ void SharedGCWorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
         ASSERT(inNode_ != nullptr);
         cachedInNode_ = sWorkManager_->AllocateWorkNode();
         if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
-            sHeap_->PostGCMarkingTask(sTaskPhase_);
+            sHeap_->TryPostGCMarkingTask(sTaskPhase_);
         }
     }
 }
@@ -457,7 +457,7 @@ void SharedGCWorkManager::PushLocalBufferToGlobal(WorkNode *&node, bool postTask
     ASSERT(!node->IsEmpty());
     workStack_.Push(node);
     if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
-        sHeap_->PostGCMarkingTask(sTaskPhase_);
+        sHeap_->TryPostGCMarkingTask(sTaskPhase_);
     }
     node = nullptr;
 }

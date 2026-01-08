@@ -327,6 +327,7 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
 {
     uint32_t totalThreadNum = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = totalThreadNum - 1;
+    markTaskMonitor_ = std::make_shared<EpochGuardedTaskMonitor>(maxMarkTaskCount_);
     sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
     sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
     sharedGCMovableMarker_ = new SharedGCMovableMarker(sWorkManager_);
@@ -342,15 +343,23 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
     }
 }
 
-void SharedHeap::PostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase)
+void SharedHeap::TryPostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase)
 {
-    IncreaseTaskCount();
-    common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(dThread_->GetThreadId(),
-                                                                                this, sharedTaskPhase));
+    auto [succ, currentEpoch] = markTaskMonitor_->TryPostTask();
+    if (succ) {
+        common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(dThread_->GetThreadId(),
+            this, sharedTaskPhase, markTaskMonitor_, currentEpoch));
+    }
 }
 
-bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
+bool SharedHeap::ParallelMarkTask::Scheduable()
 {
+    return monitor_->TryRunTask(epoch_);
+}
+
+bool SharedHeap::ParallelMarkTask::RunInternal(uint32_t threadIndex)
+{
+    ASSERT(!monitor_->IsExpired(epoch_));
     // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
     while (!sHeap_->GetWorkManager()->HasInitialized());
     switch (taskPhase_) {
@@ -363,7 +372,7 @@ bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
         default: // LOCV_EXCL_BR_LINE
             break;
     }
-    sHeap_->ReduceTaskCount();
+    monitor_->NotifyFinish();
     return true;
 }
 
@@ -489,7 +498,7 @@ void SharedHeap::CheckInHeapProfiler()
 
 void SharedHeap::Prepare(bool inTriggerGCThread)
 {
-    WaitRunningTaskFinished();
+    WaitAllMarkTaskFinished();
     if (inTriggerGCThread) {
         sSweeper_->EnsureAllTaskFinished();
     } else {
@@ -572,7 +581,7 @@ void SharedHeap::DisableParallelGC(JSThread *thread)
     WaitAllTasksFinished(thread);
     dThread_->Stop();
     parallelGC_ = false;
-    maxMarkTaskCount_ = 0;
+    UpdateMaxMarkTaskCount(0);
     sSweeper_->ConfigConcurrentSweep(false);
     sConcurrentMarker_->ConfigConcurrentMark(false);
 }
@@ -580,7 +589,7 @@ void SharedHeap::DisableParallelGC(JSThread *thread)
 void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
 {
     uint32_t totalThreadNum = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-    maxMarkTaskCount_ = totalThreadNum - 1;
+    UpdateMaxMarkTaskCount(totalThreadNum - 1);
     parallelGC_ = option.EnableParallelGC();
     if (auto workThreadNum = sWorkManager_->GetTotalThreadNum();
         workThreadNum != totalThreadNum + 1) {
@@ -998,6 +1007,7 @@ void Heap::InitializeSpaces()
     maxEvacuateTaskCount_ = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
+    markTaskMonitor_ = std::make_shared<EpochGuardedTaskMonitor>(maxMarkTaskCount_);
 }
 
 void Heap::SelectFromSpace()
@@ -1239,7 +1249,7 @@ void Heap::Prepare()
 {
     MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, HeapPrepare);
     WaitAndHandleCCFinished();
-    WaitRunningTaskFinished();
+    WaitAllMarkTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
 }
@@ -1331,7 +1341,7 @@ void Heap::DisableParallelGC()
     WaitAllTasksFinished();
     parallelGC_ = false;
     maxEvacuateTaskCount_ = 0;
-    maxMarkTaskCount_ = 0;
+    UpdateMaxMarkTaskCount(0);
     sweeper_->ConfigConcurrentSweep(false);
     concurrentMarker_->ConfigConcurrentMark(false);
     common::Taskpool::GetCurrentTaskpool()->Destroy(GetJSThread()->GetThreadId());
@@ -1350,8 +1360,8 @@ void Heap::EnableParallelGC()
         UpdateWorkManager(workManager_);
     }
     ASSERT(maxEvacuateTaskCount_ > 0);
-    maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
-                                         maxEvacuateTaskCount_ - 1);
+    UpdateMaxMarkTaskCount(std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
+                           maxEvacuateTaskCount_ - 1));
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
 #if ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     concurrentMarkerEnabled = false;
@@ -2144,7 +2154,7 @@ bool Heap::CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIn
             WaitConcurrentMarkingFinished();
         }
     }
-    WaitRunningTaskFinished();
+    WaitRunningMarkTaskFinished();
     memController_->RecordAfterConcurrentMark(markType_, concurrentMarker_);
     return true;
 }
@@ -2450,7 +2460,7 @@ void Heap::TriggerConcurrentMarking(MarkReason markReason)
 void Heap::WaitAllTasksFinished()
 {
     WaitAndHandleCCFinished();
-    WaitRunningTaskFinished();
+    WaitAllMarkTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
     if (concurrentMarker_->IsEnabled() && thread_->IsMarking() && concurrentMarker_->IsTriggeredConcurrentMark()) {
@@ -2478,11 +2488,22 @@ void Heap::WaitAndHandleCCFinished() const
     }
 }
 
+void Heap::TryPostParallelGCTask(ParallelGCTaskPhase gcTask)
+{
+    auto [succ, currentEpoch] = markTaskMonitor_->TryPostTask();
+    if (succ) {
+        common::Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask,
+            markTaskMonitor_, currentEpoch));
+    }
+}
+
 void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 {
-    IncreaseTaskCount();
+    uint32_t currentEpoch = markTaskMonitor_->ForcePostTask();
     common::Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask));
+        std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask,
+        markTaskMonitor_, currentEpoch));
 }
 
 void Heap::ChangeGCParams(bool inBackground)
@@ -2512,8 +2533,8 @@ void Heap::ChangeGCParams(bool inBackground)
         }
         concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
-        maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
-            common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1);
+        UpdateMaxMarkTaskCount(std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
+            common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1));
         maxEvacuateTaskCount_ = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
     }
@@ -2784,8 +2805,14 @@ bool Heap::NeedStopCollection()
     return false;
 }
 
-bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
+bool Heap::ParallelGCTask::Scheduable()
 {
+    return monitor_->TryRunTask(epoch_);
+}
+
+bool Heap::ParallelGCTask::RunInternal(uint32_t threadIndex)
+{
+    ASSERT(!monitor_->IsExpired(epoch_));
     // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
     ASSERT(heap_->GetWorkManager()->HasInitialized());
     while (!heap_->GetWorkManager()->HasInitialized());
@@ -2806,7 +2833,7 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
             LOG_GC(FATAL) << "this branch is unreachable, type: " << static_cast<int>(taskPhase_);
             UNREACHABLE();
     }
-    heap_->ReduceTaskCount();
+    monitor_->NotifyFinish();
     return true;
 }
 
@@ -3221,33 +3248,14 @@ void Heap::RemoveGCListener(GCListenerId listenerId)
     gcListeners_.erase(listenerId);
 }
 
-void BaseHeap::IncreaseTaskCount()
+void BaseHeap::WaitAllMarkTaskFinished()
 {
-    LockHolder holder(waitTaskFinishedMutex_);
-    runningTaskCount_++;
+    markTaskMonitor_->WaitAllTaskFinished();
 }
 
-void BaseHeap::WaitRunningTaskFinished()
+void BaseHeap::WaitRunningMarkTaskFinished()
 {
-    LockHolder holder(waitTaskFinishedMutex_);
-    while (runningTaskCount_ > 0) {
-        waitTaskFinishedCV_.Wait(&waitTaskFinishedMutex_);
-    }
-}
-
-bool BaseHeap::CheckCanDistributeTask()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    return runningTaskCount_ < maxMarkTaskCount_;
-}
-
-void BaseHeap::ReduceTaskCount()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    runningTaskCount_--;
-    if (runningTaskCount_ == 0) {
-        waitTaskFinishedCV_.SignalAll();
-    }
+    markTaskMonitor_->WaitRunningTaskFinished();
 }
 
 void BaseHeap::WaitClearTaskFinished()

@@ -26,7 +26,7 @@ namespace panda::ecmascript {
         tempNode->PushObject(ToUintPtr(object));
         workStack_.Push(tempNode);
         if (heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() && !heap_->IsMarking()) {
-            heap_->PostParallelGCTask(parallelGCTaskPhase_);
+            heap_->TryPostParallelGCTask(parallelGCTaskPhase_);
         }
     }
 }  // namespace panda::ecmascript

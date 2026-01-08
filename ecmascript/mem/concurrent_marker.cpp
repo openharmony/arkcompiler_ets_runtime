@@ -130,7 +130,7 @@ void ConcurrentMarker::ReMark()
     Marker *marker = heap_->GetNonMovableMarker();
     MarkRoots();
     marker->ProcessMarkStack(MAIN_THREAD_INDEX);
-    heap_->WaitRunningTaskFinished();
+    heap_->WaitRunningMarkTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }

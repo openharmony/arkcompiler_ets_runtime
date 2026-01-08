@@ -85,7 +85,7 @@ void SharedFullGC::Mark()
     marker->ProcessLocalToShareRSet(rSetVisitor);
     marker->ProcessMarkStack(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
-    sHeap_->WaitRunningTaskFinished();
+    sHeap_->WaitRunningMarkTaskFinished();
 }
 
 void SharedFullGC::Sweep()
