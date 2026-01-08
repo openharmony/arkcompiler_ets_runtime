@@ -16,3 +16,14 @@ index: 1
 index: 2
 index: 3
 index: 4
+number: 0
+date: 0
+bool: 0
+set: 0
+map: 0
+weakSet: 0
+weakMap: 0
+dataview: 0
+str: 1
+arr: 1
+execResult: 4

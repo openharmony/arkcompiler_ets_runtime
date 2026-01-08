@@ -2090,7 +2090,18 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     JSHandle<EcmaString> inputString = JSHandle<EcmaString>::Cast(inputStr);
     JSHandle<RegExpGlobalResult> globalTable(thread->GetGlobalEnv()->GetRegExpGlobalResult());
     uint32_t capturesSize = static_cast<uint32_t>(globalTable->GetTotalCaptureCounts().GetInt());
+#if ENABLE_MEMORY_OPTIMIZATION
+    // set arrayfunc instance hclass to default array class which in-props is 4
+    JSHandle<JSFunction> arrayFunction = JSHandle<JSFunction>::Cast(thread->GetGlobalEnv()->GetArrayFunction());
+    JSHandle<JSTaggedValue> defaultArrayClass = thread->GetGlobalEnv()->GetDefaultArrayClass();
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, arrayFunction, defaultArrayClass.GetTaggedValue());
+#endif // ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSObject> results(JSArray::ArrayCreate(thread, JSTaggedNumber(capturesSize), ArrayMode::LITERAL));
+#if ENABLE_MEMORY_OPTIMIZATION
+    // reset arrayfunc instance hclass to array class which in-props is 1
+    JSHandle<JSTaggedValue> arrayClass = thread->GetGlobalEnv()->GetArrayClass();
+    JSFunction::SetFunctionPrototypeOrInstanceHClass(thread, arrayFunction, arrayClass.GetTaggedValue());
+#endif // ENABLE_MEMORY_OPTIMIZATION
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> indexValue(thread, globalTable->GetStartOfCaptureIndex(0));
