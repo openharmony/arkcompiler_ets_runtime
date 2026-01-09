@@ -61,6 +61,7 @@ declare_args() {
 
   # Turn off next optimization features if set to false
   enable_next_optimization = true
+  enable_latest_optimization = true
 
   # If true app_aot_jit_enable_list will be placed in /etc/ark
   # Default false.

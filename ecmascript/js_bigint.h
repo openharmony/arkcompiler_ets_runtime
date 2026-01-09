@@ -66,8 +66,6 @@ public:
     static JSHandle<BigInt> BitwiseAddOne(JSThread *thread, JSHandle<BigInt> bigint);
     static JSHandle<EcmaString> ToString(JSThread *thread, JSHandle<BigInt> bigint,
                                          uint32_t conversionToRadix = BigInt::DECIMAL);
-    template <typename DstType>
-    static void AppendToCString(DstType &str, BigInt *bigint, uint32_t conversionToRadix = BigInt::DECIMAL);
 
     CString ToStdString(uint32_t conversionToRadix) const;
 

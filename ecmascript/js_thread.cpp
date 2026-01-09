@@ -16,6 +16,7 @@
 #include "ecmascript/js_thread.h"
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
 #include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
 #include "ecmascript/mem/tagged_state_word.h"
@@ -574,6 +575,10 @@ void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
 
     if (glueData_.globalConst_ != nullptr) {
         glueData_.globalConst_->Iterate(visitor);
+    }
+
+    if (auto keyCache = GetJsonStringifierKeyCache().lock()) {
+        keyCache->Clear();
     }
 }
 
@@ -1229,6 +1234,16 @@ void JSThread::NotifyHotReloadDeoptimize()
 PropertiesCache *JSThread::GetPropertiesCache() const
 {
     return glueData_.propertiesCache_;
+}
+
+std::weak_ptr<base::JsonStringifierKeyCache> JSThread::GetJsonStringifierKeyCache() const
+{
+    return jsonStringifierKeyCache_;
+}
+
+void JSThread::SetJsonStringifierKeyCache(const std::shared_ptr<base::JsonStringifierKeyCache> &keyCache)
+{
+    jsonStringifierKeyCache_ = keyCache;
 }
 
 MegaICCache *JSThread::GetLoadMegaICCache() const

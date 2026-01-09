@@ -49,6 +49,10 @@
 #endif
 
 namespace panda::ecmascript {
+namespace base {
+    class JsonStringifierKeyCache;
+}
+
 class DateUtils;
 class EcmaVM;
 class GlobalIndex;
@@ -590,6 +594,8 @@ public:
     PUBLIC_API PropertiesCache *GetPropertiesCache() const;
     PUBLIC_API MegaICCache *GetLoadMegaICCache() const;
     PUBLIC_API MegaICCache *GetStoreMegaICCache() const;
+    std::weak_ptr<base::JsonStringifierKeyCache> GetJsonStringifierKeyCache() const;
+    void SetJsonStringifierKeyCache(const std::shared_ptr<base::JsonStringifierKeyCache> &keyCache);
 
     MarkStatus GetMarkStatus() const
     {
@@ -1600,6 +1606,7 @@ public:
         {
             return GetOffset<static_cast<size_t>(Index::PropertiesCacheIndex)>(isArch32);
         }
+
         static size_t GetMegaProbesCountOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::megaProbesCountIndex)>(isArch32);
@@ -2263,6 +2270,7 @@ private:
     bool machineCodeLowMemory_ {false};
     RecursiveMutex profileTypeAccessorLockMutex_;
     DateUtils *dateUtils_ {nullptr};
+    std::weak_ptr<base::JsonStringifierKeyCache> jsonStringifierKeyCache_;
 
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;

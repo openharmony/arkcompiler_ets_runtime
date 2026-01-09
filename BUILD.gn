@@ -462,6 +462,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "NEXT_OPTIMIZATION_MACRO" ]
   }
 
+  if (enable_latest_optimization) {
+    defines += [ "LATEST_OPTIMIZATION_MACRO" ]
+  }  
+
   cflags_cc = [
     "-Wall",
     "-Wshadow",
@@ -1202,7 +1206,7 @@ if (!is_arkui_x) {
   }
 }
 
-if (enable_next_optimization) {
+if (enable_latest_optimization) {
   ecma_source += [ "ecmascript/base/json_stringifier_optimized.cpp" ]
 } else {
   ecma_source += [ "ecmascript/base/json_stringifier.cpp" ]

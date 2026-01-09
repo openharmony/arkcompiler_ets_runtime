@@ -262,6 +262,7 @@ group("ark_js_assert_moduletest") {
     "isin",
     "jsonparser",
     "jsonstringifier",
+    "jsonstringifier2",
     "ldmodulensbyic",
     "lexicalenv",
     "arrch64stackoverflow",
@@ -424,6 +425,7 @@ group("ark_asm_assert_test") {
     "isin",
     "jsonparser",
     "jsonstringifier",
+    "jsonstringifier2",
     "ldmodulensbyic",
     "lexicalenv",
     "linkedhashtable",
@@ -477,7 +479,7 @@ group("ark_asm_assert_test") {
     "cppcallirbuiltins",
   ]
 
-  if (enable_next_optimization) {
+  if (enable_latest_optimization) {
     assert_test_list += ["jsonstringifier_optimized"]
   }
 
