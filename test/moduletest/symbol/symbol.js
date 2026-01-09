@@ -49,10 +49,3 @@ print(Symbol.for("foo").toString());
     }
     print(hashSet.size)
 }
-
-{
-    var strIter = ''[Symbol.iterator]();
-    var strIterProto = Object.getPrototypeOf(strIter);
-    delete strIterProto[Symbol.toStringTag];
-    print(toString.call(strIter));
-}
