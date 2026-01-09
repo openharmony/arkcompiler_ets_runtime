@@ -60,7 +60,6 @@ protected:
     void AllowAotCompiler();
     bool IsSystemComponent(const std::unordered_map<std::string, std::string> &argsMap);
     bool VerifyCompilerModeAndPkgInfo(const std::unordered_map<std::string, std::string> &argsMap);
-    static bool IsSleepTime();
 
     AotCompilerImpl() = default;
     ~AotCompilerImpl() = default;
