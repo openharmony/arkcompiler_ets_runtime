@@ -466,6 +466,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "LATEST_OPTIMIZATION_MACRO" ]
   }  
 
+  if (ets_runtime_feature_enable_list) {
+    defines += [ "ENABLE_API_FUNCTION_OPTIMIZATION" ]
+  }
+
   cflags_cc = [
     "-Wall",
     "-Wshadow",

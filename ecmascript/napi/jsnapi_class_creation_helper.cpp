@@ -149,11 +149,11 @@ JSHandle<JSFunction> JSNApiClassCreationHelper::CreateClassFuncWithProperties(
     size_t inlinedStaticPropCount =
         std::min(staticPropCount, static_cast<size_t>(ecmascript::PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-#if ENABLE_MEMORY_OPTIMIZATION
+#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> functionClass = factory->CreateApiClassFuncHClass(thread, inlinedStaticPropCount);
-#else // ENABLE_MEMORY_OPTIMIZATION
+#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> functionClass = factory->CreateClassFuncHClass(thread, inlinedStaticPropCount);
-#endif // ENABLE_MEMORY_OPTIMIZATION
+#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     // Step1: create hClass of class function
     // Set name of class function
     JSHandle<JSTaggedValue> functionName(factory->NewFromUtf8(name));
@@ -174,13 +174,13 @@ JSHandle<JSFunction> JSNApiClassCreationHelper::CreateClassFuncWithProperties(
             TryAddOriKeyAndOriAttrToHClass(thread, keys[i], attrs[i], descs[i], nextInlinedPropIdx, functionClass);
     }
     // Step2: create object of class function
-#if ENABLE_MEMORY_OPTIMIZATION
+#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> classFunc =
         factory->NewConstructorJSApiFunctionByHClass(reinterpret_cast<void *>(nativeFunc), functionClass);
-#else // ENABLE_MEMORY_OPTIMIZATION
+#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> classFunc = factory->NewJSFunctionByHClass(reinterpret_cast<void *>(nativeFunc), functionClass,
                                                                     ecmascript::FunctionKind::CLASS_CONSTRUCTOR);
-#endif // ENABLE_MEMORY_OPTIMIZATION
+#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     // Step3: set values of inlined properties
     size_t curInlPropIdx = startInlPropIdx;
     classFunc->SetPropertyInlinedProps<true>(thread, curInlPropIdx++, nameDesc.GetValue().GetTaggedValue());
