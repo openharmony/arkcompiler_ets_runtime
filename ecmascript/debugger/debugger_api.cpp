@@ -1473,7 +1473,10 @@ Local<JSValueRef> DebuggerApi::GetHashMapValueWithRange(const EcmaVM *ecmaVm, Lo
     JSHandle<TaggedHashArray> table(thread, hashMap->GetTable(thread));
     uint32_t length = table->GetLength();
     uint32_t size = static_cast<uint32_t>(hashMap->GetSize());
-    uint32_t allocateSize = start >= size ? 0 : start + count > size ? size - start : count;
+    uint32_t startNodeCount = static_cast<uint32_t>(start);
+    uint32_t nodeCount = static_cast<uint32_t>(count);
+    uint32_t allocateSize = (startNodeCount >= size) ? 0 :
+        (startNodeCount + nodeCount) > size ? (size - startNodeCount) : nodeCount;
     originalSize = size;
     Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, allocateSize);
     if (allocateSize == 0) {
@@ -1494,7 +1497,7 @@ Local<JSValueRef> DebuggerApi::GetHashMapValueWithRange(const EcmaVM *ecmaVm, Lo
     uint32_t nodeIndex = 0; // index of traversed nodes
     uint32_t skipNodeCount = 0; // count of skipping nodes
     // traverse first # of start nodes
-    while (skipNodeCount < start && nodeIndex < length) {
+    while (skipNodeCount < startNodeCount && nodeIndex < length) {
         node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, nodeIndex));
         skipNodeCount++;
     }
