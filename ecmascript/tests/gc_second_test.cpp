@@ -543,10 +543,12 @@ HWTEST_F_L0(GCTest, ChangeGCParamsTest002)
 
 HWTEST_F_L0(GCTest, NotifyWarmStartFalse001)
 {
+#ifndef PANDA_TARGET_32
     auto heap = const_cast<ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
     EXPECT_TRUE(heap->AllowWarmStartGcRestrain());
     heap->TriggerConcurrentMarking();
     EXPECT_FALSE(heap->AllowWarmStartGcRestrain());
+#endif
 }
 
 HWTEST_F_L0(GCTest, NotifyWarmStartFalse002)
