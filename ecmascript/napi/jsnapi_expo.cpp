@@ -1157,6 +1157,31 @@ void *JSValueRef::GetNativePointerValue(const EcmaVM* vm, bool &isNativePointer)
     return GetNativePointerValueImpl(vm, isNativePointer);
 }
 
+void *JSValueRef::GetNativePointerWrapperDataValue(const EcmaVM* vm, bool &isNativePointer, bool &flag)
+{
+    return GetNativePointerWrapperDataValueImpl(vm, isNativePointer, flag);
+}
+
+// private
+void *JSValueRef::GetNativePointerWrapperDataValueImpl(const EcmaVM* vm, bool &isNativePointer, bool &isWrapperData)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    if (!JSNApiHelper::ToJSTaggedValue(this).IsJSNativePointer()) {
+        isNativePointer = false;
+        return nullptr;
+    }
+    isNativePointer = true;
+    JSHandle<JSTaggedValue> nativePointer = JSNApiHelper::ToJSHandle(this);
+    ecmascript::NativeFlag nativeFlag = JSHandle<JSNativePointer>(nativePointer)->GetNativeFlag();
+    if (nativeFlag != ecmascript::NativeFlag::WRAPPER_DATA) {
+        isWrapperData = false;
+        return nullptr;
+    }
+    isWrapperData = true;
+    return JSHandle<JSNativePointer>(nativePointer)->GetExternalPointer();
+}
+
 // private
 void *JSValueRef::GetNativePointerValueImpl(const EcmaVM* vm, bool &isNativePointer)
 {
@@ -3382,6 +3407,17 @@ void *NativePointerRef::Value()
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
     JSHandle<JSTaggedValue> nativePointer = JSNApiHelper::ToJSHandle(this);
     return JSHandle<JSNativePointer>(nativePointer)->GetExternalPointer();
+}
+
+Local<NativePointerRef> NativePointerRef::NewWrapperData(
+    const EcmaVM *vm, void *nativePointer, NativePointerCallback callBack, void *data, size_t nativeBindingsize)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSNativePointer> obj = factory->NewJSNativePointer(nativePointer, callBack, data,
+        false, nativeBindingsize, Concurrent::YES, ecmascript::NativeFlag::WRAPPER_DATA);
+    return JSNApiHelper::ToLocal<NativePointerRef>(JSHandle<JSTaggedValue>(obj));
 }
 
 // ---------------------------------- Buffer -----------------------------------

@@ -717,6 +717,9 @@ public:
     bool IsSharedMapIterator(const EcmaVM *vm);
     bool IsHeapObject();
     void *GetNativePointerValue(const EcmaVM *vm, bool &isNativePointer);
+    void *GetNativePointerWrapperDataValue(const EcmaVM* vm,
+                                           bool &isNativePointer,
+                                           bool &flag);
     bool IsDetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
     void DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
     void GetDataViewInfo(const EcmaVM *vm,
@@ -738,6 +741,9 @@ private:
     template<typename T>
     friend class Local;
     void *GetNativePointerValueImpl(const EcmaVM *vm, bool &isNativePointer);
+    void *GetNativePointerWrapperDataValueImpl(const EcmaVM* vm,
+                                               bool &isNativePointer,
+                                               bool &flag);
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
@@ -870,6 +876,9 @@ public:
                                                void *data = nullptr,
                                                size_t nativeBindingsize = 0);
     void *Value();
+    static Local<NativePointerRef> NewWrapperData(const EcmaVM *vm, void *nativePointer,
+                                                  NativePointerCallback callBack, void *data,
+                                                  size_t nativeBindingsize);
 };
 
 class PUBLIC_API ObjectRef : public JSValueRef {
