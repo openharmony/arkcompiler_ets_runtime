@@ -31,8 +31,13 @@ SharedModuleManager* SharedModuleManager::GetInstance()
 
 void SharedModuleManager::Iterate(RootVisitor &v)
 {
+#if ENABLE_LATEST_OPTIMIZATION
+    resolvedSharedModules_.ForEachValue(
+        [&v](GCRoot& root) { root.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
+#else
     resolvedSharedModules_.ForEach(
         [&v](auto iter) { iter->second.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
+#endif
 }
 
 bool SharedModuleManager::SearchInSModuleManagerUnsafe(const CString &recordName)
@@ -146,6 +151,15 @@ JSHandle<ModuleNamespace> SharedModuleManager::SModuleNamespaceCreate(JSThread *
 
 void SharedModuleManager::SharedNativeObjDestory()
 {
+#if ENABLE_LATEST_OPTIMIZATION
+    resolvedSharedModules_.ForEach([](const CString& key, GCRoot& root) {
+        ASSERT(!key.empty());
+        JSTaggedValue module = root.Read();
+        SourceTextModule::Cast(module)->DestoryLazyImportArray();
+        SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
+        SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
+    });
+#else
     resolvedSharedModules_.ForEach([](auto it) {
         CString key = it->first;
         ASSERT(!key.empty());
@@ -155,5 +169,6 @@ void SharedModuleManager::SharedNativeObjDestory()
         SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
         SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
     });
+#endif
 }
 } // namespace panda::ecmascript

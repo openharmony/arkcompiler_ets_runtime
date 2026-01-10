@@ -87,8 +87,13 @@ public:
 
     void AddSharedSerializeModule(JSThread *thread, JSHandle<TaggedArray> serializerArray, uint32_t idx)
     {
+#if ENABLE_LATEST_OPTIMIZATION
+        resolvedSharedModules_.ForEachValue(
+            [thread, &idx, &serializerArray](GCRoot& root) { serializerArray->Set(thread, idx++, root.Read()); });
+#else
         resolvedSharedModules_.ForEach(
             [thread, &idx, &serializerArray](auto it) { serializerArray->Set(thread, idx++, it->second.Read()); });
+#endif
     }
 
 private:
@@ -106,7 +111,11 @@ private:
         const JSHandle<SourceTextModule> &moduleRecord);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
+#if ENABLE_LATEST_OPTIMIZATION
+    ModuleManagerMap<CString, CStringHash> resolvedSharedModules_;
+#else
     ModuleManagerMap<CString> resolvedSharedModules_;
+#endif
     CMap<CString, StateVisit> sharedModuleMutex_;
     Mutex mutex_;
     RecursiveMutex sharedMutex_;

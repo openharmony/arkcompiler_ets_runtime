@@ -194,8 +194,13 @@ bool ModuleManager::NeedExecuteModule(const CString &referencing)
 
 void ModuleManager::Iterate(RootVisitor &v)
 {
+#if ENABLE_LATEST_OPTIMIZATION
+    resolvedModules_.ForEachValue(
+        [&v](GCRoot& root) { root.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
+#else
     resolvedModules_.ForEach(
         [&v](auto iter) { iter->second.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
+#endif
 }
 
 CString ModuleManager::GetRecordName(const JSThread *thread, JSTaggedValue module)
