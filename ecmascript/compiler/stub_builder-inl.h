@@ -3288,11 +3288,6 @@ void StubBuilder::SetHClassBit(GateRef glue, GateRef hClass, GateRef value)
     Store(VariableType::INT32(), glue, hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET), newVal);
 }
 
-inline GateRef StubBuilder::IntPtrEuqal(GateRef x, GateRef y)
-{
-    return env_->Is32Bit() ? Int32Equal(x, y) : Int64Equal(x, y);
-}
-
 inline GateRef StubBuilder::IntPtrNotEqual(GateRef x, GateRef y)
 {
     return env_->Is32Bit() ? Int32NotEqual(x, y) : Int64NotEqual(x, y);
@@ -4623,6 +4618,18 @@ inline GateRef StubBuilder::GetModuleType(GateRef module)
                     Int32((1LU << SourceTextModule::MODULE_TYPE_BITS) - 1));
 }
 
+inline GateRef StubBuilder::IsNativeOrCjsModule(GateRef module)
+{
+    GateRef moduleType = GetModuleType(module);
+    return LogicOrBuilder(env_)
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::OHOS_MODULE))))
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::APP_MODULE))))
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::NATIVE_MODULE))))
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::INTERNAL_MODULE))))
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::CJS_MODULE))))
+        .Done();
+}
+
 inline GateRef StubBuilder::IsNativeModule(GateRef module)
 {
     GateRef moduleType = GetModuleType(module);
@@ -4638,6 +4645,12 @@ inline GateRef StubBuilder::IsCjsModule(GateRef module)
 {
     GateRef moduleType = GetModuleType(module);
     return Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::CJS_MODULE)));
+}
+
+inline GateRef StubBuilder::IsEcmaModule(GateRef module)
+{
+    GateRef moduleType = GetModuleType(module);
+    return Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::ECMA_MODULE)));
 }
 
 inline GateRef StubBuilder::GetSharedType(GateRef module)

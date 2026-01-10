@@ -26,3 +26,39 @@ export class D {
         this.d = a
     }
 }
+
+export function add(x, y) {
+    return x + y;
+}
+
+// Extended exports for testing ldexternalmodulevar optimization
+export const PI = 3.14159;
+export const VERSION = "1.0.0";
+
+export let counter = 0;
+export let message = "Hello from D";
+
+export function increment() {
+    counter++;
+    return counter;
+}
+
+export function multiply(x, y, z) {
+    return x * y * z;
+}
+
+export function getMessage() {
+    return message + " - v" + VERSION;
+}
+
+export const config = {
+    name: "ModuleD",
+    enabled: true,
+    value: 42
+};
+
+export const utils = {
+    square: function(n) { return n * n; },
+    cube: function(n) { return n * n * n; },
+    double: function(n) { return n * 2; }
+};
