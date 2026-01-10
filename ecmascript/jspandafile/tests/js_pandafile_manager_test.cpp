@@ -87,7 +87,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, NewJSPandaFile)
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
     std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(fileName.c_str()));
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
 
     auto expectFileName = pf->GetJSPandaFileDesc();
     EXPECT_STREQ(expectFileName.c_str(), "__JSPandaFileManagerTest.pa");
@@ -481,7 +481,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, FindJSPandaFileWithChecksum)
 
     // Test FindJSPandaFileWithChecksum with correct checksum
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFileWithChecksum(filename, checksum);
-    EXPECT_TRUE(foundPf != nullptr);
+    EXPECT_NE(foundPf, nullptr);
     EXPECT_STREQ(foundPf->GetJSPandaFileDesc().c_str(), filename);
 
     // Test with wrong checksum - should return nullptr and obsolete the file
@@ -513,7 +513,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, GetJSPandaFile)
     // Test GetJSPandaFile by panda file pointer
     const panda_file::File *pandaFilePtr = pf->GetPandaFile();
     std::shared_ptr<JSPandaFile> foundPf = pfManager->GetJSPandaFile(pandaFilePtr);
-    EXPECT_TRUE(foundPf != nullptr);
+    EXPECT_NE(foundPf, nullptr);
     EXPECT_STREQ(foundPf->GetJSPandaFileDesc().c_str(), filename);
     EXPECT_EQ(foundPf.get(), pf.get());
 
@@ -545,7 +545,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, ObsoleteLoadedJSPandaFile)
 
     // Verify the file exists in loaded files
     std::shared_ptr<JSPandaFile> foundPfBefore = pfManager->FindJSPandaFile(filename);
-    EXPECT_TRUE(foundPfBefore != nullptr);
+    EXPECT_NE(foundPfBefore, nullptr);
 
     // Obsolete the loaded file
     pfManager->ObsoleteLoadedJSPandaFile(filename);
@@ -584,7 +584,7 @@ HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFileFromBuffer)
 
     // Test OpenJSPandaFileFromBuffer
     std::shared_ptr<JSPandaFile> pf = pfManager->OpenJSPandaFileFromBuffer(uintBuffer, size, CString(filename));
-    EXPECT_TRUE(pf != nullptr);
+    EXPECT_NE(pf, nullptr);
     EXPECT_STREQ(pf->GetJSPandaFileDesc().c_str(), filename);
 
     // Clean up
