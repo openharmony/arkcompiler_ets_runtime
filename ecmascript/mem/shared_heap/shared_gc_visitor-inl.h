@@ -22,8 +22,10 @@
 #include "ecmascript/mem/work_manager-inl.h"
 
 namespace panda::ecmascript {
-SharedGCMarkRootVisitor::SharedGCMarkRootVisitor(SharedGCWorkManager *sWorkManager, uint32_t threadId)
-    : sWorkManager_(sWorkManager), threadId_(threadId) {}
+SharedGCMarkRootVisitor::SharedGCMarkRootVisitor(SharedGCWorkNodeHolder *sWorkNodeHolder)
+    : sWorkNodeHolder_(sWorkNodeHolder)
+{
+}
 
 void SharedGCMarkRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
 {
@@ -59,12 +61,14 @@ void SharedGCMarkRootVisitor::MarkObject(TaggedObject *object)
         return;
     }
     if (objectRegion->AtomicMark(object)) {
-        sWorkManager_->Push(threadId_, object);
+        sWorkNodeHolder_->Push(object);
     }
 }
 
-SharedGCMarkObjectVisitor::SharedGCMarkObjectVisitor(SharedGCWorkManager *sWorkManager, uint32_t threadId)
-    : sWorkManager_(sWorkManager), threadId_(threadId) {}
+SharedGCMarkObjectVisitor::SharedGCMarkObjectVisitor(SharedGCWorkNodeHolder *sWorkNodeHolder)
+    : sWorkNodeHolder_(sWorkNodeHolder)
+{
+}
 
 void SharedGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
                                                      VisitObjectArea area)
@@ -131,14 +135,58 @@ void SharedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion)
 void SharedGCMarkObjectVisitor::MarkAndPush(TaggedObject *object, Region *objectRegion)
 {
     if (objectRegion->AtomicMark(object)) {
-        sWorkManager_->Push(threadId_, object);
+        sWorkNodeHolder_->Push(object);
     }
 }
 
 void SharedGCMarkObjectVisitor::RecordWeakReference(JSTaggedType *weak)
 {
-    sWorkManager_->PushWeakReference(threadId_, weak);
+    sWorkNodeHolder_->PushWeakReference(weak);
 }
 
+template <SharedMarkType markType>
+SharedGCMarkLocalToShareRSetVisitor<markType>::SharedGCMarkLocalToShareRSetVisitor(
+    SharedGCWorkNodeHolder *sWorkNodeHolder) : sWorkNodeHolder_(sWorkNodeHolder)
+{
+}
+
+template <SharedMarkType markType>
+bool SharedGCMarkLocalToShareRSetVisitor<markType>::operator()(void *mem) const
+{
+    ObjectSlot slot(ToUintPtr(mem));
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsInSharedSweepableSpace()) {
+        if constexpr (markType == SharedMarkType::CONCURRENT_MARK_INITIAL_MARK) {
+            // For now if record weak references from local to share in marking root, the slots
+            // may be invalid due to LocalGC, so just mark them as strong-reference.
+            MarkObject(value.GetHeapObject());
+        } else {
+            static_assert(markType == SharedMarkType::NOT_CONCURRENT_MARK);
+            if (value.IsWeakForHeapObject()) {
+                RecordWeakReference(reinterpret_cast<JSTaggedType *>(mem));
+            } else {
+                MarkObject(value.GetTaggedObject());
+            }
+        }
+        return true;
+    }
+    return false;
+}
+
+template <SharedMarkType markType>
+void SharedGCMarkLocalToShareRSetVisitor<markType>::MarkObject(TaggedObject *object) const
+{
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    ASSERT(objectRegion->InSharedHeap());
+    if (!objectRegion->InSharedReadOnlySpace() && objectRegion->AtomicMark(object)) {
+        ASSERT(objectRegion->InSharedSweepableSpace());
+        sWorkNodeHolder_->Push(object);
+    }
+}
+template <SharedMarkType markType>
+void SharedGCMarkLocalToShareRSetVisitor<markType>::RecordWeakReference(JSTaggedType *weak) const
+{
+    sWorkNodeHolder_->PushWeakReference(weak);
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_VISITOR_INL_H

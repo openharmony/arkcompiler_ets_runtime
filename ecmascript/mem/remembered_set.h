@@ -80,19 +80,19 @@ public:
     }
 
     template <typename Visitor>
-    void IterateAllMarkedBits(uintptr_t begin, Visitor visitor)
+    void IterateAllMarkedBits(uintptr_t begin, Visitor &&visitor)
     {
         GCBitsetData()->IterateMarkedBits<Visitor, AccessType::NON_ATOMIC>(begin, size_, visitor);
     }
 
     template <typename Visitor>
-    void AtomicIterateAllMarkedBits(uintptr_t begin, Visitor visitor)
+    void AtomicIterateAllMarkedBits(uintptr_t begin, Visitor &&visitor)
     {
         GCBitsetData()->IterateMarkedBits<Visitor, AccessType::ATOMIC>(begin, size_, visitor);
     }
 
     template <typename Visitor>
-    void IterateAllMarkedBitsConst(uintptr_t begin, Visitor visitor) const
+    void IterateAllMarkedBitsConst(uintptr_t begin, Visitor &&visitor) const
     {
         GCBitsetData()->IterateMarkedBitsConst(begin, size_, visitor);
     }

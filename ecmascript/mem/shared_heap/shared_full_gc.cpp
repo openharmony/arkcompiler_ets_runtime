@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/shared_heap/shared_full_gc.h"
+#include "ecmascript/mem/shared_heap/shared_full_gc-inl.h"
 
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
@@ -62,14 +62,13 @@ void SharedFullGC::Initialize()
         ASSERT(current->InSharedSweepableSpace());
         current->ResetAliveObject();
     });
-    sWorkManager_->Initialize(TriggerGCType::SHARED_FULL_GC, SharedParallelMarkPhase::SHARED_COMPRESS_TASK);
+    sWorkManager_->Initialize(TriggerGCType::SHARED_FULL_GC, SharedParallelMarkPhase::SHARED_COMPRESS_TASK, 0);
 }
 
-void SharedFullGC::MarkRoots(SharedMarkType markType)
+void SharedFullGC::MarkRoots(SharedMarkType markType, RootVisitor &rootVisitor)
 {
     SharedGCMovableMarker *marker = static_cast<SharedGCMovableMarker*>(sHeap_->GetSharedGCMovableMarker());
-    SharedFullGCMarkRootVisitor sharedFullGCMarkRootVisitor(marker, DAEMON_THREAD_INDEX);
-    marker->MarkRoots(sharedFullGCMarkRootVisitor, markType);
+    marker->MarkRoots(rootVisitor, markType);
 }
 
 void SharedFullGC::Mark()
@@ -78,8 +77,13 @@ void SharedFullGC::Mark()
     TRACE_GC(GCStats::Scope::ScopeId::Mark, sHeap_->GetEcmaGCStats());
     SharedGCMovableMarker *marker = sHeap_->GetSharedGCMovableMarker();
 
-    MarkRoots(SharedMarkType::NOT_CONCURRENT_MARK);
-    marker->DoMark<SharedMarkType::NOT_CONCURRENT_MARK>(DAEMON_THREAD_INDEX);
+    SharedFullGCRunner sRunner(sHeap_, sWorkManager_->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
+    SharedFullGCMarkRootVisitor &rootVisitor = sRunner.GetMarkRootVisitor();
+    SharedFullGCMarkLocalToShareRSetVisitor &rSetVisitor = sRunner.GetMarkLocalToShareRSetVisitor();
+
+    MarkRoots(SharedMarkType::NOT_CONCURRENT_MARK, rootVisitor);
+    marker->ProcessLocalToShareRSet(rSetVisitor);
+    marker->ProcessMarkStack(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
 }
@@ -111,7 +115,7 @@ void SharedFullGC::Sweep()
     stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
     Runtime::GetInstance()->ProcessSharedDelete(gcUpdateWeak);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
@@ -140,9 +144,8 @@ void SharedFullGC::Finish()
 
 void SharedFullGC::UpdateRecordWeakReference()
 {
-    auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
-    for (uint32_t i = 0; i < totalThreadCount; i++) {
-        ProcessQueue *queue = sHeap_->GetWorkManager()->GetWeakReferenceQueue(i);
+    auto processWeakReference = [](SharedGCWorkNodeHolder *holder) {
+        ProcessQueue *queue = holder->GetWeakReferenceQueue();
 
         while (true) {
             auto obj = queue->PopBack();
@@ -169,13 +172,12 @@ void SharedFullGC::UpdateRecordWeakReference()
                 }
             }
         }
+    };
+    auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+    for (uint32_t i = 0; i < totalThreadCount; i++) {
+        processWeakReference(sWorkManager_->GetSharedGCWorkNodeHolder(i));
     }
-}
-
-bool SharedFullGC::HasEvacuated(Region *region)
-{
-    auto marker = reinterpret_cast<SharedGCMovableMarker *>(sHeap_->GetSharedGCMovableMarker());
-    return marker->NeedEvacuate(region);
+    sWorkManager_->ForEachExtraTemporaryWorkNodeHolder(processWeakReference);
 }
 
 void SharedFullGC::ResetWorkManager(SharedGCWorkManager *sWorkManager)

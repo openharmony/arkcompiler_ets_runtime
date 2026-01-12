@@ -22,6 +22,7 @@
 
 namespace panda::ecmascript {
 class EcmaVM;
+class InitialMarkSuspendCallback;
 class SharedHeap;
 
 class SharedConcurrentMarker {
@@ -111,7 +112,6 @@ private:
         duration_ = duration;
     }
 
-    void MarkRoots(SharedMarkType markType);    // In daemon thread
     void InitializeMarking();                   // In daemon thread
     void DoMarking();                           // In daemon thread
     void FinishMarking(float spendTime);        // In daemon thread
@@ -131,6 +131,8 @@ private:
     bool isConcurrentMarking_ {false};
     int32_t recursionDepth_ {0};
     TriggerGCType gcType_ {TriggerGCType::SHARED_GC};
+
+    friend class InitialMarkSuspendCallback;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_CONCURRENT_MARKER_H

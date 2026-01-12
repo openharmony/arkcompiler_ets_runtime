@@ -727,7 +727,7 @@ size_t SharedHeapVerification::VerifyRoot() const
     Runtime::GetInstance()->IterateSerializeRoot(verificationSerializeRootVisitor);
     Runtime::GetInstance()->IterateSendableGlobalStorage(verificationSerializeRootVisitor);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         auto vm = thread->GetEcmaVM();
         auto localHeap = const_cast<Heap*>(vm->GetHeap());
         localHeap->PrepareForIteration();
@@ -742,7 +742,7 @@ size_t SharedHeapVerification::VerifyRoot() const
 size_t SharedHeapVerification::VerifyHeap() const
 {
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
     });
     size_t failCount = sHeap_->VerifyHeapObjects(verifyKind_);
@@ -757,7 +757,7 @@ size_t SharedHeapVerification::VerifyHeap() const
     }
 
     Runtime::GetInstance()->GCIterateThreadList([&, localVerifyKind](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         auto vm = thread->GetEcmaVM();
         auto localHeap = const_cast<Heap*>(vm->GetHeap());
         localHeap->PrepareForIteration();

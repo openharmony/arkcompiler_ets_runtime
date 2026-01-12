@@ -825,7 +825,7 @@ void SharedHeap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]
 {
     MEMORY_TRACE_MOVE(address, forwardAddress, size);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
-    Runtime::GetInstance()->GCIterateThreadListWithoutLock([&](JSThread *thread) {
+    Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         HeapProfilerInterface *profiler = thread->GetEcmaVM()->GetHeapProfile();
         if (profiler != nullptr) {
             base::BlockHookScope blockScope;

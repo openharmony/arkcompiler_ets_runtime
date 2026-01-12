@@ -179,7 +179,7 @@ void DaemonThread::SetSharedMarkStatus(SharedMarkStatus markStatus)
     ASSERT(os::thread::GetCurrentThreadId() == GetThreadId());
     markStatus_.store(markStatus, std::memory_order_release);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         thread->SetSharedMarkStatus(markStatus);
     });
 }

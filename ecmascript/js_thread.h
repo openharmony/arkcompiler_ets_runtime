@@ -57,6 +57,7 @@ class DateUtils;
 class EcmaVM;
 class GlobalIndex;
 class HeapRegionAllocator;
+class JSThread;
 class PropertiesCache;
 class MegaICCache;
 class ModuleLogger;
@@ -165,6 +166,14 @@ public:
 
 private:
     std::atomic<int32_t> passBarrierCount_;
+};
+
+class Closure {
+public:
+    Closure() = default;
+    virtual ~Closure() = default;
+
+    virtual void Run(JSThread *thread) = 0;
 };
 
 static constexpr uint32_t MAIN_THREAD_INDEX = 0;
@@ -1786,6 +1795,33 @@ public:
         fullMarkRequest_ = false;
     }
 
+    Closure *GetFlipFunction() const
+    {
+        return flipFunction_;
+    }
+
+    void SetFlipFunction(Closure *flipFunction)
+    {
+        ASSERT(IsSuspended() || HasLaunchedSuspendAll());
+        ASSERT(!ReadFlag(ThreadFlag::PENDING_FLIP_FUNCTION));
+        ASSERT(GetFlipFunction() == nullptr);
+        ASSERT(flipFunction != nullptr);
+        flipFunction_ = flipFunction;
+        SetFlag(ThreadFlag::PENDING_FLIP_FUNCTION);
+    }
+
+    void ClearFlipFunction()
+    {
+        ASSERT(GetFlipFunction() != nullptr);
+        flipFunction_ = nullptr;
+    }
+
+    bool TryRunFlipFunction();
+
+    void RunFlipFunction();
+
+    void WaitFlipFunctionFinished();
+
     void NotifyPendingSharedHeapOOM()
     {
         SetFlag(ThreadFlag::PENDING_SHARED_HEAP_OOM);
@@ -2186,6 +2222,7 @@ private:
     void ClearFlag(ThreadFlag flag)
     {
         ASSERT(!IsEnableCMCGC());
+        ASSERT(ReadFlag(flag));
         glueData_.stateAndFlags_.asAtomicInt.fetch_and(UINT32_MAX ^ flag, std::memory_order_seq_cst);
     }
 
@@ -2262,6 +2299,10 @@ private:
     int32_t suspendCount_ {0};
     ConditionVariable suspendCondVar_;
     SuspendBarrier *suspendBarrier_ {nullptr};
+
+    Closure *flipFunction_ {nullptr};
+    Mutex flipMutex_ {};
+    ConditionVariable flipCV_ {};
 
     uint64_t jobId_ {0};
 

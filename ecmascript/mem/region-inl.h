@@ -298,7 +298,7 @@ inline void Region::DeleteSweepingLocalToShareRSet()
 }
 
 template <typename Visitor>
-inline void Region::IterateAllLocalToShareBits(Visitor visitor)
+inline void Region::IterateAllLocalToShareBits(Visitor &&visitor)
 {
     if (packedData_.localToShareSet_ != nullptr) {
         packedData_.localToShareSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
@@ -306,7 +306,7 @@ inline void Region::IterateAllLocalToShareBits(Visitor visitor)
 }
 
 template <typename Visitor>
-inline void Region::IterateAllCrossRegionBits(Visitor visitor) const
+inline void Region::IterateAllCrossRegionBits(Visitor &&visitor) const
 {
     if (crossRegionSet_ != nullptr) {
         crossRegionSet_->IterateAllMarkedBitsConst(ToUintPtr(this), visitor);
@@ -355,7 +355,7 @@ inline void Region::ClearOldToNewRSet(uintptr_t addr)
 }
 
 template <typename Visitor>
-inline void Region::IterateAllOldToNewBits(Visitor visitor)
+inline void Region::IterateAllOldToNewBits(Visitor &&visitor)
 {
     if (packedData_.oldToNewSet_ != nullptr) {
         packedData_.oldToNewSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);
@@ -363,7 +363,7 @@ inline void Region::IterateAllOldToNewBits(Visitor visitor)
 }
 
 template <typename Visitor>
-inline void Region::AtomicIterateAllSweepingRSetBits(Visitor visitor)
+inline void Region::AtomicIterateAllSweepingRSetBits(Visitor &&visitor)
 {
     if (sweepingOldToNewRSet_ != nullptr) {
         sweepingOldToNewRSet_->AtomicIterateAllMarkedBits(ToUintPtr(this), visitor);
@@ -371,7 +371,7 @@ inline void Region::AtomicIterateAllSweepingRSetBits(Visitor visitor)
 }
 
 template <typename Visitor>
-inline void Region::IterateAllSweepingRSetBits(Visitor visitor)
+inline void Region::IterateAllSweepingRSetBits(Visitor &&visitor)
 {
     if (sweepingOldToNewRSet_ != nullptr) {
         sweepingOldToNewRSet_->IterateAllMarkedBits(ToUintPtr(this), visitor);

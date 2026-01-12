@@ -63,7 +63,7 @@ void SharedGCEvacuator::UpdateReference()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCEvacuator::UpdateReference", "");
     Runtime *runtime = Runtime::GetInstance();
     runtime->GCIterateThreadList([this](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
         heap->GetSweeper()->EnsureAllTaskFinished();
         heap->EnumerateRegions([this](Region *region) {
@@ -83,7 +83,7 @@ void SharedGCEvacuator::UpdateReference()
     }
     runtime->IterateSharedRoot(rootVisitor_);
     runtime->GCIterateThreadList([this](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         auto vm = thread->GetEcmaVM();
         ObjectXRay::VisitVMRoots(vm, rootVisitor_);
     });

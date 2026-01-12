@@ -336,6 +336,47 @@ void Runtime::ResumeAll(JSThread *current)
     ResumeAllThreadsImpl(current);
 }
 
+void Runtime::FlipAllThreads(DaemonThread *current, Closure *suspendCallback, Closure *flipFunction)
+{
+    ASSERT(!g_isEnableCMCGC);
+
+    std::vector<JSThread *> threads;
+    {
+        SuspendAllScope scope(current);
+        suspendCallback->Run(current);
+
+        size_t maybeNumThreads = ApproximateThreadListSize();
+        threads.resize(maybeNumThreads);
+        GCIterateThreadList([&threads, flipFunction](JSThread *thread) {
+            threads.emplace_back(thread);
+            thread->SetFlipFunction(flipFunction);
+        });
+    }
+
+    size_t numThreads = threads.size();
+    std::reverse(threads.begin(), threads.end());
+
+    LockHolder lock(threadsLock_);
+    for (size_t i = 0; i < numThreads; ++i) {
+        JSThread *thread = threads[i];
+        // fixme: optimize by use thread exit flag
+        if (std::find(threads_.begin(), threads_.end(), thread) == threads_.end()) {
+            threads[i] = nullptr;
+            continue;
+        }
+        if (thread->TryRunFlipFunction()) {
+            threads[i] = nullptr;
+        }
+    }
+
+    for (JSThread *thread : threads) {
+        if (thread == nullptr) {
+            continue;
+        }
+        thread->WaitFlipFunctionFinished();
+    }
+}
+
 void Runtime::SuspendAllThreadsImpl(JSThread *current)
 {
     // fixme: support suspend in a non JS Thread.

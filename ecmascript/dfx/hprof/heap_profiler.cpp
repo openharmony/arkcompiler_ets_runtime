@@ -220,7 +220,7 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapSh
     const_cast<Heap*>(vm_->GetHeap())->Prepare();
     SharedHeap::GetInstance()->Prepare(true);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
     });
     BinaryDump(stream, dumpOption);
@@ -402,7 +402,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             const_cast<Heap*>(vm_->GetHeap())->Prepare();
             SharedHeap::GetInstance()->Prepare(true);
             Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-                ASSERT(!thread->IsInRunningState());
+                ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
                 const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
             });
         }

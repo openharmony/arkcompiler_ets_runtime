@@ -105,7 +105,7 @@ void ObjectMarker::MarkRootObjects()
 {
     HeapRootVisitor rootVisitor;
     if (IsProcessDump()) {
-        Runtime::GetInstance()->GCIterateThreadListWithoutLock([&rootVisitor, this](JSThread *thread) {
+        Runtime::GetInstance()->GCIterateThreadList([&rootVisitor, this](JSThread *thread) {
             rootVisitor.VisitHeapRoots(thread, *this);
         });
         LOG_ECMA(INFO) << "rawheap dump, process dump";
@@ -120,7 +120,7 @@ void ObjectMarker::MarkRootObjects()
 void ObjectMarker::IterateOverObjects(const std::function<void(TaggedObject *)> &visitor)
 {
     if (IsProcessDump()) {
-        Runtime::GetInstance()->GCIterateThreadListWithoutLock([&visitor](JSThread *thread) {
+        Runtime::GetInstance()->GCIterateThreadList([&visitor](JSThread *thread) {
             thread->GetEcmaVM()->GetHeap()->IterateOverObjects(visitor, false);
         });
     } else {

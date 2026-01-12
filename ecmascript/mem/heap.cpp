@@ -329,7 +329,7 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
     maxMarkTaskCount_ = totalThreadNum - 1;
     sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
     sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
-    sharedGCMovableMarker_ = new SharedGCMovableMarker(sWorkManager_, this);
+    sharedGCMovableMarker_ = new SharedGCMovableMarker(sWorkManager_);
     sConcurrentMarker_ = new SharedConcurrentMarker(option.EnableSharedConcurrentMark() ?
         EnableConcurrentMarkType::ENABLE : EnableConcurrentMarkType::CONFIG_DISABLE);
     sSweeper_ = new SharedConcurrentSweeper(this, option.EnableConcurrentSweep() ?
@@ -516,7 +516,7 @@ SharedHeap::SharedGCScope::SharedGCScope()
 SharedHeap::SharedGCScope::~SharedGCScope()
 {
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ProcessGCListeners();
         std::shared_ptr<pgo::PGOProfiler> pgoProfiler =  thread->GetEcmaVM()->GetPGOProfiler();
         if (pgoProfiler != nullptr) {
@@ -667,7 +667,7 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
         // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
         DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC);
         Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-            ASSERT(!thread->IsInRunningState());
+            ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
             thread->NotifyPendingSharedHeapOOM();
         });
     }
@@ -3148,7 +3148,7 @@ void Heap::ProcessGCListeners()
 void SharedHeap::ProcessAllGCListeners()
 {
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ProcessGCListeners();
     });
 }
