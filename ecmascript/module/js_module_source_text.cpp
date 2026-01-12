@@ -22,7 +22,6 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
-#include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/file.h"
@@ -421,11 +420,8 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThr
 {
     CString moduleRequestName = requiredModule->GetEcmaModuleRecordNameString();
     ModuleTraceScope moduleTraceScope(thread, "SourceTextModule::LoadNativeModule:" + moduleRequestName);
-    ModuleLogger *moduleLogger = thread->GetModuleLogger();
     auto undefined = vm->GetJSThread()->GlobalConstants()->GetHandledUndefined();
-    if (moduleLogger != nullptr) {
-        moduleLogger->SetStartTime(moduleRequestName);
-    }
+    ModuleLoggerTimeScope moduleLoggerTimeScope(thread, moduleRequestName);
     CString soName = PathHelper::GetStrippedModuleName(moduleRequestName);
 
     CString fileName = requiredModule->GetEcmaModuleFilenameString();
@@ -434,9 +430,6 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThr
     JSHandle<JSTaggedValue> func = GetRequireNativeModuleFunc(vm, moduleType);
     if (!func->IsCallable()) {
         LOG_FULL(WARN) << "Not found require func";
-        if (moduleLogger != nullptr) {
-            moduleLogger->SetEndTime(moduleRequestName);
-        }
         return undefined;
     }
     EcmaRuntimeCallInfo* info;
@@ -451,9 +444,6 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThr
     RETURN_VALUE_IF_ABRUPT(thread, undefined);
     // Consistent with FunctionRef::Call
     JSHandle<JSTaggedValue> exportObject = LoadNativeModuleCallFunc(vm, info);
-    if (moduleLogger != nullptr) {
-        moduleLogger->SetEndTime(moduleRequestName);
-    }
     RETURN_VALUE_IF_ABRUPT(thread, undefined);
     return exportObject;
 }
