@@ -48,7 +48,123 @@ host_unittest_action("OhosTest") {
     "zlib:libz",
   ]
   if (!ark_standalone_build && !is_arkui_x) {
-    external_deps += [ 
+    external_deps += [
+      "runtime_core:arkassembler_public_headers",
+    ]
+  }
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("CodeDecryptTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "code_decrypt_test.cpp",
+  ]
+
+  configs = [
+    "$js_root:ecma_test_config",
+  ]
+
+  if (ark_standalone_build || is_arkui_x) {
+    configs += [
+      "$ark_root/assembler:arkassembler_public_config",
+    ]
+  }
+
+  deps = [
+    "$js_root:libark_jsruntime_test",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  if (!ark_standalone_build && !is_arkui_x) {
+    external_deps += [
+      "runtime_core:arkassembler_public_headers",
+    ]
+  }
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JSPandaFileSnapshotInterfacesTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_pandafile_snapshot_interfaces_test.cpp",
+    "mock/mock_enable_aot_list_helper.cpp",
+  ]
+
+  configs = [
+    "$js_root:ecma_test_config",
+  ]
+
+  if (ark_standalone_build || is_arkui_x) {
+    configs += [
+      "$ark_root/assembler:arkassembler_public_config",
+    ]
+  }
+
+  deps = [
+    "$js_root:libark_jsruntime_test",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  if (!ark_standalone_build && !is_arkui_x) {
+    external_deps += [
+      "runtime_core:arkassembler_public_headers",
+    ]
+  }
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("ModuleSnapshotInterfacesTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "module_snapshot_interfaces_test.cpp",
+    "mock/mock_enable_aot_list_helper.cpp",
+  ]
+
+  configs = [
+    "$js_root:ecma_test_config",
+  ]
+
+  if (ark_standalone_build || is_arkui_x) {
+    configs += [
+      "$ark_root/assembler:arkassembler_public_config",
+    ]
+  }
+
+  deps = [
+    "$js_root:libark_jsruntime_test",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  if (!ark_standalone_build && !is_arkui_x) {
+    external_deps += [
       "runtime_core:arkassembler_public_headers",
     ]
   }
@@ -99,6 +215,9 @@ group("unittest") {
   deps = [
     ":CrashTest",
     ":OhosTest",
+    ":CodeDecryptTest",
+    ":JSPandaFileSnapshotInterfacesTest",
+    ":ModuleSnapshotInterfacesTest",
   ]
 }
 
@@ -107,11 +226,17 @@ group("host_unittest") {
   deps = [
     ":CrashTestAction",
     ":OhosTestAction",
+    ":CodeDecryptTestAction",
+    ":JSPandaFileSnapshotInterfacesTestAction",
+    ":ModuleSnapshotInterfacesTestAction",
   ]
   if (is_mac) {
     deps -= [
       ":CrashTestAction",
       ":OhosTestAction",
+      ":CodeDecryptTestAction",
+      ":JSPandaFileSnapshotInterfacesTestAction",
+      ":ModuleSnapshotInterfacesTestAction",
     ]
   }
 }
