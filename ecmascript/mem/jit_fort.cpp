@@ -135,6 +135,7 @@ uintptr_t JitFort::Allocate(MachineCodeDesc *desc)
 // buffer, which makes the minimum Fort buffer allocation size 32 bytes.
 void JitFort::MarkJitFortMemAlive(MachineCode *obj)
 {
+    LockHolder lock(mutex_);
     size_t size = FortAllocSize(obj->GetInstructionsSize());
     uintptr_t addr = obj->GetText();
     uintptr_t endAddr = addr + size - 1;
@@ -163,6 +164,7 @@ void JitFort::MarkJitFortMemAwaitInstall(uintptr_t addr, size_t size)
 // See JitFort::MarkJitFortMemAlive comments for mark bit encoding in GC bitset.
 void JitFort::MarkJitFortMemInstalled(MachineCode *obj)
 {
+    LockHolder lock(mutex_);
     size_t size = FortAllocSize(obj->GetInstructionsSize());
     uintptr_t addr = obj->GetText();
     uint32_t regionIdx = AddrToFortRegionIdx(addr);
@@ -286,6 +288,9 @@ void JitFortGCBitset::MarkStartAddr(bool awaitInstall, uintptr_t startAddr, uint
     } else {
         word &= ~(1u << index);
         word &= ~(1u << (index+1));
+        if (index + 1 == BIT_PER_WORD) {
+            LOG_JIT(ERROR) << "JitFort::MarkStartAddr";
+        }
     }
 }
 
