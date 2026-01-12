@@ -62,6 +62,7 @@ public:
     constexpr static const int RUNTIME_INDEX_TIMESTAMP = 1;
     constexpr static const int RUNTIME_INDEX_TYPE = 2;
 
+    virtual ~AotRuntimeInfo() = default;
     static AotRuntimeInfo &GetInstance()
     {
         static AotRuntimeInfo singleAotRuntimeInfo;
@@ -100,6 +101,7 @@ public:
         SetRuntimeInfo(realOutPath.c_str(), lines, MAX_LENGTH);
     }
 
+#if !ENABLE_MEMORY_OPTIMIZATION
     void BuildCrashRuntimeInfo(RuntimeInfoType type)
     {
         std::unique_lock<std::mutex> lock(fileMutex_);
@@ -127,6 +129,36 @@ public:
             return;
         }
         SetRuntimeInfo(realOutPath, lines, MAX_LENGTH);
+    }
+#endif
+
+    void BuildCrashInfo()
+    {
+        std::unique_lock<std::mutex> lock(fileMutex_);
+        char realOutPath[PATH_MAX] = { '\0' };
+        if (!GetCrashSandBoxRealPath(realOutPath, PATH_MAX) || IsCharEmpty(realOutPath)) {
+            return;
+        }
+        if (FileExist(realOutPath)) {
+            return;
+        }
+        int fd = open(realOutPath, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        if (fd == -1) {
+            return;
+        }
+        FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
+
+        const char *data = "escape\n";
+        size_t totalLen = strlen(data);
+        size_t bytesWrittenTotal = 0;
+        while (bytesWrittenTotal < totalLen) {
+            ssize_t bytesWritten = write(fd, data + bytesWrittenTotal, totalLen - bytesWrittenTotal);
+            if (bytesWritten <= 0) {
+                break;
+            }
+            bytesWrittenTotal += bytesWritten;
+        }
+        Close(reinterpret_cast<fd_t>(fd));
     }
 
     int GetCompileCountByType(RuntimeInfoType type, const std::string &pgoRealPath = "")

@@ -71,6 +71,7 @@ HWTEST_F_L0(CrashTest, GetMicrosecondsTimeStamp)
     ASSERT_EQ(std::string(timestamp), "1970-01-01 00:00:00");
 }
 
+#if !ENABLE_MEMORY_OPTIMIZATION
 HWTEST_F_L0(CrashTest, BuildCrashRuntimeInfo)
 {
     char timestamp[ohos::AotRuntimeInfo::TIME_STAMP_SIZE];
@@ -101,6 +102,7 @@ HWTEST_F_L0(CrashTest, BuildCrashRuntimeInfo)
     unlink(sanboxRealPath);
     rmdir(MockAotRuntimeInfo::SANBOX_DIR);
 }
+#endif
 
 HWTEST_F_L0(CrashTest, BuildCompileRuntimeInfo)
 {
@@ -132,6 +134,7 @@ HWTEST_F_L0(CrashTest, BuildCompileRuntimeInfo)
     rmdir(MockAotRuntimeInfo::SANBOX_DIR);
 }
 
+#if !ENABLE_MEMORY_OPTIMIZATION
 HWTEST_F_L0(CrashTest, CrashGetRuntimeInfoByPath)
 {
     char timestamp[ohos::AotRuntimeInfo::TIME_STAMP_SIZE];
@@ -149,6 +152,28 @@ HWTEST_F_L0(CrashTest, CrashGetRuntimeInfoByPath)
     runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH);
     runtimeInfo->CollectCrashSum();
 
+    unlink(sanboxRealPath);
+    rmdir(MockAotRuntimeInfo::SANBOX_DIR);
+}
+#endif
+
+HWTEST_F_L0(CrashTest, BuildCrashInfo)
+{
+    char sanboxRealPath[PATH_MAX];
+    std::unique_ptr<ohos::AotRuntimeInfo> runtimeInfo = std::make_unique<MockAotRuntimeInfo>();
+
+    runtimeInfo->GetCrashSandBoxRealPath(sanboxRealPath, PATH_MAX);
+    mkdir(MockAotRuntimeInfo::SANBOX_DIR, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    runtimeInfo->BuildCrashInfo();
+
+    std::ifstream file(sanboxRealPath);
+    ASSERT_TRUE(file.is_open());
+
+    std::string content;
+    std::getline(file, content);
+    ASSERT_EQ(content, "escape");
+
+    file.close();
     unlink(sanboxRealPath);
     rmdir(MockAotRuntimeInfo::SANBOX_DIR);
 }
