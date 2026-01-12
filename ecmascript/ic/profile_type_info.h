@@ -237,6 +237,11 @@ public:
         SetSpecialValue();
     }
 
+    bool IsProfileTypeInfoInit() const
+    {
+        return GetPeriodIndex() == INITIAL_PERIOD_INDEX;
+    }
+
     void SetPreDumpPeriodIndex()
     {
         SetPeriodIndex(PRE_DUMP_PERIOD_INDEX);
@@ -245,6 +250,11 @@ public:
     bool IsProfileTypeInfoPreDumped() const
     {
         return GetPeriodIndex() == PRE_DUMP_PERIOD_INDEX;
+    }
+
+    bool IsProfileTypeInfoDumped() const
+    {
+        return GetPeriodIndex() == DUMP_PERIOD_INDEX;
     }
 
     void SetBigMethodPeriodIndex()

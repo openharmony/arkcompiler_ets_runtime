@@ -22,7 +22,7 @@
             "size": 8
         }
     ],
-    "end_offset": 40,
+    "end_offset": 32,
     "parents": [
         "JS_API_FUNCTION"
     ]

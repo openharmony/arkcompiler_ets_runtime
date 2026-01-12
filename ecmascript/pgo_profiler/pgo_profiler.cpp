@@ -245,12 +245,15 @@ void PGOProfiler::ProfileDefineGetterSetter(JSHClass* receiverHClass,
         return;
     }
 
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> function(func);
 
+#if !ENABLE_MEMORY_OPTIMIZATION
     WorkNode* workNode = reinterpret_cast<WorkNode*>(function->GetWorkNodePointer());
     if (workNode != nullptr) {
         workNode->SetValue(JSTaggedType(JSFunction::Cast(funcValue)));
     }
+#endif
 
     JSHandle<JSTaggedValue> key(thread, JSTaggedValue(pcOffset));
     JSHandle<JSTaggedValue> receiverHClassHandle(thread, receiverHClass);
@@ -342,8 +345,12 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
             return;
         }
         if (!profileTypeInfo->IsProfileTypeInfoPreDumped()) {
-            profileTypeInfo->SetPreDumpPeriodIndex();
-            PGOPreDump(JSTaggedType(object));
+            if (profileTypeInfo->IsProfileTypeInfoInit()) {
+                profileTypeInfo->SetPreDumpPeriodIndex();
+                PGOPreDump(JSTaggedType(object));
+            } else {
+                profileTypeInfo->SetPreDumpPeriodIndex();
+            }
         }
     }
 }
@@ -361,6 +368,11 @@ void PGOProfiler::PGODump(JSTaggedType func)
     if (!methodValue.IsMethod()) {
         return;
     }
+
+#if ENABLE_MEMORY_OPTIMIZATION
+    auto workNode = nativeAreaAllocator_->New<WorkNode>(func);
+    dumpWorkList_.PushBack(workNode);
+#else
     auto function = JSFunction::Cast(funcValue);
     auto workNode = reinterpret_cast<WorkNode *>(function->GetWorkNodePointer());
     if (workNode == nullptr) {
@@ -377,6 +389,8 @@ void PGOProfiler::PGODump(JSTaggedType func)
             dumpWorkList_.PushBack(workNode);
         }
     }
+#endif
+
     manager_->TryDispatchDumpTask(this);
 }
 
@@ -425,6 +439,11 @@ void PGOProfiler::PGOPreDump(JSTaggedType func)
     if (!methodValue.IsMethod()) {
         return;
     }
+
+#if ENABLE_MEMORY_OPTIMIZATION
+    auto workNode = nativeAreaAllocator_->New<WorkNode>(func);
+    preDumpWorkList_.PushBack(workNode);
+#else
     auto function = JSFunction::Cast(funcValue);
     auto workNode = reinterpret_cast<WorkNode *>(function->GetWorkNodePointer());
     if (workNode == nullptr) {
@@ -441,6 +460,7 @@ void PGOProfiler::PGOPreDump(JSTaggedType func)
             preDumpWorkList_.PushBack(workNode);
         }
     }
+#endif
 }
 
 void PGOProfiler::UpdateExtraProfileTypeInfo(ApEntityId abcId,
@@ -586,7 +606,7 @@ void PGOProfiler::HandlePGODump()
             continue;
         }
         auto func = JSFunction::Cast(value);
-        if (func->IsSendableOrConcurrentFunction(thread)) {
+        if (func->IsSendableOrConcurrentFunction(thread) || !IsProfileTypeInfoDumped(thread, func)) {
             current = PopFromProfileQueue();
             continue;
         }
@@ -2240,6 +2260,16 @@ bool PGOProfiler::InsertDefinedCtor(uint32_t entityId)
         return true;
     }
     return false;
+}
+
+bool PGOProfiler::IsProfileTypeInfoDumped(JSThread *thread, JSFunction *function)
+{
+    auto profileTypeInfoVal = function->GetProfileTypeInfo(thread);
+    if (profileTypeInfoVal.IsUndefined() || !profileTypeInfoVal.IsTaggedArray()) {
+        return false;
+    }
+    auto profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
+    return profileTypeInfo->IsProfileTypeInfoDumped();
 }
 
 void PGOProfiler::SetCurrentGlobalEnv(JSTaggedValue globalEnv)

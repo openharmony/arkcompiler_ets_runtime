@@ -647,7 +647,9 @@ GateRef NewObjectStubBuilder::DefineFuncForJit(GateRef glue, GateRef method, Gat
     GateRef func = *result;
 
     SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+#if !ENABLE_MEMORY_OPTIMIZATION
     SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+#endif
 
     if (targetKind == FunctionKind::BASE_CONSTRUCTOR) {
         auto funcprotoAccessor =

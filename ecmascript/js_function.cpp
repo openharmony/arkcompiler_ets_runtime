@@ -104,7 +104,9 @@ void JSFunction::InitializeWithDefaultValueCommon(JSThread *thread, const JSHand
     func->InitBitField();
     func->SetProtoOrHClass<SKIP_BARRIER>(thread, JSTaggedValue::Hole());
     func->SetHomeObject<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
+#if !ENABLE_MEMORY_OPTIMIZATION
     func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
+#endif
     func->SetMachineCode<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetBaselineCode<SKIP_BARRIER>(thread, JSTaggedValue::Undefined());
     func->SetRawProfileTypeInfo<SKIP_BARRIER>(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell());
@@ -1384,7 +1386,9 @@ void JSFunction::ReplaceFunctionForHook(const JSThread *thread, JSHandle<JSFunct
         oldFunc->SetMachineCode(thread, newFunc->GetMachineCode(thread));
         oldFunc->SetBaselineCode(thread, newFunc->GetBaselineCode(thread));
         oldFunc->SetModule(thread, newFunc->GetModule(thread));
+#if !ENABLE_MEMORY_OPTIMIZATION
         oldFunc->SetWorkNodePointer(newFunc->GetWorkNodePointer());
+#endif
     }
     auto newFuncHashField = Barriers::GetTaggedValue(thread, *newFunc, HASH_OFFSET);
     JSTaggedValue value(newFuncHashField);

@@ -932,8 +932,10 @@ public:
                                  MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value,
                                     MemoryAttribute mAttr = MemoryAttribute::Default());
+#if !ENABLE_MEMORY_OPTIMIZATION
     void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value,
                                       MemoryAttribute mAttr = MemoryAttribute::Default());
+#endif
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value,
                                  MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value,
