@@ -230,6 +230,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::FUNC_SLOT:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::WEAK_LINKED_HASH_MAP:
         case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::CONSTANT_POOL:

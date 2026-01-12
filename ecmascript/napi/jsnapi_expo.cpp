@@ -119,6 +119,7 @@ using ecmascript::PromiseCapability;
 using ecmascript::PropertyDescriptor;
 using ecmascript::Region;
 using ecmascript::TaggedArray;
+using ecmascript::WeakLinkedHashMap;
 using ecmascript::base::BuiltinsBase;
 using ecmascript::base::JsonStringifier;
 using ecmascript::SharedHeap;
@@ -7064,7 +7065,7 @@ int32_t WeakMapRef::GetTotalElements(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
     return weakMap->GetSize(thread) +
-           LinkedHashMap::Cast(weakMap->GetLinkedMap(thread).GetTaggedObject())->NumberOfDeletedElements();
+           WeakLinkedHashMap::Cast(weakMap->GetWeakLinkedMap(thread).GetTaggedObject())->NumberOfDeletedElements();
 }
 
 Local<JSValueRef> WeakMapRef::GetKey(const EcmaVM *vm, int entry)
@@ -7094,8 +7095,8 @@ Local<WeakMapRef> WeakMapRef::New(const EcmaVM *vm)
     JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakMapFunction();
     JSHandle<JSWeakMap> weakMap =
         JSHandle<JSWeakMap>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashMap> hashMap = LinkedHashMap::Create(thread);
-    weakMap->SetLinkedMap(thread, hashMap);
+    JSHandle<WeakLinkedHashMap> hashMap = WeakLinkedHashMap::Create(thread);
+    weakMap->SetWeakLinkedMap(thread, hashMap);
     JSHandle<JSTaggedValue> weakMapTag = JSHandle<JSTaggedValue>::Cast(weakMap);
     return JSNApiHelper::ToLocal<WeakMapRef>(weakMapTag);
 }

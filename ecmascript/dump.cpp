@@ -53,6 +53,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "FuncSlot";
         case JSType::LEXICAL_ENV:
             return "LexicalEnv";
+        case JSType::WEAK_LINKED_HASH_MAP:
+            return "WeakLinkedHashMap";
         case JSType::SFUNCTION_ENV:
             return "SFunctionEnv";
         case JSType::SENDABLE_ENV:
@@ -701,6 +703,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
         case JSType::TAGGED_DICTIONARY:
         case JSType::TEMPLATE_MAP:
         case JSType::LEXICAL_ENV:
+        case JSType::WEAK_LINKED_HASH_MAP:
         case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::COW_TAGGED_ARRAY:
@@ -1542,6 +1545,23 @@ void LinkedHashMap::Dump(const JSThread *thread, std::ostream &os) const
     }
 }
 
+void WeakLinkedHashMap::Dump(const JSThread *thread, std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    int capacity = NumberOfElements() + NumberOfDeletedElements();
+    for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
+        JSTaggedValue key(GetKey(thread, hashIndex));
+        if (!key.IsUndefined() && !key.IsHole()) {
+            JSTaggedValue val(GetValue(thread, hashIndex));
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET);
+            key.DumpTaggedValue(thread, os);
+            os << ": ";
+            val.DumpTaggedValue(thread, os);
+            os << "\n";
+        }
+    }
+}
+
 void TaggedDoubleList::Dump(const JSThread *thread, std::ostream &os) const
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -2246,7 +2266,7 @@ void JSSharedSet::Dump(const JSThread *thread, std::ostream &os) const
 
 void JSWeakMap::Dump(const JSThread *thread, std::ostream &os) const
 {
-    LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject());
+    WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject());
     os << " - length: " << std::dec << GetSize(thread) << "\n";
     os << " - elements: " << std::dec << map->NumberOfElements() << "\n";
     os << " - deleted-elements: " << std::dec << map->NumberOfDeletedElements() << "\n";
@@ -4118,6 +4138,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::WEAK_LINKED_HASH_MAP:
         case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::COW_TAGGED_ARRAY:
@@ -4791,6 +4812,22 @@ void LinkedHashMap::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
     }
 }
 
+void WeakLinkedHashMap::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    int capacity = NumberOfElements() + NumberOfDeletedElements();
+    vec.reserve(vec.size() + capacity);
+    for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
+        JSTaggedValue key(GetKey(thread, hashIndex));
+        if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
+            JSTaggedValue val = GetValue(thread, hashIndex);
+            CString str;
+            KeyToStd(thread, str, key);
+            vec.emplace_back(str, val);
+        }
+    }
+}
+
 void TaggedHashArray::Dump(const JSThread *thread, std::ostream &os) const
 {
     DumpArrayClass(thread, this, os);
@@ -5195,9 +5232,9 @@ void JSSharedSet::DumpForSnapshot(const JSThread *thread, std::vector<Reference>
 
 void JSWeakMap::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
-    if (!(GetLinkedMap(thread).IsInvalidValue())) {
-        LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject());
-        vec.emplace_back("linkedmap", GetLinkedMap(thread));
+    if (!(GetWeakLinkedMap(thread).IsInvalidValue())) {
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject());
+        vec.emplace_back("linkedmap", GetWeakLinkedMap(thread));
         map->DumpForSnapshot(thread, vec);
     }
 

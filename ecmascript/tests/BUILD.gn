@@ -2035,6 +2035,30 @@ host_unittest_action("JS_LinkHashTable_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("JS_WeakLinkHashMap_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "weak_linked_hash_map_test.cpp",
+  ]
+
+  configs = [ "../../:ecma_test_config" ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("JS_LinkNode_Test") {
   module_out_path = module_output_path
 

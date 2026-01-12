@@ -2116,6 +2116,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/type_enums.json",
   "ecmascript/js_type_metadata/type_range.json",
   "ecmascript/js_type_metadata/vtable.json",
+  "ecmascript/js_type_metadata/weak_linked_hash_map.json",
 ]
 
 action("gen_js_type_metadata") {

@@ -286,6 +286,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
     }
     SetConstant(ConstantIndex::LEXICAL_ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
+    SetConstant(ConstantIndex::WEAK_LINKED_HASH_MAP_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::WEAK_LINKED_HASH_MAP));
     SetConstant(ConstantIndex::SFUNCTION_ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SFUNCTION_ENV));
     SetConstant(ConstantIndex::SYMBOL_CLASS_INDEX,

@@ -78,6 +78,7 @@
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/js_weak_ref.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/marker_cell.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/require/js_cjs_exports.h"
@@ -1536,7 +1537,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSSharedMap::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_WEAK_MAP:
-            JSWeakMap::Cast(*obj)->SetLinkedMap<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSWeakMap::Cast(*obj)->SetWeakLinkedMap<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_WEAK_SET:
             JSWeakSet::Cast(*obj)->SetLinkedSet<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
@@ -2683,6 +2684,17 @@ JSHandle<GlobalEnv> ObjectFactory::NewGlobalEnv(bool lazyInit, bool isRealm)
     builtins.Initialize(globalEnv, thread_, lazyInit, isRealm);
     thread_->SetInGlobalEnvInitialize(false);
     return globalEnv;
+}
+
+JSHandle<WeakLinkedHashMap> ObjectFactory::NewWeakLinkedHashMap(int numSlots)
+{
+    NewObjectHook();
+    size_t size = WeakLinkedHashMap::ComputeSize(numSlots);
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetWeakLinkedHashMapClass().GetTaggedObject()), size);
+    JSHandle<WeakLinkedHashMap> weakMap(thread_, header);
+    weakMap->InitializeWithSpecialValue(JSTaggedValue::Hole(), numSlots);
+    return weakMap;
 }
 
 JSHandle<LexicalEnv> ObjectFactory::NewLexicalEnv(int numSlots)

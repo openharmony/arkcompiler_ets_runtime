@@ -537,6 +537,7 @@ public:
     bool IsCachedExternalString() const;
     bool IsStringOrSymbol() const;
     bool IsLexicalEnv() const;
+    bool IsWeakLinkedHashMap() const;
     bool IsSFunctionEnv() const;
     bool PUBLIC_API IsTaggedArray() const;
     bool PUBLIC_API IsFuncSlot() const;
