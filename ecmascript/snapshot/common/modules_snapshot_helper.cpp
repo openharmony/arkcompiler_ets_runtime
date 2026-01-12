@@ -102,7 +102,7 @@ void ModulesSnapshotHelper::TryDisableSnapshot(int reason)
     // disable module at first
     if ((g_featureLoaded_ & static_cast<int>(SnapshotFeatureState::MODULE)) != 0 &&
         (g_featureLoaded_ & static_cast<int>(SnapshotFeatureState::PANDAFILE)) != 0) {
-        disableWord = &STATE_WORD_MODULE_SNAPSHOT_DIASBLED;
+        disableWord = &STATE_WORD_MODULE_SNAPSHOT_DISABLED;
     } else {
         // only one snapshot feature is loaded
         disableWord = &STATE_WORD_ALL_SNAPSHOT_DIASBLED;
@@ -207,11 +207,11 @@ void ModulesSnapshotHelper::UpdateFromStateFile(const CString &path)
     }
     PosixFile stateFile(stateFilePath, "r");
     char stateWord{};
-    if (stateFile.IsValid() && stateFile.Read(&stateWord, sizeof(stateFile)) <= 0) {
+    if (stateFile.IsValid() && stateFile.Read(&stateWord, sizeof(stateWord)) <= 0) {
         return;
     }
     switch (stateWord) {
-        case STATE_WORD_MODULE_SNAPSHOT_DIASBLED:
+        case STATE_WORD_MODULE_SNAPSHOT_DISABLED:
             g_featureState_ = static_cast<int>(SnapshotFeatureState::MODULE);
             LOG_ECMA(WARN) << "module snapshot is disabled due to crash occurs";
             break;

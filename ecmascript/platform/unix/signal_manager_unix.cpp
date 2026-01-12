@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include "ecmascript/ecma_param_configuration.h"
+#include <cstddef>
+#include <cstdint>
 #include <mutex>
 #include <csignal>
 
@@ -68,23 +71,33 @@ bool SignalHandlingScope::IsHandlingSignal()
     return false;
 }
 
+size_t SignalHandlingScope::GetSigBitsIndex(int signo)
+{
+    return (signo - 1) / MAX_UINTPTR_SIZE; // -1: skip 0, invalid signal
+}
+
+uintptr_t SignalHandlingScope::GenSignalBitMask(int signo)
+{
+    return static_cast<uintptr_t>(1) << ((signo - 1) % MAX_UINTPTR_SIZE); // -1: skip 0, invalid signal
+}
+
 bool SignalHandlingScope::IsHandlingSignal(int signo)
 {
-    if (signo <= 0 || signo >= NSIG - 1) {
+    if (signo <= 0 || signo >= NSIG) {
         return false;
     }
-    auto bits = GetHandlingSignalBits(signo % MAX_UINTPTR_SIZE);
-    uintptr_t mask = static_cast<uintptr_t>(1) << ((signo - 1) % MAX_SIGNAL_NUM); // -1: skip 0, invalid signal
+    auto bits = GetHandlingSignalBits(GetSigBitsIndex(signo));
+    const uintptr_t mask = GenSignalBitMask(signo);
     return (bits & mask) != 0;
 }
 
 bool SignalHandlingScope::SetHandlingSignal(int signo, bool value)
 {
-    if (signo <= 0 || signo >= NSIG - 1) {
+    if (signo <= 0 || signo >= NSIG) {
         return false;
     }
-    auto &bits = GetHandlingSignalBits(signo % MAX_UINTPTR_SIZE);
-    const uintptr_t bitMask = static_cast<uintptr_t>(1) << ((signo - 1) % MAX_SIGNAL_NUM); // -1: skip 0, invalid signal
+    auto &bits = GetHandlingSignalBits(GetSigBitsIndex(signo));
+    const uintptr_t bitMask = GenSignalBitMask(signo);
     auto ret = bits & bitMask;
     if (value) {
         bits |= bitMask;

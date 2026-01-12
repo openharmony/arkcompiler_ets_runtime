@@ -47,6 +47,9 @@ public:
     static bool SetHandlingSignal(int signo, bool value);
 
 private:
+    static size_t GetSigBitsIndex(int signo);
+    static uintptr_t GenSignalBitMask(int signo);
+
     constexpr static size_t MAX_SIGNAL_NUM = NSIG - 1; // -1: skip invalid signal 0
     constexpr static size_t MAX_UINTPTR_SIZE = std::numeric_limits<uintptr_t>::digits;
     constexpr static size_t SIGNAL_BITS_COUNT = RoundUp(MAX_SIGNAL_NUM, MAX_UINTPTR_SIZE) / MAX_UINTPTR_SIZE;
