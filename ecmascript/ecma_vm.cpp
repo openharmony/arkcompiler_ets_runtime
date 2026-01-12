@@ -52,10 +52,8 @@
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
 #include "ecmascript/platform/ecma_context.h"
-#include "ecmascript/platform/signal_manager.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
-#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/sustaining_js_handle.h"
@@ -214,8 +212,6 @@ void EcmaVM::PreFork()
 
 void EcmaVM::PostFork(const JSRuntimeOptions &option)
 {
-    // init signal manager on pre-process
-    SignalManager::Initialize();
     if (Runtime::GetInstance()->GetEnableLargeHeap()) {
         // when enable large heap, reset some heap param which has initialized in appspawn
         MemMapAllocator::GetInstance()->ResetLargePoolSize();
@@ -261,14 +257,6 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
         heap_->NotifyFinishColdStartSoon();
     }
 #endif
-    if (option.DisableJSPandaFileAndModuleSnapshot()) {
-        ModulesSnapshotHelper::MarkSnapshotDisabledByOption();
-    } else {
-        ModulesSnapshotHelper::RegisterSignalHandler();
-    }
-    if (option.IsBootSnapshotEscapeDisabled()) {
-        ModulesSnapshotHelper::DisableSnapshotEscaper();
-    }
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)

@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include <string_view>
-
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -22,12 +20,7 @@
 #include "ecmascript/module/module_snapshot.h"
 #include "ecmascript/module/module_value_accessor.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#define private public
-#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
-#undef private
 #include "ecmascript/tests/test_helper.h"
-
-constexpr std::string_view TEST_ROM_VERSION = "version 205.0.1.120(SP20)";
 
 using namespace panda::ecmascript;
 namespace panda::test {
@@ -89,14 +82,6 @@ public:
         if (remove(fileName.c_str()) != 0) {
             GTEST_LOG_(ERROR) << "remove " << fileName << " failed when setup";
         }
-        CString stateFilePath = path + ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME.data();
-        if (FileExist(stateFilePath.c_str())) {
-            if (remove(stateFilePath.c_str()) != 0) {
-                GTEST_LOG_(ERROR) << "remove '" << stateFilePath << "' failed when setup";
-            }
-        }
-        disabledFeature = ModulesSnapshotHelper::g_featureState_;
-        loadedFeature = ModulesSnapshotHelper::g_featureLoaded_;
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
     }
 
@@ -107,8 +92,6 @@ public:
         if (remove(fileName.c_str()) != 0) {
             GTEST_LOG_(ERROR) << "remove " << fileName << " failed when teardown";
         }
-        ModulesSnapshotHelper::g_featureState_ = disabledFeature;
-        ModulesSnapshotHelper::g_featureLoaded_ = loadedFeature;
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
 
@@ -410,7 +393,7 @@ public:
         // construct Module
         CString path = GetSnapshotPath();
         CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-        CString version = TEST_ROM_VERSION.data();
+        CString version = "version 205.0.1.120(SP20)";
         EcmaVM *vm = thread->GetEcmaVM();
         InitMockUpdateBindingModule(isDictionaryMode);
         // the origin binding is indexBinding
@@ -451,8 +434,6 @@ public:
     EcmaVM *instance {nullptr};
     EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
-    int disabledFeature { 0 };
-    int loadedFeature { 0 };
     size_t index0 { 0 };
     size_t index1 { 1 };
     size_t index2 { 2 };
@@ -463,7 +444,7 @@ HWTEST_F_L0(ModuleSnapshotTest, SerializeAndDeserializeTest)
 {
     // construct JSPandaFile
     CString path = GetSnapshotPath();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     InitMockSourceTextModule();
     // serialize and persist
     EcmaVM *vm = thread->GetEcmaVM();
@@ -491,7 +472,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldNotSerializeWhenFileIsExists)
     // construct Module
     CString path = GetSnapshotPath();
     CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     EcmaVM *vm = thread->GetEcmaVM();
     InitMockSourceTextModule();
     // serialize and persist
@@ -506,7 +487,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldNotDeSerializeWhenFileIsNotExists)
     // construct Module
     CString path = GetSnapshotPath();
     CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     EcmaVM *vm = thread->GetEcmaVM();
     InitMockSourceTextModule();
     // return false when file is not exists
@@ -519,7 +500,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldSerializeFailedWhenBufferIsNotMatchBufferS
     // construct Module
     CString path = GetSnapshotPath();
     CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     EcmaVM *vm = thread->GetEcmaVM();
     InitMockSourceTextModule();
     // return false when bufferSize > 0 and buffer is nullptr
@@ -531,7 +512,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldDeSerializeFailedWhenFileIsEmpty)
     // construct Module
     CString path = GetSnapshotPath();
     CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     EcmaVM *vm = thread->GetEcmaVM();
     InitMockSourceTextModule();
     std::ofstream ofStream(fileName.c_str());
@@ -548,7 +529,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldDeSerializeFailedWhenCheckSumIsNotMatch)
     // construct Module
     CString path = GetSnapshotPath();
     CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     EcmaVM *vm = thread->GetEcmaVM();
     InitMockSourceTextModule();
     // serialize and persist
@@ -570,7 +551,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldDeSerializeFailedWhenAppVersionCodeIsNotMa
     // construct Module
     CString path = GetSnapshotPath();
     CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     EcmaVM *vm = thread->GetEcmaVM();
     InitMockSourceTextModule();
     // serialize and persist
@@ -589,7 +570,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldDeSerializeFailedWhenVersionCodeIsNotMatch
     // construct Module
     CString path = GetSnapshotPath();
     CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     EcmaVM *vm = thread->GetEcmaVM();
     InitMockSourceTextModule();
     // serialize and persist
@@ -607,7 +588,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldDeSerializeFailedWhenHasIncompleteData)
     // construct Module
     CString path = GetSnapshotPath();
     CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
-    CString version = TEST_ROM_VERSION.data();
+    CString version = "version 205.0.1.120(SP20)";
     EcmaVM *vm = thread->GetEcmaVM();
     InitMockSourceTextModule();
     // serialize and persist
@@ -715,58 +696,5 @@ HWTEST_F_L0(ModuleSnapshotTest, SerializeSlicedString)
     JSTaggedValue res = module->GetImportEntries(thread);
     ASSERT_TRUE(res.IsSlicedString());
     EXPECT_TRUE(JSTaggedValue::SameValue(thread, subString.GetTaggedValue(), res));
-}
-
-HWTEST_F_L0(ModuleSnapshotTest, DisableSnapshotFeatureByOption)
-{
-    auto oldLoaded = ModulesSnapshotHelper::g_featureState_;
-    ModulesSnapshotHelper::g_featureState_ = 0;
-    ModulesSnapshotHelper::MarkSnapshotDisabledByOption();
-    ASSERT_EQ(ModulesSnapshotHelper::g_featureState_,
-        static_cast<int>(SnapshotFeatureState::MODULE) |
-            static_cast<int>(SnapshotFeatureState::PANDAFILE));
-    ASSERT_EQ(ModulesSnapshotHelper::g_featureLoaded_, oldLoaded);
-}
-
-HWTEST_F_L0(ModuleSnapshotTest, ShouldDisableModuleSnapshot)
-{
-    ModulesSnapshotHelper::g_featureLoaded_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
-    // Mark as snapshot feature loaded at first
-    ModulesSnapshotHelper::MarkJSPandaFileSnapshotLoaded();
-    ModulesSnapshotHelper::MarkModuleSnapshotLoaded();
-    ASSERT_TRUE(ModulesSnapshotHelper::g_featureLoaded_ & static_cast<int>(SnapshotFeatureState::PANDAFILE));
-    ASSERT_TRUE(ModulesSnapshotHelper::g_featureLoaded_ & static_cast<int>(SnapshotFeatureState::MODULE));
-
-    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
-    CString filePath = GetSnapshotPath();
-    // snapshot directory is existed, and state file is not existed, all snapshot features should enabled
-    ModulesSnapshotHelper::UpdateFromStateFile(filePath);
-    ASSERT_EQ(ModulesSnapshotHelper::g_featureState_, static_cast<int>(SnapshotFeatureState::DEFAULT));
-
-    // disable module snapshot feature at first
-    ModulesSnapshotHelper::TryDisableSnapshot();
-    ModulesSnapshotHelper::UpdateFromStateFile(filePath);
-    ASSERT_TRUE(ModulesSnapshotHelper::g_featureState_ & static_cast<int>(SnapshotFeatureState::MODULE));
-    ASSERT_FALSE(ModulesSnapshotHelper::g_featureState_ & static_cast<int>(SnapshotFeatureState::PANDAFILE));
-}
-
-HWTEST_F_L0(ModuleSnapshotTest, ShouldDisablePandafileSnapshot)
-{
-    ModulesSnapshotHelper::g_featureLoaded_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
-    // Mark as snapshot feature loaded at first
-    ModulesSnapshotHelper::MarkJSPandaFileSnapshotLoaded();
-    ASSERT_TRUE(ModulesSnapshotHelper::g_featureLoaded_ & static_cast<int>(SnapshotFeatureState::PANDAFILE));
-
-    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
-    CString filePath = GetSnapshotPath();
-    // snapshot directory is existed, and state file is not existed, all snapshot features should enabled
-    ModulesSnapshotHelper::UpdateFromStateFile(filePath);
-    ASSERT_EQ(ModulesSnapshotHelper::g_featureState_, static_cast<int>(SnapshotFeatureState::DEFAULT));
-
-    // disable module snapshot feature at first
-    ModulesSnapshotHelper::TryDisableSnapshot();
-    ModulesSnapshotHelper::UpdateFromStateFile(filePath);
-    ASSERT_TRUE(ModulesSnapshotHelper::g_featureState_ & static_cast<int>(SnapshotFeatureState::MODULE));
-    ASSERT_TRUE(ModulesSnapshotHelper::g_featureState_ & static_cast<int>(SnapshotFeatureState::PANDAFILE));
 }
 }  // namespace panda::test

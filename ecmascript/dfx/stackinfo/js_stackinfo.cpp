@@ -18,7 +18,6 @@
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
-#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/jit/jit.h"
 #if defined(PANDA_TARGET_OHOS)
@@ -242,10 +241,6 @@ void JsStackInfo::AppendJsStackTraceInfo(std::string &data, JSThread *thread, Me
 
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 {
-    if (isJsCrash) {
-        ModulesSnapshotHelper::TryDisableSnapshot(0);
-    }
-
     if (JsStackInfo::loader == nullptr) {
         return;
     }

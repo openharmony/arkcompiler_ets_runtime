@@ -23,6 +23,7 @@ namespace panda::ecmascript {
 class JSPandaFileSnapshot {
 public:
     static constexpr std::string_view JSPANDAFILE_FILE_NAME = "_Pandafile.ams";
+    static constexpr std::string_view SNAPSHOT_FILE_SUFFIX = ".ams"; // ark module snapshot
 
     static void PostWriteDataToFileJob(const EcmaVM *vm, const CString &path, const CString &version);
     static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path, const CString &version);
@@ -30,6 +31,7 @@ public:
 protected:
     static bool IsJSPandaFileSnapshotFileExist(const CString &fileName, const CString &path);
     static CString GetJSPandaFileFileName(const CString &fileName, const CString &path);
+    static void RemoveSnapshotFiles(const CString &path);
 
 // JSPandaFile snapshot layout
 // +---------------------------------+<-------- BaseInfo
