@@ -14,10 +14,9 @@
  */
 #include "ecmascript/ohos/module_snapshot_interfaces.h"
 
-#include "ecmascript/module/module_snapshot.h"
 #include "ecmascript/ohos/ohos_version_info_tools.h"
+#include "ecmascript/module/module_snapshot.h"
 #include "ecmascript/platform/filesystem.h"
-#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 
 namespace panda::ecmascript::ohos {
 
@@ -25,12 +24,9 @@ void ModuleSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &path)
 {
     LOG_ECMA(DEBUG) << "ModuleSnapshotInterfaces::Serialize: " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshotInterfaces::Serialize", "");
-    if (ModulesSnapshotHelper::IsModuleSnapshotDisabled(path)) {
-        LOG_ECMA(DEBUG) << "Serialize: Module Snapshot is not enabled";
-        auto dataFile = base::ConcatToCString(path, ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME);
-        if (FileExist(dataFile.c_str())) {
-            Unlink(dataFile.c_str());
-        }
+    // check application white list
+    if (!filesystem::Exists(path.c_str())) {
+        LOG_ECMA(INFO) << "ModuleSnapshotInterface::Serialize: " << path <<" is not exists";
         return;
     }
     CString version = OhosVersionInfoTools::GetRomVersion();
@@ -38,7 +34,6 @@ void ModuleSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &path)
         LOG_ECMA(ERROR) << "ModuleSnapshotInterface::Serialize rom version is empty";
         return;
     }
-    ModulesSnapshotHelper::MarkModuleSnapshotLoaded();
     ModuleSnapshot::SerializeDataAndPostSavingJob(vm, path, version);
 }
 
@@ -46,8 +41,9 @@ void ModuleSnapshotInterfaces::Deserialize(const EcmaVM *vm, const CString &path
 {
     LOG_ECMA(DEBUG) << "ModuleSnapshotInterfaces::Deserialize: " << path;
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ModuleSnapshotInterfaces::Deserialize", "");
-    if (ModulesSnapshotHelper::IsModuleSnapshotDisabled(path)) {
-        LOG_ECMA(DEBUG) << "DeserializeData: Module snapshot not enabled";
+    // check application white list
+    if (!filesystem::Exists(path.c_str())) {
+        LOG_ECMA(INFO) << "ModuleSnapshotInterface::Deserialize: " << path << " is not exists";
         return;
     }
     CString version = OhosVersionInfoTools::GetRomVersion();
@@ -57,4 +53,4 @@ void ModuleSnapshotInterfaces::Deserialize(const EcmaVM *vm, const CString &path
     }
     ModuleSnapshot::DeserializeData(vm, path, version);
 }
-} // namespace panda::ecmascript::ohos
+} // namespace panda::ecmascript

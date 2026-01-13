@@ -76,7 +76,6 @@ enum ArkProperties {
     ENABLE_MODULE_EXCEPTION = 1 << 29,
     ENABLE_PENDING_CHEAK = 1 << 30,
     ENABLE_RAWHEAP_CROP = 1 << 31,
-    DISABLE_BOOT_SNAPSHOT_ESCAPE = 1 << 32,
 };
 
 // asm interpreter control parsed option
@@ -308,7 +307,7 @@ public:
 
     bool EnableArkTools() const
     {
-        return (enableArkTools_) || ((static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_ARKTOOLS) != 0);
+        return (enableArkTools_) || ((static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_ARKTOOLS) != 0);
     }
 
     void SetEnableArkTools(bool value)
@@ -560,53 +559,53 @@ public:
 
     bool EnableOptionalLog() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::OPTIONAL_LOG) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::OPTIONAL_LOG) != 0;
     }
 
     bool EnableGCStatsPrint() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::GC_STATS_PRINT) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::GC_STATS_PRINT) != 0;
     }
 
     bool EnableParallelGC() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::PARALLEL_GC) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::PARALLEL_GC) != 0;
     }
 
     bool EnableConcurrentMark() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
     }
 
     bool EnableMultiContext() const
     {
-        return (multiContext_) || ((static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_MULTI_CONTEXT) != 0);
+        return (multiContext_) || ((static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MULTI_CONTEXT) != 0);
     }
 
     bool EnableSharedConcurrentMark() const
     {
         // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::DISABLE_SHARED_CONCURRENT_MARK) == 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::DISABLE_SHARED_CONCURRENT_MARK) == 0;
     }
 
     bool EnableRuntimeAsyncStack() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_RUNTIME_ASYNC_STACK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_RUNTIME_ASYNC_STACK) != 0;
     }
 
     bool EnableExceptionBacktrace() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::EXCEPTION_BACKTRACE) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::EXCEPTION_BACKTRACE) != 0;
     }
 
     bool EnableConcurrentSweep() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::CONCURRENT_SWEEP) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_SWEEP) != 0;
     }
 
     uint32_t EnableThreadCheck() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::THREAD_CHECK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::THREAD_CHECK) != 0;
     }
 
     bool EnableIdleGC() const
@@ -616,17 +615,17 @@ public:
 
     bool EnableGCTracer() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_GC_TRACER) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_GC_TRACER) != 0;
     }
 
     bool EnableGlobalObjectLeakCheck() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::GLOBAL_OBJECT_LEAK_CHECK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::GLOBAL_OBJECT_LEAK_CHECK) != 0;
     }
 
     bool EnableGlobalPrimitiveLeakCheck() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::GLOBAL_PRIMITIVE_LEAK_CHECK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::GLOBAL_PRIMITIVE_LEAK_CHECK) != 0;
     }
 
     bool EnableGlobalLeakCheck() const
@@ -636,27 +635,27 @@ public:
 
     bool EnableCpuProfilerColdStartMainThread() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::CPU_PROFILER_COLD_START_MAIN_THREAD) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER_COLD_START_MAIN_THREAD) != 0;
     }
 
     bool EnableCpuProfilerColdStartWorkerThread() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::CPU_PROFILER_COLD_START_WORKER_THREAD) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER_COLD_START_WORKER_THREAD) != 0;
     }
 
     bool EnableCpuProfilerAnyTimeMainThread() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::CPU_PROFILER_ANY_TIME_MAIN_THREAD) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER_ANY_TIME_MAIN_THREAD) != 0;
     }
 
     bool EnableCpuProfilerAnyTimeWorkerThread() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::CPU_PROFILER_ANY_TIME_WORKER_THREAD) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CPU_PROFILER_ANY_TIME_WORKER_THREAD) != 0;
     }
 
     bool EnableCpuProfilerVMTag() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_CPU_PROFILER_VM_TAG) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_CPU_PROFILER_VM_TAG) != 0;
     }
 
     bool IsStartGlobalLeakCheck() const
@@ -671,7 +670,7 @@ public:
 
     bool EnableSnapshotSerialize() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_SERIALIZE) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_SERIALIZE) != 0;
     }
 
     bool EnableSnapshotDeserialize() const
@@ -680,62 +679,56 @@ public:
             return false;
         }
 
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SNAPSHOT_DESERIALIZE) != 0;
     }
 
     bool EnableHeapVerify() const
     {
-        return enableHeapVerify_ && (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_HEAP_VERIFY) != 0;
+        return enableHeapVerify_ && (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_HEAP_VERIFY) != 0;
     }
 
     bool EnableMicroJobTrace() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_MICROJOB_TRACE) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MICROJOB_TRACE) != 0;
     }
 
     bool EnableESMTrace() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_ESM_TRACE) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_ESM_TRACE) != 0;
     }
 
     bool EnableModuleLog() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_LOG) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_LOG) != 0;
     }
 
     bool EnableSerializationTimeoutCheck() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_SERIALIZATION_TIMEOUT_CHECK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SERIALIZATION_TIMEOUT_CHECK) != 0;
     }
 
     bool EnablePageTagThreadId() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_PAGETAG_THREAD_ID) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_PAGETAG_THREAD_ID) != 0;
     }
 
     bool EnableModuleException() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_EXCEPTION) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_EXCEPTION) != 0;
     }
 
     bool EnablePendingCheak() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_PENDING_CHEAK) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_PENDING_CHEAK) != 0;
     }
 
     bool EnableRawHeapCrop() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_RAWHEAP_CROP) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_RAWHEAP_CROP) != 0;
     }
-
     bool DisableJSPandaFileAndModuleSnapshot() const
     {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) != 0;
-    }
-
-    bool IsBootSnapshotEscapeDisabled() const
-    {
-        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::DISABLE_BOOT_SNAPSHOT_ESCAPE) != 0;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const
@@ -2521,7 +2514,7 @@ private:
     bool enableHeapVerify_ {true};
     uint32_t forceSharedGc_ {1};
     int32_t deviceThermalLevel_ {0};
-    int64_t arkProperties_ = GetDefaultProperties();
+    int arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
     std::set<CString> traceBundleName_ = {};
     uint32_t gcThreadNum_ {7}; // 7: default thread num

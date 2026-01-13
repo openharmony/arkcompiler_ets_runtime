@@ -18,10 +18,8 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/platform/file.h"
-#include "ecmascript/platform/signal_manager.h"
 #include "ecmascript/serializer/module_deserializer.h"
 #include "ecmascript/serializer/module_serializer.h"
-#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "securec.h"
 #include "zlib.h"
 
@@ -35,7 +33,6 @@ void ModuleSnapshot::SerializeDataAndPostSavingJob(const EcmaVM *vm, const CStri
         LOG_ECMA(INFO) << "Module serialize file already exist";
         return;
     }
-    ModulesSnapshotHelper::MarkModuleSnapshotLoaded();
     JSThread *thread = vm->GetJSThread();
     std::unique_ptr<SerializeData> fileData = GetSerializeData(thread);
     if (fileData == nullptr) {
@@ -54,7 +51,6 @@ bool ModuleSnapshot::DeserializeData(const EcmaVM *vm, const CString &path, cons
         LOG_ECMA(INFO) << "ModuleSnapshot::DeserializeData Module serialize file doesn't exist: " << path;
         return false;
     }
-    ModulesSnapshotHelper::MarkModuleSnapshotLoaded();
     JSThread *thread = vm->GetJSThread();
     std::unique_ptr<SerializeData> fileData = std::make_unique<SerializeData>(thread);
     if (!ReadDataFromFile(thread, fileData, path, version)) {
@@ -127,6 +123,11 @@ bool ModuleSnapshot::ModuleSnapshotTask::Run(uint32_t threadIndex)
     return true;
 }
 
+void ModuleSnapshot::RemoveSnapshotFiles(const CString &path)
+{
+    DeleteFilesWithSuffix(path.c_str(), SNAPSHOT_FILE_SUFFIX.data());
+}
+
 std::unique_ptr<SerializeData> ModuleSnapshot::GetSerializeData(JSThread *thread)
 {
     ModuleSerializer serializer(thread);
@@ -150,14 +151,13 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
     CString filePath = base::ConcatToCString(path, MODULE_SNAPSHOT_FILE_NAME);
     MemMap fileMapMem = FileMap(filePath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
     if (fileMapMem.GetOriginAddr() == nullptr) {
-        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
+        RemoveSnapshotFiles(path);
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile File mmap failed";
         return false;
     }
     LOG_ECMA(DEBUG) << "ModuleSnapshot::ReadDataFromFile";
     MemMapScope memMapScope(fileMapMem);
-    FileMemMapReader reader(fileMapMem, std::bind(ModulesSnapshotHelper::RemoveSnapshotFiles, path),
-        "ModuleSnapshot::ReadDataFromFile");
+    FileMemMapReader reader(fileMapMem, std::bind(RemoveSnapshotFiles, path), "ModuleSnapshot::ReadDataFromFile");
     uint32_t checksumSize = sizeof(uint32_t);
     uint32_t contentSize = fileMapMem.GetSize() - checksumSize;
     uint32_t readCheckSum = 0;
@@ -168,7 +168,7 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
     if (checksum != readCheckSum) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile checksum compare failed, checksum: " << checksum
             << ", readCheckSum" << readCheckSum;
-        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
+        RemoveSnapshotFiles(path);
         return false;
     }
     // read app version
@@ -180,7 +180,7 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
     if (readAppVersionCode != appVersionCode) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile readAppVersionCode: " << readAppVersionCode <<
             ", appVersionCode: " << appVersionCode << " doesn't match";
-        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
+        RemoveSnapshotFiles(path);
         return false;
     }
     // read version
@@ -195,7 +195,7 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
     if (version != readVersionStr) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile version compare failed, version: " << version
             << ", readVersion" << readVersionStr;
-        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
+        RemoveSnapshotFiles(path);
         return false;
     }
     // read dataIndex
@@ -231,7 +231,7 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
     const size_t incompleteData = sizeGroup[INCOMPLETE_DATA_INDEX];
     if (incompleteData != 0) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile has incompleteData: " << incompleteData;
-        ModulesSnapshotHelper::RemoveSnapshotFiles(path);
+        RemoveSnapshotFiles(path);
         return false;
     }
     data->incompleteData_ = (incompleteData != 0);
@@ -293,7 +293,7 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
     if (data->bufferSize_ > 0) {
         data->buffer_ = static_cast<uint8_t*>(malloc(data->bufferSize_));
         if (!data->buffer_) {
-            ModulesSnapshotHelper::RemoveSnapshotFiles(path);
+            RemoveSnapshotFiles(path);
             return false;
         }
         if (!reader.ReadSingleData(data->buffer_, data->bufferSize_, "buffer")) {
