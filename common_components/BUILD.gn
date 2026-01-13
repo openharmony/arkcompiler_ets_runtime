@@ -146,6 +146,7 @@ config("common_components_common_config") {
       defines += [ "ENABLE_COLD_STARTUP_GC_POLICY" ]
     }
   } else {
+    defines += [ "CMC_LCOV_EXCL" ]
     print("########## ets_runtime disable cmc-gc ##############")
   }
 

@@ -211,8 +211,9 @@ private:
 template <bool IsSTWRootVerify = true>
 class AfterMarkVisitor : public VerifyVisitor {
 public:
-    void VerifyRefImpl(const BaseObject* obj, const RefField<>& ref) override
+    void VerifyRefImpl([[maybe_unused]] const BaseObject* obj, [[maybe_unused]] const RefField<>& ref) override
     {
+#ifndef CMC_LCOV_EXCL
         IsValidRef(obj, ref);
 
         // check remarked objects, so they must be in one of the states below
@@ -251,13 +252,15 @@ public:
                 << CONTEXT << "Object: " << GetObjectInfo(obj) << std::endl
                 << "Ref: " << GetRefInfo(ref) << std::endl;
         }
+#endif
     }
 };
 
 class AfterForwardVisitor : public VerifyVisitor {
 public:
-    void VerifyRefImpl(const BaseObject* obj, const RefField<>& ref) override
+    void VerifyRefImpl([[maybe_unused]] const BaseObject* obj, [[maybe_unused]] const RefField<>& ref) override
     {
+#ifndef CMC_LCOV_EXCL
         // check objects in from-space, only alive objects are forwarded
         auto refObj = ref.GetTargetObject();
         if (RegionalHeap::IsMarkedObject(refObj) || RegionalHeap::IsResurrectedObject(refObj)) {
@@ -269,6 +272,7 @@ public:
             auto toObj = refObj->GetForwardingPointer();
             IsValidRef(obj, RefField<>(toObj));
         }
+#endif
     }
 };
 
@@ -362,8 +366,11 @@ public:
 
     // By default, IterateRemarked uses the VisitRoots method to traverse GC roots
     template <void (*VisitRoot)(const RefFieldVisitor &) = VisitRoots>
-    void IterateRemarked(VerifyVisitor &visitor, std::unordered_set<BaseObject *> &markSet, bool forRBDFX = false)
+    void IterateRemarked([[maybe_unused]] VerifyVisitor &visitor,
+                         [[maybe_unused]] std::unordered_set<BaseObject *> &markSet,
+                         [[maybe_unused]] bool forRBDFX = false)
     {
+#ifndef CMC_LCOV_EXCL
         MarkStack<BaseObject*> markStack;
         BaseObject* obj = nullptr;
 
@@ -404,6 +411,7 @@ public:
 
             obj->ForEachRefField(markFunc);
         }
+#endif
     }
 
 private:

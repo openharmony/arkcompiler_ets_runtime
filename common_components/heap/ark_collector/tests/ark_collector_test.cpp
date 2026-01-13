@@ -376,6 +376,7 @@ public:
     }
 };
 
+#ifndef CMC_LCOV_EXCL
 HWTEST_F_L0(ArkCollectorTest, CreateMarkingObjectRefFieldsVisitor_TEST1)
 {
     std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
@@ -390,6 +391,7 @@ HWTEST_F_L0(ArkCollectorTest, CreateMarkingObjectRefFieldsVisitor_TEST1)
     auto visitor = arkCollector->CreateMarkingObjectRefFieldsVisitor(markStack, weakStack);
     EXPECT_TRUE(visitor.GetRefFieldVisitor() != nullptr);
 }
+#endif
 
 HWTEST_F_L0(ArkCollectorTest, FixRefField_TEST1)
 {
@@ -649,6 +651,7 @@ HWTEST_F_L0(ArkCollectorTest, TryUpdateRefFieldImpl_TEST3)
     EXPECT_FALSE(ret);
 }
 
+#ifndef CMC_LCOV_EXCL
 HWTEST_F_L0(ArkCollectorTest, TryUpdateRefFieldImpl_TEST4)
 {
     std::unique_ptr<ArkCollector> arkCollector = GetArkCollector();
@@ -670,4 +673,5 @@ HWTEST_F_L0(ArkCollectorTest, TryUpdateRefFieldImpl_TEST4)
     bool ret = arkCollector->TryForwardRefField(nullptr, field, obj);
     EXPECT_TRUE(ret);
 }
+#endif
 }  // namespace common::test

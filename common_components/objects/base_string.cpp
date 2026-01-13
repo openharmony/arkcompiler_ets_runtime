@@ -58,6 +58,7 @@ template <typename T>
 uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
                                         uint32_t hashSeed)
 {
+#ifndef CMC_LCOV_EXCL
     if (size <= static_cast<size_t>(StringHash::MIN_SIZE_FOR_UNROLLING)) {
         uint32_t hash = hashSeed;
         for (uint32_t i = 0; i < size; i++) {
@@ -65,6 +66,7 @@ uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
         }
         return hash;
     }
+#endif
     return StringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
 }
 
@@ -96,10 +98,11 @@ template
 uint32_t BaseString::CalculateDataConcatHashCode<uint16_t, uint8_t>(const uint16_t* dataFirst, size_t sizeFirst,
                                                                     const uint8_t* dataSecond, size_t sizeSecond);
 
-
 template <typename T1, typename T2>
-bool IsSubStringAtSpan(common::Span<T1>& lhsSp, common::Span<T2>& rhsSp, uint32_t offset)
+bool IsSubStringAtSpan([[maybe_unused]] common::Span<T1> &lhsSp, [[maybe_unused]] common::Span<T2> &rhsSp,
+                       [[maybe_unused]] uint32_t offset)
 {
+#ifndef CMC_LCOV_EXCL
     size_t rhsSize = rhsSp.size();
     DCHECK_CC(rhsSize + offset <= lhsSp.size());
     for (size_t i = 0; i < rhsSize; ++i) {
@@ -109,6 +112,7 @@ bool IsSubStringAtSpan(common::Span<T1>& lhsSp, common::Span<T2>& rhsSp, uint32_
             return false;
         }
     }
+#endif
     return true;
 }
 

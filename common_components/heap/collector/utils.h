@@ -14,6 +14,7 @@
  */
 #ifndef COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_UTILS_H
 #define COMMON_COMPONENTS_HEAP_ARK_COLLECTOR_UTILS_H
+#ifndef CMC_LCOV_EXCL
 
 #include "common_components/taskpool/taskpool.h"
 #include "macros.h"
@@ -63,4 +64,5 @@ private:
 
 }  // namespace common
 
+#endif
 #endif

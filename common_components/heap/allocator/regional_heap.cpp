@@ -91,8 +91,9 @@ HeapAddress RegionalHeap::TryAllocateOnce(size_t allocSize, AllocType allocType)
     return allocBuffer->Allocate(allocSize, allocType);
 }
 
-bool RegionalHeap::ShouldRetryAllocation(size_t& tryTimes) const
+bool RegionalHeap::ShouldRetryAllocation([[maybe_unused]] size_t& tryTimes) const
 {
+#ifndef CMC_LCOV_EXCL
     {
         // check safepoint
         ScopedEnterSaferegion enterSaferegion(true);
@@ -122,6 +123,8 @@ bool RegionalHeap::ShouldRetryAllocation(size_t& tryTimes) const
         Heap::throwOOM();
         return false;
     }
+#endif
+    return false;
 }
 
 uintptr_t RegionalHeap::AllocOldRegion()
@@ -158,12 +161,14 @@ HeapAddress RegionalHeap::Allocate(size_t size, AllocType allocType)
         if (LIKELY_CC(internalAddr != 0)) {
             break;
         }
+#ifndef CMC_LCOV_EXCL
         if (IsGcThread()) {
             return 0; // it means gc doesn't have enough space to move this object.
         }
         if (!ShouldRetryAllocation(tryTimes)) {
             break;
         }
+#endif
         (void)sched_yield();
     } while (true);
     if (internalAddr == 0) {
@@ -199,8 +204,9 @@ HeapAddress RegionalHeap::AllocateNoGC(size_t size, AllocType allocType)
     return internalAddr + HEADER_SIZE;
 }
 
-void RegionalHeap::CopyRegion(RegionDesc* region)
+void RegionalHeap::CopyRegion([[maybe_unused]] RegionDesc* region)
 {
+#ifndef CMC_LCOV_EXCL
     LOGF_CHECK(region->IsFromRegion()) << "region type " << static_cast<uint8_t>(region->GetRegionType());
     DLOG(COPY, "try forward region %p @0x%zx+%zu type %u, live bytes %u",
         region, region->GetRegionStart(), region->GetRegionAllocatedSize(),
@@ -225,6 +231,7 @@ void RegionalHeap::CopyRegion(RegionDesc* region)
         // since this region is possibly partially-forwarded, treat it as to-region.
         toSpace_.AddFullRegion(region);
     }
+#endif
 }
 
 void RegionalHeap::Init(const RuntimeParam& param)
@@ -324,9 +331,10 @@ void AllocationBuffer::Init()
     Heap::GetHeap().RegisterAllocBuffer(*this);
 }
 
-HeapAddress AllocationBuffer::ToSpaceAllocate(size_t totalSize)
+HeapAddress AllocationBuffer::ToSpaceAllocate([[maybe_unused]] size_t totalSize)
 {
     HeapAddress addr = 0;
+#ifndef CMC_LCOV_EXCL
     if (LIKELY_CC(tlToRegion_ != RegionDesc::NullRegion())) {
         addr = tlToRegion_->Alloc(totalSize);
     }
@@ -347,6 +355,7 @@ HeapAddress AllocationBuffer::ToSpaceAllocate(size_t totalSize)
     }
 
     DLOG(ALLOC, "alloc to 0x%zx(%zu)", addr, totalSize);
+#endif
     return addr;
 }
 
@@ -411,8 +420,9 @@ HeapAddress AllocationBuffer::AllocateImpl(size_t totalSize, AllocType allocType
     UNREACHABLE();
 }
 
-HeapAddress AllocationBuffer::AllocateRawPointerObject(size_t totalSize)
+HeapAddress AllocationBuffer::AllocateRawPointerObject([[maybe_unused]] size_t totalSize)
 {
+#ifndef CMC_LCOV_EXCL
     RegionDesc* region = tlRawPointerRegions_.GetHeadRegion();
     if (region != nullptr) {
         HeapAddress allocAddr = region->Alloc(totalSize);
@@ -433,6 +443,9 @@ HeapAddress AllocationBuffer::AllocateRawPointerObject(size_t totalSize)
     ASSERT_LOGF(allocAddr != 0, "allocation failure");
     tlRawPointerRegions_.PrependRegion(region, RegionDesc::RegionType::TL_RAW_POINTER_REGION);
     return allocAddr;
+#else
+    return 0;
+#endif
 }
 
 #ifndef NDEBUG
@@ -449,6 +462,7 @@ void RegionalHeap::FeedHungryBuffers()
     ScopedObjectAccess soa;
     AllocBufferManager::HungryBuffers hungryBuffers;
     allocBufferManager_->SwapHungryBuffers(hungryBuffers);
+#ifndef CMC_LCOV_EXCL
     RegionDesc* region = nullptr;
     for (auto* buffer : hungryBuffers) {
         if (buffer->GetPreparedRegion() != nullptr) { continue; }
@@ -463,6 +477,7 @@ void RegionalHeap::FeedHungryBuffers()
     if (region != nullptr) {
         regionManager_.CollectRegion(region);
     }
+#endif
 }
 
 void RegionalHeap::MarkRememberSet(const std::function<void(BaseObject*)>& func)

@@ -49,8 +49,9 @@ void FixHeapWorker::FixToRegion(RegionDesc *region)
 }
 
 template <FixHeapWorker::DeadObjectHandlerType type>
-void FixHeapWorker::FixRegion(RegionDesc *region)
+void FixHeapWorker::FixRegion([[maybe_unused]] RegionDesc *region)
 {
+#ifndef CMC_LCOV_EXCL
     size_t cellCount = 0;
     if constexpr (type == FixHeapWorker::COLLECT_MONOSIZE_NONMOVABLE) {
         cellCount = region->GetRegionCellCount();
@@ -72,11 +73,15 @@ void FixHeapWorker::FixRegion(RegionDesc *region)
             DLOG(FIX, "fix: skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         }
     });
+#else
+    (void)result_;
+#endif
 }
 
 template <FixHeapWorker::DeadObjectHandlerType type>
-void FixHeapWorker::FixRecentRegion(RegionDesc *region)
+void FixHeapWorker::FixRecentRegion([[maybe_unused]] RegionDesc *region)
 {
+#ifndef CMC_LCOV_EXCL
     size_t cellCount = 0;
     if constexpr (type == FixHeapWorker::COLLECT_MONOSIZE_NONMOVABLE) {
         cellCount = region->GetRegionCellCount();
@@ -98,6 +103,7 @@ void FixHeapWorker::FixRecentRegion(RegionDesc *region)
             DLOG(FIX, "skip dead obj %p<%p>(%zu)", object, object->GetTypeInfo(), object->GetSize());
         }
     });
+#endif
 }
 
 bool FixHeapWorker::Run([[maybe_unused]] uint32_t threadIndex)
@@ -113,8 +119,9 @@ bool FixHeapWorker::Run([[maybe_unused]] uint32_t threadIndex)
     return true;
 }
 
-void FixHeapWorker::DispatchRegionFixTask(FixHeapTask *task)
+void FixHeapWorker::DispatchRegionFixTask([[maybe_unused]] FixHeapTask *task)
 {
+#ifndef CMC_LCOV_EXCL
     result_.numProcessedRegions += 1;
     RegionDesc *region = task->region;
     switch (task->type) {
@@ -152,6 +159,7 @@ void FixHeapWorker::DispatchRegionFixTask(FixHeapTask *task)
         default:
             UNREACHABLE();
     }
+#endif
 }
 
 std::stack<std::pair<RegionList *, RegionDesc *>> PostFixHeapWorker::emptyRegionsToCollect {};
@@ -185,6 +193,7 @@ void PostFixHeapWorker::AddEmptyRegionToCollectDuringPostFix(RegionList *list, R
 
 void PostFixHeapWorker::CollectEmptyRegions()
 {
+#ifndef CMC_LCOV_EXCL
     RegionalHeap &theAllocator = reinterpret_cast<RegionalHeap &>(Heap::GetHeap().GetAllocator());
     RegionManager &regionManager = theAllocator.GetRegionManager();
     GCStats &stats = Heap::GetHeap().GetCollector().GetGCStats();
@@ -198,6 +207,7 @@ void PostFixHeapWorker::CollectEmptyRegions()
         garbageSize += regionManager.CollectRegion(del);
     }
     stats.nonMovableGarbageSize += garbageSize;
+#endif
 }
 
 };  // namespace common

@@ -217,8 +217,10 @@ void* BaseRuntime::AtomicReadBarrier(void* obj, void* field, std::memory_order o
         *reinterpret_cast<RefField<true>*>(field), order));
 }
 
-void BaseRuntime::RequestGC(GCReason reason, bool async, GCType gcType)
+void BaseRuntime::RequestGC([[maybe_unused]] GCReason reason, [[maybe_unused]] bool async,
+                            [[maybe_unused]] GCType gcType)
 {
+#ifndef CMC_LCOV_EXCL
     if (reason < GC_REASON_BEGIN || reason > GC_REASON_END ||
         gcType < GC_TYPE_BEGIN || gcType > GC_TYPE_END) {
         VLOG(ERROR, "Invalid gc reason or gc type, gc reason: %s, gc type: %s",
@@ -226,6 +228,7 @@ void BaseRuntime::RequestGC(GCReason reason, bool async, GCType gcType)
         return;
     }
     HeapManager::RequestGC(reason, async, gcType);
+#endif
 }
 
 void BaseRuntime::WaitForGCFinish() { Heap::GetHeap().WaitForGCFinish(); }

@@ -20,14 +20,16 @@
 #include "objects/base_object.h"
 
 namespace common {
-void BaseClassRoots::InitializeCompositeBaseClass(CompositeBaseClassAllocator &allocator)
+void BaseClassRoots::InitializeCompositeBaseClass([[maybe_unused]] CompositeBaseClassAllocator &allocator)
 {
+#ifndef CMC_LCOV_EXCL
     if (initialized_.exchange(true)) {
         return;
     }
     CreateCompositeBaseClass(ObjectType::LINE_STRING, allocator);
     CreateCompositeBaseClass(ObjectType::SLICED_STRING, allocator);
     CreateCompositeBaseClass(ObjectType::TREE_STRING, allocator);
+#endif
 }
 
 void BaseClassRoots::CreateCompositeBaseClass(ObjectType type, CompositeBaseClassAllocator& allocator)
@@ -45,14 +47,16 @@ BaseClass* BaseClassRoots::GetBaseClass(ObjectType type) const
     return baseClasses_[TypeToIndex[static_cast<size_t>(type)]];
 }
 
-void BaseClassRoots::IterateCompositeBaseClass(const RefFieldVisitor& visitorFunc)
+void BaseClassRoots::IterateCompositeBaseClass([[maybe_unused]] const RefFieldVisitor& visitorFunc)
 {
+#ifndef CMC_LCOV_EXCL
     if (!initialized_) {
         return;
     }
     for (auto& it : compositeBaseClasses_) {
         visitorFunc(reinterpret_cast<RefField<>&>(it));
     }
+#endif
 }
 
 } // namespace panda

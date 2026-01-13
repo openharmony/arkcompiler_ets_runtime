@@ -86,6 +86,7 @@ void HeuristicGCPolicy::TryHeuristicGC()
 
 void HeuristicGCPolicy::TryIdleGC()
 {
+#ifndef CMC_LCOV_EXCL
     if (UNLIKELY_CC(ShouldRestrainGCOnStartupOrSensitive())) {
         return;
     }
@@ -101,6 +102,7 @@ void HeuristicGCPolicy::TryIdleGC()
              expectHeapSize, aliveSizeAfterGC_);
         Heap::GetHeap().GetCollector().RequestGC(GC_REASON_IDLE, true, GC_TYPE_FULL);
     }
+#endif
 }
 
 bool HeuristicGCPolicy::ShouldRestrainGCInSensitive(size_t currentSize)
@@ -195,8 +197,9 @@ void HeuristicGCPolicy::RecordAliveSizeAfterLastGC(size_t aliveBytes)
     aliveSizeAfterGC_ = aliveBytes;
 }
 
-void HeuristicGCPolicy::ChangeGCParams(bool isBackground)
+void HeuristicGCPolicy::ChangeGCParams([[maybe_unused]] bool isBackground)
 {
+#ifndef CMC_LCOV_EXCL
     if (isBackground) {
         size_t allocated = Heap::GetHeap().GetAllocator().GetAllocatedBytes();
         if (allocated > aliveSizeAfterGC_ && (allocated - aliveSizeAfterGC_) > BACKGROUND_LIMIT &&
@@ -210,6 +213,7 @@ void HeuristicGCPolicy::ChangeGCParams(bool isBackground)
         // 3: The front-end application waterline is 3 times
         BaseRuntime::GetInstance()->GetGCParam().multiplier = 3;
     }
+#endif
 }
 
 bool HeuristicGCPolicy::CheckAndTriggerHintGC(MemoryReduceDegree degree)

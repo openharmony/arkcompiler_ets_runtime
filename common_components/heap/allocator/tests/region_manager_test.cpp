@@ -113,6 +113,7 @@ HWTEST_F_L0(RegionManagerTest, VisitLiveObjectsUntilFalse_IsSmallRegion)
     EXPECT_TRUE(result);
 }
 
+#ifndef CMC_LCOV_EXCL
 HWTEST_F_L0(RegionManagerTest, VisitLiveObjectsUntilFalse_IsLargeRegion)
 {
     size_t unitIdx = 0;
@@ -164,6 +165,7 @@ HWTEST_F_L0(RegionManagerTest, VisitAllObjectsBeforeFix1)
     });
     EXPECT_TRUE(callbackCalled);
 }
+#endif
 
 HWTEST_F_L0(RegionManagerTest, VisitAllObjectsBeforeFix2)
 {

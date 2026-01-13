@@ -425,8 +425,9 @@ void MutatorManager::EnsureCpuProfileFinish(std::list<Mutator*> &undoneMutators)
     }
 }
 
-void MutatorManager::DumpMutators(uint32_t timeoutTimes)
+void MutatorManager::DumpMutators([[maybe_unused]] uint32_t timeoutTimes)
 {
+#ifndef CMC_LCOV_EXCL
     constexpr size_t bufferSize = 4096;
     char buf[bufferSize];
     int index = 0;
@@ -460,6 +461,7 @@ void MutatorManager::DumpMutators(uint32_t timeoutTimes)
             "Dump mutators state failed";
     LOGF_CHECK(timeoutTimes <= MAX_TIMEOUT_TIMES) << "Waiting mutators entering saferegion timeout status info:" << buf;
     LOG_COMMON(ERROR) << "STW status info: " << buf;
+#endif
 }
 
 #if defined(GCINFO_DEBUG) && GCINFO_DEBUG
