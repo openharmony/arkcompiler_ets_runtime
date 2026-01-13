@@ -218,32 +218,5 @@ private:
     size_t fileSize_ { 0 };
     CString logTag_ {};
 };
-
-/**
- * @brief posix file reader/writer, safe to use in signal handler (without malloc)
- */
-class PosixFile {
-public:
-    enum class SeekOrigin {
-        SET = 0,
-        CURRENT,
-        END,
-    };
-    PosixFile(const std::string_view &path, const std::string_view &flags, const std::string_view &mode = DEFAULT_MODE);
-    ~PosixFile();
-    int64_t Write(const char *data, size_t size);
-    template <typename Container> int64_t Write(const Container &data) { return Write(data.data(), data.size()); }
-    int64_t Read(char *buf, size_t size);
-    template <typename Container> int64_t Read(Container &data) { return Read(data.data(), data.size()); }
-    int64_t Seek(int64_t off, SeekOrigin whence);
-    int64_t Tell();
-    inline bool IsValid() { return fd_ != INVALID_FD; }
-    int64_t Size();
-
-private:
-    static constexpr std::string_view DEFAULT_MODE = "rw-r--r--";
-
-    fd_t fd_{INVALID_FD};
-};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H

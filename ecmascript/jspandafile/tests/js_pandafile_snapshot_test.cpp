@@ -26,7 +26,6 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_snapshot.h"
-#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #undef protected
 #undef private
 #include "ecmascript/jspandafile/method_literal.h"
@@ -65,14 +64,6 @@ public:
         if (remove(fileName.c_str()) != 0) {
             GTEST_LOG_(ERROR) << "remove " << fileName << " failed";
         }
-        CString stateFilePath = path + ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME.data();
-        if (FileExist(stateFilePath.c_str())) {
-            if (remove(stateFilePath.c_str()) != 0) {
-                GTEST_LOG_(ERROR) << "remove '" << stateFilePath << "' failed when setup";
-            }
-        }
-        disabledFeature = ModulesSnapshotHelper::g_featureState_;
-        loadedFeature = ModulesSnapshotHelper::g_featureLoaded_;
         TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
     }
 
@@ -83,8 +74,6 @@ public:
         if (remove(fileName.c_str()) != 0) {
             GTEST_LOG_(ERROR) << "remove " << fileName << " failed";
         }
-        ModulesSnapshotHelper::g_featureState_ = disabledFeature;
-        ModulesSnapshotHelper::g_featureLoaded_ = loadedFeature;
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
 
@@ -156,8 +145,6 @@ public:
     }
     EcmaVM *instance {nullptr};
     EcmaHandleScope *scope {nullptr};
-    int disabledFeature { 0 };
-    int loadedFeature { 0 };
     JSThread *thread {nullptr};
 };
 
