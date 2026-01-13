@@ -1529,6 +1529,10 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
                 suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
             }
             ASSERT(!HasSuspendRequest());
+        } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_FLIP_FUNCTION) != 0) {
+            TryRunFlipFunction();
+        } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::RUNNING_FLIP_FUNCTION) != 0) {
+            WaitFlipFunctionFinished();
         } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_SHARED_HEAP_OOM) != 0) {
             ThreadStateAndFlags newStateAndFlags;
             newStateAndFlags.asNonvolatileStruct.flags = oldStateAndFlags.asNonvolatileStruct.flags;
@@ -1541,6 +1545,53 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
                 THROW_OOM_ERROR(this, "SharedHeap OOM");
             }
         }
+    }
+}
+
+bool JSThread::TryRunFlipFunction()
+{
+    while (true) {
+        ThreadStateAndFlags oldStateAndFlags;
+        oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
+        if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_FLIP_FUNCTION) == 0) {
+            return false;
+        }
+        ThreadStateAndFlags newStateAndFlags;
+        newStateAndFlags.asNonvolatileStruct.flags =
+            (oldStateAndFlags.asNonvolatileStruct.flags & ~ThreadFlag::PENDING_FLIP_FUNCTION) |
+            ThreadFlag::RUNNING_FLIP_FUNCTION;
+        newStateAndFlags.asNonvolatileStruct.state = oldStateAndFlags.asNonvolatileStruct.state;
+        if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+                                                                       newStateAndFlags.asNonvolatileInt,
+                                                                       std::memory_order_release)) {
+            RunFlipFunction();
+            return true;
+        }
+    }
+}
+
+void JSThread::RunFlipFunction()
+{
+    ASSERT(!ReadFlag(ThreadFlag::PENDING_FLIP_FUNCTION));
+    ASSERT(ReadFlag(ThreadFlag::RUNNING_FLIP_FUNCTION));
+    Closure *func = GetFlipFunction();
+    ClearFlipFunction();
+    ASSERT(func != nullptr);
+    func->Run(this);
+    {
+        LockHolder holder(flipMutex_);
+        // fixme: atomic order could use relaxed here
+        ClearFlag(ThreadFlag::RUNNING_FLIP_FUNCTION);
+        flipCV_.Signal();
+    }
+}
+
+void JSThread::WaitFlipFunctionFinished()
+{
+    LockHolder holder(flipMutex_);
+    // fixme: atomic order could use relaxed here
+    while (ReadFlag(ThreadFlag::RUNNING_FLIP_FUNCTION)) {
+        flipCV_.Wait(&flipMutex_);
     }
 }
 

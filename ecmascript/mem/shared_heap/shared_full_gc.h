@@ -24,7 +24,7 @@
 #include "ecmascript/mem/work_manager.h"
 
 namespace panda::ecmascript {
-class SharedGCMovableMarker;
+class SharedFullGCRunner;
 enum class SharedMarkType : uint8_t;
 
 class SharedFullGC : public GarbageCollector {
@@ -47,9 +47,8 @@ protected:
     void Finish() override;
 
 private:
-    void MarkRoots(SharedMarkType markType);
+    void MarkRoots(SharedMarkType markType, RootVisitor &rootVisitor);
     void UpdateRecordWeakReference();
-    bool HasEvacuated(Region *region);
 
     SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
@@ -58,38 +57,86 @@ private:
 
 class SharedFullGCMarkRootVisitor final : public RootVisitor {
 public:
-    explicit SharedFullGCMarkRootVisitor(SharedGCMovableMarker *marker, uint32_t threadId);
+    inline explicit SharedFullGCMarkRootVisitor(SharedFullGCRunner *sRunner);
     ~SharedFullGCMarkRootVisitor() override = default;
 
-    void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
+    inline void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
 
-    void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override;
+    inline void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override;
 
-    void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
-                                 uintptr_t baseOldObject) override;
+    inline void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base, ObjectSlot derived,
+                                        uintptr_t baseOldObject) override;
 private:
-    void MarkObject(TaggedObject *object);
-
-    SharedGCMovableMarker *marker_ {nullptr};
-    uint32_t threadId_ {-1};
+    SharedFullGCRunner *sRunner_ {nullptr};
 };
 
 class SharedFullGCMarkObjectVisitor final : public BaseObjectVisitor<SharedFullGCMarkObjectVisitor> {
 public:
-    explicit SharedFullGCMarkObjectVisitor(SharedGCMovableMarker *marker, uint32_t threadId);
+    inline explicit SharedFullGCMarkObjectVisitor(SharedFullGCRunner *sRunner);
     ~SharedFullGCMarkObjectVisitor() override = default;
 
-    void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
-                              VisitObjectArea area) override;
+    inline void VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t startAddr, uintptr_t endAddr,
+                                     VisitObjectArea area) override;
 
-    void VisitObjectHClassImpl(BaseObject *hclass) override;
+    inline void VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass);
+
 private:
-    void HandleSlot(ObjectSlot slot, Region *rootRegion, bool rootNeedEvacuate);
+    SharedFullGCRunner *sRunner_ {nullptr};
+};
 
-    void MarkAndPush(TaggedObject *object, Region *objectRegion);
+class SharedFullGCMarkLocalToShareRSetVisitor {
+public:
+    inline explicit SharedFullGCMarkLocalToShareRSetVisitor(SharedFullGCRunner *sRunner);
+    ~SharedFullGCMarkLocalToShareRSetVisitor() = default;
 
-    SharedGCMovableMarker *marker_ {nullptr};
-    uint32_t threadId_ {-1};
+    inline bool operator()(void *mem) const;
+
+private:
+    SharedFullGCRunner *sRunner_ {nullptr};
+};
+
+class SharedFullGCRunner {
+public:
+    inline SharedFullGCRunner(SharedHeap *sHeap, SharedGCWorkNodeHolder *sWorkNodeHolder);
+    ~SharedFullGCRunner() = default;
+
+    inline SharedFullGCMarkRootVisitor &GetMarkRootVisitor();
+    inline SharedFullGCMarkObjectVisitor &GetMarkObjectVisitor();
+    inline SharedFullGCMarkLocalToShareRSetVisitor &GetMarkLocalToShareRSetVisitor();
+
+private:
+    inline bool NeedEvacuate(Region *region) const;
+
+    inline void MarkValue(ObjectSlot slot);
+
+    inline void MarkObject(ObjectSlot slot, TaggedObject *object);
+
+    inline uintptr_t AllocateForwardAddress(size_t size);
+
+    inline void EvacuateObject(ObjectSlot slot, TaggedObject *object, const MarkWord &markWord);
+
+    inline uintptr_t AllocateDstSpace(size_t size);
+
+    inline void RawCopyObject(uintptr_t fromAddress, uintptr_t toAddress, size_t size, const MarkWord &markWord);
+
+    inline void UpdateForwardAddressIfSuccess(ObjectSlot slot, TaggedObject *object, JSHClass *klass, size_t size,
+                                              TaggedObject *toObject);
+
+    inline void UpdateForwardAddressIfFailed(ObjectSlot slot, size_t size, uintptr_t toAddress, TaggedObject *dst);
+
+    inline void PushObject(TaggedObject *object);
+
+    inline void RecordWeakReference(JSTaggedType *weak);
+
+    SharedHeap *sHeap_ {nullptr};
+    SharedGCWorkNodeHolder *sWorkNodeHolder_ {nullptr};
+    SharedFullGCMarkRootVisitor markRootVisitor_;
+    SharedFullGCMarkObjectVisitor markObjectVisitor_;
+    SharedFullGCMarkLocalToShareRSetVisitor markLocalToShareRSetVisitor_;
+
+    friend class SharedFullGCMarkRootVisitor;
+    friend class SharedFullGCMarkObjectVisitor;
+    friend class SharedFullGCMarkLocalToShareRSetVisitor;
 };
 }  // namespace panda::ecmascript
 

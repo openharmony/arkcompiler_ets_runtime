@@ -372,14 +372,14 @@ public:
     void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearSweepingLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     template <typename Visitor>
-    void IterateAllLocalToShareBits(Visitor visitor);
+    void IterateAllLocalToShareBits(Visitor &&visitor);
     void DeleteLocalToShareRSet();
     void DeleteSweepingLocalToShareRSet();
     // Cross region remembered set
     void InsertCrossRegionRSet(uintptr_t addr);
     void AtomicInsertCrossRegionRSet(uintptr_t addr);
     template <typename Visitor>
-    void IterateAllCrossRegionBits(Visitor visitor) const;
+    void IterateAllCrossRegionBits(Visitor &&visitor) const;
     void ClearCrossRegionRSet();
     void ClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end);
@@ -389,7 +389,7 @@ public:
     void ClearOldToNewRSet(uintptr_t addr);
 
     template <typename Visitor>
-    void IterateAllOldToNewBits(Visitor visitor);
+    void IterateAllOldToNewBits(Visitor &&visitor);
     void ClearOldToNewRSet();
     void ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteOldToNewRSet();
@@ -398,9 +398,9 @@ public:
     void ClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteSweepingOldToNewRSet();
     template <typename Visitor>
-    void AtomicIterateAllSweepingRSetBits(Visitor visitor);
+    void AtomicIterateAllSweepingRSetBits(Visitor &&visitor);
     template <typename Visitor>
-    void IterateAllSweepingRSetBits(Visitor visitor);
+    void IterateAllSweepingRSetBits(Visitor &&visitor);
 
     static Region *ObjectAddressToRange(BaseObject *obj)
     {

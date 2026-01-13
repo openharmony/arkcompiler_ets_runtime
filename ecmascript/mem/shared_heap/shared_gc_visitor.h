@@ -23,7 +23,7 @@
 namespace panda::ecmascript {
 class SharedGCMarkRootVisitor final : public RootVisitor {
 public:
-    inline explicit SharedGCMarkRootVisitor(SharedGCWorkManager *sWorkManager, uint32_t threadId);
+    inline explicit SharedGCMarkRootVisitor(SharedGCWorkNodeHolder *sWorkNodeHolder);
     ~SharedGCMarkRootVisitor() override = default;
 
     inline void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override;
@@ -35,13 +35,12 @@ public:
 private:
     inline void MarkObject(TaggedObject *object);
 
-    SharedGCWorkManager *sWorkManager_ {nullptr};
-    uint32_t threadId_ {-1};
+    SharedGCWorkNodeHolder *sWorkNodeHolder_ {nullptr};
 };
 
 class SharedGCMarkObjectVisitor final : public BaseObjectVisitor<SharedGCMarkObjectVisitor> {
 public:
-    inline explicit SharedGCMarkObjectVisitor(SharedGCWorkManager *sWorkManager, uint32_t threadId);
+    inline explicit SharedGCMarkObjectVisitor(SharedGCWorkNodeHolder *sWorkNodeHolder);
     ~SharedGCMarkObjectVisitor() override = default;
 
     inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
@@ -56,8 +55,23 @@ private:
 
     inline void RecordWeakReference(JSTaggedType *weak);
 
-    SharedGCWorkManager *sWorkManager_ {nullptr};
-    uint32_t threadId_ {-1};
+    SharedGCWorkNodeHolder *sWorkNodeHolder_ {nullptr};
+};
+
+template <SharedMarkType markType>
+class SharedGCMarkLocalToShareRSetVisitor {
+public:
+    inline explicit SharedGCMarkLocalToShareRSetVisitor(SharedGCWorkNodeHolder *sWorkNodeHolder);
+    ~SharedGCMarkLocalToShareRSetVisitor() = default;
+
+    inline bool operator()(void *mem) const;
+
+private:
+    inline void MarkObject(TaggedObject *object) const;
+
+    inline void RecordWeakReference(JSTaggedType *weak) const;
+
+    SharedGCWorkNodeHolder *sWorkNodeHolder_ {nullptr};
 };
 
 }  // namespace panda::ecmascript

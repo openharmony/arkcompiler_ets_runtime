@@ -31,7 +31,7 @@ inline RSetWorkListHandler::RSetWorkListHandler(Heap *heap, JSThread *thread) : 
 template<class Visitor>
 inline void RSetItem::Process([[maybe_unused]] const Visitor &visitor)
 {
-    visitor(region_, rSet_);
+    rSet_->IterateAllMarkedBits(ToUintPtr(region_), visitor);
 }
 
 inline void RSetItem::MergeBack()

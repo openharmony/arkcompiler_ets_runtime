@@ -38,42 +38,27 @@ enum class SharedMarkType : uint8_t {
 
 class SharedGCMarkerBase {
 public:
-    explicit SharedGCMarkerBase(SharedGCWorkManager *workManger) : sWorkManager_(workManger) {}
+    explicit SharedGCMarkerBase(SharedGCWorkManager *sWorkManger) : sWorkManager_(sWorkManger) {}
     virtual ~SharedGCMarkerBase() = default;
 
     void ResetWorkManager(SharedGCWorkManager *workManager);
     void MarkRoots(RootVisitor &visitor, SharedMarkType markType);
+    void MarkGlobalRoots(RootVisitor &visitor);
+    void MarkAllLocalRoots(RootVisitor &visitor, SharedMarkType markType);
     void MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType);
     void CollectLocalVMRSet(EcmaVM *localVm);
     void MarkSendableGlobalStorage(RootVisitor &visitor);
     void MarkStringCache(RootVisitor &visitor);
     void MarkSerializeRoots(RootVisitor &visitor);
     void MarkSharedModule(RootVisitor &visitor);
-    inline void ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler);
-    template<SharedMarkType markType>
-    inline void DoMark(uint32_t threadId);
-    inline void HandleLocalRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot);
-    inline void HandleLocalRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
-                                      ObjectSlot end);
-    inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref);
+    void ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler);
+    template <typename LocalToShareRSetVisitor>
+    void ProcessLocalToShareRSet(LocalToShareRSetVisitor &&visitor);
     void MergeBackAndResetRSetWorkListHandler();
-    template<SharedMarkType markType>
-    inline void ProcessVisitorOfDoMark(uint32_t threadId);
-    inline void ProcessVisitor(RSetWorkListHandler *handler);
-    inline bool MarkObjectOfProcessVisitor(void *mem, WorkNode *&localBuffer);
 
     inline void MarkObjectFromJSThread(WorkNode *&localBuffer, TaggedObject *object);
 
-    virtual inline void MarkObject([[maybe_unused]] uint32_t threadId, [[maybe_unused]] TaggedObject *object,
-                                   [[maybe_unused]] ObjectSlot &slot)
-    {
-        LOG_GC(FATAL) << " can not call this method";
-    }
-
-    virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
-    {
-        LOG_GC(FATAL) << " can not call this method";
-    }
+    virtual void ProcessMarkStack(uint32_t threadId) = 0;
 
 protected:
     SharedGCWorkManager *sWorkManager_ {nullptr};
@@ -84,48 +69,23 @@ private:
     inline void NotifyThreadProcessRsetStart(JSThread *localThread);
     inline void NotifyThreadProcessRsetFinished(JSThread *localThread);
 
-    template<SharedMarkType markType>
-    inline auto GenerateRSetVisitor(uint32_t threadId);
-    inline void RecordObject(JSTaggedValue value, uint32_t threadId, void *mem);
-    template<SharedMarkType markType>
-    inline bool GetVisitor(JSTaggedValue value, uint32_t threadId, void *mem);
-
     std::vector<RSetWorkListHandler*> rSetHandlers_;
 };
 
 class SharedGCMarker final : public SharedGCMarkerBase {
 public:
-    explicit SharedGCMarker(SharedGCWorkManager *workManger);
+    explicit SharedGCMarker(SharedGCWorkManager *sWorkManger);
     ~SharedGCMarker() override = default;
-    void ProcessMarkStack(uint32_t threadId) override;
 
-protected:
-    inline void MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot &slot) override;
+    void ProcessMarkStack(uint32_t threadId) override;
 };
 
 class SharedGCMovableMarker final : public SharedGCMarkerBase {
 public:
-    explicit SharedGCMovableMarker(SharedGCWorkManager *workManger, SharedHeap *sHeap);
+    explicit SharedGCMovableMarker(SharedGCWorkManager *sWorkManger);
     ~SharedGCMovableMarker() override = default;
-    inline bool NeedEvacuate(Region *region);
+
     void ProcessMarkStack(uint32_t threadId) override;
-
-protected:
-    inline void MarkValue(uint32_t threadId, ObjectSlot &slot);
-    inline void MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot &slot) override;
-    inline uintptr_t AllocateForwardAddress(uint32_t threadId, size_t size);
-    inline void EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord, ObjectSlot slot);
-    inline uintptr_t AllocateDstSpace(uint32_t threadId, size_t size);
-    inline void RawCopyObject(uintptr_t fromAddress, uintptr_t toAddress, size_t size, const MarkWord &markWord);
-    inline void UpdateForwardAddressIfSuccess(uint32_t threadId, TaggedObject *object, JSHClass *klass,
-                                              uintptr_t toAddress, size_t size, ObjectSlot slot);
-    inline void UpdateForwardAddressIfFailed(TaggedObject *object, uintptr_t toAddress, size_t size, ObjectSlot slot);
-
-private:
-    SharedHeap *sHeap_;
-
-    friend class SharedFullGCMarkRootVisitor;
-    friend class SharedFullGCMarkObjectVisitor;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_MARKER_H

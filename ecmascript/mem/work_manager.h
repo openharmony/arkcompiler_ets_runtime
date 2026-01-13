@@ -30,14 +30,15 @@ static constexpr uint32_t MARKSTACK_MAX_SIZE = 100;
 static constexpr uint32_t STACK_AREA_SIZE = sizeof(uintptr_t) * MARKSTACK_MAX_SIZE;
 
 class Heap;
+class Region;
 class SharedHeap;
 class Stack;
 class SemiSpaceCollector;
-class TlabAllocator;
+class SharedGCWorkManager;
 class SharedTlabAllocator;
-class Region;
-class WorkSpaceChunk;
+class TlabAllocator;
 class WorkManager;
+class WorkSpaceChunk;
 
 enum ParallelGCTaskPhase {
     HANDLE_GLOBAL_POOL_TASK,
@@ -292,13 +293,47 @@ private:
     std::atomic<bool> initialized_ {false};
 };
 
-struct SharedGCWorkNodeHolder {
+class SharedGCWorkNodeHolder {
+public:
+    SharedGCWorkNodeHolder() = default;
+    ~SharedGCWorkNodeHolder() = default;
+
+    NO_COPY_SEMANTIC(SharedGCWorkNodeHolder);
+    NO_MOVE_SEMANTIC(SharedGCWorkNodeHolder);
+
+    inline void Setup(SharedHeap *sHeap, SharedGCWorkManager *sWorkManager, GlobalWorkStack *workStack);
+    inline void Destroy();
+    inline void Initialize(TriggerGCType gcType, SharedParallelMarkPhase sTaskPhase);
+    inline void Finish();
+    
+    inline bool Push(TaggedObject *object);
+    inline bool Pop(TaggedObject **object);
+    inline void PushWorkNodeToGlobal(bool postTask = true);
+    inline bool PopWorkNodeFromGlobal();
+
+    inline void PushWeakReference(JSTaggedType *weak);
+
+    inline void IncreaseAliveSize(size_t size);
+
+    inline ProcessQueue *GetWeakReferenceQueue() const;
+
+    inline SharedTlabAllocator *GetTlabAllocator() const;
+
+private:
+    SharedHeap *sHeap_ {nullptr};
+    SharedGCWorkManager *sWorkManager_ {nullptr};
+    GlobalWorkStack *workStack_ {nullptr};
+    SharedParallelMarkPhase sTaskPhase_ {SharedParallelMarkPhase::SHARED_UNDEFINED_TASK};
+    
     WorkNode *inNode_ {nullptr};
-    WorkNode *cachedInNode_ {nullptr};
     WorkNode *outNode_ {nullptr};
+    WorkNode *cachedInNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
+    ContinuousStack<JSTaggedType> *continuousQueue_ {nullptr};
     SharedTlabAllocator *allocator_ {nullptr};
     size_t aliveSize_ = 0;
+
+    friend class SharedGCWorkManager;
 };
 
 class SharedGCWorkManager : public WorkManagerBase {
@@ -306,36 +341,15 @@ public:
     inline SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum);
     inline ~SharedGCWorkManager() override;
 
-    inline void Initialize(TriggerGCType gcType, SharedParallelMarkPhase taskPhase);
+    NO_COPY_SEMANTIC(SharedGCWorkManager);
+    NO_MOVE_SEMANTIC(SharedGCWorkManager);
+
+    inline void Initialize(TriggerGCType gcType, SharedParallelMarkPhase sTaskPhase, size_t numExtraTemporaryHolders);
     inline size_t Finish() override;
 
-    inline SharedTlabAllocator *GetTlabAllocator(uint32_t threadId) const
-    {
-        return works_.at(threadId).allocator_;
-    }
-
-    inline void IncreaseAliveSize(uint32_t threadId, size_t size)
-    {
-        works_.at(threadId).aliveSize_ += size;
-    }
-
-    inline bool Push(uint32_t threadId, TaggedObject *object);
     inline bool PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object);
-    inline bool Pop(uint32_t threadId, TaggedObject **object);
 
-    inline bool PopWorkNodeFromGlobal(uint32_t threadId);
-    inline void PushWorkNodeToGlobal(uint32_t threadId, bool postTask = true);
     inline void PushLocalBufferToGlobal(WorkNode *&node, bool postTask = true);
-
-    inline void PushWeakReference(uint32_t threadId, JSTaggedType *weak)
-    {
-        works_.at(threadId).weakQueue_->PushBack(weak);
-    }
-
-    inline ProcessQueue *GetWeakReferenceQueue(uint32_t threadId) const
-    {
-        return works_.at(threadId).weakQueue_;
-    }
 
     inline uint32_t GetTotalThreadNum()
     {
@@ -347,17 +361,38 @@ public:
         return initialized_.load(std::memory_order_acquire);
     }
 
+    inline SharedGCWorkNodeHolder *GetSharedGCWorkNodeHolder(uint32_t threadId)
+    {
+        return &works_.at(threadId);
+    }
+
+    // Use for JSThread to process mark task in flip function
+    inline SharedGCWorkNodeHolder *GetTemporaryWorkNodeHolder();
+    
+    // Use for JSThread to process mark task in flip function
+    inline void FlushTemporaryWorkNodeHolder(SharedGCWorkNodeHolder *holder);
+
+    template <typename Visitor>
+    void ForEachExtraTemporaryWorkNodeHolder(Visitor &&visitor);
+
 private:
-    NO_COPY_SEMANTIC(SharedGCWorkManager);
-    NO_MOVE_SEMANTIC(SharedGCWorkManager);
+    // Use for JSThread to process mark task in flip function
+    struct ExtraTemporarySharedGCWorkNodeHolderPack {
+        std::vector<SharedGCWorkNodeHolder *> holders_ {};
+        std::atomic<size_t> nextUsableHolderIdx_ {0};
+    };
+
+    inline void CreateExtraTemporaryHolders(size_t numExtraTemporaryHolders);
+
+    inline void FinishAndDestroyExtraTemporaryHolders();
 
     SharedHeap *sHeap_;
     uint32_t threadNum_;
     std::array<SharedGCWorkNodeHolder, common::MAX_TASKPOOL_THREAD_NUM + 1> works_;
-    std::array<ContinuousStack<JSTaggedType> *, common::MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
-    GlobalWorkStack workStack_;
+    GlobalWorkStack workStack_ {};
+    SharedParallelMarkPhase sTaskPhase_ {SharedParallelMarkPhase::SHARED_UNDEFINED_TASK};
     std::atomic<bool> initialized_ {false};
-    SharedParallelMarkPhase sharedTaskPhase_;
+    ExtraTemporarySharedGCWorkNodeHolderPack extraTemporaryHolders_ {};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_WORK_MANAGER_H

@@ -279,12 +279,117 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
     initialized_.store(true, std::memory_order_release);
 }
 
+void SharedGCWorkNodeHolder::Setup(SharedHeap *sHeap, SharedGCWorkManager *sWorkManager, GlobalWorkStack *workStack)
+{
+    sHeap_ = sHeap;
+    sWorkManager_ = sWorkManager;
+    workStack_ = workStack;
+    continuousQueue_ = new ProcessQueue();
+}
+
+void SharedGCWorkNodeHolder::Destroy()
+{
+    continuousQueue_->Destroy();
+    delete continuousQueue_;
+    continuousQueue_ = nullptr;
+}
+
+void SharedGCWorkNodeHolder::Initialize(TriggerGCType gcType, SharedParallelMarkPhase sTaskPhase)
+{
+    inNode_ = sWorkManager_->AllocateWorkNode();
+    cachedInNode_ = sWorkManager_->AllocateWorkNode();
+    outNode_ = sWorkManager_->AllocateWorkNode();
+    weakQueue_ = new ProcessQueue();
+    weakQueue_->BeginMarking(continuousQueue_);
+    aliveSize_ = 0;
+    sTaskPhase_ = sTaskPhase;
+    if (gcType == TriggerGCType::SHARED_FULL_GC) {
+        allocator_ = new SharedTlabAllocator(sHeap_);
+    }
+}
+
+void SharedGCWorkNodeHolder::Finish()
+{
+    if (weakQueue_ != nullptr) {
+        weakQueue_->FinishMarking(continuousQueue_);
+        delete weakQueue_;
+        weakQueue_ = nullptr;
+    }
+    if (allocator_ != nullptr) {
+        allocator_->Finalize();
+        delete allocator_;
+        allocator_ = nullptr;
+    }
+    sTaskPhase_ = SharedParallelMarkPhase::SHARED_UNDEFINED_TASK;
+}
+
+bool SharedGCWorkNodeHolder::Push(TaggedObject *object)
+{
+    if (!inNode_->PushObject(ToUintPtr(object))) {
+        PushWorkNodeToGlobal();
+        return inNode_->PushObject(ToUintPtr(object));
+    }
+    return true;
+}
+
+void SharedGCWorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
+{
+    if (!inNode_->IsEmpty()) {
+        workStack_->Push(inNode_);
+        inNode_ = cachedInNode_;
+        ASSERT(inNode_ != nullptr);
+        cachedInNode_ = sWorkManager_->AllocateWorkNode();
+        if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
+            sHeap_->PostGCMarkingTask(sTaskPhase_);
+        }
+    }
+}
+
+bool SharedGCWorkNodeHolder::Pop(TaggedObject **object)
+{
+    if (!outNode_->PopObject(reinterpret_cast<uintptr_t *>(object))) {
+        if (!inNode_->IsEmpty()) {
+            WorkNode *tmp = outNode_;
+            outNode_ = inNode_;
+            inNode_ = tmp;
+        } else if (!PopWorkNodeFromGlobal()) {
+            return false;
+        }
+        return outNode_->PopObject(reinterpret_cast<uintptr_t *>(object));
+    }
+    return true;
+}
+
+bool SharedGCWorkNodeHolder::PopWorkNodeFromGlobal()
+{
+    return workStack_->Pop(&outNode_);
+}
+
+void SharedGCWorkNodeHolder::PushWeakReference(JSTaggedType *weak)
+{
+    weakQueue_->PushBack(weak);
+}
+
+void SharedGCWorkNodeHolder::IncreaseAliveSize(size_t size)
+{
+    aliveSize_ += size;
+}
+
+ProcessQueue *SharedGCWorkNodeHolder::GetWeakReferenceQueue() const
+{
+    return weakQueue_;
+}
+
+SharedTlabAllocator *SharedGCWorkNodeHolder::GetTlabAllocator() const
+{
+    return allocator_;
+}
+
 SharedGCWorkManager::SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum)
-    : WorkManagerBase(heap->GetNativeAreaAllocator()), sHeap_(heap), threadNum_(threadNum),
-      continuousQueue_ { nullptr }, sharedTaskPhase_(SHARED_UNDEFINED_TASK)
+    : WorkManagerBase(heap->GetNativeAreaAllocator()), sHeap_(heap), threadNum_(threadNum)
 {
     for (uint32_t i = 0; i < threadNum_; i++) {
-        continuousQueue_.at(i) = new ProcessQueue();
+        works_.at(i).Setup(sHeap_, this, &workStack_);
     }
 }
 
@@ -292,26 +397,22 @@ SharedGCWorkManager::~SharedGCWorkManager()
 {
     Finish();
     for (uint32_t i = 0; i < threadNum_; i++) {
-        continuousQueue_.at(i)->Destroy();
-        delete continuousQueue_.at(i);
-        continuousQueue_.at(i) = nullptr;
+        works_.at(i).Destroy();
     }
 }
 
-void SharedGCWorkManager::Initialize(TriggerGCType gcType, SharedParallelMarkPhase taskPhase)
+void SharedGCWorkManager::Initialize(TriggerGCType gcType, SharedParallelMarkPhase sTaskPhase,
+                                     size_t numExtraTemporaryHolders)
 {
-    sharedTaskPhase_ = taskPhase;
+    sTaskPhase_ = sTaskPhase;
     InitializeBase();
     for (uint32_t i = 0; i < threadNum_; i++) {
         SharedGCWorkNodeHolder &holder = works_.at(i);
-        holder.inNode_ = AllocateWorkNode();
-        holder.cachedInNode_ = AllocateWorkNode();
-        holder.outNode_ = AllocateWorkNode();
-        holder.weakQueue_ = new ProcessQueue();
-        holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
-        if (gcType == TriggerGCType::SHARED_FULL_GC) {
-            holder.allocator_ = new SharedTlabAllocator(sHeap_);
-        }
+        holder.Initialize(gcType, sTaskPhase);
+    }
+    CreateExtraTemporaryHolders(numExtraTemporaryHolders);
+    for (size_t i = 0; i < numExtraTemporaryHolders; ++i) {
+        extraTemporaryHolders_.holders_[i]->Initialize(gcType, sTaskPhase);
     }
     if (initialized_.load(std::memory_order_acquire)) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -325,32 +426,14 @@ size_t SharedGCWorkManager::Finish()
     size_t aliveSize = 0;
     for (uint32_t i = 0; i < threadNum_; i++) {
         SharedGCWorkNodeHolder &holder = works_.at(i);
-        if (holder.weakQueue_ != nullptr) {
-            holder.weakQueue_->FinishMarking(continuousQueue_.at(i));
-            delete holder.weakQueue_;
-            holder.weakQueue_ = nullptr;
-        }
+        holder.Finish();
         aliveSize += holder.aliveSize_;
-        if (holder.allocator_ != nullptr) {
-            holder.allocator_->Finalize();
-            delete holder.allocator_;
-            holder.allocator_ = nullptr;
-        }
     }
+    FinishAndDestroyExtraTemporaryHolders();
     workStack_.Clear();
     FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
-}
-
-bool SharedGCWorkManager::Push(uint32_t threadId, TaggedObject *object)
-{
-    WorkNode *&inNode = works_.at(threadId).inNode_;
-    if (!inNode->PushObject(ToUintPtr(object))) {
-        PushWorkNodeToGlobal(threadId);
-        return inNode->PushObject(ToUintPtr(object));
-    }
-    return true;
 }
 
 bool SharedGCWorkManager::PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object)
@@ -368,51 +451,61 @@ bool SharedGCWorkManager::PushToLocalMarkingBuffer(WorkNode *&markingBuffer, Tag
     return true;
 }
 
-void SharedGCWorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
-{
-    WorkNode *&inNode = works_.at(threadId).inNode_;
-    if (!inNode->IsEmpty()) {
-        workStack_.Push(inNode);
-        inNode = works_.at(threadId).cachedInNode_;
-        ASSERT(inNode != nullptr);
-        works_.at(threadId).cachedInNode_ = AllocateWorkNode();
-        if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
-            sHeap_->PostGCMarkingTask(sharedTaskPhase_);
-        }
-    }
-}
-
 void SharedGCWorkManager::PushLocalBufferToGlobal(WorkNode *&node, bool postTask)
 {
     ASSERT(node != nullptr);
     ASSERT(!node->IsEmpty());
     workStack_.Push(node);
     if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
-        sHeap_->PostGCMarkingTask(sharedTaskPhase_);
+        sHeap_->PostGCMarkingTask(sTaskPhase_);
     }
     node = nullptr;
 }
 
-bool SharedGCWorkManager::Pop(uint32_t threadId, TaggedObject **object)
+void SharedGCWorkManager::CreateExtraTemporaryHolders(size_t numExtraTemporaryHolders)
 {
-    WorkNode *&outNode = works_.at(threadId).outNode_;
-    WorkNode *&inNode = works_.at(threadId).inNode_;
-    if (!outNode->PopObject(reinterpret_cast<uintptr_t *>(object))) {
-        if (!inNode->IsEmpty()) {
-            WorkNode *tmp = outNode;
-            outNode = inNode;
-            inNode = tmp;
-        } else if (!PopWorkNodeFromGlobal(threadId)) {
-            return false;
-        }
-        return outNode->PopObject(reinterpret_cast<uintptr_t *>(object));
+    ASSERT(extraTemporaryHolders_.holders_.empty());
+    ASSERT(extraTemporaryHolders_.nextUsableHolderIdx_ == 0);
+    for (size_t i = 0; i < numExtraTemporaryHolders; ++i) {
+        SharedGCWorkNodeHolder *holder = new SharedGCWorkNodeHolder();
+        holder->Setup(sHeap_, this, &workStack_);
+        extraTemporaryHolders_.holders_.emplace_back(holder);
     }
-    return true;
 }
 
-bool SharedGCWorkManager::PopWorkNodeFromGlobal(uint32_t threadId)
+void SharedGCWorkManager::FinishAndDestroyExtraTemporaryHolders()
 {
-    return workStack_.Pop(&works_.at(threadId).outNode_);
+    for (SharedGCWorkNodeHolder *holder : extraTemporaryHolders_.holders_) {
+        holder->Finish();
+        holder->Destroy();
+        // Shared full gc do not support flip
+        ASSERT(holder->aliveSize_ == 0);
+        delete holder;
+    }
+    extraTemporaryHolders_.holders_.clear();
+    extraTemporaryHolders_.nextUsableHolderIdx_ = 0;
+}
+
+SharedGCWorkNodeHolder *SharedGCWorkManager::GetTemporaryWorkNodeHolder()
+{
+    size_t idx = extraTemporaryHolders_.nextUsableHolderIdx_.fetch_add(1, std::memory_order_relaxed);
+    ASSERT(idx < extraTemporaryHolders_.holders_.size());
+    return extraTemporaryHolders_.holders_[idx];
+}
+
+void SharedGCWorkManager::FlushTemporaryWorkNodeHolder(SharedGCWorkNodeHolder *holder)
+{
+    ASSERT(std::find(extraTemporaryHolders_.holders_.begin(), extraTemporaryHolders_.holders_.end(), holder) !=
+        extraTemporaryHolders_.holders_.end());
+    holder->PushWorkNodeToGlobal(true);
+}
+
+template <typename Visitor>
+void SharedGCWorkManager::ForEachExtraTemporaryWorkNodeHolder(Visitor &&visitor)
+{
+    for (SharedGCWorkNodeHolder *holder : extraTemporaryHolders_.holders_) {
+        visitor(holder);
+    }
 }
 }  // namespace panda::ecmascript
 #endif  //  ECMASCRIPT_MEM_WORK_MANAGER_INL_H

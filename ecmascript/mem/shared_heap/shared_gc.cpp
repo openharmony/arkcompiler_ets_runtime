@@ -77,13 +77,13 @@ void SharedGC::Initialize()
             ASSERT(current->InSharedSweepableSpace());
             current->ResetAliveObject();
         });
-        sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK);
+        sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK, 0);
     }
 }
 
 void SharedGC::MarkRoots(SharedMarkType markType)
 {
-    SharedGCMarkRootVisitor sharedGCMarkRootVisitor(sWorkManager_, DAEMON_THREAD_INDEX);
+    SharedGCMarkRootVisitor sharedGCMarkRootVisitor(sWorkManager_->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
     sHeap_->GetSharedGCMarker()->MarkRoots(sharedGCMarkRootVisitor, markType);
 }
 
@@ -97,7 +97,10 @@ void SharedGC::Mark()
     }
     SharedGCMarker *marker = sHeap_->GetSharedGCMarker();
     MarkRoots(SharedMarkType::NOT_CONCURRENT_MARK);
-    marker->DoMark<SharedMarkType::NOT_CONCURRENT_MARK>(DAEMON_THREAD_INDEX);
+    SharedGCMarkLocalToShareRSetVisitor<SharedMarkType::NOT_CONCURRENT_MARK> rSetVisitor(
+        sWorkManager_->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
+    sHeap_->GetSharedGCMarker()->ProcessLocalToShareRSet(rSetVisitor);
+    sHeap_->GetSharedGCMarker()->ProcessMarkStack(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
 }
@@ -144,7 +147,7 @@ void SharedGC::Sweep()
     bool needClearCache = sHeap_->HasCSetRegions();
     Runtime::GetInstance()->ProcessSharedDelete(gcUpdateWeak);
     Runtime::GetInstance()->GCIterateThreadList([&gcUpdateWeak, needClearCache](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
@@ -172,10 +175,8 @@ void SharedGC::Finish()
 
 void SharedGC::UpdateRecordWeakReference()
 {
-    auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
-    for (uint32_t i = 0; i < totalThreadCount; i++) {
-        ProcessQueue *queue = sHeap_->GetWorkManager()->GetWeakReferenceQueue(i);
-
+    auto processWeakReference = [](SharedGCWorkNodeHolder *holder) {
+        ProcessQueue *queue = holder->GetWeakReferenceQueue();
         while (true) {
             auto obj = queue->PopBack();
             if (UNLIKELY(obj == nullptr)) {
@@ -191,7 +192,12 @@ void SharedGC::UpdateRecordWeakReference()
                 }
             }
         }
+    };
+    auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+    for (uint32_t i = 0; i < totalThreadCount; i++) {
+        processWeakReference(sWorkManager_->GetSharedGCWorkNodeHolder(i));
     }
+    sWorkManager_->ForEachExtraTemporaryWorkNodeHolder(processWeakReference);
 }
 
 void SharedGC::ResetWorkManager(SharedGCWorkManager *sWorkManager)

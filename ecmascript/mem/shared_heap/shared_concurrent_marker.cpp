@@ -39,11 +39,67 @@ void SharedConcurrentMarker::EnableConcurrentMarking(EnableConcurrentMarkType ty
     }
 }
 
-void SharedConcurrentMarker::MarkRoots(SharedMarkType markType)
-{
-    SharedGCMarkRootVisitor sharedGCMarkRootVisitor(sWorkManager_, DAEMON_THREAD_INDEX);
-    sHeap_->GetSharedGCMarker()->MarkRoots(sharedGCMarkRootVisitor, markType);
-}
+class InitialMarkSuspendCallback : public Closure {
+public:
+    InitialMarkSuspendCallback() = default;
+    ~InitialMarkSuspendCallback() override = default;
+
+    NO_COPY_SEMANTIC(InitialMarkSuspendCallback);
+    NO_MOVE_SEMANTIC(InitialMarkSuspendCallback);
+
+    void Run([[maybe_unused]] JSThread *thread) override
+    {
+        ASSERT(thread->IsDaemonThread());
+        SharedHeap *sHeap = SharedHeap::GetInstance();
+        TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, sHeap->GetEcmaGCStats());
+        LOG_GC(DEBUG) << "SharedConcurrentMarker: Concurrent Marking Begin";
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedConcurrentMarker::Mark;MarkReason"
+            + std::to_string(static_cast<int>(sHeap->GetEcmaGCStats()->GetMarkReason()))
+            + ";Sensitive" + std::to_string(static_cast<int>(sHeap->GetSensitiveStatus()))
+            + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
+            + ";Startup" + std::to_string(static_cast<int>(sHeap->GetStartupStatus()))
+            + ";Old" + std::to_string(sHeap->GetOldSpace()->GetCommittedSize())
+            + ";huge" + std::to_string(sHeap->GetHugeObjectSpace()->GetCommittedSize())
+            + ";NonMov" + std::to_string(sHeap->GetNonMovableSpace()->GetCommittedSize())
+            + ";TotCommit" + std::to_string(sHeap->GetCommittedSize())
+            + ";NativeBindingSize" + std::to_string(sHeap->GetNativeSizeAfterLastGC())
+            + ";NativeLimitGC" + std::to_string(sHeap->GetNativeSizeTriggerSharedGC())
+            + ";NativeLimitCM" + std::to_string(sHeap->GetNativeSizeTriggerSharedCM())).c_str(), "");
+        CHECK_DAEMON_THREAD();
+        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+            thread->GetEcmaVM()->GetHeap()->WaitAndHandleCCFinished();
+        });
+        // fixme: support shared runtime state
+        if (UNLIKELY(sHeap->ShouldVerifyHeap())) {
+            SharedHeapVerification(sHeap, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
+        }
+        sHeap->GetConcurrentMarker()->InitializeMarking();
+
+        SharedGCMarkRootVisitor rootVisitor(sHeap->GetWorkManager()->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
+        sHeap->GetSharedGCMarker()->MarkGlobalRoots(rootVisitor);
+    }
+};
+
+class InitialMarkFlipFunction : public Closure {
+public:
+    InitialMarkFlipFunction() = default;
+    ~InitialMarkFlipFunction() override = default;
+
+    NO_COPY_SEMANTIC(InitialMarkFlipFunction);
+    NO_MOVE_SEMANTIC(InitialMarkFlipFunction);
+
+    void Run(JSThread *thread) override
+    {
+        ASSERT(!thread->IsConcurrentCopying());
+        SharedHeap *sHeap = SharedHeap::GetInstance();
+        SharedGCWorkNodeHolder *temporaryHolder = sHeap->GetWorkManager()->GetTemporaryWorkNodeHolder();
+        SharedGCMarkRootVisitor rootVisitor(temporaryHolder);
+        EcmaVM *vm = thread->GetEcmaVM();
+        sHeap->GetSharedGCMarker()->MarkLocalVMRoots(rootVisitor, vm, SharedMarkType::CONCURRENT_MARK_INITIAL_MARK);
+        sHeap->GetSharedGCMarker()->CollectLocalVMRSet(vm);
+        sHeap->GetWorkManager()->FlushTemporaryWorkNodeHolder(temporaryHolder);
+    }
+};
 
 void SharedConcurrentMarker::Mark(TriggerGCType gcType)
 {
@@ -52,30 +108,9 @@ void SharedConcurrentMarker::Mark(TriggerGCType gcType)
     sHeap_->WaitSensitiveStatusFinished();
     {
         ThreadManagedScope runningScope(dThread_);
-        SuspendAllScope scope(dThread_);
-        TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, sHeap_->GetEcmaGCStats());
-        LOG_GC(DEBUG) << "SharedConcurrentMarker: Concurrent Marking Begin";
-        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedConcurrentMarker::Mark;MarkReason"
-        + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetMarkReason()))
-        + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
-        + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
-        + ";Startup" + std::to_string(static_cast<int>(sHeap_->GetStartupStatus()))
-        + ";Old" + std::to_string(sHeap_->GetOldSpace()->GetCommittedSize())
-        + ";huge" + std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize())
-        + ";NonMov" + std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize())
-        + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize())
-        + ";NativeBindingSize" + std::to_string(sHeap_->GetNativeSizeAfterLastGC())
-        + ";NativeLimitGC" + std::to_string(sHeap_->GetNativeSizeTriggerSharedGC())
-        + ";NativeLimitCM" + std::to_string(sHeap_->GetNativeSizeTriggerSharedCM())).c_str(), "");
-        CHECK_DAEMON_THREAD();
-        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-            thread->GetEcmaVM()->GetHeap()->WaitAndHandleCCFinished();
-        });
-        // TODO: support shared runtime state
-        if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
-            SharedHeapVerification(sHeap_, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
-        }
-        InitializeMarking();
+        InitialMarkSuspendCallback suspendCallback;
+        InitialMarkFlipFunction flipFunction;
+        Runtime::GetInstance()->FlipAllThreads(dThread_, &suspendCallback, &flipFunction);
     }
     // Daemon thread do not need to post task to GC_Thread
     ASSERT(!dThread_->IsInRunningState());
@@ -100,8 +135,9 @@ void SharedConcurrentMarker::ReMark()
     SharedGCMarker *sharedGCMarker = sHeap_->GetSharedGCMarker();
     // If enable shared concurrent mark, the recorded weak reference slots from local to share may be changed
     // during LocalGC. For now just re-scan the local_to_share bit to record and update these weak references.
-    MarkRoots(SharedMarkType::CONCURRENT_MARK_REMARK);
-    sharedGCMarker->DoMark<SharedMarkType::CONCURRENT_MARK_REMARK>(DAEMON_THREAD_INDEX);
+    SharedGCMarkRootVisitor rootVisitor(sWorkManager_->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
+    sHeap_->GetSharedGCMarker()->MarkRoots(rootVisitor, SharedMarkType::CONCURRENT_MARK_REMARK);
+    sharedGCMarker->ProcessMarkStack(DAEMON_THREAD_INDEX);
     sharedGCMarker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
 }
@@ -148,14 +184,18 @@ void SharedConcurrentMarker::InitializeMarking()
         ASSERT(current->InSharedSweepableSpace());
         current->ResetAliveObject();
     });
-    sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK);
-    MarkRoots(SharedMarkType::CONCURRENT_MARK_INITIAL_MARK);
+    // this should not less than the actual num of JSThread
+    size_t numTotalThreads = Runtime::GetInstance()->GetThreadListSize();
+    sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK, numTotalThreads);
 }
 
 void SharedConcurrentMarker::DoMarking()
 {
     ClockScope clockScope;
-    sHeap_->GetSharedGCMarker()->DoMark<SharedMarkType::CONCURRENT_MARK_INITIAL_MARK>(DAEMON_THREAD_INDEX);
+    SharedGCMarkLocalToShareRSetVisitor<SharedMarkType::CONCURRENT_MARK_INITIAL_MARK> rSetVisitor(
+        sWorkManager_->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
+    sHeap_->GetSharedGCMarker()->ProcessLocalToShareRSet(rSetVisitor);
+    sHeap_->GetSharedGCMarker()->ProcessMarkStack(DAEMON_THREAD_INDEX);
     sHeap_->WaitRunningTaskFinished();
     FinishMarking(clockScope.TotalSpentTime());
 }

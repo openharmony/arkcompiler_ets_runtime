@@ -59,6 +59,8 @@ public:
 
     void SuspendAll(JSThread *current);
     void ResumeAll(JSThread *current);
+    // fixme: support call on js thread
+    void FlipAllThreads(DaemonThread *current, Closure *suspendCallback, Closure *flipCallback);
     void SuspendOther(JSThread *current, JSThread *target);
     void ResumeOther(JSThread *current, JSThread *target);
     void IterateSerializeRoot(RootVisitor &v);
@@ -73,16 +75,6 @@ public:
     {
         LockHolder lock(threadsLock_);
         GCIterateThreadListWithoutLock(cb);
-    }
-
-    template<class Callback>
-    void GCIterateThreadListWithoutLock(const Callback &cb)
-    {
-        for (auto thread : threads_) {
-            if (thread->ReadyForGCIterating()) {
-                cb(thread);
-            }
-        }
     }
 
     void SetEnableLargeHeap(bool value)
@@ -108,6 +100,12 @@ public:
     // Result may be inaccurate, just an approximate value.
     size_t ApproximateThreadListSize()
     {
+        return threads_.size();
+    }
+
+    size_t GetThreadListSize()
+    {
+        LockHolder lock(threadsLock_);
         return threads_.size();
     }
 
@@ -382,6 +380,16 @@ private:
     void SuspendOtherThreadImpl(JSThread *current, JSThread *target);
     void ResumeOtherThreadImpl(JSThread *current, JSThread *target);
 
+    template<class Callback>
+    void GCIterateThreadListWithoutLock(const Callback &cb)
+    {
+        for (auto thread : threads_) {
+            if (thread->ReadyForGCIterating()) {
+                cb(thread);
+            }
+        }
+    }
+
     void PreInitialization(const EcmaVM *vm);
     void PostInitialization(const EcmaVM *vm);
 
@@ -413,7 +421,7 @@ private:
         return sharedNativePointerCallbacks_;
     }
 
-    Mutex threadsLock_;
+    RecursiveMutex threadsLock_;
     ConditionVariable threadSuspendCondVar_;
     Mutex serializeLock_;
     std::list<JSThread*> threads_;
