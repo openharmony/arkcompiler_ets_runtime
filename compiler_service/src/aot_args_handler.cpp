@@ -431,7 +431,7 @@ bool AOTArgsParserBase::ParseBlackListJson(nlohmann::json &jsonObject)
         inFile.close();
         return false;
     }
-    if (jsonObject.is_null() || jsonObject.empty()) {
+    if (jsonObject.is_null()) {
         LOG_SA(ERROR) << "invalid json";
         inFile.close();
         return false;
@@ -614,7 +614,7 @@ bool AOTArgsParserBase::IsFileExists(const std::string &fileName)
 {
     std::string realPath;
     if (!panda::ecmascript::RealPath(fileName, realPath)) {
-        LOG_SA(ERROR) << "get real path failed:" << fileName;
+        LOG_SA(INFO) << "get real path failed:" << fileName;
         return false;
     }
     return panda::ecmascript::FileExist(realPath.c_str());

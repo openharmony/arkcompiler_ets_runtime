@@ -1440,29 +1440,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_076, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotArgsHandlerTest_077
- * @tc.desc: Test AOTArgsParserBase::ParseBlackListJson with invalid JSON to trigger discarded error
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_077, TestSize.Level0)
-{
-    // Create an invalid JSON file to trigger the jsonObject.is_discarded() condition
-    std::string invalidJson = "{}";
-    system("mkdir -p /etc/ark");
-    std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
-    file << invalidJson << std::endl;
-    file.close();
-
-    nlohmann::json jsonObject;
-    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
-    // When JSON is invalid, nlohmann::json::parse() may throw or mark as discarded
-    // In case of exception, we expect it to be handled, return false
-    EXPECT_FALSE(result); // Expecting false due to invalid JSON
-
-    unlink("/etc/ark/static_aot_methods_black_list.json");
-}
-
-/**
  * @tc.name: AotArgsHandlerTest_078
  * @tc.desc: Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with missing blackMethodList
  * @tc.type: Func
