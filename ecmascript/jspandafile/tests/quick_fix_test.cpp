@@ -304,4 +304,46 @@ HWTEST_F_L0(QuickFixTest, HotReload_UpdateModuleAndNamespace)
     res = JSNApi::UnloadPatch(instance, patchFileName);
     EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
 }
+
+HWTEST_F_L0(QuickFixTest, PatchLoaderUpdateJSFunctionTest)
+{
+    ThreadManagedScope managedScope(thread);
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test.pa";
+    // create MethodLiteral
+    Parser parser;
+    auto res = parser.Parse(source, "SRC.pa");
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+    std::unique_ptr<const File> pfPtr = AsmEmitter::Emit(res.Value());
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    MethodLiteral *methodLiterals = pf->GetMethodLiterals();
+    MethodLiteral& methodLiteral = methodLiterals[0];
+
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+    JSHandle<Method> oriMethod = factory->NewMethod(&methodLiterals[0]);
+    JSHandle<ConstantPool> constPool = factory->NewConstantPool(4);
+    constPool->SetJSPandaFile(pf.get());
+    oriMethod->SetConstantPool(thread, constPool);
+    JSHandle<JSFunction> oriFunction = factory->NewJSFunction(globalEnv, oriMethod);
+    JSHandle<SourceTextModule> oriModule = factory->NewSourceTextModule();
+    oriModule->SetEcmaModuleRecordNameString("oriModule");
+    oriFunction->SetModule(thread, oriModule.GetTaggedValue());
+
+    JSHandle<SourceTextModule> patchModule = factory->NewSourceTextModule();
+    patchModule->SetEcmaModuleRecordNameString("patchModule");
+    thread->GetEcmaVM()->AddPatchModule("patchModule", JSHandle<JSTaggedValue>::Cast(patchModule));
+
+    PatchInfo info;
+    ReplacedMethod method {methodLiteral.GetMethodId(), fileName};
+    info.replacedPatchMethods[method] = "patchModule";
+
+    PatchLoader::UpdateJSFunction(thread, info);
+
+    JSHandle<SourceTextModule> moduleAfterPatch(thread, oriFunction->GetModule(thread));
+    EXPECT_EQ(moduleAfterPatch->GetEcmaModuleRecordNameString(), "patchModule");
+}
 }  // namespace panda::test

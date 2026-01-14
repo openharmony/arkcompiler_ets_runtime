@@ -1366,7 +1366,7 @@ void JSFunction::ReplaceFunctionForHook(const JSThread *thread, JSHandle<JSFunct
         return;
     }
 
-    if (!newFunc->GetMachineCode(thread).IsUndefined() ||
+    if ((!newFunc->IsJSApiFunction() && !newFunc->GetMachineCode(thread).IsUndefined()) ||
         (!oldFunc->IsJSApiFunction() && !oldFunc->GetMachineCode(thread).IsUndefined())) {
         LOG_ECMA(WARN) << "ReplaceFunctionForHook failed";
         return;
