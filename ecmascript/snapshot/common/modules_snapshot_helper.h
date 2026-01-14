@@ -61,7 +61,7 @@ private:
     static constexpr std::string_view DISABLE_REASON_UNCAUGHT_EXCEPTION = "UEC";
     static constexpr std::string_view DISABLE_REASON_SIGNAL = "SIG";
     static constexpr std::string_view DISABLE_REASON_UNKNOWN = "UNK";
-    static constexpr char STATE_WORD_MODULE_SNAPSHOT_DIASBLED = '1';
+    static constexpr char STATE_WORD_MODULE_SNAPSHOT_DISABLED = '1';
     static constexpr char STATE_WORD_ALL_SNAPSHOT_DIASBLED = '0';
 
     static size_t IntToString(int value, char *buf, size_t bufSize);
