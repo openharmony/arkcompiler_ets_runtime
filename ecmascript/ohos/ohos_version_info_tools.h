@@ -25,7 +25,9 @@ public:
     static CString GetRomVersion()
     {
 #if defined(OHOS_GET_PARAMETER)
-        return OHOS::system::GetParameter("const.product.software.version", "").c_str();
+        CString romVersion = OHOS::system::GetParameter("const.product.software.version", "").c_str();
+        romVersion += OHOS::system::GetParameter("quickfix.patchversion", "").c_str();
+        return romVersion;
 #endif
         return "";
     }
