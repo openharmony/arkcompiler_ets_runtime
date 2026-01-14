@@ -23,7 +23,7 @@ namespace panda::test {
 class JsonHelperTest : public BaseTestWithScope<false> {
 };
 
-#if ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
 /**
  * @tc.name: IsFastValueToQuotedString
  * @tc.desc: Check basic Ascii characters
