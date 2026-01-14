@@ -160,6 +160,10 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
                                            bool needNativeStack, uint32_t depth)
 {
     std::string data;
+    // disallow cross thread execution
+    if (thread->IsCrossThreadExecutionEnable()) {
+        return data;
+    }
     data.reserve(InitialDeeps * InitialLength);
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);

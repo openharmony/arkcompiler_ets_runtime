@@ -440,7 +440,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             return false;
         }
         if (pid == 0) {
-            vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
+            vm_->GetAssociatedJSThread()->SetCrossThreadExecution(true);
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
             if (dumpOption.dumpFormat == DumpFormat::BINARY) {
                 res = BinaryDump(stream, dumpOption);
@@ -448,6 +448,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             } else {
                 res = DoDump(stream, progress, dumpOption);
             }
+            vm_->GetAssociatedJSThread()->SetCrossThreadExecution(false);
             _exit(0);
         }
     }

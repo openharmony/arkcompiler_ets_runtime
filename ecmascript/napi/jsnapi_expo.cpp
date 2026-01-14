@@ -4856,7 +4856,7 @@ std::string JSNApi::NormalizePath(const std::string &string)
 void JSNApi::AllowCrossThreadExecution(EcmaVM *vm)
 {
     LOG_ECMA(WARN) << "enable cross thread execution";
-    vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
+    vm->GetAssociatedJSThread()->SetCrossThreadExecution(true);
 }
 
 // Enable cross thread execution except in gc process.
@@ -4869,9 +4869,15 @@ bool JSNApi::CheckAndSetAllowCrossThreadExecution(EcmaVM *vm)
             return false;
         }
         LOG_ECMA(WARN) << "enable cross thread execution when not in gc process";
-        vm->GetAssociatedJSThread()->EnableCrossThreadExecution();
+        vm->GetAssociatedJSThread()->SetCrossThreadExecution(true);
         return true;
     }
+}
+
+void JSNApi::DisallowCrossThreadExecution(EcmaVM *vm)
+{
+    LOG_ECMA(WARN) << "disable cross thread execution";
+    vm->GetAssociatedJSThread()->SetCrossThreadExecution(false);
 }
 
 void* JSNApi::GetEnv(EcmaVM *vm)

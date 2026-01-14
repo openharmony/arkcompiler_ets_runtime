@@ -1642,11 +1642,11 @@ HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo1)
     EXPECT_TRUE(jsFrame.empty());
 }
 
-HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo4)
+HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo2)
 {
     JSHandle<JSObject> jsErrorObj;
     std::string stack1 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, true);
-#if defined(ENABLE_BACKTRACE_LOCAL)
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
     EXPECT_TRUE(!stack1.empty());
 #else
     EXPECT_TRUE(stack1.empty());
@@ -1654,5 +1654,14 @@ HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo4)
 
     std::string stack2 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, false);
     EXPECT_TRUE(stack2.empty());
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo3)
+{
+    thread_->SetCrossThreadExecution(true);
+    JSHandle<JSObject> jsErrorObj;
+    std::string stack1 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, true);
+    EXPECT_TRUE(stack1.empty());
+    thread_->SetCrossThreadExecution(false);
 }
 }  // namespace panda::test

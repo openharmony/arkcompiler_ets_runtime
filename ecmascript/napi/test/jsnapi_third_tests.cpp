@@ -2089,4 +2089,18 @@ HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure004)
     bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl2);
     EXPECT_FALSE(res);
 }
+
+HWTEST_F_L0(JSNApiTests, CrossThreadExecution)
+{
+    bool res = JSNApi::CheckAndSetAllowCrossThreadExecution(vm_);
+    if (ecmascript::g_isEnableCMCGC) {
+        EXPECT_FALSE(res);
+    } else {
+        if (res) {
+            JSNApi::DisallowCrossThreadExecution(vm_);
+        } else {
+            GTEST_LOG_(INFO) << "vm is in the gc or shared gc";
+        }
+    }
+}
 } // namespace panda::test
