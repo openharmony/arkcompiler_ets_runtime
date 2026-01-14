@@ -1727,6 +1727,14 @@ config("arkjs_runtime_lto_link_config") {
         "-Wl,--aarch64-inline-plt",
         "-Wl,-mllvm,-enable-partial-inlining",
       ]
+      if (ets_runtime_feature_enable_inst_prefetch && target_cpu == "arm64") {
+        ldflags += [
+          "-Wl,-mllvm,--aarch64-enable-inst-prefetch",
+          "-Wl,-mllvm,--mir-cachemiss-profile-l2i=" + rebase_path(
+                  "${ets_runtime_feature_pgo_path}/afdo/libark_jsruntime.so-l2i.afdo",
+                  root_build_dir),
+        ]
+      }
       if (ets_runtime_feature_enable_codemerge) {
         ldflags += [
           "-Wl,-plugin-opt=-split-machine-functions",
