@@ -417,6 +417,10 @@ HWTEST_F_L0(GCTest, PrintGCStatisticTest001)
     heap->GetEcmaVM()->GetJSOptions().SetArkProperties(prop);
     ASSERT_EQ(heap->GetEcmaVM()->GetJSOptions().EnableGCTracer(), false);
     stats->PrintGCStatistic();
+
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    SharedGCStats *stats1 = new SharedGCStats(sHeap, true);
+    stats1->PrintGCStatistic();
 }
 
 HWTEST_F_L0(GCTest, GCReasonToStringTest001)
