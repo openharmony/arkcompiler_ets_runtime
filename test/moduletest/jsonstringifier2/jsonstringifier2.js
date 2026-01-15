@@ -940,4 +940,24 @@
     assert_equal(result, '{"all_chars":"\\u0000\\u0001\\u0002\\u0003\\u0004\\u0005\\u0006\\u0007\\b\\t\\n\\u000b\\f\\r\\u000e\\u000f\\u0010\\u0011\\u0012\\u0013\\u0014\\u0015\\u0016\\u0017\\u0018\\u0019\\u001a\\u001b\\u001c\\u001d\\u001e\\u001f !\\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ\\\\]^_`"}');
 }
 
+{
+    let obj = {}
+    let obj2 = {}
+    obj2['a'] = 1;
+    for (let i = 0; i < 578; i++) {
+        const key = String(i).padStart(8, '0');
+        obj[key] = '';
+    }
+    const key580 = String(580).padStart(8, '0')
+    obj[key580] = '12';
+    obj['0a'] = obj2;
+    let ss = "bcdef";
+    for (let i = 0; i < 5; i++) {
+        const key = String(ss[i]).padStart(1, '0');
+        obj[key] = '\x00';
+    }
+    obj['a'] = "";
+    let s = JSON.stringify(obj);
+}
+
 test_end();
