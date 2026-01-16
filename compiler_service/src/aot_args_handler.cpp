@@ -392,6 +392,10 @@ bool StaticAOTArgsParser::ParseProfilePath(std::string &pkgInfo, std::string &pr
 
 bool AOTArgsParserBase::ParseBundleName(const std::string &pkgInfo, std::string &bundleName)
 {
+    if (!nlohmann::json::accept(pkgInfo)) {
+        LOG_SA(ERROR) << "invalid json when parse profile path";
+        return false;
+    }
     nlohmann::json jsonPkgInfo = nlohmann::json::parse(pkgInfo);
     if (jsonPkgInfo.is_discarded()) {
         LOG_SA(ERROR) << "json discarded error";
@@ -423,6 +427,10 @@ bool AOTArgsParserBase::ParseBlackListJson(nlohmann::json &jsonObject)
     inFile.open(STATIC_PAOC_BLACK_LIST_PATH, std::ios::in);
     if (!inFile.is_open()) {
         LOG_SA(ERROR) << "read json error";
+        return false;
+    }
+    if (!nlohmann::json::accept(inFile)) {
+        LOG_SA(ERROR) << "invalid json when parse profile path";
         return false;
     }
     jsonObject = nlohmann::json::parse(inFile);
