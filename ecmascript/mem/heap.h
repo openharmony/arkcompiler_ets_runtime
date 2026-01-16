@@ -23,6 +23,7 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/mem/cms_mem/slot_space-inl.h"
+#include "ecmascript/mem/guarded_task.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/mark_stack.h"
@@ -343,6 +344,12 @@ public:
         return maxMarkTaskCount_;
     }
 
+    void UpdateMaxMarkTaskCount(uint32_t maxTaskCount)
+    {
+        maxMarkTaskCount_ = maxTaskCount;
+        markTaskMonitor_->UpdateCapacity(maxMarkTaskCount_);
+    }
+
     bool InSensitiveStatus() const
     {
         return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE || OnStartupEvent();
@@ -351,10 +358,9 @@ public:
     void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
     inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
                                             [[maybe_unused]] size_t size);
-    bool CheckCanDistributeTask();
-    void IncreaseTaskCount();
-    void ReduceTaskCount();
-    void WaitRunningTaskFinished();
+    inline bool CheckCanDistributeTask() const;
+    void WaitRunningMarkTaskFinished();
+    void WaitAllMarkTaskFinished();
     void WaitClearTaskFinished();
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
@@ -432,10 +438,8 @@ protected:
     size_t heapBasicLoss_ {1_MB};
     size_t fragmentSizeAfterGC_ {0};
     // parallel marker task count.
-    uint32_t runningTaskCount_ {0};
     uint32_t maxMarkTaskCount_ {0};
-    Mutex waitTaskFinishedMutex_;
-    ConditionVariable waitTaskFinishedCV_;
+    std::shared_ptr<EpochGuardedTaskMonitor> markTaskMonitor_;
     Mutex waitClearTaskFinishedMutex_;
     ConditionVariable waitClearTaskFinishedCV_;
     bool clearTaskFinished_ {true};
@@ -482,12 +486,14 @@ public:
 
     void ResetLargeCapacity(size_t heapSize);
 
-    class ParallelMarkTask : public common::Task {
+    class ParallelMarkTask : public GuardedTask {
     public:
-        ParallelMarkTask(int32_t id, SharedHeap *heap, SharedParallelMarkPhase taskPhase)
-            : common::Task(id), sHeap_(heap), taskPhase_(taskPhase) {};
+        ParallelMarkTask(int32_t id, SharedHeap *heap, SharedParallelMarkPhase taskPhase,
+            std::shared_ptr<EpochGuardedTaskMonitor> monitor, uint32_t epoch)
+            : GuardedTask(id), sHeap_(heap), taskPhase_(taskPhase), monitor_(monitor), epoch_(epoch) {}
         ~ParallelMarkTask() override = default;
-        bool Run(uint32_t threadIndex) override;
+        bool RunInternal(uint32_t threadIndex) override;
+        bool Scheduable() override;
 
         NO_COPY_SEMANTIC(ParallelMarkTask);
         NO_MOVE_SEMANTIC(ParallelMarkTask);
@@ -495,6 +501,8 @@ public:
     private:
         SharedHeap *sHeap_ {nullptr};
         SharedParallelMarkPhase taskPhase_;
+        std::shared_ptr<EpochGuardedTaskMonitor> monitor_;
+        uint32_t epoch_ {0};
     };
 
     class AsyncClearTask : public common::Task {
@@ -719,11 +727,6 @@ public:
 
     void DaemonCollectGarbage(TriggerGCType gcType, GCReason reason);
 
-    void SetMaxMarkTaskCount(uint32_t maxTaskCount)
-    {
-        maxMarkTaskCount_ = maxTaskCount;
-    }
-
     inline size_t GetCommittedSize() const override
     {
         size_t result = sOldSpace_->GetCommittedSize() +
@@ -813,7 +816,7 @@ public:
 
     void Prepare(bool inTriggerGCThread);
     void Reclaim(TriggerGCType gcType);
-    void PostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase);
+    void TryPostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase);
     void CompactHeapBeforeFork(JSThread *thread);
     void ReclaimForAppSpawn();
 
@@ -1256,6 +1259,7 @@ public:
      */
 
     void PostParallelGCTask(ParallelGCTaskPhase taskPhase);
+    void TryPostParallelGCTask(ParallelGCTaskPhase taskPhase);
 
     bool IsParallelGCEnabled() const
     {
@@ -1755,12 +1759,14 @@ private:
     }
     bool CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIndex,
                                            [[maybe_unused]] const char* traceName);
-    class ParallelGCTask : public common::Task {
+    class ParallelGCTask : public GuardedTask {
     public:
-        ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
-            : common::Task(id), heap_(heap), taskPhase_(taskPhase) {};
+        ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase,
+            std::shared_ptr<EpochGuardedTaskMonitor> monitor, uint32_t epoch)
+            : GuardedTask(id), heap_(heap), taskPhase_(taskPhase), monitor_(monitor), epoch_(epoch) {}
         ~ParallelGCTask() override = default;
-        bool Run(uint32_t threadIndex) override;
+        bool RunInternal(uint32_t threadIndex) override;
+        bool Scheduable() override;
 
         NO_COPY_SEMANTIC(ParallelGCTask);
         NO_MOVE_SEMANTIC(ParallelGCTask);
@@ -1768,6 +1774,8 @@ private:
     private:
         Heap *heap_ {nullptr};
         ParallelGCTaskPhase taskPhase_;
+        std::shared_ptr<EpochGuardedTaskMonitor> monitor_;
+        uint32_t epoch_ {0};
     };
 
     class AsyncClearTask : public common::Task {

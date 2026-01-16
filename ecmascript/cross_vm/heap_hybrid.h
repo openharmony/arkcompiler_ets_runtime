@@ -20,7 +20,7 @@
     {                                                                                                             \
         gcType_ = gcType;                                                                                         \
     }                                                                                                             \
-    uint32_t GetRunningTaskCount()
+    uint32_t GetTotalMarkTaskCount()
 
 #define SHAREDHEAP_PUBLIC_HYBRID_EXTENSION()                                                                      \
     UnifiedGC *GetUnifiedGC() const                                                                               \

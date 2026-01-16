@@ -124,7 +124,7 @@ void SweepGC::Mark()
     MarkRoots();
     workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->PushWorkNodeToGlobal(false);
     heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
-    heap_->WaitRunningTaskFinished();
+    heap_->WaitRunningMarkTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
     heap_->GetNonMovableMarker()->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }

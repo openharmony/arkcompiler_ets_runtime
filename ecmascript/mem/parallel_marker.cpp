@@ -91,7 +91,7 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
     };
     ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
     ProcessMarkStack(threadId);
-    heap_->WaitRunningTaskFinished();
+    heap_->WaitRunningMarkTaskFinished();
 }
 
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
@@ -251,6 +251,6 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
     };
     ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
     ProcessMarkStack(threadId);
-    heap_->WaitRunningTaskFinished();
+    heap_->WaitRunningMarkTaskFinished();
 }
 }  // namespace panda::ecmascript

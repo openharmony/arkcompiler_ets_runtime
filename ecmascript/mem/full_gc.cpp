@@ -112,7 +112,7 @@ void FullGC::Mark()
     TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
     MarkRoots();
     heap_->GetCompressGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
-    heap_->WaitRunningTaskFinished();
+    heap_->WaitRunningMarkTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
     heap_->GetCompressGCMarker()->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }

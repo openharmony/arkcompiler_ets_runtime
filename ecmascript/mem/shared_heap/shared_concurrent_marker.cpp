@@ -139,7 +139,7 @@ void SharedConcurrentMarker::ReMark()
     sHeap_->GetSharedGCMarker()->MarkRoots(rootVisitor, SharedMarkType::CONCURRENT_MARK_REMARK);
     sharedGCMarker->ProcessMarkStack(DAEMON_THREAD_INDEX);
     sharedGCMarker->MergeBackAndResetRSetWorkListHandler();
-    sHeap_->WaitRunningTaskFinished();
+    sHeap_->WaitRunningMarkTaskFinished();
 }
 
 void SharedConcurrentMarker::Reset(bool clearGCBits)
@@ -196,7 +196,7 @@ void SharedConcurrentMarker::DoMarking()
         sWorkManager_->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
     sHeap_->GetSharedGCMarker()->ProcessLocalToShareRSet(rSetVisitor);
     sHeap_->GetSharedGCMarker()->ProcessMarkStack(DAEMON_THREAD_INDEX);
-    sHeap_->WaitRunningTaskFinished();
+    sHeap_->WaitRunningMarkTaskFinished();
     FinishMarking(clockScope.TotalSpentTime());
 }
 
