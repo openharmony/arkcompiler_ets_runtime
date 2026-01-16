@@ -2606,7 +2606,7 @@ void Heap::NotifyFinishColdStartSoon()
     // post 2s task
     startupDurationInMs_ = DEFAULT_STARTUP_DURATION_MS;
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-    startupDurationInMs_ = OHOS::system::GetUintParameter<uint64_t>("persist.ark.startupDuration",
+    startupDurationInMs_ = OHOS::system::GetUintParameter<uint64_t>("const.ark.startup_duration",
                                                                     DEFAULT_STARTUP_DURATION_MS);
     startupDurationInMs_ = std::max(startupDurationInMs_, static_cast<uint64_t>(MIN_CONFIGURABLE_STARTUP_DURATION_MS));
     startupDurationInMs_ = std::min(startupDurationInMs_, static_cast<uint64_t>(MAX_CONFIGURABLE_STARTUP_DURATION_MS));
