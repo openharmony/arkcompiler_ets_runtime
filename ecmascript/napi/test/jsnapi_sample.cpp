@@ -806,7 +806,7 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_Demo3_ObjectRef)
     LocalScope scope(vm_);
     GetSymbolRef(vm_);
     Local<SymbolRef> symbol = SymbolRef::New(vm_, StringRef::NewFromUtf8(vm_, "Symbol"));
-    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<ObjectRef> object = ObjectRef::NewWrappedNapiObject(vm_);
     SetPrototype(object, vm_);
     ObjectRefSet(object, vm_, symbol);
     GetProperty(object, vm_);

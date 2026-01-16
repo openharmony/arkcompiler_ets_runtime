@@ -1135,18 +1135,12 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
     return NewJSObjectByConstructor(constructor);
 }
 
-JSHandle<JSObject> ObjectFactory::CreateNapiObject()
+JSHandle<JSObject> ObjectFactory::CreateNapiObject(bool isWrapped)
 {
     JSHandle<GlobalEnv> globalEnv = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
-    JSHandle<JSHClass> ihc(globalEnv->GetObjectFunctionNapiClass());
-    JSHandle<JSHClass> tsIhc(globalEnv->GetObjectFunctionTsNapiClass());
-    JSHandle<JSObject> jsObject;
-    if (ihc != tsIhc) {
-        jsObject = NewJSObjectWithInit(tsIhc);
-    } else {
-        jsObject = NewJSObjectWithInit(ihc);
-    }
+    JSHandle<JSTaggedValue> tsIhc =
+        isWrapped ? globalEnv->GetWrappedObjectFunctionClass() : globalEnv->GetObjectFunctionTsNapiClass();
+    JSHandle<JSObject> jsObject = NewJSObjectWithInit(JSHandle<JSHClass>(tsIhc));
     return jsObject;
 }
 
@@ -1314,6 +1308,11 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ITERATOR: {
+            break;
+        }
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
+        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT: {
+            JSWrappedNapiObject::InitializeNativePointersField(thread_, obj);
             break;
         }
 #ifdef ARK_SUPPORT_INTL

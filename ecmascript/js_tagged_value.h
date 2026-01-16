@@ -610,6 +610,7 @@ public:
     bool IsJSFunctionBase() const;
     bool CheckIsJSFunctionBase() const;
     bool IsECMAObject() const;
+    bool IsJSWrappedNapiObject() const;
     bool IsJSPrimitiveRef() const;
     bool IsJSPrimitive() const;
     bool IsAccessorData() const;

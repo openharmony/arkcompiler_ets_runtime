@@ -138,25 +138,25 @@ public:
 
         JSHandle<JSTaggedValue> arrayInRoot = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
         thread->NewGlobalHandle(arrayInRoot.GetTaggedType());
-        JSHandle<JSObject> jsXRefObjectRefByRoot = vm->GetFactory()->NewJSXRefObject();
+        JSHandle<JSObject> jsXRefObjectRefByRoot = vm->GetFactory()->NewJSXRefWrappedNapiObject();
         JSArray::FastSetPropertyByValue(thread, arrayInRoot, INT_VALUE_0,
-            JSHandle<JSTaggedValue>(jsXRefObjectRefByRoot));
-        ECMAObject::SetNativePointerFieldCount(thread, jsXRefObjectRefByRoot, INT_VALUE_1);
-        ECMAObject::SetNativePointerField(thread, jsXRefObjectRefByRoot, INT_VALUE_0,
-            sharedRefRoot, nullptr, nullptr, nativeBindingSize);
+                                        JSHandle<JSTaggedValue>(jsXRefObjectRefByRoot));
+        JSObject::SetNativePointerFieldCount(thread, jsXRefObjectRefByRoot, INT_VALUE_1);
+        JSObject::SetNativePointerField(thread, jsXRefObjectRefByRoot, INT_VALUE_0, sharedRefRoot, nullptr, nullptr,
+                                        nativeBindingSize);
 
-        JSHandle<JSObject> jsXRefObjectNormal = vm->GetFactory()->NewJSXRefObject();
-        ECMAObject::SetNativePointerFieldCount(thread, jsXRefObjectNormal, INT_VALUE_1);
-        ECMAObject::SetNativePointerField(thread, jsXRefObjectNormal, INT_VALUE_0,
+        JSHandle<JSObject> jsXRefObjectNormal = vm->GetFactory()->NewJSXRefWrappedNapiObject();
+        JSObject::SetNativePointerFieldCount(thread, jsXRefObjectNormal, INT_VALUE_1);
+        JSObject::SetNativePointerField(thread, jsXRefObjectNormal, INT_VALUE_0,
             sharedRefNormal, nullptr, nullptr, nativeBindingSize);
 
         JSHandle<JSTaggedValue> arrayInXRefRoot = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
         thread->NewXRefGlobalHandle(arrayInXRefRoot.GetTaggedType());
-        JSHandle<JSObject> jsXRefObjectRefByXRefRoot = vm->GetFactory()->NewJSXRefObject();
+        JSHandle<JSObject> jsXRefObjectRefByXRefRoot = vm->GetFactory()->NewJSXRefWrappedNapiObject();
         JSArray::FastSetPropertyByValue(thread, arrayInXRefRoot, INT_VALUE_0,
             JSHandle<JSTaggedValue>(jsXRefObjectRefByXRefRoot));
-        ECMAObject::SetNativePointerFieldCount(thread, jsXRefObjectRefByXRefRoot, INT_VALUE_1);
-        ECMAObject::SetNativePointerField(thread, jsXRefObjectRefByXRefRoot, INT_VALUE_0,
+        JSObject::SetNativePointerFieldCount(thread, jsXRefObjectRefByXRefRoot, INT_VALUE_1);
+        JSObject::SetNativePointerField(thread, jsXRefObjectRefByXRefRoot, INT_VALUE_0,
             sharedRefXRefRoot, nullptr, nullptr, nativeBindingSize);
     }
 

@@ -515,10 +515,22 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsObj);
                 break;
             }
+            case JSType::JS_WRAPPED_NAPI_OBJECT: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSWrappedNapiObject::SIZE, 1U);
+                JSHandle<JSTaggedValue> jsWrappedNapiObj(factory->CreateNapiObject(true));
+                DUMP_FOR_HANDLE(jsWrappedNapiObj);
+                break;
+            }
             case JSType::JS_XREF_OBJECT: {
                 CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSObject::SIZE, 2U);
                 JSHandle<JSTaggedValue> jsXRefObject(factory->NewJSXRefObject());
                 DUMP_FOR_HANDLE(jsXRefObject);
+                break;
+            }
+            case JSType::JS_XREF_WRAPPED_NAPI_OBJECT: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSWrappedNapiObject::SIZE, 1U);
+                JSHandle<JSTaggedValue> jsWrappedNapiObj(factory->NewJSXRefWrappedNapiObject());
+                DUMP_FOR_HANDLE(jsWrappedNapiObj);
                 break;
             }
             case JSType::JS_REALM: {

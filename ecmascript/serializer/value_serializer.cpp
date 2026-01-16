@@ -63,6 +63,7 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         case JSType::SLICED_STRING:
         case JSType::CACHED_EXTERNAL_STRING:
         case JSType::JS_OBJECT:
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
         case JSType::JS_ASYNC_FUNCTION:  // means CONCURRENT_FUNCTION
             return true;
         case JSType::JS_API_BITVECTOR:
@@ -237,6 +238,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     bool arrayBufferDeferDetach = false;
     JSTaggedValue trackInfo;
     JSTaggedType hashfield = JSTaggedValue::VALUE_ZERO;
+    JSTaggedValue nativePointerField = JSTaggedValue(JSTaggedValue::VALUE_ZERO);
     JSType type = objClass->GetObjectType();
     SourceTextModule::MutableFields moduleMutableFields;
     // serialize prologue
@@ -270,6 +272,14 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
         case JSType::JS_OBJECT: {
             hashfield = Barriers::GetTaggedValue(thread_, object, JSObject::HASH_OFFSET);
             Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
+            break;
+        }
+        case JSType::JS_WRAPPED_NAPI_OBJECT: {
+            hashfield = Barriers::GetTaggedValue(thread_, object, JSObject::HASH_OFFSET);
+            Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, JSTaggedValue::VALUE_ZERO);
+            JSWrappedNapiObject *wrappedObj = JSWrappedNapiObject::Cast(object);
+            nativePointerField = wrappedObj->GetNativePointers(thread_);
+            wrappedObj->SetNativePointers(thread_, JSTaggedValue(JSTaggedValue::VALUE_ZERO));
             break;
         }
         case JSType::SOURCE_TEXT_MODULE_RECORD: {
@@ -309,6 +319,15 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             } else {
                 Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
             }
+            break;
+        }
+        case JSType::JS_WRAPPED_NAPI_OBJECT: {
+            if (JSTaggedValue(hashfield).IsHeapObject()) {
+                Barriers::SetObject<true>(thread_, object, JSObject::HASH_OFFSET, hashfield);
+            } else {
+                Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
+            }
+            JSWrappedNapiObject::Cast(object)->SetNativePointers(thread_, nativePointerField);
             break;
         }
         case JSType::SOURCE_TEXT_MODULE_RECORD: {

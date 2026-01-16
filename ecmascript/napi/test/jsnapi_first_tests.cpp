@@ -1763,7 +1763,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnEnumerablePropertyNames)
 HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFieldCount)
 {
     LocalScope scope(vm_);
-    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<ObjectRef> object = ObjectRef::NewWrappedNapiObject(vm_);
     int32_t input = 34;
     object->SetNativePointerFieldCount(vm_, input);
     int32_t res = object->GetNativePointerFieldCount(vm_);

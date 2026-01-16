@@ -92,7 +92,9 @@ struct Reference;
         V(COMPOSITE_BASE_CLASS),  /* //////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         V(JS_OBJECT),        /* JS_OBJECT_FIRST /////////////////////////////////////////////////////////////////// */ \
+        V(JS_WRAPPED_NAPI_OBJECT), /* /////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_XREF_OBJECT),   /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
+        V(JS_XREF_WRAPPED_NAPI_OBJECT), /* ////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_SHARED_OBJECT), /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_REALM),         /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_FUNCTION_BASE), /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -437,6 +439,8 @@ public:
     static size_t GetCloneSize(JSHClass* jshclass);
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                     bool specificInlinedProps = false, uint32_t specificNumInlinedProps = 0);
+    static JSHandle<JSHClass> CloneWithNewSizeAndType(const JSThread *thread, const JSHandle<JSHClass> &jsHClass,
+                                                      uint32_t newHClassSize, JSType type);
     static JSHandle<JSHClass> CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                            uint32_t expectedOfProperties);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -657,13 +661,20 @@ public:
 
     inline bool IsOnlyJSObject() const
     {
-        return GetObjectType() == JSType::JS_OBJECT;
+        JSType type = GetObjectType();
+        return type == JSType::JS_OBJECT || type == JSType::JS_WRAPPED_NAPI_OBJECT;
     }
 
     inline bool IsECMAObject() const
     {
         JSType jsType = GetObjectType();
         return (JSType::ECMA_OBJECT_FIRST <= jsType && jsType <= JSType::ECMA_OBJECT_LAST);
+    }
+
+    inline bool IsJSWrappedNapiObject() const
+    {
+        JSType jsType = GetObjectType();
+        return (jsType == JSType::JS_WRAPPED_NAPI_OBJECT || jsType == JSType::JS_XREF_WRAPPED_NAPI_OBJECT);
     }
 
     inline bool ShouldSetDefaultSupers() const
@@ -2000,6 +2011,13 @@ public:
             return numberOfProps - inlinedProperties;
         }
         return -1;
+    }
+
+    inline int32_t IsNonInlinedPropExist() const
+    {
+        uint32_t inlinedProperties = GetInlinedProperties();
+        uint32_t numberOfProps = NumberOfProps();
+        return numberOfProps > inlinedProperties;
     }
 
     inline uint32_t GetObjectSize() const

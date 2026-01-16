@@ -24,4 +24,13 @@ JSHandle<JSObject> ObjectFactory::NewJSXRefObject()
     JSHandle<JSObject> object(NewJSObject(jsXRefHClass));
     return object;
 }
+
+JSHandle<JSObject> ObjectFactory::NewJSXRefWrappedNapiObject()
+{
+    auto globalEnvConst = thread_->GlobalConstants();
+    JSHandle<JSTaggedValue> jsXRefHClass = globalEnvConst->GetHandledXRefWrappedNapiObjectClass();
+    JSHandle<JSObject> object(NewJSObject(JSHandle<JSHClass>(jsXRefHClass)));
+    JSWrappedNapiObject::InitializeNativePointersField(thread_, object);
+    return object;
+}
 }  // namespace panda::ecmascript

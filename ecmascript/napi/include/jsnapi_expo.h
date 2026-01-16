@@ -729,6 +729,7 @@ public:
         bool *isArrayOrSharedArray, uint32_t *arrayLength);
     bool IsJsGlobalEnv(const EcmaVM *vm);
     bool IsSendable(const EcmaVM *vm);
+    bool IsWrappedNapiObject(const EcmaVM *vm);
 
 private:
     JSTaggedType value_;
@@ -890,6 +891,7 @@ public:
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static Local<ObjectRef> NewWrappedNapiObject(const EcmaVM *vm);
     static uintptr_t NewObject(const EcmaVM *vm);
     static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
