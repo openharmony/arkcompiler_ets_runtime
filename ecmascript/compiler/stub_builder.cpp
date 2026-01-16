@@ -2348,7 +2348,7 @@ void StubBuilder::SetNonSValueWithBarrier(GateRef glue, GateRef obj, GateRef off
         auto oldToNewSet = LoadPrimitive(VariableType::NATIVE_POINTER(), objectRegion, loadOffset);
         Label isNullPtr(env);
         Label notNullPtr(env);
-        BRANCH(IntPtrEuqal(oldToNewSet, IntPtr(0)), &isNullPtr, &notNullPtr);
+        BRANCH(IntPtrEqual(oldToNewSet, IntPtr(0)), &isNullPtr, &notNullPtr);
         Bind(&notNullPtr);
         {
             GateRef slotAddr = PtrAdd(TaggedCastToIntPtr(obj), offset);
@@ -11978,25 +11978,6 @@ GateRef StubBuilder::Loadlocalmodulevar(GateRef glue, GateRef index, GateRef mod
     return ret;
 }
 
-void StubBuilder::ModuleEnvMustBeValid(GateRef glue, GateRef curEnv)
-{
-    GateRef objectType = GetObjectType(LoadHClass(glue, curEnv));
-    [[maybe_unused]] GateRef isTaggedArray = LogicOrBuilder(env_)
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::TAGGED_ARRAY))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::TAGGED_DICTIONARY))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::LEXICAL_ENV))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::SENDABLE_ENV))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::CONSTANT_POOL))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::PROFILE_TYPE_INFO))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::AOT_LITERAL_INFO))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::VTABLE))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::COW_TAGGED_ARRAY))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::MUTANT_TAGGED_ARRAY))))
-        .Or(Int32Equal(objectType, Int32(static_cast<int>(JSType::COW_MUTANT_TAGGED_ARRAY))))
-        .Done();
-    ASSERT(isTaggedArray);
-}
-
 GateRef StubBuilder::SearchFromModuleCache(GateRef glue, GateRef moduleName)
 {
     auto env = GetEnvironment();
@@ -12197,6 +12178,37 @@ GateRef StubBuilder::GetModuleValueByIndex(GateRef glue, GateRef module, GateRef
     return ret;
 }
 
+#if ENABLE_LATEST_OPTIMIZATION
+GateRef StubBuilder::GetModuleValue(GateRef glue, GateRef module, GateRef index)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label isNativeOrCjsModule(env);
+    Label notNativeOrCjsModule(env);
+    Label exit(env);
+    BRANCH(IsNativeOrCjsModule(module), &isNativeOrCjsModule, &notNativeOrCjsModule);
+
+    Bind(&isNativeOrCjsModule);
+    {
+        result = GetNativeOrCjsModuleValue(glue, module, index);
+        Jump(&exit);
+    }
+
+    Bind(&notNativeOrCjsModule);
+    {
+        result = GetModuleValueByIndex(glue, module, index, TaggedFalse());
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+#else
 GateRef StubBuilder::GetModuleValue(GateRef glue, GateRef module, GateRef index)
 {
     auto env = GetEnvironment();
@@ -12227,6 +12239,7 @@ GateRef StubBuilder::GetModuleValue(GateRef glue, GateRef module, GateRef index)
     env->SubCfgExit();
     return ret;
 }
+#endif
 
 GateRef StubBuilder::GetNativeOrCjsModuleValueByName(GateRef glue, GateRef module, GateRef bindingName)
 {
@@ -12458,6 +12471,220 @@ GateRef StubBuilder::GetResolvedRecordBindingModule(GateRef glue, GateRef module
     return result;
 }
 
+#if ENABLE_LATEST_OPTIMIZATION
+GateRef StubBuilder::FastLoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+
+    Label isSendableFunctionModule(env);
+    Label notSendableFunctionModule(env);
+    Label moduleEnvUndefined(env);
+    Label moduleEnvIsdefined(env);
+    Label isNullPtr(env);
+    Label notNullPtr(env);
+    Label isResolvedIndexBinding(env);
+    Label judgeResolvedBinding(env);
+    Label judgeResolvedRecordIndexBinding(env);
+    Label judgeResolvedRecordBinding(env);
+
+    BRANCH_UNLIKELY(IsSendableFunctionModule(glue, curModule), &isSendableFunctionModule, &notSendableFunctionModule);
+
+    Bind(&notSendableFunctionModule);
+    GateRef curModuleEnv = GetCurrentModuleEnv(glue, curModule);
+
+    BRANCH_UNLIKELY(TaggedIsUndefined(curModuleEnv), &moduleEnvUndefined, &moduleEnvIsdefined);
+    Bind(&moduleEnvIsdefined);
+
+    GateRef resolvedBinding = GetValueFromTaggedArray(glue, curModuleEnv, index);
+    BRANCH_LIKELY(IntPtrEqual(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &notNullPtr);
+
+    Bind(&isNullPtr);
+
+    // There is no need to check resolvedBinding is heap object in release mode.
+    // This is an UNREACHABLE case in c++ logic, which we don't expect to
+    // happen. So we just add the check in debug mode.
+
+#ifndef NDEBUG
+    Label misstakenResolvedBinding(env);
+    Label resolvedBindingIsHeapObj(env);
+    BRANCH_LIKELY(TaggedIsHeapObject(resolvedBinding), &resolvedBindingIsHeapObj, &misstakenResolvedBinding);
+    Bind(&resolvedBindingIsHeapObj);
+#endif
+
+    BRANCH_LIKELY(IsResolvedIndexBinding(glue, resolvedBinding), &isResolvedIndexBinding, &judgeResolvedBinding);
+
+    Bind(&isResolvedIndexBinding);
+    {
+        Label isLdEndExecPatchMain(env);
+        Label notLdEndExecPatchMain(env);
+        DEFVARIABLE(resolvedModule, VariableType::JS_ANY(), Hole());
+        resolvedModule = GetResolveModuleFromResolvedIndexBinding(glue, resolvedBinding);
+        ResolvedModuleMustBeSourceTextModule(glue, *resolvedModule);
+        GateRef idxOfResolvedBinding = GetIdxOfResolvedIndexBinding(resolvedBinding);
+
+        BRANCH_UNLIKELY(IsLdEndExecPatchMain(glue), &isLdEndExecPatchMain, &notLdEndExecPatchMain);
+
+        // isResolvedIndexBinding fast path
+        Bind(&notLdEndExecPatchMain);
+        {
+            Label isSharedModule(env);
+            Label notSharedModule(env);
+            BRANCH_UNLIKELY(IsSharedModule(*resolvedModule), &isSharedModule, &notSharedModule);
+
+            Bind(&isSharedModule);
+            {
+                resolvedModule = CallRuntime(glue, RTSTUB_ID(UpdateSharedModule), {*resolvedModule});
+                Jump(&notSharedModule);
+            }
+
+            Bind(&notSharedModule);
+            {
+                Label isEcmaModule(env);
+                Label getModuleSlow(env);
+                Label notUndefined(env);
+                BRANCH_LIKELY(IsEcmaModule(*resolvedModule), &isEcmaModule, &getModuleSlow);
+
+                Bind(&isEcmaModule);
+                {
+                    GateRef dictionary = GetNameDictionary(glue, *resolvedModule);
+                    BRANCH_UNLIKELY(TaggedIsUndefined(dictionary), &getModuleSlow, &notUndefined);
+
+                    Bind(&notUndefined);
+                    {
+                        result = GetValueFromTaggedArray(glue, dictionary, idxOfResolvedBinding);
+                        Jump(&exit);
+                    }
+                }
+
+                Bind(&getModuleSlow);
+                {
+                    LazySetGlobalEnv();
+                    result = GetModuleValue(glue, *resolvedModule, idxOfResolvedBinding);
+                    Jump(&exit);
+                }
+            }
+        }
+
+        // isResolvedIndexBinding slow path
+        Bind(&isLdEndExecPatchMain);
+        {
+            Label isSharedModule(env);
+            Label notHole(env);
+            Label notLdEndExecPatchMain1(env);
+            LazySetGlobalEnv();
+            GateRef resolvedModuleOfHotReload = CallNGCRuntime(glue, RTSTUB_ID(FindPatchModule),
+                                                                {glue, *resolvedModule});
+            BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &notLdEndExecPatchMain1, &notHole);
+
+            Bind(&notLdEndExecPatchMain1);
+            Label notSharedModule(env);
+            BRANCH(IsSharedModule(*resolvedModule), &isSharedModule, &notSharedModule);
+
+            Bind(&isSharedModule);
+            resolvedModule = CallRuntime(glue, RTSTUB_ID(UpdateSharedModule), {*resolvedModule});
+            Jump(&notSharedModule);
+
+            Bind(&notSharedModule);
+            result = GetModuleValue(glue, *resolvedModule, idxOfResolvedBinding);
+            Jump(&exit);
+
+            Bind(&notHole);
+            result = GetModuleValue(glue, resolvedModuleOfHotReload, idxOfResolvedBinding);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&judgeResolvedBinding);
+    {
+        LazySetGlobalEnv();
+        Label isResolvedBinding(env);
+        BRANCH(IsResolvedBinding(glue, resolvedBinding), &isResolvedBinding, &judgeResolvedRecordIndexBinding);
+
+        Bind(&isResolvedBinding);
+        {
+            GateRef resolvedModule = GetResolveModuleFromResolvedBinding(glue, resolvedBinding);
+            ResolvedModuleMustBeSourceTextModule(glue, resolvedModule);
+#ifndef NDEBUG
+            Label isNativeOrCjsModule(env);
+            GateRef checkNativeOrCjsModule = BitOr(IsNativeModule(resolvedModule), IsCjsModule(resolvedModule));
+            BRANCH(checkNativeOrCjsModule, &isNativeOrCjsModule, &misstakenResolvedBinding);
+            Bind(&isNativeOrCjsModule);
+#endif
+            result = UpdateBindingAndGetModuleValue(glue, curModule, resolvedModule, index,
+                                                    GetBindingName(glue, resolvedBinding));
+            Jump(&exit);
+        }
+    }
+
+    Bind(&judgeResolvedRecordIndexBinding);
+    {
+        Label isResolvedRecordIndexBinding(env);
+        BRANCH(IsResolvedRecordIndexBinding(glue, resolvedBinding), &isResolvedRecordIndexBinding,
+               &judgeResolvedRecordBinding);
+
+        Bind(&isResolvedRecordIndexBinding);
+        {
+            GateRef resolvedModule = GetResolvedRecordIndexBindingModule(glue, curModule, resolvedBinding);
+            GateRef idxOfResolvedRecordIndexBinding = GetIdxOfResolvedRecordIndexBinding(resolvedBinding);
+            result = GetModuleValue(glue, resolvedModule, idxOfResolvedRecordIndexBinding);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&judgeResolvedRecordBinding);
+    {
+#ifndef NDEBUG
+        Label isResolvedRecordBinding(env);
+        BRANCH(IsResolvedRecordBinding(glue, resolvedBinding), &isResolvedRecordBinding, &misstakenResolvedBinding);
+        Bind(&isResolvedRecordBinding);
+#endif
+        GateRef resolvedModule = GetResolvedRecordBindingModule(glue, curModule, resolvedBinding);
+        result = GetNativeOrCjsModuleValueByName(glue, resolvedModule, GetBindingName(glue, resolvedBinding));
+        Jump(&exit);
+    }
+
+    Bind(&isSendableFunctionModule);
+    {
+        LazySetGlobalEnv();
+        result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
+                                          {IntToTaggedInt(index), curModule});
+        Jump(&exit);
+    }
+
+    Bind(&moduleEnvUndefined);
+    {
+        result = Undefined();
+        Jump(&exit);
+    }
+
+    Bind(&notNullPtr);
+    {
+        LazySetGlobalEnv();
+        result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(GetModuleValueOuterInternal),
+                                          {curModule, IntToTaggedInt(index)});
+        Jump(&exit);
+    }
+
+#ifndef NDEBUG
+    Bind(&misstakenResolvedBinding);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(FatalPrintMisstakenResolvedBinding), {index, curModule});
+        Jump(&exit);
+    }
+#endif
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+#else
+
 GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule)
 {
     auto env = GetEnvironment();
@@ -12489,9 +12716,8 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
     BRANCH(TaggedIsUndefined(curModuleEnv), &moduleEnvUndefined, &moduleEnvIsdefined);
 
     Bind(&moduleEnvIsdefined);
-    ModuleEnvMustBeValid(glue, curModuleEnv);
     GateRef resolvedBinding = GetValueFromTaggedArray(glue, curModuleEnv, index);
-    BRANCH_LIKELY(IntPtrEuqal(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &notNullPtr);
+    BRANCH_LIKELY(IntPtrEqual(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &notNullPtr);
 
     Bind(&isNullPtr);
     BRANCH(TaggedIsHeapObject(resolvedBinding), &resolvedBindingIsHeapObj, &misstakenResolvedBinding);
@@ -12620,6 +12846,7 @@ GateRef StubBuilder::LoadExternalmodulevar(GateRef glue, GateRef index, GateRef 
     env->SubCfgExit();
     return ret;
 }
+#endif
 
 GateRef StubBuilder::LoadModuleNamespaceByIndex(GateRef glue, GateRef index, GateRef module)
 {
@@ -12660,7 +12887,7 @@ GateRef StubBuilder::LoadModuleNamespaceByIndex(GateRef glue, GateRef index, Gat
         Bind(&requiredModuleIsHeapObj);
         BRANCH_LIKELY(IsSourceTextModule(glue, requiredModule), &requiredModuleIsSourceTextModule, &slowPath);
         Bind(&requiredModuleIsSourceTextModule);
-        BRANCH_LIKELY(IntPtrEuqal(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &slowPath);
+        BRANCH_LIKELY(IntPtrEqual(GetModuleLogger(glue), IntPtr(0)), &isNullPtr, &slowPath);
         Bind(&isNullPtr);
         BRANCH(IsNativeModule(requiredModule), &isNativeModule, &notNativeModule);
         Bind(&isNativeModule);

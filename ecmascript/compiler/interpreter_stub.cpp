@@ -4236,6 +4236,19 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst8_0(pc);
+#if ENABLE_LATEST_OPTIMIZATION
+    GateRef frame = GetFrame(sp);
+    GateRef currentFunc = GetFunctionFromFrame(glue, frame);
+    GateRef module = GetModuleFromFunction(glue, currentFunc);
+    GateRef indexInt32 = ZExtInt8ToInt32(index);
+    auto globalenvSetter = [this, &glue, &frame]() {
+        GateRef currentEnv = GetEnvFromFrame(glue, frame);
+        GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+        SetCurrentGlobalEnv(globalEnv);
+    };
+    SetCallBackForLazySetGlobalEnv(globalenvSetter);
+    varAcc = FastLoadExternalmodulevar(glue, index, module);
+#else
     GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
@@ -4248,6 +4261,7 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     varAcc = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
                                       {Int8ToTaggedInt(index), module});
 #endif
+#endif
     DISPATCH_WITH_ACC(LDEXTERNALMODULEVAR_IMM8);
 }
 
@@ -4256,6 +4270,19 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
+#if ENABLE_LATEST_OPTIMIZATION
+    GateRef frame = GetFrame(sp);
+    GateRef currentFunc = GetFunctionFromFrame(glue, frame);
+    GateRef module = GetModuleFromFunction(glue, currentFunc);
+    GateRef indexInt32 = ZExtInt16ToInt32(index);
+    auto globalenvSetter = [this, &glue, &frame]() {
+        GateRef currentEnv = GetEnvFromFrame(glue, frame);
+        GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
+        SetCurrentGlobalEnv(globalEnv);
+    };
+    SetCallBackForLazySetGlobalEnv(globalenvSetter);
+    varAcc = FastLoadExternalmodulevar(glue, index, module);
+#else
     GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
@@ -4267,6 +4294,7 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
 #else
     varAcc = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
                                       {Int16ToTaggedInt(index), module});
+#endif
 #endif
     DISPATCH_WITH_ACC(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
