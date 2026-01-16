@@ -49,6 +49,7 @@ public:
 
     void Run([[maybe_unused]] JSThread *thread) override
     {
+        ThreadPriorityScope scope;
         ASSERT(thread->IsDaemonThread());
         SharedHeap *sHeap = SharedHeap::GetInstance();
         TRACE_GC(GCStats::Scope::ScopeId::ConcurrentMark, sHeap->GetEcmaGCStats());
@@ -78,6 +79,22 @@ public:
         SharedGCMarkRootVisitor rootVisitor(sHeap->GetWorkManager()->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
         sHeap->GetSharedGCMarker()->MarkGlobalRoots(rootVisitor);
     }
+
+private:
+    class ThreadPriorityScope {
+    public:
+        explicit ThreadPriorityScope()
+        {
+            common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::STW);
+        }
+        ~ThreadPriorityScope()
+        {
+            common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
+        }
+
+        NO_COPY_SEMANTIC(ThreadPriorityScope);
+        NO_MOVE_SEMANTIC(ThreadPriorityScope);
+    };
 };
 
 class InitialMarkFlipFunction : public Closure {
