@@ -672,9 +672,9 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
         });
     }
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
-        auto notifyNextCompressGCCallback = Runtime::GetInstance()->GetNotifyNextCompressGCCallback();
-        if (notifyNextCompressGCCallback != nullptr) {
-            notifyNextCompressGCCallback(false, true);
+        auto notifyDeferFreezeCallback = Runtime::GetInstance()->GetNotifyDeferFreezeCallback();
+        if (notifyDeferFreezeCallback != nullptr) {
+            notifyDeferFreezeCallback(true);
         }
     }
 }

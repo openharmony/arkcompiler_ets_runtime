@@ -233,20 +233,16 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
         case TRIGGER_IDLE_GC_TYPE::FULL_GC:
             if (CheckIdleOrHintFullGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                NotifyNeedNextGC(false, false);
                 if (!TryTriggerLocalCC()) {
                     heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
                 }
             } else if (CheckLocalBindingNativeTriggerOldGC() && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger local old GC by native binding size.";
-                NotifyNeedNextGC(false, false);
                 heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE_NATIVE);
             } else if (CheckIdleYoungGC(true) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger young gc";
-                NotifyNeedNextGC(false, false);
                 heap_->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);
             }
-            NotifyNeedNextGC(true, false);
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK:
             if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && sHeap_->CheckCanTriggerConcurrentMarking(thread_)
@@ -265,10 +261,9 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
         case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
             if (CheckIdleOrHintFullGC<SharedHeap>(sHeap_) && !sHeap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                NotifyNeedNextGC(false, false);
                 sHeap_->CompressCollectGarbageNotWaiting<GCReason::IDLE>(thread_);
             } else {
-                NotifyNeedNextGC(false, true);
+                NotifyIsNeedFreeze(true);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK:
@@ -296,14 +291,14 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
     ClearPostGCTask(gcType);
 }
 
-void IdleGCTrigger::NotifyNeedNextGC(bool isNeedNextGC, bool needFreeze)
+void IdleGCTrigger::NotifyIsNeedFreeze(bool needFreeze)
 {
-    auto notifyNextCompressGCCallback = Runtime::GetInstance()->GetNotifyNextCompressGCCallback();
-    if (notifyNextCompressGCCallback != nullptr) {
-        LOG_GC(DEBUG) << "IdleGCTrigger: NotifyNeedNextGC:" << isNeedNextGC << " needFreeze:" << needFreeze;
-        notifyNextCompressGCCallback(isNeedNextGC, needFreeze);
+    auto notifyDeferFreezeCallback_ = Runtime::GetInstance()->GetNotifyDeferFreezeCallback();
+    if (notifyDeferFreezeCallback_ != nullptr) {
+        notifyDeferFreezeCallback_(needFreeze);
+        LOG_GC(DEBUG) << "IdleGCTrigger: NotifyNeedFreeze:" << needFreeze;
     } else {
-        LOG_GC(WARN) << "IdleGCTrigger: NotifyNeedNextGC callback is nullptr!";
+        LOG_GC(DEBUG) << "IdleGCTrigger: DeferFreezeCallback is nullptr";
     }
 }
 

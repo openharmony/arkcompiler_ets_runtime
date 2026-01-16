@@ -5103,9 +5103,9 @@ StartIdleMonitorCallback JSNApi::GetStartIdleMonitorCallback()
     return startIdleMonitorCallback_;
 }
 
-void JSNApi::SetNotifyNextCompressGCCallback(const NotifyNextCompressGCCallback& callback)
+void JSNApi::SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback)
 {
-    ecmascript::Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
+    ecmascript::Runtime::GetInstance()->SetNotifyDeferFreezeCallback(callback);
 }
 
 void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)

@@ -43,7 +43,7 @@ class EcmaStringTable;
 using AppFreezeFilterCallback =
     std::function<bool(const int32_t pid, const bool needDecreaseQuota, std::string &eventConfig)>;
 using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
-using NotifyNextCompressGCCallback = std::function<void(bool isNeedNextGC, bool isNeedFreeze)>;
+using NotifyDeferFreezeCallback = std::function<void(bool needFreeze)>;
 
 class Runtime {
 public:
@@ -141,14 +141,14 @@ public:
         return *baseClassRoots_;
     }
 
-    void SetNotifyNextCompressGCCallback(NotifyNextCompressGCCallback callback)
+    void SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback)
     {
-        notifyNextCompressGCCallback_ = callback;
+        notifyDeferFreezeCallback_ = callback;
     }
 
-    NotifyNextCompressGCCallback GetNotifyNextCompressGCCallback()
+    NotifyDeferFreezeCallback GetNotifyDeferFreezeCallback()
     {
-        return notifyNextCompressGCCallback_;
+        return notifyDeferFreezeCallback_;
     }
 
     void IterateSharedRoot(RootVisitor &visitor);
@@ -432,7 +432,7 @@ private:
     GlobalEnvConstants globalConst_;
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSThread *mainThread_ {nullptr};
-    NotifyNextCompressGCCallback notifyNextCompressGCCallback_ {nullptr};
+    NotifyDeferFreezeCallback notifyDeferFreezeCallback_ {nullptr};
     // for shared heap.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
