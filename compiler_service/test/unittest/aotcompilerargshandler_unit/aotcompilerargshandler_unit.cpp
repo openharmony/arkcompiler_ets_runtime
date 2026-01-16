@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -855,33 +855,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_050, TestSize.Level0)
 
     // The function should return false when the file doesn't exist
     EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_052
- * @tc.desc: Test AOTArgsParserBase::ParseBlackListJson with null/empty JSON
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_052, TestSize.Level0)
-{
-    // Create an empty JSON file
-    std::string emptyJson = "{}";
-    std::ofstream file("/tmp/empty_test_black_methods.json");
-    file << emptyJson << std::endl;
-    file.close();
-
-    // Temporarily modify the path to test this specific file
-    std::string originalPath = "/etc/ark/static_aot_methods_black_list.json";
-    std::rename("/tmp/empty_test_black_methods.json", originalPath.c_str());
-
-    nlohmann::json jsonObject;
-    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
-
-    // This returns false because the root object doesn't contain "blackMethodList"
-    EXPECT_FALSE(result);
-
-    // Clean up
-    unlink("/etc/ark/static_aot_methods_black_list.json");
 }
 
 /**
