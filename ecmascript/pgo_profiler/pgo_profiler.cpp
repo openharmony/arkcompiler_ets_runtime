@@ -564,6 +564,11 @@ void PGOProfiler::HandlePGOPreDump()
         if (func->IsSendableOrConcurrentFunction(thread)) {
             return;
         }
+        auto lexicalEnv = func->GetLexicalEnv(thread);
+        auto globalEnv = BaseEnv::Cast(lexicalEnv.GetTaggedObject())->GetGlobalEnv(thread);
+        if (globalEnv.IsHole()) {
+            return;
+        }
         JSTaggedValue methodValue = func->GetMethod(thread);
         if (!methodValue.IsMethod()) {
             return;
@@ -607,6 +612,12 @@ void PGOProfiler::HandlePGODump()
         }
         auto func = JSFunction::Cast(value);
         if (func->IsSendableOrConcurrentFunction(thread) || !IsProfileTypeInfoDumped(thread, func)) {
+            current = PopFromProfileQueue();
+            continue;
+        }
+        auto lexicalEnv = func->GetLexicalEnv(thread);
+        auto globalEnv = BaseEnv::Cast(lexicalEnv.GetTaggedObject())->GetGlobalEnv(thread);
+        if (globalEnv.IsHole()) {
             current = PopFromProfileQueue();
             continue;
         }
@@ -680,9 +691,6 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString& recordName, J
     JSThread *thread = vm_->GetAssociatedJSThread();
     JSTaggedValue funcEnv = function->GetLexicalEnv(thread);
     JSTaggedValue globalEnv = BaseEnv::Cast(funcEnv.GetTaggedObject())->GetGlobalEnv(thread);
-    if (globalEnv.IsHole()) {
-        return;
-    }
     SetCurrentGlobalEnv(globalEnv);
     if (function->IsSendableOrConcurrentFunction(thread)) {
         return;
