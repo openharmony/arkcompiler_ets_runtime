@@ -1623,6 +1623,7 @@ void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CSt
     pkgContextInfoList_ = list;
 }
 
+#if ENABLE_LATEST_OPTIMIZATION
 void EcmaVM::GetPkgContextInfoListElements(const CString &moduleName, const CString &packageName,
                                            CVector<CString> &resultList)
 {
@@ -1641,6 +1642,7 @@ void EcmaVM::GetPkgContextInfoListElements(const CString &moduleName, const CStr
     }
     resultList = pkgIt->second;
 }
+#endif
 
 void EcmaVM::StopPreLoadSoOrAbc()
 {

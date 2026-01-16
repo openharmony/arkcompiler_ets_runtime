@@ -844,8 +844,11 @@ public:
 
     void SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list);
 
+#if ENABLE_LATEST_OPTIMIZATION
     void GetPkgContextInfoListElements(const CString &moduleName, const CString &packageName,
                                        CVector<CString> &resultList);
+#endif
+
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
