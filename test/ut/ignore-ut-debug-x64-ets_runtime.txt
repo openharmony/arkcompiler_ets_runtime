@@ -33,3 +33,6 @@ obj/arkcompiler/ets_runtime/ecmascript/tests/ECMA_StringTable_Test
 
 #44
 obj/arkcompiler/ets_runtime/ecmascript/module/tests/ModuleTest
+
+#207
+obj/arkcompiler/ets_runtime/ecmascript/containers/tests/Containers_003_Test
