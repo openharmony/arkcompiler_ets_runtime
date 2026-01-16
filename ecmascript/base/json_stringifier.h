@@ -127,6 +127,7 @@ public:
 
         inline void Append(DestChar c)
         {
+            ASSERT(length_ + 1 <= capacity_);
             buffer_[length_++] = c;
         }
 
@@ -140,6 +141,7 @@ public:
         template <typename SrcChar>
         inline void AppendString(const SrcChar* s, size_t len)
         {
+            ASSERT(length_ + len <= capacity_);
             switch (len) {
 #define CASE(N)                               \
     case N:                                   \

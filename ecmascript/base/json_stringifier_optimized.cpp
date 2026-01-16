@@ -1491,7 +1491,7 @@ bool JsonStringifier::AppendQuotedStringToFastStringBuilder(const JSThread *thre
 
     // Pre-allocate space (worst case: each char becomes 6 chars with escapes, +2 for quotes)
     // For safety and speed, we use (strLen << 3)
-    size_t maxAdditionalLength = strLen << 3;
+    size_t maxAdditionalLength = std::max(strLen << 3, static_cast<uint32_t>(8));
     builder.EnsureCapacity(maxAdditionalLength);
 
     if (EcmaStringAccessor(const_cast<EcmaString *>(str)).IsUtf8()) {
