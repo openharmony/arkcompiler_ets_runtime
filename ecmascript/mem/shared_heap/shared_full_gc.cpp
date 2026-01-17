@@ -96,7 +96,8 @@ void SharedFullGC::Sweep()
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (!objectRegion) {
-            LOG_GC(ERROR) << "SharedFullGC updateWeakReference: region is nullptr, header is " << header;
+            // existance of string table entry with null value is possible
+            // only if concurrent sweeping for string table is enabled
             return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
         if (objectRegion->InSharedOldSpace()) {

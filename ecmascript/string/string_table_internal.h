@@ -122,9 +122,11 @@ template<bool ConcurrentSweep>
 class BaseStringTableInternal {
 public:
     using HandleCreator = BaseStringTableInterface<BaseStringTableImpl>::HandleCreator;
-    using HashTrieMapType = std::conditional_t<ConcurrentSweep,
-        HashTrieMap<BaseStringTableMutex, common::ThreadHolder, TrieMapConfig::NeedSlotBarrier>,
-        HashTrieMap<BaseStringTableMutex, common::ThreadHolder, TrieMapConfig::NoSlotBarrier>>;
+    using HashTrieMapType = HashTrieMap<BaseStringTableMutex>;
+    using HashTrieMapInUseScopeType = HashTrieMapInUseScope<BaseStringTableMutex>;
+    using HashTrieMapOperationType = std::conditional_t<ConcurrentSweep,
+        HashTrieMapOperation<BaseStringTableMutex, common::ThreadHolder, TrieMapConfig::NeedSlotBarrierCMC>,
+        HashTrieMapOperation<BaseStringTableMutex, common::ThreadHolder, TrieMapConfig::NoSlotBarrier>>;
 
     template <bool B = ConcurrentSweep, std::enable_if_t<B, int> = 0>
     BaseStringTableInternal(): cleaner_(new BaseStringTableCleaner(this)) {}
@@ -158,7 +160,7 @@ public:
 
     HashTrieMapType &GetHashTrieMap()
     {
-        return stringTable_;
+        return hashTrieMap_;
     }
 
     BaseStringTableCleaner *GetCleaner()
@@ -176,8 +178,7 @@ public:
     template <bool B = ConcurrentSweep, std::enable_if_t<!B, int> = 0>
     void SweepWeakRef(const WeakRefFieldVisitor& visitor);
 private:
-
-    HashTrieMapType stringTable_{};
+    HashTrieMapType hashTrieMap_{};
     BaseStringTableCleaner* cleaner_ = nullptr;
     static BaseString* AllocateLineStringObject(size_t size);
     static constexpr size_t MAX_REGULAR_HEAP_OBJECT_SIZE = 32 * common::KB;

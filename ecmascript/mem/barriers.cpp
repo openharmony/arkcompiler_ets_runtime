@@ -264,6 +264,21 @@ JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
     }
     return slot.GetTaggedType();
 }
+
+JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value)
+{
+    if (value == reinterpret_cast<JSTaggedType>(nullptr)) {
+        return reinterpret_cast<JSTaggedType>(nullptr);
+    }
+    Region *objectRegion = Region::ObjectAddressToRange(value);
+    if (!objectRegion->InSharedSweepableSpace()) {
+        return value;
+    }
+    if (objectRegion->Test(value)) {
+        return value;
+    }
+    return reinterpret_cast<JSTaggedType>(nullptr);
+}
 #endif
 template bool BatchBitSet<Region::InYoung>(const JSThread*, Region*, JSTaggedValue*, size_t);
 template bool BatchBitSet<Region::InGeneralOld>(const JSThread*, Region*, JSTaggedValue*, size_t);

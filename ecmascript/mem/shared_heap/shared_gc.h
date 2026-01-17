@@ -36,6 +36,11 @@ public:
 
     void RunPhases() override;
     void ResetWorkManager(SharedGCWorkManager *workManager);
+
+    bool IsConcurrentProcessStringTable() const
+    {
+        return concurrentProcessStringTable_;
+    }
 protected:
     void Initialize() override;
     void Mark() override;
@@ -51,6 +56,8 @@ private:
     SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
     bool markingInProgress_ {false};
+    bool evacuated_ {false};
+    bool concurrentProcessStringTable_ {false};
 };
 }  // namespace panda::ecmascript
 

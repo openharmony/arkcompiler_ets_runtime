@@ -815,6 +815,7 @@ public:
     }
 
     void Prepare(bool inTriggerGCThread);
+    void PrepareByJSThread(JSThread *thread, bool inTriggerGCThread);
     void Reclaim(TriggerGCType gcType);
     void TryPostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase);
     void CompactHeapBeforeFork(JSThread *thread);
@@ -912,6 +913,11 @@ public:
     void CheckInHeapProfiler();
     void SetGCThreadQosPriority(common::PriorityMode mode);
 
+    Mutex& GetSuspensionRequestMutex()
+    {
+        return suspensionRequestMutex_;
+    }
+
     SHAREDHEAP_PUBLIC_HYBRID_EXTENSION();
 
 private:
@@ -920,7 +926,7 @@ private:
 
     void MoveOldSpaceToAppspawn();
 
-    void ReclaimRegions(TriggerGCType type);
+    void ReclaimRegions(TriggerGCType type, bool gcThread);
 
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
     inline TaggedObject *AllocateInSOldSpace(JSThread *thread, size_t size);
@@ -957,6 +963,8 @@ private:
     bool gcFinished_ {true};
     Mutex waitGCFinishedMutex_;
     ConditionVariable waitGCFinishedCV_;
+
+    Mutex suspensionRequestMutex_;
 
     DaemonThread *dThread_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
@@ -998,7 +1006,7 @@ public:
     void Initialize();
     void Destroy() override;
     void Prepare();
-    void GetHeapPrepare();
+    void GetHeapPrepare(JSThread *thread);
     void PrepareForIteration() const;
     void ResetLargeCapacity(size_t heapSize);
     void Resume(TriggerGCType gcType);

@@ -59,7 +59,9 @@ void SharedGC::RunPhases()
         SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_SWEEP).VerifySweep(markingInProgress_);
     }
     Finish();
-    sHeap_->SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+    if (!concurrentProcessStringTable_) {
+        sHeap_->SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+    }
     sHeap_->ResetNativeSizeAfterLastGC();
 }
 
@@ -114,6 +116,9 @@ void SharedGC::Evacuate()
 {
     if (sHeap_->HasCSetRegions()) {
         sHeap_->GetSharedGCEvacuator()->Evacuate();
+        evacuated_ = true;
+    } else {
+        evacuated_ = false;
     }
 }
 
@@ -124,7 +129,8 @@ void SharedGC::Sweep()
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (UNLIKELY(objectRegion == nullptr)) {
-            LOG_GC(ERROR) << "SharedGC updateWeakReference: region is nullptr, header is " << header;
+            // existance of string table entry with null value is possible
+            // only if concurrent sweeping for string table is enabled
             return nullptr;
         }
         if (!objectRegion->InSharedSweepableSpace()) {
@@ -143,7 +149,16 @@ void SharedGC::Sweep()
         return nullptr;
     };
     auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
-    stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
+    if (stringTableCleaner->IsEnableConcurrentSweep()) {
+        concurrentProcessStringTable_ = !evacuated_ && sHeap_->IsParallelGCEnabled() &&
+                                        !Runtime::GetInstance()->GetEcmaStringTable()->IsInUse();
+    } else {
+        concurrentProcessStringTable_ = false;
+    }
+    if (!concurrentProcessStringTable_) {
+        LOG_GC(DEBUG) << "process string table stw";
+        stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
+    }
     bool needClearCache = sHeap_->HasCSetRegions();
     Runtime::GetInstance()->ProcessSharedDelete(gcUpdateWeak);
     Runtime::GetInstance()->GCIterateThreadList([&gcUpdateWeak, needClearCache](JSThread *thread) {
@@ -156,8 +171,15 @@ void SharedGC::Sweep()
         }
     });
 
-    stringTableCleaner->JoinAndWaitSweepWeakRefTask(gcUpdateWeak);
+    if (!concurrentProcessStringTable_) {
+        stringTableCleaner->JoinAndWaitSweepWeakRefTask(gcUpdateWeak);
+    }
     sHeap_->GetSweeper()->PostTask(false);
+
+    if (concurrentProcessStringTable_) {
+        LOG_GC(DEBUG) << "process string table concurrently";
+        stringTableCleaner->PostConcurrentSweepWeakRefTask(gcUpdateWeak);
+    }
 }
 
 void SharedGC::Finish()

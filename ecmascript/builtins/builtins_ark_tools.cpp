@@ -304,7 +304,7 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::TRIGGER_BY_JS);
     SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::TRIGGER_BY_JS>(
         thread);
-    heap->GetHeapPrepare();
+    heap->GetHeapPrepare(thread);
     return JSTaggedValue::True();
 }
 

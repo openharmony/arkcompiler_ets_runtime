@@ -602,7 +602,7 @@ size_t DFXJSNApi::GetFullGCLongTimeCount(const EcmaVM *vm)
 void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare();
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare(vm->GetJSThread());
 }
 
 void DFXJSNApi::SetJsDumpThresholds([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] size_t thresholds)
@@ -1156,6 +1156,8 @@ void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTrac
             stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
                 mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
         } else {
+            // ensure that BuildJsStackTrace does not need to wait gc finish,
+            // otherwise should acquire suspensionRequestMutex before suspend
             ecmascript::SuspendOtherScope suspendOtherScope(thread, mainThread);
             stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
                 mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
