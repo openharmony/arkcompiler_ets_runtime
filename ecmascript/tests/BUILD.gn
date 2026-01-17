@@ -2864,6 +2864,34 @@ host_unittest_action("GC_ModuleManagerMap_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("MethodLiteralIDMap_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "method_literal_id_map_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("GC_ConcurrentMarking_Test") {
   module_out_path = module_output_path
 
@@ -3897,6 +3925,7 @@ group("unittest") {
     ":JS_TransitionsDictionary_Test",
     ":JS_TypedArray_Test",
     ":JS_WaiterList_Test",
+    ":MethodLiteralIDMap_Test",
     ":Sendable_JsSendableArrayBuffer_Test",
     ":Sendable_JsSharedArray_Test",
     ":Sendable_SharedObjectFactory_Test",
@@ -4083,6 +4112,7 @@ group("host_unittest") {
     ":JS_TransitionsDictionary_TestAction",
     ":JS_TypedArray_TestAction",
     ":JS_WaiterList_TestAction",
+    ":MethodLiteralIDMap_TestAction",
     ":Sendable_JsSendableArrayBuffer_TestAction",
     ":Sendable_JsSharedArray_TestAction",
     ":Sendable_SharedObjectFactory_TestAction",
