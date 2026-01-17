@@ -41,10 +41,7 @@ void SharedGCMarkerBase::MarkAllLocalRoots(RootVisitor &visitor, SharedMarkType 
 {
     Runtime *runtime = Runtime::GetInstance();
     if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
-        // The approximate size is enough, because even if some thread creates and registers after here, it will keep
-        // waiting in transition to RUNNING state before JSThread::SetReadyForGCIterating.
-        rSetHandlers_.reserve(runtime->ApproximateThreadListSize());
-        ASSERT(rSetHandlers_.empty());
+        PrepareCollectLocalVMRSet();
     }
     runtime->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
@@ -52,7 +49,7 @@ void SharedGCMarkerBase::MarkAllLocalRoots(RootVisitor &visitor, SharedMarkType 
         ASSERT(!thread->IsConcurrentCopying());
         MarkLocalVMRoots(visitor, vm, markType);
         if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
-            CollectLocalVMRSet(vm);
+            CollectLocalVMRSet(vm, SourceOfMarkingLocalVMRoot::STW_FROM_DAEMON);
         }
     });
 }
@@ -68,14 +65,26 @@ void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm,
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 
-void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm)
+void SharedGCMarkerBase::PrepareCollectLocalVMRSet()
+{
+    rSetHandlers_.reserve(Runtime::GetInstance()->GetThreadListSize());
+    ASSERT(rSetHandlers_.empty());
+}
+
+void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm, SourceOfMarkingLocalVMRoot markSource)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarkerBase::CollectLocalVMRSet", "");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     RSetWorkListHandler *handler = new RSetWorkListHandler(heap, localVm->GetJSThreadNoCheck());
     heap->SetRSetWorkListHandler(handler);
     NotifyThreadProcessRsetStart(handler->GetOwnerThreadUnsafe());
-    rSetHandlers_.emplace_back(handler);
+    if (markSource == SourceOfMarkingLocalVMRoot::FLIP_FROM_JS_THREAD) {
+        LockHolder holder(mutex_);
+        rSetHandlers_.emplace_back(handler);
+    } else {
+        ASSERT(markSource == SourceOfMarkingLocalVMRoot::STW_FROM_DAEMON);
+        rSetHandlers_.emplace_back(handler);
+    }
 }
 
 void SharedGCMarkerBase::MarkSerializeRoots(RootVisitor &visitor)

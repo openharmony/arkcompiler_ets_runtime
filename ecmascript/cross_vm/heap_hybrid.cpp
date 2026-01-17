@@ -32,7 +32,7 @@ void SharedHeap::StartUnifiedGCMark([[maybe_unused]]TriggerGCType gcType, [[mayb
         std::vector<RecursionScope> recurScopes;
         // The approximate size is enough, because even if some thread creates and registers after here, it will keep
         // waiting in transition to RUNNING state before JSThread::SetReadyForGCIterating.
-        recurScopes.reserve(runtime->ApproximateThreadListSize());
+        recurScopes.reserve(runtime->GetThreadListSize());
         runtime->GCIterateThreadList([&recurScopes](JSThread *thread) {
             Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
             recurScopes.emplace_back(heap, HeapType::LOCAL_HEAP);

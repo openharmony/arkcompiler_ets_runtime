@@ -74,7 +74,7 @@ public:
     void GCIterateThreadList(const Callback &cb)
     {
         LockHolder lock(threadsLock_);
-        GCIterateThreadListWithoutLock(cb);
+        GCIterateThreadListUnsafe(cb);
     }
 
     void SetEnableLargeHeap(bool value)
@@ -97,16 +97,10 @@ public:
         return postForked_;
     }
 
-    // Result may be inaccurate, just an approximate value.
-    size_t ApproximateThreadListSize()
-    {
-        return threads_.size();
-    }
-
     size_t GetThreadListSize()
     {
         LockHolder lock(threadsLock_);
-        return threads_.size();
+        return GetThreadListSizeUnsafe();
     }
 
     inline const GlobalEnvConstants *GetGlobalEnvConstants()
@@ -380,14 +374,21 @@ private:
     void SuspendOtherThreadImpl(JSThread *current, JSThread *target);
     void ResumeOtherThreadImpl(JSThread *current, JSThread *target);
 
+    // use this with holding `threadsLock_`
     template<class Callback>
-    void GCIterateThreadListWithoutLock(const Callback &cb)
+    void GCIterateThreadListUnsafe(const Callback &cb)
     {
         for (auto thread : threads_) {
             if (thread->ReadyForGCIterating()) {
                 cb(thread);
             }
         }
+    }
+
+    // use this with holding `threadsLock_`
+    size_t GetThreadListSizeUnsafe() const
+    {
+        return threads_.size();
     }
 
     void PreInitialization(const EcmaVM *vm);

@@ -345,9 +345,10 @@ void Runtime::FlipAllThreads(DaemonThread *current, Closure *suspendCallback, Cl
         SuspendAllScope scope(current);
         suspendCallback->Run(current);
 
-        size_t maybeNumThreads = ApproximateThreadListSize();
-        threads.resize(maybeNumThreads);
-        GCIterateThreadList([&threads, flipFunction](JSThread *thread) {
+        LockHolder holder(threadsLock_);
+        size_t numThreads = GetThreadListSizeUnsafe();
+        threads.reserve(numThreads);
+        GCIterateThreadListUnsafe([&threads, flipFunction](JSThread *thread) {
             threads.emplace_back(thread);
             thread->SetFlipFunction(flipFunction);
         });
