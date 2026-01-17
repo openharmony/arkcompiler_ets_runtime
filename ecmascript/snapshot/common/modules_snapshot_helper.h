@@ -54,15 +54,17 @@ public:
     static void TryDisableSnapshot(int reason = -1);
     static void DisableSnapshotEscaper();
     static void RemoveSnapshotFiles(const CString &path);
+    static bool SetReadOnly(const std::string_view &path, std::string* errorMsg = nullptr);
 
 private:
     static constexpr std::string_view MODULE_SNAPSHOT_STATE_FILE_NAME = "ArkModuleSnapshot.state";
     static constexpr std::string_view SNAPSHOT_FILE_SUFFIX = ".ams";
+    static constexpr std::string_view FILE_MODE_READONLY = "r";
     static constexpr std::string_view DISABLE_REASON_UNCAUGHT_EXCEPTION = "UEC";
     static constexpr std::string_view DISABLE_REASON_SIGNAL = "SIG";
     static constexpr std::string_view DISABLE_REASON_UNKNOWN = "UNK";
     static constexpr char STATE_WORD_MODULE_SNAPSHOT_DISABLED = '1';
-    static constexpr char STATE_WORD_ALL_SNAPSHOT_DIASBLED = '0';
+    static constexpr char STATE_WORD_ALL_SNAPSHOT_DISABLED = '0';
 
     static size_t IntToString(int value, char *buf, size_t bufSize);
     static void UpdateFromStateFile(const CString &path);

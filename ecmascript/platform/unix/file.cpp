@@ -18,6 +18,7 @@
 #include <dirent.h>
 #include <climits>
 #include <sys/stat.h>
+#include <system_error>
 #include "common_components/log/log.h"
 #include "ecmascript/module/js_module_source_text.h"
 
@@ -327,6 +328,25 @@ int SeekOriginToValue(PosixFile::SeekOrigin whence)
             errno = EINVAL;
             return -1;
     }
+}
+
+bool Chmod(const std::string_view &path, const std::string_view &mode)
+{
+    // make sure path is null terminated
+    std::string p(path);
+    return chmod(p.c_str(), StrToPosixMode(mode)) == 0;
+}
+
+bool Chmod(const std::string_view &path, const std::string_view &mode, std::error_code &errorCode)
+{
+    // make sure path is null terminated
+    std::string p(path);
+    if (chmod(p.c_str(), StrToPosixMode(mode)) == 0) {
+        errorCode.clear();
+        return true;
+    }
+    errorCode.assign(errno, std::generic_category());
+    return false;
 }
 
 PosixFile::PosixFile(

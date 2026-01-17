@@ -470,6 +470,7 @@ bool ModuleSnapshot::WriteDataToFile(
         return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);
+    ModulesSnapshotHelper::SetReadOnly(filePath);
     LOG_ECMA(INFO) << "ModuleSnapshot::WriteDataToFile success";
     return true;
 }

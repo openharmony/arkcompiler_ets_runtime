@@ -185,6 +185,7 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);
+    ModulesSnapshotHelper::SetReadOnly(filename);
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile success with: " << filename;
     return true;
 }

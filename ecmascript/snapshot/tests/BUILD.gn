@@ -38,9 +38,34 @@ host_unittest_action("SnapshotTest") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("ModuleSnapshotHelperTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "modules_snapshot_helper_test.cpp",
+  ]
+
+  configs = [ "//arkcompiler/ets_runtime:ecma_test_config" ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
-  deps = [ ":SnapshotTest" ]
+  deps = [
+    ":ModuleSnapshotHelperTest",
+    ":SnapshotTest",
+  ]
 
   # TODO: CMC-GC UT FIX LATER
   if (ets_runtime_enable_cmc_gc) {
@@ -50,7 +75,10 @@ group("unittest") {
 
 group("host_unittest") {
   testonly = true
-  deps = [ ":SnapshotTestAction" ]
+  deps = [
+    ":ModuleSnapshotHelperTestAction",
+    ":SnapshotTestAction",
+  ]
 
   if (is_mac) {
     deps -= [ ":SnapshotTestAction" ]
