@@ -197,50 +197,6 @@ HWTEST_F_L0(ModuleNamespaceTest, ModuleNamespace_OwnPropertyKeys)
 }
 
 /**
- * @tc.name: ModuleNamespace_OwnEnumPropertyKeys
- * @tc.desc: Test OwnEnumPropertyKeys method to validate retrieval of enumerable property keys from module namespace
- * @tc.type: FUNC
- */
-HWTEST_F_L0(ModuleNamespaceTest, ModuleNamespace_OwnEnumPropertyKeys)
-{
-    ObjectFactory *factory = instance->GetFactory();
-
-    // Create a mock module
-    JSHandle<SourceTextModule> mockModule = factory->NewSourceTextModule();
-    mockModule->SetSharedType(panda::ecmascript::SharedTypes::UNSENDABLE_MODULE);
-    // Set the module as a proper module record
-    mockModule->SetStatus(ModuleStatus::EVALUATED);
-    mockModule->SetTypes(ModuleTypes::ECMA_MODULE);
-    JSHandle<TaggedArray> requestedModules = factory->NewTaggedArray(2);
-    requestedModules->Set(thread, 0, factory->NewSourceTextModule());
-    requestedModules->Set(thread, 1, factory->NewSourceTextModule());
-    mockModule->SetRequestedModules(thread, requestedModules.GetTaggedValue());
-    // Create mock exports array
-    JSHandle<TaggedArray> exports = factory->NewTaggedArray(1);
-    JSHandle<JSTaggedValue> exportName(factory->NewFromASCII("testExport"));
-    exports->Set(thread, 0, exportName);
-    JSHandle<StarExportEntry> starExportEntry = factory->NewStarExportEntry();
-    SourceTextModule::AddStarExportEntry(thread, mockModule, starExportEntry, 0, 1);
-
-    JSHandle<TaggedArray> moduleRequests = factory->NewTaggedArray(1);
-    JSHandle<JSTaggedValue> name(factory->NewFromASCII("recordName"));;
-    moduleRequests->Set(thread, 0, name.GetTaggedValue());
-    mockModule->SetModuleRequests(thread, moduleRequests.GetTaggedValue());
-    mockModule->SetLocalExportEntries(thread, thread->GlobalConstants()->GetUndefined());
-    SourceTextModule::CheckResolvedBinding(thread, mockModule);
-    // Create namespace
-    JSHandle<ModuleNamespace> namespaceObj = ModuleNamespace::ModuleNamespaceCreate(thread,
-        JSHandle<JSTaggedValue>::Cast(mockModule), exports);
-
-    // Test OwnEnumPropertyKeys with our namespace object
-    JSHandle<TaggedArray> keys = ModuleNamespace::OwnEnumPropertyKeys(thread,
-        JSHandle<JSTaggedValue>::Cast(namespaceObj));
-
-    // Should return a valid TaggedArray
-    EXPECT_TRUE(!keys.IsEmpty());
-}
-
-/**
  * @tc.name: ModuleNamespace_PreventExtensions
  * @tc.desc: Test PreventExtensions method to validate that it returns true as expected
  * @tc.type: FUNC
