@@ -24,6 +24,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
+#include "ecmascript/ohos/adapter/modulemanager/module_pkg_parser.h"
 #include "ecmascript/ohos/tests/mock/mock_enable_aot_list_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tests/test_helper.h"
@@ -330,4 +331,106 @@ HWTEST_F_L0(OhosTest, AotIsEnableArkProfileFalse)
     rmdir(whiteListTestDir);
 }
 
-}  // namespace panda::test
+HWTEST_F_L0(OhosTest, ModulePkgParserTest)
+{
+    std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap;
+    std::string entryString = R"({"entry":{"packageName":"entry", "bundleName":"com.xxx.xxxx", "moduleName":
+        "entry", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "oh-exports":{
+        "src/main/ets/components/MainPages.ets": "@normalized:N&&&har2/src/main/ets/components/MainPages&1.0.0"}}})";
+    std::string libraryString = R"({"library":{"packageName":"library", "bundleName":"com.xxx.xxxx", "moduleName":
+        "library", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "dependencyAlias": "har",
+        "oh-exports":{"src/main/ets/components/MainPages.ets":
+        "@normalized:N&&&library/src/main/ets/components/MainPages&1.0.0"}}})";
+    std::string hspString = R"({"hsp":{"packageName":"hsp", "bundleName":"com.xxx.xxxx", "moduleName":
+        "hsp", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "dependencyAlias": "@ohos/hsp",
+        "oh-exports":{}}})";
+    std::string hsp2String = R"({"hsp2":{"packageName":"hsp2", "bundleName":"com.xxx.xxxx", "moduleName":
+        "hsp2", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "dependencyAlias": "@ohos/hsp2"}})";
+    auto createBufferFromString = [](const std::string& str) {
+        size_t size = str.size();
+        auto buffer = std::make_unique<uint8_t[]>(size);
+        std::copy(str.begin(), str.end(), buffer.get());
+        return std::make_pair(std::move(buffer), size);
+    };
+    modulePkgContentMap["entry"] = createBufferFromString(entryString);
+    modulePkgContentMap["library"] = createBufferFromString(libraryString);
+    modulePkgContentMap["hsp"] = createBufferFromString(hspString);
+    modulePkgContentMap["hsp2"] = createBufferFromString(hsp2String);
+    CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList;
+    CMap<CString, CString> pkgAliasList;
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsMap;
+    bool result = ohos::ModulePkgParser::ParseModulePkgJson(vm_, modulePkgContentMap, pkgContextInfoList, pkgAliasList,
+        ohExportsMap);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(pkgContextInfoList["entry"]["entry"].size(), 12);
+    EXPECT_EQ(pkgContextInfoList["library"].size(), 1);
+    EXPECT_EQ(pkgContextInfoList["library"]["library"].size(), 12);
+
+    EXPECT_EQ(pkgAliasList.size(), 3);
+    EXPECT_EQ(pkgAliasList["har"], "library");
+
+    EXPECT_EQ(ohExportsMap.size(), 4);
+    CUnorderedSet<CString> entryExportsSet= ohExportsMap["entry"]["entry"];
+    EXPECT_TRUE(entryExportsSet.count("@normalized:N&&&har2/src/main/ets/components/MainPages&1.0.0") > 0);
+    CUnorderedSet<CString> libraryExportsSet= ohExportsMap["library"]["library"];
+    EXPECT_TRUE(libraryExportsSet.count("@normalized:N&&&library/src/main/ets/components/MainPages&1.0.0") > 0);
+    EXPECT_TRUE(ohExportsMap["hsp"]["hsp"].empty());
+    EXPECT_TRUE(ohExportsMap["hsp2"].find("hsp2") == ohExportsMap["hsp2"].end());
+}
+
+HWTEST_F_L0(OhosTest, ModulePkgParserTest1)
+{
+    std::string entryString = R"({"entry":{"packageName":"entry", "bundleName":"com.xxx.xxxx", "moduleName":
+        "entry", "version":true, "entryPath":"Index.ets", "isSO":false},
+        "libentry.so":{"packageName":"libentry.so", "bundleName":"", "moduleName":"", "version":"",
+        "entryPath":"Index.ets", "isSO":true},
+        "libhar.so":{"packageName":"libhar.so", "bundleName":"", "moduleName":"", "version":"", "entryPath":
+        "Index.ets", "isSO":"test"}})";
+    auto createBufferFromString = [](const std::string& str) {
+        size_t size = str.size();
+        auto buffer = std::make_unique<uint8_t[]>(size);
+        std::copy(str.begin(), str.end(), buffer.get());
+        return std::make_pair(std::move(buffer), size);
+    };
+    std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap;
+    modulePkgContentMap["entry"] = createBufferFromString(entryString);
+    CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList;
+    CMap<CString, CString> pkgAliasList;
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsMap;
+    bool result = ohos::ModulePkgParser::ParseModulePkgJson(vm_, modulePkgContentMap, pkgContextInfoList, pkgAliasList,
+        ohExportsMap);
+    EXPECT_TRUE(result);
+    //version of entry
+    EXPECT_EQ(pkgContextInfoList["entry"]["entry"][7], "");
+    //libentry.so isSo
+    EXPECT_EQ(pkgContextInfoList["entry"]["libentry.so"][11], "true");
+    //libhar.so isSo
+    EXPECT_EQ(pkgContextInfoList["entry"]["libhar.so"][11], "false");
+}
+
+HWTEST_F_L0(OhosTest, ModulePkgParserTest2)
+{
+    std::string entryString = R"({"entry":true})";
+    auto createBufferFromString = [](const std::string& str) {
+        size_t size = str.size();
+        auto buffer = std::make_unique<uint8_t[]>(size);
+        std::copy(str.begin(), str.end(), buffer.get());
+        return std::make_pair(std::move(buffer), size);
+    };
+    std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap;
+    modulePkgContentMap["entry"] = createBufferFromString(entryString);
+    CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList;
+    CMap<CString, CString> pkgAliasList;
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsMap;
+    bool result = ohos::ModulePkgParser::ParseModulePkgJson(vm_, modulePkgContentMap, pkgContextInfoList,
+        pkgAliasList, ohExportsMap);
+    EXPECT_FALSE(result);
+
+    std::string entryString1 = R"({"entry":)";
+    std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap1;
+    modulePkgContentMap1["entry"] = createBufferFromString(entryString1);
+    bool result1 = ohos::ModulePkgParser::ParseModulePkgJson(vm_, modulePkgContentMap1, pkgContextInfoList,
+        pkgAliasList, ohExportsMap);
+    EXPECT_FALSE(result1);
+}
+} // namespace panda::test

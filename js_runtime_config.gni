@@ -335,9 +335,15 @@ template("libark_jsruntime_common_set") {
     deps += hiviewdfx_deps
 
     if (ark_standalone_build || is_arkui_x) {
-      deps += [ "$ark_third_party_root/zlib:libz" ]
+      deps += [
+        "$ark_third_party_root/zlib:libz",
+        "$ark_third_party_root/json:nlohmann_json_static"
+      ]
     } else {
-      external_deps += [ "zlib:shared_libz" ]
+      external_deps += [
+        "zlib:shared_libz",
+        "json:nlohmann_json_static"
+      ]
     }
   
     if (enable_backtrace_local) {

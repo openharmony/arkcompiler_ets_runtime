@@ -46,6 +46,7 @@ host_unittest_action("OhosTest") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "zlib:libz",
+    "json:nlohmann_json_static"
   ]
   if (!ark_standalone_build && !is_arkui_x) {
     external_deps += [ 

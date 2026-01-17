@@ -5666,4 +5666,118 @@ HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_030)
     EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
 }
 
+HWTEST_F_L0(EcmaModuleTest, GetPkgNamesWithNormalizedOhmurl)
+{
+    CString ohmurl1 = "@normalized:N&&&har/Index&1.0.0";
+    CString res1 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl1);
+    EXPECT_EQ(res1, "har");
+
+    CString ohmurl2 = "@normalized:N&&&@ohos/har/Index&1.0.0";
+    CString res2 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl2);
+    EXPECT_EQ(res2, "@ohos/har");
+
+    CString ohmurl3 = "@normalized:N&&&@ohos&1.0.0";
+    CString res3 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl3);
+    EXPECT_EQ(res3, "");
+
+    CString ohmurl4 = "@normalized:N&&&&1.0.0";
+    CString res4 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl4);
+    EXPECT_EQ(res4, "");
+
+    CString ohmurl5 = "@normalized:N&&&@ohos/&1.0.0";
+    CString res5 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl5);
+    EXPECT_EQ(res5, "");
+
+    CString ohmurl6 = "@normalized:N&&&har/&1.0.0";
+    CString res6 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl6);
+    EXPECT_EQ(res6, "har");
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl)
+{
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    pkgList["entry"] = {};
+    instance->SetpkgContextInfoList(pkgList);
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsList;
+    CUnorderedMap<CString, CUnorderedSet<CString>> entryExportsList;
+    entryExportsList["har1"] = {};
+    entryExportsList["har2"] = {
+        "@normalized:N&&&har2/Index&1.0.0",
+        "@normalized:N&&&har2/src/main/ets/Test&1.0.0"
+    };
+    entryExportsList["@ohos/library1"] = {};
+    entryExportsList["@ohos/library2"] = {
+        "@normalized:N&&&@ohos/library2/src/main/ets/Util&1.0.0"
+    };
+    ohExportsList["entry"] = entryExportsList;
+    instance->SetOhExportsList(ohExportsList);
+
+    CString entryBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    bool res3 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har2/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res3, true);
+
+    bool res4 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har2/src/main/ets/Test1&1.0.0");
+    EXPECT_EQ(res4, false);
+
+    bool res5 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library1/Index&1.0.0", "@normalized:N&&&@ohos/library1/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res5, true);
+
+    bool res6 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library1/Index&1.0.0", "@normalized:N&&&@ohos/library2/src/main/ets/Util&1.0.0");
+    EXPECT_EQ(res6, true);
+
+    bool res7 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library1/Index&1.0.0", "@normalized:N&&&@ohos/library2/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res7, false);
+
+    bool res8 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library2/Index&1.0.0", "@normalized:N&&&@ohos/library1/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res8, false);
+
+    bool res9 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library2/Index&1.0.0", "@normalized:N&&&@ohos/library3/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res9, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl1)
+{
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    pkgList["entry"] = {};
+    instance->SetpkgContextInfoList(pkgList);
+
+    CString entryBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    bool res1 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har1/Index&1.0.0");
+    EXPECT_EQ(res1, true);
+
+    bool res2 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "&har1/Index&1.0.0");
+    EXPECT_EQ(res2, true);
+
+    bool res3 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&&1.0.0");
+    EXPECT_EQ(res3, true);
+
+    bool res4 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har3/Index&1.0.0");
+    EXPECT_EQ(res4, true);
+
+    CString baseFileName2 = "/data/storage/xxxxxx/bundle/moduleName/ets/xxx/xxx.abc";
+    instance->SetModuleName("entry");
+    bool res5 = ModulePathHelper::CheckExportsWithOhmurl(instance, baseFileName2,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har3/Index&1.0.0");
+    EXPECT_EQ(res5, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl2)
+{
+    CString entryBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    bool res1 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@bundle:com.bundleName.test/moduleName/requestModuleName1",
+        "@bundle:com.bundleName.test/moduleName1/requestModuleName10");
+    EXPECT_EQ(res1, true);
+}
 }  // namespace panda::test

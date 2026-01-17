@@ -849,6 +849,16 @@ public:
                                        CVector<CString> &resultList);
 #endif
 
+    void SetOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> &ohExportsMap);
+    void UpdateOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
+        CUnorderedSet<CString>>> &ohExportsMap);
+    bool CheckOhExportsWithOhmurl(const CString &moduleName, const CString &packageName, const CString &ohmurl);
+
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> GetOhExportList()
+    {
+        ReadLockHolder lock(ohExportListLock_);
+        return ohExportsList_;
+    }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     CpuProfiler *GetProfiler() const
     {
@@ -1539,9 +1549,11 @@ private:
     CMap<CString, CString> pkgNameList_;
     CMap<CString, CMap<CString, CVector<CString>>> pkgContextInfoList_;
     CMap<CString, CString> pkgAliasList_;
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsList_;
     RWLock pkgContextInfoLock_;
     RWLock pkgAliasListLock_;
     RWLock pkgNameListLock_;
+    RWLock ohExportListLock_;
 
     CVector<StopPreLoadSoCallback> stopPreLoadCallbacks_;
     NativePtrGetter nativePtrGetter_ {nullptr};
