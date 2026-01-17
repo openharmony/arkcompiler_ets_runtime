@@ -224,7 +224,7 @@ HWTEST_F_L0(JSArrayTest, TrackInfo)
     auto trackInfo = TrackInfo::Cast(factory->NewObject(trackInfoHclass));
     trackInfo->SetCachedHClass(thread, constants->GetUndefined());
     trackInfo->SetElementsKind(ElementsKind::INT);
-    array->SetTrackInfo(thread, JSTaggedValue(trackInfo).CreateAndGetWeakRef());
+    array->SetTrackInfo(thread, JSTaggedValue(trackInfo));
     auto obj = JSHandle<JSObject>::Cast(array);
     auto floatHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue(10.1));
     ASSERT_TRUE(JSHClass::TransitToElementsKind(thread, obj, floatHandle, ElementsKind::NONE));

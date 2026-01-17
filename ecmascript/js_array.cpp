@@ -1050,8 +1050,8 @@ JSHandle<JSHClass> JSArray::CreateJSArrayFunctionClass(const JSThread *thread, O
 void JSArray::UpdateTrackInfo(const JSThread *thread)
 {
     JSTaggedValue trackInfoVal = GetTrackInfo(thread);
-    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
-        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+    if (trackInfoVal.IsHeapObject()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         ElementsKind oldKind = trackInfo->GetElementsKind();
         if (Elements::IsGeneric(oldKind)) {
             return;

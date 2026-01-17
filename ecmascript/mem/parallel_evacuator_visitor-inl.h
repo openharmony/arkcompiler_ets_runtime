@@ -93,7 +93,9 @@ void NewToOldEvacuationVisitor<gcType>::UpdateTrackInfo(TaggedObject *header, JS
 {
     if (klass->IsJSArray()) {
         auto trackInfo = JSArray::Cast(header)->GetTrackInfo(thread_);
-        trackSet_->emplace(trackInfo.GetRawData());
+        if (trackInfo.IsHeapObject()) {
+            trackSet_->emplace(trackInfo.GetRawData());
+        }
     }
 }
 }  // namespace panda::ecmascript

@@ -71,10 +71,7 @@ void ParallelEvacuator::UpdateTrackInfo()
         auto &trackInfoSet = ArrayTrackInfoSet(i);
         for (auto &each : trackInfoSet) {
             auto trackInfoVal = JSTaggedValue(each);
-            if (!trackInfoVal.IsHeapObject() || !trackInfoVal.IsWeak()) {
-                continue;
-            }
-            auto trackInfo = trackInfoVal.GetWeakReferentUnChecked();
+            auto trackInfo = trackInfoVal.GetTaggedObject();
             trackInfo = UpdateAddressAfterEvacation(trackInfo);
             if (trackInfo) {
                 heap_->GetEcmaVM()->GetPGOProfiler()->UpdateTrackSpaceFlag(trackInfo, RegionSpaceFlag::IN_OLD_SPACE);
@@ -288,7 +285,9 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         if (pgoEnabled) {
             if (actualPromoted && klass->IsJSArray()) {
                 auto trackInfo = JSArray::Cast(header)->GetTrackInfo(thread);
-                trackSet.emplace(trackInfo.GetRawData());
+                if (trackInfo.IsHeapObject()) {
+                    trackSet.emplace(trackInfo.GetRawData());
+                }
             }
         }
         Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));

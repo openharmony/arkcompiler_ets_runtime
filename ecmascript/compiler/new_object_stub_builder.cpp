@@ -2402,7 +2402,6 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, GateRef jsFunc, Tra
         trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo,
             slotId, slotValue, Circuit::NullGate(), callback);
         hclass = LoadPrimitive(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
-        trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
     Bind(&slowpath);
@@ -2446,7 +2445,6 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index,
     {
         trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, slotValue, obj, callback);
         hclass = LoadPrimitive(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
-        trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
     Bind(&slowpath);

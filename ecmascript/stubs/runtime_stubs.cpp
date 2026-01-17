@@ -626,8 +626,8 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         return JSTaggedValue::Hole().GetRawData();
     }
     JSTaggedValue trackInfoVal = JSHandle<JSArray>(receiver)->GetTrackInfo(thread);
-    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
-        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+    if (trackInfoVal.IsHeapObject()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(JSTaggedValue(trackInfo));
     }
     return JSTaggedValue::Hole().GetRawData();
