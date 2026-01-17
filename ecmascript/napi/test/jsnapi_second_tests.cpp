@@ -1781,11 +1781,7 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentWithName)
         },
         nullptr, name.c_str());
     JSHandle<JSTaggedValue> handle = JSNApiHelper::ToJSHandle(func);
-#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
-    ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
-#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
-#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     Local<JSValueRef> res = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
     ASSERT_EQ("funcResult", res->ToString(vm_)->ToString(vm_));
     Local<StringRef> funcName = func->GetName(vm_);
@@ -2003,17 +1999,10 @@ HWTEST_F_L0(JSNApiTests, NewInternalConcurrentNormalFunctionUseApiFunctionType)
     Local<FunctionRef> concurrentFunc = FunctionRef::NewConcurrent(vm_, InternalFunctionCallback, nullptr);
     JSHandle<JSTaggedValue> funcHandle = JSNApiHelper::ToJSHandle(concurrentFunc);
     JSHClass* hClass = funcHandle.GetTaggedValue().GetTaggedObject()->GetClass();
-#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
-    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
-    JSHClass* normalApiFunctionClass =
-        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalApiFunctionClass().GetTaggedValue().GetTaggedObject());
-    ASSERT_EQ(hClass, normalApiFunctionClass);
-#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHClass* normalFunctionClass =
         JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalFunctionClass().GetTaggedValue().GetTaggedObject());
     ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
     ASSERT_EQ(hClass, normalFunctionClass);
-#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     // Call will not crash
     Local<JSValueRef> res = concurrentFunc->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
     ASSERT_TRUE(res->IsArray(vm_));

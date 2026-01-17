@@ -3760,11 +3760,7 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, const Local<JSValueRef
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
-    JSHandle<JSFunction> current(factory->NewNormalJSApiFunction(env, reinterpret_cast<void *>(nativeFunc)));
-#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> current(factory->NewJSFunction(env, reinterpret_cast<void *>(nativeFunc)));
-#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSFunction::SetFunctionExtraInfo(thread, current, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     current->SetCallNapi(callNapi);
     current->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
@@ -3797,22 +3793,14 @@ Local<FunctionRef> FunctionRef::NewConcurrentWithName(EcmaVM *vm, const Local<JS
     attr.SetRepresentation(ecmascript::Representation::TAGGED);
 
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNormalApiFunctionClass());
-#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNormalFunctionClass());
-#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ecmascript::Representation rep =
         ecmascript::PropertyAttributes::TranslateToRep(nameDesc.GetValue().GetTaggedValue());
     hclass = JSHClass::SetPropertyOfObjHClass<true>(thread, hclass, globalConst->GetHandledNameString(), attr, rep,
                                                     true, JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
-    JSHandle<JSFunction> func = factory->NewNormalJSApiFunctionByHClass(hclass, reinterpret_cast<void *>(nativeFunc));
-#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSFunction> func = factory->NewNativeFunctionByHClass(hclass, reinterpret_cast<void *>(nativeFunc),
                                                                    ecmascript::FunctionKind::NORMAL_FUNCTION);
-#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     func->SetPropertyInlinedProps<true>(thread, 0, nameDesc.GetValue().GetTaggedValue());
     JSFunction::SetFunctionExtraInfo(thread, func, nullptr, deleter, data, nativeBindingsize, Concurrent::YES);
     ASSERT_PRINT(func->IsExtensible(), "Function must be extensible");
