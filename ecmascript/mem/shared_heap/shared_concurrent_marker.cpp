@@ -75,8 +75,11 @@ public:
         }
         sHeap->GetConcurrentMarker()->InitializeMarking();
 
+        SharedGCMarker *marker = sHeap->GetSharedGCMarker();
         SharedGCMarkRootVisitor rootVisitor(sHeap->GetWorkManager()->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
-        sHeap->GetSharedGCMarker()->MarkGlobalRoots(rootVisitor);
+        marker->MarkGlobalRoots(rootVisitor);
+
+        marker->PrepareCollectLocalVMRSet();
     }
 };
 
@@ -92,11 +95,12 @@ public:
     {
         ASSERT(!thread->IsConcurrentCopying());
         SharedHeap *sHeap = SharedHeap::GetInstance();
+        SharedGCMarker *marker = sHeap->GetSharedGCMarker();
         SharedGCWorkNodeHolder *temporaryHolder = sHeap->GetWorkManager()->GetTemporaryWorkNodeHolder();
         SharedGCMarkRootVisitor rootVisitor(temporaryHolder);
         EcmaVM *vm = thread->GetEcmaVM();
-        sHeap->GetSharedGCMarker()->MarkLocalVMRoots(rootVisitor, vm, SharedMarkType::CONCURRENT_MARK_INITIAL_MARK);
-        sHeap->GetSharedGCMarker()->CollectLocalVMRSet(vm);
+        marker->MarkLocalVMRoots(rootVisitor, vm, SharedMarkType::CONCURRENT_MARK_INITIAL_MARK);
+        marker->CollectLocalVMRSet(vm, SharedGCMarkerBase::SourceOfMarkingLocalVMRoot::FLIP_FROM_JS_THREAD);
         sHeap->GetWorkManager()->FlushTemporaryWorkNodeHolder(temporaryHolder);
     }
 };

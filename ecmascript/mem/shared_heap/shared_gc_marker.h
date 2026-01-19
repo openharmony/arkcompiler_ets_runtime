@@ -38,6 +38,10 @@ enum class SharedMarkType : uint8_t {
 
 class SharedGCMarkerBase {
 public:
+    enum class SourceOfMarkingLocalVMRoot {
+        STW_FROM_DAEMON,
+        FLIP_FROM_JS_THREAD,
+    };
     explicit SharedGCMarkerBase(SharedGCWorkManager *sWorkManger) : sWorkManager_(sWorkManger) {}
     virtual ~SharedGCMarkerBase() = default;
 
@@ -46,7 +50,8 @@ public:
     void MarkGlobalRoots(RootVisitor &visitor);
     void MarkAllLocalRoots(RootVisitor &visitor, SharedMarkType markType);
     void MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm, SharedMarkType markType);
-    void CollectLocalVMRSet(EcmaVM *localVm);
+    void PrepareCollectLocalVMRSet();
+    void CollectLocalVMRSet(EcmaVM *localVm, SourceOfMarkingLocalVMRoot markSource);
     void MarkSendableGlobalStorage(RootVisitor &visitor);
     void MarkStringCache(RootVisitor &visitor);
     void MarkSerializeRoots(RootVisitor &visitor);
@@ -69,7 +74,8 @@ private:
     inline void NotifyThreadProcessRsetStart(JSThread *localThread);
     inline void NotifyThreadProcessRsetFinished(JSThread *localThread);
 
-    std::vector<RSetWorkListHandler*> rSetHandlers_;
+    Mutex mutex_ {};
+    std::vector<RSetWorkListHandler*> rSetHandlers_ {};
 };
 
 class SharedGCMarker final : public SharedGCMarkerBase {
