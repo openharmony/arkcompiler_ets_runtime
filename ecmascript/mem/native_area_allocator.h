@@ -30,6 +30,7 @@ enum class NativeFlag : uint32_t {
     ARRAY_BUFFER,
     REGEXP_BTYECODE,
     CHUNK_MEM,
+    WRAPPER_DATA,
 };
 
 class PUBLIC_API NativeAreaAllocator {
