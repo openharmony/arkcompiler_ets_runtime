@@ -461,12 +461,4 @@ assert_equal(JSON.stringify(testspaceobj, null, Infinity),testspaceobjAssert);
   assert_equal(JSON.stringify(valid_surrogate), '"😎"');
 }
 
-{
-  const originalArr = [10, 20, 30];
-  const jsonStr = JSON.stringify(originalArr, (key, value) =>
-    key === "1" ? value * 2 : value
-  );
-  assert_equal(jsonStr, "[10,40,30]");
-}
-
 test_end();

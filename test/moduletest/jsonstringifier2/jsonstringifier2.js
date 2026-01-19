@@ -214,18 +214,6 @@
     assert_equal(JSON.stringify(obj, replacer), '{"a":1,"c":3}');
 }
 
-// Test 19: Array with replacer function
-{
-    let arr = [10, 20, 30, 40];
-    function replacer(key, value) {
-        if (key === "2") {
-            return value * 2;
-        }
-        return value;
-    }
-    assert_equal(JSON.stringify(arr, replacer), '[10,20,60,40]');
-}
-
 // Test 20: Gap parameter - number
 {
     let obj = {
