@@ -1663,7 +1663,7 @@ HWTEST_F_L0(JSNApiTests, SetPkgContextInfoListWithBuffer)
 {
     std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap;
     std::string entryString = R"({"entry":{"packageName":"entry", "bundleName":"", "moduleName":
-        "", "version":"", "entryPath":"src/main/", "isSO":false}})";
+        "", "version":"", "entryPath":"src/main/", "isSO":false, "dependencyAlias":""}})";
     std::string libraryString = R"({"library":{"packageName":"library", "bundleName":"com.xxx.xxxx", "moduleName":
         "library", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "dependencyAlias":"har"}})";
     auto createBufferFromString = [](const std::string& str) {
