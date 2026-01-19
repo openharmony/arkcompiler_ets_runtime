@@ -261,7 +261,11 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
     } else {
         type = ohos::RuntimeInfoType::OTHERS;
     }
+#if !ENABLE_MEMORY_OPTIMIZATION
     ohos::AotRuntimeInfo::GetInstance().BuildCrashRuntimeInfo(type);
+#else
+    ohos::AotRuntimeInfo::GetInstance().BuildCrashInfo();
+#endif
     if (isJsCrash && thread != nullptr) {
         DumpJitCode(thread);
     }
