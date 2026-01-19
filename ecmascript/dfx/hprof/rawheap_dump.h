@@ -53,10 +53,6 @@ public:
     }
 
 private:
-    bool IsProcessDump()
-    {
-        return Runtime::GetInstance()->IsEnableProcDumpInSharedOOM() && option_->isForSharedOOM;
-    }
 
     const EcmaVM *vm_ {nullptr};
     const DumpSnapShotOption *option_ {nullptr};

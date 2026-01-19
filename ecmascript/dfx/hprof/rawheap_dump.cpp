@@ -58,7 +58,7 @@ void ObjectMarker::VisitObjectRangeImpl([[maybe_unused]]BaseObject *root, uintpt
 
 void ObjectMarker::ProcessMarkObjectsFromRoot()
 {
-    if (IsProcessDump()) {
+    if (option_->isProcDump) {
         CVector<JSTaggedType> heapObjects;
         heapObjects.reserve(markedObjects_.size());
         heapSize_ = 0;
@@ -104,7 +104,7 @@ void ObjectMarker::MarkObject(JSTaggedType addr)
 void ObjectMarker::MarkRootObjects()
 {
     HeapRootVisitor rootVisitor;
-    if (IsProcessDump()) {
+    if (option_->isProcDump) {
         Runtime::GetInstance()->GCIterateThreadList([&rootVisitor, this](JSThread *thread) {
             rootVisitor.VisitHeapRoots(thread, *this);
         });
@@ -119,7 +119,7 @@ void ObjectMarker::MarkRootObjects()
 
 void ObjectMarker::IterateOverObjects(const std::function<void(TaggedObject *)> &visitor)
 {
-    if (IsProcessDump()) {
+    if (option_->isProcDump) {
         Runtime::GetInstance()->GCIterateThreadList([&visitor](JSThread *thread) {
             thread->GetEcmaVM()->GetHeap()->IterateOverObjects(visitor, false);
         });
