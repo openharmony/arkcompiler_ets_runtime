@@ -1729,7 +1729,6 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_weak_ref.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_weak_set.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_xref_object.json -> /data/test" src="out"/>
-            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/js_xref_wrapped_napi_object.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/lexical_env.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/line_string.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/linked_node.json -> /data/test" src="out"/>

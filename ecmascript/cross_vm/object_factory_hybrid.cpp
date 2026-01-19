@@ -21,16 +21,7 @@ namespace panda::ecmascript {
 JSHandle<JSObject> ObjectFactory::NewJSXRefObject()
 {
     JSHandle<JSHClass> jsXRefHClass = JSHandle<JSHClass>::Cast(thread_->GlobalConstants()->GetHandledXRefObjectClass());
-    JSHandle<JSObject> object(NewJSObject(jsXRefHClass));
-    return object;
-}
-
-JSHandle<JSObject> ObjectFactory::NewJSXRefWrappedNapiObject()
-{
-    auto globalEnvConst = thread_->GlobalConstants();
-    JSHandle<JSTaggedValue> jsXRefHClass = globalEnvConst->GetHandledXRefWrappedNapiObjectClass();
-    JSHandle<JSObject> object(NewJSObject(JSHandle<JSHClass>(jsXRefHClass)));
-    JSWrappedNapiObject::InitializeNativePointersField(thread_, object);
+    JSHandle<JSObject> object(NewJSObjectWithInit(jsXRefHClass));
     return object;
 }
 }  // namespace panda::ecmascript

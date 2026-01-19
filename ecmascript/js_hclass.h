@@ -94,7 +94,6 @@ struct Reference;
         V(JS_OBJECT),        /* JS_OBJECT_FIRST /////////////////////////////////////////////////////////////////// */ \
         V(JS_WRAPPED_NAPI_OBJECT), /* /////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_XREF_OBJECT),   /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
-        V(JS_XREF_WRAPPED_NAPI_OBJECT), /* ////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_SHARED_OBJECT), /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_REALM),         /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_FUNCTION_BASE), /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -674,7 +673,7 @@ public:
     inline bool IsJSWrappedNapiObject() const
     {
         JSType jsType = GetObjectType();
-        return (jsType == JSType::JS_WRAPPED_NAPI_OBJECT || jsType == JSType::JS_XREF_WRAPPED_NAPI_OBJECT);
+        return (jsType == JSType::JS_WRAPPED_NAPI_OBJECT || jsType == JSType::JS_XREF_OBJECT);
     }
 
     inline bool ShouldSetDefaultSupers() const

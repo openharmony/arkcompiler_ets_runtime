@@ -3,6 +3,6 @@
     "offsets": [],
     "end_offset": 0,
     "parents": [
-        "JS_OBJECT"
+        "JS_WRAPPED_NAPI_OBJECT"
     ]
 }

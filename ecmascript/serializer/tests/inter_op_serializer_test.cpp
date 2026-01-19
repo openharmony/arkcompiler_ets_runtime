@@ -2754,7 +2754,7 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObject2)
     auto vm = thread->GetEcmaVM();
     JSNApi::InitHybridVMEnv(vm);
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSObject> xrefObject = factory->NewJSXRefWrappedNapiObject();
+    JSHandle<JSObject> xrefObject = factory->NewJSXRefObject();
     WrapXRefObject(JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>(xrefObject)),
                    reinterpret_cast<void *>(NewObjectAttachHook), true);
 
@@ -2808,7 +2808,7 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObjectWithEmptyAttachFunc2)
     auto vm = thread->GetEcmaVM();
     JSNApi::InitHybridVMEnv(vm);
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSObject> xrefObject = factory->NewJSXRefWrappedNapiObject();
+    JSHandle<JSObject> xrefObject = factory->NewJSXRefObject();
     WrapXRefObject(JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>(xrefObject)),
                    reinterpret_cast<void *>(EmptyAttachHook), true);
 
@@ -2835,7 +2835,7 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeWeakInterOpObject)
     auto vm = thread->GetEcmaVM();
     JSNApi::InitHybridVMEnv(vm);
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSObject> xrefObject = factory->NewJSXRefWrappedNapiObject();
+    JSHandle<JSObject> xrefObject = factory->NewJSXRefObject();
     WrapXRefObject(JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>(xrefObject)),
                    reinterpret_cast<void *>(AttachHook), true);
 
@@ -2866,7 +2866,7 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpProxyObject)
     auto vm = thread->GetEcmaVM();
     JSNApi::InitHybridVMEnv(vm);
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSObject> xrefObject = factory->NewJSXRefWrappedNapiObject();
+    JSHandle<JSObject> xrefObject = factory->NewJSXRefObject();
     WrapXRefObject(JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>(xrefObject)),
                    reinterpret_cast<void *>(AttachHook), true);
 
@@ -2910,7 +2910,7 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeInvalidInterOpObject2)
     auto vm = thread->GetEcmaVM();
     JSNApi::InitHybridVMEnv(vm);
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSObject> xrefObject = factory->NewJSXRefWrappedNapiObject();
+    JSHandle<JSObject> xrefObject = factory->NewJSXRefObject();
     WrapXRefObject(JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>(xrefObject)),
                    reinterpret_cast<void *>(AttachHook), false);
 

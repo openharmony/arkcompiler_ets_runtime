@@ -277,9 +277,6 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::JS_XREF_OBJECT: {
             return GetString(CString("JSXRefObject"));
         }
-        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT: {
-            return GetString(CString("JSXRefWrappedNapiObject"));
-        }
         case JSType::JS_SHARED_FUNCTION: {
             return GetString("JSSharedFunction");
         }
