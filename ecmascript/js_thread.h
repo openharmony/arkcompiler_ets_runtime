@@ -2172,6 +2172,16 @@ public:
         }
     }
 
+    bool IsThrowingOOMError() const
+    {
+        return isThrowingOOMError_;
+    }
+
+    void SetIsThrowingOOMError(bool isThrowingOOMError)
+    {
+        isThrowingOOMError_ = isThrowingOOMError;
+    }
+
     JSTHREAD_PUBLIC_HYBRID_EXTENSION();
 protected:
     void SetThreadId()
@@ -2282,6 +2292,8 @@ private:
     // Error callback
     OnErrorCallback onErrorCallback_ {nullptr};
     void *onErrorData_ {nullptr};
+    // Record in throwing oom process
+    bool isThrowingOOMError_ {false};
 
     bool finalizationCheckState_ {false};
     // Shared heap
