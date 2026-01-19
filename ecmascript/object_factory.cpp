@@ -1074,6 +1074,11 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, con
     [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread_, nativeInstanceObj,
         globalConst->GetHandledStackString(), stackDesc);
     ASSERT_PRINT(status == true, "return result exception!");
+    // Uncaught exception parsing source code
+    PropertyDescriptor topStackDesc(thread_, JSHandle<JSTaggedValue>::Cast(stack), true, false, true);
+    [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread_, nativeInstanceObj,
+        globalConst->GetHandledTopStackString(), topStackDesc);
+    ASSERT_PRINT(topStackstatus == true, "return result exception!");
 
     return nativeInstanceObj;
 }
