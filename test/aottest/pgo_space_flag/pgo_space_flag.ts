@@ -16,9 +16,10 @@
 let a = [];
 print(ArkTools.inYoungSpace(a));
 print(ArkTools.inOldSpace(a));
-for (let t = 0; t < 100000; t++) {
+for (let t = 0; t < 500000; t++) {
     a[t] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     a[t][0];
 }
+ArkTools.gc();
 print(ArkTools.inYoungSpace(a));
 print(ArkTools.inOldSpace(a));
