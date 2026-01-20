@@ -86,6 +86,8 @@ group("ark_jit_ts_test") {
     "frequency_based_inline_test",
     "size_based_inline_test",
     "multi_constpool_inline",
+    "method_dichotomy_collect",
+    "method_dichotomy_filter",
     "proxy_fast_call",
     "fuzz_exception",
     "utf16key",
