@@ -335,7 +335,7 @@ HWTEST_F_L0(OhosTest, ModulePkgParserTest)
 {
     std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> modulePkgContentMap;
     std::string entryString = R"({"entry":{"packageName":"entry", "bundleName":"com.xxx.xxxx", "moduleName":
-        "entry", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "oh-exports":{
+        "entry", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "dependencyAlias": "", "oh-exports":{
         "src/main/ets/components/MainPages.ets": "@normalized:N&&&har2/src/main/ets/components/MainPages&1.0.0"}}})";
     std::string libraryString = R"({"library":{"packageName":"library", "bundleName":"com.xxx.xxxx", "moduleName":
         "library", "version":"1.0.0", "entryPath":"Index.ets", "isSO":false, "dependencyAlias": "har",
@@ -381,11 +381,11 @@ HWTEST_F_L0(OhosTest, ModulePkgParserTest)
 HWTEST_F_L0(OhosTest, ModulePkgParserTest1)
 {
     std::string entryString = R"({"entry":{"packageName":"entry", "bundleName":"com.xxx.xxxx", "moduleName":
-        "entry", "version":true, "entryPath":"Index.ets", "isSO":false},
+        "entry", "version":true, "entryPath":"Index.ets", "isSO":false, "dependencyAlias": ""},
         "libentry.so":{"packageName":"libentry.so", "bundleName":"", "moduleName":"", "version":"",
-        "entryPath":"Index.ets", "isSO":true},
+        "entryPath":"Index.ets", "isSO":true, "dependencyAlias": ""},
         "libhar.so":{"packageName":"libhar.so", "bundleName":"", "moduleName":"", "version":"", "entryPath":
-        "Index.ets", "isSO":"test"}})";
+        "Index.ets", "isSO":"test", "dependencyAlias": ""}})";
     auto createBufferFromString = [](const std::string& str) {
         size_t size = str.size();
         auto buffer = std::make_unique<uint8_t[]>(size);
