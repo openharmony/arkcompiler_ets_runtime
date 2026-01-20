@@ -709,8 +709,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSWeakMap::SIZE, 1U);
                 JSHandle<JSHClass> weakMapClass = factory->NewEcmaHClass(JSWeakMap::SIZE, JSType::JS_WEAK_MAP, proto);
                 JSHandle<JSWeakMap> jsWeakMap = JSHandle<JSWeakMap>::Cast(factory->NewJSObjectWithInit(weakMapClass));
-                JSHandle<LinkedHashMap> weakLinkedMap(LinkedHashMap::Create(thread));
-                jsWeakMap->SetLinkedMap(thread, weakLinkedMap);
+                JSHandle<WeakLinkedHashMap> weakLinkedMap(WeakLinkedHashMap::Create(thread));
+                jsWeakMap->SetWeakLinkedMap(thread, weakLinkedMap);
                 DUMP_FOR_HANDLE(jsWeakMap);
                 break;
             }
@@ -1018,6 +1018,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::TAGGED_ARRAY:
             case JSType::VTABLE:
             case JSType::LEXICAL_ENV:
+            case JSType::WEAK_LINKED_HASH_MAP:
             case JSType::SFUNCTION_ENV:
             case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO: {

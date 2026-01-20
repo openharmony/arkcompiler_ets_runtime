@@ -23,54 +23,55 @@ void JSWeakMap::Set(JSThread *thread, const JSHandle<JSWeakMap> &map, const JSHa
                     const JSHandle<JSTaggedValue> &value)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    if (!LinkedHashMap::IsKey(JSTaggedValue(key.GetTaggedValue().CreateAndGetWeakRef()))) {
+    if (!WeakLinkedHashMap::IsKey(JSTaggedValue(key.GetTaggedValue().CreateAndGetWeakRef()))) {
         THROW_TYPE_ERROR(thread, "the value must be Key of JSWeakMap");
     }
-    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
-
-    JSHandle<LinkedHashMap> newMap = LinkedHashMap::SetWeakRef(thread, mapHandle, key, value);
-    map->SetLinkedMap(thread, newMap);
+    JSHandle<WeakLinkedHashMap> mapHandle(thread,
+        WeakLinkedHashMap::Cast(map->GetWeakLinkedMap(thread).GetTaggedObject()));
+    JSHandle<WeakLinkedHashMap> newMap = WeakLinkedHashMap::SetWeakRef(thread, mapHandle, key, value);
+    map->SetWeakLinkedMap(thread, newMap);
 }
 
 bool JSWeakMap::Delete(JSThread *thread, const JSHandle<JSWeakMap> &map, const JSHandle<JSTaggedValue> &key)
 {
-    JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
+    JSHandle<WeakLinkedHashMap> mapHandle(thread,
+        WeakLinkedHashMap::Cast(map->GetWeakLinkedMap(thread).GetTaggedObject()));
     int entry = mapHandle->FindElement(thread, key.GetTaggedValue());
     if (entry == -1) {
         return false;
     }
     mapHandle->RemoveEntry(thread, entry);
 
-    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Shrink(thread, mapHandle);
-    map->SetLinkedMap(thread, newMap);
+    JSHandle<WeakLinkedHashMap> newMap = WeakLinkedHashMap::Shrink(thread, mapHandle);
+    map->SetWeakLinkedMap(thread, newMap);
     return true;
 }
 
 bool JSWeakMap::Has(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->Has(thread, key);
+    return WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject())->Has(thread, key);
 }
 
 JSTaggedValue JSWeakMap::Get(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->Get(thread, key);
+    return WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject())->Get(thread, key);
 }
 
 int JSWeakMap::GetSize(const JSThread *thread) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->NumberOfElements();
+    return WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject())->NumberOfElements();
 }
 
 JSTaggedValue JSWeakMap::GetKey(const JSThread *thread, int entry) const
 {
     ASSERT_PRINT(entry >= 0 && entry < GetSize(thread), "entry must be non-negative integer less than capacity");
-    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->GetKey(thread, entry);
+    return WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject())->GetKey(thread, entry);
 }
 
 JSTaggedValue JSWeakMap::GetValue(const JSThread *thread, int entry) const
 {
     ASSERT_PRINT(entry >= 0 && entry < GetSize(thread), "entry must be non-negative integer less than capacity");
-    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->GetValue(thread, entry);
+    return WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject())->GetValue(thread, entry);
 }
 
 void JSWeakSet::Add(JSThread *thread, const JSHandle<JSWeakSet> &weakSet, const JSHandle<JSTaggedValue> &value)

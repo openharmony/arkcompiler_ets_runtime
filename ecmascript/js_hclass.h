@@ -251,6 +251,7 @@ struct Reference;
         V(MUTANT_TAGGED_ARRAY), /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(BYTE_ARRAY),   /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(LEXICAL_ENV),  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        V(WEAK_LINKED_HASH_MAP), /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         V(SFUNCTION_ENV), /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(SENDABLE_ENV),  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */\
         V(TAGGED_DICTIONARY), /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -748,6 +749,7 @@ public:
             case JSType::TAGGED_ARRAY:
             case JSType::TAGGED_DICTIONARY:
             case JSType::LEXICAL_ENV:
+            case JSType::WEAK_LINKED_HASH_MAP:
             case JSType::SFUNCTION_ENV:
             case JSType::SENDABLE_ENV:
             case JSType::CONSTANT_POOL:
@@ -771,6 +773,11 @@ public:
     inline bool IsLexicalEnv() const
     {
         return GetObjectType() == JSType::LEXICAL_ENV;
+    }
+
+    inline bool IsWeakLinkedHashMap() const
+    {
+        return GetObjectType() == JSType::WEAK_LINKED_HASH_MAP;
     }
 
     inline bool IsSFunctionEnv() const

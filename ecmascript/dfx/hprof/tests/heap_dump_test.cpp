@@ -489,8 +489,8 @@ public:
         JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
         JSHandle<JSObject> jsWeakMapObject = NewObject(JSWeakMap::SIZE, JSType::JS_WEAK_MAP, proto);
         JSHandle<JSWeakMap> jsWeakMap = JSHandle<JSWeakMap>::Cast(jsWeakMapObject);
-        JSHandle<LinkedHashMap> weakLinkedMap(LinkedHashMap::Create(thread));
-        jsWeakMap->SetLinkedMap(thread, weakLinkedMap);
+        JSHandle<WeakLinkedHashMap> weakLinkedMap(WeakLinkedHashMap::Create(thread));
+        jsWeakMap->SetWeakLinkedMap(thread, weakLinkedMap);
         return jsWeakMap;
     }
 

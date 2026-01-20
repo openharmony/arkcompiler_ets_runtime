@@ -54,6 +54,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSNativePointerClass, JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, SJSNativePointerClass, SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                 \
     V(JSTaggedValue, LexicalEnvClass, LEXICAL_ENV_CLASS_INDEX, ecma_roots_class)                                      \
+    V(JSTaggedValue, WeakLinkedHashMapClass, WEAK_LINKED_HASH_MAP_CLASS_INDEX, ecma_roots_class)                      \
     V(JSTaggedValue, SFunctionEnvClass, SFUNCTION_ENV_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, SymbolClass, SYMBOL_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, AccessorDataClass, ACCESSOR_DATA_CLASS_INDEX, ecma_roots_class)                                  \

@@ -199,23 +199,6 @@ JSHandle<LinkedHashMap> LinkedHashMap::Shrink(const JSThread *thread, const JSHa
     return LinkedHashTable<LinkedHashMap, LinkedHashMapObject>::Shrink(thread, table, additionalCapacity);
 }
 
-void LinkedHashMap::ClearAllDeadEntries(const JSThread *thread, std::function<bool(JSTaggedValue)> &visitor)
-{
-    int entries = NumberOfElements() + NumberOfDeletedElements();
-
-    for (int i = 0; i < entries; ++i) {
-        JSTaggedValue maybeKey = GetKey(thread, i);
-        if (maybeKey.IsHole()) {
-            // Already removed
-            continue;
-        }
-        bool dead = visitor(maybeKey);
-        if (dead) {
-            RemoveEntryFromGCThread(i);
-        }
-    }
-}
-
 // LinkedHashSet
 JSHandle<LinkedHashSet> LinkedHashSet::Create(const JSThread *thread, int numberOfElements, MemSpaceKind spaceKind)
 {
@@ -308,5 +291,139 @@ int LinkedHash::Hash(const JSThread *thread, JSTaggedValue key)
     }
     uint64_t keyValue = key.GetRawData();
     return GetHash32(reinterpret_cast<uint8_t *>(&keyValue), sizeof(keyValue) / sizeof(uint8_t));
+}
+
+// WeakLinkedHashMap
+JSHandle<WeakLinkedHashMap> WeakLinkedHashMap::Create(const JSThread *thread, int numberOfElements)
+{
+    ASSERT_PRINT(numberOfElements > 0, "size must be a non-negative integer");
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto capacity = static_cast<uint32_t>(numberOfElements);
+    ASSERT_PRINT(helpers::math::IsPowerOfTwo(capacity), "capacity must be pow of '2'");
+    int length = ELEMENTS_START_INDEX + numberOfElements + numberOfElements * (LinkedHashMapObject::ENTRY_SIZE + 1);
+    JSHandle<WeakLinkedHashMap> table(factory->NewWeakLinkedHashMap(length));
+    table->SetNumberOfElements(thread, 0);
+    table->SetNumberOfDeletedElements(thread, 0);
+    table->SetCapacity(thread, capacity);
+    return table;
+}
+
+JSHandle<WeakLinkedHashMap> WeakLinkedHashMap::GrowCapacity(const JSThread *thread,
+                                                            const JSHandle<WeakLinkedHashMap> &table,
+                                                            int numberOfAddedElements)
+{
+    if (table->HasSufficientCapacity(numberOfAddedElements)) {
+        return table;
+    }
+    int newCapacity = ComputeCapacity(table->NumberOfElements() + numberOfAddedElements);
+    JSHandle<WeakLinkedHashMap> newTable = Create(thread, newCapacity);
+    table->Rehash(thread, *newTable);
+    return newTable;
+}
+
+JSHandle<WeakLinkedHashMap> WeakLinkedHashMap::Delete(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table,
+                                                      const JSHandle<JSTaggedValue> &key)
+{
+    int entry = table->FindElement(thread, key.GetTaggedValue());
+    if (entry == -1) {
+        return table;
+    }
+
+    table->RemoveEntry(thread, entry);
+    return Shrink(thread, table);
+}
+
+JSHandle<WeakLinkedHashMap> WeakLinkedHashMap::SetWeakRef(const JSThread *thread,
+                                                          const JSHandle<WeakLinkedHashMap> &table,
+                                                          const JSHandle<JSTaggedValue> &key,
+                                                          const JSHandle<JSTaggedValue> &value)
+{
+    ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
+    ASSERT(IsKey(key.GetTaggedValue()));
+    // for WeakLinkHashMap, both key and value is WeakRef
+    int hash = LinkedHash::Hash(thread, key.GetTaggedValue());
+    int entry = table->FindElement(thread, key.GetTaggedValue());
+    if (entry != -1) {
+        // fixme: value is strong referenced temporary, gc will fix soon
+        table->SetValue(thread, entry, value.GetTaggedValue());
+        return table;
+    }
+
+    JSHandle<WeakLinkedHashMap> newTable = GrowCapacity(thread, table);
+
+    uint32_t bucket = newTable->HashToBucket(hash);
+    entry = newTable->NumberOfElements() + newTable->NumberOfDeletedElements();
+    newTable->InsertNewEntry(thread, bucket, entry);
+    JSTaggedValue weakKey(key->CreateAndGetWeakRef());
+    newTable->SetKey(thread, entry, weakKey);
+    // fixme: value is strong referenced temporary, gc will fix soon
+    newTable->SetValue(thread, entry, value.GetTaggedValue());
+
+    newTable->SetNumberOfElements(thread, newTable->NumberOfElements() + 1);
+
+    return newTable;
+}
+
+JSHandle<WeakLinkedHashMap> WeakLinkedHashMap::Shrink(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table,
+                                                      int additionalCapacity)
+{
+    int newCapacity = ComputeCapacityWithShrink(table->Capacity(), table->NumberOfElements() + additionalCapacity);
+    if (newCapacity == table->Capacity()) {
+        return table;
+    }
+
+    JSHandle<WeakLinkedHashMap> newTable = Create(thread, newCapacity);
+
+    table->Rehash(thread, *newTable);
+    return newTable;
+}
+
+JSTaggedValue WeakLinkedHashMap::Get(const JSThread *thread, JSTaggedValue key) const
+{
+    int entry = FindElement(thread, key);
+    if (entry == -1) {
+        return JSTaggedValue::Undefined();
+    }
+    return GetValue(thread, entry);
+}
+
+bool WeakLinkedHashMap::Has(const JSThread *thread, JSTaggedValue key) const
+{
+    int entry = FindElement(thread, key);
+    return entry != -1;
+}
+
+JSHandle<WeakLinkedHashMap> WeakLinkedHashMap::Clear(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table)
+{
+    if (table->Capacity() == LinkedHashMap::MIN_CAPACITY) {
+        table->FillRangeWithSpecialValue(JSTaggedValue::Hole(), LinkedHashMap::ELEMENTS_START_INDEX,
+                                         table->GetLength());
+        table->SetNumberOfDeletedElements(thread, table->NumberOfDeletedElements() + table->NumberOfElements());
+        table->SetNumberOfElements(thread, 0);
+        return table;
+    }
+    JSHandle<WeakLinkedHashMap> newMap = Create(thread, LinkedHashMap::MIN_CAPACITY);
+    if (table->Capacity() > 0) {
+        table->SetNextTable(thread, newMap.GetTaggedValue());
+        table->SetNumberOfDeletedElements(thread, -1);
+    }
+    return newMap;
+}
+
+void WeakLinkedHashMap::ClearAllDeadEntries(const JSThread *thread, std::function<bool(JSTaggedValue)> &visitor)
+{
+    int entries = NumberOfElements() + NumberOfDeletedElements();
+
+    for (int i = 0; i < entries; ++i) {
+        JSTaggedValue maybeKey = GetKey(thread, i);
+        if (maybeKey.IsHole()) {
+            // Already removed
+            continue;
+        }
+        bool dead = visitor(maybeKey);
+        if (dead) {
+            RemoveEntryFromGCThread(i);
+        }
+    }
 }
 }  // namespace panda::ecmascript

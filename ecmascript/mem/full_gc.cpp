@@ -252,11 +252,11 @@ void FullGC::UpdateRecordJSWeakMap(uint32_t threadId)
         }
         JSWeakMap *weakMap = JSWeakMap::Cast(obj);
         JSThread *thread = heap_->GetJSThread();
-        JSTaggedValue maybeMap = weakMap->GetLinkedMap(thread);
+        JSTaggedValue maybeMap = weakMap->GetWeakLinkedMap(thread);
         if (maybeMap.IsUndefined()) {
             continue;
         }
-        LinkedHashMap *map = LinkedHashMap::Cast(maybeMap.GetTaggedObject());
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(maybeMap.GetTaggedObject());
         map->ClearAllDeadEntries(thread, visitor);
     }
 }

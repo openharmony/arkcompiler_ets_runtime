@@ -517,6 +517,7 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:
             case JSType::LEXICAL_ENV:
+            case JSType::WEAK_LINKED_HASH_MAP:
             case JSType::SFUNCTION_ENV:
             case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO:

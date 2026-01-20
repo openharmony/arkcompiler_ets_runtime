@@ -1313,6 +1313,11 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
+    <target name="JS_WeakLinkHashMap_Test">
+        <preparer>
+            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
+        </preparer>
+    </target>
     <target name="JS_LinkNode_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
@@ -1781,6 +1786,7 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/type_enums.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/type_range.json -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/vtable.json -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/metadata/weak_linked_hash_map.json -> /data/test" src="out"/>
         </preparer>
     </target>
     <target name="HeapSnapShotTest">

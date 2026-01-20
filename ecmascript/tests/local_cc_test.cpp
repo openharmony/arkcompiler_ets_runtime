@@ -352,8 +352,8 @@ HWTEST_F_L0(LocalCCTest, UpdateRecordJSWeakMapTest)
     JSHandle<JSWeakMap> weakMap =
         JSHandle<JSWeakMap>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor),
                                                                     constructor));
-    JSHandle<LinkedHashMap> hashMap = LinkedHashMap::Create(thread);
-    weakMap->SetLinkedMap(thread, hashMap);
+    JSHandle<WeakLinkedHashMap> hashMap = WeakLinkedHashMap::Create(thread);
+    weakMap->SetWeakLinkedMap(thread, hashMap);
     {
         EcmaHandleScope scope(thread);
         JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(AllocateWithoutGC(OBJ_SIZE));

@@ -961,8 +961,8 @@ HWTEST_F_L0(JSNApiTests, WeakMapRef_GetSize_GetTotalElements_GetKey_GetValue)
     JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakMapFunction();
     JSHandle<JSWeakMap> weakMap =
         JSHandle<JSWeakMap>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashMap> hashMap = LinkedHashMap::Create(thread);
-    weakMap->SetLinkedMap(thread, hashMap);
+    JSHandle<WeakLinkedHashMap> hashMap = WeakLinkedHashMap::Create(thread);
+    weakMap->SetWeakLinkedMap(thread, hashMap);
     JSHandle<JSTaggedValue> weakMapTag = JSHandle<JSTaggedValue>::Cast(weakMap);
 
     Local<WeakMapRef> map = JSNApiHelper::ToLocal<WeakMapRef>(weakMapTag);

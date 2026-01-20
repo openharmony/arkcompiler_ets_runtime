@@ -226,11 +226,11 @@ void SweepGC::UpdateRecordJSWeakMap(uint32_t threadId)
             break;
         }
         JSWeakMap *weakMap = JSWeakMap::Cast(obj);
-        JSTaggedValue maybeMap = weakMap->GetLinkedMap(thread);
+        JSTaggedValue maybeMap = weakMap->GetWeakLinkedMap(thread);
         if (maybeMap.IsUndefined()) {
             continue;
         }
-        LinkedHashMap *map = LinkedHashMap::Cast(maybeMap.GetTaggedObject());
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(maybeMap.GetTaggedObject());
         map->ClearAllDeadEntries(thread, visitor);
     }
 }

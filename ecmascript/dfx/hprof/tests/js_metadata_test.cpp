@@ -414,7 +414,8 @@ public:
             {JSType::FREE_OBJECT_WITH_ONE_FIELD, {"FREE_OBJECT_WITH_ONE_FIELD"}},
             {JSType::FREE_OBJECT_WITH_NONE_FIELD, {"FREE_OBJECT_WITH_NONE_FIELD"}},
             {JSType::FREE_OBJECT_WITH_TWO_FIELD, {"FREE_OBJECT_WITH_TWO_FIELD"}},
-            {JSType::VTABLE, {"VTABLE"}}
+            {JSType::VTABLE, {"VTABLE"}},
+            {JSType::WEAK_LINKED_HASH_MAP, {"WEAK_LINKED_HASH_MAP"}}
         };
         // { typeName: [all fields' start offset of this type in the same order as declared in .h files + endOffset] }
         // endOffset: LAST_OFFSET - (start offset of the first field of this type)
@@ -1041,7 +1042,8 @@ public:
                 TransWithProtoHandler::SIZE - TransWithProtoHandler::HANDLER_INFO_OFFSET}},
             {JSType::TREE_STRING, {TreeString::LEFT_OFFSET, TreeString::RIGHT_OFFSET,
                                        TreeString::SIZE - TreeString::LEFT_OFFSET}},
-            {JSType::VTABLE, {TaggedArray::LAST_OFFSET - TaggedArray::LENGTH_OFFSET}}
+            {JSType::VTABLE, {TaggedArray::LAST_OFFSET - TaggedArray::LENGTH_OFFSET}},
+            {JSType::WEAK_LINKED_HASH_MAP, {TaggedArray::SIZE - TaggedArray::SIZE}}
         };
         // { typeName: [all parents of this type]}
         parentsTable_ = {
@@ -1259,7 +1261,8 @@ public:
             {JSType::TRANSITION_HANDLER, {"TAGGED_OBJECT"}},
             {JSType::TRANS_WITH_PROTO_HANDLER, {"TAGGED_OBJECT"}},
             {JSType::TREE_STRING, {"ECMA_STRING"}},
-            {JSType::VTABLE, {"TAGGED_OBJECT"}}
+            {JSType::VTABLE, {"TAGGED_OBJECT"}},
+            {JSType::WEAK_LINKED_HASH_MAP, {"TAGGED_ARRAY"}}
         };
         // { typeName: [size of all fields' in the same order as declared in .h files]}
         fieldSizeTable_ = {
@@ -1783,7 +1786,8 @@ public:
                 TransWithProtoHandler::SIZE - TransWithProtoHandler::PROTO_CELL_OFFSET}},
             {JSType::TREE_STRING, {TreeString::RIGHT_OFFSET - TreeString::LEFT_OFFSET,
                                    TreeString::SIZE - TreeString::RIGHT_OFFSET}},
-            {JSType::VTABLE, {}}
+            {JSType::VTABLE, {}},
+            {JSType::WEAK_LINKED_HASH_MAP, {}}
         };
     }
 
@@ -4627,6 +4631,17 @@ HWTEST_F_L0(JSMetadataTest, TestVtableMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::VTABLE, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestWeakLinkedHashMapMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"weak_linked_hash_map.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::WEAK_LINKED_HASH_MAP, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestDictionaryLayoutMetadata)

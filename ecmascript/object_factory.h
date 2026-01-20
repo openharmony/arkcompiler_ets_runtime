@@ -57,6 +57,7 @@ class GlobalEnvConstants;
 class AccessorData;
 class JSGlobalObject;
 class LexicalEnv;
+class WeakLinkedHashMap;
 class SFunctionEnv;
 class SendableEnv;
 class JSDate;
@@ -321,6 +322,8 @@ public:
 
     // get JSHClass for Ecma ClassLinker
     JSHandle<LexicalEnv> NewLexicalEnv(int numSlots);
+
+    JSHandle<WeakLinkedHashMap> NewWeakLinkedHashMap(int numSlots);
 
     inline LexicalEnv *InlineNewLexicalEnv(int numSlots);
 
