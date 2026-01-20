@@ -19,6 +19,7 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -91,6 +92,7 @@ public:
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
     static bool IsEnableStaticCompiler();
 #endif
+    virtual bool Check(const std::unordered_map<std::string, std::string> &argsMap) = 0;
 };
 
 class AOTArgsParser final : public AOTArgsParserBase {
@@ -100,6 +102,7 @@ public:
 
     void AddExpandArgs(std::vector<std::string> &argVector, int32_t thermalLevel);
 
+    bool Check(const std::unordered_map<std::string, std::string> &argsMap) override;
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
     void SetAnFileMaxSizeBySysParam(HapArgs &hapArgs);
     void SetEnableCodeCommentBySysParam(HapArgs &hapArgs);
@@ -119,6 +122,8 @@ public:
     bool ParseProfilePath(std::string &pkgInfo, std::string &profilePath);
 
     bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo);
+
+    bool Check(const std::unordered_map<std::string, std::string> &argsMap) override;
 
     std::string ParseBlackListMethods(const std::string &pkgInfo, const std::string &moduleName);
     std::string ProcessBlackListForBundleAndModule(const nlohmann::json &jsonObject,
@@ -144,6 +149,8 @@ public:
 
     std::string ParseBlackListMethods(const std::string &bundleName);
     bool CheckBundleNameAndMethodList(const nlohmann::json &item, const std::string &bundleName);
+
+    bool Check(const std::unordered_map<std::string, std::string> &argsMap) override;
 };
 
 class AOTArgsParserFactory {
