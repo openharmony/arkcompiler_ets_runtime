@@ -230,10 +230,10 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException3)
     BuiltinsPromiseJob::DynamicImportJob(ecmaRuntimeCallInfo);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<JSTaggedValue> result(thread, jsPromise->GetPromiseResult(thread));
-    EXPECT_EQ(result->IsJSProxy(), true);
-    JSHandle<JSTaggedValue> requestPath(factory->NewFromASCII("requestPath"));
-    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSTaggedValue::GetProperty(thread, result, requestPath).GetValue(),
-                                       specifier), true);
+    EXPECT_TRUE(result->IsJSError());
+    JSHandle<EcmaString> message = JSTaggedValue::ToString(thread, result);
+    JSHandle<EcmaString> expected = factory->NewFromASCII("ReferenceError: resolve absolute path fail");
+    ASSERT_EQ(EcmaStringAccessor::Compare(instance, message, expected), 0);
 }
 
 }
