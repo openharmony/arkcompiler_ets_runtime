@@ -27,6 +27,15 @@ let boolTrue2:any = true;
 let undefine1:any = undefined;
 let undefine2:any = undefined;
 
+let bigInt1:any = 111111111111;
+let bigInt2:any = 111111111112;
+let bigInt3:any = 111111111111;
+
+let double1:any = 1.0;
+let double2:any = 1.0;
+let double3:any = 1.2;
+
+
 print(num1 === num2);
 
 print(str1 === str2);
@@ -40,3 +49,25 @@ print(num1 === str1);
 print(num1 === boolTrue1);
 
 print(str1 === boolTrue1);
+
+print(bigInt1 === bigInt2);
+
+print(bigInt1 === bigInt3);
+
+print(double1 === double2);
+
+print(double1 === double3);
+
+print(double1 === num1);
+
+print(double3 === num1);
+
+print(NaN === NaN);
+
+print(undefined == NaN);
+
+print(undefined == undefined);
+
+print(undefined == null);
+
+print(null == null);

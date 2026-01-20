@@ -7395,6 +7395,310 @@ GateRef StubBuilder::StringCompare(GateRef glue, GateRef left, GateRef right)
     return ret;
 }
 
+#if ENABLE_LATEST_OPTIMIZATION
+GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+
+    Label leftNotEqualRight(env);
+    Label leftIsDoubleSame(env);
+    Label leftIsDoubleCheck(env);
+    Label leftIsNotDouble(env);
+    Label leftIsInt(env);
+
+    BRANCH(Equal(left, right), &leftIsDoubleSame, &leftNotEqualRight);
+
+    // When left == right: if left is Double, check if NaN; otherwise return true
+    Bind(&leftIsDoubleSame);
+    {
+        Label leftIsDouble(env);
+        Label leftIsNotDouble(env);
+        BRANCH(TaggedIsDouble(left), &leftIsDouble, &leftIsNotDouble);
+        Bind(&leftIsDouble);
+        {
+            // If NaN, result stays false
+            // If not NaN, return true
+            Label isNotNaN(env);
+            BRANCH_UNLIKELY(DoubleIsNAN(GetDoubleOfTDouble(left)), &exit, &isNotNaN);
+            Bind(&isNotNaN);
+            {
+                // Not NaN case: return true
+                callback.ProfileOpType(TaggedInt(PGOSampleType::DoubleType()));
+                result = True();
+                Jump(&exit);
+            }
+        }
+        Bind(&leftIsNotDouble);
+        {
+            if (!callback.IsEmpty()) {
+                Label pgoLeftIsInt(env);
+                Label leftIsNotInt(env);
+                Label leftIsString(env);
+                Label leftIsNotString(env);
+                Label setResult(env);
+                BRANCH(TaggedIsInt(left), &pgoLeftIsInt, &leftIsNotInt);
+                Bind(&pgoLeftIsInt);
+                {
+                    callback.ProfileOpType(TaggedInt(PGOSampleType::IntType()));
+                    Jump(&setResult);
+                }
+                Bind(&leftIsNotInt);
+                {
+                    BRANCH(TaggedIsString(glue, left), &leftIsString, &leftIsNotString);
+                    Bind(&leftIsString);
+                    {
+                        Label leftIsInternString(env);
+                        Label leftIsNotInternString(env);
+                        BRANCH(IsInternalString(left), &leftIsInternString, &leftIsNotInternString);
+                        Bind(&leftIsInternString);
+                        {
+                            callback.ProfileOpType(TaggedInt(PGOSampleType::InternStringType()));
+                            Jump(&setResult);
+                        }
+                        Bind(&leftIsNotInternString);
+                        {
+                            callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
+                            Jump(&setResult);
+                        }
+                    }
+                    Bind(&leftIsNotString);
+                    {
+                        Label leftIsBigInt(env);
+                        Label leftIsNotBigInt(env);
+                        BRANCH(TaggedIsBigInt(glue, left), &leftIsBigInt, &leftIsNotBigInt);
+                        Bind(&leftIsBigInt);
+                        {
+                            callback.ProfileOpType(TaggedInt(PGOSampleType::BigIntType()));
+                            Jump(&setResult);
+                        }
+                        Bind(&leftIsNotBigInt);
+                        {
+                            Label leftIsUndefined(env);
+                            Label leftIsNotUndefined(env);
+                            BRANCH(TaggedIsUndefined(left), &leftIsUndefined, &leftIsNotUndefined);
+                            Bind(&leftIsUndefined);
+                            {
+                                callback.ProfileOpType(TaggedInt(PGOSampleType::UndefinedOrNullType()));
+                                Jump(&setResult);
+                            }
+                            Bind(&leftIsNotUndefined);
+                            {
+                                callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                                Jump(&setResult);
+                            }
+                        }
+                    }
+                }
+                Bind(&setResult);
+                result = True();
+                Jump(&exit);
+            } else {
+                result = True();
+                Jump(&exit);
+            }
+        }
+    }
+
+    Bind(&leftNotEqualRight);
+    {
+        BRANCH(TaggedIsInt(left), &leftIsInt, &leftIsDoubleCheck);
+    }
+
+    // === left is HeapObject (not same or NaN case) ===
+    Bind(&leftIsDoubleCheck);
+    {
+        Label leftIsDouble(env);
+        BRANCH(TaggedIsDouble(left), &leftIsDouble, &leftIsNotDouble);
+        Bind(&leftIsDouble);
+        {
+            Label rightIsInt(env);
+            Label rightIsNotInt(env);
+            Label rightIsNotDouble(env);
+
+            BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsNotInt);
+
+            Bind(&rightIsInt);
+            {
+                // if rhs is int, return DoubleEqual(lhs, rhs)
+                callback.ProfileOpType(TaggedInt(PGOSampleType::NumberType()));
+                GateRef leftDouble = GetDoubleOfTDouble(left);
+                GateRef rightInt = ChangeInt32ToFloat64(GetInt32OfTInt(right));
+                result = DoubleEqual(leftDouble, rightInt);
+                Jump(&exit);
+            }
+
+            Bind(&rightIsNotInt);
+            {
+                // both double
+                Label rightIsDouble(env);
+                Label rightIsNotDouble(env);
+                BRANCH(TaggedIsDouble(right), &rightIsDouble, &rightIsNotDouble);
+                Bind(&rightIsDouble);
+                {
+                    callback.ProfileOpType(TaggedInt(PGOSampleType::DoubleType()));
+                    GateRef leftDouble = GetDoubleOfTDouble(left);
+                    GateRef rightDouble = GetDoubleOfTDouble(right);
+                    result = DoubleEqual(leftDouble, rightDouble);
+                    Jump(&exit);
+                }
+                Bind(&rightIsNotDouble);
+                {
+                    // else return false
+                    callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+
+    // === left is HeapObject but not Double ===
+    Bind(&leftIsNotDouble);
+    {
+        Label rightIsInt(env);
+        Label rightIsNotInt(env);
+
+        BRANCH_UNLIKELY(TaggedIsInt(right), &rightIsInt, &rightIsNotInt);
+
+        Bind(&rightIsInt);
+        {
+            callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+            Jump(&exit);
+        }
+
+        Bind(&rightIsNotInt);
+        {
+            // Both are HeapObjects (not numbers)
+            Label leftIsString(env);
+            Label leftIsNotString(env);
+            BRANCH(TaggedIsString(glue, left), &leftIsString, &leftIsNotString);
+
+            Bind(&leftIsString);
+            {
+                // lhs is String
+                Label rightIsString(env);
+                Label rightIsNotString(env);
+                BRANCH_LIKELY(TaggedIsString(glue, right), &rightIsString, &rightIsNotString);
+                Bind(&rightIsString);
+                {
+                    // if rhs is String, return StringEqual(lhs, rhs)
+                    Label bothInternString(env);
+                    Label notBothInternString(env);
+                    BRANCH(LogicAndBuilder(env).And(IsInternalString(left)).And(IsInternalString(right)).Done(),
+                           &bothInternString, &notBothInternString);
+                    Bind(&bothInternString);
+                    {
+                        // Both left and right are internal strings, and left != right (checked earlier)
+                        // So they cannot be equal
+                        callback.ProfileOpType(TaggedInt(PGOSampleType::InternStringType()));
+                        result = False();
+                        Jump(&exit);
+                    }
+                    Bind(&notBothInternString);
+                    {
+                        callback.ProfileOpType(TaggedInt(PGOSampleType::StringType()));
+                        result = FastStringEqual(glue, left, right);
+                        Jump(&exit);
+                    }
+                }
+                Bind(&rightIsNotString);
+                {
+                    callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                    Jump(&exit);
+                }
+            }
+
+            Bind(&leftIsNotString);
+            {
+                Label leftIsBigInt(env);
+                Label leftIsNotBigInt(env);
+                BRANCH_UNLIKELY(TaggedIsBigInt(glue, left), &leftIsBigInt, &leftIsNotBigInt);
+                Bind(&leftIsBigInt);
+                {
+                    Label rightIsBigInt(env);
+                    Label rightIsNotBigInt(env);
+                    BRANCH_LIKELY(TaggedIsBigInt(glue, right), &rightIsBigInt, &rightIsNotBigInt);
+                    Bind(&rightIsBigInt);
+                    {
+                        callback.ProfileOpType(TaggedInt(PGOSampleType::BigIntType()));
+                        result = CallNGCRuntime(glue, RTSTUB_ID(BigIntEquals), { left, right });
+                        Jump(&exit);
+                    }
+                    Bind(&rightIsNotBigInt);
+                    {
+                        callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                        Jump(&exit);
+                    }
+                }
+                Bind(&leftIsNotBigInt);
+                {
+                    if (!callback.IsEmpty()) {
+                        Label updateProfileOpTypeWithAny(env);
+                        Label updateAny(env);
+                        BRANCH(TaggedIsUndefined(left), &updateProfileOpTypeWithAny, &updateAny);
+                        Bind(&updateProfileOpTypeWithAny);
+                        {
+                            callback.ProfileOpType(TaggedInt(PGOSampleType::UndefinedOrNullType()));
+                            Jump(&exit);
+                        }
+                        Bind(&updateAny);
+                        {
+                            callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                            Jump(&exit);
+                        }
+                    } else {
+                        Jump(&exit);
+                    }
+                }
+            }
+        }
+    }
+
+    // === left is Int ===
+    Bind(&leftIsInt);
+    {
+        Label rightIsInt(env);
+        Label rightIsNotInt(env);
+
+        BRANCH(TaggedIsInt(right), &rightIsInt, &rightIsNotInt);
+
+        Bind(&rightIsInt);
+        {
+            callback.ProfileOpType(TaggedInt(PGOSampleType::IntType()));
+            Jump(&exit);
+        }
+
+        Bind(&rightIsNotInt);
+        {
+            Label rightIsDouble(env);
+            Label rightIsNotDouble(env);
+            BRANCH(TaggedIsDouble(right), &rightIsDouble, &rightIsNotDouble);
+            Bind(&rightIsDouble);
+            {
+                callback.ProfileOpType(TaggedInt(PGOSampleType::NumberType()));
+                GateRef leftInt = ChangeInt32ToFloat64(GetInt32OfTInt(left));
+                GateRef rightDouble = GetDoubleOfTDouble(right);
+                result = DoubleEqual(leftInt, rightDouble);
+                Jump(&exit);
+            }
+            Bind(&rightIsNotDouble);
+            {
+                callback.ProfileOpType(TaggedInt(PGOSampleType::AnyType()));
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+#else
+
 GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
 {
     auto env = GetEnvironment();
@@ -7553,6 +7857,7 @@ GateRef StubBuilder::FastStrictEqual(GateRef glue, GateRef left, GateRef right, 
     env->SubCfgExit();
     return ret;
 }
+#endif
 
 GateRef StubBuilder::FastEqual(GateRef glue, GateRef left, GateRef right, ProfileOperation callback)
 {
