@@ -547,9 +547,16 @@
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THROW_UNCATCHABLE_ERROR(thread, type, message)                                                  \
     do {                                                                                                \
+        JSHandle<JSObject> _error;                                                                      \
         EcmaVM *_ecmaVm = (thread)->GetEcmaVM();                                                        \
-        ObjectFactory *_factory = _ecmaVm->GetFactory();                                                \
-        JSHandle<JSObject> _error = _factory->GetJSError(type, message, StackCheck::NO);                \
+        if ((thread)->IsThrowingOOMError()) {                                                           \
+            JSHandle<GlobalEnv> env = _ecmaVm->GetGlobalEnv();                                          \
+            _error = JSHandle<JSObject>::Cast(env->GetOOMErrorObject());                                \
+        } else {                                                                                        \
+            (thread)->SetIsThrowingOOMError(true);                                                      \
+            ObjectFactory *_factory = _ecmaVm->GetFactory();                                            \
+            _error = _factory->GetJSError(type, message, StackCheck::NO);                               \
+        }                                                                                               \
         (thread)->SetException(_error.GetTaggedValue());                                                \
         _ecmaVm->HandleUncatchableError();                                                              \
     } while (false)
