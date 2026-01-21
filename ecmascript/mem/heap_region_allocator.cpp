@@ -17,6 +17,8 @@
 
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/runtime.h"
+#include "ecmascript/runtime_lock.h"
 
 namespace panda::ecmascript {
 
@@ -72,7 +74,17 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
             }
             if (thread != nullptr && thread->GetEcmaVM()->IsInitialized()) {
                 Heap *localHeap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-                localHeap->DumpHeapSnapshotBeforeOOM();
+                // Ensure that Dump is executed only once across all threads.
+                // Other threads will block here until the first thread completes the dump.
+                {
+                    static bool needDumpHeapSnapshot = true;
+                    static Mutex dumpMutex;
+                    RuntimeLockHolder lock(thread, dumpMutex);
+                    if (needDumpHeapSnapshot) {
+                        localHeap->DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+                        needDumpHeapSnapshot = false;
+                    }
+                }
                 heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
                     "HeapRegionAllocator::AllocateAlignedRegion", false);
             }

@@ -1913,7 +1913,7 @@ void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]]
 #endif
 }
 
-void Heap::DumpHeapSnapshotBeforeOOM()
+void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
@@ -1949,6 +1949,7 @@ void Heap::DumpHeapSnapshotBeforeOOM()
     dumpOption.isSync = true;
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
+    dumpOption.isProcDump = isProcDump;
     heapProfile->DumpHeapSnapshotForOOM(dumpOption);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
