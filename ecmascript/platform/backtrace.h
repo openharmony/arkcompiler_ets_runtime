@@ -26,5 +26,6 @@ static const int MAX_HYBRID_STACK_SIZE = 256;
 void Backtrace(std::ostringstream &stack, bool enableCache = false);
 int BacktraceHybrid(void** pcArray, uint32_t maxSize = MAX_HYBRID_STACK_SIZE);
 std::string SymbolicAddress(const void* const *pc, int size, const EcmaVM *vm = nullptr);
+void UpdateStubFileRange(uint64_t stubFileStartAddr, uint64_t stubFileSize);
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_BACKTRACE_H

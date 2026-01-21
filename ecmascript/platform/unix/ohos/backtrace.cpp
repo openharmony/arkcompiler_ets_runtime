@@ -199,4 +199,11 @@ __attribute__((optnone)) int BacktraceHybrid(void** pcArray, uint32_t maxSize)
 #endif
     return static_cast<int>(size);
 }
+
+void UpdateStubFileRange(uint64_t stubFileStartAddr, uint64_t stubFileSize)
+{
+#if defined(ENABLE_BACKTRACE_LOCAL)
+    OHOS::HiviewDFX::FpBacktrace::UpdateArkStackRange(stubFileStartAddr, stubFileStartAddr + stubFileSize);
+#endif
+}
 } // namespace panda::ecmascript

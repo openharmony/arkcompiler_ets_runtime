@@ -205,6 +205,16 @@ public:
 
     virtual void Destroy();
 
+    uint64_t GetStubFileStart()
+    {
+        return reinterpret_cast<uint64_t>(fileMapMem_.GetMem());
+    }
+
+    uint64_t GetStubFileSize()
+    {
+        return static_cast<uint64_t>(fileMapMem_.GetSize());
+    }
+
 protected:
     ExecutedMemoryAllocator::ExeMem &GetStubsMem()
     {

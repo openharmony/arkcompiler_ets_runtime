@@ -679,4 +679,16 @@ const Heap *AOTFileManager::GetHeap()
     }
     return vm_->GetHeap();
 }
+
+uint64_t AOTFileManager::GetStubFileStart()
+{
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    return anFileDataManager->GetStubFileStart();
+}
+
+uint64_t AOTFileManager::GetStubFileSize()
+{
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    return anFileDataManager->GetStubFileSize();
+}
 }  // namespace panda::ecmascript
