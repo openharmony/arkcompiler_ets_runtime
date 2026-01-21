@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -184,9 +184,11 @@ HWTEST_F_L0(PGOInfoTest, SetHeaderNullTest)
 {
     auto pgoInfo = std::make_shared<PGOInfo>(5);
     ASSERT_NE(pgoInfo, nullptr);
+    PGOProfilerHeader* headerPtrBefore = pgoInfo->GetHeaderPtr();
+    ASSERT_NE(headerPtrBefore, nullptr);
     pgoInfo->SetHeader(nullptr);
-    PGOProfilerHeader& header = pgoInfo->GetHeader();
-    ASSERT_NE(&header, nullptr);
+    PGOProfilerHeader* headerPtrAfter = pgoInfo->GetHeaderPtr();
+    ASSERT_EQ(headerPtrAfter, nullptr);
 }
 
 HWTEST_F_L0(PGOInfoTest, GetAbcFilePoolPtrTest)
