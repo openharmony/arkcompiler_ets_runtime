@@ -1028,6 +1028,7 @@ void JSThread::SwitchAllStub(bool isStwCopy)
     SwitchStwCopyBCStubs(isStwCopy);
     SwitchStwCopyCommonStubs(isStwCopy);
     SwitchStwCopyBuiltinsStubs(isStwCopy);
+    glueData_.switchToStwStub_ = isStwCopy;
 }
 
 void JSThread::TerminateExecution()

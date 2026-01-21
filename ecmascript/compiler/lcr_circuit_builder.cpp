@@ -227,6 +227,13 @@ GateRef CircuitBuilder::NeedSkipReadBarrier(GateRef glue)
     return ret;
 }
 
+GateRef CircuitBuilder::NotSwitchToStwStub(GateRef glue)
+{
+    GateRef hasSwitchedToStwStub = LoadWithoutBarrier(VariableType::BOOL(), glue,
+        IntPtr(JSThread::GlueData::GetHasSwitchedToStwStubOffset(false)));
+    return BoolNot(hasSwitchedToStwStub);
+}
+
 GateRef CircuitBuilder::DoubleTrunc(GateRef glue, GateRef gate, GateRef value, const char* comment)
 {
     if (GetCompilationConfig()->IsAArch64()) {

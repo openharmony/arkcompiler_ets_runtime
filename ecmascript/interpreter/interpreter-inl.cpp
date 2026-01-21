@@ -783,7 +783,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(JSHandle<JSTaggedValue>(thread, context->GetMethod(thread)));
     ASSERT(context->GetLexicalEnv(thread).IsJSGlobalEnv() || context->GetLexicalEnv(thread).IsLexicalEnv() ||
            context->GetLexicalEnv(thread).IsSFunctionEnv());
-    if (func->IsCompiledCode()) {
+    if (func->IsCompiledCode() && thread->HasSwitchedToStwStub()) {
         return GeneratorReEnterAot(thread, context);
     }
 

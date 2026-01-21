@@ -729,7 +729,7 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 
     JSTaggedValue resultValue;
     info->SetThis(obj.GetTaggedValue());
-    if (func->IsCompiledCode()) {
+    if (func->IsCompiledCode() && thread->HasSwitchedToStwStub()) {
         resultValue = InvokeOptimizedEntrypoint(thread, func, info);
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
