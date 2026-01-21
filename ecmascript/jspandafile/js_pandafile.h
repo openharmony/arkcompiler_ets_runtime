@@ -86,6 +86,7 @@ public:
     static constexpr std::string_view HAS_TOP_LEVEL_AWAIT = "hasTopLevelAwait";
     static constexpr std::string_view LAZY_IMPORT = "moduleRequestPhaseIdx";
     static constexpr std::string_view PACKAGE_NAME = "pkgName@";
+    static constexpr std::string_view SCOPE_NAMES = "scopeNames";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
     static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";

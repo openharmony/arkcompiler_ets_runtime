@@ -211,9 +211,17 @@ void JSPandaFile::InitializeMergedPF()
                        fieldName.substr(0, PACKAGE_NAME_LEN) == PACKAGE_NAME) {
                 std::string_view packageSuffix = fieldName.substr(PACKAGE_NAME_LEN);
                 info->npmPackageName = CString(packageSuffix);
+#if ENABLE_LATEST_OPTIMIZATION && ENABLE_MEMORY_OPTIMIZATION
+            // SCOPE_NAMES is used for AOP during compilation phase only,
+            // not involved in runtime execution, so skip it.
+            } else if (SCOPE_NAMES != fieldName) {
+                npmEntries_.emplace(recordName, fieldName);
+            }
+#else
             } else {
                 npmEntries_.emplace(recordName, fieldName);
             }
+#endif
         });
         if (hasCjsFiled || hasJsonFiled) {
             jsRecordInfo_.emplace(recordName, info);
