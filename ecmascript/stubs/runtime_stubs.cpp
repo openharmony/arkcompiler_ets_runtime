@@ -4233,7 +4233,9 @@ void RuntimeStubs::SortTypedArray(uintptr_t argGlue, JSTypedArray *typedArray)
     if (len == 0) {
         return;
     }
-    void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer);
+    const uint32_t offset = typedArray->GetByteOffset();
+    void *pointer = offset + static_cast<int8_t*>(
+        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer));
     switch (jsType) {
         case JSType::JS_INT8_ARRAY:
             std::sort(static_cast<int8_t*>(pointer), static_cast<int8_t*>(pointer) + len);
@@ -4273,7 +4275,9 @@ void RuntimeStubs::ReverseTypedArray(uintptr_t argGlue, JSTypedArray *typedArray
     JSThread *thread = JSThread::GlueToJSThread(argGlue);
     JSTaggedValue buffer = typedArray->GetViewedArrayBufferOrByteArray(thread);
     const uint32_t len = typedArray->GetArrayLength();
-    void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer);
+    const uint32_t offset = typedArray->GetByteOffset();
+    void *pointer = offset + static_cast<int8_t*>(
+        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer));
     switch (jsType) {
         case JSType::JS_INT8_ARRAY:
             std::reverse(static_cast<int8_t*>(pointer), static_cast<int8_t*>(pointer) + len);
