@@ -429,11 +429,14 @@ bool AOTArgsParserBase::ParseBlackListJson(nlohmann::json &jsonObject)
         LOG_SA(ERROR) << "read json error";
         return false;
     }
-    if (!nlohmann::json::accept(inFile)) {
+    std::stringstream buffer;
+    buffer << inFile.rdbuf();
+    std::string fileContent = buffer.str();
+    if (!nlohmann::json::accept(fileContent)) {
         LOG_SA(ERROR) << "invalid json when parse profile path";
         return false;
     }
-    jsonObject = nlohmann::json::parse(inFile);
+    jsonObject = nlohmann::json::parse(fileContent);
     if (jsonObject.is_discarded()) {
         LOG_SA(ERROR) << "json discarded error";
         inFile.close();
