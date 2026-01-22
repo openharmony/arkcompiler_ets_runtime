@@ -57,7 +57,7 @@ bool SignalManager::InitSigchainAction(
 
 volatile uintptr_t &SignalHandlingScope::GetHandlingSignalBits(int idx)
 {
-    thread_local static volatile uintptr_t signalHandlingKey[SIGNAL_BITS_COUNT]{};
+    static volatile uintptr_t signalHandlingKey[SIGNAL_BITS_COUNT]{};
     return signalHandlingKey[idx];
 }
 
