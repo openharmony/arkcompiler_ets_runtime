@@ -729,14 +729,15 @@ void BaseDeserializer::AllocateToDifferentSpaces()
     if (g_isEnableCMCGC) {
         AllocateToDifferentCMCSpaces();
     } else {
+        // Check whether it's needed to trigger old gc
+        size_t oldOrHugeSize = data_->GetOldSpaceSize() + data_->GetHugeSpaceSize();
+        if (heap_->OldSpaceExceedCapacity(oldOrHugeSize)) {
+            heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+        }
         if (!AllocateToDifferentLocalSpaces(true)) {
             // If allocate local obj fail, trigger old gc and retry again
             heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
             AllocateToDifferentLocalSpaces(false);
-        }
-        // Check huge obj size and decide whether it's needed to trigger old gc
-        if (heap_->OldSpaceExceedCapacity(data_->GetHugeSpaceSize())) {
-            heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
         }
         AllocateToDifferentSharedSpaces();
     }
