@@ -31,7 +31,8 @@ bool IdleGCTrigger::NotifyLooperIdleStart([[maybe_unused]] int64_t timestamp, [[
     if (heap_->GetJSThread()->IsMarkFinished() &&
         heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
         thread_->IsReadyToSharedConcurrentMark()) {
-        return PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
+        PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
+        return false;
     }
     if (!IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK) ||
         !IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK) ||
