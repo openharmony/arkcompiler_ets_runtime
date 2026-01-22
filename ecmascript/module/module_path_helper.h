@@ -218,9 +218,6 @@ public:
     static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
     static std::pair<std::string, std::string> ResolveOhmUrlStartWithBundle(const std::string &ohmUrl);
     static std::pair<std::string, std::string> ResolveOhmUrlStartWithNormalized(const std::string &ohmUrl);
-    static bool CheckExportsWithOhmurl(EcmaVM *vm, const CString &baseFileName, const CString &currentOhmurl,
-                                       const CString &importOhmurl);
-    static CString GetPkgNameWithNormalizedOhmurl(const CString &ohmurl);
 
     inline static std::pair<CString, CString> ResolvePath(const char *path)
     {

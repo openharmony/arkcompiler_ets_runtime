@@ -1980,10 +1980,6 @@ public:
         std::vector<std::vector<std::string>>> &list);
     static void UpdatePkgContextInfoList(EcmaVM *vm,
         const std::map<std::string, std::vector<std::vector<std::string>>> &list);
-    static void SetPkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
-        std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap);
-    static void UpdatePkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
-        std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap);
     static void SetExecuteBufferMode(const EcmaVM *vm);
     // Stop preloading so task callback.
     static void SetStopPreLoadSoCallback(EcmaVM *vm, const StopPreLoadSoCallback &callback);
