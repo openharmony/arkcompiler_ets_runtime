@@ -786,13 +786,6 @@ void JSThread::SetInitialBuiltinHClass(
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     auto &entry = glueData_.builtinHClassEntries_.entries[index];
-    LOG_ECMA(DEBUG) << "JSThread::SetInitialBuiltinHClass: "
-                    << "Builtin = " << ToString(type)
-                    << ", builtinHClass = " << builtinHClass
-                    << ", instanceHClass = " << instanceHClass
-                    << ", prototypeHClass = " << prototypeHClass
-                    << ", prototypeOfPrototypeHClass = " << prototypeOfPrototypeHClass
-                    << ", extraHClass = " << extraHClass;
     entry.builtinHClass = builtinHClass;
     entry.instanceHClass = instanceHClass;
     entry.prototypeHClass = prototypeHClass;
