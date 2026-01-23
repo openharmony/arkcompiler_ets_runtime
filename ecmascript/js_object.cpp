@@ -1294,12 +1294,13 @@ OperationResult JSObject::GetProperty(JSThread *thread, const JSHandle<JSObject>
 }
 
 OperationResult JSObject::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                      const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
+                                      const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode,
+                                      SCheckMode concurChk)
 {
     ASSERT_PRINT(!(obj->IsUndefined() || obj->IsNull() || obj->IsHole()), "Obj is not a valid object");
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
     if (obj->IsJSSharedArray()) {
-        return JSSharedArray::GetProperty(thread, obj, key, sCheckMode);
+        return JSSharedArray::GetProperty(thread, obj, key, sCheckMode, concurChk);
     }
     ObjectOperator op(thread, obj, key);
     return OperationResult(thread, GetProperty(thread, &op), PropertyMetaData(op.IsFound()));

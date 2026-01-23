@@ -936,14 +936,15 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByName(JSThread *thread, JSTagg
 }
 
 JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                         SCheckMode sCheckMode)
+                                                         SCheckMode sCheckMode, SCheckMode concurChk)
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByValue);
     JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
     JSHandle<JSTaggedValue> keyHandler(thread, key);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByValue(thread, receiver, key);
     if (result.IsHole()) {
-        return JSTaggedValue::GetProperty(thread, receiverHandler, keyHandler, sCheckMode).GetValue().GetTaggedValue();
+        return JSTaggedValue::GetProperty(thread, receiverHandler, keyHandler, sCheckMode,
+                                          concurChk).GetValue().GetTaggedValue();
     }
     return result;
 }

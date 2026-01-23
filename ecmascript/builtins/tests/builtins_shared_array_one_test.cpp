@@ -96,8 +96,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, From)
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     std::vector<int> descVals{1, 2, 3, 4, 5};
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
@@ -171,7 +171,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Concat)
     JSHandle<JSTaggedValue> key7(thread, JSTaggedValue(5));
     EXPECT_EQ(
         JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle,
-                                   SCheckMode::SKIP).GetValue()->GetInt(), 6);
+                                   SCheckMode::SKIP, SCheckMode::SKIP).GetValue()->GetInt(), 6);
 
     JSObject::GetOwnProperty(thread, valueHandle, key7, descRes);
 }
@@ -184,8 +184,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Slice)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
     std::vector<int> descVals{1, 2, 3, 4, 5};
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
 
@@ -204,7 +204,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Slice)
     PropertyDescriptor descRes(thread);
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle,
-                                         SCheckMode::SKIP).GetValue()->GetInt(), 3);
+                                         SCheckMode::SKIP, SCheckMode::SKIP).GetValue()->GetInt(), 3);
     std::vector<int> vals{2, 3, 4};
     BuiltTestUtil::SharedArrayCheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
@@ -216,8 +216,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Splice)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
     std::vector<int> descVals{1, 2, 3, 4, 5};
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
 
@@ -234,13 +234,13 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Splice)
     JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
     ASSERT_TRUE(value.IsECMAObject());
     EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle,
-                                         SCheckMode::SKIP).GetValue()->GetInt(), 4);
+                                         SCheckMode::SKIP, SCheckMode::SKIP).GetValue()->GetInt(), 4);
 
     PropertyDescriptor descRes(thread);
     JSHandle<JSObject> valueHandle(thread, value);
     EXPECT_EQ(
         JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(valueHandle), lengthKeyHandle,
-                                   SCheckMode::SKIP).GetValue()->GetInt(), 2);
+                                   SCheckMode::SKIP, SCheckMode::SKIP).GetValue()->GetInt(), 2);
     JSObject::GetOwnProperty(thread, valueHandle, keys[0], descRes);
     ASSERT_EQ(descRes.GetValue().GetTaggedValue(), JSTaggedValue(2));
 }
@@ -253,8 +253,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Fill)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     std::vector<int> descVals{1, 2, 3, 4, 5};
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
@@ -287,7 +287,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Pop)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle,
-                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
+                                         SCheckMode::SKIP, SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -327,8 +327,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Push)
                         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
     PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, true, true);
@@ -352,13 +352,13 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Push)
     ASSERT_EQ(result.GetNumber(), 5);
 
     EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle,
-                                         SCheckMode::SKIP).GetValue()->GetInt(), 5);
+                                         SCheckMode::SKIP, SCheckMode::SKIP).GetValue()->GetInt(), 5);
     JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(3));
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key3, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 4);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key3, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 4);
     JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(4));
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 5);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 5);
 }
 
 HWTEST_F_L0(BuiltinsSharedArrayTest, DefineOwnProperty_Array)
@@ -381,8 +381,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Sort_Exception)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -402,8 +402,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Sort_Exception_1)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 1);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -424,8 +424,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Create1)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction());
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, array.GetTaggedValue(), 8);
@@ -448,8 +448,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Create2)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction());
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, array.GetTaggedValue(), 8);
@@ -472,10 +472,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, IsArray)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP)
-                  .GetValue()
-                  ->GetInt(),
-              0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
     ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
@@ -721,8 +719,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Shift)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     std::vector<int> descVals{1, 2, 3};
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
@@ -744,8 +742,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Sort)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     std::vector<int> descVals{3, 2, 1};
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
@@ -761,9 +759,12 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Sort)
     EXPECT_TRUE(result2.IsECMAObject());
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result2.GetRawData())));
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[0], SCheckMode::SKIP).GetValue()->GetInt(), 1);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[1], SCheckMode::SKIP).GetValue()->GetInt(), 2);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[2], SCheckMode::SKIP).GetValue()->GetInt(), 3);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[0], SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[1], SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 2);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[2], SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 3);
 }
 
 HWTEST_F_L0(BuiltinsSharedArrayTest, Unshift)
@@ -773,8 +774,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Unshift)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     std::vector<int> descVals{1, 2, 3};
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
@@ -791,14 +792,14 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Unshift)
 
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(static_cast<double>(5)).GetRawData());
 
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 5);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle,
+                                         SCheckMode::SKIP, SCheckMode::SKIP).GetValue()->GetInt(), 5);
     JSHandle<JSTaggedValue> key3(thread, JSTaggedValue(0));
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key3, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 4);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key3, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 4);
     JSHandle<JSTaggedValue> key4(thread, JSTaggedValue(1));
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, SCheckMode::SKIP) \
-        .GetValue()->GetInt(), 5);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), key4, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 5);
 }
 
 HWTEST_F_L0(BuiltinsSharedArrayTest, ToString)
@@ -809,7 +810,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ToString)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSTaggedValue> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP).GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
 
     JSHandle<EcmaString> str = thread->GetEcmaVM()->GetFactory()->NewFromASCII("2,3,4");
@@ -833,7 +835,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Includes_one)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSTaggedValue> obj(thread, arr);
     std::vector<int> descVals{2, 3, 4};
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP).GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
@@ -880,7 +883,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Includes_two)
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSTaggedValue> obj(thread, arr);
     std::vector<int> descVals{2, 3, 4};
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP).GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
 
     auto ecmaRuntimeCallInfo4 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
@@ -916,7 +920,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, At_ONE)
     EXPECT_TRUE(arr != nullptr);
     std::vector<int> descVals{2, 3, 4};
     JSHandle<JSTaggedValue> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP).GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
     
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
 
@@ -956,7 +961,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, At_TWO)
     EXPECT_TRUE(arr != nullptr);
     std::vector<int> descVals{2, 3, 4};
     JSHandle<JSTaggedValue> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP).GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
     
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
 
@@ -1021,7 +1027,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Join)
         .GetTaggedValue().GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSTaggedValue> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP).GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP,
+                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
 
     std::vector<int> descVals{2, 3, 4};
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);

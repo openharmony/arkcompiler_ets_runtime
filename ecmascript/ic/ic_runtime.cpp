@@ -227,7 +227,8 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
     // fixme(hzzhouzebin) Open IC for SharedArray later.
     if (receiver->IsJSSharedArray()) {
         icAccessor_.SetAsMega();
-        return JSSharedArray::GetProperty(thread_, receiver, key, SCheckMode::CHECK).GetValue().GetTaggedValue();
+        return JSSharedArray::GetProperty(thread_, receiver, key, SCheckMode::CHECK,
+                                          SCheckMode::CHECK).GetValue().GetTaggedValue();
     }
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));

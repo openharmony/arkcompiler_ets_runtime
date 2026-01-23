@@ -1554,6 +1554,64 @@ function subSendableArrayTest() {
     }
 }
 
+ function allApiTest() {
+    let array = new SendableArray<number>(1, 2, 3, 4);
+    array.__proto__["slice"]();
+    print(array.__proto__["at"](1));
+    const iterator = array.__proto__["entries"]();
+    for (const [key, value] of iterator) {
+        print("" + key + "," + value);
+    }
+    print(array.__proto__["fill"](1));
+    print(array.__proto__["filter"]((element: number) => element > 10));
+    print(array.__proto__["find"]((element: number) => element > 10));
+    print(array.__proto__["findIndex"]((element: number) => element > 13));
+    print(array.__proto__["forEach"]((element: number) => print(element)));
+    print(array.__proto__["includes"](1));
+    print(array.__proto__["indexOf"](1));
+    print(array.__proto__["join"]());
+    print(array.__proto__["keys"]());
+    print(array.__proto__["map"]<string>((x: number) => x + x));
+    print(array.__proto__["pop"]());
+    try {
+        array.__proto__["reduce"]((acc: number, currValue: number) => acc + currValue);
+    } catch {
+        print("__proto__ call reduce error");
+    }
+    try {
+        array.__proto__["shift"]();
+    } catch {
+        print("__proto__ call shift error");
+    }
+    print(array.__proto__["sort"]());
+    print(array.__proto__["toString"]());
+    print(array.__proto__["toLocaleString"]());
+    print(array.__proto__["unshift"]());
+    print(array.__proto__["values"]());
+    print(array.__proto__["shrinkTo"](2));
+    try {
+        array.__proto__["extendTo"](6, 0);
+    } catch {
+        print("__proto__ call extendTo error")
+    }
+
+    try {
+        array.__proto__["splice"](1, 0, 5, 7);
+    } catch {
+        print("__proto__ call splice error")
+    }
+    print(array.__proto__["every"]((element: number) => element > 10));
+    print(array.__proto__["some"]((element: number) => element > 10));
+    print(array.__proto__["lastIndexOf"]((element: number) => element > 10));
+    print(array.__proto__["copyWithin"](1));
+    print(array.__proto__["reduceRight"]((acc: number, currValue: number) => acc + currValue, undefined));
+    print(array.__proto__["reverse"]());
+    print(array.__proto__["findLast"]((element: number) => element > 10));
+    print(array.__proto__["findLastIndex"]((element: number) => element > 10));
+    print(array.__proto__["concat"](array));
+    print(array.__proto__["push"](1));
+}
+
 at()
 
 entries()
@@ -1643,3 +1701,4 @@ reverse();
 toStringTest();
 toLocaleStringTest();
 subSendableArrayTest();
+allApiTest();

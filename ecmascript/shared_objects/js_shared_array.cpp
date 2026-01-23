@@ -114,7 +114,7 @@ JSHandle<JSTaggedValue> JSSharedArray::ArrayCreate(JSThread *thread, JSTaggedNum
 
 // 9.4.2.3 ArraySpeciesCreate(originalArray, length)
 JSTaggedValue JSSharedArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObject> &originalArray,
-                                                JSTaggedNumber length)
+                                                JSTaggedNumber length, SCheckMode sCheckMode)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -141,23 +141,16 @@ JSTaggedValue JSSharedArray::ArraySpeciesCreate(JSThread *thread, const JSHandle
             return JSSharedArray::ArrayCreate(thread, length).GetTaggedValue();
         }
         JSHandle<JSTaggedValue> constructorKey = globalConst->GetHandledConstructorString();
-        constructor = JSTaggedValue::GetProperty(thread, originalValue, constructorKey).GetValue();
+        constructor = JSTaggedValue::GetProperty(thread, originalValue, constructorKey, SCheckMode::CHECK,
+                                                 sCheckMode).GetValue();
         // ReturnIfAbrupt(C).
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         // If IsConstructor(C) is true, then
         if (constructor->IsConstructor()) {
-            // Let thisRealm be the running execution context’s Realm.
-            // Let realmC be GetFunctionRealm(C).
-            JSHandle<GlobalEnv> realmC = JSObject::GetFunctionRealm(thread, constructor);
-            // ReturnIfAbrupt(realmC).
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-            // If thisRealm and realmC are not the same Realm Record, then
-            if (*realmC != *env) {
-                JSTaggedValue realmArrayConstructor = realmC->GetSharedArrayFunction().GetTaggedValue();
-                // If SameValue(C, realmC.[[intrinsics]].[[%Array%]]) is true, let C be undefined.
-                if (JSTaggedValue::SameValue(thread, constructor.GetTaggedValue(), realmArrayConstructor)) {
-                    return JSSharedArray::ArrayCreate(thread, length).GetTaggedValue();
-                }
+            JSTaggedValue arrayConstructor = env->GetSharedArrayFunction().GetTaggedValue();
+            // If SameValue(C, env.[[intrinsics]].[[%Array%]]) is true, let C be undefined.
+            if (JSTaggedValue::SameValue(thread, constructor.GetTaggedValue(), arrayConstructor)) {
+                return JSSharedArray::ArrayCreate(thread, length).GetTaggedValue();
             }
         }
 
@@ -372,10 +365,12 @@ JSHandle<JSTaggedValue> JSSharedArray::FastGetPropertyByValue(JSThread *thread, 
 }
 
 JSHandle<JSTaggedValue> JSSharedArray::FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                                              const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
+                                                              const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode,
+                                                              SCheckMode concurChk)
 {
     auto result =
-        ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue(), sCheckMode);
+        ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), key.GetTaggedValue(),
+                                                   sCheckMode, concurChk);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return JSHandle<JSTaggedValue>(thread, result);
 }
@@ -394,11 +389,11 @@ bool JSSharedArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTa
 }
 
 OperationResult JSSharedArray::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                           const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
+                                           const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode,
+                                           SCheckMode concurChk)
 {
     // Add Concurrent check for shared array
-    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, obj,
-                                                             sCheckMode);
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, obj, concurChk);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
                                       OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
 
