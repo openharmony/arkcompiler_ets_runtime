@@ -560,18 +560,9 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unu
     return IsExecuteModuleInAbcFileCommon(thread, jsPandaFile, abcFilePath, entry);
 }
 
-bool JSPandaFileExecutor::IsExecuteModuleInAbcFileSecure(JSThread *thread, uint8_t *buffer,
-    size_t size, const CString &abcFilePath, const CString &entry)
+bool JSPandaFileExecutor::FindModuleInAbcFile(JSThread *thread, const CString &abcFilePath, const CString &entry)
 {
-    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
-        LoadJSPandaFileSecure(thread, abcFilePath, entry, buffer, size);
-    AbcBufferCacheScope bufferScope(thread, abcFilePath, buffer, size, AbcBufferType::SECURE_BUFFER);
-    if (jsPandaFile == nullptr) {
-        LOG_ECMA(WARN) << "When checking if module is in abc file, loading panda file failed. Current file is " <<
-            abcFilePath;
-        return false;
-    }
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(abcFilePath);
     return IsExecuteModuleInAbcFileCommon(thread, jsPandaFile, const_cast<CString&>(abcFilePath), entry);
 }
 

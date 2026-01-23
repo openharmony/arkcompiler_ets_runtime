@@ -420,19 +420,16 @@ HWTEST_F_L0(JSPandaFileExecutorTest, IsExecuteModuleInAbcFile)
 }
 
 /**
- * @tc.name: IsExecuteModuleInAbcFileSecure
- * @tc.desc: Test method to validate checking if module exists in ABC file (secure version)
+ * @tc.name: FindModuleInAbcFile
+ * @tc.desc: Test method to validate checking if module exists in ABC file
  * @tc.type: FUNC
  * @tc.require: issue#12152
  */
-HWTEST_F_L0(JSPandaFileExecutorTest, IsExecuteModuleInAbcFileSecure)
+HWTEST_F_L0(JSPandaFileExecutorTest, FindModuleInAbcFile)
 {
-    uint8_t *buffer = nullptr;
-    size_t size = 0;
-
-    // Test IsExecuteModuleInAbcFileSecure to check if a module exists in ABC file (secure version)
-    bool result = JSPandaFileExecutor::IsExecuteModuleInAbcFileSecure(thread, buffer, size,
-        CString("IsExecuteModuleInAbcFileSecure"), CString("func_main_0"));
+    // Test FindModuleInAbcFile to check if a module exists in ABC file
+    bool result = JSPandaFileExecutor::FindModuleInAbcFile(thread, CString("IsExecuteModuleInAbcFileSecure"),
+        CString("func_main_0"));
     EXPECT_FALSE(result);  // Expecting false since the test file does not contain the specified function
 }
 
