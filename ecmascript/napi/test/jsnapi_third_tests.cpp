@@ -2064,12 +2064,11 @@ HWTEST_F_L0(JSNApiTests, NewFromUtf8WithoutStringTableReplacement)
     }
 }
 
-HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure001)
+HWTEST_F_L0(JSNApiTests, FindModuleInAbcFile001)
 {
     LocalScope scope(vm_);
     const std::string filename = "data/storage/el1/bundle/modulename/ets/modules.abc";
     const std::string ohmUrl1 = "@normalized:N&&&entry/build/generated/r/table";
-    uint8_t testData[] = {0x01, 0x02, 0x23};
     const char *data = R"(
         .language ECMAScript
         .function any func_main_0(any a0, any a1, any a2) {
@@ -2079,17 +2078,16 @@ HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure001)
     )";
     CString entryPoint = "";
     std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
-    bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl1);
+    bool res = JSNApi::FindModuleInAbcFile(vm_, filename, ohmUrl1);
     EXPECT_TRUE(res);
 }
 
-HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure002)
+HWTEST_F_L0(JSNApiTests, FindModuleInAbcFile002)
 {
     LocalScope scope(vm_);
     const std::string filename = "data/storage/el1/bundle/modulename/ets/test.abc";
     const std::string ohmUrl1 = "@normalized:N&&&entry/build/generated/r/table";
     const std::string ohmUrl2 = "@normalized:N&&&entry/build/generated/r/desk";
-    uint8_t testData[] = {0x01, 0x02, 0x23};
     const char *data = R"(
         .language ECMAScript
         .function any func_main_0(any a0, any a1, any a2) {
@@ -2099,16 +2097,15 @@ HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure002)
     )";
     CString entryPoint = "";
     std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
-    bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl2);
+    bool res = JSNApi::FindModuleInAbcFile(vm_, filename, ohmUrl2);
     EXPECT_FALSE(res);
 }
 
-HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure003)
+HWTEST_F_L0(JSNApiTests, FindModuleInAbcFile003)
 {
     LocalScope scope(vm_);
     const std::string filename = "data/storage/el1/bundle/modulename/ets/test1.abc";
     const std::string ohmUrl1 = "@normalized:N&&&entry/build/generated/r/desk";
-    uint8_t testData[] = {0x01, 0x02, 0x23};
     const char *data = R"(
         .language ECMAScript
         .function any func_main_0(any a0, any a1, any a2) {
@@ -2118,7 +2115,7 @@ HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure003)
     )";
     CString entryPoint = "";
     std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
-    bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl1);
+    bool res = JSNApi::FindModuleInAbcFile(vm_, filename, ohmUrl1);
     EXPECT_TRUE(res);
 }
 
@@ -2137,13 +2134,12 @@ HWTEST_F_L0(JSNApiTests, RegisterUncatchableErrorHandler001)
     EXPECT_NE(func2, nullptr);
 }
 
-HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure004)
+HWTEST_F_L0(JSNApiTests, FindModuleInAbcFile004)
 {
     LocalScope scope(vm_);
     const std::string filename = "data/storage/el1/bundle/modulename/ets/test2.abc";
     const std::string ohmUrl1 = "@normalized:N&&&entry/build/generated/r/box";
     const std::string ohmUrl2 = "@normalized:N&&&entry/build/generated/r/desk";
-    uint8_t testData[] = {0x01, 0x02, 0x23};
     const char *data = R"(
         .language ECMAScript
         .function any func_main_0(any a0, any a1, any a2) {
@@ -2153,7 +2149,7 @@ HWTEST_F_L0(JSNApiTests, IsExecuteModuleInAbcFileSecure004)
     )";
     CString entryPoint = "";
     std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmUrl1.c_str(), entryPoint);
-    bool res = JSNApi::IsExecuteModuleInAbcFileSecure(vm_, testData, 3, filename, ohmUrl2);
+    bool res = JSNApi::FindModuleInAbcFile(vm_, filename, ohmUrl2);
     EXPECT_FALSE(res);
 }
 
