@@ -855,6 +855,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
     dumpOption.isForSharedOOM = true;
+    dumpOption.isProcDump = Runtime::GetInstance()->IsEnableProcDumpInSharedOOM();
     if (source == SharedHeapOOMSource::SHARED_GC) {
         heapProfile->DumpHeapSnapshotForOOM(dumpOption, true);
         HeapProfilerInterface::DestroyInstance(heapProfile);
