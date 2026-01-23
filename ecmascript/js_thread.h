@@ -1059,9 +1059,9 @@ public:
         return isWeak_(addr);
     }
 
-    void EnableCrossThreadExecution()
+    void SetCrossThreadExecution(bool enable)
     {
-        glueData_.allowCrossThreadExecution_ = true;
+        glueData_.allowCrossThreadExecution_ = enable;
     }
 
     bool IsCrossThreadExecutionEnable() const
