@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
+#include <filesystem>
 #include <string_view>
 
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
+#include "ecmascript/mem/c_string.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_snapshot.h"
@@ -499,6 +501,25 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldNotSerializeWhenFileIsExists)
     ASSERT_TRUE(FileExist(fileName.c_str()));
     // return false when file is already exists
     ASSERT_FALSE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
+}
+
+HWTEST_F_L0(ModuleSnapshotTest, ShouldNotWritableAfterSave)
+{
+    // construct Module
+    CString path = GetSnapshotPath();
+    CString fileName = path + ModuleSnapshot::MODULE_SNAPSHOT_FILE_NAME.data();
+    CString version = TEST_ROM_VERSION.data();
+    EcmaVM *vm = thread->GetEcmaVM();
+    InitMockSourceTextModule();
+    // serialize and persist
+    ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
+    ASSERT_TRUE(FileExist(fileName.c_str()));
+    auto permissions = std::filesystem::status(fileName.c_str()).permissions();
+    ASSERT_TRUE(static_cast<bool>(permissions & std::filesystem::perms::owner_read));
+    ASSERT_FALSE(static_cast<bool>(permissions & std::filesystem::perms::owner_write));
+    ASSERT_FALSE(static_cast<bool>(permissions & std::filesystem::perms::owner_exec));
+    ASSERT_FALSE(static_cast<bool>(permissions & std::filesystem::perms::others_all));
+    ASSERT_FALSE(static_cast<bool>(permissions & std::filesystem::perms::group_all));
 }
 
 HWTEST_F_L0(ModuleSnapshotTest, ShouldNotDeSerializeWhenFileIsNotExists)

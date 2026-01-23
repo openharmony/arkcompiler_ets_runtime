@@ -21,9 +21,12 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/signal_manager.h"
+#include "securec.h"
 
 #include <csignal>
 #include <mutex>
+#include <string_view>
+#include <system_error>
 #include <vector>
 
 namespace panda::ecmascript {
@@ -105,7 +108,7 @@ void ModulesSnapshotHelper::TryDisableSnapshot(int reason)
         disableWord = &STATE_WORD_MODULE_SNAPSHOT_DISABLED;
     } else {
         // only one snapshot feature is loaded
-        disableWord = &STATE_WORD_ALL_SNAPSHOT_DIASBLED;
+        disableWord = &STATE_WORD_ALL_SNAPSHOT_DISABLED;
     }
 
     stateFile.Write(disableWord);
@@ -133,6 +136,20 @@ void ModulesSnapshotHelper::RemoveSnapshotFiles(const CString &path)
     if (FileExist(path.data())) {
         DeleteFilesWithSuffix(path.data(), SNAPSHOT_FILE_SUFFIX.data());
     }
+}
+
+bool ModulesSnapshotHelper::SetReadOnly(const std::string_view &path, std::string *errorMsg)
+{
+    std::error_code ec{};
+    if (Chmod(path, FILE_MODE_READONLY, ec)) {
+        return true;
+    }
+    if (errorMsg != nullptr) {
+        *errorMsg = ec.message();
+    } else {
+        LOG_ECMA(WARN) << "Failed to chmod file '" << path << "' to read-only, error: " << ec.message();
+    }
+    return false;
 }
 
 size_t ModulesSnapshotHelper::IntToString(int value, char *buf, size_t bufSize)
@@ -179,7 +196,9 @@ size_t ModulesSnapshotHelper::IntToString(int value, char *buf, size_t bufSize)
 int ModulesSnapshotHelper::GetDisabledFeature(const CString &path)
 {
     static std::once_flag flag;
-    if (path != std::string_view(g_stateFilePathBuffer_) && !path.empty()) {
+    std::string_view cachedPath(g_stateFilePathBuffer_);
+    if (!path.empty() && (cachedPath.size() > MODULE_SNAPSHOT_STATE_FILE_NAME.size()) &&
+        (path != cachedPath.substr(0, cachedPath.size() - MODULE_SNAPSHOT_STATE_FILE_NAME.size()))) {
         UpdateFromStateFile(path);
     }
     return g_featureState_;
@@ -195,6 +214,9 @@ void ModulesSnapshotHelper::UpdateFromStateFile(const CString &path)
         return;
     }
     auto stateFilePath = base::ConcatToCString(path, MODULE_SNAPSHOT_STATE_FILE_NAME);
+    if (memset_s(g_stateFilePathBuffer_, PATH_MAX, 0, PATH_MAX) != EOK) {
+        LOG_ECMA(WARN) << "memset_s failed when copy state file path";
+    }
     if (memcpy_s(g_stateFilePathBuffer_, PATH_MAX, stateFilePath.c_str(), stateFilePath.length()) != EOK) {
         LOG_ECMA(WARN) << "memcpy_s failed when copy state file path";
     }
@@ -212,10 +234,10 @@ void ModulesSnapshotHelper::UpdateFromStateFile(const CString &path)
     }
     switch (stateWord) {
         case STATE_WORD_MODULE_SNAPSHOT_DISABLED:
-            g_featureState_ = static_cast<int>(SnapshotFeatureState::MODULE);
+            g_featureState_ |= static_cast<int>(SnapshotFeatureState::MODULE);
             LOG_ECMA(WARN) << "module snapshot is disabled due to crash occurs";
             break;
-        case STATE_WORD_ALL_SNAPSHOT_DIASBLED:
+        case STATE_WORD_ALL_SNAPSHOT_DISABLED:
             g_featureState_ = disableAll;
             LOG_ECMA(WARN) << "module and pandafile snapshots is disabled due to crash occurs";
             break;

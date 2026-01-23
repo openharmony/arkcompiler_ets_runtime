@@ -15,6 +15,8 @@
 
 #include "ecmascript/platform/file.h"
 
+#include <string>
+#include <string_view>
 #include <windef.h>
 #include <winbase.h>
 #include <winnt.h>
@@ -223,43 +225,58 @@ void DeleteFilesWithSuffix(const std::string &dirPath, const std::string &suffix
     LOG_ECMA(INFO) << "Unsupport dirPath: " << dirPath << ", suffix: " << suffix;
 }
 
-void FBUnsupportedPlatform()
+void LogUnsupportedPlatform(const std::string_view &tag)
 {
-    LOG_ECMA(WARN) << "PosixFile is not supported on this platform.";
+    LOG_ECMA(WARN) << "\"" << tag << "\" is not supported on this platform.";
     _set_errno(ENOSYS);
 }
 
-template <typename T> T FBUnsupportedPlatform(T ret)
+template <typename T> T LogUnsupportedPlatform(const std::string_view &tag, T ret)
 {
-    FBUnsupportedPlatform();
+    LogUnsupportedPlatform(tag);
     return ret;
 }
+
+bool Chmod([[maybe_unused]] const std::string_view &path, [[maybe_unused]] const std::string_view &mode)
+{
+    LOG_ECMA(WARN) << "Chmod is not supported on this platform.";
+    return false;
+}
+
+bool Chmod([[maybe_unused]] const std::string_view &path,
+    [[maybe_unused]] const std::string_view &mode,
+    [[maybe_unused]] std::error_code &errorCode)
+{
+    return LogUnsupportedPlatform(__func__, false);
+}
+
+constexpr const std::string_view POSIX_FILE_CLASS_NAME = "PosixFile";
 
 PosixFile::PosixFile([[maybe_unused]] const std::string_view &path,
     [[maybe_unused]] const std::string_view &flags,
     [[maybe_unused]] const std::string_view &mode)
 {
-    FBUnsupportedPlatform();
+    LogUnsupportedPlatform(POSIX_FILE_CLASS_NAME);
 }
 PosixFile::~PosixFile() {}
 
 int64_t PosixFile::Write([[maybe_unused]] const char *data, [[maybe_unused]] size_t size)
 {
-    return FBUnsupportedPlatform(-1);
+    return LogUnsupportedPlatform(POSIX_FILE_CLASS_NAME, -1);
 }
 
 int64_t PosixFile::Read([[maybe_unused]] char *buf, [[maybe_unused]] size_t size)
 {
-    return FBUnsupportedPlatform(-1);
+    return LogUnsupportedPlatform(POSIX_FILE_CLASS_NAME, -1);
 }
 
 int64_t PosixFile::Seek([[maybe_unused]] int64_t off, [[maybe_unused]] SeekOrigin whence)
 {
-    return FBUnsupportedPlatform(-1);
+    return LogUnsupportedPlatform(POSIX_FILE_CLASS_NAME, -1);
 }
 
-int64_t PosixFile::Tell() { return FBUnsupportedPlatform(-1); }
+int64_t PosixFile::Tell() { return LogUnsupportedPlatform(POSIX_FILE_CLASS_NAME, -1); }
 
-int64_t PosixFile::Size() { return FBUnsupportedPlatform(-1); }
+int64_t PosixFile::Size() { return LogUnsupportedPlatform(POSIX_FILE_CLASS_NAME, -1); }
 
 }  // namespace panda::ecmascript
