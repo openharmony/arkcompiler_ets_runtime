@@ -3762,4 +3762,100 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSHClass)
     std::unique_ptr<SerializeData> data = serializer->Release();
     delete serializer;
 }
+
+HWTEST_F_L0(JSSerializerTest, SerializeSpecialObjectFields)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    
+    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(0);
+    JSHandle<SFunctionEnv> sFunctionEnv = factory->NewSFunctionEnv(0);
+    JSHandle<SendableEnv> sendableEnv = factory->NewSendableEnv(0);
+    JSHandle<JSTaggedValue> sFuncProto = env->GetSFunctionPrototype();
+    JSHandle<JSHClass> sFuncHClass =
+        factory->CreateSFunctionClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, sFuncProto);
+    JSHandle<Method> method = factory->NewSEmptyNativeFunctionMethod(FunctionKind::NORMAL_FUNCTION);
+    JSHandle<JSFunction> sharedFuncHandle = factory->NewSFunctionByHClass(method, sFuncHClass);
+    JSHandle<JSSharedFunction> sharedFunc = JSHandle<JSSharedFunction>::Cast(sharedFuncHandle);
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    CString baseFileName = "test_module.abc";
+    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetStatus(ModuleStatus::EVALUATED);
+    
+    sharedFunc->SetModule(thread, module.GetTaggedValue());
+    
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(lexicalEnv),
+                                        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize LexicalEnv fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sFunctionEnv),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize SFunctionEnv fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sendableEnv),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize SendableEnv fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(sharedFunc),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSSharedFunction fail";
+    
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, DeserializeAllObjectTypes)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    
+    // Create objects of various types
+    JSHandle<JSFunction> objFunction = JSHandle<JSFunction>(env->GetObjectFunction());
+    JSHandle<JSObject> jsObject = factory->NewJSObjectByConstructor(objFunction);
+    JSHandle<JSArray> jsArray = factory->NewJSArray();
+    
+    // Create JSMap
+    JSHandle<JSHClass> mapClass = factory->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, env->GetMapPrototype());
+    JSHandle<JSMap> jsMap = JSHandle<JSMap>::Cast(factory->NewJSObjectWithInit(mapClass));
+    JSHandle<LinkedHashMap> linkedMap(LinkedHashMap::Create(thread));
+    jsMap->SetLinkedMap(thread, linkedMap);
+    
+    // Create JSSet
+    JSHandle<JSHClass> setClass = factory->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, env->GetSetPrototype());
+    JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread));
+    jsSet->SetLinkedSet(thread, linkedSet);
+    
+    // Serialize all objects
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsObject),
+                                        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSObject fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsArray),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSArray fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsMap),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSMap fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsSet),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSSet fail";
+    
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    delete serializer;
+}
 }  // namespace panda::test
