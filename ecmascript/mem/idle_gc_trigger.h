@@ -95,7 +95,7 @@ public:
         triggerGCTaskCallback_ = callback;
     }
 
-    void NotifyNeedNextGC(bool isNeedNextGC, bool needFreeze);
+    void NotifyIsNeedFreeze(bool needFreeze);
     void NotifyVsyncIdleStart();
     bool NotifyLooperIdleStart(int64_t timestamp, int idleTime);
     void NotifyLooperIdleEnd(int64_t timestamp);
