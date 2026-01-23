@@ -77,6 +77,10 @@ void SharedHeap::CreateNewInstance()
 #endif
     EcmaParamConfiguration config(EcmaParamConfiguration::HeapType::SHARED_HEAP,
         MemMapAllocator::GetInstance()->GetCapacity(), heapShared);
+
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    EcmaVM::InitConfigurableParam(config);
+#endif
     instance_ = new SharedHeap(config);
 }
 
