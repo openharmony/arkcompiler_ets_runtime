@@ -6500,7 +6500,7 @@ void JSNApi::ModuleSerialize(const EcmaVM *vm)
 void JSNApi::ModuleDeserialize(EcmaVM *vm, const uint32_t appVersion)
 {
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
-    if (vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
+    if (vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot() || vm->GetJSOptions().DisableModuleSnapshot()) {
         return;
     }
     vm->SetApplicationVersionCode(appVersion);

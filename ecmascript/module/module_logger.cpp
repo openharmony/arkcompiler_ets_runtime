@@ -289,10 +289,10 @@ void ModuleLogger::PrintModuleLoadInfoTask(void *data)
 void ModuleLogger::SetModuleLoggerTask(EcmaVM *vm)
 {
     ModuleLogger *moduleLogger = nullptr;
-    if (vm->GetJSOptions().EnableModuleLog() &&
-        vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
+    if (vm->GetJSOptions().EnableModuleLog()) {
         moduleLogger = new ModuleLogger(vm);
         vm->GetJSThread()->SetModuleLogger(moduleLogger);
+        vm->GetJSOptions().SetDisableModuleSnapshot(true);
     }
 
     if (moduleLogger == nullptr) {
