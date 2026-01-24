@@ -36,4 +36,10 @@ std::string SymbolicAddress([[maybe_unused]] const void* const *pc,
     LOG_ECMA(INFO) << "SymbolicAddress in macos not support";
     return stack;
 }
+
+void UpdateStubFileRange([[maybe_unused]]uint64_t stubFileStartAddr,
+                         [[maybe_unused]]uint64_t stubFileSize)
+{
+    LOG_ECMA(INFO) << "UpdateStubFileRange in macos not support";
+}
 } // namespace panda::ecmascript
