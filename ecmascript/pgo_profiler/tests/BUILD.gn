@@ -54,6 +54,47 @@ foreach(file, test_js_files) {
   }
 }
 
+host_unittest_action("TextFormatterTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    "text_formatter_test.cpp",
+  ]
+
+  configs = [
+    "../../../:asm_interp_enable_config",
+    "../../../:ecma_test_config",
+  ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+  ]
+
+  foreach(file, test_js_files) {
+    deps += [ ":gen_${file}_abc" ]
+  }
+
+  if (is_ohos && is_standard_system) {
+    test_abc_dir = "/data/test"
+  } else {
+    test_abc_dir = rebase_path(target_out_dir)
+  }
+  defines = [ "TARGET_ABC_PATH=\"${test_abc_dir}/\"" ]
+
+  # hiviewdfx libraries
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+
+  if (enable_coverage) {
+    ldflags = [ "--coverage" ]
+    cflags_cc = [ "--coverage" ]
+  }
+}
+
 host_unittest_action("PGOProfilerTest") {
   module_out_path = module_output_path
 
@@ -169,7 +210,6 @@ host_unittest_action("PGOMethodTypeSetTest") {
   module_out_path = module_output_path
 
   sources = [
-    # test file
     "pgo_method_type_set_test.cpp",
   ]
 
@@ -195,7 +235,6 @@ host_unittest_action("PGOProfilerManagerTest") {
   module_out_path = module_output_path
 
   sources = [
-    # test file
     "pgo_profiler_manager_test.cpp",
   ]
 
@@ -221,7 +260,6 @@ host_unittest_action("PGOProfilerInfoTest") {
   module_out_path = module_output_path
 
   sources = [
-    # test file
     "pgo_profiler_info_test.cpp",
   ]
 
@@ -247,7 +285,6 @@ host_unittest_action("PGOInfoTest") {
   module_out_path = module_output_path
 
   sources = [
-    # test file
     "pgo_info_test.cpp",
   ]
 
@@ -273,7 +310,6 @@ host_unittest_action("PGOProfilerDecoderTest") {
   module_out_path = module_output_path
 
   sources = [
-    # test file
     "pgo_profiler_decoder_test.cpp",
   ]
 
@@ -296,6 +332,7 @@ host_unittest_action("PGOProfilerDecoderTest") {
 }
 
 tests = [
+  "TextFormatterTest",
   "PGOProfilerTest",
   "PGOProfilerTestOne",
   "PGOProfilerEncoderTest",

@@ -139,26 +139,19 @@ public:
         return 1;
     }
 
-    bool ProcessToText(std::ofstream &stream) override
+    bool ProcessToText(TextFormatter &fmt) override
     {
-        bool isFirst = true;
+        if (pool_.empty()) {
+            return true;
+        }
+        fmt.Text("[").Text(poolName_).Text("] (").Text(pool_.size()).Text(" entries)").NewLine();
         for (auto &entry : pool_) {
-            if (isFirst) {
-                stream << DumpUtils::NEW_LINE;
-                stream << poolName_;
-                stream << DumpUtils::BLOCK_START;
-                isFirst = false;
-            }
-            stream << DumpUtils::NEW_LINE;
-            stream << std::to_string(entry.first);
-            stream << DumpUtils::SPACE;
-            stream << DumpUtils::ARRAY_START;
-            entry.second.ProcessToText(stream);
-            stream << DumpUtils::ARRAY_END;
+            fmt.Indent().Label("ID").Value(entry.first);
+            fmt.Text(" -> ");
+            entry.second.ProcessToText(fmt);
+            fmt.NewLine();
         }
-        if (!isFirst) {
-            stream << (DumpUtils::SPACE + DumpUtils::NEW_LINE);
-        }
+        fmt.NewLine();
         return true;
     }
 

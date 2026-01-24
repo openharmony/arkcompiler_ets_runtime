@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "zlib.h"
 
 namespace panda::ecmascript::pgo {
@@ -122,17 +123,28 @@ void PGOProfilerHeader::ProcessToBinary(std::fstream &fileStream) const
     }
 }
 
-bool PGOProfilerHeader::ProcessToText(std::ofstream &stream) const
+bool PGOProfilerHeader::ProcessToText(TextFormatter& fmt) const
 {
     if (!Verify()) {
         return false;
     }
-    stream << DumpUtils::VERSION_HEADER << InternalGetVersion() << DumpUtils::NEW_LINE;
-    stream << "Compatible an file version: " << ConvToStr(GetCompatibleAnVersion()) << DumpUtils::NEW_LINE;
+    fmt.SectionLine().NewLine();
+    fmt.CenteredTitle("PGO Profile File Info").NewLine();
+    fmt.SectionLine().NewLine();
+    fmt.NewLine();
+    fmt.Text("[Header Information]").NewLine();
+    fmt.SetLabelWidth(TextFormatter::LABEL_WIDTH_LARGE).LabelAlign();
+    fmt.PushIndent();
+    fmt.AutoIndent().Label("Profiler Version").Value(InternalGetVersion()).NewLine();
+    fmt.AutoIndent().Label("Compatible Version").Value(ConvToStr(GetCompatibleAnVersion())).NewLine();
     if (SupportFileConsistency()) {
-        stream << "FileSize: " << GetFileSize() << ", HeaderSize: " << GetHeaderSize() << ", Checksum: " << std::hex
-               << GetChecksum() << DumpUtils::NEW_LINE;
+        fmt.AutoIndent().Label("File Size").Value(std::to_string(GetFileSize()) + " bytes").NewLine();
+        fmt.AutoIndent().Label("Header Size").Value(std::to_string(GetHeaderSize()) + " bytes").NewLine();
+        fmt.AutoIndent().Label("Checksum").Hex(GetChecksum()).NewLine();
     }
+    fmt.PopIndent();
+    fmt.LabelReset();
+    fmt.NewLine();
     return true;
 }
 } // namespace panda::ecmascript::pgo

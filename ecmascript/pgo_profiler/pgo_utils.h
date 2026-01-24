@@ -17,14 +17,15 @@
 #define ECMASCRIPT_PGO_PROFILER_PGO_UTILS_H
 
 #include <algorithm>
+#include <iomanip>
 #include <list>
 #include <mutex>
+#include <sstream>
 #include <string>
 
 #include "file.h"
 
 #include "ecmascript/common.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/mutex.h"
 
@@ -33,21 +34,214 @@ static constexpr Alignment ALIGN_SIZE = Alignment::LOG_ALIGN_4;
 using PGOMethodId = panda_file::File::EntityId;
 using ApEntityId = uint32_t;
 
-class DumpUtils {
+// Text formatter with pure chain API for aligned output
+class TextFormatter {
 public:
-    static const std::string ELEMENT_SEPARATOR;
-    static const std::string BLOCK_SEPARATOR;
-    static const std::string TYPE_SEPARATOR;
-    static const std::string BLOCK_START;
-    static const std::string ARRAY_START;
-    static const std::string ARRAY_END;
-    static const std::string NEW_LINE;
-    static const std::string SPACE;
-    static const std::string ALIGN;
-    static const std::string BLOCK_AND_ARRAY_START;
-    static const std::string VERSION_HEADER;
-    static const std::string PANDA_FILE_INFO_HEADER;
-    static const uint32_t HEX_FORMAT_WIDTH_FOR_32BITS;
+    // Static constants
+    static constexpr const char* NEW_LINE = "\n";
+    static constexpr const char* PIPE = " | ";
+    static constexpr const char* INDENT = "  ";
+
+    // Label widths
+    static constexpr size_t LABEL_WIDTH_LARGE = 20;
+    static constexpr size_t LABEL_WIDTH_MEDIUM = 16;
+    static constexpr size_t LABEL_WIDTH_SMALL = 8;
+
+    // Table column widths
+    static constexpr size_t COL_WIDTH_ABC_ID = 8;
+    static constexpr size_t COL_WIDTH_CHECKSUM = 12;
+
+    // Basic chain methods
+    TextFormatter& Indent(int level = 1)
+    {
+        for (int i = 0; i < level; i++) {
+            oss_ << INDENT;
+        }
+        return *this;
+    }
+
+    template<typename T>
+    TextFormatter& Text(const T& text)
+    {
+        oss_ << text;
+        return *this;
+    }
+
+    TextFormatter& NewLine()
+    {
+        oss_ << NEW_LINE;
+        return *this;
+    }
+
+    TextFormatter& Pipe()
+    {
+        oss_ << PIPE;
+        return *this;
+    }
+
+    // Alignment methods
+    template<typename T>
+    TextFormatter& Left(const T& value, size_t width)
+    {
+        oss_ << std::left << std::setw(static_cast<int>(width)) << value;
+        return *this;
+    }
+
+    template<typename T>
+    TextFormatter& Right(const T& value, size_t width)
+    {
+        oss_ << std::right << std::setw(static_cast<int>(width)) << value;
+        return *this;
+    }
+
+    // Set label width for alignment (call before using Label)
+    TextFormatter& SetLabelWidth(size_t width)
+    {
+        labelWidth_ = width;
+        return *this;
+    }
+
+    // Label-Value pair with automatic alignment
+    TextFormatter& Label(const std::string& label, bool align = false)
+    {
+        if (align_ || align) {
+            oss_ << std::left << std::setw(static_cast<int>(labelWidth_)) << label;
+        } else {
+            oss_ << label;
+        }
+        oss_ << ":";
+        return *this;
+    }
+
+    TextFormatter& LabelAlign()
+    {
+        align_ = true;
+        return *this;
+    }
+
+    TextFormatter& LabelReset()
+    {
+        align_ = false;
+        labelWidth_ = LABEL_WIDTH_MEDIUM;
+        return *this;
+    }
+
+    template<typename T>
+    TextFormatter& Value(const T& value, bool alignWithLabel = false)
+    {
+        oss_ << " ";
+        if (alignWithLabel) {
+            oss_ << std::left << std::setw(static_cast<int>(labelWidth_)) << value;
+        } else {
+            oss_ << value;
+        }
+        return *this;
+    }
+
+    TextFormatter& Hex(uint32_t value)
+    {
+        oss_ << " " << HexStr(value);
+        return *this;
+    }
+
+    TextFormatter& Fixed(double value, int precision = 1)
+    {
+        oss_ << " " << std::fixed << std::setprecision(precision) << value;
+        return *this;
+    }
+
+    static std::string HexStr(uint32_t value)
+    {
+        std::ostringstream oss;
+        oss << "0x" << std::hex << value;
+        return oss.str();
+    }
+
+    // Table formatting
+    static constexpr size_t SECTION_LINE_WIDTH = 80;
+
+    TextFormatter& SectionLine()
+    {
+        oss_ << std::string(SECTION_LINE_WIDTH, '=');
+        return *this;
+    }
+
+    TextFormatter& CenteredTitle(const std::string& title)
+    {
+        size_t padding = (SECTION_LINE_WIDTH > title.length()) ? (SECTION_LINE_WIDTH - title.length()) / 2 : 0;
+        oss_ << std::string(padding, ' ') << title;
+        return *this;
+    }
+
+    // Output
+    std::string Str() const
+    {
+        return oss_.str();
+    }
+
+    void Clear()
+    {
+        oss_.str("");
+        oss_.clear();
+    }
+
+    std::ostringstream& GetStream()
+    {
+        return oss_;
+    }
+
+    TextFormatter& PushIndent(int levels = 1)
+    {
+        indentLevel_ += levels;
+        return *this;
+    }
+
+    TextFormatter& PopIndent(int levels = 1)
+    {
+        indentLevel_ = std::max(0, indentLevel_ - levels);
+        return *this;
+    }
+
+    TextFormatter& AutoIndent()
+    {
+        return Indent(indentLevel_);
+    }
+
+    TextFormatter& ResetIndent()
+    {
+        indentLevel_ = 0;
+        return *this;
+    }
+
+    int GetIndentLevel() const
+    {
+        return indentLevel_;
+    }
+
+private:
+    std::ostringstream oss_;
+    size_t labelWidth_ {LABEL_WIDTH_MEDIUM};
+    bool align_ {false};
+    int indentLevel_ {0};
+};
+
+class IndentScope {
+public:
+    explicit IndentScope(TextFormatter& fmt): fmt_(fmt)
+    {
+        fmt_.PushIndent();
+    }
+
+    ~IndentScope()
+    {
+        fmt_.PopIndent();
+    }
+
+    NO_COPY_SEMANTIC(IndentScope);
+    NO_MOVE_SEMANTIC(IndentScope);
+
+private:
+    TextFormatter& fmt_;
 };
 
 class DumpJsonUtils {

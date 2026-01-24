@@ -85,7 +85,7 @@ public:
     bool VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, const std::string &base,
                         const std::string &incoming) const;
 
-    void ProcessToText(std::ofstream &stream) const;
+    void ProcessToText(TextFormatter &fmt) const;
 
     bool Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
                   const std::shared_ptr<PGOAbcFilePool>& abcFilePool_) const;
@@ -259,9 +259,6 @@ public:
     void ParseFromBinary(void **buffer);
     void ProcessToBinary(std::ofstream &fileStream) const;
 
-    static std::vector<std::string> ParseFromText(const std::string &infoString);
-    void ProcessToText(std::string &text) const;
-
     void ProcessToJson(ProfileType::VariantMap &function) const;
 
     NO_COPY_SEMANTIC(PGOMethodInfo);
@@ -298,6 +295,14 @@ private:
 
 class PGOMethodInfoMap {
 public:
+    // Statistics structure for method info
+    struct MethodStats {
+        uint32_t totalMethods = 0;
+        uint32_t hotMethods = 0;
+        uint64_t totalCalls = 0;
+        uint32_t maxCalls = 0;
+    };
+
     PGOMethodInfoMap() = default;
 
     void Clear()
@@ -323,10 +328,11 @@ public:
                          std::fstream& fileStream,
                          PGOProfilerHeader* const header) const;
 
-    bool ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content);
-    void ProcessToText(uint32_t threshold, const CString &recordName, std::ofstream &stream) const;
+    void ProcessToText(uint32_t threshold, const CString &recordName, TextFormatter &fmt) const;
 
     void ProcessToJson(uint32_t threshold, ProfileType::jModuleType &jModule) const;
+
+    MethodStats CollectStats(uint32_t threshold) const;
 
     const CMap<PGOMethodId, PGOMethodInfo *> &GetMethodInfos() const
     {
@@ -492,6 +498,20 @@ private:
 
 class PGORecordDetailInfos : public PGOContext {
 public:
+    // Overall statistics structure
+    struct OverallStats {
+        uint32_t totalRecords = 0;
+        uint32_t totalMethods = 0;
+        uint32_t hotMethods = 0;
+        uint64_t totalCalls = 0;
+        uint32_t maxCalls = 0;
+
+        double GetAverageCalls() const
+        {
+            return totalMethods > 0 ? static_cast<double>(totalCalls) / totalMethods : 0.0;
+        }
+    };
+
     explicit PGORecordDetailInfos(uint32_t hotnessThreshold);
 
     ~PGORecordDetailInfos() override;
@@ -523,7 +543,8 @@ public:
     bool ParseFromBinary(void* buffer, PGOProfilerHeader* const header, size_t bufferSize);
     void ProcessToBinary(std::fstream& fileStream, PGOProfilerHeader* const header);
 
-    void ProcessToText(std::ofstream &stream) const;
+    void ProcessToText(TextFormatter &fmt) const;
+    OverallStats CollectOverallStats() const;
 
     const CMap<ProfileType, PGOMethodInfoMap *> &GetRecordInfos() const
     {

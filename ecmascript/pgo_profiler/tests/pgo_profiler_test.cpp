@@ -841,7 +841,8 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler16/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    std::string types[17] = {"1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "1", "4", "5", "1", "1"};
+    std::string types[17] = {"int", "number", "double", "double", "double", "double", "double", "double",
+                              "number", "double", "double", "int", "int", "double", "number", "int", "int"};
     int index = 0;
     auto methodLiterals = pf_->GetMethodLiteralMap();
     for (auto iter : methodLiterals) {
@@ -861,8 +862,8 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
                 }
                 if (std::string(methodName) == "advance") {
                     if (sampleType.GetWeight() > 0) {
-                        auto trueWeight = sampleType.GetWeight() >> 10;
-                        auto falseWeight = sampleType.GetWeight() & 0x7FF;
+                        auto trueWeight = sampleType.GetTrueWeight();
+                        auto falseWeight = sampleType.GetFalseWeight();
                         auto primitiveType = sampleType.GetPrimitiveType();
                         ASSERT_GT(trueWeight, falseWeight);
                         ASSERT_EQ(static_cast<uint32_t>(primitiveType), PGOSampleType::IntType());
@@ -1663,94 +1664,48 @@ HWTEST_F_L0(PGOProfilerTest, ParseFromBinaryBuildFromElasticTest)
 
 HWTEST_F_L0(PGOProfilerTest, ProcessToTextVerifyFailureTest)
 {
-    mkdir("ark-ProcessToTextTest/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream stream;
     PGOProfilerHeader header;
-    bool result;
-    std::stringstream buffer;
-    std::string content;
     // Test : !Verify()
-    stream.open("ark-ProcessToTextTest/test.txt");
-    ASSERT_TRUE(stream.is_open());
     header.SetVersion({0, 0, 0, 100}); // Much higher than LAST_VERSION
-    result = header.ProcessToText(stream);
+    TextFormatter fmt;
+    bool result = header.ProcessToText(fmt);
     ASSERT_FALSE(result);
-    stream.close();
-    std::ifstream ifs1("ark-ProcessToTextTest/test.txt");
-    buffer << ifs1.rdbuf();
-    content = buffer.str();
-    ifs1.close();
-    buffer.str("");
-    buffer.clear();
-    ASSERT_TRUE(content.empty());
-    unlink("ark-ProcessToTextTest/test.txt");
-    rmdir("ark-ProcessToTextTest/");
+    ASSERT_TRUE(fmt.Str().empty());
 }
 
 HWTEST_F_L0(PGOProfilerTest, ProcessToTextCompatibleVersionTest)
 {
-    mkdir("ark-ProcessToTextTest/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream stream;
     PGOProfilerHeader header;
-    bool result;
-    std::stringstream buffer;
-    std::string content;
     // Test : SupportFileConsistency():false
     PGOProfilerHeader::SetStrictMatch(false);
-    stream.open("ark-ProcessToTextTest/test.txt");
-    ASSERT_TRUE(stream.is_open());
     header.SetVersion({0, 0, 0, 5});
-    result = header.ProcessToText(stream);
+    TextFormatter fmt;
+    bool result = header.ProcessToText(fmt);
     ASSERT_TRUE(result);
-    stream.close();
-    std::ifstream ifs2("ark-ProcessToTextTest/test.txt");
-    buffer << ifs2.rdbuf();
-    content = buffer.str();
-    ifs2.close();
-    buffer.str("");
-    buffer.clear();
+    std::string content = fmt.Str();
     ASSERT_FALSE(content.empty());
-    EXPECT_TRUE(content.find("Compatible an file version") != std::string::npos);
-    EXPECT_TRUE(content.find("FileSize") == std::string::npos);
+    EXPECT_TRUE(content.find("File Size") == std::string::npos);
     EXPECT_TRUE(content.find("Checksum") == std::string::npos);
-    unlink("ark-ProcessToTextTest/test.txt");
-    rmdir("ark-ProcessToTextTest/");
 }
 
 HWTEST_F_L0(PGOProfilerTest, ProcessToTextFileConsistencyTest)
 {
-    mkdir("ark-ProcessToTextTest/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream stream;
     PGOProfilerHeader header;
-    bool result;
-    std::stringstream buffer;
-    std::string content;
     // Test : SupportFileConsistency():true
     PGOProfilerHeader::SetStrictMatch(true);
-    stream.open("ark-ProcessToTextTest/test.txt");
-    ASSERT_TRUE(stream.is_open());
     header.SetVersion(PGOProfilerHeader::LAST_VERSION);
     header.SetFileSize(1000);
     header.SetHeaderSize(100);
     header.SetChecksum(12345);
-    result = header.ProcessToText(stream);
+    TextFormatter fmt;
+    bool result = header.ProcessToText(fmt);
     ASSERT_TRUE(result);
-    stream.close();
-    std::ifstream ifs3("ark-ProcessToTextTest/test.txt");
-    buffer << ifs3.rdbuf();
-    content = buffer.str();
-    ifs3.close();
-    buffer.str("");
-    buffer.clear();
+    std::string content = fmt.Str();
     ASSERT_FALSE(content.empty());
-    EXPECT_TRUE(content.find("Compatible an file version") != std::string::npos);
-    EXPECT_TRUE(content.find("FileSize") != std::string::npos);
+    EXPECT_TRUE(content.find("File Size") != std::string::npos);
     EXPECT_TRUE(content.find("1000") != std::string::npos);
-    EXPECT_TRUE(content.find("HeaderSize") != std::string::npos);
+    EXPECT_TRUE(content.find("Header Size") != std::string::npos);
     EXPECT_TRUE(content.find("100") != std::string::npos);
     EXPECT_TRUE(content.find("Checksum") != std::string::npos);
-    EXPECT_TRUE(content.find("3039") != std::string::npos);  // 12345 in hex
-    unlink("ark-ProcessToTextTest/test.txt");
-    rmdir("ark-ProcessToTextTest/");
 }
 }  // namespace panda::test

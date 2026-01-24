@@ -23,7 +23,6 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/ap_file/pool_template.h"
@@ -68,9 +67,9 @@ public:
             return 1;
         }
 
-        bool ProcessToText(std::ofstream &stream) override
+        bool ProcessToText(TextFormatter &fmt) override
         {
-            stream << name_;
+            fmt.Text(name_.c_str());
             return true;
         }
 
@@ -201,26 +200,20 @@ public:
         return 1;
     }
 
-    bool ProcessToText(std::ofstream &stream) override
+    bool ProcessToText(TextFormatter &fmt) override
     {
-        bool isFirst = true;
+        if (pool_.empty()) {
+            return true;
+        }
+        fmt.SectionLine().NewLine();
+        fmt.CenteredTitle("Pools Info").NewLine();
+        fmt.SectionLine().NewLine();
+        fmt.NewLine();
+        fmt.Text("[Record Pool] (").Text(std::to_string(pool_.size())).Text(" entries)").NewLine();
         for (auto &entry : pool_) {
-            if (isFirst) {
-                stream << DumpUtils::NEW_LINE;
-                stream << "RecordPool";
-                stream << DumpUtils::BLOCK_START;
-                isFirst = false;
-            }
-            stream << DumpUtils::NEW_LINE;
-            stream << entry.first.GetTypeString();
-            stream << DumpUtils::SPACE;
-            stream << DumpUtils::ARRAY_START;
-            stream << entry.second;
-            stream << DumpUtils::ARRAY_END;
+            fmt.Indent().Text(entry.first.GetTypeString()).Text(" -> ").Text(entry.second.c_str()).NewLine();
         }
-        if (!isFirst) {
-            stream << (DumpUtils::SPACE + DumpUtils::NEW_LINE);
-        }
+        fmt.NewLine();
         return true;
     }
 

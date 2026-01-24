@@ -25,6 +25,7 @@
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/compiler/aot_file/aot_version.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 
 namespace panda::ecmascript::pgo {
 class PGOProfilerHeader;
@@ -195,7 +196,7 @@ public:
     static bool ParseFromBinary(void *buffer, size_t bufferSize, PGOProfilerHeader **header);
     void ProcessToBinary(std::fstream &fileStream) const;
 
-    bool ProcessToText(std::ofstream &stream) const;
+    bool ProcessToText(TextFormatter &fmt) const;
 
     SectionInfo *GetPandaInfoSection() const
     {
@@ -372,12 +373,7 @@ public:
     virtual ~PGOFileDataInterface() = default;
     virtual uint32_t ProcessToBinary(PGOContext &context, std::fstream &stream) = 0;
     virtual uint32_t ParseFromBinary(PGOContext &context, void **buffer, PGOProfilerHeader const *header) = 0;
-    virtual bool ProcessToText(std::ofstream &stream) = 0;
-    // not support yet
-    virtual bool ParseFromText([[maybe_unused]] std::ifstream &stream)
-    {
-        return true;
-    };
+    virtual bool ProcessToText(TextFormatter &fmt) = 0;
 
 private:
     NO_COPY_SEMANTIC(PGOFileDataInterface);
