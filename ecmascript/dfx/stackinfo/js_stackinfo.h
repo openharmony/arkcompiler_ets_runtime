@@ -154,7 +154,6 @@ public:
     void CreateJSPandaFile();
     void CreateJSPandaFile(uint8_t *data, size_t dataSize);
     void CreateSourceMap(const std::string &hapPath);
-    void CreateSourceMap(uint8_t *data, size_t dataSize);
     void CreateDebugExtractor();
     bool ParseHapFileData(std::string& hapName);
 
@@ -164,7 +163,7 @@ public:
 
     JSPandaFile* GetJSPandaFile(uint8_t *data = nullptr, size_t dataSize = 0);
     DebugInfoExtractor* GetDebugExtractor();
-    SourceMap* GetSourceMap(uint8_t *data = nullptr, size_t dataSize = 0);
+    SourceMap* GetSourceMap();
     CVector<MethodInfo> GetMethodInfos();
 
 private:

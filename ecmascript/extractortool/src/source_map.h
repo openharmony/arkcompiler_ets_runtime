@@ -51,9 +51,9 @@ public:
     SourceMapData() = default;
     ~SourceMapData() = default;
 
-    std::string url_;
+    std::string sources_;
+    std::string packageName_; // packageInfo or entryPackageInfo, preferentially use packageInfo
     SourceMapInfo nowPos_;
-    std::vector<std::string> sources_;
     std::vector<std::string> mappings_;
     std::vector<SourceMapInfo> afterPos_;
 
@@ -71,12 +71,11 @@ public:
 #if defined(PANDA_TARGET_OHOS)
     void Init(const std::string& hapPath);
 #endif
-    void Init(uint8_t *data, size_t dataSize);
     bool TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column, std::string& packageName);
 
 private:
-    void SplitSourceMap(const std::string& sourceMapData);
-    void ExtractSourceMapData(const std::string& allmappings, std::shared_ptr<SourceMapData>& curMapData);
+    void SplitSourceMap();
+    void ExtractSourceMapData(const std::string& allmappings, SourceMapData *curMapData);
     void ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo);
     std::vector<std::string> HandleMappings(const std::string& mapping);
     bool VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans);
@@ -87,16 +86,20 @@ private:
     void GetPackageName(std::string& url, std::string& packageName);
     friend class SourceMapFriend;
 #if defined(PANDA_TARGET_OHOS)
-    bool ReadSourceMapData(const std::string& hapPath, std::string& content);
+    bool ReadSourceMapData(const std::string& hapPath);
 #endif
+    bool ParseSourceMapData(std::string_view url);
+    std::string GetMappings(std::string_view sourcemap);
+    std::string GetSources(std::string_view sourcemap);
+    std::string GetEntryPackageInfo(std::string_view sourcemap);
+    std::string GetPackageInfo(std::string_view sourcemap);
+    std::string GetPackageName(std::string_view sourcemap);
 
 private:
-    std::unordered_map<std::string, std::string> sources_;
-    std::unordered_map<std::string, std::string> mappings_;
-    std::unordered_map<std::string, std::shared_ptr<SourceMapData>> sourceMaps_;
-    std::unordered_map<std::string, std::string> entryPackageInfo_;
-    std::unordered_map<std::string, std::string> packageInfo_;
-    std::unordered_map<std::string, std::string> packageName_;
+    std::unique_ptr<uint8_t[]> dataPtr_ {nullptr};
+    size_t dataLen_ = 0;
+    std::unordered_map<std::string_view, std::string_view> sourceMaps_;
+    std::unordered_map<std::string_view, std::shared_ptr<SourceMapData>> sourceMapDatas_;
 };
 } // namespace panda
 } // namespace ecmascript

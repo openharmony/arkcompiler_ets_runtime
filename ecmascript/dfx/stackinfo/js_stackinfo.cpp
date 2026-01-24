@@ -1087,11 +1087,8 @@ void JSSymbolExtractor::CreateJSPandaFile(uint8_t *data, size_t dataSize)
     jsPandaFile_ = std::make_shared<JSPandaFile>(pf.release(), "", CreateMode::DFX);
 }
 
-SourceMap* JSSymbolExtractor::GetSourceMap(uint8_t *data, size_t dataSize)
+SourceMap* JSSymbolExtractor::GetSourceMap()
 {
-    if (sourceMap_ == nullptr && data != nullptr) {
-        JSSymbolExtractor::CreateSourceMap(data, dataSize);
-    }
     return sourceMap_.get();
 }
 
@@ -1105,11 +1102,6 @@ void JSSymbolExtractor::CreateSourceMap([[maybe_unused]] const std::string &hapP
 #endif
 }
 
-void JSSymbolExtractor::CreateSourceMap(uint8_t *data, size_t dataSize)
-{
-    sourceMap_ = std::make_shared<SourceMap>();
-    sourceMap_->Init(data, dataSize);
-}
 
 DebugInfoExtractor* JSSymbolExtractor::GetDebugExtractor()
 {

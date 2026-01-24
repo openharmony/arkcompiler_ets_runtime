@@ -34,21 +34,26 @@ static constexpr int32_t ANS_MAP_SIZE = 5;
 static constexpr int32_t DIGIT_NUM = 64;
 
 const std::string MEGER_SOURCE_MAP_PATH = "ets/sourceMaps.map";
-static const CString FLAG_SOURCES = "    \"sources\":";
-static const CString FLAG_MAPPINGS = "    \"mappings\": \"";
-static const CString FLAG_ENTRY_PACKAGE_INFO = "    \"entry-package-info\": \"";
-static const CString FLAG_PACKAGE_INFO = "    \"package-info\": \"";
-static const CString FLAG_END = "  }";
+static constexpr std::string_view DOBULE_QUOTATION = "\"";
+static constexpr std::string_view FLAG_URL = ": {";
+static constexpr std::string_view FLAG_SOURCES = "    \"sources\":";
+static constexpr std::string_view FLAG_MAPPINGS = "    \"mappings\": \"";
+static constexpr std::string_view FLAG_ENTRY_PACKAGE_INFO = "    \"entry-package-info\": \"";
+static constexpr std::string_view FLAG_PACKAGE_INFO = "    \"package-info\": \"";
+static constexpr std::string_view FLAG_BLOCK_END = "  }";
 
+static constexpr size_t SOURCEMAP_START_LEN = 2;
+static constexpr size_t FLAG_SOURCES_LEN = 14;
 static constexpr size_t FLAG_MAPPINGS_LEN = 17;
-static constexpr size_t REAL_SOURCE_SIZE = 7;
 static constexpr size_t REAL_URL_INDEX = 3;
 static constexpr size_t FLAG_ENTRY_PACKAGE_INFO_SIZE = 27;
 static constexpr size_t FLAG_PACKAGE_INFO_SIZE = 21;
+static constexpr size_t FLAG_BLOCK_END_SIZE = 3;
+static constexpr size_t FLAG_BLOCK_END_EXTRA_SIZE = 2;
 } // namespace
 
 #if defined(PANDA_TARGET_OHOS)
-bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& content)
+bool SourceMap::ReadSourceMapData(const std::string& hapPath)
 {
     if (hapPath.empty()) {
         return false;
@@ -58,12 +63,9 @@ bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& conte
     if (extractor == nullptr) {
         return false;
     }
-    std::unique_ptr<uint8_t[]> dataPtr = nullptr;
-    size_t len = 0;
-    if (!extractor->ExtractToBufByName(MEGER_SOURCE_MAP_PATH, dataPtr, len)) {
+    if (!extractor->ExtractToBufByName(MEGER_SOURCE_MAP_PATH, dataPtr_, dataLen_)) {
         return false;
     }
-    content.assign(dataPtr.get(), dataPtr.get() + len);
     return true;
 }
 #endif
@@ -87,72 +89,46 @@ uint32_t SourceMap::Base64CharToInt(char charCode)
         return 63;
     }
     return DIGIT_NUM;
-};
+}
 
 #if defined(PANDA_TARGET_OHOS)
 void SourceMap::Init(const std::string& hapPath)
 {
     auto start = Clock::now();
     std::string sourceMapData;
-    if (ReadSourceMapData(hapPath, sourceMapData)) {
-        SplitSourceMap(sourceMapData);
+    if (ReadSourceMapData(hapPath)) {
+        SplitSourceMap();
     }
     auto end = Clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOG_ECMA(DEBUG) << "Init sourcemap time: " << duration.count() << "ms";
+    LOG_ECMA(INFO) << "Init sourcemap time: " << duration.count() << "ms";
 }
 #endif
 
-void SourceMap::Init(uint8_t *data, size_t dataSize)
+void SourceMap::SplitSourceMap()
 {
-    std::string content;
-    content.assign(data, data + dataSize);
-    SplitSourceMap(content);
-}
+    std::string_view data = std::string_view(reinterpret_cast<char*>(dataPtr_.get()), dataLen_);
+    std::string_view url;
 
-void SourceMap::SplitSourceMap(const std::string& sourceMapData)
-{
-    std::stringstream ss(sourceMapData);
-    std::string tmp;
-    std::string url;
-
-    std::getline(ss, tmp);
-    bool isUrl = true;
-    while (std::getline(ss, tmp)) {
-        if (isUrl && tmp.size() > REAL_SOURCE_SIZE) {
-            url = tmp.substr(REAL_URL_INDEX, tmp.size() - REAL_SOURCE_SIZE);
-            isUrl = false;
-            continue;
+    size_t pos = SOURCEMAP_START_LEN;
+    while (pos != std::string_view::npos) {
+        size_t start = data.find(FLAG_URL, pos);
+        if (start == std::string_view::npos) {
+            break;
         }
-
-        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_SOURCES)) {
-            std::getline(ss, tmp);
-            sources_.emplace(url, tmp);
-            continue;
+        size_t end = data.find(FLAG_BLOCK_END, start + 3); // 3 means skig "：{"
+        if (end == std::string_view::npos) {
+            break;
         }
-
-        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_MAPPINGS)) {
-            mappings_.emplace(url, tmp);
-            continue;
-        }
-
-        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_ENTRY_PACKAGE_INFO)) {
-            entryPackageInfo_.emplace(url, tmp);
-            continue;
-        }
-
-        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_PACKAGE_INFO)) {
-            packageInfo_.emplace(url, tmp);
-            continue;
-        }
-
-        if (base::StringHelper::StringStartWith(tmp.c_str(), FLAG_END)) {
-            isUrl = true;
-        }
+        auto url = data.substr(pos + REAL_URL_INDEX, start - pos - REAL_URL_INDEX - 1); // 1 means skip "
+        auto block = data.substr(start + FLAG_BLOCK_END_SIZE, end - start - FLAG_BLOCK_END_SIZE);
+        sourceMaps_[url] = block;
+        pos = end + FLAG_BLOCK_END_SIZE + FLAG_BLOCK_END_EXTRA_SIZE;
     }
 }
 
-void SourceMap::ExtractSourceMapData(const std::string& allmappings, std::shared_ptr<SourceMapData>& curMapData)
+
+void SourceMap::ExtractSourceMapData(const std::string& allmappings, SourceMapData *curMapData)
 {
     curMapData->mappings_ = HandleMappings(allmappings);
 
@@ -302,7 +278,7 @@ std::vector<std::string> SourceMap::HandleMappings(const std::string& mapping)
         keyInfo.push_back(tempStr);
     }
     return keyInfo;
-};
+}
 
 bool SourceMap::VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans)
 {
@@ -338,86 +314,147 @@ bool SourceMap::VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans)
         return false;
     }
     return true;
-};
+}
 
-void SourceMap::GetPackageName(std::string& url, std::string& packageName)
+std::string SourceMap::GetMappings(std::string_view sourcemap)
 {
-    auto iterData = packageName_.find(url);
-    if (iterData != packageName_.end()) {
-        packageName = iterData->second;
-        return;
+    auto start = sourcemap.find(FLAG_MAPPINGS);
+    if (start == std::string_view::npos) {
+        return std::string();
     }
-    std::string entryPackageInfo = entryPackageInfo_[url];
-    std::string packageInfo = packageInfo_[url];
-    if (!packageInfo.empty()) {
-        auto last = packageInfo.rfind('|');
+    auto end = sourcemap.find(DOBULE_QUOTATION, start + FLAG_MAPPINGS_LEN);
+    if (end == std::string_view::npos) {
+        return std::string();
+    }
+    return std::string(sourcemap.substr(start + FLAG_MAPPINGS_LEN, end - start - FLAG_MAPPINGS_LEN));
+}
+
+std::string SourceMap::GetSources(std::string_view sourcemap)
+{
+    auto start = sourcemap.find(FLAG_SOURCES);
+    if (start == std::string_view::npos) {
+        return std::string();
+    }
+
+    start = sourcemap.find(DOBULE_QUOTATION, start + FLAG_SOURCES_LEN);
+    if (start == std::string_view::npos) {
+        return std::string();
+    }
+
+    auto end = sourcemap.find(DOBULE_QUOTATION, start + 1);
+    if (end == std::string_view::npos) {
+        return std::string();
+    }
+
+    return std::string(sourcemap.substr(start + 1, end - start - 1));
+}
+
+std::string SourceMap::GetEntryPackageInfo(std::string_view sourcemap)
+{
+    auto start = sourcemap.find(FLAG_ENTRY_PACKAGE_INFO);
+    if (start == std::string_view::npos) {
+        return std::string();
+    }
+    auto end = sourcemap.find(DOBULE_QUOTATION, start + FLAG_ENTRY_PACKAGE_INFO_SIZE);
+    if (end == std::string_view::npos) {
+        return std::string();
+    }
+
+    return std::string(sourcemap.substr(start + FLAG_ENTRY_PACKAGE_INFO_SIZE,
+        end - start - FLAG_ENTRY_PACKAGE_INFO_SIZE));
+}
+
+std::string SourceMap::GetPackageInfo(std::string_view sourcemap)
+{
+    auto start = sourcemap.find(FLAG_PACKAGE_INFO);
+    if (start == std::string_view::npos) {
+        return std::string();
+    }
+    auto end = sourcemap.find(DOBULE_QUOTATION, start + FLAG_PACKAGE_INFO_SIZE);
+    if (end == std::string_view::npos) {
+        return std::string();
+    }
+
+    return std::string(sourcemap.substr(start + FLAG_PACKAGE_INFO_SIZE,
+        end - start - FLAG_PACKAGE_INFO_SIZE));
+}
+
+std::string SourceMap::GetPackageName(std::string_view sourcemap)
+{
+    std::string packageName = GetPackageInfo(sourcemap);
+    if (packageName.empty()) {
+        packageName = GetEntryPackageInfo(sourcemap);
+    }
+    return packageName;
+}
+
+bool SourceMap::ParseSourceMapData(std::string_view url)
+{
+    auto iterData = sourceMapDatas_.find(url);
+    if (iterData != sourceMapDatas_.end()) {
+        return true;
+    }
+
+    auto iter = sourceMaps_.find(url);
+    if (iter == sourceMaps_.end()) {
+        LOG_ECMA(ERROR) << "SourceMaps find failed, url: " << url;
+        return false;
+    }
+
+    std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
+    if (modularMap == nullptr) {
+        LOG_ECMA(ERROR) << "New SourceMapData failed";
+        return false;
+    }
+
+    auto sources = GetSources(iter->second);
+    if (sources.empty()) {
+        LOG_ECMA(ERROR) << "GetSources failed, block: " << iter->second;
+        return false;
+    }
+
+    auto packageName = GetPackageName(iter->second);
+    if (!packageName.empty()) {
+        auto last = packageName.rfind('|');
         if (last == std::string::npos) {
-            LOG_ECMA(ERROR) << "packageInfo can't find fisrt |";
-            return;
+            LOG_ECMA(ERROR) << "packageName can't find |, packageName: " << packageName;
         }
-        packageName = packageInfo.substr(FLAG_PACKAGE_INFO_SIZE, last - FLAG_PACKAGE_INFO_SIZE);
-        packageName_.emplace(url, packageName);
-        return;
+        packageName = packageName.substr(0, last);
     }
-    if (!entryPackageInfo.empty()) {
-        auto last = entryPackageInfo.rfind('|');
-        if (last == std::string::npos) {
-            LOG_ECMA(ERROR) << "entryPackageInfo can't find fisrt |";
-            return;
-        }
-        packageName = entryPackageInfo.substr(FLAG_ENTRY_PACKAGE_INFO_SIZE, last - FLAG_ENTRY_PACKAGE_INFO_SIZE);
-        packageName_.emplace(url, packageName);
+
+    modularMap->sources_ = sources;
+    modularMap->packageName_ = packageName;
+    if (url.rfind(".js") != std::string_view::npos) {
+        sourceMapDatas_.emplace(url, modularMap);
+        return true;
     }
+
+    auto mappings = GetMappings(iter->second);
+
+    ExtractSourceMapData(mappings, modularMap.get());
+    sourceMapDatas_.emplace(url, modularMap);
+    return true;
 }
 
 bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column, std::string& packageName)
 {
-    std::string tmp = sources_[url];
-    if (tmp.empty() || tmp.size() < REAL_SOURCE_SIZE + 1) {
-        LOG_ECMA(ERROR) << "Translate failed, url: " << url;
+    std::string_view urlView(url);
+    if (!ParseSourceMapData(urlView)) {
         return false;
     }
-    tmp = tmp.substr(REAL_SOURCE_SIZE, tmp.size() - REAL_SOURCE_SIZE - 1);
-    GetPackageName(url, packageName);
+
+    auto sourceMapData = sourceMapDatas_[urlView];
+    packageName = sourceMapData->packageName_;
     if (url.rfind(".js") != std::string::npos) {
-        url = tmp;
+        url = sourceMapData->sources_;
         return true;
     }
     bool isReplaces = true;
-    bool ret = false;
-    auto iterData = sourceMaps_.find(url);
-    if (iterData != sourceMaps_.end()) {
-        if (iterData->second == nullptr) {
-            LOG_ECMA(ERROR) << "Extract mappings failed, url: " << url;
-            return false;
-        }
-        ret = GetLineAndColumnNumbers(line, column, *(iterData->second), isReplaces);
-        if (isReplaces) {
-            url = tmp;
-        }
-        return ret;
+    auto ret = GetLineAndColumnNumbers(line, column, *sourceMapData, isReplaces);
+    if (isReplaces) {
+        url = sourceMapData->sources_;
     }
-    auto iter = mappings_.find(url);
-    if (iter != mappings_.end()) {
-        std::string mappings = mappings_[url];
-        if (mappings.size() < FLAG_MAPPINGS_LEN + 1) {
-            LOG_ECMA(ERROR) << "Translate failed, url: " << url << ", mappings: " << mappings;
-            return false;
-        }
-        std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
-        if (modularMap == nullptr) {
-            LOG_ECMA(ERROR) << "New SourceMapData failed";
-            return false;
-        }
-        ExtractSourceMapData(mappings.substr(FLAG_MAPPINGS_LEN, mappings.size() - FLAG_MAPPINGS_LEN - 1), modularMap);
-        sourceMaps_.emplace(url, modularMap);
-        ret = GetLineAndColumnNumbers(line, column, *(modularMap), isReplaces);
-        if (isReplaces) {
-            url = tmp;
-        }
-        return ret;
-    }
-    return false;
+    return ret;
 }
 
 bool SourceMap::GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap, bool& isReplaces)
