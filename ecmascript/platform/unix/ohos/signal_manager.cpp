@@ -20,6 +20,7 @@
 #include "ecmascript/platform/unix/signal_manager_unix.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cerrno>
 #include <csignal>
 #include <mutex>
@@ -31,6 +32,7 @@ class OhosSignalManager : public SignalManager {
 public:
     explicit OhosSignalManager() = default;
     static OhosSignalManager &GetSignalManager(int signal);
+    static void Initialize();
 
     int Claim() override;
     void AddSpecialHandler(SigchainAction newAction) override;
@@ -47,30 +49,51 @@ private:
     bool claimed_{false};
     UnixSigchainAction specialHandlers_[SPECIAL_HANDLER_SOLT_COUNT];
     static OhosSignalManager instances_[NSIG - 1];
+    static std::atomic<bool> initialized_;
 };
 OhosSignalManager OhosSignalManager::instances_[NSIG - 1];
+std::atomic<bool> OhosSignalManager::initialized_{false};
 
-void SignalManager::Initialize()
+void SignalManager::Initialize() { OhosSignalManager::Initialize(); }
+
+void OhosSignalManager::Initialize()
 {
     // Trigger early initialization of the signal handling subsystem.
     // On musl libc, this ensures our handler occupies the "special slot"
     // reserved for internal use, preventing potential conflicts later.
-    GetSignalManager(SIGHUP);
+    static std::once_flag flag;
+    std::call_once(flag, [] {
+        // signo 0 is not valid signal, skip
+        for (int i = 1; i < NSIG; i++) {
+            instances_[i - 1].signo_ = i;
+        }
+
+        constexpr const int SIGDUMP = 35;
+        std::vector<int> crashSignals{
+            SIGILL,
+            SIGTRAP,
+            SIGABRT,
+            SIGBUS,
+            SIGFPE,
+            SIGSEGV,
+            SIGSTKFLT,
+            SIGDUMP,
+        };
+        for (auto i : crashSignals) {
+            // initialize signals which are proxied by sigchain
+            instances_[i - 1].Claim();
+        }
+        initialized_ = true;
+    });
 }
 
 SignalManager &SignalManager::GetSignalManager(int signo) { return OhosSignalManager::GetSignalManager(signo); }
 
 OhosSignalManager &OhosSignalManager::GetSignalManager(int signal)
 {
-    static std::once_flag flag;
-    std::call_once(flag, [] {
-        // signo 0 is not valid signal, skip
-        for (int i = 1; i < NSIG; i++) {
-            instances_[i - 1].signo_ = i;
-            // we need to claim all signals on ohos platform
-            instances_[i - 1].Claim();
-        }
-    });
+    if (!initialized_.load()) {
+        LOG_ECMA(FATAL) << "SignalManager is not initialized";
+    }
     if (signal <= 0 || signal >= NSIG) {
         // raise abort signal in signal handler would cause unexpected error
         if (!SignalHandlingScope::IsHandlingSignal()) {
