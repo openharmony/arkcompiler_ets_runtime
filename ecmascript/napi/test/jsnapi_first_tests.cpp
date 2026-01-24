@@ -1696,6 +1696,46 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValue)
     EXPECT_TRUE(res);
 }
 
+HWTEST_F_L0(JSNApiTests, ModuleDeserializeReturnEarlyWhenDisableModuleSnapshot)
+{
+    uint32_t originalVersion = vm_->GetApplicationVersionCode();
+    vm_->GetJSOptions().SetDisableModuleSnapshot(true);
+    int arkProperties = vm_->GetJSOptions().GetArkProperties();
+    vm_->GetJSOptions().SetArkProperties(arkProperties & (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT));
+    JSNApi::ModuleDeserialize(vm_, originalVersion + 1);
+    EXPECT_EQ(vm_->GetApplicationVersionCode(), originalVersion);
+}
+
+HWTEST_F_L0(JSNApiTests, ModuleDeserializeReturnEarlyWhenDisableJSPandaFileAndModuleSnapshot)
+{
+    uint32_t originalVersion = vm_->GetApplicationVersionCode();
+    vm_->GetJSOptions().SetDisableModuleSnapshot(false);
+    int arkProperties = vm_->GetJSOptions().GetArkProperties();
+    vm_->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT);
+    JSNApi::ModuleDeserialize(vm_, originalVersion + 1);
+    EXPECT_EQ(vm_->GetApplicationVersionCode(), originalVersion);
+}
+
+HWTEST_F_L0(JSNApiTests, ModuleDeserializeReturnEarlyWhenBothDisabled)
+{
+    uint32_t originalVersion = vm_->GetApplicationVersionCode();
+    vm_->GetJSOptions().SetDisableModuleSnapshot(true);
+    int arkProperties = vm_->GetJSOptions().GetArkProperties();
+    vm_->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT);
+    JSNApi::ModuleDeserialize(vm_, originalVersion);
+    EXPECT_EQ(vm_->GetApplicationVersionCode(), originalVersion);
+}
+
+HWTEST_F_L0(JSNApiTests, ModuleDeserializeNormalExecution)
+{
+    uint32_t originalVersion = vm_->GetApplicationVersionCode();
+    vm_->GetJSOptions().SetDisableModuleSnapshot(false);
+    int arkProperties = vm_->GetJSOptions().GetArkProperties();
+    vm_->GetJSOptions().SetArkProperties(arkProperties & (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT));
+    JSNApi::ModuleDeserialize(vm_, originalVersion + 1);
+    EXPECT_EQ(vm_->GetApplicationVersionCode(), originalVersion + 1);
+}
+
 /*
  * @tc.number: ffi_interface_api_033
  * @tc.name: JSNApi_SetHostPromiseRejectionTracker_Call

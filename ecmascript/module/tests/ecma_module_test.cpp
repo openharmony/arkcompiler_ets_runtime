@@ -2590,47 +2590,24 @@ HWTEST_F_L0(EcmaModuleTest, ModuleLogger1) {
     moduleLogger = nullptr;
 }
 
-HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableModuleLoggerAndSnapshot) {
-    auto vm = thread->GetEcmaVM();
-    thread->SetModuleLogger(nullptr);
-    int arkProperties = vm->GetJSOptions().GetArkProperties();
-    vm->GetJSOptions().SetArkProperties((arkProperties |
-        ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) & (~ArkProperties::ENABLE_MODULE_LOG));
-    ModuleLogger::SetModuleLoggerTask(vm);
-    ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    EXPECT_EQ(moduleLogger, nullptr);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableSnapshot) {
-    auto vm = thread->GetEcmaVM();
-    int arkProperties = vm->GetJSOptions().GetArkProperties();
-    vm->GetJSOptions().SetArkProperties((arkProperties |
-        ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) | ArkProperties::ENABLE_MODULE_LOG);
-    ModuleLogger::SetModuleLoggerTask(vm);
-    ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    EXPECT_NE(moduleLogger, nullptr);
-    delete moduleLogger;
-    thread->SetModuleLogger(nullptr);
-}
-
 HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableModuleLogger) {
     auto vm = thread->GetEcmaVM();
+    thread->SetModuleLogger(nullptr);
     int arkProperties = vm->GetJSOptions().GetArkProperties();
-    vm->GetJSOptions().SetArkProperties((arkProperties &
-        (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT)) & (~ArkProperties::ENABLE_MODULE_LOG));
+    vm->GetJSOptions().SetArkProperties(arkProperties & (~ArkProperties::ENABLE_MODULE_LOG));
     ModuleLogger::SetModuleLoggerTask(vm);
     ModuleLogger *moduleLogger = thread->GetModuleLogger();
     EXPECT_EQ(moduleLogger, nullptr);
 }
 
-HWTEST_F_L0(EcmaModuleTest, ModuleLogger_EnableModuleLoggerAndSnapshot) {
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_EnableModuleLogger) {
     auto vm = thread->GetEcmaVM();
     int arkProperties = vm->GetJSOptions().GetArkProperties();
-    vm->GetJSOptions().SetArkProperties((arkProperties &
-        (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT)) | ArkProperties::ENABLE_MODULE_LOG);
+    vm->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_MODULE_LOG);
     ModuleLogger::SetModuleLoggerTask(vm);
     ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    EXPECT_EQ(moduleLogger, nullptr);
+    EXPECT_EQ(vm->GetJSOptions().DisableModuleSnapshot(), true);
+    EXPECT_NE(moduleLogger, nullptr);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ModuleLogger_now) {
