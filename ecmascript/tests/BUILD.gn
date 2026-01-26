@@ -3783,6 +3783,32 @@ host_unittest_action("GC_KeyStats_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("GlobalConstants_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+  # test file
+    "global_constants_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+  ]
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
 
@@ -3926,6 +3952,7 @@ group("unittest") {
     ":Sendable_SharedObjectFactory_Test",
     ":Runtime_Test",
     ":ECMA_VM_Heap_Test",
+    ":GlobalConstants_Test",
   ]
 
  # TODO: CMC-GC UT FIX LATER
@@ -4113,6 +4140,7 @@ group("host_unittest") {
     ":Dynamic_Object_Accessor_Util_TestAction",
     ":Runtime_TestAction",
     ":ECMA_VM_Heap_TestAction",
+    ":GlobalConstants_TestAction",
   ]
 
   if (is_mac) {

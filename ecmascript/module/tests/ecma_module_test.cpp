@@ -2032,14 +2032,14 @@ HWTEST_F_L0(EcmaModuleTest, ResolveExportObject)
     jsHclass->SetLayout(thread, layout);
     JSHandle<JSTaggedValue> res2 = SourceTextModule::ResolveExportObject(
         thread, module1, JSHandle<JSTaggedValue>::Cast(obj), exportName);
-    EXPECT_TRUE(res2->IsHole());
+    EXPECT_TRUE(res2->IsNull());
 
     JSHandle<JSObject> obj1(objectFactory->NewJSObjectByConstructor(ctor));
     JSHandle<NameDictionary> dict = NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(2));
     obj1->SetProperties(thread, JSHandle<JSTaggedValue>::Cast(dict));
     JSHandle<JSTaggedValue> res3 = SourceTextModule::ResolveExportObject(
         thread, module1, JSHandle<JSTaggedValue>::Cast(obj1), exportName);
-    EXPECT_TRUE(res3->IsHole());
+    EXPECT_TRUE(res3->IsNull());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ResolveNativeStarExport)

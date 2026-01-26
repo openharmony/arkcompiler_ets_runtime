@@ -770,11 +770,11 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
         PropertyAttributes attr = GetAttr();
         uint32_t offset = index_;
         if (!attr.IsInlinedProps()) {
-            auto *hclass = receiver_->GetTaggedObject()->GetClass();
+            auto *hclass = receiver->GetJSHClass();
             offset += hclass->GetInlinedProperties();
         }
         attr.SetOffset(offset);
-        JSHandle<JSObject> objHandle(receiver_);
+        JSHandle<JSObject> objHandle(receiver);
         ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
         auto actualValue =
             JSHClass::ConvertOrTransitionWithRep(thread_, objHandle, key_, value, attr);

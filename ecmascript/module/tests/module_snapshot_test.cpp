@@ -392,8 +392,8 @@ public:
             dict->SetKey(thread, index0, str.GetTaggedValue());
             object->SetProperties(thread, dict);
         } else {
-            JSHandle<LayoutInfo> layoutInfo(thread, hClassHandle->GetLayout(thread));
-            JSHandle<TaggedArray>::Cast(layoutInfo)->Set(thread, layoutInfo->GetKeyIndex(index0), str.GetTaggedValue());
+            PropertyDescriptor desc(thread, thread->GlobalConstants()->GetHandledUndefined(), true, true, true);
+            JSObject::DefineOwnProperty(thread, object, JSHandle<JSTaggedValue>::Cast(str), desc);
         }
         SourceTextModule::StoreModuleValue(thread, nativeModule, index0, JSHandle<JSTaggedValue>::Cast(object));
         size_t environmentArraySize = 1;

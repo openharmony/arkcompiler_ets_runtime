@@ -580,7 +580,8 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
 
 void GlobalEnvConstants::InitMiscellaneous(JSThread *thread, ObjectFactory *factory)
 {
-    SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
+    SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0,
+        MemSpaceType::READ_ONLY_SPACE, GrowMode::KEEP));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
     SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
                 WeakVector::Create(thread, VTable::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));
