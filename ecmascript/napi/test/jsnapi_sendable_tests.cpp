@@ -666,7 +666,6 @@ HWTEST_F_L0(JSNApiTests, JSNApi_DeserializeValue_String)
     ASSERT_FALSE(local->IsObject(vm_));
 }
 
-
 class SendableReference {
 public:
     SendableReference(EcmaVM *vm, Local<ObjectRef> obj) : vm_(vm), obj_(vm, obj) {}
@@ -751,22 +750,18 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsSendable_DetectsCorrectly)
     // Test sendable object
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_));
     Local<ObjectRef> sendableObj = constructor->Constructor(vm_, nullptr, 0);
-    EXPECT_TRUE(sendableObj->IsSendable(vm_))
-        << "Sendable object should be detected by IsSendable()";
+    EXPECT_TRUE(sendableObj->IsSendable(vm_)) << "Sendable object should be detected by IsSendable()";
 
     // Test regular object
     Local<ObjectRef> regularObj = ObjectRef::New(vm_);
-    EXPECT_FALSE(regularObj->IsSendable(vm_))
-        << "Regular object should not be detected as sendable";
+    EXPECT_FALSE(regularObj->IsSendable(vm_)) << "Regular object should not be detected as sendable";
 
     // Test primitive values - in this implementation, primitives are also considered sendable
     Local<NumberRef> num = NumberRef::New(vm_, 42);
-    EXPECT_TRUE(num->IsSendable(vm_))
-        << "Number is sendable (primitive value)";
+    EXPECT_TRUE(num->IsSendable(vm_)) << "Number is sendable (primitive value)";
 
     Local<StringRef> str = StringRef::NewFromUtf8(vm_, "test");
-    EXPECT_TRUE(str->IsSendable(vm_))
-        << "String is sendable (primitive value)";
+    EXPECT_TRUE(str->IsSendable(vm_)) << "String is sendable (primitive value)";
 }
 
 HWTEST_F_L0(JSNApiTests, JSValueRef_IsSendableObject_DetectsCorrectly)
@@ -776,18 +771,15 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsSendableObject_DetectsCorrectly)
     // Test sendable object
     Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_));
     Local<ObjectRef> sendableObj = constructor->Constructor(vm_, nullptr, 0);
-    EXPECT_TRUE(sendableObj->IsSendableObject(vm_))
-        << "Sendable object should be detected by IsSendableObject()";
+    EXPECT_TRUE(sendableObj->IsSendableObject(vm_)) << "Sendable object should be detected by IsSendableObject()";
 
     // Test regular object
     Local<ObjectRef> regularObj = ObjectRef::New(vm_);
-    EXPECT_FALSE(regularObj->IsSendableObject(vm_))
-        << "Regular object should not be detected as sendable object";
+    EXPECT_FALSE(regularObj->IsSendableObject(vm_)) << "Regular object should not be detected as sendable object";
 
     // Test non-object values
     Local<NumberRef> num = NumberRef::New(vm_, 42);
-    EXPECT_FALSE(num->IsSendableObject(vm_))
-        << "Number should not be detected as sendable object";
+    EXPECT_FALSE(num->IsSendableObject(vm_)) << "Number should not be detected as sendable object";
 }
 
 HWTEST_F_L0(JSNApiTests, JSValueRef_IsSendableArrayBuffer_DetectsCorrectly)
@@ -801,13 +793,11 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsSendableArrayBuffer_DetectsCorrectly)
 
     // Test regular array buffer
     Local<ArrayBufferRef> regularBuffer = ArrayBufferRef::New(vm_, 16);
-    EXPECT_FALSE(regularBuffer->IsSendableArrayBuffer(vm_))
-        << "Regular ArrayBuffer should not be detected as sendable";
+    EXPECT_FALSE(regularBuffer->IsSendableArrayBuffer(vm_)) << "Regular ArrayBuffer should not be detected as sendable";
 
     // Test non-ArrayBuffer values
     Local<ObjectRef> obj = ObjectRef::New(vm_);
-    EXPECT_FALSE(obj->IsSendableArrayBuffer(vm_))
-        << "Regular object should not be detected as sendable ArrayBuffer";
+    EXPECT_FALSE(obj->IsSendableArrayBuffer(vm_)) << "Regular object should not be detected as sendable ArrayBuffer";
 }
 
 // ============================================================================
@@ -821,12 +811,10 @@ HWTEST_F_L0(JSNApiTests, SendableArrayBufferRef_New_Valid)
     int32_t length = 32;
     Local<SendableArrayBufferRef> buffer = SendableArrayBufferRef::New(vm_, length);
 
-    EXPECT_TRUE(buffer->IsSendableArrayBuffer(vm_))
-        << "Created object should be a SendableArrayBuffer";
+    EXPECT_TRUE(buffer->IsSendableArrayBuffer(vm_)) << "Created object should be a SendableArrayBuffer";
 
     int32_t byteLength = buffer->ByteLength(vm_);
-    EXPECT_EQ(length, byteLength)
-        << "ByteLength should match requested length";
+    EXPECT_EQ(length, byteLength) << "ByteLength should match requested length";
 }
 
 HWTEST_F_L0(JSNApiTests, SendableArrayBufferRef_NewWithData_Valid)
@@ -843,15 +831,12 @@ HWTEST_F_L0(JSNApiTests, SendableArrayBufferRef_NewWithData_Valid)
         byteData[i] = static_cast<uint8_t>(i);
     }
 
-    Local<SendableArrayBufferRef> buffer =
-        SendableArrayBufferRef::New(vm_, data, length, nullptr, nullptr);
+    Local<SendableArrayBufferRef> buffer = SendableArrayBufferRef::New(vm_, data, length, nullptr, nullptr);
 
-    EXPECT_TRUE(buffer->IsSendableArrayBuffer(vm_))
-        << "Created buffer should be a SendableArrayBuffer";
+    EXPECT_TRUE(buffer->IsSendableArrayBuffer(vm_)) << "Created buffer should be a SendableArrayBuffer";
 
     int32_t byteLength = buffer->ByteLength(vm_);
-    EXPECT_EQ(length, byteLength)
-        << "ByteLength should match requested length";
+    EXPECT_EQ(length, byteLength) << "ByteLength should match requested length";
 
     vm_->GetNativeAreaAllocator()->FreeBuffer(data);
 }
@@ -862,11 +847,9 @@ HWTEST_F_L0(JSNApiTests, SendableArrayBufferRef_ZeroLength_Valid)
 
     Local<SendableArrayBufferRef> buffer = SendableArrayBufferRef::New(vm_, 0);
 
-    EXPECT_TRUE(buffer->IsSendableArrayBuffer(vm_))
-        << "Zero-length buffer should still be SendableArrayBuffer";
+    EXPECT_TRUE(buffer->IsSendableArrayBuffer(vm_)) << "Zero-length buffer should still be SendableArrayBuffer";
 
-    EXPECT_EQ(0, buffer->ByteLength(vm_))
-        << "Zero-length buffer should have byteLength of 0";
+    EXPECT_EQ(0, buffer->ByteLength(vm_)) << "Zero-length buffer should have byteLength of 0";
 }
 
 // ============================================================================
@@ -884,11 +867,9 @@ HWTEST_F_L0(JSNApiTests, SendableTypedArrayRef_GetArrayBuffer_Valid)
     Local<SharedInt8ArrayRef> int8Array = SharedInt8ArrayRef::New(vm_, buffer, 0, bufferLength);
     Local<SendableArrayBufferRef> retrievedBuffer = int8Array->GetArrayBuffer(vm_);
 
-    EXPECT_TRUE(retrievedBuffer->IsSendableArrayBuffer(vm_))
-        << "Retrieved buffer should be SendableArrayBuffer";
+    EXPECT_TRUE(retrievedBuffer->IsSendableArrayBuffer(vm_)) << "Retrieved buffer should be SendableArrayBuffer";
 
-    EXPECT_EQ(bufferLength, retrievedBuffer->ByteLength(vm_))
-        << "Retrieved buffer should have correct length";
+    EXPECT_EQ(bufferLength, retrievedBuffer->ByteLength(vm_)) << "Retrieved buffer should have correct length";
 }
 
 // ============================================================================
@@ -905,8 +886,7 @@ HWTEST_F_L0(JSNApiTests, SharedInt8ArrayRef_New_Valid)
     Local<SharedInt8ArrayRef> array = SharedInt8ArrayRef::New(vm_, buffer, 0, elementCount);
 
     int32_t length = array->ArrayLength(vm_);
-    EXPECT_EQ(elementCount, length)
-        << "Array length should match element count";
+    EXPECT_EQ(elementCount, length) << "Array length should match element count";
 }
 
 HWTEST_F_L0(JSNApiTests, SharedUint8ArrayRef_New_Valid)
@@ -919,8 +899,7 @@ HWTEST_F_L0(JSNApiTests, SharedUint8ArrayRef_New_Valid)
     Local<SharedUint8ArrayRef> array = SharedUint8ArrayRef::New(vm_, buffer, 0, elementCount);
 
     int32_t length = array->ArrayLength(vm_);
-    EXPECT_EQ(elementCount, length)
-        << "Uint8Array length should match element count";
+    EXPECT_EQ(elementCount, length) << "Uint8Array length should match element count";
 }
 
 HWTEST_F_L0(JSNApiTests, SharedInt16ArrayRef_New_Valid)
@@ -934,8 +913,7 @@ HWTEST_F_L0(JSNApiTests, SharedInt16ArrayRef_New_Valid)
     Local<SharedInt16ArrayRef> array = SharedInt16ArrayRef::New(vm_, buffer, 0, elementCount);
 
     int32_t length = array->ArrayLength(vm_);
-    EXPECT_EQ(elementCount, length)
-        << "Int16Array length should match element count";
+    EXPECT_EQ(elementCount, length) << "Int16Array length should match element count";
 }
 
 HWTEST_F_L0(JSNApiTests, SharedUint16ArrayRef_New_Valid)
@@ -949,8 +927,7 @@ HWTEST_F_L0(JSNApiTests, SharedUint16ArrayRef_New_Valid)
     Local<SharedUint16ArrayRef> array = SharedUint16ArrayRef::New(vm_, buffer, 0, elementCount);
 
     int32_t length = array->ArrayLength(vm_);
-    EXPECT_EQ(elementCount, length)
-        << "Uint16Array length should match element count";
+    EXPECT_EQ(elementCount, length) << "Uint16Array length should match element count";
 }
 
 HWTEST_F_L0(JSNApiTests, SharedInt32ArrayRef_New_Valid)
@@ -964,8 +941,7 @@ HWTEST_F_L0(JSNApiTests, SharedInt32ArrayRef_New_Valid)
     Local<SharedInt32ArrayRef> array = SharedInt32ArrayRef::New(vm_, buffer, 0, elementCount);
 
     int32_t length = array->ArrayLength(vm_);
-    EXPECT_EQ(elementCount, length)
-        << "Int32Array length should match element count";
+    EXPECT_EQ(elementCount, length) << "Int32Array length should match element count";
 }
 
 HWTEST_F_L0(JSNApiTests, SharedFloat32ArrayRef_New_Valid)
@@ -979,8 +955,150 @@ HWTEST_F_L0(JSNApiTests, SharedFloat32ArrayRef_New_Valid)
     Local<SharedFloat32ArrayRef> array = SharedFloat32ArrayRef::New(vm_, buffer, 0, elementCount);
 
     int32_t length = array->ArrayLength(vm_);
-    EXPECT_EQ(elementCount, length)
-        << "Float32Array length should match element count";
+    EXPECT_EQ(elementCount, length) << "Float32Array length should match element count";
+}
+
+HWTEST_F_L0(JSNApiTests, SharedUint8ClampedArrayRef_New_Valid)
+{
+    LocalScope scope(vm_);
+
+    int32_t elementCount = 16;
+    Local<SendableArrayBufferRef> buffer = SendableArrayBufferRef::New(vm_, elementCount);
+
+    Local<SharedUint8ClampedArrayRef> array = SharedUint8ClampedArrayRef::New(vm_, buffer, 0, elementCount);
+
+    int32_t length = array->ArrayLength(vm_);
+    EXPECT_EQ(elementCount, length) << "Uint8ClampedArray length should match element count";
+}
+
+HWTEST_F_L0(JSNApiTests, SharedUint32ArrayRef_New_Valid)
+{
+    LocalScope scope(vm_);
+
+    int32_t elementCount = 4;
+    int32_t bufferLength = elementCount * 4;  // 4 bytes per uint32
+    Local<SendableArrayBufferRef> buffer = SendableArrayBufferRef::New(vm_, bufferLength);
+
+    Local<SharedUint32ArrayRef> array = SharedUint32ArrayRef::New(vm_, buffer, 0, elementCount);
+
+    int32_t length = array->ArrayLength(vm_);
+    EXPECT_EQ(elementCount, length) << "Uint32Array length should match element count";
+}
+
+// ============================================================================
+// SendableMapIteratorRef Tests - New Coverage
+// ============================================================================
+
+HWTEST_F_L0(JSNApiTests, SendableMapIteratorRef_GetEntries_Valid)
+{
+    LocalScope scope(vm_);
+
+    Local<SendableMapRef> map = SendableMapRef::New(vm_);
+
+    // Add test entries
+    Local<JSValueRef> key1 = StringRef::NewFromUtf8(vm_, "key1");
+    Local<JSValueRef> value1 = StringRef::NewFromUtf8(vm_, "value1");
+    Local<JSValueRef> key2 = StringRef::NewFromUtf8(vm_, "key2");
+    Local<JSValueRef> value2 = StringRef::NewFromUtf8(vm_, "value2");
+
+    map->Set(vm_, key1, value1);
+    map->Set(vm_, key2, value2);
+
+    // Get entries iterator
+    Local<SendableMapIteratorRef> iterator = map->GetEntries(vm_);
+
+    EXPECT_TRUE(iterator->IsObject(vm_)) << "Entries iterator should be an object";
+}
+
+HWTEST_F_L0(JSNApiTests, SendableMapIteratorRef_GetKeys_Valid)
+{
+    LocalScope scope(vm_);
+
+    Local<SendableMapRef> map = SendableMapRef::New(vm_);
+
+    Local<JSValueRef> key1 = StringRef::NewFromUtf8(vm_, "key1");
+    Local<JSValueRef> value1 = StringRef::NewFromUtf8(vm_, "value1");
+
+    map->Set(vm_, key1, value1);
+
+    // Get keys iterator
+    Local<SendableMapIteratorRef> iterator = map->GetKeys(vm_);
+
+    EXPECT_TRUE(iterator->IsObject(vm_)) << "Keys iterator should be an object";
+}
+
+HWTEST_F_L0(JSNApiTests, SendableMapIteratorRef_GetValues_Valid)
+{
+    LocalScope scope(vm_);
+
+    Local<SendableMapRef> map = SendableMapRef::New(vm_);
+
+    Local<JSValueRef> key1 = StringRef::NewFromUtf8(vm_, "key1");
+    Local<JSValueRef> value1 = StringRef::NewFromUtf8(vm_, "value1");
+
+    map->Set(vm_, key1, value1);
+
+    // Get values iterator
+    Local<SendableMapIteratorRef> iterator = map->GetValues(vm_);
+
+    EXPECT_TRUE(iterator->IsObject(vm_)) << "Values iterator should be an object";
+}
+
+// ============================================================================
+// Edge Cases and Error Handling Tests - New Coverage
+// ============================================================================
+
+HWTEST_F_L0(JSNApiTests, SendableMap_EmptyOperations_Valid)
+{
+    LocalScope scope(vm_);
+
+    Local<SendableMapRef> map = SendableMapRef::New(vm_);
+
+    EXPECT_EQ(0, map->GetSize(vm_)) << "Empty map should have size 0";
+
+    EXPECT_EQ(0, map->GetTotalElements(vm_)) << "Empty map should have total elements 0";
+
+    // Getting non-existent key should return undefined
+    Local<JSValueRef> result = map->Get(vm_, StringRef::NewFromUtf8(vm_, "nonexistent"));
+    EXPECT_TRUE(result->IsUndefined()) << "Getting non-existent key should return undefined";
+}
+
+HWTEST_F_L0(JSNApiTests, SendableSet_EmptyOperations_Valid)
+{
+    LocalScope scope(vm_);
+
+    Local<SendableSetRef> set = SendableSetRef::New(vm_);
+
+    EXPECT_EQ(0, set->GetSize(vm_)) << "Empty set should have size 0";
+
+    EXPECT_EQ(0, set->GetTotalElements(vm_)) << "Empty set should have total elements 0";
+}
+
+HWTEST_F_L0(JSNApiTests, SendableArray_ZeroLength_Valid)
+{
+    LocalScope scope(vm_);
+
+    Local<SendableArrayRef> array = SendableArrayRef::New(vm_, 0);
+
+    EXPECT_EQ(0U, array->Length(vm_)) << "Zero-length array should have length 0";
+
+    EXPECT_TRUE(array->IsSharedArray(vm_)) << "Zero-length array should still be shared array";
+}
+
+HWTEST_F_L0(JSNApiTests, SendableClassFunction_NullParent_Valid)
+{
+    LocalScope scope(vm_);
+
+    // Create with null parent (should not crash)
+    Local<FunctionRef> constructor = GetNewSendableClassFunction(vm_, JSValueRef::Hole(vm_));
+
+    EXPECT_TRUE(constructor->IsFunction(vm_)) << "Constructor with null parent should be valid";
+
+    Local<ObjectRef> obj = constructor->Constructor(vm_, nullptr, 0);
+
+    EXPECT_TRUE(obj->IsObject(vm_)) << "Instance with null parent should be valid";
+
+    EXPECT_TRUE(obj->IsSendableObject(vm_)) << "Instance should be detected as sendable object";
 }
 
 }  // namespace panda::test
