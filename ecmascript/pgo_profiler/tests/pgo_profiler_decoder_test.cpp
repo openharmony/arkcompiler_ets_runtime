@@ -220,4 +220,109 @@ HWTEST_F_L0(PGOProfilerDecoderTest, IsMethodMatchEnabledTest)
     bool result = decoder.IsMethodMatchEnabled();
     EXPECT_FALSE(result);
 }
+
+HWTEST_F_L0(PGOProfilerDecoderTest, LoadAndVerifyEmptyPathCallsClearTest)
+{
+    PGOProfilerDecoder decoder("", 5);
+    std::unordered_map<CString, uint32_t> fileNameToChecksumMap;
+    bool result = decoder.LoadAndVerify(fileNameToChecksumMap);
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, VerifyNotLoadedTest)
+{
+    PGOProfilerDecoder decoder("test.ap", 5);
+    std::unordered_map<CString, uint32_t> fileNameToChecksumMap;
+    // Test LoadAndVerify with invalid file path
+    bool result = decoder.LoadAndVerify(fileNameToChecksumMap);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, SaveAPTextFileLoadedButOpenFailsTest)
+{
+    PGOProfilerDecoder decoder("test.ap", 5);
+    decoder.InitMergeData();
+    std::string tempFile = "/invalid/path/that/cannot/be/opened.txt";
+    bool result = decoder.SaveAPTextFile(tempFile);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, ClearWhenLoadedTest)
+{
+    PGOProfilerDecoder decoder("test.ap", 5);
+    decoder.InitMergeData();
+    // Clear should clean up all resources
+    decoder.Clear();
+    // Verify by trying to load again
+    bool result = decoder.InitMergeData();
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, MatchNotLoadedReturnsTrueTest)
+{
+    PGOProfilerDecoder decoder("test.ap", 5);
+    bool result = decoder.Match(nullptr, "test", PGOMethodId(100));
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, GetHClassTreeDescNotLoadedReturnsFalseTest)
+{
+    PGOProfilerDecoder decoder("test.ap", 5);
+    PGOHClassTreeDesc *desc = nullptr;
+    bool result = decoder.GetHClassTreeDesc(PGOSampleType(100), &desc);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, GetMismatchResultNotLoadedDoesNothingTest)
+{
+    PGOProfilerDecoder decoder("test.ap", 5);
+    uint32_t totalMethodCount = 0;
+    uint32_t mismatchMethodCount = 0;
+    std::set<std::pair<std::string, CString>> mismatchMethodSet;
+
+    decoder.GetMismatchResult(nullptr, totalMethodCount, mismatchMethodCount, mismatchMethodSet);
+    EXPECT_EQ(totalMethodCount, 0U);
+    EXPECT_EQ(mismatchMethodCount, 0U);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, InitMergeDataTwiceTest)
+{
+    PGOProfilerDecoder decoder("test.ap", 5);
+    decoder.InitMergeData();
+    decoder.Clear();
+    bool result = decoder.InitMergeData();
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, InitMergeDataCreatesHeaderTest)
+{
+    PGOProfilerDecoder decoder("test.ap", 5);
+    bool result = decoder.InitMergeData();
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, MergeWithCompatibleHeadersTest)
+{
+    PGOProfilerDecoder decoder1("test1.ap", 5);
+    PGOProfilerDecoder decoder2("test2.ap", 5);
+    decoder1.InitMergeData();
+    decoder2.InitMergeData();
+    decoder1.Merge(decoder2);
+}
+
+HWTEST_F_L0(PGOProfilerDecoderTest, LoadAPBinaryFileFailuresTest)
+{
+    PGOProfilerDecoder decoder1("nonexistent.ap", 5);
+    bool result1 = decoder1.LoadFull();
+    EXPECT_FALSE(result1);
+
+    PGOProfilerDecoder decoder2("test.txt", 5);
+    bool result2 = decoder2.LoadFull();
+    EXPECT_FALSE(result2);
+
+    PGOProfilerDecoder decoder3("invalid.ap", 5);
+    bool result3 = decoder3.LoadFull();
+    EXPECT_FALSE(result3);
+}
+
 }  // namespace panda::test

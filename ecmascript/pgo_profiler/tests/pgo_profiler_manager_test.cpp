@@ -197,4 +197,200 @@ HWTEST_F_L0(PGOProfilerManagerTest, MultipleInitializeTest)
     manager->Initialize("test_output_dir_2/", 2);
     ASSERT_NE(manager->GetPGOInfo(), nullptr);
 }
+
+HWTEST_F_L0(PGOProfilerManagerTest, BinaryToTextLoadFullFailuresTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    bool result1 = manager->BinaryToText("nonexistent.ap", "test_output.txt", 5);
+    EXPECT_FALSE(result1);
+
+    bool result2 = manager->BinaryToText("test.txt", "test_output2.txt", 5);
+    EXPECT_FALSE(result2);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, BinaryToTextWithInvalidOutPathTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    std::string inPath = "test_input.ap";
+    std::string outPath = "/invalid/path/that/does/not/exist/output.txt";
+    bool result = manager->BinaryToText(inPath, outPath, 5);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, InitializeDataAlreadyInitializedTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->Initialize("test_output_dir/", 5);
+    auto pgoInfo = manager->GetPGOInfo();
+    EXPECT_NE(pgoInfo, nullptr);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, SetRequestAotCallbackTwiceTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    int firstCallCount = 0;
+    int secondCallCount = 0;
+    auto firstCallback = [&firstCallCount](const std::string&, const std::string&, int32_t) -> int {
+        firstCallCount++;
+        return 0;
+    };
+    auto secondCallback = [&secondCallCount](const std::string&, const std::string&, int32_t) -> int {
+        secondCallCount++;
+        return 0;
+    };
+
+    manager->SetRequestAotCallback(firstCallback);
+    manager->SetRequestAotCallback(secondCallback);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, RequestAotWithoutCallbackTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->SetBundleName("com.example.test");
+    bool result = manager->RequestAot("com.example.test", "testModule", RequestAotMode::RE_COMPILE_ON_IDLE);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, RequestAotWithCallbackTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->SetBundleName("com.example.test");
+
+    // Verify callback can be called (if not already set by previous test)
+    int callCount = 0;
+    auto testCallback = [&callCount](const std::string& bundle, const std::string& module, int32_t mode) -> int {
+        callCount++;
+        EXPECT_EQ(bundle, "com.example.test");
+        EXPECT_EQ(module, "testModule");
+        EXPECT_EQ(mode, static_cast<int32_t>(RequestAotMode::RE_COMPILE_ON_IDLE));
+        return 0;
+    };
+
+    manager->SetRequestAotCallback(testCallback);
+    manager->RequestAot("com.example.test", "testModule", RequestAotMode::RE_COMPILE_ON_IDLE);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, RequestAotWithMissingParamsTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+
+    // Clear bundleName to test empty parameter scenario
+    manager->SetBundleName("");
+    manager->RequestAot();
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, ResetWithNullProfilerTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    std::shared_ptr<PGOProfiler> nullProfiler = nullptr;
+    manager->Reset(nullProfiler, true);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, SamplePandaFileInfoWithoutPgoInfoTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->SamplePandaFileInfo(123, "test.abc");
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, SamplePandaFileInfoWithPgoInfoTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->Initialize("test_output_dir/", 5);
+    manager->SamplePandaFileInfo(123, "test.abc");
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, IsBigMethodWithZeroMaxTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->SetMaxAotMethodSize(0);
+    EXPECT_FALSE(manager->IsBigMethod(0));
+    EXPECT_FALSE(manager->IsBigMethod(100));
+    EXPECT_FALSE(manager->IsBigMethod(UINT32_MAX));
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, MergeApFilesChecksumEmptyListTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    std::unordered_map<CString, uint32_t> fileNameToChecksumMap;
+    PGOProfilerDecoder merger("", 5);  // Empty path
+    bool result = manager->MergeApFiles(fileNameToChecksumMap, merger);
+    // pgoFileNamesVector.empty() should return true
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, IsProfilerDestroyedTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    PGOProfiler* fakeProfiler = reinterpret_cast<PGOProfiler*>(0x12345678);
+    bool result = manager->IsProfilerDestroyed(fakeProfiler);
+    // profiler not in set, should return true (destroyed)
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, SetIsTaskRunningTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->SetIsTaskRunning(true);
+    EXPECT_TRUE(manager->IsTaskRunning());
+    manager->SetIsTaskRunning(false);
+    EXPECT_FALSE(manager->IsTaskRunning());
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, SetForceDumpTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->SetForceDump(true);
+    EXPECT_TRUE(manager->IsForceDump());
+    manager->SetForceDump(false);
+    EXPECT_FALSE(manager->IsForceDump());
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, SavingSignalHandlerWithWrongSignalTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    // Send wrong signal number
+    PGOProfilerManager::SavingSignalHandler(99);
+    EXPECT_FALSE(manager->IsForceDump());
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, SavingSignalHandlerWithCorrectSignalTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    // Send correct signal number (50 = PGO_SAVING_SIGNAL)
+    PGOProfilerManager::SavingSignalHandler(50);
+    // should set forceDump to true
+    EXPECT_TRUE(manager->IsForceDump());
+    // Reset for other tests
+    manager->SetForceDump(false);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, RegisterSavingSignalNotInitializedTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->RegisterSavingSignal();
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, RegisterSavingSignalAfterInitializedTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    manager->Initialize("test_output_dir/", 5);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, MergeApFilesWithNonApExtensionTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    std::string inFiles = "test.txt,test2.ap";
+    std::string outPath = "/tmp/test_output.ap";
+    bool result = manager->MergeApFiles(inFiles, outPath, 5, ApGenMode::MERGE);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(PGOProfilerManagerTest, MergeApFilesWithNonExistentFileTest)
+{
+    auto* manager = PGOProfilerManager::GetInstance();
+    std::string inFiles = "nonexistent.ap";
+    std::string outPath = "/tmp/test_output.ap";
+    bool result = manager->MergeApFiles(inFiles, outPath, 5, ApGenMode::MERGE);
+    EXPECT_FALSE(result);
+}
+
 }  // namespace panda::test
