@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -463,5 +463,866 @@ HWTEST_F_L0(AssemblerX64Test, Emit4)
     ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
                                                    masm.GetBegin(), masm.GetCurrentPosition());
 }
+
+// Test for Subl with immediate value in 8-bit range
+HWTEST_F_L0(AssemblerX64Test, SublImm8)
+{
+    x64::AssemblerX64 masm(chunk_);
+    size_t current = 0;
+
+    // 83 e8 05     subl    $0x5,%eax
+    __ Subl(5, rax);
+    uint32_t value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x83U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0xE8U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x05U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
+}
+
+// Test for Subl with rax register (special encoding)
+HWTEST_F_L0(AssemblerX64Test, SublRax)
+{
+    x64::AssemblerX64 masm(chunk_);
+    size_t current = 0;
+
+    // 2d 78 56 34 12     subl    $0x12345678,%eax
+    __ Subl(0x12345678, rax);
+    uint32_t value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x2DU);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x78U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x56U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x34U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x12U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
+}
+
+// Test for Subl with non-rax register (general encoding)
+// ModR/M for mode=3, reg=5 (sub), rm=rcx(1): 0b11_101_001 = 0xE9
+HWTEST_F_L0(AssemblerX64Test, SublNonRax)
+{
+    x64::AssemblerX64 masm(chunk_);
+    size_t current = 0;
+
+    // 81 e9 78 56 34 12     subl $0x12345678,%ecx
+    // ModR/M: mode=3(11), reg=5(101), rm=rcx(001) = 0b11001001 = 0xE9
+    __ Subl(0x12345678, rcx);
+    uint32_t value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x81U);  // opcode
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0xE9U);  // ModR/M: mode=3, reg=5, rm=rcx
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x78U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x56U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x34U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x12U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
+}
+
+// Test for Jmp with 8-bit offset (short jump)
+HWTEST_F_L0(AssemblerX64Test, JmpImm8)
+{
+    x64::AssemblerX64 masm(chunk_);
+    size_t current = 0;
+
+    // eb 10        jmp     10 <label>
+    __ Jmp(0x10);
+    uint32_t value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0xEBU);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x10U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
+}
+
+// Test for Jmp with 32-bit offset (long jump)
+HWTEST_F_L0(AssemblerX64Test, JmpImm32)
+{
+    x64::AssemblerX64 masm(chunk_);
+    size_t current = 0;
+
+    // e9 78 56 34 12     jmp     12345678 <label>
+    __ Jmp(0x12345678);
+    uint32_t value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0xE9U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x78U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x56U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x34U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x12U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
+}
+
+// Test for Or with immediate value in 8-bit range
+HWTEST_F_L0(AssemblerX64Test, OrImm8)
+{
+    x64::AssemblerX64 masm(chunk_);
+    size_t current = 0;
+
+    // 48 83 c8 0f     rex.W orl     $0xf,%eax
+    __ Or(0xF, rax);
+    uint32_t value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x48U);  // REX.W prefix
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x83U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0xC8U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x0FU);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
+}
+
+// Test for Or with rax register (special encoding)
+HWTEST_F_L0(AssemblerX64Test, OrRax)
+{
+    x64::AssemblerX64 masm(chunk_);
+    size_t current = 0;
+
+    // 48 0d 78 56 34 12     rex.W orl     $0x12345678,%eax
+    __ Or(0x12345678, rax);
+    uint32_t value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x48U);  // REX.W prefix
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x0DU);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x78U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x56U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x34U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x12U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
+}
+
+// Test for Or with non-rax register (general encoding)
+HWTEST_F_L0(AssemblerX64Test, OrNonRax)
+{
+    x64::AssemblerX64 masm(chunk_);
+    size_t current = 0;
+
+    // 48 81 c9 78 56 34 12     rex.W orl     $0x12345678,%ecx
+    __ Or(0x12345678, rcx);
+    uint32_t value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x48U);  // REX.W prefix
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x81U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0xC9U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x78U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x56U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x34U);
+    value = masm.GetU8(current++);
+    ASSERT_EQ(value, 0x12U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), masm.GetCurrentPosition());
+}
+
+// Test for Jz (jump if zero) - tests EmitJz internally
+HWTEST_F_L0(AssemblerX64Test, JzTest)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label label;
+
+    // Bind label first to test bound label path (calls EmitJz)
+    __ Bind(&label);
+    __ Movq(rax, rbx);  // Some instruction
+
+    // Create another label for Jz
+    Label jmpLabel;
+    __ Jz(&jmpLabel);  // This tests Jz with unbound label (rel8 path)
+    __ Bind(&jmpLabel);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jz with bound label (tests EmitJz with short offset)
+HWTEST_F_L0(AssemblerX64Test, JzBoundLabel)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+
+    // Emit some instructions first to create distance
+    __ Movq(rax, rbx);  // 3 bytes
+    __ Movq(rcx, rdx);  // 3 bytes
+    __ Movq(r8, r9);    // 3 bytes
+    // Total 9 bytes, offset should be within 8-bit range
+
+    __ Bind(&target);
+    __ Movq(r10, r11);  // 3 bytes at target
+
+    // Now Jz to already bound label - tests EmitJz
+    Label jmpHere;
+    __ Bind(&jmpHere);
+    __ Jz(&target);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jle (jump if less or equal) - tests EmitJle internally
+HWTEST_F_L0(AssemblerX64Test, JleTest)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label label;
+
+    // Bind label first to test bound label path (calls EmitJle)
+    __ Bind(&label);
+    __ Movq(rax, rbx);  // Some instruction
+
+    // Create another label for Jle
+    Label jmpLabel;
+    __ Jle(&jmpLabel);  // This tests Jle with unbound label (rel8 path)
+    __ Bind(&jmpLabel);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jle with bound label (tests EmitJle with short offset)
+HWTEST_F_L0(AssemblerX64Test, JleBoundLabel)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+
+    // Emit some instructions first to create distance
+    __ Movq(rax, rbx);  // 3 bytes
+    __ Movq(rcx, rdx);  // 3 bytes
+    __ Movq(r8, r9);    // 3 bytes
+    // Total 9 bytes, offset should be within 8-bit range
+
+    __ Bind(&target);
+    __ Movq(r10, r11);  // 3 bytes at target
+
+    // Now Jle to already bound label - tests EmitJle
+    Label jmpHere;
+    __ Bind(&jmpHere);
+    __ Jle(&target);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for multiple conditional jumps
+HWTEST_F_L0(AssemblerX64Test, ConditionalJumps)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label label1;
+    Label label2;
+    Label label3;
+
+    __ Bind(&label1);
+    __ Cmp(rax, rbx);
+    __ Jz(&label2);   // Jump if zero
+    __ Jle(&label3);  // Jump if less or equal
+    __ Jmp(&label1);  // Unconditional jump
+
+    __ Bind(&label2);
+    __ Movq(rax, rcx);
+
+    __ Bind(&label3);
+    __ Movq(rbx, rdx);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jmp with Distance::Near and IsLinkedNear path
+// This test covers the if (target->IsLinkedNear()) branch in Jmp
+HWTEST_F_L0(AssemblerX64Test, JmpNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: EB xx)
+    __ Jmp(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jmp(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jz with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JzNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 74 xx)
+    __ Jz(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jz(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jnz with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JnzNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 75 xx)
+    __ Jnz(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jnz(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Je with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JeNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 74 xx)
+    __ Je(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Je(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jne with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JneNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 75 xx)
+    __ Jne(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jne(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Ja with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JaNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 77 xx)
+    __ Ja(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Ja(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jb with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JbNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 72 xx)
+    __ Jb(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jb(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jae with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JaeNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 73 xx)
+    __ Jae(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jae(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jg with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JgNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 7F xx)
+    __ Jg(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jg(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jge with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JgeNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 7D xx)
+    __ Jge(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jge(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jbe with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JbeNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 76 xx)
+    __ Jbe(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jbe(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jnb with Distance::Near and IsLinkedNear path
+HWTEST_F_L0(AssemblerX64Test, JnbNearLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // Jump to end (2 bytes: 73 xx)
+    __ Jnb(&end, Distance::Near);
+    // Jump to same target again - tests IsLinkedNear() == true path
+    __ Jnb(&target, Distance::Near);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jmp with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JmpFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jmp(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jmp(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jz with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JzFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jz(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jz(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jnz with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JnzFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jnz(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jnz(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Je with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JeFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Je(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Je(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jne with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JneFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jne(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jne(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Ja with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JaFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Ja(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Ja(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jb with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JbFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jb(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jb(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jae with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JaeFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jae(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jae(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jg with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JgFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jg(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jg(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jge with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JgeFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jge(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jge(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jbe with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JbeFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jbe(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jbe(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
+// Test for Jnb with Distance::Far and IsLinked path
+HWTEST_F_L0(AssemblerX64Test, JnbFarLinked)
+{
+    x64::AssemblerX64 masm(chunk_);
+    Label target;
+    Label end;
+
+    // First jump with Far distance - sets pos_ through LinkTo()
+    __ Jnb(&end, Distance::Far);
+    // Second jump to same target - tests IsLinked() == true path
+    __ Jnb(&target, Distance::Far);
+
+    // Bind the target
+    __ Bind(&target);
+    __ Bind(&end);
+
+    size_t size = masm.GetCurrentPosition();
+    ASSERT_GT(size, 0U);
+
+    ecmascript::kungfu::LLVMAssembler::Disassemble(nullptr, TARGET_X64,
+                                                   masm.GetBegin(), size);
+}
+
 #undef __
 }  // namespace panda::test
