@@ -391,7 +391,6 @@ void Deoptimizier::CollectDeoptBundleVec(std::vector<ARKDeopt>& deoptBundle)
                 break;
             default: {
                 DumpMachineCode(jsFunction, prevReturnAddrAddress);
-                thread_->DumpLazyDeoptRecord();
                 LOG_FULL(FATAL) << "frame type error, type: " << std::hex << static_cast<long>(type)
                                 << ", sp: " << lastLeave << ", deopt type: " << type_;
                 UNREACHABLE();
@@ -827,56 +826,6 @@ bool Deoptimizier::IsNeedLazyDeopt(const FrameIterator &it)
     return function.CheckIsJSFunctionBase() && !JSFunction::Cast(function)->IsCompiledCode();
 }
 
-void RecordLazyDeopt(const FrameIterator &it, JSThread *thread, FrameType *frameTypeAddr, uintptr_t *returnAddrAddr)
-{
-    if (frameTypeAddr == nullptr || returnAddrAddr == nullptr) {
-        LOG_FULL(FATAL) << "RecordLazyDeopt error, frameTypeAddr or returnAddrAddr is nullptr";
-    }
-    FrameType frameType = *frameTypeAddr;
-    uintptr_t returnAddr = *returnAddrAddr;
-    if (it.IsOptimizedJSFunctionFrame()) {
-        JSTaggedValue jsFunction = it.GetFunction();
-        if (!jsFunction.IsJSFunction()) {
-            LOG_FULL(FATAL) << "call target is not js function object. addr: "
-                            << std::hex << reinterpret_cast<JSTaggedType>(jsFunction.GetRawData());
-        }
-        JSTaggedType jsFunctionAddr = reinterpret_cast<JSTaggedType>(jsFunction.GetRawData());
-
-        Method *method =
-            Method::Cast(JSFunction::Cast(jsFunction.GetTaggedObject())->GetMethod(thread).GetTaggedObject());
-        if (method == nullptr) {
-            LOG_FULL(INFO) << "method is nullptr.";
-            return;
-        }
-        std::string jsFunctionName = method->GetMethodName(thread);
-
-        JSTaggedValue machineCodeObj = JSFunction::Cast(jsFunction.GetTaggedObject())->GetMachineCode(thread);
-        if (!machineCodeObj.IsMachineCodeObject()) {
-            LOG_FULL(FATAL) << "not machine code object. addr: "
-                            << std::hex << reinterpret_cast<JSTaggedType>(machineCodeObj.GetRawData());
-        }
-        JSTaggedType machineCodeAddr = reinterpret_cast<JSTaggedType>(machineCodeObj.GetRawData());
-
-        MachineCode* machineCode = MachineCode::Cast(machineCodeObj.GetTaggedObject());
-        if (machineCode == nullptr) {
-            LOG_FULL(FATAL) << "machine code is nullptr. js function name: " << jsFunctionName;
-        }
-        uintptr_t textBegin = machineCode->GetText();
-        size_t textSize = machineCode->GetTextSize();
-
-        if (!machineCode->IsInText(returnAddr)) {
-            LOG_FULL(FATAL) << "retAddr not match machine code. retAddr: " << std::hex << returnAddr
-                            << ", test begin: " << std::hex << machineCode->GetText()
-                            << ", test size: " << std::hex << machineCode->GetTextSize();
-        }
-        LazyDeoptRecord lazyDeoptRecord(jsFunctionAddr, machineCodeAddr, static_cast<uintptr_t>(frameType),
-            returnAddr, textBegin, textSize, jsFunctionName);
-        thread->PushLazyDeoptRecord(lazyDeoptRecord);
-    } else {
-        LOG_ECMA(FATAL) << "Attempting to lazy deopt a non optimized stack.";
-    }
-}
-
 // static
 void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
 {
@@ -887,7 +836,6 @@ void Deoptimizier::PrepareForLazyDeopt(JSThread *thread)
     uintptr_t prevFrameCallSiteSp = 0;
     for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
         if (IsNeedLazyDeopt(it)) {
-            RecordLazyDeopt(it, thread, prevFrameTypeAddress, prevReturnAddrAddress);
             ReplaceReturnAddrWithLazyDeoptTrampline(
                 thread, prevReturnAddrAddress, prevFrameTypeAddress, prevFrameCallSiteSp);
         }
