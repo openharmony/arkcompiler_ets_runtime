@@ -105,7 +105,8 @@ public:
     static inline JSTaggedValue FastGetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
 
     static inline JSTaggedValue FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                       SCheckMode sCheckMode = SCheckMode::CHECK);
+                                                       SCheckMode sCheckMode = SCheckMode::CHECK,
+                                                       SCheckMode concurChk = SCheckMode::CHECK);
 
     static inline JSTaggedValue FastGetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
 

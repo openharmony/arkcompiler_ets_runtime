@@ -476,7 +476,8 @@ public:
 
     // ecma6 7.3
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK);
+                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK,
+                                       SCheckMode concurChk = SCheckMode::CHECK);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,

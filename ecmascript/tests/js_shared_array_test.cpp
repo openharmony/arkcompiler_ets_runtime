@@ -47,7 +47,8 @@ HWTEST_F_L0(JSSharedArrayTest, SetCapacityTest001)
                                                  .GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSTaggedValue> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP).GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP, SCheckMode::SKIP)
+                                        .GetValue()->GetInt(), 0);
 
     auto ecmaVM = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVM->GetFactory();
@@ -109,10 +110,8 @@ HWTEST_F_L0(JSSharedArrayTest, ArraySetLength)
     JSHandle<JSObject> obj(thread, arr);
     PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0)), true, true, true);
     ASSERT_FALSE(JSSharedArray::ArraySetLength(thread, obj, desc1));
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP)
-                  .GetValue()
-                  ->GetInt(),
-              1);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP,
+                SCheckMode::SKIP).GetValue()->GetInt(), 1);
 
     std::vector<int> vals{1, 2, 3, 4, 5};
     std::vector<JSHandle<JSTaggedValue>> keys;
@@ -316,9 +315,12 @@ HWTEST_F_L0(JSSharedArrayTest, Sort1)
 
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[0], SCheckMode::SKIP).GetValue()->GetInt(), 3);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[1], SCheckMode::SKIP).GetValue()->GetInt(), 2);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[2], SCheckMode::SKIP).GetValue()->GetInt(), 1);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[0], SCheckMode::SKIP, SCheckMode::SKIP). \
+                                        GetValue()->GetInt(), 3);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[1], SCheckMode::SKIP, SCheckMode::SKIP). \
+                                        GetValue()->GetInt(), 2);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[2], SCheckMode::SKIP, SCheckMode::SKIP). \
+                                        GetValue()->GetInt(), 1);
 }
 
 HWTEST_F_L0(JSSharedArrayTest, Sort2)
@@ -343,7 +345,8 @@ HWTEST_F_L0(JSSharedArrayTest, Sort2)
 
     JSHandle<JSTaggedValue> resultArr =
         JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<JSTaggedType>(result.GetRawData())));
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[0], SCheckMode::SKIP).GetValue()->GetInt(), 3);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, resultArr, keys[0], SCheckMode::SKIP, SCheckMode::SKIP). \
+                                        GetValue()->GetInt(), 3);
     EXPECT_EQ(result, obj.GetTaggedValue());
 }
 
