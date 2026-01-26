@@ -1654,6 +1654,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         CheckOngoingConcurrentMarking();
         concurrentMarker_->Reset();
+        thread_->SwitchAllStub(true);
         markType_ = MarkType::MARK_YOUNG;
     }
     CollectGarbageImpl(gcType, reason);

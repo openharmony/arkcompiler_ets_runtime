@@ -249,7 +249,8 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     Label executeBCByInterpreter(env);                                                                               \
     GateRef curFrame = GetFrame(sp);                                                                                 \
     GateRef curFunction = GetFunctionFromFrame(glue, curFrame);                                                      \
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &executeBCByInterpreter, &getOsrCache);                               \
+    BRANCH(BitOr(TaggedIsUndefined(profileTypeInfo), NotSwitchToStwStub(glue)),                                      \
+        &executeBCByInterpreter, &getOsrCache);                                                                      \
     Bind(&getOsrCache);                                                                                              \
     {                                                                                                                \
         GateRef profileTypeInfoLength = GetLengthOfTaggedArray(profileTypeInfo);                                     \

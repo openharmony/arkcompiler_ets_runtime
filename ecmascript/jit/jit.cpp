@@ -59,7 +59,6 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
     jitEnable &= ohos::JitTools::IsSupportJitCodeSigner();
     jitEnable &= HasJitFortACL();
     if (jitEnable) {
-        const_cast<Heap*>(vm->GetHeap())->DisableLocalCC();
         bool isEnableFastJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
         bool isEnableBaselineJit = options.IsEnableBaselineJIT() && options.GetEnableAsmInterpreter();
         options.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());

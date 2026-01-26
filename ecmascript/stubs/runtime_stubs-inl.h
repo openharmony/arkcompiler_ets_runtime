@@ -3138,7 +3138,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
     CVector<JSTaggedType> &values, JSHandle<JSTaggedValue> newTgt, uint32_t &size, JSHandle<JSTaggedValue> obj)
 {
     JSTaggedValue resultValue;
-    if (isAotMethod) {
+    if (isAotMethod && thread->HasSwitchedToStwStub()) {
         uint32_t numArgs = ctor->GetCallTarget(thread)->GetNumArgsWithCallField();
         bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();

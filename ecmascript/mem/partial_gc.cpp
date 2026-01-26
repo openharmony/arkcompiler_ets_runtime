@@ -101,13 +101,15 @@ void PartialGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "PartialGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, heap_->GetEcmaVM()->GetEcmaGCStats());
-    heap_->Resume(OLD_GC);
     if (markingInProgress_) {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ConcurrentMarker::Reset", "");
         auto marker = heap_->GetConcurrentMarker();
         marker->Reset(false);
     } else {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "WorkManager::Finish", "");
         workManager_->Finish();
     }
+    heap_->Resume(OLD_GC);
     if (heap_->IsConcurrentFullMark()) {
         heap_->GetSweeper()->TryFillSweptRegion();
         heap_->SetFullMarkRequestedState(false);

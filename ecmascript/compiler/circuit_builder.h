@@ -983,6 +983,7 @@ public:
 
     GateRef NeedSkipReadBarrier(GateRef glue);
 
+    GateRef NotSwitchToStwStub(GateRef glue);
     // Load
     GateRef Load(VariableType type, GateRef glue, GateRef base, GateRef offset,
         MemoryAttribute mAttr = MemoryAttribute::NeedBarrier());

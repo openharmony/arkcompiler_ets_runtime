@@ -456,7 +456,6 @@ bool EcmaVM::Initialize()
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         Jit::GetInstance()->ConfigJit(this);
-        heap_->DisableLocalCC();
     }
     sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
@@ -806,6 +805,7 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
+    ASSERT(thread_->HasSwitchedToStwStub());
     // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
@@ -1218,7 +1218,6 @@ bool EcmaVM::LoadAOTFilesInternal(const std::string& aotFileName)
         return false;
     }
 #endif
-    heap_->DisableLocalCC();
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
     if (!aotFileManager_->LoadAnFile(anFile)) {
         LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
@@ -2083,6 +2082,7 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
+    ASSERT(thread_->HasSwitchedToStwStub());
     // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
@@ -2142,10 +2142,10 @@ Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFi
     if (jsPandaFile->IsCjs(recordInfo)) {
         CJSExecution(func, global, jsPandaFile, entryPoint);
     } else {
-        if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
+        if (aotFileManager_->IsLoadMain(jsPandaFile, entry) && thread_->HasSwitchedToStwStub()) {
             EcmaRuntimeStatScope runtimeStatScope(this);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
-        } else if (GetJSOptions().IsEnableForceJitCompileMain()) {
+        } else if (GetJSOptions().IsEnableForceJitCompileMain() && thread_->HasSwitchedToStwStub()) {
             Jit::Compile(this, func, CompilerTier::Tier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(this);
             result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, nullptr);
@@ -2247,7 +2247,7 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     JSHandle<JSTaggedValue> dirName = JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8(dirNameStr));
     CJSInfo cjsInfo(module, require, exports, fileName, dirName);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
-    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
+    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data()) && thread_->HasSwitchedToStwStub()) {
         EcmaRuntimeStatScope runtimeStateScope(this);
         InvokeEcmaAotEntrypoint(func, thisArg, jsPandaFile, entryPoint, &cjsInfo);
     } else {

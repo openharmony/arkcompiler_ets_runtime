@@ -687,7 +687,7 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
         newTarget_ = Undefined();
         thisValue_ = Undefined();
         realNumArgs_ = Int64Add(ZExtInt32ToInt64(actualNumArgs_), Int64(NUM_MANDATORY_JSFUNC_ARGS));
-        BRANCH(IsJsProxy(glue_, func_), &methodNotAot, &checkAot);
+        BRANCH(BitOr(NotSwitchToStwStub(glue_), IsJsProxy(glue_, func_)), &methodNotAot, &checkAot);
         Bind(&checkAot);
         BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &methodIsFastCall,
             &methodNotFastCall);

@@ -164,12 +164,14 @@ void SharedGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
-    sHeap_->Reclaim(TriggerGCType::SHARED_GC);
     if (markingInProgress_) {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ConcurrentMarker::Reset", "");
         sHeap_->GetConcurrentMarker()->Reset(false);
     } else {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "WorkManager::Finish", "");
         sWorkManager_->Finish();
     }
+    sHeap_->Reclaim(TriggerGCType::SHARED_GC);
     sHeap_->GetSweeper()->TryFillSweptRegion();
 }
 

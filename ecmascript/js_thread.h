@@ -1096,6 +1096,11 @@ public:
         glueData_.isDebugMode_ = false;
     }
 
+    bool HasSwitchedToStwStub() const
+    {
+        return glueData_.switchToStwStub_;
+    }
+
     template<typename T, typename V>
     void SetInterruptValue(V value)
     {
@@ -1240,6 +1245,7 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
+                                                 base::AlignedBool,
                                                  base::AlignedUint32,
                                                  base::AlignedPointer,
                                                  BuiltinEntries,
@@ -1298,6 +1304,7 @@ public:
             IsStartHeapSamplingIndex,
             IsDebugModeIndex,
             IsFrameDroppedIndex,
+            HasSwitchedToStwStubIndex,
             PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
             BuiltinEntriesIndex,
@@ -1523,6 +1530,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsFrameDroppedIndex)>(isArch32);
         }
 
+        static size_t GetHasSwitchedToStwStubOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::HasSwitchedToStwStubIndex)>(isArch32);
+        }
+
         static size_t GetPropertiesGrowStepOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::PropertiesGrowStepIndex)>(isArch32);
@@ -1660,6 +1672,7 @@ public:
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
         alignas(EAS) bool isDebugMode_ {false};
         alignas(EAS) bool isFrameDropped_ {false};
+        alignas(EAS) bool switchToStwStub_ {true};
         alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) BuiltinEntries builtinEntries_ {};

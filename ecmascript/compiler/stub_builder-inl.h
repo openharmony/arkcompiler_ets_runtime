@@ -4413,6 +4413,11 @@ inline GateRef StubBuilder::NeedSkipReadBarrier(GateRef glue)
     return env_->GetBuilder()->NeedSkipReadBarrier(glue);
 }
 
+inline GateRef StubBuilder::NotSwitchToStwStub(GateRef glue)
+{
+    return env_->GetBuilder()->NotSwitchToStwStub(glue);
+}
+
 inline void StubBuilder::StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
 {
     GateRef addr = PtrAdd(base, offset);

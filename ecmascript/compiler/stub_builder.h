@@ -849,6 +849,7 @@ public:
     GateRef ShouldProcessSATB(GateRef gcPhase);
     GateRef ShouldUpdateRememberSet(GateRef glue, GateRef gcPhase);
     GateRef NeedSkipReadBarrier(GateRef glue);
+    GateRef NotSwitchToStwStub(GateRef glue);
     void CMCSetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     void CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count);
     void CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count);
