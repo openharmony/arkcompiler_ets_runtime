@@ -44,7 +44,7 @@ HWTEST_F_L0(WeakLinkedHashMapTest, addKeyAndValue)
     int numOfElement = 64;
     JSHandle<WeakLinkedHashMap> dictHandle = WeakLinkedHashMap::Create(thread, numOfElement);
     EXPECT_TRUE(*dictHandle != nullptr);
-    JSHandle<JSTaggedValue> objFun = GetGlobalEnv()->GetObjectFunction();
+    JSHandle<JSTaggedValue> objFun = thread->GetGlobalEnv()->GetObjectFunction();
 
     char keyArray[] = "hello";
     JSHandle<EcmaString> stringKey1 = factory->NewFromASCII(keyArray);
@@ -56,25 +56,27 @@ HWTEST_F_L0(WeakLinkedHashMapTest, addKeyAndValue)
     JSHandle<JSTaggedValue> key2(stringKey2);
     JSHandle<JSTaggedValue> value2(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun));
 
+    char key3Array[] = "hello3";
+    JSHandle<EcmaString> stringKey3 = factory->NewFromASCII(key3Array);
+    JSHandle<JSTaggedValue> key3(stringKey3);
+
     // test set()
-    dictHandle = WeakLinkedHashMap::Set(thread, dictHandle, key1, value1);
+    dictHandle = WeakLinkedHashMap::SetWeakRef(thread, dictHandle, key1, value1);
     EXPECT_EQ(dictHandle->NumberOfElements(), 1);
 
     // test find()
     int entry1 = dictHandle->FindElement(thread, key1.GetTaggedValue());
-    EXPECT_EQ(key1.GetTaggedValue(), dictHandle->GetKey(thread, entry1));
     EXPECT_EQ(value1.GetTaggedValue(), dictHandle->GetValue(thread, entry1));
 
-    dictHandle = WeakLinkedHashMap::Set(thread, dictHandle, key2, value2);
+    dictHandle = WeakLinkedHashMap::SetWeakRef(thread, dictHandle, key2, value2);
     EXPECT_EQ(dictHandle->NumberOfElements(), 2);
     // test remove()
     dictHandle = WeakLinkedHashMap::Delete(thread, dictHandle, key1);
     EXPECT_EQ(-1, dictHandle->FindElement(thread, key1.GetTaggedValue()));
     EXPECT_EQ(dictHandle->NumberOfElements(), 1);
 
-    JSHandle<JSTaggedValue> undefinedKey(thread, JSTaggedValue::Undefined());
-    dictHandle = WeakLinkedHashMap::Set(thread, dictHandle, undefinedKey, value1);
-    int entry2 = dictHandle->FindElement(thread, undefinedKey.GetTaggedValue());
+    dictHandle = WeakLinkedHashMap::SetWeakRef(thread, dictHandle, key3, value1);
+    int entry2 = dictHandle->FindElement(thread, key3.GetTaggedValue());
     EXPECT_EQ(value1.GetTaggedValue(), dictHandle->GetValue(thread, entry2));
 }
 }  // namespace panda::test
