@@ -36,6 +36,7 @@ namespace panda::ecmascript::ohos {
 class EnableAotJitListHelper {
 constexpr static const char *const AOT_BUILD_COUNT_DISABLE = "ark.aot.build.count.disable";
 constexpr static const char *const ARK_PROFILE = "ark.profile";
+constexpr static const char *const AOT_ESCAPE_DISABLE = "ark.aot.escape.disable";
 public:
     static std::shared_ptr<EnableAotJitListHelper> GetInstance()
     {
@@ -57,6 +58,13 @@ public:
         if (IsEnabledByArkProfiler()) {
             return true;
         }
+
+#if AOT_ESCAPE_ENABLE
+        if (!OHOS::system::GetBoolParameter(AOT_ESCAPE_DISABLE, false)) {
+            return false;
+        }
+#endif
+
         return (enableList_.find(candidate) != enableList_.end()) ||
                (enableList_.find(candidate + ":aot") != enableList_.end());
     }

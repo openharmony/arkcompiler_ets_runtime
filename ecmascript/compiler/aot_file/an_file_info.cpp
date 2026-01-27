@@ -37,7 +37,10 @@ bool AnFileInfo::Save(const std::string &filename, Triple triple, size_t anFileM
 
     SetStubNum(entries_.size());
     AddFuncEntrySec();
-    AddFileNameToChecksumSec(fileNameToChecksumMap);
+    if (!AddFileNameToChecksumSec(fileNameToChecksumMap)) {
+        LOG_COMPILER(ERROR) << "Fail to add filename to checksum section";
+        return false;
+    }
 
     ElfBuilder builder(des_, GetDumpSectionNames(), false, triple);
     size_t anFileSize = builder.CalculateTotalFileSize();
@@ -251,7 +254,7 @@ void AnFileInfo::AddFuncEntrySec()
     des.SetSecAddrAndSize(ElfSecName::ARK_FUNCENTRY, funcEntryAddr, funcEntrySize);
 }
 
-void AnFileInfo::AddFileNameToChecksumSec(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+bool AnFileInfo::AddFileNameToChecksumSec(const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
     // save fileName to checksum relationship as like
     // pandafileNormalizeDes:checksum
@@ -268,8 +271,8 @@ void AnFileInfo::AddFileNameToChecksumSec(const std::unordered_map<CString, uint
     for (const auto &pair : fileNameToChecksumMap) {
         int written = sprintf_s(writePtr, secSize - (writePtr - basePtr), "%s:%u", pair.first.c_str(), pair.second);
         if (written < 0) {
-            LOG_COMPILER(FATAL) << "sprintf_s failed";
-            UNREACHABLE();
+            LOG_COMPILER(ERROR) << "sprintf_s failed for: " << pair.first.c_str();
+            return false;
         }
         // 1 for '\0'
         writePtr += written + 1;
@@ -278,6 +281,7 @@ void AnFileInfo::AddFileNameToChecksumSec(const std::unordered_map<CString, uint
     uint64_t checksumInfoAddr = reinterpret_cast<uint64_t>(basePtr);
     uint32_t checksumInfoSize = secSize;
     des.SetSecAddrAndSize(ElfSecName::ARK_CHECKSUMINFO, checksumInfoAddr, checksumInfoSize);
+    return true;
 }
 
 uint32_t AnFileInfo::FastUint32ToDigits(uint32_t number)

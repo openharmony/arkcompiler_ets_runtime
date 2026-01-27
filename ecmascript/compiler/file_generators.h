@@ -207,7 +207,7 @@ public:
 
     void DestroyCollectedStackMapInfo();
 
-    void GenerateMergedStackmapSection();
+    bool GenerateMergedStackmapSection();
 
     static bool CreateDirIfNotExist(const std::string& filename);
 

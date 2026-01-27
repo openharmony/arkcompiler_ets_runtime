@@ -625,18 +625,19 @@ void AOTFileGenerator::DestroyCollectedStackMapInfo()
     }
 }
 
-void AOTFileGenerator::GenerateMergedStackmapSection()
+bool AOTFileGenerator::GenerateMergedStackmapSection()
 {
     ArkStackMapBuilder builder;
     std::shared_ptr<uint8_t> ptr = nullptr;
     uint32_t size = 0;
     if (stackMapInfo_ == nullptr) {
-        LOG_ECMA(FATAL) << "stackMapInfo_ isn't be initialized";
-        UNREACHABLE();
+        LOG_ECMA(ERROR) << "stackMapInfo_ isn't be initialized";
+        return false;
     }
     std::tie(ptr, size) = builder.GenerateArkStackMap(*stackMapInfo_, cfg_.GetTriple());
     aotInfo_.UpdateStackMap(ptr, size, 0);
     DestroyCollectedStackMapInfo();
+    return true;
 }
 
 bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
@@ -669,7 +670,10 @@ bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
         return false;
     }
     PrintMergedCodeComment();
-    GenerateMergedStackmapSection();
+    if (!GenerateMergedStackmapSection()) {
+        LOG_COMPILER(ERROR) << "Fail to generate meged stackmap section";
+        return false;
+    }
     aotInfo_.GenerateMethodToEntryIndexMap();
     if (!aotInfo_.Save(filename, cfg_.GetTriple(), anFileMaxByteSize_, fileNameToChecksumMap)) {
         LOG_COMPILER(ERROR) << "Fail to save an file: " << filename;
@@ -721,7 +725,10 @@ bool AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     if (log_->OutputASM()) {
         PrintMergedCodeComment();
     }
-    GenerateMergedStackmapSection();
+    if (!GenerateMergedStackmapSection()) {
+        LOG_COMPILER(ERROR) << "Fail to generate merged stackmap section";
+        return false;
+    }
 
     // get func entry Map
     aotInfo_.GenerateMethodToEntryIndexMap();
