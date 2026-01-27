@@ -84,8 +84,6 @@ CString JSHClass::DumpJSType(JSType type)
             return "WrappedNapiObject";
         case JSType::JS_XREF_OBJECT:
             return "XRefObject";
-        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT:
-            return "XRefWrappedNapiObject";
         case JSType::JS_SHARED_OBJECT:
             return  "SharedObject";
         case JSType::JS_FUNCTION_BASE:
@@ -753,7 +751,6 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
         case JSType::JS_NATIVE_POINTER:
             break;
         case JSType::JS_OBJECT:
-        case JSType::JS_XREF_OBJECT:
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_GLOBAL_OBJECT:
         case JSType::JS_ERROR:
@@ -780,7 +777,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
         case JSType::ACCESSOR_DATA:
             break;
         case JSType::JS_WRAPPED_NAPI_OBJECT:
-        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT:
+        case JSType::JS_XREF_OBJECT:
             needDumpHClass = true;
             JSWrappedNapiObject::Cast(obj)->Dump(thread, os);
             break;
@@ -4197,7 +4194,6 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::JS_NATIVE_POINTER:
             break;
         case JSType::JS_OBJECT:
-        case JSType::JS_XREF_OBJECT:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
         case JSType::JS_RANGE_ERROR:
@@ -4214,7 +4210,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
             JSObject::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
         case JSType::JS_WRAPPED_NAPI_OBJECT:
-        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT:
+        case JSType::JS_XREF_OBJECT:
             JSWrappedNapiObject::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
         case JSType::JS_FUNCTION_BASE:

@@ -391,7 +391,6 @@ public:
             {JSType::SENDABLE_ENV, {"SENDABLE_ENV"}},
             {JSType::SFUNCTION_ENV, {"SFUNCTION_ENV"}},
             {JSType::JS_XREF_OBJECT, {"JS_XREF_OBJECT"}},
-            {JSType::JS_XREF_WRAPPED_NAPI_OBJECT, {"JS_XREF_WRAPPED_NAPI_OBJECT"}},
             {JSType::SLICED_STRING, {"Parent", "SLICED_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"Environment", "Namespace", "ModuleRequests", "RequestedModules",
                                                  "ImportEntries", "LocalExportEntries",
@@ -999,8 +998,7 @@ public:
                 ResolvingFunctionsRecord::SIZE - ResolvingFunctionsRecord::RESOLVE_FUNCTION_OFFSET}},
             {JSType::SENDABLE_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
             {JSType::SFUNCTION_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
-            {JSType::JS_XREF_OBJECT, {JSObject::SIZE - JSObject::SIZE}},
-            {JSType::JS_XREF_WRAPPED_NAPI_OBJECT, {JSWrappedNapiObject::SIZE - JSWrappedNapiObject::SIZE}},
+            {JSType::JS_XREF_OBJECT, {JSWrappedNapiObject::SIZE - JSWrappedNapiObject::SIZE}},
             {JSType::SLICED_STRING, {SlicedString::PARENT_OFFSET, SlicedString::SIZE - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -1247,8 +1245,7 @@ public:
             {JSType::RESOLVING_FUNCTIONS_RECORD, {"RECORD"}},
             {JSType::SENDABLE_ENV, {"TAGGED_ARRAY"}},
             {JSType::SFUNCTION_ENV, {"TAGGED_ARRAY"}},
-            {JSType::JS_XREF_OBJECT, {"JS_OBJECT"}},
-            {JSType::JS_XREF_WRAPPED_NAPI_OBJECT, {"JS_WRAPPED_NAPI_OBJECT"}},
+            {JSType::JS_XREF_OBJECT, {"JS_WRAPPED_NAPI_OBJECT"}},
             {JSType::SLICED_STRING, {"ECMA_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"MODULE_RECORD"}},
             {JSType::STAR_EXPORTENTRY_RECORD, {"RECORD"}},
@@ -1748,7 +1745,6 @@ public:
             {JSType::SENDABLE_ENV, {}},
             {JSType::SFUNCTION_ENV, {}},
             {JSType::JS_XREF_OBJECT, {}},
-            {JSType::JS_XREF_WRAPPED_NAPI_OBJECT, {}},
             {JSType::SLICED_STRING, {SlicedString::STARTINDEX_AND_FLAGS_OFFSET - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::NAMESPACE_OFFSET - SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -4476,16 +4472,6 @@ HWTEST_F_L0(JSMetadataTest, TestJsXrefObjectMetadata) {
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::JS_XREF_OBJECT, metadata));
-}
-
-HWTEST_F_L0(JSMetadataTest, TestJsXRefWrappedNapiObjectMetadata) {
-    JSMetadataTestHelper tester{};
-    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_xref_wrapped_napi_object.json";
-    JSMetadataTestHelper::Metadata metadata{};
-
-    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
-    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
-    ASSERT_TRUE(tester.Test(JSType::JS_XREF_WRAPPED_NAPI_OBJECT, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestSlicedStringMetadata)

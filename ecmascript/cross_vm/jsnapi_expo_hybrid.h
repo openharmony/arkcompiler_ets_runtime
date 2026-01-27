@@ -27,8 +27,7 @@
     bool IsValidHeapObject() const
 
 #define OBJECTREF_PUBLIC_HYBRID_EXTENSION()                                      \
-    static Local<ObjectRef> NewJSXRefObject(const EcmaVM *vm);                   \
-    static Local<ObjectRef> NewJSXRefWrappedNapiObject(const EcmaVM *vm)
+    static Local<ObjectRef> NewJSXRefObject(const EcmaVM *vm)
 
 #define STRINGREF_PUBLIC_HYBRID_EXTENSION()                                       \
     static Local<StringRef> GetProxyNapiWrapperString(const EcmaVM *vm)

@@ -2079,7 +2079,6 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/js_weak_ref.json",
   "ecmascript/js_type_metadata/js_weak_set.json",
   "ecmascript/js_type_metadata/js_xref_object.json",
-  "ecmascript/js_type_metadata/js_xref_wrapped_napi_object.json",
   "ecmascript/js_type_metadata/lexical_env.json",
   "ecmascript/js_type_metadata/line_string.json",
   "ecmascript/js_type_metadata/linked_node.json",

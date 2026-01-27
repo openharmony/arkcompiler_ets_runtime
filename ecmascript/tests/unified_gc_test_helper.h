@@ -138,21 +138,21 @@ public:
 
         JSHandle<JSTaggedValue> arrayInRoot = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
         thread->NewGlobalHandle(arrayInRoot.GetTaggedType());
-        JSHandle<JSObject> jsXRefObjectRefByRoot = vm->GetFactory()->NewJSXRefWrappedNapiObject();
+        JSHandle<JSObject> jsXRefObjectRefByRoot = vm->GetFactory()->NewJSXRefObject();
         JSArray::FastSetPropertyByValue(thread, arrayInRoot, INT_VALUE_0,
                                         JSHandle<JSTaggedValue>(jsXRefObjectRefByRoot));
         JSObject::SetNativePointerFieldCount(thread, jsXRefObjectRefByRoot, INT_VALUE_1);
         JSObject::SetNativePointerField(thread, jsXRefObjectRefByRoot, INT_VALUE_0, sharedRefRoot, nullptr, nullptr,
                                         nativeBindingSize);
 
-        JSHandle<JSObject> jsXRefObjectNormal = vm->GetFactory()->NewJSXRefWrappedNapiObject();
+        JSHandle<JSObject> jsXRefObjectNormal = vm->GetFactory()->NewJSXRefObject();
         JSObject::SetNativePointerFieldCount(thread, jsXRefObjectNormal, INT_VALUE_1);
         JSObject::SetNativePointerField(thread, jsXRefObjectNormal, INT_VALUE_0,
             sharedRefNormal, nullptr, nullptr, nativeBindingSize);
 
         JSHandle<JSTaggedValue> arrayInXRefRoot = JSArray::ArrayCreate(thread, JSTaggedNumber(INT_VALUE_1));
         thread->NewXRefGlobalHandle(arrayInXRefRoot.GetTaggedType());
-        JSHandle<JSObject> jsXRefObjectRefByXRefRoot = vm->GetFactory()->NewJSXRefWrappedNapiObject();
+        JSHandle<JSObject> jsXRefObjectRefByXRefRoot = vm->GetFactory()->NewJSXRefObject();
         JSArray::FastSetPropertyByValue(thread, arrayInXRefRoot, INT_VALUE_0,
             JSHandle<JSTaggedValue>(jsXRefObjectRefByXRefRoot));
         JSObject::SetNativePointerFieldCount(thread, jsXRefObjectRefByXRefRoot, INT_VALUE_1);

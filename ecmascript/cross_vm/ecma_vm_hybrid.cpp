@@ -30,11 +30,9 @@ void EcmaVM::CreateHybridParam()
         crossVMOperator_ = new CrossVMOperator(this);
 #endif
         JSHClass *hClass = JSHClass::Cast(thread_->GlobalConstants()->GetHClassClass().GetTaggedObject());
-        JSHandle<JSHClass> ecmaHclass = factory_->NewEcmaHClass(hClass, JSObject::SIZE, JSType::JS_XREF_OBJECT);
+        JSHandle<JSHClass> ecmaHclass =
+            factory_->NewEcmaHClass(hClass, JSWrappedNapiObject::SIZE, JSType::JS_XREF_OBJECT);
         CacheToGlobalConstants(ecmaHclass.GetTaggedValue(), ConstantIndex::XREF_OBJECT_HCLASS_INDEX);
-        JSHandle<JSHClass> wrappedObjHclass =
-            factory_->NewEcmaHClass(hClass, JSWrappedNapiObject::SIZE, JSType::JS_XREF_WRAPPED_NAPI_OBJECT);
-        CacheToGlobalConstants(wrappedObjHclass.GetTaggedValue(), ConstantIndex::XREF_WRAPPED_NAPI_OBJECT_HCLASS_INDEX);
 
         heap_->CreateUnifiedGCMarker();
         SharedHeap::GetInstance()->CreateUnifiedGC();

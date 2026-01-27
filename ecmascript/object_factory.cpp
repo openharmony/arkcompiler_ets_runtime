@@ -1299,7 +1299,6 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
     JSType type = jshclass->GetObjectType();
     switch (type) {
         case JSType::JS_OBJECT:
-        case JSType::JS_XREF_OBJECT:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
         case JSType::JS_RANGE_ERROR:
@@ -1317,7 +1316,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             break;
         }
         case JSType::JS_WRAPPED_NAPI_OBJECT:
-        case JSType::JS_XREF_WRAPPED_NAPI_OBJECT: {
+        case JSType::JS_XREF_OBJECT: {
             JSWrappedNapiObject::InitializeNativePointersField(thread_, obj);
             break;
         }

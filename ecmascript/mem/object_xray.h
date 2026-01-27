@@ -192,7 +192,6 @@ public:
         JSType type = klass->GetObjectType();
         switch (type) {
             case JSType::JS_OBJECT:
-            case JSType::JS_XREF_OBJECT:
             case JSType::JS_ERROR:
             case JSType::JS_EVAL_ERROR:
             case JSType::JS_RANGE_ERROR:
@@ -212,7 +211,7 @@ public:
                 jsSharedObject->VisitRangeSlot<visitType>(visitor);
                 break;
             }
-            case JSType::JS_XREF_WRAPPED_NAPI_OBJECT:
+            case JSType::JS_XREF_OBJECT:
             case JSType::JS_WRAPPED_NAPI_OBJECT: {
                 auto jsWrappedNapiObj = JSWrappedNapiObject::Cast(object);
                 jsWrappedNapiObj->VisitRangeSlot<visitType>(visitor);
