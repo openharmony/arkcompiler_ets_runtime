@@ -131,6 +131,7 @@ void JSPandaFile::InitializeUnMergedPF()
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     numClasses_ = classIndexes.size();
     JSRecordInfo* info = new JSRecordInfo();
+    jsRecordInfo_.reserve(numClasses_);
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
