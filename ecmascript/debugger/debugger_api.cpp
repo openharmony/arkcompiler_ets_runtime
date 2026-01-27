@@ -167,6 +167,28 @@ JSPandaFile *DebuggerApi::GetJSPandaFile(const EcmaVM *ecmaVm)
     return const_cast<JSPandaFile *>(method->GetJSPandaFile(thread));
 }
 
+const CString& DebuggerApi::GetJSPandaFileDesc(const JSPandaFile *jsPandaFile)
+{
+    return jsPandaFile->GetJSPandaFileDesc();
+}
+
+uint32_t DebuggerApi::GetJSPandaFileMainMethodIndex(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                    bool isNewVersion)
+{
+    return jsPandaFile->GetMainMethodIndex(recordName, isNewVersion);
+}
+
+bool DebuggerApi::JSPandaFileIsBundlePack(const JSPandaFile *jsPandaFile)
+{
+    return jsPandaFile->IsBundlePack();
+}
+
+
+bool DebuggerApi::JSPandaFileIsNewVersion(const JSPandaFile *jsPandaFile)
+{
+    return jsPandaFile->IsNewVersion();
+}
+
 JSTaggedValue DebuggerApi::GetEnv(const FrameHandler *frameHandler)
 {
     return frameHandler->GetEnv();

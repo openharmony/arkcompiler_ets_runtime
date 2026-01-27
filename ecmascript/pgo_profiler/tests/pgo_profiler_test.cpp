@@ -720,8 +720,8 @@ HWTEST_F_L0(PGOProfilerTest, ProfileCallTest)
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     ASSERT_TRUE(decoder1.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     ASSERT_TRUE(decoder2.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -752,8 +752,8 @@ HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler14/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -790,8 +790,8 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler15/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -844,8 +844,8 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     std::string types[17] = {"int", "number", "double", "double", "double", "double", "double", "double",
                               "number", "double", "double", "int", "int", "double", "number", "int", "int"};
     int index = 0;
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -890,8 +890,8 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler18/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -956,8 +956,8 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler20/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1003,8 +1003,8 @@ HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler21/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1039,8 +1039,8 @@ HWTEST_F_L0(PGOProfilerTest, StringEqualProfileTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler22/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1075,8 +1075,8 @@ HWTEST_F_L0(PGOProfilerTest, BuiltinsTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler23/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1241,8 +1241,8 @@ HWTEST_F_L0(PGOProfilerTest, TypedArrayOnHeap)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler24/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);

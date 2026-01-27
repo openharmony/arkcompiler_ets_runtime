@@ -21,6 +21,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/jspandafile/method_literal_id_map.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/platform/mutex.h"
@@ -169,14 +170,26 @@ public:
 
     inline void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
+#if ENABLE_LATEST_OPTIMIZATION
+        ASSERT(methodLiteral != nullptr);
+        methodLiteralMap_.Insert(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
+#else
         ASSERT(methodLiteral != nullptr);
         methodLiteralMap_.try_emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
+#endif
     }
 
-    inline const std::unordered_map<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
+#if ENABLE_LATEST_OPTIMIZATION
+    inline const MethodLiteralIDMap& GetMethodLiteralMap() const
     {
         return methodLiteralMap_;
     }
+#else
+    inline const std::unordered_map<uint32_t, MethodLiteral*>& GetMethodLiteralMap() const
+    {
+        return methodLiteralMap_;
+    }
+#endif
 
     uint32_t GetNumMethods() const
     {
@@ -243,11 +256,15 @@ public:
 
     inline PUBLIC_API MethodLiteral *FindMethodLiteral(uint32_t offset) const
     {
+#if ENABLE_LATEST_OPTIMIZATION
+        return methodLiteralMap_.Find(offset);
+#else
         auto iter = methodLiteralMap_.find(offset);
         if (iter == methodLiteralMap_.end()) {
             return nullptr;
         }
         return iter->second;
+#endif
     }
 
     inline int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
@@ -547,7 +564,11 @@ private:
     CString hapPath_;
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
-    std::unordered_map<uint32_t, MethodLiteral *> methodLiteralMap_;
+#if ENABLE_LATEST_OPTIMIZATION
+    MethodLiteralIDMap methodLiteralMap_;
+#else
+    std::unordered_map<uint32_t, MethodLiteral*> methodLiteralMap_;
+#endif
     std::unordered_map<uint32_t, panda_file::File::StringData> methodNameMap_;
     CUnorderedMap<uint32_t, CString> recordNameMap_;
     Mutex methodNameMapMutex_;
