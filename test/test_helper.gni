@@ -5358,6 +5358,11 @@ template("host_jit_test_action") {
         " --entry-point=${_target_name_} "
     _jit_run_options_ += common_options
 
+    if (defined(invoker.jit_method_dichotomy_filter) && invoker.jit_method_dichotomy_filter) {
+        _method_dichotomy_file_path_ = rebase_path("./method_compiled_by_jit.cfg")
+        _jit_run_options_ += " --compiler-jit-method-path=${_method_dichotomy_file_path_} "
+    }
+
     if (defined(invoker.reset_jit_hotness)) {
       _new_hotness_ = "--compiler-jit-hotness-threshold=" + invoker.reset_jit_hotness
       _jit_run_options_ += _new_hotness_
