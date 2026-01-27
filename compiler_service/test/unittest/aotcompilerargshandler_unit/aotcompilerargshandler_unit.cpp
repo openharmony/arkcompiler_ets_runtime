@@ -1997,4 +1997,158 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_104, TestSize.Level0)
     unlink(staticPaocBlackListPath);
 }
 
+/**
+ * @tc.name: AotArgsHandlerTest_105
+ * @tc.desc: Test StaticAOTArgsParser::ParseLocation with various path formats
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_105, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string anFilePath = "/data/local/ark-cache/com.example.app/arm64/module";
+    std::string location = parser.ParseLocation(anFilePath);
+    EXPECT_FALSE(location.empty());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_106
+ * @tc.desc: Test AOTArgsParserBase::FindArgsIdxToInteger with zero value
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_106, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap.emplace("argKey", "0");
+    std::string keyName = "argKey";
+    int32_t bundleID = 999;
+    int32_t ret = AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(bundleID, 0);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_107
+ * @tc.desc: Test StaticAOTArgsParser::ProcessMatchingModules with null methodLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_107, TestSize.Level0)
+{
+    nlohmann::json item;
+    nlohmann::json moduleLists = nlohmann::json::array();
+    nlohmann::json moduleItem;
+    moduleItem["name"] = "entry";
+    // methodLists is null
+    moduleLists.push_back(moduleItem);
+    item["moduleLists"] = moduleLists;
+
+    StaticAOTArgsParser parser;
+    std::vector<std::string> result = parser.ProcessMatchingModules(item, "entry");
+    EXPECT_TRUE(result.empty());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_108
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList with matching bundle
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_108, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("Test:m1");
+    item["methodLists"] = methodLists;
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndMethodList(item, "com.example.test");
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_109
+ * @tc.desc: Test AOTArgsParser::AddExpandArgs with different thermal levels
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_109, TestSize.Level0)
+{
+    std::unique_ptr<AOTArgsParser> parser = std::make_unique<AOTArgsParser>();
+    std::vector<std::string> aotVector;
+    parser->AddExpandArgs(aotVector, 3);
+    std::string arg = aotVector[0];
+    EXPECT_STREQ(arg.c_str(), "--compiler-thermal-level=3");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_110
+ * @tc.desc: Test StaticAOTArgsParser::ParseProfilePath with missing pgoDir and bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_110, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string pkgInfo = R"({"mode": "static"})";
+    std::string profilePath;
+    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_111
+ * @tc.desc: Test AOTArgsParserFactory::GetParser with invalid IS_SYSTEM_COMPONENT value
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_111, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "invalid_value"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_112
+ * @tc.desc: Test AOTArgsHandler::Handle with hybrid mode
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_112, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    argsMap.emplace(ArgsIdx::ARKTS_MODE, "hybrid");
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_113
+ * @tc.desc: Test AOTArgsParserBase::JoinMethodList with single element
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_113, TestSize.Level0)
+{
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("SingleMethod:test");
+    std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
+    ASSERT_EQ(result.size(), 1U);
+    EXPECT_EQ(result[0], "SingleMethod:test");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_114
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList with non-array moduleLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_114, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    item["moduleLists"] = "not_an_array";
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
 } // namespace OHOS::ArkCompiler
