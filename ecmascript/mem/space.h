@@ -248,7 +248,7 @@ public:
 
     virtual void PrepareSweeping() = 0;
 
-    virtual void AsyncSweep(bool isMain) = 0;
+    virtual void AsyncSweep(bool isMain, bool releaseMemory = false) = 0;
 
     virtual bool TryFillSweptRegion() = 0;
 

@@ -59,7 +59,7 @@ public:
 
     void Sweep() override;
 
-    void AsyncSweep(bool isMain) override;
+    void AsyncSweep(bool isMain, bool releaseMemory = false) override;
 
     bool TryFillSweptRegion() override;
 

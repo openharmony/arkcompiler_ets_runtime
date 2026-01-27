@@ -94,9 +94,9 @@ private:
     class SweeperTask : public common::Task {
     public:
         SweeperTask(int32_t id, ConcurrentSweeper *sweeper, MemSpaceType type,
-                    MemSpaceType startSpaceType, MemSpaceType endSpaceType)
+                    MemSpaceType startSpaceType, MemSpaceType endSpaceType, bool isFullGC)
             : common::Task(id), sweeper_(sweeper), type_(type),
-              startSpaceType_(startSpaceType), endSpaceType_(endSpaceType)
+              startSpaceType_(startSpaceType), endSpaceType_(endSpaceType), isFullGC_(isFullGC)
         {
         };
         ~SweeperTask() override = default;
@@ -110,9 +110,10 @@ private:
         MemSpaceType type_;
         MemSpaceType startSpaceType_;
         MemSpaceType endSpaceType_;
+        bool isFullGC_;
     };
 
-    void AsyncSweepSpace(MemSpaceType type, bool isMain);
+    void AsyncSweepSpace(MemSpaceType type, bool isMain, bool releaseMemory);
 
     void WaitingTaskFinish(MemSpaceType type);
 

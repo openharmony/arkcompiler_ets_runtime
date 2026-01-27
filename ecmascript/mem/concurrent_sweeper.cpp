@@ -31,16 +31,16 @@ void ConcurrentSweeper::PostTask(TriggerGCType gcType)
 {
     if (ConcurrentSweepEnabled()) {
         auto tid = heap_->GetJSThread()->GetThreadId();
+        bool isFullGC = (gcType == TriggerGCType::FULL_GC);
         switch (gcType) {
             case TriggerGCType::YOUNG_GC:
             case TriggerGCType::OLD_GC:
-                common::Taskpool::GetCurrentTaskpool()->PostTask(
-                    std::make_unique<SweeperTask>(tid, this, MemSpaceType::OLD_SPACE, startSpaceType_, endSpaceType_));
+                common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweeperTask>(
+                    tid, this, MemSpaceType::OLD_SPACE, startSpaceType_, endSpaceType_, isFullGC));
                 break;
             case TriggerGCType::CMS_GC:
-                common::Taskpool::GetCurrentTaskpool()->PostTask(
-                    std::make_unique<SweeperTask>(tid, this, MemSpaceType::SLOT_SPACE, startSpaceType_,
-                                                  endSpaceType_));
+                common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweeperTask>(
+                    tid, this, MemSpaceType::SLOT_SPACE, startSpaceType_, endSpaceType_, isFullGC));
                 break;
             case TriggerGCType::LOCAL_CC:
             case TriggerGCType::FULL_GC:
@@ -49,10 +49,10 @@ void ConcurrentSweeper::PostTask(TriggerGCType gcType)
                 LOG_ECMA(FATAL) << "this branch is unreachable, " << static_cast<int>(gcType);
                 UNREACHABLE();
         }
-        common::Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<SweeperTask>(tid, this, MemSpaceType::NON_MOVABLE, startSpaceType_, endSpaceType_));
-        common::Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<SweeperTask>(tid, this, MemSpaceType::MACHINE_CODE_SPACE, startSpaceType_, endSpaceType_));
+        common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweeperTask>(
+            tid, this, MemSpaceType::NON_MOVABLE, startSpaceType_, endSpaceType_, isFullGC));
+        common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweeperTask>(
+            tid, this, MemSpaceType::MACHINE_CODE_SPACE, startSpaceType_, endSpaceType_, isFullGC));
     }
 }
 
@@ -129,10 +129,10 @@ void ConcurrentSweeper::SweepNewToOldRegions()
     }
 }
 
-void ConcurrentSweeper::AsyncSweepSpace(MemSpaceType type, bool isMain)
+void ConcurrentSweeper::AsyncSweepSpace(MemSpaceType type, bool isMain, bool releaseMemory)
 {
     SweepableSpace *space = heap_->GetSweepableSpaceWithType(type);
-    space->AsyncSweep(isMain);
+    space->AsyncSweep(isMain, releaseMemory);
 
     LockHolder holder(mutexs_[type]);
     if (--remainingTaskNum_[type] == 0) {
@@ -190,7 +190,7 @@ void ConcurrentSweeper::WaitingTaskFinish(MemSpaceType type)
             LockHolder holder(mutexs_[type]);
             remainingTaskNum_[type]++;
         }
-        AsyncSweepSpace(type, true);
+        AsyncSweepSpace(type, true, false);
         LockHolder holder(mutexs_[type]);
         while (remainingTaskNum_[type] > 0) {
             cvs_[type].Wait(&mutexs_[type]);
@@ -227,7 +227,8 @@ bool ConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadIndex)
     uint32_t sweepTypeNum = endSpaceType_ - startSpaceType_ + 1;
     for (size_t i = 0; i < sweepTypeNum; i++) {
         auto type = static_cast<MemSpaceType>(((i + type_) % sweepTypeNum) + startSpaceType_);
-        sweeper_->AsyncSweepSpace(type, false);
+        bool releaseMemory = (type == MemSpaceType::NON_MOVABLE) && isFullGC_;
+        sweeper_->AsyncSweepSpace(type, false, releaseMemory);
     }
     return true;
 }
