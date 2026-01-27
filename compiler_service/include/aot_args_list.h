@@ -163,13 +163,15 @@ std::vector<std::string> staticAOTDefaultArgs {
     "--load-runtimes=ets",
     "--compiler-enable-fast-interop=false",
     "--compiler-lower-boxed-boolean=false",
-    "--paoc-zip-panda-file=ets/modules_static.abc"
+    "--paoc-zip-panda-file=ets/modules_static.abc",
+    "--paoc-generate-symbols=true"
 };
 
 std::vector<std::string> staticFrameworkAOTDefaultArgs {
     "--load-runtimes=ets",
     "--compiler-enable-fast-interop=false",
-    "--compiler-lower-boxed-boolean=false"
+    "--compiler-lower-boxed-boolean=false",
+    "--paoc-generate-symbols=true"
 };
 
 } // namespace OHOS::ArkCompiler
