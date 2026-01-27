@@ -576,6 +576,7 @@ HWTEST_F_L0(ModuleSnapshotTest, ShouldDeSerializeFailedWhenCheckSumIsNotMatch)
     ASSERT_TRUE(MockModuleSnapshot::SerializeDataAndSaving(vm, path, version));
     ASSERT_TRUE(FileExist(fileName.c_str()));
     // modify file content
+    Chmod(fileName, "rw");
     std::ofstream ofStream(fileName.c_str(), std::ios::app);
     uint32_t mockCheckSum = 123456;
     ofStream << mockCheckSum;
