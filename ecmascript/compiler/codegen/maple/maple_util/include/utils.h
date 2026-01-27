@@ -15,6 +15,7 @@
 
 #ifndef MAPLE_UTIL_INCLUDE_UTILS_H
 #define MAPLE_UTIL_INCLUDE_UTILS_H
+#include <cstdint>
 #include <type_traits>
 #include <limits>
 #include <vector>
