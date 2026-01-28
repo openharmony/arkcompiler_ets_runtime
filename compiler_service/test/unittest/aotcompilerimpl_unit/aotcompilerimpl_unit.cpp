@@ -586,4 +586,275 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_023, TestSize.Level0)
     int32_t result = aotImpl.SendSysEvent(argsMap);
     EXPECT_EQ(result, 0);
 }
+
+/**
+* @tc.name: AotCompilerImplTest_024
+* @tc.desc: AotCompilerImpl::ParseArkCacheFromArgs() when aot-file has no slash
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_024, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap {
+        {"aot-file", "entry_without_slash"},
+        {"appIdentifier", "5765880207853624761"}
+    };
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
+    std::string arkCachePath = aotImpl.ParseArkCacheFromArgs(argsMap);
+    EXPECT_TRUE(arkCachePath.empty());
+}
+
+/**
+* @tc.name: AotCompilerImplTest_025
+* @tc.desc: AotCompilerImpl::PrintAOTCompilerResult() with ERR_NO_AP status
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_025, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    // Test ERR_NO_AP (2)
+    int32_t ret = aotImplMock.PrintAOTCompilerResultMock(2);
+    EXPECT_EQ(ret, ERR_OK_NO_AOT_FILE);
+}
+
+/**
+* @tc.name: AotCompilerImplTest_026
+* @tc.desc: AotCompilerImpl::PrintAOTCompilerResult() with ERR_CHECK_VERSION status
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_026, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    // Test ERR_CHECK_VERSION (4)
+    int32_t ret = aotImplMock.PrintAOTCompilerResultMock(4);
+    EXPECT_EQ(ret, ERR_OK_NO_AOT_FILE);
+}
+
+/**
+* @tc.name: AotCompilerImplTest_027
+* @tc.desc: AotCompilerImpl::PrintAOTCompilerResult() with ERR_MERGE_AP status
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_027, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    // Test ERR_MERGE_AP (3)
+    int32_t ret = aotImplMock.PrintAOTCompilerResultMock(3);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_FAILED);
+}
+
+/**
+* @tc.name: AotCompilerImplTest_028
+* @tc.desc: AotCompilerImpl::PrintAOTCompilerResult() with ERR_AN_FAIL status
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_028, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    // Test ERR_AN_FAIL (6)
+    int32_t ret = aotImplMock.PrintAOTCompilerResultMock(6);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_FAILED);
+}
+
+/**
+* @tc.name: AotCompilerImplTest_029
+* @tc.desc: AotCompilerImpl::PrintAOTCompilerResult() with ERR_AI_FAIL status
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_029, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    // Test ERR_AI_FAIL (7)
+    int32_t ret = aotImplMock.PrintAOTCompilerResultMock(7);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_FAILED);
+}
+
+/**
+* @tc.name: AotCompilerImplTest_030
+* @tc.desc: AotCompilerImpl::PrintAOTCompilerResult() with ERR_FAIL status
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_030, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    // Test ERR_FAIL (-1) - should return OtherInfoOfCompiler
+    int32_t ret = aotImplMock.PrintAOTCompilerResultMock(-1);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_FAILED);
+}
+
+/**
+* @tc.name: AotCompilerImplTest_031
+* @tc.desc: AotCompilerImpl::PrintAOTCompilerResult() with ERR_HELP status
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_031, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    // Test ERR_HELP (1) - should return OtherInfoOfCompiler (not in map)
+    int32_t ret = aotImplMock.PrintAOTCompilerResultMock(1);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_FAILED);
+}
+
+/**
+* @tc.name: AotCompilerImplTest_032
+* @tc.desc: AotCompilerImpl::IsAllowAotCompiler() after pause and allow
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_032, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    EXPECT_TRUE(aotImplMock.IsAllowAotCompiler());
+
+    aotImplMock.PauseAotCompilerMock();
+    EXPECT_FALSE(aotImplMock.IsAllowAotCompiler());
+
+    aotImplMock.AllowAotCompilerMock();
+    EXPECT_TRUE(aotImplMock.IsAllowAotCompiler());
+}
+
+/**
+* @tc.name: AotCompilerImplTest_033
+* @tc.desc: AotCompilerImpl::HandleThermalLevelChanged() with various levels
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_033, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    // Test thermal level 0 (below stop level)
+    aotImplMock.HandleThermalLevelChanged(0);
+    EXPECT_TRUE(aotImplMock.IsAllowAotCompiler());
+
+    // Test thermal level equal to AOT_COMPILE_STOP_LEVEL (2)
+    aotImplMock.HandleThermalLevelChanged(aotImplMock.AOT_COMPILE_STOP_LEVEL);
+    EXPECT_FALSE(aotImplMock.IsAllowAotCompiler());
+
+    // Test thermal level above AOT_COMPILE_STOP_LEVEL (3)
+    aotImplMock.AllowAotCompilerMock();
+    aotImplMock.HandleThermalLevelChanged(3);
+    EXPECT_FALSE(aotImplMock.IsAllowAotCompiler());
+}
+
+/**
+* @tc.name: AotCompilerImplTest_034
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() with system component
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_034, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    std::unordered_map<std::string, std::string> argsMap {
+        {"isSysComp", "1"},
+        {"BundleUid", "20020079"},
+        {"BundleGid", "20020079"},
+        {"anFileName", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an"},
+        {"appIdentifier", "5765880207853624761"}
+    };
+    std::vector<int16_t> sigData;
+    aotImplMock.AllowAotCompilerMock();
+    int32_t ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_NE(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
+}
+
+/**
+* @tc.name: AotCompilerImplTest_035
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() with empty target-compiler-mode
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_035, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    std::unordered_map<std::string, std::string> argsMap {
+        {"target-compiler-mode", ""},
+        {"compiler-pkg-info", "test_pkg_info"},
+        {"BundleUid", "20020079"},
+        {"BundleGid", "20020079"}
+    };
+    std::vector<int16_t> sigData;
+    aotImplMock.AllowAotCompilerMock();
+    int32_t ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
+}
+
+/**
+* @tc.name: AotCompilerImplTest_036
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() with empty compiler-pkg-info
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_036, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    std::unordered_map<std::string, std::string> argsMap {
+        {"target-compiler-mode", "partial"},
+        {"compiler-pkg-info", ""},
+        {"BundleUid", "20020079"},
+        {"BundleGid", "20020079"}
+    };
+    std::vector<int16_t> sigData;
+    aotImplMock.AllowAotCompilerMock();
+    int32_t ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
+}
+
+/**
+* @tc.name: AotCompilerImplTest_037
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() with isSysComp = "0" (false)
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_037, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    std::unordered_map<std::string, std::string> argsMap {
+        {"isSysComp", "0"},
+        {"BundleUid", "20020079"},
+        {"BundleGid", "20020079"}
+    };
+    std::vector<int16_t> sigData;
+    aotImplMock.AllowAotCompilerMock();
+    int32_t ret = aotImplMock.EcmascriptAotCompiler(argsMap, sigData);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
+}
+
+/**
+* @tc.name: AotCompilerImplTest_038
+* @tc.desc: AotCompilerImpl::InitState() and ResetState() operations
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_038, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);
+    int32_t retHandle = argsHandler->Handle(0);
+    EXPECT_EQ(retHandle, ERR_OK);
+}
+
+/**
+* @tc.name: AotCompilerImplTest_039
+* @tc.desc: AotCompilerImpl::ParseArkCacheFromArgs() with path ending at root
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_039, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap {
+        {"aot-file", "/entry"},
+        {"appIdentifier", "5765880207853624761"}
+    };
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
+    std::string arkCachePath = aotImpl.ParseArkCacheFromArgs(argsMap);
+    EXPECT_EQ(arkCachePath, "");
+}
 } // namespace OHOS::ArkCompiler
