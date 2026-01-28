@@ -70,6 +70,16 @@ static constexpr char TEST_CHAR_STRING_FLAGS[] = "gimsuy";
 static constexpr char TEST_CHAR_STRING_STATE[] = "closed";
 static constexpr char TEST_ORIGINAL_SOURCE[] = "string";
 static constexpr char TEST_CHAR_STRING_STATE_SUSPEND[] = "suspended";
+static const char TEST_STRING[] = "test";
+static const char TEST_FROZEN_KEY[] = "frozen";
+static const char TEST_SHOULD_FAIL[] = "should_fail";
+
+static constexpr int32_t TEST_INT_VALUE = 42;
+static constexpr int32_t TEST_NEG_INT_VALUE = -100;
+static constexpr double TEST_DOUBLE_VALUE = 3.14159;
+static constexpr double TEST_NEG_DOUBLE_VALUE = -2.71828;
+static constexpr double TEST_LARGE_DOUBLE = 9876543210.123;
+
 
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
@@ -2580,4 +2590,494 @@ HWTEST_F_L0(JSNApiTests, RegisterCallback_2)
         EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>::Cast(current), undefined, undefined, 1);
     ASSERT_TRUE(Callback::RegisterCallback(objCallInfo).IsFalse());
 }
+
+/**
+ * @tc.number: ffi_interface_api_054
+ * @tc.name: ToObject_Undefined_Null
+ * @tc.desc: Verify the behavior of ToObject when the value is undefined or null.
+ * When JSValueRef is undefined or null, ToObject should return Undefined.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToObject_Undefined_Null)
+{
+    LocalScope scope(vm_);
+
+    // Test undefined case
+    Local<JSValueRef> undefinedValue = JSValueRef::Undefined(vm_);
+    Local<ObjectRef> undefinedObj = undefinedValue->ToObject(vm_);
+    ASSERT_TRUE(undefinedObj->IsUndefined());
+
+    // Test null case
+    Local<JSValueRef> nullValue = JSValueRef::Null(vm_);
+    Local<ObjectRef> nullObj = nullValue->ToObject(vm_);
+    ASSERT_TRUE(nullObj->IsUndefined());
+}
+
+/**
+ * @tc.number: ffi_interface_api_055
+ * @tc.name: ToEcmaObject_NonECMAObject
+ * @tc.desc: Verify the behavior of ToEcmaObject when the value is not an ECMAObject.
+ * When JSValueRef is undefined, null, or primitive types, ToEcmaObject should return Undefined.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObject_NonECMAObject)
+{
+    LocalScope scope(vm_);
+
+    // Test undefined case
+    Local<JSValueRef> undefinedValue = JSValueRef::Undefined(vm_);
+    Local<ObjectRef> undefinedObj = undefinedValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(undefinedObj->IsUndefined());
+
+    // Test null case
+    Local<JSValueRef> nullValue = JSValueRef::Null(vm_);
+    Local<ObjectRef> nullObj = nullValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(nullObj->IsUndefined());
+
+    // Test number case
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    Local<ObjectRef> numberObj = numberValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(numberObj->IsUndefined());
+
+    // Test string case
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    Local<ObjectRef> stringObj = stringValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(stringObj->IsUndefined());
+
+    // Test boolean case
+    Local<BooleanRef> boolValue = BooleanRef::New(vm_, true);
+    Local<ObjectRef> boolObj = boolValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(boolObj->IsUndefined());
+}
+
+/**
+ * @tc.number: ffi_interface_api_056
+ * @tc.name: IntegerValue_Infinite_NaN
+ * @tc.desc: Verify the behavior of IntegerValue when the value is Infinity or NaN.
+ * When the number is not finite or is NaN, IntegerValue should return 0.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IntegerValue_Infinite_NaN)
+{
+    LocalScope scope(vm_);
+
+    // Test positive Infinity
+    Local<NumberRef> posInf = NumberRef::New(vm_, std::numeric_limits<double>::infinity());
+    ASSERT_EQ(posInf->IntegerValue(vm_), 0);
+
+    // Test negative Infinity
+    Local<NumberRef> negInf = NumberRef::New(vm_, -std::numeric_limits<double>::infinity());
+    ASSERT_EQ(negInf->IntegerValue(vm_), 0);
+
+    // Test NaN
+    Local<NumberRef> nanValue = NumberRef::New(vm_, std::numeric_limits<double>::quiet_NaN());
+    ASSERT_EQ(nanValue->IntegerValue(vm_), 0);
+}
+
+/**
+ * @tc.number: ffi_interface_api_057
+ * @tc.name: GetValueDouble_Int_Double
+ * @tc.desc: Verify the behavior of GetValueDouble when the value is Int or Double type.
+ * When the value is Int type, isNumber should be true and return the value as double.
+ * When the value is Double type, isNumber should be true and return the double value.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueDouble_Int_Double)
+{
+    LocalScope scope(vm_);
+
+    // Test Int type
+    Local<NumberRef> intValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isIntNumber = false;
+    double intResult = intValue->GetValueDouble(isIntNumber);
+    ASSERT_TRUE(isIntNumber);
+    ASSERT_EQ(intResult, static_cast<double>(TEST_INT_VALUE));
+
+    // Test Double type
+    Local<NumberRef> doubleValue = NumberRef::New(vm_, TEST_DOUBLE_VALUE);
+    bool isDoubleNumber = false;
+    double doubleResult = doubleValue->GetValueDouble(isDoubleNumber);
+    ASSERT_TRUE(isDoubleNumber);
+    ASSERT_DOUBLE_EQ(doubleResult, TEST_DOUBLE_VALUE);
+
+    // Test negative Int
+    Local<NumberRef> negIntValue = NumberRef::New(vm_, TEST_NEG_INT_VALUE);
+    bool isNegIntNumber = false;
+    double negIntResult = negIntValue->GetValueDouble(isNegIntNumber);
+    ASSERT_TRUE(isNegIntNumber);
+    ASSERT_EQ(negIntResult, static_cast<double>(TEST_NEG_INT_VALUE));
+
+    // Test negative Double
+    Local<NumberRef> negDoubleValue = NumberRef::New(vm_, TEST_NEG_DOUBLE_VALUE);
+    bool isNegDoubleNumber = false;
+    double negDoubleResult = negDoubleValue->GetValueDouble(isNegDoubleNumber);
+    ASSERT_TRUE(isNegDoubleNumber);
+    ASSERT_DOUBLE_EQ(negDoubleResult, TEST_NEG_DOUBLE_VALUE);
+}
+
+/**
+ * @tc.number: ffi_interface_api_058
+ * @tc.name: GetValueInt32_Int_Double
+ * @tc.desc: Verify the behavior of GetValueInt32 when the value is Int or Double type.
+ * When the value is Int type, isNumber should be true and return the int32 value.
+ * When the value is Double type, isNumber should be true and return the converted int32 value.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueInt32_Int_Double)
+{
+    LocalScope scope(vm_);
+
+    // Test Int type
+    Local<NumberRef> intValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isIntNumber = false;
+    int32_t intResult = intValue->GetValueInt32(isIntNumber);
+    ASSERT_TRUE(isIntNumber);
+    ASSERT_EQ(intResult, TEST_INT_VALUE);
+
+    // Test negative Int
+    Local<NumberRef> negIntValue = NumberRef::New(vm_, TEST_NEG_INT_VALUE);
+    bool isNegIntNumber = false;
+    int32_t negIntResult = negIntValue->GetValueInt32(isNegIntNumber);
+    ASSERT_TRUE(isNegIntNumber);
+    ASSERT_EQ(negIntResult, TEST_NEG_INT_VALUE);
+
+    // Test Double type
+    Local<NumberRef> doubleValue = NumberRef::New(vm_, TEST_DOUBLE_VALUE);
+    bool isDoubleNumber = false;
+    int32_t doubleResult = doubleValue->GetValueInt32(isDoubleNumber);
+    ASSERT_TRUE(isDoubleNumber);
+    ASSERT_EQ(doubleResult, static_cast<int32_t>(TEST_DOUBLE_VALUE));
+
+    // Test negative Double
+    Local<NumberRef> negDoubleValue = NumberRef::New(vm_, TEST_NEG_DOUBLE_VALUE);
+    bool isNegDoubleNumber = false;
+    int32_t negDoubleResult = negDoubleValue->GetValueInt32(isNegDoubleNumber);
+    ASSERT_TRUE(isNegDoubleNumber);
+    ASSERT_EQ(negDoubleResult, static_cast<int32_t>(TEST_NEG_DOUBLE_VALUE));
+}
+
+/**
+ * @tc.number: ffi_interface_api_059
+ * @tc.name: GetValueInt64_Infinite_NaN_Double
+ * @tc.desc: Verify the behavior of GetValueInt64 when the value is Infinite, NaN, or normal Double.
+ * When the value is Infinite or NaN, should return 0.
+ * When the value is normal Double, should return the converted int64 value.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueInt64_Infinite_NaN_Double)
+{
+    LocalScope scope(vm_);
+
+    // Test positive Infinity
+    Local<NumberRef> posInf = NumberRef::New(vm_, std::numeric_limits<double>::infinity());
+    bool isPosInfNumber = false;
+    int64_t posInfResult = posInf->GetValueInt64(isPosInfNumber);
+    ASSERT_TRUE(isPosInfNumber);
+    ASSERT_EQ(posInfResult, 0);
+
+    // Test negative Infinity
+    Local<NumberRef> negInf = NumberRef::New(vm_, -std::numeric_limits<double>::infinity());
+    bool isNegInfNumber = false;
+    int64_t negInfResult = negInf->GetValueInt64(isNegInfNumber);
+    ASSERT_TRUE(isNegInfNumber);
+    ASSERT_EQ(negInfResult, 0);
+
+    // Test NaN
+    Local<NumberRef> nanValue = NumberRef::New(vm_, std::numeric_limits<double>::quiet_NaN());
+    bool isNanNumber = false;
+    int64_t nanResult = nanValue->GetValueInt64(isNanNumber);
+    ASSERT_TRUE(isNanNumber);
+    ASSERT_EQ(nanResult, 0);
+
+    // Test normal Double
+    Local<NumberRef> normalDouble = NumberRef::New(vm_, TEST_DOUBLE_VALUE);
+    bool isNormalDoubleNumber = false;
+    int64_t normalDoubleResult = normalDouble->GetValueInt64(isNormalDoubleNumber);
+    ASSERT_TRUE(isNormalDoubleNumber);
+    ASSERT_EQ(normalDoubleResult, static_cast<int64_t>(TEST_DOUBLE_VALUE));
+
+    // Test large Double value
+    Local<NumberRef> largeDouble = NumberRef::New(vm_, TEST_LARGE_DOUBLE);
+    bool isLargeDoubleNumber = false;
+    int64_t largeDoubleResult = largeDouble->GetValueInt64(isLargeDoubleNumber);
+    ASSERT_TRUE(isLargeDoubleNumber);
+    ASSERT_EQ(largeDoubleResult, static_cast<int64_t>(TEST_LARGE_DOUBLE));
+
+    // Test negative Double
+    Local<NumberRef> negDouble = NumberRef::New(vm_, TEST_NEG_DOUBLE_VALUE);
+    bool isNegDoubleNumber = false;
+    int64_t negDoubleResult = negDouble->GetValueInt64(isNegDoubleNumber);
+    ASSERT_TRUE(isNegDoubleNumber);
+    ASSERT_EQ(negDoubleResult, static_cast<int64_t>(TEST_NEG_DOUBLE_VALUE));
+}
+
+/**
+ * @tc.number: ffi_interface_api_060
+ * @tc.name: ToEcmaObjectWithoutSwitchState_NormalObject
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when the value is a normal object.
+ * When JSValueRef is a normal object, ToEcmaObjectWithoutSwitchState should return the object itself.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_NormalObject)
+{
+    LocalScope scope(vm_);
+
+    // Test normal object case
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    Local<ObjectRef> result = obj->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(result->IsObject(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_061
+ * @tc.name: ToEcmaObjectWithoutSwitchState_PrimitiveTypes
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when the value is a primitive type.
+ * ToEcmaObjectWithoutSwitchState directly converts the value to ObjectRef without type checking.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_PrimitiveTypes)
+{
+    LocalScope scope(vm_);
+
+    // Test number case - should return NumberRef as ObjectRef
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    Local<ObjectRef> numberObj = numberValue->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(numberObj->IsNumber());
+
+    // Test string case - should return StringRef as ObjectRef
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    Local<ObjectRef> stringObj = stringValue->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(stringObj->IsString(vm_));
+
+    // Test boolean case - should return BooleanRef as ObjectRef
+    Local<BooleanRef> boolValue = BooleanRef::New(vm_, true);
+    Local<ObjectRef> boolObj = boolValue->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(boolObj->IsBoolean());
+}
+
+/**
+ * @tc.number: ffi_interface_api_062
+ * @tc.name: ToEcmaObjectWithoutSwitchState_WithException
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when there is a pending exception.
+ * When there is a pending exception, ToEcmaObjectWithoutSwitchState should return Undefined.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_WithException)
+{
+    LocalScope scope(vm_);
+
+    // Create an object and set an invalid property to trigger an exception
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    Local<StringRef> frozenKey = StringRef::NewFromUtf8(vm_, TEST_FROZEN_KEY);
+
+    // Freeze the object to make it read-only
+    obj->Freeze(vm_);
+
+    // Try to set a property on the frozen object, which should throw an exception
+    ASSERT_FALSE(vm_->GetJSThread()->HasPendingException());
+    obj->Set(vm_, frozenKey, StringRef::NewFromUtf8(vm_, TEST_SHOULD_FAIL));
+    ASSERT_TRUE(vm_->GetJSThread()->HasPendingException());
+
+    // Now call ToEcmaObjectWithoutSwitchState with the exception pending
+    Local<ObjectRef> result = obj->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(result->IsUndefined());
+
+    // Clear the exception
+    JSNApi::GetAndClearUncaughtException(vm_);
+}
+
+/**
+ * @tc.number: ffi_interface_api_063
+ * @tc.name: ToEcmaObjectWithoutSwitchState_Array
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when the value is an array.
+ * When JSValueRef is an array, ToEcmaObjectWithoutSwitchState should return the array itself.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_Array)
+{
+    LocalScope scope(vm_);
+
+    // Test array case
+    Local<ArrayRef> array = ArrayRef::New(vm_, TEST_INT_VALUE);
+    Local<ObjectRef> arrayObj = array->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(arrayObj->IsArray(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_064
+ * @tc.name: ToEcmaObjectWithoutSwitchState_Function
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when the value is a function.
+ * When JSValueRef is a function, ToEcmaObjectWithoutSwitchState should return the function itself.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_Function)
+{
+    LocalScope scope(vm_);
+
+    // Test function case
+    Local<FunctionRef> func = FunctionRef::New(vm_, FunctionCallback);
+    Local<ObjectRef> funcObj = func->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(funcObj->IsFunction(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_065
+ * @tc.name: GetValueBool_True_False
+ * @tc.desc: Verify the behavior of GetValueBool when the value is true or false.
+ * When the value is true, GetValueBool should return true.
+ * When the value is false, GetValueBool should return false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueBool_True_False)
+{
+    LocalScope scope(vm_);
+
+    // Test true value
+    Local<BooleanRef> trueValue = BooleanRef::New(vm_, true);
+    bool isTrueBool = false;
+    bool trueResult = trueValue->GetValueBool(isTrueBool);
+    ASSERT_TRUE(isTrueBool);
+    ASSERT_TRUE(trueResult);
+
+    // Test false value
+    Local<BooleanRef> falseValue = BooleanRef::New(vm_, false);
+    bool isFalseBool = false;
+    bool falseResult = falseValue->GetValueBool(isFalseBool);
+    ASSERT_TRUE(isFalseBool);
+    ASSERT_FALSE(falseResult);
+
+    // Test non-boolean value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isNumberBool = false;
+    bool numberResult = numberValue->GetValueBool(isNumberBool);
+    ASSERT_FALSE(isNumberBool);
+    ASSERT_FALSE(numberResult);
+}
+
+/**
+ * @tc.number: ffi_interface_api_066
+ * @tc.name: ToBigInt_Boolean
+ * @tc.desc: Verify the behavior of ToBigInt when converting values.
+ * ToBigInt should succeed for Boolean values.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToBigInt_Boolean)
+{
+    LocalScope scope(vm_);
+
+    // Test that converting Boolean true to BigInt succeeds
+    Local<BooleanRef> trueValue = BooleanRef::New(vm_, true);
+    Local<BigIntRef> bigIntFromTrue = trueValue->ToBigInt(vm_);
+    ASSERT_TRUE(bigIntFromTrue->IsBigInt(vm_));
+
+    // Test that converting Boolean false to BigInt succeeds
+    Local<BooleanRef> falseValue = BooleanRef::New(vm_, false);
+    Local<BigIntRef> bigIntFromFalse = falseValue->ToBigInt(vm_);
+    ASSERT_TRUE(bigIntFromFalse->IsBigInt(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_067
+ * @tc.name: IsNativeBindingObject_NonObject
+ * @tc.desc: Verify the behavior of IsNativeBindingObject when the value is not an ECMAObject.
+ * When the value is not an ECMAObject, IsNativeBindingObject should return false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsNativeBindingObject_NonObject)
+{
+    LocalScope scope(vm_);
+
+    // Test number value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isNativeBinding = numberValue->IsNativeBindingObject(vm_);
+    ASSERT_FALSE(isNativeBinding);
+
+    // Test string value
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    isNativeBinding = stringValue->IsNativeBindingObject(vm_);
+    ASSERT_FALSE(isNativeBinding);
+
+    // Test boolean value
+    Local<BooleanRef> boolValue = BooleanRef::New(vm_, true);
+    isNativeBinding = boolValue->IsNativeBindingObject(vm_);
+    ASSERT_FALSE(isNativeBinding);
+
+    // Test undefined value
+    Local<JSValueRef> undefinedValue = JSValueRef::Undefined(vm_);
+    isNativeBinding = undefinedValue->IsNativeBindingObject(vm_);
+    ASSERT_FALSE(isNativeBinding);
+}
+
+/**
+ * @tc.number: ffi_interface_api_068
+ * @tc.name: GetNativePointer_ValidPointer
+ * @tc.desc: Verify the behavior of GetNativePointer when the value has a valid native pointer.
+ * When the value has a valid native pointer, GetNativePointer should return the external pointer.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetNativePointer_ValidPointer)
+{
+    LocalScope scope(vm_);
+
+    // Test with a valid native pointer
+    int* testData = new int(TEST_INT_VALUE);
+    Local<NativePointerRef> nativePtr = NativePointerRef::New(vm_, testData, nullptr, nullptr, 0);
+
+    bool isNativePointer = false;
+    void* externalPtr = nativePtr->GetNativePointerValue(vm_, isNativePointer);
+    ASSERT_TRUE(isNativePointer);
+    ASSERT_EQ(externalPtr, testData);
+
+    delete testData;
+}
+
+/**
+ * @tc.number: ffi_interface_api_069
+ * @tc.name: GetNativePointerValue_InvalidPointer
+ * @tc.desc: Verify the behavior of GetNativePointerValue when the value is not a native pointer.
+ * When the value is not a native pointer, GetNativePointerValue should return nullptr and set isNativePointer to false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetNativePointerValue_InvalidPointer)
+{
+    LocalScope scope(vm_);
+
+    // Test with number value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isNativePointer = false;
+    void* externalPtr = numberValue->GetNativePointerValue(vm_, isNativePointer);
+    ASSERT_FALSE(isNativePointer);
+    ASSERT_EQ(externalPtr, nullptr);
+
+    // Test with string value
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    isNativePointer = false;
+    externalPtr = stringValue->GetNativePointerValue(vm_, isNativePointer);
+    ASSERT_FALSE(isNativePointer);
+    ASSERT_EQ(externalPtr, nullptr);
+
+    // Test with undefined value
+    Local<JSValueRef> undefinedValue = JSValueRef::Undefined(vm_);
+    isNativePointer = false;
+    externalPtr = undefinedValue->GetNativePointerValue(vm_, isNativePointer);
+    ASSERT_FALSE(isNativePointer);
+    ASSERT_EQ(externalPtr, nullptr);
+}
+
 }  // namespace panda::test
