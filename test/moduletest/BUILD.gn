@@ -368,6 +368,7 @@ group("ark_js_assert_moduletest") {
       "proxyget",
       "proxyrelease",
       "proxyset",
+      "typedarray2",
     ]
 
     foreach(test, release_test_assert_list) {
