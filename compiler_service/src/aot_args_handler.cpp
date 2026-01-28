@@ -20,6 +20,7 @@
 #include <fstream>
 
 #include "aot_args_list.h"
+#include "aot_args_verify.h"
 #include "aot_compiler_constants.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/file.h"
@@ -84,6 +85,12 @@ int32_t AOTArgsHandler::Handle(int32_t thermalLevel)
     }
     if (!parser_) {
         LOG_SA(ERROR) << "AOTArgsParser is null, invalid parameters";
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+
+    // Perform validation before parsing
+    if (!parser_->Check(argsMap_)) {
+        LOG_SA(ERROR) << "Parser check validation failed";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
@@ -187,6 +194,11 @@ int32_t AOTArgsParser::Parse(const std::unordered_map<std::string, std::string> 
 
     hapArgs.argVector.emplace_back(abcPath);
     return ERR_OK;
+}
+
+bool AOTArgsParser::Check(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    return AotArgsVerify::CheckAOTArgs(argsMap);
 }
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
@@ -307,6 +319,11 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
     }
 
     return ERR_OK;
+}
+
+bool StaticAOTArgsParser::Check(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    return AotArgsVerify::CheckStaticAotArgs(argsMap);
 }
 
 bool StaticAOTArgsParser::ParseBootPandaFiles(std::string &bootfiles)
@@ -683,6 +700,11 @@ int32_t StaticFrameworkAOTArgsParser::Parse(const std::unordered_map<std::string
         hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_COMPILER_REGEX + Symbols::EQ + blackListMethods);
     }
     return ERR_OK;
+}
+
+bool StaticFrameworkAOTArgsParser::Check(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    return AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
 }
 
 bool StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList(const nlohmann::json &item,

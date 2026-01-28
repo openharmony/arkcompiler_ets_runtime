@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <thread>
 
+#include "aot_args_verify.h"
 #include "aot_compiler_constants.h"
 #include "ecmascript/log_wrapper.h"
 #ifdef CODE_SIGN_ENABLE
@@ -243,6 +244,11 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(std::vector<int16_t> &sigData) const
 #ifdef CODE_SIGN_ENABLE
     std::string appSignature = argsHandler_->GetCodeSignArgs();
     std::string fileName = argsHandler_->GetFileName();
+    // Add security validation for fileName
+    if (!AotArgsVerify::CheckCodeSignArkCacheFileName(fileName)) {
+        LOG_SA(ERROR) << "fileName validation failed in AOTLocalCodeSign";
+        return ERR_AOT_COMPILER_SIGNATURE_FAILED;
+    }
     Security::CodeSign::ByteBuffer sig;
     if (Security::CodeSign::LocalCodeSignKit::SignLocalCode(appSignature, fileName, sig)
                         != CommonErrCode::CS_SUCCESS) {

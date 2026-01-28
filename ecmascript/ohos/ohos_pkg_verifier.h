@@ -38,53 +38,10 @@ public:
         if (!cPreprocessor.GetMainPkgArgs()) {
             return true;
         }
-        if (CheckBundleNameAndAppIdentifier(cPreprocessor) &&
-            CheckArkProfile(cPreprocessor) &&
-            CheckAOTOutputFilePath(cPreprocessor, cOptions)) {
+        if (CheckBundleNameAndAppIdentifier(cPreprocessor)) {
             return true;
         }
         return false;
-    }
-
-    static bool CheckArkProfile(AotCompilerPreprocessor &cPreprocessor)
-    {
-        std::regex pattern("/data/app/el1/\\d+/aot_compiler/ark_profile.*");
-        std::string pgoDir = cPreprocessor.GetMainPkgArgs()->GetPgoDir();
-        std::string bundleName = cPreprocessor.GetMainPkgArgs()->GetBundleName();
-        if (!std::regex_search(pgoDir, pattern) ||
-            pgoDir.find(bundleName) == std::string::npos) {
-            LOG_COMPILER(ERROR) << "verify ark-profile path wrong";
-            return false;
-        }
-        return true;
-    }
-
-    static bool CheckAOTOutputFilePath(AotCompilerPreprocessor &cPreprocessor, CompilationOptions &cOptions)
-    {
-        std::string arkCachePath = "/data/app/el1/public/aot_compiler/ark_cache/";
-        if (cOptions.outputFileName_.length() < arkCachePath.length()) {
-            LOG_COMPILER(ERROR) << "outputFileName_ is too short";
-            return false;
-        }
-        if (cOptions.outputFileName_.substr(0, arkCachePath.length()) != arkCachePath) {
-            LOG_COMPILER(ERROR) << "aot file name wrong";
-            return false;
-        }
-        std::shared_ptr<OhosPkgArgs> mainPkgArgs = cPreprocessor.GetMainPkgArgs();
-        if (!mainPkgArgs) {
-            LOG_COMPILER(ERROR) << "mainPkgArgs is nullptr";
-            return false;
-        }
-        const std::string bundleName = mainPkgArgs->GetBundleName();
-        if (bundleName.empty()) {
-            LOG_COMPILER(ERROR) << "bundleName is empty";
-            return false;
-        }
-        if (cOptions.outputFileName_.find(bundleName) == std::string::npos) {
-            LOG_COMPILER(ERROR) << "verify main pkg bundleName wrong";
-            return false;
-        }
-        return true;
     }
 
     static bool CheckBundleNameAndAppIdentifier([[maybe_unused]] AotCompilerPreprocessor &cPreprocessor)

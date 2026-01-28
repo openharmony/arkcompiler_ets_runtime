@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import("../../compiler_service_test.gni")
+import("../../../test/compiler_service_test.gni")
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 config("module_private_config") {
@@ -29,9 +29,9 @@ config("module_private_config") {
   ]
 }
 
-ohos_unittest("AotCompilerProxyUnitTest") {
+ohos_unittest("AotArgsVerifyUnitTest") {
   module_out_path = module_output_path
-  configs = [ 
+  configs = [
     ":module_private_config",
     "$js_root:ark_jsruntime_public_config",
   ]
@@ -83,9 +83,11 @@ ohos_unittest("AotCompilerProxyUnitTest") {
     "samgr:samgr_proxy",
   ]
   defines = []
+  external_deps += [ "init:libbegetutil" ]
+  defines += [ "ENABLE_COMPILER_SERVICE_GET_PARAMETER" ]
   if (code_sign_enable_test) {
     external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
     defines += [ "CODE_SIGN_ENABLE" ]
   }
-  sources += [ "aotcompilerproxy_unit.cpp" ]
+  sources += [ "aotargsverify_unit.cpp" ]
 }

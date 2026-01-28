@@ -401,7 +401,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_014, TestSize.Level0)
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_015, TestSize.Level0)
 {
     AotCompilerImplMock aotImplMock;
-    std::string fileName = "/data/local/ark-cache/com.ohos.contacts/arm64/entry.an";
+    std::string fileName = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an";
     std::string appSignature = "5765880207853624761";
     std::vector<int16_t> sigData;
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);

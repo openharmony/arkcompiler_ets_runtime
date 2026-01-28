@@ -18,6 +18,8 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "aot_args_handler.h"
 #include "aot_compiler_constants.h"
@@ -194,8 +196,43 @@ const std::unordered_map<std::string, std::string> argsMapForTest {
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_007, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap["target-compiler-mode"] = "partial";
+    argsMap["aot-file"] = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry";
+    argsMap["compiler-pkg-info"] =
+        "{\"abcName\":\"ets/modules.abc\","
+        "\"abcOffset\":\"0x1000\","
+        "\"abcSize\":\"0x60b058\","
+        "\"appIdentifier\":\"5765880207853624761\","
+        "\"bundleName\":\"com.ohos.contacts\","
+        "\"BundleUid\":\"0x1317b6f\","
+        "\"isEncryptedBundle\":\"0x0\","
+        "\"isScreenOff\":\"0x1\","
+        "\"moduleName\":\"entry\","
+        "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts\","
+        "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\","
+        "\"processUid\":\"0xbf4\"}";
+    argsMap["compiler-external-pkg-info"] = "[]";
+    argsMap["compiler-opt-bc-range"] = "";
+    argsMap["compiler-device-state"] = "1";
+    argsMap["compiler-baseline-pgo"] = "0";
+    argsMap["ABC-Path"] = "/system/app/Contacts/Contacts.hap/ets/modules.abc";
+    argsMap["BundleUid"] = "20020079";
+    argsMap["BundleGid"] = "20020079";
+    argsMap["anFileName"] = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an";
+    argsMap["appIdentifier"] = "5765880207853624761";
+
     argsMap.emplace(ArgsIdx::ARKTS_MODE, "dynamic");
+
+    // Create the required subdirectories
+    mkdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    // Create dummy files for testing
+    std::ofstream anFile("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
+    anFile.close();
+
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
     argsHandler->SetIsEnableStaticCompiler(true);
     argsHandler->SetParser(argsMap);
@@ -203,6 +240,12 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_007, TestSize.Level0)
     EXPECT_EQ(ret, ERR_OK);
     std::vector<const char*> argv = argsHandler->GetAotArgs();
     EXPECT_STREQ(argv[0], "/system/bin/ark_aot_compiler");
+
+    // Clean up created files and directories
+    unlink("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
+    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64");
+    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts");
+    rmdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts");
 }
 
 /**
@@ -212,8 +255,43 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_007, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_008, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap["target-compiler-mode"] = "partial";
+    argsMap["aot-file"] = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry";
+    argsMap["compiler-pkg-info"] =
+        "{\"abcName\":\"ets/modules.abc\","
+        "\"abcOffset\":\"0x1000\","
+        "\"abcSize\":\"0x60b058\","
+        "\"appIdentifier\":\"5765880207853624761\","
+        "\"bundleName\":\"com.ohos.contacts\","
+        "\"BundleUid\":\"0x1317b6f\","
+        "\"isEncryptedBundle\":\"0x0\","
+        "\"isScreenOff\":\"0x1\","
+        "\"moduleName\":\"entry\","
+        "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts\","
+        "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\","
+        "\"processUid\":\"0xbf4\"}";
+    argsMap["compiler-external-pkg-info"] = "[]";
+    argsMap["compiler-opt-bc-range"] = "";
+    argsMap["compiler-device-state"] = "1";
+    argsMap["compiler-baseline-pgo"] = "0";
+    argsMap["ABC-Path"] = "/system/app/Contacts/Contacts.hap/ets/modules.abc";
+    argsMap["BundleUid"] = "20020079";
+    argsMap["BundleGid"] = "20020079";
+    argsMap["anFileName"] = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an";
+    argsMap["appIdentifier"] = "5765880207853624761";
+
     argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
+
+    // Create the required subdirectories
+    mkdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    // Create dummy files for testing
+    std::ofstream anFile("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
+    anFile.close();
+
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
     argsHandler->SetIsEnableStaticCompiler(true);
     argsHandler->SetParser(argsMap);
@@ -221,6 +299,12 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_008, TestSize.Level0)
     EXPECT_EQ(ret, ERR_OK);
     std::vector<const char*> argv = argsHandler->GetAotArgs();
     EXPECT_STREQ(argv[0], "/system/bin/ark_aot");
+
+    // Clean up created files and directories
+    unlink("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
+    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64");
+    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts");
+    rmdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts");
 }
 
 /**
@@ -248,6 +332,11 @@ const std::unordered_map<std::string, std::string> framewordArgsMapForTest {
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
 {
+    // Create abc file needed for ParseFrameworkBootPandaFiles
+    std::string abcPath = "/system/framework/etsstdlib_bootabc.abc";
+    std::ofstream abcFile(abcPath);
+    abcFile.close();
+
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsMapForTest);
     argsHandler->SetIsEnableStaticCompiler(true);
     argsHandler->SetParser(framewordArgsMapForTest);
@@ -267,6 +356,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
             EXPECT_STREQ(arg, "--boot-panda-files=/system/framework/etsstdlib_bootabc.abc");
         }
     }
+
+    // Clean up
+    unlink(abcPath.c_str());
 }
 
 /**
@@ -1052,48 +1144,49 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_062, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_063, TestSize.Level0)
 {
-    // Create black list JSON file with matching bundle and module
-    std::string blackListJsonStr =
-        "{"
-        "  \"blackMethodList\": ["
-        "    {"
-        "      \"bundleName\": \"com.ohos.contacts\","
-        "      \"type\": \"application\","
-        "      \"moduleLists\": ["
-        "        {"
-        "          \"name\": \"entry\","
-        "          \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
-        "        }"
-        "      ]"
-        "    }"
-        "  ]"
-        "}";
-    std::ofstream file(staticPaocBlackListPath);
-    file << blackListJsonStr << std::endl;
-    file.close();
+    // Create black list JSON file
+    std::ofstream(staticPaocBlackListPath)
+        << "{\"blackMethodList\":[{\"bundleName\":\"com.ohos.contacts\",\"type\":\"application\","
+        << "\"moduleLists\":[{\"name\":\"entry\",\"methodLists\":[\"Test:m1\",\"Test:m2\"]}]}]}";
 
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
-    argsMap.emplace("compiler-pkg-info",
-        "{\"abcName\":\"ets/modules.abc\","
-        "\"abcOffset\":\"0x1000\","
-        "\"abcSize\":\"0x60b058\","
-        "\"appIdentifier\":\"5765880207853624761\","
-        "\"bundleName\":\"com.ohos.contacts\","
-        "\"BundleUid\":\"0x1317b6f\","
-        "\"isEncryptedBundle\":\"0x0\","
-        "\"isScreenOff\":\"0x1\","
-        "\"moduleName\":\"entry\","
-        "\"pgoDir\":\"/data/local/ark-profile/100/com.ohos.contacts\","
-        "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\","
-        "\"processUid\":\"0xbf4\"}");
+    // Setup args map with all required fields
+    std::unordered_map<std::string, std::string> argsMap = {
+        {"target-compiler-mode", "partial"},
+        {"aot-file", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry"},
+        {"compiler-pkg-info", "{\"abcName\":\"ets/modules.abc\",\"abcOffset\":\"0x1000\","
+            "\"abcSize\":\"0x60b058\",\"appIdentifier\":\"5765880207853624761\","
+            "\"bundleName\":\"com.ohos.contacts\",\"BundleUid\":\"0x1317b6f\","
+            "\"isEncryptedBundle\":\"0x0\",\"isScreenOff\":\"0x1\",\"moduleName\":\"entry\","
+            "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts\","
+            "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\",\"processUid\":\"0xbf4\"}"},
+        {"compiler-external-pkg-info", "[]"}, {"compiler-opt-bc-range", ""},
+        {"compiler-device-state", "1"}, {"compiler-baseline-pgo", "0"},
+        {"ABC-Path", "/system/app/Contacts/Contacts.hap/ets/modules.abc"},
+        {"BundleUid", "20020079"}, {"BundleGid", "20020079"},
+        {"anFileName", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an"},
+        {"appIdentifier", "5765880207853624761"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
 
+    // Create test directories and file
+    std::string basePath = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts";
+    mkdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts",
+          S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    mkdir(basePath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    mkdir((basePath + "/arm64").c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::ofstream((basePath + "/arm64/entry.an").c_str()).close();
+
+    // Execute test
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
     argsHandler->SetIsEnableStaticCompiler(true);
     argsHandler->SetParser(argsMap);
-    int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(argsHandler->Handle(0), ERR_OK);
 
+    // Clean up
+    unlink((basePath + "/arm64/entry.an").c_str());
+    rmdir((basePath + "/arm64").c_str());
+    rmdir(basePath.c_str());
+    rmdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts");
     unlink(staticPaocBlackListPath);
 }
 
@@ -1327,6 +1420,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
     file << blackListJsonStr << std::endl;
     file.close();
 
+    // Create abc file needed for ParseFrameworkBootPandaFiles
+    std::string abcPath = "/system/framework/etsstdlib_bootabc.abc";
+    std::ofstream abcFile(abcPath);
+    abcFile.close();
+
     // Use framework args map
     std::unordered_map<std::string, std::string> argsMap(framewordArgsMapForTest);
     argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
@@ -1340,6 +1438,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
 
     // Clean up
     unlink(staticPaocBlackListPath);
+    unlink(abcPath.c_str());
 }
 
 /**
@@ -2149,6 +2248,321 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_114, TestSize.Level0)
     StaticAOTArgsParser parser;
     bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
     EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_115
+ * @tc.desc: Test AOTArgsParserFactory::GetParser with invalid IS_SYSTEM_COMPONENT value
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_115, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "invalid_value"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_116
+ * @tc.desc: Test AOTArgsHandler::Handle with hybrid mode
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_116, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    argsMap.emplace(ArgsIdx::ARKTS_MODE, "hybrid");
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    argsHandler->SetIsEnableStaticCompiler(true);
+    argsHandler->SetParser(argsMap);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_117
+ * @tc.desc: Test AOTArgsParserBase::JoinMethodList with single element
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_117, TestSize.Level0)
+{
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("SingleMethod:test");
+    std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
+    ASSERT_EQ(result.size(), 1U);
+    EXPECT_EQ(result[0], "SingleMethod:test");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_118
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList with non-array moduleLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_118, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    item["moduleLists"] = "not_an_array";
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+// ============================================================================
+// StaticAOTArgsParser::Check 测试用例
+// ============================================================================
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_001
+ * @tc.desc: Test StaticAOTArgsParser::Check with missing PKG_INFO
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    // Don't add PKG_INFO to trigger the failure condition
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_002
+ * @tc.desc: Test StaticAOTArgsParser::Check with invalid PKG_INFO (empty bundleName)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_002, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{}"; // Empty JSON, no bundleName
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_003
+ * @tc.desc: Test StaticAOTArgsParser::Check with missing AOT_FILE
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_003, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{\"bundleName\": \"com.example.myapplication\"}";
+    // Don't add AOT_FILE to trigger the failure condition
+    argsMap[ArgsIdx::AN_FILE_NAME] =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_004
+ * @tc.desc: Test StaticAOTArgsParser::Check with missing AN_FILE_NAME
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_004, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{\"bundleName\": \"com.example.myapplication\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
+    // Don't add AN_FILE_NAME to trigger the failure condition
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_005
+ * @tc.desc: Test StaticAOTArgsParser::Check with path traversal in aot-file
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_005, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{\"bundleName\": \"com.example.myapplication\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/../etc/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/../etc/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_006
+ * @tc.desc: Test StaticAOTArgsParser::Check with invalid ark cache directory (not in expected location)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_006, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{\"bundleName\": \"com.example.myapplication\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/wrong_location/" \
+                                  "com.example.myapplication/arm64/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/wrong_location/" \
+                                   "com.example.myapplication/arm64/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_SUCCESS_001
+ * @tc.desc: Test StaticAOTArgsParser::Check with valid inputs (successful case)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_SUCCESS_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{\"bundleName\": \"com.example.myapplication\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/" \
+                                "com.example.myapplication/arm64/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/" \
+                                 "com.example.myapplication/arm64/entry.an";
+
+    // Create the required subdirectory
+    mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64",
+          S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    // Create dummy files for testing
+    std::ofstream anFile("/data/app/el1/public/aot_compiler/ark_cache/" \
+                         "com.example.myapplication/arm64/entry.an");
+    anFile.close();
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_TRUE(result);
+
+    // Clean up created files and directories
+    unlink("/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an");
+    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64");
+    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication");
+}
+
+// ============================================================================
+// StaticFrameworkAOTArgsParser::Check 测试用例
+// ============================================================================
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_001
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with missing AN_FILE_NAME
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    // Don't add AN_FILE_NAME to trigger the failure condition
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_002
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with path traversal in anFileName
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_002, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
+                                      "framework_ark_cache/../etc/etsstdlib_bootabc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_003
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with invalid framework cache directory (wrong location)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_003, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/" \
+                                      "framework_ark_cache/etsstdlib_bootabc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_004
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with Windows-style path traversal
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_004, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
+                                      "framework_ark_cache\\..\\etsstdlib_bootabc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_SUCCESS_001
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with valid input (successful case)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_SUCCESS_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
+                                      "framework_ark_cache/etsstdlib_bootabc.an";
+
+    // Create the required subdirectory
+    mkdir("/data/service/el1/public/for-all-app/framework_ark_cache",
+          S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    // Create dummy file for testing
+    std::ofstream anFile("/data/service/el1/public/for-all-app/" \
+                         "framework_ark_cache/etsstdlib_bootabc.an");
+    anFile.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_TRUE(result);
+
+    // Clean up created files and directories
+    unlink("/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an");
+    rmdir("/data/service/el1/public/for-all-app/framework_ark_cache");
+    rmdir("/data/service/el1/public/for-all-app");
+    rmdir("/data/service/el1/public");
 }
 
 } // namespace OHOS::ArkCompiler
