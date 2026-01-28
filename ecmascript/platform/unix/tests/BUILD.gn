@@ -25,7 +25,7 @@ host_unittest_action("ChmodTest") {
   ]
 
   configs = [
-    "//arkcompiler/ets_runtime:ecma_test_config",
+    "$js_root:ecma_test_config",
   ]
 
   if (ark_standalone_build || is_arkui_x) {
@@ -38,22 +38,6 @@ host_unittest_action("ChmodTest") {
   deps = [
     "$js_root:libark_jsruntime_test",
   ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-  external_deps += [
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "zlib:libz",
-    "runtime_core:libarkassembler_static",
-  ]
-  if (!ark_standalone_build && !is_arkui_x) {
-    external_deps += [ 
-      "runtime_core:arkassembler_public_headers",
-      "runtime_core:arkfile_public_headers",
-    ]
-  }
 }
 
 group("unittest") {
