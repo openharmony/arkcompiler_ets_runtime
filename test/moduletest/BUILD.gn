@@ -144,6 +144,7 @@ module_test_list = [
 
   #"protobuf",
   "proxy",
+  "proxy2",
   "realm",
   "regressproxy",
   "rangeerror",
