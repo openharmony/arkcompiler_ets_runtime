@@ -22,6 +22,8 @@
 
 namespace panda::test {
 class HeapDumpTestHelper;
+class RawHeapTranslateV1TestHelper;
+class RawHeapTranslateV2TestHelper;
 };
 
 namespace rawheap_translate {
@@ -39,7 +41,7 @@ public:
 
     static bool TranslateRawheap(const std::string &inputPath, const std::string &outputPath);
     static bool ParseMetaData(FileReader &file, MetaParser *parser);
-    static RawHeap *ParseRawheap(FileReader &file, MetaParser *metaParser);
+    static RawHeap *ParseRawheap(const Version &version, MetaParser *metaParser);
     static std::string ReadVersion(FileReader &file);
 
     std::vector<Node *>* GetNodes();
@@ -121,6 +123,7 @@ private:
     std::vector<uint32_t> sections_ {};
     std::unordered_map<uint64_t, Node *> nodesMap_ {};
     friend class panda::test::HeapDumpTestHelper;
+    friend class panda::test::RawHeapTranslateV1TestHelper;
 };
 
 class RawHeapTranslateV2 : public RawHeap {
@@ -164,6 +167,7 @@ private:
     std::unordered_map<uint32_t, Node *> nodesMap_ {};
     Node *syntheticRoot_ {nullptr};
     friend class panda::test::HeapDumpTestHelper;
+    friend class panda::test::RawHeapTranslateV2TestHelper;
 };
 }  // namespace rawheap_translate
 #endif  // RAWHEAP_TRANSLATE_H
