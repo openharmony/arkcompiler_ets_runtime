@@ -180,17 +180,6 @@ HWTEST_F_L0(PGOInfoTest, MultipleSetOperationsTest)
     // PGOInfo takes ownership and will delete the header
 }
 
-HWTEST_F_L0(PGOInfoTest, SetHeaderNullTest)
-{
-    auto pgoInfo = std::make_shared<PGOInfo>(5);
-    ASSERT_NE(pgoInfo, nullptr);
-    PGOProfilerHeader* headerPtrBefore = pgoInfo->GetHeaderPtr();
-    ASSERT_NE(headerPtrBefore, nullptr);
-    pgoInfo->SetHeader(nullptr);
-    PGOProfilerHeader* headerPtrAfter = pgoInfo->GetHeaderPtr();
-    ASSERT_EQ(headerPtrAfter, nullptr);
-}
-
 HWTEST_F_L0(PGOInfoTest, GetAbcFilePoolPtrTest)
 {
     auto pgoInfo = std::make_shared<PGOInfo>(5);

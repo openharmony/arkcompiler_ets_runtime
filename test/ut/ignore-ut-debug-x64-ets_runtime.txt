@@ -40,8 +40,5 @@ obj/arkcompiler/ets_runtime/ecmascript/ohos/tests/OhosTest
 #267
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_Test
 
-#299
-obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOInfoTest
-
 #300
 obj/arkcompiler/ets_runtime/ecmascript/tests/GC_ReadOnlySpace_Test

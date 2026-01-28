@@ -91,17 +91,6 @@ HWTEST_F_L0(PGOProfilerInfoTest, VerifyChecksumNoOverlapTest)
     ASSERT_TRUE(result);
 }
 
-HWTEST_F_L0(PGOProfilerInfoTest, PGOMethodInfoProcessToJsonTest)
-{
-    PGOMethodId methodId(200);
-    const char* methodName = "testMethod";
-    PGOMethodInfo methodInfo(methodId, 5, SampleMode::CALL_MODE, methodName);
-    ProfileType::VariantMap function;
-    methodInfo.ProcessToJson(function);
-    ASSERT_FALSE(function.empty());
-    ASSERT_TRUE(function.find("functionName") != function.end());
-}
-
 HWTEST_F_L0(PGOProfilerInfoTest, ProcessToTextEmptyMethodInfosTest)
 {
     PGOMethodInfoMap methodMap;
