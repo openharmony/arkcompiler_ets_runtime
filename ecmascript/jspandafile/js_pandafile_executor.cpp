@@ -193,7 +193,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     }
 
     if (!jsPandaFile->IsModule(recordInfo)) {
-        LOG_ECMA(FATAL) << "Input file is not esmodule";
+        LOG_ECMA(FATAL) << "Input file is not esmodule"; // LCOV_EXCL_BR_LINE
     }
     return CommonExecuteBuffer(thread, name, entry, buffer, size);
 }
@@ -374,7 +374,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     }
 
     if (!jsPandaFile->IsModule(recordInfo)) {
-        LOG_ECMA(FATAL) << "Input file is not esmodule";
+        LOG_ECMA(FATAL) << "Input file is not esmodule"; // LCOV_EXCL_BR_LINE
     }
     return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
 }

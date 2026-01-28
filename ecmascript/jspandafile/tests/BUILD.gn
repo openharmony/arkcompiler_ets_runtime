@@ -102,6 +102,7 @@ host_unittest_action("JSPandaFileTest") {
     "js_pandafile_executor_test.cpp",
     "js_pandafile_manager_test.cpp",
     "js_pandafile_test.cpp",
+    "method_literal_test.cpp",
     "panda_file_translator_test.cpp",
     "quick_fix_test.cpp",
   ]

@@ -402,7 +402,7 @@ void ModuleNamespace::SetModuleDeregisterProcession(JSThread *thread, const JSHa
     int srcLength = strlen(moduleStr.c_str()) + 1;
     auto moduleNameData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(srcLength);
     if (memcpy_s(moduleNameData, srcLength, moduleStr.c_str(), srcLength) != EOK) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "Failed to copy module name's data.";
+        LOG_ECMA(FATAL) << "Failed to copy module name's data."; // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
     char *tmpData = reinterpret_cast<char *>(moduleNameData);

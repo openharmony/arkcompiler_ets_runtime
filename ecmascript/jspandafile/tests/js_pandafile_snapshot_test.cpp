@@ -345,6 +345,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ShouldDeSerializeFailedWhenModuleNameIsNotM
     uint32_t moduleNameLenSize = sizeof(uint32_t);
     uint32_t moduleNameOffset = appVersionCodeSize + versionStrLenSize + versionStrLen + fileSize + moduleNameLenSize;
     CString moduleName = "ntest";
+    Chmod(fileName.c_str(), "rw");
     std::fstream fStream(fileName.c_str(), std::ios_base::in | std::ios_base::out | std::ios_base::binary);
     fStream.seekp(moduleNameOffset);
     fStream << moduleName;

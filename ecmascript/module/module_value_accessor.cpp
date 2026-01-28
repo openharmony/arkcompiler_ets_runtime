@@ -71,7 +71,7 @@ JSTaggedValue ModuleValueAccessor::GetSendableModuleValueInner(JSThread* thread,
     auto isMergedAbc = !currentModuleHdl->GetEcmaModuleRecordNameString().empty();
     CString fileName = currentModuleHdl->GetEcmaModuleFilenameString();
     if (!JSPandaFileExecutor::LazyExecuteModule(thread, referenceName, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "GetSendableModuleValueInner LazyExecuteModule failed";
+        LOG_ECMA(FATAL) << "GetSendableModuleValueInner LazyExecuteModule failed"; // LCOV_EXCL_BR_LINE
     }
     ASSERT(moduleManager->IsModuleLoaded(referenceName));
     return moduleManager->GetImportedModule(referenceName)->GetModuleValue(thread, index, false);
@@ -208,7 +208,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueOuterInternal(JSThread *thread,
     std::ostringstream oss;
     curModule.Dump(thread, oss);
     LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding"
-        << ", index: " << index << ", currentModule: " << oss.str();
+        << ", index: " << index << ", currentModule: " << oss.str(); // LCOV_EXCL_BR_LINE
     UNREACHABLE();
 }
 
@@ -240,7 +240,7 @@ JSTaggedValue ModuleValueAccessor::GetSendableModuleValueOuterInternal(JSThread 
     if (resolvedBinding.IsResolvedRecordBinding()) {
         return GetModuleValueFromRecordBinding<isLazy>(info);
     }
-    LOG_ECMA(FATAL) << "Unexpect binding";
+    LOG_ECMA(FATAL) << "Unexpect binding"; // LCOV_EXCL_BR_LINE
     UNREACHABLE();
 }
 
@@ -333,7 +333,7 @@ JSTaggedValue ModuleValueAccessor::GetModuleValueFromBinding(const GetModuleValu
         std::ostringstream oss;
         info.module.GetTaggedValue().Dump(info.thread, oss);
         LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding"
-            << ", index: " << info.index << ", currentModule: " << oss.str();
+            << ", index: " << info.index << ", currentModule: " << oss.str(); // LCOV_EXCL_BR_LINE
     }
     EvaluateModuleIfNeeded<isLazy>(info.thread, resolvedModule);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(info.thread, JSTaggedValue::Exception());
@@ -499,7 +499,7 @@ JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule(JSThread* thre
     bool isMergedAbc = !module->GetEcmaModuleFilenameString().empty();
     if (!JSPandaFileExecutor::LazyExecuteModule(thread, requestModuleRecordName, fileName,
         isMergedAbc)) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "LazyExecuteModule failed";
+        LOG_ECMA(FATAL) << "LazyExecuteModule failed"; // LCOV_EXCL_BR_LINE
     }
     return moduleManager->HostGetImportedModule(requestModuleRecordName);
 }

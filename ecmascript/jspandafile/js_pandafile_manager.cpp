@@ -336,7 +336,7 @@ void JSPandaFileManager::AddJSPandaFile(const std::shared_ptr<JSPandaFile> &jsPa
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     LockHolder lock(jsPandaFileLock_);
     if (loadedJSPandaFiles_.find(filename) != loadedJSPandaFiles_.end()) {
-        LOG_ECMA(FATAL) << "add failed, file already exist: " << filename;
+        LOG_ECMA(FATAL) << "add failed, file already exist: " << filename; // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
 
@@ -426,7 +426,7 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPa
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
         LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename
-            << " file addr is " << reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader());
+            << " file addr is " << reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader()); // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
 
@@ -448,7 +448,7 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractorAndExtract(const JSPanda
     LockHolder lock(jsPandaFileLock_);
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
-        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
+        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename; // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
 
@@ -471,7 +471,7 @@ DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPand
     LockHolder lock(jsPandaFileLock_);
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
-        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
+        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename; // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
 

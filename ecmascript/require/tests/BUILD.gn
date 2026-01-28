@@ -92,6 +92,31 @@ host_unittest_action("CJS_Module_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("JS_Manager_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_require_manager_test.cpp",
+  ]
+
+  configs = [
+    "../../../:asm_interp_enable_config",
+    "../../../:ecma_test_config",
+  ]
+
+  deps = [ "../../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
 
@@ -100,6 +125,7 @@ group("unittest") {
     ":CJS_ManagerCache_Test",
     ":CJS_Manager_Test",
     ":CJS_Module_Test",
+    ":JS_Manager_Test",
   ]
 }
 
@@ -111,6 +137,7 @@ group("host_unittest") {
     ":CJS_ManagerCache_TestAction",
     ":CJS_Manager_TestAction",
     ":CJS_Module_TestAction",
+    ":JS_Manager_TestAction",
   ]
 
   if (is_mac) {
@@ -118,6 +145,7 @@ group("host_unittest") {
       ":CJS_ManagerCache_TestAction",
       ":CJS_Manager_TestAction",
       ":CJS_Module_TestAction",
+      ":JS_Manager_TestAction",
     ]
   }
 }
