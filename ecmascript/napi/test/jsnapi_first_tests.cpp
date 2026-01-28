@@ -68,6 +68,8 @@ using namespace panda::ecmascript::kungfu;
 
 static constexpr char TEST_CHAR_STRING_FLAGS[] = "gimsuy";
 static constexpr char TEST_CHAR_STRING_STATE[] = "closed";
+static constexpr char TEST_ORIGINAL_SOURCE[] = "string";
+static constexpr char TEST_CHAR_STRING_STATE_SUSPEND[] = "suspended";
 
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
@@ -251,6 +253,24 @@ HWTEST_F_L0(JSNApiTests, JsonParser)
 
     const char * const test { R"({"orientation": "portrait"})" };
     Local<ObjectRef> jsonString = StringRef::NewFromUtf8(vm_, test);
+
+    Local<JSValueRef> result = JSON::Parse(vm_, jsonString);
+    ASSERT_TRUE(result->IsObject(vm_));
+
+    Local<ObjectRef> keyString = StringRef::NewFromUtf8(vm_, "orientation");
+    Local<JSValueRef> property = Local<ObjectRef>(result)->Get(vm_, keyString);
+    ASSERT_TRUE(property->IsString(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, JsonParser_2)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm_);
+    ASSERT_FALSE(globalObject.IsEmpty());
+    ASSERT_TRUE(globalObject->IsObject(vm_));
+
+    const char16_t * const test { uR"({"orientation": "portrait"})" };
+    Local<ObjectRef> jsonString = StringRef::NewFromUtf16(vm_, test);
 
     Local<JSValueRef> result = JSON::Parse(vm_, jsonString);
     ASSERT_TRUE(result->IsObject(vm_));
@@ -2426,6 +2446,22 @@ HWTEST_F_L0(JSNApiTests, GetOriginalSource)
     ASSERT_EQ(object->GetOriginalSource(vm_)->ToString(vm_), "");
 }
 
+HWTEST_F_L0(JSNApiTests, GetOriginalSource_2)
+{
+    LocalScope scope(vm_);
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> regExpFunc = globalEnv->GetRegExpFunction();
+    JSHandle<JSRegExp> jSRegExp =
+        JSHandle<JSRegExp>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(regExpFunc), regExpFunc));
+    const char *utf8 = TEST_ORIGINAL_SOURCE;
+    JSHandle<JSTaggedValue> sourceString(factory->NewFromUtf8(utf8));
+    jSRegExp->SetOriginalSource(thread, sourceString);
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(JSHandle<JSTaggedValue>::Cast(jSRegExp));
+    ASSERT_EQ(object->GetOriginalSource(vm_)->ToString(vm_), TEST_ORIGINAL_SOURCE);
+}
+
 HWTEST_F_L0(JSNApiTests, GetOriginalFlags)
 {
     LocalScope scope(vm_);
@@ -2442,6 +2478,20 @@ HWTEST_F_L0(JSNApiTests, GetOriginalFlags)
     ASSERT_EQ(object->GetOriginalFlags(vm_), TEST_CHAR_STRING_FLAGS);
 }
 
+HWTEST_F_L0(JSNApiTests, GetOriginalFlags_2)
+{
+    LocalScope scope(vm_);
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> regExpFunc = globalEnv->GetRegExpFunction();
+    JSHandle<JSRegExp> jSRegExp =
+        JSHandle<JSRegExp>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(regExpFunc), regExpFunc));
+    jSRegExp->SetOriginalFlags(thread, JSTaggedValue(RegExpParser::FLAG_HASINDICES));
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(JSHandle<JSTaggedValue>::Cast(jSRegExp));
+    ASSERT_EQ(object->GetOriginalFlags(vm_), "");
+}
+
 HWTEST_F_L0(JSNApiTests, GetGeneratorState)
 {
     LocalScope scope(vm_);
@@ -2454,6 +2504,20 @@ HWTEST_F_L0(JSNApiTests, GetGeneratorState)
     Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
 
     ASSERT_EQ(object->GetGeneratorState(vm_)->ToString(vm_)->ToString(vm_), TEST_CHAR_STRING_STATE);
+}
+
+HWTEST_F_L0(JSNApiTests, GetGeneratorState_2)
+{
+    LocalScope scope(vm_);
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+    genObjHandleVal->SetGeneratorState(JSGeneratorState::EXECUTING);
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+
+    ASSERT_EQ(object->GetGeneratorState(vm_)->ToString(vm_)->ToString(vm_), TEST_CHAR_STRING_STATE_SUSPEND);
 }
 
 HWTEST_F_L0(JSNApiTests, SetReleaseSecureMemCallback)
@@ -2493,5 +2557,27 @@ HWTEST_F_L0(JSNApiTests, IgnoreFinalizeCallback)
     vm_->CollectGarbage(TriggerGCType::FULL_GC);
     ASSERT_FALSE(g_finalizeCallbackExecuted);
     delete ref;
+}
+
+HWTEST_F_L0(JSNApiTests, RegisterCallback_1)
+{
+    LocalScope scope(vm_);
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *objCallInfo =
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, undefined, undefined, undefined, 1);
+    ASSERT_TRUE(Callback::RegisterCallback(objCallInfo).IsFalse());
+}
+
+HWTEST_F_L0(JSNApiTests, RegisterCallback_2)
+{
+    LocalScope scope(vm_);
+    JSHandle<GlobalEnv> globalEnv = vm_->GetGlobalEnv();
+    ObjectFactory *objectFactory = vm_->GetFactory();
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+        reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *objCallInfo =
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>::Cast(current), undefined, undefined, 1);
+    ASSERT_TRUE(Callback::RegisterCallback(objCallInfo).IsFalse());
 }
 }  // namespace panda::test
