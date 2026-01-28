@@ -83,7 +83,7 @@ let newArr = [1, 2]
 let true_forEach = newArr.forEach
 newArr.forEach = replace
 
-print(newArr.forEach(x => {})); //: Cannot get source code of funtion
+print(newArr.forEach(x => {})); //: Cannot get source code of function
 newArr.forEach = true_forEach
 
 //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -129,7 +129,7 @@ function forEachCase2() {
 
     //aot: [trace] aot inline builtin: Array.prototype.foreach, caller function name:#*#forEachCase2@builtinArrayForEach
     print(arr1.forEach(x => x == 1)); //: undefined
-    print(arr2.forEach(x => x == 1)); //: Cannot get source code of funtion
+    print(arr2.forEach(x => x == 1)); //: Cannot get source code of function
 }
 forEachCase2()
 

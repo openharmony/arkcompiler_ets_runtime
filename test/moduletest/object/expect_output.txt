@@ -69,7 +69,7 @@ true
 7
 3
 {"value":{},"writable":false,"enumerable":false,"configurable":false}
-Cannot get source code of funtion
+Cannot get source code of function
 {"key1":{"enumerable":false,"configurable":false}}
 false
 false
