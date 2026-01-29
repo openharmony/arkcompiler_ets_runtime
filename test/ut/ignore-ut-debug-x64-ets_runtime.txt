@@ -31,9 +31,6 @@ obj/arkcompiler/ets_runtime/common_components/common_runtime/tests/Base_Runtime_
 #28270
 obj/arkcompiler/ets_runtime/ecmascript/tests/ECMA_StringTable_Test
 
-#207
-obj/arkcompiler/ets_runtime/ecmascript/containers/tests/Containers_003_Test
-
 #264
 obj/arkcompiler/ets_runtime/ecmascript/ohos/tests/OhosTest
 
@@ -45,3 +42,6 @@ obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/PGOInfoTest
 
 #300
 obj/arkcompiler/ets_runtime/ecmascript/tests/GC_ReadOnlySpace_Test
+
+#32858
+obj/arkcompiler/ets_runtime/test/moduletest/ic/ic
