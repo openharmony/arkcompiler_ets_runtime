@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Copyright (c) 2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -15,3 +15,309 @@
 true
 true
 2,2
+
+=== Basic Spread Tests ===
+1,2,3
+3
+1
+3
+
+=== Empty Array Spread ===
+
+0
+
+=== Single Element Spread ===
+42
+42
+
+=== Undefined and Null Spread ===
+1,,3
+3
+undefined
+1,,3
+null
+
+=== Mixed Types Spread ===
+1,string,true,,,3.14
+6
+string
+true
+undefined
+
+=== Nested Array Spread ===
+1,2,3,4
+1,2
+3,4
+0,1,2,3,4
+5
+0
+3
+
+=== Multiple Spread ===
+1,2,3,5,6,7,8
+7
+6
+8
+
+=== Spread with Literals ===
+0,1,2,3,4,5
+6
+
+=== String Spread ===
+h,e,l,l,o
+5
+h
+o
+
+0
+
+=== Array-like Spread ===
+1,2,3,4
+4
+
+=== Spread in Function Calls ===
+6
+60
+9
+100
+
+=== Spread with Math ===
+9
+1
+
+=== Spread Creates New Array ===
+1,2,3
+1,2,3
+99,2,3
+
+=== Spread with Holes ===
+1,,,4
+4
+true
+true
+
+=== Spread with Push ===
+1,2,3,4
+4
+
+=== Spread with Unshift ===
+1,2,3,4
+4
+
+=== Large Array Spread ===
+100
+0
+50
+99
+
+=== Spread with Array Methods ===
+2,4,6,8
+4
+3,4
+2
+
+=== Spread in Destructuring ===
+1
+2
+3,4,5
+3
+
+=== Spread Concat ===
+1,2,3,4,5,6
+6
+
+=== Boolean Spread ===
+true,false,true
+true
+false
+
+=== Negative Numbers Spread ===
+-1,-2,-3
+-1
+
+=== Zero Spread ===
+0,0,0
+0
+
+=== Float Spread ===
+1.1,2.2,3.3
+1.1
+
+=== Object Spread ===
+[object Object],[object Object]
+[object Object]
+
+=== Regex Spread ===
+/test/g,/pattern/i
+/test/g
+
+=== Multiple Empty Spread ===
+
+0
+
+=== Array of Arrays Spread ===
+1,2,3
+1
+1
+
+=== Spread Properties ===
+1,2,3
+undefined
+
+=== Long String Spread ===
+a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z
+26
+
+=== Special Numbers Spread ===
+NaN,Infinity,-Infinity,0
+false
+Infinity
+
+=== Duplicate Values Spread ===
+1,2,2,3,3,3
+6
+
+=== Spread Independence ===
+1,2,3,4
+1,2,3
+
+=== Spread in Array Context ===
+0,1,2,3,4
+5
+
+=== Explicit Undefined Spread ===
+,
+2
+undefined
+
+=== Single Undefined Spread ===
+
+1
+
+=== Spread After Modification ===
+1,2,3
+3
+
+=== Sparse Array Spread ===
+1,,,,5
+5
+true
+true
+
+=== Spread in Return ===
+1,2,3
+
+=== Different Number Types ===
+1,1.5,-10,0,0,0
+6
+
+=== Whitespace String Spread ===
+ ,	,
+
+3
+ 
+
+=== Spread Concatenation ===
+1,2,3,4
+true
+true
+
+=== Order Preservation ===
+5,4,3,2,1
+5
+1
+
+=== Boolean Null Spread ===
+true,false,,
+4
+null
+
+=== Trailing Comma Spread ===
+1,2,3
+3
+
+=== Spread with Methods Chain ===
+6,8,10
+3
+
+=== Conditional Spread ===
+1,2
+2
+
+=== Spread Iteration ===
+10
+30
+
+=== Spread Slice ===
+1,2
+4,5
+
+=== Type Coercion Spread ===
+1,2,3
+string
+
+=== Expression Spread ===
+30,200,-10
+30
+
+=== Empty-like Spread ===
+0,,false,,
+5
+
+=== Shallow Clone ===
+99
+99
+
+=== Spread Length ===
+10
+11
+
+=== Spread Positions ===
+1,2,3,4,5,6
+6
+
+=== Repeated Element Spread ===
+1,1,1,1
+4
+
+=== Reversed Spread ===
+3,2,1
+
+=== Sorted Spread ===
+1,2,3
+
+=== Spread Join ===
+a-b-c
+
+=== Indexed Access ===
+100
+200
+300
+
+=== Truthy/Falsy Spread ===
+1,0,hello,,[object Object],
+6
+
+=== Prototype Chain Spread ===
+false
+
+=== Constructor Spread ===
+true
+true
+
+=== Spread ToString ===
+1,2,3
+
+=== Spread ValueOf ===
+1,2,3
+
+=== IsArray Spread ===
+true
+
+=== Instanceof Spread ===
+true
+
+=== Final Spread Tests ===
+1,2,3,4,5,6
+6
+6
