@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 module_test_list = [
-  "addelementinternal",
   "allocatearraybuffer",
   "arraypushproto",
   "arraySome",
@@ -23,7 +22,6 @@ module_test_list = [
   "arrayspliceproto",
   "arrayunshiftproto",
   "arrayfind",
-  "arrayfill",
   "arrayflat",
   "arrayflatmap",
   "arrayfindindex",
@@ -41,7 +39,6 @@ module_test_list = [
   "arrayshift",
   "arrayslice",
   "arraysplice",
-  "arktoolsgetundetectable",
   "arktoolshavesamemap",
   "assignproxy",
   "asyncgenerator",
@@ -99,7 +96,6 @@ module_test_list = [
   "functionapply",
   "generator",
   "getdeletedelementsat",
-  "getpropertybyindex",
   "getunmappedargs",
   "global",
   "globalaccessor",
@@ -250,6 +246,10 @@ group("ark_js_moduletest") {
 group("ark_js_assert_moduletest") {
   testonly = true
   assert_test_list = [
+    "getpropertybyindex",
+    "addelementinternal",
+    "arktoolsgetundetectable",
+    "arrayfill",
     "array",
     "arrayconcat",
     "arrayconstructor",
@@ -415,6 +415,10 @@ group("ark_asm_test") {
 group("ark_asm_assert_test") {
   testonly = true
   assert_test_list = [
+    "getpropertybyindex",
+    "addelementinternal",
+    "arktoolsgetundetectable",
+    "arrayfill",
     "array",
     "arrayconcat",
     "arrayconstructor",

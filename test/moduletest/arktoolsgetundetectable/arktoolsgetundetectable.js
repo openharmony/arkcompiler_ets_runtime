@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,24 +12,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+{
+    // mjsunit/regress/regress-674753.js
+    var undetectable = ArkTools.getUndetectable();
 
-// mjsunit/regress/regress-674753.js
-var undetectable = ArkTools.getUndetectable();
+    // Undefined
+    assert_equal(typeof undetectable == 'undefined', true);
+    assert_equal(typeof undetectable === 'undefined', true);
+    assert_equal(typeof undetectable != 'undefined', false);
+    assert_equal(typeof undetectable !== 'undefined', false);
 
-// Undefined
-print(typeof undetectable == 'undefined');
-print(typeof undetectable === 'undefined');
-print(typeof undetectable != 'undefined');
-print(typeof undetectable !== 'undefined');
+    // Function
+    assert_equal(typeof undetectable != 'function', true);
+    assert_equal(typeof undetectable !== 'function', true);
+    assert_equal(typeof undetectable == 'function', false);
+    assert_equal(typeof undetectable === 'function', false);
 
-// Function
-print(typeof undetectable != 'function');
-print(typeof undetectable !== 'function');
-print(typeof undetectable == 'function');
-print(typeof undetectable === 'function');
-
-// Object
-print(typeof undetectable != 'object');
-print(typeof undetectable !== 'object');
-print(typeof undetectable == 'object');
-print(typeof undetectable === 'object');
+    // Object
+    assert_equal(typeof undetectable != 'object', true);
+    assert_equal(typeof undetectable !== 'object', true);
+    assert_equal(typeof undetectable == 'object', false);
+    assert_equal(typeof undetectable === 'object', false);
+}
+test_end();
