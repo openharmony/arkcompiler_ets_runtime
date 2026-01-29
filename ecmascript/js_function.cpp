@@ -349,17 +349,22 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
     if (self->IsBoundFunction()) {
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-        JSHandle<JSBoundFunction> boundFunction(self);
-        JSHandle<JSTaggedValue> target(thread, boundFunction->GetBoundTarget(thread));
+
+        JSMutableHandle<JSBoundFunction> boundFunction(thread, self.GetTaggedValue());
+        JSHandle<EcmaString> boundPrefix = factory->ConcatFromString(
+            JSHandle<EcmaString>::Cast(globalConst->GetHandledBoundString()),
+            JSHandle<EcmaString>::Cast(globalConst->GetHandledSpaceString()));
+        JSHandle<EcmaString> concatString = boundPrefix;
+
+        while (boundFunction->GetBoundTarget(thread).IsBoundFunction()) {
+            boundFunction.Update(boundFunction->GetBoundTarget(thread));
+            concatString = factory->ConcatFromString(concatString, boundPrefix);
+        }
 
         JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
-        JSHandle<JSTaggedValue> boundName = thread->GlobalConstants()->GetHandledBoundString();
+        JSHandle<JSTaggedValue> target(thread, boundFunction->GetBoundTarget(thread));
         JSHandle<JSTaggedValue> targetName = JSObject::GetProperty(thread, target, nameKey).GetValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-        JSHandle<EcmaString> handlePrefixString = JSTaggedValue::ToString(thread, boundName);
-        JSHandle<EcmaString> spaceString(globalConst->GetHandledSpaceString());
-        JSHandle<EcmaString> concatString = factory->ConcatFromString(handlePrefixString, spaceString);
 
         EcmaString *newString;
         if (!targetName->IsString()) {
