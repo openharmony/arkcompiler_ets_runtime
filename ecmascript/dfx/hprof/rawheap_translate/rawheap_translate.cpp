@@ -52,7 +52,12 @@ bool RawHeap::TranslateRawheap(const std::string &inputPath, const std::string &
         return false;
     }
 
-    RawHeap *rawheap = ParseRawheap(file, &metaParser);
+    Version version;
+    if (!version.Parse(RawHeap::ReadVersion(file))) {
+        return false;
+    }
+
+    RawHeap *rawheap = ParseRawheap(version, &metaParser);
     if (rawheap == nullptr) {
         return false;
     }
@@ -100,13 +105,8 @@ bool RawHeap::ParseMetaData(FileReader &file, MetaParser *parser)
     return ret;
 }
 
-RawHeap *RawHeap::ParseRawheap(FileReader &file, MetaParser *metaParser)
+RawHeap *RawHeap::ParseRawheap(const Version &version, MetaParser *metaParser)
 {
-    Version version;
-    if (!version.Parse(RawHeap::ReadVersion(file))) {
-        return nullptr;
-    }
-
     if (VERSION < version) {
         LOG_ERROR_ << "The rawheap file's version " << version.ToString()
                    << " is not matched the current rawheap translator,"
