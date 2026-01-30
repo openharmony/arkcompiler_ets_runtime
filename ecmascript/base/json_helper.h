@@ -106,6 +106,26 @@ public:
     }
 #endif
 
+    static inline bool IsJsonFormatCharacter(uint32_t ch)
+    {
+        // JSON structural characters that define the format
+        if (ch == '{' || ch == '}' || ch == '[' || ch == ']' ||
+            ch == ':' || ch == ',' || ch == '"') {
+            return true;
+        }
+        // Whitespace characters that are part of JSON format
+        if (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+            return true;
+        }
+        return false;
+    }
+
+    static std::pair<std::string, std::uint32_t> AnonymizeJsonString(JSThread *thread, JSHandle<JSTaggedValue> str,
+                                                                     uint32_t position, uint32_t width);
+
+    static std::pair<std::string, std::uint32_t> AnonymizeJsonStringUtf16(const uint16_t *inData, size_t len,
+                                                                          uint32_t position, uint32_t width);
+
 #if ENABLE_LATEST_OPTIMIZATION
     static bool IsFastValueToQuotedString(const common::Span<const uint8_t> &sp);
 #else

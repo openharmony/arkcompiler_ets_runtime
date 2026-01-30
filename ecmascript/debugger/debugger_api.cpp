@@ -248,7 +248,7 @@ Local<JSValueRef> DebuggerApi::GetAndClearException(const EcmaVM *ecmaVm)
 {
     auto exception = ecmaVm->GetJSThread()->GetException();
     JSHandle<JSTaggedValue> handledException(ecmaVm->GetJSThread(), exception);
-    ecmaVm->GetJSThread()->ClearException();
+    ecmaVm->GetJSThread()->ClearExceptionAndExtraErrorMessage();
     return JSNApiHelper::ToLocal<JSValueRef>(handledException);
 }
 
@@ -259,7 +259,7 @@ void DebuggerApi::SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception
 
 void DebuggerApi::ClearException(const EcmaVM *ecmaVm)
 {
-    return ecmaVm->GetJSThread()->ClearException();
+    return ecmaVm->GetJSThread()->ClearExceptionAndExtraErrorMessage();
 }
 
 // NumberHelper
@@ -857,7 +857,7 @@ void DebuggerApi::HandleUncaughtException(const EcmaVM *ecmaVm, std::string &mes
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> exHandle(thread, thread->GetException());
-    thread->ClearException();
+    thread->ClearExceptionAndExtraErrorMessage();
     if (exHandle->IsJSError()) {
         JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
         JSHandle<EcmaString> name(JSObject::GetProperty(thread, exHandle, nameKey).GetValue());

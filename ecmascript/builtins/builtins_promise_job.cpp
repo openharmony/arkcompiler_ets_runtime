@@ -80,7 +80,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
         if (thread->HasPendingException()) {
             JSHandle<JSTaggedValue> throwValue = JSPromise::IfThrowGetThrowValue(thread);
             callArg.Update(throwValue);
-            thread->ClearException();
+            thread->ClearExceptionAndExtraErrorMessage();
             isRejected = true;
         } else {
             callArg.Update(taggedValue);
@@ -153,7 +153,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
         if (thread->HasPendingException()) {
             JSHandle<JSTaggedValue> throwValue = JSPromise::IfThrowGetThrowValue(thread);
             runtimeInfo->SetCallArg(throwValue.GetTaggedValue());
-            thread->ClearException();
+            thread->ClearExceptionAndExtraErrorMessage();
             runtimeInfo->SetFunction(capability->GetReject(thread));
         } else {
             runtimeInfo->SetCallArg(taggedValue);
@@ -191,7 +191,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseResolveThenableJob(EcmaRuntimeCallInfo 
     // b. NextJob Completion(status).
     if (thread->HasPendingException()) {
         thenResult = JSPromise::IfThrowGetThrowValue(thread);
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         JSHandle<JSTaggedValue> reject(thread, resolvingFunctions->GetRejectFunction(thread));
         EcmaRuntimeCallInfo *runtimeInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
@@ -349,7 +349,7 @@ JSTaggedValue BuiltinsPromiseJob::CatchException(JSThread *thread, JSHandle<JSPr
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     ASSERT(thread->HasPendingException());
     JSHandle<JSTaggedValue> thenResult = JSPromise::IfThrowGetThrowValue(thread);
-    thread->ClearException();
+    thread->ClearExceptionAndExtraErrorMessage();
     JSHandle<JSTaggedValue> rejectfun(reject);
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, rejectfun, undefined, undefined, 1);
@@ -377,7 +377,7 @@ JSTaggedValue BuiltinsPromiseJob::HandleModuleException(JSThread *thread, JSHand
     }
     LOG_ECMA(DEBUG) << "try to start load static module: " << requestPath;
     JSHandle<JSTaggedValue> errorReuslt = JSPromise::IfThrowGetThrowValue(thread);
-    thread->ClearException();
+    thread->ClearExceptionAndExtraErrorMessage();
     EcmaVM *vm = thread->GetEcmaVM();
     Local<JSValueRef> getEsModule = StaticModuleLoader::GetStaticModuleLoadFunc(vm);
     if (!getEsModule->IsFunction(vm)) {

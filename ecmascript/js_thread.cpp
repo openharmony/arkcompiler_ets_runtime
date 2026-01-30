@@ -342,6 +342,7 @@ void JSThread::HandleUncaughtException(JSTaggedValue exception)
             Local<ObjectRef> exceptionRef = JSNApiHelper::ToLocal<ObjectRef>(exceptionHandle);
             ThreadNativeScope nativeScope(this);
             callback(exceptionRef, GetOnErrorData());
+            SetExtraErrorMessage(JSTaggedValue::Hole());
         }
     }
     // if caught exceptionHandle type is JSError
@@ -528,6 +529,9 @@ void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
 {
     if (!glueData_.exception_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
+    }
+    if (!glueData_.extraErrorMessage_.IsHole()) {
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.extraErrorMessage_)));
     }
     if (!glueData_.currentEnv_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.currentEnv_)));

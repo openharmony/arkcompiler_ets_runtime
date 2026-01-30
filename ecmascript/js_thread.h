@@ -411,6 +411,12 @@ public:
     {
         glueData_.exception_ = JSTaggedValue::Hole();
     }
+    
+    void ClearExceptionAndExtraErrorMessage()
+    {
+        glueData_.extraErrorMessage_ = JSTaggedValue::Hole();
+        glueData_.exception_ = JSTaggedValue::Hole();
+    }
 
     const GlobalEnvConstants *GlobalConstants() const
     {
@@ -1216,6 +1222,8 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  JSTaggedValue,
+                                                 JSTaggedValue,
+                                                 base::AlignedUint32,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -1275,6 +1283,8 @@ public:
             AllocBufferIndex,
             StateAndFlagsIndex,
             ExceptionIndex,
+            ExtraErrorMessageIndex,
+            JsonErrorPositionIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
@@ -1634,6 +1644,18 @@ public:
             return GetOffset<static_cast<size_t>(Index::isMultiContextTriggeredIndex)>(
                 isArch32);
         }
+        
+        static size_t GetExtraErrorMessageOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::ExtraErrorMessageIndex)>(
+                isArch32);
+        }
+        
+        static size_t GetJsonErrorPositionOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::JsonErrorPositionIndex)>(
+                isArch32);
+        }
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) uint32_t isEnableCMCGC_ {0};
@@ -1643,6 +1665,8 @@ public:
         alignas(EAS) uintptr_t allocBuffer_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
+        alignas(EAS) JSTaggedValue extraErrorMessage_ {JSTaggedValue::Hole()};
+        alignas(EAS) uint32_t jsonErrorPosition_ {0};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
@@ -1733,6 +1757,26 @@ public:
     void SetMultiContextTriggered(bool isMultiContextTriggered)
     {
         glueData_.isMultiContextTriggered_ = isMultiContextTriggered;
+    }
+
+    JSTaggedValue GetExtraErrorMessage() const
+    {
+        return glueData_.extraErrorMessage_;
+    }
+
+    void SetExtraErrorMessage(JSTaggedValue extraErrorMessage)
+    {
+        glueData_.extraErrorMessage_ = extraErrorMessage;
+    }
+
+    uint32_t GetJsonErrorPosition() const
+    {
+        return glueData_.jsonErrorPosition_;
+    }
+
+    void SetJsonErrorPosition(uint32_t jsonErrorPosition)
+    {
+        glueData_.jsonErrorPosition_ = jsonErrorPosition;
     }
 
     JSHandle<DependentInfos> GetDependentInfo() const;

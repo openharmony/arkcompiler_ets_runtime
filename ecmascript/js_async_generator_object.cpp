@@ -75,7 +75,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorResolve(JSThread *thread,
     if (thread->HasPendingException()) {
         [[maybe_unused]] JSType errorType = thread->GetException().GetTaggedObject()->GetClass()->GetObjectType();
         ASSERT(errorType == JSType::JS_RANGE_ERROR);
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         return JSTaggedValue::Undefined();
     }
     // 9. Perform ! AsyncGeneratorResumeNext(generator).
@@ -259,7 +259,7 @@ JSTaggedValue JSAsyncGeneratorObject::AsyncGeneratorEnqueue(JSThread *thread, co
     AsyncGeneratorValidate(thread, gen, JSTaggedValue::Undefined());
     // 3. If check is an abrupt completion, then
     if (thread->HasPendingException()) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         // a. Let badGeneratorError be a newly created TypeError object.
         JSHandle<JSObject> resolutionError = factory->GetJSError(ErrorType::TYPE_ERROR,
             "Resolve: The promise and resolution cannot be the same.", StackCheck::NO);

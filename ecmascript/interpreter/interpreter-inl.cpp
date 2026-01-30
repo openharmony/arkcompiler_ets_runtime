@@ -3920,7 +3920,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
         auto exception = thread->GetException();
         SET_ACC(exception);
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         thread->SetCurrentSPFrame(sp);
         DISPATCH_OFFSET(0);
     }

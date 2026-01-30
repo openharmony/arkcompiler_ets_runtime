@@ -28,7 +28,11 @@ JSHandle<JSTaggedValue> JsonParser<T>::Launch(Text begin, Text end)
     // check empty
     if (UNLIKELY(begin == end)) {
         return JSHandle<JSTaggedValue>(thread_, [&]() -> JSTaggedValue {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Empty Text", JSTaggedValue::Exception());
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected Text in JSON: Empty Text",
+                                               JSTaggedValue::Exception(),
+                                               rawString_,
+                                               0);
         }());
     }
     end_ = end - 1;
@@ -70,7 +74,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
             SkipStartWhiteSpace();
             Tokens token = ParseToken();
             if (current_ > range_) {
-                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end in JSON", JSTaggedValue::Exception());
+                THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                   "Unexpected end in JSON",
+                                                   JSTaggedValue::Exception(),
+                                                   rawString_,
+                                                   current_ - begin_ - slicedOffset_);
             }
             switch (token) {
                 case Tokens::OBJECT:
@@ -94,15 +102,20 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
 
                     SkipStartWhiteSpace();
                     if (UNLIKELY(*current_ != '"')) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object Prop in JSON",
-                                                      JSTaggedValue::Exception());
+                        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                           "Unexpected Object Prop in JSON",
+                                                           JSTaggedValue::Exception(),
+                                                           rawString_,
+                                                           current_ - begin_ - slicedOffset_);
                     }
                     propertyList.emplace_back(ParseString(true));
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     SkipStartWhiteSpace();
                     if (UNLIKELY(*current_ != ':')) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
-                                                      JSTaggedValue::Exception());
+                        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
+                                                           JSTaggedValue::Exception(),
+                                                           rawString_,
+                                                           current_ - begin_ - slicedOffset_);
                     }
                     Advance();
                     continue;
@@ -121,15 +134,21 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
 
                     SkipStartWhiteSpace();
                     if (UNLIKELY(*current_ != '"')) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP Prop in JSON",
-                                                      JSTaggedValue::Exception());
+                        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                           "Unexpected MAP Prop in JSON",
+                                                           JSTaggedValue::Exception(),
+                                                           rawString_,
+                                                           current_ - begin_ - slicedOffset_);
                     }
                     propertyList.emplace_back(ParseString(true));
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     SkipStartWhiteSpace();
                     if (UNLIKELY(*current_ != ':')) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP in JSON",
-                                                      JSTaggedValue::Exception());
+                        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                           "Unexpected MAP in JSON",
+                                                           JSTaggedValue::Exception(),
+                                                           rawString_,
+                                                           current_ - begin_ - slicedOffset_);
                     }
                     Advance();
                     continue;
@@ -168,8 +187,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     break;
                 default:
-                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Invalid Token",
-                                                  JSTaggedValue::Exception());
+                    THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                       "Unexpected Text in JSON: Invalid Token",
+                                                       JSTaggedValue::Exception(),
+                                                       rawString_,
+                                                       current_ - begin_ - slicedOffset_);
             }
             break;
         }
@@ -181,8 +203,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     ASSERT(elementsList.empty());
                     ASSERT(propertyList.empty());
                     if (current_ <= range_) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: Remaining Text Before Return",
-                                                      JSTaggedValue::Exception());
+                        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                           "Unexpected Text in JSON: Remaining Text Before Return",
+                                                           JSTaggedValue::Exception(),
+                                                           rawString_,
+                                                           current_ - begin_ - slicedOffset_);
                     }
                     return parseValue.GetTaggedValue();
                 case ContType::ARRAY: {
@@ -198,8 +223,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                         parseValue = CreateJsonArray(continuation, elementsList);
                     }
                     if (*current_ != ']') {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Array in JSON",
-                                                      JSTaggedValue::Exception());
+                        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                           "Unexpected Array in JSON",
+                                                           JSTaggedValue::Exception(),
+                                                           rawString_,
+                                                           current_ - begin_ - slicedOffset_);
                     }
                     Advance();
                     elementsList.resize(continuation.index_);
@@ -213,15 +241,21 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     if (*current_ == ',') {
                         GetNextNonSpaceChar();
                         if (UNLIKELY(*current_ != '"')) {
-                            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object Prop in JSON",
-                                                          JSTaggedValue::Exception());
+                            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                               "Unexpected Object Prop in JSON",
+                                                               JSTaggedValue::Exception(),
+                                                               rawString_,
+                                                               current_ - begin_ - slicedOffset_);
                         }
                         propertyList.emplace_back(ParseString(true));
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         SkipStartWhiteSpace();
                         if (UNLIKELY(*current_ != ':')) {
-                            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
-                                                          JSTaggedValue::Exception());
+                            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                               "Unexpected Object in JSON",
+                                                               JSTaggedValue::Exception(),
+                                                               rawString_,
+                                                               current_ - begin_ - slicedOffset_);
                         }
                         Advance();
                         break;
@@ -232,8 +266,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                         parseValue = CreateJsonObject<isEnableCMCGC>(continuation, propertyList);
                     }
                     if (UNLIKELY(*current_ != '}')) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
-                                                      JSTaggedValue::Exception());
+                        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                           "Unexpected Object in JSON",
+                                                           JSTaggedValue::Exception(),
+                                                           rawString_,
+                                                           current_ - begin_ - slicedOffset_);
                     }
                     Advance();
                     propertyList.resize(continuation.index_);
@@ -247,15 +284,21 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     if (*current_ == ',') {
                         GetNextNonSpaceChar();
                         if (UNLIKELY(*current_ != '"')) {
-                            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP Prop in JSON",
-                                                          JSTaggedValue::Exception());
+                            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                               "Unexpected MAP Prop in JSON",
+                                                               JSTaggedValue::Exception(),
+                                                               rawString_,
+                                                               current_ - begin_ - slicedOffset_);
                         }
                         propertyList.emplace_back(ParseString(true));
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         SkipStartWhiteSpace();
                         if (UNLIKELY(*current_ != ':')) {
-                            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP in JSON",
-                                                          JSTaggedValue::Exception());
+                            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                               "Unexpected MAP in JSON",
+                                                               JSTaggedValue::Exception(),
+                                                               rawString_,
+                                                               current_ - begin_ - slicedOffset_);
                         }
                         Advance();
                         break;
@@ -266,8 +309,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                         parseValue = CreateJsonMap(continuation, propertyList);
                     }
                     if (UNLIKELY(*current_ != '}')) {
-                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP in JSON",
-                                                      JSTaggedValue::Exception());
+                        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                                           "Unexpected MAP in JSON",
+                                                           JSTaggedValue::Exception(),
+                                                           rawString_,
+                                                           current_ - begin_ - slicedOffset_);
                     }
                     Advance();
                     propertyList.resize(continuation.index_);
@@ -521,8 +567,11 @@ JSTaggedValue JsonParser<T>::ParseNumber(bool inObjorArr)
         int32_t fastInteger = 0;
         bool isNumber = ReadNumberRange(isFast, fastInteger);
         if (!isNumber) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON Array Or Object",
-                                          JSTaggedValue::Exception());
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected Number in JSON Array Or Object",
+                                               JSTaggedValue::Exception(),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
         if (isFast) {
             return parseOptions_.bigIntMode == BigIntMode::ALWAYS_PARSE_AS_BIGINT ?
@@ -536,20 +585,36 @@ JSTaggedValue JsonParser<T>::ParseNumber(bool inObjorArr)
     bool hasDecimal = false;
     if (*current_ == '-') {
         if (UNLIKELY(current_++ == end_)) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected Number in JSON",
+                                               JSTaggedValue::Exception(),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
         negative = true;
     }
     if (*current_ == '0') {
         if (!CheckZeroBeginNumber(hasExponent, hasDecimal)) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected Number in JSON",
+                                               JSTaggedValue::Exception(),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
     } else if (*current_ >= '1' && *current_ <= '9') {
         if (!CheckNonZeroBeginNumber(hasExponent, hasDecimal)) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected Number in JSON",
+                                               JSTaggedValue::Exception(),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
     } else {
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected Number in JSON",
+                                           JSTaggedValue::Exception(),
+                                           rawString_,
+                                           current_ - begin_ - slicedOffset_);
     }
 
     std::string strNum(current, end_ + 1);
@@ -586,8 +651,11 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
             if (value.IsBigInt()) {
                 return value;
             }
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ConvertToNumber Fail",
-                                          JSTaggedValue::Exception());
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected Text in JSON: ConvertToNumber Fail",
+                                               JSTaggedValue::Exception(),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
         return JSTaggedValue::TryCastDoubleToInt32(v);
     } else {
@@ -771,8 +839,11 @@ JSHandle<JSTaggedValue> JsonParser<T>::ParseStringWithBackslash(bool inObjOrArrO
     size_t length = 0;
     bool isAscii = true;
     if (UNLIKELY(!ParseStringLength(length, isAscii, inObjOrArrOrMap))) {
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected string in JSON",
-            JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected string in JSON",
+                                           JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                           rawString_,
+                                           current_ - begin_ - slicedOffset_);
     }
     end_--;
     if (isAscii) {
@@ -864,15 +935,21 @@ JSTaggedValue JsonParser<T>::ParseLiteralTrue()
     static const char literalTrue[] = "true";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 3)) { // 3: literalTrue length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralTrue Fail",
-                                      JSTaggedValue::Exception());
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected Text in JSON: ParseLiteralTrue Fail",
+                                           JSTaggedValue::Exception(),
+                                           rawString_,
+                                           current_ - begin_ - slicedOffset_);
     }
     bool isMatch = MatchText(literalTrue, 4); // 4: literalTrue length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::True();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralTrue Fail",
-                                  JSTaggedValue::Exception());
+    THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                       "Unexpected Text in JSON: ParseLiteralTrue Fail",
+                                       JSTaggedValue::Exception(),
+                                       rawString_,
+                                       current_ - begin_ - slicedOffset_);
 }
 
 template<typename T>
@@ -881,15 +958,21 @@ JSTaggedValue JsonParser<T>::ParseLiteralFalse()
     static const char literalFalse[] = "false";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 4)) { // 4: literalFalse length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralFalse Fail",
-                                      JSTaggedValue::Exception());
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected Text in JSON: ParseLiteralFalse Fail",
+                                           JSTaggedValue::Exception(),
+                                           rawString_,
+                                           current_ - begin_ - slicedOffset_);
     }
     bool isMatch = MatchText(literalFalse, 5); // 5: literalFalse length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::False();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralFalse Fail",
-                                  JSTaggedValue::Exception());
+    THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                       "Unexpected Text in JSON: ParseLiteralFalse Fail",
+                                       JSTaggedValue::Exception(),
+                                       rawString_,
+                                       current_ - begin_ - slicedOffset_);
 }
 
 template<typename T>
@@ -898,15 +981,21 @@ JSTaggedValue JsonParser<T>::ParseLiteralNull()
     static const char literalNull[] = "null";
     uint32_t remainingLength = range_ - current_;
     if (UNLIKELY(remainingLength < 3)) { // 3: literalNull length - 1
-        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralNull Fail",
-                                      JSTaggedValue::Exception());
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected Text in JSON: ParseLiteralNull Fail",
+                                           JSTaggedValue::Exception(),
+                                           rawString_,
+                                           current_ - begin_ - slicedOffset_);
     }
     bool isMatch = MatchText(literalNull, 4); // 4: literalNull length
     if (LIKELY(isMatch)) {
         return JSTaggedValue::Null();
     }
-    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON: ParseLiteralNull Fail",
-                                  JSTaggedValue::Exception());
+    THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                       "Unexpected Text in JSON: ParseLiteralNull Fail",
+                                       JSTaggedValue::Exception(),
+                                       rawString_,
+                                       current_ - begin_ - slicedOffset_);
 }
 
 template<typename T>
@@ -1109,20 +1198,18 @@ bool JsonParser<T>::CheckNonZeroBeginNumber(bool &hasExponent, bool &hasDecimal)
     }
     return true;
 }
-
 JSHandle<JSTaggedValue> Utf8JsonParser::Parse(const JSHandle<EcmaString> &strHandle)
 {
     ASSERT(*strHandle != nullptr);
     auto stringAccessor = EcmaStringAccessor(strHandle);
     uint32_t len = stringAccessor.GetLength();
     ASSERT(len != UINT32_MAX);
-
-    uint32_t slicedOffset = 0;
+    rawString_ = strHandle;
     if (LIKELY(stringAccessor.IsLineOrCachedExternalString())) {
         sourceString_ = strHandle;
     } else if (stringAccessor.IsSlicedString()) {
         auto *sliced = static_cast<SlicedEcmaString *>(*strHandle);
-        slicedOffset = sliced->GetStartIndex();
+        slicedOffset_ = sliced->GetStartIndex();
         sourceString_ = JSHandle<EcmaString>(thread_, EcmaString::Cast(sliced->GetParent(thread_)));
     } else {
         auto *flatten = EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle);
@@ -1131,7 +1218,7 @@ JSHandle<JSTaggedValue> Utf8JsonParser::Parse(const JSHandle<EcmaString> &strHan
     begin_ = EcmaStringAccessor(sourceString_).GetDataUtf8();
     auto *heap = const_cast<Heap *>(thread_->GetEcmaVM()->GetHeap());
     auto listenerId = heap->AddGCListener(UpdatePointersListener, this);
-    auto res = Launch(begin_ + slicedOffset, begin_ + slicedOffset + len);
+    auto res = Launch(begin_ + slicedOffset_, begin_ + slicedOffset_ + len);
     heap->RemoveGCListener(listenerId);
     return res;
 }
@@ -1161,8 +1248,11 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
     bool isFastString = true;
     if (inObjOrArrOrMap) {
         if (UNLIKELY(!ReadJsonStringRange(isFastString))) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
-                JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected end Text in JSON",
+                                               JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
         if (isFastString) {
             uint32_t offset = current_ - begin_;
@@ -1180,8 +1270,11 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
         }
     } else {
         if (UNLIKELY(*end_ != '"' || current_ == end_ || !IsFastParseJsonString(isFastString))) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
-                JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected end Text in JSON",
+                                               JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
         if (LIKELY(isFastString)) {
             uint32_t offset = current_ - begin_;
@@ -1242,6 +1335,8 @@ JSHandle<JSTaggedValue> Utf16JsonParser::Parse(EcmaString *str)
     CVector<uint16_t> buf(len + 1, 0);
     EcmaStringAccessor(str).WriteToFlatUtf16(thread_, buf.data(), len);
     Text begin = buf.data();
+    begin_ = begin;
+    rawString_ = JSHandle<EcmaString>(thread_, str);
     return Launch(begin, begin + len);
 }
 
@@ -1256,8 +1351,11 @@ JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjOrArrOrMap)
     bool isAscii = true;
     if (inObjOrArrOrMap) {
         if (UNLIKELY(!ReadJsonStringRange(isFastString, isAscii))) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
-                JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected end Text in JSON",
+                                               JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
         if (isFastString) {
             if (isAscii) {
@@ -1275,8 +1373,11 @@ JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjOrArrOrMap)
         }
     } else {
         if (UNLIKELY(*end_ != '"' || current_ == end_ || !IsFastParseJsonString(isFastString, isAscii))) {
-            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
-                JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected end Text in JSON",
+                                               JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
         }
         if (LIKELY(isFastString)) {
             if (isAscii) {

@@ -309,7 +309,7 @@ bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoin
             condFuncRef.ToLocal(ecmaVm_), handlerPtr);
         if (thread->HasPendingException()) {
             LOG_DEBUGGER(ERROR) << "BreakpointCondition: has pending exception";
-            thread->ClearException();
+            thread->ClearExceptionAndExtraErrorMessage();
             return false;
         }
         bool satisfied = evalResult->ToBoolean(ecmaVm_)->Value();

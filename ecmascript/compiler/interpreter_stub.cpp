@@ -5734,6 +5734,9 @@ DECLARE_ASM_HANDLER_NOPRINT(ExceptionHandler)
         varAcc = exception;
         // clear exception
         Store(VariableType::INT64(), glue, glue, exceptionOffset, Hole());
+        // clear ExtraErrormessage
+        GateRef extraErrorMessageOffset = IntPtr(JSThread::GlueData::GetExtraErrorMessageOffset(env->IsArch32Bit()));
+        StoreWithoutBarrier(VariableType::INT64(), glue, extraErrorMessageOffset, Hole());
         GateRef function = GetFunctionFromFrame(glue, GetFrame(*varSp));
         GateRef method = Load(VariableType::JS_ANY(), glue, function, IntPtr(JSFunctionBase::METHOD_OFFSET));
         varConstpool = GetConstpoolFromMethod(glue, method);

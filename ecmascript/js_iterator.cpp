@@ -240,7 +240,7 @@ JSHandle<JSTaggedValue> JSIterator::IteratorClose(JSThread *thread, const JSHand
     JSHandle<JSTaggedValue> exceptionOnThread;
     if (thread->HasPendingException()) {
         exceptionOnThread = JSHandle<JSTaggedValue>(thread, thread->GetException());
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
     }
     JSTaggedValue returnStr = globalConst->GetReturnString();
     // 3.Let return be GetMethod(iterator, "return").

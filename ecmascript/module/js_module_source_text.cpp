@@ -542,7 +542,7 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
         // handle exception here may cause incompatible changes, therefore, resolve module failed still need to bind.
         // clear exception here, save the exception, handle exception in FinishModuleInstantiation process.
         exception = JSHandle<JSTaggedValue>(thread, thread->GetException());
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
     }
     // 3. Let stack be a new empty List.
     CVector<JSHandle<SourceTextModule>> stack;
@@ -2155,7 +2155,7 @@ void SourceTextModule::SetExceptionToModule(JSThread *thread, JSHandle<SourceTex
     JSHandle<JSTaggedValue> ecmaErrMsg(thread, JSTaggedValue::Undefined());
     bool hasPendingException = thread->HasPendingException();
     if (hasPendingException) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
     }
     // process error message for share module
     if (exceptionInfo->IsJSError()) {

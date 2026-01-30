@@ -7270,6 +7270,7 @@ void TryCatch::Rethrow()
 Local<ObjectRef> TryCatch::GetAndClearException()
 {
     ecmascript::ThreadManagedScope managedScope(ecmaVm_->GetJSThread());
+    ecmaVm_->GetJSThread()->SetExtraErrorMessage(JSTaggedValue::Hole());
     return JSNApiHelper::ToLocal<ObjectRef>(ecmaVm_->GetAndClearEcmaUncaughtException());
 }
 
@@ -7281,7 +7282,7 @@ Local<ObjectRef> TryCatch::GetException()
 
 void TryCatch::ClearException()
 {
-    ecmaVm_->GetJSThread()->ClearException();
+    ecmaVm_->GetJSThread()->ClearExceptionAndExtraErrorMessage();
 }
 
 void* TryCatch::GetEnv()

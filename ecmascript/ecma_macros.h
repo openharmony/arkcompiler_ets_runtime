@@ -626,6 +626,21 @@
     THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, ErrorType::SYNTAX_ERROR, message, value)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread, message, value, rawString, position)                     \
+    do {                                                                                                    \
+        if ((thread)->HasPendingException()) {                                                              \
+            return (value);                                                                                 \
+        }                                                                                                   \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                      \
+        JSHandle<JSObject> _error =                                                                         \
+            _factory->GetJSError(ErrorType::SYNTAX_ERROR, message, ecmascript::StackCheck::NO);             \
+        (thread)->SetException(_error.GetTaggedValue());                                                    \
+        (thread)->SetExtraErrorMessage(rawString.GetTaggedValue());                                         \
+        (thread)->SetJsonErrorPosition(position);                                                           \
+        return (value);                                                                                     \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define THROW_REFERENCE_ERROR_AND_RETURN(thread, message, value)                                 \
     THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, ErrorType::REFERENCE_ERROR, message, value)
 
@@ -670,7 +685,7 @@
             }                                                                                      \
         }                                                                                          \
         if ((thread)->HasPendingException()) {                                                     \
-            (thread)->ClearException();                                                            \
+            (thread)->ClearExceptionAndExtraErrorMessage();                                        \
             JSHandle<JSTaggedValue> reject(thread, (capability)->GetReject(thread));               \
             JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();                \
             EcmaRuntimeCallInfo *info =                                                            \

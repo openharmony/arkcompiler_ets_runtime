@@ -7859,7 +7859,7 @@ void InterpreterAssembly::ExceptionHandler(
 
     auto exception = thread->GetException();
     SET_ACC(exception);
-    thread->ClearException();
+    thread->ClearExceptionAndExtraErrorMessage();
     DISPATCH_OFFSET(0);
 }
 

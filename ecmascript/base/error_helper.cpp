@@ -279,7 +279,7 @@ CString ErrorHelper::GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedVal
     JSHandle<EcmaString> errStr = JSTaggedValue::ToString(thread, value);
     // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
     if (thread->HasPendingException()) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         errStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
     }
     return ConvertToString(thread, *errStr);

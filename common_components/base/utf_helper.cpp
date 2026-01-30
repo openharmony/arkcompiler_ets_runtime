@@ -75,20 +75,6 @@ uint32_t HandleAndDecodeInvalidUTF16(uint16_t const *utf16, size_t len, size_t *
     return first;
 }
 
-inline size_t UTF8Length(uint32_t codepoint)
-{
-    if (codepoint <= UTF8_1B_MAX) {
-        return UtfLength::ONE;
-    }
-    if (codepoint <= UTF8_2B_MAX) {
-        return UtfLength::TWO;
-    }
-    if (codepoint <= UTF8_3B_MAX) {
-        return UtfLength::THREE;
-    }
-    return UtfLength::FOUR;
-}
-
 // Methods for encode unicode to unicode
 size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t index, size_t size)
 {
