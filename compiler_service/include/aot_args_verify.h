@@ -16,47 +16,59 @@
 #ifndef OHOS_ARKCOMPILER_AOT_ARGS_VERIFY_H
 #define OHOS_ARKCOMPILER_AOT_ARGS_VERIFY_H
 
+#include <charconv>
+#include <cstdint>
+#include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
+
+#include "aot_compiler_constants.h"
+
+namespace panda::ecmascript {
+using fd_t = int;
+}
 
 namespace OHOS::ArkCompiler {
 
+struct AotPkgInfo {
+    std::string bundleName;
+    std::string pkgPath;
+    std::string abcName;
+    std::string moduleName;
+    std::string appIdentifier;
+    std::string pgoDir;
+
+    std::optional<uint32_t> abcOffset;
+    std::optional<uint32_t> abcSize;
+};
+
 class AotArgsVerify {
 public:
-    // Validate Ark profile path format
-    static bool ValidateArkProfilePath(const std::string &resolvedPgoDir, const std::string &bundleName);
 
-    // Parse and validate compiler package info JSON to get pgoDir and bundleName
-    static bool ParsePgoDirAndBundleName(const std::string &pkgInfoStr, std::string &pgoDir, std::string &bundleName);
-
-    // Parse and validate compiler package info JSON to get bundleName only
-    static bool ParseBundleNameFromPkgInfo(const std::string &pkgInfoStr, std::string &bundleName);
-
-    // Validate path against traversal attacks
-    static bool ValidatePathOnlyTraverse(const std::string &inputPath);
-
-    // Validate and resolve real path
-    static bool ValidateAndResolvePath(const std::string &inputPath, std::string &outputPath);
-
-    // Validate Ark cache file paths
-    static bool ValidateArkCacheFilePaths(const std::string &aotFile, const std::string &anFile,
-                                          const std::string &bundleName);
-
-    // Check and get AOT and AN files from argsMap
-    static bool CheckAndGetAotAndAnFiles(const std::unordered_map<std::string, std::string> &argsMap,
-                                          std::string &aotFile, std::string &anFile);
-
-    // Check Ark profile and Ark cache (for AOTArgsParser)
+    static bool CheckArkProfilePath(const std::string &pgoDir, const std::string &bundleName);
+    static bool CheckPathTraverse(const std::string &inputPath);
+    static bool CheckArkCacheFiles(const std::unordered_map<std::string, std::string> &argsMap,
+        const std::string &bundleName);
+    static bool CheckAnFileSuffix(const std::string &aotFile, const std::string &anFile);
+    static bool CheckArkCacheDirectoryPrefix(const std::string &aotFile, const std::string &bundleName);
+    static bool CheckPkgInfoFields(const AotPkgInfo &pkgInfo, AotParserType type);
+    static bool CheckFrameworkAnFile(const std::string &anFile);
     static bool CheckAOTArgs(const std::unordered_map<std::string, std::string> &argsMap);
-
-    // Check static AOT args (for StaticAOTArgsParser)
     static bool CheckStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap);
-
-    // Check framework static AOT args (for StaticFrameworkAOTArgsParser)
     static bool CheckFrameworkStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap);
-
-    // Check code sign arkcache file path with realpath, traversal check, and strong matching
-    static bool CheckCodeSignArkCacheFileName(const std::string &inputPath);
+    static bool CheckCodeSignArkCacheFilePath(const std::string &inputPath);
+    static bool CheckAbcName(const std::string &abcName, AotParserType type);
+    static bool CheckModuleName(const std::string &moduleName);
+    static bool CheckAbcOffsetAndSize(
+        uint32_t abcOffset, uint32_t abcSize, const std::string &pkgPath);
+    static bool CheckBundleUidAndGid(int32_t uid, int32_t gid);
+    static bool CheckBundleUidAndGidFromArgsMap(const std::unordered_map<std::string, std::string> &argsMap);
+    static bool ParseUint32Field(const nlohmann::json &jsonObj, const char *key, uint32_t &output);
+    static bool ParseInt32Field(const nlohmann::json &jsonObj, const char *key, int32_t &output);
+    static bool ParseAotPkgInfo(const std::string &pkgInfoStr, AotPkgInfo &info);
+    static bool ParseStringField(const nlohmann::json &jsonObj, const char *key, std::string &output);
 };
 
 } // namespace OHOS::ArkCompiler

@@ -30,10 +30,7 @@
 #endif
 
 namespace OHOS::ArkCompiler {
-const std::string AOT_FILE = "aot-file";
 const std::string COMPILER_MODE = "target-compiler-mode";
-const std::string PARTIAL = "partial";
-const std::string COMPILER_PKG_INFO = "compiler-pkg-info";
 const std::string PATH = "path";
 
 const std::string STATIC_BOOT_PANDA_FILES = "boot-panda-files";
@@ -44,11 +41,6 @@ const std::string STATIC_PAOC_USE_PROFILE = "paoc-use-profile";
 const std::string STATIC_BOOT_PATH = "/system/framework/bootpath.json";
 const std::string STATIC_COMPILER_REGEX = "compiler-regex";
 const std::string STATIC_PAOC_BLACK_LIST_PATH = "/etc/ark/static_aot_methods_black_list.json";
-
-const std::string ARKTS_DYNAMIC = "dynamic";
-const std::string ARKTS_STATIC = "static";
-const std::string AN_FILE_NAME = "anFileName";
-const std::string ARKTS_HYBRID = "hybrid";
 
 const std::string AN_SUFFIX = ".an";
 const std::string APP_SANBOX_PATH_PREFIX = "/data/storage/el1/bundle/";
@@ -196,9 +188,19 @@ int32_t AOTArgsParser::Parse(const std::unordered_map<std::string, std::string> 
     return ERR_OK;
 }
 
-bool AOTArgsParser::Check(const std::unordered_map<std::string, std::string> &argsMap)
+bool AOTArgsParserBase::Check(const std::unordered_map<std::string, std::string> &argsMap)
 {
-    return AotArgsVerify::CheckAOTArgs(argsMap);
+    switch (GetParserType()) {
+        case AotParserType::DYNAMIC_AOT:
+            return AotArgsVerify::CheckAOTArgs(argsMap);
+        case AotParserType::STATIC_AOT:
+            return AotArgsVerify::CheckStaticAotArgs(argsMap);
+        case AotParserType::FRAMEWORK_STATIC_AOT:
+            return AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
+        default:
+            LOG_SA(ERROR) << "Unknown parser type in Check";
+            return false;
+    }
 }
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
@@ -242,19 +244,19 @@ void StaticAOTArgsParser::ProcessArgsMap(const std::unordered_map<std::string, s
 {
     for (auto &argPair : argsMap) {
         // for 1.2, replace aot-file by paoc-output
-        if (argPair.first == AOT_FILE) {
+        if (argPair.first == ArgsIdx::AOT_FILE) {
             anfilePath = argPair.second;
             std::string anFileName = anfilePath + AN_SUFFIX;
             hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_OUTPUT + Symbols::EQ + anFileName);
             continue;
         }
 
-        if (argPair.first == COMPILER_MODE && argPair.second == PARTIAL) {
+        if (argPair.first == COMPILER_MODE && argPair.second == ArgsIdx::PARTIAL) {
             partialMode = true;
             continue;
         }
 
-        if (argPair.first == COMPILER_PKG_INFO) {
+        if (argPair.first == ArgsIdx::COMPILER_PKG_INFO) {
             pkgInfo = argPair.second;
             continue;
         }
@@ -319,11 +321,6 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
     }
 
     return ERR_OK;
-}
-
-bool StaticAOTArgsParser::Check(const std::unordered_map<std::string, std::string> &argsMap)
-{
-    return AotArgsVerify::CheckStaticAotArgs(argsMap);
 }
 
 bool StaticAOTArgsParser::ParseBootPandaFiles(std::string &bootfiles)
@@ -623,7 +620,7 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
         LOG_SA(INFO) << "aot sa failed to get arkTsMode";
         return std::make_unique<AOTArgsParser>();
     }
-    if (arkTsMode == ARKTS_DYNAMIC) {
+    if (arkTsMode == ArgsIdx::ARKTS_DYNAMIC) {
         LOG_SA(INFO) << "aot sa use default compiler";
         return std::make_unique<AOTArgsParser>();
     }
@@ -631,7 +628,7 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
     if (!isEnableStaticCompiler) {
         return std::nullopt;
     }
-    if (arkTsMode == ARKTS_STATIC || arkTsMode == ARKTS_HYBRID) {
+    if (arkTsMode == ArgsIdx::ARKTS_STATIC || arkTsMode == ArgsIdx::ARKTS_HYBRID) {
         return std::make_unique<StaticAOTArgsParser>();
     }
     LOG_SA(ERROR) << "aot sa get invalid code arkTsMode";
@@ -688,7 +685,7 @@ int32_t StaticFrameworkAOTArgsParser::Parse(const std::unordered_map<std::string
 
     std::string bundleName = abcPath;
     for (auto &argPair : argsMap) {
-        if (argPair.first == AN_FILE_NAME) {
+        if (argPair.first == ArgsIdx::AN_FILE_NAME) {
             hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_OUTPUT + Symbols::EQ + argPair.second);
         }
     }
@@ -700,11 +697,6 @@ int32_t StaticFrameworkAOTArgsParser::Parse(const std::unordered_map<std::string
         hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_COMPILER_REGEX + Symbols::EQ + blackListMethods);
     }
     return ERR_OK;
-}
-
-bool StaticFrameworkAOTArgsParser::Check(const std::unordered_map<std::string, std::string> &argsMap)
-{
-    return AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
 }
 
 bool StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList(const nlohmann::json &item,

@@ -15,8 +15,12 @@
 
 #include "aot_args_verify.h"
 
+#include <charconv>
+#include <dlfcn.h>
+#include <fcntl.h>
 #include <nlohmann/json.hpp>
 #include <regex>
+#include <sys/stat.h>
 
 #include "aot_compiler_constants.h"
 #include "ecmascript/log_wrapper.h"
@@ -24,8 +28,17 @@
 
 namespace OHOS::ArkCompiler {
 
-bool AotArgsVerify::ValidateArkProfilePath(const std::string &resolvedPgoDir, const std::string &bundleName)
+bool AotArgsVerify::CheckArkProfilePath(const std::string &pgoDir, const std::string &bundleName)
 {
+    if (!CheckPathTraverse(pgoDir)) {
+        return false;
+    }
+    std::string resolvedPgoDir;
+    if (!panda::ecmascript::RealPath(pgoDir, resolvedPgoDir)) {
+        LOG_SA(ERROR) << "failed to resolve path: " << pgoDir.c_str();
+        return false;
+    }
+
     std::regex pattern("/data/app/el1/\\d+/aot_compiler/ark_profile.*");
     if (!std::regex_match(resolvedPgoDir, pattern) || resolvedPgoDir.find(bundleName) == std::string::npos) {
         LOG_SA(ERROR) << "verify ark-profile path wrong, pgoDir: " << resolvedPgoDir << ", bundleName: " << bundleName;
@@ -34,91 +47,17 @@ bool AotArgsVerify::ValidateArkProfilePath(const std::string &resolvedPgoDir, co
     return true;
 }
 
-bool AotArgsVerify::ParsePgoDirAndBundleName(const std::string &pkgInfoStr, std::string &pgoDir,
-    std::string &bundleName)
-{
-    if (!nlohmann::json::accept(pkgInfoStr)) {
-        LOG_SA(ERROR) << "invalid json when parse compiler-pkg-info";
-        return false;
-    }
-
-    nlohmann::json pkgInfoJson = nlohmann::json::parse(pkgInfoStr);
-    if (pkgInfoJson.is_discarded() || pkgInfoJson.is_null() || pkgInfoJson.empty()) {
-        LOG_SA(ERROR) << "invalid json when parse compiler-pkg-info";
-        return false;
-    }
-
-    const std::string pgoDirKey = "pgoDir";
-    const std::string bundleNameKey = "bundleName";
-
-    if (!pkgInfoJson.contains(bundleNameKey) ||
-        pkgInfoJson[bundleNameKey].is_null() ||
-        !pkgInfoJson[bundleNameKey].is_string()) {
-        LOG_SA(ERROR) << "invalid or missing bundleName in compiler-pkg-info";
-        return false;
-    }
-    if (!pkgInfoJson.contains(pgoDirKey) ||
-        pkgInfoJson[pgoDirKey].is_null() ||
-        !pkgInfoJson[pgoDirKey].is_string()) {
-        LOG_SA(ERROR) << "invalid or missing pgoDir in compiler-pkg-info";
-        return false;
-    }
-
-    pgoDir = pkgInfoJson[pgoDirKey].get<std::string>();
-    bundleName = pkgInfoJson[bundleNameKey].get<std::string>();
-    if (pgoDir.empty() || bundleName.empty()) {
-        LOG_SA(ERROR) << "pgoDir or bundleName value is empty in compiler-pkg-info";
-        return false;
-    }
-
-    return true;
-}
-
-bool AotArgsVerify::ParseBundleNameFromPkgInfo(const std::string &pkgInfoStr, std::string &bundleName)
-{
-    if (!nlohmann::json::accept(pkgInfoStr)) {
-        LOG_SA(ERROR) << "invalid json when parse bundleName from compiler-pkg-info";
-        return false;
-    }
-
-    nlohmann::json pkgInfoJson = nlohmann::json::parse(pkgInfoStr);
-    if (pkgInfoJson.is_discarded() || pkgInfoJson.is_null() || pkgInfoJson.empty()) {
-        LOG_SA(ERROR) << "invalid json when parse bundleName from compiler-pkg-info";
-        return false;
-    }
-
-    const std::string bundleNameKey = "bundleName";
-    if (!pkgInfoJson.contains(bundleNameKey) ||
-        pkgInfoJson[bundleNameKey].is_null() ||
-        !pkgInfoJson[bundleNameKey].is_string()) {
-        LOG_SA(ERROR) << "invalid or missing bundleName in compiler-pkg-info";
-        return false;
-    }
-
-    bundleName = pkgInfoJson[bundleNameKey].get<std::string>();
-    if (bundleName.empty()) {
-        LOG_SA(ERROR) << "bundleName value is empty in compiler-pkg-info";
-        return false;
-    }
-
-    return true;
-}
-
-bool AotArgsVerify::ValidatePathOnlyTraverse(const std::string &inputPath)
+bool AotArgsVerify::CheckPathTraverse(const std::string &inputPath)
 {
     if (inputPath.find("..") != std::string::npos) {
         LOG_SA(ERROR) << "potential path traversal detected in path: " << inputPath.c_str();
         return false;
     }
-
-    // Check for path traversal sequences
     if (inputPath.find("../") != std::string::npos ||
         inputPath.find("..\\") != std::string::npos) {
         LOG_SA(ERROR) << "potential path traversal detected in path: " << inputPath.c_str();
         return false;
     }
-
-    // Check for parent directory traversal in absolute paths
     if (inputPath.find("/../") != std::string::npos ||
         inputPath.find("\\..\\") != std::string::npos) {
         LOG_SA(ERROR) << "parent directory traversal detected: " << inputPath.c_str();
@@ -127,35 +66,40 @@ bool AotArgsVerify::ValidatePathOnlyTraverse(const std::string &inputPath)
     return true;
 }
 
-bool AotArgsVerify::ValidateAndResolvePath(const std::string &inputPath, std::string &outputPath)
-{
-    if (!ValidatePathOnlyTraverse(inputPath)) {
-        return false;
-    }
-    if (!panda::ecmascript::RealPath(inputPath, outputPath)) {
-        LOG_SA(ERROR) << "failed to resolve path: " << inputPath.c_str();
-        return false;
-    }
-    return true;
-}
-
-bool AotArgsVerify::ValidateArkCacheFilePaths(const std::string &aotFile, const std::string &anFile,
+bool AotArgsVerify::CheckArkCacheFiles(const std::unordered_map<std::string, std::string> &argsMap,
     const std::string &bundleName)
 {
-    // 1. Verify anFile equals aotFile + ".an" (completely equal except for file suffix)
+    auto aotFileIt = argsMap.find(ArgsIdx::AOT_FILE);
+    auto anFileIt = argsMap.find(ArgsIdx::AN_FILE_NAME);
+    if (aotFileIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::AOT_FILE.c_str() << " not found in argsMap";
+        return false;
+    }
+    if (anFileIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::AN_FILE_NAME.c_str() << " not found in argsMap";
+        return false;
+    }
+
+    const std::string &aotFile = aotFileIt->second;
+    const std::string &anFile = anFileIt->second;
+
+    return CheckAnFileSuffix(aotFile, anFile) &&
+           CheckPathTraverse(aotFile) && CheckPathTraverse(anFile) &&
+           CheckArkCacheDirectoryPrefix(aotFile, bundleName);
+}
+
+bool AotArgsVerify::CheckAnFileSuffix(const std::string &aotFile, const std::string &anFile)
+{
     if (anFile != aotFile + ".an") {
         LOG_SA(ERROR) << "anFileName must be aotFile with .an suffix: "
                       << "aotFile=" << aotFile.c_str() << ", anFile=" << anFile.c_str();
         return false;
     }
+    return true;
+}
 
-    // 2. Check for path traversal in both file paths
-    if (!ValidatePathOnlyTraverse(aotFile) || !ValidatePathOnlyTraverse(anFile)) {
-        LOG_SA(ERROR) << "path traversal detected in aot-file or anFileName";
-        return false;
-    }
-
-    // 3. Verify parent directory strictly equals expected path
+bool AotArgsVerify::CheckArkCacheDirectoryPrefix(const std::string &aotFile, const std::string &bundleName)
+{
     size_t lastSlash = aotFile.rfind('/');
     if (lastSlash == std::string::npos) {
         LOG_SA(ERROR) << "Invalid file path format for aot-file";
@@ -169,108 +113,14 @@ bool AotArgsVerify::ValidateArkCacheFilePaths(const std::string &aotFile, const 
                       << ", expected prefix: " << expectedBasePath.c_str();
         return false;
     }
-
     return true;
 }
 
-bool AotArgsVerify::CheckAndGetAotAndAnFiles(
-    const std::unordered_map<std::string, std::string> &argsMap,
-    std::string &aotFile, std::string &anFile)
+bool AotArgsVerify::CheckFrameworkAnFile(const std::string &anFile)
 {
-    auto aotFileIt = argsMap.find(ArgsIdx::AOT_FILE);
-    auto anFileIt = argsMap.find(ArgsIdx::AN_FILE_NAME);
-    if (aotFileIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::AOT_FILE.c_str() << " not found in argsMap";
+    if (!CheckPathTraverse(anFile)) {
         return false;
     }
-    if (anFileIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::AN_FILE_NAME.c_str() << " not found in argsMap";
-        return false;
-    }
-
-    aotFile = aotFileIt->second;
-    anFile = anFileIt->second;
-    return true;
-}
-
-bool AotArgsVerify::CheckAOTArgs(const std::unordered_map<std::string, std::string> &argsMap)
-{
-    auto it = argsMap.find(ArgsIdx::COMPILER_PKG_INFO);
-    if (it == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::COMPILER_PKG_INFO.c_str() << " not found in argsMap";
-        return false;
-    }
-
-    std::string pgoDir;
-    std::string bundleName;
-    if (!ParsePgoDirAndBundleName(it->second, pgoDir, bundleName)) {
-        return false;
-    }
-
-    // Validate and resolve pgoDir path
-    std::string resolvedPgoDir;
-    if (!ValidateAndResolvePath(pgoDir, resolvedPgoDir) ||
-        !ValidateArkProfilePath(resolvedPgoDir, bundleName)) {
-        return false;
-    }
-
-    // Get and validate aot-file and anFileName paths
-    std::string aotFile;
-    std::string anFile;
-    if (!CheckAndGetAotAndAnFiles(argsMap, aotFile, anFile)) {
-        return false;
-    }
-    if (!ValidateArkCacheFilePaths(aotFile, anFile, bundleName)) {
-        return false;
-    }
-
-    return true;
-}
-
-bool AotArgsVerify::CheckStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap)
-{
-    // Get bundleName from pkgInfo
-    auto pkgInfoIt = argsMap.find(ArgsIdx::COMPILER_PKG_INFO);
-    if (pkgInfoIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::COMPILER_PKG_INFO.c_str() << " not found in argsMap";
-        return false;
-    }
-
-    std::string bundleName;
-    if (!ParseBundleNameFromPkgInfo(pkgInfoIt->second, bundleName)) {
-        return false;
-    }
-
-    // Get and validate aot-file and anFileName paths using common function
-    std::string aotFile;
-    std::string anFile;
-    if (!CheckAndGetAotAndAnFiles(argsMap, aotFile, anFile)) {
-        return false;
-    }
-    if (!ValidateArkCacheFilePaths(aotFile, anFile, bundleName)) {
-        return false;
-    }
-
-    return true;
-}
-
-bool AotArgsVerify::CheckFrameworkStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap)
-{
-    // Get anFileName path
-    auto anFileIt = argsMap.find(ArgsIdx::AN_FILE_NAME);
-    if (anFileIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::AN_FILE_NAME.c_str() << " not found in argsMap";
-        return false;
-    }
-
-    const std::string &anFile = anFileIt->second;
-
-    // Check for path traversal
-    if (!ValidatePathOnlyTraverse(anFile)) {
-        return false;
-    }
-
-    // Check that the path starts with the expected framework cache directory
     const std::string expectedPrefix = "/data/service/el1/public/for-all-app/framework_ark_cache";
     if (anFile.substr(0, expectedPrefix.length()) != expectedPrefix) {
         LOG_SA(ERROR) << "framework file is not in expected location: " << anFile.c_str()
@@ -280,25 +130,107 @@ bool AotArgsVerify::CheckFrameworkStaticAotArgs(const std::unordered_map<std::st
     return true;
 }
 
-bool AotArgsVerify::CheckCodeSignArkCacheFileName(const std::string &inputPath)
+bool AotArgsVerify::CheckPkgInfoFields(const AotPkgInfo &pkgInfo, AotParserType type)
 {
-    // 1. Check for path traversal before RealPath
-    if (!ValidatePathOnlyTraverse(inputPath)) {
+    if (!CheckModuleName(pkgInfo.moduleName)) {
+        return false;
+    }
+    if (!CheckAbcName(pkgInfo.abcName, type)) {
+        return false;
+    }
+    if (!CheckAbcOffsetAndSize(pkgInfo.abcOffset.value(), pkgInfo.abcSize.value(), pkgInfo.pkgPath)) {
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::CheckAOTArgs(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    AotPkgInfo pkgInfo;
+    auto pkgInfoIt = argsMap.find(ArgsIdx::COMPILER_PKG_INFO);
+    if (pkgInfoIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::COMPILER_PKG_INFO.c_str() << " not found in argsMap";
+        return false;
+    }
+    if (!ParseAotPkgInfo(pkgInfoIt->second, pkgInfo)) {
+        LOG_SA(ERROR) << "Failed to parse AOT package info from JSON";
+        return false;
+    }
+
+    auto compilerModeIt = argsMap.find(ArgsIdx::TARGET_COMPILER_MODE);
+    bool isPartialMode = (compilerModeIt != argsMap.end() && compilerModeIt->second == ArgsIdx::PARTIAL);
+    if (!isPartialMode || pkgInfo.pgoDir.empty() || !CheckArkProfilePath(pkgInfo.pgoDir, pkgInfo.bundleName)) {
+        return false;
+    }
+
+    if (!CheckPkgInfoFields(pkgInfo, AotParserType::DYNAMIC_AOT)) {
+        return false;
+    }
+    if (!CheckBundleUidAndGidFromArgsMap(argsMap)) {
+        return false;
+    }
+    if (!CheckArkCacheFiles(argsMap, pkgInfo.bundleName)) {
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::CheckStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    AotPkgInfo pkgInfo;
+    auto pkgInfoIt = argsMap.find(ArgsIdx::COMPILER_PKG_INFO);
+    if (pkgInfoIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::COMPILER_PKG_INFO.c_str() << " not found in argsMap";
+        return false;
+    }
+    if (!ParseAotPkgInfo(pkgInfoIt->second, pkgInfo)) {
+        LOG_SA(ERROR) << "Failed to parse AOT package info from JSON";
+        return false;
+    }
+
+    if (!CheckPkgInfoFields(pkgInfo, AotParserType::STATIC_AOT)) {
+        return false;
+    }
+    if (!CheckBundleUidAndGidFromArgsMap(argsMap)) {
+        return false;
+    }
+    if (!CheckArkCacheFiles(argsMap, pkgInfo.bundleName)) {
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::CheckFrameworkStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto anFileIt = argsMap.find(ArgsIdx::AN_FILE_NAME);
+    if (anFileIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::AN_FILE_NAME.c_str() << " not found in argsMap";
+        return false;
+    }
+    if (!CheckFrameworkAnFile(anFileIt->second)) {
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::CheckCodeSignArkCacheFilePath(const std::string &inputPath)
+{
+    if (!CheckPathTraverse(inputPath)) {
         LOG_SA(ERROR) << "path traversal detected in fileName: " << inputPath.c_str();
         return false;
     }
-    // 2. Resolve real path to prevent symlink attacks
+
     std::string resolvedPath;
     if (!panda::ecmascript::RealPath(inputPath, resolvedPath)) {
         LOG_SA(ERROR) << "failed to resolve fileName path: " << inputPath.c_str();
         return false;
     }
-    // 3. Re-check for path traversal after RealPath (symlink could bypass)
-    if (!ValidatePathOnlyTraverse(resolvedPath)) {
+
+    if (!CheckPathTraverse(resolvedPath)) {
         LOG_SA(ERROR) << "path traversal detected after realpath in fileName: " << resolvedPath.c_str();
         return false;
     }
-    // 4. Strong matching: ensure path is under valid arkcache directories
+
     const std::string appArkCachePrefix = "/data/app/el1/public/aot_compiler/ark_cache/";
     const std::string frameworkArkCachePrefix = "/data/service/el1/public/for-all-app/framework_ark_cache/";
     bool isValidAppPath = resolvedPath.compare(0, appArkCachePrefix.length(), appArkCachePrefix) == 0;
@@ -309,6 +241,187 @@ bool AotArgsVerify::CheckCodeSignArkCacheFileName(const std::string &inputPath)
                       << " or " << frameworkArkCachePrefix.c_str();
         return false;
     }
+    return true;
+}
+
+bool AotArgsVerify::CheckAbcName(const std::string &abcName, AotParserType type)
+{
+    if (abcName.empty()) {
+        LOG_SA(ERROR) << "abcName is empty";
+        return false;
+    }
+    if (type == AotParserType::DYNAMIC_AOT && abcName != ArgsIdx::ABC_MODULES_PATH) {
+        LOG_SA(ERROR) << "AOT parser requires abcName='ets/modules.abc', got: " << abcName;
+        return false;
+    }
+    if (type == AotParserType::STATIC_AOT && abcName != ArgsIdx::ABC_MODULES_STATIC_PATH) {
+        LOG_SA(ERROR) << "StaticAOT parser requires abcName='ets/modules_static.abc', got: " << abcName;
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::CheckModuleName(const std::string &moduleName)
+{
+    if (moduleName.empty()) {
+        return true;
+    }
+    return CheckPathTraverse(moduleName);
+}
+
+bool AotArgsVerify::CheckAbcOffsetAndSize(
+    uint32_t abcOffset, uint32_t abcSize, const std::string &pkgPath)
+{
+    struct stat fileStat;
+    if (stat(pkgPath.c_str(), &fileStat) != 0) {
+        LOG_SA(ERROR) << "Failed to get HAP package file size from: " << pkgPath;
+        return false;
+    }
+
+    uint64_t hapSize = static_cast<uint64_t>(fileStat.st_size);
+    if (abcOffset > hapSize) {
+        LOG_SA(ERROR) << "abcOffset exceeds HAP package size: "
+                      << "offset=" << abcOffset << ", hapSize=" << hapSize;
+        return false;
+    }
+    if (abcOffset + abcSize > hapSize) {
+        LOG_SA(ERROR) << "abcOffset + abcSize exceeds HAP package size: "
+                      << "offset=" << abcOffset << ", size=" << abcSize
+                      << ", sum=" << (abcOffset + abcSize) << ", hapSize=" << hapSize;
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::CheckBundleUidAndGid(int32_t uid, int32_t gid)
+{
+    if (uid < static_cast<int32_t>(MIN_APP_UID_GID)) {
+        LOG_SA(ERROR) << "Invalid BundleUid: " << uid
+                      << ", must be >= " << static_cast<int32_t>(MIN_APP_UID_GID);
+        return false;
+    }
+    if (gid < static_cast<int32_t>(MIN_APP_UID_GID)) {
+        LOG_SA(ERROR) << "Invalid BundleGid: " << gid
+                      << ", must be >= " << static_cast<int32_t>(MIN_APP_UID_GID);
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::CheckBundleUidAndGidFromArgsMap(
+    const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto bundleUidIt = argsMap.find(ArgsIdx::BUNDLE_UID);
+    if (bundleUidIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::BUNDLE_UID.c_str() << " not found in argsMap";
+        return false;
+    }
+    auto bundleGidIt = argsMap.find(ArgsIdx::BUNDLE_GID);
+    if (bundleGidIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::BUNDLE_GID.c_str() << " not found in argsMap";
+        return false;
+    }
+    int32_t uid = std::stoi(bundleUidIt->second);
+    int32_t gid = std::stoi(bundleGidIt->second);
+    return CheckBundleUidAndGid(uid, gid);
+}
+
+bool AotArgsVerify::ParseUint32Field(const nlohmann::json &jsonObj, const char *key, uint32_t &output)
+{
+    if (!jsonObj.contains(key) || jsonObj[key].is_null()) {
+        return false;
+    }
+    if (!jsonObj[key].is_string() && !jsonObj[key].is_number_unsigned()) {
+        return false;
+    }
+
+    if (jsonObj[key].is_string()) {
+        std::string strValue = jsonObj[key].get<std::string>();
+        const char* start = strValue.c_str();
+        const char* end = start + strValue.length();
+        auto result = std::from_chars(start, end, output, 16);
+        if (result.ec != std::errc()) {
+            return false;
+        }
+    } else {
+        output = jsonObj[key].get<uint32_t>();
+    }
+    return true;
+}
+
+bool AotArgsVerify::ParseInt32Field(const nlohmann::json &jsonObj, const char *key, int32_t &output)
+{
+    if (!jsonObj.contains(key) || jsonObj[key].is_null()) {
+        return false;
+    }
+    if (!jsonObj[key].is_string() && !jsonObj[key].is_number_integer()) {
+        return false;
+    }
+
+    if (jsonObj[key].is_string()) {
+        std::string strValue = jsonObj[key].get<std::string>();
+        const char* start = strValue.c_str();
+        const char* end = start + strValue.length();
+        auto result = std::from_chars(start, end, output, 16);
+        if (result.ec != std::errc()) {
+            return false;
+        }
+    } else {
+        output = jsonObj[key].get<int32_t>();
+    }
+    return true;
+}
+
+bool AotArgsVerify::ParseAotPkgInfo(const std::string &pkgInfoStr, AotPkgInfo &info)
+{
+    if (!nlohmann::json::accept(pkgInfoStr)) {
+        return false;
+    }
+    nlohmann::json jsonObj = nlohmann::json::parse(pkgInfoStr);
+    if (jsonObj.is_discarded() || jsonObj.is_null() || jsonObj.empty()) {
+        return false;
+    }
+    if (!ParseStringField(jsonObj, ArgsIdx::BUNDLE_NAME.c_str(), info.bundleName)) {
+        LOG_SA(ERROR) << "missing or invalid bundleName";
+        return false;
+    }
+    if (!ParseStringField(jsonObj, ArgsIdx::PKG_PATH.c_str(), info.pkgPath)) {
+        LOG_SA(ERROR) << "missing or invalid pkgPath";
+        return false;
+    }
+    if (!ParseStringField(jsonObj, ArgsIdx::ABC_NAME.c_str(), info.abcName)) {
+        LOG_SA(ERROR) << "missing or invalid abcName";
+        return false;
+    }
+    if (!ParseStringField(jsonObj, ArgsIdx::MODULE_NAME.c_str(), info.moduleName)) {
+        LOG_SA(ERROR) << "missing or invalid moduleName";
+        return false;
+    }
+    if (!ParseStringField(jsonObj, ArgsIdx::APP_SIGNATURE.c_str(), info.appIdentifier)) {
+        LOG_SA(ERROR) << "missing or invalid appIdentifier";
+        return false;
+    }
+    if (!ParseStringField(jsonObj, ArgsIdx::PGO_DIR.c_str(), info.pgoDir)) {
+        LOG_SA(ERROR) << "missing or invalid pgoDir";
+        return false;
+    }
+    if (!ParseUint32Field(jsonObj, ArgsIdx::ABC_OFFSET.c_str(), info.abcOffset.emplace())) {
+        LOG_SA(ERROR) << "missing or invalid abcOffset";
+        return false;
+    }
+    if (!ParseUint32Field(jsonObj, ArgsIdx::ABC_SIZE.c_str(), info.abcSize.emplace())) {
+        LOG_SA(ERROR) << "missing or invalid abcSize";
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::ParseStringField(const nlohmann::json &jsonObj, const char *key, std::string &output)
+{
+    if (!jsonObj.contains(key) || jsonObj[key].is_null() || !jsonObj[key].is_string()) {
+        return false;
+    }
+    output = jsonObj[key].get<std::string>();
     return true;
 }
 

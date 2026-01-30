@@ -28,6 +28,18 @@ const std::string BUNDLE_UID = "BundleUid";
 const std::string BUNDLE_GID = "BundleGid";
 const std::string AN_FILE_NAME = "anFileName";
 const std::string APP_SIGNATURE = "appIdentifier";
+const std::string BUNDLE_NAME = "bundleName";
+const std::string PKG_PATH = "pkgPath";
+const std::string ABC_NAME = "abcName";
+const std::string MODULE_NAME = "moduleName";
+const std::string PGO_DIR = "pgoDir";
+const std::string ABC_OFFSET = "abcOffset";
+const std::string ABC_SIZE = "abcSize";
+const std::string ARKTS_DYNAMIC = "dynamic";
+const std::string ARKTS_STATIC = "static";
+const std::string ARKTS_HYBRID = "hybrid";
+const std::string ABC_MODULES_PATH = "ets/modules.abc";
+const std::string ABC_MODULES_STATIC_PATH = "ets/modules_static.abc";
 const std::string ABC_PATH = "ABC-Path";
 const std::string TARGET_COMPILER_MODE = "target-compiler-mode";
 const std::string COMPILER_PKG_INFO = "compiler-pkg-info";
@@ -39,10 +51,12 @@ const std::string IS_SYSTEM_COMPONENT = "isSysComp";
 
 
 const std::string ARKTS_MODE = "moduleArkTSMode";
+const std::string PARTIAL = "partial";
 } // namespace ArgsIdx
 
 // UID and GID of system users
 constexpr uid_t OID_SYSTEM = 1000;
+constexpr uid_t MIN_APP_UID_GID = 10000;  // Minimum app UID/GID
 
 constexpr const char* BOOLEAN_FALSE = "0";
 
@@ -56,6 +70,14 @@ constexpr const char* COLON = ":";
  * @param RetStatusOfCompiler return code of ark_aot_compiler
  * @attention it must sync with ErrCode of "ets_runtime/ecmascript/aot_compiler.cpp"
  */
+// AOT Parser type for unified validation
+enum class AotParserType {
+    UNKNOWN,              // Unknown parser type (default)
+    DYNAMIC_AOT,          // Dynamic AOT parser
+    STATIC_AOT,           // Static AOT parser
+    FRAMEWORK_STATIC_AOT  // Framework static AOT parser
+};
+
 enum class RetStatusOfCompiler {
     ERR_OK = (0),   // IMPORTANT: Only if aot compiler SUCCESS and save an/ai SUCCESS, return ERR_OK.
     ERR_FAIL = (-1),

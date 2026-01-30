@@ -245,7 +245,7 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(std::vector<int16_t> &sigData) const
     std::string appSignature = argsHandler_->GetCodeSignArgs();
     std::string fileName = argsHandler_->GetFileName();
     // Add security validation for fileName
-    if (!AotArgsVerify::CheckCodeSignArkCacheFileName(fileName)) {
+    if (!AotArgsVerify::CheckCodeSignArkCacheFilePath(fileName)) {
         LOG_SA(ERROR) << "fileName validation failed in AOTLocalCodeSign";
         return ERR_AOT_COMPILER_SIGNATURE_FAILED;
     }

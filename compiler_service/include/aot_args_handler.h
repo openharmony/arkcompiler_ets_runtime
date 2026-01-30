@@ -23,7 +23,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "aot_compiler_constants.h"
+
 namespace OHOS::ArkCompiler {
+
 struct HapArgs {
     std::vector<std::string> argVector;
     std::string fileName;
@@ -78,6 +81,10 @@ public:
     virtual int32_t Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
                           int32_t thermalLevel) = 0;
 
+    virtual AotParserType GetParserType() const = 0;
+
+    bool Check(const std::unordered_map<std::string, std::string> &argsMap);
+
     static int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
                                         const std::string &keyName, int32_t &bundleID);
 
@@ -92,7 +99,6 @@ public:
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
     static bool IsEnableStaticCompiler();
 #endif
-    virtual bool Check(const std::unordered_map<std::string, std::string> &argsMap) = 0;
 };
 
 class AOTArgsParser final : public AOTArgsParserBase {
@@ -102,7 +108,11 @@ public:
 
     void AddExpandArgs(std::vector<std::string> &argVector, int32_t thermalLevel);
 
-    bool Check(const std::unordered_map<std::string, std::string> &argsMap) override;
+    AotParserType GetParserType() const override
+    {
+        return AotParserType::DYNAMIC_AOT;
+    }
+
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
     void SetAnFileMaxSizeBySysParam(HapArgs &hapArgs);
     void SetEnableCodeCommentBySysParam(HapArgs &hapArgs);
@@ -123,7 +133,10 @@ public:
 
     bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo);
 
-    bool Check(const std::unordered_map<std::string, std::string> &argsMap) override;
+    AotParserType GetParserType() const override
+    {
+        return AotParserType::STATIC_AOT;
+    }
 
     std::string ParseBlackListMethods(const std::string &pkgInfo, const std::string &moduleName);
     std::string ProcessBlackListForBundleAndModule(const nlohmann::json &jsonObject,
@@ -150,7 +163,10 @@ public:
     std::string ParseBlackListMethods(const std::string &bundleName);
     bool CheckBundleNameAndMethodList(const nlohmann::json &item, const std::string &bundleName);
 
-    bool Check(const std::unordered_map<std::string, std::string> &argsMap) override;
+    AotParserType GetParserType() const override
+    {
+        return AotParserType::FRAMEWORK_STATIC_AOT;
+    }
 };
 
 class AOTArgsParserFactory {
