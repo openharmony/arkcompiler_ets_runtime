@@ -31,6 +31,7 @@ bool ModulePkgParser::ParseModulePkgJson(const EcmaVM *vm, const std::unordered_
     CMap<CString, CString> &pkgAliasList,
     CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> &ohExportsMap)
 {
+#ifndef CROSS_PLATFORM
     for (auto it = pkgInfoMap.begin(); it != pkgInfoMap.end(); ++it) {
         CString moduleName(it->first);
         const std::unique_ptr<uint8_t[]> &data = it->second.first;
@@ -46,9 +47,11 @@ bool ModulePkgParser::ParseModulePkgJson(const EcmaVM *vm, const std::unordered_
         pkgContextInfoList.emplace(moduleName, modulePkgInfo);
         ohExportsMap.emplace(moduleName, moduleOhExportsMap);
     }
+#endif
     return true;
 }
 
+#ifndef CROSS_PLATFORM
 bool ModulePkgParser::ParsePkgContextInfoJson(const EcmaVM *vm, const CString &moduleName, const uint8_t *data,
     size_t dataLen, CMap<CString, CVector<CString>> &modulePkgInfo, CMap<CString, CString> &pkgAliasList,
     CUnorderedMap<CString, CUnorderedSet<CString>> &moduleOhExportsMap)
@@ -139,4 +142,5 @@ bool ModulePkgParser::ParsePkgContextInfoOhExports(const nlohmann::json &itemObj
     }
     return true;
 }
+#endif
 }  // namespace panda::ecmascript::ohos
