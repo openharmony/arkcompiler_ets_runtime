@@ -111,9 +111,9 @@ private:
 
     void InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &primRefObjClass) const;
 
-    void InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const;
+    void InitializeSymbol(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
 
-    void InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm, const JSHandle<JSHClass> &objFuncInstanceHClass);
+    void InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm, JSHandle<JSTaggedValue> &objFuncPrototypeVal);
 
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal,
                          bool isRealm) const;

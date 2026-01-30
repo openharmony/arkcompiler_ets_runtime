@@ -285,12 +285,12 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     InitializeBoundFunctionClass(env);
     if (!isRealm) {
         InitializeAllTypeError(env, objFuncClass);
-        InitializeSymbol(env, primRefObjHClass);
+        InitializeSymbol(env, objFuncPrototypeVal);
         InitializeBigInt(env, primRefObjHClass);
     } else {
         // error and symbol need to be shared when initialize realm
         InitializeAllTypeErrorWithRealm(env);
-        InitializeSymbolWithRealm(env, primRefObjHClass);
+        InitializeSymbolWithRealm(env, objFuncPrototypeVal);
         InitializeBigIntWithRealm(env);
     }
 
@@ -773,12 +773,14 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     thread_->SetInitialBuiltinGlobalHClass(objFunc->GetJSHClass(), globalIndex);
 }
 
-void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &objFuncClass) const
+void Builtins::InitializeSymbol(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // Symbol.prototype
-    JSHandle<JSObject> symbolFuncPrototype = factory_->NewJSObjectWithInit(objFuncClass);
+    JSHandle<JSHClass> symbolHClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT,
+                                                              objFuncPrototypeVal);
+    JSHandle<JSObject> symbolFuncPrototype = factory_->NewJSObjectWithInit(symbolHClass);
     JSHandle<JSTaggedValue> symbolFuncPrototypeValue(symbolFuncPrototype);
 
     // Symbol.prototype_or_hclass
@@ -842,12 +844,14 @@ BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
 }
 
 void Builtins::InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm,
-                                         const JSHandle<JSHClass> &objFuncInstanceHClass)
+                                         JSHandle<JSTaggedValue> &objFuncPrototypeVal)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     // Symbol.prototype
-    JSHandle<JSObject> symbolFuncPrototype = factory_->NewJSObjectWithInit(objFuncInstanceHClass);
+    JSHandle<JSHClass> symbolHClass = factory_->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT,
+                                                              objFuncPrototypeVal);
+    JSHandle<JSObject> symbolFuncPrototype = factory_->NewJSObjectWithInit(symbolHClass);
     JSHandle<JSTaggedValue> symbolFuncPrototypeValue(symbolFuncPrototype);
 
     // Symbol.prototype_or_hclass
