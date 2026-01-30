@@ -105,6 +105,9 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromFile)
     pfManager->RemoveJSPandaFile(pf.get());
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
     EXPECT_TRUE(foundPf == nullptr);
+
+    // readd panda file into mgr, due to panda file should managed by gc.
+    pfManager->AddJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
@@ -142,6 +145,9 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBuffer)
     pfManager->RemoveJSPandaFile(pf.get());
     std::shared_ptr<JSPandaFile> foundPf = pfManager->FindJSPandaFile(fileName);
     EXPECT_TRUE(foundPf == nullptr);
+
+    // readd panda file into mgr, due to panda file should managed by gc.
+    pfManager->AddJSPandaFile(pf);
 }
 
 HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteAbcFileWithSingletonPatternFlag)
@@ -212,7 +218,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromAbsolutePathAbcFile)
         JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile(thread, CString(fileName),
             JSPandaFile::ENTRY_MAIN_FUNCTION);
     EXPECT_TRUE(result);
-    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 /**
@@ -236,15 +241,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteModuleBuffer)
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::ExecuteModuleBuffer(thread, buffer, size, CString(fileName.c_str()), false);
     EXPECT_FALSE(result);
-    // ExecuteModuleBuffer will create a invalid JSPandaFile and add it to JSPandaFileManager
-    // So remove it from JSPandaFileManager after test
-    std::shared_ptr<JSPandaFile> emptyPf = nullptr;
-    pfManager->EnumerateJSPandaFiles([&emptyPf](const std::shared_ptr<JSPandaFile> &file) -> bool {
-        emptyPf = file;
-        return false;
-    });
-    EXPECT_NE(emptyPf, nullptr);
-    pfManager->RemoveJSPandaFile(emptyPf.get());
 }
 
 /**
@@ -325,7 +321,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteFromBufferSecure)
         return false;
     });
     EXPECT_NE(emptyPf, nullptr);
-    pfManager->RemoveJSPandaFile(emptyPf.get());
 }
 
 /**
@@ -349,8 +344,7 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteModuleBufferSecure)
     Expected<JSTaggedValue, bool> result =
         JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, buffer, size, CString(fileName), false);
     EXPECT_FALSE(result);
-
-    
+ 
     // ExecuteModuleBufferSecure will create a invalid JSPandaFile and add it to JSPandaFileManager
     // So remove it from JSPandaFileManager after test
     std::shared_ptr<JSPandaFile> emptyPf = nullptr;
@@ -359,7 +353,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, ExecuteModuleBufferSecure)
         return false;
     });
     EXPECT_NE(emptyPf, nullptr);
-    pfManager->RemoveJSPandaFile(emptyPf.get());
 }
 
 /**
@@ -414,9 +407,6 @@ HWTEST_F_L0(JSPandaFileExecutorTest, IsExecuteModuleInAbcFile)
     bool result = JSPandaFileExecutor::IsExecuteModuleInAbcFile(thread, CString("test_bundle"),
         CString(fileName), CString("func_main_0"));
     EXPECT_FALSE(result);  // Expecting false since the test file may not contain the specified function
-
-    // Clean up
-    pfManager->RemoveJSPandaFile(pf.get());
 }
 
 /**

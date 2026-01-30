@@ -347,17 +347,16 @@ HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
     pfManager->EnumerateJSPandaFiles([&](const std::shared_ptr<JSPandaFile> &file) -> bool {
         auto desc = file->GetJSPandaFileDesc();
         std::cout << "desc:" << desc << std::endl;
-        descList.push_back(desc);
-        count++;
+        if (desc.length() >= 3 && desc.substr(desc.length() - 3) == ".pa") {
+            count++;
+            descList.push_back(desc);
+        }
         return true;
     });
     EXPECT_EQ(count, 2); // 2 : test number of files
     // Sort by the hash value of the element, the output is unordered
     EXPECT_STREQ(descList[0].c_str(), "__JSPandaFileManagerTest4.pa");
     EXPECT_STREQ(descList[1].c_str(), "__JSPandaFileManagerTest3.pa");
-
-    pfManager->RemoveJSPandaFile(pf1.get());
-    pfManager->RemoveJSPandaFile(pf2.get());
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, CheckFilePath)
