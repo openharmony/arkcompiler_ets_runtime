@@ -17,8 +17,11 @@
 
 #include <cstdint>
 #include <memory>
-#include <nlohmann/json.hpp>
 #include <unordered_map>
+
+#ifndef CROSS_PLATFORM
+#include <nlohmann/json.hpp>
+#endif
 
 #include "ecmascript/ecma_vm.h"
 
@@ -31,6 +34,7 @@ public:
         CMap<CString, CString> &pkgAliasList,
         CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> &ohExportsMap);
 private:
+#ifndef CROSS_PLATFORM
     static bool ParsePkgContextInfoJson(const EcmaVM *vm, const CString &moduleName, const uint8_t *data,
         size_t dataLen, CMap<CString, CVector<CString>> &modulePkgInfo, CMap<CString, CString> &pkgAliasList,
         CUnorderedMap<CString, CUnorderedSet<CString>> &moduleOhExportsMap);
@@ -40,6 +44,7 @@ private:
     static void ParsePkgContextInfoAliasJson(const nlohmann::json &itemObject, const CString &packageName,
         CMap<CString, CString> &pkgAliasList);
     static bool ParsePkgContextInfoOhExports(const nlohmann::json &itemObject, CUnorderedSet<CString> &result);
+#endif
 };
 
 }
