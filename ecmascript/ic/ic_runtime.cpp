@@ -309,7 +309,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     }
     TraceIC(GetThread(), receiver, key);
 
-#if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_NEXT_OPTIMIZATION && defined(USE_CMC_GC)
     if (!op.IsFastMode() && op.IsFound()) {
         icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
