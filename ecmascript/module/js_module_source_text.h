@@ -444,15 +444,14 @@ public:
                                          JSHandle<SourceTextModule> module,
                                          CVector<JSHandle<SourceTextModule>> &stack,
                                          int index, JSHandle<JSTaggedValue> exception);
-    static JSHandle<JSTaggedValue> CreateBindingByIndexBinding(JSThread* thread,
-                                                               JSHandle<ResolvedIndexBinding> binding,
-                                                               bool isShared);
-
     // Find function in JsModuleSourceText For Hook
     static JSHandle<JSTaggedValue> FindFuncInModuleForHook(JSThread* thread, const std::string &recordName,
                                                            const std::string &namespaceName,
                                                            const std::string &className,
                                                            const std::string &funcName);
+    static JSHandle<JSTaggedValue> CreateBindingByIndexBinding(JSThread* thread,
+                                                               JSHandle<ResolvedIndexBinding> binding,
+                                                               bool isShared);
 
     static JSHandle<SourceTextModule> LoadJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                      const CString &filename, CString recordName);

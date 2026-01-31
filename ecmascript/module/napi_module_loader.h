@@ -35,18 +35,16 @@ public:
                                                                const CString &abcFilePath);
 private:
     template<ForHybridApp isHybrid = ForHybridApp::Normal>
-    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(
-        EcmaVM *vm, CString &requestPath, CString &modulePath,
-        CString &abcFilePath);
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
+                                                                     CString &modulePath, CString &abcFilePath);
     
-    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(
-        JSThread *thread, CString &abcFilePath, const CString &requestPath,
-        const CString &modulePath, const JSPandaFile *pandaFile);
-    
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
+                                                               const CString &requestPath, const CString &modulePath,
+                                                               const JSPandaFile *pandaFile);
     template<ForHybridApp isHybrid = ForHybridApp::Normal>
-    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(
-        JSThread *thread, const CString &abcFilePath, const CString &srcPrefix,
-        const CString &requestPath, const CString &modulePath);
+    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(JSThread *thread, const CString &abcFilePath,
+                                                            const CString &srcPrefix, const CString &requestPath,
+                                                            const CString &modulePath);
 };
 }
 

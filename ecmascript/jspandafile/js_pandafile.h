@@ -595,9 +595,9 @@ private:
     CUnorderedMap<std::string_view, std::string_view> npmEntries_;
     bool isRecordWithBundleName_ {true};
     CreateMode mode_ {CreateMode::RUNTIME};
-    friend class JSPandaFileSnapshot;
     // This tag shows if main thread is waiting for the sub-threads to finish translate class tasks.
     std::atomic<bool> waitingFinish_ {false};
+    friend class JSPandaFileSnapshot;
 };
 }  // namespace ecmascript
 }  // namespace panda
