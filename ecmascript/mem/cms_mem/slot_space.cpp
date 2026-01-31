@@ -141,7 +141,7 @@ void SlotSpace::Sweep()
     SetSurvivalObjectSize(survivalObjectSize);
 }
 
-void SlotSpace::AsyncSweep([[maybe_unused]] bool isMain)
+void SlotSpace::AsyncSweep([[maybe_unused]] bool isMain, [[maybe_unused]] bool releaseMemory)
 {
     for (CMSRegionChainManager &regionChainManager : regionChainManagers_) {
         regionChainManager.ConcurrentSweep(CMSRegionChainManager::SweepMode::SWEEP_ALL);

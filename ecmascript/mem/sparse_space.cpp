@@ -25,7 +25,8 @@ SparseSpace::SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, 
       SweepableSpace(),
       sweepState_(SweepState::NO_SWEEP),
       localHeap_(heap),
-      liveObjectSize_(0)
+      liveObjectSize_(0),
+      pageSize_(PageSize())
 {
     allocator_ = new FreeListAllocator<FreeObject>(heap);
 }
@@ -141,11 +142,15 @@ void SparseSpace::PrepareSweeping()
     allocator_->RebuildFreeList();
 }
 
-void SparseSpace::AsyncSweep(bool isMain)
+void SparseSpace::AsyncSweep(bool isMain, bool releaseMemory)
 {
     Region *current = GetSweepingRegionSafe();
     while (current != nullptr) {
-        FreeRegion(current, isMain);
+        if (releaseMemory) {
+            FreeRegion<true>(current, isMain);
+        } else {
+            FreeRegion<false>(current, isMain);
+        }
         // Main thread sweeping region is added;
         if (!isMain) {
             AddSweptRegionSafe(current);
@@ -166,7 +171,7 @@ void SparseSpace::Sweep()
         if (!current->InCollectSet()) {
             IncreaseLiveObjectSize(current->AliveObject());
             current->ResetWasted();
-            FreeRegion(current);
+            FreeRegion<false>(current, true);
         }
     });
 }
@@ -254,6 +259,7 @@ Region *SparseSpace::TryToGetSuitableSweptRegion(size_t size)
     return nullptr;
 }
 
+template<bool releaseMemory>
 void SparseSpace::FreeRegion(Region *current, bool isMain)
 {
     uintptr_t freeStart = current->GetBegin();
@@ -264,18 +270,30 @@ void SparseSpace::FreeRegion(Region *current, bool isMain)
 
         uintptr_t freeEnd = ToUintPtr(mem);
         if (freeStart != freeEnd) {
-            FreeLiveRange(current, freeStart, freeEnd, isMain);
+            FreeLiveRange<releaseMemory>(current, freeStart, freeEnd, isMain);
         }
         freeStart = freeEnd + size;
     });
     uintptr_t freeEnd = current->GetEnd();
     if (freeStart != freeEnd) {
-        FreeLiveRange(current, freeStart, freeEnd, isMain);
+        FreeLiveRange<releaseMemory>(current, freeStart, freeEnd, isMain);
     }
 }
 
+template<bool releaseMemory>
 void SparseSpace::FreeLiveRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain)
 {
+#if ENABLE_MEMORY_OPTIMIZATION
+    if constexpr (releaseMemory) {
+        constexpr size_t HEADER_SIZE = FreeObject::SIZE;
+        uintptr_t alignedFreeStart = AlignUp(freeStart + HEADER_SIZE, pageSize_);
+        uintptr_t alignedFreeEnd = AlignDown(freeEnd, pageSize_);
+        if (alignedFreeEnd > alignedFreeStart) {
+            PageRelease(reinterpret_cast<void *>(alignedFreeStart),
+                        alignedFreeEnd - alignedFreeStart);
+        }
+    }
+#endif
     localHeap_->GetSweeper()->ClearRSetInRange(current, freeStart, freeEnd);
     allocator_->Free(freeStart, freeEnd - freeStart, isMain);
     MEMORY_TRACE_FREEREGION(freeStart, freeEnd - freeStart);
@@ -366,7 +384,7 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
     // since sweepingList_ is ordered, we just need to check once
     Region *availableRegion = GetSweepingRegionSafe();
     if (availableRegion != nullptr) {
-        FreeRegion(availableRegion, false);
+        FreeRegion<false>(availableRegion, false);
         // if region has free enough space for the size,
         // free the region from current space
         // and return for local space to use
@@ -659,7 +677,7 @@ void OldSpace::SweepNewToOldRegions()
         if (current->InNewToOldSet()) {
             current->ResetWasted();
             current->ClearGCFlag(RegionGCFlags::IN_NEW_TO_OLD_SET);
-            FreeRegion(current);
+            FreeRegion<false>(current, true);
         }
     });
 }
@@ -826,11 +844,11 @@ void MachineCodeSpace::Sweep()
     }
 }
 
-void MachineCodeSpace::AsyncSweep(bool isMain)
+void MachineCodeSpace::AsyncSweep(bool isMain, bool releaseMemory)
 {
     ASSERT(!g_isEnableCMCGC);
     LockHolder holder(asyncSweepMutex_);
-    SparseSpace::AsyncSweep(isMain);
+    SparseSpace::AsyncSweep(isMain, releaseMemory);
     if (jitFort_) {
         jitFort_->AsyncSweep();
     }
@@ -945,4 +963,8 @@ uintptr_t MachineCodeSpace::GetMachineCodeObject(uintptr_t pc)
     });
     return machineCode;
 }
+template void SparseSpace::FreeRegion<false>(Region *current, bool isMain);
+template void SparseSpace::FreeRegion<true>(Region *current, bool isMain);
+template void SparseSpace::FreeLiveRange<false>(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain);
+template void SparseSpace::FreeLiveRange<true>(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain);
 }  // namespace panda::ecmascript

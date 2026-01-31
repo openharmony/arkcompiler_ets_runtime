@@ -217,7 +217,7 @@ void SharedSparseSpace::PrepareSweeping()
     allocator_->RebuildFreeList();
 }
 
-void SharedSparseSpace::AsyncSweep(bool isMain)
+void SharedSparseSpace::AsyncSweep([[maybe_unused]] bool isMain, [[maybe_unused]] bool releaseMemory)
 {
     Region *current = GetSweepingRegionSafe();
     while (current != nullptr) {

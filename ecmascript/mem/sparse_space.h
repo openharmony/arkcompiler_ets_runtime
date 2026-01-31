@@ -70,7 +70,7 @@ public:
     // For sweeping
     void PrepareSweeping() override;
     void Sweep() override;
-    void AsyncSweep(bool isMain) override;
+    void AsyncSweep(bool isMain, bool releaseMemory = false) override;
 
     bool TryFillSweptRegion() override;
     // Ensure All region finished sweeping
@@ -83,7 +83,10 @@ public:
     Region *GetSweptRegionSafe();
     Region *TryToGetSuitableSweptRegion(size_t size);
 
+    template<bool releaseMemory = false>
     void FreeRegion(Region *current, bool isMain = true);
+
+    template<bool releaseMemory = false>
     void FreeLiveRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain);
 
     void DetachFreeObjectSet(Region *region);
@@ -143,6 +146,7 @@ protected:
     SweepState sweepState_ = SweepState::NO_SWEEP;
     Heap *localHeap_ {nullptr};
     size_t liveObjectSize_ {0};
+    const size_t pageSize_ {0};
     uintptr_t AllocateAfterSweepingCompleted(size_t size);
 
 private:
@@ -316,7 +320,7 @@ public:
     NO_MOVE_SEMANTIC(MachineCodeSpace);  // Note: Expand() left for define
     uintptr_t GetMachineCodeObject(uintptr_t pc);
     size_t CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &machineCode, uintptr_t pc);
-    void AsyncSweep(bool isMain) override;
+    void AsyncSweep(bool isMain, bool releaseMemory = false) override;
     void Sweep() override;
     void PrepareSweeping() override;
     // Used by CMCGC to clear the marking bits in Young GC.
