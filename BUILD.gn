@@ -519,6 +519,7 @@ config("ark_jsruntime_common_config") {
         "-Wno-profile-instr-unprofiled",
         "-mllvm",
         "-enable-partial-inlining",
+        "-O3",
       ]
     }
   }
