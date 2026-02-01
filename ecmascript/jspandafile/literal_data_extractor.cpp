@@ -110,7 +110,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 break;
             }
             default: {
-                LOG_ECMA(FATAL) << "this branch is unreachable";
+                LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
                 UNREACHABLE();
                 break;
             }
@@ -221,7 +221,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                     break;
                 }
                 default: {
-                    LOG_ECMA(FATAL) << "this branch is unreachable";
+                    LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
                     UNREACHABLE();
                     break;
                 }
@@ -500,7 +500,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 break;
             }
             default: {
-                LOG_ECMA(FATAL) << "this branch is unreachable";
+                LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
                 UNREACHABLE();
                 break;
             }
@@ -636,7 +636,7 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                     break;
                 }
                 default: {
-                    LOG_ECMA(FATAL) << "this branch is unreachable";
+                    LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
                     UNREACHABLE();
                     break;
                 }

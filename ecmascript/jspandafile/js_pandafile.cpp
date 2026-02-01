@@ -306,7 +306,7 @@ FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
             kind = FunctionKind::CONCURRENT_FUNCTION;
             break;
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
             UNREACHABLE();
     }
     return kind;
@@ -338,7 +338,7 @@ FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
             kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
             break;
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
             UNREACHABLE();
     }
     return kind;

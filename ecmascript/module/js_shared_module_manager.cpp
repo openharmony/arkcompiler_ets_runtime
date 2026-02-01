@@ -105,7 +105,7 @@ StateVisit &SharedModuleManager::FindModuleMutexWithLock(JSThread *thread, const
     CString moduleName = SourceTextModule::GetModuleName(module.GetTaggedValue());
     auto it = sharedModuleMutex_.find(moduleName);
     if (it == sharedModuleMutex_.end()) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << " Get shared module mutex failed, moduleName is " << moduleName;
+        LOG_ECMA(FATAL) << " Get shared module mutex failed, moduleName is " << moduleName; // LCOV_EXCL_BR_LINE
     }
     return it->second;
 }

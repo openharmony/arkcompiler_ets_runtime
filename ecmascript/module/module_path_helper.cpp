@@ -342,7 +342,7 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
         StringHelper::SplitString(moduleRequestName, vec, 0, SEGMENTS_LIMIT_TWO);
         if (vec.size() < SEGMENTS_LIMIT_TWO) { // LCOV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName << ", abc path: " <<
-                baseFileName << ", current file name: " << recordName;
+                baseFileName << ", current file name: " << recordName; // LCOV_EXCL_BR_LINE
         }
         CString bundleName = vec[0];
         CString moduleName = vec[1];

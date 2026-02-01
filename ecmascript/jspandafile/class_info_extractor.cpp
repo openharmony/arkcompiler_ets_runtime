@@ -1246,7 +1246,7 @@ std::pair<uint32_t, uint32_t> SendableClassDefiner::GetSizeAndMaxInlineByType(JS
             if (JSType::JS_SHARED_TYPED_ARRAY_FIRST < type && type <= JSType::JS_SHARED_TYPED_ARRAY_LAST) {
                 return { JSSharedTypedArray::SIZE, JSSharedTypedArray::MAX_INLINE };
             }
-            LOG_ECMA(FATAL) << "this branch is unreachable, cannot get size for type: " << static_cast<uint32_t>(type);
+            LOG_ECMA(FATAL) << "this branch is unreachable, cannot get size for type: " << static_cast<uint32_t>(type); // LCOV_EXCL_BR_LINE
             UNREACHABLE();
             return {};
     }

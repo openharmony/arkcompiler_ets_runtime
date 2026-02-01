@@ -114,7 +114,7 @@ JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(const CString &r
 {
     auto entry = resolvedModules_.Find(referencing);
     if (!entry) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "Can not get module: " << referencing;
+        LOG_ECMA(FATAL) << "Can not get module: " << referencing; // LCOV_EXCL_BR_LINE
     }
     return JSHandle<SourceTextModule>(vm_->GetJSThread(), entry.value());
 }
@@ -367,7 +367,7 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
     auto entry = resolvedModules_.Find(recordName);
     if (!entry) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Can not get module: " << recordName <<
-            ", when try to remove the module";
+            ", when try to remove the module"; // LCOV_EXCL_BR_LINE
     }
     JSTaggedValue result = entry.value();
     SourceTextModule* module = SourceTextModule::Cast(result);
