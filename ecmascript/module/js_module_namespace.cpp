@@ -151,7 +151,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             JSMutableHandle<SourceTextModule> module(thread, targetModule);
             thread->GetEcmaVM()->GetQuickFixManager()->UpdateHotReloadModule(thread, module);
             // DFX: make sure lazy module is already evaluated.
-            if (module->GetStatus() == ModuleStatus::INSTANTIATED) {
+            if (module->GetStatus() == ModuleStatus::INSTANTIATED) { // LCOV_EXCL_BR_LINE
                 LOG_FULL(ERROR) << "Module is not evaluated, module is :" << module->GetEcmaModuleRecordNameString();
             }
             ModuleTypes moduleType = module->GetTypes();
@@ -177,7 +177,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             LOG_FULL(INFO) << "RESOLVEDRECORDINDEXBINDING_RECORD";
             break;
-        default:
+        default: // LCOV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "UNREACHABLE";
     }
     return OperationResult(thread, result, PropertyMetaData(true));
