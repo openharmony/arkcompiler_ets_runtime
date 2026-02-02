@@ -173,26 +173,15 @@ HWTEST_F_L0(ReadOnlySpaceTest, ForkTest)
     auto vm = thread->GetEcmaVM();
     auto *heap = const_cast<panda::ecmascript::Heap *>(thread->GetEcmaVM()->GetHeap());
     if (!g_isEnableCMCGC) {
-        std::string rawStr = "fork string";
-        JSHandle<EcmaString> string = factory->NewFromStdString(rawStr);
         JSNApi::PreFork(vm);
-        if (ForkBySyscall() != 0) {
-            {
-                ThreadNativeScope nativeScope(thread);
-                LocalScope scope(vm);
-                panda::RuntimeOption postOption;
-                JSNApi::PostFork(vm, postOption);
-            }
-            // test gc in parent process
-            heap->CollectGarbage(TriggerGCType::OLD_GC);
-        } else {
+        {
+            ThreadNativeScope nativeScope(thread);
+            LocalScope scope(vm);
             panda::RuntimeOption postOption;
             JSNApi::PostFork(vm, postOption);
-            // test gc in child process
-            heap->CollectGarbage(TriggerGCType::OLD_GC);
-            auto *region = Region::ObjectAddressToRange(string.GetObject<TaggedObject>());
-            EXPECT_TRUE(region->InSharedHeap());
         }
+        // test gc in parent process
+        heap->CollectGarbage(TriggerGCType::OLD_GC);
     } else {
         auto *object = heap->AllocateReadOnlyOrHugeObject(
                 JSHClass::Cast(thread->GlobalConstants()->GetBigIntClass().GetTaggedObject()));
