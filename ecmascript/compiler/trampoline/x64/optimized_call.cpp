@@ -125,8 +125,8 @@ void OptimizedCall::OptimizedCallAndPushArgv(ExtendedAssembler *assembler)
 
     Register methodCallField = rcx;
     __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
-    __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
-    __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
+    __ Shr(Method::NumArgsBits::START_BIT, methodCallField);
+    __ Andl(((1LU <<  Method::NumArgsBits::SIZE) - 1), methodCallField);
     __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argumentr
 
     __ Movl(Operand(rsp, FRAME_SLOT_SIZE), rdx); // argc rdx
@@ -454,7 +454,7 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
         __ Movl(Operand(rsp, FRAME_SLOT_SIZE), argc); // skip return addr
         __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
-        __ Btq(MethodLiteral::IsNativeBit::START_BIT, methodCallField); // is native
+        __ Btq(Method::IsNativeBit::START_BIT, methodCallField); // is native
         __ Jb(&lCallNativeMethod);
         if (!isNew) {
             __ Btq(JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, rax); // is CallConstructor
@@ -496,7 +496,7 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         __ Mov(Operand(rdx, JSFunctionBase::METHOD_OFFSET), method);  // get method
         __ Mov(Operand(rdx, JSFunctionBase::CODE_ENTRY_OFFSET), nativePointer);  // native pointer
         __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField);  // get call field
-        __ Btq(MethodLiteral::IsFastBuiltinBit::START_BIT, methodCallField);  // is builtin stub
+        __ Btq(Method::IsFastBuiltinBit::START_BIT, methodCallField);  // is builtin stub
 
         if (!isNew) {
             __ Jnb(&lCallNativeCpp);
@@ -517,8 +517,8 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
     {
         Register methodExtraLiteralInfo = rax;
         __ Mov(Operand(method, Method::EXTRA_LITERAL_INFO_OFFSET), methodExtraLiteralInfo);  // get extra literal
-        __ Shr(MethodLiteral::BuiltinIdBits::START_BIT, methodExtraLiteralInfo);
-        __ Andl(((1LU <<  MethodLiteral::BuiltinIdBits::SIZE) - 1), methodExtraLiteralInfo);  // get builtin stub id
+        __ Shr(Method::BuiltinIdBits::START_BIT, methodExtraLiteralInfo);
+        __ Andl(((1LU <<  Method::BuiltinIdBits::SIZE) - 1), methodExtraLiteralInfo);  // get builtin stub id
         if (!isNew) {
             __ Cmpl(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST), methodExtraLiteralInfo);
             __ Jnb(&lCallNativeCpp);
@@ -721,8 +721,8 @@ void OptimizedCall::FastCallToAsmInterBridge(ExtendedAssembler *assembler)
     __ Movq(Operand(tempMethod, Method::CALL_FIELD_OFFSET), tempCallField);
     // get expected num Args
     Register tempArgc = tempCallField;
-    __ Shr(MethodLiteral::NumArgsBits::START_BIT, tempArgc);
-    __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), tempArgc);
+    __ Shr(Method::NumArgsBits::START_BIT, tempArgc);
+    __ Andl(((1LU <<  Method::NumArgsBits::SIZE) - 1), tempArgc);
 
     {
         [[maybe_unused]] TempRegisterScope scope(assembler);
@@ -798,8 +798,8 @@ void OptimizedCall::FastCallToAsmInterBridge(ExtendedAssembler *assembler)
         __ Movq(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method);
         __ Movq(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField);
         __ Movq(methodCallField, argc);
-        __ Shr(MethodLiteral::NumArgsBits::START_BIT, argc);
-        __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), argc);
+        __ Shr(Method::NumArgsBits::START_BIT, argc);
+        __ Andl(((1LU <<  Method::NumArgsBits::SIZE) - 1), argc);
         __ Movq(rsp, argV);
         __ Addq(Immediate(TRIPLE_SLOT_SIZE), argV);  // skip func, newtarget and this
 
@@ -1147,8 +1147,8 @@ void OptimizedCall::PushArgsWithArgV(ExtendedAssembler *assembler, Register jsfu
     // get expected num Args
     __ Movq(Operand(jsfunc, JSFunctionBase::METHOD_OFFSET), tmp);
     __ Movq(Operand(tmp, Method::CALL_FIELD_OFFSET), tmp);
-    __ Shr(MethodLiteral::NumArgsBits::START_BIT, tmp);
-    __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), tmp);
+    __ Shr(Method::NumArgsBits::START_BIT, tmp);
+    __ Andl(((1LU <<  Method::NumArgsBits::SIZE) - 1), tmp);
 
     __ Mov(tmp, expectedNumArgs);
     __ Testb(1, expectedNumArgs);

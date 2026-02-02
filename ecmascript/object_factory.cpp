@@ -134,7 +134,7 @@ JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, Fun
     if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(builtinId);
         method->SetFastBuiltinBit(isFast);
-        method->SetBuiltinId(static_cast<uint8_t>(builtinId));
+        method->SetBuiltinId(static_cast<uint16_t>(builtinId));
     }
     method->SetNumArgsWithCallField(numArgs);
     method->SetFunctionKind(kind);

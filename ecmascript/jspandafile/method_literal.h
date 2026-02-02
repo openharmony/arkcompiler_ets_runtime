@@ -228,21 +228,17 @@ public:
     using MethodIdBits = HotnessCounterBits::NextField<uint32_t, METHOD_ARGS_METHODID_BITS>; // offset 16-47
     using SlotSizeBits = MethodIdBits::NextField<uint16_t, METHOD_SLOT_SIZE_BITS>; // offset 48-63
 
-    static constexpr size_t BUILTINID_NUM_BITS = 8;
     static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
-    static constexpr size_t EMPTY_BITS = 16;
-    using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
-    using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
-    using IsNoGCBit = FunctionKindBits::NextFlag; // offset 12
-    using HasDebuggerStmtBit = IsNoGCBit::NextFlag; // offset 13
-    using EmptyBit = HasDebuggerStmtBit::NextField<uint8_t, EMPTY_BITS>; // offset 14-29
-    using IsSharedBit = EmptyBit::NextFlag; // offset 30
-    using CanTypedCall = IsSharedBit::NextFlag; // offset 31
+    static constexpr size_t EMPTY_BITS = 24;
+    using FunctionKindBits = BitField<FunctionKind, 0, FUNCTION_KIND_NUM_BITS>; // offset 0-3
+    using IsSharedBit = FunctionKindBits::NextFlag; // offset 4
+    using IsNoGCBit = IsSharedBit::NextFlag; // offset 5
+    using HasDebuggerStmtBit = IsNoGCBit::NextFlag; // offset 6
+    using CanTypedCall = HasDebuggerStmtBit::NextFlag; // offset 7
+    using EmptyBit = CanTypedCall::NextField<uint8_t, EMPTY_BITS>; // offset 8-31
     using ExpectedPropertyCountBits =
-        CanTypedCall::NextField<uint32_t, METHOD_EXPECTED_PROPERTY_COUNT_BITS>; // offset 32-63
+        EmptyBit::NextField<uint32_t, METHOD_EXPECTED_PROPERTY_COUNT_BITS>; // offset 32-63
 
-    // one placeholder 0xffff (INVALID) in kungfu::BuiltinsStubCSigns::ID
-    static_assert(static_cast<size_t>(kungfu::BuiltinsStubCSigns::ID::NUM_OF_BUILTINS_ID) < (1 << BUILTINID_NUM_BITS));
     static_assert(static_cast<size_t>(FunctionKind::LAST_FUNCTION_KIND) <= (1 << FUNCTION_KIND_NUM_BITS));
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
@@ -444,7 +440,7 @@ private:
     alignas(EAS) void *nativePointerOrBytecodeArray_ {nullptr};
     // hotnessCounter, methodId and slotSize are encoded in literalInfo_.
     alignas(EAS) uint64_t literalInfo_ {0ULL};
-    // BuiltinId, FunctionKind are encoded in extraLiteralInfo_.
+    // FunctionKind are encoded in extraLiteralInfo_.
     alignas(EAS) uint64_t extraLiteralInfo_ {0ULL};
 };
 STATIC_ASSERT_EQ_ARCH(sizeof(MethodLiteral), MethodLiteral::SizeArch32, MethodLiteral::SizeArch64);

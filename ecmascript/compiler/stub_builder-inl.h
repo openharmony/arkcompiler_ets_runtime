@@ -3923,8 +3923,8 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
     GateRef callfield = LoadPrimitive(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int64(MethodLiteral::IsNativeBit::START_BIT)),
-            Int64((1LU << MethodLiteral::IsNativeBit::SIZE) - 1)),
+            Int64LSR(callfield, Int64(Method::IsNativeBit::START_BIT)),
+            Int64((1LU << Method::IsNativeBit::SIZE) - 1)),
         Int64(0));
 }
 
@@ -3938,8 +3938,8 @@ inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)
     GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = LoadPrimitive(VariableType::INT64(), method, callFieldOffset);
     return TruncInt64ToInt32(Int64And(
-        Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
-        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1)));
+        Int64LSR(callfield, Int64(Method::NumArgsBits::START_BIT)),
+        Int64((1LU << Method::NumArgsBits::SIZE) - 1)));
 }
 
 inline GateRef StubBuilder::GetMethodFromJSProxy(GateRef glue, GateRef proxy)
@@ -4035,8 +4035,8 @@ inline GateRef StubBuilder::GetBuiltinId(GateRef method)
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
     GateRef extraLiteralInfo = LoadPrimitive(VariableType::INT64(), method, extraLiteralInfoOffset);
     return TruncInt64ToInt32(Int64And(
-        Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
-        Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1)));
+        Int64LSR(extraLiteralInfo, Int64(Method::BuiltinIdBits::START_BIT)),
+        Int64((1LU << Method::BuiltinIdBits::SIZE) - 1)));
 }
 
 inline GateRef StubBuilder::ComputeSizeUtf8(GateRef length)

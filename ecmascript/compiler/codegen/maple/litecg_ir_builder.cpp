@@ -2544,13 +2544,13 @@ void LiteCGIRBuilder::VisitInitVreg(GateRef gate)
             Expr cf = lmirBuilder_->Iread(i64, addrCF, lmirBuilder_->CreatePtrType(i64));
             // cal new target offset from callField
             Expr offsetNVSB =
-                lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, MethodLiteral::NumVregsBits::START_BIT));
+                lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, Method::NumVregsBits::START_BIT));
             Expr offsetNVSZ = lmirBuilder_->ConstVal(
-                lmirBuilder_->CreateIntConst(i64, (1LLU << MethodLiteral::NumVregsBits::SIZE) - 1));
+                lmirBuilder_->CreateIntConst(i64, (1LLU << Method::NumVregsBits::SIZE) - 1));
             Expr offsetHFSB =
-                lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, MethodLiteral::HaveFuncBit::START_BIT));
+                lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, Method::HaveFuncBit::START_BIT));
             Expr offsetHFSZ = lmirBuilder_->ConstVal(
-                lmirBuilder_->CreateIntConst(i64, (1LLU << MethodLiteral::HaveFuncBit::SIZE) - 1));
+                lmirBuilder_->CreateIntConst(i64, (1LLU << Method::HaveFuncBit::SIZE) - 1));
             Expr const0 = lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(i64, 0));
             Expr numVregs = lmirBuilder_->Cvt(
                 i64, i32, lmirBuilder_->And(i64, lmirBuilder_->LShr(i64, cf, offsetNVSB), offsetNVSZ));

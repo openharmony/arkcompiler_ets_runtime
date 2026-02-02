@@ -15,9 +15,13 @@
 
 #include "ecmascript/method.h"
 
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
+// Ensure builtin ID fits within 9 bits, reserve one for invalid
+static_assert(kungfu::stubcsigns::NUM_OF_BUILTINS_ID < (1U << Method::BUILTINID_NUM_BITS),
+              "Builtin ID exceeds 9-bit field capacity");
 std::string Method::ParseFunctionName(const JSThread *thread) const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile(thread);
