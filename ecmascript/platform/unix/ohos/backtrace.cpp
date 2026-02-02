@@ -24,18 +24,6 @@
 #include "securec.h"
 
 #include "ecmascript/mem/mem.h"
-#if defined(ENABLE_UNWINDER) && defined(__aarch64__)
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wshadow"
-#endif
-#include "fp_unwinder.h"
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
-#endif
-
 #if defined(ENABLE_BACKTRACE_LOCAL)
 #include "dfx_frame_formatter.h"
 #include "fp_backtrace.h"
@@ -44,7 +32,7 @@
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
 static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
-static const int MAX_STACK_SIZE = 16;
+static const int MAX_STACK_SIZE = 32;
 static const int LOG_BUF_LEN = 1024;
 
 using UnwBackTraceFunc = int (*)(void**, int);
@@ -53,30 +41,10 @@ static std::map<void *, Dl_info> stackInfoCache;
 
 RWLock rwMutex;
 
-#if defined(ENABLE_UNWINDER) && defined(__aarch64__)
-static inline ARK_INLINE void GetPcFpRegs([[maybe_unused]] void *regs)
+bool GetPcs(size_t &size, void** pcs)
 {
-    asm volatile(
-    "1:\n"
-    "adr x12, 1b\n"
-    "stp x12, x29, [%[base], #0]\n"
-    : [base] "+r"(regs)
-    :
-    : "x12", "memory");
-}
-#endif
-
-bool GetPcs(size_t &size, uintptr_t* pcs)
-{
-#if defined(ENABLE_UNWINDER) && defined(__aarch64__)
-    uintptr_t regs[2] = {0}; // 2: pc and fp reg
-    GetPcFpRegs(regs);
-    uintptr_t pc = regs[0];
-    uintptr_t fp = regs[1];
-    size = OHOS::HiviewDFX::FpUnwinder::GetPtr()->Unwind(pc, fp, pcs, MAX_STACK_SIZE);
-    if (size <= 1) {
-        size = OHOS::HiviewDFX::FpUnwinder::GetPtr()->UnwindSafe(pc, fp, pcs, MAX_STACK_SIZE);
-    }
+#if defined(ENABLE_BACKTRACE_LOCAL)
+    size = BacktraceHybrid(pcs, MAX_STACK_SIZE);
 #else
     static UnwBackTraceFunc unwBackTrace = nullptr;
     if (!unwBackTrace) {
@@ -94,15 +62,15 @@ bool GetPcs(size_t &size, uintptr_t* pcs)
             return false;
         }
     }
-    size = unwBackTrace(reinterpret_cast<void**>(pcs), MAX_STACK_SIZE);
+    size = unwBackTrace(pcs, MAX_STACK_SIZE);
 #endif
     return true;
 }
 
-bool FindStackInfoCache(uintptr_t pcs, Dl_info &info)
+bool FindStackInfoCache(void* pc, Dl_info &info)
 {
     ReadLockHolder lock(rwMutex);
-    auto iter = stackInfoCache.find(reinterpret_cast<void *>(pcs));
+    auto iter = stackInfoCache.find(pc);
     if (iter != stackInfoCache.end()) {
         info = iter->second;
         return true;
@@ -111,29 +79,29 @@ bool FindStackInfoCache(uintptr_t pcs, Dl_info &info)
     }
 }
 
-void EmplaceStackInfoCache(uintptr_t pcs, const Dl_info &info)
+void EmplaceStackInfoCache(void *pc, const Dl_info &info)
 {
     WriteLockHolder lock(rwMutex);
-    stackInfoCache.emplace(reinterpret_cast<void *>(pcs), info);
+    stackInfoCache.emplace(pc, info);
 }
 
 void Backtrace(std::ostringstream &stack, bool enableCache)
 {
-    uintptr_t pcs[MAX_STACK_SIZE] = {0};
-    size_t unwSz = 0;
-    if (!GetPcs(unwSz, pcs)) {
+    void *pcs[MAX_STACK_SIZE] = { nullptr };
+    size_t stackSize = 0;
+    if (!GetPcs(stackSize, pcs)) {
         return;
     }
     stack << "=====================Backtrace========================";
-#if defined(ENABLE_UNWINDER) && defined(__aarch64__)
+#if defined(ENABLE_BACKTRACE_LOCAL)
     size_t i = 0;
 #else
     size_t i = 1;
 #endif
-    for (; i < unwSz; i++) {
+    for (; i < stackSize; i++) {
         Dl_info info;
         if (!FindStackInfoCache(pcs[i], info)) {
-            if (!dladdr(reinterpret_cast<void *>(pcs[i]), &info)) {
+            if (!dladdr(pcs[i], &info)) {
                 break;
             }
             if (enableCache) {
@@ -141,7 +109,7 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
             }
         }
         const char *file = info.dli_fname ? info.dli_fname : "";
-        uint64_t offset = info.dli_fbase ? pcs[i] - ToUintPtr(info.dli_fbase) : 0;
+        uint64_t offset = info.dli_fbase ? ToUintPtr(pcs[i]) - ToUintPtr(info.dli_fbase) : 0;
         char buf[LOG_BUF_LEN] = {0};
         char frameFormatWithMapName[] = "#%02zu pc %016" PRIx64 " %s";
         int ret = 0;

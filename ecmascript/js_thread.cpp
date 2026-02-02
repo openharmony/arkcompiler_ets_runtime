@@ -768,7 +768,9 @@ bool JSThread::DoStackLimitCheck()
 {
     if (UNLIKELY(!IsCrossThreadExecutionEnable() && GetCurrentStackPosition() < GetStackLimit())) {
         vm_->CheckThread();
-        LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition() << " limit:" << GetStackLimit();
+        LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition()
+                        << " limit:" << GetStackLimit()
+                        << " current frame: " << GetCurrentFrame();
         if (LIKELY(!HasPendingException())) {
             ObjectFactory *factory = vm_->GetFactory();
             JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR,

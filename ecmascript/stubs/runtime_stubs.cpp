@@ -2880,7 +2880,8 @@ DEF_RUNTIME_STUBS(ThrowStackOverflowException)
     // so check thread here to distinguish it with the actual stack overflow.
     ecmaVm->CheckThread();
     LOG_ECMA(ERROR) << "Stack overflow! current:" << thread->GetCurrentStackPosition()
-        << " limit:" << thread->GetStackLimit();
+                    << " limit:" << thread->GetStackLimit()
+                    << " current frame: " << thread->GetCurrentFrame();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", StackCheck::NO);
     if (LIKELY(!thread->HasPendingException())) {
