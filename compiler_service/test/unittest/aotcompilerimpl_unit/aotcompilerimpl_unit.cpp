@@ -14,13 +14,16 @@
  */
 
 #include <cstdint>
+#include <fstream>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
 #include <mutex>
 #include <securec.h>
 #include <string>
+#include <sys/stat.h>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 #include <unordered_map>
 
@@ -164,8 +167,33 @@ public:
 
     static void SetUpTestCase() {}
     static void TearDownTestCase() {}
-    void SetUp() override {}
-    void TearDown() override {}
+
+    void SetUp() override
+    {
+        // Create directories required by argsMapForTest
+        // PGO directory for ark profile
+        mkdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts",
+              S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        // Ark cache directory with arm64 subdirectory
+        mkdir("/data/app/el1/public/aot_compiler/ark_cache", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts",
+              S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64",
+              S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        // Create the .an file required by tests
+        std::ofstream anFile("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
+        anFile.close();
+    }
+
+    void TearDown() override
+    {
+        // Clean up created files and directories
+        unlink("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
+        rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64");
+        rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts");
+        rmdir("/data/app/el1/public/aot_compiler/ark_cache");
+        rmdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts");
+    }
 };
 
 /**
