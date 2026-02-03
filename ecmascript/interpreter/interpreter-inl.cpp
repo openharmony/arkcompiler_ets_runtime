@@ -2947,6 +2947,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             JSTaggedValue value = GET_ACC();
             if (LIKELY(firstValue.IsHeapObject())) {
                 JSTaggedValue secondValue = profileTypeArray->Get(thread, slotId + 1);
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);
                 res = ICRuntimeStub::TryStoreICByName(thread, receiver, firstValue, secondValue, value);
             }
             if (LIKELY(!res.IsHole())) {

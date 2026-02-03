@@ -410,20 +410,44 @@ JSHandle<WeakLinkedHashMap> WeakLinkedHashMap::Clear(const JSThread *thread, con
     return newMap;
 }
 
-void WeakLinkedHashMap::ClearAllDeadEntries(const JSThread *thread, std::function<bool(JSTaggedValue)> &visitor)
+bool WeakLinkedHashMap::VerifyLayout() const
 {
-    int entries = NumberOfElements() + NumberOfDeletedElements();
-
-    for (int i = 0; i < entries; ++i) {
-        JSTaggedValue maybeKey = GetKey(thread, i);
-        if (maybeKey.IsHole()) {
-            // Already removed
+    ASSERT(MIN_CAPACITY == ELEMENTS_START_INDEX);
+    for (int i = 0; i < ELEMENTS_START_INDEX; ++i) {
+        if (i == NEXT_TABLE_INDEX) {
             continue;
         }
-        bool dead = visitor(maybeKey);
-        if (dead) {
-            RemoveEntryFromGCThread(i);
+        if (!GetPrimitive(i).IsInt()) {
+            return false;
         }
     }
+    int entries = NumberOfAllUsedElements();
+    int firstEntry = EntryToIndex(0);
+    for (int i = ELEMENTS_START_INDEX, j = 0; i < static_cast<int>(EntryToIndex(entries));) {
+        if (i < firstEntry) {
+            if (GetPrimitive(i).IsHeapObject()) {
+                return false;
+            }
+            ++i;
+            continue;
+        }
+        if (j >= entries) {
+            return false;
+        }
+        int idxs[] = {GetKeyIndex(j), GetValueIndex(j), GetNextEntryIndex(j)};
+        if (sizeof(idxs) / sizeof(int) != LinkedHashMapObject::ENTRY_SIZE + 1) {
+            return false;
+        }
+        for (int k = 0; k < LinkedHashMapObject::ENTRY_SIZE + 1; ++i, ++k) {
+            if (i != idxs[k]) {
+                return false;
+            }
+        }
+        if (GetPrimitive(GetNextEntryIndex(j)).IsHeapObject()) {
+            return false;
+        }
+        ++j;
+    }
+    return true;
 }
 }  // namespace panda::ecmascript

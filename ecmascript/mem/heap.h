@@ -1158,7 +1158,7 @@ public:
         return workManager_;
     }
 
-    WorkNode *&GetMarkingObjectLocalBuffer()
+    MarkWorkNode *&GetMarkingObjectLocalBuffer()
     {
         return sharedGCData_.sharedConcurrentMarkingLocalBuffer_;
     }
@@ -1264,6 +1264,10 @@ public:
     bool IsParallelGCEnabled() const
     {
         return parallelGC_;
+    }
+    void SetParallelGCEnabled(bool enable)
+    {
+        parallelGC_ = enable;
     }
     void ChangeGCParams(bool inBackground) override;
 
@@ -1848,12 +1852,12 @@ private:
     struct SharedGCLocalStoragePackedData {
         /**
          * During SharedGC concurrent marking, barrier will push shared object to mark stack for marking,
-         * in LocalGC can just push non-shared object to WorkNode for MAIN_THREAD_INDEX, but in SharedGC, only can
-         * either use a global lock for DAEMON_THREAD_INDEX's WorkNode, or push to a local WorkNode, and push to global
-         * in remark.
+         * in LocalGC can just push non-shared object to MarkWorkNode for MAIN_THREAD_INDEX, but in SharedGC, only can
+         * either use a global lock for DAEMON_THREAD_INDEX's MarkWorkNode, or push to a local MarkWorkNode,
+         * and push to global in remark.
          * If the heap is destructed before push this node to global, check and try to push remain object as well.
         */
-        WorkNode *sharedConcurrentMarkingLocalBuffer_ {nullptr};
+        MarkWorkNode *sharedConcurrentMarkingLocalBuffer_ {nullptr};
         /**
          * Recording the local_to_share rset used in SharedGC concurrentMark,
          * which lifecycle is in one SharedGC.

@@ -139,7 +139,7 @@ void PartialGC::Mark()
         return;
     }
     MarkRoots();
-    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->PushWorkNodeToGlobal(false);
+    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->FlushAll();
     if (heap_->IsConcurrentFullMark()) {
         heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     } else if (heap_->IsYoungMark()) {

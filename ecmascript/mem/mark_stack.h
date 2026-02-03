@@ -87,7 +87,6 @@ public:
 private:
     template<class T>
     friend class ContinuousStack;
-    friend class WorkNode;
     uintptr_t begin_ {0};
     uintptr_t *end_ {nullptr};
     uintptr_t *top_ {nullptr};
@@ -168,9 +167,8 @@ private:
     EcmaList<Area> unusedList_ {};
 };
 
-using MarkStack = ContinuousStack<TaggedObject>;
 using ProcessQueue = ContinuousStack<JSTaggedType>;
-using JSWeakMapProcessQueue = ContinuousStack<TaggedObject>;
+using WeakLinkedHashMapProcessQueue = ContinuousStack<TaggedObject>;
 }  // namespace ecmascript
 }  // namespace panda
 

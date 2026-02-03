@@ -184,7 +184,9 @@ public:
         }
     }
 
-    template<VisitType visitType, class DerivedVisitor>
+    template<VisitType visitType,
+             VisitLinkedWeakHashMapType visitWeakMapType = VisitLinkedWeakHashMapType::AS_TAGGED_ARRAY,
+             class DerivedVisitor>
     static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass,
                                        BaseObjectVisitor<DerivedVisitor> &visitor)
     {
@@ -341,7 +343,6 @@ public:
                 break;
             case JSType::JS_WEAK_MAP:
                 JSWeakMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                visitor.VisitJSWeakMap(object);
                 break;
             case JSType::JS_WEAK_SET:
                 JSWeakSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
@@ -516,13 +517,18 @@ public:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:
             case JSType::LEXICAL_ENV:
-            case JSType::WEAK_LINKED_HASH_MAP:
             case JSType::SFUNCTION_ENV:
             case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
                 TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::WEAK_LINKED_HASH_MAP:
+                if constexpr (visitWeakMapType == VisitLinkedWeakHashMapType::AS_TAGGED_ARRAY) {
+                    TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
+                visitor.VisitWeakLinkedHashMap(object);
                 break;
             case JSType::FUNC_SLOT:
                 FuncSlot::Cast(object)->VisitRangeSlot<visitType>(visitor);

@@ -1935,6 +1935,32 @@ host_unittest_action("JS_TaggedQueue_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("JS_WeakMapComplexScenarios_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_weakmap_complex_scenarios_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("JS_TypedArray_Test") {
   module_out_path = module_output_path
 
@@ -3976,6 +4002,7 @@ group("unittest") {
     ":JS_TransitionsDictionary_Test",
     ":JS_TypedArray_Test",
     ":JS_WaiterList_Test",
+    ":JS_WeakMapComplexScenarios_Test",
     ":MethodLiteralIDMap_Test",
     ":Sendable_JsSendableArrayBuffer_Test",
     ":Sendable_JsSharedArray_Test",
@@ -4165,6 +4192,7 @@ group("host_unittest") {
     ":JS_TransitionsDictionary_TestAction",
     ":JS_TypedArray_TestAction",
     ":JS_WaiterList_TestAction",
+    ":JS_WeakMapComplexScenarios_TestAction",
     ":MethodLiteralIDMap_TestAction",
     ":Sendable_JsSendableArrayBuffer_TestAction",
     ":Sendable_JsSharedArray_TestAction",
@@ -4296,6 +4324,7 @@ group("host_unittest") {
       ":JS_StableArray_TestAction",
       ":JS_SymbolTable_TestAction",
       ":JS_Symbol_TestAction",
+      ":JS_WeakMapComplexScenarios_TestAction",
       ":JS_TaggedArray_TestAction",
       ":JS_TaggedDictionary_TestAction",
       ":JS_TaggedHashArray_TestAction",

@@ -45,7 +45,7 @@ private:
     void Finish();
 
     void UpdateRecordWeakReference(uint32_t threadIndex);
-    void UpdateRecordJSWeakMap(uint32_t threadIndex);
+    void UpdateRecordWeakLinkedHashMap(uint32_t threadIndex);
     void PreGC();
     void PostGC();
 

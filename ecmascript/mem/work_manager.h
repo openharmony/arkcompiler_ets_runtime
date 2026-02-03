@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,13 +22,16 @@
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/work_space_chunk.h"
+#include "ecmascript/mem/work_stack-inl.h"
 
 namespace panda::ecmascript {
-using SlotNeedUpdate = std::pair<TaggedObject *, ObjectSlot>;
+static constexpr size_t WORK_STACK_MAX_SIZE = 100;
 
-static constexpr uint32_t MARKSTACK_MAX_SIZE = 100;
-static constexpr uint32_t STACK_AREA_SIZE = sizeof(uintptr_t) * MARKSTACK_MAX_SIZE;
+using GlobalMarkStack = StackList<TaggedObject *, WORK_STACK_MAX_SIZE>;
+using MarkWorkNode = GlobalMarkStack::InternalStack;
 
+class CompressGCMarker;
+class FullGC;
 class Heap;
 class Region;
 class SharedHeap;
@@ -56,88 +59,46 @@ enum SharedParallelMarkPhase {
     SHARED_TASK_LAST  // Count of different common::Task phase
 };
 
-class WorkNode {
-public:
-    explicit WorkNode(Stack *stack) : next_(nullptr), stack_(stack) {}
-    ~WorkNode() = default;
-
-    NO_COPY_SEMANTIC(WorkNode);
-    NO_MOVE_SEMANTIC(WorkNode);
-
-    bool PushObject(uintptr_t obj)
-    {
-        return stack_->PushBackChecked(obj);
-    }
-
-    bool PopObject(uintptr_t *obj)
-    {
-        if (IsEmpty()) {
-            return false;
-        }
-        *obj = stack_->PopBackUnchecked();
-        return true;
-    }
-
-    bool IsEmpty() const
-    {
-        return stack_->IsEmpty();
-    }
-
-    WorkNode *Next() const
-    {
-        return next_;
-    }
-
-    void SetNext(WorkNode *node)
-    {
-        next_ = node;
-    }
-
-private:
-    WorkNode *next_;
-    Stack *stack_;
+struct WeakAggregate {
+    ObjectSlot keySlot;
+    ObjectSlot valueSlot;
 };
 
-class GlobalWorkStack {
+using GlobalWeakAggregateStack = StackList<WeakAggregate, WORK_STACK_MAX_SIZE>;
+using WeakAggregateWorkNode = GlobalWeakAggregateStack::InternalStack;
+
+#define WEAK_AGGREGATE_LIST(V)                                                          \
+    V(WeakAggregate, pendingWeakAggregate, PendingWeakAggregate)                        \
+    V(WeakAggregate, freshWeakAggregate, FreshWeakAggregate)
+
+template <typename T>
+class WorkNodeWrapper {
 public:
-    GlobalWorkStack() : top_(nullptr) {}
-    ~GlobalWorkStack() = default;
+    using WorkNode = typename T::InternalStack;
+    using ElementType = typename WorkNode::ElementType;
 
-    NO_COPY_SEMANTIC(GlobalWorkStack);
-    NO_MOVE_SEMANTIC(GlobalWorkStack);
+    WorkNodeWrapper() = default;
+    ~WorkNodeWrapper() = default;
 
-    void Push(WorkNode *node)
-    {
-        if (node == nullptr) {
-            return;
-        }
-        LockHolder lock(mtx_);
-        node->SetNext(top_);
-        top_ = node;
-    }
+    NO_COPY_SEMANTIC(WorkNodeWrapper);
+    NO_MOVE_SEMANTIC(WorkNodeWrapper);
 
-    bool Pop(WorkNode **node)
-    {
-        LockHolder lock(mtx_);
-        if (top_ == nullptr) {
-            return false;
-        }
-        *node = top_;
-        top_ = top_->Next();
-        return true;
-    }
+    void Setup(T *globalStack);
+    void Initialize(WorkManager *workManager);
 
-    void Clear()
-    {
-        if (top_ != nullptr) {
-            LOG_ECMA(ERROR) << "GlobalWorkStack is not nullptr in WorkManager::Finish.";
-        }
-        top_ = nullptr;
-    }
+    void Push(ElementType e, WorkManager *workManager);
+    void PushWorkNodeToGlobal(WorkManager *workManager);
+    bool Pop(ElementType *e);
+    bool PopWorkNodeFromGlobal();
 
+    bool IsLocalEmpty() const;
+    bool IsGlobalEmpty() const;
+    bool IsLocalAndGlobalEmpty() const;
 private:
-    WorkNode *top_ {nullptr};
-    Mutex mtx_;
+    WorkNode *inNode_ {nullptr};
+    WorkNode *outNode_ {nullptr};
+    WorkNode *cachedInNode_ {nullptr};
+    T *globalStack_ {nullptr};
 };
 
 class WorkNodeHolder {
@@ -148,19 +109,59 @@ public:
     NO_COPY_SEMANTIC(WorkNodeHolder);
     NO_MOVE_SEMANTIC(WorkNodeHolder);
 
-    inline void Setup(Heap *heap, WorkManager *workManager, GlobalWorkStack *workStack);
+#define PARAM_WEAK_AGGREGATE_GLOBAL_STACK(type, name, _)            Global##type##Stack *name##Stack,
+    inline void Setup(Heap *heap, WorkManager *workManager,
+                      WEAK_AGGREGATE_LIST(PARAM_WEAK_AGGREGATE_GLOBAL_STACK)
+                      GlobalMarkStack *markStack);
+#undef PARAM_WEAK_AGGREGATE_GLOBAL_STACK
     inline void Destroy();
     inline void Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase);
     inline void Finish();
 
-    inline bool Push(TaggedObject *object);
-    inline bool Pop(TaggedObject **object);
-    inline bool PopWorkNodeFromGlobal();
-    inline void PushWorkNodeToGlobal(bool postTask = true);
+    void Push(TaggedObject *object)
+    {
+        markWorkNodeWrapper_.Push(object, workManager_);
+    }
+
+    bool Pop(TaggedObject **object)
+    {
+        return markWorkNodeWrapper_.Pop(object);
+    }
+
+    bool IsAllLocalEmpty() const
+    {
+        return markWorkNodeWrapper_.IsLocalEmpty()
+#define WEAK_AGGREGATE_IS_LOCAL_EMPTY(_, name, __)                          \
+            && name##WorkNodeWrapper_.IsLocalEmpty()
+        WEAK_AGGREGATE_LIST(WEAK_AGGREGATE_IS_LOCAL_EMPTY);
+#undef WEAK_AGGREGATE_IS_LOCAL_EMPTY
+    }
+
+    void FlushAll()
+    {
+        markWorkNodeWrapper_.PushWorkNodeToGlobal(workManager_);
+#define FLUSH_WEAK_AGGREGATE(_, name, __)                                   \
+            name##WorkNodeWrapper_.PushWorkNodeToGlobal(workManager_);
+        WEAK_AGGREGATE_LIST(FLUSH_WEAK_AGGREGATE)
+#undef FLUSH_WEAK_AGGREGATE
+        ASSERT(IsAllLocalEmpty());
+    }
+
+#define DEFINE_WEAK_AGGREGATE_FUNC(type, name, Name)                        \
+    void Push##Name(type e)                                                 \
+    {                                                                       \
+        name##WorkNodeWrapper_.Push(e, workManager_);                       \
+    }                                                                       \
+    bool Pop##Name(type *e)                                                 \
+    {                                                                       \
+        return name##WorkNodeWrapper_.Pop(e);                               \
+    }
+    WEAK_AGGREGATE_LIST(DEFINE_WEAK_AGGREGATE_FUNC)
+#undef DEFINE_WEAK_AGGREGATE_FUNC
 
     inline void PushWeakReference(JSTaggedType *weak);
 
-    inline void PushJSWeakMap(TaggedObject *jsWeakMap);
+    inline void PushWeakLinkedHashMap(TaggedObject *weakLinkedHasMap);
 
     inline void IncreaseAliveSize(size_t size);
 
@@ -168,7 +169,7 @@ public:
 
     inline ProcessQueue *GetWeakReferenceQueue() const;
 
-    inline JSWeakMapProcessQueue *GetJSWeakMapQueue() const;
+    inline WeakLinkedHashMapProcessQueue *GetWeakLinkedHashMapQueue() const;
 
     inline TlabAllocator *GetTlabAllocator() const;
 
@@ -176,21 +177,24 @@ public:
 private:
     Heap *heap_ {nullptr};
     WorkManager *workManager_ {nullptr};
-    GlobalWorkStack *workStack_ {nullptr};
-    ParallelGCTaskPhase parallelGCTaskPhase_ {ParallelGCTaskPhase::UNDEFINED_TASK};
+    WorkNodeWrapper<GlobalMarkStack> markWorkNodeWrapper_ {};
 
-    WorkNode *inNode_ {nullptr};
-    WorkNode *outNode_ {nullptr};
-    WorkNode *cachedInNode_ {nullptr};
+#define DECLARE_WEAK_AGGREGATE(type, name, _)                \
+    WorkNodeWrapper<Global##type##Stack> name##WorkNodeWrapper_ {};
+    WEAK_AGGREGATE_LIST(DECLARE_WEAK_AGGREGATE)
+#undef DECLARE_WEAK_AGGREGATE
+
     ProcessQueue *weakQueue_ {nullptr};
-    JSWeakMapProcessQueue *jsWeakMapQueue_ {nullptr};
+    WeakLinkedHashMapProcessQueue *weakLinkedHashMapQueue_ {nullptr};
     ContinuousStack<JSTaggedType> *continuousQueue_ {nullptr};
-    ContinuousStack<TaggedObject> *continuousJSWeakMapQueue_ {nullptr};
+    ContinuousStack<TaggedObject> *continuousWeakLinkedHashMapQueue_ {nullptr};
     TlabAllocator *allocator_ {nullptr};
     SlotGCAllocator slotGCAllocator_ {};
     size_t aliveSize_ {0};
     size_t promotedSize_ {0};
 
+    friend class CompressGCMarker;
+    friend class FullGC;
     friend class WorkManager;
 };
 
@@ -237,7 +241,9 @@ public:
         workSpace_ = ToUintPtr(allocatedSpace);
     }
 
-    inline WorkNode *AllocateWorkNode();
+    template <typename T>
+    T *AllocateWorkNode();
+
     virtual size_t Finish()
     {
         LOG_ECMA(FATAL) << " WorkManagerBase Finish";
@@ -280,6 +286,9 @@ public:
     {
         return &works_.at(threadId);
     }
+
+    inline void CheckAndPostTask();
+
     WORKMANAGER_PUBLIC_HYBRID_EXTENSION();
 private:
     NO_COPY_SEMANTIC(WorkManager);
@@ -288,7 +297,10 @@ private:
     Heap *heap_;
     uint32_t threadNum_;
     std::array<WorkNodeHolder, common::MAX_TASKPOOL_THREAD_NUM + 1> works_;
-    GlobalWorkStack workStack_ {};
+    GlobalMarkStack markStack_ {};
+#define DECLARE_WEAK_AGGREGATE_GLOBAL_STACK(type, name, _)          Global##type##Stack name##Stack_ {};
+    WEAK_AGGREGATE_LIST(DECLARE_WEAK_AGGREGATE_GLOBAL_STACK)
+#undef DECLARE_WEAK_AGGREGATE_GLOBAL_STACK
     ParallelGCTaskPhase parallelGCTaskPhase_ {ParallelGCTaskPhase::UNDEFINED_TASK};
     std::atomic<bool> initialized_ {false};
 };
@@ -301,7 +313,7 @@ public:
     NO_COPY_SEMANTIC(SharedGCWorkNodeHolder);
     NO_MOVE_SEMANTIC(SharedGCWorkNodeHolder);
 
-    inline void Setup(SharedHeap *sHeap, SharedGCWorkManager *sWorkManager, GlobalWorkStack *workStack);
+    inline void Setup(SharedHeap *sHeap, SharedGCWorkManager *sWorkManager, GlobalMarkStack *markStack);
     inline void Destroy();
     inline void Initialize(TriggerGCType gcType, SharedParallelMarkPhase sTaskPhase);
     inline void Finish();
@@ -322,12 +334,12 @@ public:
 private:
     SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
-    GlobalWorkStack *workStack_ {nullptr};
+    GlobalMarkStack *markStack_ {nullptr};
     SharedParallelMarkPhase sTaskPhase_ {SharedParallelMarkPhase::SHARED_UNDEFINED_TASK};
     
-    WorkNode *inNode_ {nullptr};
-    WorkNode *outNode_ {nullptr};
-    WorkNode *cachedInNode_ {nullptr};
+    MarkWorkNode *inNode_ {nullptr};
+    MarkWorkNode *outNode_ {nullptr};
+    MarkWorkNode *cachedInNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
     ContinuousStack<JSTaggedType> *continuousQueue_ {nullptr};
     SharedTlabAllocator *allocator_ {nullptr};
@@ -347,9 +359,9 @@ public:
     inline void Initialize(TriggerGCType gcType, SharedParallelMarkPhase sTaskPhase, size_t numExtraTemporaryHolders);
     inline size_t Finish() override;
 
-    inline bool PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object);
+    inline void PushToLocalMarkingBuffer(MarkWorkNode *&markingBuffer, TaggedObject *object);
 
-    inline void PushLocalBufferToGlobal(WorkNode *&node, bool postTask = true);
+    inline void PushLocalBufferToGlobal(MarkWorkNode *&node, bool postTask = true);
 
     inline uint32_t GetTotalThreadNum()
     {
@@ -389,7 +401,7 @@ private:
     SharedHeap *sHeap_;
     uint32_t threadNum_;
     std::array<SharedGCWorkNodeHolder, common::MAX_TASKPOOL_THREAD_NUM + 1> works_;
-    GlobalWorkStack workStack_ {};
+    GlobalMarkStack markStack_ {};
     SharedParallelMarkPhase sTaskPhase_ {SharedParallelMarkPhase::SHARED_UNDEFINED_TASK};
     std::atomic<bool> initialized_ {false};
     ExtraTemporarySharedGCWorkNodeHolderPack extraTemporaryHolders_ {};

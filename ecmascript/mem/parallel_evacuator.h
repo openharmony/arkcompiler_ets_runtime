@@ -225,7 +225,7 @@ private:
     void UpdateRecordWeakReferenceInParallel(uint32_t idOrder);
     void UpdateRecordWeakReference(uint32_t threadId);
     template <TriggerGCType gcType>
-    void UpdateRecordJSWeakMap(uint32_t threadId);
+    void UpdateRecordWeakLinkedHashMap(uint32_t threadId);
     void EvacuateRegion(TlabAllocator *allocator, Region *region, std::unordered_set<JSTaggedType> &trackSet);
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
     inline void SetObjectRSet(ObjectSlot slot, Region *region);

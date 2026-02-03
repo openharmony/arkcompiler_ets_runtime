@@ -225,7 +225,7 @@ void ConcurrentMarker::InitializeMarking()
         });
     }
     MarkRoots();
-    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->PushWorkNodeToGlobal(false);
+    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->FlushAll();
 }
 
 bool ConcurrentMarker::ShouldNotifyMarkingFinished()

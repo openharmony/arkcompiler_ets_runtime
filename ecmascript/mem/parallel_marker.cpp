@@ -203,12 +203,34 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
     FullGCRunner fullGCRunner(heap_, workNodeHolder, isAppSpawn_);
     FullGCMarkObjectVisitor &fullGCMarkObjectVisitor = fullGCRunner.GetMarkObjectVisitor();
     TaggedObject *obj = nullptr;
-    while (workNodeHolder->Pop(&obj)) {
-        auto jsHClass = obj->GetClass();
-        ObjectSlot hClassSlot(ToUintPtr(obj));
-        fullGCMarkObjectVisitor.VisitHClassSlot(hClassSlot, jsHClass);
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHClass, fullGCMarkObjectVisitor);
+    WeakAggregate weakAggregate;
+    while (true) {
+        while (workNodeHolder->Pop(&obj)) {
+            auto jsHClass = obj->GetClass();
+            ObjectSlot hClassSlot(ToUintPtr(obj));
+            fullGCMarkObjectVisitor.VisitHClassSlot(hClassSlot, jsHClass);
+            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT, VisitLinkedWeakHashMapType::AS_WEAK_AGGREGATE>(obj,
+                jsHClass, fullGCMarkObjectVisitor);
+        }
+        bool doMore = false;
+        while (workNodeHolder->PopFreshWeakAggregate(&weakAggregate)) {
+            doMore |= ProcessWeakAggregate(&fullGCRunner, weakAggregate);
+        }
+        if (!doMore) {
+            workNodeHolder->pendingWeakAggregateWorkNodeWrapper_.PushWorkNodeToGlobal(workManager_);
+            ASSERT(workNodeHolder->IsAllLocalEmpty());
+            return;
+        }
     }
+}
+
+bool CompressGCMarker::ProcessWeakAggregate(FullGCRunner *runner, WeakAggregate weakAggregate)
+{
+    if (!runner->HandleWeakAggregate(weakAggregate)) {
+        runner->RecordPendingWeakAggregate(weakAggregate);
+        return false;
+    }
+    return true;
 }
 
 void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
@@ -250,7 +272,5 @@ void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
         jitCodeMaps.insert(tempVec.begin(), tempVec.end());
     };
     ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
-    ProcessMarkStack(threadId);
-    heap_->WaitRunningMarkTaskFinished();
 }
 }  // namespace panda::ecmascript

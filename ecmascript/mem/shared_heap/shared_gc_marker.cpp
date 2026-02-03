@@ -116,7 +116,7 @@ void SharedGCMarkerBase::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListH
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet", "");
     ASSERT(JSThread::GetCurrent() == handler->GetHeap()->GetEcmaVM()->GetJSThread());
     ASSERT(JSThread::GetCurrent()->IsInRunningState());
-    WorkNode *&localBuffer = handler->GetHeap()->GetMarkingObjectLocalBuffer();
+    MarkWorkNode *&localBuffer = handler->GetHeap()->GetMarkingObjectLocalBuffer();
     auto visitor = [this, &localBuffer](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());

@@ -54,7 +54,7 @@ private:
     void ProcessNativeDelete();
     void ClearDeadReferences();
     void UpdateRecordWeakReference(uint32_t threadId);
-    void UpdateRecordJSWeakMap(uint32_t threadId);
+    void UpdateRecordWeakLinkedHashMap(uint32_t threadId);
 
     Heap *heap_ {nullptr};
     bool markingInProgress_ {false};

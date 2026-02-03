@@ -111,10 +111,64 @@ void FullGC::Mark()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "FullGC::Mark", "");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
     MarkRoots();
-    heap_->GetCompressGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
+    CompressGCMarker *marker = static_cast<CompressGCMarker *>(heap_->GetCompressGCMarker());
+    marker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningMarkTaskFinished();
-    // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
-    heap_->GetCompressGCMarker()->MarkJitCodeMap(MAIN_THREAD_INDEX);
+
+    marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
+    marker->ProcessMarkStack(MAIN_THREAD_INDEX);
+    heap_->WaitRunningMarkTaskFinished();
+
+    bool prev = heap_->IsParallelGCEnabled();
+    heap_->SetParallelGCEnabled(false);
+    MarkUntilFixPoint();
+    heap_->SetParallelGCEnabled(prev);
+}
+
+void FullGC::MarkUntilFixPoint()
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "FullGC::MarkUntilFixPoint", "");
+    CompressGCMarker *marker = static_cast<CompressGCMarker *>(heap_->GetCompressGCMarker());
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX);
+    FullGCRunner runner(heap_, holder, forAppSpawn_);
+
+    std::vector<WeakAggregate> pendingWeakAggregates;
+    ASSERT(holder->freshWeakAggregateWorkNodeWrapper_.IsLocalAndGlobalEmpty());
+
+    WeakAggregate weakAggregate;
+    while (holder->PopPendingWeakAggregate(&weakAggregate)) {
+        if (!runner.HandleWeakAggregate(weakAggregate)) {
+            pendingWeakAggregates.emplace_back(weakAggregate);
+        }
+    }
+    while (true) {
+        if (holder->markWorkNodeWrapper_.IsLocalAndGlobalEmpty()) {
+            return;
+        }
+        marker->ProcessMarkStack(MAIN_THREAD_INDEX);
+        marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
+
+        while (holder->PopFreshWeakAggregate(&weakAggregate)) {
+            if (!runner.HandleWeakAggregate(weakAggregate)) {
+                pendingWeakAggregates.emplace_back(weakAggregate);
+            }
+        }
+
+        auto it = pendingWeakAggregates.begin();
+        while (it != pendingWeakAggregates.end()) {
+            if (runner.HandleWeakAggregate(*it)) {
+                *it = pendingWeakAggregates.back();
+                if (it + 1 == pendingWeakAggregates.end()) {
+                    pendingWeakAggregates.pop_back();
+                    it = pendingWeakAggregates.end();
+                } else {
+                    pendingWeakAggregates.pop_back();
+                }
+            } else {
+                ++it;
+            }
+        }
+    }
 }
 
 void FullGC::Sweep()
@@ -130,7 +184,7 @@ void FullGC::Sweep()
         UpdateRecordWeakReference(i);
     }
     for (uint32_t i = 0; i < totalThreadCount; i++) {
-        UpdateRecordJSWeakMap(i);
+        UpdateRecordWeakLinkedHashMap(i);
     }
 
     WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
@@ -237,27 +291,27 @@ void FullGC::UpdateRecordWeakReference(uint32_t threadId)
     }
 }
 
-void FullGC::UpdateRecordJSWeakMap(uint32_t threadId)
+void FullGC::UpdateRecordWeakLinkedHashMap(uint32_t threadId)
 {
-    std::function<bool(JSTaggedValue)> visitor = [this](JSTaggedValue key) {
-        ASSERT(!key.IsHole());
-        return key.IsUndefined();   // Dead key, and set to undefined by GC
-    };
-
-    JSWeakMapProcessQueue *queue = workManager_->GetWorkNodeHolder(threadId)->GetJSWeakMapQueue();
+    WeakLinkedHashMapProcessQueue *queue = workManager_->GetWorkNodeHolder(threadId)->GetWeakLinkedHashMapQueue();
+    JSThread *thread = heap_->GetJSThread();
     while (true) {
         TaggedObject *obj = queue->PopBack();
         if (UNLIKELY(obj == nullptr)) {
             break;
         }
-        JSWeakMap *weakMap = JSWeakMap::Cast(obj);
-        JSThread *thread = heap_->GetJSThread();
-        JSTaggedValue maybeMap = weakMap->GetWeakLinkedMap(thread);
-        if (maybeMap.IsUndefined()) {
-            continue;
+
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(obj);
+        ASSERT(map->VerifyLayout());
+
+        int entries = map->NumberOfAllUsedElements();
+        for (int i = 0; i < entries; ++i) {
+            JSTaggedValue maybeKey = map->GetKey(thread, i);
+            if (maybeKey.IsUndefined()) {
+                // set to undefined by GC since key is dead, and the weak ref of key is updated.
+                map->RemoveEntryFromGCThread(i);
+            }
         }
-        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(maybeMap.GetTaggedObject());
-        map->ClearAllDeadEntries(thread, visitor);
     }
 }
 }  // namespace panda::ecmascript
