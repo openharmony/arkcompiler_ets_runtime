@@ -30,6 +30,7 @@ class EcmaVM;
 
 class CrossVMOperator {
     static_assert(PANDA_JS_ETS_HYBRID_MODE);
+
 public:
     CrossVMOperator(EcmaVM *vm);
     ~CrossVMOperator() = default;
@@ -52,16 +53,21 @@ public:
     void MarkFromObject(JSTaggedType value);
     bool IsObjectAlive(JSTaggedType value);
     bool IsValidHeapObject(JSTaggedType value);
+
 private:
     class EcmaVMInterfaceImpl final : public arkplatform::EcmaVMInterface {
     public:
         NO_COPY_SEMANTIC(EcmaVMInterfaceImpl);
         NO_MOVE_SEMANTIC(EcmaVMInterfaceImpl);
-        EcmaVMInterfaceImpl(EcmaVM *vm): vm_(vm) {};
+        EcmaVMInterfaceImpl(EcmaVM *vm) : vm_(vm) {};
         ~EcmaVMInterfaceImpl() override = default;
 
         bool StartXRefMarking() override;
         void NotifyXGCInterruption() override;
+        JSTaggedType *GetTopFrameSPFromDynamic() const override;
+        bool ForEachDynamicFrame(void *currFrameSP, void *toFrameSP,
+                                 const std::function<void(const void *)> &cb) const override;
+
     private:
         [[maybe_unused]] EcmaVM *vm_ {nullptr};
     };
@@ -71,6 +77,6 @@ private:
     std::unique_ptr<arkplatform::EcmaVMInterface> ecmaVMInterface_;
 };
 
-} // namespace panda::ecmascript
+}  // namespace panda::ecmascript
 
-#endif // ETS_RUNTIME_ECMASCRIPT_CROSS_VM_CROSS_VM_OPERATOR_H
+#endif  // ETS_RUNTIME_ECMASCRIPT_CROSS_VM_CROSS_VM_OPERATOR_H
