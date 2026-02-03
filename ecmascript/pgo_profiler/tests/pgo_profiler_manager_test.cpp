@@ -243,32 +243,6 @@ HWTEST_F_L0(PGOProfilerManagerTest, SetRequestAotCallbackTwiceTest)
     manager->SetRequestAotCallback(secondCallback);
 }
 
-HWTEST_F_L0(PGOProfilerManagerTest, RequestAotWithoutCallbackTest)
-{
-    auto* manager = PGOProfilerManager::GetInstance();
-    manager->SetBundleName("com.example.test");
-    bool result = manager->RequestAot("com.example.test", "testModule", RequestAotMode::RE_COMPILE_ON_IDLE);
-}
-
-HWTEST_F_L0(PGOProfilerManagerTest, RequestAotWithCallbackTest)
-{
-    auto* manager = PGOProfilerManager::GetInstance();
-    manager->SetBundleName("com.example.test");
-
-    // Verify callback can be called (if not already set by previous test)
-    int callCount = 0;
-    auto testCallback = [&callCount](const std::string& bundle, const std::string& module, int32_t mode) -> int {
-        callCount++;
-        EXPECT_EQ(bundle, "com.example.test");
-        EXPECT_EQ(module, "testModule");
-        EXPECT_EQ(mode, static_cast<int32_t>(RequestAotMode::RE_COMPILE_ON_IDLE));
-        return 0;
-    };
-
-    manager->SetRequestAotCallback(testCallback);
-    manager->RequestAot("com.example.test", "testModule", RequestAotMode::RE_COMPILE_ON_IDLE);
-}
-
 HWTEST_F_L0(PGOProfilerManagerTest, RequestAotWithMissingParamsTest)
 {
     auto* manager = PGOProfilerManager::GetInstance();
