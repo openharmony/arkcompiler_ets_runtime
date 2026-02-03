@@ -113,9 +113,12 @@ public:
     class TranslateClassesTask : public common::Task {
     public:
         TranslateClassesTask(int32_t id, JSThread *thread, JSPandaFile *jsPandaFile,
-                             const std::shared_ptr<CString> &methodNamePtr, CurClassTranslateWork &curTranslateWorks)
-            : common::Task(id), thread_(thread), jsPandaFile_(jsPandaFile), methodNamePtr_(methodNamePtr),
-              curTranslateWorks_(curTranslateWorks){};
+                             std::shared_ptr<CString> methodNamePtr, CurClassTranslateWork &curTranslateWorks,
+                             std::atomic<bool> &needDoRemainingWork,
+                             std::shared_ptr<std::atomic<bool>> waitingFinish)
+            : common::Task(id), thread_(thread), jsPandaFile_(jsPandaFile),
+              methodNamePtr_(std::move(methodNamePtr)), curTranslateWorks_(curTranslateWorks),
+              needDoRemainingWork_(needDoRemainingWork), waitingFinish_(std::move(waitingFinish)) {};
         ~TranslateClassesTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -127,6 +130,8 @@ public:
         JSPandaFile *jsPandaFile_ {nullptr};
         std::shared_ptr<CString> methodNamePtr_;
         CurClassTranslateWork &curTranslateWorks_;
+        std::atomic<bool> &needDoRemainingWork_;
+        std::shared_ptr<std::atomic<bool>> waitingFinish_;
     };
 
     inline const CString &GetJSPandaFileDesc() const
@@ -531,23 +536,23 @@ private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
 
-    void WaitTranslateClassTaskFinished();
-
-    void NotifyTranslateClassTaskCompleted();
-
-    void IncreaseTaskCount();
+    void IncreasePostTaskCount();
+    void IncreaseRunningTaskCount();
 
     void TranslateClassInMainThread(JSThread *thread, const CString &methodName);
 
     void TranslateClassInSubThread(JSThread *thread, const CString &methodName,
-                                   CurClassTranslateWork &curTranslateWorks);
+                                   CurClassTranslateWork &curTranslateWorks, std::atomic<bool> &needDoRemainingWork);
 
-    void CheckOngoingClassTranslating(JSThread *thread, const CString &methodName,
-                                      const AllClassTranslateWork &remainingTranslateWorks);
+    void CheckAndTranslateRemainingClasses(JSThread *thread, const CString &methodName,
+                                           const AllClassTranslateWork &remainingTranslateWorks,
+                                           CVector<std::atomic<bool>> &needDoRemainingWorks);
 
     void PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr,
-                                  CurClassTranslateWork &curTranslateWorks);
+                                  CurClassTranslateWork &curTranslateWorks, std::atomic<bool> &isTaskRunning,
+                                  const std::shared_ptr<std::atomic<bool>> &waitingFinish);
 
+    void ReducePostTaskCount();
     void ReduceTaskCount();
 
     void SetAllMethodLiteralToMap();
@@ -578,6 +583,7 @@ private:
     Mutex jsRecordInfoMutex_;
     ConditionVariable waitTranslateClassFinishedCV_;
     uint32_t runningTaskCount_ {0};
+    uint32_t postTaskCount_ {0};
     uint32_t classIndex_ {0};
     uint32_t methodIndex_ {0};
 
@@ -596,7 +602,7 @@ private:
     bool isRecordWithBundleName_ {true};
     CreateMode mode_ {CreateMode::RUNTIME};
     // This tag shows if main thread is waiting for the sub-threads to finish translate class tasks.
-    std::atomic<bool> waitingFinish_ {false};
+    std::shared_ptr<std::atomic<bool>> waitingFinish_ = std::make_shared<std::atomic<bool>>(false);
     friend class JSPandaFileSnapshot;
 };
 }  // namespace ecmascript

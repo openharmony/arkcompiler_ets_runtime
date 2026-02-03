@@ -467,7 +467,12 @@ void JSPandaFile::GetClassAndMethodIndexes(ClassTranslateWork &indexes)
 
 bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    jsPandaFile_->TranslateClassInSubThread(thread_, *methodNamePtr_, curTranslateWorks_);
+    if (waitingFinish_->load(std::memory_order_acquire)) {
+        jsPandaFile_->ReducePostTaskCount();
+        return true;
+    }
+    jsPandaFile_->IncreaseRunningTaskCount();
+    jsPandaFile_->TranslateClassInSubThread(thread_, *methodNamePtr_, curTranslateWorks_, needDoRemainingWork_);
     jsPandaFile_->ReduceTaskCount();
     return true;
 }
@@ -487,7 +492,8 @@ void JSPandaFile::TranslateClassInMainThread(JSThread *thread, const CString &me
 }
 
 void JSPandaFile::TranslateClassInSubThread(JSThread *thread, const CString &methodName,
-                                            CurClassTranslateWork &curTranslateWorks)
+                                            CurClassTranslateWork &curTranslateWorks,
+                                            std::atomic<bool> &needDoRemainingWork)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::TranslateClassInSubThread", "");
     ClassTranslateWork &indexes = curTranslateWorks.second;
@@ -497,8 +503,9 @@ void JSPandaFile::TranslateClassInSubThread(JSThread *thread, const CString &met
         uint32_t size = indexes.size();
         for (uint32_t i = 0; i < size; i++) {
             // Stop the ongoning translating work, and leave it to the main thead to avoid waiting too long.
-            if (waitingFinish_.load(std::memory_order_acquire)) {
+            if (waitingFinish_->load(std::memory_order_acquire)) {
                 curTranslateWorks.first = i;
+                needDoRemainingWork.store(true, std::memory_order_release);
                 return;
             }
             PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[i].first, indexes[i].second);
@@ -507,32 +514,40 @@ void JSPandaFile::TranslateClassInSubThread(JSThread *thread, const CString &met
 }
 
 void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr,
-                                           CurClassTranslateWork &curTranslateWorks)
+                                           CurClassTranslateWork &curTranslateWorks,
+                                           std::atomic<bool> &needDoRemainingWork,
+                                           const std::shared_ptr<std::atomic<bool>> &waitingFinish)
 {
-    IncreaseTaskCount();
-    common::Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<TranslateClassesTask>(thread->GetThreadId(), thread, this, methodNamePtr, curTranslateWorks));
+    IncreasePostTaskCount();
+    common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<TranslateClassesTask>(
+        thread->GetThreadId(), thread, this, methodNamePtr, curTranslateWorks, needDoRemainingWork, waitingFinish));
 }
 
-void JSPandaFile::IncreaseTaskCount()
+void JSPandaFile::IncreasePostTaskCount()
+{
+    LockHolder holder(waitTranslateClassFinishedMutex_);
+    postTaskCount_++;
+}
+
+void JSPandaFile::IncreaseRunningTaskCount()
 {
     LockHolder holder(waitTranslateClassFinishedMutex_);
     runningTaskCount_++;
 }
 
-void JSPandaFile::WaitTranslateClassTaskFinished()
-{
-    LockHolder holder(waitTranslateClassFinishedMutex_);
-    while (runningTaskCount_ > 0) {
-        waitingFinish_.store(true, std::memory_order_release);
-        waitTranslateClassFinishedCV_.Wait(&waitTranslateClassFinishedMutex_);
-    }
-}
-
 void JSPandaFile::ReduceTaskCount()
 {
     LockHolder holder(waitTranslateClassFinishedMutex_);
+    postTaskCount_--;
     runningTaskCount_--;
+    // if runningTaskCount_ decrease, let main thread check remaining work.
+    waitTranslateClassFinishedCV_.SignalAll();
+}
+
+void JSPandaFile::ReducePostTaskCount()
+{
+    LockHolder holder(waitTranslateClassFinishedMutex_);
+    postTaskCount_--;
     if (runningTaskCount_ == 0) {
         waitTranslateClassFinishedCV_.SignalAll();
     }
@@ -551,32 +566,45 @@ void JSPandaFile::SetAllMethodLiteralToMap()
     }
 }
 
-void JSPandaFile::CheckOngoingClassTranslating(JSThread *thread, const CString &methodName,
-                                               const AllClassTranslateWork &remainingTranslateWorks)
+void JSPandaFile::CheckAndTranslateRemainingClasses(JSThread *thread, const CString &methodName,
+                                                    const AllClassTranslateWork &remainingTranslateWorks,
+                                                    CVector<std::atomic<bool>> &needDoRemainingWorks)
 {
-    WaitTranslateClassTaskFinished();
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "TranslateRemainingClasses", "");
-    for (const auto &[startIndex, indexes]: remainingTranslateWorks) {
-        auto size = indexes.size();
-        for (uint32_t i = startIndex; i < size; i++) {
-            PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[i].first, indexes[i].second);
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "CheckAndTranslateRemainingClasses", "");
+    LockHolder holder(waitTranslateClassFinishedMutex_);
+    waitingFinish_->store(true, std::memory_order_release);
+    while (runningTaskCount_ > 0) {
+        waitTranslateClassFinishedCV_.Wait(&waitTranslateClassFinishedMutex_);
+        // run remaining work
+        for (uint8_t i = 0; i < needDoRemainingWorks.size(); ++i) {
+            if (needDoRemainingWorks[i].load(std::memory_order_acquire)) {
+                const auto &[startIndex, indexes] = remainingTranslateWorks[i];
+                auto size = indexes.size();
+                for (uint32_t j = startIndex; j < size; j++) {
+                    PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[j].first, indexes[j].second);
+                }
+                needDoRemainingWorks[i] = false;
+            }
         }
     }
 }
 
 void JSPandaFile::TranslateClasses(JSThread *thread, const CString &methodName)
 {
-    auto numThreads = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-    AllClassTranslateWork remainingTranslateWorks(numThreads);
-    const std::shared_ptr<CString> methodNamePtr = std::make_shared<CString>(methodName);
     bool useTaskpool = numClasses_ >= USING_TASKPOOL_MIN_CLASS_COUNT;
     if LIKELY(useTaskpool) {
+        auto numThreads = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+        AllClassTranslateWork remainingTranslateWorks(numThreads);
+        const std::shared_ptr<CString> methodNamePtr = std::make_shared<CString>(methodName);
+        CVector<std::atomic<bool>> needDoRemainingWorks(numThreads);
         for (uint32_t i = 0; i < numThreads; i++) {
-            PostInitializeMethodTask(thread, methodNamePtr, remainingTranslateWorks[i]);
+            needDoRemainingWorks[i] = false;
+            PostInitializeMethodTask(thread, methodNamePtr, remainingTranslateWorks[i],
+                needDoRemainingWorks[i], waitingFinish_);
         }
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::STW);
         TranslateClassInMainThread(thread, methodName);
-        CheckOngoingClassTranslating(thread, methodName, remainingTranslateWorks);
+        CheckAndTranslateRemainingClasses(thread, methodName, remainingTranslateWorks, needDoRemainingWorks);
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
     } else {
         TranslateClassInMainThread(thread, methodName);
