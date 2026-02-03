@@ -29,6 +29,9 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/clock_scope.h"
 
+namespace panda::test {
+class MockHeapProfiler;
+};  // panda::test
 namespace panda::ecmascript {
 class HeapSnapshot;
 class EcmaVM;
@@ -122,6 +125,8 @@ public:
     bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) override;
     void StopHeapSampling() override;
     const struct SamplingInfo *GetAllocationProfile() override;
+    static bool TryStartOOMDump();
+    static void ResetOOMDump();
     size_t GetIdCount() override
     {
         return entryIdMap_->GetIdCount();
@@ -154,12 +159,13 @@ public:
     void StorePotentiallyLeakHandles(uintptr_t handle);
 
 private:
+    static bool oomDumpActive_;  // don't dump again while OOM dump is in progress.
     /**
      * trigger full gc to make sure no unreachable objects in heap
      */
     bool ForceFullGC(const EcmaVM *vm);
     void ForceSharedGC();
-    void DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption);
+    bool DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption);
 
     /**
      * make a new heap snapshot and put it into a container eg, vector
@@ -199,6 +205,7 @@ private:
     uint32_t moveEventCbId_ {0};
 
     friend class HeapProfilerFriendTest;
+    friend class panda::test::MockHeapProfiler;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H
