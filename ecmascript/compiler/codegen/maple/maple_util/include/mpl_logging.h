@@ -17,6 +17,7 @@
 #define MAPLE_UTIL_INCLUDE_MPL_LOGGING_H
 
 #include <string>
+#include <cstdint>
 #include <cstdio>
 #include <stdarg.h>
 #include <sstream>

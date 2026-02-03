@@ -15,6 +15,7 @@
 
 #ifndef NAMEMANGLER_H
 #define NAMEMANGLER_H
+#include <cstdint>
 #include <string>
 #include <vector>
 
