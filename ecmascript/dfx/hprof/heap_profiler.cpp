@@ -27,6 +27,7 @@
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/platform/backtrace.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/runtime_lock.h"
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
@@ -218,7 +219,7 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapSh
 {
     base::BlockHookScope blockScope;
     const_cast<Heap*>(vm_->GetHeap())->Prepare();
-    SharedHeap::GetInstance()->Prepare(true);
+    SharedHeap::GetInstance()->PrepareByJSThread(vm_->GetAssociatedJSThread(), true);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
@@ -395,12 +396,14 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
                 ASSERT(heapClean);
             }
         }
-        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread()); // suspend All.
+        JSThread *thread = vm_->GetAssociatedJSThread();
+        RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+        SuspendAllScope suspendScope(thread); // suspend All.
         if (g_isEnableCMCGC) {
             common::Heap::GetHeap().WaitForGCFinish();
         } else {
             const_cast<Heap*>(vm_->GetHeap())->Prepare();
-            SharedHeap::GetInstance()->Prepare(true);
+            SharedHeap::GetInstance()->PrepareByJSThread(thread, true);
             Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
                 ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
                 const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
@@ -469,7 +472,9 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
         ForceSharedGC();
     }
-    SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+    JSThread *thread = vm_->GetAssociatedJSThread();
+    RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+    SuspendAllScope suspendScope(thread);
     DumpSnapShotOption dumpOption;
     dumpOption.isVmMode = isVmMode;
     dumpOption.isPrivate = false;
@@ -500,7 +505,9 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
     }
 
     {
-        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        JSThread *thread = vm_->GetAssociatedJSThread();
+        RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+        SuspendAllScope suspendScope(thread);
         UpdateHeapObjects(snapshot);
         snapshot->RecordSampleTime();
     }
@@ -539,7 +546,9 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
             snapshot->FinishSnapshot();
         } else {
             ForceSharedGC();
-            SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+            JSThread *thread = vm_->GetAssociatedJSThread();
+            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+            SuspendAllScope suspendScope(thread);
             SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
             snapshot->FinishSnapshot();
         }

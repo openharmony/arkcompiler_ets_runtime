@@ -44,7 +44,9 @@ public:
 
     enum SlotBarrier {
         NeedSlotBarrier,
+        NeedSlotBarrierCMC,
         NoSlotBarrier,
+        NoSlotBarrierDynamic
     };
 };
 
@@ -56,9 +58,13 @@ public:
     // Do not use 57-64bits, HWAsan uses 57-64 bits as pointer tag
     static constexpr uint64_t POINTER_LENGTH = 48;
     static constexpr uint64_t ENTRY_TAG_MASK = 1ULL << POINTER_LENGTH;
+    static constexpr uint64_t ENTRY_TAG_LENGTH = 1;
+    static constexpr uint64_t TO_SPACE_TAG_MASK = 1ULL << (POINTER_LENGTH + ENTRY_TAG_LENGTH);
+    static constexpr uint64_t TO_SPACE_TAG_LENGTH = 1;
 
     using Pointer = common::BitField<uint64_t, 0, POINTER_LENGTH>;
     using EntryBit = Pointer::NextFlag;
+    using ToSpaceBit = EntryBit::NextFlag;
 
     explicit HashTrieMapNode() {}
 
@@ -66,6 +72,13 @@ public:
     {
         uint64_t bitField = *reinterpret_cast<const uint64_t *>(this);
         return EntryBit::Decode(bitField);
+    }
+
+    bool IsToSpaceObject() const
+    {
+        ASSERT(IsEntry());
+        uint64_t bitField = *reinterpret_cast<const uint64_t *>(this);
+        return ToSpaceBit::Decode(bitField);
     }
 
     HashTrieMapEntry* AsEntry();
@@ -85,12 +98,26 @@ public:
         bitField_ = (ENTRY_TAG_MASK | reinterpret_cast<uint64_t>(v));
     }
 
+    HashTrieMapEntry(BaseString* v, bool toSpaceTag) : overflow_(nullptr)
+    {
+        if (toSpaceTag) {
+            bitField_ = (ENTRY_TAG_MASK | TO_SPACE_TAG_MASK | reinterpret_cast<uint64_t>(v));
+        } else {
+            bitField_ = (ENTRY_TAG_MASK | reinterpret_cast<uint64_t>(v));
+        }
+    }
+
     template <TrieMapConfig::SlotBarrier SlotBarrier>
     BaseString* Value() const
     {
         uint64_t value = Pointer::Decode(bitField_);
-        if constexpr (SlotBarrier == TrieMapConfig::NoSlotBarrier) {
+        if constexpr (SlotBarrier == TrieMapConfig::NoSlotBarrier ||
+                      SlotBarrier == TrieMapConfig::NoSlotBarrierDynamic) {
             return reinterpret_cast<BaseString *>(static_cast<uintptr_t>(value));
+        }
+        if constexpr (SlotBarrier == TrieMapConfig::NeedSlotBarrier) {
+            return reinterpret_cast<BaseString *>(
+                static_cast<uintptr_t>(Barriers::ReadBarrierForStringTableSlot(value)));
         }
         return reinterpret_cast<BaseString*>(common::Heap::GetBarrier().ReadStringTableStaticRef(
             *reinterpret_cast<common::RefField<false>*>((void*)(&value))));
@@ -105,6 +132,11 @@ public:
                     "Violate CMC-GC assumption: should not be young object");
 
         bitField_ = ENTRY_TAG_MASK | reinterpret_cast<uint64_t>(v);
+    }
+
+    void ClearToSpaceTag()
+    {
+        bitField_ = bitField_ & (~TO_SPACE_TAG_MASK);
     }
 
     std::atomic<HashTrieMapEntry*>& Overflow()
@@ -181,8 +213,132 @@ inline HashTrieMapIndirect* HashTrieMapNode::AsIndirect()
     return static_cast<HashTrieMapIndirect*>(this);
 }
 
-template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+template <typename Mutex>
 class HashTrieMap {
+public:
+    using Indirect = HashTrieMapIndirect;
+    using Entry = HashTrieMapEntry;
+    HashTrieMap() {}
+
+    ~HashTrieMap()
+    {
+        Clear();
+    };
+
+    void Clear()
+    {
+        for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
+            // The atom replaces the root node with nullptr and obtains the old root node
+            Indirect* oldRoot = root_[i].exchange(nullptr, std::memory_order_relaxed);
+            if (oldRoot != nullptr) {
+                // Clear the entire HashTreeMap based on the Indirect destructor
+                delete oldRoot;
+            }
+        }
+    }
+
+    Indirect* GetOrCreateRoot(uint32_t index)
+    {
+        auto root = root_[index].load(std::memory_order_acquire);
+        if (root != nullptr) {
+            return root;
+        } else {
+            Indirect* expected = nullptr;
+            Indirect* newRoot = new Indirect();
+
+            if (root_[index].compare_exchange_strong(expected, newRoot, std::memory_order_release,
+                                                     std::memory_order_acquire)) {
+                return newRoot;
+            } else {
+                delete newRoot;
+                return expected;
+            }
+        }
+    }
+
+    // ut used
+    const std::atomic<Indirect*>& GetRoot(uint32_t index) const
+    {
+        DCHECK_CC(index < TrieMapConfig::ROOT_SIZE);
+        return root_[index];
+    }
+
+    uint32_t GetInuseCount() const
+    {
+        return inuseCount_.load();
+    }
+
+    void IncreaseInuseCount()
+    {
+        inuseCount_.fetch_add(1);
+    }
+
+    void DecreaseInuseCount()
+    {
+        inuseCount_.fetch_sub(1);
+    }
+
+    Mutex& GetMutex()
+    {
+        return mu_;
+    }
+
+    void AddWaitFreeEntry(Entry* entry)
+    {
+        waitFreeEntries_.push_back(entry);
+    }
+
+    void CleanUp()
+    {
+        for (const HashTrieMapEntry* entry : waitFreeEntries_) {
+            delete entry;
+        }
+        waitFreeEntries_.clear();
+    }
+
+    void AddWaitClearToSpaceTagEntry(Entry* entry)
+    {
+        waitClearToSpaceTagEntries_.push_back(entry);
+    }
+
+    void ClearToSpaceTagForFreshEntries()
+    {
+        for (HashTrieMapEntry* entry : waitClearToSpaceTagEntries_) {
+            entry->ClearToSpaceTag();
+        }
+        waitClearToSpaceTagEntries_.clear();
+    }
+
+    bool IsSweeping() const
+    {
+        return isSweeping_;
+    }
+
+    void StartSweeping()
+    {
+        GetMutex().Lock();
+        isSweeping_ = true;
+        GetMutex().Unlock();
+    }
+
+    void FinishSweeping()
+    {
+        GetMutex().Lock();
+        isSweeping_ = false;
+        GetMutex().Unlock();
+    }
+
+    std::atomic<Indirect*> root_[TrieMapConfig::ROOT_SIZE] = {};
+private:
+    Mutex mu_;
+    std::vector<Entry*> waitFreeEntries_{};
+    std::vector<Entry*> waitClearToSpaceTagEntries_{};
+    std::atomic<uint32_t> inuseCount_{0};
+    bool isSweeping_{false};
+};
+
+template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+class HashTrieMapOperation {
 public:
     using WeakRefFieldVisitor = std::function<bool(common::RefField<>&)>;
     using WeakRootVisitor = std::function<panda::ecmascript::TaggedObject *(panda::ecmascript::TaggedObject* p)>;
@@ -190,12 +346,9 @@ public:
     using Indirect = HashTrieMapIndirect;
     using Entry = HashTrieMapEntry;
     using LoadResult = HashTrieMapLoadResult;
-    HashTrieMap() {}
+    explicit HashTrieMapOperation(HashTrieMap<Mutex>* hashTrieMap) : hashTrieMap_(hashTrieMap) {}
 
-    ~HashTrieMap()
-    {
-        Clear();
-    };
+    ~HashTrieMapOperation() {}
 
 #if ECMASCRIPT_ENABLE_TRACE_STRING_TABLE
     class StringTableTracer {
@@ -303,28 +456,14 @@ public:
     {
         uint32_t rootID = (hash & TrieMapConfig::ROOT_BIT_MASK);
         hash >>= TrieMapConfig::ROOT_BIT;
-        auto root = root_[rootID].load(std::memory_order_acquire);
-        if (root != nullptr) {
-            return root;
-        } else {
-            Indirect* expected = nullptr;
-            Indirect* newRoot = new Indirect();
-
-            if (root_[rootID].compare_exchange_strong(expected, newRoot,
-                                                      std::memory_order_release, std::memory_order_acquire)) {
-                return newRoot;
-            } else {
-                delete newRoot;
-                return expected;
-            }
-        }
+        return hashTrieMap_->GetOrCreateRoot(rootID);
     }
 
     // All other threads have stopped due to the gc and Clear phases.
     // Therefore, the operations related to atoms in ClearNodeFromGc and Clear use std::memory_order_relaxed,
     // which ensures atomicity but does not guarantee memory order
     template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
-              std::enable_if_t<Barrier == TrieMapConfig::NeedSlotBarrier, int>  = 0>
+              std::enable_if_t<Barrier == TrieMapConfig::NeedSlotBarrierCMC, int>  = 0>
     bool ClearNodeFromGC(Indirect* parent, int index, const WeakRefFieldVisitor& visitor,
                          std::vector<Entry*>& waitDeleteEntries);
 
@@ -333,7 +472,13 @@ public:
     bool ClearNodeFromGC(Indirect* parent, int index, const WeakRefFieldVisitor& visitor);
 
     template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
-              std::enable_if_t<Barrier == TrieMapConfig::NoSlotBarrier, int>  = 0>
+              std::enable_if_t<Barrier == TrieMapConfig::NeedSlotBarrier, int>  = 0>
+    bool ClearNodeFromGC(Indirect* parent, int index, const WeakRootVisitor& visitor,
+                         std::vector<Entry*>& waitDeleteEntries);
+    
+    template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
+              std::enable_if_t<Barrier == TrieMapConfig::NoSlotBarrier ||
+                               Barrier == TrieMapConfig::NoSlotBarrierDynamic, int>  = 0>
     bool ClearNodeFromGC(Indirect* parent, int index, const WeakRootVisitor& visitor);
 
     // Iterator
@@ -355,86 +500,56 @@ public:
     void Range(std::function<bool(Node*)> &iter)
     {
         for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
-            if (!Iter(root_[i].load(std::memory_order_acquire), iter)) {
+            if (!Iter(hashTrieMap_->root_[i].load(std::memory_order_acquire), iter)) {
                 return;
             }
         }
     }
-
-    void Clear()
-    {
-        for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
-            // The atom replaces the root node with nullptr and obtains the old root node
-            Indirect* oldRoot = root_[i].exchange(nullptr, std::memory_order_relaxed);
-            if (oldRoot != nullptr) {
-                // Clear the entire HashTreeMap based on the Indirect destructor
-                delete oldRoot;
-            }
-        }
-    }
-
-    // ut used
-    const std::atomic<Indirect*>& GetRoot(uint32_t index) const
-    {
-        DCHECK_CC(index < TrieMapConfig::ROOT_SIZE);
-        return root_[index];
-    }
-
-    void IncreaseInuseCount()
-    {
-        inuseCount_.fetch_add(1);
-    }
-
-    void DecreaseInuseCount()
-    {
-        inuseCount_.fetch_sub(1);
-    }
-
-    Mutex& GetMutex()
-    {
-        return mu_;
-    }
-
-    template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
-              std::enable_if_t<Barrier == TrieMapConfig::NeedSlotBarrier, int>  = 0>
-    void CleanUp()
-    {
-        for (const HashTrieMapEntry* entry : waitFreeEntries_) {
-            delete entry;
-        }
-        waitFreeEntries_.clear();
-    }
-
-    void StartSweeping()
-    {
-        GetMutex().Lock();
-        isSweeping = true;
-        GetMutex().Unlock();
-    }
-
-    void FinishSweeping()
-    {
-        GetMutex().Lock();
-        isSweeping = false;
-        GetMutex().Unlock();
-    }
-    std::atomic<Indirect*> root_[TrieMapConfig::ROOT_SIZE] = {};
 private:
-    Mutex mu_;
-    std::vector<Entry*> waitFreeEntries_{};
-    std::atomic<uint32_t> inuseCount_{0};
-    bool isSweeping{false};
+    HashTrieMap<Mutex>* hashTrieMap_ {nullptr};
+
     template <bool IsLock>
-    Node* Expand(Entry* oldEntry, Entry* newEntry,
+    HashTrieMapNode* Expand(Entry* oldEntry, Entry* newEntry,
         uint32_t oldHash, uint32_t newHash, uint32_t hashShift, Indirect* parent);
 
     bool Iter(Indirect *node, std::function<bool(Node *)> &iter);
 
+    template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
+              std::enable_if_t<Barrier != TrieMapConfig::NeedSlotBarrier, int>  = 0>
     bool CheckWeakRef(const WeakRefFieldVisitor& visitor, Entry* entry);
+
+    template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
+              std::enable_if_t<Barrier != TrieMapConfig::NeedSlotBarrierCMC, int>  = 0>
     bool CheckWeakRef(const WeakRootVisitor& visitor, Entry* entry);
 
     template <typename ReadBarrier>
     bool CheckValidity(ReadBarrier&& readBarrier, BaseString* value, bool& isValid);
+
+    BaseString* GetValue(Entry* entry) const
+    {
+        if constexpr (SlotBarrier == TrieMapConfig::NeedSlotBarrier) {
+            if (!hashTrieMap_->IsSweeping()) {
+                return entry->Value<TrieMapConfig::NoSlotBarrier>();
+            }
+            if (entry->IsToSpaceObject()) {
+                return entry->Value<TrieMapConfig::NoSlotBarrier>();
+            }
+        }
+        return entry->Value<SlotBarrier>();
+    }
+
+    Entry* NewEntry(BaseString* value)
+    {
+        if constexpr (SlotBarrier != TrieMapConfig::NeedSlotBarrier) {
+            return new Entry(value);
+        }
+        if (!hashTrieMap_->IsSweeping()) {
+            return new Entry(value);
+        }
+        Entry* newEntry = new Entry(value, true);
+        hashTrieMap_->AddWaitClearToSpaceTagEntry(newEntry);
+        return newEntry;
+    }
 
     constexpr static bool IsNull(BaseString* value)
     {
@@ -449,22 +564,31 @@ private:
         if constexpr (SlotBarrier == TrieMapConfig::NoSlotBarrier) {
             return entry;
         }
-        if (entry == nullptr || isSweeping) {
+        if constexpr (SlotBarrier == TrieMapConfig::NeedSlotBarrier) {
             // can't be pruned when sweeping.
+            // currently NeedSlotBarrier is dynamic so here gc thread must be sweeping
+            return entry;
+        }
+        if constexpr (SlotBarrier == TrieMapConfig::NeedSlotBarrierCMC) {
+            if (hashTrieMap_->IsSweeping()) {
+                return entry;
+            }
+        }
+        if (entry == nullptr) {
             return entry;
         }
         if (entry->Value<SlotBarrier>() == nullptr) {
-            waitFreeEntries_.push_back(entry);
+            hashTrieMap_->AddWaitFreeEntry(entry);
             return entry->Overflow();
         }
         return entry;
     }
 };
 
-template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
+template <typename Mutex>
 class HashTrieMapInUseScope {
 public:
-    HashTrieMapInUseScope(HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* hashTrieMap) : hashTrieMap_(hashTrieMap)
+    HashTrieMapInUseScope(HashTrieMap<Mutex>* hashTrieMap) : hashTrieMap_(hashTrieMap)
     {
         hashTrieMap_->IncreaseInuseCount();
     }
@@ -478,7 +602,7 @@ public:
     NO_MOVE_SEMANTIC_CC(HashTrieMapInUseScope);
 
 private:
-    HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* hashTrieMap_;
+    HashTrieMap<Mutex>* hashTrieMap_;
 };
 }
 #endif //ECMASCRIPT_STRING_TABLE_HASHTRIEMAP_H

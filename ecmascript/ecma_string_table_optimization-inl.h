@@ -24,13 +24,17 @@
 namespace panda::ecmascript {
 #if ENABLE_NEXT_OPTIMIZATION
 
-template <typename Traits>
-template <typename LoaderCallback, typename EqualsCallback>
-EcmaString* EcmaStringTableImpl<Traits>::GetOrInternString(EcmaVM* vm, uint32_t hashcode, LoaderCallback loaderCallback,
-                                                           EqualsCallback equalsCallback)
+template <typename Traits, typename LoaderCallback, typename EqualsCallback>
+EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, uint32_t hashcode, LoaderCallback loaderCallback,
+                                                   EqualsCallback equalsCallback)
 {
-    ThreadType* holder = GetThreadHolder(vm->GetJSThread());
-    BaseString *result = stringTable_.template LoadOrStore<true>(holder, hashcode, loaderCallback, equalsCallback);
+    typename Traits::HashTrieMapOperationType hashTrieMapOperation(
+        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::HashTrieMapInUseScopeType mapInUse(
+        reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
+    typename Traits::ThreadType* holder = GetThreadHolder<Traits>(vm->GetJSThread());
+    BaseString *result = hashTrieMapOperation.template LoadOrStore<true>(holder, hashcode, loaderCallback,
+                                                                         equalsCallback);
     ASSERT(result != nullptr);
     return EcmaString::FromBaseString(result);
 }
@@ -39,13 +43,19 @@ template <typename LoaderCallback, typename EqualsCallback>
 EcmaString* EcmaStringTable::GetOrInternString(EcmaVM* vm, uint32_t hashcode, LoaderCallback loaderCallback,
                                                EqualsCallback equalsCallback)
 {
-    return visitImpl([&](auto& impl) {
-        return impl.GetOrInternString(vm, hashcode, loaderCallback, equalsCallback);
-    });
+#ifdef USE_CMC_GC
+    if (enableCMCGC_) {
+        return impl_.GetOrInternString<EnableCMCGCTrait>(vm, hashcode, loaderCallback, equalsCallback);
+    }
+#endif
+    if (IsSweeping()) {
+        return impl_.GetOrInternString<DisableCMCGCConcurrentSweepTrait>(vm, hashcode, loaderCallback, equalsCallback);
+    }
+    return impl_.GetOrInternString<DisableCMCGCNormalTrait>(vm, hashcode, loaderCallback, equalsCallback);
 }
 
 template <typename Traits>
-typename EcmaStringTableImpl<Traits>::ThreadType* EcmaStringTableImpl<Traits>::GetThreadHolder(JSThread* thread)
+typename Traits::ThreadType* EcmaStringTableImpl::GetThreadHolder(JSThread* thread)
 {
     if constexpr (Traits::EnableCMCGC) {
         return thread->GetThreadHolder();

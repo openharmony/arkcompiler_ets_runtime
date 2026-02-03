@@ -22,6 +22,7 @@
 
 namespace panda::ecmascript {
 PUBLIC_API JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress);
+PUBLIC_API JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value);
 static ARK_INLINE JSTaggedType ReadBarrier(const JSThread *thread, const void *obj, size_t offset,
                                            const JSTaggedValue &value)
 {
@@ -53,6 +54,10 @@ inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *th
     return ReadBarrierImpl(thread, slotAddress);
 }
 
+inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForStringTableSlot(JSTaggedType value)
+{
+    return ReadBarrierForStringTableSlotImpl(value);
+}
 
 inline ARK_INLINE JSTaggedType Barriers::GetTaggedValue(const JSThread *thread, const void *obj, size_t offset)
 {

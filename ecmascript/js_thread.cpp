@@ -1115,6 +1115,10 @@ bool JSThread::CheckSafepoint()
     if UNLIKELY(IsProcessingLocalToSharedRset()) {
         return false;
     }
+    // Do not trigger local gc during string table concurrent sweeping
+    if UNLIKELY(vm_->GetEcmaStringTable()->IsSweeping()) {
+        return false;
+    }
     // After concurrent mark finish, should trigger gc here to avoid create much floating garbage
     // except in serialize or high sensitive event
     if UNLIKELY(ShouldHandleMarkOrCopyFinishedInSafepoint()) {

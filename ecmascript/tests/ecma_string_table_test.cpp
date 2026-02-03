@@ -137,8 +137,10 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_CheckStringTable)
 
 // Check BitFiled of Entry
 template<typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
-bool CheckBitFields(HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* map)
+bool CheckBitFields(HashTrieMap<Mutex>* map)
 {
+    HashTrieMapOperation<Mutex, ThreadHolder, SlotBarrier> hashTrieMapOperation(map);
+    HashTrieMapInUseScope<Mutex> mapInUse(map);
     bool highBitsNotSet = true;
     std::function<bool(HashTrieMapNode *)> checkbit = [&highBitsNotSet](HashTrieMapNode *node) {
         if (node->IsEntry()) {
@@ -150,7 +152,7 @@ bool CheckBitFields(HashTrieMap<Mutex, ThreadHolder, SlotBarrier>* map)
         }
         return true;
     };
-    map->Range(checkbit);
+    hashTrieMapOperation.Range(checkbit);
     return highBitsNotSet;
 }
 

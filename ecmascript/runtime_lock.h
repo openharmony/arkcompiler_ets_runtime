@@ -38,6 +38,15 @@ static inline void RuntimeLock(JSThread *thread, Mutex &mtx)
     mtx.Lock();
 }
 
+static inline void RuntimeLock(DaemonThread *dThread, Mutex &mtx)
+{
+    if (mtx.TryLock()) {
+        return;
+    }
+    ThreadStateTransitionScope<DaemonThread, ThreadState::WAIT> ts(dThread);
+    mtx.Lock();
+}
+
 static inline void RuntimeUnLock(Mutex &mtx)
 {
     mtx.Unlock();

@@ -35,6 +35,7 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/runtime_lock.h"
 #include "ecmascript/jit/jit.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
@@ -100,39 +101,46 @@ void SharedHeap::DestroyInstance()
 
 void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread)
 {
-    SuspendAllScope scope(thread);
-    SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
-    RecursionScope recurScope(this, HeapType::SHARED_HEAP);
-    CheckInHeapProfiler();
-    GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
-    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // pre gc heap verify
-        LOG_ECMA(DEBUG) << "pre gc shared heap verify";
-        sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
-        SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
-    }
-    switch (gcType) { // LCOV_EXCL_BR_LINE
-        case TriggerGCType::SHARED_PARTIAL_GC:
-        case TriggerGCType::SHARED_GC: {
-            sharedGC_->RunPhases();
-            break;
+    RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+    {
+        SuspendAllScope scope(thread);
+        SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
+        RecursionScope recurScope(this, HeapType::SHARED_HEAP);
+        CheckInHeapProfiler();
+        GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
+        if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "pre gc shared heap verify";
+            sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
+            SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
         }
-        case TriggerGCType::SHARED_FULL_GC: {
-            sharedFullGC_->RunPhases();
-            break;
+        switch (gcType) { // LCOV_EXCL_BR_LINE
+            case TriggerGCType::SHARED_PARTIAL_GC:
+            case TriggerGCType::SHARED_GC: {
+                sharedGC_->RunPhases();
+                break;
+            }
+            case TriggerGCType::SHARED_FULL_GC: {
+                sharedFullGC_->RunPhases();
+                break;
+            }
+            default: // LOCV_EXCL_BR_LINE
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+                break;
         }
-        default: // LOCV_EXCL_BR_LINE
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-            break;
+        if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "after gc shared heap verify";
+            SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+        }
+        CollectGarbageFinish(false, gcType);
+        InvokeSharedNativePointerCallbacks();
     }
-    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // pre gc heap verify
-        LOG_ECMA(DEBUG) << "after gc shared heap verify";
-        SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+    if (gcType != TriggerGCType::SHARED_FULL_GC && sharedGC_->IsConcurrentProcessStringTable()) {
+        Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->WaitConcurrentSweepWeakRefTaskAndSuspend(thread);
+        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
     }
-    CollectGarbageFinish(false, gcType);
-    InvokeSharedNativePointerCallbacks();
 }
 
 bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
@@ -383,7 +391,7 @@ bool SharedHeap::ParallelMarkTask::RunInternal(uint32_t threadIndex)
 bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedHeap::AsyncClearTask::Run", "");
-    sHeap_->ReclaimRegions(gcType_);
+    sHeap_->ReclaimRegions(gcType_, true);
     return true;
 }
 
@@ -422,6 +430,8 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
         gcType == TriggerGCType::SHARED_FULL_GC);
     ASSERT(JSThread::GetCurrent() == dThread_);
+    Mutex& suspensionRequestMutex = SharedHeap::GetInstance()->GetSuspensionRequestMutex();
+    RuntimeLock(dThread_, suspensionRequestMutex);
     {
         ThreadManagedScope runningScope(dThread_);
         SuspendAllScope scope(dThread_);
@@ -460,12 +470,19 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
     }
     InvokeSharedNativePointerCallbacks();
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
+    if (gcType != TriggerGCType::SHARED_FULL_GC && sharedGC_->IsConcurrentProcessStringTable()) {
+        Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->
+            WaitConcurrentSweepWeakRefTaskAndSuspendByDaemonThread(dThread_);
+        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+    }
+    RuntimeUnLock(suspensionRequestMutex);
 }
 
 void SharedHeap::WaitAllTasksFinished(JSThread *thread)
 {
     WaitGCFinished(thread);
     sSweeper_->WaitAllTaskFinished();
+    Runtime::GetInstance()->GetEcmaStringTable()->TransferToNativeAndWaitSweepWeakRefTaskFinished(thread);
     WaitClearTaskFinished();
 }
 
@@ -473,6 +490,7 @@ void SharedHeap::WaitAllTasksFinishedAfterAllJSThreadEliminated()
 {
     WaitGCFinishedAfterAllJSThreadEliminated();
     sSweeper_->WaitAllTaskFinished();
+    Runtime::GetInstance()->GetEcmaStringTable()->WaitSweepWeakRefTaskFinished();
     WaitClearTaskFinished();
 }
 
@@ -508,6 +526,19 @@ void SharedHeap::Prepare(bool inTriggerGCThread)
     } else {
         sSweeper_->WaitAllTaskFinished();
     }
+    Runtime::GetInstance()->GetEcmaStringTable()->WaitSweepWeakRefTaskFinished();
+    WaitClearTaskFinished();
+}
+
+void SharedHeap::PrepareByJSThread(JSThread *thread, bool inTriggerGCThread)
+{
+    WaitAllMarkTaskFinished();
+    if (inTriggerGCThread) {
+        sSweeper_->EnsureAllTaskFinished();
+    } else {
+        sSweeper_->WaitAllTaskFinished();
+    }
+    Runtime::GetInstance()->GetEcmaStringTable()->TransferToNativeAndWaitSweepWeakRefTaskFinished(thread);
     WaitClearTaskFinished();
 }
 
@@ -557,14 +588,19 @@ void SharedHeap::Reclaim(TriggerGCType gcType)
         common::Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<AsyncClearTask>(dThread_->GetThreadId(), this, gcType));
     } else {
-        ReclaimRegions(gcType);
+        ReclaimRegions(gcType, false);
     }
 }
 
-void SharedHeap::ReclaimRegions(TriggerGCType gcType)
+void SharedHeap::ReclaimRegions(TriggerGCType gcType, bool gcThread)
 {
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
         sCompressSpace_->Reset();
+    }
+    if (gcThread) {
+        Runtime::GetInstance()->GetEcmaStringTable()->WaitSweepWeakRefTaskFinished();
+    } else {
+        ASSERT(!Runtime::GetInstance()->GetEcmaStringTable()->IsSweeping());
     }
     sHugeObjectSpace_->ReclaimHugeRegion();
     sOldSpace_->ReclaimCSets();
@@ -802,6 +838,7 @@ void SharedHeap::MoveOldSpaceToAppspawn()
 void SharedHeap::ReclaimForAppSpawn()
 {
     sSweeper_->WaitAllTaskFinished();
+    ASSERT(!Runtime::GetInstance()->GetEcmaStringTable()->IsSweeping());
     sHugeObjectSpace_->ReclaimHugeRegion();
     sCompressSpace_->Reset();
     MoveOldSpaceToAppspawn();
@@ -1265,12 +1302,12 @@ void Heap::PrepareForIteration() const
     sweeper_->EnsureAllTaskFinished();
 }
 
-void Heap::GetHeapPrepare()
+void Heap::GetHeapPrepare(JSThread *thread)
 {
     // Ensure local and shared heap prepared.
     Prepare();
     SharedHeap *sHeap = SharedHeap::GetInstance();
-    sHeap->Prepare(false);
+    sHeap->PrepareByJSThread(thread, false);
 }
 
 void Heap::Resume(TriggerGCType gcType)
