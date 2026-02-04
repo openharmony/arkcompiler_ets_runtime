@@ -252,6 +252,16 @@ HWTEST_F_L0(SharedHeapTest, SharedConcurrentSweeper8)
     EXPECT_TRUE(sHeap->GetSweeper()->IsRequestDisabled());
 }
 
+HWTEST_F_L0(SharedHeapTest, SharedConcurrentSweeper9)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->GetSweeper()->ConfigConcurrentSweep(true);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    sHeap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    sHeap->GetSweeper()->EnsureAllTaskFinished();
+    EXPECT_TRUE(sHeap->GetSweeper()->IsDisabled());
+}
+
 HWTEST_F_L0(SharedHeapTest, CheckIfNeedStopCollectionByStartup1)
 {
     auto sHeap = SharedHeap::GetInstance();
@@ -289,5 +299,139 @@ HWTEST_F_L0(SharedHeapTest, CheckIfNeedStopCollectionByStartup4)
     sharedHugeObjectSpace->IncreaseCommitted(500 * 1024 *1024);
     EXPECT_TRUE(sharedHugeObjectSpace->CommittedSizeExceed());
     EXPECT_FALSE(sHeap->CheckIfNeedStopCollectionByStartup());
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection1)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::NORMAL_SCENE);
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::ON_STARTUP);
+    EXPECT_EQ(sHeap->GetSensitiveStatus(), AppSensitiveStatus::NORMAL_SCENE);
+    EXPECT_TRUE(sHeap->NeedStopCollection());
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection2)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::NORMAL_SCENE);
+
+    SharedHugeObjectSpace *hugeObjectSpace = sHeap->GetHugeObjectSpace();
+    hugeObjectSpace->IncreaseCommitted(500 * 1024 * 1024); // 增加500MB
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::ON_STARTUP);
+    EXPECT_TRUE(hugeObjectSpace->CommittedSizeExceed());
+    EXPECT_FALSE(sHeap->NeedStopCollection());
+    hugeObjectSpace->ReclaimHugeRegion();
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection3)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->FinishStartupEvent();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::NORMAL_SCENE);
+
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::JUST_FINISH_STARTUP);
+    EXPECT_EQ(sHeap->GetSensitiveStatus(), AppSensitiveStatus::NORMAL_SCENE);
+    EXPECT_TRUE(sHeap->NeedStopCollection());
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection4)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->FinishStartupEvent();
+    sHeap->CancelJustFinishStartupEvent();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::FINISH_STARTUP);
+    EXPECT_EQ(sHeap->GetSensitiveStatus(), AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    EXPECT_TRUE(sHeap->NeedStopCollection());
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection5)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->FinishStartupEvent();
+    sHeap->CancelJustFinishStartupEvent();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::FINISH_STARTUP);
+    EXPECT_EQ(sHeap->GetSensitiveStatus(), AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    EXPECT_TRUE(sHeap->NeedStopCollection());
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection6)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->FinishStartupEvent();
+    sHeap->CancelJustFinishStartupEvent();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+
+    SharedHugeObjectSpace *hugeObjectSpace = sHeap->GetHugeObjectSpace();
+    hugeObjectSpace->IncreaseCommitted(500 * 1024 * 1024); // 增加500MB
+
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::FINISH_STARTUP);
+    EXPECT_EQ(sHeap->GetSensitiveStatus(), AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    EXPECT_TRUE(hugeObjectSpace->CommittedSizeExceed());
+
+    EXPECT_FALSE(sHeap->NeedStopCollection());
+    hugeObjectSpace->ReclaimHugeRegion();
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection7)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->FinishStartupEvent();
+    sHeap->CancelJustFinishStartupEvent();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::NORMAL_SCENE);
+
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::FINISH_STARTUP);
+    EXPECT_EQ(sHeap->GetSensitiveStatus(), AppSensitiveStatus::NORMAL_SCENE);
+    EXPECT_FALSE(sHeap->NeedStopCollection());
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection8)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::ON_STARTUP);
+    EXPECT_EQ(sHeap->GetSensitiveStatus(), AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    EXPECT_TRUE(sHeap->NeedStopCollection());
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection9)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->FinishStartupEvent();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::JUST_FINISH_STARTUP);
+    EXPECT_EQ(sHeap->GetSensitiveStatus(), AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    EXPECT_TRUE(sHeap->NeedStopCollection());
+}
+
+HWTEST_F_L0(SharedHeapTest, NeedStopCollection10)
+{
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->NotifyPostFork();
+    sHeap->SetSensitiveStatus(AppSensitiveStatus::NORMAL_SCENE);
+
+    SharedOldSpace *oldSpace = sHeap->GetOldSpace();
+    size_t originalInitialCapacity = oldSpace->GetInitialCapacity();
+
+    oldSpace->SetInitialCapacity(1);
+
+    EXPECT_EQ(sHeap->GetStartupStatus(), StartupStatus::ON_STARTUP);
+    EXPECT_TRUE(oldSpace->GetHeapObjectSize() >= oldSpace->GetInitialCapacity());
+    EXPECT_FALSE(sHeap->NeedStopCollection());
+    oldSpace->SetInitialCapacity(originalInitialCapacity);
 }
 }  // namespace panda::test
