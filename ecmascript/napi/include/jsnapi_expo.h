@@ -1929,7 +1929,7 @@ public:
                                 bool needSerializeStack = false);
     static void* SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
                                          Local<JSValueRef> cloneList, std::string &error, bool defaultTransfer = false,
-                                         bool defaultCloneShared = true);
+                                         bool defaultCloneShared = true, bool needSerializeStack = false);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     // InterOp Serialize & Deserialize.
     static void* InterOpSerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
