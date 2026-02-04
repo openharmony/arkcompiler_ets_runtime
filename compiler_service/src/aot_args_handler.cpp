@@ -51,6 +51,7 @@ const std::string AN_FILE_NAME = "anFileName";
 const std::string ARKTS_HYBRID = "hybrid";
 
 const std::string AN_SUFFIX = ".an";
+const std::string AP_SUFFIX = ".ap";
 const std::string APP_SANBOX_PATH_PREFIX = "/data/storage/el1/bundle/";
 const std::string ETS_PATH = "/ets";
 const std::string OWNERID_SHARED_TAG = "SHARED_LIB_ID";
@@ -314,7 +315,8 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_LOCATION + Symbols::EQ + location);
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_PANDA_FILES + Symbols::EQ + abcPath);
 
-    if (partialMode && !ParseProfileUse(hapArgs, pkgInfo)) {
+    std::string moduleName = ParseModuleName(anfilePath);
+    if (partialMode && !ParseProfileUse(hapArgs, pkgInfo, moduleName)) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
@@ -403,7 +405,7 @@ bool StaticAOTArgsParser::ParseProfilePath(std::string &pkgInfo, std::string &pr
         return false;
     }
 
-    profilePath = jsonPkgInfo[pgoDir].get<std::string>() + "/profile.ap";
+    profilePath = jsonPkgInfo[pgoDir].get<std::string>();
     return true;
 }
 
@@ -595,7 +597,7 @@ std::string StaticAOTArgsParser::ParseBlackListMethods(const std::string &pkgInf
     return ProcessBlackListForBundleAndModule(jsonObject, bundleName, moduleName);
 }
 
-bool StaticAOTArgsParser::ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo)
+bool StaticAOTArgsParser::ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo, const std::string &moduleName)
 {
     std::string profilePath;
     bool parseRet = ParseProfilePath(pkgInfo, profilePath);
@@ -603,7 +605,8 @@ bool StaticAOTArgsParser::ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo
         LOG_SA(ERROR) << "parse profile path failed in partial mode";
         return false;
     }
-    std::string pathArg = PATH + Symbols::EQ + profilePath;
+    std::string profileName = profilePath + "/" + moduleName + AP_SUFFIX;
+    std::string pathArg = PATH + Symbols::EQ + profileName;
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_USE_PROFILE + Symbols::COLON + pathArg);
     return true;
 }

@@ -121,7 +121,7 @@ public:
 
     bool ParseProfilePath(std::string &pkgInfo, std::string &profilePath);
 
-    bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo);
+    bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo, const std::string &moduleName);
 
     bool Check(const std::unordered_map<std::string, std::string> &argsMap) override;
 
