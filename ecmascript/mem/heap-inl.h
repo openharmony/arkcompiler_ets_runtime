@@ -257,7 +257,10 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
             if (object == nullptr) {
                 CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
                 object = AllocateInYoungSpace(size);
-                CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, activeSemiSpace_, "Heap::AllocateYoungOrHugeObject");
+                CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, activeSemiSpace_,
+                    "Heap::AllocateYoungOrHugeObject, local heap oom, used size: " +
+                    std::to_string(GetHeapObjectSize()) + " bytes, committed size: " +
+                    std::to_string(GetCommittedSize()) + " bytes");
             }
         }
     }
@@ -432,7 +435,9 @@ TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
                 CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
                 object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, true));
             }
-            CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_, "Heap::AllocateOldOrHugeObject");
+            CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_,
+                "Heap::AllocateOldOrHugeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+                " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
         }
     }
     return object;
@@ -467,7 +472,9 @@ TaggedObject *Heap::AllocateReadOnlyOrHugeObject(JSHClass *hclass, size_t size)
         object = AllocateHugeObject(hclass, size);
     } else {
         object = AllocateReadOnlyOrHugeObject(size);
-        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_, "Heap::AllocateReadOnlyOrHugeObject");
+        CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, readOnlySpace_,
+            "Heap::AllocateReadOnlyOrHugeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+            " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
         ASSERT(object != nullptr);
         object->SetClass(thread_, hclass);
     }
@@ -512,7 +519,10 @@ TaggedObject *Heap::AllocateNonMovableOrHugeObject(JSHClass *hclass, size_t size
             object = AllocateHugeObject(hclass, size);
         } else {
             object = reinterpret_cast<TaggedObject *>(nonMovableSpace_->CheckAndAllocate(size));
-            CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_, "Heap::AllocateNonMovableOrHugeObject");
+            CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, nonMovableSpace_,
+                "Heap::AllocateNonMovableOrHugeObject, local heap oom, used size: " +
+                std::to_string(GetHeapObjectSize()) + " bytes, committed size: " +
+                std::to_string(GetCommittedSize()) + " bytes");
             object->SetClass(thread_, hclass);
         }
     }
@@ -585,10 +595,14 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             DumpHeapSnapshotBeforeOOM();
             StatisticHeapDetail();
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
-            ThrowOutOfMemoryError(thread_, size, "Heap::AllocateHugeObject");
+            ThrowOutOfMemoryError(thread_, size,
+                "Heap::AllocateHugeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+                " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
             object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             if (UNLIKELY(object == nullptr)) {
-                FatalOutOfMemoryError(size, "Heap::AllocateHugeObject");
+                FatalOutOfMemoryError(size,
+                    "Heap::AllocateHugeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+                    " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
             }
         }
     }
@@ -637,7 +651,8 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
                 reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size));
         }
         CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR(object, size, machineCodeSpace_,
-            "Heap::AllocateMachineCodeObject");
+            "Heap::AllocateMachineCodeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+                " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
         object->SetClass(thread_, hclass);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
         OnAllocateEvent(GetEcmaVM(), object, size);
@@ -669,7 +684,8 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
             reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size, desc, true));
     }
     CHECK_MACHINE_CODE_OBJ_AND_SET_OOM_ERROR_FORT(object, size, machineCodeSpace_, desc,
-        "Heap::AllocateMachineCodeObject");
+        "Heap::AllocateMachineCodeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+                " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
     object->SetClass(thread_, hclass);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
@@ -683,7 +699,9 @@ uintptr_t Heap::AllocateSnapshotSpace(size_t size)
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
     uintptr_t object = snapshotSpace_->Allocate(size);
     if (UNLIKELY(object == 0)) {
-        FatalOutOfMemoryError(size, "Heap::AllocateSnapshotSpaceObject");
+        FatalOutOfMemoryError(size,
+            "Heap::AllocateSnapshotSpaceObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+            " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
     }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), reinterpret_cast<TaggedObject *>(object), size);
@@ -1039,7 +1057,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
         if (object == nullptr) {
             object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
             CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
-                "SharedHeap::AllocateNonMovableOrHugeObject");
+                "SharedHeap::AllocateNonMovableOrHugeObject, shared heap oom");
             object->SetClass(thread, hclass);
             TryTriggerConcurrentMarking(thread);
         } else {
@@ -1069,7 +1087,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
         if (object == nullptr) {
             object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
             CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
-                "SharedHeap::AllocateNonMovableOrHugeObject");
+                "SharedHeap::AllocateNonMovableOrHugeObject, shared heap oom");
             TryTriggerConcurrentMarking(thread);
         }
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -1100,7 +1118,8 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
             const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
         if (object == nullptr) {
             object = AllocateInSOldSpace(thread, size);
-            CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+            CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_,
+                "SharedHeap::AllocateOldOrHugeObject, shared heap oom");
             object->SetClass(thread, hclass);
             TryTriggerConcurrentMarking(thread);
         } else {
@@ -1128,7 +1147,8 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
             const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
         if (object == nullptr) {
             object = AllocateInSOldSpace(thread, size);
-            CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+            CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_,
+                "SharedHeap::AllocateOldOrHugeObject, shared heap oom");
             TryTriggerConcurrentMarking(thread);
         }
     }
@@ -1204,10 +1224,10 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
             size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
             sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
             DumpHeapSnapshotBeforeOOM(thread, SharedHeapOOMSource::NORMAL_ALLOCATION);
-            ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject");
+            ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject, shared heap oom");
             object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
             if (UNLIKELY(object == nullptr)) {
-                FatalOutOfMemoryError(size, "SharedHeap::AllocateHugeObject");
+                FatalOutOfMemoryError(size, "SharedHeap::AllocateHugeObject, shared heap oom");
             }
         }
     }
@@ -1235,7 +1255,7 @@ TaggedObject *SharedHeap::AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClas
     } else {
         object = reinterpret_cast<TaggedObject *>(sReadOnlySpace_->Allocate(thread, size));
         CHECK_SOBJ_AND_THROW_OOM_ERROR(
-            thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject");
+            thread, object, size, sReadOnlySpace_, "SharedHeap::AllocateReadOnlyOrHugeObject, shared heap oom");
     }
     ASSERT(object != nullptr);
     object->SetClass(thread, hclass);
