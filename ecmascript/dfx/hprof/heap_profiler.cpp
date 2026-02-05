@@ -40,6 +40,8 @@
 
 namespace panda::ecmascript {
 
+bool HeapProfiler::oomDumpActive_ = false;
+
 std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
 {
     auto it = idMap_.find(addr);
@@ -190,8 +192,6 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
                         "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
         return;
     }
-    FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(&stream, doDumpOption);
 #else
     if (dumpOption.isDumpOOM && dumpOption.dumpFormat == DumpFormat::BINARY) {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
@@ -205,18 +205,24 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
                         "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
         return;
     }
-    FileDescriptorStream stream(fd);
-    if (!fromSharedGC) {
-        DumpHeapSnapshot(&stream, dumpOption);
-    } else {
-        DumpHeapSnapshotFromSharedGC(&stream, dumpOption);
-    }
 #endif
+    FileDescriptorStream stream(fd);
+    if (fromSharedGC) {
+        DumpHeapSnapshotFromSharedGC(&stream, dumpOption);
+    } else {
+        DumpHeapSnapshot(&stream, dumpOption);
+    }
+#else
+    LOG_ECMA(ERROR) << "oom dump not supported.";
 #endif
 }
 
-void HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
+bool HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
+    if (!TryStartOOMDump()) {
+        LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
+        return false;
+    }
     base::BlockHookScope blockScope;
     const_cast<Heap*>(vm_->GetHeap())->Prepare();
     SharedHeap::GetInstance()->PrepareByJSThread(vm_->GetAssociatedJSThread(), true);
@@ -226,6 +232,7 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapSh
     });
     BinaryDump(stream, dumpOption);
     stream->EndOfStream();
+    return true;
 }
 
 bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShotOption &dumpOption)
@@ -412,6 +419,10 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         ASSERT(!vm_->GetAssociatedJSThread()->IsConcurrentCopying());
         // OOM and ThresholdReachedDump.
         if (dumpOption.isDumpOOM) {
+            if (!TryStartOOMDump()) {
+                LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
+                return false;
+            }
             res = BinaryDump(stream, dumpOption);
             stream->EndOfStream();
             return res;
@@ -810,5 +821,17 @@ void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
         Backtrace(stack, true);
         InsertHandleBackTrace(handle, stack.str());
     }
+}
+
+bool HeapProfiler::TryStartOOMDump()
+{
+    bool result = oomDumpActive_;
+    oomDumpActive_ = true;
+    return !result;
+}
+
+void HeapProfiler::ResetOOMDump()
+{
+    oomDumpActive_ = false;
 }
 }  // namespace panda::ecmascript

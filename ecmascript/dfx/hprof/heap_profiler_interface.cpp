@@ -19,6 +19,7 @@
 
 
 namespace panda::ecmascript {
+
 HeapProfilerInterface *HeapProfilerInterface::GetInstance(EcmaVM *vm)
 {
     return vm->GetOrNewHeapProfile();
@@ -39,7 +40,7 @@ void HeapProfilerInterface::DestroyInstance(HeapProfilerInterface *heapProfiler)
     delete heapProfiler;
 }
 
-void panda::ecmascript::HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *thread)
+void HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *thread)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     EcmaVM *vm = Runtime::GetInstance()->GetMainThread()->GetEcmaVM();
@@ -64,4 +65,5 @@ void panda::ecmascript::HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *t
     vm->GetOrNewHeapProfile()->DumpHeapSnapshotForOOM(dumpOption);
 #endif
 }
+
 }  // namespace panda::ecmascript
