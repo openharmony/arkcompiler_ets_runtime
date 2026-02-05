@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/module_data_extractor.h"
@@ -41,6 +42,11 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     sModule->SetEcmaModuleFilenameString(currentModule->GetEcmaModuleFilenameString());
     sModule->SetEcmaModuleRecordNameString(currentModule->GetEcmaModuleRecordNameString());
     sModule->SetSendableEnv(thread, JSTaggedValue::Undefined());
+    if (thread->GetEcmaVM()->GetJsDebuggerManager()->IsDebugApp()) {
+        sModule->SetImportEntries(thread, currentModule->GetImportEntries(thread));
+        sModule->SetLocalExportEntries(thread, currentModule->GetLocalExportEntries(thread));
+        sModule->SetIndirectExportEntries(thread, currentModule->GetIndirectExportEntries(thread));
+    }
     return JSHandle<JSTaggedValue>(sModule);
 }
 
