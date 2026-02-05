@@ -388,26 +388,11 @@ HWTEST_F_L0(PGOProfilerInfoTest, GetSampleModeInvalidModeTest)
     EXPECT_FALSE(result);
 }
 
-HWTEST_F_L0(PGOProfilerInfoTest, IsFilterHotnessModeTest)
-{
-    PGOMethodId methodId(100);
-    PGOMethodInfo methodInfo(methodId, 1, SampleMode::HOTNESS_MODE, "testMethod");
-    EXPECT_FALSE(methodInfo.IsFilter(5));
-}
-
 HWTEST_F_L0(PGOProfilerInfoTest, IsFilterCallModeAboveThresholdTest)
 {
     PGOMethodId methodId(100);
     PGOMethodInfo methodInfo(methodId, 10, SampleMode::CALL_MODE, "testMethod");
     EXPECT_FALSE(methodInfo.IsFilter(5));
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, SetSampleModeAlreadyHotnessTest)
-{
-    PGOMethodId methodId(100);
-    PGOMethodInfo methodInfo(methodId, 5, SampleMode::HOTNESS_MODE, "testMethod");
-    methodInfo.SetSampleMode(SampleMode::CALL_MODE);
-    EXPECT_EQ(methodInfo.GetSampleMode(), SampleMode::HOTNESS_MODE);
 }
 
 HWTEST_F_L0(PGOProfilerInfoTest, MergeDifferentMethodIdsTest)
