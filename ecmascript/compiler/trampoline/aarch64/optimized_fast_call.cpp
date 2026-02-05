@@ -114,10 +114,10 @@ void OptimizedFastCall::OptimizedFastCallAndPushArgv(ExtendedAssembler *assemble
     Register expectedNumArgs = __ AvailableRegister2();
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(expectedNumArgs, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
-    __ Lsr(expectedNumArgs, expectedNumArgs, MethodLiteral::NumArgsBits::START_BIT);
+    __ Lsr(expectedNumArgs, expectedNumArgs, Method::NumArgsBits::START_BIT);
     __ And(expectedNumArgs, expectedNumArgs,
         LogicalImmediate::Create(
-            MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
+            Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, RegXSize));
     __ Add(expectedNumArgs, expectedNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
 
     Label arg7;

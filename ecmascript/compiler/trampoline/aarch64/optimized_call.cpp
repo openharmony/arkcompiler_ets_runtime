@@ -215,10 +215,10 @@ void OptimizedCall::OptimizedCallAndPushArgv(ExtendedAssembler *assembler)
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(codeAddr, MemoryOperand(jsfunc, JSFunction::CODE_ENTRY_OFFSET));
     __ Ldr(expectedNumArgs, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
-    __ Lsr(expectedNumArgs, expectedNumArgs, MethodLiteral::NumArgsBits::START_BIT);
+    __ Lsr(expectedNumArgs, expectedNumArgs, Method::NumArgsBits::START_BIT);
     __ And(expectedNumArgs, expectedNumArgs,
         LogicalImmediate::Create(
-            MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
+            Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, RegXSize));
     __ Add(expectedNumArgs, expectedNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
 
     __ Add(argV, sp, Immediate(funcSlotOffSet * FRAME_SLOT_SIZE));  // skip numArgs and argv
@@ -476,7 +476,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(actualArgC, MemoryOperand(sp, 0));
     __ Ldr(callField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
-    __ Tbnz(callField, MethodLiteral::IsNativeBit::START_BIT, &callNativeMethod);
+    __ Tbnz(callField, Method::IsNativeBit::START_BIT, &callNativeMethod);
     if (!isNew) {
         __ Tbz(Register(X5), JSHClass::IsClassConstructorOrPrototypeBit::START_BIT, &lNotClass);
         __ Tbnz(Register(X5), JSHClass::ConstructorBit::START_BIT, &lCallConstructor);
@@ -496,12 +496,12 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     {
         Register nativeFuncAddr(X4);
         if (!isNew) {
-            __ Tbz(callField, MethodLiteral::IsFastBuiltinBit::START_BIT, &lCallNativeCpp);
+            __ Tbz(callField, Method::IsFastBuiltinBit::START_BIT, &lCallNativeCpp);
             // 3 : 3 means call0 call1 call2 call3
             __ Cmp(actualArgC, Immediate(kungfu::ArgumentAccessor::GetFixArgsNum() + 3));
             __ B(Condition::LE, &lCallBuiltinStub);
         } else {
-            __ Tbnz(callField, MethodLiteral::IsFastBuiltinBit::START_BIT, &lCallBuiltinStub);
+            __ Tbnz(callField, Method::IsFastBuiltinBit::START_BIT, &lCallBuiltinStub);
         }
         __ Bind(&lCallNativeCpp);
         __ Ldr(nativeFuncAddr, MemoryOperand(jsfunc, JSFunctionBase::CODE_ENTRY_OFFSET));
@@ -513,7 +513,9 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
         TempRegister1Scope scope1(assembler);
         Register builtinStub = __ TempRegister1();
         __ Ldr(Register(X5), MemoryOperand(method, Method::EXTRA_LITERAL_INFO_OFFSET));  // get extra literal
-        __ And(Register(X5).W(), Register(X5).W(), LogicalImmediate::Create(0xff, RegWSize));
+        __ Lsr(Register(X5).W(), Register(X5).W(), Method::BuiltinIdBits::START_BIT);
+        __ And(Register(X5).W(), Register(X5).W(),
+               LogicalImmediate::Create((1LU << Method::BuiltinIdBits::SIZE) - 1, RegWSize));
         if (!isNew) {
             __ Cmp(Register(X5).W(), Immediate(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)));
             __ B(Condition::GE, &lCallNativeCpp);
@@ -740,10 +742,10 @@ void OptimizedCall::FastCallToAsmInterBridge(ExtendedAssembler *assembler)
 
         __ Ldr(tempMethod, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
         __ Ldr(tempArgc, MemoryOperand(tempMethod, Method::CALL_FIELD_OFFSET));
-        __ Lsr(tempArgc, tempArgc, MethodLiteral::NumArgsBits::START_BIT);
+        __ Lsr(tempArgc, tempArgc, Method::NumArgsBits::START_BIT);
         __ And(tempArgc, tempArgc,
             LogicalImmediate::Create(
-                MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
+                Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, RegXSize));
     }
     {
         TempRegister1Scope scope1(assembler);
@@ -844,10 +846,10 @@ void OptimizedCall::FastCallToAsmInterBridge(ExtendedAssembler *assembler)
     __ Ldr(method, MemoryOperand(jsfunc, JSFunction::METHOD_OFFSET));
     __ Ldr(methodCallField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
     __ Mov(argc, methodCallField);
-    __ Lsr(argc, argc, MethodLiteral::NumArgsBits::START_BIT);
+    __ Lsr(argc, argc, Method::NumArgsBits::START_BIT);
     __ And(argc, argc,
         LogicalImmediate::Create(
-            MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegXSize));
+            Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, RegXSize));
     __ Add(argV, sp, Immediate((kungfu::ArgumentAccessor::GetFixArgsNum() + 1) * FRAME_SLOT_SIZE));  // 1: skip startSp
 
     Label target;

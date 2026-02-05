@@ -359,8 +359,8 @@ GateRef CircuitBuilder::GetCallBuiltinId(GateRef method)
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
     GateRef extraLiteralInfo = LoadWithoutBarrier(VariableType::INT64(), method, extraLiteralInfoOffset);
     return Int64And(
-        Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
-        Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
+        Int64LSR(extraLiteralInfo, Int64(Method::BuiltinIdBits::START_BIT)),
+        Int64((1LU << Method::BuiltinIdBits::SIZE) - 1));
 }
 
 GateRef CircuitBuilder::CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment)

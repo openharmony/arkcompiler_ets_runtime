@@ -272,11 +272,11 @@ GateRef InterpreterStubBuilder::GetNewTarget(GateRef glue, GateRef sp)
     GateRef method = GetMethodFromFunction(glue, function);
     GateRef callField = GetCallFieldFromMethod(method);
     // ASSERT: callField has "extra" bit.
-    GateRef numVregs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(MethodLiteral::NumVregsBits::START_BIT)),
-        Int64((1LLU << MethodLiteral::NumVregsBits::SIZE) - 1)));
+    GateRef numVregs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(Method::NumVregsBits::START_BIT)),
+        Int64((1LLU << Method::NumVregsBits::SIZE) - 1)));
     GateRef haveFunc = ZExtInt1ToInt32(Int64NotEqual(Int64And(Int64LSR(callField,
-        Int64(MethodLiteral::HaveFuncBit::START_BIT)),
-        Int64((1LLU << MethodLiteral::HaveFuncBit::SIZE) - 1)), Int64(0)));
+        Int64(Method::HaveFuncBit::START_BIT)),
+        Int64((1LLU << Method::HaveFuncBit::SIZE) - 1)), Int64(0)));
     GateRef idx = ZExtInt32ToPtr(Int32Add(numVregs, haveFunc));
     return LoadPrimitive(VariableType::JS_ANY(), sp, PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
 }
@@ -513,19 +513,19 @@ GateRef InterpreterStubBuilder::GetStartIdxAndNumArgs(GateRef glue, GateRef sp, 
     GateRef method = GetMethodFromJSFunctionOrProxy(glue, function);
     GateRef callField = GetCallFieldFromMethod(method);
     // ASSERT: callField has "extra" bit.
-    GateRef numVregs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(MethodLiteral::NumVregsBits::START_BIT)),
-        Int64((1LLU << MethodLiteral::NumVregsBits::SIZE) - 1)));
-    GateRef haveFunc = Int64NotEqual(Int64And(Int64LSR(callField, Int64(MethodLiteral::HaveFuncBit::START_BIT)),
-        Int64((1LLU << MethodLiteral::HaveFuncBit::SIZE) - 1)), Int64(0));
+    GateRef numVregs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(Method::NumVregsBits::START_BIT)),
+        Int64((1LLU << Method::NumVregsBits::SIZE) - 1)));
+    GateRef haveFunc = Int64NotEqual(Int64And(Int64LSR(callField, Int64(Method::HaveFuncBit::START_BIT)),
+        Int64((1LLU << Method::HaveFuncBit::SIZE) - 1)), Int64(0));
     GateRef haveNewTarget = Int64NotEqual(
-        Int64And(Int64LSR(callField, Int64(MethodLiteral::HaveNewTargetBit::START_BIT)),
-        Int64((1LLU << MethodLiteral::HaveNewTargetBit::SIZE) - 1)), Int64(0));
-    GateRef haveThis = Int64NotEqual(Int64And(Int64LSR(callField, Int64(MethodLiteral::HaveThisBit::START_BIT)),
-        Int64((1LLU << MethodLiteral::HaveThisBit::SIZE) - 1)), Int64(0));
+        Int64And(Int64LSR(callField, Int64(Method::HaveNewTargetBit::START_BIT)),
+        Int64((1LLU << Method::HaveNewTargetBit::SIZE) - 1)), Int64(0));
+    GateRef haveThis = Int64NotEqual(Int64And(Int64LSR(callField, Int64(Method::HaveThisBit::START_BIT)),
+        Int64((1LLU << Method::HaveThisBit::SIZE) - 1)), Int64(0));
     GateRef copyArgs = Int32Add(Int32Add(ZExtInt1ToInt32(haveFunc), ZExtInt1ToInt32(haveNewTarget)),
                                 ZExtInt1ToInt32(haveThis));
-    numArgs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
-                                         Int64((1LLU << MethodLiteral::NumArgsBits::SIZE) - 1)));
+    numArgs = TruncInt64ToInt32(Int64And(Int64LSR(callField, Int64(Method::NumArgsBits::START_BIT)),
+                                         Int64((1LLU << Method::NumArgsBits::SIZE) - 1)));
     GateRef fp = LoadPrimitive(VariableType::NATIVE_POINTER(), state,
         IntPtr(AsmInterpretedFrame::GetFpOffset(env->IsArch32Bit())));
     Label actualEqualDeclared(env);

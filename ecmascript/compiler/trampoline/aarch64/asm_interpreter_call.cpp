@@ -93,7 +93,7 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     CallNativeEntry(assembler, true);
     __ Bind(&callJSFunctionEntry);
     {
-        __ Tbnz(callFieldRegister, MethodLiteral::IsNativeBit::START_BIT, &callNativeEntry);
+        __ Tbnz(callFieldRegister, Method::IsNativeBit::START_BIT, &callNativeEntry);
         // fast path
         __ Add(argvRegister, argvRegister, Immediate(NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()));
         JSCallCommonEntry(assembler, JSCallMode::CALL_ENTRY, FrameTransitionType::OTHER_TO_BASELINE_CHECK);
@@ -247,7 +247,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
 
     auto argc = kungfu::AssemblerModule::GetArgcFromJSCallMode(mode);
     Register declaredNumArgsRegister = __ AvailableRegister2();
-    __ Tbz(callFieldRegister, MethodLiteral::HaveExtraBit::START_BIT, &noExtraEntry);
+    __ Tbz(callFieldRegister, Method::HaveExtraBit::START_BIT, &noExtraEntry);
     // extra entry
     {
         [[maybe_unused]] TempRegister1Scope scope1(assembler);
@@ -287,7 +287,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
     // declare < actual
     __ Bind(&pushArgsEntry);
     {
-        __ Tbnz(callFieldRegister, MethodLiteral::HaveExtraBit::START_BIT, fastPathEntry);
+        __ Tbnz(callFieldRegister, Method::HaveExtraBit::START_BIT, fastPathEntry);
         // no extra branch
         // arg1, declare must be 0
         if (argc == 1) {
@@ -803,9 +803,9 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
             __ Ldur(temp, MemoryOperand(sp, constructorOffset));  // load constructor
             __ Ldr(temp, MemoryOperand(temp, JSFunctionBase::METHOD_OFFSET));
             __ Ldr(temp, MemoryOperand(temp, Method::EXTRA_LITERAL_INFO_OFFSET));
-            __ Lsr(temp.W(), temp.W(), MethodLiteral::FunctionKindBits::START_BIT);
+            __ Lsr(temp.W(), temp.W(), Method::FunctionKindBits::START_BIT);
             __ And(temp.W(), temp.W(),
-                LogicalImmediate::Create((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, RegWSize));
+                LogicalImmediate::Create((1LU << Method::FunctionKindBits::SIZE) - 1, RegWSize));
             __ Cmp(temp.W(), Immediate(static_cast<int64_t>(FunctionKind::CLASS_CONSTRUCTOR)));
             __ B(Condition::LS, &getThis);  // constructor is base
             // exception branch
@@ -919,9 +919,9 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
                 __ Ldur(temp, MemoryOperand(currentSp, funcOffset));  // load constructor
                 __ Ldr(temp, MemoryOperand(temp, JSFunctionBase::METHOD_OFFSET));
                 __ Ldr(temp, MemoryOperand(temp, Method::EXTRA_LITERAL_INFO_OFFSET));
-                __ Lsr(temp.W(), temp.W(), MethodLiteral::FunctionKindBits::START_BIT);
+                __ Lsr(temp.W(), temp.W(), Method::FunctionKindBits::START_BIT);
                 __ And(temp.W(), temp.W(),
-                       LogicalImmediate::Create((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, RegWSize));
+                       LogicalImmediate::Create((1LU << Method::FunctionKindBits::SIZE) - 1, RegWSize));
                 __ Cmp(temp.W(), Immediate(static_cast<int64_t>(FunctionKind::CLASS_CONSTRUCTOR)));
                 __ B(Condition::LS, &getThis);  // constructor is base
                 // fall through
@@ -1609,7 +1609,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
     }
     __ Tst(callFieldRegister, LogicalImmediate::Create(CALL_TYPE_MASK, RegXSize));
     __ B(Condition::EQ, &pushVregs);
-    __ Tbz(callFieldRegister, MethodLiteral::HaveThisBit::START_BIT, &pushNewTarget);
+    __ Tbz(callFieldRegister, Method::HaveThisBit::START_BIT, &pushNewTarget);
     if (!haveThis) {
         [[maybe_unused]] TempRegister1Scope scope1(assembler);
         Register tempRegister = __ TempRegister1();
@@ -1620,7 +1620,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
     }
     __ Bind(&pushNewTarget);
     {
-        __ Tbz(callFieldRegister, MethodLiteral::HaveNewTargetBit::START_BIT, &pushCallTarget);
+        __ Tbz(callFieldRegister, Method::HaveNewTargetBit::START_BIT, &pushCallTarget);
         if (!haveNewTarget) {
             [[maybe_unused]] TempRegister1Scope scope1(assembler);
             Register newTarget = __ TempRegister1();
@@ -1635,7 +1635,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
     }
     __ Bind(&pushCallTarget);
     {
-        __ Tbz(callFieldRegister, MethodLiteral::HaveFuncBit::START_BIT, &pushVregs);
+        __ Tbz(callFieldRegister, Method::HaveFuncBit::START_BIT, &pushVregs);
         __ Str(callTargetRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
     __ Bind(&pushVregs);
@@ -1770,18 +1770,18 @@ void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register p
 void AsmInterpreterCall::GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callField, Register numVregs)
 {
     __ Mov(numVregs, callField);
-    __ Lsr(numVregs, numVregs, MethodLiteral::NumVregsBits::START_BIT);
+    __ Lsr(numVregs, numVregs, Method::NumVregsBits::START_BIT);
     __ And(numVregs.W(), numVregs.W(), LogicalImmediate::Create(
-        MethodLiteral::NumVregsBits::Mask() >> MethodLiteral::NumVregsBits::START_BIT, RegWSize));
+        Method::NumVregsBits::Mask() >> Method::NumVregsBits::START_BIT, RegWSize));
 }
 
 void AsmInterpreterCall::GetDeclaredNumArgsFromCallField(ExtendedAssembler *assembler, Register callField,
     Register declaredNumArgs)
 {
     __ Mov(declaredNumArgs, callField);
-    __ Lsr(declaredNumArgs, declaredNumArgs, MethodLiteral::NumArgsBits::START_BIT);
+    __ Lsr(declaredNumArgs, declaredNumArgs, Method::NumArgsBits::START_BIT);
     __ And(declaredNumArgs.W(), declaredNumArgs.W(), LogicalImmediate::Create(
-        MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, RegWSize));
+        Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, RegWSize));
 }
 
 void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
@@ -1907,7 +1907,7 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
     if (isJSFunction) {
         Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
         __ Ldr(nativeCode, MemoryOperand(function, JSFunctionBase::CODE_ENTRY_OFFSET));
-        __ Tbnz(callFieldRegister, MethodLiteral::IsFastBuiltinBit::START_BIT, &callFastBuiltin);
+        __ Tbnz(callFieldRegister, Method::IsFastBuiltinBit::START_BIT, &callFastBuiltin);
     } else {
         // JSProxy or JSBoundFunction
         Register method(X2);
@@ -1981,7 +1981,9 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
     Register temp = __ AvailableRegister2();
     // Get builtinId
     __ Ldr(builtinId, MemoryOperand(method, Method::EXTRA_LITERAL_INFO_OFFSET));
-    __ And(builtinId.W(), builtinId.W(), LogicalImmediate::Create(0xff, RegWSize));
+    __ Lsr(builtinId.W(), builtinId.W(), Method::BuiltinIdBits::START_BIT);
+    __ And(builtinId.W(), builtinId.W(),
+           LogicalImmediate::Create((1LU << Method::BuiltinIdBits::SIZE) - 1, RegWSize));
     __ Cmp(builtinId.W(), Immediate(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)));
     __ B(Condition::GE, callNativeBuiltin);
 

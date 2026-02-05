@@ -1406,8 +1406,8 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef method = GetMethodFromFunction(glue, func);
     GateRef callfield = LoadPrimitive(VariableType::INT64(), method, IntPtr(Method::CALL_FIELD_OFFSET));
-    GateRef expectedNum = Int64And(Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
-        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+    GateRef expectedNum = Int64And(Int64LSR(callfield, Int64(Method::NumArgsBits::START_BIT)),
+        Int64((1LU << Method::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
 
