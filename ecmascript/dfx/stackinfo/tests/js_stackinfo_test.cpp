@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -67,6 +67,40 @@ bool ReadMemFunc([[maybe_unused]] void *ctx, uintptr_t addr, uintptr_t *value)
 {
     *value = *(reinterpret_cast<uintptr_t *>(addr));
     return true;
+}
+
+// Safe read function for tests that use step_ark_with_record_jit
+// It tracks valid memory regions and returns false for invalid reads
+struct SafeMemContext {
+    std::vector<std::pair<uintptr_t, uintptr_t>> validRanges;  // (start, end)
+    uintptr_t readValue = 0;  // Default value to return for invalid reads
+
+    void AddRange(uintptr_t start, uintptr_t end)
+    {
+        validRanges.push_back({start, end});
+    }
+
+    bool IsValid(uintptr_t addr) const
+    {
+        for (const auto& range : validRanges) {
+            if (addr >= range.first && addr < range.second) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+bool SafeReadMemFuncForJit(void *ctx, uintptr_t addr, uintptr_t *value)
+{
+    SafeMemContext *safeCtx = static_cast<SafeMemContext*>(ctx);
+    if (safeCtx && safeCtx->IsValid(addr)) {
+        *value = *(reinterpret_cast<uintptr_t *>(addr));
+        return true;
+    }
+    // For invalid addresses (like Hole().GetRawData() + offset), return default value
+    *value = safeCtx ? safeCtx->readValue : 0;
+    return false;
 }
 
 /**
@@ -1663,5 +1697,112 @@ HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo3)
     std::string stack1 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, true);
     EXPECT_TRUE(stack1.empty());
     thread_->SetCrossThreadExecution(false);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestArkWriteJitCode)
+{
+    std::vector<uint8_t> codeVec1 = {0x01, 0x02, 0x03, 0x04};
+    std::vector<uint8_t> codeVec2 = {0x05, 0x06, 0x07, 0x08};
+
+    EntityId id1(100);
+    EntityId id2(200);
+    JsStackInfo::machineCodeMap[id1] = codeVec1;
+    JsStackInfo::machineCodeMap[id2] = codeVec2;
+    JsStackInfo::nameMap[id1] = "jitFunction1";
+    JsStackInfo::nameMap[id2] = "jitFunction2";
+
+    uintptr_t jitCodeArray[2] = {100, 200};
+
+    char tempFile[] = "/tmp/test_ark_write_jit_code_XXXXXX";
+    int fd = mkstemp(tempFile);
+    if (fd < 0) {
+        GTEST_LOG_(INFO) << "Cannot create temp file, skip this test";
+        return;
+    }
+
+    int result = ark_write_jit_code(nullptr, ReadMemFunc, fd, jitCodeArray, 2);
+    EXPECT_EQ(result, 1);
+
+    close(fd);
+    unlink(tempFile);
+
+    JsStackInfo::machineCodeMap.clear();
+    JsStackInfo::nameMap.clear();
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArkWithRecordJit_001)
+{
+    size_t size1 = 4;
+    JSTaggedType frame1[size1];
+    frame1[0] = static_cast<JSTaggedType>(0);  // 0: preLeaveFrameFp
+    frame1[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_ENTRY_FRAME);  // 1: type
+    frame1[2] = static_cast<JSTaggedType>(62480);  // 2: prevFP
+    frame1[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    size_t size2 = 5;
+    JSTaggedType frame2[size2];
+    frame2[0] = static_cast<JSTaggedType>(1234);  // 0: pc
+    frame2[1] = JSTaggedValue::Hole().GetRawData();  // 1: JSFunction
+    frame2[2] = static_cast<JSTaggedType>(FrameType::FASTJIT_FUNCTION_FRAME);  // 2: type
+    frame2[3] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame1[2]));  // 3: prevFp
+    frame2[4] = static_cast<JSTaggedType>(0);  // 4: returnAddr
+
+    uintptr_t fp = reinterpret_cast<uintptr_t>(&frame2[2]) + 8;
+
+    SafeMemContext safeCtx;
+    safeCtx.AddRange(reinterpret_cast<uintptr_t>(&frame1[0]), reinterpret_cast<uintptr_t>(&frame1[size1]));
+    safeCtx.AddRange(reinterpret_cast<uintptr_t>(&frame2[0]), reinterpret_cast<uintptr_t>(&frame2[size2]));
+
+    uintptr_t sp = 0;
+    uintptr_t pc = 0;
+    uintptr_t methodId = 0;
+    bool isJsFrame = true;
+    std::vector<uintptr_t> jitCache;
+
+    ArkUnwindParam arkUnwindParam(&safeCtx, SafeReadMemFuncForJit, &fp, &sp, &pc, &methodId, &isJsFrame, jitCache);
+    int ret = step_ark_with_record_jit(&arkUnwindParam);
+
+    EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(*arkUnwindParam.fp == reinterpret_cast<uintptr_t>(&frame1[2]));
+    EXPECT_TRUE(*arkUnwindParam.pc == 1234);
+    EXPECT_TRUE(*arkUnwindParam.isJsFrame == true);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArkWithRecordJit_002)
+{
+    size_t size1 = 4;
+    JSTaggedType frame1[size1];
+    frame1[0] = static_cast<JSTaggedType>(0);  // 0: preLeaveFrameFp
+    frame1[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_ENTRY_FRAME);  // 1: type
+    frame1[2] = static_cast<JSTaggedType>(62480);  // 2: prevFP
+    frame1[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    size_t size2 = 5;
+    JSTaggedType frame2[size2];
+    frame2[0] = static_cast<JSTaggedType>(5678);  // 0: pc
+    frame2[1] = JSTaggedValue::Hole().GetRawData();  // 1: JSFunction
+    frame2[2] = static_cast<JSTaggedType>(FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME);  // 2: type
+    frame2[3] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame1[2]));  // 3: prevFp
+    frame2[4] = static_cast<JSTaggedType>(0);  // 4: returnAddr
+
+    uintptr_t fp = reinterpret_cast<uintptr_t>(&frame2[2]) + 8;
+
+    SafeMemContext safeCtx;
+    safeCtx.AddRange(reinterpret_cast<uintptr_t>(&frame1[0]), reinterpret_cast<uintptr_t>(&frame1[size1]));
+    safeCtx.AddRange(reinterpret_cast<uintptr_t>(&frame2[0]), reinterpret_cast<uintptr_t>(&frame2[size2]));
+
+    uintptr_t sp = 0;
+    uintptr_t pc = 0;
+    uintptr_t methodId = 0;
+    bool isJsFrame = true;
+    std::vector<uintptr_t> jitCache;
+
+    ArkUnwindParam arkUnwindParam(&safeCtx, SafeReadMemFuncForJit, &fp, &sp, &pc, &methodId, &isJsFrame, jitCache);
+    int ret = step_ark_with_record_jit(&arkUnwindParam);
+
+    EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(*arkUnwindParam.fp == reinterpret_cast<uintptr_t>(&frame1[2]));
+    EXPECT_TRUE(*arkUnwindParam.pc == 5678);
+    EXPECT_TRUE(*arkUnwindParam.isJsFrame == true);
 }
 }  // namespace panda::test
