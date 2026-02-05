@@ -5886,6 +5886,9 @@ bool JSNApi::IsExecuteModuleInAbcFile(EcmaVM *vm, const std::string &bundleName,
     ecmascript::ThreadManagedScope scope(thread);
     bool result = ecmascript::JSPandaFileExecutor::IsExecuteModuleInAbcFile(thread, bundleName.c_str(),
         moduleName.c_str(), ohmurl.c_str());
+    if (thread->HasPendingException()) {
+        thread->ClearException();
+    }
     return result;
 }
 

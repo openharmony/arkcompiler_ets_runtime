@@ -102,6 +102,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         size_t dataSize = 0;
         std::string errorMsg;
         bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, nullptr);
         if (!getBuffer) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package in the Previewer.");
             CString msg = "resolveBufferCallback get hsp buffer failed, hsp path:" + filename +
@@ -596,6 +597,7 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
         size_t dataSize = 0;
         std::string errorMsg;
         bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize, errorMsg);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (!getBuffer) {
             LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback get buffer failed, isHybrid = "
                             << (isHybrid == ForHybridApp::Hybrid ? "Hybrid" : "Normal") << ", errorMsg = " << errorMsg;
