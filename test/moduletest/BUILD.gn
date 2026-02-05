@@ -339,6 +339,7 @@ group("ark_js_assert_moduletest") {
     "getvaluefrombuffer",
     "getregexpcachecount",
     "cppcallirbuiltins",
+    "functionbind",
   ]
 
   if (enable_next_optimization) {
@@ -488,6 +489,7 @@ group("ark_asm_assert_test") {
     "getvaluefrombuffer",
     "getregexpcachecount",
     "cppcallirbuiltins",
+    "functionbind",
   ]
 
   if (enable_latest_optimization) {
