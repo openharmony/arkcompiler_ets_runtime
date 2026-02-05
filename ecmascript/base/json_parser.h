@@ -214,7 +214,11 @@ protected:
     {
         current_ += step;
     }
-
+    // begin_ points to the first character of the json line string
+    // or Parent of the sliceString
+    Text begin_{nullptr};
+    // slicedOffset_ is the offset of the json string after slicing
+    uint32_t slicedOffset_ {0};
     Text end_ {nullptr};
     Text current_ {nullptr};
     Text range_ {nullptr};
@@ -225,6 +229,8 @@ protected:
     ParseOptions parseOptions_;
     JSHandle<JSHClass> initialJSArrayClass_;
     JSHandle<JSHClass> initialJSObjectClass_;
+    // raw EcmaString before flatten
+    JSHandle<EcmaString> rawString_;
 };
 
 class PUBLIC_API Utf8JsonParser final : public JsonParser<uint8_t> {
@@ -250,7 +256,6 @@ private:
 
     bool IsFastParseJsonString(bool &isFastString);
 
-    const uint8_t *begin_ {nullptr};
     JSHandle<EcmaString> sourceString_;
 };
 

@@ -76,7 +76,7 @@ JSTaggedValue BuiltinsPromise::PromiseConstructor(EcmaRuntimeCallInfo *argv)
     // b. ReturnIfAbrupt(status).
     if (thread->HasPendingException()) {
         completionValue = JSPromise::IfThrowGetThrowValue(thread);
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         JSHandle<JSTaggedValue> reject(thread, resolvingFunction->GetRejectFunction(thread));
         EcmaRuntimeCallInfo *runtimeInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
@@ -137,7 +137,7 @@ JSTaggedValue BuiltinsPromise::All(EcmaRuntimeCallInfo *argv)
     JSHandle<CompletionRecord> result = JSHandle<CompletionRecord>(thread, resultValue);
     // 12. If result is an abrupt completion,
     if (result->IsThrow()) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         // a. If iteratorRecord.[[done]] is false, let result be IteratorClose(iterator, result).
         // b. IfAbruptRejectPromise(result, promiseCapability).
         if (!itRecord->GetDone()) {
@@ -208,7 +208,7 @@ JSTaggedValue BuiltinsPromise::Race(EcmaRuntimeCallInfo *argv)
     // 13. Return Completion(result).
     JSHandle<CompletionRecord> result = PerformPromiseRace(thread, iteratorRecord, promiseCapability, thisValue);
     if (result->IsThrow()) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         if (!iteratorRecord->GetDone()) {
             JSHandle<JSTaggedValue> value =
                 JSIterator::IteratorClose(thread, iterator, JSHandle<JSTaggedValue>::Cast(result));
@@ -810,7 +810,7 @@ JSTaggedValue BuiltinsPromise::Any(EcmaRuntimeCallInfo *argv)
                                                           promiseCapability, promiseResolve);
     // 8. If result is an abrupt completion, then
     if (result->IsThrow()) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         // a. If iteratorRecord.[[Done]] is false, set result to IteratorClose(iteratorRecord, result).
         // b. IfAbruptRejectPromise(result, promiseCapability).
         if (!iteratorRecord->GetDone()) {
@@ -995,7 +995,7 @@ JSTaggedValue BuiltinsPromise::AllSettled(EcmaRuntimeCallInfo *argv)
                                                                  promiseCapability, promiseResolve);
     // 8. If result is an abrupt completion, then
     if (result->IsThrow()) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         // a. If iteratorRecord.[[Done]] is false, set result to IteratorClose(iteratorRecord, result).
         if (!iteratorRecord->GetDone()) {
             JSHandle<JSTaggedValue> resultHandle = JSHandle<JSTaggedValue>::Cast(result);

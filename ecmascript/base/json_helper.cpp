@@ -12,14 +12,106 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <sstream>
+#include <string>
 
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/json_stringifier.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "common_components/base/utf_helper.h"
 #include "libpandabase/utils/span.h"
 
-
 namespace panda::ecmascript::base {
+
+std::pair<std::string, std::uint32_t> JsonHelper::AnonymizeJsonString(JSThread *thread, JSHandle<JSTaggedValue> str,
+                                                                      uint32_t position, uint32_t width)
+{
+    ecmascript::EcmaStringAccessor acc = ecmascript::EcmaStringAccessor(str.GetTaggedValue());
+    if (acc.IsUtf8()) {
+        ecmascript::CVector<uint8_t> inputBuf;
+        const uint8_t *data = ecmascript::EcmaStringAccessor::GetUtf8DataFlat(thread,
+            EcmaString::Cast(str.GetTaggedValue()), inputBuf);
+        uint32_t length = acc.GetLength();
+        uint32_t index = 0;
+        uint32_t startIndex = (position > width) ? (position - width) : 0;
+        uint32_t endIndex = (length > position + width) ? (position + width) : length;
+        std::string resStr = "";
+        for (uint32_t i = startIndex; i < endIndex; i++) {
+            index++;
+            if (!IsJsonFormatCharacter(data[i])) {
+                resStr.push_back(index % 2 != 0 ? data[i] : '*'); // 2:Replace even positions with *
+            } else {
+                index = 0;
+                resStr.push_back(data[i]);
+            }
+        }
+        uint32_t retPos = position > startIndex ? position - startIndex : 0;
+        return {resStr, retPos};
+    } else {
+        ecmascript::CVector<uint16_t> inputBuf;
+        const uint16_t *data = ecmascript::EcmaStringAccessor::GetUtf16DataFlat(thread,
+            EcmaString::Cast(str.GetTaggedValue()), inputBuf);
+        uint32_t length = acc.GetLength();
+        return AnonymizeJsonStringUtf16(data, length, position, width);
+    }
+}
+std::pair<std::string, std::uint32_t> JsonHelper::AnonymizeJsonStringUtf16(const uint16_t *utf16Data, size_t len,
+                                                                           uint32_t position, uint32_t width)
+{
+    if (common::utf_helper::IsUTF16LowSurrogate(utf16Data[position]) && position > 0 &&
+        common::utf_helper::IsUTF16HighSurrogate(utf16Data[position -1])) {
+        position--;
+    }
+    std::deque<uint32_t> dq;
+    // position is the index of utf16Data, always less than 2^30
+    int32_t suffixIndex = static_cast<int32_t>(position);
+    int32_t prefixIndex = static_cast<int32_t>(position) - 1;
+    uint32_t retPos = 0;
+    for (uint32_t i = 0; i < width; i++) {
+        if (suffixIndex + 1 < len && common::utf_helper::IsUTF16HighSurrogate(utf16Data[suffixIndex]) &&
+            common::utf_helper::IsUTF16LowSurrogate(utf16Data[suffixIndex + 1])) {
+            dq.push_back(common::utf_helper::UTF16Decode(utf16Data[suffixIndex], utf16Data[suffixIndex + 1]));
+            suffixIndex += 2; // 2:Consume a surrogate pair
+        } else if (suffixIndex < len) {
+            dq.push_back(utf16Data[suffixIndex]);
+            suffixIndex++;
+        }
+        if (prefixIndex > 0 && common::utf_helper::IsUTF16LowSurrogate(utf16Data[prefixIndex]) &&
+            common::utf_helper::IsUTF16HighSurrogate(utf16Data[prefixIndex -1])) {
+            dq.push_front(common::utf_helper::UTF16Decode(utf16Data[prefixIndex - 1], utf16Data[prefixIndex]));
+            prefixIndex -= 2; // 2:Consume a surrogate pair
+            retPos++;
+        } else if (prefixIndex >= 0) {
+            dq.push_front(utf16Data[prefixIndex]);
+            prefixIndex--;
+            retPos++;
+        }
+    }
+    uint32_t utf8Length = 0;
+    uint32_t index = 0;
+    for (uint32_t &codePoint : dq) {
+        if (IsJsonFormatCharacter(codePoint)) {
+            utf8Length += common::utf_helper::UTF8Length(codePoint);
+            index = 0;
+        } else {
+            index++;
+            if (index % 2 == 0) { // 2:Replace even positions with *
+                codePoint='*';
+                utf8Length++;
+            } else {
+                utf8Length += common::utf_helper::UTF8Length(codePoint);
+            }
+        }
+    }
+    std::string utf8Str(utf8Length, '\0');
+    uint32_t utf8Index = 0;
+    for (const uint32_t &codePoint : dq) {
+        uint32_t size = common::utf_helper::UTF8Length(codePoint);
+        common::utf_helper::EncodeUTF8(codePoint, reinterpret_cast<uint8_t*>(utf8Str.data()), utf8Index, size);
+        utf8Index += size;
+    }
+    return {utf8Str, retPos};
+}
 
 #if ENABLE_LATEST_OPTIMIZATION
 constexpr int K_JSON_ESCAPE_TABLE_ENTRY_SIZE = 8;

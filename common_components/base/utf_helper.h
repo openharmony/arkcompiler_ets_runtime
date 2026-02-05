@@ -217,6 +217,20 @@ inline bool IsUTF16LowSurrogate(uint16_t ch)
 
 uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index, bool cesu8 = false);
 
+inline size_t UTF8Length(uint32_t codepoint)
+{
+    if (codepoint <= UTF8_1B_MAX) {
+        return UtfLength::ONE;
+    }
+    if (codepoint <= UTF8_2B_MAX) {
+        return UtfLength::TWO;
+    }
+    if (codepoint <= UTF8_3B_MAX) {
+        return UtfLength::THREE;
+    }
+    return UtfLength::FOUR;
+}
+
 size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t index, size_t size);
 
 uint32_t UTF16Decode(uint16_t lead, uint16_t trail);

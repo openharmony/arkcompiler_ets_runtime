@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "common_components/mutator/mutator_manager.h"
@@ -28,10 +29,12 @@
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/ohos/ohos_constants.h"
 #include "ecmascript/platform/backtrace.h"
+#include "jsnapi_expo.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -963,6 +966,24 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     }
     return false;
 }
+
+std::pair<std::string, std::uint32_t> DFXJSNApi::GetAnonymizeExtraErrorMessage(const EcmaVM *vm, uint32_t width)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> string(thread, thread->GetExtraErrorMessage());
+    if (string->IsHole()) {
+        return {"", 0};
+    }
+    int32_t position = thread->GetJsonErrorPosition();
+    return ecmascript::base::JsonHelper::AnonymizeJsonString(thread, string, position, width);
+}
+
+void DFXJSNApi::ClearExtraErrorMessage(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    thread->SetExtraErrorMessage(JSTaggedValue::Hole());
+}
+
 
 //When some objects invoke GetObjectHash, the return result is 0.
 //The GetObjectHashCode function is added to rectify the fault.

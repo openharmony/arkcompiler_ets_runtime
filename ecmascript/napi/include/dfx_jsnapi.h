@@ -21,6 +21,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "ecmascript/common.h"
@@ -119,6 +120,9 @@ public:
     static bool BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::vector<JsFrameInfo>& jsFrames);
     static int32_t GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject);
     static int32_t GetObjectHashCode(const EcmaVM *vm, Local<JSValueRef> nativeObject);
+
+    static std::pair<std::string, std::uint32_t> GetAnonymizeExtraErrorMessage(const EcmaVM *vm, uint32_t width);
+    static void ClearExtraErrorMessage(const EcmaVM *vm);
 
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);

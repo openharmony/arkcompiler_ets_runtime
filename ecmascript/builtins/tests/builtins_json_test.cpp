@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
 
+#include "gtest/gtest.h"
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
@@ -578,4 +580,66 @@ HWTEST_F_L0(BuiltinsJsonTest, StringifyAndParse)
     ASSERT_TRUE(res->IsDouble());
     ASSERT_EQ(res->GetDouble(), 2.2); // 2.2:use to test double value
 }
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMessageUtf16)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(
+        factory->NewFromUtf8("{\"姓名\": \"小明\",\n \"age\": 30,\"表情\":\"aaaaaaaaaa😄🙃😇😄🙃😇😄🙃😇aaa\""));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    std::string str1 = "a*e\": 3*,\"表*\":\"a*a*a*a*a*😄*😇*🙃";
+    ASSERT_EQ(str1.length(), res.first.length());
+    ASSERT_TRUE(str1 == res.first);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMessageUtf8)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromUtf8(
+        "{\"namxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxe\":\"tom\","
+        "sex:\"F\",age:18,email:\"123@qq.com\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    std::string str1 = "x*x*x*e\":\"t*m\",s*x:\"F\",a*e:1*,";
+    ASSERT_EQ(str1.length(), res.first.length());
+    ASSERT_TRUE(str1 == res.first);
+}
+
 }  // namespace panda::test

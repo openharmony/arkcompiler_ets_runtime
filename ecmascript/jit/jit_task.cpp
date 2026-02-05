@@ -308,7 +308,7 @@ void JitTask::InstallCode()
             LOG_JIT(DEBUG) << "InstallCode skipped. NewMachineCode NULL for size " << size;
             if (hostThread_->HasPendingException()) {
                 hostThread_->SetMachineCodeLowMemory(true);
-                hostThread_->ClearException();
+                hostThread_->ClearExceptionAndExtraErrorMessage();
             }
             return;
         }
@@ -331,7 +331,7 @@ void JitTask::InstallCode()
     if (hostThread_->HasPendingException()) {
         // check is oom exception
         hostThread_->SetMachineCodeLowMemory(true);
-        hostThread_->ClearException();
+        hostThread_->ClearExceptionAndExtraErrorMessage();
     }
 
     if (IsOsrTask()) {
