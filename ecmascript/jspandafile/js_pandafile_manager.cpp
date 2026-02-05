@@ -588,7 +588,8 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
             resolveBufferCallback = vm->GetResolveBufferCallbackForHybridApp();
         }
         if (resolveBufferCallback == nullptr) {
-            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr";
+            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr, isHybrid = "
+                            << (isHybrid == ForHybridApp::Hybrid ? "Hybrid" : "Normal");
             return false;
         }
         uint8_t *data = nullptr;
@@ -596,8 +597,8 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
         std::string errorMsg;
         bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize, errorMsg);
         if (!getBuffer) {
-            LOG_FULL(ERROR)
-                << "When checking file path, resolveBufferCallback get buffer failed, errorMsg = " << errorMsg;
+            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback get buffer failed, isHybrid = "
+                            << (isHybrid == ForHybridApp::Hybrid ? "Hybrid" : "Normal") << ", errorMsg = " << errorMsg;
             return false;
         }
     }
