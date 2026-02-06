@@ -28,6 +28,7 @@ enum class SlotStatus : bool {
 class ObjectSlot {
 public:
     explicit ObjectSlot(uintptr_t slotAddr) : slotAddress_(slotAddr) {}
+    ObjectSlot() : ObjectSlot(0) {}
     ~ObjectSlot() = default;
 
     DEFAULT_COPY_SEMANTIC(ObjectSlot);

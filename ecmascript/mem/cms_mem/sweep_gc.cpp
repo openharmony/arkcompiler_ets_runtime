@@ -122,7 +122,7 @@ void SweepGC::Mark()
         return;
     }
     MarkRoots();
-    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->PushWorkNodeToGlobal(false);
+    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->FlushAll();
     heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningMarkTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
@@ -161,7 +161,7 @@ void SweepGC::ClearDeadReferences()
     // fixme: in parallel?
     for (uint32_t i = 0; i < totalThreadCount; ++i) {
         UpdateRecordWeakReference(i);
-        UpdateRecordJSWeakMap(i);
+        UpdateRecordWeakLinkedHashMap(i);
     }
 
     WeakRootVisitor gcClearDeadWeak = [](TaggedObject *header) -> TaggedObject* {
@@ -201,9 +201,9 @@ void SweepGC::UpdateRecordWeakReference(uint32_t threadId)
     }
 }
 
-void SweepGC::UpdateRecordJSWeakMap(uint32_t threadId)
+void SweepGC::UpdateRecordWeakLinkedHashMap(uint32_t threadId)
 {
-    std::function<bool(JSTaggedValue)> visitor = [](JSTaggedValue key) {
+    auto visitor = [](JSTaggedValue key) {
         ASSERT(!key.IsHole());
         if (key.IsUndefined()) {    // Dead key, and set to undefined by GC
             return true;
@@ -219,19 +219,28 @@ void SweepGC::UpdateRecordJSWeakMap(uint32_t threadId)
     };
 
     JSThread *thread = heap_->GetJSThread();
-    JSWeakMapProcessQueue *queue = heap_->GetWorkManager()->GetWorkNodeHolder(threadId)->GetJSWeakMapQueue();
+    WorkManager *workManager = heap_->GetWorkManager();
+    WeakLinkedHashMapProcessQueue *queue = workManager->GetWorkNodeHolder(threadId)->GetWeakLinkedHashMapQueue();
     while (true) {
         TaggedObject *obj = queue->PopBack();
         if (UNLIKELY(obj == nullptr)) {
             break;
         }
-        JSWeakMap *weakMap = JSWeakMap::Cast(obj);
-        JSTaggedValue maybeMap = weakMap->GetWeakLinkedMap(thread);
-        if (maybeMap.IsUndefined()) {
-            continue;
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(obj);
+        ASSERT(map->VerifyLayout());
+
+        int entries = map->NumberOfAllUsedElements();
+        for (int i = 0; i < entries; ++i) {
+            JSTaggedValue maybeKey = map->GetKey(thread, i);
+            if (maybeKey.IsHole()) {
+                // is a deleted element
+                continue;
+            }
+            bool dead = visitor(maybeKey);
+            if (dead) {
+                map->RemoveEntryFromGCThread(i);
+            }
         }
-        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(maybeMap.GetTaggedObject());
-        map->ClearAllDeadEntries(thread, visitor);
     }
 }
 

@@ -26,7 +26,7 @@
 
 namespace panda::ecmascript {
 
-inline void SharedGCMarkerBase::MarkObjectFromJSThread(WorkNode *&localBuffer, TaggedObject *object)
+inline void SharedGCMarkerBase::MarkObjectFromJSThread(MarkWorkNode *&localBuffer, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     ASSERT(objectRegion->InSharedHeap());

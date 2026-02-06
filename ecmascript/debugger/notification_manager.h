@@ -130,6 +130,7 @@ public:
 
     void MethodEntryEvent(JSThread *thread, Method *method, JSTaggedValue env) const
     {
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         JSHandle<Method> methodHandle(thread, method);
         JSHandle<JSTaggedValue> envHandle(thread, env);
         for (auto it: listeners_) {

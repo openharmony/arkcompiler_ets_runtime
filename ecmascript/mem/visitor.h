@@ -38,9 +38,26 @@ enum class VisitObjectArea {
     RAW_DATA
 };
 
-enum class VisitType : size_t { SEMI_GC_VISIT, OLD_GC_VISIT, SNAPSHOT_VISIT, ALL_VISIT };
-enum class GlobalVisitType : size_t { YOUNG_GLOBAL_VISIT, ALL_GLOBAL_VISIT };
-enum class VMRootVisitType : uint8_t { MARK, UPDATE_ROOT, VERIFY, HEAP_SNAPSHOT };
+enum class VisitType : size_t {
+    SEMI_GC_VISIT,
+    OLD_GC_VISIT,
+    SNAPSHOT_VISIT,
+    ALL_VISIT
+};
+enum class VisitLinkedWeakHashMapType {
+    AS_TAGGED_ARRAY,
+    AS_WEAK_AGGREGATE,
+};
+enum class GlobalVisitType : size_t {
+    YOUNG_GLOBAL_VISIT,
+    ALL_GLOBAL_VISIT
+};
+enum class VMRootVisitType : uint8_t {
+    MARK,
+    UPDATE_ROOT,
+    VERIFY,
+    HEAP_SNAPSHOT
+};
 
 template <class DerivedVisitor>
 class BaseObjectVisitor {
@@ -61,22 +78,25 @@ public:
         static_cast<DerivedVisitor*>(this)->VisitObjectHClassImpl(hclass);
     }
 
-    // A temporary impl to collect JSWeakMap, need to refactor and fix
-    void VisitJSWeakMap(BaseObject *rootObject)
+    void VisitWeakLinkedHashMap(BaseObject *rootObject)
     {
-        ASSERT(JSTaggedValue(TaggedObject::Cast(rootObject)).IsJSWeakMap());
-        static_cast<DerivedVisitor*>(this)->VisitJSWeakMapImpl(rootObject);
+        ASSERT(JSTaggedValue(TaggedObject::Cast(rootObject)).IsWeakLinkedHashMap());
+        static_cast<DerivedVisitor*>(this)->VisitWeakLinkedHashMapImpl(rootObject);
     }
 
     virtual void VisitObjectRangeImpl([[maybe_unused]] BaseObject *rootObject, [[maybe_unused]] uintptr_t startAddr,
                                       [[maybe_unused]] uintptr_t endAddr, [[maybe_unused]] VisitObjectArea area)
-    {}
+    {
+    }
 
     virtual void VisitObjectHClassImpl([[maybe_unused]] BaseObject *hclass)
-    {}
+    {
+    }
 
-    virtual void VisitJSWeakMapImpl([[maybe_unused]] BaseObject *rootObject)
-    {}
+    // this will visit WeakLinkedHashMap as a set of weak KV-pair, instead of a simple TaggedArray
+    virtual void VisitWeakLinkedHashMapImpl([[maybe_unused]] BaseObject *rootObject)
+    {
+    }
 };
 
 class RootVisitor {

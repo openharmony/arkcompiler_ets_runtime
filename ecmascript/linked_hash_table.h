@@ -178,15 +178,30 @@ public:
         return JSTaggedValue(GetPrimitive(CAPACITY_INDEX)).GetInt();
     }
 
+    inline int GetKeyIndex(int entry) const
+    {
+        return static_cast<int>(EntryToIndex(entry));
+    }
+
+    inline int GetValueIndex(int entry) const
+    {
+        return static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_VALUE_INDEX;
+    }
+
+    inline int GetNextEntryIndex(int entry) const
+    {
+        return static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_SIZE;
+    }
+
     inline JSTaggedValue GetKey(const JSThread *thread, int entry) const
     {
-        int index = static_cast<int>(EntryToIndex(entry));
+        int index = GetKeyIndex(entry);
         return GetElement(thread, index);
     }
 
     inline JSTaggedValue GetValue(const JSThread *thread, int entry) const
     {
-        int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_VALUE_INDEX;
+        int index = GetValueIndex(entry);
         return GetElement(thread, index);
     }
 
@@ -286,25 +301,25 @@ protected:
 
     inline void SetKey(const JSThread *thread, int entry, JSTaggedValue key)
     {
-        int index = static_cast<int>(EntryToIndex(entry));
+        int index = GetKeyIndex(entry);
         SetElement(thread, index, key);
     }
 
     inline void SetValue(const JSThread *thread, int entry, JSTaggedValue value)
     {
-        int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_VALUE_INDEX;
+        int index = GetValueIndex(entry);
         SetElement(thread, index, value);
     }
 
     inline JSTaggedValue GetNextEntry(const JSThread *thread, int entry) const
     {
-        int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_SIZE;
+        int index = GetNextEntryIndex(entry);
         return GetElement(thread, index);
     }
 
     inline void SetNextEntry(const JSThread *thread, int entry, JSTaggedValue nextEntry)
     {
-        int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_SIZE;
+        int index = GetNextEntryIndex(entry);
         SetElement(thread, index, nextEntry);
     }
 
@@ -460,7 +475,13 @@ public:
 
     static JSHandle<WeakLinkedHashMap> Clear(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table);
 
-    void ClearAllDeadEntries(const JSThread *thread, std::function<bool(JSTaggedValue)> &visitor);
+    // use to verify whether layout of a WeakLinkedHashMap is expected, leading GC missing to visit any reference slot
+    bool VerifyLayout() const;
+
+    inline int NumberOfAllUsedElements() const
+    {
+        return NumberOfElements() + NumberOfDeletedElements();
+    }
 
     DECL_DUMP()
 };

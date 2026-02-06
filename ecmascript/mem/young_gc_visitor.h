@@ -46,7 +46,7 @@ public:
     inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                      VisitObjectArea area) override;
 
-    inline void VisitJSWeakMapImpl(BaseObject *rootObject) override;
+    inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
 private:
     inline void HandleSlot(ObjectSlot slot);
 

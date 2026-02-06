@@ -100,12 +100,12 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintpt
     }
 }
 
-void OldGCMarkObjectVisitor::VisitJSWeakMapImpl(BaseObject *rootObject)
+void OldGCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
 {
     TaggedObject *obj = TaggedObject::Cast(rootObject);
-    ASSERT(JSTaggedValue(obj).IsJSWeakMap());
+    ASSERT(JSTaggedValue(obj).IsWeakLinkedHashMap());
     ASSERT(!Region::ObjectAddressToRange(obj)->InSharedHeap());
-    workNodeHolder_->PushJSWeakMap(obj);
+    workNodeHolder_->PushWeakLinkedHashMap(obj);
 }
 
 void OldGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclassObject)

@@ -61,7 +61,7 @@ public:
     void ProcessLocalToShareRSet(LocalToShareRSetVisitor &&visitor);
     void MergeBackAndResetRSetWorkListHandler();
 
-    inline void MarkObjectFromJSThread(WorkNode *&localBuffer, TaggedObject *object);
+    inline void MarkObjectFromJSThread(MarkWorkNode *&localBuffer, TaggedObject *object);
 
     virtual void ProcessMarkStack(uint32_t threadId) = 0;
 

@@ -82,11 +82,11 @@ void CCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t
     }
 }
 
-void CCMarkObjectVisitor::VisitJSWeakMapImpl(BaseObject *rootObject)
+void CCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
 {
     TaggedObject *obj = TaggedObject::Cast(rootObject);
-    ASSERT(JSTaggedValue(obj).IsJSWeakMap());
-    workNodeHolder_->PushJSWeakMap(obj);
+    ASSERT(JSTaggedValue(obj).IsWeakLinkedHashMap());
+    workNodeHolder_->PushWeakLinkedHashMap(obj);
 }
 
 void CCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *object)

@@ -66,7 +66,7 @@ void Barriers::UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *
     if (valueRegion->AtomicMark(heapValue)) {
         std::atomic_thread_fence(std::memory_order_seq_cst);
         Heap *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-        WorkNode *&localBuffer = heap->GetMarkingObjectLocalBuffer();
+        MarkWorkNode *&localBuffer = heap->GetMarkingObjectLocalBuffer();
         SharedHeap::GetInstance()->GetWorkManager()->PushToLocalMarkingBuffer(localBuffer, heapValue);
     }
 }

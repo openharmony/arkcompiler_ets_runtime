@@ -108,14 +108,14 @@ void ParallelEvacuator::EvacuateSpace()
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::EvacuateSpace", "");
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuator);
     {
-        // Process JSWeakMap before evacuate
+        // Process WeakLinkedHashMap before evacuate
         // fixme: process in parallel
         uint32_t totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
         for (uint32_t i = 0; i < totalThreadCount; ++i) {
             if (heap_->IsYoungMark()) {
-                UpdateRecordJSWeakMap<TriggerGCType::YOUNG_GC>(i);
+                UpdateRecordWeakLinkedHashMap<TriggerGCType::YOUNG_GC>(i);
             } else {
-                UpdateRecordJSWeakMap<TriggerGCType::OLD_GC>(i);
+                UpdateRecordWeakLinkedHashMap<TriggerGCType::OLD_GC>(i);
             }
         }
     }
@@ -198,11 +198,11 @@ void ParallelEvacuator::UpdateRecordWeakReference(uint32_t threadId)
 }
 
 template <TriggerGCType gcType>
-void ParallelEvacuator::UpdateRecordJSWeakMap(uint32_t threadId)
+void ParallelEvacuator::UpdateRecordWeakLinkedHashMap(uint32_t threadId)
 {
-    std::function<bool(JSTaggedValue)> visitor = [](JSTaggedValue key) {
+    auto visitor = [](JSTaggedValue key) {
         ASSERT(!key.IsHole());
-        if (key.IsUndefined()) {    // Dead key, and set to undefined by GC
+        if (key.IsUndefined()) {    // Dead key, and set to undefined by previous GC
             return true;
         }
         ASSERT(key.IsHeapObject() && key.IsWeak());
@@ -223,20 +223,29 @@ void ParallelEvacuator::UpdateRecordJSWeakMap(uint32_t threadId)
         }
     };
 
-    JSWeakMapProcessQueue *queue = heap_->GetWorkManager()->GetWorkNodeHolder(threadId)->GetJSWeakMapQueue();
+    WorkManager *workManager = heap_->GetWorkManager();
+    WeakLinkedHashMapProcessQueue *queue = workManager->GetWorkNodeHolder(threadId)->GetWeakLinkedHashMapQueue();
+    JSThread *thread = heap_->GetJSThread();
     while (true) {
         TaggedObject *obj = queue->PopBack();
         if (UNLIKELY(obj == nullptr)) {
             break;
         }
-        JSWeakMap *weakMap = JSWeakMap::Cast(obj);
-        JSThread *thread = heap_->GetJSThread();
-        JSTaggedValue maybeMap = weakMap->GetWeakLinkedMap(thread);
-        if (maybeMap.IsUndefined()) {
-            continue;
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(obj);
+        ASSERT(map->VerifyLayout());
+
+        int entries = map->NumberOfAllUsedElements();
+        for (int i = 0; i < entries; ++i) {
+            JSTaggedValue maybeKey = map->GetKey(thread, i);
+            if (maybeKey.IsHole()) {
+                // is a deleted element
+                continue;
+            }
+            bool dead = visitor(maybeKey);
+            if (dead) {
+                map->RemoveEntryFromGCThread(i);
+            }
         }
-        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(maybeMap.GetTaggedObject());
-        map->ClearAllDeadEntries(thread, visitor);
     }
 }
 

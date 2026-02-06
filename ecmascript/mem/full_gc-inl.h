@@ -19,6 +19,7 @@
 #include "ecmascript/mem/full_gc.h"
 
 #include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mark_word.h"
@@ -89,8 +90,11 @@ void FullGCRunner::MarkJitCodeVec(JitCodeVector *vec)
 void FullGCRunner::HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
+    if (objectRegion->InSharedHeap()) {
+        return;
+    }
     if (!NeedEvacuate(objectRegion)) {
-        if (!objectRegion->InSharedHeap() && objectRegion->AtomicMark(object)) {
+        if (objectRegion->AtomicMark(object)) {
             size_t size = object->GetSize();
             objectRegion->IncreaseAliveObject(size);
             PushObject(object);
@@ -107,17 +111,47 @@ void FullGCRunner::HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object
     return EvacuateObject(slot, object, markWord);
 }
 
+bool FullGCRunner::HandleWeakAggregate(WeakAggregate weakAggregate)
+{
+    ObjectSlot keySlot = weakAggregate.keySlot;
+    ObjectSlot valueSlot = weakAggregate.valueSlot;
+    
+    ASSERT(keySlot.GetTaggedValue().IsWeak());
+    ASSERT(valueSlot.GetTaggedValue().IsHeapObject());
+    TaggedObject *key = keySlot.GetTaggedValue().GetTaggedWeakRef();
+    TaggedObject *value = valueSlot.GetTaggedValue().GetHeapObject();
+    if (IsAlive(key) || IsAlive(value)) {
+        HandleMarkingSlot(valueSlot);
+        return true;
+    }
+
+    return false;
+}
+
 bool FullGCRunner::NeedEvacuate(Region *region)
 {
+    ASSERT(!region->InSharedHeap());
     if (isAppSpawn_) {
-        return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace() &&
-               !region->InSharedHeap();
+        return !region->InHugeObjectSpace()  && !region->InReadOnlySpace() && !region->InNonMovableSpace();
     }
     // fixme: refactor?
     if constexpr (G_USE_CMS_GC) {
         return region->InSlotSpace();
     }
     return region->InYoungOrOldSpace();
+}
+
+bool FullGCRunner::IsAlive(TaggedObject *object)
+{
+    Region *region = Region::ObjectAddressToRange(object);
+    if (region->InSharedHeap()) {
+        return true;
+    }
+    if (NeedEvacuate(region)) {
+        MarkWord markWord(object, RELAXED_LOAD);
+        return markWord.IsForwardingAddress();
+    }
+    return region->Test(ToUintPtr(object));
 }
 
 void FullGCRunner::EvacuateObject(ObjectSlot slot, TaggedObject *object, const MarkWord &markWord)
@@ -216,10 +250,20 @@ void FullGCRunner::RecordWeakReference(JSTaggedType *weak)
     workNodeHolder_->PushWeakReference(weak);
 }
 
-void FullGCRunner::RecordJSWeakMap(TaggedObject *object)
+void FullGCRunner::RecordWeakLinkedHashMap(TaggedObject *object)
 {
-    ASSERT(JSTaggedValue(object).IsJSWeakMap());
-    workNodeHolder_->PushJSWeakMap(object);
+    ASSERT(JSTaggedValue(object).IsWeakLinkedHashMap());
+    workNodeHolder_->PushWeakLinkedHashMap(object);
+}
+
+void FullGCRunner::RecordFreshWeakAggregate(WeakAggregate weakAggregate)
+{
+    workNodeHolder_->PushFreshWeakAggregate(weakAggregate);
+}
+
+void FullGCRunner::RecordPendingWeakAggregate(WeakAggregate weakAggregate)
+{
+    workNodeHolder_->PushPendingWeakAggregate(weakAggregate);
 }
 
 FullGCMarkRootVisitor::FullGCMarkRootVisitor(FullGCRunner *runner) : runner_(runner) {}
@@ -270,12 +314,42 @@ void FullGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t s
     }
 }
 
-void FullGCMarkObjectVisitor::VisitJSWeakMapImpl(BaseObject *rootObject)
+void FullGCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
 {
     TaggedObject *obj = TaggedObject::Cast(rootObject);
-    ASSERT(JSTaggedValue(obj).IsJSWeakMap());
+    ASSERT(JSTaggedValue(obj).IsWeakLinkedHashMap());
     ASSERT(!Region::ObjectAddressToRange(obj)->InSharedHeap());
-    runner_->RecordJSWeakMap(obj);
+    runner_->RecordWeakLinkedHashMap(obj);
+
+    WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(obj);
+    ASSERT(map->VerifyLayout());
+    // pay attention to this unusual access
+    JSTaggedType *data = map->GetData();
+    ObjectSlot nextTableSlot(ToUintPtr(&data[WeakLinkedHashMap::NEXT_TABLE_INDEX]));
+    runner_->HandleMarkingSlot(nextTableSlot);
+
+    int entries = map->NumberOfAllUsedElements();
+    for (int i = 0; i < entries; ++i) {
+        int keyIdx = map->GetKeyIndex(i);
+        ObjectSlot keySlot(ToUintPtr(&data[keyIdx]));
+        if (!keySlot.GetTaggedValue().IsHeapObject()) {
+            continue;
+        }
+    
+        ASSERT(keySlot.GetTaggedValue().IsWeak());
+        runner_->RecordWeakReference(reinterpret_cast<JSTaggedType *>(keySlot.SlotAddress()));
+
+        int valueIdx = map->GetValueIndex(i);
+        ObjectSlot valueSlot(ToUintPtr(&data[valueIdx]));
+        if (!valueSlot.GetTaggedValue().IsHeapObject()) {
+            continue;
+        }
+
+        WeakAggregate weakAggregate = {keySlot, valueSlot};
+        if (!runner_->HandleWeakAggregate(weakAggregate)) {
+            runner_->RecordFreshWeakAggregate({keySlot, valueSlot});
+        }
+    }
 }
 
 void FullGCMarkObjectVisitor::VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass)

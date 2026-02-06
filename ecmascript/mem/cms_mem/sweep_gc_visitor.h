@@ -48,7 +48,7 @@ public:
 
     inline void VisitObjectHClassImpl(BaseObject *hclass) override;
 
-    inline void VisitJSWeakMapImpl(BaseObject *rootObject) override;
+    inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
 private:
     inline void HandleSlot(ObjectSlot slot);
 

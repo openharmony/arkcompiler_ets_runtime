@@ -22,13 +22,111 @@
 #include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
-void WorkNodeHolder::Setup(Heap *heap, WorkManager *workManager, GlobalWorkStack *workStack)
+
+template <typename T>
+void WorkNodeWrapper<T>::Setup(T *globalStack)
+{
+    ASSERT(globalStack != nullptr);
+    globalStack_ = globalStack;
+}
+
+template <typename T>
+void WorkNodeWrapper<T>::Initialize(WorkManager *workManager)
+{
+    inNode_ = workManager->AllocateWorkNode<WorkNode>();
+    cachedInNode_ = workManager->AllocateWorkNode<WorkNode>();
+    outNode_ = workManager->AllocateWorkNode<WorkNode>();
+}
+
+template <typename T>
+void WorkNodeWrapper<T>::Push(ElementType e, WorkManager *workManager)
+{
+    if (UNLIKELY(inNode_->IsFull())) {
+        PushWorkNodeToGlobal(workManager);
+        if constexpr (std::is_same_v<GlobalMarkStack, T>) {
+            workManager->CheckAndPostTask();
+        }
+    }
+    inNode_->Push(e);
+}
+
+template <typename T>
+void WorkNodeWrapper<T>::PushWorkNodeToGlobal(WorkManager *workManager)
+{
+    if (!inNode_->IsEmpty()) {
+        globalStack_->Push(inNode_);
+        inNode_ = cachedInNode_;
+        ASSERT(inNode_ != nullptr);
+        cachedInNode_ = cachedInNode_->GetNext();
+        if (cachedInNode_ == nullptr) {
+            cachedInNode_ = workManager->AllocateWorkNode<WorkNode>();
+        }
+    }
+}
+
+template <typename T>
+bool WorkNodeWrapper<T>::Pop(ElementType *e)
+{
+    if (UNLIKELY(outNode_->IsEmpty())) {
+        if (!inNode_->IsEmpty()) {
+            WorkNode *tmp = outNode_;
+            outNode_ = inNode_;
+            inNode_ = tmp;
+        } else {
+            WorkNode *tmp = outNode_;
+            if (!PopWorkNodeFromGlobal()) {
+                return false;
+            }
+            tmp->SetNext(cachedInNode_);
+            cachedInNode_ = tmp;
+        }
+    }
+    outNode_->Pop(e);
+    return true;
+}
+
+template <typename T>
+bool WorkNodeWrapper<T>::PopWorkNodeFromGlobal()
+{
+    return globalStack_->Pop(&outNode_);
+}
+
+template <typename T>
+bool WorkNodeWrapper<T>::IsLocalEmpty() const
+{
+    ASSERT(inNode_ != nullptr);
+    ASSERT(outNode_ != nullptr);
+    ASSERT(cachedInNode_ != nullptr);
+    return inNode_->IsEmpty() && outNode_->IsEmpty() && cachedInNode_->IsEmpty();
+}
+
+template <typename T>
+bool WorkNodeWrapper<T>::IsGlobalEmpty() const
+{
+    ASSERT(globalStack_ != nullptr);
+    return globalStack_->IsEmpty();
+}
+
+template <typename T>
+bool WorkNodeWrapper<T>::IsLocalAndGlobalEmpty() const
+{
+    return IsLocalEmpty() && IsGlobalEmpty();
+}
+
+#define PARAM_WEAK_AGGREGATE_GLOBAL_STACK(type, name, _)            Global##type##Stack *name##Stack,
+void WorkNodeHolder::Setup(Heap *heap, WorkManager *workManager,
+                           WEAK_AGGREGATE_LIST(PARAM_WEAK_AGGREGATE_GLOBAL_STACK)
+                           GlobalMarkStack *markStack)
+#undef PARAM_WEAK_AGGREGATE_GLOBAL_STACK
 {
     heap_ = heap;
     workManager_ = workManager;
-    workStack_ = workStack;
+    markWorkNodeWrapper_.Setup(markStack);
+#define SETUP_WEAK_AGGREGATE(_, name, __)      name##WorkNodeWrapper_.Setup(name##Stack);
+    WEAK_AGGREGATE_LIST(SETUP_WEAK_AGGREGATE)
+#undef SETUP_WEAK_AGGREGATE
     continuousQueue_ = new ProcessQueue();
-    continuousJSWeakMapQueue_ = new JSWeakMapProcessQueue();
+    continuousWeakLinkedHashMapQueue_ = new WeakLinkedHashMapProcessQueue();
     // fixme: refactor?
     if constexpr (G_USE_CMS_GC) {
         slotGCAllocator_.Setup(heap->GetSlotSpace());
@@ -41,23 +139,23 @@ void WorkNodeHolder::Destroy()
     delete continuousQueue_;
     continuousQueue_ = nullptr;
 
-    continuousJSWeakMapQueue_->Destroy();
-    delete continuousJSWeakMapQueue_;
-    continuousJSWeakMapQueue_ = nullptr;
+    continuousWeakLinkedHashMapQueue_->Destroy();
+    delete continuousWeakLinkedHashMapQueue_;
+    continuousWeakLinkedHashMapQueue_ = nullptr;
 }
 
 void WorkNodeHolder::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase)
 {
-    inNode_ = workManager_->AllocateWorkNode();
-    cachedInNode_ = workManager_->AllocateWorkNode();
-    outNode_ = workManager_->AllocateWorkNode();
+    markWorkNodeWrapper_.Initialize(workManager_);
+#define INITIALIZE_WEAK_AGGREGATE(_, name, __)          name##WorkNodeWrapper_.Initialize(workManager_);
+    WEAK_AGGREGATE_LIST(INITIALIZE_WEAK_AGGREGATE)
+#undef INITIALIZE_WEAK_AGGREGATE
     weakQueue_ = new ProcessQueue();
     weakQueue_->BeginMarking(continuousQueue_);
-    jsWeakMapQueue_ = new JSWeakMapProcessQueue();
-    jsWeakMapQueue_->BeginMarking(continuousJSWeakMapQueue_);
+    weakLinkedHashMapQueue_ = new WeakLinkedHashMapProcessQueue();
+    weakLinkedHashMapQueue_->BeginMarking(continuousWeakLinkedHashMapQueue_);
     aliveSize_ = 0;
     promotedSize_ = 0;
-    parallelGCTaskPhase_ = taskPhase;
     if (gcType == TriggerGCType::FULL_GC) {
         // fixme: refactor?
         if constexpr (G_USE_CMS_GC) {
@@ -75,10 +173,10 @@ void WorkNodeHolder::Finish()
         delete weakQueue_;
         weakQueue_ = nullptr;
     }
-    if (jsWeakMapQueue_ != nullptr) {
-        jsWeakMapQueue_->FinishMarking(continuousJSWeakMapQueue_);
-        delete jsWeakMapQueue_;
-        jsWeakMapQueue_ = nullptr;
+    if (weakLinkedHashMapQueue_ != nullptr) {
+        weakLinkedHashMapQueue_->FinishMarking(continuousWeakLinkedHashMapQueue_);
+        delete weakLinkedHashMapQueue_;
+        weakLinkedHashMapQueue_ = nullptr;
     }
     if (allocator_ != nullptr) {
         allocator_->Finalize();
@@ -89,57 +187,6 @@ void WorkNodeHolder::Finish()
     if constexpr (G_USE_CMS_GC) {
         slotGCAllocator_.Finalize(heap_);
     }
-    parallelGCTaskPhase_ = ParallelGCTaskPhase::UNDEFINED_TASK;
-}
-
-bool WorkNodeHolder::Push(TaggedObject *object)
-{
-    if (!inNode_->PushObject(ToUintPtr(object))) {
-        PushWorkNodeToGlobal();
-        return inNode_->PushObject(ToUintPtr(object));
-    }
-    return true;
-}
-
-void WorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
-{
-    if (!inNode_->IsEmpty()) {
-        workStack_->Push(inNode_);
-        inNode_ = cachedInNode_;
-        ASSERT(inNode_ != nullptr);
-        cachedInNode_ = cachedInNode_->Next();
-        if (cachedInNode_ == nullptr) {
-            cachedInNode_ = workManager_->AllocateWorkNode();
-        }
-        if (postTask && heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask()) {
-            heap_->TryPostParallelGCTask(parallelGCTaskPhase_);
-        }
-    }
-}
-
-bool WorkNodeHolder::Pop(TaggedObject **object)
-{
-    if (!outNode_->PopObject(reinterpret_cast<uintptr_t *>(object))) {
-        if (!inNode_->IsEmpty()) {
-            WorkNode *tmp = outNode_;
-            outNode_ = inNode_;
-            inNode_ = tmp;
-        } else {
-            WorkNode *tmp = outNode_;
-            if (!PopWorkNodeFromGlobal()) {
-                return false;
-            }
-            tmp->SetNext(cachedInNode_);
-            cachedInNode_ = tmp;
-        }
-        return outNode_->PopObject(reinterpret_cast<uintptr_t *>(object));
-    }
-    return true;
-}
-
-bool WorkNodeHolder::PopWorkNodeFromGlobal()
-{
-    return workStack_->Pop(&outNode_);
 }
 
 void WorkNodeHolder::PushWeakReference(JSTaggedType *weak)
@@ -147,9 +194,9 @@ void WorkNodeHolder::PushWeakReference(JSTaggedType *weak)
     weakQueue_->PushBack(weak);
 }
 
-void WorkNodeHolder::PushJSWeakMap(TaggedObject *jsWeakMap)
+void WorkNodeHolder::PushWeakLinkedHashMap(TaggedObject *weakLinkedHashMap)
 {
-    jsWeakMapQueue_->PushBack(jsWeakMap);
+    weakLinkedHashMapQueue_->PushBack(weakLinkedHashMap);
 }
 
 void WorkNodeHolder::IncreaseAliveSize(size_t size)
@@ -167,9 +214,9 @@ ProcessQueue *WorkNodeHolder::GetWeakReferenceQueue() const
     return weakQueue_;
 }
 
-JSWeakMapProcessQueue *WorkNodeHolder::GetJSWeakMapQueue() const
+WeakLinkedHashMapProcessQueue *WorkNodeHolder::GetWeakLinkedHashMapQueue() const
 {
-    return jsWeakMapQueue_;
+    return weakLinkedHashMapQueue_;
 }
 
 TlabAllocator *WorkNodeHolder::GetTlabAllocator() const
@@ -190,25 +237,23 @@ WorkManagerBase::WorkManagerBase(NativeAreaAllocator *allocator)
     workSpace_ = ToUintPtr(allocatedSpace);
 }
 
-WorkNode *WorkManagerBase::AllocateWorkNode()
+template <typename T>
+T *WorkManagerBase::AllocateWorkNode()
 {
     LockHolder lock(mtx_);
-    size_t allocatedSize = sizeof(WorkNode) + sizeof(Stack) + STACK_AREA_SIZE;
-    ASSERT(allocatedSize < WORKNODE_SPACE_SIZE);
+    constexpr size_t ALLOC_SIZE = T::GetAllocateSize();
+    ASSERT(ALLOC_SIZE < WORKNODE_SPACE_SIZE);
 
     uintptr_t begin = spaceStart_;
-    if (begin + allocatedSize >= spaceEnd_) {
+    if (begin + ALLOC_SIZE >= spaceEnd_) {
         agedSpaces_.emplace_back(workSpace_);
         workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
         spaceStart_ = workSpace_;
         spaceEnd_ = workSpace_ + WORKNODE_SPACE_SIZE;
         begin = spaceStart_;
     }
-    spaceStart_ = begin + allocatedSize;
-    Stack *stack = reinterpret_cast<Stack *>(begin + sizeof(WorkNode));
-    stack->ResetBegin(begin + sizeof(WorkNode) + sizeof(Stack), begin + allocatedSize);
-    WorkNode *work = reinterpret_cast<WorkNode *>(begin);
-    return new (work) WorkNode(stack);
+    spaceStart_ = begin + ALLOC_SIZE;
+    return new (ToVoidPtr(begin)) T();
 }
 
 WorkManagerBase::~WorkManagerBase()
@@ -223,7 +268,11 @@ WorkManager::WorkManager(Heap *heap, uint32_t threadNum)
       parallelGCTaskPhase_(UNDEFINED_TASK)
 {
     for (uint32_t i = 0; i < threadNum_; i++) {
-        works_.at(i).Setup(heap_, this, &workStack_);
+#define PARAM_WEAK_AGGREGATE_GLOBAL_STACK(type, name, _)            &name##Stack_,
+        works_.at(i).Setup(heap_, this,
+                           WEAK_AGGREGATE_LIST(PARAM_WEAK_AGGREGATE_GLOBAL_STACK)
+                           &markStack_);
+#undef PARAM_WEAK_AGGREGATE_GLOBAL_STACK
     }
 }
 
@@ -235,6 +284,13 @@ WorkManager::~WorkManager()
     }
 }
 
+void WorkManager::CheckAndPostTask()
+{
+    if (heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask()) {
+        heap_->TryPostParallelGCTask(parallelGCTaskPhase_);
+    }
+}
+
 size_t WorkManager::Finish()
 {
     size_t aliveSize = 0;
@@ -243,7 +299,10 @@ size_t WorkManager::Finish()
         holder.Finish();
         aliveSize += holder.aliveSize_;
     }
-    workStack_.Clear();
+    markStack_.Clear();
+#define CLEAR_WEAK_AGGREGATE_GLOBAL_STACK(type, name, _)          name##Stack_.Clear();
+    WEAK_AGGREGATE_LIST(CLEAR_WEAK_AGGREGATE_GLOBAL_STACK)
+#undef CLEAR_WEAK_AGGREGATE_GLOBAL_STACK
     FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
@@ -279,11 +338,11 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
     initialized_.store(true, std::memory_order_release);
 }
 
-void SharedGCWorkNodeHolder::Setup(SharedHeap *sHeap, SharedGCWorkManager *sWorkManager, GlobalWorkStack *workStack)
+void SharedGCWorkNodeHolder::Setup(SharedHeap *sHeap, SharedGCWorkManager *sWorkManager, GlobalMarkStack *markStack)
 {
     sHeap_ = sHeap;
     sWorkManager_ = sWorkManager;
-    workStack_ = workStack;
+    markStack_ = markStack;
     continuousQueue_ = new ProcessQueue();
 }
 
@@ -296,9 +355,9 @@ void SharedGCWorkNodeHolder::Destroy()
 
 void SharedGCWorkNodeHolder::Initialize(TriggerGCType gcType, SharedParallelMarkPhase sTaskPhase)
 {
-    inNode_ = sWorkManager_->AllocateWorkNode();
-    cachedInNode_ = sWorkManager_->AllocateWorkNode();
-    outNode_ = sWorkManager_->AllocateWorkNode();
+    inNode_ = sWorkManager_->AllocateWorkNode<MarkWorkNode>();
+    cachedInNode_ = sWorkManager_->AllocateWorkNode<MarkWorkNode>();
+    outNode_ = sWorkManager_->AllocateWorkNode<MarkWorkNode>();
     weakQueue_ = new ProcessQueue();
     weakQueue_->BeginMarking(continuousQueue_);
     aliveSize_ = 0;
@@ -325,20 +384,20 @@ void SharedGCWorkNodeHolder::Finish()
 
 bool SharedGCWorkNodeHolder::Push(TaggedObject *object)
 {
-    if (!inNode_->PushObject(ToUintPtr(object))) {
+    if (UNLIKELY(inNode_->IsFull())) {
         PushWorkNodeToGlobal();
-        return inNode_->PushObject(ToUintPtr(object));
     }
+    inNode_->Push(object);
     return true;
 }
 
 void SharedGCWorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
 {
     if (!inNode_->IsEmpty()) {
-        workStack_->Push(inNode_);
+        markStack_->Push(inNode_);
         inNode_ = cachedInNode_;
         ASSERT(inNode_ != nullptr);
-        cachedInNode_ = sWorkManager_->AllocateWorkNode();
+        cachedInNode_ = sWorkManager_->AllocateWorkNode<MarkWorkNode>();
         if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
             sHeap_->TryPostGCMarkingTask(sTaskPhase_);
         }
@@ -347,22 +406,22 @@ void SharedGCWorkNodeHolder::PushWorkNodeToGlobal(bool postTask)
 
 bool SharedGCWorkNodeHolder::Pop(TaggedObject **object)
 {
-    if (!outNode_->PopObject(reinterpret_cast<uintptr_t *>(object))) {
+    if (UNLIKELY(outNode_->IsEmpty())) {
         if (!inNode_->IsEmpty()) {
-            WorkNode *tmp = outNode_;
+            MarkWorkNode *tmp = outNode_;
             outNode_ = inNode_;
             inNode_ = tmp;
         } else if (!PopWorkNodeFromGlobal()) {
             return false;
         }
-        return outNode_->PopObject(reinterpret_cast<uintptr_t *>(object));
     }
+    outNode_->Pop(object);
     return true;
 }
 
 bool SharedGCWorkNodeHolder::PopWorkNodeFromGlobal()
 {
-    return workStack_->Pop(&outNode_);
+    return markStack_->Pop(&outNode_);
 }
 
 void SharedGCWorkNodeHolder::PushWeakReference(JSTaggedType *weak)
@@ -389,7 +448,7 @@ SharedGCWorkManager::SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum)
     : WorkManagerBase(heap->GetNativeAreaAllocator()), sHeap_(heap), threadNum_(threadNum)
 {
     for (uint32_t i = 0; i < threadNum_; i++) {
-        works_.at(i).Setup(sHeap_, this, &workStack_);
+        works_.at(i).Setup(sHeap_, this, &markStack_);
     }
 }
 
@@ -430,32 +489,31 @@ size_t SharedGCWorkManager::Finish()
         aliveSize += holder.aliveSize_;
     }
     FinishAndDestroyExtraTemporaryHolders();
-    workStack_.Clear();
+    markStack_.Clear();
     FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
 }
 
-bool SharedGCWorkManager::PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object)
+void SharedGCWorkManager::PushToLocalMarkingBuffer(MarkWorkNode *&markingBuffer, TaggedObject *object)
 {
     if (UNLIKELY(markingBuffer == nullptr)) {
-        markingBuffer = AllocateWorkNode();
+        markingBuffer = AllocateWorkNode<MarkWorkNode>();
     }
     ASSERT(markingBuffer != nullptr);
-    if (UNLIKELY(!markingBuffer->PushObject(ToUintPtr(object)))) {
+    if (UNLIKELY(markingBuffer->IsFull())) {
         PushLocalBufferToGlobal(markingBuffer);
         ASSERT(markingBuffer == nullptr);
-        markingBuffer = AllocateWorkNode();
-        return markingBuffer->PushObject(ToUintPtr(object));
+        markingBuffer = AllocateWorkNode<MarkWorkNode>();
     }
-    return true;
+    markingBuffer->Push(object);
 }
 
-void SharedGCWorkManager::PushLocalBufferToGlobal(WorkNode *&node, bool postTask)
+void SharedGCWorkManager::PushLocalBufferToGlobal(MarkWorkNode *&node, bool postTask)
 {
     ASSERT(node != nullptr);
     ASSERT(!node->IsEmpty());
-    workStack_.Push(node);
+    markStack_.Push(node);
     if (postTask && sHeap_->IsParallelGCEnabled() && sHeap_->CheckCanDistributeTask()) {
         sHeap_->TryPostGCMarkingTask(sTaskPhase_);
     }
@@ -468,7 +526,7 @@ void SharedGCWorkManager::CreateExtraTemporaryHolders(size_t numExtraTemporaryHo
     ASSERT(extraTemporaryHolders_.nextUsableHolderIdx_ == 0);
     for (size_t i = 0; i < numExtraTemporaryHolders; ++i) {
         SharedGCWorkNodeHolder *holder = new SharedGCWorkNodeHolder();
-        holder->Setup(sHeap_, this, &workStack_);
+        holder->Setup(sHeap_, this, &markStack_);
         extraTemporaryHolders_.holders_.emplace_back(holder);
     }
 }

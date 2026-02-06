@@ -22,6 +22,8 @@
 #include "ecmascript/mem/work_manager.h"
 
 namespace panda::ecmascript {
+class FullGC;
+class FullGCRunner;
 class Heap;
 class Region;
 class TaggedObject;
@@ -91,8 +93,12 @@ protected:
     void ProcessMarkStack(uint32_t threadId) override;
 
 private:
+    bool ProcessWeakAggregate(FullGCRunner *runner, WeakAggregate weakAggregate);
+
     bool isAppSpawn_ {false};
     Mutex mutex_;
+
+    friend class FullGC;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_MARKER_H

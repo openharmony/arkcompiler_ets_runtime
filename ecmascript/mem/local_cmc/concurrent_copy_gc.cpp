@@ -90,7 +90,7 @@ void ConcurrentCopyGC::ProcessWeakReference()
         UpdateRecordWeakReference(i);
     }
     for (uint32_t i = 0; i < totalThreadCount; i++) {
-        UpdateRecordJSWeakMap(i);
+        UpdateRecordWeakLinkedHashMap(i);
     }
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         Verification(heap_, VerifyKind::VERIFY_WEAK_REF).VerifyAll();
@@ -244,27 +244,27 @@ void ConcurrentCopyGC::UpdateRecordWeakReference(uint32_t threadIndex)
     }
 }
 
-void ConcurrentCopyGC::UpdateRecordJSWeakMap(uint32_t threadIndex)
+void ConcurrentCopyGC::UpdateRecordWeakLinkedHashMap(uint32_t threadIndex)
 {
-    std::function<bool(JSTaggedValue)> visitor = [this](JSTaggedValue key) {
-        ASSERT(!key.IsHole());
-        return key.IsUndefined();   // Dead key, and set to undefined by GC
-    };
     auto workManager = heap_->GetWorkManager();
-    JSWeakMapProcessQueue *queue = workManager->GetWorkNodeHolder(threadIndex)->GetJSWeakMapQueue();
+    WeakLinkedHashMapProcessQueue *queue = workManager->GetWorkNodeHolder(threadIndex)->GetWeakLinkedHashMapQueue();
+    JSThread *thread = heap_->GetJSThread();
     while (true) {
         TaggedObject *obj = queue->PopBack();
         if (UNLIKELY(obj == nullptr)) {
             break;
         }
-        JSWeakMap *weakMap = JSWeakMap::Cast(obj);
-        JSThread *thread = heap_->GetJSThread();
-        JSTaggedValue maybeMap = weakMap->GetWeakLinkedMap(thread);
-        if (maybeMap.IsUndefined()) {
-            continue;
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(obj);
+        ASSERT(map->VerifyLayout());
+
+        int entries = map->NumberOfAllUsedElements();
+        for (int i = 0; i < entries; ++i) {
+            JSTaggedValue maybeKey = map->GetKey(thread, i);
+            if (maybeKey.IsUndefined()) {
+                // set to undefined by GC since key is dead, and the weak ref of key is updated.
+                map->RemoveEntryFromGCThread(i);
+            }
         }
-        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(maybeMap.GetTaggedObject());
-        map->ClearAllDeadEntries(thread, visitor);
     }
 }
 
