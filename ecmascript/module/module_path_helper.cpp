@@ -250,7 +250,7 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
         return oldEntryPoint;
     }
     LOG_ECMA(DEBUG) << "TransformToNormalizedOhmUrl inputFileName: " << inputFileName << " oldEntryPoint: " <<
-        oldEntryPoint;
+        oldEntryPoint << " baseFileName:" << baseFileName;
     size_t pos = oldEntryPoint.find(PathHelper::SLASH_TAG);
     if (pos == CString::npos) {
         return ThrowInvalidOhmurlError(vm, oldEntryPoint);
@@ -276,6 +276,7 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
     CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgname);
 #endif
     if (data.empty()) {
+        LOG_ECMA(WARN) << "The PkgContextInfo is empty: " << pkgname << " , currentModuleName:" << currentModuleName;
         return oldEntryPoint;
     }
     const CString &entryPath = data[PKGINFO_ENTRY_PATH_INDEX];

@@ -174,13 +174,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
 #endif
     }
     AbcBufferCacheScope bufferScope(thread, name, buffer, size, AbcBufferType::NORMAL_BUFFER);
-    bool isBundle = jsPandaFile->IsBundlePack();
-
-    // realEntry is used to record the original record, which is easy to throw when there are exceptions
-    const CString realEntry = entry;
-    if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
-    } else if (!isBundle) {
+    if (!vm->IsNormalizedOhmUrlPack() && !jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -188,7 +182,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     }
     JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
     if (recordInfo == nullptr) {
-        CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
 
@@ -355,11 +349,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
 #endif
     }
     AbcBufferCacheScope bufferScope(thread, name, buffer, size, AbcBufferType::SECURE_BUFFER);
-    // realEntry is used to record the original record, which is easy to throw when there are exceptions
-    const CString realEntry = entry;
-    if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
-    } else if (!jsPandaFile->IsBundlePack()) {
+    if (!vm->IsNormalizedOhmUrlPack() && !jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -369,7 +359,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     // will be refactored, temporarily use the function IsModule to verify realEntry
     JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
     if (recordInfo == nullptr) {
-        CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
 
