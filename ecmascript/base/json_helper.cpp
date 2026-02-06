@@ -68,11 +68,12 @@ std::pair<std::string, std::uint32_t> JsonHelper::AnonymizeJsonStringUtf16(const
     int32_t prefixIndex = static_cast<int32_t>(position) - 1;
     uint32_t retPos = 0;
     for (uint32_t i = 0; i < width; i++) {
-        if (suffixIndex + 1 < len && common::utf_helper::IsUTF16HighSurrogate(utf16Data[suffixIndex]) &&
+        if (static_cast<size_t>(suffixIndex + 1) < len &&
+            common::utf_helper::IsUTF16HighSurrogate(utf16Data[suffixIndex]) &&
             common::utf_helper::IsUTF16LowSurrogate(utf16Data[suffixIndex + 1])) {
             dq.push_back(common::utf_helper::UTF16Decode(utf16Data[suffixIndex], utf16Data[suffixIndex + 1]));
             suffixIndex += 2; // 2:Consume a surrogate pair
-        } else if (suffixIndex < len) {
+        } else if (static_cast<size_t>(suffixIndex) < len) {
             dq.push_back(utf16Data[suffixIndex]);
             suffixIndex++;
         }
