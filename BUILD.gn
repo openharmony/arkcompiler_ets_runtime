@@ -424,6 +424,11 @@ config("hiviewdfx_config") {
   if (enable_async_stack) {
     defines += [ "ENABLE_ASYNC_STACK" ]
   }
+
+  if (enable_static_backtrace) {
+    defines += [ "ENABLE_STATIC_BACKTRACE" ]
+  }
+
   include_dirs = [ "$hilog_root/include" ]
 }
 
@@ -1591,6 +1596,11 @@ ohos_source_set("libark_jsruntime_test_set") {
     "zlib:libz",
     "json:nlohmann_json_static"
   ]
+
+  if (enable_static_backtrace) {
+    external_deps += [ "runtime_core:arkbacktrace" ]
+  }
+
   if (enable_hilog) {
     external_deps += [ "hilog:libhilog" ]
   }

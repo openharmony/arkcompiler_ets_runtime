@@ -31,7 +31,7 @@ FileMapper::FileMapper()
 
 FileMapper::~FileMapper()
 {
-    if (basePtr_ != nullptr && type_ == FileMapperType::SHARED_MMAP) {
+    if (basePtr_ != nullptr) {
         munmap(basePtr_, baseLen_);
     }
 }
