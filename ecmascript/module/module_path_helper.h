@@ -77,6 +77,7 @@ public:
     static constexpr std::string_view PREFIX_BUNDLE = "@bundle:";
     static constexpr std::string_view PREFIX_MODULE = "@module:";
     static constexpr std::string_view PREFIX_PACKAGE = "@package:";
+    static constexpr std::string_view PREFIX_HMS = "hms:";
     static constexpr std::string_view PREFIX_ETS = "ets/";
     static constexpr std::string_view PREFIX_LIB = "lib";
     static constexpr std::string_view REQUIRE_NAITVE_MODULE_PREFIX = "@native:";
