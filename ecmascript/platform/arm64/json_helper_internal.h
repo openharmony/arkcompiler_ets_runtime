@@ -68,7 +68,7 @@ private:
     *      final:      [0xFF,0xFF,0x22,0xFF,0x41,0xFF,0xFF,0x74,0xFF,0xFF,0xA2,0xB4,0xFF,0xFF,0xE1,0xFF]
     * min_index: 0x22 =>  0x22 & 0x02 > 0  =>  backslash
     */
-    static bool ReadJsonStringRangeForUtf8(bool &isFastString, const uint8_t *current,
+    static bool ReadJsonStringRangeForUtf8(bool &isFastString, const uint8_t *&current,
                                        const uint8_t *range, const uint8_t *&end)
     {
         const uint8_t* cur = current;
@@ -91,6 +91,7 @@ private:
                     return true;
                 }
                 if (UNLIKELY((min_index & CONTROL_MASK) > 0)) {
+                    current = cur + ((min_index & INDEX_MASK) >> INDEX_SHIFT);
                     return false;
                 }
             }
@@ -105,9 +106,11 @@ private:
                 return true;
             }
             if (UNLIKELY(*cur < SPACE_CHAR)) {
+                current = cur;
                 return false;
             }
         }
+        current = range;
         return false;
     }
 };

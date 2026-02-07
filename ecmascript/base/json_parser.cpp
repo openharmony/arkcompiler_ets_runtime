@@ -1269,7 +1269,13 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
                 sourceString_, offset, strLength));
         }
     } else {
-        if (UNLIKELY(*end_ != '"' || current_ == end_ || !IsFastParseJsonString(isFastString))) {
+        if (UNLIKELY(*end_ != '"' || current_ == end_)) {
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected end Text in JSON",
+                                               JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                               rawString_,
+                                               end_ - begin_ - slicedOffset_);
+        } else if (UNLIKELY(!IsFastParseJsonString(isFastString))) {
             THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
                                                "Unexpected end Text in JSON",
                                                JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
@@ -1305,9 +1311,11 @@ bool Utf8JsonParser::ReadJsonStringRange(bool &isFastString)
             // early return for ParseStringWithBackslash
             return true;
         } else if (UNLIKELY(c < CODE_SPACE)) {
+            current_ = current;
             return false;
         }
     }
+    current_ = range_;
     return false;
 #endif
 }
@@ -1318,6 +1326,7 @@ bool Utf8JsonParser::IsFastParseJsonString(bool &isFastString)
     // chars are within Ascii
     for (Text current = current_; current != end_; ++current) {
         if (*current < CODE_SPACE) {
+            current_ = current;
             return false;
         } else if (*current == '\\') {
             isFastString = false;
@@ -1372,7 +1381,13 @@ JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjOrArrOrMap)
                 reinterpret_cast<const uint16_t *>(value.data()), value.size()));
         }
     } else {
-        if (UNLIKELY(*end_ != '"' || current_ == end_ || !IsFastParseJsonString(isFastString, isAscii))) {
+        if (UNLIKELY(*end_ != '"' || current_ == end_)) {
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected end Text in JSON",
+                                               JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                               rawString_,
+                                               end_ - begin_ - slicedOffset_);
+        } else if (!IsFastParseJsonString(isFastString, isAscii)) {
             THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
                                                "Unexpected end Text in JSON",
                                                JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
@@ -1411,9 +1426,11 @@ bool Utf16JsonParser::ReadJsonStringRange(bool &isFastString, bool &isAscii)
             return true;
         }
         if (!IsLegalAsciiCharacter(c, isAscii)) {
+            current_ = current;
             return false;
         }
     }
+    current_ = range_;
     return false;
 }
 
@@ -1422,6 +1439,7 @@ bool Utf16JsonParser::IsFastParseJsonString(bool &isFastString, bool &isAscii)
     Advance();
     for (Text current = current_; current != end_; ++current) {
         if (!IsLegalAsciiCharacter(*current, isAscii)) {
+            current_ = current;
             return false;
         }
         if (*current == '\\') {
