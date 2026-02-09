@@ -1064,7 +1064,7 @@ JSTaggedValue BuiltinsObject::CreateRealm(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Object, CreateRealm);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSRealm> realm = factory->NewJSRealm();
+    JSHandle<JSObject> realm = factory->CreateJSRealm();
     return realm.GetTaggedValue();
 }
 

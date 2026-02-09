@@ -365,7 +365,8 @@ public:
                                                         const std::vector<JSHandle<JSTaggedValue>> &vec);
 
     JSHandle<JSProxy> NewJSProxy(const JSHandle<JSTaggedValue> &target, const JSHandle<JSTaggedValue> &handler);
-    JSHandle<JSRealm> NewJSRealm();
+    JSHandle<JSRealm> NewJSRealm(); // To be abandoned
+    JSHandle<JSObject> CreateJSRealm();
 
     JSHandle<JSArguments> NewJSArguments();
 
