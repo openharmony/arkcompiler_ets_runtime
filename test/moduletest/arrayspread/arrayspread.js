@@ -549,3 +549,49 @@ var finalSpread = [...finalArr, 4, 5, 6];
 print(finalSpread);
 print(finalSpread.length);
 print(finalSpread[finalSpread.length - 1]);
+
+print("\n=== Primitive Spread Tests ===");
+// string spread with array
+try {
+    let arr = ["Hello", " ", "World", "!"];
+    "ArkTS ".concat(...arr);
+    print("success");
+} catch (e) {
+    print("Error:", e);
+}
+
+// number spread with array
+try {
+    let number = 123;
+    number.toFixed(...[2]);
+    print("success");
+} catch (e) {
+    print("Error:", e);
+}
+
+// bigint spread with array
+try {
+    let bigInt = 1234n;
+    bigInt.toString(...[]);
+    print("success");
+} catch (e) {
+    print("Error:", e);
+}
+
+// boolean spread with array
+try {
+    let bool = true;
+    bool.toString(...[]);
+    print("success");
+} catch (e) {
+    print("Error:", e);
+}
+
+// symbol spread with array
+try {
+    let symbol = Symbol("test");
+    symbol.toString(...[]);
+    print("success");
+} catch (e) {
+    print("Error:", e);
+}
