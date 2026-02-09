@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,7 +34,7 @@ bool JSDebugger::SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> 
         return false;
     }
 
-    auto [_, success] = breakpoints_.emplace(location.GetSourceFile(), ptMethod.release(),
+    auto [_, success] = breakpoints_.emplace(location.GetSourceFile(), std::move(ptMethod),
         location.GetBytecodeOffset(), Global<FunctionRef>(ecmaVm_, condFuncRef));
     if (!success) {
         // also return true
@@ -58,7 +58,7 @@ bool JSDebugger::SetSmartBreakpoint(const JSPtLocation &location)
         return false;
     }
 
-    auto [_, success] = smartBreakpoints_.emplace(location.GetSourceFile(), ptMethod.release(),
+    auto [_, success] = smartBreakpoints_.emplace(location.GetSourceFile(), std::move(ptMethod),
         location.GetBytecodeOffset(), Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_)));
     if (!success) {
         // also return true
@@ -323,7 +323,7 @@ bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoin
 
 void JSDebugger::HandleSymbolicBreakpoint(const JSHandle<Method> &method)
 {
-    if (symbolicBreakpoints_.empty()) {
+    if (hooks_ == nullptr || symbolicBreakpoints_.empty()) {
         return;
     }
     std::unordered_set<std::string> recordNames = hooks_->GetAllRecordNames();
