@@ -169,15 +169,27 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
                 BRANCH(IsEnumerable(attr), &enumerable, &loopEnd);
                 Bind(&enumerable);
                 {
-                    GateRef value = GetValueFromDictionary<NumberDictionary>(glue_, elements, *idx);
+                    GateRef originalValue = GetValueFromDictionary<NumberDictionary>(glue_, elements, *idx);
                     Label notHole(env);
-                    BRANCH(TaggedIsHole(value), &loopEnd, &notHole);
+                    BRANCH(TaggedIsHole(originalValue), &loopEnd, &notHole);
                     Bind(&notHole);
                     {
                         // value
-                        FastSetPropertyByIndex(glue_, toAssign, *idx, value);
+                        DEFVARIABLE(value, VariableType::JS_ANY(), originalValue);
+                        Label isAccessor(env);
+                        Label setValue(env);
                         Label exception(env);
-                        BRANCH(HasPendingException(glue_), &exception, &loopEnd);
+                        BRANCH(IsAccessor(attr), &isAccessor, &setValue);
+                        Bind(&isAccessor);
+                        {
+                            value = CallGetterHelper(glue_, source, source, *value, ProfileOperation());
+                            BRANCH(HasPendingException(glue_), &exception, &setValue);
+                        }
+                        Bind(&setValue);
+                        {
+                            FastSetPropertyByIndex(glue_, toAssign, TaggedGetInt(key), *value);
+                            BRANCH(HasPendingException(glue_), &exception, &loopEnd);
+                        }
                         Bind(&exception);
                         {
                             *result = Exception();

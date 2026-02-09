@@ -340,3 +340,14 @@ Object.defineProperty(obj, "key1", {
 let res2 = Object.getOwnPropertyDescriptors(obj);
 print(res2["key1"].get);
 print(JSON.stringify(res2));
+
+{
+    function fn0(v0, v1) { }
+    {
+        let v12 = {
+            set 6000(v15) { }
+        };
+        let v13 = Object.assign({}, v12);
+        fn0(Object.values(v13));
+    }
+}
