@@ -164,7 +164,11 @@ public:
     // Reserve space for expected number of elements
     void Reserve(size_t expectedSize)
     {
-        AllocateTable(CalculateCapacity(expectedSize));
+        Clear();
+        capacity_ = CalculateCapacity(expectedSize);
+        ASSERT(capacity_ > 0);
+        table_ = new Entry[capacity_];
+        size_ = 0;
     }
 
     // Insert key-value pair, returns true if inserted, false if key exists or table is full
@@ -271,28 +275,11 @@ private:
         size_t baseCapacity = static_cast<size_t>(expectedSize / MAX_LOAD_FACTOR) + 1;
         // Round up to next power of two for better hash distribution
         // and to use bitwise AND for modulo operation
-        size_t capacity = 1;
+        size_t capacity = 16; // 16: Ensure minimum capacity
         while (capacity < baseCapacity) {
             capacity <<= 1;
         }
-        // Ensure minimum capacity
-        const size_t MIN_CAPACITY = 16;
-        return capacity < MIN_CAPACITY ? MIN_CAPACITY : capacity;
-    }
-
-    // Allocate new table
-    void AllocateTable(size_t capacity)
-    {
-        if (UNLIKELY(capacity == 0)) {
-            capacity_ = 0;
-            table_ = nullptr;
-            size_ = 0;
-            return;
-        }
-        
-        capacity_ = capacity;
-        table_ = new Entry[capacity_];
-        size_ = 0;
+        return capacity;
     }
 
     Entry* table_;
