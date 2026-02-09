@@ -953,4 +953,11 @@ try {
 } catch (e) {
   assert_equal(e.name, "RangeError");
 }
+
+{
+  let name = "x".repeat(1000)
+  let reg = new RegExp("(?<" + name + ">asas)", "d")
+  let res = reg.exec("asas");
+  assert_equal(res.groups[name], "asas");
+}
 test_end();
