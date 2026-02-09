@@ -2835,6 +2835,9 @@ JSTaggedValue JSObject::TryGetEnumCache(JSThread *thread, JSTaggedValue obj)
     if (enumCacheValue.IsEnumCache()) {
         EnumCacheKind kind = JSObject::GetEnumCacheKind(enumCacheValue);
         EnumCache* enumCache = EnumCache::Cast(enumCacheValue.GetTaggedObject());
+        if (!enumCache->IsEnumCacheAllValid(thread)) {
+            return JSTaggedValue::Undefined();
+        }
         switch (kind) {
             case EnumCacheKind::SIMPLE:
                 if (IsSimpleEnumCacheValid(thread, obj)) {
