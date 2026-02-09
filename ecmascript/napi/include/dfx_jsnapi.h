@@ -171,7 +171,6 @@ public:
     static void SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled);
     static void GetHybridStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static void SetJsRawHeapCropLevel(CropLevel level);
-    static void SetProcDumpInSharedOOM(bool enable);
 
     static ecmascript::JSHandle<JSTaggedValue> FindFunctionForHook(const EcmaVM *vm,
         const std::string &recordName, const std::string &namespaceName,
