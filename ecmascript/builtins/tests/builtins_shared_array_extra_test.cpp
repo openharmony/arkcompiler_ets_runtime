@@ -56,10 +56,10 @@ enum class ArrayIndex {
 
 namespace panda::test {
 using Array = ecmascript::builtins::BuiltinsSharedArray;
-class BuiltinsSharedArrayTest : public BaseTestWithScope<false> {
+class BuiltinsSharedArrayExtraTest : public BaseTestWithScope<false> {
 };
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, ArrayConstructor)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, ArrayConstructor)
 {
     JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction());
     JSHandle<JSObject> globalObject(thread, thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalObject());
@@ -90,7 +90,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ArrayConstructor)
 }
 
 // Array.from ( items [ , mapfn [ , thisArg ] ] )
-HWTEST_F_L0(BuiltinsSharedArrayTest, From)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, From)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
@@ -120,7 +120,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, From)
 }
 
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Species)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Species)
 {
     auto ecmaVM = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
@@ -137,7 +137,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Species)
     ASSERT_TRUE(result.IsECMAObject());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Concat)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Concat)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -177,7 +177,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Concat)
 }
 
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Slice)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Slice)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))  \
@@ -209,7 +209,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Slice)
     BuiltTestUtil::SharedArrayCheckKeyValueCommon(thread, valueHandle, descRes, keys, vals);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Splice)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Splice)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -246,7 +246,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Splice)
 }
 
 // new Array(1,2,3,4,5).Fill(0,1,3)
-HWTEST_F_L0(BuiltinsSharedArrayTest, Fill)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Fill)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -279,7 +279,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Fill)
 
 
 // new Array().Pop()
-HWTEST_F_L0(BuiltinsSharedArrayTest, Pop)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Pop)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -320,7 +320,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Pop)
 }
 
 // new Array(1,2,3).Push(...items)
-HWTEST_F_L0(BuiltinsSharedArrayTest, Push)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Push)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -361,7 +361,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Push)
                                          SCheckMode::SKIP).GetValue()->GetInt(), 5);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, DefineOwnProperty_Array)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, DefineOwnProperty_Array)
 {
     JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)) \
                         .GetTaggedValue().GetTaggedObject());
@@ -374,7 +374,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, DefineOwnProperty_Array)
     ASSERT_TRUE(!res);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Sort_Exception)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Sort_Exception)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -395,7 +395,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Sort_Exception)
     EXPECT_TRUE(result2.IsECMAObject());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Sort_Exception_1)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Sort_Exception_1)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(1)) \
@@ -417,7 +417,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Sort_Exception_1)
 }
 
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Create1)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Create1)
 {
     static int32_t len = 3;
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
@@ -441,7 +441,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Create1)
     EXPECT_EQ(JSSharedArray::Cast(result.GetTaggedObject())->GetArrayLength(), len);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Create2)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Create2)
 {
     static double len = 100;
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
@@ -466,7 +466,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Create2)
 }
 
 // Array.isArray(arg)
-HWTEST_F_L0(BuiltinsSharedArrayTest, IsArray)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, IsArray)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -496,7 +496,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, IsArray)
     ASSERT_EQ(result.GetRawData(), JSTaggedValue::False().GetRawData());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, GetIterator)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, GetIterator)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -524,7 +524,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, GetIterator)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Unscopables)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Unscopables)
 {
     JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction());
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
@@ -538,7 +538,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Unscopables)
     ASSERT_TRUE(value.IsECMAObject());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, ShrinkTo1)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, ShrinkTo1)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(10))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -560,7 +560,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ShrinkTo1)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, ShrinkTo2)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, ShrinkTo2)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(10))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -582,7 +582,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ShrinkTo2)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo1)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, ExtendTo1)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -602,7 +602,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo1)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo2)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, ExtendTo2)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -622,7 +622,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo2)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, IncludeInSortedValue_Len_0)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, IncludeInSortedValue_Len_0)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
         .GetTaggedValue().GetTaggedObject());
@@ -638,7 +638,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, IncludeInSortedValue_Len_0)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, DefineProperty)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, DefineProperty)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(2))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -669,7 +669,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, DefineProperty)
     EXPECT_EQ(arr->GetArrayLength(), 2U);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Of_Three)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Of_Three)
 {
     auto ecmaVM = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
@@ -690,7 +690,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Of_Three)
     ASSERT_TRUE(value.IsException());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Of_Four)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Of_Four)
 {
     auto ecmaVM = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
@@ -712,7 +712,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Of_Four)
 }
 
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Shift)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Shift)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -735,7 +735,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Shift)
     ASSERT_EQ(result.GetRawData(), JSTaggedValue(1).GetRawData());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Sort)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Sort)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -767,7 +767,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Sort)
                                          SCheckMode::SKIP).GetValue()->GetInt(), 3);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Unshift)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Unshift)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -802,7 +802,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Unshift)
                                          SCheckMode::SKIP).GetValue()->GetInt(), 5);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, ToString)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, ToString)
 {
     std::vector<int> descVals{2, 3, 4};
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
@@ -827,7 +827,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ToString)
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, str), 0);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Includes_one)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Includes_one)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -875,7 +875,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Includes_one)
 }
 
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Includes_two)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Includes_two)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -912,7 +912,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Includes_two)
     ASSERT_TRUE(!result.JSTaggedValue::ToBoolean());  // new Int8Array[2,3,4].includes(2, -2)
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, At_ONE)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, At_ONE)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -953,7 +953,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, At_ONE)
     ASSERT_EQ(result, JSTaggedValue::Undefined());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, At_TWO)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, At_TWO)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -961,8 +961,8 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, At_TWO)
     EXPECT_TRUE(arr != nullptr);
     std::vector<int> descVals{2, 3, 4};
     JSHandle<JSTaggedValue> obj(thread, arr);
-    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP,
-                                         SCheckMode::SKIP).GetValue()->GetInt(), 0);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP, SCheckMode::SKIP). \
+                                        GetValue()->GetInt(), 0);
     
     auto keys = BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
 
@@ -994,7 +994,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, At_TWO)
     ASSERT_EQ(result, JSTaggedValue::Undefined());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, SetPropertyTest001)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, SetPropertyTest001)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(5)) \
         .GetTaggedValue().GetTaggedObject());
@@ -1007,7 +1007,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, SetPropertyTest001)
     EXPECT_EQ(true, JSSharedArray::SetProperty(thread, obj, 0, value, true, SCheckMode::CHECK));
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, SetPropertyTest002)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, SetPropertyTest002)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(5)) \
         .GetTaggedValue().GetTaggedObject());
@@ -1020,7 +1020,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, SetPropertyTest002)
     EXPECT_EQ(false, JSSharedArray::SetProperty(thread, obj, 5, value, true, SCheckMode::CHECK));
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Join)
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Join)
 {
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
@@ -1045,4 +1045,159 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Join)
 
     ASSERT_EQ(EcmaStringAccessor::Compare(instance, resultHandle, str), 0);
 }
+
+// Test At with positive index out of bounds
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, At_PositiveIndexOutOfBounds)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    std::vector<int> descVals{1, 2, 3};
+    BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(10)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = Array::At(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    ASSERT_EQ(result, JSTaggedValue::Undefined());
+}
+
+// Test At with negative index out of bounds
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, At_NegativeIndexOutOfBounds)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    std::vector<int> descVals{1, 2, 3};
+    BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(-10)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = Array::At(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    ASSERT_EQ(result, JSTaggedValue::Undefined());
+}
+
+// Test CopyWithin with negative target
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, CopyWithin_NegativeTarget)
+{
+    std::vector<int> descVals{1, 2, 3, 4, 5};
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread,
+                                             JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(-2)));
+    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(0)));
+    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue(static_cast<int32_t>(2)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = Array::CopyWithin(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    ASSERT_TRUE(result.IsECMAObject());
+}
+
+// Test Includes with empty array
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Includes_EmptyArray)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSTaggedValue> obj(thread, arr);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(1)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = Array::Includes(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    ASSERT_FALSE(result.ToBoolean());
+}
+
+// Test LastIndexOf with empty array
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, LastIndexOf_EmptyArray)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(1)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = Array::LastIndexOf(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue(-1).GetRawData());
+}
+
+// Test Reverse with empty array
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Reverse_EmptyArray)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread,
+                                             JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = Array::Reverse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    ASSERT_TRUE(result.IsECMAObject());
+    EXPECT_EQ(arr->GetArrayLength(), 0U);
+}
+
+// Test Reverse with single element
+HWTEST_F_L0(BuiltinsSharedArrayExtraTest, Reverse_SingleElement)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread,
+                                             JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    std::vector<int> descVals{42};
+    BuiltTestUtil::SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = Array::Reverse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    ASSERT_TRUE(result.IsECMAObject());
+    EXPECT_EQ(arr->GetArrayLength(), 1U);
+}
+
 }

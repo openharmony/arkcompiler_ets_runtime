@@ -1030,12 +1030,12 @@ host_unittest_action("Sendable_BuiltinsSharedArray_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("Sendable_BuiltinsSharedArray_One_Test") {
+host_unittest_action("Sendable_BuiltinsSharedArray_extra_Test") {
   module_out_path = module_output_path
 
   sources = [
     # test file
-    "builtins_shared_array_one_test.cpp",
+    "builtins_shared_array_extra_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
@@ -1265,7 +1265,7 @@ group("unittest") {
     ":Sendable_BuiltinsSharedObject_Test",
     ":Sendable_BuiltinsSharedSet_Test",
     ":Sendable_BuiltinsSharedTypedArray_Test",
-    ":Sendable_BuiltinsSharedArray_One_Test",
+    ":Sendable_BuiltinsSharedArray_extra_Test",
   ]
 }
 
@@ -1325,7 +1325,7 @@ group("host_unittest") {
     ":Sendable_BuiltinsSharedObject_TestAction",
     ":Sendable_BuiltinsSharedSet_TestAction",
     ":Sendable_BuiltinsSharedTypedArray_TestAction",
-    ":Sendable_BuiltinsSharedArray_One_TestAction",
+    ":Sendable_BuiltinsSharedArray_extra_TestAction",
   ]
   if (is_mac) {
     deps -= [
