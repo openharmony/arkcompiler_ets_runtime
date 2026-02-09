@@ -1901,15 +1901,13 @@ GateRef CircuitBuilder::ArrayBufferIsView(GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::DataViewGet(
-    GateRef thisobj, GateRef index, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState)
+GateRef CircuitBuilder::DataViewGet(GateRef thisobj, GateRef index, GateRef dataViewCallID,
+                                    MachineType type, GateRef isLittleEndian, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateRef ret = GetCircuit()->NewGate(
-        circuit_->DataViewGet(),
-        MachineType::I64,
+    GateRef ret = GetCircuit()->NewGate(circuit_->DataViewGet(), type,
         {currentControl, currentDepend, thisobj, index, dataViewCallID, isLittleEndian, frameState},
         GateType::AnyType());
     currentLabel->SetControl(ret);

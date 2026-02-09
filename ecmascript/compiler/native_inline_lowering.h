@@ -77,6 +77,7 @@ private:
     void TryInlineArrayBufferIsView(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineBigIntAsIntN(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineDataViewGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    MachineType GetMachineTypeFromCSignsID(BuiltinsStubCSigns::ID id);
     void TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void InlineStubBuiltin(GateRef gate, size_t builtinArgc, size_t realArgc, BuiltinsStubCSigns::ID id,
         const GateMetaData* op, bool skipThis);

@@ -160,29 +160,41 @@ class BuiltinLowering;
     V(Int16Rev, BitRev, MachineType::I16)                              \
     V(Int8Rev, BitRev, MachineType::I8)
 
-#define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                      \
-    V(DoubleLessThan, Fcmp, static_cast<BitField>(FCmpCondition::OLT))                  \
-    V(DoubleLessThanOrEqual, Fcmp, static_cast<BitField>(FCmpCondition::OLE))           \
-    V(DoubleGreaterThan, Fcmp, static_cast<BitField>(FCmpCondition::OGT))               \
-    V(DoubleGreaterThanOrEqual, Fcmp, static_cast<BitField>(FCmpCondition::OGE))        \
-    V(DoubleEqual, Fcmp, static_cast<BitField>(FCmpCondition::OEQ))                     \
-    V(DoubleNotEqual, Fcmp, static_cast<BitField>(FCmpCondition::ONE))                  \
-    V(Int8GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))          \
-    V(Int32LessThan, Icmp, static_cast<BitField>(ICmpCondition::SLT))                   \
-    V(Int32LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
-    V(Int32GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
-    V(Int32GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))         \
-    V(Int32UnsignedLessThan, Icmp, static_cast<BitField>(ICmpCondition::ULT))           \
-    V(Int32UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))    \
-    V(Int32UnsignedGreaterThan, Icmp, static_cast<BitField>(ICmpCondition::UGT))        \
-    V(Int32UnsignedGreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::UGE)) \
-    V(Int64LessThan, Icmp, static_cast<BitField>(ICmpCondition::SLT))                   \
-    V(Int64LessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SLE))            \
-    V(Int64GreaterThan, Icmp, static_cast<BitField>(ICmpCondition::SGT))                \
-    V(Int64GreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::SGE))         \
-    V(Int64UnsignedLessThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::ULE))    \
-    V(Int64UnsignedGreaterThan, Icmp, static_cast<BitField>(ICmpCondition::UGT))        \
-    V(Int64UnsignedGreaterThanOrEqual, Icmp, static_cast<BitField>(ICmpCondition::UGE))
+#define DOUBLE_CMP_METHOD_LIST(V)                                                    \
+    V(DoubleLessThan,                       Fcmp,         FCmpCondition::OLT)        \
+    V(DoubleLessThanOrEqual,                Fcmp,         FCmpCondition::OLE)        \
+    V(DoubleGreaterThan,                    Fcmp,         FCmpCondition::OGT)        \
+    V(DoubleGreaterThanOrEqual,             Fcmp,         FCmpCondition::OGE)        \
+    V(DoubleEqual,                          Fcmp,         FCmpCondition::OEQ)        \
+    V(DoubleNotEqual,                       Fcmp,         FCmpCondition::ONE)
+
+#define INT8_CMP_METHOD_LIST(V)                                                      \
+    V(Int8GreaterThanOrEqual,               Icmp,         ICmpCondition::SGE)
+
+#define INT32_CMP_METHOD_LIST(V)                                                     \
+    V(Int32LessThan,                        Icmp,         ICmpCondition::SLT)        \
+    V(Int32LessThanOrEqual,                 Icmp,         ICmpCondition::SLE)        \
+    V(Int32GreaterThan,                     Icmp,         ICmpCondition::SGT)        \
+    V(Int32GreaterThanOrEqual,              Icmp,         ICmpCondition::SGE)        \
+    V(Int32UnsignedLessThan,                Icmp,         ICmpCondition::ULT)        \
+    V(Int32UnsignedLessThanOrEqual,         Icmp,         ICmpCondition::ULE)        \
+    V(Int32UnsignedGreaterThan,             Icmp,         ICmpCondition::UGT)        \
+    V(Int32UnsignedGreaterThanOrEqual,      Icmp,         ICmpCondition::UGE)
+
+#define INT64_CMP_METHOD_LIST(V)                                                     \
+    V(Int64LessThan,                        Icmp,         ICmpCondition::SLT)        \
+    V(Int64LessThanOrEqual,                 Icmp,         ICmpCondition::SLE)        \
+    V(Int64GreaterThan,                     Icmp,         ICmpCondition::SGT)        \
+    V(Int64GreaterThanOrEqual,              Icmp,         ICmpCondition::SGE)        \
+    V(Int64UnsignedLessThanOrEqual,         Icmp,         ICmpCondition::ULE)        \
+    V(Int64UnsignedGreaterThan,             Icmp,         ICmpCondition::UGT)        \
+    V(Int64UnsignedGreaterThanOrEqual,      Icmp,         ICmpCondition::UGE)
+
+#define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                   \
+    DOUBLE_CMP_METHOD_LIST(V)                                                        \
+    INT8_CMP_METHOD_LIST(V)                                                          \
+    INT32_CMP_METHOD_LIST(V)                                                         \
+    INT64_CMP_METHOD_LIST(V)
 
 class CircuitBuilder {
 public:
@@ -902,8 +914,8 @@ public:
     GateRef NumberIsInteger(GateRef gate);
     GateRef NumberIsSafeInteger(GateRef gate);
     GateRef ArrayBufferIsView(GateRef gate);
-    GateRef DataViewGet(
-        GateRef thisobj, GateRef index, GateRef dataViewCallID, GateRef isLittleEndian, GateRef frameState);
+    GateRef DataViewGet(GateRef thisobj, GateRef index, GateRef dataViewCallID,
+                        MachineType type, GateRef isLittleEndian, GateRef frameState);
     GateRef DataViewSet(GateRef thisobj,
                         GateRef index,
                         GateRef value,
@@ -1075,14 +1087,48 @@ public:
     UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH(ARITHMETIC_UNARY_OP_WITH_BITWIDTH)
 #undef ARITHMETIC_UNARY_OP_WITH_BITWIDTH
 
-#define CMP_BINARY_OP_WITHOUT_BITWIDTH(NAME, OPCODEID, CONDITION)                                \
+#define DOUBLE_CMP_BINARY_OP(NAME, OPCODEID, CONDITION)                                          \
     inline GateRef NAME(GateRef x, GateRef y, const char* comment = nullptr)                     \
     {                                                                                            \
         return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y, comment);   \
     }
 
-    BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(CMP_BINARY_OP_WITHOUT_BITWIDTH)
-#undef CMP_BINARY_OP_WITHOUT_BITWIDTH
+    DOUBLE_CMP_METHOD_LIST(DOUBLE_CMP_BINARY_OP)
+#undef DOUBLE_CMP_BINARY_OP
+
+#define INT8_CMP_BINARY_OP(NAME, OPCODEID, CONDITION)                                            \
+    inline GateRef NAME(GateRef x, GateRef y, const char* comment = nullptr)                     \
+    {                                                                                            \
+        ASSERT(acc_.GetMachineType(x) == MachineType::I8);                                       \
+        ASSERT(acc_.GetMachineType(y) == MachineType::I8);                                       \
+        return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y, comment);   \
+    }
+
+    INT8_CMP_METHOD_LIST(INT8_CMP_BINARY_OP)
+#undef INT8_CMP_BINARY_OP
+
+// fixme: There are bugs in the AOT type conversion, INT32 CMP check temporarily no added
+#define INT32_CMP_BINARY_OP(NAME, OPCODEID, CONDITION)                                           \
+    inline GateRef NAME(GateRef x, GateRef y, const char* comment = nullptr)                     \
+    {                                                                                            \
+        return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y, comment);   \
+    }
+
+    INT32_CMP_METHOD_LIST(INT32_CMP_BINARY_OP)
+#undef INT32_CMP_BINARY_OP
+
+#define INT64_CMP_BINARY_OP(NAME, OPCODEID, CONDITION)                                           \
+    inline GateRef NAME(GateRef x, GateRef y, const char* comment = nullptr)                     \
+    {                                                                                            \
+        ASSERT(acc_.GetMachineType(x) == MachineType::I64 ||                                     \
+               acc_.GetMachineType(x) == MachineType::ARCH);                                     \
+        ASSERT(acc_.GetMachineType(y) == MachineType::I64 ||                                     \
+               acc_.GetMachineType(y) == MachineType::ARCH);                                     \
+        return BinaryCmp(circuit_->OPCODEID(static_cast<uint64_t>(CONDITION)), x, y, comment);   \
+    }
+
+    INT64_CMP_METHOD_LIST(INT64_CMP_BINARY_OP)
+#undef INT64_CMP_BINARY_OP
 
 private:
 
