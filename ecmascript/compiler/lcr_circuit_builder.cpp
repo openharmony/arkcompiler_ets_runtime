@@ -114,9 +114,6 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    if (mAttr.GetBarrier() == MemoryAttribute::Barrier::UNKNOWN_BARRIER && acc_.IsConstant(value)) {
-        mAttr.SetBarrier(MemoryAttribute::Barrier::NO_BARRIER);
-    }
     auto bit = LoadStoreAccessor::ToValue(mAttr);
     GateRef result = GetCircuit()->NewGate(circuit_->Store(bit),
         MachineType::NOVALUE, { depend, glue, base, offset, value, value }, type.GetGateType());

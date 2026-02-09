@@ -1096,9 +1096,6 @@ GateRef CircuitBuilder::StoreConstOffset(VariableType type,
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-    if (mAttr.GetBarrier() == MemoryAttribute::Barrier::UNKNOWN_BARRIER && acc_.IsConstant(value)) {
-        mAttr.SetBarrier(MemoryAttribute::Barrier::NO_BARRIER);
-    }
     auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, mAttr);
     auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(bits), type.GetMachineType(),
         { currentDepend, receiver, value }, type.GetGateType());
