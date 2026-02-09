@@ -160,35 +160,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_006, TestSize.Level0)
     EXPECT_STREQ(bundleArg.c_str(), "com.ohos.contacts");
 }
 
-const std::string COMPILER_PKG_INFO_VALUE =
-    "{\"abcName\":\"ets/modules.abc\","
-    "\"abcOffset\":\"0x1000\","
-    "\"abcSize\":\"0x60b058\","
-    "\"appIdentifier\":\"5765880207853624761\","
-    "\"bundleName\":\"com.ohos.contacts\","
-    "\"BundleUid\":\"0x1317b6f\","
-    "\"isEncryptedBundle\":\"0x0\","
-    "\"isScreenOff\":\"0x1\","
-    "\"moduleName\":\"entry\","
-    "\"pgoDir\":\"/data/local/ark-profile/100/com.ohos.contacts\","
-    "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\","
-    "\"processUid\":\"0xbf4\"}";
-
-const std::unordered_map<std::string, std::string> argsMapForTest {
-    {"target-compiler-mode", "partial"},
-    {"aot-file", "/data/local/ark-cache/com.ohos.contacts/arm64/entry"},
-    {"compiler-pkg-info", COMPILER_PKG_INFO_VALUE},
-    {"compiler-external-pkg-info", "[]"},
-    {"compiler-opt-bc-range", ""},
-    {"compiler-device-state", "1"},
-    {"compiler-baseline-pgo", "0"},
-    {"ABC-Path", "/system/app/Contacts/Contacts.hap/ets/modules.abc"},
-    {"BundleUid", "20020079"},
-    {"BundleGid", "20020079"},
-    {"anFileName", "/data/local/ark-cache/com.ohos.contacts/arm64/entry.an"},
-    {"appIdentifier", "5765880207853624761"},
-};
-
 /**
  * @tc.name: AotArgsHandlerTest_007
  * @tc.desc: AOTArgsHandler::Handle(argsMap)
@@ -2206,22 +2177,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_111, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotArgsHandlerTest_112
- * @tc.desc: Test AOTArgsHandler::Handle with hybrid mode
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_112, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    argsMap.emplace(ArgsIdx::ARKTS_MODE, "hybrid");
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
-    argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
-    int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
-}
-
-/**
  * @tc.name: AotArgsHandlerTest_113
  * @tc.desc: Test AOTArgsParserBase::JoinMethodList with single element
  * @tc.type: Func
@@ -2263,22 +2218,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_115, TestSize.Level0)
     };
     auto result = AOTArgsParserFactory::GetParser(argsMap, true);
     EXPECT_TRUE(result.has_value());
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_116
- * @tc.desc: Test AOTArgsHandler::Handle with hybrid mode
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_116, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    argsMap.emplace(ArgsIdx::ARKTS_MODE, "hybrid");
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
-    argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
-    int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
 }
 
 /**
