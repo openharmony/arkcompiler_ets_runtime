@@ -628,16 +628,7 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<Glo
             // o1 becomes a prototype object of object o2 and an on-proto IC loading x from o2 will rely on the
             // stability of the prototype-chain o2 -> o1. If directly marking the o1.hclass1 as a prototype hclass,
             // the previous IC of adding property x won't trigger IC-miss and fails to notify the IC on o2.
-
-            // At here, When a JSArray with initial hclass is set as a proto,
-            // we substitute its hclass with preserved proto hclass.
-            JSHandle<JSHClass> newProtoClass;
-            if (ProtoIsFastJSArray(env, proto, hclass)) {
-                newProtoClass = JSHandle<JSHClass>(thread, thread->GetArrayInstanceHClass(hclass->GetElementsKind(),
-                                                                                          true));
-            } else {
-                newProtoClass = JSHClass::Clone(thread, hclass);
-            }
+            JSHandle<JSHClass> newProtoClass = JSHClass::Clone(thread, hclass);
             JSTaggedValue layout = newProtoClass->GetLayout(thread);
             // If the type of object is JSObject, the layout info value is initialized to the default value,
             // if the value is not JSObject, the layout info value is initialized to null.
@@ -822,7 +813,6 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
     }
 
     // Currently, we only support fast array elementsKind
-    ASSERT(IsInitialArrayHClassWithElementsKind(thread, object->GetJSHClass(), current));
     if (!TransitToElementsKindUncheck(thread, object, newKind)) {
         return false;
     }
