@@ -3092,6 +3092,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructBoundFunction(JSThread *thread, J
                                                              JSHandle<JSTaggedValue> preArgs,
                                                              JSHandle<TaggedArray> args)
 {
+    STACK_LIMIT_CHECK(thread, JSTaggedValue::Exception());
     JSHandle<JSTaggedValue> target(thread, ctor->GetBoundTarget(thread));
     if (!target->IsConstructor()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Constructor is false", JSTaggedValue::Exception());
