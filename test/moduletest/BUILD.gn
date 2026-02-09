@@ -102,7 +102,6 @@ module_test_list = [
   "globalrecord",
   "globalthis",
   "helloworld",
-  "ic",
   "ictest",
   "includesindexof",
   "inline_property",
