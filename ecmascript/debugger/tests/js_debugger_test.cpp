@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -190,9 +190,9 @@ HWTEST_F_L0(JsDebuggerTest, RemoveAllBreakpointsTest)
     panda_file::File::EntityId entityId(42);
 
     std::string sourceFile;
-    PtMethod ptMethod(jspandaFilePtrTest, entityId, false);
+    auto ptMethod = std::make_shared<PtMethod>(jspandaFilePtrTest, entityId, false);
     uint32_t bcOffset = 0;
-    JSBreakpoint breakpoint(sourceFile, &ptMethod, bcOffset,
+    JSBreakpoint breakpoint(sourceFile, ptMethod, bcOffset,
                             Global<FunctionRef>(ecmaVm, FunctionRef::Undefined(ecmaVm)));
 
     debuggerFriend.SetBreakpoint(breakpoint);

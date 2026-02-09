@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -100,9 +100,10 @@ bool CpuProfiler::StartCpuProfilerForInfo()
     generator_->SetIsStart(true);
     uint64_t startTime = SamplingProcessor::GetMicrosecondsTimeStamp();
     generator_->SetThreadStartTime(startTime);
-    params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self(), taskHandle);
-    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
+    auto *params = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self(), taskHandle);
+    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, pthread_create failed, errno = " << errno;
+        delete params;
         return false;
     }
     isProfiling_ = true;
@@ -158,9 +159,10 @@ bool CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     generator_->SetIsStart(true);
     uint64_t startTime = SamplingProcessor::GetMicrosecondsTimeStamp();
     generator_->SetThreadStartTime(startTime);
-    params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self(), taskHandle);
-    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
+    auto *params = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self(), taskHandle);
+    if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, pthread_create failed, errno = " << errno;
+        delete params;
         return false;
     }
     isProfiling_ = true;
@@ -242,10 +244,6 @@ CpuProfiler::~CpuProfiler()
     if (generator_ != nullptr) {
         delete generator_;
         generator_ = nullptr;
-    }
-    if (params_ != nullptr) {
-        delete params_;
-        params_ = nullptr;
     }
 }
 
@@ -377,7 +375,12 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         LockHolder lock(synchronizationMutex_);
         // If no task running in this thread, we get the id of the last task that ran in this thread
         pthread_t tid = static_cast<pthread_t>(GetThreadIdOrCachedTaskId());
-        const EcmaVM *vm = profilerMap_[tid].vm_;
+        auto it = profilerMap_.find(tid);
+        if (it == profilerMap_.end()) {
+            LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler tid not found: " << tid;
+            return;
+        }
+        const EcmaVM *vm = it->second.vm_;
         if (vm == nullptr) {
             LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler vm is nullptr";
             return;
@@ -430,7 +433,7 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
         LOG_FULL(FATAL) << "AsmInterpreter does not currently support other platforms, please run on x64 and arm64";
         return;
 #endif
-        if (reinterpret_cast<uint64_t*>(sp) > reinterpret_cast<uint64_t*>(fp)) {
+        if (sp > fp) {
             LOG_ECMA(ERROR) << "sp > fp, stack frame exception";
             if (profiler->generator_->SemPost(0) != 0) {
                 LOG_ECMA(ERROR) << "sem_[0] post failed";

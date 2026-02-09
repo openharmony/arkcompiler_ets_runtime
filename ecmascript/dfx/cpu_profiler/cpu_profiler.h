@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,6 @@
 #define ECMASCRIPT_DFX_CPU_PROFILER_CPU_PROFILER_H
 
 #include <csignal>
-
 
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
@@ -139,7 +138,6 @@ private:
     uint64_t beforeCallNapiTimeStamp_ = 0;
     std::atomic_bool isBuildNapiStack_ {false};
     bool enableVMTag_ {false};
-    RunParams *params_ = nullptr;
 
     friend class CpuProfilerFriendTest;
 };
