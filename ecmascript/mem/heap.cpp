@@ -1618,7 +1618,9 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
             sweeper_->EnsureAllTaskFinished();
             DumpHeapSnapshotBeforeOOM();
             StatisticHeapDetail();
-            ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
+            ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(),
+                " OldSpace::Merge, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+                " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
         }
         oldSpace_->ResetMergeSize();
         shouldThrowOOMError_ = false;
@@ -1807,7 +1809,9 @@ void Heap::CheckNonMovableSpaceOOM()
         sweeper_->EnsureAllTaskFinished();
         DumpHeapSnapshotBeforeOOM();
         StatisticHeapDetail();
-        ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
+        ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(),
+            "Heap::CheckNonMovableSpaceOOM, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+            " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes", true);
     }
 }
 
