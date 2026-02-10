@@ -15,6 +15,8 @@
 
 #include "ecmascript/mem/gc_key_stats.h"
 
+#include <thread>
+
 #ifdef ENABLE_HISYSEVENT
 #include "hisysevent.h"
 #include "dfx_signal_handler.h"
@@ -32,6 +34,21 @@ using PGOProfilerManager = pgo::PGOProfilerManager;
 using Clock = std::chrono::high_resolution_clock;
 const std::string PARTITION_NAME = "/data";
 const std::string COMPONENT_NAME = "ets_runtime";
+
+namespace {
+void SendLongGCHiSysEvent(LongGCStats& longGCStats, bool isGetCpuLoad)
+{
+#ifdef ENABLE_HISYSEVENT
+    std::thread asyncTask([longGCStats, isGetCpuLoad] () mutable {
+        if (isGetCpuLoad) {
+            longGCStats.SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
+        }
+        DFXHiSysEvent::SendLongGCEvent(&longGCStats);
+    });
+    asyncTask.detach();
+#endif
+}
+}
 
 bool GCKeyStats::CheckIfMainThread() const
 {
@@ -190,27 +207,24 @@ void GCKeyStats::ProcessLongGCEvent()
     float gcTotalTime = longGCStats->GetGCTotalTime();
     if (gcIsSensitive) {
         if (gcTotalTime > GC_SENSITIVE_LONG_TIME) {
-            DFXHiSysEvent::SendLongGCEvent(longGCStats);
+            SendLongGCHiSysEvent(*longGCStats, false);
             longGCStats->Reset();
         }
     } else {
         if (IsIdle(gcReason)) {
             if (!gcIsInBackground && gcTotalTime > GC_IDLE_LONG_TIME) {
-                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
-                DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                SendLongGCHiSysEvent(*longGCStats, true);
                 longGCStats->Reset();
             } else if (gcIsInBackground && gcTotalTime > GC_BACKGROUD_IDLE_LONG_TIME) {
-                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
-                DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                SendLongGCHiSysEvent(*longGCStats, true);
                 longGCStats->Reset();
             }
         } else {
             if (!gcIsInBackground && gcTotalTime > GC_NOT_SENSITIVE_LONG_TIME) {
-                DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                SendLongGCHiSysEvent(*longGCStats, false);
                 longGCStats->Reset();
             } else if (gcIsInBackground && gcTotalTime > GC_BACKGROUD_LONG_TIME) {
-                longGCStats->SetCpuLoad(DFXHiSysEvent::GetCpuUsage());
-                DFXHiSysEvent::SendLongGCEvent(longGCStats);
+                SendLongGCHiSysEvent(*longGCStats, true);
                 longGCStats->Reset();
             }
         }
