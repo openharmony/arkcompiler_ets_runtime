@@ -117,4 +117,72 @@ HWTEST_F_L0(RuntimeTest, SetInBackground2)
     }
     ASSERT_TRUE(Runtime::GetInstance()->IsInBackground());
 }
+
+HWTEST_F_L0(RuntimeTest, EnableProcDumpInSharedOOMBasic)
+{
+    // Test basic functionality in single-threaded environment
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(true);
+    ASSERT_TRUE(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
+    ASSERT_FALSE(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+
+    // Test toggle
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(true);
+    ASSERT_TRUE(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
+    ASSERT_FALSE(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+}
+
+HWTEST_F_L0(RuntimeTest, EnableProcDumpInSharedOOMConcurrent)
+{
+    // Test thread-safety and memory visibility with release-acquire semantics
+    // Release store ensures writes visible before flag, acquire load ensures synchronization
+    constexpr int threadNumber = 8;
+    // Number of operations per thread, with odd count (1001) ending on even index (1000) resulting in final value true
+    constexpr int iterations = 1001;
+
+    std::mutex mtx;
+    std::condition_variable cv;
+    bool ready = false;
+    std::atomic<int> totalOps {0};  // Total operation count to verify all threads completed execution
+
+    auto concurrentWrite = [&mtx, &cv, &ready, &totalOps]() {
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            cv.wait(lock, [&]() { return ready; });
+        }
+
+        for (size_t i = 0; i < iterations; i++) {
+            Runtime::GetInstance()->SetProcDumpInSharedOOM((i & 1) == 0);
+            totalOps++;
+        }
+    };
+
+    std::vector<std::thread> writeThreads;
+    for (int _ = 0; _ < threadNumber; _++) {
+        writeThreads.emplace_back(concurrentWrite);
+    }
+
+    // Start all threads for concurrent execution
+    {
+        std::unique_lock<std::mutex> lock(mtx);
+        ready = true;
+    }
+    cv.notify_all();
+
+    for (int i = 0; i < threadNumber; i++) {
+        writeThreads[i].join();
+    }
+
+    // Verify all threads completed expected number of operations
+    EXPECT_EQ(totalOps.load(), iterations * threadNumber);
+
+    // Final state check: expect true due to last write (i=1000, even index sets true)
+    EXPECT_TRUE(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
+    EXPECT_FALSE(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+}
 }

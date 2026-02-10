@@ -35,6 +35,7 @@
 
 #include "libpandabase/macros.h"
 
+#include <atomic>
 #include <list>
 #include <memory>
 
@@ -343,14 +344,16 @@ public:
     void DisposeSendableGlobalHandle(uintptr_t nodeAddr);
     void IterateSendableGlobalStorage(RootVisitor &visitor);
 
-    void EnableProcDumpInSharedOOM(bool flag)
+    void SetProcDumpInSharedOOM(bool flag)
     {
-        enableProcDumpInSharedOOM_ = flag;
+        // Release semantics: ensure all prior writes are visible before this store
+        isProcDumpInSharedOOMEnabled_.store(flag, std::memory_order_release);
     }
 
     bool IsEnableProcDumpInSharedOOM()
     {
-        return enableProcDumpInSharedOOM_;
+        // Acquire semantics: ensure we see all writes that happened-before the store
+        return isProcDumpInSharedOOMEnabled_.load(std::memory_order_acquire);
     }
 
     bool IsInBackground() const
@@ -484,6 +487,12 @@ private:
     ReleaseSecureMemCallback releaseSecureMemCallback_ {nullptr};
     Mutex releaseSecureMemCallbackLock_;
 
+    // Whether process dump is enabled when shared OOM occurs.
+    // Using atomic<bool> with release-acquire semantics ensures:
+    // - Release (store): all prior writes visible before flag becomes true
+    // - Acquire (load): subsequent reads see all writes that happened before flag was set
+    std::atomic<bool> isProcDumpInSharedOOMEnabled_ {false};
+
     // sendable global reference
     Mutex sendableGlobalStorageLock_;
     EcmaGlobalStorage<Node> *sendableGlobalStorage_ {nullptr};
@@ -493,9 +502,6 @@ private:
     std::function<void(uintptr_t nodeAddr)> disposeSendableGlobalHandle_;
     static constexpr int32_t MAX_SENDABLE_GLOBAL_HANDLE_COUNT = 51200;
     int32_t aliveSendableGlobalHandleCount_ {0};
-
-    // whether dump process when shared oom
-    bool enableProcDumpInSharedOOM_ {false};
 
     bool inBackground_ {false};
 

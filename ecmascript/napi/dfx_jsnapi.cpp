@@ -1188,8 +1188,8 @@ void DFXJSNApi::SetJsRawHeapCropLevel(CropLevel level)
 
 void DFXJSNApi::SetProcDumpInSharedOOM(bool enable)
 {
-    ecmascript::Runtime::GetInstance()->EnableProcDumpInSharedOOM(enable);
-    LOG_ECMA(INFO) << "EnableProcDumpInSharedOOM " << enable;
+    ecmascript::Runtime::GetInstance()->SetProcDumpInSharedOOM(enable);
+    LOG_ECMA(INFO) << "SetProcDumpInSharedOOM " << enable;
 }
 
 JSHandle<JSTaggedValue> DFXJSNApi::FindFunctionForHook(const EcmaVM *vm, const std::string &recordName,
