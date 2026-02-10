@@ -2845,6 +2845,23 @@ JSHandle<JSRealm> ObjectFactory::NewJSRealm()
     return realm;
 }
 
+JSHandle<JSObject> ObjectFactory::CreateJSRealm()
+{
+    JSHandle<GlobalEnv> globalEnv = NewGlobalEnv(false, true);
+    JSHandle<JSTaggedValue> protoValue = thread_->GlobalConstants()->GetHandledJSRealmClass();
+    JSHandle<JSHClass> hclassHandle = NewEcmaHClass(JSRealm::SIZE, JSType::JS_REALM, protoValue);
+    JSHandle<JSObject> realm = OrdinaryNewJSObjectCreate(globalEnv->GetObjectFunctionPrototype());
+    // globalEnv will be referenced by builtins function on globalObject
+    JSHandle<JSTaggedValue> realmObj = globalEnv->GetJSGlobalObject();
+    JSHandle<JSTaggedValue> realmkey(thread_->GlobalConstants()->GetHandledGlobalString());
+    PropertyDescriptor realmDesc(thread_, JSHandle<JSTaggedValue>::Cast(realmObj), true, false, true);
+    [[maybe_unused]] bool status =
+        JSObject::DefineOwnProperty(thread_, realm, realmkey, realmDesc);
+    ASSERT_PRINT(status == true, "Realm defineOwnProperty failed");
+
+    return realm;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewTaggedArray(uint32_t length, JSTaggedValue initVal, bool nonMovable)
 {
     if (nonMovable) {
