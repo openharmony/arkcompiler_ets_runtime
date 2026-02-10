@@ -184,15 +184,13 @@ JSTaggedValue BuiltinsAtomics::Wait(EcmaRuntimeCallInfo *argv)
     // 5. Otherwise, let v be ? ToInt32(value).
     int64_t v = 0;
     if (array->IsJSBigInt64Array()) {
-        if (value->IsBoolean()) {
-            value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt64(thread, value));
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        }
+        value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt64(thread, value));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         v = JSHandle<BigInt>::Cast(value)->ToInt64();
     } else {
         v = static_cast<int64_t>(JSTaggedValue::ToInt32(thread, value));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     // 6. Let q be ? ToNumber(timeout).
     // 7. If q is NaN or +∞𝔽, let t be +∞; else if q is -∞𝔽, let t be 0; else let t be max(ℝ(q), 0).

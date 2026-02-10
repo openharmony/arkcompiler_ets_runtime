@@ -219,6 +219,7 @@ group("ark_js_assert_moduletest") {
   testonly = true
   assert_test_list = [
     "array",
+    "atomics",
     "addpropertybyname",
     "cowarray",
     "decodeuricomponent",
@@ -360,6 +361,7 @@ group("ark_asm_assert_test") {
   testonly = true
   assert_test_list = [
     "array",
+    "atomics",
     "addpropertybyname",
     "cowarray",
     "decodeuricomponent",

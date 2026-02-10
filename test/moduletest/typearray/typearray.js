@@ -286,12 +286,6 @@ try {
     assert_equal(error instanceof RangeError, true);
 }
 
-const v21 = new SharedArrayBuffer(32);
-const v22 = new BigInt64Array(v21);
-Atomics.or(v22, Int16Array, false);
-assert_equal(v22.toString(),"0,0,0,0");
-assert_equal(Atomics.wait(v22, false, true),"not-equal");
-
 var arr13 = { [0]: 1, [1]: 20, [2]: 300, [3]: 4000, length: 4};
 var proxy = new Proxy(arr13, {
     get: function(target, name) {
