@@ -117,4 +117,20 @@ for (let i = 0; i < 20; i++) {
     assert_equal(passed, true);
 })();
 
+{
+    function trigger() {
+        let proto = [];
+        let obj = Object.create(proto);
+        obj[0] = "";
+        try {
+            proto[""] = undefined;
+        } catch(e) {}
+        Object.defineProperty(proto, undefined, {});
+    }
+
+    for (let i = 0; i < 15; ++i) {
+        trigger();
+    }
+}
+
 test_end();

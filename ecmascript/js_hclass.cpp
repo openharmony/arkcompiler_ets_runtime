@@ -306,10 +306,10 @@ void JSHClass::ProcessAotHClassTransition(const JSThread *thread, const JSHandle
                                           const JSHandle<JSHClass> newHClass, const JSTaggedValue &key)
 {
     if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, jshclass, key)) {
-        JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key);
+        JSHClass::NotifyHclassChanged(thread, jshclass, newHClass);
     } else {
 #if ENABLE_NEXT_OPTIMIZATION
-        JSHClass::NotifyHClassChangedForAot(thread, jshclass, newHClass, key);
+        JSHClass::NotifyHClassChangedForAot(thread, jshclass, newHClass);
 #endif
         JSHClass::RefreshUsers(thread, jshclass, newHClass);
     }
@@ -339,7 +339,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
             if (newClass->IsPrototype()) {
                 newHClass->SetProtoChangeDetails(thread, jshclass->GetProtoChangeDetails(thread));
             }
-            JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key.GetTaggedValue());
+            JSHClass::NotifyHclassChanged(thread, jshclass, newHClass);
         }
 #endif
         return;
@@ -349,7 +349,7 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     AddPropertyToNewHClass(thread, jshclass, newJsHClass, key, attr);
     // update hclass in object.
 #if ECMASCRIPT_ENABLE_IC
-    JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass, key.GetTaggedValue());
+    JSHClass::NotifyHclassChanged(thread, jshclass, newJsHClass);
 #endif
     // Because we currently only supports Fast ElementsKind
     obj->SynchronizedTransitionClass(thread, *newJsHClass);
@@ -731,7 +731,7 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
 
     // 3. update hclass in object.
 #if ECMASCRIPT_ENABLE_IC
-    JSHClass::NotifyHclassChanged(thread, oldHClass, newHClass, key.GetTaggedValue());
+    JSHClass::NotifyHclassChanged(thread, oldHClass, newHClass);
 #endif
 
     receiver->SynchronizedTransitionClass(thread, *newHClass);
@@ -1069,7 +1069,7 @@ JSHandle<JSTaggedValue> JSHClass::EnablePHCProtoChangeMarker(const JSThread *thr
 }
 
 void JSHClass::NotifyHClassChangedForAot(const JSThread *thread, JSHandle<JSHClass> oldHclass,
-                                         JSHandle<JSHClass> newHclass, JSTaggedValue addedKey)
+                                         JSHandle<JSHClass> newHclass)
 {
     if (!oldHclass->IsPrototype()) {
         return;
@@ -1078,11 +1078,10 @@ void JSHClass::NotifyHClassChangedForAot(const JSThread *thread, JSHandle<JSHCla
     if (oldHclass.GetTaggedValue() == newHclass.GetTaggedValue()) {
         return;
     }
-    JSHClass::NoticeThroughChain<true>(thread, oldHclass, addedKey);
+    JSHClass::NoticeThroughChain<true>(thread, oldHclass);
 }
 
-void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass,
-                                   JSTaggedValue addedKey)
+void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> oldHclass, JSHandle<JSHClass> newHclass)
 {
     if (!oldHclass->IsPrototype()) {
         return;
@@ -1119,7 +1118,7 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
         NotifyHClassNotPrototypeChanged(const_cast<JSThread *>(thread), newHclass);
     }
     NotifyLeafHClassChanged(const_cast<JSThread *>(thread), oldHclass);
-    JSHClass::NoticeThroughChain<false>(thread, oldHclass, addedKey);
+    JSHClass::NoticeThroughChain<false>(thread, oldHclass);
     JSHClass::RefreshUsers(thread, oldHclass, newHclass);
 }
 
@@ -1528,7 +1527,7 @@ JSHandle<JSHClass> JSHClass::CreateChildHClassFromPGO(const JSThread* thread,
         layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attributes);
         newJsHClass->IncNumberOfProps();
         AddTransitions(thread, parent, newJsHClass, key, attributes);
-        JSHClass::NotifyHclassChanged(thread, parent, newJsHClass, key.GetTaggedValue());
+        JSHClass::NotifyHclassChanged(thread, parent, newJsHClass);
     }
 
     return newJsHClass;
