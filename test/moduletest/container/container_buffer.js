@@ -2109,6 +2109,63 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
 
+    {
+        var buffer1 = new FastBuffer(0x110);
+        var buffer2 = new FastBuffer(buffer1,0,0x40000000); // now buffer2.length is 0x40000000
+        // oob read
+        try {
+            for(let i = 0;i < 0x2000000;i++) {
+                let value = buffer2.readUIntLE(i*4,4);
+                if(value != 0) {
+                    print(`offset 0x${(i*4).toString(16)} : 0x${value.toString(16)}`);
+                }
+            }
+        } catch (e) {
+            map.set("FASTBUFFER_OOB_TEST_0001 failed, error code:" + e.code, e.code === 10200001);
+        }
+    }
+
+    {
+        var buffer1 = new FastBuffer(0x110);
+        var buffer2 = new FastBuffer(buffer1,0,0x40000000); // now buffer2.length is 0x40000000
+        // oob write
+        try {
+            for(let i = 0;i < 0x1000000;i++) {
+                buffer2.writeUIntLE(0xcafebabe, i*4, 4);
+            }
+        } catch (e) {
+            map.set("FASTBUFFER_OOB_TEST_0002 failed, error code:" + e.code, e.code === 10200001);
+        }
+    }
+
+    {
+        let container_obj = new FastBuffer(0x110);
+        try {
+            container_obj.compare(0x41414141,0,1,0,1);
+        } catch (e) {
+            map.set("FASTBUFFER_OOB_TEST_0003 failed, error code:" + e.code, e.code === 401);
+        }
+    }
+
+    {
+        let container_obj = new FastBuffer("cdefg");
+        let buf = new FastBuffer("abcde");
+        map.set("FASTBUFFER_OOB_TEST_0004 failed", container_obj.compare(buf, 3, 2, 3, 2) === 0);
+        map.set("FASTBUFFER_OOB_TEST_0004 failed", container_obj.compare(buf, 0, 2, 3, 2) === -1);
+        map.set("FASTBUFFER_OOB_TEST_0004 failed", container_obj.compare(buf, 3, 2, 0, 2) === 1);
+    }
+
+    {
+        let container_obj = new FastBuffer("cdefg");
+        let buf = new FastBuffer(container_obj.buffer, 0, 114514);
+        map.set("FASTBUFFER_OOB_TEST_0005 failed", buf.length === 5 && buf.toString() === "cdefg");
+    }
+
+    {
+        let fast_buffer = new FastBuffer("1",0x1122);
+        map.set("FASTBUFFER_BAD_PARAMETER_TEST_0001 failed", fast_buffer.toString() === "1");
+    }
+
     let flag = undefined;
     function elements(value, key, map) {
         if (!value) {
