@@ -45,16 +45,27 @@ void ModulesSnapshotHelper::RegisterSignalHandler()
             return;
         }
 
+        constexpr const int SIGDUMP = 35;
         std::vector registeredSignos{
-#ifdef SIGSEGV
-            SIGSEGV,
-#endif
-#ifdef SIGBUS
-            SIGBUS,
+#ifdef SIGTRAP
+            SIGTRAP,
 #endif
 #ifdef SIGABRT
             SIGABRT,
 #endif
+#ifdef SIGBUS
+            SIGBUS,
+#endif
+#ifdef SIGFPE
+            SIGFPE,
+#endif
+#ifdef SIGSEGV
+            SIGSEGV,
+#endif
+#ifdef SIGSTKFLT
+            SIGSTKFLT,
+#endif
+            SIGDUMP,
         };
 
         if (registeredSignos.empty()) {
