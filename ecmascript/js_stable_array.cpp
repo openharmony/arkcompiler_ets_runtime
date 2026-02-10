@@ -1558,6 +1558,7 @@ JSTaggedValue JSStableArray::With(JSThread *thread, JSHandle<JSArray> receiver,
     JSHandle<JSObject> newArrayHandle(newArray);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    int64_t len = base::ArrayHelper::GetLength(thread, thisObjVal);
     TaggedArray *destElements = TaggedArray::Cast(newArrayHandle->GetElements(thread).GetTaggedObject());
 
     if (insertCount > ElementAccessor::GetElementsLength(thread, newArrayHandle)) {
@@ -1565,11 +1566,16 @@ JSTaggedValue JSStableArray::With(JSThread *thread, JSHandle<JSArray> receiver,
     }
     ASSERT(!newArrayHandle->GetJSHClass()->IsDictionaryMode());
     bool needTransition = true;
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
     for (uint32_t idx = 0; idx < insertCount; idx++) {
         if (idx == index) {
             ElementAccessor::Set(thread, newArrayHandle, idx, value, needTransition);
         } else {
-            JSHandle<JSTaggedValue> kValue(thread, ElementAccessor::Get(thread, thisObjHandle, idx));
+            if (idx < len) {
+                kValue.Update(ElementAccessor::Get(thread, thisObjHandle, idx));
+            } else {
+                kValue.Update(JSTaggedValue::Hole());
+            }
             if (kValue->IsHole()) {
                 ElementAccessor::Set(thread, newArrayHandle, idx, undefinedHandle, needTransition);
             } else {
@@ -1643,6 +1649,7 @@ JSTaggedValue JSStableArray::ToReversed(JSThread *thread, JSHandle<JSArray> rece
     JSHandle<JSObject> newArrayHandle(newArray);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    int64_t len = base::ArrayHelper::GetLength(thread, thisObjVal);
     TaggedArray *destElements = TaggedArray::Cast(newArrayHandle->GetElements(thread).GetTaggedObject());
 
     if (insertCount > ElementAccessor::GetElementsLength(thread, newArrayHandle)) {
