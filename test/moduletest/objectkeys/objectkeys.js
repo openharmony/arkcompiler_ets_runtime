@@ -95,3 +95,12 @@ Object.defineProperty(object, "deffff", {
 print(object.deffff);
 object.fff = "haode";
 print(object.fff);
+
+{
+    function fn1() {
+        var obj = {};
+        obj[2147483649] = 0;
+        Object.assign({}, obj);
+    }
+    fn1();
+}
