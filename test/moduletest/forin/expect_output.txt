@@ -28,5 +28,6 @@ hhh
 2
 true
 true
+EnumCacheAll not Valid success
 prop1
 prop2
