@@ -84,3 +84,20 @@ try {
 }
 
 print(outputs.map(out => JSON.stringify(out)).join('\n'));
+
+// testCase7: array with when splice is called
+const arr = Array.from({ length: 24 }, () => ({ }))
+function trigger() {
+    arr.splice(0, 1);
+    try {
+        arr.with(arr);
+    } catch (e) {
+
+    }
+    return ""
+}
+for (let i = 0; i < arr.length; i++) {
+    arr[i].toString = trigger;
+}
+arr[0].toString();
+print(JSON.stringify(arr));
