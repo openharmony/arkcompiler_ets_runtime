@@ -88,7 +88,7 @@ public:
         return *addr;
     }
 
-    static JSTaggedType ReadBarrierForObject(const JSThread *thread, uintptr_t value);
+    static JSTaggedType ReadBarrierForObject(const JSThread *thread, uintptr_t slotAddress);
     static JSTaggedType ReadBarrierForStringTableSlot(JSTaggedType value);
 
     static TaggedObject* GetTaggedObject(const JSThread *thread, const void* obj, size_t offset);
