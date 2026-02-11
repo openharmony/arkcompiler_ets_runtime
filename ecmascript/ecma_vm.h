@@ -842,6 +842,11 @@ public:
 
     CString GetHmsModule(const CString &module) const;
 
+    const std::map<CString, HmsMap>& GetHmsModuleList() const
+    {
+        return hmsModuleList_;
+    }
+
     void SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CString>>> &list);
 
 #if ENABLE_LATEST_OPTIMIZATION

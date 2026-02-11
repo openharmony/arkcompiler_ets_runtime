@@ -2087,6 +2087,19 @@ DEF_RUNTIME_STUBS(HandleResolutionIsNullOrString)
     CString msg = "the requested module '" + requestMod + SourceTextModule::GetResolveErrorReason(resolution) +
                   ModulePathHelper::Utf8ConvertToString(thread, bindingName) + "' which imported by '" + recordStr +
                   "'";
+
+    // Print hmsModules content only if requestMod starts with "hms:"
+    if (StringHelper::StringStartWith(requestMod, ModulePathHelper::PREFIX_HMS)) {
+        const auto& hmsModuleList = thread->GetEcmaVM()->GetHmsModuleList();
+        LOG_ECMA(ERROR) << "HMS Module List contents:";
+        for (const auto& [key, hmsMap] : hmsModuleList) {
+            LOG_ECMA(ERROR) << "  Key: " << key.c_str()
+                            << ", originalPath: " << hmsMap.originalPath.c_str()
+                            << ", targetPath: " << hmsMap.targetPath.c_str()
+                            << ", sinceVersion: " << hmsMap.sinceVersion;
+        }
+    }
+
     THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(
         thread, ErrorType::SYNTAX_ERROR, msg.c_str(), JSTaggedValue::Exception().GetRawData());
 }
