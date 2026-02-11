@@ -455,6 +455,7 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleMayThrowError(JSThread
 
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     if (exportObject->IsNativeModuleFailureInfo() || exportObject->IsUndefined()) {
+        SourceTextModule::StoreModuleValue(thread, requiredModule, 0, exportObject);
         CString errorMsg = "load native module failed.";
         LOG_FULL(DEBUG) << errorMsg.c_str();
         auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
@@ -472,6 +473,7 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     CString moduleName = requiredModule->GetEcmaModuleRecordNameString();
     if (UNLIKELY(exportObject->IsUndefined())) {
+        SourceTextModule::StoreModuleValue(thread, requiredModule, 0, exportObject);
         LOG_ECMA(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
         return false;
     }
