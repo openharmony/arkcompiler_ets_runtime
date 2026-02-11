@@ -30,6 +30,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/module/module_value_accessor.h"
+#include "ecmascript/module/module_path_helper.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::ALLOW_BINARY;
@@ -546,8 +547,17 @@ JSHandle<JSTaggedValue> DebuggerApi::GetImportModule(const EcmaVM *ecmaVm,
                 currentModule->GetTaggedObject())->GetEnvironment(thread);
             environment.Update(moduleEnvironment);
             JSTaggedValue resolvedBinding = environment->Get(thread, idx);
-            ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-            importModule.Update(binding->GetModule(thread));
+            if (resolvedBinding.IsResolvedIndexBinding()) {
+                ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+                importModule.Update(binding->GetModule(thread));
+            } else if (resolvedBinding.IsResolvedRecordIndexBinding()) {
+                JSHandle<ResolvedRecordIndexBinding> resolvBindingHandle(thread, resolvedBinding);
+                JSHandle<SourceTextModule> resolveModule = ModuleValueAccessor::GetResolvedModule
+                    <true, ResolvedRecordIndexBinding>(thread, JSHandle<SourceTextModule>::Cast(currentModule),
+                    resolvBindingHandle, ModulePathHelper::Utf8ConvertToString(thread,
+                    resolvBindingHandle->GetModuleRecord(thread)));
+                importModule.Update(resolveModule);
+            }
             name = EcmaStringAccessor(importName).ToStdString(thread);
             return importModule;
         }
