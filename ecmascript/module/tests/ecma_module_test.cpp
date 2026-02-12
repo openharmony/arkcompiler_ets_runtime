@@ -5780,4 +5780,90 @@ HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl2)
         "@bundle:com.bundleName.test/moduleName1/requestModuleName10");
     EXPECT_EQ(res1, true);
 }
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_CombinedTest)
+{
+    auto vm = thread->GetEcmaVM();
+    vm->SetModuleName("test_bundle");
+
+    // Test PrintModuleLoadInfoTask with nu2llptr
+    ModuleLogger::PrintModuleLoadInfoTask(nullptr);
+
+    // Create ModuleLogger
+    ModuleLogger *moduleLogger = new ModuleLogger(vm);
+
+    // Call SetDuration with ENTRY_FUNCTION_NAME to skip entry functions
+    CString entryFunctionName = "func_main_0";
+    size_t startTime = moduleLogger->now();
+    moduleLogger->SetDuration(entryFunctionName, static_cast<double>(startTime));
+
+    // Also test ENTRY_MAIN_FUNCTION
+    CString entryMainFunction = "_GLOBAL::func_main_0";
+    moduleLogger->SetDuration(entryMainFunction, static_cast<double>(startTime));
+
+    // Create a test module for testing
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    CString recordName1 = "test_module_1";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+
+    // Call SetDuration twice to verify duplicate call detection
+    size_t startTime1 = moduleLogger->now();
+    moduleLogger->SetDuration(recordName1, static_cast<double>(startTime1));
+    size_t startTime2 = moduleLogger->now();
+    moduleLogger->SetDuration(recordName1, static_cast<double>(startTime2));
+    double timeElapsed = (startTime2 - startTime1) / 1000.0;
+    EXPECT_NE(timeElapsed, 0.0);
+
+    // Set up VM as worker thread and test PrintModuleLoadInfo
+    vm->GetJSOptions().SetIsWorker(true);
+    moduleLogger->InsertEntryPointModule(module1);
+    moduleLogger->PrintModuleLoadInfo();
+
+    // Test PrintModuleLoadInfoTask with valid pointer
+    ModuleLogger::PrintModuleLoadInfoTask(moduleLogger);
+
+    // Clean up
+    delete moduleLogger;
+    moduleLogger = nullptr;
+
+    // Restore VM state
+    vm->GetJSOptions().SetIsWorker(false);
+}
+
+// Mock TimerTaskCallback for testing SetModuleLoggerTask
+void* MockTimerTaskCallback(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat)
+{
+    (void)vm;
+    (void)data;
+    (void)func;
+    (void)timeout;
+    (void)repeat;
+    return nullptr;
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_SetModuleLoggerTask)
+{
+    auto vm = thread->GetEcmaVM();
+    thread->SetModuleLogger(nullptr);
+
+    // Enable ModuleLog and DisableJSPandaFileAndModuleSnapshot
+    int arkProperties = vm->GetJSOptions().GetArkProperties();
+    vm->GetJSOptions().SetArkProperties((arkProperties |
+        ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) | ArkProperties::ENABLE_MODULE_LOG);
+
+    // Set TimerTaskCallback
+    vm->SetTimerTaskCallback(MockTimerTaskCallback);
+
+    // Call SetModuleLoggerTask
+    ModuleLogger::SetModuleLoggerTask(vm);
+
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
+    EXPECT_NE(moduleLogger, nullptr);
+
+    // Clean up
+    delete moduleLogger;
+    thread->SetModuleLogger(nullptr);
+    vm->SetTimerTaskCallback(nullptr);
+}
 }  // namespace panda::test
