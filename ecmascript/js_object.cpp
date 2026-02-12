@@ -1651,11 +1651,11 @@ bool JSObject::ValidateAndApplyPropertyDescriptor(ObjectOperator *op, bool exten
 }
 
 // 9.1.6.2 IsCompatiblePropertyDescriptor (Extensible, Desc, Current)
-bool JSObject::IsCompatiblePropertyDescriptor(bool extensible, const PropertyDescriptor &desc,
+bool JSObject::IsCompatiblePropertyDescriptor(JSThread *thread, bool extensible, const PropertyDescriptor &desc,
                                               const PropertyDescriptor &current)
 {
     // 1. Return ValidateAndApplyPropertyDescriptor(undefined, undefined, Extensible, Desc, Current).
-    ObjectOperator op;
+    ObjectOperator op(thread);
     return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current);
 }
 
