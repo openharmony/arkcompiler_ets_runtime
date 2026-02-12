@@ -40,26 +40,10 @@ public:
     static void TearDownTestCase() {}
     void SetUp() override
     {
-        mkdir(systemDir_, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        mkdir(systemFrameworkDir_, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        std::string bootpathJsonStr =
-            "{\"bootpath\":\"/system/framework/etsstdlib_bootabc.abc:/system/framework/arkoala.abc\"}";
-        std::ofstream file(bootPathJson_);
-        file << bootpathJsonStr << std::endl;
-        file.close();
-
-        mkdir(etcDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        mkdir(etcArkkDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     }
 
     void TearDown() override
     {
-        unlink(bootPathJson_);
-        rmdir(systemFrameworkDir_);
-        rmdir(bootPathJson_);
-
-        rmdir(etcDir);
-        rmdir(etcArkkDir);
     };
 
     const char *systemDir_ = "/system";
@@ -214,9 +198,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_007, TestSize.Level0)
 
     // Clean up created files and directories
     unlink("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
-    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64");
-    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts");
-    rmdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts");
 }
 
 /**
@@ -273,9 +254,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_008, TestSize.Level0)
 
     // Clean up created files and directories
     unlink("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
-    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64");
-    rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts");
-    rmdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts");
 }
 
 /**
@@ -303,11 +281,6 @@ const std::unordered_map<std::string, std::string> framewordArgsMapForTest {
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
 {
-    // Create abc file needed for ParseFrameworkBootPandaFiles
-    std::string abcPath = "/system/framework/etsstdlib_bootabc.abc";
-    std::ofstream abcFile(abcPath);
-    abcFile.close();
-
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsMapForTest);
     argsHandler->SetIsEnableStaticCompiler(true);
     argsHandler->SetParser(framewordArgsMapForTest);
@@ -327,9 +300,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
             EXPECT_STREQ(arg, "--boot-panda-files=/system/framework/etsstdlib_bootabc.abc");
         }
     }
-
-    // Clean up
-    unlink(abcPath.c_str());
 }
 
 /**
@@ -1391,11 +1361,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
     file << blackListJsonStr << std::endl;
     file.close();
 
-    // Create abc file needed for ParseFrameworkBootPandaFiles
-    std::string abcPath = "/system/framework/etsstdlib_bootabc.abc";
-    std::ofstream abcFile(abcPath);
-    abcFile.close();
-
     // Use framework args map
     std::unordered_map<std::string, std::string> argsMap(framewordArgsMapForTest);
     argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
@@ -1409,7 +1374,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
 
     // Clean up
     unlink(staticPaocBlackListPath);
-    unlink(abcPath.c_str());
 }
 
 /**
@@ -2483,10 +2447,6 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_SUCCESS_001, TestS
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
                                       "framework_ark_cache/etsstdlib_bootabc.an";
 
-    // Create the required subdirectory
-    mkdir("/data/service/el1/public/for-all-app/framework_ark_cache",
-          S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
     // Create dummy file for testing
     std::ofstream anFile("/data/service/el1/public/for-all-app/" \
                          "framework_ark_cache/etsstdlib_bootabc.an");
@@ -2494,14 +2454,10 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_SUCCESS_001, TestS
 
     StaticFrameworkAOTArgsParser parser;
     bool result = parser.Check(argsMap);
-
     EXPECT_TRUE(result);
 
     // Clean up created files and directories
     unlink("/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an");
-    rmdir("/data/service/el1/public/for-all-app/framework_ark_cache");
-    rmdir("/data/service/el1/public/for-all-app");
-    rmdir("/data/service/el1/public");
 }
 
 } // namespace OHOS::ArkCompiler
