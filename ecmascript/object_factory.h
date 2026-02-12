@@ -184,6 +184,7 @@ class ProtoChangeMarker;
 class ProtoChangeDetails;
 class MarkerCell;
 class ProfileTypeInfo;
+class ICInfo;
 class MachineCode;
 class ClassInfoExtractor;
 class AOTLiteralInfo;
@@ -218,6 +219,7 @@ public:
                                                 MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
+    JSHandle<ICInfo> NewICInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
     JSHandle<Program> NewProgram();
 

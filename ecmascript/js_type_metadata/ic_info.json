@@ -1,0 +1,9 @@
+{
+    "name": "IC_INFO",
+    "node_name": "ArkInternalICInfo",
+    "offsets": [],
+    "end_offset": 0,
+    "parents": [
+        "TAGGED_ARRAY"
+    ]
+}

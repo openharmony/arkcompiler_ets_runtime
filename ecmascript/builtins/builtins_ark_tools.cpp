@@ -604,8 +604,8 @@ JSTaggedValue BuiltinsArkTools::GetICState(EcmaRuntimeCallInfo *info)
         JSHandle<EcmaString> noProfileTypeInfo = factory->NewFromUtf8ReadOnly("No ProfileTypeInfo");
         return noProfileTypeInfo.GetTaggedValue();
     }
-    ProfileTypeAccessor profileTypeAccessor(thread, profileTypeInfo, slotId, static_cast<ICKind>(icKind));
-    auto state = profileTypeAccessor.ICStateToString(profileTypeAccessor.GetICState());
+    IcAccessor icAccessor(thread, profileTypeInfo, slotId, static_cast<ICKind>(icKind));
+    auto state = icAccessor.ICStateToString(icAccessor.GetICState());
     JSHandle<EcmaString> stateString = factory->NewFromUtf8ReadOnly(state);
     return stateString.GetTaggedValue();
 }

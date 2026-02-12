@@ -4,6 +4,6 @@
     "offsets": [],
     "end_offset": 0,
     "parents": [
-        "TAGGED_ARRAY"
+        "IC_INFO"
     ]
 }

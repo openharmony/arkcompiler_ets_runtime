@@ -405,6 +405,11 @@ bool JSTaggedValue::IsTaggedArray() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();
 }
 
+bool JSTaggedValue::IsICInfo() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsICInfo();
+}
+
 bool JSTaggedValue::IsFuncSlot() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsFuncSlot();

@@ -24,6 +24,7 @@
 #endif
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_global_storage.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/jsnapi_sendable.h"
@@ -119,6 +120,9 @@ using ecmascript::OperationResult;
 using ecmascript::PromiseCapability;
 using ecmascript::PropertyDescriptor;
 using ecmascript::Region;
+using ecmascript::ICInfo;
+using ecmascript::ICKind;
+using ecmascript::NapiICInfo;
 using ecmascript::TaggedArray;
 using ecmascript::WeakLinkedHashMap;
 using ecmascript::base::BuiltinsBase;
@@ -6803,6 +6807,118 @@ Local<JSValueRef> JSNApi::NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativ
     res = ObjectFastOperator::FastGetPropertyByValue(thread, obj.GetTaggedValue(), keyValue.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
+}
+
+// Allocate a per-callsite IC cache (NapiICInfo: 3-slot TaggedArray stored as a global
+// handle). Slots 0-1 hold the IC pair; slot 2 is a direction tag that records whether
+// this info was populated by a load or store miss. The returned opaque handle is passed
+// to NapiGetPropertyWithCallsiteInfo / NapiSetPropertyWithCallsiteInfo as the |info|
+// parameter. One ICInfo should be created per unique get/set callsite in native code
+// and reused across invocations at that callsite. Must be released with
+// NapiDeleteCallsiteInfo when no longer needed.
+uintptr_t JSNApi::NapiCreateCallsiteInfo(const EcmaVM *vm)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    [[maybe_unused]] LocalScope scope(vm);
+    JSHandle<ICInfo> array = vm->GetFactory()->NewICInfo(NapiICInfo::LENGTH);
+    return thread->NewGlobalHandle(array.GetTaggedValue().GetRawData());
+}
+
+// Release a CallsiteInfo handle previously created by NapiCreateCallsiteInfo.
+// Safe to call with info == 0 (no-op).
+void JSNApi::NapiDeleteCallsiteInfo(const EcmaVM *vm, uintptr_t info)
+{
+    if (info == 0) {
+        return;
+    }
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    thread->DisposeGlobalHandle(info);
+}
+
+Local<JSValueRef> JSNApi::NapiGetPropertyWithCallsiteInfo(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key,
+                                                          uintptr_t info, bool* hit)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(thread);
+    if (hit != nullptr) {
+        *hit = false;
+    }
+
+    JSHandle<JSTaggedValue> obj(nativeObj);
+    if (UNLIKELY(!(obj->IsECMAObject() || obj->IsCallable()))) {
+        return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Hole()));
+    }
+
+    JSHandle<NapiICInfo> icInfo = NapiICInfo::SafeCast(JSHandle<JSTaggedValue>(info));
+    if (UNLIKELY(icInfo.IsEmpty() || !icInfo->CanLoadIC(thread))) {
+        return NapiGetProperty(vm, nativeObj, key);
+    }
+
+    // Scope-free fast path: key IC path is handle-free and allocation-free. Return directly via
+    // NewHandle into caller's scope with no EscapeLocalScope overhead.
+    JSMutableHandle<JSTaggedValue> keyHandle(key);
+    JSTaggedValue fastRes = NapiICInfo::TryLoadKeyIC(thread, icInfo, obj.GetTaggedValue(), keyHandle.GetTaggedValue());
+    if (LIKELY(!fastRes.IsHole())) {
+        RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+        if (hit != nullptr) {
+            *hit = true;
+        }
+        ASSERT(vm->GetHandleScopeStorageNext() != nullptr);
+        return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, fastRes));
+    }
+
+    // Scoped path: key interning and IC miss handling may allocate
+    {
+        EscapeLocalScope scope(vm);
+        JSTaggedValue res = NapiICInfo::TryLoadICOrMiss(thread, icInfo, obj, keyHandle, hit);
+        if (LIKELY(!res.IsHole())) {
+            RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+            return scope.Escape(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, res)));
+        }
+    }
+
+    LOG_ECMA(DEBUG) << "NapiGetPropertyWithCallsiteInfo: IC doesn't work, go slow path";
+    return NapiGetProperty(vm, nativeObj, key);
+}
+
+bool JSNApi::NapiSetPropertyWithCallsiteInfo(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key, uintptr_t value,
+                                             uintptr_t info, bool* hit)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    ecmascript::ThreadManagedScope managedScope(thread);
+    LocalScope scope(vm);
+    if (hit != nullptr) {
+        *hit = false;
+    }
+
+    JSHandle<JSTaggedValue> obj(nativeObj);
+    JSMutableHandle<JSTaggedValue> keyHandle(key);
+    JSHandle<JSTaggedValue> valueHandle(value);
+    JSHandle<NapiICInfo> icInfo = NapiICInfo::SafeCast(JSHandle<JSTaggedValue>(info));
+
+    if (UNLIKELY(icInfo.IsEmpty() || !icInfo->CanStoreIC(thread))) {
+        bool setSucceeded = JSNApiHelper::ToLocal<ObjectRef>(obj)->Set(vm,
+            JSNApiHelper::ToLocal<JSValueRef>(keyHandle),
+            JSNApiHelper::ToLocal<JSValueRef>(valueHandle));
+        RETURN_VALUE_IF_ABRUPT(thread, false);
+        return setSucceeded;
+    }
+
+    JSTaggedValue res = NapiICInfo::TryStoreICOrMiss(thread, icInfo, obj, keyHandle, valueHandle, hit);
+    if (LIKELY(!res.IsHole())) {
+        RETURN_VALUE_IF_ABRUPT(thread, false);
+        return !res.IsException();
+    }
+
+    // Slow path: MEGA, or IC returned Hole.
+    LOG_ECMA(DEBUG) << "NapiSetPropertyWithCallsiteInfo: IC doesn't work, go slow path";
+    bool setSucceeded = JSNApiHelper::ToLocal<ObjectRef>(obj)->Set(vm,
+        JSNApiHelper::ToLocal<JSValueRef>(keyHandle),
+        JSNApiHelper::ToLocal<JSValueRef>(valueHandle));
+    RETURN_VALUE_IF_ABRUPT(thread, false);
+    return setSucceeded;
 }
 
 Local<JSValueRef> JSNApi::CreateLocal(const EcmaVM *vm, panda::JSValueRef src)

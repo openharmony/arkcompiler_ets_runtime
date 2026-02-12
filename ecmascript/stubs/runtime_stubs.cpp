@@ -4408,10 +4408,10 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
             if (second.IsHole()) {
                 msg += "other-mega, ";
             // 1: Call SetAsMegaDFX and set it to 1 (for placeholder purposes)..
-            } else if (second == JSTaggedValue(ProfileTypeAccessor::MegaState::NOTFOUND_MEGA)) {
+            } else if (second == JSTaggedValue(IcAccessor::MegaState::NOTFOUND_MEGA)) {
                 msg += "not_found-mage, ";
             // 2: Call SetAsMegaDFX and set it to 2 (for placeholder purposes).
-            } else if (second == JSTaggedValue(ProfileTypeAccessor::MegaState::DICT_MEGA)) {
+            } else if (second == JSTaggedValue(IcAccessor::MegaState::DICT_MEGA)) {
                 msg += "dictionary-mega, ";
             } else if (second.IsString()) {
                 msg += "ic-mega, ";

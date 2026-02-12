@@ -16,88 +16,13 @@
 #ifndef ECMASCRIPT_IC_PROFILE_TYPE_INFO_H
 #define ECMASCRIPT_IC_PROFILE_TYPE_INFO_H
 
-#include "ecmascript/ic/mega_ic_cache.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
-enum class ICKind : uint32_t {
-    NamedLoadIC,
-    NamedStoreIC,
-    LoadIC,
-    StoreIC,
-    NamedGlobalLoadIC,
-    NamedGlobalStoreIC,
-    NamedGlobalTryLoadIC,
-    NamedGlobalTryStoreIC,
-    GlobalLoadIC,
-    GlobalStoreIC,
-};
-
-static inline bool IsNamedGlobalIC(ICKind kind)
-{
-    return (kind == ICKind::NamedGlobalLoadIC) || (kind == ICKind::NamedGlobalStoreIC) ||
-           (kind == ICKind::NamedGlobalTryLoadIC) || (kind == ICKind::NamedGlobalTryStoreIC);
-}
-
-static inline bool IsValueGlobalIC(ICKind kind)
-{
-    return (kind == ICKind::GlobalLoadIC) || (kind == ICKind::GlobalStoreIC);
-}
-
-static inline bool IsValueNormalIC(ICKind kind)
-{
-    return (kind == ICKind::LoadIC) || (kind == ICKind::StoreIC);
-}
-
-static inline bool IsValueIC(ICKind kind)
-{
-    return IsValueNormalIC(kind) || IsValueGlobalIC(kind);
-}
-
-static inline bool IsNamedNormalIC(ICKind kind)
-{
-    return (kind == ICKind::NamedLoadIC) || (kind == ICKind::NamedStoreIC);
-}
-
-static inline bool IsNamedIC(ICKind kind)
-{
-    return IsNamedNormalIC(kind) || IsNamedGlobalIC(kind);
-}
-
-static inline bool IsGlobalLoadIC(ICKind kind)
-{
-    return (kind == ICKind::NamedGlobalLoadIC) || (kind == ICKind::GlobalLoadIC) ||
-           (kind == ICKind::NamedGlobalTryLoadIC);
-}
-
-static inline bool IsGlobalStoreIC(ICKind kind)
-{
-    return (kind == ICKind::NamedGlobalStoreIC) || (kind == ICKind::GlobalStoreIC) ||
-           (kind == ICKind::NamedGlobalTryStoreIC);
-}
-
-static inline bool IsGlobalIC(ICKind kind)
-{
-    return IsValueGlobalIC(kind) || IsNamedGlobalIC(kind);
-}
-
-std::string ICKindToString(ICKind kind);
-
-class ProfileTypeAccessorLockScope {
-public:
-    ProfileTypeAccessorLockScope(JSThread *thread)
-    {
-        if (thread->GetEcmaVM()->IsEnableFastJit() || thread->GetEcmaVM()->IsEnableBaselineJit()) {
-            lockHolder_.emplace(thread->GetProfileTypeAccessorLock());
-        }
-    }
-
-private:
-    std::optional<LockHolder> lockHolder_;
-};
 
 /**
  *              ProfileTypeInfo
@@ -128,7 +53,7 @@ private:
  *      |           NOT IN USE           | 32 bits      v     v
  *      +--------------------------------+             ---   ---
  */
-class ProfileTypeInfo : public TaggedArray {
+class ProfileTypeInfo : public ICInfo {
 public:
     static const uint32_t MAX_FUNC_CACHE_INDEX = std::numeric_limits<uint32_t>::max();
     static constexpr uint32_t INVALID_SLOT_INDEX = 0xFF;
@@ -351,16 +276,6 @@ public:
         TaggedArray::Set(thread, idx, value);
     }
 
-    inline void SetMultiIcSlotLocked(JSThread* thread, uint32_t firstIdx, const JSTaggedValue& firstValue,
-        uint32_t secondIdx, const JSTaggedValue& secondValue)
-    {
-        ProfileTypeAccessorLockScope accessorLockScope(thread);
-        ASSERT(firstIdx < GetIcSlotLength());
-        ASSERT(secondIdx < GetIcSlotLength());
-        TaggedArray::Set(thread, firstIdx, firstValue);
-        TaggedArray::Set(thread, secondIdx, secondValue);
-    }
-
     static JSHandle<NumberDictionary> CreateOrGetExtraInfoMap(const JSThread *thread,
                                                               JSHandle<ProfileTypeInfo> profileTypeInfo)
     {
@@ -455,81 +370,6 @@ private:
     }
 };
 
-class ProfileTypeAccessor {
-public:
-    static constexpr size_t CACHE_MAX_LEN = 8;
-    static constexpr size_t MONO_CASE_NUM = 2;
-    static constexpr size_t POLY_CASE_NUM = 4;
-
-    enum ICState {
-        UNINIT,
-        MONO,
-        POLY,
-        IC_MEGA,
-        MEGA,
-    };
-
-#if ECMASCRIPT_ENABLE_TRACE_LOAD
-    enum MegaState {
-        NONE,
-        NOTFOUND_MEGA,
-        DICT_MEGA,
-    };
-#endif
-
-    ProfileTypeAccessor(JSThread* thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind)
-        : thread_(thread), profileTypeInfo_(profileTypeInfo), slotId_(slotId), kind_(kind)
-    {
-        enableICMega_ = thread_->GetEcmaVM()->GetJSOptions().IsEnableMegaIC();
-    }
-    ~ProfileTypeAccessor() = default;
-    ICState GetMegaState() const;
-    ICState GetICState() const;
-    static std::string ICStateToString(ICState state);
-    void AddHandlerWithoutKey(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler,
-                              JSHandle<JSTaggedValue> keyForMegaIC = JSHandle<JSTaggedValue>(),
-                              MegaICCache::MegaICKind kind = MegaICCache::MegaICKind::None) const;
-    void AddWithoutKeyPoly(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler, uint32_t index,
-                           JSTaggedValue profileData, JSHandle<JSTaggedValue> keyForMegaIC = JSHandle<JSTaggedValue>(),
-                           MegaICCache::MegaICKind kind = MegaICCache::MegaICKind::None) const;
-
-    void AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const;
-    void AddHandlerWithKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> hclass,
-                           JSHandle<JSTaggedValue> handler) const;
-    void AddGlobalHandlerKey(JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> handler) const;
-    void AddGlobalRecordHandler(JSHandle<JSTaggedValue> handler) const;
-
-    JSTaggedValue GetWeakRef(JSTaggedValue value) const
-    {
-        return JSTaggedValue(value.CreateAndGetWeakRef());
-    }
-
-    JSTaggedValue GetRefFromWeak(const JSTaggedValue &value) const
-    {
-        return JSTaggedValue(value.GetWeakReferent());
-    }
-    void SetAsMega() const;
-    void SetAsMegaIfUndefined() const;
-    void SetAsMegaForTraceSlowMode(ObjectOperator& op) const;
-    void SetAsMegaForTrace(JSTaggedValue value) const;
-
-    ICKind GetKind() const
-    {
-        return kind_;
-    }
-
-    uint32_t GetSlotId() const
-    {
-        return slotId_;
-    }
-
-private:
-    JSThread* thread_;
-    JSHandle<ProfileTypeInfo> profileTypeInfo_;
-    uint32_t slotId_;
-    ICKind kind_;
-    bool enableICMega_;
-};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_IC_PROFILE_TYPE_INFO_H

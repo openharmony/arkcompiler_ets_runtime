@@ -2053,6 +2053,15 @@ public:
     static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
     static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
 
+    // Napi Callsite IC for accelerated property access
+    static uintptr_t NapiCreateCallsiteInfo(const EcmaVM *vm);
+    static void NapiDeleteCallsiteInfo(const EcmaVM *vm, uintptr_t info);
+    static Local<JSValueRef> NapiGetPropertyWithCallsiteInfo(
+        const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key, uintptr_t info, bool* hit = nullptr);
+    static bool NapiSetPropertyWithCallsiteInfo(
+        const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key, uintptr_t value, uintptr_t info,
+        bool* hit = nullptr);
+
     // Napi helper function
     static bool KeyIsNumber(const char* utf8);
     static int GetStartRealTime(const EcmaVM *vm);
