@@ -32,7 +32,6 @@ public:
         thread = instance->GetJSThread();
         thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
-        auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     }
     JSHandle<TaggedObject> CreateSharedObjectsInOneRegion(std::shared_ptr<SharedTestSpace> space, double aliveRate);
     void InitTaggedArray(TaggedObject *obj, size_t arrayLen);
