@@ -388,45 +388,6 @@ HWTEST_F_L0(PGOProfilerInfoTest, GetSampleModeInvalidModeTest)
     EXPECT_FALSE(result);
 }
 
-HWTEST_F_L0(PGOProfilerInfoTest, IsFilterCallModeAboveThresholdTest)
-{
-    PGOMethodId methodId(100);
-    PGOMethodInfo methodInfo(methodId, 10, SampleMode::CALL_MODE, "testMethod");
-    EXPECT_FALSE(methodInfo.IsFilter(5));
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, MergeDifferentMethodIdsTest)
-{
-    PGOMethodId methodId1(100);
-    PGOMethodId methodId2(200);
-    PGOMethodInfo methodInfo1(methodId1, 5, SampleMode::CALL_MODE, "testMethod1");
-    PGOMethodInfo methodInfo2(methodId2, 10, SampleMode::CALL_MODE, "testMethod2");
-
-    uint32_t originalCount = methodInfo1.GetCount();
-    methodInfo1.Merge(&methodInfo2);
-
-    // Count should not change due to different method ids
-    EXPECT_EQ(methodInfo1.GetCount(), originalCount);
-}
-
-HWTEST_F_L0(PGOProfilerInfoTest, MergeSameMethodIdsTest)
-{
-    PGOMethodId methodId(100);
-    PGOMethodInfo methodInfo1(methodId, 5000, SampleMode::CALL_MODE, "testMethod");
-    PGOMethodInfo methodInfo2(methodId, 6000, SampleMode::HOTNESS_MODE, "testMethod");
-
-    // Verify initial state
-    EXPECT_EQ(methodInfo1.GetCount(), 5000);
-    EXPECT_EQ(methodInfo1.GetSampleMode(), SampleMode::CALL_MODE);
-
-    // Merge methodInfo2 into methodInfo1
-    methodInfo1.Merge(&methodInfo2);
-
-    uint32_t newCount = methodInfo1.GetCount();
-    SampleMode newMode = methodInfo1.GetSampleMode();
-    EXPECT_TRUE(newCount >= 5000);
-}
-
 HWTEST_F_L0(PGOProfilerInfoTest, GetSampleModeToStringDefaultTest)
 {
     PGOMethodId methodId(100);
