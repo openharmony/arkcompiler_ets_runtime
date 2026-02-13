@@ -632,11 +632,11 @@
             return (value);                                                                                 \
         }                                                                                                   \
         ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                      \
+        (thread)->SetExtraErrorMessage(rawString.GetTaggedValue());                                         \
+        (thread)->SetJsonErrorPosition(position);                                                           \
         JSHandle<JSObject> _error =                                                                         \
             _factory->GetJSError(ErrorType::SYNTAX_ERROR, message, ecmascript::StackCheck::NO);             \
         (thread)->SetException(_error.GetTaggedValue());                                                    \
-        (thread)->SetExtraErrorMessage(rawString.GetTaggedValue());                                         \
-        (thread)->SetJsonErrorPosition(position);                                                           \
         return (value);                                                                                     \
     } while (false)
 
