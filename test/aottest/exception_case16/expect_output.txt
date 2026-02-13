@@ -12,4 +12,4 @@
 # limitations under the License.
 
 TypeError: obj is not JSMap
-TypeError: Cannot convert a illegal value to a String
+TypeError: Cannot read property Symbol(Symbol.iterator) of undefined
