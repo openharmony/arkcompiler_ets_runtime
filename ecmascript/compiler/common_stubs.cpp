@@ -1125,7 +1125,12 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+            Return(LoadICWithHandler(glue, receiver, receiver, secondValue, ProfileOperation(), Undefined(),
+                                     StringIdInfo()));
+#else
             Return(LoadICWithHandler(glue, receiver, receiver, secondValue, ProfileOperation()));
+#endif
         }
         Bind(&hclassNotEqualFirstValue);
         {
@@ -1133,7 +1138,12 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
             BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
             Bind(&cachedHandlerNotHole);
             {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+                Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation(), Undefined(),
+                                         StringIdInfo()));
+#else
                 Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
+#endif
             }
         }
     }
@@ -1177,7 +1187,12 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
                 auto cachedHandler = CheckPolyHClass(glue, secondValue, hclass);
                 BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
                 Bind(&cachedHandlerNotHole);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+                Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation(), Undefined(),
+                                         StringIdInfo()));
+#else
                 Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
+#endif
             }
         }
     }

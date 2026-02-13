@@ -68,6 +68,9 @@ namespace panda::ecmascript {
     V(DefineFieldField, "DefineField: obj is not Object")                                                      \
     V(IsNotPropertyKey, "key is not a property key")                                                           \
     V(CreateDataPropertyFailed, "failed to create data property")                                              \
+    V(NotFoundICInterpCheckFailed, "not found ic result different between c interpreter and asm interpreter")  \
+    V(NotFoundICKeyInvalid, "not found ic key is invalid (undefined)")                                         \
+    V(NotFoundICSlowpathCheckFail, "not found ic result different between slowpath and asm interpreter")       \
     V(ValueIsNonSObject, "value is not a shared object")                                                       \
     V(MapIteratorTypeError, "this value is not a map iterator")                                                \
     V(SetIteratorTypeError, "this value is not a set iterator")                                                \

@@ -280,7 +280,11 @@ void ICStubBuilder::LoadICByName(
     NamedICAccessor<ICStubType::LOAD>(&cachedHandler, &loadWithHandler);
     Bind(&loadWithHandler);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback, prop_, info_, jsFunc_);
+#else
         GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
+#endif
         result->WriteVariable(ret);
         BRANCH_UNLIKELY(TaggedIsHole(ret), slowPath_, success_);
     }
@@ -297,7 +301,11 @@ void ICStubBuilder::LoadICByNameWithMega(Variable *result, Label *tryFastPath, L
     NamedICAccessorWithMega<ICStubType::LOAD>(&cachedHandler, &loadWithHandler);
     Bind(&loadWithHandler);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback, prop_, info_, jsFunc_);
+#else
         GateRef ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
+#endif
         result->WriteVariable(ret);
         BRANCH(TaggedIsNotHole(ret), success_, slowPath_);
     }
@@ -387,7 +395,11 @@ void ICStubBuilder::LoadICByValue(
     }
     Bind(&loadWithHandler);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback, prop_, info_, jsFunc_);
+#else
         ret = LoadICWithHandler(glue_, receiver_, receiver_, *cachedHandler, callback);
+#endif
         Jump(&exit);
     }
     Bind(&exit);

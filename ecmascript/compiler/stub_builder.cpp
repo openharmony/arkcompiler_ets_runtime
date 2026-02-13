@@ -34,6 +34,10 @@
 #include "common_components/heap/allocator/region_desc.h"
 #include "objects/base_state_word.h"
 
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+#include "ecmascript/compiler/interpreter_stub-inl.h"
+#endif
+
 namespace panda::ecmascript::kungfu {
 void StubBuilder::Jump(Label *label)
 {
@@ -2849,8 +2853,29 @@ GateRef StubBuilder::CheckPolyHClass(GateRef glue, GateRef cachedValue, GateRef 
     return ret;
 }
 
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+GateRef StubBuilder::ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info, GateRef jsFunc)
+{
+    if (jsFunc != Circuit::NullGate()) {
+        GateRef constpool = GetConstPoolFromFunction(glue, jsFunc);
+        return GetStringFromConstPool(glue, constpool, ChangeIntPtrToInt32(prop));
+    }
+    if (!info.IsValid()) {
+        return prop;
+    }
+    ASSERT(info.IsValid());
+    InterpreterToolsStubBuilder builder(GetCallSignature(), GetEnvironment());
+    GateRef stringId = builder.GetStringId(info);
+    return GetStringFromConstPool(glue, info.GetConstantPool(), stringId);
+}
+
+GateRef StubBuilder::LoadICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder, GateRef argHandler,
+                                       ProfileOperation callback, GateRef prop, const StringIdInfo &info,
+                                       GateRef jsFunc)
+#else
 GateRef StubBuilder::LoadICWithHandler(
     GateRef glue, GateRef receiver, GateRef argHolder, GateRef argHandler, ProfileOperation callback)
+#endif
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -2977,7 +3002,50 @@ GateRef StubBuilder::LoadICWithHandler(
                 Bind(&cellNotFoundNotChanged);
                 {
                     result = Undefined();
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+                    if (prop != Circuit::NullGate()) {
+                        GateRef cInterpreterResult = CallRuntime(glue, RTSTUB_ID(LoadPrototype), { receiver, *handler });
+                        Label checkSlowpath(env);
+                        Label interpreterCheckFail(env);
+                        BRANCH_LIKELY(Equal(cInterpreterResult, Undefined()), &checkSlowpath, &interpreterCheckFail);
+                        Bind(&interpreterCheckFail);
+                        {
+                            CallRuntime(glue, RTSTUB_ID(ThrowTypeError),
+                                        { TaggedInt(GET_MESSAGE_STRING_ID(NotFoundICInterpCheckFailed)) });
+                            Jump(&exit);
+                        }
+                        Bind(&checkSlowpath);
+                        {
+                            GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc);
+                            Label keyValid(env);
+                            Label keyInvalid(env);
+                            BRANCH_UNLIKELY(Equal(propKey, Undefined()), &keyInvalid, &keyValid);
+                            Bind(&keyInvalid);
+                            {
+                                CallRuntime(glue, RTSTUB_ID(ThrowTypeError),
+                                            { TaggedInt(GET_MESSAGE_STRING_ID(NotFoundICKeyInvalid)) });
+                                Jump(&exit);
+                            }
+                            Bind(&keyValid);
+                            {
+                                GateRef slowpathResult = CallRuntime(glue, RTSTUB_ID(GetPropertyByName),
+                                                                    { receiver, propKey });
+                                Label slowpathCheckFail(env);
+                                BRANCH_LIKELY(Equal(slowpathResult, Undefined()), &exit, &slowpathCheckFail);
+                                Bind(&slowpathCheckFail);
+                                {
+                                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError),
+                                                { TaggedInt(GET_MESSAGE_STRING_ID(NotFoundICSlowpathCheckFail)) });
+                                    Jump(&exit);
+                                }
+                            }
+                        }
+                    } else { // if prop is not valid, i.e. from load obj by value, skip it
+                        Jump(&exit);
+                    }
+#else
                     Jump(&exit);
+#endif
                 }
             }
         }
