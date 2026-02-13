@@ -1786,7 +1786,7 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV1)
     DumpSnapShotOption dumpOption;
     dumpOption.isForSharedOOM = true;
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
-    Runtime::GetInstance()->EnableProcDumpInSharedOOM(false);
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 
     CSet<JSTaggedType> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawHeapPath, dumpObjects));
@@ -1816,7 +1816,7 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV2)
     DumpSnapShotOption dumpOption;
     dumpOption.isForSharedOOM = true;
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
-    Runtime::GetInstance()->EnableProcDumpInSharedOOM(false);
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 
     CSet<uint32_t> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawHeapPath, dumpObjects));

@@ -1744,7 +1744,7 @@ JSTaggedValue BuiltinsArkTools::EnableProcDumpInSharedOOM(EcmaRuntimeCallInfo *i
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> arg = GetCallArg(info, 0);
     bool flag = arg->IsTrue();
-    Runtime::GetInstance()->EnableProcDumpInSharedOOM(flag);
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(flag);
     LOG_ECMA(INFO) << "enable process dump in shared oom: " << flag;
     return JSTaggedValue::Undefined();
 }
