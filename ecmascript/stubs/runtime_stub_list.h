@@ -298,6 +298,7 @@ namespace panda::ecmascript {
     V(StOwnByIndex)                                            \
     V(CreateClassWithBuffer)                                   \
     V(LoadICByName)                                            \
+    V(LoadPrototype)                                           \
     V(StoreICByName)                                           \
     V(StoreOwnICByName)                                        \
     V(GetModuleNamespaceByIndex)                               \

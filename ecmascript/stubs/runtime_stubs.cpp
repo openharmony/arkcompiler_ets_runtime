@@ -1733,6 +1733,16 @@ DEF_RUNTIME_STUBS(LoadICByName)
     return icRuntime.LoadMiss(receiverHandle, keyHandle).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(LoadPrototype)
+{
+    RUNTIME_STUBS_HEADER(LoadPrototype);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> handler = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSTaggedValue result = ICRuntimeStub::LoadPrototype(thread, receiver.GetTaggedValue(), handler.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return result.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(TryLdGlobalICByName)
 {
     RUNTIME_STUBS_HEADER(TryLdGlobalICByName);

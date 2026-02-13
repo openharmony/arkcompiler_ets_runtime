@@ -27,6 +27,9 @@
 
 namespace panda::ecmascript::kungfu {
 struct StringInfoGateRef;
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+class StringIdInfo;
+#endif
 using namespace panda::ecmascript;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
@@ -743,8 +746,15 @@ public:
     GateRef LoadStringElement(GateRef glue, GateRef receiver, GateRef key);
     GateRef TryToElementsIndex(GateRef glue, GateRef key);
     GateRef CheckPolyHClass(GateRef glue, GateRef cachedValue, GateRef hClass);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+    GateRef ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info, GateRef jsFunc = Circuit::NullGate());
+    GateRef LoadICWithHandler(GateRef glue, GateRef receiver, GateRef holder, GateRef handler,
+                              ProfileOperation callback, GateRef prop, const StringIdInfo &info,
+                              GateRef jsFunc = Circuit::NullGate());
+#else
     GateRef LoadICWithHandler(
         GateRef glue, GateRef receiver, GateRef holder, GateRef handler, ProfileOperation callback);
+#endif
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
                                GateRef value, GateRef handler, ProfileOperation callback = ProfileOperation());
     GateRef TaggedArraySetValue(GateRef glue, GateRef receiver, GateRef value, GateRef index, GateRef capacity);
