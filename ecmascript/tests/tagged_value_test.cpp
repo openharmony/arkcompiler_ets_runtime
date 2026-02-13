@@ -1134,6 +1134,61 @@ HWTEST_F_L0(JSTaggedValueTest, NumberEqual)
                                       JSHandle<JSTaggedValue>(thread, JSTaggedValue::Null())));
 }
 
+HWTEST_F_L0(JSTaggedValueTest, PropertyAccessToString)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+ 	 
+    JSHandle<JSSymbol> symbol = factory->NewJSSymbol();
+    JSHandle<JSTaggedValue> symbolValue(symbol);
+    JSHandle<EcmaString> result1 = JSTaggedValue::PropertyAccessToString(thread, symbolValue);
+    JSHandle<EcmaString> expected1 = factory->NewFromASCII("Symbol()");
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result1.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(expected1.GetObject<EcmaString>())));
+
+    JSHandle<JSTaggedValue> undefinedValue(thread, JSTaggedValue::Undefined());
+    JSHandle<EcmaString> result2 = JSTaggedValue::PropertyAccessToString(thread, undefinedValue);
+    JSHandle<EcmaString> expected2 = factory->NewFromASCII("undefined");
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result2.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(expected2.GetObject<EcmaString>())));
+
+    JSHandle<JSTaggedValue> nullValue(thread, JSTaggedValue::Null());
+    JSHandle<EcmaString> result3 = JSTaggedValue::PropertyAccessToString(thread, nullValue);
+    JSHandle<EcmaString> expected3 = factory->NewFromASCII("null");
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result3.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(expected3.GetObject<EcmaString>())));
+
+    JSHandle<JSTaggedValue> trueValue(thread, JSTaggedValue::True());
+    JSHandle<EcmaString> result4 = JSTaggedValue::PropertyAccessToString(thread, trueValue);
+    JSHandle<EcmaString> expected4 = factory->NewFromASCII("true");
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result4.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(expected4.GetObject<EcmaString>())));
+
+    JSHandle<JSTaggedValue> falseValue(thread, JSTaggedValue::False());
+    JSHandle<EcmaString> result5 = JSTaggedValue::PropertyAccessToString(thread, falseValue);
+    JSHandle<EcmaString> expected5 = factory->NewFromASCII("false");
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result5.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(expected5.GetObject<EcmaString>())));
+
+    JSHandle<JSTaggedValue> intValue(thread, JSTaggedValue(42));
+    JSHandle<EcmaString> result6 = JSTaggedValue::PropertyAccessToString(thread, intValue);
+    JSHandle<EcmaString> expected6 = factory->NewFromASCII("42");
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result6.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(expected6.GetObject<EcmaString>())));
+
+    JSHandle<JSTaggedValue> doubleValue(thread, JSTaggedValue(3.14));
+    JSHandle<EcmaString> result7 = JSTaggedValue::PropertyAccessToString(thread, doubleValue);
+    JSHandle<EcmaString> expected7 = factory->NewFromASCII("3.14");
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result7.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(expected7.GetObject<EcmaString>())));
+
+    JSHandle<EcmaString> stringValue = factory->NewFromASCII("hello");
+    JSHandle<JSTaggedValue> stringValueHandle(stringValue);
+    JSHandle<EcmaString> result8 = JSTaggedValue::PropertyAccessToString(thread, stringValueHandle);
+    JSHandle<EcmaString> expected8 = factory->NewFromASCII("hello");
+    EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, EcmaString::Cast(result8.GetObject<EcmaString>()),
+                                                    EcmaString::Cast(expected8.GetObject<EcmaString>())));
+}
+
 HWTEST_F_L0(JSTaggedValueTest, StringEqual)
 {
     JSHandle<JSTaggedValue> test(thread->GetEcmaVM()->GetFactory()->NewFromASCII("test"));
