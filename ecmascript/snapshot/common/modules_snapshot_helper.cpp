@@ -208,8 +208,8 @@ int ModulesSnapshotHelper::GetDisabledFeature(const CString &path)
 {
     static std::once_flag flag;
     std::string_view cachedPath(g_stateFilePathBuffer_);
-    if (!path.empty() && (cachedPath.size() > MODULE_SNAPSHOT_STATE_FILE_NAME.size()) &&
-        (path != cachedPath.substr(0, cachedPath.size() - MODULE_SNAPSHOT_STATE_FILE_NAME.size()))) {
+    if (!path.empty() && ((cachedPath.size() < MODULE_SNAPSHOT_STATE_FILE_NAME.size()) ||
+        (path != cachedPath.substr(0, cachedPath.size() - MODULE_SNAPSHOT_STATE_FILE_NAME.size())))) {
         UpdateFromStateFile(path);
     }
     return g_featureState_;
