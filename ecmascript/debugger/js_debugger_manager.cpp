@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2023 Huawei Device Co., Ltd.
+* Copyright (c) 2023-2026 Huawei Device Co., Ltd.
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -30,10 +30,11 @@ void JsDebuggerManager::AddJsDebuggerManager (int tid, JsDebuggerManager *jsDebu
 JsDebuggerManager *JsDebuggerManager::GetJsDebuggerManager(int tid)
 {
     std::shared_lock<std::shared_mutex> lock(mutex_);
-    if (jsDebuggerManagerMap_.find(tid) == jsDebuggerManagerMap_.end()) {
+    auto it = jsDebuggerManagerMap_.find(tid);
+    if (it == jsDebuggerManagerMap_.end()) {
         return nullptr;
     }
-    return jsDebuggerManagerMap_[tid];
+    return it->second;
 }
 
 void JsDebuggerManager::DeleteJsDebuggerManager(int tid)
