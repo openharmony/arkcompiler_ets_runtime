@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_tagged_value.h"
 
+#include "ecmascript/builtins/builtins_symbol.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -955,6 +956,59 @@ JSHandle<EcmaString> JSTaggedValue::ToString(JSThread *thread, const JSHandle<JS
     THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a illegal value to a String", JSHandle<EcmaString>(emptyStr));
 }
 
+JSHandle<EcmaString> JSTaggedValue::PropertyAccessToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
+{
+    if (tagged->IsString()) {
+        return JSHandle<EcmaString>(tagged);
+    }
+    auto globalConst = thread->GlobalConstants();
+    if (tagged->IsSpecial()) {
+        switch (tagged->GetRawData()) {
+            case VALUE_UNDEFINED: {
+                return JSHandle<EcmaString>(globalConst->GetHandledUndefinedString());
+            }
+            case VALUE_NULL: {
+                return JSHandle<EcmaString>(globalConst->GetHandledNullString());
+            }
+            case VALUE_TRUE: {
+                return JSHandle<EcmaString>(globalConst->GetHandledTrueString());
+            }
+            case VALUE_FALSE: {
+                return JSHandle<EcmaString>(globalConst->GetHandledFalseString());
+            }
+            case VALUE_HOLE: {
+                return JSHandle<EcmaString>(globalConst->GetHandledEmptyString());
+            }
+            default:
+                break;
+        }
+    }
+
+    if (tagged->IsNumber()) {
+        return base::NumberHelper::NumberToString(thread, tagged.GetTaggedValue());
+    }
+
+    if (tagged->IsBigInt()) {
+        JSHandle<BigInt> taggedValue(tagged);
+        return BigInt::ToString(thread, taggedValue);
+    }
+
+    if (tagged->IsNativePointer()) {
+        return NativePointerToString(thread, tagged);
+    }
+
+    auto emptyStr = globalConst->GetHandledEmptyString();
+    if (tagged->IsECMAObject()) {
+        JSHandle<JSTaggedValue> primValue(thread, ToPrimitive(thread, tagged, PREFER_STRING));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<EcmaString>(emptyStr));
+        return PropertyAccessToString(thread, primValue);
+    }
+
+    ASSERT(tagged->IsSymbol());
+    return JSHandle<EcmaString>(thread,
+        builtins::BuiltinsSymbol::SymbolDescriptiveString(thread, tagged.GetTaggedValue()));
+}
+
 JSHandle<EcmaString> JSTaggedValue::NativePointerToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
 {
     JSHandle<JSNativePointer> taggedHandle(tagged);
@@ -1037,8 +1091,8 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
                                            SCheckMode concurChk)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString(thread);
-        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString(thread);
+        std::string keyStr = EcmaStringAccessor(PropertyAccessToString(thread, key)).ToStdString(thread);
+        std::string objStr = EcmaStringAccessor(PropertyAccessToString(thread, obj)).ToStdString(thread);
         std::string message = "Cannot read property ";
         message.append(keyStr).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),
@@ -1066,7 +1120,7 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
 OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString(thread);
+        std::string objStr = EcmaStringAccessor(PropertyAccessToString(thread, obj)).ToStdString(thread);
         std::string message = "Cannot read property ";
         message.append(ToCString(key)).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),
@@ -1094,8 +1148,8 @@ OperationResult JSTaggedValue::GetProperty(JSThread *thread, const JSHandle<JSTa
                                            const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &receiver)
 {
     if (obj->IsUndefined() || obj->IsNull() || obj->IsHole()) {
-        std::string keyStr = EcmaStringAccessor(ToString(thread, key)).ToStdString(thread);
-        std::string objStr = EcmaStringAccessor(ToString(thread, obj)).ToStdString(thread);
+        std::string keyStr = EcmaStringAccessor(PropertyAccessToString(thread, key)).ToStdString(thread);
+        std::string objStr = EcmaStringAccessor(PropertyAccessToString(thread, obj)).ToStdString(thread);
         std::string message = "Cannot read property ";
         message.append(keyStr).append(" of ").append(objStr);
         THROW_TYPE_ERROR_AND_RETURN(thread, message.c_str(),

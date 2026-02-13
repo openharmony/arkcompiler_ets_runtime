@@ -430,6 +430,7 @@ public:
     static JSHandle<EcmaString> PUBLIC_API ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static std::string ExceptionToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<EcmaString> ToString(JSThread *thread, JSTaggedValue val);
+    static JSHandle<EcmaString> PropertyAccessToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<JSObject> ToObject(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<JSTaggedValue> ToPropertyKey(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedNumber ToLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
