@@ -355,8 +355,9 @@ HWTEST_F_L0(JSPandaFileManagerTest, EnumerateJSPandaFiles)
     });
     EXPECT_EQ(count, 2); // 2 : test number of files
     // Sort by the hash value of the element, the output is unordered
-    EXPECT_STREQ(descList[0].c_str(), "__JSPandaFileManagerTest4.pa");
-    EXPECT_STREQ(descList[1].c_str(), "__JSPandaFileManagerTest3.pa");
+    std::sort(descList.begin(), descList.end());
+    EXPECT_STREQ(descList[0].c_str(), "__JSPandaFileManagerTest3.pa");
+    EXPECT_STREQ(descList[1].c_str(), "__JSPandaFileManagerTest4.pa");
 }
 
 HWTEST_F_L0(JSPandaFileManagerTest, CheckFilePath)
