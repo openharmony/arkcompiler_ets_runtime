@@ -124,6 +124,7 @@ void DaemonThread::Run()
     }
     RegisterThread(this);
     SetThreadId();
+    CaptureThreadName();
 #ifdef ENABLE_QOS
     OHOS::QOS::SetThreadQos(OHOS::QOS::QosLevel::QOS_USER_INITIATED);
 #endif

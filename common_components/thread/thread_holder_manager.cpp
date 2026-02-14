@@ -84,15 +84,15 @@ void ThreadHolderManager::UnregisterThreadHolder(ThreadHolder *holder)
 
 void ThreadHolderManager::SuspendAll(ThreadHolder *current)
 {
-    DCHECK_CC(current != nullptr);
-    DCHECK_CC(!current->IsInRunningState());
+    // Support suspend initiated from non-JS thread (current == nullptr)
+    DCHECK_CC(current == nullptr || !current->IsInRunningState());
     SuspendAllImpl(current);
 }
 
 void ThreadHolderManager::ResumeAll(ThreadHolder *current)
 {
-    DCHECK_CC(current != nullptr);
-    DCHECK_CC(!current->IsInRunningState());
+    // Support resume initiated from non-JS thread (current == nullptr)
+    DCHECK_CC(current == nullptr || !current->IsInRunningState());
     ResumeAllImpl(current);
 }
 

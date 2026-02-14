@@ -568,7 +568,11 @@ public:
         return id_.load(std::memory_order_acquire);
     }
 
+    std::string GetThreadName() const;
+
     void PostFork();
+
+    void CaptureThreadName();
 
     static ThreadId GetCurrentThreadId();
 
@@ -2301,6 +2305,7 @@ private:
     bool gcState_ {false};
     std::atomic_bool needProfiling_ {false};
     std::string profileName_ {""};
+    std::string threadName_ {""};
 
     // Error callback
     OnErrorCallback onErrorCallback_ {nullptr};

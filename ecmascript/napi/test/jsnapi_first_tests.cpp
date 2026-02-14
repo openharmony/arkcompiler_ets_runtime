@@ -192,6 +192,45 @@ HWTEST_F_L0(JSNApiTests, ThreadIdCheck)
     EXPECT_TRUE(vm_->GetJSThread()->GetThreadId() == JSThread::GetCurrentThreadId());
 }
 
+HWTEST_F_L0(JSNApiTests, GetThreadName)
+{
+    std::string threadName = vm_->GetJSThread()->GetThreadName();
+    ASSERT_FALSE(threadName.empty());
+}
+
+/**
+ * @tc.number: ffi_interface_api_GetAllVMHeapMemoryInfo
+ * @tc.name: GetAllVMHeapMemoryInfo
+ * @tc.desc: Test GetAllVMHeapMemoryInfo API to retrieve all VM heap memory information including
+ * thread ID, thread name, and heap memory usage (in KB).
+ * @tc.type: FUNC
+ * @tc.require: Issue#12406
+ */
+HWTEST_F_L0(JSNApiTests, GetAllVMHeapMemoryInfo)
+{
+    ThreadStateTransitionScope<JSThread, ThreadState::NATIVE> scope(thread_);
+    auto heapInfos = JSNApi::GetAllVMHeapMemoryInfo();
+    ASSERT_FALSE(heapInfos.empty());
+
+    uint32_t currentThreadId = vm_->GetJSThread()->GetThreadId();
+    bool foundCurrentThread = false;
+    bool foundSharedHeap = false;
+    for (const auto& info : heapInfos) {
+        if (info.threadId == currentThreadId) {
+            foundCurrentThread = true;
+            ASSERT_FALSE(info.threadName.empty());
+            ASSERT_EQ(info.heapType, "local");
+        }
+        if (info.heapType == "shared") {
+            foundSharedHeap = true;
+            ASSERT_EQ(info.threadId, 0U);
+            ASSERT_EQ(info.threadName, "[SharedHeap]");
+        }
+    }
+    ASSERT_TRUE(foundCurrentThread);
+    ASSERT_TRUE(foundSharedHeap);
+}
+
 /**
  * @tc.number: ffi_interface_api_001
  * @tc.name: RegisterFunction

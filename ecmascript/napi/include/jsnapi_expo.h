@@ -80,6 +80,12 @@ class JSRuntimeOptions;
 class EcmaContext;
 class JSThread;
 struct EcmaRuntimeCallInfo;
+struct HeapMemoryInfo {
+    uint32_t threadId;
+    std::string threadName;
+    std::string heapType;  // "local" or "shared"
+    uint32_t heapObjectSize;  // Heap object size in KB (ceiled)
+};
 namespace base {
 template<size_t ElementAlign, typename... Ts>
 struct AlignedStruct;
@@ -1957,6 +1963,8 @@ public:
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);
     static void AddWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    // Must be called from non-JS thread or JS thread in NON-RUNNING state
+    static std::vector<ecmascript::HeapMemoryInfo> GetAllVMHeapMemoryInfo();
     static void GetStackBeforeCallNapiSuccess(EcmaVM *vm, bool &getStackBeforeCallNapiSuccess);
     static void GetStackAfterCallNapi(EcmaVM *vm);
     static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
