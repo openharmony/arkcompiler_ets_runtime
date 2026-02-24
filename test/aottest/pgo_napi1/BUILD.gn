@@ -19,5 +19,6 @@ host_aot_test_action("pgo_napi1") {
   is_enable_pgo = true
   is_enable_trace_deopt = true
   is_enable_typed_op_profiler = true
+  is_enable_pgo_napi = true
   log_option = " --log-info=trace"
 }
