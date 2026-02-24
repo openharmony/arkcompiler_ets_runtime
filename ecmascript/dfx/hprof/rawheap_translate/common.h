@@ -28,7 +28,14 @@ using StringId = uint32_t;
 
 static constexpr NodeType DEFAULT_NODETYPE = 8;  // 8: means default node type
 static constexpr NodeType FRAMEWORK_NODETYPE = 14;
+static constexpr NodeType HANDLE_ROOT = 15;
 enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, DEFAULT = PROPERTY };
+
+static constexpr int VIRTUAL_NODE_SIZE = 1; // The virtual node size is fixed at 1
+
+static constexpr int HANDLE_COUNT_ADDR_SIZE = 4; // The root handle count uses 32-bit addresses
+static constexpr int ADDRESS_SIZE_V1 = 8;  // V1 uses 64-bit addresses
+static constexpr int ADDRESS_SIZE_V2 = 4;  // V2 uses 32-bit addresses
 
 struct Field {
     std::string name = "";

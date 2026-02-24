@@ -1028,7 +1028,7 @@ void EcmaVM::IterateSTWRoots(RootVisitor &v)
             auto node = handleStorageNodes_.at(i);
             auto start = node->data();
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            v.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            v.VisitRangeRoot(Root::ROOT_LOCAL_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
     }
 
@@ -1080,7 +1080,7 @@ size_t EcmaVM::IterateHandle(RootVisitor &visitor)
             auto node = handleStorageNodes_.at(i);
             auto start = node->data();
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            visitor.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            visitor.VisitRangeRoot(Root::ROOT_LOCAL_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
             handleCount += (ToUintPtr(end) - ToUintPtr(start)) / sizeof(JSTaggedType);
         }
     }

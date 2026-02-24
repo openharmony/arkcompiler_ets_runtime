@@ -25,10 +25,11 @@
 namespace panda::ecmascript {
 enum class Root {
     ROOT_FRAME,
-    ROOT_HANDLE,
     ROOT_VM,
     ROOT_STRING,
     ROOT_INTERNAL_CALL_PARAMS,
+    ROOT_LOCAL_HANDLE,
+    ROOT_GLOBAL_HANDLE,
 };
 
 enum class VisitObjectArea {

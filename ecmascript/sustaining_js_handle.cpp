@@ -72,7 +72,7 @@ void SustainingJSHandle::Iterate(RootVisitor &v)
         auto block = handleBlocks_.at(i);
         auto start = block->data();
         auto end = (i != (size - 1)) ? &(block->data()[BLOCK_SIZE]) : blockNext_;
-        v.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+        v.VisitRangeRoot(Root::ROOT_LOCAL_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
     }
 }
 
