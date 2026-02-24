@@ -4725,5 +4725,10 @@ inline GateRef StubBuilder::GetStringWrapperToPrimitiveDetector(GateRef env)
 {
     return env_->GetBuilder()->GetStringWrapperToPrimitiveDetector(env);
 }
+
+inline GateRef StubBuilder::DoubleInRangeInt32(GateRef env)
+{
+    return env_->GetBuilder()->DoubleInRangeInt32(env);
+}
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H
