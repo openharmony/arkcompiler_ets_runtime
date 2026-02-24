@@ -170,24 +170,19 @@ public:
 
     void SetUp() override
     {
-        // Create directories required by argsMapForTest
-        // PGO directory for ark profile
         mkdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts",
               S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        // Ark cache directory with arm64 subdirectory
         mkdir("/data/app/el1/public/aot_compiler/ark_cache", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts",
               S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64",
               S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        // Create the .an file required by tests
         std::ofstream anFile("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
         anFile.close();
     }
 
     void TearDown() override
     {
-        // Clean up created files and directories
         unlink("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an");
         rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64");
         rmdir("/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts");
@@ -885,4 +880,5 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_039, TestSize.Level0)
     std::string arkCachePath = aotImpl.ParseArkCacheFromArgs(argsMap);
     EXPECT_EQ(arkCachePath, "");
 }
+
 } // namespace OHOS::ArkCompiler
