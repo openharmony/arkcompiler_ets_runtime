@@ -349,7 +349,7 @@ void PGOProfilerManager::DumpPendingProfilersByDumpThread()
     {
         ConcurrentGuard guard(v_, "DumpPendingProfilers");
         std::set<PGOProfiler*> notDumpedProfilers;
-#if defined(OHOS_GET_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER)
         bool resetCPUCore = false;
         if (!pendingProfilers_.Empty()) {
             resetCPUCore = true;
@@ -372,7 +372,7 @@ void PGOProfilerManager::DumpPendingProfilersByDumpThread()
         for (const auto profiler: notDumpedProfilers) {
             pendingProfilers_.PushBack(profiler);
         }
-#if defined(OHOS_GET_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER)
         if (resetCPUCore) {
             BindAllCpuCore();
         }

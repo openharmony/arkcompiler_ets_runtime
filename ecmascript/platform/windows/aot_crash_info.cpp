@@ -16,7 +16,7 @@
 #include "ecmascript/platform/aot_crash_info.h"
 
 namespace panda::ecmascript {
-#ifdef JIT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
 void GetSignalHandler(int signal, siginfo_t *info, void *context)
 {
     (void)signal;
