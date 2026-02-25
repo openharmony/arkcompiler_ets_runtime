@@ -1411,6 +1411,54 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_00
 }
 
 /**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_008
+ * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with invalid UID format
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_008, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "invalid_uid";
+    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+
+    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_009
+ * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with invalid GID format
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_009, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
+    argsMap[ArgsIdx::BUNDLE_GID] = "invalid_gid";
+
+    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_010
+ * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with both UID and GID invalid format
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_010, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "not_a_number";
+    argsMap[ArgsIdx::BUNDLE_GID] = "also_not_a_number";
+
+    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
  * @tc.name: AotArgsVerifyTest_CheckPkgInfoFields_001
  * @tc.desc: Test CheckPkgInfoFields with valid pkgInfo
  * @tc.type: Func

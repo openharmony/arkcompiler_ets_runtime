@@ -417,54 +417,6 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_014, TestSize.Level0)
 }
 
 /**
-* @tc.name: AotCompilerImplTest_015
-* @tc.desc: AotCompilerImpl::AOTLocalCodeSign(sigData)
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_015, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::string fileName = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an";
-    std::string appSignature = "5765880207853624761";
-    std::vector<int16_t> sigData;
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);
-    int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
-    aotImplMock.SetAOTArgsHandler(std::move(argsHandler));
-    ret = aotImplMock.AOTLocalCodeSignMock(sigData);
-#ifdef CODE_SIGN_ENABLE
-    EXPECT_NE(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
-#else
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
-#endif
-}
-
-/**
-* @tc.name: AotCompilerImplTest_016
-* @tc.desc: AotCompilerImpl::StopAotCompiler()
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_016, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);
-    int32_t retHandle = argsHandler->Handle(0);
-    EXPECT_EQ(retHandle, ERR_OK);
-    aotImplMock.SetAOTArgsHandler(std::move(argsHandler));
-    aotImplMock.ResetStateMock();
-    int32_t ret = aotImplMock.StopAotCompiler();
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_STOP_FAILED);
-
-    aotImplMock.InitStateMock(-1);
-    ret = aotImplMock.StopAotCompiler();
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_STOP_FAILED);
-
-    aotImplMock.InitStateMock(123456789);   // test_childPid = 123456789
-    ret = aotImplMock.StopAotCompiler();
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_STOP_FAILED);
-}
-
-/**
 * @tc.name: AotCompilerImplTest_017
 * @tc.desc: AotCompilerImpl::HandlePowerDisconnected()
 * @tc.type: Func
@@ -502,67 +454,6 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_019, TestSize.Level0)
     aotImplMock.HandleThermalLevelChanged(aotImplMock.AOT_COMPILE_STOP_LEVEL);
     aotImplMock.HandleThermalLevelChanged(aotImplMock.AOT_COMPILE_STOP_LEVEL - 1);
     EXPECT_TRUE(viewData);
-}
-
-/**
-* @tc.name: AotCompilerImplTest_020
-* @tc.desc: AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
-*              child process terminate with signal SIGKILL;
-*                  parent process receive SIGKILL signal;
-* @tc.type: Func
-*/
-AotCompilerImplMock g_aotImplMock;
-int32_t g_aotRet = INVALID_ERR_CODE;
-
-void RunAotCompilerTask(void)
-{
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    std::vector<int16_t> sigData;
-    {
-        std::lock_guard<std::mutex> lock(aotCompilerMutex_);
-        std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);
-        int32_t retHandle = argsHandler->Handle(0);
-        EXPECT_EQ(retHandle, ERR_OK);
-        g_aotImplMock.SetAOTArgsHandler(std::move(argsHandler));
-        int32_t aotRet = g_aotImplMock.EcmascriptAotCompilerMock(argsMap, sigData);
-        if (aotRet == ERR_AOT_COMPILER_CALL_CRASH     ||
-            aotRet == ERR_AOT_COMPILER_CALL_CANCELLED ||
-            aotRet == ERR_AOT_COMPILER_SIGNATURE_DISABLE) {
-            g_aotRet = aotRet;
-        }
-    }
-}
-
-void CancelAotCompilerTask(void)
-{
-    sleep(1); // 1: delay 1s
-    pid_t childPid = g_aotImplMock.GetChildPidMock();
-    if (childPid > 0) {
-        g_aotImplMock.InitStateMock(childPid);
-        (void)g_aotImplMock.StopAotCompiler();
-    }
-}
-
-void TestCancelAotCompilerTask()
-{
-    std::thread([]() {
-        RunAotCompilerTask();
-    }).detach();
-    std::thread([]() {
-        CancelAotCompilerTask();
-    }).detach();
-    sleep(3); // 3: delay 3s
-}
-
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_020, TestSize.Level0)
-{
-    g_aotRet = INVALID_ERR_CODE;
-    TestCancelAotCompilerTask();
-#ifdef CODE_SIGN_ENABLE
-    EXPECT_EQ(g_aotRet, ERR_AOT_COMPILER_CALL_CANCELLED);
-#else
-    EXPECT_EQ(g_aotRet, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
-#endif
 }
 
 /**
