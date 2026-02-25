@@ -26,6 +26,7 @@
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/platform/backtrace.h"
+#include "ecmascript/platform/process.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/runtime_lock.h"
 
@@ -36,6 +37,7 @@
 #ifdef ENABLE_HISYSEVENT
     #include "hisysevent.h"
     #include "dfx_signal_handler.h"
+    #include "client/memory_collector_client.h"
 #endif
 
 namespace panda::ecmascript {
@@ -208,7 +210,7 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
 #endif
     FileDescriptorStream stream(fd);
     if (fromSharedGC) {
-        DumpHeapSnapshotFromSharedGC(&stream, dumpOption);
+        DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
     } else {
         DumpHeapSnapshot(&stream, dumpOption);
     }
@@ -217,12 +219,32 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
 #endif
 }
 
-bool HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
+void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
     if (!TryStartOOMDump()) {
         LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
-        return false;
+        return;
     }
+    pid_t pid = -1;
+    // fork for oom
+    if ((pid = fork()) < 0) {
+        LOG_ECMA(ERROR) << "DumpHeapSnapshotFromSharedGCForOOM fork failed: " << strerror(errno);
+        return;
+    }
+    if (pid == 0) {
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
+        DumpHeapSnapshotFromSharedGC(stream, dumpOption);
+        _exit(0);
+    }
+    if (pid != 0) {
+        if (!Process::IsolateSubProcess(vm_->GetBundleName().c_str(), getpid(), pid)) {
+            LOG_ECMA(ERROR) << "OOM Fork dump snapshot failed!";
+        }
+    }
+}
+
+bool HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
+{
     base::BlockHookScope blockScope;
     const_cast<Heap*>(vm_->GetHeap())->Prepare();
     SharedHeap::GetInstance()->PrepareByJSThread(vm_->GetAssociatedJSThread(), true);
@@ -389,7 +411,6 @@ void HeapProfiler::FillIdMap()
 bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress,
                                     std::function<void(uint8_t)> callback)
 {
-    bool res = false;
     base::BlockHookScope blockScope;
     ThreadManagedScope managedScope(vm_->GetAssociatedJSThread());
     pid_t pid = -1;
@@ -417,16 +438,6 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             });
         }
         ASSERT(!vm_->GetAssociatedJSThread()->IsConcurrentCopying());
-        // OOM and ThresholdReachedDump.
-        if (dumpOption.isDumpOOM) {
-            if (!TryStartOOMDump()) {
-                LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
-                return false;
-            }
-            res = BinaryDump(stream, dumpOption);
-            stream->EndOfStream();
-            return res;
-        }
         // ide.
         if (dumpOption.isSync) {
             if (dumpOption.dumpFormat == DumpFormat::BINARY) {
@@ -445,33 +456,59 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         if (dumpOption.isBeforeFill) {
             FillIdMap();
         }
-        // fork
-        if ((pid = fork()) < 0) {
-            LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed: " << strerror(errno);
+        if (dumpOption.isDumpOOM) {
+            if (!TryStartOOMDump()) {
+                LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
+                return false;
+            }
+        }
+        // fork for hidumper or oom
+        pid = ForkAndPerformDump(stream, dumpOption, progress);
+        if (pid < 0) {
             if (callback) {
                 callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::FORK_FAILED));
             }
             return false;
         }
-        if (pid == 0) {
-            vm_->GetAssociatedJSThread()->SetCrossThreadExecution(true);
-            prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
-            if (dumpOption.dumpFormat == DumpFormat::BINARY) {
-                res = BinaryDump(stream, dumpOption);
-                stream->EndOfStream();
-            } else {
-                res = DoDump(stream, progress, dumpOption);
-            }
-            vm_->GetAssociatedJSThread()->SetCrossThreadExecution(false);
-            _exit(0);
-        }
     }
     if (pid != 0) {
+        // if OOM, main thread will destroy itself upon immediate return
+        if (dumpOption.isDumpOOM) {
+            if (!Process::IsolateSubProcess(vm_->GetBundleName().c_str(), getpid(), pid)) {
+                LOG_ECMA(ERROR) << "OOM Fork dump snapshot failed!";
+                return false;
+            }
+            return true;
+        }
         std::thread thread(&WaitProcess, pid, callback);
         thread.detach();
     }
     isProfiling_ = true;
-    return res;
+    return true;
+}
+
+pid_t HeapProfiler::ForkAndPerformDump(Stream *stream,
+                                       const DumpSnapShotOption &dumpOption,
+                                       Progress *progress)
+{
+    pid_t pid = fork();
+    if (pid < 0) {
+        LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed: " << strerror(errno);
+        return -1;
+    }
+    if (pid == 0) {
+        vm_->GetAssociatedJSThread()->SetCrossThreadExecution(true);
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
+        if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+            BinaryDump(stream, dumpOption);
+            stream->EndOfStream();
+        } else {
+            DoDump(stream, progress, dumpOption);
+        }
+        vm_->GetAssociatedJSThread()->SetCrossThreadExecution(false);
+        _exit(0);
+    }
+    return pid;
 }
 
 bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream,

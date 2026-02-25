@@ -110,7 +110,6 @@ public:
     {
         HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
         dumpOption.dumpFormat = DumpFormat::BINARY;
-        dumpOption.isDumpOOM = true;
         dumpOption.isFullGC = false;
         fstream outputString(filePath, std::ios::out);
         outputString.close();
@@ -885,11 +884,6 @@ public:
     void DumpHeapSnapshotForOOM(const DumpSnapShotOption &dumpOption, bool fromSharedGC = false) override
     {
         profiler_->DumpHeapSnapshotForOOM(dumpOption, fromSharedGC);
-    }
-
-    bool DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
-    {
-        return reinterpret_cast<HeapProfiler *>(profiler_)->DumpHeapSnapshotFromSharedGC(stream, dumpOption);
     }
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
@@ -1707,7 +1701,7 @@ HWTEST_F_L0(HeapDumpTest, TestGenerateHashInRawheap)
 
     std::string rawHeapPath("test_binary_dump_for_mixed_node_id.rawheap");
     DumpSnapShotOption dumpOption;
-    dumpOption.isSync = false;
+    dumpOption.isSync = true;
     dumpOption.isJSLeakWatcher = true;
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
@@ -1829,42 +1823,6 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV2)
     ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
 }
 #endif
-
-HWTEST_F_L0(HeapDumpTest, TestOOMDump)
-{
-    ObjectFactory *factory = ecmaVm_->GetFactory();
-    HeapDumpTestHelper tester(ecmaVm_);
-
-    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
-    // JS_SET
-    tester.NewJSSet();
-    // JS_SHARED_SET
-    tester.NewJSSharedSet();
-    // JS_MAP
-    tester.NewJSMap();
-    // JS_SHARED_MAP
-    tester.NewJSSharedMap();
-    // JS_WEAK_SET
-    tester.NewJSWeakSet();
-    // JS_WEAK_MAP
-    tester.NewJSWeakMap();
-    // JS_ARRAY
-    factory->NewJSArray();
-    // JS_TYPED_ARRAY
-    tester.NewObject(JSTypedArray::SIZE, JSType::JS_TYPED_ARRAY, proto);
-
-    const std::string oomFileName = "test_oom_dump.rawheap";
-    int fd = open(oomFileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
-    FileDescriptorStream stream(fd);
-
-    MockHeapProfiler mockHeapProfiler(ecmaVm_->GetOrNewHeapProfile());
-    DumpSnapShotOption option;
-    option.isDumpOOM = true;
-
-    ASSERT_TRUE(mockHeapProfiler.DumpHeapSnapshot(&stream, option));
-    ASSERT_FALSE(mockHeapProfiler.DumpHeapSnapshot(&stream, option));
-    ASSERT_FALSE(mockHeapProfiler.DumpHeapSnapshotFromSharedGC(&stream, option));
-}
 
 HWTEST_F_L0(HeapDumpTest, TestSharedFullGCInHeapDump)
 {
