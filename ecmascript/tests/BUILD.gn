@@ -3815,7 +3815,7 @@ host_unittest_action("GC_KeyStats_Test") {
 
   sources = [
     # test file
-    "shared_heap_test.cpp",
+    "gc_key_stats_test.cpp",
   ]
 
   configs = [
