@@ -436,6 +436,17 @@ TaggedObject *Heap::AllocateOldOrHugeObject(size_t size)
                 CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
                 object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, true));
             }
+            if (object == nullptr) {
+                LOG_GC(ERROR) << "Heap::AllocateOldOrHugeObject almost OOM, obj size: " << GetHeapObjectSize()
+                              << ", committed size: " << GetCommittedSize();
+                CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
+                size_t committedSize = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize();
+                size_t capacity = oldSpace_->GetMaximumCapacity();
+                size_t usableSize = std::max(committedSize, capacity) - committedSize;
+                if (usableSize > MIN_USABLE_MEMORY_THRESHOLD_TO_OOM_AFTER_FULL_GC) {
+                    object = reinterpret_cast<TaggedObject *>(oldSpace_->AllocateSlow(size, true));
+                }
+            }
             CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, oldSpace_,
                 "Heap::AllocateOldOrHugeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
                 " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
@@ -590,18 +601,23 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
         CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
         object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
         if (UNLIKELY(object == nullptr)) {
-            // if allocate huge object OOM, temporarily increase space size to avoid vm crash
-            size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
-            oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            DumpHeapSnapshotBeforeOOM(false, ToSpaceTypeName(hugeObjectSpace_->GetSpaceType()), size, LOCAL_HEAP_STR);
-            StatisticHeapDetail();
-            object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
-            ThrowOutOfMemoryError(thread_, size,
-                "Heap::AllocateHugeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
-                " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
-            object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
+            LOG_GC(ERROR) << "Heap::AllocateHugeObject almost OOM, obj size: " << GetHeapObjectSize()
+                          << ", committed size: " << GetCommittedSize();
+            CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
+            size_t committedSize = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize();
+            size_t capacity = oldSpace_->GetMaximumCapacity();
+            size_t usableSize = std::max(committedSize, capacity) - committedSize;
+            if (usableSize > MIN_USABLE_MEMORY_THRESHOLD_TO_OOM_AFTER_FULL_GC) {
+                object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
+            }
             if (UNLIKELY(object == nullptr)) {
-                FatalOutOfMemoryError(size,
+                // if allocate huge object OOM, temporarily increase space size to avoid vm crash
+                size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
+                oldSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
+                DumpHeapSnapshotBeforeOOM(false, ToSpaceTypeName(hugeObjectSpace_->GetSpaceType()), size,
+                                          LOCAL_HEAP_STR);
+                StatisticHeapDetail();
+                ThrowOutOfMemoryError(thread_, size,
                     "Heap::AllocateHugeObject, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
                     " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
             }

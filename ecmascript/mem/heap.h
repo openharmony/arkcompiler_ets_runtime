@@ -1755,6 +1755,7 @@ private:
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
     static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
     static constexpr size_t INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT = 100_MB;
+    static constexpr size_t MIN_USABLE_MEMORY_THRESHOLD_TO_OOM_AFTER_FULL_GC = 20_MB;
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
