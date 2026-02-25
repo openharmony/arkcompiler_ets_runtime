@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -78,6 +78,7 @@
     V("checkDeoptStatus",               CheckDeoptStatus,               2, INVALID)       \
     V("checkCircularImport",            CheckCircularImport,            2, INVALID)       \
     V("hashCode",                       HashCode,                       1, ArkToolsHashCode)    \
+    V("supportStacklessCoroutine",      SupportStacklessCoroutine,      0, INVALID)       \
     V("startRuntimeStat",               StartRuntimeStat,               0, INVALID)       \
     V("stopRuntimeStat",                StopRuntimeStat,                0, INVALID)       \
     V("printMegaICStat",                PrintMegaICStat,                0, INVALID)       \
@@ -262,6 +263,8 @@ public:
     static JSTaggedValue HashCode(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue PrintMegaICStat(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue SupportStacklessCoroutine(EcmaRuntimeCallInfo *info);
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
     static JSTaggedValue StartCpuProfiler(EcmaRuntimeCallInfo *info);
