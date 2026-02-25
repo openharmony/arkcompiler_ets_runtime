@@ -675,9 +675,11 @@ bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjO
             return true;
         } else if (c == '\\') {
             if (UNLIKELY(!CheckBackslash(current, last, isAscii))) {
+                current_ = current;
                 return false;
             }
         } else if (UNLIKELY(c < CODE_SPACE)) {
+            current_ = current;
             return false;
         } else if (c > ASCII_END) {
             ASSERT(sizeof(T) == sizeof(uint16_t));
