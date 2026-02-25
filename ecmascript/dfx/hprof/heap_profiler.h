@@ -207,5 +207,27 @@ private:
     friend class HeapProfilerFriendTest;
     friend class panda::test::MockHeapProfiler;
 };
+
+class NodeIdCacheClearScope {
+public:
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    NodeIdCacheClearScope(const EcmaVM *vm, const DumpSnapShotOption &opt)
+        : vm_(vm), opt_(opt) {}
+    ~NodeIdCacheClearScope()
+    {
+        if (opt_.isClearNodeIdCache && vm_ != nullptr) {
+            LOG_ECMA(INFO) << "NodeIdCacheClearScope HeapProfile delete.";
+            const_cast<EcmaVM *>(vm_)->DeleteHeapProfile();
+        }
+    }
+
+private:
+    const EcmaVM *vm_ {nullptr};
+    const DumpSnapShotOption &opt_;
+#else
+    NodeIdCacheClearScope(const EcmaVM *, const DumpSnapShotOption &) {}
+    ~NodeIdCacheClearScope() = default;
+#endif
+};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H

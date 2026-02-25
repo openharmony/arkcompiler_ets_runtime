@@ -193,4 +193,55 @@ HWTEST_F_L0(HeapSnapShotTest, TestMoveNode)
     ASSERT_EQ(movedNode->GetSelfSize(), 32);
 #endif
 }
+
+HWTEST_F_L0(HeapSnapShotTest, TestNodeIdCacheClearScopeDelete)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    auto *profile = ecmaVm_->GetOrNewHeapProfile();
+    ASSERT_NE(profile, nullptr);
+    ASSERT_NE(ecmaVm_->GetHeapProfile(), nullptr);
+
+    DumpSnapShotOption opt;
+    opt.isClearNodeIdCache = true;
+    {
+        NodeIdCacheClearScope scope(ecmaVm_, opt);
+    }
+    ASSERT_EQ(ecmaVm_->GetHeapProfile(), nullptr);
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestNodeIdCacheClearScopeKeep)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    auto *profile = ecmaVm_->GetOrNewHeapProfile();
+    ASSERT_NE(profile, nullptr);
+    ASSERT_NE(ecmaVm_->GetHeapProfile(), nullptr);
+
+    DumpSnapShotOption opt;
+    opt.isClearNodeIdCache = false;
+    {
+        NodeIdCacheClearScope scope(ecmaVm_, opt);
+    }
+    ASSERT_NE(ecmaVm_->GetHeapProfile(), nullptr);
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestNodeIdCacheClearScopeWithNullptr)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    DumpSnapShotOption opt;
+    opt.isClearNodeIdCache = true;
+    {
+        // not crash is right
+        NodeIdCacheClearScope scope(nullptr, opt);
+    }
+    ASSERT_TRUE(true);
+#else
+    ASSERT_TRUE(true);
+#endif
+}
 }
