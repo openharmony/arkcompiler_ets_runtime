@@ -15,7 +15,6 @@
 AOT
 123
 true
-[trace] aot inline function name: #~B=#B@supercall_inline caller function name: #~D=#D@supercall_inline
 [trace] aot inline function name: #~A=#A@supercall_inline caller function name: #~B=#B@supercall_inline
 AOT
 456
