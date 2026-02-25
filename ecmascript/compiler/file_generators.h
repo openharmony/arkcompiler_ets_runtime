@@ -229,7 +229,7 @@ public:
 
     bool GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc);
     void JitCreateLitecgModule();
-    bool isAArch64() const;
+    bool IsAArch64() const;
 
     std::string ExtractPrefix(const std::string &filename);
     std::string GenAotCodeCommentFileName(const std::string &filename);
