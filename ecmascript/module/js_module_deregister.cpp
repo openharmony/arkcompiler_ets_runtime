@@ -26,10 +26,12 @@ using PathHelper = base::PathHelper;
 
 void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointer, void *hint)
 {
-    if (pointer == nullptr) { // LCOV_EXCL_BR_LINE
+    // LCOV_EXCL_BR_START
+    if (pointer == nullptr) {
         LOG_FULL(FATAL) << "Lacking deregister module's name.";
         return;
     }
+    // LCOV_EXCL_BR_STOP
     auto thread = reinterpret_cast<JSThread* >(hint);
     ThreadManagedScope managedScope(thread);
     [[maybe_unused]] EcmaHandleScope scope(thread);
@@ -158,9 +160,11 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         return;
     }
     uint16_t num = module->GetRegisterCounts();
-    if (num == 0) { // LCOV_EXCL_BR_LINE
+    // LCOV_EXCL_BR_START
+    if (num == 0) {
         LOG_FULL(FATAL) << "moduleNameSpace can not be uninstalled";
     }
+    // LCOV_EXCL_BR_STOP
 
     uint16_t registerNum = num - 1;
     if (registerNum == 0) {
@@ -173,10 +177,12 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
 bool ModuleDeregister::TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module)
 {
     UnloadNativeModuleCallback unloadNativeModuleCallback = thread->GetEcmaVM()->GetUnloadNativeModuleCallback();
+    // LCOV_EXCL_BR_START
     if (unloadNativeModuleCallback == nullptr) {
         LOG_ECMA(ERROR) << "unloadNativeModuleCallback is nullptr";
         return false;
     }
+    // LCOV_EXCL_BR_STOP
 
     CString soName = base::PathHelper::GetStrippedModuleName(module->GetEcmaModuleRecordNameString());
     return unloadNativeModuleCallback(soName.c_str());
