@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,6 +19,15 @@
 
 namespace panda::ecmascript::kungfu {
 
+namespace {
+GateRef GetCallTargetFromInputs(const GateAccessor &acc, GateRef gate)
+{
+    size_t numIns = acc.GetNumValueIn(gate);
+    ASSERT(numIns > 0);
+    return acc.GetValueIn(gate, numIns - 1);  // 1: func always last
+}
+}  // namespace
+
 std::optional<std::pair<size_t, bool>> NativeInlineLowering::GetCallInfo(GateRef gate)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
@@ -26,23 +35,28 @@ std::optional<std::pair<size_t, bool>> NativeInlineLowering::GetCallInfo(GateRef
         case EcmaOpcode::CALLARG0_IMM8:
             return {{0U, false}};
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
+        case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
             return {{0U, true}};
         case EcmaOpcode::CALLARG1_IMM8_V8:
             return {{1U, false}};
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+        case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
             return {{1U, true}};
         case EcmaOpcode::CALLARGS2_IMM8_V8_V8:
             return {{2U, false}};
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
             return {{2U, true}};
         case EcmaOpcode::CALLARGS3_IMM8_V8_V8_V8:
             return {{3U, false}};
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
             return {{3U, true}};
         case EcmaOpcode::CALLRANGE_IMM8_IMM8_V8: {
             CallRangeTypeInfoAccessor tia(compilationEnv_, circuit_, gate);
             return {{tia.GetArgc(), false}};
         }
+        case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
             CallThisRangeTypeInfoAccessor tia(compilationEnv_, circuit_, gate);
             return {{tia.GetArgc(), true}};
@@ -415,7 +429,7 @@ void NativeInlineLowering::TryInlineStringCharCodeAt(GateRef gate, size_t argc, 
 
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     GateRef posTag = (argc == 0) ? (builder_.Int32(0)) : (acc_.GetValueIn(gate, 1));
-    GateRef func = acc_.GetValueIn(gate, argc + 1);
+    GateRef func = GetCallTargetFromInputs(acc_, gate);
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, func,
@@ -619,7 +633,7 @@ void NativeInlineLowering::TryInlineNumberIsNaN(GateRef gate, size_t argc, bool 
 void NativeInlineLowering::TryInlineNumberParseFloat(GateRef gate, size_t argc, bool skipThis)
 {
     auto firstParam = skipThis ? 1 : 0;
-    auto func = acc_.GetValueIn(gate, argc + firstParam);
+    auto func = GetCallTargetFromInputs(acc_, gate);
     auto arg = acc_.GetValueIn(gate, firstParam);
 
     Environment env(gate, circuit_, &builder_);
@@ -637,7 +651,7 @@ void NativeInlineLowering::TryInlineNumberParseFloat(GateRef gate, size_t argc, 
 void NativeInlineLowering::TryInlineNumberParseInt(GateRef gate, size_t argc, bool skipThis)
 {
     auto firstParam = skipThis ? 1 : 0;
-    auto func = acc_.GetValueIn(gate, argc + firstParam);
+    auto func = GetCallTargetFromInputs(acc_, gate);
     auto arg = acc_.GetValueIn(gate, firstParam);
     auto radix = builder_.Undefined();
     if (argc > 1) {
@@ -688,8 +702,7 @@ void NativeInlineLowering::TryInlineBigIntAsIntN(GateRef gate, size_t argc, Buil
         return;
     }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -732,8 +745,7 @@ void NativeInlineLowering::TryInlineMathUnaryBuiltin(GateRef gate, size_t argc, 
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -754,8 +766,7 @@ void NativeInlineLowering::TryInlineWhitoutParamBuiltin(GateRef gate, size_t arg
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -771,7 +782,7 @@ void NativeInlineLowering::TryInlineMathAbsBuiltin(GateRef gate, size_t argc, bo
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate),
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::MathAbs)));
     }
 
@@ -793,7 +804,7 @@ void NativeInlineLowering::TryInlineMathClz32Builtin(GateRef gate, size_t argc, 
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate),
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::MathClz32)));
     }
     if (EnableTrace()) {
@@ -814,8 +825,7 @@ void NativeInlineLowering::TryInlineGlobalFiniteBuiltin(GateRef gate, size_t arg
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -834,8 +844,7 @@ void NativeInlineLowering::TryInlineGlobalNanBuiltin(GateRef gate, size_t argc, 
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -854,8 +863,7 @@ void NativeInlineLowering::TryInlineMathImulBuiltin(GateRef gate, size_t argc, B
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -876,8 +884,7 @@ void NativeInlineLowering::TryInlineMathBinaryBuiltin(GateRef gate, size_t argc,
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -898,8 +905,7 @@ void NativeInlineLowering::TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc,
     Environment env(gate, circuit_, &builder_);
     bool firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -952,7 +958,7 @@ void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, Built
     }
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef thisObj = acc_.GetValueIn(gate, 0); // 0: this
     builder_.EcmaObjectCheck(thisObj);
@@ -1008,7 +1014,7 @@ void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, Built
     }
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef thisObj = acc_.GetValueIn(gate, 0); // 0: this
     builder_.EcmaObjectCheck(thisObj);
@@ -1045,8 +1051,8 @@ void NativeInlineLowering::InlineStubBuiltin(GateRef gate, size_t builtinArgc, s
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
         GateRef obj = acc_.GetValueIn(gate, 0);
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, realArgc + 1U),
-                                 builder_.IntPtr(static_cast<int64_t>(id)), {obj});
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)),
+                                 {obj});
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -1084,8 +1090,7 @@ void NativeInlineLowering::TryInlineBigIntConstructor(GateRef gate, size_t argc,
     bool firstParam = skipThis ? 1 : 0;
     auto id = BuiltinsStubCSigns::ID::BigIntConstructor;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
@@ -1112,7 +1117,7 @@ void NativeInlineLowering::TryInlineDateGetTime(GateRef gate, size_t argc, bool 
     bool firstParam = 1;
     if (!Uncheck()) {
         GateRef obj = acc_.GetValueIn(gate, 0);
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate),
                                  builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::DateGetTime)), {obj});
     }
     if (EnableTrace()) {
@@ -1133,8 +1138,7 @@ void NativeInlineLowering::TryInlineObjectIs(GateRef gate, size_t argc, Builtins
 
     size_t firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1157,8 +1161,7 @@ void NativeInlineLowering::TryInlineObjectGetPrototypeOf(GateRef gate, size_t ar
 
     size_t firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1178,7 +1181,7 @@ void NativeInlineLowering::TryInlineObjectGetProto(GateRef gate, size_t argc, Bu
 
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, 1), builder_.IntPtr(static_cast<int64_t>(id)));  // 1: func
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1199,8 +1202,7 @@ void NativeInlineLowering::TryInlineObjectCreate(GateRef gate, size_t argc, Buil
 
     size_t firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1221,7 +1223,7 @@ void NativeInlineLowering::TryInlineObjectIsPrototypeOf(GateRef gate, size_t arg
 
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, 2), builder_.IntPtr(static_cast<int64_t>(id)));  // 2: func
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1243,7 +1245,7 @@ void NativeInlineLowering::TryInlineObjectHasOwnProperty(GateRef gate, size_t ar
 
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, 2), builder_.IntPtr(static_cast<int64_t>(id)));  // 2: func
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1266,8 +1268,7 @@ void NativeInlineLowering::TryInlineReflectGetPrototypeOf(GateRef gate, size_t a
 
     size_t firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1293,8 +1294,7 @@ void NativeInlineLowering::TryInlineReflectGet(GateRef gate, size_t argc, Builti
     }
 
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1316,8 +1316,7 @@ void NativeInlineLowering::TryInlineReflectHas(GateRef gate, size_t argc, Builti
 
     size_t firstParam = skipThis ? 1 : 0;
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1354,8 +1353,7 @@ void NativeInlineLowering::TryInlineReflectConstruct(GateRef gate, size_t argc, 
     }
 
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1381,8 +1379,7 @@ void NativeInlineLowering::TryInlineReflectApply(GateRef gate, size_t argc, Buil
     GateRef argumentsList = acc_.GetValueIn(gate, firstParam + 2);
 
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + firstParam),
-                                 builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1403,7 +1400,7 @@ void NativeInlineLowering::TryInlineFunctionPrototypeApply(GateRef gate, size_t 
     }
 
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1426,7 +1423,7 @@ void NativeInlineLowering::TryInlineFunctionPrototypeBind(GateRef gate, size_t a
     }
 
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, 2), builder_.IntPtr(static_cast<int64_t>(id)));  // 2: func
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1448,7 +1445,7 @@ void NativeInlineLowering::TryInlineFunctionPrototypeCall(GateRef gate, size_t a
     }
 
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1472,7 +1469,7 @@ void NativeInlineLowering::TryInlineFunctionPrototypeHasInstance(GateRef gate, s
     }
 
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, 2), builder_.IntPtr(static_cast<int64_t>(id)));  // 2: func
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
 
     if (EnableTrace()) {
@@ -1499,7 +1496,7 @@ void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, B
     GateRef targetElement = acc_.GetValueIn(gate, 1);
     ElementsKind kind = acc_.TryGetArrayElementsKind(thisArray);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     builder_.BuiltinPrototypeHClassCheck(thisArray, BuiltinTypeId::ARRAY, kind, false);
     builder_.StableArrayCheck(thisArray, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
@@ -1568,7 +1565,7 @@ void NativeInlineLowering::TryInlineArrayForEach(GateRef gate, size_t argc, Buil
         return;
     }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
     builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
@@ -1605,7 +1602,7 @@ void NativeInlineLowering::TryInlineArrayFindOrFindIndex(GateRef gate,
         return;
     }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef frameState = acc_.GetFrameState(gate);
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
@@ -1646,7 +1643,7 @@ void NativeInlineLowering::TryInlineArrayFilter(GateRef gate, size_t argc, Built
         return;
     }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
     builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
@@ -1683,7 +1680,7 @@ void NativeInlineLowering::TryInlineArrayMap(GateRef gate, size_t argc, Builtins
         return;
     }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
     builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
@@ -1720,7 +1717,7 @@ void NativeInlineLowering::TryInlineArraySome(GateRef gate, size_t argc, Builtin
         return;
     }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
     builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
@@ -1757,7 +1754,7 @@ void NativeInlineLowering::TryInlineArrayEvery(GateRef gate, size_t argc, Builti
         return;
     }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
     builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
@@ -1786,7 +1783,7 @@ void NativeInlineLowering::TryInlineArrayPop(GateRef gate, size_t argc, Builtins
     }
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
@@ -1810,7 +1807,7 @@ void NativeInlineLowering::TryInlineArrayPush(GateRef gate, size_t argc, Builtin
     }
     Environment env(gate, circuit_, &builder_);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef thisValue = acc_.GetValueIn(gate, 0);
     ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
@@ -1837,7 +1834,7 @@ void NativeInlineLowering::TryInlineArraySlice(GateRef gate, size_t argc, Builti
     builder_.ElementsKindCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
     GateRef frameState = acc_.GetFrameState(gate);
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef ret = Circuit::NullGate();
     if (argc == 0) {
@@ -1881,7 +1878,7 @@ void NativeInlineLowering::TryInlineArraySort(GateRef gate, size_t argc, Builtin
         return;
     }
     if (!Uncheck()) {
-        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+        builder_.CallTargetCheck(gate, GetCallTargetFromInputs(acc_, gate), builder_.IntPtr(static_cast<int64_t>(id)));
     }
     GateRef ret = Circuit::NullGate();
 

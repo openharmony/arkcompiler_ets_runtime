@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -624,7 +624,7 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     }
     __ Bind(&nonCallable);
     {
-        ThrowNonCallableInternal(assembler, sp);
+        ThrowNonCallableInternal(assembler, sp, jsfunc);
     }
     __ Bind(&lCallConstructor);
     {
@@ -900,21 +900,18 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, R
     __ B(Condition::HS, notJSFunction);
 }
 
-void OptimizedCall::ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp)
+void OptimizedCall::ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp, Register jsfunc)
 {
     Register frameType(X6);
-    Register taggedMessageId(X5);
     __ PushFpAndLr();
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)));
-    __ Mov(taggedMessageId,
-        Immediate(JSTaggedValue(GET_MESSAGE_STRING_ID(NonCallable)).GetRawData()));
     // 2 : 2 means pair
-    __ Stp(taggedMessageId, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Stp(jsfunc, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
     __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
     Register argC(X5);
     Register runtimeId(X6);
     __ Mov(argC, Immediate(1));
-    __ Mov(runtimeId, Immediate(RTSTUB_ID(ThrowTypeError)));
+    __ Mov(runtimeId, Immediate(RTSTUB_ID(ThrowNotCallableException)));
     // 2 : 2 means pair
     __ Stp(runtimeId, argC, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
     __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);

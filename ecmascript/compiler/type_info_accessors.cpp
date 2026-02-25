@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -381,7 +381,8 @@ CallThis0TypeInfoAccessor::CallThis0TypeInfoAccessor(const CompilationEnv *env, 
     : CallThisTypeInfoAccessor(env, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 0; // 0: number of argc
-    func_ = acc_.GetValueIn(gate, 1); // 1: func
+    size_t numIns = acc_.GetNumValueIn(gate);
+    func_ = acc_.GetValueIn(gate, numIns - 1); // 1: func is always last
 }
 
 CallThis1TypeInfoAccessor::CallThis1TypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,
@@ -390,7 +391,8 @@ CallThis1TypeInfoAccessor::CallThis1TypeInfoAccessor(const CompilationEnv *env, 
     : CallThisTypeInfoAccessor(env, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 1; // 1: number of argc
-    func_ = acc_.GetValueIn(gate, 2); // 2: func
+    size_t numIns = acc_.GetNumValueIn(gate);
+    func_ = acc_.GetValueIn(gate, numIns - 1); // 1: func is always last
     a0_ = acc_.GetValueIn(gate, 1); // 1: arg0
 }
 
@@ -400,7 +402,8 @@ CallThis2TypeInfoAccessor::CallThis2TypeInfoAccessor(const CompilationEnv *env, 
     : CallThisTypeInfoAccessor(env, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 2; // 2: number of argc
-    func_ = acc_.GetValueIn(gate, 3); // 3: func
+    size_t numIns = acc_.GetNumValueIn(gate);
+    func_ = acc_.GetValueIn(gate, numIns - 1); // 1: func is always last
     a0_ = acc_.GetValueIn(gate, 1); // 1: arg0
     a1_ = acc_.GetValueIn(gate, 2); // 2: arg1
 }
@@ -411,7 +414,8 @@ CallThis3TypeInfoAccessor::CallThis3TypeInfoAccessor(const CompilationEnv *env, 
     : CallThisTypeInfoAccessor(env, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
     argc_ = 3; // 3: number of argc
-    func_ = acc_.GetValueIn(gate, 4); // 4: func
+    size_t numIns = acc_.GetNumValueIn(gate);
+    func_ = acc_.GetValueIn(gate, numIns - 1); // 1: func is always last
     a0_ = acc_.GetValueIn(gate, 1); // 1: arg0
     a1_ = acc_.GetValueIn(gate, 2); // 2: arg1
     a2_ = acc_.GetValueIn(gate, 3); // 3: arg2
@@ -422,12 +426,16 @@ CallThisRangeTypeInfoAccessor::CallThisRangeTypeInfoAccessor(const CompilationEn
                                                              const CallMethodFlagMap *callMethodFlagMap)
     : CallThisTypeInfoAccessor(env, circuit, gate, jsPandaFile, callMethodFlagMap)
 {
-    constexpr size_t fixedInputsNum = 1;
+    constexpr size_t fixedInputsNum = 1; // 1: thisObj
     constexpr size_t callTargetIndex = 1;  // 1: acc
     size_t numIns = acc_.GetNumValueIn(gate);
-    ASSERT(numIns >= fixedInputsNum + callTargetIndex);
-    argc_ = numIns - callTargetIndex - fixedInputsNum;
-    func_ = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
+    EcmaOpcode op = acc_.GetByteCodeOpcode(gate);
+    bool isWithName = (op == EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8 ||
+                       op == EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8);
+    size_t extraInputs = isWithName ? 2 : 1;  // 2: stringId + func :  1: func
+    ASSERT(numIns >= fixedInputsNum + extraInputs);
+    argc_ = numIns - fixedInputsNum - extraInputs;
+    func_ = acc_.GetValueIn(gate, numIns - 1); // 1: func is always last
 }
 
 InlineTypeInfoAccessor::InlineTypeInfoAccessor(

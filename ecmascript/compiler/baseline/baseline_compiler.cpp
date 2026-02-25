@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -5726,6 +5726,141 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16)
 {
     (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLTHIS0WITHNAME_IMM8_ID16_V8)
+{
+    uint8_t slotId = READ_INST_8_0();
+    uint8_t thisObjNo = READ_INST_8_3();
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallthis0Imm8V8);
+    LOG_INST() << "    BaselineCallthis0withnameImm8Id16V8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(static_cast<int32_t>(thisObjNo));
+    parameters.emplace_back(static_cast<int32_t>(slotId));
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLTHIS1WITHNAME_IMM8_ID16_V8_V8)
+{
+    uint8_t slotId = READ_INST_8_0();
+    uint8_t thisObjId = READ_INST_8_3();
+    uint8_t argId = READ_INST_8_4();
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallthis1Imm8V8V8);
+    LOG_INST() << "    BaselineCallthis1withnameImm8Id16V8V8 Address: " << std::hex << builtinAddress;
+    LOG_INST() << "      thisObjId: " << static_cast<int16_t>(thisObjId);
+    LOG_INST() << "      argId: " << static_cast<int16_t>(argId);
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(static_cast<int32_t>(thisObjId));
+    parameters.emplace_back(static_cast<int32_t>(argId));
+    parameters.emplace_back(static_cast<int32_t>(slotId));
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8)
+{
+    uint8_t slotId = READ_INST_8_0();
+    uint8_t thisObjId = READ_INST_8_3();
+    uint8_t arg1Id = READ_INST_8_4();
+    uint8_t arg2Id = READ_INST_8_5();
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallthis2Imm8V8V8V8);
+    LOG_INST() << "    BaselineCallthis2withnameImm8Id16V8V8V8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(static_cast<int32_t>(thisObjId));
+    parameters.emplace_back(static_cast<int32_t>(arg1Id));
+    parameters.emplace_back(static_cast<int32_t>(arg2Id));
+    parameters.emplace_back(static_cast<int32_t>(slotId));
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8)
+{
+    uint8_t slotId = READ_INST_8_0();
+    uint8_t thisObjId = READ_INST_8_3();
+    uint8_t arg1Id = READ_INST_8_4();
+    uint8_t arg2Id = READ_INST_8_5();
+    uint8_t arg3Id = READ_INST_8_6();
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallthis3Imm8V8V8V8V8);
+    LOG_INST() << "    BaselineCallthis3withnameImm8Id16V8V8V8V8 Address: " << std::hex << builtinAddress;
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(static_cast<int32_t>(thisObjId));
+    uint32_t argIds = static_cast<uint32_t>(arg1Id) |
+                      (static_cast<uint32_t>(arg2Id) << ONE_BYTE_SIZE) |
+                      (static_cast<uint32_t>(arg3Id) << TWO_BYTE_SIZE);
+    parameters.emplace_back(static_cast<int32_t>(argIds));
+    parameters.emplace_back(static_cast<int32_t>(slotId));
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8)
+{
+    uint8_t slotId = READ_INST_8_0();
+    uint8_t numArgs = READ_INST_8_1();
+    uint8_t thisObj = READ_INST_8_4();
+
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+            thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineCallthisrangeImm8Imm8V8);
+    LOG_INST() << "    BaselineCallthisrangewithnameImm8Imm8Id16V8 Address: " << std::hex << builtinAddress;
+    LOG_INST() << "      numArgs: " << static_cast<int32_t>(numArgs);
+    LOG_INST() << "      thisObjId: " << static_cast<int16_t>(thisObj);
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(static_cast<int32_t>(numArgs));
+    parameters.emplace_back(static_cast<int32_t>(thisObj));
+    parameters.emplace_back(static_cast<int32_t>(slotId));
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8)
+{
+    uint16_t actualNumArgs = READ_INST_16_1();
+    int8_t vregId = READ_INST_8_5();
+    auto *thread = vm->GetAssociatedJSThread();
+    Address builtinAddress =
+        thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineWideCallthisrangePrefImm16V8);
+    LOG_INST() << "    BaselineWideCallthisrangewithnamePrefImm16Id16V8 Address: " << std::hex << builtinAddress;
+    LOG_INST() << "      actualNumArgs: " << static_cast<int32_t>(actualNumArgs);
+
+    std::vector<BaselineParameter> parameters;
+    parameters.emplace_back(BaselineSpecialParameter::GLUE);
+    parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
+    parameters.emplace_back(static_cast<int32_t>(actualNumArgs));
+    parameters.emplace_back(vregId);
+    parameters.emplace_back(BaselineSpecialParameter::HOTNESS_COUNTER);
+    GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
 }
 #undef LOG_INST
 }  // namespace panda::ecmascript::kungfu

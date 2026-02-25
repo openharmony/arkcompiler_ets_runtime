@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -269,6 +269,33 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
                 JSHandle<JSTaggedValue>func(thread, funcValue);                 \
                 std::string message = JSTaggedValue::ExceptionToString(         \
                     thread, func);                                              \
+                message.append(" is not callable");                             \
+                JSHandle<JSObject> error = factory->GetJSError(                 \
+                    ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \
+                thread->SetException(error.GetTaggedValue());                   \
+            }                                                                   \
+            INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
+        }                                                                       \
+        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());             \
+        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget(thread)));  \
+        newSp = sp - InterpretedFrame::NumOfMembers();                          \
+    } while (false)
+
+#define CALL_INITIALIZE_WITH_NAME()                                             \
+    do {                                                                        \
+        SAVE_PC();                                                              \
+        SAVE_ACC();                                                             \
+        thread->CheckSafepoint();                                               \
+        RESTORE_ACC();                                                          \
+        funcTagged = acc.GetRawData();                                          \
+        JSTaggedValue funcValue = acc;                                          \
+        if (!funcValue.IsCallable()) {                                          \
+            {                                                                   \
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
+                JSHandle<JSTaggedValue> funcName(                               \
+                    thread, GET_STR_FROM_CACHE(stringId));                      \
+                std::string message = JSTaggedValue::ExceptionToString(         \
+                    thread, funcName);                                          \
                 message.append(" is not callable");                             \
                 JSHandle<JSObject> error = factory->GetJSError(                 \
                     ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \
@@ -1042,7 +1069,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
 
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
-    constexpr size_t numWideOps = 20;
+    constexpr size_t numWideOps = 21;
     constexpr size_t numCallRuntimeOps = 28;
     constexpr size_t numDeprecatedOps = 47;
 
@@ -1228,6 +1255,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         ECMAObject *funcObject;
         JSTaggedType *newSp;
         bool callThis;
+        uint16_t stringId;
 
         HANDLE_OPCODE(CALLARG0_IMM8) {
             actualNumArgs = ActualNumArgsOfCall::CALLARG0;
@@ -1359,6 +1387,72 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
             startReg = READ_INST_8_3();
             LOG_INST() << "call.this.range " << actualNumArgs << ", v" << startReg;
             CALL_INITIALIZE();
+            callThis = true;
+            CALL_PUSH_ARGS(THISRANGE);
+        }
+        HANDLE_OPCODE(CALLTHIS0WITHNAME_IMM8_ID16_V8) {
+            actualNumArgs = ActualNumArgsOfCall::CALLARG0;
+            stringId = READ_INST_16_1();
+            startReg = READ_INST_8_3();
+            LOG_INST() << "call.this0.with.name, v" << startReg;
+            auto constpool = GetConstantPool(sp);
+            CALL_INITIALIZE_WITH_NAME();
+            callThis = true;
+            CALL_PUSH_ARGS(0);
+        }
+        HANDLE_OPCODE(CALLTHIS1WITHNAME_IMM8_ID16_V8_V8) {
+            actualNumArgs = ActualNumArgsOfCall::CALLARG1;
+            stringId = READ_INST_16_1();
+            startReg = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_4();
+            LOG_INST() << "call.this1.with.name, v" << startReg << " v" << a0;
+            auto constpool = GetConstantPool(sp);
+            CALL_INITIALIZE_WITH_NAME();
+            callThis = true;
+            CALL_PUSH_ARGS(1);
+        }
+        HANDLE_OPCODE(CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8) {
+            actualNumArgs = ActualNumArgsOfCall::CALLARGS2;
+            stringId = READ_INST_16_1();
+            startReg = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_4();
+            uint32_t a1 = READ_INST_8_5();
+            LOG_INST() << "call.this2.with.name, v" << startReg << " v" << a0 << " v" << a1;
+            auto constpool = GetConstantPool(sp);
+            CALL_INITIALIZE_WITH_NAME();
+            callThis = true;
+            CALL_PUSH_ARGS(2);
+        }
+        HANDLE_OPCODE(CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8) {
+            actualNumArgs = ActualNumArgsOfCall::CALLARGS3;
+            stringId = READ_INST_16_1();
+            startReg = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_4();
+            uint32_t a1 = READ_INST_8_5();
+            uint32_t a2 = READ_INST_8_6();
+            LOG_INST() << "call.this3.with.name, v" << startReg << " v" << a0 << " v" << a1 << " v" << a2;
+            auto constpool = GetConstantPool(sp);
+            CALL_INITIALIZE_WITH_NAME();
+            callThis = true;
+            CALL_PUSH_ARGS(3);
+        }
+        HANDLE_OPCODE(CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8) {
+            actualNumArgs = READ_INST_8_1();
+            stringId = READ_INST_16_2();
+            startReg = READ_INST_8_4();
+            LOG_INST() << "call.this.range.with.name " << actualNumArgs << ", v" << startReg;
+            auto constpool = GetConstantPool(sp);
+            CALL_INITIALIZE_WITH_NAME();
+            callThis = true;
+            CALL_PUSH_ARGS(THISRANGE);
+        }
+        HANDLE_OPCODE(WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8) {
+            actualNumArgs = READ_INST_16_1();
+            stringId = READ_INST_16_3();
+            startReg = READ_INST_8_5();
+            LOG_INST() << "call.this.range.with.name " << actualNumArgs << ", v" << startReg;
+            auto constpool = GetConstantPool(sp);
+            CALL_INITIALIZE_WITH_NAME();
             callThis = true;
             CALL_PUSH_ARGS(THISRANGE);
         }

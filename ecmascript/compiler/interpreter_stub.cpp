@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -4771,6 +4771,122 @@ DECLARE_ASM_HANDLER(HandleWideCallthisrangePrefImm16V8)
     JSCallArgs callArgs(JSCallMode::CALL_THIS_WITH_ARGV);
     callArgs.callArgvWithThis = { numArgs, argv, thisValue };
     CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, nullptr, hotnessCounter, callArgs, callback);
+    GateRef res = callBuilder.JSCallDispatch();
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
+}
+
+DECLARE_ASM_HANDLER(HandleCallthis0withnameImm8Id16V8)
+{
+    GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG0);
+    GateRef stringId = ReadInst16_1(pc);
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef func = acc;
+    METHOD_ENTRY(func);
+    GateRef jumpSize = INT_PTR(CALLTHIS0WITHNAME_IMM8_ID16_V8);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG0);
+    callArgs.callArgsWithThis = { 0, 0, 0, thisValue };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, nullptr, hotnessCounter, callArgs, callback,
+        true, Circuit::NullGate(), stringId, constpool);
+    GateRef res = callBuilder.JSCallDispatch();
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
+}
+
+DECLARE_ASM_HANDLER(HandleCallthis1withnameImm8Id16V8V8)
+{
+    GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARG1);
+    GateRef stringId = ReadInst16_1(pc);
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef a0 = ReadInst8_4(pc);
+    GateRef func = acc;
+    METHOD_ENTRY(func);
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a0));
+    GateRef jumpSize = INT_PTR(CALLTHIS1WITHNAME_IMM8_ID16_V8_V8);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG1);
+    callArgs.callArgsWithThis = { a0Value, 0, 0, thisValue };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, nullptr, hotnessCounter, callArgs, callback,
+        true, Circuit::NullGate(), stringId, constpool);
+    GateRef res = callBuilder.JSCallDispatch();
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
+}
+
+DECLARE_ASM_HANDLER(HandleCallthis2withnameImm8Id16V8V8V8)
+{
+    GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARGS2);
+    GateRef stringId = ReadInst16_1(pc);
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef a0 = ReadInst8_4(pc);
+    GateRef a1 = ReadInst8_5(pc);
+    GateRef func = acc;
+    METHOD_ENTRY(func);
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a0));
+    GateRef a1Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a1));
+    GateRef jumpSize = INT_PTR(CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG2);
+    callArgs.callArgsWithThis = { a0Value, a1Value, 0, thisValue };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, nullptr, hotnessCounter, callArgs, callback,
+        true, Circuit::NullGate(), stringId, constpool);
+    GateRef res = callBuilder.JSCallDispatch();
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
+}
+
+DECLARE_ASM_HANDLER(HandleCallthis3withnameImm8Id16V8V8V8V8)
+{
+    GateRef actualNumArgs = Int32(InterpreterAssembly::ActualNumArgsOfCall::CALLARGS3);
+    GateRef stringId = ReadInst16_1(pc);
+    GateRef thisValue = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    GateRef a0 = ReadInst8_4(pc);
+    GateRef a1 = ReadInst8_5(pc);
+    GateRef a2 = ReadInst8_6(pc);
+    GateRef func = acc;
+    METHOD_ENTRY(func);
+    GateRef a0Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a0));
+    GateRef a1Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a1));
+    GateRef a2Value = GetVregValue(glue, sp, ZExtInt8ToPtr(a2));
+    GateRef jumpSize = INT_PTR(CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3);
+    callArgs.callArgsWithThis = { a0Value, a1Value, a2Value, thisValue };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, nullptr, hotnessCounter, callArgs, callback,
+        true, Circuit::NullGate(), stringId, constpool);
+    GateRef res = callBuilder.JSCallDispatch();
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
+}
+
+DECLARE_ASM_HANDLER(HandleCallthisrangewithnameImm8Imm8Id16V8)
+{
+    GateRef actualNumArgs = ZExtInt8ToInt32(ReadInst8_1(pc));
+    GateRef stringId = ReadInst16_2(pc);
+    GateRef thisReg = ZExtInt8ToPtr(ReadInst8_4(pc));
+    GateRef func = acc;
+    METHOD_ENTRY(func);
+    GateRef thisValue = GetVregValue(glue, sp, thisReg);
+    GateRef argv = PtrAdd(sp, PtrMul(
+        PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip this
+    GateRef jumpSize = INT_PTR(CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8);
+    GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_WITH_ARGV);
+    callArgs.callArgvWithThis = { numArgs, argv, thisValue };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, nullptr, hotnessCounter, callArgs, callback,
+        true, Circuit::NullGate(), stringId, constpool);
+    GateRef res = callBuilder.JSCallDispatch();
+    CHECK_PENDING_EXCEPTION(res, jumpSize);
+}
+
+DECLARE_ASM_HANDLER(HandleWideCallthisrangewithnamePrefImm16Id16V8)
+{
+    GateRef actualNumArgs = ZExtInt16ToInt32(ReadInst16_1(pc));
+    GateRef stringId = ReadInst16_3(pc);
+    GateRef thisReg = ZExtInt8ToPtr(ReadInst8_5(pc));
+    GateRef func = acc;
+    METHOD_ENTRY(func);
+    GateRef thisValue = GetVregValue(glue, sp, thisReg);
+    GateRef argv = PtrAdd(sp, PtrMul(
+        PtrAdd(thisReg, IntPtr(1)), IntPtr(8))); // 1: skip this
+    GateRef jumpSize = INT_PTR(WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8);
+    GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_WITH_ARGV);
+    callArgs.callArgvWithThis = { numArgs, argv, thisValue };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, nullptr, hotnessCounter, callArgs, callback,
+        true, Circuit::NullGate(), stringId, constpool);
     GateRef res = callBuilder.JSCallDispatch();
     CHECK_PENDING_EXCEPTION(res, jumpSize);
 }

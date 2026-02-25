@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -3857,6 +3857,48 @@ void InterpreterAssembly::HandleWideCallthisrangePrefImm16V8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     DISPATCH(WIDE_CALLTHISRANGE_PREF_IMM16_V8);
+}
+
+void InterpreterAssembly::HandleCallthis0withnameImm8Id16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLTHIS0WITHNAME_IMM8_ID16_V8);
+}
+
+void InterpreterAssembly::HandleCallthis1withnameImm8Id16V8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLTHIS1WITHNAME_IMM8_ID16_V8_V8);
+}
+
+void InterpreterAssembly::HandleCallthis2withnameImm8Id16V8V8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8);
+}
+
+void InterpreterAssembly::HandleCallthis3withnameImm8Id16V8V8V8V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8);
+}
+
+void InterpreterAssembly::HandleCallthisrangewithnameImm8Imm8Id16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8);
+}
+
+void InterpreterAssembly::HandleWideCallthisrangewithnamePrefImm16Id16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8);
 }
 
 void InterpreterAssembly::HandleWideCallrangePrefImm16V8(

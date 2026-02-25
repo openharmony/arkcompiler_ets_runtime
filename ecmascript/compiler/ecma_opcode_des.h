@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -103,6 +103,12 @@ namespace panda::ecmascript::kungfu {
     V(ISFALSE)                                                             \
     V(CALLTHIS3_IMM8_V8_V8_V8_V8)                                          \
     V(CALLTHISRANGE_IMM8_IMM8_V8)                                          \
+    V(CALLTHIS0WITHNAME_IMM8_ID16_V8)                                      \
+    V(CALLTHIS1WITHNAME_IMM8_ID16_V8_V8)                                   \
+    V(CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8)                                \
+    V(CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8)                             \
+    V(CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8)                             \
+    V(WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8)                       \
     V(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8)                               \
     V(SUPERCALLTHISRANGE_IMM8_IMM8_V8)                                     \
     V(SUPERCALLARROWRANGE_IMM8_IMM8_V8)                                    \

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -228,18 +228,23 @@ void TypedBytecodeLowering::Lower(GateRef gate)
             LowerTypedCallrange(gate);
             break;
         case EcmaOpcode::CALLTHIS0_IMM8_V8:
+        case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
             LowerTypedCallthis0(gate);
             break;
         case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+        case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
             LowerTypedCallthis1(gate);
             break;
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
             LowerTypedCallthis2(gate);
             break;
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
             LowerTypedCallthis3(gate);
             break;
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
             LowerTypedCallthisrange(gate);
             break;
         case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
@@ -2505,29 +2510,17 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
     GateRef actualArgc = Circuit::NullGate();
     GateRef actualArgv = builder_.IntPtr(0);
     switch (Op) {
-        case EcmaOpcode::CALLTHIS0_IMM8_V8: {
-            actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-                EcmaOpcode::CALLTHIS0_IMM8_V8));
-            break;
-        }
-        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8: {
-            actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-                EcmaOpcode::CALLTHIS1_IMM8_V8_V8));
-            break;
-        }
-        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8: {
-            actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-                EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8));
-            break;
-        }
-        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8: {
-            actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-                EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8));
-            break;
-        }
-        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8: {
-            actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
-                EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
+        case EcmaOpcode::CALLTHIS0_IMM8_V8:
+        case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
+        case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+        case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+        case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8: {
+            actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate), Op));
             break;
         }
         default:
@@ -2571,6 +2564,10 @@ void TypedBytecodeLowering::LowerTypedCallthis0(GateRef gate)
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
     }
+    if (acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8) {
+        LowerTypedThisCall<EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8>(tacc);
+        return;
+    }
     LowerTypedThisCall<EcmaOpcode::CALLTHIS0_IMM8_V8>(tacc);
 }
 
@@ -2587,6 +2584,10 @@ void TypedBytecodeLowering::LowerTypedCallthis1(GateRef gate)
         return;
     }
     if (!tacc.CanOptimizeAsFastCall()) {
+        return;
+    }
+    if (acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8) {
+        LowerTypedThisCall<EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8>(tacc);
         return;
     }
     LowerTypedThisCall<EcmaOpcode::CALLTHIS1_IMM8_V8_V8>(tacc);
@@ -2607,6 +2608,10 @@ void TypedBytecodeLowering::LowerTypedCallthis2(GateRef gate)
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
     }
+    if (acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8) {
+        LowerTypedThisCall<EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8>(tacc);
+        return;
+    }
     LowerTypedThisCall<EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8>(tacc);
 }
 
@@ -2625,6 +2630,10 @@ void TypedBytecodeLowering::LowerTypedCallthis3(GateRef gate)
     if (!tacc.CanOptimizeAsFastCall()) {
         return;
     }
+    if (acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8) {
+        LowerTypedThisCall<EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8>(tacc);
+        return;
+    }
     LowerTypedThisCall<EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8>(tacc);
 }
 
@@ -2635,6 +2644,10 @@ void TypedBytecodeLowering::LowerTypedCallthisrange(GateRef gate)
     }
     CallThisRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     if (!tacc.CanOptimizeAsFastCall()) {
+        return;
+    }
+    if (acc_.GetByteCodeOpcode(gate) == EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8) {
+        LowerTypedThisCall<EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8>(tacc);
         return;
     }
     LowerTypedThisCall<EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8>(tacc);
