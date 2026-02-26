@@ -42,3 +42,6 @@ obj/arkcompiler/ets_runtime/test/moduletest/ic/ic
 
 #33042
 obj/arkcompiler/ets_runtime/test/moduletest/reflectandproxy/reflectandproxyAssert
+
+#33373
+obj/arkcompiler/ets_runtime/ecmascript/module/tests/ModuleTest
