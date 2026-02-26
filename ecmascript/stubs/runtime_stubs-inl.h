@@ -2651,7 +2651,11 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
                                               const JSHandle<JSTaggedValue> &obj,
                                               const JSHandle<JSTaggedValue> &array)
 {
-    if ((!obj->IsUndefined() && !obj->IsECMAObject()) || !func->IsCallable() || !array->IsJSArray()) {
+    // Allow primitive values (including undefined/null) as 'this' argument.
+    // obj can be primitive type, e.g., primitive.func(...[])
+    // obj can be undefined type, e.g., foo(...[])
+    // Otherwise, obj is Object type
+    if (!func->IsCallable() || !array->IsJSArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "cannot Callspread", JSTaggedValue::Exception());
     }
 
