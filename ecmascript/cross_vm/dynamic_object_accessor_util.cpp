@@ -88,7 +88,6 @@ TaggedType* DynamicObjectAccessorUtil::CallFunction(TaggedType jsThis, TaggedTyp
     if (!funcValue.IsCallable()) {
         return undefindType;
     }
-    vm->GetJsDebuggerManager()->ClearSingleStepper();
     JSHandle<JSTaggedValue> func(thread, funcValue);
     LOG_IF_SPECIAL(func, ERROR);
     JSTaggedValue thisObj(jsThis);
@@ -104,7 +103,6 @@ TaggedType* DynamicObjectAccessorUtil::CallFunction(TaggedType jsThis, TaggedTyp
     }
     RETURN_VALUE_IF_ABRUPT(thread, undefindType);
     EcmaVM::ClearKeptObjects(thread);
-    vm->GetJsDebuggerManager()->NotifyReturnNative();
     JSHandle<JSTaggedValue> resultValue(thread, result);
     auto ret = scope.Escape(panda::JSNApiHelper::ToLocal<JSValueRef>(resultValue));
     return reinterpret_cast<TaggedType *>(*ret);
