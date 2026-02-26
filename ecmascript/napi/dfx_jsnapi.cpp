@@ -107,6 +107,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     }
 #endif  // ENABLE_DUMP_IN_FAULTLOG
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+    ecmascript::NodeIdCacheClearScope guard(const_cast<EcmaVM *>(vm), dumpOption);
     heapProfile->DumpHeapSnapshot(stream, dumpOption, progress, callback);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
@@ -170,6 +171,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm,
     FileDescriptorStream stream(fd);
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
+    ecmascript::NodeIdCacheClearScope guard(const_cast<EcmaVM *>(vm), dumpOption);
     heapProfile->DumpHeapSnapshot(&stream, dumpOption);
 
     sem_post(&g_heapdumpCnt);

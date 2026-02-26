@@ -40,6 +40,7 @@ struct DumpSnapShotOption {
     bool isJSLeakWatcher = false;  // whether dump from jsleak wather.
     bool isForSharedOOM = false;   // for shared heap oom dump
     bool isProcDump = false;  // whether need process dump
+    bool isClearNodeIdCache = false;  // whether clear node id map cache after dump
 };
 
 enum class RawHeapDumpCropLevel {
