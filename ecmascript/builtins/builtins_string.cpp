@@ -459,7 +459,7 @@ JSTaggedValue BuiltinsString::IndexOf(EcmaRuntimeCallInfo *argv)
     } else {
         JSTaggedNumber posVal = JSTaggedValue::ToInteger(thread, posTag);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        pos = posVal.ToInt32();
+        pos = base::NumberHelper::DoubleInRangeInt32(posVal.GetNumber());
     }
     pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
     // If searching for an null string.
