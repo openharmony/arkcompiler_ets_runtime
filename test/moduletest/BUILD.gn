@@ -40,7 +40,6 @@ module_test_list = [
   "getiterator",
   "arraypop",
   "arraytoreversed",
-  "arraytospliced",
   "arraywith",
   "arraystablecheck",
   "arraysort",
@@ -220,6 +219,7 @@ group("ark_js_assert_moduletest") {
   assert_test_list = [
     "array",
     "addpropertybyname",
+    "arraytospliced",
     "cowarray",
     "decodeuricomponent",
     "isin",
@@ -361,6 +361,7 @@ group("ark_asm_assert_test") {
   assert_test_list = [
     "array",
     "addpropertybyname",
+    "arraytospliced",
     "cowarray",
     "decodeuricomponent",
     "isin",
