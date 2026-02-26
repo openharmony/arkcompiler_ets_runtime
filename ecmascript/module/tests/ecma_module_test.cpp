@@ -1489,6 +1489,26 @@ HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl3)
     EXPECT_EQ(res, "&test");
 }
 
+HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl4)
+{
+    CString inputFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString outBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString entryPoint = "com.example.myapplication/entry/ets/pages/Index";
+    // No pkgContextInfoList element
+    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, entryPoint);
+
+    // entryPoint does not contain '/'
+    CString entryPoint2 = "com.example.myapplication";
+    CString res2 = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint2);
+    EXPECT_EQ(res2, entryPoint2);
+
+    // entryPoint does not contain a second '/'
+    CString entryPoint3 = "com.example.myapplication/entry";
+    CString res3 = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint3);
+    EXPECT_EQ(res3, entryPoint3);
+}
+
 HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized)
 {
     instance->SetBundleName("com.example.myapplication");
