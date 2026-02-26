@@ -32,3 +32,6 @@ true
 true
 undefined
 asyncgenerator yield star end
+asyncgenerator return stackoverflow start
+RangeError: Stack overflow!
+asyncgenerator return stackoverflow end

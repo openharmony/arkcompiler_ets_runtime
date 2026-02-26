@@ -91,8 +91,7 @@ public:
     static JSTaggedValue AsyncGeneratorEnqueue(JSThread *thread, const JSHandle<JSTaggedValue> &generator,
                                                const JSHandle<CompletionRecord> completionRecord);
 
-    static JSTaggedValue PromiseResolve(JSThread *thread, const JSHandle<JSTaggedValue> promise,
-                                        const JSHandle<JSTaggedValue> value);
+    static JSTaggedValue PromiseResolve(JSThread *thread, const JSHandle<JSTaggedValue> value);
 
     static JSTaggedValue ProcessorFulfilledFunc(EcmaRuntimeCallInfo *argv);
 
