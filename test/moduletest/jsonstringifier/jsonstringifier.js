@@ -450,6 +450,11 @@ assert_equal(JSON.stringify(testspaceobj, null, Infinity),testspaceobjAssert);
 }
 
 {
+  var v1 = Symbol.prototype;
+  assert_equal(JSON.stringify(v1), '{}');
+}
+
+{
   // wrong order of high and low surrogate
   let invalid_surrogate = "\uDE0E\uD83D";
   assert_equal(JSON.stringify(invalid_surrogate), '"\\ude0e\\ud83d"');
