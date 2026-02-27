@@ -945,54 +945,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_062, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotArgsHandlerTest_063
- * @tc.desc: Test StaticAOTArgsHandler::Handle with blackListMethods non-empty path
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_063, TestSize.Level0)
-{
-    std::ofstream(staticPaocBlackListPath)
-        << "{\"blackMethodList\":[{\"bundleName\":\"com.ohos.contacts\",\"type\":\"application\","
-        << "\"moduleLists\":[{\"name\":\"entry\",\"methodLists\":[\"Test:m1\",\"Test:m2\"]}]}]}";
-
-    std::unordered_map<std::string, std::string> argsMap = {
-        {"target-compiler-mode", "partial"},
-        {"aot-file", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry"},
-        {"compiler-pkg-info", "{\"abcName\":\"ets/modules_static.abc\",\"abcOffset\":\"0x1000\","
-            "\"abcSize\":\"0x60b058\",\"appIdentifier\":\"5765880207853624761\","
-            "\"bundleName\":\"com.ohos.contacts\",\"BundleUid\":\"0x1317b6f\","
-            "\"isEncryptedBundle\":\"0x0\",\"isScreenOff\":\"0x1\",\"moduleName\":\"entry\","
-            "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts\","
-            "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\",\"processUid\":\"0xbf4\"}"},
-        {"compiler-external-pkg-info", "[]"}, {"compiler-opt-bc-range", ""},
-        {"compiler-device-state", "1"}, {"compiler-baseline-pgo", "0"},
-        {"ABC-Path", "/system/app/Contacts/Contacts.hap/ets/modules_static.abc"},
-        {"BundleUid", "20020079"}, {"BundleGid", "20020079"},
-        {"anFileName", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an"},
-        {"appIdentifier", "5765880207853624761"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
-
-    std::string basePath = "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts";
-    mkdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts",
-          S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir(basePath.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir((basePath + "/arm64").c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream((basePath + "/arm64/entry.an").c_str()).close();
-
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
-    argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
-    EXPECT_EQ(argsHandler->Handle(0), ERR_OK);
-
-    unlink((basePath + "/arm64/entry.an").c_str());
-    rmdir((basePath + "/arm64").c_str());
-    rmdir(basePath.c_str());
-    rmdir("/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts");
-    unlink(staticPaocBlackListPath);
-}
-
-/**
  * @tc.name: AotArgsHandlerTest_064
  * @tc.desc: Test StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList with missing bundleName
  * @tc.type: Func

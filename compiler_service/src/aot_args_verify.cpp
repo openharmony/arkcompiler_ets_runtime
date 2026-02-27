@@ -321,8 +321,22 @@ bool AotArgsVerify::CheckBundleUidAndGidFromArgsMap(
         LOG_SA(ERROR) << ArgsIdx::BUNDLE_GID.c_str() << " not found in argsMap";
         return false;
     }
-    int32_t uid = std::stoi(bundleUidIt->second);
-    int32_t gid = std::stoi(bundleGidIt->second);
+    int32_t uid = 0;
+    int32_t gid = 0;
+    const char* uidStart = bundleUidIt->second.c_str();
+    const char* uidEnd = uidStart + bundleUidIt->second.length();
+    auto uidResult = std::from_chars(uidStart, uidEnd, uid);
+    if (uidResult.ec != std::errc()) {
+        LOG_SA(ERROR) << "Failed to parse bundleUid: " << bundleUidIt->second;
+        return false;
+    }
+    const char* gidStart = bundleGidIt->second.c_str();
+    const char* gidEnd = gidStart + bundleGidIt->second.length();
+    auto gidResult = std::from_chars(gidStart, gidEnd, gid);
+    if (gidResult.ec != std::errc()) {
+        LOG_SA(ERROR) << "Failed to parse bundleGid: " << bundleGidIt->second;
+        return false;
+    }
     return CheckBundleUidAndGid(uid, gid);
 }
 
