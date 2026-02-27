@@ -81,7 +81,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
                     static Mutex dumpMutex;
                     RuntimeLockHolder lock(thread, dumpMutex);
                     if (needDumpHeapSnapshot) {
-                        localHeap->DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+                        localHeap->DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM(),
+                                                             "", capacity, PROCESS_HEAP_STR);
                         needDumpHeapSnapshot = false;
                     }
                 }

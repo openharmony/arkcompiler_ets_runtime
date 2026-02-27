@@ -143,6 +143,10 @@ enum class SharedHeapOOMSource {
     SHARED_GC,
 };
 
+const std::string LOCAL_HEAP_STR = "local heap";
+const std::string SHARED_HEAP_STR = "shared heap";
+const std::string PROCESS_HEAP_STR = "process heap";
+
 class BaseHeap {
 public:
     BaseHeap(const EcmaParamConfiguration &config) : config_(config) {}
@@ -890,7 +894,8 @@ public:
 
     inline void MergeToOldSpaceSync(SharedLocalSpace *localSpace);
 
-    void DumpHeapSnapshotBeforeOOM(JSThread *thread, SharedHeapOOMSource source);
+    void DumpHeapSnapshotBeforeOOM(JSThread *thread, SharedHeapOOMSource source, const std::string &spaceType,
+                                   size_t lastAllocObjSize, const std::string &heapType);
 
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void ProcessSharedExternalStringDelete(const WeakRootVisitor& visitor);
@@ -1706,7 +1711,8 @@ public:
     }
 
     void CheckNonMovableSpaceOOM();
-    void DumpHeapSnapshotBeforeOOM(bool isProcDump = false);
+    void DumpHeapSnapshotBeforeOOM(bool isProcDump, const std::string &spaceType, size_t lastAllocObjSize,
+                                   const std::string &heapType);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     MachineCode *GetMachineCodeObject(uintptr_t pc) const;
     void SetMachineCodeObject(uintptr_t start, uintptr_t end, uintptr_t address) const;

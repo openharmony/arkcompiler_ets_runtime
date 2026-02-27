@@ -34,6 +34,9 @@ using PGOProfilerManager = pgo::PGOProfilerManager;
 using Clock = std::chrono::high_resolution_clock;
 const std::string PARTITION_NAME = "/data";
 const std::string COMPONENT_NAME = "ets_runtime";
+const std::string MAIN_THREAD_STR = "main thread";
+const std::string CHILD_THREAD_STR = "child thread";
+const std::string DYNAMIC_STR = "dynamic";
 
 namespace {
 void SendLongGCHiSysEvent(LongGCStats& longGCStats, bool isGetCpuLoad)
@@ -131,20 +134,32 @@ void GCKeyStats::SendSysEvent() const
 }
 
 void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size_t activeMemory,
-                                        const std::string &eventConfig) const
+                                        [[maybe_unused]] const std::string &eventConfig,
+                                        [[maybe_unused]] const std::string &spaceType,
+                                        [[maybe_unused]] size_t lastAllocObjSize,
+                                        [[maybe_unused]] const std::string &heapType) const
 {
 #ifdef ENABLE_HISYSEVENT
+    pid_t pid = getprocpid();
+    long tid = syscall(SYS_gettid);
+    std::string threadType = (pid == tid) ? MAIN_THREAD_STR : CHILD_THREAD_STR;
+
     int32_t ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::FRAMEWORK,
         "ARK_STATS_DUMP",
         OHOS::HiviewDFX::HiSysEvent::EventType::FAULT,
-        "PID", getprocpid(),
-        "TID", syscall(SYS_gettid),
+        "PID", pid,
+        "TID", tid,
         "PROCESS_NAME", PGOProfilerManager::GetInstance()->GetBundleName(),
         "LIMITSIZE", limitSize,
         "ACTIVE_MEMORY", activeMemory,
         "TYPE", type,
         "EVENT_CONFIG", eventConfig,
-        "APP_RUNNING_UNIQUE_ID", &DFX_GetAppRunningUniqueId == nullptr ? "" : DFX_GetAppRunningUniqueId());
+        "APP_RUNNING_UNIQUE_ID", &DFX_GetAppRunningUniqueId == nullptr ? "" : DFX_GetAppRunningUniqueId(),
+        "ARKTS_TYPE", DYNAMIC_STR,
+        "THREAD_TYPE", threadType,
+        "SPACE_TYPE", spaceType,
+        "LAST_ALLOCATE_OBJECT_SIZE", lastAllocObjSize,
+        "HEAP_TYPE", heapType);
     if (ret != 0) {
         LOG_GC(ERROR) << "GCKeyStats SendSysEventBeforeDump Failed! ret = " << ret;
     }

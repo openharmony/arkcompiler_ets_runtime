@@ -202,11 +202,13 @@ private:
         return nullptr;
     }
 
-    void DeserializeFatalOutOfMemory(size_t size, bool dump = true, bool isShared = false)
+    void DeserializeFatalOutOfMemory(const std::string &spaceTypeName,
+        size_t size, bool dump = true, bool isShared = false)
     {
         if (isShared) {
             if (dump) {
-                sheap_->DumpHeapSnapshotBeforeOOM(thread_, SharedHeapOOMSource::DESERIALIZE);
+                sheap_->DumpHeapSnapshotBeforeOOM(thread_, SharedHeapOOMSource::DESERIALIZE,
+                                                  spaceTypeName, size, SHARED_HEAP_STR);
             }
             LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize shared obj size: " << size
                 << ", old space heap object size: "
@@ -222,7 +224,7 @@ private:
         } else {
             if (dump) {
                 heap_->StatisticHeapDetail();
-                heap_->DumpHeapSnapshotBeforeOOM();
+                heap_->DumpHeapSnapshotBeforeOOM(false, spaceTypeName, size, LOCAL_HEAP_STR);
             }
             LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize obj size: " << size
                 << ", old space heap object size: "

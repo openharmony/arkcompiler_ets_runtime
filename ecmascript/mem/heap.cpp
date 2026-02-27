@@ -714,7 +714,8 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
         // LocalHeap could do FullGC later instead of Fatal at once if only set `shouldThrowOOMError_` because there
         // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
-        DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC);
+        DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC,
+                                  "", 0, SHARED_HEAP_STR);
         Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
             ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
             thread->NotifyPendingSharedHeapOOM();
@@ -849,8 +850,11 @@ void SharedHeap::ReclaimForAppSpawn()
     sHugeObjectSpace_->EnumerateRegions(cb);
 }
 
-void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
-                                           [[maybe_unused]] SharedHeapOOMSource source)
+void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] JSThread *thread,
+                                           [[maybe_unused]] SharedHeapOOMSource source,
+                                           [[maybe_unused]] const std::string &spaceType,
+                                           [[maybe_unused]] size_t lastAllocObjSize,
+                                           [[maybe_unused]] const std::string &heapType)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
@@ -858,7 +862,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
     bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
     EcmaVM *vm = thread->GetEcmaVM();
     vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
-                                                    GetHeapObjectSize(), eventConfig);
+        GetHeapObjectSize(), eventConfig, spaceType, lastAllocObjSize, heapType);
     if (!shouldDump) {
         LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1, "MESSAGE", "Dump not permitted.",
@@ -1616,7 +1620,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         oldSpace_->ResetCommittedOverSizeLimit();
         if (oldSpace_->CommittedSizeExceed()) { // LCOV_EXCL_BR_LINE
             sweeper_->EnsureAllTaskFinished();
-            DumpHeapSnapshotBeforeOOM();
+            DumpHeapSnapshotBeforeOOM(false, "", 0, LOCAL_HEAP_STR);
             StatisticHeapDetail();
             ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(),
                 " OldSpace::Merge, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
@@ -1628,7 +1632,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
     // Allocate region failed during GC, MUST throw OOM here
     if (shouldForceThrowOOMError_) {
         sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM();
+        DumpHeapSnapshotBeforeOOM(false, "", 0, LOCAL_HEAP_STR);
         StatisticHeapDetail();
         ThrowOutOfMemoryError(thread_, DEFAULT_REGION_SIZE, " HeapRegionAllocator::AllocateAlignedRegion");
     }
@@ -1807,7 +1811,8 @@ void Heap::CheckNonMovableSpaceOOM()
 {
     if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) { // LCOV_EXCL_BR_LINE
         sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM();
+        DumpHeapSnapshotBeforeOOM(false, ToSpaceTypeName(nonMovableSpace_->GetSpaceType()),
+                                  nonMovableSpace_->GetHeapObjectSize(), LOCAL_HEAP_STR);
         StatisticHeapDetail();
         ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(),
             "Heap::CheckNonMovableSpaceOOM, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
@@ -1959,13 +1964,16 @@ void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]]
 #endif
 }
 
-void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump)
+void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump, [[maybe_unused]] const std::string &spaceType,
+                                     [[maybe_unused]] size_t lastAllocObjSize,
+                                     [[maybe_unused]] const std::string &heapType)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     std::string eventConfig;
     bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
-    GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig);
+    GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig,
+                                                spaceType, lastAllocObjSize, heapType);
     if (!shouldDump) {
         LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1, "MESSAGE", "Dump not permitted.",
@@ -3267,7 +3275,8 @@ void Heap::ThresholdReachedDump()
             std::string eventConfig;
             bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
             GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
-                                                        GetHeapLimitSize(), GetLiveObjectSize(), eventConfig);
+                                                        GetHeapLimitSize(), GetLiveObjectSize(), eventConfig,
+                                                        "", 0, LOCAL_HEAP_STR);
             if (shouldDump) {
                 LOG_ECMA(INFO) << "ThresholdReachedDump and avoid freeze success.";
             } else {
