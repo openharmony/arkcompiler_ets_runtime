@@ -269,14 +269,15 @@ bool RawHeapTranslateV1::Parse(FileReader &file, uint32_t rawheapFileSize)
 bool RawHeapTranslateV1::Translate()
 {
     auto nodes = GetNodes();
-    for (auto it = nodes->begin() + 3; it != nodes->end(); ++it) {  // 3:normal node start from 3
-        Node *node = *it;
+    size_t cnt = nodes->size();
+    for (size_t i = 3; i < cnt; i++) {  // 3:normal node start from 3
+        Node *node = (*nodes)[i];
         Node *hclass = FindNode(ByteToU64(node->data));
         if (hclass == nullptr) {
             LOG_ERROR_ << "missed hclass, node_id=" << node->nodeId;
             return false;
         }
-
+        node->hclass = hclass;
         JSType type = metaParser_->GetJSTypeFromHClass(hclass);
         FillNodes(node, type);
         CreateHClassEdge(node, hclass);
@@ -628,19 +629,65 @@ void RawHeapTranslateV1::BuildJSObjectEdges(Node *node, JSType type)
         return;
     }
 
-    StringId inlinePropertyStrId = InsertAndGetStringId("InlineProperty");
-    uint32_t offset = meta->endOffset;
-    while (offset + sizeof(uint64_t) <= node->size) {
-        uint64_t addr = ByteToU64(node->data + offset);
-        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
-        CreateEdge(node, addr, inlinePropertyStrId, edgeType);
-        offset += sizeof(uint64_t);
+    BitField *bitField = metaParser_->GetBitField();
+    Node *layout = FindNode(ByteToU64(node->hclass->data + bitField->hclassLayoutField.offset));
+    if (!layout) {
+        return;
     }
+
+    StringId defaultName = InsertAndGetStringId("InlineProperty");
+    uint32_t propCnt = metaParser_->GetPropsNumberOfJSObject(node->hclass);
+    uint32_t index = 0;
+    while (meta->endOffset + index * sizeof(uint64_t) < node->size && index < propCnt) {
+        Node *key = FindNode(ByteToU64(layout->data + sizeof(uint64_t) * (2 + index * 2)));
+        if (!key) {
+            index++;
+            continue;
+        }
+
+        uint64_t addr  = ByteToU64(node->data + meta->endOffset + index * sizeof(uint64_t));
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+        CreateEdge(node, addr, key->strId == 1 ? defaultName : key->strId, edgeType);
+        index++;
+    }
+}
+
+Node* RawHeapTranslateV1::CreatePrimitiveNode(uint64_t addr)
+{
+    Node *to = FindOrCreateNode(addr);
+    to->nodeId = 0;
+    to->type = HEAP_NUMBER;
+    if ((addr & TAG_MARK) == TAG_INT) {
+        int value = static_cast<int>(addr & (~TAG_MARK));
+        to->strId = InsertAndGetStringId("Int:" + std::to_string(value));
+    } else if ((addr & TAG_MARK) != TAG_INT && (addr & TAG_MARK) != TAG_OBJECT) {
+        double value = BitCastToDouble(addr - DOUBLE_ENCODE_OFFSET);
+        to->strId = InsertAndGetStringId("Double:" + std::to_string(value));
+    } else if (addr == VALUE_HOLE || addr == 0U) {
+        to->strId = InsertAndGetStringId("Hole");
+    } else if (addr == VALUE_NULL) {
+        to->strId = InsertAndGetStringId("Null");
+    } else if ((addr & TAG_HEAPOBJECT_MASK) == TAG_BOOLEAN_MASK) {
+        to->strId = InsertAndGetStringId((addr & 1) == 0 ? "Boolean:false" : "Boolean:true");
+    } else if (addr == VALUE_EXCEPTION) {
+        to->strId = InsertAndGetStringId("Exception");
+    } else if (addr == VALUE_UNDEFINED) {
+        to->strId = InsertAndGetStringId("Undefined");
+    } else {
+        to->strId = InsertAndGetStringId("Illegal_Primitive");
+    }
+    return to;
 }
 
 void RawHeapTranslateV1::CreateEdge(Node *node, uint64_t addr, uint32_t nameOrIndex, EdgeType type)
 {
-    Node *to = FindNode(addr);
+    Node *to = nullptr;
+    if (IsHeapObject(addr)) {
+        to = FindNode(addr);
+    } else {
+        to = CreatePrimitiveNode(addr);
+    }
+
     if (to == nullptr || to == node) {
         return;
     }
@@ -661,12 +708,17 @@ void RawHeapTranslateV1::CreateHClassEdge(Node *node, Node *hclass)
 EdgeType RawHeapTranslateV1::GenerateEdgeTypeAndRemoveWeak(Node *node, JSType type, uint64_t &addr)
 {
     EdgeType edgeType = EdgeType::DEFAULT;
+    if (metaParser_->IsArray(type)) {
+        edgeType = EdgeType::ELEMENT;
+    }
+
+    if (!IsHeapObject(addr)) {
+        return edgeType;
+    }
+
     if (IsWeak(addr)) {
         RemoveWeak(addr);
         edgeType = EdgeType::WEAK;
-    }
-    if (metaParser_->IsArray(type)) {
-        edgeType = EdgeType::ELEMENT;
     }
     return edgeType;
 }

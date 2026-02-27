@@ -25,6 +25,9 @@ bool MetaParser::Parse(const cJSON *object)
 
     GenerateMetaData();
     SetBitField("HCLASS", "BitField", bitField_.objectTypeField);
+    SetBitField("HCLASS", "BitField1", bitField_.objectBitField1);
+    SetBitField("HCLASS", "Layout", bitField_.hclassLayoutField);
+    SetBitField("JS_OBJECT", "Properties", bitField_.jsObjectPropertiesField);
     SetBitField("JS_NATIVE_POINTER", "BindingSize", bitField_.nativePointerBindingSizeField);
     SetBitField("TAGGED_ARRAY", "Length", bitField_.taggedArrayLengthField);
     SetBitField("TAGGED_ARRAY", "Data", bitField_.taggedArrayDataField);
@@ -66,6 +69,14 @@ uint32_t MetaParser::GetNativateSize(Node *node, JSType type)
         return 0;
     }
     return ByteToU32(node->data + bitField_.nativePointerBindingSizeField.offset);
+}
+
+uint32_t MetaParser::GetPropsNumberOfJSObject(Node *hclass)
+{
+    if (!hclass || !hclass->data) {
+        return 0;
+    }
+    return ByteToU32(hclass->data + bitField_.objectBitField1.offset) & NUM_OF_PROP_BITS;
 }
 
 std::string MetaParser::GetTypeName(JSType type)

@@ -2116,4 +2116,107 @@ HWTEST_F_L0(HeapDumpTest, TestRemoveUnmarkedObjects)
     entryIdMap.RemoveUnmarkedObjects(marker);
     ASSERT_EQ(entryIdMap.GetIdMap()->size(), 4);
 }
+
+HWTEST_F_L0(HeapDumpTest, TestPropertyNameInJSObject)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"property_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
+    EXPECT_TRUE(result);
+
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread_, env->GetGlobalObject());
+    JSHandle<EcmaString> testObjKey = ecmaVm_->GetFactory()->NewFromStdString("testObj");
+
+    JSHandle<JSTaggedValue> testObjValue =
+        JSObject::GetProperty(thread_, global, JSHandle<JSTaggedValue>::Cast(testObjKey)).GetValue();
+    ASSERT_TRUE(testObjValue->IsJSObject());
+
+    std::vector<Reference> refs;
+    testObjValue->DumpForSnapshot(thread_, refs, true);
+
+    std::unordered_set<CString> expectedKeys = {
+        "id",
+        "name",
+        "score",
+        "isActive",
+        "tags",
+        "userSet",
+        "configMap",
+        "calculate",
+        "nested",
+        "stringProperty1",
+        "stringProperty2",
+        "stringProperty3",
+        "stringProperty4",
+        "stringProperty5",
+        "description",
+        "address",
+        "phoneNumber",
+        "creationDate",
+        "version",
+        "enabled",
+        "counter",
+        "metadata"
+    };
+
+    std::unordered_set<CString> foundKeys;
+
+    for (const auto &ref : refs) {
+        if (!ref.key_.IsHole() && ref.key_.IsString()) {
+            EcmaString *keyStr = EcmaString::Cast(ref.key_.GetTaggedObject());
+            CString keyCStr = ConvertToString(thread_, keyStr);
+            foundKeys.insert(keyCStr);
+        }
+    }
+
+    for (const auto &expectedKey : expectedKeys) {
+        ASSERT_TRUE(foundKeys.find(expectedKey) != foundKeys.end())
+            << "Expected key '" << expectedKey << "' not found in DumpForSnapshot";
+    }
+
+    ASSERT_EQ(foundKeys.size(), expectedKeys.size())
+        << "Found " << foundKeys.size() << " keys, expected " << expectedKeys.size();
+}
+
+HWTEST_F_L0(HeapDumpTest, TestPropertyNameInBinaryDump)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"property_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_property_name.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_property_name.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"id\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"name\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"score\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"isActive\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"tags\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"userSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"configMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"calculate\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"nested\""));
+    // Additional string properties
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty1\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty2\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty3\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty4\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty5\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"description\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"address\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"phoneNumber\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"creationDate\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"version\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"enabled\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"counter\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"metadata\""));
+}
 }
