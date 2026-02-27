@@ -270,7 +270,9 @@ void PGOProfilerManager::Destroy(JSThread *thread, std::shared_ptr<PGOProfiler>&
         }
         profiler->DumpBeforeDestroy(thread);
         {
+#ifdef USE_CMC_GC
             ThreadNativeScope scope(thread);
+#endif
             profiler.reset();
         }
         LOG_PGO(INFO) << "pgo profiler destroyed";

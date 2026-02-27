@@ -87,6 +87,21 @@ HWTEST_F_L0(GCTest, NonNewSpaceNativeGCTestConcurrentMarkDisabled)
     EXPECT_EQ(newNativeSize - oldNativeSize, 0UL);
 }
 
+HWTEST_F_L0(GCTest, CSetTest)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    constexpr uint32_t length = 300;
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(length, JSTaggedValue::Undefined());
+    instance->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+    instance->CollectGarbage(TriggerGCType::OLD_GC);
+    Region *region = Region::ObjectAddressToRange(*array);
+    heap->SetFullMarkRequestedState(true);
+    heap->TryTriggerConcurrentMarking(MarkReason::OTHER);
+    EXPECT_TRUE(!region->InCollectSet());
+}
+
 HWTEST_F_L0(GCTest, ArkToolsForceFullGC)
 {
     const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->CollectGarbage(TriggerGCType::FULL_GC);
