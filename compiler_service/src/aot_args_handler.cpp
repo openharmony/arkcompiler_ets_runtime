@@ -676,12 +676,11 @@ int32_t StaticFrameworkAOTArgsParser::Parse(const std::unordered_map<std::string
     if (!ParseBootPandaFiles(fullBootfiles)) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    std::string bootfiles = ParseFrameworkBootPandaFiles(fullBootfiles, abcPath);
-    if (bootfiles.empty()) {
+    if (fullBootfiles.empty()) {
         LOG_SA(ERROR) << "can not find paoc panda files ";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_BOOT_PANDA_FILES + Symbols::EQ + bootfiles);
+    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_BOOT_PANDA_FILES + Symbols::EQ + fullBootfiles);
 
     std::string bundleName = abcPath;
     for (auto &argPair : argsMap) {
