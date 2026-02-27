@@ -805,9 +805,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                 if (UNLIKELY((!attr.IsWritable() || !attr.IsConfigurable()) && !hclass->IsJSShared())) {
                     return JSTaggedValue::Hole();
                 }
-                if (UNLIKELY(holder != receiver)) {
-                    break;
-                }
                 if (UNLIKELY(attr.IsAccessor())) {
                     if (DefineSemantics(status)) {
                         return JSTaggedValue::Hole();
@@ -816,6 +813,9 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                     if (ShouldCallSetter(receiver, holder, accessor, attr)) {
                         return CallSetter(thread, receiver, value, accessor);
                     }
+                }
+                if (UNLIKELY(holder != receiver)) {
+                    break;
                 }
                 dict->UpdateValue(thread, entry, value);
                 return JSTaggedValue::Undefined();

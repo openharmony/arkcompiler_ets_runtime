@@ -114,4 +114,23 @@ function TestSetPrototypeOf3() {
 }
 assert_equal(TestSetPrototypeOf3(),true);
 
+function TestSetPrototypeOf4() {
+    let log =  [];
+    const proto = {
+        _value: null,
+        set [888](val) {
+            log.push("set");
+            this._value = val;
+        },
+        get [888]() {
+            return this._value;
+        }
+    };
+    const obj = Object.create(proto);
+    obj[888] = 'inherited';
+    assert_equal(log.length, 1);
+    assert_equal(log[0], "set");
+}
+TestSetPrototypeOf4();
+
 test_end();
