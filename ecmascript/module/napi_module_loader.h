@@ -33,6 +33,8 @@ public:
     template<ForHybridApp isHybrid = ForHybridApp::Normal>
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceFromFile(JSThread *thread, const CString &entryPoint,
                                                                const CString &abcFilePath);
+    template<ForHybridApp isHybrid = ForHybridApp::Normal>
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithOhmurl(JSThread *thread, const CString &ohmurl);
 private:
     template<ForHybridApp isHybrid = ForHybridApp::Normal>
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,

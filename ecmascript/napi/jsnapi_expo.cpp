@@ -6885,6 +6885,20 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm
     return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(vm, file, module_path);
 }
 
+bool JSNApi::IsCrossBundleHsp(const std::string &ohmurl)
+{
+    return ModulePathHelper::IsCrossBundleHsp(ohmurl.c_str());
+}
+
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(EcmaVM *vm, const std::string &ohmurl)
+{
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope scope(thread);
+    JSHandle<JSTaggedValue> result =
+        ecmascript::NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Hybrid>(thread, ohmurl.c_str());
+    return JSNApiHelper::ToLocal<ObjectRef>(result);
+}
+
 uintptr_t JSNApi::GetSendableGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress)
 {
     if (localAddress == 0) {

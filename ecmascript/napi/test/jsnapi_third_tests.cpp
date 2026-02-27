@@ -2166,4 +2166,61 @@ HWTEST_F_L0(JSNApiTests, CrossThreadExecution)
         }
     }
 }
+
+HWTEST_F_L0(JSNApiTests, IsCrossBundleHsp)
+{
+    const std::string ohmurl1 = "@normalized:N&&&har1/Index&1.0.0";
+    bool res1 = JSNApi::IsCrossBundleHsp(ohmurl1);
+    EXPECT_EQ(res1, false);
+
+    const std::string ohmurl2 = "@normalized:Y&&&libentry.so&";
+    bool res2 = JSNApi::IsCrossBundleHsp(ohmurl2);
+    EXPECT_EQ(res2, false);
+
+    const std::string ohmurl3 = "@normalized:N&hsp&&hsp/Index&";
+    bool res3 = JSNApi::IsCrossBundleHsp(ohmurl3);
+    EXPECT_EQ(res3, false);
+
+    const std::string ohmurl4 = "@normalized:N&crosshsp&com.application.demo&crosshsp/Index&";
+    bool res4 = JSNApi::IsCrossBundleHsp(ohmurl4);
+    EXPECT_EQ(res4, true);
+}
+
+HWTEST_F_L0(JSNApiTests, GetModuleNameSpaceWithOhmurlForHybridApp)
+{
+    LocalScope scope(vm_);
+    std::map<std::string, std::vector<std::vector<std::string>>> pkgList;
+    std::vector<std::string> entryList = {
+        "entry",
+        "packageName", "entry",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/main/",
+        "isSO", "false"
+    };
+    pkgList["entry"] = {entryList};
+    JSNApi::SetpkgContextInfoList(vm_, pkgList);
+
+    const std::string ohmurl = "@normalized:N&crosshsp&com.application.demo&crosshsp/Index&";
+    const std::string filename = "/data/storage/el1/bundle/com.application.demo/crosshsp/crosshsp/ets/modules.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    CString entryPoint = "";
+    std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile(data, filename.c_str(), ohmurl.c_str(), entryPoint);
+
+    JSHandle<SourceTextModule> testModule = vm_->GetFactory()->NewSourceTextModule();
+    ecmascript::ModuleManager *moduleManager = thread_->GetModuleManager();
+    testModule->SetStatus(ModuleStatus::EVALUATED);
+    moduleManager->AddResolveImportedModule("com.application.demo&crosshsp/Index&", testModule.GetTaggedValue());
+
+    Local<ObjectRef> res = JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(vm_, ohmurl);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(res);
+    EXPECT_TRUE(obj.GetTaggedValue() != JSTaggedValue::Undefined());
+}
 } // namespace panda::test

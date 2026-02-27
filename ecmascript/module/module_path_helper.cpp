@@ -1233,4 +1233,14 @@ CString ModulePathHelper::GetPkgNameWithNormalizedOhmurl(const CString &ohmurl)
     }
     return packageName;
 }
+
+bool ModulePathHelper::IsCrossBundleHsp(const CString &ohmurl)
+{
+    CVector<CString> res = SplitNormalizedRecordName(ohmurl);
+    const CString& bundleName = res[NORMALIZED_BUNDLE_NAME_INDEX];
+    if (!bundleName.empty()) {
+        return true;
+    }
+    return false;
+}
 }  // namespace panda::ecmascript

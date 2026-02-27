@@ -222,6 +222,7 @@ public:
     static bool CheckExportsWithOhmurl(EcmaVM *vm, const CString &baseFileName, const CString &currentOhmurl,
                                        const CString &importOhmurl);
     static CString GetPkgNameWithNormalizedOhmurl(const CString &ohmurl);
+    static bool IsCrossBundleHsp(const CString &ohmurl);
 
     inline static std::pair<CString, CString> ResolvePath(const char *path)
     {

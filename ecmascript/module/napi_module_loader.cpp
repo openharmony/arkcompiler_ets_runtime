@@ -138,6 +138,18 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
 }
 
 template<ForHybridApp isHybrid>
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithOhmurl(JSThread *thread, const CString &ohmurl)
+{
+    CString baseFileName;
+    CString recordName = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, "", ohmurl);
+    return LoadModuleNameSpaceFromFile<isHybrid>(thread, recordName, baseFileName);
+}
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Normal>(
+    JSThread *thread, const CString &ohmurl);
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Hybrid>(
+    JSThread *thread, const CString &ohmurl);
+
+template<ForHybridApp isHybrid>
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(
     JSThread *thread, const CString &entryPoint, const CString &abcFilePath)
 {
