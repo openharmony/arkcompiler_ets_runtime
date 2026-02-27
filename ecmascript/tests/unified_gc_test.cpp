@@ -53,8 +53,8 @@ HWTEST_F_L0(UnifiedGCTest, UnifiedGCMarkRootsScopeTest)
     }
     [[maybe_unused]] UnifiedGCMarkRootsScope unifiedGCMarkRootsScope(thread);
     vm->CollectGarbage(TriggerGCType::FULL_GC);
-    EXPECT_TRUE(weakRefArray->Get(INT_VALUE_0).IsUndefined());
-    EXPECT_TRUE(!weakRefArray->Get(INT_VALUE_1).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(thread, INT_VALUE_0).IsUndefined());
+    EXPECT_TRUE(!weakRefArray->Get(thread, INT_VALUE_1).IsUndefined());
     vm->SetEnableForceGC(true);
 }
 
