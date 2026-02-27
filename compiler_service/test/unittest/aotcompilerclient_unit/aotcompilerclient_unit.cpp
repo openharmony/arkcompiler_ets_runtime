@@ -275,4 +275,167 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_013, TestSize.Level0)
     aotClient.aotCompilerDiedRecipient_->OnRemoteDied(remoteObject_weak);
     EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
 }
+
+/**
+ * @tc.name: AotCompilerClientTest_014
+ * @tc.desc: AotCompilerOnRemoteDied when proxy is already null
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_014, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    aotClient.SetAotCompiler(nullptr);
+    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
+
+    sptr<IRemoteObject> remoteObject = GetAotRemoteObject(aotClient);
+    wptr<IRemoteObject> remoteObject_weak = remoteObject;
+    aotClient.SetAotCompiler(nullptr);
+
+    // Should return early since proxy is nullptr
+    aotClient.AotCompilerOnRemoteDied(remoteObject_weak);
+    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_015
+ * @tc.desc: GetAotCompilerProxy returns cached proxy on second call
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_015, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    auto proxy1 = aotClient.GetAotCompilerProxy();
+    EXPECT_NE(proxy1, nullptr);
+
+    auto proxy2 = aotClient.GetAotCompilerProxy();
+    EXPECT_NE(proxy2, nullptr);
+
+    // Both calls should return valid proxies
+    EXPECT_NE(proxy1->AsObject(), nullptr);
+    EXPECT_NE(proxy2->AsObject(), nullptr);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_016
+ * @tc.desc: AotCompiler with non-empty argsMap
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_016, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap["bundleName"] = "com.test.example";
+    argsMap["compileMode"] = "partial";
+    std::vector<int16_t> sigData;
+    int32_t ret = aotClient.AotCompiler(argsMap, sigData);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_017
+ * @tc.desc: NeedReCompile with empty version string
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_017, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    std::string emptyVersion = "";
+    bool sigData = false;
+    int32_t ret = aotClient.NeedReCompile(emptyVersion, sigData);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_018
+ * @tc.desc: NeedReCompile with various version formats
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_018, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+
+    std::string version1 = "1.0.0.0";
+    bool sigData1 = false;
+    int32_t ret1 = aotClient.NeedReCompile(version1, sigData1);
+    EXPECT_EQ(ret1, ERR_OK);
+
+    std::string version2 = "99.99.99.99";
+    bool sigData2 = false;
+    int32_t ret2 = aotClient.NeedReCompile(version2, sigData2);
+    EXPECT_EQ(ret2, ERR_OK);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_019
+ * @tc.desc: GetAOTVersion returns non-empty version string
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_019, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    std::string versionData;
+    int32_t ret = aotClient.GetAOTVersion(versionData);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_FALSE(versionData.empty());
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_020
+ * @tc.desc: OnLoadSystemAbilityFail sets loadSaFinished_ and clears proxy
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_020, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    sptr<IRemoteObject> remoteObject = GetAotRemoteObject(aotClient);
+    aotClient.SetAotCompiler(remoteObject);
+    EXPECT_NE(aotClient.GetAotCompiler(), nullptr);
+
+    aotClient.OnLoadSystemAbilityFail();
+    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
+    EXPECT_TRUE(aotClient.loadSaFinished_);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_021
+ * @tc.desc: OnLoadSystemAbilitySuccess sets proxy and loadSaFinished_
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_021, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    sptr<IRemoteObject> remoteObject = GetAotRemoteObject(aotClient);
+    ASSERT_NE(remoteObject, nullptr);
+
+    aotClient.SetAotCompiler(nullptr);
+    aotClient.loadSaFinished_ = false;
+    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
+
+    aotClient.OnLoadSystemAbilitySuccess(remoteObject);
+    EXPECT_TRUE(aotClient.loadSaFinished_);
+    EXPECT_NE(aotClient.GetAotCompiler(), nullptr);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_022
+ * @tc.desc: OnLoadSystemAbilitySuccess with null diedRecipient_
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_022, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    sptr<IRemoteObject> remoteObject = GetAotRemoteObject(aotClient);
+    ASSERT_NE(remoteObject, nullptr);
+
+    auto savedRecipient = aotClient.aotCompilerDiedRecipient_;
+    aotClient.aotCompilerDiedRecipient_ = nullptr;
+    aotClient.SetAotCompiler(nullptr);
+
+    // Should return early because diedRecipient is nullptr
+    aotClient.OnLoadSystemAbilitySuccess(remoteObject);
+    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
+
+    // Restore diedRecipient for subsequent tests
+    aotClient.aotCompilerDiedRecipient_ = savedRecipient;
+}
 } // namespace OHOS::ArkCompiler
