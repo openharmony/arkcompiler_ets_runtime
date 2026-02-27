@@ -22,7 +22,7 @@
 #endif
 
 namespace panda::ecmascript {
-#ifdef JIT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
 static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
 void GetSignalHandler(int signal, siginfo_t *info, void *context)
 {
@@ -64,7 +64,7 @@ void SignalReg(int signo)
 
 void SignalAllReg()
 {
-#ifdef JIT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
     SignalReg(SIGABRT);
     SignalReg(SIGBUS);
     SignalReg(SIGSEGV);
@@ -113,7 +113,7 @@ bool AotCrashInfo::IsAotEscapedOrCompiledOnce(AotCompilerPreprocessor &cPreproce
 
 void AotCrashInfo::SetOptionPGOProfiler(JSRuntimeOptions *options, const std::string &bundleName) const
 {
-#ifdef AOT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
     if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
         options->SetEnablePGOProfiler(true);
         if (options->GetAOTHasException() || ecmascript::AnFileDataManager::GetInstance()->IsEnable()

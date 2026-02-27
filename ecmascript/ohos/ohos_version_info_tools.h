@@ -15,7 +15,7 @@
 #ifndef ECMASCRIPT_OHOS_VERSION_INFO_TOOLS_H
 #define ECMASCRIPT_OHOS_VERSION_INFO_TOOLS_H
 
-#if defined(OHOS_GET_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER)
 #include "parameters.h"
 #endif
 
@@ -24,7 +24,7 @@ class OhosVersionInfoTools {
 public:
     static CString GetRomVersion()
     {
-#if defined(OHOS_GET_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER)
         CString romVersion = OHOS::system::GetParameter("const.product.software.version", "").c_str();
         romVersion += OHOS::system::GetParameter("quickfix.patchversion", "").c_str();
         return romVersion;
