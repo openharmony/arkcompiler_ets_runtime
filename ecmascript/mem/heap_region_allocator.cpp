@@ -63,7 +63,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
             mapMem = pool.GetMem();
             if (mapMem == nullptr) {
                 // This should not happen
-                LOG_ECMA_MEM(FATAL) << "pool is empty in GC unexpectedly";
+                LOG_ECMA_MEM(FATAL) << "pool is empty in GC unexpectedly, process out of memory";
                 UNREACHABLE();
             }
         } else {
@@ -89,7 +89,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
                 heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
                     "HeapRegionAllocator::AllocateAlignedRegion", false);
             }
-            LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
+            LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed)
+                                << ", process out of memory";
             UNREACHABLE();
         }
     }
