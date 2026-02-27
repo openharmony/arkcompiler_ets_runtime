@@ -30,6 +30,16 @@ void ObjectMarker::VisitRoot([[maybe_unused]]Root type, ObjectSlot slot)
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsHeapObject()) {
         MarkObject(slot.GetTaggedType());
+        switch (type) {
+            case Root::ROOT_LOCAL_HANDLE:
+                localHandleRoots_.insert(slot.GetTaggedType());
+                break;
+            case Root::ROOT_GLOBAL_HANDLE:
+                globalHandleRoots_.insert(slot.GetTaggedType());
+                break;
+            default:
+                break;
+        }
     }
 }
 
@@ -115,6 +125,9 @@ void ObjectMarker::MarkRootObjects()
     SharedModuleManager::GetInstance()->Iterate(*this);
     Runtime::GetInstance()->IterateCachedStringRoot(*this);
     Runtime::GetInstance()->IterateSendableGlobalStorage(*this);
+
+    LOG_ECMA(INFO) << "rawheap dump, local handle count " << localHandleRoots_.size()
+                   << ", global handle count " << globalHandleRoots_.size();
 }
 
 void ObjectMarker::IterateOverObjects(const std::function<void(TaggedObject *)> &visitor)
@@ -367,7 +380,20 @@ void RawHeapDumpV1::DumpRootTable()
         WriteU64(addr);
     });
     AddSectionBlockSize();
+
+    // dump address of various root nodes
+    CollectRootAddrByType(GetLocalHandleRoots()); // ROOT_LOCAL_HANDLE
+    CollectRootAddrByType(GetGlobalHandleRoots()); // ROOT_GLOBAL_HANDLE
+
     LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
+}
+
+void RawHeapDumpV1::CollectRootAddrByType(const CSet<JSTaggedType>& rootSet)
+{
+    WriteU32(static_cast<uint32_t>(rootSet.size()));
+    for (auto addr : rootSet) {
+        WriteU64(addr);
+    }
 }
 
 void RawHeapDumpV1::DumpStringTable()
@@ -469,7 +495,20 @@ void RawHeapDumpV2::DumpRootTable()
         WriteU32(GenerateSyntheticAddr(addr));
     });
     AddSectionBlockSize();
+
+    // dump address of various root nodes
+    CollectRootAddrByType(GetLocalHandleRoots()); // ROOT_LOCAL_HANDLE
+    CollectRootAddrByType(GetGlobalHandleRoots()); // ROOT_GLOBAL_HANDLE
+
     LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
+}
+
+void RawHeapDumpV2::CollectRootAddrByType(const CSet<JSTaggedType>& rootSet)
+{
+    WriteU32(static_cast<uint32_t>(rootSet.size()));
+    for (auto addr : rootSet) {
+        WriteU32(GenerateSyntheticAddr(addr));
+    }
 }
 
 void RawHeapDumpV2::DumpStringTable()

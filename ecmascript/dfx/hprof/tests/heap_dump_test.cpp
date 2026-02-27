@@ -1828,6 +1828,136 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV2)
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
     ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
 }
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1WithHandleClassification1)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // create localhandle
+    JSHandle<JSTaggedValue> object1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object2(factory->CreateNapiObject());
+    Local<JSTaggedValue> localObject1(object1.GetAddress());
+    Local<JSTaggedValue> localObject2(object2.GetAddress());
+
+    // create globalHandle
+    Global<ObjectRef> globalObject1(ecmaVm_, localObject1);
+    Global<ObjectRef> globalObject2(ecmaVm_, localObject2);
+
+    std::string rawheapPath("test_binary_dump_v1_with_handle.rawheap");
+
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawheapPath, dumpOption));
+
+    CSet<JSTaggedType> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawheapPath, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v1_with_handle.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawheapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawheapPath, heapsnapshotPath));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"handle\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"LocalHandleRoot[2]\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"GlobalHandleRoot[2]"));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1WithHandleClassification2)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // create localhandle
+    JSHandle<JSTaggedValue> object1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object2(factory->CreateNapiObject());
+    Local<JSTaggedValue> localObject1(object1.GetAddress());
+    Local<JSTaggedValue> localObject2(object1.GetAddress());
+
+    // create globalHandle
+    Global<ObjectRef> globalObject1(ecmaVm_, localObject1);
+    Global<ObjectRef> globalObject2(ecmaVm_, localObject2);
+
+    std::string rawheapPath("test_binary_dump_v1_with_handle.rawheap");
+
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawheapPath, dumpOption));
+
+    CSet<JSTaggedType> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawheapPath, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v1_with_handle.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawheapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawheapPath, heapsnapshotPath));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"handle\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"LocalHandleRoot[2]\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"GlobalHandleRoot[1]"));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2WithHandleClassification1)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // create localhandle
+    JSHandle<JSTaggedValue> object1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object2(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object3(factory->CreateNapiObject());
+    Local<JSTaggedValue> localObject1(object1.GetAddress());
+    Local<JSTaggedValue> localObject2(object2.GetAddress());
+    Local<JSTaggedValue> localObject3(object3.GetAddress());
+
+    // create globalHandle
+    Global<ObjectRef> globalObject1(ecmaVm_, localObject1);
+    Global<ObjectRef> globalObject2(ecmaVm_, localObject2);
+    Global<ObjectRef> globalObject3(ecmaVm_, localObject3);
+
+    std::string rawheapPath("test_binary_dump_v2_with_handle.rawheap");
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawheapPath, dumpOption));
+
+    CSet<uint32_t> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawheapPath, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v2_with_handle.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawheapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawheapPath, heapsnapshotPath));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"handle\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"LocalHandleRoot[3]\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"GlobalHandleRoot[3]"));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2WithHandleClassification2)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // create localhandle
+    JSHandle<JSTaggedValue> object1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object2(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object3(factory->CreateNapiObject());
+    Local<JSTaggedValue> localObject1(object1.GetAddress());
+    Local<JSTaggedValue> localObject2(object1.GetAddress());
+    Local<JSTaggedValue> localObject3(object3.GetAddress());
+
+    // create globalHandle
+    Global<ObjectRef> globalObject1(ecmaVm_, localObject1);
+    Global<ObjectRef> globalObject2(ecmaVm_, localObject2);
+    Global<ObjectRef> globalObject3(ecmaVm_, localObject3);
+
+    std::string rawheapPath("test_binary_dump_v2_with_handle.rawheap");
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawheapPath, dumpOption));
+
+    CSet<uint32_t> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawheapPath, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v2_with_handle.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawheapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawheapPath, heapsnapshotPath));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"handle\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"LocalHandleRoot[3]\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"GlobalHandleRoot[2]"));
+}
 #endif
 
 HWTEST_F_L0(HeapDumpTest, TestOOMDump)

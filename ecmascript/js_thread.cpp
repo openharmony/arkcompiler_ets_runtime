@@ -554,7 +554,7 @@ void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
         auto callback = [&visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
             if (value.IsHeapObject()) {
-                visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+                visitor.VisitRoot(Root::ROOT_GLOBAL_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
             globalCount++;
         };
@@ -615,7 +615,7 @@ void JSThread::IterateHandleWithCheck(RootVisitor &visitor, GlobalVisitType visi
         node->MarkCount();
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
-            visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            visitor.VisitRoot(Root::ROOT_GLOBAL_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             auto object = reinterpret_cast<TaggedObject *>(node->GetObject());
             typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
 

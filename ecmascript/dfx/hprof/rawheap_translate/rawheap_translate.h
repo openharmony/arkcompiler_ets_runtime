@@ -58,6 +58,7 @@ protected:
     void SetVersion(const std::string &version);
     void CreateHashEdge(Node *node);
     void AddPrimitiveNodes();
+    void CreateHandleRootNode(Node *handleRoot, const std::string &name, size_t count);
 
     static bool ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section);
 
@@ -96,10 +97,13 @@ private:
     bool ReadStringTable(FileReader &file);
     bool ReadObjectTable(FileReader &file, uint32_t offset, uint32_t totalSize);
     bool ParseStringTable(FileReader &file);
+    bool ReadLocalHandleRoots(FileReader &file);
+    bool ReadGlobalHandleRoots(FileReader &file);
     void AddSyntheticRootNode(std::vector<uint64_t> &roots);
     void SetNodeStringId(const std::vector<uint64_t> &objects, StringId strId);
     Node* FindOrCreateNode(uint64_t addr);
     Node* FindNode(uint64_t addr);
+    void AddHandleRootEdges(const std::vector<uint64_t> &handleRoots);
 
     void FillNodes(Node *node, JSType type);
     void BuildEdges(Node *node, JSType type);
@@ -122,6 +126,8 @@ private:
     std::vector<char *> mem_ {};
     std::vector<uint32_t> sections_ {};
     std::unordered_map<uint64_t, Node *> nodesMap_ {};
+    std::vector<uint64_t> localHandleRoots_;
+    std::vector<uint64_t> globalHandleRoots_;
     friend class panda::test::HeapDumpTestHelper;
     friend class panda::test::RawHeapTranslateV1TestHelper;
 };
@@ -147,8 +153,11 @@ private:
     bool ReadStringTable(FileReader &file);
     bool ReadObjectTable(FileReader &file);
     bool ParseStringTable(FileReader &file);
+    bool ReadLocalHandleRoots(FileReader &file);
+    bool ReadGlobalHandleRoots(FileReader &file);
     void AddSyntheticRootNode(std::vector<uint32_t> &roots);
     Node* FindNode(uint32_t addr);
+    void AddHandleRootEdges(const std::vector<uint32_t> &handleRoots);
 
     void FillNodes();
     void BuildEdges(Node *node);
@@ -166,6 +175,11 @@ private:
     std::vector<uint32_t> sections_ {};
     std::unordered_map<uint32_t, Node *> nodesMap_ {};
     Node *syntheticRoot_ {nullptr};
+    Node *localHandleRoot_ {nullptr};
+    Node *globalHandleRoot_ {nullptr};
+
+    std::vector<uint32_t> localHandleRoots_;
+    std::vector<uint32_t> globalHandleRoots_;
     friend class panda::test::HeapDumpTestHelper;
     friend class panda::test::RawHeapTranslateV2TestHelper;
 };

@@ -811,7 +811,7 @@ void Runtime::IterateSendableGlobalStorage(RootVisitor &visitor)
     auto callback = [&visitor, &globalCount](Node *node) {
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
-            visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            visitor.VisitRoot(Root::ROOT_GLOBAL_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
         }
         globalCount++;
     };

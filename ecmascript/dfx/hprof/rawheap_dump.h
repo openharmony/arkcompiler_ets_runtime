@@ -52,11 +52,23 @@ public:
         return heapSize_;
     }
 
+    const CSet<JSTaggedType>& GetLocalHandleRoots() const
+    {
+        return localHandleRoots_;
+    }
+
+    const CSet<JSTaggedType>& GetGlobalHandleRoots() const
+    {
+        return globalHandleRoots_;
+    }
+
 private:
 
     const EcmaVM *vm_ {nullptr};
     const DumpSnapShotOption *option_ {nullptr};
     CQueue<JSTaggedType> bfsQueue_ {};
+    CSet<JSTaggedType> localHandleRoots_ {};
+    CSet<JSTaggedType> globalHandleRoots_ {};
     CVector<JSTaggedType> markedObjects_ {};
     uint32_t heapSize_ {0};
 };
@@ -84,12 +96,24 @@ public:
         return version_;
     }
 
+    const CSet<JSTaggedType>& GetLocalHandleRoots() const
+    {
+        return marker_.GetLocalHandleRoots();
+    }
+
+    const CSet<JSTaggedType>& GetGlobalHandleRoots() const
+    {
+        return marker_.GetGlobalHandleRoots();
+    }
+
 protected:
     virtual void DumpRootTable() = 0;
     virtual void DumpStringTable() = 0;
     virtual void DumpObjectTable() = 0;
     virtual void DumpObjectMemory() = 0;
     virtual void UpdateStringTable() = 0;
+
+    virtual void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) = 0;
 
     void IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor);
     void DumpVersion(const std::string &version);
@@ -148,6 +172,8 @@ private:
     void DumpObjectMemory() override;
     void UpdateStringTable() override;
 
+    void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) override;
+
     constexpr static const char *const RAWHEAP_VERSION = "1.0.0";
 
     CUnorderedMap<uint64_t, CVector<uint64_t>> strIdMapObjVec_ {};
@@ -173,6 +199,8 @@ private:
     void DumpObjectTable() override;
     void DumpObjectMemory() override;
     void UpdateStringTable() override;
+
+    void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) override;
 
     uint32_t GenerateRegionId(JSTaggedType addr);
     uint32_t GenerateSyntheticAddr(JSTaggedType addr);

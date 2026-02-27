@@ -100,9 +100,9 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(RawHeap *rawheap, Strea
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"number\",\"native\",\"synthetic\",\"concatenated string\",\"slicedstring\",\"symbol\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer->WriteString("\"bigint\",\"framework\"],\"string\",\"number\",\"number\",\"number\",\"number\",");
+    writer->WriteString("\"bigint\",\"framework\",\"handle\"],");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer->WriteString("\"number\"],\n");  // 4.
+    writer->WriteString("\"string\",\"number\",\"number\",\"number\",\"number\",\"number\",\"number\"],\n");  // 4.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"edge_fields\":[\"type\",\"name_or_index\",\"to_node\"],\n");  // 5.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
