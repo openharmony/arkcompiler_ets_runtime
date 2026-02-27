@@ -599,7 +599,6 @@ void BarrierStubBuilder::BitSetRangeMoveForward(GateRef srcBitSet, GateRef dstBi
     Bind(&body);
     {
         Label beforeEndLoop(env);
-        // bitsInCurrentQuad <- min of {64 - srcBitOffset, 64 - dstBitOffset, remainLength};
         GateRef bitsInCurrentQuad = ThreeInt64Min(Int64Sub(Int64(BIT_PER_QUAD), *srcBitOffset),
                                                   Int64Sub(Int64(BIT_PER_QUAD), *dstBitOffset),
                                                   *remainLength);
@@ -691,7 +690,6 @@ void BarrierStubBuilder::BitSetRangeMoveBackward(GateRef srcBitSet, GateRef dstB
         GateRef srcBitOffset = Int64And(*srcEnd, Int64(BIT_PER_QUAD_MASK));
         // dstBitOffset <- dstEnd % 64;
         GateRef dstBitOffset = Int64And(*dstEnd, Int64(BIT_PER_QUAD_MASK));
-        // bitsInCurrentQuad <- min of {srcBitOffset + 1, dstBitOffset + 1, remainLength};
         GateRef bitsInCurrentQuad = ThreeInt64Min(Int64Add(srcBitOffset, Int64(1)),
                                                   Int64Add(dstBitOffset, Int64(1)),
                                                   *remainLength);
