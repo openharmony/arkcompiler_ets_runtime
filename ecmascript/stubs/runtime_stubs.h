@@ -48,6 +48,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
 PUBLIC_API extern "C" JSTaggedType LazyDeoptEntry();
 class RuntimeStubs {
 public:
+    static void MarkInBuffer(uintptr_t argGlue, BaseObject* ref);
     static constexpr uint32_t TRACE_NUMBER = 100;
     static constexpr uint32_t RT_STUB_FUNC_SIZE = 8;
 
@@ -183,7 +184,6 @@ public:
     static void TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTaggedValue> func);
     static JSTaggedValue GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index);
     static bool MarkRSetCardTable(BaseObject* obj);
-    static void MarkInBuffer(uintptr_t argGlue, BaseObject* ref);
     static void BatchMarkInBuffer(uintptr_t argGlue, void* src, size_t count);
 
 private:
