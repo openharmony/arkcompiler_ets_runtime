@@ -285,6 +285,7 @@ group("ark_js_assert_moduletest") {
     "regresssuper",
     "objectfreeze",
     "getvaluefrombuffer",
+    "functionbind",
   ]
 
   if (enable_next_optimization) {
@@ -408,6 +409,7 @@ group("ark_asm_assert_test") {
     "deregistermodule",
     "getpropertybyic",
     "getvaluefrombuffer",
+    "functionbind",
   ]
 
   if (enable_next_optimization) {
