@@ -1587,6 +1587,31 @@ JSTaggedValue JSStableArray::With(JSThread *thread, JSHandle<JSArray> receiver,
     return newArrayHandle.GetTaggedValue();
 }
 
+/*
+Data Flow Diagram:
+--------------------------------------------------------------------------------------------
+Original Array: [0.........(actualStart)...(skipedStartIndex).........(realLen-1)]         |
+                 │         │              │                     │                          |
+                 ├─────────┤              │                     │                          |
+                 │         │              │                     │                          |
+New Array:      [Part 1    ][Part 2       ][Part 3............][Possible undefined fill]   |
+                0        actualStart    Insert end          insertCount-1                  |
+--------------------------------------------------------------------------------------------
+Original Array: [0.........(realLen-1)]  # realLen < actualStart                           |
+                 │                      │                                                  |
+                 ├──────────────────────┤                                                  |
+                 │                      │                                                  |
+New Array:      [Copied elements........][Undefined fill..........]                        |
+                0                    realLen              actualStart-1                    |
+--------------------------------------------------------------------------------------------
+Original Array: [0.........(realLen-1)]  # realLen <= skipedStartIndex                     |
+                 │                      │                                                  |
+                 ├─────────┬────────────┤                                                  |
+                 │         │            │                                                  |
+New Array:      [Part 1    ][Part 2     ][Part 3: undefined fill...]                       |
+                0        actualStart   i (current)    insertCount-1                        |
+--------------------------------------------------------------------------------------------
+*/
 JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv,
                                        int64_t argc, int64_t actualStart, int64_t actualSkipCount, int64_t insertCount)
 {
@@ -1606,10 +1631,14 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
     }
     ASSERT(!newArrayHandle->GetJSHClass()->IsDictionaryMode());
     int64_t i = 0;
-    int64_t r = actualStart + actualSkipCount;
+    int64_t skipedStartIndex = actualStart + actualSkipCount;
+    int64_t realLen = base::ArrayHelper::GetArrayLength(thread, thisObjVal);
     bool needTransition = true;
-    for (int64_t idx = 0; idx < actualStart; idx++, i++) {
-        JSHandle<JSTaggedValue> kValue(thread, ElementAccessor::Get(thread, thisObjHandle, idx));
+    // Copy elements from original array before the splice start position
+    // Handle cases where array length less than actualStart
+    int64_t asWithEle = std::min(realLen, actualStart);
+    for (; i < asWithEle; i++) {
+        JSHandle<JSTaggedValue> kValue(thread, ElementAccessor::Get(thread, thisObjHandle, i));
         if (kValue->IsHole()) {
             ElementAccessor::Set(thread, newArrayHandle, i, undefinedHandle, needTransition);
         } else {
@@ -1617,25 +1646,44 @@ JSTaggedValue JSStableArray::ToSpliced(JSHandle<JSArray> receiver, EcmaRuntimeCa
         }
     }
 
+    // Fill remaining positions before actualStart with undefined if original array was shorter
+    while (i < actualStart) {
+        ElementAccessor::Set(thread, newArrayHandle, i++, undefinedHandle, needTransition);
+    }
+
+    // Insert new elements from arguments starting from position 2
     for (uint32_t pos = 2; pos < argc; ++pos) { // 2:2 means there two arguments before the insert items.
         auto element = base::BuiltinsBase::GetCallArg(argv, pos);
         ElementAccessor::Set(thread, newArrayHandle, i, element, needTransition);
         ++i;
     }
 
-    while (i < insertCount) {
-        JSHandle<JSTaggedValue> kValue(thread, ElementAccessor::Get(thread, thisObjHandle, r));
+    // If we're skipping beyond the original array length, just fill the rest with undefined
+    if (skipedStartIndex >= realLen) {
+        for (; i < insertCount; i++) {
+            ElementAccessor::Set(thread, newArrayHandle, i, undefinedHandle, needTransition);
+        }
+        JSHandle<JSArray>::Cast(newArrayHandle)->SetArrayLength(thread, insertCount);
+        return newArrayHandle.GetTaggedValue();
+    }
+
+    // Copy remaining elements from original array after the skipped region
+    int64_t skipedWithEle = std::min(insertCount,  realLen - skipedStartIndex + i);
+    for (; i < skipedWithEle; skipedStartIndex++, i++) {
+        JSHandle<JSTaggedValue> kValue(thread, ElementAccessor::Get(thread, thisObjHandle, skipedStartIndex));
         if (kValue->IsHole()) {
             ElementAccessor::Set(thread, newArrayHandle, i, undefinedHandle, needTransition);
         } else {
             ElementAccessor::Set(thread, newArrayHandle, i, kValue, needTransition);
         }
-        ++i;
-        ++r;
+    }
+
+    // Fill remaining positions before insertCount with undefined if original array was shorter
+    while (i < insertCount) {
+        ElementAccessor::Set(thread, newArrayHandle, i++, undefinedHandle, needTransition);
     }
 
     JSHandle<JSArray>::Cast(newArrayHandle)->SetArrayLength(thread, insertCount);
-
     return newArrayHandle.GetTaggedValue();
 }
 
