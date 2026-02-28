@@ -18,10 +18,14 @@
 #include <ostream>
 #include "securec.h"
 #include "zip_file_reader.h"
+#include "file_path_utils.h"
+
+#include "ecmascript/log_wrapper.h"
 
 namespace panda {
 namespace ecmascript {
 namespace {
+constexpr char EXT_NAME_ABC[] = ".abc";
 constexpr uint32_t MAX_FILE_NAME = 4096;
 constexpr uint32_t UNZIP_BUFFER_SIZE = 1024;
 constexpr uint32_t UNZIP_BUF_IN_LEN = 160 * UNZIP_BUFFER_SIZE;   // in  buffer length: 160KB
@@ -122,6 +126,13 @@ bool ZipFile::ParseOneEntry(uint8_t* &entryPtr)
 
     ZipEntry currentEntry(directoryEntry);
     currentEntry.fileName = fileName;
+    if (StringEndWith(fileName, EXT_NAME_ABC, sizeof(EXT_NAME_ABC) - 1)) {
+        ZipPos offset = 0;
+        uint32_t length = 0;
+        if (GetDataOffsetRelative(currentEntry, offset, length)) {
+            currentEntry.offset = offset;
+        }
+    }
     entriesMap_[fileName] = currentEntry;
     AddEntryToTree(fileName);
     entryPtr += directoryEntry.nameSize + directoryEntry.extraSize + directoryEntry.commentSize;
@@ -344,6 +355,18 @@ bool ZipFile::GetEntry(const std::string &entryName, ZipEntry &resultEntry) cons
         return true;
     }
     return false;
+}
+
+const std::string &ZipFile::GetFileNameByOffset(uint32_t offset)
+{
+    static const std::string DYNAMIC_ABC = "ets/modules.abc";
+    for (const auto &entry : entriesMap_) {
+        if (StringEndWith(entry.first, EXT_NAME_ABC, sizeof(EXT_NAME_ABC) - 1) && entry.second.offset == offset) {
+            return entry.first;
+        }
+    }
+    LOG_ECMA(WARN) << "Unknown offset, attemp to parse " << DYNAMIC_ABC;
+    return DYNAMIC_ABC;
 }
 
 size_t ZipFile::GetLocalHeaderSize(const uint16_t nameSize, const uint16_t extraSize) const

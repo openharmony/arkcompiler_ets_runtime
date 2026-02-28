@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+
+#include "ecmascript/base/string_helper.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/os.h"
@@ -26,6 +28,9 @@
 #endif
 #if defined(ENABLE_EXCEPTION_BACKTRACE)
 #include "ecmascript/platform/backtrace.h"
+#endif
+#if defined(ENABLE_STATIC_BACKTRACE)
+#include "tooling/backtrace/backtrace.h"
 #endif
 
 namespace panda::ecmascript {
@@ -584,6 +589,43 @@ void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtract
     jsFrame.column = columnNumber;
 }
 
+#if defined(ENABLE_STATIC_BACKTRACE)
+bool StepStaticArk(void *ctx, ReadMemFunc readMem, ark::tooling::ArkStepParam *arkStepParam)
+{
+    if (!ark::tooling::Backtrace::StepArkByNativeFrame(ctx, readMem, arkStepParam)) {
+        return false;
+    }
+    return true;
+}
+
+bool SymbolizeStaticArk(uintptr_t pc, uintptr_t mapBase, uintptr_t loadOffset, uint8_t *abcData,
+                        uint64_t abcSize, JsFunction *jsFunction, uintptr_t extractor)
+{
+    if (!ark::tooling::Backtrace::SymbolizeByNativeFrame(pc, mapBase, loadOffset, abcData, abcSize,
+        reinterpret_cast<ark::tooling::Function *>(jsFunction), extractor)) {
+        LOG_ECMA(ERROR) << "symbolizeStaticArkFunc failed";
+        return false;
+    }
+    return true;
+}
+
+panda_file::PandaFileType JSSymbolExtractor::GetPandaFileType(const uint8_t *data)
+{
+    if (type_ != panda_file::PandaFileType::FILE_FORMAT_INVALID) {
+        return type_;
+    }
+
+    auto header = reinterpret_cast<const panda_file::File::Header *>(data);
+    if (header->version == panda_file::File::STATIC_VERSION) {
+        type_ = panda_file::PandaFileType::FILE_STATIC;
+    } else {
+        type_ = panda_file::PandaFileType::FILE_DYNAMIC;
+    }
+
+    return type_;
+}
+#endif
+
 bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset,
                          uint8_t *data, uint64_t dataSize, uintptr_t extractorptr, JsFunction *jsFunction)
 {
@@ -597,6 +639,15 @@ bool ArkParseJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t load
         LOG_ECMA(ERROR) << "Parse JSframe info failed, extractor is nullptr.";
         return false;
     }
+
+#if defined(ENABLE_STATIC_BACKTRACE)
+    auto fileType = extractor->GetPandaFileType(data);
+    if (fileType == panda_file::PandaFileType::FILE_STATIC) {
+        auto staticExtractor = extractor->GetStaticSymbolExtractor();
+        return SymbolizeStaticArk(byteCodePc, mapBase, loadOffset, data, dataSize, jsFunction, staticExtractor);
+    }
+#endif
+
     auto jsPandaFile = extractor->GetJSPandaFile(data, dataSize);
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "Parse JSframe info failed, panda file is nullptr.";
@@ -880,6 +931,19 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
         return false;
     }
 
+#if defined(ENABLE_STATIC_BACKTRACE)
+    if (*arkUnwindParam->frameType == StepFrameType::STATIC_JS_FRAME) {
+        ark::tooling::ArkStepParam staticParam;
+        staticParam.fp = arkUnwindParam->fp;
+        staticParam.sp = arkUnwindParam->sp;
+        staticParam.pc = arkUnwindParam->pc;
+        staticParam.isArkFrame = arkUnwindParam->isJsFrame;
+        staticParam.frameType = reinterpret_cast<ark::tooling::StepFrameType*>(arkUnwindParam->frameType);
+        staticParam.frameIndex = arkUnwindParam->frameIndex;
+        return StepStaticArk(arkUnwindParam->ctx, arkUnwindParam->readMem, &staticParam);
+    }
+#endif
+
     uintptr_t frameType = 0;
     if (ArkGetNextFrameWithJit(arkUnwindParam, currentPtr, frameType)) {
         if (ArkFrameCheck(frameType)) {
@@ -889,6 +953,7 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
             currentPtr += FP_SIZE;
             ret &= arkUnwindParam->readMem(arkUnwindParam->ctx, currentPtr, arkUnwindParam->pc);
             *arkUnwindParam->isJsFrame = false;
+            *arkUnwindParam->frameType = StepFrameType::NATIVE_FRAME;
             return ret;
         } else {
             *arkUnwindParam->fp = currentPtr;
@@ -896,6 +961,11 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
             // js && jit -> true, native -> false
             *arkUnwindParam->isJsFrame = IsJsFunctionFrame(frameType) ||
                 IsFastJitFunctionFrame(frameType);
+            if (*arkUnwindParam->isJsFrame) {
+                *arkUnwindParam->frameType = StepFrameType::JS_FRAME;
+            } else {
+                *arkUnwindParam->frameType = StepFrameType::NATIVE_FRAME;
+            }
         }
     } else {
         LOG_ECMA(ERROR) << "ArkGetNextFrameWithJit failed, currentPtr: " << currentPtr << ", frameType: " << frameType;
@@ -912,6 +982,19 @@ bool StepArk(void *ctx, ReadMemFunc readMem, ArkStepParam *arkStepParam)
         return false;
     }
 
+#if defined(ENABLE_STATIC_BACKTRACE)
+    if (*arkStepParam->frameType == StepFrameType::STATIC_JS_FRAME) {
+        ark::tooling::ArkStepParam staticParam;
+        staticParam.fp = arkStepParam->fp;
+        staticParam.sp = arkStepParam->sp;
+        staticParam.pc = arkStepParam->pc;
+        staticParam.isArkFrame = arkStepParam->isJsFrame;
+        staticParam.frameType = reinterpret_cast<ark::tooling::StepFrameType*>(arkStepParam->frameType);
+        staticParam.frameIndex = arkStepParam->frameIndex;
+        return StepStaticArk(ctx, readMem, &staticParam);
+    }
+#endif
+
     uintptr_t frameType = 0;
     if (ArkGetNextFrame(ctx, readMem, currentPtr, frameType, *arkStepParam->pc)) {
         if (ArkFrameCheck(frameType)) {
@@ -921,12 +1004,18 @@ bool StepArk(void *ctx, ReadMemFunc readMem, ArkStepParam *arkStepParam)
             currentPtr += FP_SIZE;
             ret &= readMem(ctx, currentPtr, arkStepParam->pc);
             *arkStepParam->isJsFrame = false;
+            *arkStepParam->frameType = StepFrameType::NATIVE_FRAME;
             return ret;
         } else {
             *arkStepParam->fp = currentPtr;
             *arkStepParam->sp = currentPtr;
             // js -> true, native -> false
             *arkStepParam->isJsFrame = IsJsFunctionFrame(frameType);
+            if (*arkStepParam->isJsFrame) {
+                *arkStepParam->frameType = StepFrameType::JS_FRAME;
+            } else {
+                *arkStepParam->frameType = StepFrameType::NATIVE_FRAME;
+            }
         }
     } else {
         return false;
@@ -950,52 +1039,93 @@ uintptr_t JSSymbolExtractor::GetDataSize()
     return dataSize_;
 }
 
-bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
+bool JSSymbolExtractor::InitializeHapFileInfo([[maybe_unused]]uintptr_t offset,
+                                              [[maybe_unused]]const char* filePath)
 {
-    bool ret = false;
 #if defined(PANDA_TARGET_OHOS)
-    if (hapName.empty()) {
-        LOG_ECMA(ERROR) << "Get file data failed, path empty.";
-        return false;
+    if (isInitialized_) {
+        return isInitialized_;
     }
     bool newCreate = false;
-    std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(hapName, newCreate);
+    std::string hapPath(filePath);
+    std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(hapPath, newCreate);
     if (extractor == nullptr) {
-        LOG_ECMA(ERROR) << "GetExtractor failed, hap path: " << hapName;
-        return false;
+        LOG_ECMA(ERROR) << "GetExtractor failed, hap path: " << hapPath;
+        return isInitialized_;
     }
 
-    std::string pandaFilePath = "ets/modules.abc";
-    auto data = extractor->GetSafeData(pandaFilePath);
-    if (!data) {
-        LOG_ECMA(ERROR) << "GetSafeData failed, hap path: " << hapName;
-        return false;
+    const std::string &pandaFilePath = extractor->GetFilePathByOffset(offset);
+    fileMapper_ = extractor->GetSafeData(pandaFilePath);
+    if (!fileMapper_) {
+        LOG_ECMA(ERROR) << "GetSafeData failed, hap path: " << hapPath;
+        return isInitialized_;
     }
 
-    data_ = data->GetDataPtr();
-    dataSize_ = data->GetDataLen();
-    loadOffset_ = static_cast<uintptr_t>(data->GetOffset());
-    ret = true;
-    auto zipFile = std::make_unique<ZipFile>(hapName);
+    data_ = fileMapper_->GetDataPtr();
+    dataSize_ = fileMapper_->GetDataLen();
+    loadOffset_ = static_cast<uintptr_t>(fileMapper_->GetOffset());
+    isInitialized_ = true;
+#if defined(ENABLE_STATIC_BACKTRACE)
+    type_ = GetPandaFileType(data_);
+    if (type_ == panda_file::PandaFileType::FILE_STATIC) {
+        ark::tooling::Backtrace::SetExtractorData(data_, dataSize_, 0, staticSymbolExtractor_);
+        return isInitialized_;
+    }
+#endif
+    CreateJSPandaFile();
+    auto zipFile = std::make_unique<ZipFile>(hapPath);
     if (zipFile == nullptr || !zipFile->Open()) {
         return false;
     }
     auto &entrys = zipFile->GetAllEntries();
-    if (ret) {
+    if (isInitialized_) {
         std::string filePath = "ets/sourceMaps.map";
         if (entrys.find(filePath) == entrys.end()) {
             LOG_ECMA(INFO) << "Can't find sourceMaps.map in hap/hsp";
-            return ret;
+            return isInitialized_;
         }
-        CreateSourceMap(hapName);
+        CreateSourceMap(hapPath);
     }
 #endif
-    return ret;
+    return isInitialized_;
+}
+
+bool JSSymbolExtractor::InitializeAbcFileInfo([[maybe_unused]]const char* filePath)
+{
+#if defined(PANDA_TARGET_OHOS)
+    if (isInitialized_) {
+        return isInitialized_;
+    }
+    fileMapMem_ = FileMap(filePath, O_RDONLY, PROT_READ, 0);
+    if (fileMapMem_.GetMem() == nullptr) {
+        return isInitialized_;
+    }
+    data_ = reinterpret_cast<uint8_t *>(fileMapMem_.GetMem());
+    dataSize_ = reinterpret_cast<uintptr_t>(fileMapMem_.GetSize());
+    isInitialized_ = true;
+#if defined(ENABLE_STATIC_BACKTRACE)
+    type_ = panda_file::GetFileType(data_, dataSize_);
+    if (type_ == panda_file::PandaFileType::FILE_STATIC) {
+        ark::tooling::Backtrace::SetExtractorData(data_, dataSize_, 0, staticSymbolExtractor_);
+        return isInitialized_;
+    }
+#endif
+    CreateJSPandaFile();
+#endif
+    return isInitialized_;
+}
+
+bool JSSymbolExtractor::Initialize(uintptr_t offset, const char* filePath)
+{
+    if (base::StringHelper::StringEndWith(filePath, ModulePathHelper::EXT_NAME_ABC)) {
+        return InitializeAbcFileInfo(filePath);
+    }
+    return InitializeHapFileInfo(offset, filePath);
 }
 
 bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] uintptr_t mapBase,
-                        [[maybe_unused]] const char* filePath, [[maybe_unused]] uintptr_t extractorptr,
-                        [[maybe_unused]] JsFunction *jsFunction)
+                        [[maybe_unused]] uintptr_t offset, [[maybe_unused]] const char* filePath,
+                        [[maybe_unused]] uintptr_t extractorptr, [[maybe_unused]] JsFunction *jsFunction)
 {
     bool ret = false;
 #if defined(PANDA_TARGET_OHOS)
@@ -1008,10 +1138,8 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
         LOG_ECMA(ERROR) << "Parse JSframe info failed, extractor is nullptr.";
         return false;
     }
-    if (extractor->GetJSPandaFile() == nullptr) {
-        std::string hapName = std::string(filePath);
-        extractor->ParseHapFileData(hapName);
-        extractor->CreateJSPandaFile();
+    if (!extractor->Initialize(offset, filePath)) {
+        return false;
     }
     ret = ArkParseJsFrameInfo(byteCodePc, mapBase, extractor->GetLoadOffset(),
             extractor->GetData(), extractor->GetDataSize(), extractorptr, jsFunction);
@@ -1048,6 +1176,20 @@ bool JSSymbolExtractor::Destory(JSSymbolExtractor *extractor)
     delete extractor;
     extractor = nullptr;
     return true;
+}
+
+void JSSymbolExtractor::SetStaticSymbolExtractor(uintptr_t extractorptr)
+{
+    if (!extractorptr) {
+        LOG_ECMA(ERROR) << "Set static ark symbol extractor failed, extractor is nullptr.";
+        return;
+    }
+    staticSymbolExtractor_ = extractorptr;
+}
+
+uintptr_t JSSymbolExtractor::GetStaticSymbolExtractor()
+{
+    return staticSymbolExtractor_;
 }
 
 CVector<MethodInfo> JSSymbolExtractor::GetMethodInfos()
@@ -1102,7 +1244,6 @@ void JSSymbolExtractor::CreateSourceMap([[maybe_unused]] const std::string &hapP
 #endif
 }
 
-
 DebugInfoExtractor* JSSymbolExtractor::GetDebugExtractor()
 {
     if (debugExtractor_ == nullptr) {
@@ -1120,12 +1261,20 @@ uintptr_t ArkCreateJSSymbolExtractor()
 {
     auto extractor = JSSymbolExtractor::Create();
     auto extractorptr = reinterpret_cast<uintptr_t>(extractor);
+#if defined(ENABLE_STATIC_BACKTRACE)
+    auto staticSymbolExtractor = ark::tooling::Backtrace::CreateArkSymbolExtractor();
+    extractor->SetStaticSymbolExtractor(staticSymbolExtractor);
+#endif
     return extractorptr;
 }
 
 bool ArkDestoryJSSymbolExtractor(uintptr_t extractorptr)
 {
     auto extractor = reinterpret_cast<JSSymbolExtractor*>(extractorptr);
+#if defined(ENABLE_STATIC_BACKTRACE)
+    auto staticSymbolExtractor = extractor->GetStaticSymbolExtractor();
+    ark::tooling::Backtrace::DestroyArkSymbolExtractor(staticSymbolExtractor);
+#endif
     return JSSymbolExtractor::Destory(extractor);
 }
 
@@ -1327,10 +1476,10 @@ __attribute__((visibility("default"))) int ark_parse_js_frame_info(
 }
 
 __attribute__((visibility("default"))) int ark_parse_js_file_info(
-    uintptr_t byteCodePc, uintptr_t mapBase, const char* filePath, uintptr_t extractorptr,
+    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t offset, const char* filePath, uintptr_t extractorptr,
     panda::ecmascript::JsFunction *jsFunction)
 {
-    if (panda::ecmascript::ArkParseJSFileInfo(byteCodePc, mapBase, filePath, extractorptr, jsFunction)) {
+    if (panda::ecmascript::ArkParseJSFileInfo(byteCodePc, mapBase, offset, filePath, extractorptr, jsFunction)) {
         return 1;
     }
     return -1;

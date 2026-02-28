@@ -195,6 +195,11 @@ bool Extractor::GetFileInfo(const std::string &fileName, FileInfo &fileInfo) con
     return true;
 }
 
+const std::string &Extractor::GetFilePathByOffset(uintptr_t offset)
+{
+    return zipFile_.GetFileNameByOffset(static_cast<uint32_t>(offset));
+}
+
 bool Extractor::GetFileList(const std::string &srcPath, std::set<std::string> &fileSet)
 {
     if (!initial_) {

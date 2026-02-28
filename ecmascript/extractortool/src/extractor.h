@@ -87,6 +87,8 @@ public:
 
     bool GetFileInfo(const std::string &fileName, FileInfo &fileInfo) const;
 
+    const std::string &GetFilePathByOffset(uintptr_t offset);
+
     bool IsHapCompress(const std::string &fileName) const;
 
     bool ExtractToBufByName(const std::string &fileName, std::unique_ptr<uint8_t[]> &dataPtr, size_t &len);
