@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -511,7 +511,14 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
         BRANCH_LIKELY(IsCallableFromBitField(bitfield_), funcIsCallable, funcNotCallable);
         Bind(funcNotCallable);
         {
-            CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {func_});
+            // withname call sites always provide constpool + stringId.
+            // Do not use gate-id nullness of stringId_ as semantic signal.
+            if (constPool_ != Circuit::NullGate()) {
+                GateRef funcName = GetStringFromConstPool(glue_, constPool_, stringId_);
+                CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {funcName});
+            } else {
+                CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {func_});
+            }
             Jump(exit);
         }
         Bind(funcIsCallable);

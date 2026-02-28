@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -825,6 +825,7 @@ void OptimizedCall::FastCallToAsmInterBridge(ExtendedAssembler *assembler)
 void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
                                 Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall)
 {
+    __ Movq(jsFuncReg, rsi); // save jsFunc for error reporting
     __ Movabs(JSTaggedValue::TAG_INT, rdx); // IsTaggedInt
     __ And(jsFuncReg, rdx);
     __ Cmp(0x0, rdx);
@@ -836,8 +837,7 @@ void OptimizedCall::JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg
     __ Cmp(0x0, rdx);
     __ Jne(lNonCallable);
 
-    __ Movq(jsFuncReg, rsi); // save jsFunc
-    __ Movq(Operand(jsFuncReg, JSFunction::HCLASS_OFFSET), rax); // get jsHclass
+    __ Movq(Operand(rsi, JSFunction::HCLASS_OFFSET), rax); // get jsHclass
     Register maskRegister = rdx;
     __ Movabs(TaggedObject::GC_STATE_MASK, maskRegister);
     __ And(maskRegister, rax);
@@ -857,12 +857,9 @@ void OptimizedCall::ThrowNonCallableInternal(ExtendedAssembler *assembler, Regis
     __ Pushq(rbp);
     __ Pushq(static_cast<int32_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME)); // set frame type
     __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);
-    __ Movq(MessageString::Message_NonCallable, rax);
-    __ Movabs(JSTaggedValue::TAG_INT, r10);
-    __ Orq(r10, rax);
-    __ Pushq(rax); // message id
+    __ Pushq(rsi); // func (the non-callable value, saved in JSCallCheck)
     __ Pushq(1); // argc
-    __ Pushq(RTSTUB_ID(ThrowTypeError)); // runtime id
+    __ Pushq(RTSTUB_ID(ThrowNotCallableException)); // runtime id
     __ Movq(glueReg, rax); // glue
     __ Movq(kungfu::RuntimeStubCSigns::ID_CallRuntime, r10);
     __ Movq(Operand(rax, r10, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r10);

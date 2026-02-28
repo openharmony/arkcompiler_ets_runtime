@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -81,7 +81,7 @@ declare function print(arg:any):string;
         b5.foo();
         assert_unreachable();
     } catch(e) {
-        assert_equal(e.message, "CallObj is NonCallable");
+        assert_equal(e.message, "undefined is not callable");
     }
 	
 	test_end();

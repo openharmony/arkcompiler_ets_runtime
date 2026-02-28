@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -95,6 +95,7 @@ group("ark_aot_ts_test") {
     "call_same_bytecode_func",
     "callithisrange",
     "calls",
+    "callthisrangewithname",
     "classstatic",
     "class_method_signature",
     "closeiterator",
@@ -405,6 +406,10 @@ group("ark_aot_ts_test") {
     "retype_unreachable_test",
   ]
 
+  callable_test_list = [
+    "callthisrangewithname",
+  ]
+
   if (!is_debug) {
     test_list += [
       "pgo_function_operation",
@@ -451,6 +456,13 @@ group("ark_aot_ts_test") {
     deps += [ "${test}:${test}AotAction" ]
     if (!is_debug) {
       deps += [ "${test}:${test}AotContextAction" ]
+    }
+  }
+
+  foreach(test, callable_test_list) {
+    deps += [ "${test}:${test}AotActionCallable" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}AotContextActionCallable" ]
     }
   }
 
