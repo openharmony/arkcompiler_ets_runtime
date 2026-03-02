@@ -1620,7 +1620,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         oldSpace_->ResetCommittedOverSizeLimit();
         if (oldSpace_->CommittedSizeExceed()) { // LCOV_EXCL_BR_LINE
             sweeper_->EnsureAllTaskFinished();
-            DumpHeapSnapshotBeforeOOM(false, "", 0, LOCAL_HEAP_STR);
+            DumpHeapSnapshotBeforeOOM(false, "old space", 0, LOCAL_HEAP_STR);
             StatisticHeapDetail();
             ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(),
                 " OldSpace::Merge, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
