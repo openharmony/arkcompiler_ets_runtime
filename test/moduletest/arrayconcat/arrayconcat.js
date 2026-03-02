@@ -240,4 +240,14 @@
     assert_equal(v5, ['foo', 'bar']);
 }
 
+{
+    var v1 = new Array(17);
+    for (var i = 0; i < 200; i++) {
+        v1[i] = new Uint32Array(262129);
+        [].concat();
+        Object.setPrototypeOf(Array.prototype, new Int8Array());
+        Array.prototype.length = 1025;
+    }
+}
+
 test_end();
