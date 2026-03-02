@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -126,6 +126,13 @@ struct JsFrame {
     int32_t column;
 };
 
+struct __static_local_trace_ptr;
+typedef struct __static_local_trace_ptr *static_local_trace;
+
+using ParseStaticArkLocalFunc = int (*)(static_local_trace, uintptr_t, uintptr_t, uintptr_t, JsFunction*);
+using CreateStaticArkLocalFunc = void (*)(static_local_trace*);
+using DestroyStaticArkLocalFunc = void (*)(static_local_trace);
+
 class JSStackTrace {
 public:
     JSStackTrace() = default;
@@ -140,6 +147,9 @@ public:
     bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, JsFunction *jsFunction);
     static void AddReference();
     static void ReleaseReference();
+#if defined(ENABLE_STATIC_BACKTRACE)
+    bool GetArkStaticFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, JsFunction *jsFunction);
+#endif
 private:
     std::shared_ptr<JSPandaFile> FindJSpandaFile(uintptr_t mapBase);
     const CVector<MethodInfo> &FindMethodInfos(uintptr_t mapBase);
@@ -155,6 +165,13 @@ private:
     static JSStackTrace *trace_;
     static std::mutex mutex_;
     static size_t count_;
+#if defined(ENABLE_STATIC_BACKTRACE)
+    static void *arkStaticHandle_;
+    static ParseStaticArkLocalFunc parseStaticArkLocalFunc_;
+    static CreateStaticArkLocalFunc createStaticArkLocalFunc_;
+    static DestroyStaticArkLocalFunc destroyStaticArkLocalFunc_;
+    static static_local_trace arkStaticLocalTracePtr_;
+#endif
 };
 
 class JSSymbolExtractor {
