@@ -29,17 +29,23 @@ host_moduletest_action("asyncgeneratoryieldstar") {
   deps = []
 }
 
+host_moduletest_action("asyncgeneratorreturnstackoverflow") {
+  deps = []
+}
+
 host_moduletest_action("asyncgenerator") {
   extra_modules = [
     "asyncgeneratornext",
     "asyncgeneratorreturn",
     "asyncgeneratorthrow",
     "asyncgeneratoryieldstar",
+    "asyncgeneratorreturnstackoverflow",
   ]
   deps = [
     ":gen_asyncgeneratornext_abc",
     ":gen_asyncgeneratorreturn_abc",
     ":gen_asyncgeneratorthrow_abc",
     ":gen_asyncgeneratoryieldstar_abc",
+    ":gen_asyncgeneratorreturnstackoverflow_abc",
   ]
 }
