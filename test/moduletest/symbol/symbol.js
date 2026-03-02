@@ -49,3 +49,11 @@ print(Symbol.for("foo").toString());
     }
     print(hashSet.size)
 }
+
+{
+    try {
+        (0)[Symbol.replace] = 1;
+    } catch (e) {
+        print(e.name);
+    }
+}
