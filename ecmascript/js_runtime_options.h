@@ -257,6 +257,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_MERGE_POLY,
     OPTION_MEM_CONFIG,
     OPTION_MULTI_CONTEXT,
+    OPTION_PGO_NAPI,
 
     // OPTION_LAST should at the last
     OPTION_LAST,
@@ -552,6 +553,16 @@ public:
     std::string GetArkBundleName() const
     {
         return arkBundleName_;
+    }
+
+    bool IsPgoNapi() const
+    {
+        return pgoNapi_;
+    }
+
+    void SetPgoNapi(bool value)
+    {
+        pgoNapi_ = value;
     }
 
     bool FindTraceBundleName(CString s) const
@@ -2529,6 +2540,7 @@ private:
     int32_t deviceThermalLevel_ {0};
     int64_t arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
+    bool pgoNapi_ {false};
     std::set<CString> traceBundleName_ = {};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time

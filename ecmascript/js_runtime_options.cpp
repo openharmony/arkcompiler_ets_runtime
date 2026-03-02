@@ -230,7 +230,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-jit-method-path:           Store method names for jit method dichotomy.\n"
     "                                      Default: 'method_compiled_by_jit.cfg'\n"
     "--compiler-enable-merge-poly:         Enable poly-merge optimization for ldobjbyname. Default: 'true'\n"
-    // Please add new options above this line for keep a blank line after help message.
+    "--enable-pgo-napi:                    Enable pgo napi. Default: 'false'\n"
+    // Please add new options above this line line after help message.
     "\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
@@ -402,6 +403,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-merge-poly", required_argument, nullptr, OPTION_COMPILER_ENABLE_MERGE_POLY},
         {"mem-config", required_argument, nullptr, OPTION_MEM_CONFIG},
         {"multi-context", required_argument, nullptr, OPTION_MULTI_CONTEXT},
+        {"enable-pgo-napi", required_argument, nullptr, OPTION_PGO_NAPI},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1584,6 +1586,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetMultiContext(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_PGO_NAPI:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetPgoNapi(argBool);
                 } else {
                     return false;
                 }

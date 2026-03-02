@@ -2972,7 +2972,10 @@ template("host_aot_test_action") {
       if (defined(invoker.log_option)) {
         _aot_run_options_ += invoker.log_option
       }
-      _aot_run_options_ += common_options
+      if (defined(invoker.is_enable_pgo_napi) && invoker.is_enable_pgo_napi) {
+      _aot_run_options_ += " --enable-pgo-napi=true"
+    }
+    _aot_run_options_ += common_options
       args = []
       if (target_cpu == "x64" ||
           (ark_standalone_build && run_with_qemu && host_os == "linux" &&

@@ -173,6 +173,8 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     vm->GetJSOptions().SetArkProperties(arkProperties);
+    bool pgoNapi = OHOS::system::GetBoolParameter("persist.ark.pgonapi", false);
+    vm ->GetJSOptions().SetPgoNapi(pgoNapi);
 #endif
     vm->SetEnableRuntimeAsyncStack(vm->GetJSOptions().EnableRuntimeAsyncStack());
     return vm;
@@ -251,6 +253,8 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
+    bool pgoNapi = OHOS::system::GetBoolParameter("persist.ark.pgonapi", false);
+    GetJSOptions().SetPgoNapi(pgoNapi);
 #endif
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     if (enableWarmStartup) {
@@ -351,6 +355,11 @@ bool EcmaVM::IsEnablePGOProfiler() const
         return PGOProfilerManager::GetInstance()->IsEnable();
     }
     return options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
+}
+
+bool EcmaVM::IsPgoNapi() const
+{
+    return options_.IsPgoNapi();
 }
 
 bool EcmaVM::IsEnableMutantArray() const
@@ -2101,7 +2110,7 @@ Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFi
     ASSERT(thread_->IsInManagedState());
     JSHandle<JSTaggedValue> global = GetGlobalEnv()->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-    if (IsEnablePGOProfiler()) {
+    if (IsEnablePGOProfiler() && IsPgoNapi()) {
         JSHandle<JSFunction> objectFunction(GetGlobalEnv()->GetObjectFunction());
         JSHandle<JSHClass> protoOrHClass(GetGlobalEnv()->GetObjectFunctionNapiClass());
         GetPGOProfiler()->ProfileNapiRootHClass(
