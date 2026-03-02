@@ -13,42 +13,46 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/tests/test_helper.h"
+#include "ecmascript/module/js_shared_module.h"
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/tests/test_helper.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
+
+class ScopedDisableForceGC final {
+   public:
+    explicit ScopedDisableForceGC(EcmaVM *vm) : vm_(vm), oldEnableForceGC_(vm->GetJSOptions().EnableForceGC())
+    {
+        vm_->SetEnableForceGC(false);
+    }
+
+    ~ScopedDisableForceGC() { vm_->SetEnableForceGC(oldEnableForceGC_); }
+
+   private:
+    EcmaVM *vm_{nullptr};
+    bool oldEnableForceGC_{true};
+};
+
 class JSSharedModuleTest : public testing::Test {
-public:
-    static void SetUpTestCase()
-    {
-        GTEST_LOG_(INFO) << "SetUpTestCase";
-    }
+   public:
+    static void SetUpTestCase() { GTEST_LOG_(INFO) << "SetUpTestCase"; }
 
-    static void TearDownTestCase()
-    {
-        GTEST_LOG_(INFO) << "TearDownCase";
-    }
+    static void TearDownTestCase() { GTEST_LOG_(INFO) << "TearDownCase"; }
 
-    void SetUp() override
-    {
-        TestHelper::CreateEcmaVMWithScope(instance, thread, scope);
-    }
+    void SetUp() override { TestHelper::CreateEcmaVMWithScope(instance, thread, scope); }
 
-    void TearDown() override
-    {
-        TestHelper::DestroyEcmaVMWithScope(instance, scope);
-    }
+    void TearDown() override { TestHelper::DestroyEcmaVMWithScope(instance, scope); }
 
-    EcmaVM *instance {nullptr};
-    ecmascript::EcmaHandleScope *scope {nullptr};
-    JSThread *thread {nullptr};
+    EcmaVM *instance{nullptr};
+    ecmascript::EcmaHandleScope *scope{nullptr};
+    JSThread *thread{nullptr};
 };
 
 /**
@@ -97,7 +101,7 @@ HWTEST_F_L0(JSSharedModuleTest, SendableClassModule_CloneModuleEnvironment_Resol
 HWTEST_F_L0(JSSharedModuleTest, SendableClassModule_CloneRecordNameBinding_NonSharedModule)
 {
     ObjectFactory *factory = instance->GetFactory();
-
+    ScopedDisableForceGC disableForceGC(instance);
     // Create a non-shared module (UNSENDABLE_MODULE)
     JSHandle<SourceTextModule> nonSharedModule = factory->NewSourceTextModule();
     nonSharedModule->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
