@@ -896,7 +896,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] JSThread *thread,
     dumpOption.captureNumericValue = false;
     dumpOption.isFullGC = false;
     dumpOption.isSimplify = true;
-    dumpOption.isSync = true;
+    dumpOption.isSync = false;
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
     dumpOption.isForSharedOOM = true;
@@ -2000,7 +2000,7 @@ void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump, [[maybe_unused]] const std
     dumpOption.captureNumericValue = false;
     dumpOption.isFullGC = false;
     dumpOption.isSimplify = true;
-    dumpOption.isSync = true;
+    dumpOption.isSync = false;
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
     dumpOption.isProcDump = isProcDump;
@@ -3292,7 +3292,6 @@ void Heap::ThresholdReachedDump()
             dumpOption.isSimplify = true;
             dumpOption.isSync = false;
             dumpOption.isBeforeFill = false;
-            dumpOption.isDumpOOM = true; // aim's to do binary dump
             heapProfile->DumpHeapSnapshotForOOM(dumpOption);
             hasOOMDump_ = false;
             HeapProfilerInterface::Destroy(ecmaVm_);

@@ -60,6 +60,8 @@ void HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *thread)
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = panda::ecmascript::DumpFormat::BINARY;
     dumpOption.isFullGC = false;
+    dumpOption.isSync = false;
+    dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
 
     vm->GetOrNewHeapProfile()->DumpHeapSnapshotForOOM(dumpOption);

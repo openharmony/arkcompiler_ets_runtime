@@ -166,6 +166,15 @@ private:
     bool ForceFullGC(const EcmaVM *vm);
     void ForceSharedGC();
     bool DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption);
+    void DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const DumpSnapShotOption &dumpOption);
+
+    /**
+     * Helper used by DumpHeapSnapshot to fork a child process and execute the
+     * appropriate dump logic. Returns the pid of the child on success, or -1
+     * if fork failed.
+     */
+    pid_t ForkAndPerformDump(Stream *stream, const DumpSnapShotOption &dumpOption,
+                              Progress *progress);
 
     /**
      * make a new heap snapshot and put it into a container eg, vector
