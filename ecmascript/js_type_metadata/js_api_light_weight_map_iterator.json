@@ -1,5 +1,6 @@
 {
     "name": "JS_API_LIGHT_WEIGHT_MAP_ITERATOR",
+    "node_name": "LightWeightMapIterator",
     "offsets": [
         {
             "name": "IteratedLightWeightMap",

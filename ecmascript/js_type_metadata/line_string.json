@@ -1,5 +1,6 @@
 {
     "name": "LINE_STRING",
+    "node_name": "BaseString",
     "offsets": [],
     "end_offset": 0,
     "parents": [

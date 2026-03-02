@@ -1,5 +1,6 @@
 {
     "name": "PROPERTY_BOX",
+    "node_name": "PropertyBox",
     "offsets": [
         {
             "name": "Value",

@@ -1,5 +1,6 @@
 {
     "name": "JS_INT8_ARRAY",
+    "node_name": "Int8 Array",
     "offsets": [
         {
             "name": "ViewedArrayBufferOrByteArray",

@@ -1,5 +1,6 @@
 {
     "name": "SFUNCTION_ENV",
+    "node_name": "SFunctionEnv",
     "offsets": [],
     "end_offset": 0,
     "parents": [

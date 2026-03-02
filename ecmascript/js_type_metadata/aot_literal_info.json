@@ -1,1 +1,1 @@
-{"name": "AOT_LITERAL_INFO", "offsets": [], "end_offset": 8, "parents": ["TAGGED_OBJECT"]}
+{"name": "AOT_LITERAL_INFO", "node_name": "ArkInternalAOTLiteralInfo", "offsets": [], "end_offset": 8, "parents": ["TAGGED_OBJECT"]}

@@ -1,5 +1,6 @@
 {
     "name": "JS_API_HASH_SET",
+    "node_name": "HashSet",
     "offsets": [
         {
             "name": "Table",

@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_INT8_ARRAY",
+    "node_name": "Shared Int8 Array",
     "offsets": [],
     "end_offset": 8,
     "parents": [

@@ -1,5 +1,6 @@
 {
     "name": "JS_LOCALE",
+    "node_name": "JSLocale",
     "offsets": [
         {
             "name": "IcuField",

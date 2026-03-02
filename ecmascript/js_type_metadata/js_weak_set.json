@@ -1,5 +1,6 @@
 {
     "name": "JS_WEAK_SET",
+    "node_name": "WeakSet",
     "offsets": [
         {
             "name": "LinkedSet",

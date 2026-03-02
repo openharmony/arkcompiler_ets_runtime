@@ -1,5 +1,6 @@
 {
     "name": "JS_URI_ERROR",
+    "node_name": "Uri Error",
     "offsets": [
         {
             "name": "Properties",

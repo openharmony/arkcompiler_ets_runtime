@@ -1,5 +1,6 @@
 {
     "name": "MACHINE_CODE_OBJECT",
+    "node_name": "MachineCode",
     "offsets": [],
     "end_offset": 332,
     "parents": [

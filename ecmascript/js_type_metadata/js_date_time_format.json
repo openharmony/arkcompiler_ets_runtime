@@ -1,5 +1,6 @@
 {
     "name": "JS_DATE_TIME_FORMAT",
+    "node_name": "JSDateTimeFormat",
     "offsets": [
         {
             "name": "Locale",

@@ -1,5 +1,6 @@
 {
     "name": "JS_FINALIZATION_REGISTRY",
+    "node_name": "JSFinalizationRegistry",
     "offsets": [
         {
             "name": "CleanupCallback",

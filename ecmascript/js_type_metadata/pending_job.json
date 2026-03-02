@@ -1,5 +1,6 @@
 {
     "name": "PENDING_JOB",
+    "node_name": "PendingJob",
     "offsets": [
         {
             "name": "Job",

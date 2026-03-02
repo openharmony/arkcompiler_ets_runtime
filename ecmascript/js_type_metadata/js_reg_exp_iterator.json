@@ -1,5 +1,6 @@
 {
     "name": "JS_REG_EXP_ITERATOR",
+    "node_name": "RegExpIterator",
     "offsets": [
         {
             "name": "IteratingRegExp",

@@ -1,5 +1,6 @@
 {
     "name": "CLASS_LITERAL",
+    "node_name": "ClassLiteral",
     "offsets": [
         {
             "name": "Array",

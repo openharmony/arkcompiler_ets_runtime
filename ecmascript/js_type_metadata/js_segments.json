@@ -1,5 +1,6 @@
 {
     "name": "JS_SEGMENTS",
+    "node_name": "JSSegments",
     "offsets": [
         {
             "name": "IcuField",

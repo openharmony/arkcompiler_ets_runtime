@@ -1,5 +1,6 @@
 {
     "name": "JS_NATIVE_POINTER",
+    "node_name": "JSNativePointer",
     "offsets": [
         {
             "name": "BindingSize",

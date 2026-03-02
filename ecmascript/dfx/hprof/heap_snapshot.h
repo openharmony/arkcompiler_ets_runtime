@@ -455,6 +455,7 @@ public:
         totalNodesSize_ -= size;
     }
     CString *GenerateNodeName(TaggedObject *entry);
+    static CString GetNodeName(JSType type, bool isVmMode);
     NodeType GenerateNodeType(TaggedObject *entry);
     const CVector<Node *> *GetNodes() const
     {

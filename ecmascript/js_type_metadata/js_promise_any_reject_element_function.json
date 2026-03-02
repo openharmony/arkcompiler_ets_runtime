@@ -1,5 +1,6 @@
 {
     "name": "JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION",
+    "node_name": "PromiseAnyRejectElementFunction",
     "offsets": [
         {
             "name": "Errors",

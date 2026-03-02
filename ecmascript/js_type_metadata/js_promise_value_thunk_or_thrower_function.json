@@ -1,5 +1,6 @@
 {
     "name": "JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION",
+    "node_name": "PromiseValueThunkOrThrowerFunction",
     "offsets": [
         {
             "name": "Result",

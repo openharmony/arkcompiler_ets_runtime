@@ -1,5 +1,6 @@
 {
     "name": "JS_API_TREEMAP_ITERATOR",
+    "node_name": "TreeMapIterator",
     "offsets": [
         {
             "name": "IteratedMap",

@@ -1,5 +1,6 @@
 {
     "name": "ASYNC_GENERATOR_REQUEST",
+    "node_name": "AsyncGeneratorRequest",
     "offsets": [
         {
             "name": "Completion",

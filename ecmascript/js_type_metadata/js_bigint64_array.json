@@ -1,5 +1,6 @@
 {
     "name": "JS_BIGINT64_ARRAY",
+    "node_name": "BigInt64 Array",
     "offsets": [
         {
             "name": "ViewedArrayBufferOrByteArray",

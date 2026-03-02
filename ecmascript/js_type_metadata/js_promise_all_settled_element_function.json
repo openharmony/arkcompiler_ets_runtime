@@ -1,5 +1,6 @@
 {
     "name": "JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION",
+    "node_name": "PromiseAllSettledElementFunction",
     "offsets": [
         {
             "name": "AlreadyCalled",

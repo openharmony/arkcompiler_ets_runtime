@@ -1,5 +1,6 @@
 {
     "name": "ENUM_CACHE",
+    "node_name": "EnumCache",
     "offsets": [
         {
             "name": "EnumCacheOwn",

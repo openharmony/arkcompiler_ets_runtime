@@ -1,5 +1,6 @@
 {
     "name": "JS_SYNTAX_ERROR",
+    "node_name": "Syntax Error",
     "offsets": [
         {
             "name": "Properties",

@@ -1,5 +1,6 @@
 {
     "name": "JS_PROMISE_REACTIONS_FUNCTION",
+    "node_name": "PromiseReactionsFunction",
     "offsets": [
         {
             "name": "Promise",

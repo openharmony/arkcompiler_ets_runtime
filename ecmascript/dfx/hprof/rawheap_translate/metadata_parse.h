@@ -39,6 +39,7 @@ public:
     NodeType GetNodeType(JSType type);
     uint32_t GetNativateSize(Node *node, JSType type);
     std::string GetTypeName(JSType type);
+    std::string GetNodeName(JSType type);
     MetaData* GetMetaData(const std::string &name);
     MetaData* GetMetaData(const JSType type);
     bool IsNativePointer(JSType type);

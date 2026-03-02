@@ -1,5 +1,6 @@
 {
     "name": "JS_FUNCTION_BASE",
+    "node_name": "JSFunctionBase",
     "offsets": [
         {
             "name": "Method",

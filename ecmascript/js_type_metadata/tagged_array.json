@@ -1,5 +1,6 @@
 {
     "name": "TAGGED_ARRAY",
+    "node_name": "ArkInternalArray",
     "offsets": [
         {
             "name": "Length",

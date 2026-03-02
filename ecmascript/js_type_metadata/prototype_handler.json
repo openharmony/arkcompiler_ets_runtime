@@ -1,5 +1,6 @@
 {
     "name": "PROTOTYPE_HANDLER",
+    "node_name": "PrototypeHandler",
     "offsets": [
         {
             "name": "HandlerInfo",

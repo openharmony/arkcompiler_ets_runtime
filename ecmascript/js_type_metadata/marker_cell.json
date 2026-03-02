@@ -1,5 +1,6 @@
 {
     "name": "MARKER_CELL",
+    "node_name": "MarkerCell",
     "offsets": [],
     "end_offset": 8,
     "parents": [

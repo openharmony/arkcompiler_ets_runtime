@@ -1,5 +1,6 @@
 {
     "name": "JS_FUNCTION",
+    "node_name": "JSFunction",
     "offsets": [
         {
             "name": "RawProfileTypeInfo",

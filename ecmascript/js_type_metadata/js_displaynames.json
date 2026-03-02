@@ -1,5 +1,6 @@
 {
     "name": "JS_DISPLAYNAMES",
+    "node_name": "JSDisplayNames",
     "offsets": [
         {
             "name": "Locale",

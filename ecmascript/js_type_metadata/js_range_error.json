@@ -1,5 +1,6 @@
 {
     "name": "JS_RANGE_ERROR",
+    "node_name": "Range Error",
     "offsets": [
         {
             "name": "Properties",

@@ -1,5 +1,6 @@
 {
     "name": "JS_FORIN_ITERATOR",
+    "node_name": "ForinInterator",
     "offsets": [
         {
             "name": "Object",

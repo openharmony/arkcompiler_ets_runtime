@@ -1,5 +1,6 @@
 {
     "name": "INDIRECT_EXPORTENTRY_RECORD",
+    "node_name": "IndirectExportEntry",
     "offsets": [
         {
             "name": "ExportName",

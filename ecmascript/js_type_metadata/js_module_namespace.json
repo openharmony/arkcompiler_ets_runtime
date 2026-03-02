@@ -1,5 +1,6 @@
 {
     "name": "JS_MODULE_NAMESPACE",
+    "node_name": "ModuleNamespace",
     "offsets": [
         {
             "name": "Module",

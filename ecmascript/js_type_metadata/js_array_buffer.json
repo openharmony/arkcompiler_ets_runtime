@@ -1,5 +1,6 @@
 {
     "name": "JS_ARRAY_BUFFER",
+    "node_name": "ArrayBuffer",
     "offsets": [
         {
             "name": "ArrayBufferData",

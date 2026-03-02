@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_MAP",
+    "node_name": "SharedMap",
     "offsets": [
         {
             "name": "LinkedMap",

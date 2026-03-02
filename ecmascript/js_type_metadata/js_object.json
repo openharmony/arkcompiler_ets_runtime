@@ -1,5 +1,6 @@
 {
     "name": "JS_OBJECT",
+    "node_name": "JSObject",
     "offsets": [
         {
             "name": "Properties",

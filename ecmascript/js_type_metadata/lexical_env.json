@@ -1,5 +1,6 @@
 {
     "name": "LEXICAL_ENV",
+    "node_name": "LexicalEnv",
     "offsets": [],
     "end_offset": 0,
     "parents": [

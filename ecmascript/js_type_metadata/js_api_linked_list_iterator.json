@@ -1,5 +1,6 @@
 {
     "name": "JS_API_LINKED_LIST_ITERATOR",
+    "node_name": "LinkedListIterator",
     "offsets": [
         {
             "name": "IteratedLinkedList",

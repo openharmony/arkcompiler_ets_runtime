@@ -1,5 +1,6 @@
 {
     "name": "SOURCE_TEXT_MODULE_RECORD",
+    "node_name": "SourceTextModule",
     "offsets": [
         {
             "name": "Environment",

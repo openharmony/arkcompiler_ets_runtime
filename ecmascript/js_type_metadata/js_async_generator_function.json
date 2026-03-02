@@ -1,5 +1,6 @@
 {
     "name": "JS_ASYNC_GENERATOR_FUNCTION",
+    "node_name": "JSAsyncGeneratorFunction",
     "offsets": [],
     "end_offset": 0,
     "parents": [

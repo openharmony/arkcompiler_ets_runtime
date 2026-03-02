@@ -1,5 +1,6 @@
 {
     "name": "JS_PLURAL_RULES",
+    "node_name": "JSPluralRules",
     "offsets": [
         {
             "name": "Locale",

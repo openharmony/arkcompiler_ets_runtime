@@ -1,5 +1,6 @@
 {
     "name": "JS_API_PLAIN_ARRAY_ITERATOR",
+    "node_name": "PlainArrayIterator",
     "offsets": [
         {
             "name": "IteratedPlainArray",

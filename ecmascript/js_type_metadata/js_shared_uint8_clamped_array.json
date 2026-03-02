@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_UINT8_CLAMPED_ARRAY",
+    "node_name": "Shared Uint8 Clamped Array",
     "offsets": [],
     "end_offset": 8,
     "parents": [
