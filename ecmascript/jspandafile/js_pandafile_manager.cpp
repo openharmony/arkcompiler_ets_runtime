@@ -108,7 +108,13 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             CString msg = "resolveBufferCallback get hsp buffer failed, hsp path:" + filename +
                 ", errorMsg:" + errorMsg.c_str();
             if (executeType == ExecuteTypes::NAPI) {
+#ifdef ENABLE_HILOG
+                HILOG_COMM_ERROR(
+                    "resolveBufferCallback get hsp buffer failed, "\
+                    "hsp path:%{public}s, errorMsg:%{public}s", filename.c_str(), msg.c_str());
+#else
                 LOG_FULL(ERROR) << msg;
+#endif
                 THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), nullptr);
             }
             LOG_FULL(FATAL) << msg;
