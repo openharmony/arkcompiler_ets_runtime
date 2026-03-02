@@ -84,4 +84,20 @@
     let res = reg.exec("\rfoo\r");
     assert_equal(res[0], "foo");
 }
+
+{
+    const regex = /\d+/;
+    const str = "abc123def";
+    
+    assert_equal(regex.test(str), true);
+    assert_equal(regex.test(str), true);
+    assert_equal(regex.test(str), true);
+    
+    const regex2 = /hello/;
+    assert_equal(regex2.test("hello world"), true);
+    assert_equal(regex2.test("hello world"), true);
+    assert_equal(regex.test(str), true);
+    assert_equal(regex2.test("hello world"), true);
+}
+
 test_end();
