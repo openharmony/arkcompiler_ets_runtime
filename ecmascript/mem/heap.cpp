@@ -716,10 +716,6 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
         // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
         DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC,
                                   "", 0, SHARED_HEAP_STR);
-        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-            ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
-            thread->NotifyPendingSharedHeapOOM();
-        });
     }
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
         auto notifyDeferFreezeCallback = Runtime::GetInstance()->GetNotifyDeferFreezeCallback();
