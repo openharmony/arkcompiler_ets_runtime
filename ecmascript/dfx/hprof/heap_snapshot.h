@@ -385,11 +385,13 @@ private:
 
 struct Reference {
     Reference(const CString &name, JSTaggedValue value) : name_(name), value_(value) {}
+    Reference(const CString &name, JSTaggedValue key, JSTaggedValue value) : name_(name), key_(key), value_(value) {}
     Reference(const CString &name, JSTaggedValue value, EdgeType type) : name_(name), value_(value), type_(type) {}
     Reference(uint32_t index, JSTaggedValue value, EdgeType type) : index_(index), value_(value), type_(type) {}
 
     CString name_;
     uint32_t index_ {-1U};
+    JSTaggedValue key_ {JSTaggedValue::Hole()};
     JSTaggedValue value_;
     EdgeType type_ {EdgeType::DEFAULT};
 };
@@ -515,6 +517,12 @@ public:
             return stringTable_->InsertStrAndGetStringId(ParseFunctionName(obj, true));
         }
         return 1; // 1 : invalid id
+    }
+
+    // Insert a string into the string table and return its ID.
+    StringId InsertString(CString &str)
+    {
+        return stringTable_->InsertStrAndGetStringId(str);
     }
 
 private:

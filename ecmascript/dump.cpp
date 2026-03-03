@@ -4736,8 +4736,9 @@ void JSAPIPlainArray::DumpForSnapshot(const JSThread *thread, std::vector<Refere
     vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
         CString str;
-        KeyToStd(thread, str, keys->Get(thread, i));
-        vec.emplace_back(str, values->Get(thread, i));
+        auto key = keys->Get(thread, i);
+        KeyToStd(thread, str, key);
+        vec.emplace_back(str, key, values->Get(thread, i));
     }
     JSObject::DumpForSnapshot(thread, vec);
 }
@@ -4777,7 +4778,7 @@ void NameDictionary::DumpForSnapshot(const JSThread *thread, std::vector<Referen
             JSTaggedValue val(GetValue(thread, hashIndex));
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         }
     }
 }
@@ -4793,7 +4794,7 @@ void GlobalDictionary::DumpForSnapshot(const JSThread *thread, std::vector<Refer
             CString str;
             KeyToStd(thread, str, key);
             JSTaggedValue val = GetValue(thread, hashIndex);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         }
     }
 }
@@ -4808,7 +4809,7 @@ void LinkedHashSet::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, JSTaggedValue::Hole());
+            vec.emplace_back(str, key, JSTaggedValue::Hole());
         }
     }
 }
@@ -4824,7 +4825,7 @@ void LinkedHashMap::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
             JSTaggedValue val = GetValue(thread, hashIndex);
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         }
     }
 }
@@ -4840,7 +4841,7 @@ void WeakLinkedHashMap::DumpForSnapshot(const JSThread *thread, std::vector<Refe
             JSTaggedValue val = GetValue(thread, hashIndex);
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         }
     }
 }
@@ -4895,7 +4896,7 @@ void TaggedTreeMap::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
             JSTaggedValue val = GetValue(thread, index);
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         } else {
             DumpForSnapshotTaggedTreeEntry(thread, const_cast<TaggedTreeMap *>(this), index, vec, true);
         }
@@ -4917,7 +4918,7 @@ void TaggedTreeSet::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, JSTaggedValue::Hole());
+            vec.emplace_back(str, key, JSTaggedValue::Hole());
         } else {
             DumpForSnapshotTaggedTreeEntry(thread, const_cast<TaggedTreeSet *>(this), index, vec, true);
         }
@@ -5002,7 +5003,7 @@ void JSObject::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &v
 
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         }
     } else {
         NameDictionary *dict = NameDictionary::Cast(properties);
@@ -5083,7 +5084,7 @@ void LinkedNode::DumpForSnapshot(const JSThread *thread, std::vector<Reference> 
     JSTaggedValue key = GetKey(thread);
     CString str;
     KeyToStd(thread, str, key);
-    vec.emplace_back(str, GetValue(thread));
+    vec.emplace_back(str, key, GetValue(thread));
 }
 
 void ConstantPool::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
@@ -5367,7 +5368,7 @@ void JSAPILightWeightMap::DumpForSnapshot(const JSThread *thread, std::vector<Re
     for (uint32_t i = 0; i < len; i++) {
         CString str;
         KeyToStd(thread, str, keys->Get(thread, i));
-        vec.emplace_back(str, values->Get(thread, i));
+        vec.emplace_back(str, keys->Get(thread, i), values->Get(thread, i));
     }
     JSObject::DumpForSnapshot(thread, vec);
 }
@@ -5432,7 +5433,7 @@ void JSAPILightWeightSet::DumpForSnapshot(const JSThread *thread, std::vector<Re
     for (uint32_t i = 0; i < len; i++) {
         CString str;
         KeyToStd(thread, str, hashes->Get(thread, i));
-        vec.emplace_back(str, values->Get(thread, i));
+        vec.emplace_back(str, hashes->Get(thread, i), values->Get(thread, i));
     }
     JSObject::DumpForSnapshot(thread, vec);
 }

@@ -1678,6 +1678,7 @@
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/abc_files/heapdump.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/abc_files/heapdump1.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/abc_files/allocation.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/abc_files/property_name.abc -> /data/test" src="out"/>
         </preparer>
     </target>
     <target name="JSMetadataTest">

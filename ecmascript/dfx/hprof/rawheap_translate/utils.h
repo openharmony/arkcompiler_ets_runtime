@@ -56,6 +56,8 @@ void ByteToU32Array(char *data, uint32_t *array, uint32_t size);
 
 void ByteToU64Array(char *data, uint64_t *array, uint32_t size);
 
+double BitCastToDouble(uint64_t value);
+
 class Logger {
 public:
     Logger(int level) : level_(level) {}

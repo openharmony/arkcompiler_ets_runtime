@@ -27,6 +27,7 @@ test_js_files = [
   "heapdump1",
   "allocation",
   "heap_snapshot",
+  "property_name",
 ]
 
 foreach(file, test_js_files) {
