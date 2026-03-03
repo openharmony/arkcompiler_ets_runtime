@@ -19,3 +19,7 @@ via set
 test
 42
 true
+GeneratorFunction
+AsyncGeneratorFunction
+GeneratorFunction
+AsyncGeneratorFunction

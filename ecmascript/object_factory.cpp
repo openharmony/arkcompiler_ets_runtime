@@ -728,14 +728,21 @@ JSHandle<JSFunction> ObjectFactory::CreateJSFunctionFromTemplate(JSHandle<Functi
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     auto kind = funcTemp->GetFunctionKind(thread_);
     JSHandle<JSHClass> jshclass;
-    if (kind == FunctionKind::NORMAL_FUNCTION ||
-        kind == FunctionKind::GETTER_FUNCTION ||
-        kind == FunctionKind::SETTER_FUNCTION) {
-        jshclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    } else if (kind == FunctionKind::ASYNC_FUNCTION) {
-        jshclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-    } else {
-        jshclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    switch (kind) {
+        case FunctionKind::NORMAL_FUNCTION:
+        case FunctionKind::GETTER_FUNCTION:
+        case FunctionKind::SETTER_FUNCTION:
+            jshclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+            break;
+        case FunctionKind::ASYNC_FUNCTION:
+            jshclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            break;
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION:
+            jshclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+            break;
+        default:
+            jshclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+            break;
     }
     JSHandle<Method> method = JSHandle<Method>(thread_, funcTemp->GetMethod(thread_));
     JSHandle<JSFunction> newFunc = NewJSFunctionByHClass(method, jshclass);
@@ -5652,6 +5659,14 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionForDefineMethod(const JSHandle<
     switch (kind) {
         case FunctionKind::ASYNC_FUNCTION: {
             hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            break;
+        }
+        case FunctionKind::GENERATOR_FUNCTION: {
+            hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+            break;
+        }
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
+            hclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
             break;
         }
         default:{
