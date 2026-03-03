@@ -2169,21 +2169,15 @@ HWTEST_F_L0(JSNApiTests, CrossThreadExecution)
 
 HWTEST_F_L0(JSNApiTests, IsCrossBundleHsp)
 {
-    const std::string ohmurl1 = "@normalized:N&&&har1/Index&1.0.0";
-    bool res1 = JSNApi::IsCrossBundleHsp(ohmurl1);
+    JSNApi::SetBundleName(vm_, "com.application.demo");
+
+    const std::string ohmurl1 = "@normalized:N&hsp&com.application.demo&hsp/Index&";
+    bool res1 = JSNApi::IsCrossBundleHsp(vm_, ohmurl1);
     EXPECT_EQ(res1, false);
 
-    const std::string ohmurl2 = "@normalized:Y&&&libentry.so&";
-    bool res2 = JSNApi::IsCrossBundleHsp(ohmurl2);
-    EXPECT_EQ(res2, false);
-
-    const std::string ohmurl3 = "@normalized:N&hsp&&hsp/Index&";
-    bool res3 = JSNApi::IsCrossBundleHsp(ohmurl3);
-    EXPECT_EQ(res3, false);
-
-    const std::string ohmurl4 = "@normalized:N&crosshsp&com.application.demo&crosshsp/Index&";
-    bool res4 = JSNApi::IsCrossBundleHsp(ohmurl4);
-    EXPECT_EQ(res4, true);
+    const std::string ohmurl2 = "@normalized:N&crosshsp&com.application.demo1&crosshsp/Index&";
+    bool res2 = JSNApi::IsCrossBundleHsp(vm_, ohmurl2);
+    EXPECT_EQ(res2, true);
 }
 
 HWTEST_F_L0(JSNApiTests, GetModuleNameSpaceWithOhmurlForHybridApp)

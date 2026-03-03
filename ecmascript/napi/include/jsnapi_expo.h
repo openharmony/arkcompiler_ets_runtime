@@ -1845,7 +1845,7 @@ public:
                                                              const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm, const std::string &file,
                                                              const std::string &module_path);
-    static bool IsCrossBundleHsp(const std::string &ohmurl);
+    static bool IsCrossBundleHsp(const EcmaVM *vm, const std::string &ohmurl);
     static Local<ObjectRef> GetModuleNameSpaceWithOhmurlForHybridApp(EcmaVM *vm, const std::string &ohmurl);
     /*
      * Execute panda file from secure mem. secure memory lifecycle managed externally.
