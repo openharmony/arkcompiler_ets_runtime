@@ -2830,17 +2830,16 @@ JSTaggedValue RegExpExecResultCache::GetGlobalTable(JSThread *thread)
         return env->GetTaggedRegExpGlobalResult();
     }
 
-    JSTaggedValue lastMatchTable = cacheTable->Get(thread, lastMatchIndex + CAPTURE_SIZE);
+    JSHandle<TaggedArray> lastMatchTable(thread, cacheTable->Get(thread, lastMatchIndex + CAPTURE_SIZE));
     if (cacheTable->GetNeedUpdateGlobal()) {
-        JSHandle<TaggedArray> globalTable(thread, lastMatchTable);
         auto factory = thread->GetEcmaVM()->GetFactory();
-        uint32_t arrayLength = globalTable->GetLength();
-        JSHandle<TaggedArray> resTableArray = factory->NewAndCopyTaggedArray(globalTable, arrayLength, arrayLength);
+        uint32_t arrayLength = lastMatchTable->GetLength();
+        JSHandle<TaggedArray> resTableArray = factory->NewAndCopyTaggedArray(lastMatchTable, arrayLength, arrayLength);
         env->SetRegExpGlobalResult(thread, resTableArray.GetTaggedValue());
         cacheTable->SetNeedUpdateGlobal(thread, false);
     }
 
-    return cacheTable->GetUseLastMatch() ? lastMatchTable : env->GetTaggedRegExpGlobalResult();
+    return cacheTable->GetUseLastMatch() ? lastMatchTable.GetTaggedValue() : env->GetTaggedRegExpGlobalResult();
 }
 
 JSTaggedValue RegExpGlobalResult::CreateGlobalResultTable(JSThread *thread)
