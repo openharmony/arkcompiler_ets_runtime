@@ -127,6 +127,13 @@ MemMap FileMap(const char *fileName, int flag, int prot, int64_t offset)
 
     void *addr = mmap(nullptr, size, prot, MAP_PRIVATE, fd, offset);
     Close(fd);
+
+    if (addr == MAP_FAILED) {
+        LOG_ECMA(ERROR) << fileName <<  " mmap failed, errno: " << errno
+                        << ", " << strerror(errno);
+        return MemMap();
+    }
+
     return MemMap(addr, size);
 }
 
@@ -154,6 +161,13 @@ MemMap CreateFileMap([[maybe_unused]] const char *fileName, [[maybe_unused]] int
 
     void *addr = mmap(nullptr, fileSize, prot, MAP_SHARED, fd, 0);
     Close(fd);
+
+    if (addr == MAP_FAILED) {
+        LOG_ECMA(ERROR) << fileName <<  " mmap failed, errno: " << errno
+                        << ", " << strerror(errno);
+        return MemMap();
+    }
+
     return MemMap(addr, fileSize);
 }
 
@@ -169,7 +183,15 @@ MemMap FileMapForAlignAddressByFd(const fd_t fd, int prot, int64_t offset, uint3
         LOG_ECMA(ERROR) << fd << " fd is empty";
         return MemMap();
     }
+
     void *addr = mmap(nullptr, size + offset - offStart, prot, MAP_PRIVATE, fd, offStart);
+
+    if (addr == MAP_FAILED) {
+        LOG_ECMA(ERROR) << fd <<  " fd mmap failed, errno: " << errno
+                        << ", " << strerror(errno);
+        return MemMap();
+    }
+
     return MemMap(addr, size);
 }
 

@@ -17,6 +17,8 @@
 #include <sys/mman.h>
 #include "zip_file_reader.h"
 
+#include "ecmascript/log_wrapper.h"
+
 namespace panda {
 namespace ecmascript {
 namespace {
@@ -59,6 +61,8 @@ bool FileMapper::CreateFileMapper(const std::string &fileName, bool compress,
     basePtr_ = reinterpret_cast<uint8_t*>(mmap(nullptr, baseLen_, PROT_READ,
         mmapFlag, fd, adjOffset));
     if (basePtr_ == MAP_FAILED) {
+        LOG_ECMA(ERROR) << fileName <<  " mmap failed, errno: " << errno
+                        << ", " << strerror(errno);
         baseLen_ = 0;
         return false;
     }
