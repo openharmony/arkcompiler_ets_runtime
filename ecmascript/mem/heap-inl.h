@@ -1313,6 +1313,10 @@ TaggedObject *SharedHeap::AllocateSNonMovableTlab(JSThread *thread, size_t size)
 template<TriggerGCType gcType, MarkReason markReason>
 void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 {
+    // If should throw OOM, skip this GC to make next allocation fail, and throw OOM.
+    if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
+        return;
+    }
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC);
     // lock is outside to prevent extreme case, maybe could move update gcFinished_ into CheckAndPostTask
     // instead of an outside locking.
@@ -1327,6 +1331,10 @@ void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::CollectGarbage(JSThread *thread)
 {
+    // If should throw OOM, skip this GC to make next allocation fail, and throw OOM.
+    if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
+        return;
+    }
     if (UNLIKELY(g_isEnableCMCGC)) {
         common::GCReason cmcReason = common::GC_REASON_USER;
         bool async = true;
@@ -1371,6 +1379,10 @@ void SharedHeap::CollectGarbage(JSThread *thread)
 template<GCReason gcReason>
 void SharedHeap::CompressCollectGarbageNotWaiting(JSThread *thread)
 {
+    // If should throw OOM, skip this GC to make next allocation fail, and throw OOM.
+    if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
+        return;
+    }
     {
         // lock here is outside post task to prevent the extreme case: another js thread succeeed posting a
         // concurrentmark task, so here will directly go into WaitGCFinished, but gcFinished_ is somehow
@@ -1389,6 +1401,10 @@ void SharedHeap::CompressCollectGarbageNotWaiting(JSThread *thread)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::PostGCTaskForTest(JSThread *thread)
 {
+    // If should throw OOM, skip this GC to make next allocation fail, and throw OOM.
+    if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
+        return;
+    }
     ASSERT(gcType == TriggerGCType::SHARED_GC ||gcType == TriggerGCType::SHARED_PARTIAL_GC ||
         gcType == TriggerGCType::SHARED_FULL_GC);
 #ifndef NDEBUG

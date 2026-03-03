@@ -51,15 +51,15 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     }
     auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
         ToSpaceTypeName(space->GetSpaceType()), isRegular, isCompress, isMachineCode,
-        Jit::GetInstance()->IsEnableJitFort(), shouldPageTag);
+        Jit::GetInstance()->IsEnableJitFort(), shouldPageTag, false);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) { // LOCV_EXCL_BR_LINE
         if (heap->InGC()) {
-            // Donot crash in GC.
-            TemporarilyEnsureAllocateionAlwaysSuccess(heap);
+            // Donot crash in GC, and record to Dump&Fatal when GC completed.
+            heap->ShouldForceThrowOOMError();
             pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
                 ToSpaceTypeName(space->GetSpaceType()), isRegular, isCompress, isMachineCode,
-                Jit::GetInstance()->IsEnableJitFort(), shouldPageTag);
+                Jit::GetInstance()->IsEnableJitFort(), shouldPageTag, true);
             mapMem = pool.GetMem();
             if (mapMem == nullptr) {
                 // This should not happen
@@ -168,13 +168,6 @@ void HeapRegionAllocator::DecreaseMemMapUsage(Region *region)
     bool isRegular = !region->InHugeObjectSpace() && !region->InHugeMachineCodeSpace() &&
         !region->InSharedHugeObjectSpace();
     MemMapAllocator::GetInstance()->DecreaseMemUsage(region->GetCapacity(), isRegular);
-}
-
-void HeapRegionAllocator::TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *heap)
-{
-    // Make MemMapAllocator infinite, and record to Dump&Fatal when GC completed.
-    heap->ShouldForceThrowOOMError();
-    MemMapAllocator::GetInstance()->TransferToInfiniteModeForGC();
 }
 
 bool HeapRegionAllocator::AllocateRegionShouldPageTag(Space *space) const

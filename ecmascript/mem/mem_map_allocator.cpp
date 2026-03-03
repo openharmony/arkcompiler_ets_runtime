@@ -65,7 +65,7 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
         if (ToUintPtr(memMap.GetMem()) >= ToUintPtr(addr) || i == MEM_MAP_RETRY_NUM) {
             PageTag(memMap.GetMem(), memMap.GetSize(), PageTagType::HEAP);
             PageRelease(memMap.GetMem(), memMap.GetSize());
-            memMapFreeList_.Initialize(memMap, capacity_);
+            memMapFreeList_.Initialize(memMap);
             break;
         } else {
             PageUnmap(memMap);
@@ -77,7 +77,7 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
     MemMap hugeMemMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
     PageTag(hugeMemMap.GetMem(), hugeMemMap.GetSize(), PageTagType::HEAP);
     PageRelease(hugeMemMap.GetMem(), hugeMemMap.GetSize());
-    memMapFreeList_.Initialize(hugeMemMap, capacity_);
+    memMapFreeList_.Initialize(hugeMemMap);
 #endif
 }
 
@@ -190,13 +190,22 @@ static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size, [[mayb
 }
 
 MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment,
-                                 const std::string &spaceName, bool regular, [[maybe_unused]]bool isCompress,
-                                 bool isMachineCode, bool isEnableJitFort, bool shouldPageTag)
+                                 const std::string &spaceName, bool regular, bool isCompress,
+                                 bool isMachineCode, bool isEnableJitFort, bool shouldPageTag,
+                                 bool skipCheckCapacity)
 {
+    if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
+        LOG_GC(ERROR) << "memory map overflow";
+        if (!skipCheckCapacity) {
+            return MemMap();
+        }
+    }
     PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
 
     if (regular) {
         if (isCompress) {
+            // GC do not allocate NonMovable or ReadOnly object
+            ASSERT(!skipCheckCapacity);
             return AllocateFromCompressPool(threadId, size, alignment, spaceName, isMachineCode,
                 isEnableJitFort, shouldPageTag, type);
         } else {
@@ -204,10 +213,8 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
                 isEnableJitFort, shouldPageTag, type);
         }
     } else {
-        if (UNLIKELY(memMapTotalSize_ + size > capacity_)) { // LCOV_EXCL_BR_LINE
-            LOG_GC(ERROR) << "memory map overflow";
-            return MemMap();
-        }
+        // GC do not allocate Huge object
+        ASSERT(!skipCheckCapacity);
         MemMap mem = memMapFreeList_.GetMemFromList(size);
         if (mem.GetMem() != nullptr) {
             InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
@@ -225,10 +232,6 @@ MemMap MemMapAllocator::AllocateFromCompressPool(const uint32_t threadId, size_t
     if (mem.GetMem() != nullptr) {
         InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
         return mem;
-    }
-    if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
-        LOG_GC(ERROR) << "memory map overflow";
-        return MemMap();
     }
 
     mem = compressMemMapPool_.GetMemFromCache(size);
@@ -260,10 +263,6 @@ MemMap MemMapAllocator::AllocateFromMemPool(const uint32_t threadId, size_t size
     if (mem.GetMem() != nullptr) {
         InitialMemPool(mem, threadId, size, spaceName, isMachineCode, isEnableJitFort, shouldPageTag, type);
         return mem;
-    }
-    if (UNLIKELY(memMapTotalSize_ + size > capacity_)) {
-        LOG_GC(ERROR) << "memory map overflow";
-        return MemMap();
     }
 
     mem = memMapPool_.GetMemFromCache(size);
@@ -376,11 +375,5 @@ void MemMapAllocator::AdapterSuitablePoolCapacity(bool isLargeHeap)
     }
 
     LOG_GC(INFO) << "Ark Auto adapter memory pool capacity:" << capacity_;
-}
-
-void MemMapAllocator::TransferToInfiniteModeForGC()
-{
-    capacity_ = std::numeric_limits<size_t>::max();
-    LOG_GC(INFO) << "MemMapAllocator transfer to infinite mode:" << capacity_;
 }
 }  // namespace panda::ecmascript
