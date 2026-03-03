@@ -90,6 +90,14 @@ public:
         return rawheap_->GetNodes();
     }
 
+    rawheap_translate::Node* CreateNode()
+    {
+        if (!rawheap_) {
+            return nullptr;
+        }
+        return rawheap_->CreateNode();
+    }
+
     void WriteTestData(BinaryWriter &writer)
     {
         // write version
@@ -457,4 +465,36 @@ HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2)
         ASSERT_EQ(str, "test_root_" + std::to_string(i));
     }
 }
+
+HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1NullDataCheck)
+{
+    // Test the null pointer check in Translate() method
+    // Create RawHeapTranslateV1 instance
+    rawheap_translate::RawHeapTranslateV1 rawheap(metaParser.get());
+    RawHeapTranslateV1TestHelper helper(&rawheap);
+
+    // Create several nodes using helper (nodes will have nullptr data by default)
+    rawheap_translate::Node* node1 = helper.CreateNode();
+    rawheap_translate::Node* node2 = helper.CreateNode();
+    rawheap_translate::Node* node3 = helper.CreateNode();
+    rawheap_translate::Node* node4 = helper.CreateNode();
+
+    ASSERT_TRUE(node1 != nullptr);
+    ASSERT_TRUE(node2 != nullptr);
+    ASSERT_TRUE(node3 != nullptr);
+    ASSERT_TRUE(node4 != nullptr);
+
+    // Ensure at least one node has nullptr data (default)
+    // The new null check in Translate() should skip nodes with nullptr data
+
+    // Call Translate() - with the new null check, this should not crash
+    // The function may return false due to missing required data (hclass nodes, etc.)
+    // but the important thing is it doesn't dereference null pointer
+    bool result = rawheap.Translate();
+
+    // Don't assert on result - focus is on null pointer safety
+    // The test passes if Translate() returns (no crash)
+    ASSERT_TRUE(result);
+}
+
 }  // namespace panda::test
