@@ -725,13 +725,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_006, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_001, TestSize.Level0)
 {
-    mkdir("/data/app/el1/public/aot_compiler/ark_cache/com.example.app", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
     bool result = AotArgsVerify::CheckCodeSignArkCacheFilePath(
-        "/data/app/el1/public/aot_compiler/ark_cache/com.example.app");
+        "/data/app/el1/public/aot_compiler/ark_cache/nonexistent/file.abc");
 
-    EXPECT_TRUE(result);
-    unlink("/data/app/el1/public/aot_compiler/ark_cache/com.example.app");
+    EXPECT_FALSE(result);
 }
 
 /**
