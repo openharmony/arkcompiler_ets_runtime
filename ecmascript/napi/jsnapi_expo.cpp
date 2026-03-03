@@ -6885,9 +6885,9 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm
     return JSNApi::GetModuleNameSpaceWithModuleInfo<ForHybridApp::Hybrid>(vm, file, module_path);
 }
 
-bool JSNApi::IsCrossBundleHsp(const std::string &ohmurl)
+bool JSNApi::IsCrossBundleHsp(const EcmaVM *vm, const std::string &ohmurl)
 {
-    return ModulePathHelper::IsCrossBundleHsp(ohmurl.c_str());
+    return ModulePathHelper::IsCrossBundleHsp(vm, ohmurl.c_str());
 }
 
 Local<ObjectRef> JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(EcmaVM *vm, const std::string &ohmurl)

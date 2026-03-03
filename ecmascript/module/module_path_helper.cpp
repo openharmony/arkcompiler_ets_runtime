@@ -1234,11 +1234,11 @@ CString ModulePathHelper::GetPkgNameWithNormalizedOhmurl(const CString &ohmurl)
     return packageName;
 }
 
-bool ModulePathHelper::IsCrossBundleHsp(const CString &ohmurl)
+bool ModulePathHelper::IsCrossBundleHsp(const EcmaVM *vm, const CString &ohmurl)
 {
     CVector<CString> res = SplitNormalizedRecordName(ohmurl);
     const CString& bundleName = res[NORMALIZED_BUNDLE_NAME_INDEX];
-    if (!bundleName.empty()) {
+    if (bundleName != vm->GetBundleName()) {
         return true;
     }
     return false;
