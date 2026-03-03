@@ -864,8 +864,8 @@ bool HashTrieMapOperation<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(Ind
 template <typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
 template <TrieMapConfig::SlotBarrier Barrier, std::enable_if_t<Barrier == TrieMapConfig::NeedSlotBarrier, int>>
 bool HashTrieMapOperation<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(Indirect* parent, int index,
-                                                                             const WeakRootVisitor& visitor,
-                                                                             std::vector<Entry*>& waitDeleteEntries)
+    const WeakRootVisitor& visitor, std::vector<Entry*>& waitDeleteEntries,
+    std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
 {
     // load sub-nodes
     Node* child = parent->GetChild(index).load(std::memory_order_relaxed);
@@ -874,8 +874,9 @@ bool HashTrieMapOperation<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(Ind
     }
 
     if (child->IsEntry()) {
+        Entry* entry = child->AsEntry();
         // Processing the overflow linked list
-        for (Entry *prev = nullptr, *current = child->AsEntry(); current != nullptr; current = current->
+        for (Entry *prev = nullptr, *current = entry; current != nullptr; current = current->
              Overflow().load(std::memory_order_acquire)) {
             if (CheckWeakRef(visitor, current) && prev != nullptr) {
                 prev->Overflow().store(current->Overflow().load(std::memory_order_acquire), std::memory_order_release);
@@ -884,13 +885,16 @@ bool HashTrieMapOperation<Mutex, ThreadHolder, SlotBarrier>::ClearNodeFromGC(Ind
                 prev = current;
             }
         }
+        if (entry->Value<TrieMapConfig::NoSlotBarrier>() == nullptr) {
+            waitCheckAndFreeHeadEntries.push_back(std::make_tuple(parent, index, entry));
+        }
         return false;
     } else {
         // Recursive processing of the Indirect node
         Indirect* indirect = child->AsIndirect();
         uint32_t cleanCount = 0;
         for (uint32_t i = 0; i < TrieMapConfig::INDIRECT_SIZE; ++i) {
-            if (ClearNodeFromGC(indirect, i, visitor, waitDeleteEntries)) {
+            if (ClearNodeFromGC(indirect, i, visitor, waitDeleteEntries, waitCheckAndFreeHeadEntries)) {
                 cleanCount += 1;
             }
         }

@@ -213,9 +213,12 @@ inline HashTrieMapIndirect* HashTrieMapNode::AsIndirect()
     return static_cast<HashTrieMapIndirect*>(this);
 }
 
+using HashTrieMapSlotCheckInfo = std::tuple<HashTrieMapIndirect*, uint32_t, HashTrieMapEntry*>;
+
 template <typename Mutex>
 class HashTrieMap {
 public:
+    using Node = HashTrieMapNode;
     using Indirect = HashTrieMapIndirect;
     using Entry = HashTrieMapEntry;
     HashTrieMap() {}
@@ -296,6 +299,23 @@ public:
         waitFreeEntries_.clear();
     }
 
+    void CheckAndFreeHeadEntries(std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
+    {
+        for (auto info : waitCheckAndFreeHeadEntries) {
+            Indirect* parent = std::get<0>(info); // 0: parent
+            uint32_t index = std::get<1>(info); // 1: index
+            Node* child = parent->GetChild(index).load(std::memory_order_relaxed);
+            Entry* oldHead = std::get<2>(info); // 2: oldHead
+            ASSERT(oldHead->Value<TrieMapConfig::NoSlotBarrier>() == nullptr);
+            if (child->IsEntry() && child->AsEntry() == oldHead) {
+                parent->GetChild(index).store(oldHead->Overflow().load(std::memory_order_relaxed),
+                                              std::memory_order_relaxed);
+                delete oldHead;
+            }
+        }
+        waitCheckAndFreeHeadEntries.clear();
+    }
+
     void AddWaitClearToSpaceTagEntry(Entry* entry)
     {
         waitClearToSpaceTagEntries_.push_back(entry);
@@ -316,16 +336,24 @@ public:
 
     void StartSweeping()
     {
-        GetMutex().Lock();
-        isSweeping_ = true;
-        GetMutex().Unlock();
+        if (g_isEnableCMCGC) {
+            GetMutex().Lock();
+            isSweeping_ = true;
+            GetMutex().Unlock();
+        } else {
+            isSweeping_ = true;
+        }
     }
 
     void FinishSweeping()
     {
-        GetMutex().Lock();
-        isSweeping_ = false;
-        GetMutex().Unlock();
+        if (g_isEnableCMCGC) {
+            GetMutex().Lock();
+            isSweeping_ = false;
+            GetMutex().Unlock();
+        } else {
+            isSweeping_ = false;
+        }
     }
 
     std::atomic<Indirect*> root_[TrieMapConfig::ROOT_SIZE] = {};
@@ -474,7 +502,8 @@ public:
     template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
               std::enable_if_t<Barrier == TrieMapConfig::NeedSlotBarrier, int>  = 0>
     bool ClearNodeFromGC(Indirect* parent, int index, const WeakRootVisitor& visitor,
-                         std::vector<Entry*>& waitDeleteEntries);
+                         std::vector<Entry*>& waitDeleteEntries,
+                         std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
     
     template <TrieMapConfig::SlotBarrier Barrier = SlotBarrier,
               std::enable_if_t<Barrier == TrieMapConfig::NoSlotBarrier ||
@@ -561,18 +590,11 @@ private:
 
     constexpr Entry* PruneHead(Entry* entry)
     {
-        if constexpr (SlotBarrier == TrieMapConfig::NoSlotBarrier) {
+        if constexpr (SlotBarrier != TrieMapConfig::NeedSlotBarrierCMC) {
             return entry;
         }
-        if constexpr (SlotBarrier == TrieMapConfig::NeedSlotBarrier) {
-            // can't be pruned when sweeping.
-            // currently NeedSlotBarrier is dynamic so here gc thread must be sweeping
+        if (hashTrieMap_->IsSweeping()) {
             return entry;
-        }
-        if constexpr (SlotBarrier == TrieMapConfig::NeedSlotBarrierCMC) {
-            if (hashTrieMap_->IsSweeping()) {
-                return entry;
-            }
         }
         if (entry == nullptr) {
             return entry;

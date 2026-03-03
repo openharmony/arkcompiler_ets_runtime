@@ -77,6 +77,7 @@ private:
     void SignalSweepWeakRefTaskPending();
     void SuspendAllAndFinishSweeping(JSThread *thread);
     void SuspendAllAndFinishSweepingByDaemonThread(DaemonThread *dThread);
+    void ProcessCheckAndFreeHeadEntries();
 
     static inline uint32_t GetNextIndexId(IteratorPtr &iter)
     {
@@ -137,6 +138,7 @@ private:
     std::atomic<uint32_t> PendingTaskCount_ {0U};
     bool enableConcurrentSweep_ {false};
     std::array<std::vector<HashTrieMapEntry *>, TrieMapConfig::ROOT_SIZE> waitFreeEntries_ {};
+    std::array<std::vector<HashTrieMapSlotCheckInfo>, TrieMapConfig::ROOT_SIZE> waitCheckAndFreeHeadEntries_ {};
     Mutex sweepWeakRefMutex_;
     SweepState sweepWeakRefFinished_ { SweepState::FINISHED };
     ConditionVariable sweepWeakRefCV_;
@@ -271,7 +273,8 @@ public:
 
     template <typename Traits, std::enable_if_t<Traits::ConcurrentSweep, int> = 0>
     void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID,
-                                std::vector<HashTrieMapEntry*>& waitDeleteEntries);
+                                std::vector<HashTrieMapEntry*>& waitDeleteEntries,
+                                std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
 
     template <typename Traits>
     bool CheckStringTableValidity(JSThread *thread);
@@ -378,7 +381,8 @@ public:
 
     void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t index);
     void ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t index,
-                                std::vector<HashTrieMapEntry*>& waitDeleteEntries);
+                                std::vector<HashTrieMapEntry*>& waitDeleteEntries,
+                                std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries);
 
     bool CheckStringTableValidity(JSThread *thread);
 
