@@ -73,6 +73,11 @@ int64_t GetUTCTimestamp(int64_t year, int64_t month, int64_t day, int64_t hour, 
     return (mktime(&localTime) * MS_PER_SECOND) + (millisecond % MS_PER_SECOND);
 }
 
+int64_t GetCurrentTimestamp()
+{
+    return 0;
+}
+
 bool IsDst(int64_t timeMs)
 {
     timeMs /= MS_PER_SECOND;

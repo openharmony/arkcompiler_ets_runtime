@@ -15,6 +15,7 @@
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
+#include "ecmascript/base/error_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/aot_crash_info.h"
@@ -252,7 +253,7 @@ void JsStackInfo::AppendJsStackTraceInfo(std::string &data, JSThread *thread, Me
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 {
     if (isJsCrash) {
-        ModulesSnapshotHelper::TryDisableSnapshot(0);
+        ModulesSnapshotHelper::TryDisableSnapshot(thread);
     }
 
     if (JsStackInfo::loader == nullptr) {

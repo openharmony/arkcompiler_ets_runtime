@@ -22,6 +22,7 @@
 #include <string_view>
 
 namespace panda::ecmascript {
+class JSThread;
 enum class SnapshotFeatureState : int8_t {
     DEFAULT = 0,
     PANDAFILE = 1 << 0,
@@ -51,7 +52,8 @@ public:
      * @param reason reason to disable snapshot, negative value means unknown reason,
      *               0 means uncaught exception, others means signal number
      */
-    static void TryDisableSnapshot(int reason = -1);
+    static bool TryDisableSnapshot(int reason = -1);
+    static void TryDisableSnapshot(JSThread* thread);
     static void DisableSnapshotEscaper();
     static void RemoveSnapshotFiles(const CString &path);
     static bool SetReadOnly(const std::string_view &path, std::string* errorMsg = nullptr);
@@ -60,13 +62,13 @@ private:
     static constexpr std::string_view MODULE_SNAPSHOT_STATE_FILE_NAME = "ArkModuleSnapshot.state";
     static constexpr std::string_view SNAPSHOT_FILE_SUFFIX = ".ams";
     static constexpr std::string_view FILE_MODE_READONLY = "r";
-    static constexpr std::string_view DISABLE_REASON_UNCAUGHT_EXCEPTION = "UEC";
-    static constexpr std::string_view DISABLE_REASON_SIGNAL = "SIG";
-    static constexpr std::string_view DISABLE_REASON_UNKNOWN = "UNK";
+    static constexpr std::string_view DISABLE_REASON_UNCAUGHT_EXCEPTION = "UNCAUGHT_EXCEPTION";
+    static constexpr std::string_view DISABLE_REASON_SIGNAL = "SIGNAL";
+    static constexpr std::string_view DISABLE_REASON_UNKNOWN = "UNKNOWN";
     static constexpr char STATE_WORD_MODULE_SNAPSHOT_DISABLED = '1';
     static constexpr char STATE_WORD_ALL_SNAPSHOT_DISABLED = '0';
 
-    static size_t IntToString(int value, char *buf, size_t bufSize);
+    static size_t IntToString(int64_t value, char *buf, size_t bufSize);
     static void UpdateFromStateFile(const CString &path);
     static bool SigchainHandler(int signo, void *info, void *ucontext);
 

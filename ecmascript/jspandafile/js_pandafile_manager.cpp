@@ -85,7 +85,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
         if (resolveBufferCallback == nullptr) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package is not supported in the Previewer.");
-            LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
+            if constexpr (isHybrid == ForHybridApp::Hybrid) {
+                LOG_FULL(FATAL) << "[LoadJSPandaFile] resolveBufferCallbackForHybridApp is nullptr";
+            } else {
+                LOG_FULL(FATAL) << "[LoadJSPandaFile] resolveBufferCallback is nullptr";
+            }
             return nullptr;
         }
         std::string hspPath = ModulePathHelper::ParseHapPath(filename);
@@ -585,8 +589,11 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
             resolveBufferCallback = vm->GetResolveBufferCallbackForHybridApp();
         }
         if (resolveBufferCallback == nullptr) {
-            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr, isHybrid = "
-                            << (isHybrid == ForHybridApp::Hybrid ? "Hybrid" : "Normal");
+            if constexpr (isHybrid == ForHybridApp::Hybrid) {
+                LOG_FULL(ERROR) << "When checking file path, resolveBufferCallbackForHybridApp is nullptr";
+            } else {
+                LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr";
+            }
             return false;
         }
         uint8_t *data = nullptr;

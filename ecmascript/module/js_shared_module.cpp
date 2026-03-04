@@ -70,7 +70,7 @@ JSHandle<JSTaggedValue> SendableClassModule::CloneRecordIndexBinding(JSThread *t
 JSHandle<JSTaggedValue> SendableClassModule::CloneRecordNameBinding(JSThread *thread, JSTaggedValue binding)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    ResolvedBinding *resolvedBinding = ResolvedBinding::Cast(binding.GetTaggedObject());
+    JSHandle<ResolvedBinding> resolvedBinding(thread, ResolvedBinding::Cast(binding.GetTaggedObject()));
     JSHandle<SourceTextModule> resolvedModule(thread, resolvedBinding->GetModule(thread));
     if (SourceTextModule::IsSharedModule((resolvedModule))) {
         JSHandle<JSTaggedValue> bindingName(thread, resolvedBinding->GetBindingName(thread));
