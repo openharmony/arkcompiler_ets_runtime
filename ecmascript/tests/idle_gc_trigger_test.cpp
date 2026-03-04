@@ -1033,4 +1033,139 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGC1)
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
 }
+
+HWTEST_F_L0(IdleGCTriggerTest, CheckIdleYoungGCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    bool result = trigger->CheckIdleYoungGC(false);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, CheckIdleYoungGCTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    bool result = trigger->CheckIdleYoungGC(true);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, CheckIdleYoungGCTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 100; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    
+    bool result = trigger->CheckIdleYoungGC(false);
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, CheckIdleYoungGCTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 100; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    
+    bool result = trigger->CheckIdleYoungGC(true);
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, IdleStateTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    EXPECT_FALSE(trigger->IsIdleState());
+    
+    trigger->NotifyLooperIdleStart(1, 1);
+    EXPECT_TRUE(trigger->IsIdleState());
+    
+    trigger->NotifyLooperIdleEnd(1);
+    EXPECT_FALSE(trigger->IsIdleState());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalCCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    heap->DisableLocalCC();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->TryTriggerLocalCC());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalCCTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->TryTriggerLocalCC());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalCCTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    heap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    heap->DisableLocalCC();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->TryTriggerLocalCC());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, HintGCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    bool lowResult = trigger->HintGCInLowDegree(heap);
+    bool middleResult = trigger->HintGCInMiddleDegree(heap);
+    bool highResult = trigger->HintGCInHighDegree(heap);
+    
+    EXPECT_FALSE(lowResult);
+    EXPECT_FALSE(middleResult);
+    EXPECT_FALSE(highResult);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, GetGCTypeNameTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    EXPECT_STREQ(trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::FULL_GC), "full gc");
+    EXPECT_STREQ(trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK), "shared concurrent mark");
+    EXPECT_STREQ(
+        trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK), "shared concurrent partial mark");
+    EXPECT_STREQ(trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC), "shared full gc");
+    EXPECT_STREQ(
+        trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK), "local concurrent young mark");
+    EXPECT_STREQ(
+        trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK), "local concurrent full mark");
+    EXPECT_STREQ(trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK), "local remark");
+    EXPECT_STREQ(trigger->GetGCTypeName(static_cast<TRIGGER_IDLE_GC_TYPE>(999)), "UnknownType");
+}
 }  // namespace panda::test
