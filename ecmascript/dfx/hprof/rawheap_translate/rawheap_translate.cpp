@@ -272,6 +272,9 @@ bool RawHeapTranslateV1::Translate()
     size_t cnt = nodes->size();
     for (size_t i = 3; i < cnt; i++) {  // 3:normal node start from 3
         Node *node = (*nodes)[i];
+        if (!node->data) {
+            continue;
+        }
         Node *hclass = FindNode(ByteToU64(node->data));
         if (hclass == nullptr) {
             LOG_ERROR_ << "missed hclass, node_id=" << node->nodeId;
