@@ -127,8 +127,7 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
 #if defined(ENABLE_BACKTRACE_LOCAL)
 OHOS::HiviewDFX::FpBacktrace *FpBacktrace()
 {
-    static auto fp = OHOS::HiviewDFX::FpBacktrace::CreateInstance();
-    return fp;
+    return OHOS::HiviewDFX::FpBacktrace::CreateInstance();
 }
 #endif
 
@@ -140,8 +139,9 @@ std::string SymbolicAddress(const void* const *pc,
 #if defined(ENABLE_BACKTRACE_LOCAL)
     std::vector<OHOS::HiviewDFX::DfxFrame> frames;
     int index = 0;
+    auto fpBacktrace = FpBacktrace();
     for (int i = 0; i < size; i++) {
-        auto dfx_frame = FpBacktrace()->SymbolicAddress(const_cast<void *>(pc[i]));
+        auto dfx_frame = fpBacktrace->SymbolicAddress(const_cast<void *>(pc[i]));
         if (dfx_frame == nullptr) {
             continue;
         }
@@ -163,7 +163,8 @@ __attribute__((optnone)) int BacktraceHybrid(void** pcArray, uint32_t maxSize)
 {
     uint32_t size = 0;
 #if defined(ENABLE_BACKTRACE_LOCAL)
-    size = FpBacktrace()->BacktraceFromFp(__builtin_frame_address(0), pcArray, maxSize);
+    static auto fpBacktrace = FpBacktrace();
+    size = fpBacktrace->BacktraceFromFp(__builtin_frame_address(0), pcArray, maxSize);
 #endif
     return static_cast<int>(size);
 }
