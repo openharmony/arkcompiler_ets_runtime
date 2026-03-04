@@ -2438,4 +2438,373 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_Syml
     rmdir("/data/app/el1/public/aot_compiler/az_cache/com.example.app");
 }
 
+// ============================================================================
+// CheckTriggerTypeForAOT - Test Cases
+// ============================================================================
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_Idle
+ * @tc.desc: Test CheckTriggerTypeForAOT with triggerType 0 (IDLE) - should return true
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_Idle, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::TRIGGER_TYPE] = "0";
+
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+
+    EXPECT_TRUE(result);
 }
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_Install
+ * @tc.desc: Test CheckTriggerTypeForAOT with triggerType 1 (INSTALL) - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_Install, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::TRIGGER_TYPE] = "1";
+
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_OtherValue
+ * @tc.desc: Test CheckTriggerTypeForAOT with triggerType 2 (other value) - should return true
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_OtherValue, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::TRIGGER_TYPE] = "2";
+
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_NotExist
+ * @tc.desc: Test CheckTriggerTypeForAOT with triggerType not in argsMap - should return true
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_NotExist, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    // triggerType not present
+
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_ParseFail
+ * @tc.desc: Test CheckTriggerTypeForAOT with non-numeric string - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_ParseFail, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::TRIGGER_TYPE] = "invalid";
+
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+// ============================================================================
+// IsSharedBundlesType - Test Cases
+// ============================================================================
+
+/**
+ * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_App
+ * @tc.desc: Test IsSharedBundlesType with bundleType 0 (APP) - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_App, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_TYPE] = "0";
+
+    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_AtomicService
+ * @tc.desc: Test IsSharedBundlesType with bundleType 1 (ATOMIC_SERVICE) - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_AtomicService, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_TYPE] = "1";
+
+    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_Shared
+ * @tc.desc: Test IsSharedBundlesType with bundleType 2 (SHARED) - should return true
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_Shared, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_TYPE] = "2";
+
+    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_AppServiceFwk
+ * @tc.desc: Test IsSharedBundlesType with bundleType 3 (APP_SERVICE_FWK) - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_AppServiceFwk, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_TYPE] = "3";
+
+    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_NotExist
+ * @tc.desc: Test IsSharedBundlesType with bundleType not in argsMap - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_NotExist, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    // bundleType not present
+
+    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_ParseFail
+ * @tc.desc: Test IsSharedBundlesType with non-numeric string - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_ParseFail, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_TYPE] = "invalid";
+
+    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+// ============================================================================
+// CheckSharedBundlesUidAndGid - Test Cases
+// ============================================================================
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothValid
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with uid=1000, gid=1000 - should return true
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothValid, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "1000";
+    argsMap[ArgsIdx::BUNDLE_GID] = "1000";
+
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidValid_GidInvalid
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with uid=1000, gid!=1000 - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidValid_GidInvalid, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "1000";
+    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidInvalid_GidValid
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with uid!=1000, gid=1000 - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidInvalid_GidValid, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
+    argsMap[ArgsIdx::BUNDLE_GID] = "1000";
+
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothInvalid
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with uid!=1000, gid!=1000 - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothInvalid, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
+    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_MissingUid
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with missing BUNDLE_UID - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_MissingUid, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_GID] = "1000";
+    // BUNDLE_UID not present
+
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_MissingGid
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with missing BUNDLE_GID - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_MissingGid, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "1000";
+    // BUNDLE_GID not present
+
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidParseFail
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with invalid uid string - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidParseFail, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "invalid";
+    argsMap[ArgsIdx::BUNDLE_GID] = "1000";
+
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_GidParseFail
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with invalid gid string - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_GidParseFail, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "1000";
+    argsMap[ArgsIdx::BUNDLE_GID] = "invalid";
+
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+// ============================================================================
+// CheckSharedBundlesArkCacheFiles - Test Cases
+// ============================================================================
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_ValidPath
+ * @tc.desc: Test CheckSharedBundlesArkCacheFiles with valid shared bundles path - should return true
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_ValidPath, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/test/file.an";
+
+    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_PathTraversal
+ * @tc.desc: Test CheckSharedBundlesArkCacheFiles with path traversal attack - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_PathTraversal, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/../etc/file.an";
+
+    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_WrongPrefix
+ * @tc.desc: Test with APP_ARK_CACHE_PREFIX instead of SHARED_BUNDLES - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_WrongPrefix, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/file.an";
+
+    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_MissingAnFile
+ * @tc.desc: Test CheckSharedBundlesArkCacheFiles with missing AN_FILE_NAME - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_MissingAnFile, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    // AN_FILE_NAME not present
+
+    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+} // namespace OHOS::ArkCompiler

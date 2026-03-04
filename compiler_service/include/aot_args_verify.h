@@ -39,6 +39,7 @@ struct AotPkgInfo {
     std::string moduleName;
     std::string appIdentifier;
     std::string pgoDir;
+    int32_t bundleType = 0;
 
     std::optional<uint32_t> abcOffset;
     std::optional<uint32_t> abcSize;
@@ -57,8 +58,11 @@ public:
     static bool CheckFrameworkAnFile(const std::string &anFile);
     static bool CheckAOTArgs(const std::unordered_map<std::string, std::string> &argsMap);
     static bool CheckStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap);
+    static bool CheckTriggerTypeForAOT(const std::unordered_map<std::string, std::string> &argsMap);
+    static bool IsSharedBundlesType(const std::unordered_map<std::string, std::string> &argsMap);
     static bool CheckFrameworkStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap);
     static bool CheckCodeSignArkCacheFilePath(const std::string &inputPath);
+    static bool IsValidArkCachePath(const std::string &resolvedPath);
     static bool CheckAbcName(const std::string &abcName, AotParserType type);
     static bool CheckModuleName(const std::string &moduleName);
     static bool CheckAbcOffsetAndSize(
@@ -69,6 +73,8 @@ public:
     static bool ParseInt32Field(const nlohmann::json &jsonObj, const char *key, int32_t &output);
     static bool ParseAotPkgInfo(const std::string &pkgInfoStr, AotPkgInfo &info);
     static bool ParseStringField(const nlohmann::json &jsonObj, const char *key, std::string &output);
+    static bool CheckSharedBundlesUidAndGid(const std::unordered_map<std::string, std::string> &argsMap);
+    static bool CheckSharedBundlesArkCacheFiles(const std::unordered_map<std::string, std::string> &argsMap);
 };
 
 } // namespace OHOS::ArkCompiler

@@ -108,7 +108,8 @@ bool AotArgsVerify::CheckArkCacheDirectoryPrefix(const std::string &aotFile, con
 
     std::string aotDir = aotFile.substr(0, lastSlash);
     std::string expectedBasePath = "/data/app/el1/public/aot_compiler/ark_cache/" + bundleName;
-    if (aotDir.substr(0, expectedBasePath.length()) != expectedBasePath) {
+    if (aotDir.length() < expectedBasePath.length() ||
+        aotDir.substr(0, expectedBasePath.length()) != expectedBasePath) {
         LOG_SA(ERROR) << "directory is not in expected location: " << aotDir.c_str()
                       << ", expected prefix: " << expectedBasePath.c_str();
         return false;
@@ -122,7 +123,8 @@ bool AotArgsVerify::CheckFrameworkAnFile(const std::string &anFile)
         return false;
     }
     const std::string expectedPrefix = "/data/service/el1/public/for-all-app/framework_ark_cache";
-    if (anFile.substr(0, expectedPrefix.length()) != expectedPrefix) {
+    if (anFile.length() < expectedPrefix.length() ||
+        anFile.substr(0, expectedPrefix.length()) != expectedPrefix) {
         LOG_SA(ERROR) << "framework file is not in expected location: " << anFile.c_str()
                       << ", expected prefix: " << expectedPrefix.c_str();
         return false;
@@ -144,8 +146,36 @@ bool AotArgsVerify::CheckPkgInfoFields(const AotPkgInfo &pkgInfo, AotParserType 
     return true;
 }
 
+bool AotArgsVerify::CheckTriggerTypeForAOT(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto triggerTypeIt = argsMap.find(ArgsIdx::TRIGGER_TYPE);
+    if (triggerTypeIt == argsMap.end()) {
+        return true;
+    }
+
+    uint8_t triggerType = 0;
+    const char* start = triggerTypeIt->second.c_str();
+    const char* end = start + triggerTypeIt->second.length();
+    auto result = std::from_chars(start, end, triggerType);
+    if (result.ec != std::errc()) {
+        LOG_SA(ERROR) << "Failed to parse triggerType: " << triggerTypeIt->second;
+        return false;
+    }
+
+    if (triggerType == static_cast<uint8_t>(AotTriggerType::INSTALL)) {
+        LOG_SA(ERROR) << "AOT skipped for triggerType=" << static_cast<uint8_t>(AotTriggerType::INSTALL);
+        return false;
+    }
+
+    return true;
+}
+
 bool AotArgsVerify::CheckAOTArgs(const std::unordered_map<std::string, std::string> &argsMap)
 {
+    if (!CheckTriggerTypeForAOT(argsMap)) {
+        return false;
+    }
+
     AotPkgInfo pkgInfo;
     auto pkgInfoIt = argsMap.find(ArgsIdx::COMPILER_PKG_INFO);
     if (pkgInfoIt == argsMap.end()) {
@@ -175,6 +205,25 @@ bool AotArgsVerify::CheckAOTArgs(const std::unordered_map<std::string, std::stri
     return true;
 }
 
+bool AotArgsVerify::IsSharedBundlesType(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto bundleTypeIt = argsMap.find(ArgsIdx::BUNDLE_TYPE);
+    if (bundleTypeIt == argsMap.end()) {
+        return false;
+    }
+
+    uint8_t bundleType = 0;
+    const char* start = bundleTypeIt->second.c_str();
+    const char* end = start + bundleTypeIt->second.length();
+    auto result = std::from_chars(start, end, bundleType);
+    if (result.ec != std::errc()) {
+        LOG_SA(ERROR) << "Failed to parse bundleType: " << bundleTypeIt->second;
+        return false;
+    }
+
+    return bundleType == static_cast<uint8_t>(BundleType::SHARED);
+}
+
 bool AotArgsVerify::CheckStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap)
 {
     AotPkgInfo pkgInfo;
@@ -191,11 +240,22 @@ bool AotArgsVerify::CheckStaticAotArgs(const std::unordered_map<std::string, std
     if (!CheckPkgInfoFields(pkgInfo, AotParserType::STATIC_AOT)) {
         return false;
     }
-    if (!CheckBundleUidAndGidFromArgsMap(argsMap)) {
-        return false;
-    }
-    if (!CheckArkCacheFiles(argsMap, pkgInfo.bundleName)) {
-        return false;
+
+    bool isSharedBundles = IsSharedBundlesType(argsMap);
+    if (isSharedBundles) {
+        if (!CheckSharedBundlesUidAndGid(argsMap)) {
+            return false;
+        }
+        if (!CheckSharedBundlesArkCacheFiles(argsMap)) {
+            return false;
+        }
+    } else {
+        if (!CheckBundleUidAndGidFromArgsMap(argsMap)) {
+            return false;
+        }
+        if (!CheckArkCacheFiles(argsMap, pkgInfo.bundleName)) {
+            return false;
+        }
     }
     return true;
 }
@@ -231,14 +291,22 @@ bool AotArgsVerify::CheckCodeSignArkCacheFilePath(const std::string &inputPath)
         return false;
     }
 
-    const std::string appArkCachePrefix = "/data/app/el1/public/aot_compiler/ark_cache/";
-    const std::string frameworkArkCachePrefix = "/data/service/el1/public/for-all-app/framework_ark_cache/";
-    bool isValidAppPath = resolvedPath.compare(0, appArkCachePrefix.length(), appArkCachePrefix) == 0;
-    bool isValidFrameworkPath = resolvedPath.compare(0, frameworkArkCachePrefix.length(), frameworkArkCachePrefix) == 0;
-    if (!isValidAppPath && !isValidFrameworkPath) {
+    return IsValidArkCachePath(resolvedPath);
+}
+
+bool AotArgsVerify::IsValidArkCachePath(const std::string &resolvedPath)
+{
+    bool isValidAppPath = resolvedPath.compare(0, ArgsIdx::APP_ARK_CACHE_PREFIX.length(),
+        ArgsIdx::APP_ARK_CACHE_PREFIX) == 0;
+    bool isValidFrameworkPath = resolvedPath.compare(0, ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX.length(),
+        ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX) == 0;
+    bool isValidSharedBundlesPath = resolvedPath.compare(0, ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.length(),
+        ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX) == 0;
+    if (!isValidAppPath && !isValidFrameworkPath && !isValidSharedBundlesPath) {
         LOG_SA(ERROR) << "fileName is not in valid arkcache location: " << resolvedPath.c_str()
-                      << ", expected prefixes: " << appArkCachePrefix.c_str()
-                      << " or " << frameworkArkCachePrefix.c_str();
+                      << ", expected prefixes: " << ArgsIdx::APP_ARK_CACHE_PREFIX.c_str()
+                      << ", " << ArgsIdx::FRAMEWORK_ARK_CACHE_PREFIX.c_str()
+                      << " or " << ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.c_str();
         return false;
     }
     return true;
@@ -436,6 +504,71 @@ bool AotArgsVerify::ParseStringField(const nlohmann::json &jsonObj, const char *
         return false;
     }
     output = jsonObj[key].get<std::string>();
+    return true;
+}
+
+bool AotArgsVerify::CheckSharedBundlesUidAndGid(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto bundleUidIt = argsMap.find(ArgsIdx::BUNDLE_UID);
+    auto bundleGidIt = argsMap.find(ArgsIdx::BUNDLE_GID);
+
+    if (bundleUidIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::BUNDLE_UID.c_str() << " not found in argsMap";
+        return false;
+    }
+    if (bundleGidIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::BUNDLE_GID.c_str() << " not found in argsMap";
+        return false;
+    }
+
+    int32_t uid = 0;
+    int32_t gid = 0;
+    const char* uidStart = bundleUidIt->second.c_str();
+    const char* uidEnd = uidStart + bundleUidIt->second.length();
+    auto uidResult = std::from_chars(uidStart, uidEnd, uid);
+    if (uidResult.ec != std::errc()) {
+        LOG_SA(ERROR) << "Failed to parse bundleUid: " << bundleUidIt->second;
+        return false;
+    }
+
+    const char* gidStart = bundleGidIt->second.c_str();
+    const char* gidEnd = gidStart + bundleGidIt->second.length();
+    auto gidResult = std::from_chars(gidStart, gidEnd, gid);
+    if (gidResult.ec != std::errc()) {
+        LOG_SA(ERROR) << "Failed to parse bundleGid: " << bundleGidIt->second;
+        return false;
+    }
+
+    if (uid != OID_SYSTEM || gid != OID_SYSTEM) {
+        LOG_SA(ERROR) << "Shared bundles require BundleUid and BundleGid to be " << OID_SYSTEM;
+        return false;
+    }
+
+    return true;
+}
+
+bool AotArgsVerify::CheckSharedBundlesArkCacheFiles(const std::unordered_map<std::string, std::string> &argsMap)
+{
+    auto anFileIt = argsMap.find(ArgsIdx::AN_FILE_NAME);
+    if (anFileIt == argsMap.end()) {
+        LOG_SA(ERROR) << ArgsIdx::AN_FILE_NAME.c_str() << " not found in argsMap";
+        return false;
+    }
+
+    const std::string &anFile = anFileIt->second;
+
+    if (!CheckPathTraverse(anFile)) {
+        return false;
+    }
+
+    if (anFile.length() < ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.length() ||
+        anFile.substr(0, ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.length()) !=
+        ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX) {
+        LOG_SA(ERROR) << "Shared bundles file is not in expected location: " << anFile.c_str()
+                      << ", expected prefix: " << ArgsIdx::SHARED_BUNDLES_ARK_CACHE_PREFIX.c_str();
+        return false;
+    }
+
     return true;
 }
 

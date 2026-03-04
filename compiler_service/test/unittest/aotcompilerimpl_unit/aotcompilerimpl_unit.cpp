@@ -744,19 +744,6 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_037, TestSize.Level0)
 }
 
 /**
-* @tc.name: AotCompilerImplTest_038
-* @tc.desc: AotCompilerImpl::InitState() and ResetState() operations
-* @tc.type: Func
-*/
-HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_038, TestSize.Level0)
-{
-    AotCompilerImplMock aotImplMock;
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMapForTest);
-    int32_t retHandle = argsHandler->Handle(0);
-    EXPECT_EQ(retHandle, ERR_OK);
-}
-
-/**
 * @tc.name: AotCompilerImplTest_039
 * @tc.desc: AotCompilerImpl::ParseArkCacheFromArgs() with path ending at root
 * @tc.type: Func

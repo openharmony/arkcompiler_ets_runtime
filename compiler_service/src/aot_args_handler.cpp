@@ -44,7 +44,10 @@ const std::string STATIC_PAOC_BLACK_LIST_PATH = "/etc/ark/static_aot_methods_bla
 
 const std::string AN_SUFFIX = ".an";
 const std::string AP_SUFFIX = ".ap";
+const std::string HSP_SUFFIX = ".hsp";
 const std::string APP_SANBOX_PATH_PREFIX = "/data/storage/el1/bundle/";
+const std::string SYS_OUTER_HSP_PATH_PREFIX = "/system/app/";
+const std::string APP_ABC_PHYS_PATH_PREFIX = "/data/app/el1/bundle/public/";
 const std::string ETS_PATH = "/ets";
 const std::string OWNERID_SHARED_TAG = "SHARED_LIB_ID";
 
@@ -283,9 +286,13 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
                                    HapArgs &hapArgs, [[maybe_unused]] int32_t thermalLevel)
 {
     std::string abcPath;
-    if ((FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_UID, hapArgs.bundleUid) != ERR_OK)   ||
-        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_GID, hapArgs.bundleGid) != ERR_OK)   ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs.fileName) != ERR_OK)   ||
+    if ((FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_UID, hapArgs.bundleUid) != ERR_OK) ||
+        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_GID, hapArgs.bundleGid) != ERR_OK) ||
+        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_TYPE, hapArgs.bundleType) != ERR_OK) ||
+        (FindArgsIdxToInteger(argsMap, ArgsIdx::TRIGGER_TYPE, hapArgs.triggerType) != ERR_OK) ||
+        (FindArgsIdxToInteger(argsMap, ArgsIdx::STATIC_HYBRID_MODULE_CNT,
+            hapArgs.staticAndHybridModuleCnt) != ERR_OK) ||
+        (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs.fileName) != ERR_OK) ||
         (FindArgsIdxToString(argsMap, ArgsIdx::APP_SIGNATURE, hapArgs.signature) != ERR_OK) ||
         (FindArgsIdxToString(argsMap, ArgsIdx::ABC_PATH, abcPath) != ERR_OK)) {
         LOG_SA(ERROR) << "aot compiler args parsing error";
@@ -313,7 +320,10 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
 
     ProcessBlackListMethods(pkgInfo, anfilePath, hapArgs);
 
-    std::string location = ParseLocation(anfilePath);
+    std::string location;
+    if (ParseLocationByBundleType(hapArgs.bundleType, abcPath, anfilePath, location) != ERR_OK) {
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_LOCATION + Symbols::EQ + location);
     hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_PANDA_FILES + Symbols::EQ + abcPath);
 
@@ -363,7 +373,8 @@ bool StaticAOTArgsParser::ParseBootPandaFiles(std::string &bootfiles)
     return true;
 }
 
-std::string StaticAOTArgsParser::ParseLocation(std::string &anFilePath)
+// Parse location for Hap & Inner Hsp
+std::string StaticAOTArgsParser::ParseLocation(const std::string &anFilePath)
 {
     size_t pos = anFilePath.find_last_of("/");
     if (pos == std::string::npos) {
@@ -374,6 +385,70 @@ std::string StaticAOTArgsParser::ParseLocation(std::string &anFilePath)
     return location;
 }
 
+/*
+ * Parse location for Outer Hsp
+ *
+ * Case1: hsp under /data/app/
+ * expected_location: /data/storage/el1/bundle/com.example.app/FLayoutCore/FLayoutCore/ets
+ * input_abcPath: /data/app/el1/bundle/public/com.example.app/v122000200/FLayoutCore/FLayoutCore.hsp/
+ *                ets/modules_static.abc
+ *
+ * Case2: hsp under /system/app/
+ * expected_location: /system/app/shared_bundles/FlexiableLayout/FlayoutCore/ets
+ * input_abcPath: /system/app/shared_bundles/FlexiableLayout/FlayoutCore.hsp
+ */
+std::string StaticAOTArgsParser::ParseOuterHspLocation(const std::string &abcPath)
+{
+    // system outer hsp
+    if (abcPath.rfind(SYS_OUTER_HSP_PATH_PREFIX, 0) == 0) {
+        size_t pos = abcPath.find(HSP_SUFFIX);
+        if (pos == std::string::npos) {
+            return "";
+        }
+        return abcPath.substr(0, pos) + ETS_PATH;
+    }
+
+    // data outer hsp
+    size_t hspSuffixPos = abcPath.find(HSP_SUFFIX);
+    if (hspSuffixPos == std::string::npos) {
+        return "";
+    }
+    std::string hspLocationIncludingVersionCode = APP_SANBOX_PATH_PREFIX +
+        abcPath.substr(APP_ABC_PHYS_PATH_PREFIX.size(), hspSuffixPos - APP_ABC_PHYS_PATH_PREFIX.size()) + ETS_PATH;
+
+    // exclude the versionCode for hsp
+    // hspLocationIncludingVersionCode: /data/storage/el1/bundle/com.example.app/v122000200/
+    //                                  FLayoutCore/FLayoutCore/ets
+    // Break hspLocationIncludingVersionCode into segments.
+    std::vector<std::string> segments;
+    std::stringstream ss(hspLocationIncludingVersionCode);
+    std::string item;
+    while (std::getline(ss, item, '/')) {
+        if (!item.empty()) {
+            segments.push_back(item);
+        }
+    }
+
+    // exlucide the versionCode.
+    // versionCode comes after bundleName which follow keywork "bundle"
+    std::string hspLocation = "";
+    bool foundBundle = false;
+    for (size_t i = 0; i < segments.size(); ++i) {
+        if (!foundBundle && segments[i] == "bundle") {
+            foundBundle = true;
+            hspLocation += "/" + segments[i]; // add bundle
+            if (i + 1 < segments.size()) {
+                hspLocation += "/" + segments[++i]; // add bundleName
+            }
+            i++; // skip versionCode
+            continue;
+        }
+        hspLocation += "/" + segments[i];
+    }
+
+    return hspLocation;
+}
+
 std::string StaticAOTArgsParser::ParseModuleName(const std::string &anFilePath)
 {
     size_t pos = anFilePath.find_last_of("/");
@@ -382,6 +457,24 @@ std::string StaticAOTArgsParser::ParseModuleName(const std::string &anFilePath)
     }
     std::string moduleName = anFilePath.substr(pos + 1);
     return moduleName;
+}
+
+int32_t StaticAOTArgsParser::ParseLocationByBundleType(int32_t bundleType, const std::string &abcPath,
+    const std::string &anfilePath, std::string &location)
+{
+    if (bundleType == static_cast<int32_t>(BundleType::SHARED)) {
+        location = ParseOuterHspLocation(abcPath);
+    } else if (bundleType == static_cast<int32_t>(BundleType::APP)) {
+        location = ParseLocation(anfilePath);
+    } else {
+        LOG_SA(ERROR) << "bundleType invalid";
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+    if (location.empty()) {
+        LOG_SA(ERROR) << "location is empty";
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+    return ERR_OK;
 }
 
 bool StaticAOTArgsParser::ParseProfilePath(std::string &pkgInfo, std::string &profilePath)
