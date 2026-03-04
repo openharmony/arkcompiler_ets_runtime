@@ -922,6 +922,7 @@ HWTEST_F_L0(GCTest, stringTableReadBarrierTest)
     ASSERT_TRUE(result == value);
 
     JSHandle<EcmaString> str = factory->NewFromASCIISkippingStringTable("test");
+    SharedHeap::GetInstance()->PrepareByJSThread(thread, false);
     value = str.GetTaggedType();
     Region::ObjectAddressToRange(value)->AtomicMark(reinterpret_cast<void *>(value));
     result = Barriers::ReadBarrierForStringTableSlot(value);

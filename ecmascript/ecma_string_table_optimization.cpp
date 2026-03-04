@@ -96,7 +96,8 @@ void EcmaStringTableCleaner::ProcessConcurrentSweepWeakRef(IteratorPtr &iter, Ec
             delete entry;
         }
         waitFreeEntries.clear();
-        cleaner->stringTable_->ConcurrentSweepWeakRef(visitor, index, waitFreeEntries);
+        cleaner->stringTable_->ConcurrentSweepWeakRef(visitor, index, waitFreeEntries,
+                                                      cleaner->waitCheckAndFreeHeadEntries_[index]);
         if (ReduceCountAndCheckFinish(cleaner)) {
             cleaner->SignalSweepWeakRefTaskPending();
         }
@@ -143,10 +144,10 @@ void EcmaStringTableCleaner::SignalSweepWeakRefTaskPending()
 void EcmaStringTableCleaner::SuspendAllAndFinishSweeping(JSThread *thread)
 {
     SuspendAllScope scope(thread);
+    ProcessCheckAndFreeHeadEntries();
     typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
         reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable_->GetHashTrieMap());
     hashTrieMap->ClearToSpaceTagForFreshEntries();
-    hashTrieMap->CleanUp();
     hashTrieMap->FinishSweeping();
 }
 
@@ -154,11 +155,22 @@ void EcmaStringTableCleaner::SuspendAllAndFinishSweepingByDaemonThread(DaemonThr
 {
     ThreadManagedScope runningScope(dThread);
     SuspendAllScope scope(dThread);
+    ProcessCheckAndFreeHeadEntries();
     typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
         reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable_->GetHashTrieMap());
     hashTrieMap->ClearToSpaceTagForFreshEntries();
-    hashTrieMap->CleanUp();
     hashTrieMap->FinishSweeping();
+}
+
+void EcmaStringTableCleaner::ProcessCheckAndFreeHeadEntries()
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+        "EcmaStringTableCleaner::ProcessCheckAndFreeHeadEntries", "");
+    typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
+        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable_->GetHashTrieMap());
+    for (uint32_t i = 0; i < TrieMapConfig::ROOT_SIZE; i++) {
+        hashTrieMap->CheckAndFreeHeadEntries(waitCheckAndFreeHeadEntries_[i]);
+    }
 }
 
 bool EcmaStringTableCleaner::SweepWeakRefTask::Run([[maybe_unused]] uint32_t threadIndex)
@@ -605,7 +617,8 @@ void EcmaStringTableImpl::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t 
 
 template <typename Traits, std::enable_if_t<Traits::ConcurrentSweep, int>>
 void EcmaStringTableImpl::ConcurrentSweepWeakRef(const WeakRootVisitor &visitor, uint32_t rootID,
-                                                 std::vector<HashTrieMapEntry*>& waitDeleteEntries)
+                                                 std::vector<HashTrieMapEntry*>& waitDeleteEntries,
+                                                 std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
 {
     typename Traits::HashTrieMapOperationType hashTrieMapOperation(
         reinterpret_cast<typename Traits::HashTrieMapType *>(GetHashTrieMap()));
@@ -616,7 +629,8 @@ void EcmaStringTableImpl::ConcurrentSweepWeakRef(const WeakRootVisitor &visitor,
         return;
     }
     for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
-        hashTrieMapOperation.ClearNodeFromGC(root_node, index, visitor, waitDeleteEntries);
+        hashTrieMapOperation.ClearNodeFromGC(root_node, index, visitor, waitDeleteEntries,
+                                             waitCheckAndFreeHeadEntries);
     }
 }
 
@@ -896,14 +910,16 @@ void EcmaStringTable::SweepWeakRef(const WeakRootVisitor& visitor, uint32_t root
 }
 
 void EcmaStringTable::ConcurrentSweepWeakRef(const WeakRootVisitor& visitor, uint32_t rootID,
-                                             std::vector<HashTrieMapEntry*>& waitDeleteEntries)
+                                             std::vector<HashTrieMapEntry*>& waitDeleteEntries,
+                                             std::vector<HashTrieMapSlotCheckInfo>& waitCheckAndFreeHeadEntries)
 {
 #ifdef USE_CMC_GC
     if (enableCMCGC_) {
         UNREACHABLE();
     }
 #endif
-    impl_.ConcurrentSweepWeakRef<DisableCMCGCConcurrentSweepTrait>(visitor, rootID, waitDeleteEntries);
+    impl_.ConcurrentSweepWeakRef<DisableCMCGCConcurrentSweepTrait>(visitor, rootID, waitDeleteEntries,
+                                                                   waitCheckAndFreeHeadEntries);
 }
 
 bool EcmaStringTable::CheckStringTableValidity(JSThread *thread)
