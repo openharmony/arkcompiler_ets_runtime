@@ -375,7 +375,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_023, TestSize.Level0)
 
     EXPECT_TRUE(result);
 
-    std::string expectedPath = "/path/to/profile.ap";
+    std::string expectedPath = "/path/to";
     EXPECT_EQ(profilePath, expectedPath);
 }
 
@@ -428,14 +428,15 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_027, TestSize.Level0)
         }
     )";
 
-    bool result = parser.ParseProfileUse(hapArgs, pkgInfo);
+    std::string moduleName = "module";
+    bool result = parser.ParseProfileUse(hapArgs, pkgInfo, moduleName);
 
     EXPECT_TRUE(result);
 
     size_t expectedVecSize = 1;
     EXPECT_EQ(hapArgs.argVector.size(), expectedVecSize);
 
-    std::string expectedProfileUse = "--paoc-use-profile:path=/path/to/profile.ap";
+    std::string expectedProfileUse = "--paoc-use-profile:path=/path/to/module.ap";
     EXPECT_EQ(hapArgs.argVector[0], expectedProfileUse);
 }
 
@@ -445,7 +446,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_028, TestSize.Level0)
     HapArgs hapArgs;
     std::string pkgInfo = R"({})";
 
-    bool result = parser.ParseProfileUse(hapArgs, pkgInfo);
+    std::string moduleName = "module";
+    bool result = parser.ParseProfileUse(hapArgs, pkgInfo, moduleName);
 
     EXPECT_FALSE(result);
 }

@@ -131,7 +131,7 @@ public:
 
     bool ParseProfilePath(std::string &pkgInfo, std::string &profilePath);
 
-    bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo);
+    bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo, const std::string &moduleName);
 
     AotParserType GetParserType() const override
     {
