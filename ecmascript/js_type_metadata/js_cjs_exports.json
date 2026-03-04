@@ -1,5 +1,6 @@
 {
     "name": "JS_CJS_EXPORTS",
+    "node_name": "CJS Exports",
     "offsets": [
         {
             "name": "Exports",

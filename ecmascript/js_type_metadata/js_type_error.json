@@ -1,5 +1,6 @@
 {
     "name": "JS_TYPE_ERROR",
+    "node_name": "Type Error",
     "offsets": [
         {
             "name": "Properties",

@@ -1,5 +1,6 @@
 {
     "name": "JS_API_TREESET_ITERATOR",
+    "node_name": "TreeSetIterator",
     "offsets": [
         {
             "name": "IteratedSet",

@@ -1,5 +1,6 @@
 {
     "name": "JS_ITERATOR",
+    "node_name": "Iterator",
     "offsets": [
         {
             "name": "Properties",

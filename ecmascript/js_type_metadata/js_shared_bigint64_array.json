@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_BIGINT64_ARRAY",
+    "node_name": "Shared BigInt64 Array",
     "offsets": [],
     "end_offset": 8,
     "parents": [

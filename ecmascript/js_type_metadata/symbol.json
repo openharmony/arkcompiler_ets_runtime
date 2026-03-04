@@ -1,5 +1,6 @@
 {
     "name": "SYMBOL",
+    "node_name": "Symbol",
     "offsets": [
         {
             "name": "Description",

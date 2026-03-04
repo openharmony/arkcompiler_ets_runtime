@@ -1,5 +1,6 @@
 {
     "name": "JS_API_HASHSET_ITERATOR",
+    "node_name": "HashSetIterator",
     "offsets": [
         {
             "name": "IteratedHashSet",

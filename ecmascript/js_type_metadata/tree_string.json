@@ -1,5 +1,6 @@
 {
     "name": "TREE_STRING",
+    "node_name": "BaseString",
     "offsets": [
         {
             "name": "First",

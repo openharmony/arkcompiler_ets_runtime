@@ -1,5 +1,6 @@
 {
     "name": "STORE_TS_HANDLER",
+    "node_name": "StoreAOTHandler",
     "offsets": [
         {
             "name": "HandlerInfo",

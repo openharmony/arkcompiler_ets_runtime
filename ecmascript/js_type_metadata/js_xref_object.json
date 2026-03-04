@@ -1,5 +1,6 @@
 {
     "name": "JS_XREF_OBJECT",
+    "node_name": "JSXRefObject",
     "offsets": [],
     "end_offset": 0,
     "parents": [

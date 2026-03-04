@@ -1,5 +1,6 @@
 {
     "name": "SENDABLE_ENV",
+    "node_name": "SendableEnv",
     "offsets": [],
     "end_offset": 0,
     "parents": [

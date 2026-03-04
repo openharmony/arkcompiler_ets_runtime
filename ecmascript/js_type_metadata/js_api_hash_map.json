@@ -1,5 +1,6 @@
 {
     "name": "JS_API_HASH_MAP",
+    "node_name": "HashMap",
     "offsets": [
         {
             "name": "Table",

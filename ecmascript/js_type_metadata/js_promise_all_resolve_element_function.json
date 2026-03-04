@@ -1,5 +1,6 @@
 {
     "name": "JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION",
+    "node_name": "PromiseAllResolveElementFunction",
     "offsets": [
         {
             "name": "Index",

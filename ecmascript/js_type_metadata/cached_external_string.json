@@ -1,5 +1,6 @@
 {
     "name": "CACHED_EXTERNAL_STRING",
+    "node_name": "BaseString",
     "offsets": [
         {
             "name": "Resouce",

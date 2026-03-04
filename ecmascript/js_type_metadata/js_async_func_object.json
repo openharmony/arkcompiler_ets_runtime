@@ -1,5 +1,6 @@
 {
     "name": "JS_ASYNC_FUNC_OBJECT",
+    "node_name": "AsyncFunctionObject",
     "offsets": [
         {
             "name": "Promise",

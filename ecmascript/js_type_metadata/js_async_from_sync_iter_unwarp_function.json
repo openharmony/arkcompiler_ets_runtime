@@ -1,5 +1,6 @@
 {
     "name": "JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION",
+    "node_name": "AsyncFromSyncIterUnwarpFunction",
     "offsets": [
         {
             "name": "Done",

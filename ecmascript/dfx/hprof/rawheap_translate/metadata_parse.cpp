@@ -88,6 +88,21 @@ std::string MetaParser::GetTypeName(JSType type)
     return "UNKNOWN_TYPE";
 }
 
+std::string MetaParser::GetNodeName(JSType type)
+{
+    MetaData *meta = GetMetaData(type);
+    if (meta != nullptr) {
+        if (meta->nodeName.length() > 0) {
+            return meta->nodeName;
+        } else if (meta->name.length() > 0) {
+            std::string name = meta->name;
+            std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+            return name;
+        }
+    }
+    return "unknown_type";
+}
+
 MetaData* MetaParser::GetMetaData(const std::string &name)
 {
     auto meta = meta_.find(name);
@@ -169,6 +184,7 @@ bool MetaParser::ParseTypeList(const cJSON *json)
         std::string name;
         GetString(item, "name", name);
         MetaData *meta = FindOrCreateMetaData(name);
+        GetString(item, "node_name", meta->nodeName);
         GetString(item, "visit_type", meta->visitType);
         GetUInt32(item, "end_offset", meta->endOffset);
 

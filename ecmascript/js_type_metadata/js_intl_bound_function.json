@@ -1,5 +1,6 @@
 {
     "name": "JS_INTL_BOUND_FUNCTION",
+    "node_name": "JSIntlBoundFunction",
     "offsets": [
         {
             "name": "NumberFormat",

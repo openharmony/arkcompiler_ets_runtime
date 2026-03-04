@@ -1,5 +1,6 @@
 {
     "name": "JS_TERMINATION_ERROR",
+    "node_name": "Termination Error",
     "offsets": [
         {
             "name": "Properties",

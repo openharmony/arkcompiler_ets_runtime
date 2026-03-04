@@ -1,5 +1,6 @@
 {
     "name": "JS_API_BITVECTOR",
+    "node_name": "BitVector",
     "offsets": [
         {
             "name": "NativePointer",

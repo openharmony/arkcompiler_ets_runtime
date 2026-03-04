@@ -1,5 +1,6 @@
 {
     "name": "JS_API_STACK_ITERATOR",
+    "node_name": "StackIterator",
     "offsets": [
         {
             "name": "IteratedStack",

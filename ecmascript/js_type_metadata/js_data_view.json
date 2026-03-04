@@ -1,5 +1,6 @@
 {
     "name": "JS_DATA_VIEW",
+    "node_name": "DataView",
     "offsets": [
         {
             "name": "DataView",

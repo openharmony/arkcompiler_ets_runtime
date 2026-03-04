@@ -1,5 +1,6 @@
 {
     "name": "PROTO_CHANGE_MARKER",
+    "node_name": "ProtoChangeMarker",
     "offsets": [],
     "end_offset": 8,
     "parents": [

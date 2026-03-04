@@ -1,1 +1,9 @@
-{"name": "CONSTANT_POOL", "offsets": [], "end_offset": 0, "parents": ["TAGGED_ARRAY"]}
+{
+    "name": "CONSTANT_POOL",
+    "node_name": "ArkInternalConstantPool",
+    "offsets": [],
+    "end_offset": 0,
+    "parents": [
+        "TAGGED_ARRAY"
+    ]
+}

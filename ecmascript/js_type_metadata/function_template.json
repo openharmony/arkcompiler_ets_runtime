@@ -1,5 +1,6 @@
 {
     "name": "FUNCTION_TEMPLATE",
+    "node_name": "ArkInternalFunctionTemplate",
     "offsets": [
         {
             "name": "Method",

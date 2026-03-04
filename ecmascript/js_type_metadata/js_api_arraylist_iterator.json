@@ -1,5 +1,6 @@
 {
     "name": "JS_API_ARRAYLIST_ITERATOR",
+    "node_name": "ArrayListIterator",
     "offsets": [
         {
             "name": "IteratedArrayList",

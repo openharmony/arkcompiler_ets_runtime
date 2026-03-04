@@ -1,5 +1,6 @@
 {
     "name": "JS_API_DEQUE_ITERATOR",
+    "node_name": "DequeIterator",
     "offsets": [
         {
             "name": "IteratedDeque",

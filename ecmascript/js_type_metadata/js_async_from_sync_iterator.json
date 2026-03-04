@@ -1,5 +1,6 @@
 {
     "name": "JS_ASYNC_FROM_SYNC_ITERATOR",
+    "node_name": "AsyncFromSyncIterator",
     "offsets": [
         {
             "name": "SyncIteratorRecord",

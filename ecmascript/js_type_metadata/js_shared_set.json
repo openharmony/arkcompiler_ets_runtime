@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_SET",
+    "node_name": "SharedSet",
     "offsets": [
         {
             "name": "LinkedSet",

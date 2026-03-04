@@ -1,5 +1,6 @@
 {
     "name": "COMPLETION_RECORD",
+    "node_name": "CompletionRecord",
     "offsets": [
         {
             "name": "Value",

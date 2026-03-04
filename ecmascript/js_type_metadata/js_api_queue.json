@@ -1,5 +1,6 @@
 {
     "name": "JS_API_QUEUE",
+    "node_name": "Queue",
     "offsets": [
         {
             "name": "Length",

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/byte_array.h"
+#include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -1787,6 +1788,11 @@ public:
         };
     }
 
+    CString GetNodeNameTest(JSType type)
+    {
+        return HeapSnapshot::GetNodeName(type, true);
+    }
+
     ~JSMetadataTestHelper() = default;
 
     enum MetadataStatus {
@@ -1796,6 +1802,7 @@ public:
 
     struct Metadata {
         std::string name {};
+        std::string nodeName {};
         std::unordered_map<std::string, std::pair<int, int>> offsets {};
         int endOffset {};
         std::vector<std::string> parents {};
@@ -1851,6 +1858,10 @@ public:
         jsonFile.close();
         // Get "name" from json and set it to metadata.name
         if (!GetStringFromJson(json, "name", metadata.name)) {
+            std::cout << "Fail to read name: " << filePath << std::endl;
+            return;
+        }
+        if (!GetStringFromJson(json, "node_name", metadata.nodeName)) {
             std::cout << "Fail to read name: " << filePath << std::endl;
             return;
         }
@@ -1915,6 +1926,11 @@ public:
         auto fieldNames = GetFieldNamesByType(type);
         auto fieldOffsets = GetFieldOffsetsByType(type);
         auto sizeTable = GetFieldSizesByType(type);
+        auto fieldNodeName = GetNodeNameTest(type);
+        if (metadata.nodeName != std::string(fieldNodeName)) {
+            std::cout << "Type fields' number inconsistent with offsets' number" << std::endl;
+            return false;
+        }
         // Fields count should be the same as offsets'
         if (fieldNames.size() != fieldOffsets.size()) {
             std::cout << "Type fields' number inconsistent with offsets' number" << std::endl;

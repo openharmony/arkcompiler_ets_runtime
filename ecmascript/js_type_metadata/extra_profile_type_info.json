@@ -1,5 +1,6 @@
 {
     "name": "EXTRA_PROFILE_TYPE_INFO",
+    "node_name": "ExtraProfileTypeInfo",
     "offsets": [
         {
             "name": "ReceiverObject",

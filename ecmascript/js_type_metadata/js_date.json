@@ -1,5 +1,6 @@
 {
     "name": "JS_DATE",
+    "node_name": "Date",
     "offsets": [
         {
             "name": "TimeValue",

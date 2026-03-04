@@ -1,5 +1,6 @@
 {
     "name": "JS_ASYNC_AWAIT_STATUS_FUNCTION",
+    "node_name": "AsyncAwaitStatusFunction",
     "offsets": [
         {
             "name": "AsyncContext",

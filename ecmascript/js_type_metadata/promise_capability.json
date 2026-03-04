@@ -1,5 +1,6 @@
 {
     "name": "PROMISE_CAPABILITY",
+    "node_name": "PromiseCapability",
     "offsets": [
         {
             "name": "Promise",

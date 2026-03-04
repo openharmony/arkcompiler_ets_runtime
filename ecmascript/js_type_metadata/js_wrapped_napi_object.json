@@ -1,5 +1,6 @@
 {
     "name": "JS_WRAPPED_NAPI_OBJECT",
+    "node_name": "JSWrappedNapiObject",
     "offsets": [
         {
             "name": "NativePointers",

@@ -553,8 +553,7 @@ void RawHeapTranslateV1::FillNodes(Node *node, JSType type)
             node->type = FRAMEWORK_NODETYPE;
         }
     } else if (!metaParser_->IsString(type)) {
-        std::string name = metaParser_->GetTypeName(type);
-        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+        std::string name = metaParser_->GetNodeName(type);
         node->strId = InsertAndGetStringId(name);
     }
 }

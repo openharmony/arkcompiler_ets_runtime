@@ -46,6 +46,7 @@ struct Field {
 
 struct MetaData {
     std::string name = "";
+    std::string nodeName = "";
     std::string visitType = "";
     std::vector<Field> fields {};
     MetaData *parent {nullptr};

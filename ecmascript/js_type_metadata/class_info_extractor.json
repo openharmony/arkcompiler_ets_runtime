@@ -1,5 +1,6 @@
 {
     "name": "CLASS_INFO_EXTRACTOR",
+    "node_name": "ClassInfoExtractor",
     "offsets": [
         {
             "name": "NonStaticKeys",

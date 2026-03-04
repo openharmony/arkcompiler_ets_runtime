@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_FLOAT32_ARRAY",
+    "node_name": "Shared Float32 Array",
     "offsets": [],
     "end_offset": 8,
     "parents": [

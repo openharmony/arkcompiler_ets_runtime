@@ -1,5 +1,6 @@
 {
     "name": "JS_EVAL_ERROR",
+    "node_name": "Eval Error",
     "offsets": [
         {
             "name": "Properties",

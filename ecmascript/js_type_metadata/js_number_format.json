@@ -1,5 +1,6 @@
 {
     "name": "JS_NUMBER_FORMAT",
+    "node_name": "JSNumberFormat",
     "offsets": [
         {
             "name": "Locale",

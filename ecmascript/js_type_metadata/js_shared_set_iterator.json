@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_SET_ITERATOR",
+    "node_name": "SharedSetIterator",
     "offsets": [
         {
             "name": "IteratorSet",

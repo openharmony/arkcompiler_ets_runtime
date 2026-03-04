@@ -1,5 +1,6 @@
 {
     "name": "JS_STRING_ITERATOR",
+    "node_name": "StringIterator",
     "offsets": [
         {
             "name": "IteratedString",

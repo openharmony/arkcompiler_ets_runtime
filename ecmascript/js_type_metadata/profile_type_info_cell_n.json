@@ -1,5 +1,6 @@
 {
     "name": "PROFILE_TYPE_INFO_CELL_N",
+    "node_name": "ProfileTypeInfoCell",
     "offsets": [
         {
             "name": "Value",

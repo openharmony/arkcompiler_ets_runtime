@@ -1,5 +1,6 @@
 {
     "name": "METHOD",
+    "node_name": "Method",
     "offsets": [
         {
             "name": "ConstantPool",

@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_TYPED_ARRAY",
+    "node_name": "ArkInternalArray",
     "offsets": [],
     "end_offset": 8,
     "parents": [

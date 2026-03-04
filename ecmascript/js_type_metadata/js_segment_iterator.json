@@ -1,5 +1,6 @@
 {
     "name": "JS_SEGMENT_ITERATOR",
+    "node_name": "JSSegmentIterator",
     "offsets": [
         {
             "name": "IcuField",
