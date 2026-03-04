@@ -2471,7 +2471,6 @@ const uint16_t *StringRef::GetBufferUtf16(const EcmaVM *vm, uint32_t &length)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     CROSS_THREAD_CHECK(vm);
-    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     auto ecmaStringAccessor = EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this));
     if (!ecmaStringAccessor.IsLineString() || !ecmaStringAccessor.IsUtf16()) {
         LOG_ECMA(DEBUG) << "StringRef GetBufferUtf16 failed: Not LineString or not utf-16.";
@@ -6217,13 +6216,17 @@ Local<JSValueRef> JSNApi::GetCurrentContext(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<JSValueRef>(envContext);
 }
 
-void JSNApi::SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context)
+int JSNApi::SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context)
 {
-    CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    if (context.IsEmpty()) {
+        return static_cast<int>(SwitchContextResult::EMPTY);
+    }
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, static_cast<int>(SwitchContextResult::FAILED));
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<JSTaggedValue> contextValue = JSNApiHelper::ToJSHandle(context);
     JSHandle<GlobalEnv> globalEnv = JSHandle<GlobalEnv>(contextValue);
     thread->SetGlueGlobalEnv(globalEnv.GetTaggedValue());
+    return static_cast<int>(SwitchContextResult::SUCCESS);
 }
 
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)

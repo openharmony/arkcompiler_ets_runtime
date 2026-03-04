@@ -98,6 +98,12 @@ enum class ForHybridApp {
     Hybrid
 };
 
+enum class SwitchContextResult {
+    FAILED = 0,
+    EMPTY = 1,
+    SUCCESS = 2
+};
+
 struct HmsMap {
     std::string originalPath;
     std::string targetPath;
@@ -2055,7 +2061,7 @@ public:
 
     static Local<JSValueRef> GetCurrentContext(const EcmaVM *vm);
 
-    static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
+    static int SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
     // 1.2runtime interface info
     static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
 
