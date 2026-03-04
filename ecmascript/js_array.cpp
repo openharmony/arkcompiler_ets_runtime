@@ -163,8 +163,9 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
         JSTaggedValue proto = JSObject::GetPrototype(thread, originalArray);
         // fastpath: if the hclass of proto is the default Array Prototype hclass,
         // the constructor must in the inline properties.
-        if LIKELY(proto.IsECMAObject()
-            && JSObject::Cast(proto)->GetJSHClass() == thread->GetBuiltinPrototypeHClass(BuiltinTypeId::ARRAY)) {
+        if LIKELY(proto.IsECMAObject() &&
+            !JSObject::Cast(proto)->GetJSHClass()->IsDictionaryMode() &&
+            JSObject::Cast(proto)->GetJSHClass() == thread->GetBuiltinPrototypeHClass(BuiltinTypeId::ARRAY)) {
             constructor.Update(GetConstructorOrSpeciesInlinedProp(thread, proto, CONSTRUCTOR_INLINE_PROPERTY_INDEX));
         }
     }

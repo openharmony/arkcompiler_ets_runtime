@@ -193,3 +193,13 @@ v3.push('foo');
 var v4 = ['bar'];
 var v5 = v3.concat(v4);
 print(v5);
+
+{
+    var array4 = new Array(17);
+    for (var i = 0; i < 200; i++) {
+        array4[i] = new Uint32Array(262129);
+        [].concat();
+        Object.setPrototypeOf(Array.prototype, new Int8Array());
+        Array.prototype.length = 1025;
+    }
+}
