@@ -173,4 +173,76 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFreshRegion)
         heap->GetConcurrentMarker()->HandleMarkingFinished();
     }
 }
+
+HWTEST_F_L0(ConcurrentMarkingTest, EnableConcurrentMarkingTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto concurrentMarker = heap->GetConcurrentMarker();
+    concurrentMarker->ConfigConcurrentMark(true);
+    thread->SetMarkStatus(MarkStatus::MARKING);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    EXPECT_TRUE(concurrentMarker->IsRequestDisabled());
+}
+
+HWTEST_F_L0(ConcurrentMarkingTest, EnableConcurrentMarkingTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto concurrentMarker = heap->GetConcurrentMarker();
+    concurrentMarker->ConfigConcurrentMark(false);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    EXPECT_TRUE(concurrentMarker->IsConfigDisabled());
+}
+
+HWTEST_F_L0(ConcurrentMarkingTest, EnableConcurrentMarkingTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto concurrentMarker = heap->GetConcurrentMarker();
+    concurrentMarker->ConfigConcurrentMark(true);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    thread->SetMarkStatus(MarkStatus::MARKING);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
+    EXPECT_TRUE(concurrentMarker->IsEnabled());
+}
+
+HWTEST_F_L0(ConcurrentMarkingTest, EnableConcurrentMarkingTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto concurrentMarker = heap->GetConcurrentMarker();
+    concurrentMarker->ConfigConcurrentMark(true);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    thread->SetMarkStatus(MarkStatus::READY_TO_MARK);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    EXPECT_TRUE(concurrentMarker->IsDisabled());
+}
+
+HWTEST_F_L0(ConcurrentMarkingTest, EnableConcurrentMarkingTest005)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto concurrentMarker = heap->GetConcurrentMarker();
+    concurrentMarker->ConfigConcurrentMark(true);
+    thread->SetMarkStatus(MarkStatus::MARKING);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
+    EXPECT_TRUE(concurrentMarker->IsEnabled());
+}
+
+HWTEST_F_L0(ConcurrentMarkingTest, EnableConcurrentMarkingTest006)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto concurrentMarker = heap->GetConcurrentMarker();
+    concurrentMarker->ConfigConcurrentMark(true);
+    thread->SetMarkStatus(MarkStatus::READY_TO_MARK);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    EXPECT_TRUE(concurrentMarker->IsDisabled());
+}
+
+HWTEST_F_L0(ConcurrentMarkingTest, EnableConcurrentMarkingTest007)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto concurrentMarker = heap->GetConcurrentMarker();
+    concurrentMarker->ConfigConcurrentMark(true);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    thread->SetMarkStatus(MarkStatus::MARKING);
+    concurrentMarker->EnableConcurrentMarking(EnableConcurrentMarkType::DISABLE);
+    EXPECT_TRUE(concurrentMarker->IsDisabled());
+}
 }  // namespace panda::test
