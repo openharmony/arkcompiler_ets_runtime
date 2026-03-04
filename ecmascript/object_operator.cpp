@@ -400,7 +400,8 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
             return;
         }
         // check String.prototype or Number.prototype or Object.prototype
-        if ((JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() &&
+        if (receiver.IsECMAObject() &&
+            (JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() &&
             (receiver.IsJSPrimitive() || receiver == env->GetTaggedObjectFunctionPrototype()))) {
             env->SetNumberStringNotRegexpLikeDetector(true);
         }
