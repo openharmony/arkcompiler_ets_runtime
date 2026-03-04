@@ -915,6 +915,22 @@ assert_equal(res8.flags,'g');
   assert_equal(res == s1, true);
 }
 
+{
+  let reg1 = /(a)/
+  reg1.test("a")
+  assert_equal(RegExp.$1, "a");
+
+  reg1.test("a")
+  assert_equal(RegExp.$1, "a");
+
+  let reg2 = /b(b)/;
+  reg2.test("bb");
+  assert_equal(RegExp.$1, "b");
+
+  reg1.test("a")
+  assert_equal(RegExp.$1, "a");
+}
+
 // This case aims to check overflow of error message while parsing regular expression
 {
   let patternPart1 = "^(\\p{g}+)aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
