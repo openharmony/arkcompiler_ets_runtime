@@ -2986,4 +2986,139 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFram
     EXPECT_FALSE(result);
 }
 
+// ============================================================================
+// ParseOuterHspLocation - Test Cases
+// ============================================================================
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_HspSuffix
+ * @tc.desc: Test ParseOuterHspLocation with system app path (/system/app/ prefix)
+ *           Input: /system/app/shared_bundles/FlexiableLayout/FlayoutCore.hsp/ets/modules_static.abc
+ *           Expected: /system/app/shared_bundles/FlexiableLayout/FlayoutCore/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_HspSuffix, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/system/app/shared_bundles/FlexiableLayout/FlayoutCore.hsp/ets/modules_static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/system/app/shared_bundles/FlexiableLayout/FlayoutCore/ets";
+    EXPECT_EQ(result, expected);
 }
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_RootHsp
+ * @tc.desc: Test ParseOuterHspLocation with system app .hsp at root level
+ *           Input: /system/app/test.hsp
+ *           Expected: /system/app/test/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_RootHsp, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/system/app/test.hsp";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/system/app/test/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_NestedPath
+ * @tc.desc: Test ParseOuterHspLocation with system app nested .hsp path
+ *           Input: /system/app/deep/nested/path/module.hsp/ets/static.abc
+ *           Expected: /system/app/deep/nested/path/module/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_NestedPath, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/system/app/deep/nested/path/module.hsp/ets/static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/system/app/deep/nested/path/module/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_DataApp_WithVersionCode
+ * @tc.desc: Test ParseOuterHspLocation with data app path containing version code
+ *           Input: /data/app/el1/bundle/public/com.examplelayout/v122000200/
+ *                  FLayoutCore/FLayoutCore.hsp/ets/modules_static.abc
+ *           Expected: /data/storage/el1/bundle/com.examplelayout/FLayoutCore/FLayoutCore/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_DataApp_WithVersionCode, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/data/app/el1/bundle/public/com.examplelayout/"
+                          "v122000200/FLayoutCore/FLayoutCore.hsp/ets/modules_static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/data/storage/el1/bundle/com.examplelayout/"
+                           "FLayoutCore/FLayoutCore/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_DataApp_SimplePath
+ * @tc.desc: Test ParseOuterHspLocation with data app simple path
+ *           Input: /data/app/el1/bundle/public/com.example.app/v100000000/module.hsp/ets/static.abc
+ *           Expected: /data/storage/el1/bundle/com.example.app/module/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_DataApp_SimplePath, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/data/app/el1/bundle/public/com.example.app/"
+                          "v100000000/module.hsp/ets/static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/data/storage/el1/bundle/com.example.app/module/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_DataApp_NoSubFolder
+ * @tc.desc: Test ParseOuterHspLocation with data app hsp without subfolder
+ *           Input: /data/app/el1/bundle/public/com.example.app/v100000000/app.hsp/ets/static.abc
+ *           Expected: /data/storage/el1/bundle/com.example.app/app/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_DataApp_NoSubFolder, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/data/app/el1/bundle/public/com.example.app/"
+                          "v100000000/app.hsp/ets/static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/data/storage/el1/bundle/com.example.app/app/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_PreferredOverData
+ * @tc.desc: Test ParseOuterHspLocation prefers system path when both prefixes exist
+ *           Input contains /system/app/ prefix - should use system path logic
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_PreferredOverData, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    // Path that contains both prefixes - system should take precedence
+    std::string abcPath = "/system/app/test.hsp";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/system/app/test/ets";
+    EXPECT_EQ(result, expected);
+}
+
+} // namespace OHOS::ArkCompiler

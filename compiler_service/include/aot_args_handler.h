@@ -33,6 +33,9 @@ struct HapArgs {
     std::string signature;
     int32_t bundleUid {0};
     int32_t bundleGid {0};
+    int32_t bundleType {0};
+    int32_t triggerType {0};
+    int32_t staticAndHybridModuleCnt {0};
 };
 
 class AOTArgsParserBase;
@@ -126,8 +129,12 @@ public:
 
     bool ParseBootPandaFiles(std::string &bootfiles);
 
-    std::string ParseLocation(std::string &anfilePath);
+    std::string ParseLocation(const std::string &anfilePath);
+    std::string ParseOuterHspLocation(const std::string &abcPath);
     std::string ParseModuleName(const std::string &anFilePath);
+
+    int32_t ParseLocationByBundleType(int32_t bundleType, const std::string &abcPath, const std::string &anfilePath,
+        std::string &location);
 
     bool ParseProfilePath(std::string &pkgInfo, std::string &profilePath);
 
@@ -176,4 +183,3 @@ public:
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOT_ARGS_HANDLER_H
- 

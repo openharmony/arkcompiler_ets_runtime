@@ -26,6 +26,9 @@ namespace OHOS::ArkCompiler {
 namespace ArgsIdx {
 const std::string BUNDLE_UID = "BundleUid";
 const std::string BUNDLE_GID = "BundleGid";
+const std::string BUNDLE_TYPE = "bundleType";
+const std::string TRIGGER_TYPE = "triggerType";
+const std::string STATIC_HYBRID_MODULE_CNT = "staticAndHybridModuleCnt";
 const std::string AN_FILE_NAME = "anFileName";
 const std::string APP_SIGNATURE = "appIdentifier";
 const std::string BUNDLE_NAME = "bundleName";
@@ -49,6 +52,9 @@ const std::string COMPILER_AN_FILE_MAX_SIZE = "compiler-an-file-max-size";
 const std::string AOT_FILE = "aot-file";
 const std::string IS_SYSTEM_COMPONENT = "isSysComp";
 
+const std::string APP_ARK_CACHE_PREFIX = "/data/app/el1/public/aot_compiler/ark_cache/";
+const std::string FRAMEWORK_ARK_CACHE_PREFIX = "/data/service/el1/public/for-all-app/framework_ark_cache/";
+const std::string SHARED_BUNDLES_ARK_CACHE_PREFIX = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/";
 
 const std::string ARKTS_MODE = "moduleArkTSMode";
 const std::string PARTIAL = "partial";
@@ -58,6 +64,12 @@ const std::string PARTIAL = "partial";
 constexpr uid_t OID_SYSTEM = 1000;
 constexpr uid_t MIN_APP_UID_GID = 10000;  // Minimum app UID/GID
 
+// AOT trigger type values, must keep consistent with BMS
+enum class AotTriggerType {
+    IDLE = 0,
+    INSTALL = 1,
+};
+
 constexpr const char* BOOLEAN_FALSE = "0";
 
 namespace Symbols {
@@ -65,6 +77,15 @@ constexpr const char* PREFIX = "--";
 constexpr const char* EQ = "=";
 constexpr const char* COLON = ":";
 } // namespace Symbols
+
+// Bundle type values, must keep consistent with BMS
+enum class BundleType {
+    APP = 0,
+    ATOMIC_SERVICE = 1,
+    SHARED = 2,
+    APP_SERVICE_FWK = 3,
+    APP_PLUGIN = 4,
+};
 
 /**
  * @param RetStatusOfCompiler return code of ark_aot_compiler
