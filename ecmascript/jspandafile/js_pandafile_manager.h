@@ -121,9 +121,12 @@ public:
         }
         return hapJSPandaFiles;
     }
+    static void RegisterPFCheckCallback(const EcmaVM *vm);
 
 private:
     JSPandaFileManager() = default;
+    
+    static size_t GenPFCheckReport(char* buffer, char* end);
 
     class JSPandaFileAllocator {
     public:
@@ -145,6 +148,7 @@ private:
     static void FreeBuffer(void *mem, size_t size, bool isBundlePack, CreateMode mode);
 
     static bool UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile);
+    std::string GenPandafileCheckReport();
 
     RecursiveMutex jsPandaFileLock_;
     // JSPandaFile was shared by all vm.

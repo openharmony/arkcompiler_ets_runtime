@@ -320,6 +320,7 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
     if (option.IsBootSnapshotEscapeDisabled()) {
         ModulesSnapshotHelper::DisableSnapshotEscaper();
     }
+    JSPandaFileManager::RegisterPFCheckCallback(this);
 }
 
 EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
@@ -2358,6 +2359,34 @@ void EcmaVM::AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value)
 void EcmaVM::AddModuleManager(ModuleManager *moduleManager)
 {
     moduleManagers_.PushBack(moduleManager);
+}
+
+std::string EcmaVM::GetExtraJSCrashMessage() const
+{
+    std::string report {};
+    for (auto& [name, cb] : extraJSCrashMessageCallbacks_) {
+        if (!cb) {
+            continue;
+        }
+        auto msg = cb(this);
+        if (msg.empty()) {
+            continue;
+        }
+        report += name;
+        report += ":\n";
+        report += msg;
+        report += "\n";
+    }
+    return report;
+}
+
+size_t EcmaVM::RegisterExtraJSCrashMessageCallback(const std::string_view &name, ExtraJSCrashMessageCallback cb)
+{
+    if (!cb) {
+        return 0;
+    }
+    extraJSCrashMessageCallbacks_.emplace_back(std::pair{std::string(name), cb});
+    return extraJSCrashMessageCallbacks_.size();
 }
 
 void EcmaVM::ModuleManagers::Iterate(RootVisitor &v)

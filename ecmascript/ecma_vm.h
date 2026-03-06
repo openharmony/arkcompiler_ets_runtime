@@ -19,6 +19,7 @@
 #include "ecmascript/cross_vm/ecma_vm_hybrid.h"
 
 #include <atomic>
+#include <functional>
 #include <mutex>
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
@@ -149,6 +150,7 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
+using ExtraJSCrashMessageCallback = std::function<std::string (const EcmaVM*)>;
 
 using namespace panda;
 
@@ -1524,6 +1526,9 @@ public:
         return result->second;
     }
 
+    std::string GetExtraJSCrashMessage() const;
+    size_t RegisterExtraJSCrashMessageCallback(const std::string_view &name, ExtraJSCrashMessageCallback cb);
+
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     ECMAVM_PUBLIC_HYBRID_MODE_EXTENSION()
 #endif  /* PANDA_JS_ETS_HYBRID_MODE */
@@ -1829,6 +1834,8 @@ private:
 
     // record globalEnv as weak reference
     std::vector<JSTaggedType> globalEnvRecordList_;
+    using ExtraJSCrashMessageCallbackTuple = std::pair<std::string, ExtraJSCrashMessageCallback>;
+    std::vector<ExtraJSCrashMessageCallbackTuple> extraJSCrashMessageCallbacks_{};
 
     // store multi-context module manager
     class ModuleManagers {

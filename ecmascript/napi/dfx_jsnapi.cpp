@@ -985,6 +985,10 @@ void DFXJSNApi::ClearExtraErrorMessage(const EcmaVM *vm)
     thread->SetExtraErrorMessage(JSTaggedValue::Hole());
 }
 
+std::string DFXJSNApi::GetExtraJSCrashMessage(const EcmaVM *vm)
+{
+    return vm->GetExtraJSCrashMessage();
+}
 
 //When some objects invoke GetObjectHash, the return result is 0.
 //The GetObjectHashCode function is added to rectify the fault.

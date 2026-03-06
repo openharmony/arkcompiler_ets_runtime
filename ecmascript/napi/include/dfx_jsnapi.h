@@ -124,6 +124,7 @@ public:
 
     static std::pair<std::string, std::uint32_t> GetAnonymizeExtraErrorMessage(const EcmaVM *vm, uint32_t width);
     static void ClearExtraErrorMessage(const EcmaVM *vm);
+    static std::string GetExtraJSCrashMessage(const EcmaVM* vm);
 
     // cpuprofiler
     static bool StopCpuProfilerForColdStart(const EcmaVM *vm);

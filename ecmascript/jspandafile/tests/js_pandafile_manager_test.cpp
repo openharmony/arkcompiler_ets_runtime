@@ -13,20 +13,26 @@
  * limitations under the License.
  */
 
-#include "assembler/assembly-emitter.h"
-#include "assembler/assembly-parser.h"
-#include "class_data_accessor-inl.h"
-#include "libziparchive/zip_archive.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/tests/test_helper.h"
+#include <memory>
+#include <sstream>
+#include <string>
+#include "zlib.h"
+
 #define private public
 #define protected public
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #undef protected
 #undef private
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
+#include "class_data_accessor-inl.h"
+#include "libziparchive/zip_archive.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/tests/test_helper.h"
 
 
 using namespace panda::ecmascript;
@@ -34,6 +40,8 @@ using namespace panda::panda_file;
 using namespace panda::pandasm;
 
 namespace panda::test {
+constexpr size_t PANDAFILE_FILE_HEADER_SIZE = 8;
+
 class JSPandaFileManagerTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -61,6 +69,13 @@ public:
         if (mapper != nullptr) {
             *reinterpret_cast<uint8_t *>(mapper) = 10; // 10: random number
         }
+    }
+
+    static uint32_t CalcChecksum(const std::shared_ptr<JSPandaFile>& pf)
+    {
+        constexpr size_t PANDAFILE_CONTENT_OFFSET = PANDAFILE_FILE_HEADER_SIZE + sizeof(uint32_t);
+        return adler32(1UL, static_cast<const uint8_t*>(pf->GetBase()) + PANDAFILE_CONTENT_OFFSET,
+                       pf->GetFileSize() - PANDAFILE_CONTENT_OFFSET);
     }
 
     EcmaVM *instance {nullptr};
@@ -589,6 +604,99 @@ HWTEST_F_L0(JSPandaFileManagerTest, OpenJSPandaFileFromBuffer)
 
     // Clean up
 
+    pfManager->RemoveJSPandaFile(pf.get());
+}
+
+/**
+ * @tc.name: GenPandafileCheckReport
+ * @tc.desc: Test GenPandafileCheckReport method to validate checksum report generation
+ * @tc.type: FUNC
+ * @tc.require: issue#12796
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, GenPandafileCheckReport)
+{
+    const char *filename1 = "__JSPandaFileManagerTest_GenPandafileCheckReport.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr1 = pandasm::AsmEmitter::Emit(res.Value());
+
+    JSPandaFileManager localManager;
+    JSPandaFileManager *pfManager = &localManager;
+    std::shared_ptr<JSPandaFile> pf1 = pfManager->NewJSPandaFile(pfPtr1.release(), CString(filename1));
+    pf1->checksum_ = CalcChecksum(pf1);
+    pfManager->AddJSPandaFile(pf1);
+    // Test 1: All files have correct checksum - should return empty string
+    std::string report = pfManager->GenPandafileCheckReport();
+    EXPECT_TRUE(report.empty());
+
+    // Test 2: Modify checksum of pf1 to simulate damaged file
+    uint32_t originalChecksum = pf1->GetChecksum();
+    pf1->checksum_ = originalChecksum + 1;
+
+    report = pfManager->GenPandafileCheckReport();
+    EXPECT_FALSE(report.empty());
+    EXPECT_TRUE(report.find(filename1) != std::string::npos);
+    EXPECT_TRUE(report.find("checksum check failed") != std::string::npos);
+
+    // Restore checksum
+    pf1->checksum_ = originalChecksum;
+
+    // Test 3: Test with bundle install path
+    const char *bundlePath = "/data/storage/el1/bundle/com.example.app/entry/entry/ets/modules.abc";
+    std::unique_ptr<const File> pfPtr2 = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf2 = pfManager->NewJSPandaFile(pfPtr2.release(), CString(bundlePath));
+    pf2->checksum_ = CalcChecksum(pf2);
+    pfManager->AddJSPandaFile(pf2);
+
+    pf2->checksum_ = pf2->GetChecksum() + 1;
+    report = pfManager->GenPandafileCheckReport();
+    EXPECT_FALSE(report.empty());
+    // The report should show the relative path after bundle install path
+    EXPECT_TRUE(report.find("/data/storage/el1/bundle/") == std::string::npos);
+    EXPECT_TRUE(report.find("com.example.app/entry/entry/ets/modules.abc") != std::string::npos);
+
+    // Clean up
+    pfManager->RemoveJSPandaFile(pf1.get());
+    pfManager->RemoveJSPandaFile(pf2.get());
+}
+
+/**
+ * @tc.name: GenPandafileCheckReportWithNullPtr
+ * @tc.desc: Test GenPandafileCheckReport with null buffer pointer
+ * @tc.type: FUNC
+ * @tc.require: issue#12796
+ */
+HWTEST_F_L0(JSPandaFileManagerTest, GenPandafileCheckReportWithNullPtr)
+{
+    const char *filename = "__JSPandaFileManagerTestNull.pa";
+    const char *data = R"(
+        .function void foo() {}
+    )";
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    
+    JSPandaFileManager localManager;
+    JSPandaFileManager *pfManager = &localManager;
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    pfManager->AddJSPandaFile(pf);
+    auto originPtr = const_cast<panda_file::File*>(pf->pf_)->base_.ptr_;
+    const_cast<panda_file::File*>(pf->pf_)->base_.ptr_ = nullptr;
+
+    // Simulate null buffer by getting the base pointer and setting it to null
+    // Note: We can't directly modify pf_ pointer, but we can test the report format
+    // by checking that the function handles the case correctly
+    
+    std::string report = pfManager->GenPandafileCheckReport();
+    std::cout << "repor is: " << report << std::endl;
+    // With valid file, should return empty string
+    EXPECT_TRUE(report.find("invalid buffer pointer") != std::string::npos);
+    const_cast<panda_file::File*>(pf->pf_)->base_.ptr_ = originPtr;
+
+    // Clean up
     pfManager->RemoveJSPandaFile(pf.get());
 }
 
