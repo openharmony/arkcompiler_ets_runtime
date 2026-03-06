@@ -44,6 +44,10 @@ declare_args() {
   # Enable -Bsymbolic to reduce overhead of intra-library calls.
   ets_runtime_feature_enable_bsymbolic = true
 
+  # Control whether to compile libark_jsruntime_dfx.so, only enabled for phone and PC
+  ets_runtime_feature_enable_dfx = false
+
+
   # Defaults for fort
   ets_runtime_support_jit_code_sign = false
   enable_jit_code_sign = false
@@ -242,8 +246,11 @@ ets_runtime_output_path = "ets_runtime/ets_runtime"
 template("libark_jsruntime_common_set") {
   forward_variables_from(invoker, "*")
 
+  _is_dfx = defined(is_dfx) && is_dfx
+
   ohos_source_set(target_name) {
-    if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
+    if ((target_name == "libark_jsruntime_arm_set" ||
+        target_name == "libark_jsruntime_dfx_arm_set") && is_ohos &&
         is_standard_system && !is_arkui_x && target_cpu == "arm64") {
       include_dirs = [
         "$js_root",
@@ -285,16 +292,24 @@ template("libark_jsruntime_common_set") {
       "$js_root:asm_interp_enable_config",
     ]
 
+    # Check if this is a dfx version via is_dfx parameter
+    if (_is_dfx) {
+      configs += [ "$js_root:dfx_extra_config" ]
+    }
+
     cflags_cc = []
     if (is_standard_system || target_os == "android" || target_os == "ios") {
       cflags_cc += [ "-fvisibility=hidden" ]
     }
 
     external_deps = [ "libuv:uv" ]
+    
     if (enable_static_backtrace) {
       external_deps += [ "runtime_core:arkbacktrace" ]
     }
-    if (target_name == "libark_jsruntime_arm_set" && is_ohos &&
+
+    if ((target_name == "libark_jsruntime_arm_set" ||
+        target_name == "libark_jsruntime_dfx_arm_set") && is_ohos &&
         is_standard_system && !is_arkui_x) {
       defines += [ "ENABLE_FFRT_INTERFACES" ]
       external_deps += [
@@ -371,8 +386,210 @@ template("libark_jsruntime_common_set") {
   }
 }
 
+# Template for libark_jsruntime static library
+# Parameters:
+#   target_name: Name of the static library target
+#   is_dfx: (optional) Set to true for dfx version with dfx_extra_config
+#
+# This template creates source_set targets internally based on the is_dfx parameter
+template("libark_jsruntime_static_template") {
+  forward_variables_from(invoker, "*")
+
+  # Determine if this is a dfx version
+  _is_dfx = defined(is_dfx) && is_dfx
+
+  # Now create the static library that depends on these source sets
+  ohos_source_set(target_name) {
+    stack_protector_ret = false
+    if (enable_sanitize) {
+      sanitize = {
+        ubsan = true
+      }
+    }
+
+    # Determine which source sets to depend on
+    if (_is_dfx) {
+      _set_target_name = "libark_jsruntime_dfx_set"
+      _arm_set_target_name = "libark_jsruntime_dfx_arm_set"
+      _intl_set_target_name = "libark_js_intl_dfx_set"
+      _intl_arm_set_target_name = "libark_js_intl_dfx_arm_set"
+    } else {
+      _set_target_name = "libark_jsruntime_set"
+      _arm_set_target_name = "libark_jsruntime_arm_set"
+      _intl_set_target_name = "libark_js_intl_set"
+      _intl_arm_set_target_name = "libark_js_intl_arm_set"
+    }
+
+    if (is_ohos && is_standard_system) {
+      deps = [
+        ":${_intl_arm_set_target_name}",
+        ":${_arm_set_target_name}",
+      ]
+    } else {
+      # in this case libark_jsruntime_arm_set and libark_jsruntime_set are identical
+      deps = [
+        ":${_intl_set_target_name}",
+        ":${_set_target_name}",
+      ]
+    }
+
+    deps += [ ":libcommon_components_set" ]
+
+    external_deps = []
+    if (!is_arkui_x) {
+      external_deps += [ "runtime_core:arkfile_header_deps" ]
+    } else {
+      deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
+      all_dependent_configs = [ ":ark_jsruntime_public_config" ]
+    }
+
+    if (ark_js_hybrid) {
+      if (is_arkui_x) {
+        deps += [ "$arkplatform_root:arkplatform_static" ]
+      } else {
+        external_deps += [ "runtime_core:libarkplatform" ]
+      }
+    }
+
+    public_configs = [ "$js_root:ark_jsruntime_public_config" ]
+
+    if (!is_ohos) {
+      if ((current_cpu == "amd64" || current_cpu == "x64" ||
+           current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+          !is_mac && target_os != "ios") {
+        deps += [ "ecmascript/compiler:libark_stub_set" ]
+      } else {
+        deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
+      }
+    }
+    part_name = "ets_runtime"
+    subsystem_name = "arkcompiler"
+  }
+}
+
+# Template for libark_jsruntime shared library
+# Parameters:
+#   target_name: Name of the shared library target
+#   is_dfx: (optional) Set to true for dfx version with dfx_extra_config
+template("libark_jsruntime_shared_library_template") {
+  forward_variables_from(invoker, "*")
+
+  # Determine if this is a dfx version
+  _is_dfx = defined(is_dfx) && is_dfx
+
+  # Determine the static library dependency
+  if (_is_dfx) {
+    _static_dep = "libark_jsruntime_dfx_static"
+  } else {
+    _static_dep = "libark_jsruntime_static"
+  }
+
+  ohos_shared_library(target_name) {
+    stack_protector_ret = false
+    if (enable_sanitize) {
+      sanitize = {
+        ubsan = true
+      }
+    }
+
+    deps = [ ":${_static_dep}" ]
+
+    external_deps = []
+    if (is_arkui_x && target_os == "ios") {
+      deps += [ "$ark_third_party_root/bounds_checking_function:libsec_static" ]
+    } else {
+      external_deps += [ "bounds_checking_function:libsec_shared" ]
+    }
+
+    if (!is_arkui_x) {
+      external_deps += [ "runtime_core:libarkfile_runtime_static" ]
+    } else {
+      deps += [ "$ark_root/libpandafile:libarkfile_runtime_static" ]
+    }
+
+    if (!_is_dfx) {
+      all_dependent_configs = [ ":ark_jsruntime_public_config" ]
+    }
+    public_configs = [ ":ark_jsruntime_public_config" ]
+
+    if (is_ohos && is_standard_system && !is_debug) {
+      version_script = "libark_jsruntime.map"
+    }
+
+    # hiviewdfx libraries
+    external_deps += hiviewdfx_ext_deps
+    deps += hiviewdfx_deps
+
+    if (!enable_ark_intl) {
+      external_deps += [ "i18n:intl_util" ]
+    }
+
+    install_enable = true
+
+    if (!is_mingw && !is_mac) {
+      output_extension = "so"
+    }
+    if (!is_standard_system) {
+      relative_install_dir = "ark"
+    }
+
+    if (target_os == "android" && !ark_standalone_build) {
+      libs = [ "log" ]
+      version_script = "libark_jsruntime.map"
+    }
+
+    if (is_ohos && is_clang && target_cpu == "arm64" &&
+        defined(build_ext_path)) {
+      ldflags = [
+        "-Wl,--emit-relocs",
+        "-Wl,--no-relax",
+        "-mno-fix-cortex-a53-843419",
+      ]
+    }
+
+    if (ark_standalone_build || (defined(is_arkui_x) && is_arkui_x)) {
+      deps += [
+        "$ark_third_party_root/icu/icu4c:static_icui18n",
+        "$ark_third_party_root/icu/icu4c:static_icuuc",
+      ]
+    } else {
+      if (_is_dfx) {
+        external_deps += [
+          "icu:shared_icui18n",
+          "icu:shared_icuuc",
+          "runtime_core:arkplatform_header",
+          "runtime_core:common_interfaces_header",
+        ]
+      } else {
+        public_external_deps = [
+          "icu:shared_icui18n",
+          "icu:shared_icuuc",
+          "runtime_core:arkplatform_header",
+          "runtime_core:common_interfaces_header",
+        ]
+      }
+    }
+    innerapi_tags = [ "platformsdk_indirect" ]
+    part_name = "ets_runtime"
+    subsystem_name = "arkcompiler"
+
+    configs = [
+      ":ark_jsruntime_common_config",
+      ":arkjs_runtime_lto_link_config",
+    ]
+    if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
+      external_deps += [
+        "runtime_core:libarkbase_static",
+        "runtime_core:libarkziparchive_static",
+      ]
+    }
+  }
+}
+
 template("libark_jsruntime_intl_common_set") {
   forward_variables_from(invoker, "*")
+
+  _is_dfx = defined(is_dfx) && is_dfx
 
   ohos_source_set(target_name) {
     stack_protector_ret = false
@@ -381,6 +598,11 @@ template("libark_jsruntime_intl_common_set") {
     public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
     configs = [ "$js_root:ark_jsruntime_common_config" ]
+
+    # Check if this is a dfx version via is_dfx parameter
+    if (_is_dfx) {
+      configs += [ "$js_root:dfx_extra_config" ]
+    }
 
     cflags_cc = []
     if (is_standard_system || target_os == "android" || target_os == "ios") {

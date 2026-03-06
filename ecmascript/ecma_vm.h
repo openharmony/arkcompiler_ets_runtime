@@ -385,6 +385,21 @@ public:
         return isEnableCMCGC_;
     }
 
+    uint64_t GetOpenHandleScopes() const
+    {
+        return openHandleScopes_;
+    }
+
+    void IncreaseOpenHandleScopes()
+    {
+        openHandleScopes_++;
+    }
+
+    void DecreaseOpenHandleScopes()
+    {
+        openHandleScopes_--;
+    }
+
     void PushToNativePointerList(JSNativePointer *pointer, Concurrent isConcurrent = Concurrent::NO);
     void RemoveFromNativePointerList(JSNativePointer *pointer);
     void PushToDeregisterModuleList(const CString &module);
@@ -1484,6 +1499,8 @@ private:
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
+
+    uint64_t openHandleScopes_ {0};
 
     // VM startup states.
     JSRuntimeOptions options_;
