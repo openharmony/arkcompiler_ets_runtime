@@ -2640,6 +2640,10 @@ LocalScope::LocalScope(const EcmaVM *vm) : thread_(vm->GetJSThread())
     heapProfiler->IncreaseScopeCount();
     heapProfiler->PushToActiveScopeStack(this, nullptr);
 #endif
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    const_cast<EcmaVM *>(vm)->IncreaseOpenHandleScopes();
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 }
 
 LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJSThread())
@@ -2663,6 +2667,10 @@ LocalScope::LocalScope(const EcmaVM *vm, JSTaggedType value) : thread_(vm->GetJS
     heapProfiler->IncreaseScopeCount();
     heapProfiler->PushToActiveScopeStack(this, nullptr);
 #endif
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    const_cast<EcmaVM *>(vm)->IncreaseOpenHandleScopes();
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 }
 
 LocalScope::~LocalScope()
@@ -2689,6 +2697,10 @@ LocalScope::~LocalScope()
     heapProfiler->DecreaseScopeCount();
     heapProfiler->PopFromActiveScopeStack();
 #endif
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    const_cast<EcmaVM *>(vm)->DecreaseOpenHandleScopes();
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 }
 
 // ----------------------------------- EscapeLocalScope ------------------------------

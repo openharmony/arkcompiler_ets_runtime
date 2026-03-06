@@ -35,6 +35,12 @@ group("ark_js_packages") {
     "ecmascript/js_vm:ark_js_vm",
     "ecmascript/quick_fix:quick_fix",
   ]
+
+  if (ets_runtime_feature_enable_dfx) {
+    deps += [
+      ":libark_jsruntime_dfx"
+    ]
+  }
   if (is_clang && clang_version != "9.0.3" && current_cpu == "arm64" &&
       is_ohos) {
     deps += [
@@ -430,6 +436,12 @@ config("hiviewdfx_config") {
   }
 
   include_dirs = [ "$hilog_root/include" ]
+}
+
+# This config is used to compile libark_jsruntime_dfx.so.
+# NOTE: The macro in this config must not be used in header files.
+config("dfx_extra_config") {
+  defines = [ "ENABLE_HITRACE_LOCAL_HANDLE_DETECT" ]
 }
 
 config("ark_jsruntime_common_config") {
@@ -1545,26 +1557,28 @@ ohos_source_set("libcommon_components_set") {
   subsystem_name = "arkcompiler"
 }
 
-libark_jsruntime_common_set("libark_jsruntime_set") {
+# =================================================================
+# Create runtime libraries using unified template approach
+# =================================================================
+# Both standard and dfx versions are created through the same template,
+# ensuring consistency and minimizing code duplication.
+#
+# The templates automatically create the necessary source sets:
+#   - libark_jsruntime[_dfx]_set
+#   - libark_jsruntime[_dfx]_arm_set
+#   - libark_js_intl[_dfx]_set
+#   - libark_js_intl[_dfx]_arm_set
+#
+# Parameters:
+#   is_dfx: Set to true to enable dfx_extra_config
+# =================================================================
+
+# Static libraries
+libark_jsruntime_static_template("libark_jsruntime_static") {
 }
 
-libark_jsruntime_common_set("libark_jsruntime_arm_set") {
-  if (enable_sanitize) {
-    sanitize = {
-      ubsan = true
-    }
-  }
-}
-
-libark_jsruntime_intl_common_set("libark_js_intl_set") {
-}
-
-libark_jsruntime_intl_common_set("libark_js_intl_arm_set") {
-  if (enable_sanitize) {
-    sanitize = {
-      ubsan = true
-    }
-  }
+libark_jsruntime_static_template("libark_jsruntime_dfx_static") {
+  is_dfx = true
 }
 
 config("ark_jsruntime_test_nolto") {
@@ -1679,62 +1693,6 @@ ohos_source_set("libark_jsruntime_test_set") {
   subsystem_name = "arkcompiler"
 }
 
-ohos_source_set("libark_jsruntime_static") {
-  stack_protector_ret = false
-  if (enable_sanitize) {
-    sanitize = {
-      ubsan = true
-    }
-  }
-
-  if (is_ohos && is_standard_system) {
-    deps = [
-      ":libark_js_intl_arm_set",
-      ":libark_jsruntime_arm_set",
-    ]
-  } else {
-    # in this case libark_jsruntime_arm_set and libark_jsruntime_set are identical
-    deps = [
-      ":libark_js_intl_set",
-      ":libark_jsruntime_set",
-    ]
-  }
-
-  deps += [ ":libcommon_components_set" ]
-
-  external_deps = []
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:arkfile_header_deps" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
-    all_dependent_configs = [ ":ark_jsruntime_public_config" ]
-  }
-
-  if (ark_js_hybrid) {
-    if (is_arkui_x) {
-      deps += [ "$arkplatform_root:arkplatform_static" ]
-    } else if (ark_standalone_build) {
-      external_deps += [ "runtime_core:libarkplatform" ]
-    } else {
-      public_external_deps = [ "runtime_core:libarkplatform" ]
-    }
-  }
-
-  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
-
-  if (!is_ohos) {
-    if ((current_cpu == "amd64" || current_cpu == "x64" ||
-         current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-        !is_mac && target_os != "ios") {
-      deps += [ "ecmascript/compiler:libark_stub_set" ]
-    } else {
-      deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
-    }
-  }
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
-}
-
 config("arkjs_runtime_lto_link_config") {
   ldflags = []
   if (!ark_standalone_build && is_ohos && enhanced_opt && is_clang &&
@@ -1775,93 +1733,77 @@ config("arkjs_runtime_lto_link_config") {
   }
 }
 
-ohos_shared_library("libark_jsruntime") {
-  stack_protector_ret = false
+libark_jsruntime_common_set("libark_jsruntime_set") {
+}
+
+libark_jsruntime_common_set("libark_jsruntime_arm_set") {
+   if (enable_sanitize) {
+     sanitize = {
+       ubsan = true
+     }
+   }
+}
+
+libark_jsruntime_common_set("libark_jsruntime_dfx_set") {
+  is_dfx = true
+}
+
+libark_jsruntime_common_set("libark_jsruntime_dfx_arm_set") {
+  is_dfx = true
   if (enable_sanitize) {
     sanitize = {
       ubsan = true
     }
   }
+}
 
-  deps = [ ":libark_jsruntime_static" ]
+libark_jsruntime_intl_common_set("libark_js_intl_set") {
+}
 
-  external_deps = []
-  if (is_arkui_x && target_os == "ios") {
-    deps += [ "$ark_third_party_root/bounds_checking_function:libsec_static" ]
-  } else {
-    external_deps += [ "bounds_checking_function:libsec_shared" ]
+libark_jsruntime_intl_common_set("libark_js_intl_arm_set") {
+  if (enable_sanitize) {
+    sanitize = {
+      ubsan = true
+    }
   }
+}
 
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:libarkfile_runtime_static" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:libarkfile_runtime_static" ]
+libark_jsruntime_intl_common_set("libark_js_intl_dfx_set") {
+  is_dfx = true
+}
+
+libark_jsruntime_intl_common_set("libark_js_intl_dfx_arm_set") {
+  is_dfx = true
+  if (enable_sanitize) {
+    sanitize = {
+      ubsan = true
+    }
   }
+}
 
-  all_dependent_configs = [ ":ark_jsruntime_public_config" ]
-  public_configs = [ ":ark_jsruntime_public_config" ]
+# =================================================================
+# Summary of created targets:
+# =================================================================
+# Source sets (auto-created by templates):
+#   libark_jsruntime_set, libark_jsruntime_arm_set
+#   libark_js_intl_set, libark_js_intl_arm_set
+#   libark_jsruntime_dfx_set, libark_jsruntime_dfx_arm_set
+#   libark_js_intl_dfx_set, libark_js_intl_dfx_arm_set
+#
+# Static libraries:
+#   libark_jsruntime_static → links standard source sets
+#   libark_jsruntime_dfx_static → links dfx source sets
+#
+# Shared libraries (.so files):
+#   libark_jsruntime.so → standard version
+#   libark_jsruntime_dfx.so → dfx version with dfx_extra_config
+# =================================================================
+# Shared libraries (final output .so files)
+libark_jsruntime_shared_library_template("libark_jsruntime") {
+}
 
-  if (is_ohos && is_standard_system && !is_debug) {
-    version_script = "libark_jsruntime.map"
-  }
-
-  # hiviewdfx libraries
-  external_deps += hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-
-  if (!enable_ark_intl) {
-    external_deps += [ "i18n:intl_util" ]
-  }
-
-  install_enable = true
-
-  if (!is_mingw && !is_mac) {
-    output_extension = "so"
-  }
-  if (!is_standard_system) {
-    relative_install_dir = "ark"
-  }
-
-  if (target_os == "android" && !ark_standalone_build) {
-    libs = [ "log" ]
-    version_script = "libark_jsruntime.map"
-  }
-
-  if (is_ohos && is_clang && target_cpu == "arm64" && defined(build_ext_path)) {
-    ldflags = [
-      "-Wl,--emit-relocs",
-      "-Wl,--no-relax",
-      "-mno-fix-cortex-a53-843419"
-    ]
-  }
-
-  if (ark_standalone_build || (defined(is_arkui_x) && is_arkui_x)) {
-    deps += [
-      "$ark_third_party_root/icu/icu4c:static_icui18n",
-      "$ark_third_party_root/icu/icu4c:static_icuuc",
-    ]
-  } else {
-    public_external_deps = [
-      "icu:shared_icui18n",
-      "icu:shared_icuuc",
-      "runtime_core:arkplatform_header",
-      "runtime_core:common_interfaces_header",
-    ]
-  }
-  innerapi_tags = [ "platformsdk_indirect" ]
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
-
-  configs = [
-    ":ark_jsruntime_common_config",
-    ":arkjs_runtime_lto_link_config",
-  ]
-  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
-    external_deps += [
-      "runtime_core:libarkbase_static",
-      "runtime_core:libarkziparchive_static",
-    ]
-  }
+libark_jsruntime_shared_library_template("libark_jsruntime_dfx") {
+  is_dfx = true
 }
 
 ohos_shared_library("libark_jsruntime_test") {

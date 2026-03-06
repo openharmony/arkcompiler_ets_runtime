@@ -21,7 +21,8 @@
           "ets_runtime_feature_pgo_path",
           "ets_runtime_feature_enable_list",
           "ets_runtime_support_jit_code_sign",
-          "ets_runtime_feature_enable_bsymbolic"
+          "ets_runtime_feature_enable_bsymbolic",
+          "ets_runtime_feature_enable_dfx"
         ],
         "adapted_system_type": [
             "standard"
@@ -71,7 +72,8 @@
                 "//arkcompiler/ets_runtime/compiler_service:ark_aot_compiler.cfg",
                 "//arkcompiler/ets_runtime/compiler_service:compiler_service",
                 "//arkcompiler/ets_runtime/compiler_service:system_framework_aot_enable_list.conf",
-                "//arkcompiler/ets_runtime/compiler_service:static_app_install_aot_enable_list.conf"
+                "//arkcompiler/ets_runtime/compiler_service:static_app_install_aot_enable_list.conf",
+                "//arkcompiler/ets_runtime/etc:arkcompiler.jsruntime.para"
             ],
             "inner_kits": [
                 {
