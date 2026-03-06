@@ -145,11 +145,7 @@ bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandl
         return SetBaselineCodeData(thread, desc, method, dataSize);
     }
 
-    if (desc.isHugeObj) {
-        SetLocalHeapAddress(0);
-    } else {
-        SetLocalHeapAddress(reinterpret_cast<uint64_t>(thread->GetEcmaVM()->GetHeap()));
-    }
+    SetLocalHeapAddress(reinterpret_cast<uint64_t>(thread->GetEcmaVM()->GetHeap()));
 
     SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
     SetOsrDeoptFlag(false);
@@ -306,24 +302,23 @@ uint8_t *MachineCode::GetHeapConstantTableAddress() const
 
 void MachineCode::ProcessMarkObject()
 {
+    Heap* heap = reinterpret_cast<Heap*>(this->GetLocalHeapAddress());
     if (g_isEnableCMCGC) {
-        Heap* heap = reinterpret_cast<Heap*>(this->GetLocalHeapAddress());
         // Skip HugeMachinecode or VM that is already destoryed
         // We should implement a proper wait for VM destructor
         if (heap && heap->GetMachineCodeSpace()) {
             heap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
         }
     } else {
-        Region *region = Region::ObjectAddressToRange(this);
-        Heap *localHeap = reinterpret_cast<Heap *>(region->GetLocalHeap());
-        if (!localHeap) {
-            // it is a huge machine code object. skip
+        auto textAddr = GetText();
+        if (textAddr == 0 || heap == nullptr) {
+            // fake machinecode, skip.
             return;
         }
-        ASSERT(localHeap->GetMachineCodeSpace());
-        if (localHeap->GetMachineCodeSpace()) {
-            localHeap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
-        }
+        auto *jitfort = heap->GetOrCreateJitFort();
+        ASSERT(jitfort != nullptr);
+        bool inHuge = jitfort->InHugeRange(textAddr);
+        jitfort->MarkJitFortMemAlive(this, inHuge);
     }
 }
 

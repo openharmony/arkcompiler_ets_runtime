@@ -494,6 +494,11 @@ public:
     {
         return heap_;
     }
+
+    Heap *GetHeap()
+    {
+        return heap_;
+    }
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER) const;
 
     NativeAreaAllocator *GetNativeAreaAllocator() const

@@ -18,6 +18,7 @@
 
 #include <array>
 
+#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/mem/machine_code.h"
@@ -29,6 +30,74 @@ class JitFortMemDescPool;
 template <typename T>
 class FreeListAllocator;
 
+/*
+ * @class JitFort
+ * @brief JIT Code Memory Manager with dual-region architecture
+ *
+ * JitFort implements a two-tier memory allocation system specialized for
+ * JIT-compiled machine code in ArkTS runtime:
+ *
+ * Tier 1 - Small Fort: 16 regions of 256KB each (4MB total)
+ * - Fast allocation for regular-sized JIT code blocks
+ * - Region-based memory management for cache locality
+ * - 4KB GC bitset per region for marking operations
+ *
+ * Tier 2 - Huge Fort: 1 region of 4MB (contiguous block)
+ * - Allocation for large JIT code blocks that exceed region capacity
+ * - Single contiguous memory for allocation of very large functions
+ * - 64KB GC bitset for comprehensive marking coverage
+ *
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │                 JIT Fort Memory Manager                     │
+ * │                                                             │
+ * │  Small Fort: ┌──────────┐ ┌─────────┐ ... (regions*16)      │
+ * │              │ Region 0 │ │ Region 1│                       │
+ * │              │ (256KB)  │ │ (256KB) │                       │
+ * │              └──────────┘ └─────────┘                       │
+ * │              total: 4MB (16×256KB)                          │
+ * │                                                             │
+ * │  Huge Fort:  ┌──────────────────────────────────────────┐   │
+ * │              │              Single Region               │   │
+ * │              │              (4MB)                       │   │
+ * │              └──────────────────────────────────────────┘   │
+ * └─────────────────────────────────────────────────────────────┘
+
+ * Key Principles Design:
+ * - Separation: JIT code isolated from regular heap objects
+ * - Efficiency: Region-based allocation with O(1) free list operations
+ * - Safety: Thread-safe operations with proper synchronization
+ * - Integration: Seamless GC cooperation with 4-bit per-block encoding
+ * - Protection: Memory awareness for security and debugging
+ *
+ * Memory Block Structure:
+ * ┌─────────────────────────────────────────────────────────────┐
+ * │ each JIT code need at least 32Byte(using 4bit gc status)    │
+ * │                                                             │
+ * │  Code Segment (at least 32Byte each):                       │
+ * │  ┌─────────┬─────────┬─────────┬─────────┐                  │
+ * │  │  code 1 │  code 2 │  ...    │  code n │                  │
+ * │  └─────────┴─────────┴─────────┴─────────┘                  │
+ * │     ↑                                                       │
+ * │   GCBitSet                                                  │
+ * ├───────────────────────────┐                                 │
+ * │ GC Bitset (4 bit):        │                                 │
+ * │ ┌──┬──┬──┬──┐             │                                 │
+ * │ │S0│S1│E0│E1│             │                                 │
+ * │ └──┴──┴──┴──┘             │                                 │
+ * │ │Start│ End │             │                                 │
+ * │ │Bits │ Bits│             │                                 │
+ * ├───────────────────────────┘                                 │
+ * └─────────────────────────────────────────────────────────────┘
+ * State Management per 32-byte Block:
+ * ┌───────────────────────────────────────────────────────────┐
+ * │  Block State   │ Start Bits │ End Bits │ Description      │
+ * ├───────────────────────────────────────────────────────────┤
+ * │ Free           │     00     │    00    │ Free for alloc   │
+ * │ Installed      │     10     │    01    │ Ready execution  │
+ * │ Awaiting Inst  │     11     │    01    │ Install pending  │
+ * └───────────────────────────────────────────────────────────┘
+ *
+ */
 class JitFort {
 public:
     // Fort memory space
@@ -36,6 +105,8 @@ public:
     static constexpr size_t JIT_FORT_REG_SPACE_MAX = 4_MB;
     static constexpr size_t JIT_FORT_HUGE_SPACE_MAX = 2_MB;
     static constexpr size_t JIT_FORT_MEM_DESC_MAX = 40_KB;
+    static constexpr size_t SMALL_GCBISET_SIZE = 4096;
+    static constexpr size_t HUGE_GCBISET_SIZE = 65536;
 
     // Fort regions
     static constexpr uint32_t FORT_BUF_ALIGN = 32;
@@ -57,19 +128,10 @@ public:
         return regionList_.GetFirst();
     }
 
-    inline uintptr_t JitFortBegin()
-    {
-        return jitFortBegin_;
-    }
-
-    inline size_t JitFortSize()
-    {
-        return jitFortSize_;
-    }
-
-    bool InRange(uintptr_t address) const;
-    void CollectFreeRanges(JitFortRegion  *region);
-    void UpdateFreeSpace();
+    bool InJitFortRange(uintptr_t address) const;
+    bool InSmallRange(uintptr_t address) const;
+    bool InHugeRange(uintptr_t address) const;
+    void UpdateFreeSpace(bool inHuge = false);
     // Used by CMCGC to clear the marking bits in Young GC.
     void ClearMarkBits();
 
@@ -77,39 +139,48 @@ public:
     static void InitJitFort();
     static void InitJitFortResource();
     void PrepareSweeping();
-    void AsyncSweep();
-    void Sweep();
-    void MarkJitFortMemAlive(MachineCode *obj);
-    void MarkJitFortMemAwaitInstall(uintptr_t addr, size_t size);
-    void MarkJitFortMemInstalled(MachineCode *obj);
-    void FreeRegion(JitFortRegion *region);
+    void AsyncSweep(bool inHuge = false);
+    void Sweep(bool inHuge = false);
+    void MarkJitFortMemAlive(MachineCode *obj, bool inHuge = false);
+    void MarkJitFortMemAwaitInstall(uintptr_t addr, size_t size, bool inHuge = false);
+    void MarkJitFortMemInstalled(MachineCode *obj, bool inHuge = false);
+    void FreeRegion(JitFortRegion *region, bool inHuge = false);
+
     uint32_t AddrToFortRegionIdx(uint64_t addr);
     size_t FortAllocSize(size_t instrSize);
     PUBLIC_API static bool IsResourceAvailable();
 
 private:
     static bool isResourceAvailable_;
-    FreeListAllocator<MemDesc> *allocator_ {nullptr};
 
-    // Fort memory space
+    // For small fort space
+    FreeListAllocator<MemDesc> *allocator_ {nullptr};
     MemMap jitFortMem_;
     uintptr_t jitFortBegin_ {0};
     size_t jitFortSize_ {0};
-
-    // Fort regions
     std::array<JitFortRegion *, MAX_JIT_FORT_REGIONS> regions_ {};
     size_t nextFreeRegionIdx_ {0};
     EcmaList<JitFortRegion> regionList_ {}; // regions in use by Jit Fort allocator
-
     MemDescPool *memDescPool_ {nullptr};
+    uintptr_t AllocateSmall(size_t size);
 
-    bool freeListUpdated_ {false};  // use atomic if not mutext protected
+    // For huge fort space
+    FreeListAllocator<MemDesc> *hugeAlloc_ {nullptr};
+    MemMap hugeJitFortMem_;
+    uintptr_t hugeJitFortBegin_ {0};
+    size_t hugeJitFortSize_ {0};
+    JitFortRegion *hugeRegion_  {nullptr};
+    bool hugeInUse_ {false};
+    MemDescPool *hugeMemDescPool_ {nullptr};
+    uintptr_t AllocateHuge(size_t size);
+    void InitHugeRegion();
+
     Mutex mutex_;
-    Mutex liveJitCodeBlksLock_;
     std::atomic<bool> isSweeping_ {false};
     friend class HugeMachineCodeSpace;
 };
 
+template <size_t RegionMask>
 class JitFortGCBitset : public GCBitset {
 public:
     JitFortGCBitset() = default;
@@ -130,15 +201,15 @@ public:
 
     inline void ClearMark(uintptr_t addr)
     {
-        // The byte offset of addr within the region.
         LOG_JIT(INFO) << "JitFortGCBitset::ClearMark, addr: " << reinterpret_cast<void*>(addr);
-        uintptr_t offset = (addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG;
+        // The byte offset of addr within the region.
+        uintptr_t offset = (addr & RegionMask) >> TAGGED_TYPE_SIZE_LOG;
         ClearBit<AccessType::ATOMIC>(offset);
     }
 
     inline bool Test(uintptr_t addr)
     {
-        return TestBit((addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+        return TestBit((addr & RegionMask) >> TAGGED_TYPE_SIZE_LOG);
     }
 };
 
@@ -148,21 +219,39 @@ public:
         RegionSpaceFlag spaceType, MemDescPool *pool) : Region(allocator, allocateBase, end, spaceType),
         memDescPool_(pool)
     {
-        markGCBitset_ = new(reinterpret_cast<void *>(gcBitSet_)) JitFortGCBitset();
+        auto regionSize = end - allocateBase;
+        ASSERT(regionSize == DEFAULT_REGION_SIZE || regionSize == HUGE_JITFORT_REGION_SIZE);
+        bitsetSize_ = GCBitset::SizeOfGCBitset(regionSize);
+        ASSERT(bitsetSize_ == JitFort::SMALL_GCBISET_SIZE || bitsetSize_ == JitFort::HUGE_GCBISET_SIZE);
+        gcBitSet_ = new uint8_t[bitsetSize_];
+        regionMask_ = regionSize - 1;
+        if (regionMask_ == DEFAULT_REGION_MASK) {
+            markGCBitset_ = new(reinterpret_cast<void *>(gcBitSet_)) JitFortGCBitset<DEFAULT_REGION_MASK>();
+        } else {
+            markGCBitset_ = new(reinterpret_cast<void *>(gcBitSet_)) JitFortGCBitset<HUGE_JITFORT_REGION_MASK>();
+        }
         markGCBitset_->Clear(bitsetSize_);
         InitializeFreeObjectSets();
     }
 
+    ~JitFortRegion()
+    {
+        delete gcBitSet_;
+    }
+
     void InitializeFreeObjectSets()
     {
-        fortFreeObjectSets_ = Span<FreeObjectSet<MemDesc> *>(new FreeObjectSet<MemDesc>
-            *[FreeObjectList<MemDesc>::NumberOfSets()](), FreeObjectList<MemDesc>::NumberOfSets());
+        auto numberOfSets = FreeObjectList<MemDesc>::NumberOfSets();
+        fortFreeObjectSets_ =
+            Span<FreeObjectSet<MemDesc> *>(new FreeObjectSet<MemDesc> *[numberOfSets](), numberOfSets);
     }
 
     void DestroyFreeObjectSets()
     {
         for (auto set : fortFreeObjectSets_) {
-            delete set;
+            if (set != nullptr) {
+                delete set;
+            }
         }
         delete[] fortFreeObjectSets_.data();
     }
@@ -196,22 +285,38 @@ public:
         return prev_;
     }
 
-    inline JitFortGCBitset *GetGCBitset()
-    {
-        return markGCBitset_;
-    }
-
     inline size_t GetGCBitsetSize()
     {
         return bitsetSize_;
     }
 
+    template <typename Visitor>
+    void IterateMarkedBitsConst(Visitor visitor)
+    {
+        uintptr_t regionAddr = GetBegin();
+        if (regionMask_ == DEFAULT_REGION_MASK) {
+            auto* bitset = reinterpret_cast<JitFortGCBitset<DEFAULT_REGION_MASK>*>(markGCBitset_);
+            bitset->IterateMarkedBitsConst(regionAddr, bitsetSize_, visitor);
+        } else {
+            auto* bitset = reinterpret_cast<JitFortGCBitset<HUGE_JITFORT_REGION_MASK>*>(markGCBitset_);
+            bitset->IterateMarkedBitsConst(regionAddr, bitsetSize_, visitor);
+        }
+    }
+
     inline bool AtomicMark(void *address)
     {
         auto addrPtr = reinterpret_cast<uintptr_t>(address);
-        ASSERT(InRange(addrPtr));
+        ASSERT(InRange(addrPtr));   // Region::InRange, equals to JitFort::InJitFortRange
         return markGCBitset_->SetBit<AccessType::ATOMIC>(
-            (addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+            (addrPtr & regionMask_) >> TAGGED_TYPE_SIZE_LOG);
+    }
+
+    inline void ClearMark(void *address)
+    {
+        auto addrPtr = reinterpret_cast<uintptr_t>(address);
+        ASSERT(InRange(addrPtr));   // Region::InRange, equals to JitFort::InJitFortRange
+        return markGCBitset_->ClearBit<AccessType::ATOMIC>(
+            (addrPtr & regionMask_) >> TAGGED_TYPE_SIZE_LOG);
     }
 
 private:
@@ -220,10 +325,10 @@ private:
     JitFortRegion *prev_ {nullptr};
     MemDescPool *memDescPool_ {nullptr};
 
-    static constexpr int FORT_REGION_BITSET_SIZE = 4096;
-    size_t bitsetSize_ {FORT_REGION_BITSET_SIZE};
-    alignas(uint64_t) uint8_t gcBitSet_[FORT_REGION_BITSET_SIZE];
-    alignas(uint64_t) JitFortGCBitset *markGCBitset_ {nullptr};
+    size_t bitsetSize_ {0};
+    size_t regionMask_ {0};
+    alignas(uint64_t) uint8_t *gcBitSet_ {nullptr};
+    alignas(uint64_t) GCBitset *markGCBitset_ {nullptr};
 };
 
 }  // namespace panda::ecmascript

@@ -35,7 +35,6 @@ void SparseSpace::Initialize()
 {
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
-    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
     AddRegion(region);
 
     allocator_->Initialize(region);
@@ -97,7 +96,6 @@ bool SparseSpace::Expand()
     }
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
-    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
     AddRegion(region);
     allocator_->AddFree(region);
     return true;
@@ -701,7 +699,6 @@ Region* ToSpace::ForceExpandSync()
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     ASSERT(thread->IsConcurrentCopying());
     region->SetRegionTypeFlag(RegionTypeFlag::TO);
-    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
     // Forbidden batch rset update during concurrent copying.
     region->CreateLocalToShareRememberedSet();
     region->SwapLocalToShareRSetForCS();
@@ -777,7 +774,6 @@ void LocalSpace::ForceExpandInGC()
 {
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
-    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
     AddRegion(region);
     allocator_->AddFree(region);
 }
@@ -802,16 +798,6 @@ uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
 MachineCodeSpace::MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, MemSpaceType::MACHINE_CODE_SPACE, initialCapacity, maximumCapacity)
 {
-}
-
-MachineCodeSpace::~MachineCodeSpace()
-{
-    if (localHeap_->GetEcmaVM()->GetJSOptions().GetEnableJitFort()) {
-        if (jitFort_) {
-            delete jitFort_;
-            jitFort_ = nullptr;
-        }
-    }
 }
 
 void MachineCodeSpace::PrepareSweeping()
@@ -857,7 +843,7 @@ void MachineCodeSpace::AsyncSweep(bool isMain, bool releaseMemory)
 uintptr_t MachineCodeSpace::JitFortAllocate(MachineCodeDesc *desc)
 {
     if (!jitFort_) {
-        jitFort_ = new JitFort();
+        jitFort_ = localHeap_->GetOrCreateJitFort();
     }
     if (!g_isEnableCMCGC) {
         localHeap_->GetSweeper()->EnsureTaskFinishedNoCheck(spaceType_);
@@ -908,6 +894,8 @@ uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc *desc, bool al
         object = Allocate(size, desc, false);
         // Size is already increment
     }
+    LOG_JIT(DEBUG) << "Allocate machine code obj in MachineCodeSpace, addr: 0x" << std::hex << object
+                   << ", text begin: 0x" << desc->instructionsAddr;
     return object;
 }
 
