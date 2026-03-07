@@ -57,7 +57,7 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot,
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"number\",\"native\",\"synthetic\",\"concatenated string\",\"slicedstring\",\"symbol\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer->WriteString("\"bigint\",\"framework\"],\"string\",\"number\",\"number\",\"number\",\"number\",");
+    writer->WriteString("\"bigint\",\"framework\",\"handle\"],\"string\",\"number\",\"number\",\"number\",\"number\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"number\"],\n");  // 4.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
