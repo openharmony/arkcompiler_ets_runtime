@@ -51,7 +51,9 @@ void HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *thread)
     auto appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     std::string eventConfig;
     bool shouldDump = appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig);
-    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", 0, 0, eventConfig);
+    if (!vm->GetJSThread()->IsThrowingOOMError()) {
+        vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", 0, 0, eventConfig);
+    }
     if (!shouldDump) {
         LOG_ECMA(INFO) << "DumpHeapSnapshotForCMCOOM, no dump quota.";
         return;
