@@ -529,7 +529,7 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFileCommon(JSThread *thread,
         abcFilePath, "", entry);
     JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
     if (recordInfo == nullptr) {
-        LOG_ECMA(WARN) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
+        LOG_ECMA(DEBUG) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
         return false;
     }
     return true;
