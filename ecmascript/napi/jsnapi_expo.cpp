@@ -6041,6 +6041,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     jsOption.SetEnableDFXHiSysEvent(option.GetEnableDFXHiSysEvent());
     jsOption.SetEnableBaselineJIT(option.GetEnableBaselineJIT());
     jsOption.SetMaxAotMethodSize(JSRuntimeOptions::MAX_APP_COMPILE_METHOD_SIZE);
+    jsOption.SetArkTSMode(option.GetArkTSMode());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetMaxAotMethodSize(jsOption.GetMaxAotMethodSize());
     JSRuntimeOptions runtimeOptions;
@@ -6062,9 +6063,16 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
                     << ", aot: " << enableAOT
                     << ", jit: " << option.GetEnableJIT()
                     << ", baseline jit: " << option.GetEnableBaselineJIT()
-                    << ", bundle name: " <<  option.GetBundleName();
+                    << ", bundle name: " <<  option.GetBundleName()
+                    << ", arkTSMode: " << option.GetArkTSMode();
     jsOption.SetEnableWarmStartupSmartGC(option.GetEnableWarmStartupSmartGC());
     vm->PostFork(jsOption);
+}
+
+void JSNApi::UpdateArkTSMode(EcmaVM *vm, const std::string &arkTSMode)
+{
+    JSRuntimeOptions &jsOption = vm->GetJSOptions();
+    jsOption.SetArkTSMode(arkTSMode);
 }
 
 void JSNApi::AddWorker(EcmaVM *hostVm, EcmaVM *workerVm)

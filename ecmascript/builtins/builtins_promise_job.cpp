@@ -345,7 +345,6 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
 
 JSTaggedValue BuiltinsPromiseJob::CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject)
 {
-    BUILTINS_API_TRACE(thread, PromiseJob, CatchException);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     ASSERT(thread->HasPendingException());
     JSHandle<JSTaggedValue> thenResult = JSPromise::IfThrowGetThrowValue(thread);
@@ -370,7 +369,10 @@ JSTaggedValue BuiltinsPromiseJob::HandleModuleException(JSThread *thread, JSHand
 {
     ASSERT(thread->HasPendingException());
     LOG_ECMA(DEBUG) << "start handle module exception " << requestPath;
-    // If the ohmurl is detected to be in compliance with the 1.0 prefix rule, then throw an exception directly
+    if (thread->GetEcmaVM()->GetArkTSMode() == ArkTSMode::DYNAMIC) {
+        return CatchException(thread, reject);
+    }
+    // If the ohmurl is detected to be in compliance with the dynamic prefix rule, then throw an exception directly
     if (!StaticModuleLoader::CanTryLoadStaticModulePath(requestPath)) {
         LOG_ECMA(DEBUG) << "handle dynamic module exception " << requestPath;
         return CatchException(thread, reject);
@@ -385,7 +387,7 @@ JSTaggedValue BuiltinsPromiseJob::HandleModuleException(JSThread *thread, JSHand
         thread->SetException(errorReuslt.GetTaggedValue());
         return CatchException(thread, reject);
     }
-    // try load 1.2 module;
+    // try load static module;
     Local<FunctionRef> getEsModuleFunc = getEsModule;
     ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> exportObject = StaticModuleLoader::LoadStaticModule(thread, getEsModuleFunc, requestPath);

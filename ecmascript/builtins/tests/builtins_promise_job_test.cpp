@@ -58,7 +58,7 @@ Local<JSValueRef> BuiltinsPromiseJobTest::MockGetModuleJSError(JsiRuntimeCallInf
     return runtimeCallInfo->GetCallArgRef(0);
 }
 
-// dynamic import static module after load 1.0 module failed
+// dynamic import static module after load dynamic module failed
 HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException)
 {
     /**
@@ -99,6 +99,7 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException)
     Local<JSValueRef> contextValue = JSNApi::GetCurrentContext(vm);
     JSHandle<LexicalEnv> lexicalEnv(JSNApiHelper::ToJSHandle(contextValue));
     JSHandle<JSFunction> funHandle = factory->NewJSFunction(env);
+    vm->GetJSOptions().SetArkTSMode("hybrid");
     funHandle->SetLexicalEnv(thread, lexicalEnv.GetTaggedValue());
     ecmaRuntimeCallInfo->SetFunction(funHandle.GetTaggedValue());
     ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
@@ -117,7 +118,7 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException)
                                        specifier), true);
 }
 
-// throw 1.2 load failed
+// throw static module load failed
 HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException2)
 {
     /**
@@ -132,6 +133,7 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException2)
     auto vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    vm->GetJSOptions().SetArkTSMode("hybrid");
 
     auto globalConstants = thread->GlobalConstants();
     JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
@@ -177,7 +179,7 @@ HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException2)
 }
 
 
-// dynamic import static module after load 1.0 module failed
+// dynamic import static module after load dyanmic module failed
 HWTEST_F_L0(BuiltinsPromiseJobTest, DynamicImportJobCatchException3)
 {
     /**

@@ -1962,6 +1962,7 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);
+    static void UpdateArkTSMode(EcmaVM *vm, const std::string &arkTSMode);
     static void AddWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static void GetStackBeforeCallNapiSuccess(EcmaVM *vm, bool &getStackBeforeCallNapiSuccess);

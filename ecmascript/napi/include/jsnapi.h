@@ -308,6 +308,11 @@ public:
         enableWarmStartupSmartGC_ = value;
     }
 
+    void SetArkTSMode(const std::string &arkTSMode)
+    {
+        arkTSMode_ = arkTSMode;
+    }
+
     bool GetEnableWarmStartupSmartGC() const
     {
         return enableWarmStartupSmartGC_;
@@ -443,6 +448,11 @@ private:
         return enableBaselineJIT_;
     }
 
+    std::string GetArkTSMode() const
+    {
+        return arkTSMode_;
+    }
+
     GC_TYPE gcType_ = GC_TYPE::EPSILON;
     LOG_LEVEL logLevel_ = LOG_LEVEL::DEBUG;
     uint32_t gcPoolSize_ = ecmascript::DEFAULT_GC_POOL_SIZE;
@@ -471,6 +481,7 @@ private:
     bool enableLargeHeap_ {false};
     std::map<std::string, int32_t> aotCompileStatusMap_;
     bool enableWarmStartupSmartGC_ {false};
+    std::string arkTSMode_ {""};
     friend JSNApi;
 };
 }  // namespace panda
