@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,8 +26,8 @@ namespace panda::ecmascript::tooling {
 class JSBreakpoint {
 public:
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
-    JSBreakpoint(const std::string &sourceFile, PtMethod *ptMethod, uint32_t bcOffset,
-        const Global<FunctionRef> &condFuncRef) : sourceFile_(sourceFile), ptMethod_(ptMethod),
+    JSBreakpoint(const std::string &sourceFile, std::shared_ptr<PtMethod> ptMethod, uint32_t bcOffset,
+        const Global<FunctionRef> &condFuncRef) : sourceFile_(sourceFile), ptMethod_(std::move(ptMethod)),
         bcOffset_(bcOffset), condFuncRef_(condFuncRef) {}
     ~JSBreakpoint() = default;
 
@@ -38,7 +38,7 @@ public:
 
     PtMethod *GetPtMethod() const
     {
-        return ptMethod_;
+        return ptMethod_.get();
     }
 
     uint32_t GetBytecodeOffset() const
@@ -66,7 +66,7 @@ public:
         return breakpoint.str();
     }
 
-    const Global<FunctionRef> &GetConditionFunction()
+    const Global<FunctionRef> &GetConditionFunction() const
     {
         return condFuncRef_;
     }
@@ -76,7 +76,7 @@ public:
 
 private:
     std::string sourceFile_;
-    PtMethod *ptMethod_ {nullptr};
+    std::shared_ptr<PtMethod> ptMethod_;
     uint32_t bcOffset_;
     Global<FunctionRef> condFuncRef_;
 };
