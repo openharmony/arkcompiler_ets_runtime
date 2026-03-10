@@ -24,7 +24,7 @@ static const uint64_t HWORD_MASK = 0xFFFF;
 LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
 {
     if ((imm == 0ULL) || (imm == ~0ULL) ||
-        ((width != RegXSize) && (((imm >> width) != 0) || (imm == (~0ULL >> (RegXSize - width)))))) {
+        ((width != X_REG_SIZE) && (((imm >> width) != 0) || (imm == (~0ULL >> (X_REG_SIZE - width)))))) {
         return LogicalImmediate(InvalidLogicalImmediate);
     }
 
@@ -43,12 +43,12 @@ LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
     // Second, determine the rotation to make the element be: 0^m 1^n.
     unsigned int cto = 0;
     unsigned int i = 0;
-    uint64_t mask = ((uint64_t)-1LL) >> (RegXSize - size);
+    uint64_t mask = ((uint64_t)-1LL) >> (X_REG_SIZE - size);
     imm &= mask;
 
     if (IsShiftedMask_64(imm)) {
         i = CountTrailingZeros64(imm);
-        ASSERT_PRINT(i < RegXSize, "undefined behavior");
+        ASSERT_PRINT(i < X_REG_SIZE, "undefined behavior");
         cto = CountTrailingOnes64(imm >> i);
     } else {
         imm |= ~mask;
@@ -57,8 +57,8 @@ LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
         }
 
         uint32_t clo = CountLeadingOnes64(imm);
-        i = static_cast<uint32_t>(RegXSize) - clo;
-        cto = clo + CountTrailingOnes64(imm) - (static_cast<uint32_t>(RegXSize) - size);
+        i = static_cast<uint32_t>(X_REG_SIZE) - clo;
+        cto = clo + CountTrailingOnes64(imm) - (static_cast<uint32_t>(X_REG_SIZE) - size);
     }
 
     // Encode in Immr the number of RORs it would take to get *from* 0^m 1^n
@@ -151,7 +151,7 @@ void AssemblerAarch64::Stp(const Register &rt, const Register &rt2, const Memory
     UNREACHABLE();
 }
 
-void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, const MemoryOperand &operand)
+void AssemblerAarch64::Ldp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand)
 {
     uint32_t op = 0;
     if (operand.IsImmediateOffset()) {
@@ -170,24 +170,28 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
                 UNREACHABLE();
         }
         uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
-        switch (vt.GetScale()) {
-            case S:
+        uint32_t opc = 0;
+        switch (vt.SizeInBits()) {
+            case S_REG_SIZE:
                 // 2 : 2 means remove trailing zeros
                 imm >>= 2;
+                opc = 0;
                 break;
-            case D:
+            case D_REG_SIZE:
                 // 3 : 3 means remove trailing zeros
                 imm >>= 3;
+                opc = 1;
                 break;
-            case Q:
+            case Q_REG_SIZE:
                 // 4 : 4 means remove trailing zeros
                 imm >>= 4;
+                opc = 1;
                 break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
-        uint32_t opc = GetOpcFromScale(vt.GetScale(), true);
+        opc = (opc << LDP_STP_Opc_LOWBITS) & LDP_STP_Opc_MASK;
         uint32_t instructionCode = opc | op | LoadAndStorePairImm(imm) | Rt2(vt2.GetId()) |
                                    Rn(operand.GetRegBase().GetId()) | Rt(vt.GetId());
         EmitU32(instructionCode);
@@ -197,7 +201,7 @@ void AssemblerAarch64::Ldp(const VectorRegister &vt, const VectorRegister &vt2, 
     UNREACHABLE();
 }
 
-void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, const MemoryOperand &operand)
+void AssemblerAarch64::Stp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand)
 {
     uint32_t op = 0;
     if (operand.IsImmediateOffset()) {
@@ -216,24 +220,28 @@ void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, 
                 UNREACHABLE();
         }
         uint64_t imm = static_cast<uint64_t>(operand.GetImmediate().Value());
-        switch (vt.GetScale()) {
-            case S:
+        uint32_t opc = 0;
+        switch (vt.SizeInBits()) {
+            case S_REG_SIZE:
                 // 2 : 2 means remove trailing zeros
                 imm >>= 2;
+                opc = 0;
                 break;
-            case D:
+            case D_REG_SIZE:
                 // 3 : 3 means remove trailing zeros
                 imm >>= 3;
+                opc = 1;
                 break;
-            case Q:
+            case Q_REG_SIZE:
                 // 4 : 4 means remove trailing zeros
                 imm >>= 4;
+                opc = 1;
                 break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
         }
-        uint32_t opc = GetOpcFromScale(vt.GetScale(), true);
+        opc = (opc << LDP_STP_Opc_LOWBITS) & LDP_STP_Opc_MASK;
         uint32_t instructionCode = opc | op | LoadAndStorePairImm(imm) | Rt2(vt2.GetId()) |
                                    Rn(operand.GetRegBase().GetId()) | Rt(vt.GetId());
         EmitU32(instructionCode);
@@ -241,33 +249,6 @@ void AssemblerAarch64::Stp(const VectorRegister &vt, const VectorRegister &vt2, 
     }
     LOG_ECMA(FATAL) << "this branch is unreachable";
     UNREACHABLE();
-}
-
-uint32_t AssemblerAarch64::GetOpcFromScale(Scale scale, bool ispair)
-{
-    uint32_t opc = 0;
-    switch (scale) {
-        case Scale::B:
-        case Scale::H:
-            ASSERT(!ispair);
-            opc = 1;
-            break;
-        case Scale::S:
-            opc = ispair ? 0 : 1;
-            break;
-        case Scale::D:
-            opc = 1;
-            break;
-        case Scale::Q:
-            // 3 : means opc bit is 11
-            opc = ispair ? 1 : 3;
-            break;
-        default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-    }
-
-    return (opc << LDP_STP_Opc_LOWBITS) & LDP_STP_Opc_MASK;
 }
 
 void AssemblerAarch64::Ldr(const Register &rt, const MemoryOperand &operand, Scale scale)
@@ -381,7 +362,7 @@ void AssemblerAarch64::Mov(const Register &rd, const Immediate &imm)
     uint64_t immValue = static_cast<uint64_t>(imm.Value());
     unsigned int allOneHalfWords = 0;
     unsigned int allZeroHalfWords = 0;
-    unsigned int regSize = rd.IsW() ? RegWSize : RegXSize;
+    unsigned int regSize = rd.IsW() ? W_REG_SIZE : X_REG_SIZE;
     unsigned int halfWords = regSize / HWORDSIZE;
 
     for (unsigned int shift = 0; shift < regSize; shift += HWORDSIZE) {
@@ -398,10 +379,10 @@ void AssemblerAarch64::Mov(const Register &rd, const Immediate &imm)
         return;
     }
     // Try a single ORR.
-    uint64_t realImm = immValue << (RegXSize - regSize) >> (RegXSize - regSize);
+    uint64_t realImm = immValue << (X_REG_SIZE - regSize) >> (X_REG_SIZE - regSize);
     LogicalImmediate orrImm = LogicalImmediate::Create(realImm, regSize);
     if (orrImm.IsValid()) {
-        Orr(rd, Register(Zero), orrImm);
+        Orr(rd, xzr, orrImm);
         return;
     }
     // 2: One to up three instruction sequence.
@@ -409,7 +390,7 @@ void AssemblerAarch64::Mov(const Register &rd, const Immediate &imm)
         EmitMovInstruct(rd, immValue, allOneHalfWords, allZeroHalfWords);
         return;
     }
-    ASSERT_PRINT(regSize == RegXSize, "all 32-bit Immediate will be transformed with a MOVZ/MOVK pair");
+    ASSERT_PRINT(regSize == X_REG_SIZE, "all 32-bit Immediate will be transformed with a MOVZ/MOVK pair");
 
     for (unsigned int shift = 0; shift < regSize; shift += HWORDSIZE) {
         uint64_t shiftedMask = (HWORD_MASK << shift);
@@ -425,11 +406,11 @@ void AssemblerAarch64::Mov(const Register &rd, const Immediate &imm)
         }
 
         if (zeroImm.IsValid()) {
-            Orr(rd, Register(Zero), zeroImm);
+            Orr(rd, xzr, zeroImm);
         } else if (oneImm.IsValid()) {
-            Orr(rd, Register(Zero), oneImm);
+            Orr(rd, xzr, oneImm);
         } else {
-            Orr(rd, Register(Zero), replicateImm);
+            Orr(rd, xzr, replicateImm);
         }
         const uint64_t movkImm = (realImm & shiftedMask) >> shift;
         Movk(rd, movkImm, shift);
@@ -441,11 +422,11 @@ void AssemblerAarch64::Mov(const Register &rd, const Immediate &imm)
         return;
     }
 
-    if (regSize == RegXSize && TryReplicateHWords(rd, realImm)) {
+    if (regSize == X_REG_SIZE && TryReplicateHWords(rd, realImm)) {
         return;
     }
 
-    if (regSize == RegXSize && TrySequenceOfOnes(rd, realImm)) {
+    if (regSize == X_REG_SIZE && TrySequenceOfOnes(rd, realImm)) {
         return;
     }
     EmitMovInstruct(rd, immValue, allOneHalfWords, allZeroHalfWords);
@@ -457,7 +438,7 @@ void AssemblerAarch64::Mov(const Register &rd, const Register &rm)
     if (rd.IsSp() || rm.IsSp()) {
         Add(rd, rm, Operand(Immediate(0)));
     } else {
-        Orr(rd, Register(Zero), Operand(rm));
+        Orr(rd, xzr, Operand(rm));
     }
 }
 
@@ -502,10 +483,10 @@ bool AssemblerAarch64::TrySequenceOfOnes(const Register &rd, uint64_t imm)
     int startIdx = -1;
     int endIdx = -1;
     // Try to find the chunks which start/end a contiguous sequence of ones.
-    for (int shift = 0; shift < RegXSize; shift += HWORDSIZE) {
+    for (int shift = 0; shift < X_REG_SIZE; shift += HWORDSIZE) {
         int64_t himm = (imm >> shift) & HWORD_MASK;
         // Sign extend the 16-bit chunk to 64-bit.
-        // 48 : 48 means RegXSize - HWORDSIZE
+        // 48 : 48 means X_REG_SIZE - HWORDSIZE
         himm = (himm << 48) >> 48;
 
         if (IsStartHWord(himm)) {
@@ -534,7 +515,7 @@ bool AssemblerAarch64::TrySequenceOfOnes(const Register &rd, uint64_t imm)
     uint64_t orrImm = imm;
     int firstMovkShift = -1;
     int secondMovkShift = -1;
-    for (int shift = 0; shift < RegXSize; shift += HWORDSIZE) {
+    for (int shift = 0; shift < X_REG_SIZE; shift += HWORDSIZE) {
         uint64_t himm = (imm >> shift) & HWORD_MASK;
         // Check whether we are looking at a chunk which is not part of the
         // contiguous sequence of ones.
@@ -555,7 +536,7 @@ bool AssemblerAarch64::TrySequenceOfOnes(const Register &rd, uint64_t imm)
         }
     }
     ASSERT_PRINT(firstMovkShift != -1, "constant materializable with single orr!");
-    Orr(rd, rd, LogicalImmediate::Create(orrImm, RegXSize));
+    Orr(rd, rd, LogicalImmediate::Create(orrImm, X_REG_SIZE));
     Movk(rd, (imm >> firstMovkShift) & HWORD_MASK, firstMovkShift);
     if (secondMovkShift != -1) {
         Movk(rd, (imm >> secondMovkShift) & HWORD_MASK, secondMovkShift);
@@ -567,7 +548,7 @@ bool AssemblerAarch64::TryReplicateHWords(const Register &rd, uint64_t imm)
 {
     const int HWORDSIZE = 16;
     std::map<uint64_t, int> repeatMaps;
-    for (int idx = 0; idx < RegXSize; idx += HWORDSIZE) {
+    for (int idx = 0; idx < X_REG_SIZE; idx += HWORDSIZE) {
         uint64_t halfWord = (imm >> idx) & HWORD_MASK;
         if (repeatMaps.find(halfWord) != repeatMaps.end()) {
             repeatMaps[halfWord] += 1;
@@ -588,7 +569,7 @@ bool AssemblerAarch64::TryReplicateHWords(const Register &rd, uint64_t imm)
         int shift = 0;
         uint64_t imm16 = 0;
         // Find the first chunk not materialized with the ORR instruction.
-        for (; shift < RegXSize; shift += HWORDSIZE) {
+        for (; shift < X_REG_SIZE; shift += HWORDSIZE) {
             imm16 = (imm >> shift) & HWORD_MASK;
             if (imm16 != hImm) {
                 break;
@@ -601,7 +582,7 @@ bool AssemblerAarch64::TryReplicateHWords(const Register &rd, uint64_t imm)
             return true;
         }
         // Find the remaining chunk which needs to be materialized.
-        for (shift += HWORDSIZE; shift < RegXSize; shift += HWORDSIZE) {
+        for (shift += HWORDSIZE; shift < X_REG_SIZE; shift += HWORDSIZE) {
             imm16 = (imm >> shift) & HWORD_MASK;
             if (imm16 != hImm) {
                 break;
@@ -627,7 +608,7 @@ void AssemblerAarch64::EmitMovInstruct(const Register &rd, uint64_t imm,
         int lz = static_cast<int>(CountLeadingZeros64(imm));
         int tz = static_cast<int>(CountTrailingZeros64(imm));
         firstshift = (tz / 16) * 16;         // 16 : 16  means the operand of MOVK/N/Z is 16 bits Immediate
-        // 63 : 63  means the topmost bits of RegXSize
+        // 63 : 63  means the topmost bits of X_REG_SIZE
         lastshift = ((63 - lz) / 16) * 16;   // 16 : 16  means the operand of MOVK/N/Z is 16 bits Immediate
     }
     uint64_t imm16 = (imm >> firstshift) & HWORD_MASK;
@@ -901,7 +882,7 @@ void AssemblerAarch64::AddSubReg(AddSubOpCode op, const Register &rd, const Regi
 
 void AssemblerAarch64::Cmp(const Register &rd, const Operand &operand)
 {
-    Subs(Register(Zero, rd.GetType()), rd, operand);
+    Subs(rd.IsW() ? wzr : xzr, rd, operand);
 }
 
 void AssemblerAarch64::CMov(const Register &rd, const Register &rn, const Operand &operand, Condition cond)
@@ -1031,12 +1012,12 @@ void AssemblerAarch64::Tbnz(const Register &rt, int32_t bitPos, int32_t imm)
 
 void AssemblerAarch64::Tst(const Register& rn, const Operand& operand)
 {
-    Ands(Register(Zero, rn.GetType()), rn, operand);
+    Ands(rn.IsW() ? wzr : xzr, rn, operand);
 }
 
 void AssemblerAarch64::Tst(const Register &rn, const LogicalImmediate &imm)
 {
-    Ands(Register(Zero, rn.GetType()), rn, imm);
+    Ands(rn.IsW() ? wzr : xzr, rn, imm);
 }
 
 int32_t AssemblerAarch64::LinkAndGetInstOffsetToLabel(Label *label)
@@ -1144,7 +1125,7 @@ void AssemblerAarch64::SetRealOffsetToBranchInst(uint32_t linkPos, int32_t disp)
 
 void AssemblerAarch64::Ret()
 {
-    Ret(Register(X30));
+    Ret(x30);
 }
 
 void AssemblerAarch64::Ret(const Register &rn)

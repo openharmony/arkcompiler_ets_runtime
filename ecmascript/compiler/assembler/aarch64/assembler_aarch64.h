@@ -19,102 +19,9 @@
 #include <map>
 
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/assembler/aarch64/assembler_aarch64_constants.h"
+#include "ecmascript/compiler/assembler/aarch64/register_aarch64.h"
 
 namespace panda::ecmascript::aarch64 {
-class Register {
-public:
-    Register(RegisterId reg, RegisterType type = RegisterType::X) : reg_(reg), type_(type) {};
-
-    Register W() const
-    {
-        return Register(reg_, RegisterType::W);
-    }
-
-    Register X() const
-    {
-        return Register(reg_, RegisterType::X);
-    }
-
-    RegisterType GetType() const
-    {
-        return type_;
-    }
-
-    inline bool IsSp() const
-    {
-        return reg_ == RegisterId::SP;
-    }
-
-    inline bool IsW() const
-    {
-        return type_ == RegisterType::W;
-    }
-
-    inline RegisterId GetId() const
-    {
-        return reg_;
-    }
-
-    inline bool IsValid() const
-    {
-        return reg_ != RegisterId::INVALID_REG;
-    }
-
-    inline bool operator !=(const Register &other)
-    {
-        return reg_ != other.GetId() || type_ != other.GetType();
-    }
-
-    inline bool operator ==(const Register &other)
-    {
-        return reg_ == other.GetId() && type_ == other.GetType();
-    }
-
-private:
-    RegisterId reg_;
-    RegisterType type_;
-};
-
-class VectorRegister {
-public:
-    explicit VectorRegister(VectorRegisterId reg, Scale scale = D) : reg_(reg), scale_(scale) {};
-
-    inline VectorRegisterId GetId() const
-    {
-        return reg_;
-    }
-
-    inline bool IsValid() const
-    {
-        return reg_ != VectorRegisterId::INVALID_VREG;
-    }
-
-    inline Scale GetScale() const
-    {
-        return scale_;
-    }
-
-    inline int GetRegSize() const
-    {
-        if (scale_ == B) {
-            return 8; // 8:Register size
-        } else if (scale_ == H) {
-            return 16; // 16:Register size
-        } else if (scale_ == S) {
-            return 32; // 32:Register size
-        } else if (scale_ == D) {
-            return 64; // 64:Register size
-        } else if (scale_ == Q) {
-            return 128; // 128:Register size
-        }
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
-    }
-private:
-    VectorRegisterId reg_;
-    Scale scale_;
-};
 
 class Immediate {
 public:
@@ -159,7 +66,7 @@ private:
 class Operand {
 public:
     Operand(Immediate imm)
-        : reg_(RegisterId::INVALID_REG), extend_(Extend::NO_EXTEND), shift_(Shift::NO_SHIFT),
+        : reg_(invalidReg), extend_(Extend::NO_EXTEND), shift_(Shift::NO_SHIFT),
           shiftAmount_(0), immediate_(imm)
     {
     }
@@ -238,7 +145,7 @@ public:
     {
     }
     MemoryOperand(Register base, int64_t offset, AddrMode addrmod = AddrMode::OFFSET)
-        : base_(base), offsetReg_(RegisterId::INVALID_REG), offsetImm_(offset), addrmod_(addrmod),
+        : base_(base), offsetReg_(invalidReg), offsetImm_(offset), addrmod_(addrmod),
           extend_(Extend::NO_EXTEND), shift_(Shift::NO_SHIFT), shiftAmount_(0)
     {
     }
@@ -301,8 +208,8 @@ public:
     }
     void Ldp(const Register &rt, const Register &rt2, const MemoryOperand &operand);
     void Stp(const Register &rt, const Register &rt2, const MemoryOperand &operand);
-    void Ldp(const VectorRegister &vt, const VectorRegister &vt2, const MemoryOperand &operand);
-    void Stp(const VectorRegister &vt, const VectorRegister &vt2, const MemoryOperand &operand);
+    void Ldp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand);
+    void Stp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand);
     void Ldr(const Register &rt, const MemoryOperand &operand);
     void Ldrh(const Register &rt, const MemoryOperand &operand);
     void Ldrb(const Register &rt, const MemoryOperand &operand);
@@ -407,7 +314,6 @@ private:
         return (imm << BRANCH_Imm19_LOWBITS) & BRANCH_Imm19_MASK;
     }
 
-    uint32_t GetOpcFromScale(Scale scale, bool ispair);
     bool IsAddSubImm(uint64_t imm);
     void AddSubImm(AddSubOpCode op, const Register &rd, const Register &rn, bool setFlags, uint64_t imm);
     void AddSubReg(AddSubOpCode op, const Register &rd, const Register &rn, bool setFlags, const Operand &operand);

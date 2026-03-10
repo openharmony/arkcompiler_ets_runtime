@@ -20,7 +20,7 @@ void AssemblerX64::Pushq(Register x)
 {
     EmitRexPrefix(x);
     // 0x50: Push r16
-    EmitU8(0x50 | LowBits(x));
+    EmitU8(0x50 | x.LowBits());
 }
 
 void AssemblerX64::Pushq(Immediate x)
@@ -45,7 +45,7 @@ void AssemblerX64::Popq(Register x)
 {
     EmitRexPrefix(x);
     // 0x58: Pop r16
-    EmitU8(0x58 | LowBits(x));
+    EmitU8(0x58 | x.LowBits());
 }
 
 void AssemblerX64::Pop(Register x)
@@ -292,7 +292,7 @@ void AssemblerX64::Movq(Immediate src, Register dst)
 {
     EmitRexPrefix(dst);
     // B8 : mov r32, imm32
-    EmitU8(0xB8 | LowBits(dst));
+    EmitU8(0xB8 | dst.LowBits());
     EmitI32(src.Value());
 }
 
@@ -900,7 +900,8 @@ void AssemblerX64::Testb(Immediate src, Register dst)
         EmitU8(0xA8);
     } else {
         // AH BH CG DH can not be encoded to access if REX prefix used.
-        if (dst >= rsp) {
+        ASSERT(dst.IsValid());
+        if (dst.Code() >= rsp.Code()) {
             EmitRexPrefixL(dst);
         }
         // F6: Test r/m8, imm8
@@ -1331,7 +1332,7 @@ void AssemblerX64::Movabs(uint64_t src, Register dst)
 {
     // REX.W + B8 + rd io : Mov r64, imm64
     EmitRexPrefixW(dst);
-    EmitU8(0xB8 | LowBits(dst));
+    EmitU8(0xB8 | dst.LowBits());
     EmitU64(src);
 }
 

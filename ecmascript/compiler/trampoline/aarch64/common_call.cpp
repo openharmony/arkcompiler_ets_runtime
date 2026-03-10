@@ -23,17 +23,14 @@ using Label = panda::ecmascript::Label;
 
 void CommonCall::PushAsmInterpBridgeFrame(ExtendedAssembler *assembler)
 {
-    Register fp(X29);
-    Register sp(SP);
-
     [[maybe_unused]] TempRegister1Scope scope1(assembler);
     Register frameTypeRegister = __ TempRegister1();
 
     __ Mov(frameTypeRegister, Immediate(static_cast<int64_t>(FrameType::ASM_INTERPRETER_BRIDGE_FRAME)));
     // 2 : return addr & frame type
-    __ Stp(frameTypeRegister, Register(X30), MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Stp(frameTypeRegister, x30, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // 2 : prevSp & pc
-    __ Stp(Register(Zero), Register(FP), MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Stp(xzr, fp, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Add(fp, sp, Immediate(24));  // 24: skip frame type, prevSp, pc
 
     if (!assembler->FromInterpreterHandler()) {
@@ -43,8 +40,6 @@ void CommonCall::PushAsmInterpBridgeFrame(ExtendedAssembler *assembler)
 
 void CommonCall::PopAsmInterpBridgeFrame(ExtendedAssembler *assembler)
 {
-    Register sp(SP);
-
     if (!assembler->FromInterpreterHandler()) {
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
         __ CalleeRestoreNoReservedRegister();
@@ -53,9 +48,9 @@ void CommonCall::PopAsmInterpBridgeFrame(ExtendedAssembler *assembler)
 #endif
     }
     // 2: prevSp & pc
-    __ Ldp(Register(Zero), Register(FP), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Ldp(xzr, fp, MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
     // 2: return addr & frame type
-    __ Ldp(Register(Zero), Register(X30), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Ldp(xzr, x30, MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
 }
 
 
@@ -63,28 +58,24 @@ void CommonCall::PushLeaveFrame(ExtendedAssembler *assembler, Register glue)
 {
     TempRegister2Scope temp2Scope(assembler);
     Register frameType = __ TempRegister2();
-    Register currentSp(X6);
-    Register sp(SP);
 
     // construct leave frame
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::LEAVE_FRAME)));
     __ PushFpAndLr();
     // 2 : 2 means pairs
-    __ Stp(Register(X19), frameType, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
-    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
+    __ Stp(x19, frameType, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Add(fp, sp, Immediate(DOUBLE_SLOT_SIZE));
     // save to thread currentLeaveFrame_;
-    __ Str(Register(FP), MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
+    __ Str(fp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
 }
 
 
 void CommonCall::PopLeaveFrame(ExtendedAssembler *assembler)
 {
-    Register sp(SP);
-    Register currentSp(X6);
     TempRegister2Scope temp2Scope(assembler);
     Register frameType = __ TempRegister2();
     // 2 : 2 means pairs
-    __ Ldp(Register(X19), frameType, MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Ldp(x19, frameType, MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
     __ RestoreFpAndLr();
 }
 
@@ -110,7 +101,6 @@ void CommonCall::PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, R
 void CommonCall::PushArgsWithArgvInPair(ExtendedAssembler *assembler, Register argc,
     Register argv, Register padding, Register op1, Register op2, Label *next)
 {
-    Register sp(SP);
     if (next != nullptr) {
         __ Cmp(argc.W(), Immediate(0));
         __ B(Condition::LS, next);
@@ -121,7 +111,7 @@ void CommonCall::PushArgsWithArgvInPair(ExtendedAssembler *assembler, Register a
     {
         __ Add(argv, argv, Operand(argc.W(), UXTW, 3)); // 3: argc * 8
         __ Ldr(op1, MemoryOperand(argv, -FRAME_SLOT_SIZE, PREINDEX));
-        __ Stp(op1, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Stp(op1, xzr, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
         __ Sub(argc.W(), argc.W(), Immediate(1)); // 1: push the top arg already
         __ Sub(argv, argv, Operand(argc.W(), UXTW, 3)); // 3: argc * 8
         __ B(&copyArgs);
@@ -184,24 +174,22 @@ void CommonCall::StackOverflowCheck(ExtendedAssembler *assembler, Register glue,
 
 void CommonCall::PushAsmBridgeFrame(ExtendedAssembler *assembler)
 {
-    Register sp(SP);
     TempRegister2Scope temp2Scope(assembler);
     Register frameType = __ TempRegister2();
     __ PushFpAndLr();
     // construct frame
     __ Mov(frameType, Immediate(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)));
     // 2 : 2 means pairs. X19 means calleesave and 16bytes align
-    __ Stp(Register(X19), frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
+    __ Stp(x19, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+    __ Add(fp, sp, Immediate(DOUBLE_SLOT_SIZE));
 }
 
 void CommonCall::PopAsmBridgeFrame(ExtendedAssembler *assembler)
 {
     TempRegister2Scope temp2Scope(assembler);
-    Register sp(SP);
     Register frameType = __ TempRegister2();
     // 2 : 2 means pop call site sp and type
-    __ Ldp(Register(X19), frameType, MemoryOperand(sp, FRAME_SLOT_SIZE * 2, AddrMode::POSTINDEX));
+    __ Ldp(x19, frameType, MemoryOperand(sp, FRAME_SLOT_SIZE * 2, AddrMode::POSTINDEX));
     __ RestoreFpAndLr();
 }
 #undef __

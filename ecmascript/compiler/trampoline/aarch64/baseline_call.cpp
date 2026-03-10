@@ -273,8 +273,7 @@ void BaselineCall::SuperCallAndCheckToBaselineFromBaseline(ExtendedAssembler *as
 void BaselineCall::GetBaselineBuiltinFp(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(GetBaselineBuiltinFp));
-    Register ret = X0;
-    Register fp = X29;
+    Register ret = x0;
     __ Mov(ret, fp);
     __ Ret();
 }

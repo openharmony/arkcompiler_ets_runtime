@@ -586,7 +586,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    return rInvalid;
+    return invalidReg;
 }
 
 Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode,
@@ -610,7 +610,7 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    return rInvalid;
+    return invalidReg;
 }
 
 // Input: %r14 - callField
@@ -792,7 +792,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
         __ Movzbq(Operand(pcRegister, 0), bcIndexRegister);
     }
     // acc: rsi
-    if (accRegister != rInvalid) {
+    if (accRegister.IsValid()) {
         ASSERT(accRegister == rsi);
     } else {
         __ Movq(JSTaggedValue::Hole().GetRawData(), rsi);
@@ -1899,11 +1899,11 @@ void AsmInterpreterCall::PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *a
     PushUndefinedWithArgc(assembler, argc);
 }
 
-void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
-    Register op)
+void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue,
+                                                              Register fpReg, Register op)
 {
-    if (fp != rsp) {
-        __ Movq(fp, rsp);
+    if (fpReg != rsp) {
+        __ Movq(fpReg, rsp);
     }
     __ Movq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException, op);
     __ Movq(Operand(glue, op, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), op);
@@ -1936,10 +1936,10 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
 }
 
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler,
-    Register glue, Register fp, Register op)
+    Register glue, Register fpReg, Register op)
 {
-    if (fp != rsp) {
-        __ Movq(fp, rsp);
+    if (fpReg != rsp) {
+        __ Movq(fpReg, rsp);
     }
     __ Movq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException, op);
     __ Movq(Operand(glue, op, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), op);

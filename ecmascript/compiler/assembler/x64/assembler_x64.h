@@ -16,28 +16,11 @@
 #define ECMASCRIPT_COMPILER_ASSEMBLER_X64_H
 
 #include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/compiler/assembler/x64/register_x64.h"
 
 namespace panda::ecmascript::x64 {
-enum Register : uint8_t {
-    rax = 0,
-    rcx,
-    rdx,
-    rbx,
-    rsp,
-    rbp,
-    rsi,
-    rdi,
-    r8,
-    r9,
-    r10,
-    r11,
-    r12,
-    r13,
-    r14,
-    r15,
-    rInvalid,
-};
 
+// Scale enum for memory addressing (kept from original)
 enum Scale : uint8_t {
     Times1 = 0,
     Times2,
@@ -162,19 +145,19 @@ public:
 private:
     void EmitRexPrefix(const Register &x)
     {
-        if (HighBit(x) != 0) {
+        if (x.HighBit() != 0) {
             EmitU8(REX_PREFIX_B);
         }
     }
 
     void EmitRexPrefixW(const Register &rm)
     {
-        EmitU8(REX_PREFIX_W | HighBit(rm));
+        EmitU8(REX_PREFIX_W | rm.HighBit());
     }
 
     void EmitRexPrefixL(const Register &rm)
     {
-        EmitU8(REX_PREFIX_FIXED_BITS | HighBit(rm));
+        EmitU8(REX_PREFIX_FIXED_BITS | rm.HighBit());
     }
 
     void EmitRexPrefix(const Operand &rm)
@@ -187,15 +170,15 @@ private:
     {
         // 0: Extension to the MODRM.rm field B
         // 2: Extension to the MODRM.reg field R
-        EmitU8(REX_PREFIX_W | (HighBit(reg) << 2) | HighBit(rm));
+        EmitU8(REX_PREFIX_W | (reg.HighBit() << 2) | rm.HighBit());
     }
 
     void EmitRexPrefixl(Register reg, Register rm)
     {
         // 0: Extension to the MODRM.rm field B
-        if (HighBit(reg) != 0 || HighBit(rm) != 0) {
+        if (reg.HighBit() != 0 || rm.HighBit() != 0) {
             // 2: Extension to the MODRM.reg field R
-            EmitU8(REX_PREFIX_FIXED_BITS | (HighBit(reg) << 2) | HighBit(rm));
+            EmitU8(REX_PREFIX_FIXED_BITS | (reg.HighBit() << 2) | rm.HighBit());
         }
     }
 
@@ -203,15 +186,15 @@ private:
     {
         // 0: Extension to the MODRM.rm field B
         // 2: Extension to the MODRM.reg field R
-        EmitU8(REX_PREFIX_W | (HighBit(reg) << 2) | rm.rex_);
+        EmitU8(REX_PREFIX_W | (reg.HighBit() << 2) | rm.rex_);
     }
 
     void EmitRexPrefixl(Register reg, Operand rm)
     {
         // 0: Extension to the MODRM.rm field B
-        if (HighBit(reg) != 0 || rm.rex_ != 0) {
+        if (reg.HighBit() != 0 || rm.rex_ != 0) {
             // 2: Extension to the MODRM.reg field R
-            EmitU8(REX_PREFIX_FIXED_BITS | (HighBit(reg) << 2) | rm.rex_);
+            EmitU8(REX_PREFIX_FIXED_BITS | (reg.HighBit() << 2) | rm.rex_);
         }
     }
 
@@ -220,17 +203,17 @@ private:
     // +---+---+---+---+---+---+---+---+
     void EmitModrm(int32_t reg, Register rm)
     {
-        EmitU8(MODE_RM | (static_cast<uint32_t>(reg) << LOW_BITS_SIZE) | LowBits(rm));
+        EmitU8(MODE_RM | (static_cast<uint32_t>(reg) << LOW_BITS_SIZE) | rm.LowBits());
     }
 
     void EmitModrm(Register reg, Register rm)
     {
-        EmitModrm(LowBits(reg), rm);
+        EmitModrm(reg.LowBits(), rm);
     }
 
     void EmitOperand(Register reg, Operand rm)
     {
-        EmitOperand(LowBits(reg), rm);
+        EmitOperand(reg.LowBits(), rm);
     }
     void EmitOperand(int32_t reg, Operand rm);
     void EmitJmp(int32_t offset);
@@ -268,11 +251,11 @@ private:
         // [r/m + disp8]
         // [r/m + disp32]
         // 6: offset of mode
-        return (static_cast<uint32_t>(mode) << 6) | LowBits(rm);
+        return (static_cast<uint32_t>(mode) << 6) | rm.LowBits();
     }
     static uint8_t GetModrmRex(Register rm)
     {
-        return HighBit(rm);
+        return rm.HighBit();
     }
     // +---+---+---+---+---+---+---+---+
     // | scale |   index   |    base   |
@@ -280,20 +263,12 @@ private:
     static uint8_t GetSIB(Scale scale, Register index, Register base)
     {
         // 6: offset of scale
-        return (static_cast<uint8_t>(scale) << 6) | (LowBits(index) << LOW_BITS_SIZE) |
-            LowBits(base);
+        return (static_cast<uint8_t>(scale) << 6) | (index.LowBits() << LOW_BITS_SIZE) |
+            base.LowBits();
     }
     static uint8_t GetSIBRex(Register index, Register base)
     {
-        return (HighBit(index) << 1) | HighBit(base);
-    }
-    static uint32_t LowBits(Register x)
-    {
-        return static_cast<uint8_t>(x) & LOW_BITS_MASK;
-    }
-    static uint32_t HighBit(Register x)
-    {
-        return static_cast<uint8_t>(x) >> LOW_BITS_SIZE;
+        return (index.HighBit() << 1) | base.HighBit();
     }
     friend class Operand;
 };

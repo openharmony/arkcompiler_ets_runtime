@@ -753,7 +753,7 @@ HWTEST_F_L0(AssemblerX64Test, ConditionalJumps)
     Label label3;
 
     __ Bind(&label1);
-    __ Cmp(rax, rbx);
+    __ Cmpq(rax, rbx);
     __ Jz(&label2);   // Jump if zero
     __ Jle(&label3);  // Jump if less or equal
     __ Jmp(&label1);  // Unconditional jump

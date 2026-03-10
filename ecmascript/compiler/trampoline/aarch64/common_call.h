@@ -62,9 +62,9 @@ public:
         return 16 + static_cast<int64_t>(argId) * static_cast<int64_t>(FRAME_SLOT_SIZE);
     }
     static void PushUndefinedWithArgc(ExtendedAssembler *assembler, Register glue, Register argc, Register temp,
-        Register fp, Label *next, Label *stackOverflow);
+        Register fpReg, Label *next, Label *stackOverflow);
     static void PushArgsWithArgv(ExtendedAssembler *assembler, Register glue, Register argc, Register argv,
-        Register op, Register fp, Label *next, Label *stackOverflow);
+        Register op, Register fpReg, Label *next, Label *stackOverflow);
     static void PushArgsWithArgvInPair(ExtendedAssembler *assembler, Register argc, Register argv, Register padding,
         Register op1, Register op2, Label *next);
     static void PushAsmInterpBridgeFrame(ExtendedAssembler *assembler);
@@ -127,7 +127,7 @@ private:
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
-    static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp,
+    static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fpReg,
                                           int64_t numExtraArgs = 0);
     static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
@@ -230,19 +230,19 @@ private:
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, FrameTransitionType type);
 
     static void DispatchCall(ExtendedAssembler *assembler, Register pc, Register newSp,
-                             Register acc = INVALID_REG, bool hasException = false);
+                             Register acc = invalidReg, bool hasException = false);
 
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
 
     static bool PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
         FrameType type, Register op, Register next);
 
-    static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
+    static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fpReg,
         Register op);
     static void ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler, Register glue,
-        Register fp, Register op);
+        Register fpReg, Register op);
 
-    static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp, Register currentSlot,
+    static void PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fpReg, Register currentSlot,
         Register callTarget, Register thisObj, Register method, Register pc, Register op);
 
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode, FrameTransitionType type);
