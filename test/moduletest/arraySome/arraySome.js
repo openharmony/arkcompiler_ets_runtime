@@ -180,3 +180,14 @@ someTestCases.forEach((test, i) => {
     print('---');
 });
 
+{
+    let arr = [];
+    arr[0] = {};
+    arr[2] = 0;
+    arr.some((elem) => {
+        elem[0] = 0;
+        arr.pop();
+        return false;
+    });
+    print("success");
+}
