@@ -16,6 +16,7 @@
 #include "ecmascript/js_thread.h"
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/platform/os.h"
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
 #include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
@@ -157,6 +158,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.barrierAndglue_ = jsThread->GetGlueAddr();
     SetCurrentThreadId();
     jsThread->SetThreadId();
+    jsThread->CaptureThreadName();
 
     if (UNLIKELY(g_isEnableCMCGC)) {
         jsThread->glueData_.threadHolder_ = ToUintPtr(ThreadHolder::CreateAndRegisterNewThreadHolder(vm));
@@ -1606,6 +1608,7 @@ void JSThread::PostFork()
 {
     SetCurrentThreadId();
     SetThreadId();
+    CaptureThreadName();
     if (currentThread == nullptr) {
         currentThread = this;
         if (LIKELY(!g_isEnableCMCGC)) {
@@ -1624,6 +1627,27 @@ void JSThread::PostFork()
         }
     }
 }
+
+void JSThread::CaptureThreadName()
+{
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
+    char pthreadName[16];
+    int result = pthread_getname_np(pthread_self(), pthreadName, sizeof(pthreadName));
+    if (result == 0 && pthreadName[0] != '\0') {
+        threadName_ = std::string(pthreadName);
+    } else {
+        threadName_ = "JSThread-" + std::to_string(GetThreadId());
+    }
+#else
+    threadName_ = "JSThread-" + std::to_string(GetThreadId());
+#endif
+}
+
+std::string JSThread::GetThreadName() const
+{
+    return threadName_;
+}
+
 #ifndef NDEBUG
 bool JSThread::IsInManagedState() const
 {

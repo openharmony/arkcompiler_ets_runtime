@@ -163,29 +163,43 @@ private:
     NO_COPY_SEMANTIC(ThreadManagedScope);
 };
 
-template<typename T>
-class SuspendAllScope final {
-    static_assert(std::is_base_of_v<JSThread, T>);
-    static_assert(!std::is_same_v<JitThread, T>);
+class SuspendAllAction final {
 public:
-    explicit SuspendAllScope(T* self)
-        : self_(self), scope_(self)
+    explicit SuspendAllAction(JSThread* self)
+        : self_(self)
     {
         TRACE_GC(GCStats::Scope::ScopeId::SuspendAll, SharedHeap::GetInstance()->GetEcmaGCStats());
         ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SuspendAll", "");
         Runtime::GetInstance()->SuspendAll(self_);
     }
-    ~SuspendAllScope()
+    ~SuspendAllAction()
     {
         TRACE_GC(GCStats::Scope::ScopeId::ResumeAll, SharedHeap::GetInstance()->GetEcmaGCStats());
         ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ResumeAll", "");
         Runtime::GetInstance()->ResumeAll(self_);
     }
 private:
-    T* self_;
+    JSThread* self_;
+    NO_COPY_SEMANTIC(SuspendAllAction);
+};
+
+template<typename T>
+class SuspendAllScope final {
+    static_assert(std::is_base_of_v<JSThread, T>);
+    static_assert(!std::is_same_v<JitThread, T>);
+public:
+    explicit SuspendAllScope(T* self)
+        : scope_(self), suspendAllAction_(self)
+    {
+    }
+    ~SuspendAllScope() = default;
+private:
     ThreadStateTransitionScope<T, ThreadState::IS_SUSPENDED> scope_;
+    SuspendAllAction suspendAllAction_;
     NO_COPY_SEMANTIC(SuspendAllScope);
 };
+
+using SuspendAllScopeFromExternal = SuspendAllAction;
 
 template<typename T>
 class SuspendOtherScope final {

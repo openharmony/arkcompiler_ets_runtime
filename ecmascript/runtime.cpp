@@ -318,22 +318,24 @@ void Runtime::UnregisterThread(JSThread* thread)
 
 void Runtime::SuspendAll(JSThread *current)
 {
-    ASSERT(current != nullptr);
-    ASSERT(!current->IsInRunningState());
+    ASSERT(current == nullptr || !current->IsInRunningState());
 #ifndef NDEBUG
-    ASSERT(!current->HasLaunchedSuspendAll());
-    current->LaunchSuspendAll();
+    if (current != nullptr) {
+        ASSERT(!current->HasLaunchedSuspendAll());
+        current->LaunchSuspendAll();
+    }
 #endif
     SuspendAllThreadsImpl(current);
 }
 
 void Runtime::ResumeAll(JSThread *current)
 {
-    ASSERT(current != nullptr);
-    ASSERT(!current->IsInRunningState());
+    ASSERT(current == nullptr || !current->IsInRunningState());
 #ifndef NDEBUG
-    ASSERT(current->HasLaunchedSuspendAll());
-    current->CompleteSuspendAll();
+    if (current != nullptr) {
+        ASSERT(current->HasLaunchedSuspendAll());
+        current->CompleteSuspendAll();
+    }
 #endif
     ResumeAllThreadsImpl(current);
 }
@@ -382,10 +384,10 @@ void Runtime::FlipAllThreads(DaemonThread *current, Closure *suspendCallback, Cl
 
 void Runtime::SuspendAllThreadsImpl(JSThread *current)
 {
-    // fixme: support suspend in a non JS Thread.
-    ASSERT(current != nullptr);
+    // Support suspend initiated from non-JS thread (current == nullptr)
     if (g_isEnableCMCGC) {
-        common::BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(current->GetThreadHolder());
+        ThreadHolder* holder = (current != nullptr) ? current->GetThreadHolder() : nullptr;
+        common::BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(holder);
         return;
     }
     bool suspendMainThreadLater = false;
@@ -397,7 +399,9 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
             if (suspendNewCount_ == 0) {
                 suspendNewCount_++;
                 ASSERT(threads_.size() > 0);
-                barrier.Initialize(threads_.size() - 1);
+                // When current is nullptr (non-JS thread initiated), suspend all JS threads
+                size_t barrierCount = (current != nullptr) ? threads_.size() - 1 : threads_.size();
+                barrier.Initialize(barrierCount);
                 for (const auto& thread: threads_) {
                     if (thread == current) {
                         continue;
@@ -471,8 +475,10 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
 
 void Runtime::ResumeAllThreadsImpl(JSThread *current)
 {
+    // Support resume initiated from non-JS thread (current == nullptr)
     if (g_isEnableCMCGC) {
-        common::BaseRuntime::GetInstance()->GetThreadHolderManager().ResumeAll(current->GetThreadHolder());
+        ThreadHolder* holder = (current != nullptr) ? current->GetThreadHolder() : nullptr;
+        common::BaseRuntime::GetInstance()->GetThreadHolderManager().ResumeAll(holder);
     } else {
         LockHolder lock(threadsLock_);
         if (suspendNewCount_ > 0) {

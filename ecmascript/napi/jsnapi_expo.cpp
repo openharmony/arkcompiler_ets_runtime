@@ -6202,6 +6202,41 @@ void JSNApi::SetVMAPIVersion(EcmaVM *vm, const int32_t apiVersion)
     vm->SetVMAPIVersion(static_cast<uint32_t>(apiVersion) % API_VERSION_MASK);
 }
 
+std::vector<ecmascript::HeapMemoryInfo> JSNApi::GetAllVMHeapMemoryInfo()
+{
+    std::vector<ecmascript::HeapMemoryInfo> heapInfos;
+    auto runtime = ecmascript::Runtime::GetInstance();
+    ecmascript::SuspendAllScopeFromExternal suspendAllScope(nullptr);
+
+    runtime->GCIterateThreadList([&heapInfos](JSThread* thread) {
+        ecmascript::HeapMemoryInfo info;
+        info.threadId = thread->GetThreadId();
+        info.threadName = thread->GetThreadName();
+        info.heapType = "local";
+        info.heapObjectSize = 0;
+
+        auto threadVm = thread->GetEcmaVM();
+        ASSERT(threadVm != nullptr);
+        auto* heap = threadVm->GetHeap();
+        ASSERT(heap != nullptr);
+        size_t heapSize = heap->GetHeapObjectSize();
+        info.heapObjectSize = static_cast<uint32_t>(AlignUp(heapSize, 1_KB) / 1_KB);
+
+        heapInfos.push_back(info);
+    });
+
+    auto* sharedHeap = ecmascript::SharedHeap::GetInstance();
+    ecmascript::HeapMemoryInfo sharedInfo;
+    sharedInfo.threadId = 0;
+    sharedInfo.threadName = "[SharedHeap]";
+    sharedInfo.heapType = "shared";
+    size_t sharedSize = sharedHeap->GetHeapObjectSize();
+    sharedInfo.heapObjectSize = static_cast<uint32_t>(AlignUp(sharedSize, 1_KB) / 1_KB);
+    heapInfos.push_back(sharedInfo);
+
+    return heapInfos;
+}
+
 void JSNApi::UpdateStackInfo(EcmaVM *vm, void *currentStackInfo, uint32_t opKind)
 {
     vm->GetJSThread()->UpdateStackInfo(currentStackInfo, static_cast<ecmascript::JSThread::StackInfoOpKind>(opKind));
