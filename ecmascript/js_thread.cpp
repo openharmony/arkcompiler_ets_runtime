@@ -15,6 +15,7 @@
 
 #include "ecmascript/js_thread.h"
 
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/base/json_stringifier.h"
@@ -1076,6 +1077,9 @@ bool JSThread::ShouldHandleMarkOrCopyFinishedInSafepoint()
 bool JSThread::CheckSafepoint()
 {
     ResetCheckSafePointStatus();
+
+    // Check and trigger memory pressure callback at safe point
+    GetEcmaVM()->CheckAndTriggerMemoryPressureCallback();
 
     if UNLIKELY(HasTerminationRequest()) {
         TerminateExecution();

@@ -71,6 +71,16 @@ public:
         return mainThread_;
     }
 
+    void SetMainThreadAliveForMemoryPressure(bool alive)
+    {
+        isMainThreadAliveForMemoryPressure_ = alive;
+    }
+
+    bool IsMainThreadAliveForMemoryPressure() const
+    {
+        return isMainThreadAliveForMemoryPressure_;
+    }
+
     template<class Callback>
     void GCIterateThreadList(const Callback &cb)
     {
@@ -436,6 +446,7 @@ private:
     GlobalEnvConstants globalConst_;
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSThread *mainThread_ {nullptr};
+    bool isMainThreadAliveForMemoryPressure_ {false};
     NotifyDeferFreezeCallback notifyDeferFreezeCallback_ {nullptr};
     // for shared heap.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;

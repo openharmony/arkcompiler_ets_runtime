@@ -27,6 +27,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 
 #include "libpandabase/macros.h"
 
@@ -140,7 +141,12 @@ public:
     static void DisableSeriliazationTimeoutCheck(const EcmaVM *ecmaVM);
 
     enum class PUBLIC_API ProfilerType : uint8_t { CPU_PROFILER, HEAP_PROFILER };
-
+    
+    struct PUBLIC_API HeapMemoryPressureOptions {
+        double localHeapThreshold;
+        double sharedHeapThreshold;
+        double processHeapThreshold;
+    };
     struct ProfilerOption {
         const char *libraryPath;
         int interval = 500; // 500:Default Sampling interval 500 microseconds
@@ -173,6 +179,10 @@ public:
     static void RegisterAsyncDetectCallBack(const EcmaVM *vm);
     static void GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static void SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled);
+
+    static bool OnVMHeapMemoryPressure(const EcmaVM *vm, HeapMemoryPressureOptions options,
+                                       Local<FunctionRef> callback);
+    static void OffVMHeapMemoryPressure(const EcmaVM *vm);
     static void GetHybridStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
     static void SetJsRawHeapCropLevel(CropLevel level);
     static void SetProcDumpInSharedOOM(bool enable);

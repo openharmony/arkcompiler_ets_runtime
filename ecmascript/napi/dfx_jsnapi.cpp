@@ -65,7 +65,6 @@ using ecmascript::g_isEnableCMCGC;
 using ecmascript::JSFunction;
 using ecmascript::JSPandaFileExecutor;
 using ecmascript::SourceTextModule;
-
 sem_t g_heapdumpCnt;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &path,
@@ -1196,6 +1195,23 @@ void DFXJSNApi::SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled
 {
     EcmaVM::SetMultiThreadCheck(enabled);
     EcmaVM::SetCheckCountApi(enabled);
+}
+
+bool DFXJSNApi::OnVMHeapMemoryPressure(const EcmaVM *vm, HeapMemoryPressureOptions options,
+                                       Local<FunctionRef> callback)
+{
+    LOG_ECMA(INFO) << "OnVMHeapMemoryPressure called: localThreshold=" << options.localHeapThreshold
+                   << ", sharedThreshold=" << options.sharedHeapThreshold
+                   << ", processThreshold=" << options.processHeapThreshold;
+    auto ecmaVm = const_cast<EcmaVM *>(vm);
+    return ecmaVm->SetHeapMemoryPressure(options, callback);
+}
+
+void DFXJSNApi::OffVMHeapMemoryPressure(const EcmaVM *vm)
+{
+    auto ecmaVm = const_cast<EcmaVM *>(vm);
+    ecmaVm->ResetMemoryPressure();
+    LOG_ECMA(INFO) << "OffVMHeapMemoryPressure called. Memory pressure listener cleared, thresholds reset to 0";
 }
 
 void DFXJSNApi::GetHybridStackTrace(const EcmaVM *vm, std::string &stackTraceStr)

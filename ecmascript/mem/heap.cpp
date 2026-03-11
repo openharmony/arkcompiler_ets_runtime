@@ -36,6 +36,7 @@
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/jit/jit.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
@@ -45,6 +46,7 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/dfx/tracing/tracing.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "syspara/parameter.h"
 #endif
@@ -716,6 +718,9 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
         // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
         DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC,
                                   "", 0, SHARED_HEAP_STR);
+    }
+    if (Runtime::GetInstance()->IsMainThreadAliveForMemoryPressure()) {
+        Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->CheckSharedHeapMemoryPressure();
     }
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
         auto notifyDeferFreezeCallback = Runtime::GetInstance()->GetNotifyDeferFreezeCallback();
@@ -1698,6 +1703,9 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     }
     CollectGarbageImpl(gcType, reason);
     ProcessGCCallback();
+    if (gcType != TriggerGCType::YOUNG_GC) {
+        GetEcmaVM()->CheckHeapMemoryPressure(this);
+    }
 }
 
 void Heap::CollectGarbageFromCCMark(GCReason reason)
