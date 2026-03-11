@@ -387,7 +387,7 @@ void BuiltinsStringStubBuilder::IndexOf(GateRef glue, GateRef thisValue, GateRef
                     Bind(&posTagNotInt);
                     BRANCH(TaggedIsDouble(posTag), &posTagIsDouble, slowPath);
                     Bind(&posTagIsDouble);
-                    pos = DoubleInRangeInt32(GetDoubleOfTDouble(posTag));
+                    pos = DoubleToInt(glue, GetDoubleOfTDouble(posTag));
                     Jump(&next);
                 }
                 Bind(&next);
