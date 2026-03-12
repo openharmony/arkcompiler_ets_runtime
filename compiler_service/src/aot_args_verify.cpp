@@ -28,6 +28,15 @@
 
 namespace OHOS::ArkCompiler {
 
+namespace {
+// Hex prefix constants for parsing hexadecimal strings
+constexpr size_t HEX_PREFIX_LENGTH = 2;  // Length of "0x" or "0X"
+constexpr char HEX_PREFIX_LOWER = '0';
+constexpr char HEX_PREFIX_X_LOWER = 'x';
+constexpr char HEX_PREFIX_X_UPPER = 'X';
+constexpr int HEX_RADIX = 16;  // Base for hexadecimal numbers
+}  // namespace
+
 bool AotArgsVerify::CheckArkProfilePath(const std::string &pgoDir, const std::string &bundleName)
 {
     if (!CheckPathTraverse(pgoDir)) {
@@ -454,6 +463,19 @@ bool AotArgsVerify::ParseInt32Field(const nlohmann::json &jsonObj, const char *k
     return true;
 }
 
+bool AotArgsVerify::ParseUint32FieldFromHex(const std::string &hexStr, uint32_t &output)
+{
+    const char* start = hexStr.c_str();
+    // Skip optional "0x" or "0X" prefix
+    if (hexStr.size() >= HEX_PREFIX_LENGTH && start[0] == HEX_PREFIX_LOWER &&
+        (start[1] == HEX_PREFIX_X_LOWER || start[1] == HEX_PREFIX_X_UPPER)) {
+        start += HEX_PREFIX_LENGTH;
+    }
+    const char* end = start + strlen(start);
+    auto result = std::from_chars(start, end, output, HEX_RADIX);
+    return result.ec == std::errc();
+}
+
 bool AotArgsVerify::ParseAotPkgInfo(const std::string &pkgInfoStr, AotPkgInfo &info)
 {
     if (!nlohmann::json::accept(pkgInfoStr)) {
@@ -487,11 +509,15 @@ bool AotArgsVerify::ParseAotPkgInfo(const std::string &pkgInfoStr, AotPkgInfo &i
         LOG_SA(ERROR) << "missing or invalid pgoDir";
         return false;
     }
-    if (!ParseUint32Field(jsonObj, ArgsIdx::ABC_OFFSET.c_str(), info.abcOffset.emplace())) {
+    std::string abcOffsetStr;
+    std::string abcSizeStr;
+    if (!ParseStringField(jsonObj, ArgsIdx::ABC_OFFSET.c_str(), abcOffsetStr) ||
+        !ParseUint32FieldFromHex(abcOffsetStr, info.abcOffset.emplace())) {
         LOG_SA(ERROR) << "missing or invalid abcOffset";
         return false;
     }
-    if (!ParseUint32Field(jsonObj, ArgsIdx::ABC_SIZE.c_str(), info.abcSize.emplace())) {
+    if (!ParseStringField(jsonObj, ArgsIdx::ABC_SIZE.c_str(), abcSizeStr) ||
+        !ParseUint32FieldFromHex(abcSizeStr, info.abcSize.emplace())) {
         LOG_SA(ERROR) << "missing or invalid abcSize";
         return false;
     }

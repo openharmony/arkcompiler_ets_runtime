@@ -468,7 +468,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_004, TestSize.Level0)
     const std::string pkgInfo = "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
         "\"abcName\": \"ets/modules.abc\", \"moduleName\": \"module\", "
         "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/test_app\", "
-        "\"abcOffset\": \"0\", \"abcSize\": \"64\"}";
+        "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
     argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfo;
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
 
@@ -488,7 +488,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_005, TestSize.Level0)
     const std::string pkgInfo = "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
         "\"abcName\": \"ets/modules.abc\", \"moduleName\": \"module\", "
         "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/test_app\", "
-        "\"abcOffset\": \"0\", \"abcSize\": \"64\"}";
+        "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
     argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfo;
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
 
@@ -508,7 +508,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_006, TestSize.Level0)
     const std::string pkgInfo = "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
         "\"abcName\": \"ets/modules.abc\", \"moduleName\": \"module\", "
         "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/../etc\", "
-        "\"abcOffset\": \"0\", \"abcSize\": \"64\"}";
+        "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
     argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfo;
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
@@ -529,7 +529,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_007, TestSize.Level0)
     const std::string pkgInfo = "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
         "\"abcName\": \"ets/modules.abc\", \"moduleName\": \"module\", "
         "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/test_app\", "
-        "\"abcOffset\": \"0\", \"abcSize\": \"64\"}";
+        "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
     argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfo;
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/wrong_location/test_app/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/test_app/test.an";
@@ -562,7 +562,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PartialMode_001, Test
     argsMap[ArgsIdx::COMPILER_PKG_INFO] =
         "{\"bundleName\":\"test_app\",\"pkgPath\":\"/data/test/test.hap\","
          "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/test_app\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::TARGET_COMPILER_MODE] = "partial";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
@@ -592,7 +592,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PartialMode_002, Test
     argsMap[ArgsIdx::COMPILER_PKG_INFO] =
         "{\"bundleName\":\"test_app\",\"pkgPath\":\"/data/test/test.hap\","
          "\"pgoDir\":\"/data/app/el2/100/aot_compiler/ark_profile/test_app\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::TARGET_COMPILER_MODE] = "partial";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
@@ -626,7 +626,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PartialMode_003, Test
     argsMap[ArgsIdx::COMPILER_PKG_INFO] =
         "{\"bundleName\":\"test_app\",\"pkgPath\":\"/data/test/test.hap\","
          "\"pgoDir\":\"/data/app/el2/100/aot_compiler/ark_profile/test_app\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::TARGET_COMPILER_MODE] = "full";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
@@ -690,7 +690,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_005, TestSize.L
         "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
          "\"abcName\": \"ets/modules_static.abc\", \"moduleName\": \"module\", "
          "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/pgo\", "
-         "\"abcOffset\": \"0\", \"abcSize\": \"64\"}";
+         "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
 
     bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
@@ -710,7 +710,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_006, TestSize.L
         "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
          "\"abcName\": \"ets/modules_static.abc\", \"moduleName\": \"module\", "
          "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/pgo\", "
-         "\"abcOffset\": \"0\", \"abcSize\": \"64\"}";
+         "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
 
     bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
@@ -1456,6 +1456,125 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_01
 }
 
 /**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_001
+ * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with valid hex format (0x prefix lowercase)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "0x1317b7d";
+    argsMap[ArgsIdx::BUNDLE_GID] = "0x2710";
+
+    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_002
+ * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with valid hex format (0X prefix uppercase)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_002, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "0X1317B7D";
+    argsMap[ArgsIdx::BUNDLE_GID] = "0X2710";
+
+    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_003
+ * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with valid hex format (no prefix, pure hex)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_003, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "1317b7d";
+    argsMap[ArgsIdx::BUNDLE_GID] = "2710";
+
+    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexInvalid_001
+ * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with invalid hex format (contains non-hex chars)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexInvalid_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::BUNDLE_UID] = "0x12g5";
+    argsMap[ArgsIdx::BUNDLE_GID] = "0x2710";
+
+    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_ParseUint32FieldFromHex_Basic
+ * @tc.desc: Test ParseUint32FieldFromHex with valid hex string (0x prefix)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32FieldFromHex_Basic, TestSize.Level0)
+{
+    uint32_t output = 0;
+    bool result = AotArgsVerify::ParseUint32FieldFromHex("0x1317b7d", output);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(output, 0x1317b7d);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_ParseUint32FieldFromHex_UpperCase
+ * @tc.desc: Test ParseUint32FieldFromHex with uppercase hex string (0X prefix)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32FieldFromHex_UpperCase, TestSize.Level0)
+{
+    uint32_t output = 0;
+    bool result = AotArgsVerify::ParseUint32FieldFromHex("0XABCDEF", output);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(output, 0xABCDEF);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_ParseUint32FieldFromHex_NoPrefix
+ * @tc.desc: Test ParseUint32FieldFromHex with pure hex string (no 0x prefix)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32FieldFromHex_NoPrefix, TestSize.Level0)
+{
+    uint32_t output = 0;
+    bool result = AotArgsVerify::ParseUint32FieldFromHex("1317b7d", output);
+
+    EXPECT_TRUE(result);
+    EXPECT_EQ(output, 0x1317b7d);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_ParseUint32FieldFromHex_Invalid
+ * @tc.desc: Test ParseUint32FieldFromHex with invalid hex string (contains non-hex chars)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32FieldFromHex_Invalid, TestSize.Level0)
+{
+    uint32_t output = 0;
+    bool result = AotArgsVerify::ParseUint32FieldFromHex("0x12g5", output);
+
+    EXPECT_FALSE(result);
+}
+
+/**
  * @tc.name: AotArgsVerifyTest_CheckPkgInfoFields_001
  * @tc.desc: Test CheckPkgInfoFields with valid pkgInfo
  * @tc.type: Func
@@ -1688,8 +1807,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_001, TestSize.Leve
         "moduleName": "module",
         "appIdentifier": "signature",
         "pgoDir": "/data/pgo",
-        "abcOffset": "0",
-        "abcSize": "64"
+        "abcOffset": "0x0",
+        "abcSize": "0x64"
     })";
     AotPkgInfo info;
 
@@ -1720,8 +1839,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_002, TestSize.Leve
         "moduleName": "module",
         "appIdentifier": "signature",
         "pgoDir": "/data/pgo",
-        "abcOffset": "64",
-        "abcSize": "1f4"
+        "abcOffset": "0x64",
+        "abcSize": "0x1f4"
     })";
     AotPkgInfo info;
 
@@ -1797,7 +1916,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcOffset, 
         "moduleName": "module",
         "appIdentifier": "signature",
         "pgoDir": "/data/pgo",
-        "abcSize": "64"
+        "abcSize": "0x64"
     })";
     AotPkgInfo info;
 
@@ -1820,7 +1939,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcSize, Te
         "moduleName": "module",
         "appIdentifier": "signature",
         "pgoDir": "/data/pgo",
-        "abcOffset": "0"
+        "abcOffset": "0x0"
     })";
     AotPkgInfo info;
 
@@ -1842,8 +1961,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingBundleName,
         "moduleName": "module",
         "appIdentifier": "signature",
         "pgoDir": "/data/pgo",
-        "abcOffset": "0",
-        "abcSize": "64"
+        "abcOffset": "0x0",
+        "abcSize": "0x64"
     })";
     AotPkgInfo info;
 
@@ -1865,8 +1984,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcName, Te
         "moduleName": "module",
         "appIdentifier": "signature",
         "pgoDir": "/data/pgo",
-        "abcOffset": "0",
-        "abcSize": "64"
+        "abcOffset": "0x0",
+        "abcSize": "0x64"
     })";
     AotPkgInfo info;
 
@@ -1888,8 +2007,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingModuleName,
         "abcName": "ets/modules.abc",
         "appIdentifier": "signature",
         "pgoDir": "/data/pgo",
-        "abcOffset": "0",
-        "abcSize": "64"
+        "abcOffset": "0x0",
+        "abcSize": "0x64"
     })";
     AotPkgInfo info;
 
@@ -1911,8 +2030,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingAppIdentifi
         "abcName": "ets/modules.abc",
         "moduleName": "module",
         "pgoDir": "/data/pgo",
-        "abcOffset": "0",
-        "abcSize": "64"
+        "abcOffset": "0x0",
+        "abcSize": "0x64"
     })";
     AotPkgInfo info;
 
@@ -1934,8 +2053,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingPgoDir, Tes
         "abcName": "ets/modules.abc",
         "moduleName": "module",
         "appIdentifier": "signature",
-        "abcOffset": "0",
-        "abcSize": "64"
+        "abcOffset": "0x0",
+        "abcSize": "0x64"
     })";
     AotPkgInfo info;
 
@@ -1980,7 +2099,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_AnFileNameMismatch, T
     std::unordered_map<std::string, std::string> argsMap;
     argsMap[ArgsIdx::COMPILER_PKG_INFO] =
         "{\"bundleName\":\"test\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/wrong.an";
     argsMap[ArgsIdx::BUNDLE_UID] = "10000";
@@ -2014,7 +2133,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_BundleUidInvalid, Tes
         "{\"bundleName\":\"com.test.app\",\"pkgPath\":\"/data/test.hap\","
          "\"abcName\":\"ets/modules.abc\",\"moduleName\":\"module\","
          "\"appIdentifier\":\"sig\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.test.app\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"64\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test.an";
     argsMap[ArgsIdx::BUNDLE_UID] = "9999";  // Invalid: < MIN_APP_UID_GID (10000)
@@ -2045,7 +2164,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_BundleGidInvalid, Tes
         "{\"bundleName\":\"com.test.app\",\"pkgPath\":\"/data/test.hap\","
          "\"abcName\":\"ets/modules.abc\",\"moduleName\":\"module\","
          "\"appIdentifier\":\"sig\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.test.app\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"64\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test.an";
     argsMap[ArgsIdx::BUNDLE_UID] = "10000";
@@ -2076,7 +2195,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PathTraversalInAotFil
         "{\"bundleName\":\"com.test.app\",\"pkgPath\":\"/data/test.hap\","
          "\"abcName\":\"ets/modules.abc\",\"moduleName\":\"module\","
          "\"appIdentifier\":\"sig\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.test.app\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"64\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/../etc/test";  // Path traversal
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/../etc/test.an";
     argsMap[ArgsIdx::BUNDLE_UID] = "10000";
@@ -2137,7 +2256,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_CheckPkgInfoFie
         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/data/test.hap\","
          "\"abcName\":\"ets/modules_static.abc\",\"moduleName\":\"../etc\","
          "\"appIdentifier\":\"signature\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/test\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"64\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
     argsMap[ArgsIdx::BUNDLE_UID] = "10000";
@@ -2158,7 +2277,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_CheckPkgInfoFie
         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/data/test.hap\","
          "\"abcName\":\"ets/modules_static.abc\",\"moduleName\":\"../etc\","
          "\"appIdentifier\":\"signature\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/test\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"64\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
     argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
     argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
     argsMap[ArgsIdx::BUNDLE_UID] = "10000";
@@ -2184,7 +2303,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_CheckArkCacheFi
     std::unordered_map<std::string, std::string> argsMap;
     argsMap[ArgsIdx::COMPILER_PKG_INFO] =
         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
 
     bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
 
@@ -2197,7 +2316,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_CheckArkCacheFi
     std::unordered_map<std::string, std::string> argsMap;
     argsMap[ArgsIdx::COMPILER_PKG_INFO] =
         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\"}";
+         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
 
     bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
 
