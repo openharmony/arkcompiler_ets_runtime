@@ -4305,42 +4305,6 @@ HWTEST_F_L0(EcmaModuleTest, AddNormalSerializeModule)
     EXPECT_EQ(serializerArray->Get(thread, 0), module.GetTaggedValue());
 }
 
-HWTEST_F_L0(EcmaModuleTest, RestoreMutableFields)
-{
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
-    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
-    SourceTextModule::MutableFields fields;
-
-    fields.TopLevelCapability = JSTaggedValue(1);
-    fields.NameDictionary = JSTaggedValue(2);
-    fields.CycleRoot = JSTaggedValue(3);
-    fields.AsyncParentModules = JSTaggedValue(4);
-    fields.SendableEnv = JSTaggedValue(5);
-    fields.Exception = JSTaggedValue(6);
-    fields.Namespace = JSTaggedValue(7);
-
-    SourceTextModule::RestoreMutableFields(thread, module, fields);
-
-    EXPECT_EQ(module->GetTopLevelCapability(thread), fields.TopLevelCapability);
-    EXPECT_EQ(module->GetNameDictionary(thread), fields.NameDictionary);
-    EXPECT_EQ(module->GetCycleRoot(thread), fields.CycleRoot);
-    EXPECT_EQ(module->GetAsyncParentModules(thread), fields.AsyncParentModules);
-    EXPECT_EQ(module->GetSendableEnv(thread), fields.SendableEnv);
-    EXPECT_EQ(module->GetException(thread), fields.Exception);
-    EXPECT_EQ(module->GetNamespace(thread), fields.Namespace);
-
-    SourceTextModule::StoreAndResetMutableFields(thread, module, fields);
-
-    EXPECT_EQ(module->GetTopLevelCapability(thread), undefinedValue);
-    EXPECT_EQ(module->GetNameDictionary(thread), undefinedValue);
-    EXPECT_EQ(module->GetCycleRoot(thread), undefinedValue);
-    EXPECT_EQ(module->GetAsyncParentModules(thread), undefinedValue);
-    EXPECT_EQ(module->GetSendableEnv(thread), undefinedValue);
-    EXPECT_EQ(module->GetException(thread), undefinedValue);
-    EXPECT_EQ(module->GetNamespace(thread), undefinedValue);
-}
-
 HWTEST_F_L0(EcmaModuleTest, UpdateSharedModule)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();

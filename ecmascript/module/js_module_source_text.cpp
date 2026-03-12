@@ -2317,37 +2317,6 @@ void SourceTextModule::SetRequestedModules(JSThread *thread, JSHandle<TaggedArra
     }
 }
 
-void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<SourceTextModule> module,
-    MutableFields& fields)
-{
-    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
-    fields.TopLevelCapability = module->GetTopLevelCapability(thread);
-    fields.NameDictionary = module->GetNameDictionary(thread);
-    fields.CycleRoot = module->GetCycleRoot(thread);
-    fields.AsyncParentModules = module->GetAsyncParentModules(thread);
-    fields.SendableEnv = module->GetSendableEnv(thread);
-    fields.Exception = module->GetException(thread);
-    fields.Namespace = module->GetNamespace(thread);
-    module->SetTopLevelCapability(thread, undefinedValue);
-    module->SetNameDictionary(thread, undefinedValue);
-    module->SetCycleRoot(thread, undefinedValue);
-    module->SetAsyncParentModules(thread, undefinedValue);
-    module->SetSendableEnv(thread, undefinedValue);
-    module->SetException(thread, undefinedValue);
-    module->SetNamespace(thread, undefinedValue);
-}
-
-void SourceTextModule::RestoreMutableFields(JSThread* thread, JSHandle<SourceTextModule> module, MutableFields& fields)
-{
-    module->SetTopLevelCapability(thread, fields.TopLevelCapability);
-    module->SetNameDictionary(thread, fields.NameDictionary);
-    module->SetCycleRoot(thread, fields.CycleRoot);
-    module->SetAsyncParentModules(thread, fields.AsyncParentModules);
-    module->SetSendableEnv(thread, fields.SendableEnv);
-    module->SetException(thread, fields.Exception);
-    module->SetNamespace(thread, fields.Namespace);
-}
-
 JSHandle<JSTaggedValue> SourceTextModule::CreateBindingByIndexBinding(JSThread* thread,
                                                                       JSHandle<ResolvedIndexBinding> binding,
                                                                       bool isShared)

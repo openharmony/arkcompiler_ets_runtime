@@ -1612,6 +1612,32 @@ public:
         Destroy();
     }
 
+    void SourceTextModuleMutableFieldsTest(SerializeData* data)
+    {
+        Init();
+        ModuleDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_FALSE(res.IsEmpty());
+        EXPECT_TRUE(res->IsSourceTextModule());
+        JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(res);
+        EXPECT_EQ(module->GetEcmaModuleFilenameString(), "mutable_fields_test.abc");
+        EXPECT_EQ(module->GetEcmaModuleRecordNameString(), "testRecord");
+        EXPECT_EQ(module->GetStatus(), ModuleStatus::INSTANTIATED);
+        EXPECT_EQ(module->GetTypes(), ModuleTypes::ECMA_MODULE);
+        JSTaggedValue undefined = thread->GlobalConstants()->GetUndefined();
+        EXPECT_EQ(module->GetNamespace(thread), undefined);
+        EXPECT_EQ(module->GetNameDictionary(thread), undefined);
+        EXPECT_EQ(module->GetCycleRoot(thread), module.GetTaggedValue());
+        EXPECT_EQ(module->GetTopLevelCapability(thread), undefined);
+        EXPECT_EQ(module->GetAsyncParentModules(thread), undefined);
+        EXPECT_EQ(module->GetSendableEnv(thread), undefined);
+        EXPECT_EQ(module->GetException(thread), JSTaggedValue::Hole());
+        Destroy();
+    }
+
 private:
     EcmaVM *ecmaVm = nullptr;
     EcmaHandleScope *scope = nullptr;
@@ -4007,6 +4033,47 @@ HWTEST_F_L0(JSSerializerTest, SerializeMixedSizeObjects)
     std::thread t1(&JSDeserializerTest::MixedSizeObjectsTest, jsDeserializerTest, data.release());
     ecmascript::ThreadSuspensionScope scope(thread);
     t1.join();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleMutableFields)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString baseFileName = "mutable_fields_test.abc";
+    CString recordName = "testRecord";
+    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+
+    JSTaggedValue undefined = thread->GlobalConstants()->GetUndefined();
+    JSHandle<JSTaggedValue> promise(thread, JSTaggedValue::Hole());
+    module->SetTopLevelCapability(thread, promise.GetTaggedValue());
+    JSHandle<TaggedArray> nameDict = objectFactory->NewTaggedArray(1);
+    module->SetNameDictionary(thread, nameDict.GetTaggedValue());
+    module->SetCycleRoot(thread, undefined);
+    JSHandle<TaggedArray> asyncParents = objectFactory->NewTaggedArray(1);
+    module->SetAsyncParentModules(thread, asyncParents.GetTaggedValue());
+    JSHandle<SFunctionEnv> sendableEnv = objectFactory->NewSFunctionEnv(1);
+    module->SetSendableEnv(thread, sendableEnv.GetTaggedValue());
+    module->SetException(thread, undefined);
+    JSHandle<ModuleNamespace> ns = objectFactory->NewModuleNamespace();
+    module->SetNamespace(thread, ns.GetTaggedValue());
+
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(res);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SourceTextModuleMutableFieldsTest, jsDeserializerTest, data.release());
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t1.join();
+    }
     delete serializer;
 }
 }  // namespace panda::test

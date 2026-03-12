@@ -287,8 +287,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
                 notSupport_ = true;
                 return;
             }
-            SourceTextModule::StoreAndResetMutableFields(thread_,
-                JSHandle<SourceTextModule>(thread_, object), moduleMutableFields);
             break;
         }
         default:
@@ -328,11 +326,6 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
                 Barriers::SetPrimitive<JSTaggedType>(object, JSObject::HASH_OFFSET, hashfield);
             }
             JSWrappedNapiObject::Cast(object)->SetNativePointers(thread_, nativePointerField);
-            break;
-        }
-        case JSType::SOURCE_TEXT_MODULE_RECORD: {
-            SourceTextModule::RestoreMutableFields(
-                thread_, JSHandle<SourceTextModule>(thread_, object), moduleMutableFields);
             break;
         }
         default:

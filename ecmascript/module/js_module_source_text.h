@@ -95,8 +95,6 @@ public:
 
     CAST_CHECK(SourceTextModule, IsSourceTextModule);
 
-    static void StoreAndResetMutableFields(JSThread *thread, JSHandle<SourceTextModule> module, MutableFields &fields);
-    static void RestoreMutableFields(JSThread *thread, JSHandle<SourceTextModule> module, MutableFields &fields);
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                  const JSHandle<TaggedArray> &exportStarSet);
