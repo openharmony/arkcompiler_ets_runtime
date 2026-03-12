@@ -273,6 +273,11 @@ public:
         return capacity_;
     }
 
+    size_t GetTotalSize() const
+    {
+        return memMapTotalSize_.load();
+    }
+
     void ResetLargePoolSize()
     {
         capacity_ = LARGE_HEAP_POOL_SIZE;

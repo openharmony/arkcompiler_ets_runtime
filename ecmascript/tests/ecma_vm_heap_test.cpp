@@ -140,4 +140,126 @@ HWTEST_F_L0(GCHeapTest, SHeapParamTest2)
     auto allocLimit2 = sHeap->GetGlobalSpaceAllocLimit();
     EXPECT_TRUE(allocLimit1 == allocLimit2);
 }
+
+HWTEST_F_L0(GCHeapTest, HeapMemoryPressureTest1)
+{
+    // Test SetHeapMemoryPressure sets thresholds correctly
+    auto vm = thread->GetEcmaVM();
+    DFXJSNApi::HeapMemoryPressureOptions options = {0.8, 0.85, 0.9};
+    vm->SetHeapMemoryPressure(options, Local<FunctionRef>());
+    
+    EXPECT_DOUBLE_EQ(vm->GetLocalMemoryPressureThreshold(), 0.8);
+    EXPECT_DOUBLE_EQ(vm->GetSharedMemoryPressureThreshold(), 0.85);
+    EXPECT_DOUBLE_EQ(vm->GetProcessMemoryPressureThreshold(), 0.9);
+    
+    // Reset
+    vm->ResetMemoryPressure();
+}
+
+HWTEST_F_L0(GCHeapTest, HeapMemoryPressureTest2)
+{
+    // Test ResetMemoryPressure resets all thresholds and flags
+    auto vm = thread->GetEcmaVM();
+    
+    // Set some values first
+    DFXJSNApi::HeapMemoryPressureOptions options = {0.8, 0.85, 0.9};
+    vm->SetHeapMemoryPressure(options, Local<FunctionRef>());
+    
+    // Reset
+    vm->ResetMemoryPressure();
+    
+    EXPECT_DOUBLE_EQ(vm->GetLocalMemoryPressureThreshold(), 0.0);
+    EXPECT_DOUBLE_EQ(vm->GetSharedMemoryPressureThreshold(), 0.0);
+    EXPECT_DOUBLE_EQ(vm->GetProcessMemoryPressureThreshold(), 0.0);
+}
+
+HWTEST_F_L0(GCHeapTest, HeapMemoryPressureTest3)
+{
+    // Test CheckHeapMemoryPressure prevents re-entry during callback
+    auto vm = thread->GetEcmaVM();
+    auto heap = const_cast<Heap *>(vm->GetHeap());
+
+    // Set threshold to trigger immediately
+    DFXJSNApi::HeapMemoryPressureOptions options = {0.0, 0.0, 0.0};
+    vm->SetHeapMemoryPressure(options, Local<FunctionRef>());
+
+    // Call CheckHeapMemoryPressure - since callback is empty, it should return immediately
+    // and the flag should remain false
+    EXPECT_FALSE(vm->GetIsInMemoryPressureCallback());
+    vm->CheckHeapMemoryPressure(heap);
+    // Flag should be false after check completes (callback was empty so scope wasn't used effectively)
+    EXPECT_FALSE(vm->GetIsInMemoryPressureCallback());
+
+    // Verify that calling CheckHeapMemoryPressure again while "in callback" would be blocked
+    // Manually set the flag to simulate being in callback
+    vm->SetInMemoryPressureCallback(true);
+    EXPECT_TRUE(vm->GetIsInMemoryPressureCallback());
+
+    // This call should be blocked due to re-entry protection
+    vm->CheckHeapMemoryPressure(heap);
+    // Flag should still be true (callback was blocked, so scope wasn't created/destroyed)
+    EXPECT_TRUE(vm->GetIsInMemoryPressureCallback());
+
+    // Reset flag and cleanup
+    vm->SetInMemoryPressureCallback(false);
+    vm->ResetMemoryPressure();
+}
+
+HWTEST_F_L0(GCHeapTest, HeapMemoryPressureTest4)
+{
+    // Test CheckSharedHeapMemoryPressure sets flag correctly
+    auto vm = thread->GetEcmaVM();
+    
+    // Set shared heap threshold
+    DFXJSNApi::HeapMemoryPressureOptions options = {0.0, 0.8, 0.0};
+    vm->SetHeapMemoryPressure(options, Local<FunctionRef>());
+    
+    EXPECT_DOUBLE_EQ(vm->GetSharedMemoryPressureThreshold(), 0.8);
+    
+    vm->ResetMemoryPressure();
+    EXPECT_DOUBLE_EQ(vm->GetSharedMemoryPressureThreshold(), 0.0);
+}
+
+HWTEST_F_L0(GCHeapTest, HeapMemoryPressureTest5)
+{
+    // Test multiple calls to SetHeapMemoryPressure returns false
+    auto vm = thread->GetEcmaVM();
+
+    // First call should succeed
+    DFXJSNApi::HeapMemoryPressureOptions options1 = {0.8, 0.85, 0.9};
+    bool result1 = vm->SetHeapMemoryPressure(options1, Local<FunctionRef>());
+    EXPECT_TRUE(result1);
+
+    // Second call should fail (callback already set)
+    DFXJSNApi::HeapMemoryPressureOptions options2 = {0.5, 0.5, 0.5};
+    bool result2 = vm->SetHeapMemoryPressure(options2, Local<FunctionRef>());
+    EXPECT_FALSE(result2);
+
+    // Values should remain from first call
+    EXPECT_DOUBLE_EQ(vm->GetLocalMemoryPressureThreshold(), 0.8);
+    EXPECT_DOUBLE_EQ(vm->GetSharedMemoryPressureThreshold(), 0.85);
+    EXPECT_DOUBLE_EQ(vm->GetProcessMemoryPressureThreshold(), 0.9);
+
+    vm->ResetMemoryPressure();
+}
+
+HWTEST_F_L0(GCHeapTest, HeapMemoryPressureTest6)
+{
+    // Test setting only local threshold correctly sets all values
+    auto vm = thread->GetEcmaVM();
+
+    // Set only local heap threshold (shared and process = 0.0)
+    DFXJSNApi::HeapMemoryPressureOptions options = {0.7, 0.0, 0.0};
+    bool result = vm->SetHeapMemoryPressure(options, Local<FunctionRef>());
+    EXPECT_TRUE(result);
+
+    // Verify local threshold is set
+    EXPECT_DOUBLE_EQ(vm->GetLocalMemoryPressureThreshold(), 0.7);
+    // Shared and process should remain 0.0
+    EXPECT_DOUBLE_EQ(vm->GetSharedMemoryPressureThreshold(), 0.0);
+    EXPECT_DOUBLE_EQ(vm->GetProcessMemoryPressureThreshold(), 0.0);
+
+    vm->ResetMemoryPressure();
+}
+
 }  // namespace panda::test

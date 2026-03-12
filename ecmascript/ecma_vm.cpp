@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_vm.h"
 
+#include <cmath>
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
@@ -43,11 +44,14 @@
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/jit/jit_task.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/module/module_tools.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/ohos/aot_tools.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
@@ -55,6 +59,7 @@
 #include "ecmascript/platform/signal_manager.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -62,6 +67,8 @@
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/base/gc_helper.h"
 #include "ecmascript/platform/backtrace.h"
+#include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -71,11 +78,50 @@ namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 using JitTools = ohos::JitTools;
+constexpr const char* HEAP_MEM_PRESSURE_PROCESS = "ProcessHeapMemPressure";
+constexpr const char* HEAP_MEM_PRESSURE_LOCAL = "LocalHeapMemPressure";
+constexpr const char* HEAP_MEM_PRESSURE_SHARED = "SharedHeapMemPressure";
 
 AOTFileManager *JsStackInfo::loader = nullptr;
 std::atomic<bool> EcmaVM::multiThreadCheck_ = false;
 std::atomic<bool> EcmaVM::checkCountApi_ = false;
 bool EcmaVM::errorInfoEnhanced_ = false;
+
+void EcmaVM::TriggerMemoryPressureCallback(const char *heapType)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "EcmaVM::TriggerMemoryPressureCallback", "");
+    ASSERT(GetJSThread()->IsMainThread());
+    [[maybe_unused]] EcmaHandleScope scope(GetJSThread());
+    Local<FunctionRef> callback = GetMemoryPressureCallback();
+    ASSERT(!callback.IsEmpty());
+    panda::Local<panda::JSValueRef> undefined = panda::JSValueRef::Undefined(this);
+    panda::Local<panda::JSValueRef> argv[] = { panda::StringRef::NewFromUtf8(this, heapType) };
+    callback->Call(this, undefined, argv, 1);
+}
+
+bool EcmaVM::SetHeapMemoryPressure(const DFXJSNApi::HeapMemoryPressureOptions &options, Local<FunctionRef> callback)
+{
+    if (!SetMemoryPressureCallback(callback)) {
+        return false;
+    }
+    localMemoryPressureThreshold_ = options.localHeapThreshold;
+    sharedMemoryPressureThreshold_ = options.sharedHeapThreshold;
+    processMemoryPressureThreshold_ = options.processHeapThreshold;
+    Runtime::GetInstance()->SetMainThreadAliveForMemoryPressure(true);
+    return true;
+}
+
+void EcmaVM::ResetMemoryPressure()
+{
+    localMemoryPressureThreshold_ = 0.0;
+    sharedMemoryPressureThreshold_ = 0.0;
+    processMemoryPressureThreshold_ = 0.0;
+    memoryPressureCallback_.FreeGlobalHandleAddr();
+    needProcessMemoryPressureCallback_ = false;
+    needSharedMemoryPressureCallback_ = false;
+    Runtime::GetInstance()->SetMainThreadAliveForMemoryPressure(false);
+}
+
 // To find the current js thread without parameters
 thread_local void *g_currentThread = nullptr;
 
@@ -564,7 +610,7 @@ EcmaVM::~EcmaVM()
     if (JsStackInfo::loader == aotFileManager_) {
         JsStackInfo::loader = nullptr;
     }
-
+    Runtime::GetInstance()->SetMainThreadAliveForMemoryPressure(false);
     if (heap_ != nullptr) {
         heap_->Destroy();
         delete heap_;
@@ -2401,4 +2447,91 @@ void EcmaVM::SetEnableRuntimeAsyncStack(const bool state)
     }
     enableRuntimeAsyncStack_ = state;
 }
+
+void EcmaVM::CheckHeapMemoryPressure(const Heap *heap)
+{
+    // Check if already in callback to prevent recursive GC trigger
+    if (isInMemoryPressureCallback_) {
+        return;
+    }
+    MemoryPressureCallbackScope scope(this);
+    if (!HasMemoryPressureCallback()) {
+        return;
+    }
+
+    // Check process heap memory pressure first (highest priority)
+    double processThreshold = processMemoryPressureThreshold_;
+    if (processThreshold > 0.0) {
+        size_t processSize = MemMapAllocator::GetInstance()->GetTotalSize();
+        size_t processLimit = MemMapAllocator::GetInstance()->GetCapacity();
+        double processRatio = static_cast<double>(processSize) / static_cast<double>(processLimit);
+
+        if (processRatio >= processThreshold) {
+            TriggerMemoryPressureCallback(HEAP_MEM_PRESSURE_PROCESS);
+            return;
+        }
+    }
+
+    // Check local heap memory pressure
+    double localThreshold = localMemoryPressureThreshold_;
+    if (localThreshold > 0.0) {
+        size_t heapSize = heap->GetHeapObjectSize();
+        size_t heapLimit = heap->GetHeapLimitSize();
+        double ratio = static_cast<double>(heapSize) / static_cast<double>(heapLimit);
+
+        if (ratio >= localThreshold) {
+            TriggerMemoryPressureCallback(HEAP_MEM_PRESSURE_LOCAL);
+            return;
+        }
+    }
+}
+
+void EcmaVM::CheckSharedHeapMemoryPressure()
+{
+    ASSERT(GetJSThread()->IsMainThread());
+    if (!HasMemoryPressureCallback()) {
+        return;
+    }
+
+    // Check process heap memory pressure first (highest priority)
+    double processThreshold = processMemoryPressureThreshold_;
+    if (processThreshold > 0.0) {
+        size_t processSize = MemMapAllocator::GetInstance()->GetTotalSize();
+        size_t processLimit = MemMapAllocator::GetInstance()->GetCapacity();
+        double processRatio = static_cast<double>(processSize) / static_cast<double>(processLimit);
+
+        if (processRatio >= processThreshold) {
+            needProcessMemoryPressureCallback_ = true;
+            return;
+        }
+    }
+
+    // Check shared heap memory pressure - set flag instead of triggering callback directly
+    double sharedThreshold = sharedMemoryPressureThreshold_;
+    if (sharedThreshold > 0.0) {
+        size_t sharedHeapSize = SharedHeap::GetInstance()->GetHeapObjectSize();
+        size_t sharedHeapLimit = SharedHeap::GetInstance()->GetEcmaParamConfiguration().GetMaxHeapSize();
+        double sharedRatio = static_cast<double>(sharedHeapSize) / static_cast<double>(sharedHeapLimit);
+
+        if (sharedRatio >= sharedThreshold) {
+            needSharedMemoryPressureCallback_ = true;
+            return;
+        }
+    }
+}
+
+void EcmaVM::CheckAndTriggerMemoryPressureCallback()
+{
+    // Check and trigger process memory pressure callback at safe point
+    if (needProcessMemoryPressureCallback_) {
+        needProcessMemoryPressureCallback_ = false;
+        TriggerMemoryPressureCallback(HEAP_MEM_PRESSURE_PROCESS);
+    }
+
+    // Check and trigger shared memory pressure callback at safe point
+    if (needSharedMemoryPressureCallback_) {
+        needSharedMemoryPressureCallback_ = false;
+        TriggerMemoryPressureCallback(HEAP_MEM_PRESSURE_SHARED);
+    }
 }  // namespace panda::ecmascript
+}

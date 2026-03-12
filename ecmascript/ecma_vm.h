@@ -36,6 +36,7 @@
 #include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/heap_region_allocator.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
@@ -1070,6 +1071,80 @@ public:
         return errorInfoEnhanced_;
     }
 
+    bool SetHeapMemoryPressure(const DFXJSNApi::HeapMemoryPressureOptions &options, Local<FunctionRef> callback);
+
+    void ResetMemoryPressure();
+
+    double GetLocalMemoryPressureThreshold() const
+    {
+        return localMemoryPressureThreshold_;
+    }
+
+    double GetSharedMemoryPressureThreshold() const
+    {
+        return sharedMemoryPressureThreshold_;
+    }
+
+    double GetProcessMemoryPressureThreshold() const
+    {
+        return processMemoryPressureThreshold_;
+    }
+
+    bool SetMemoryPressureCallback(Local<FunctionRef> callback)
+    {
+        if (!memoryPressureCallback_.IsEmpty()) {
+            LOG_ECMA(WARN) << "SetMemoryPressureCallback: callback already set, cannot set again";
+            return false;
+        }
+        memoryPressureCallback_ = Global<FunctionRef>(this, callback);
+        return true;
+    }
+    Local<FunctionRef> GetMemoryPressureCallback() const
+    {
+        if (memoryPressureCallback_.IsEmpty()) {
+            return Local<FunctionRef>();
+        }
+        return memoryPressureCallback_.ToLocal(this);
+    }
+
+    bool HasMemoryPressureCallback()
+    {
+        return !memoryPressureCallback_.IsEmpty();
+    }
+    void TriggerMemoryPressureCallback(const char *heapType);
+    bool GetIsInMemoryPressureCallback() const
+    {
+        return isInMemoryPressureCallback_;
+    }
+    void SetInMemoryPressureCallback(bool inCallback)
+    {
+        isInMemoryPressureCallback_ = inCallback;
+    }
+
+    void CheckHeapMemoryPressure(const Heap *heap);
+    void CheckSharedHeapMemoryPressure();
+    void CheckAndTriggerMemoryPressureCallback();
+
+    bool GetNeedProcessMemoryPressureCallback() const
+    {
+        return needProcessMemoryPressureCallback_;
+    }
+
+    bool GetNeedSharedMemoryPressureCallback() const
+    {
+        return needSharedMemoryPressureCallback_;
+    }
+
+    void SetNeedProcessMemoryPressureCallback(bool flag)
+    {
+        needProcessMemoryPressureCallback_ = flag;
+    }
+
+    void SetNeedSharedMemoryPressureCallback(bool flag)
+    {
+        needSharedMemoryPressureCallback_ = flag;
+    }
+
     static void InitializeIcuData(const JSRuntimeOptions &options);
 
     static int InitializeStartRealTime();
@@ -1446,6 +1521,29 @@ public:
 
 protected:
     ECMAVM_PROTECTED_HYBRID_EXTENSION();
+
+    // Memory pressure listener
+    double localMemoryPressureThreshold_ = 0.0;
+    double sharedMemoryPressureThreshold_ = 0.0;
+    double processMemoryPressureThreshold_ = 0.0;
+    class MemoryPressureCallbackScope {
+    public:
+        explicit MemoryPressureCallbackScope(EcmaVM* vm) : vm_(vm)
+        {
+            vm_->SetInMemoryPressureCallback(true);
+        }
+        ~MemoryPressureCallbackScope()
+        {
+            vm_->SetInMemoryPressureCallback(false);
+        }
+    private:
+        EcmaVM* vm_;
+    };
+    Global<FunctionRef> memoryPressureCallback_;
+    bool isInMemoryPressureCallback_ = false;
+    // Flags to record if memory pressure callback needs to be triggered at safe point
+    bool needProcessMemoryPressureCallback_ = false;
+    bool needSharedMemoryPressureCallback_ = false;
 
 private:
     void ClearBufferData();
