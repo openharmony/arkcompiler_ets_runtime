@@ -197,7 +197,7 @@ void RawHeap::CreateHashEdge(Node *node)
         return;
     }
 
-    Node *hashNode = new Node(nodeIndex_++);
+    Node *hashNode = new Node(0);
     hashNode->nodeId = 0;
     hashNode->type = 7;  // 7: means HEAPNUMBER
     hashNode->strId = InsertAndGetStringId("Int:" + std::to_string(hash));
@@ -212,6 +212,10 @@ void RawHeap::CreateHashEdge(Node *node)
 
 void RawHeap::AddPrimitiveNodes()
 {
+    uint32_t index = static_cast<uint32_t>(nodes_.size());
+    for (auto &node : primitiveNodes_) {
+        node->index = index++;
+    }
     nodes_.insert(nodes_.end(), primitiveNodes_.begin(), primitiveNodes_.end());
 }
 
@@ -633,7 +637,7 @@ void RawHeapTranslateV1::BuildJSObjectEdges(Node *node, JSType type)
 
     BitField *bitField = metaParser_->GetBitField();
     Node *layout = FindNode(ByteToU64(node->hclass->data + bitField->hclassLayoutField.offset));
-    if (!layout) {
+    if (!layout || !layout->data) {
         return;
     }
 

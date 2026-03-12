@@ -225,6 +225,16 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const Dump
         LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
         return;
     }
+
+    SharedHeap::GetInstance()->PrepareByJSThread(vm_->GetAssociatedJSThread(), true);
+    if (dumpOption.isProcDump) {
+        Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->Prepare();
+        });
+    } else {
+        const_cast<Heap*>(vm_->GetHeap())->Prepare();
+    }
+
     pid_t pid = -1;
     // fork for oom
     if ((pid = fork()) < 0) {
@@ -246,8 +256,6 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const Dump
 bool HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
     base::BlockHookScope blockScope;
-    const_cast<Heap*>(vm_->GetHeap())->Prepare();
-    SharedHeap::GetInstance()->PrepareByJSThread(vm_->GetAssociatedJSThread(), true);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
