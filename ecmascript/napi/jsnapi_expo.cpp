@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -6940,12 +6940,14 @@ bool JSNApi::IsCrossBundleHsp(const EcmaVM *vm, const std::string &ohmurl)
     return ModulePathHelper::IsCrossBundleHsp(vm, ohmurl.c_str());
 }
 
-Local<ObjectRef> JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(EcmaVM *vm, const std::string &ohmurl)
+Local<ObjectRef> JSNApi::GetModuleNameSpaceWithOhmurlForHybridApp(EcmaVM *vm, const std::string &ohmurl,
+                                                                  const std::string &fileName)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope scope(thread);
     JSHandle<JSTaggedValue> result =
-        ecmascript::NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Hybrid>(thread, ohmurl.c_str());
+        ecmascript::NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Hybrid>(thread, ohmurl.c_str(),
+            fileName.c_str());
     return JSNApiHelper::ToLocal<ObjectRef>(result);
 }
 
