@@ -55,6 +55,7 @@ enum class NodeType {
     SYMBOL,
     BIGINT,
     FRAMEWORK,
+    HANDLE,
     DEFAULT = NATIVE,
 };
 
@@ -549,17 +550,76 @@ private:
     void EraseNodeUnique(Node *node);
     Edge *InsertEdgeUnique(Edge *edge);
     void AddSyntheticRoot();
-    void NewRootEdge(Node *syntheticRoot, JSTaggedValue value,
-                     CUnorderedSet<JSTaggedType> &values, CVector<Edge *> &rootEdges);
-    void HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CVector<Edge *> &rootEdges);
+    void CreateSyntheticRootToRootEdges(Node *syntheticRoot, CVector<Edge *> &rootEdges);
     Node *InsertNodeAt(size_t pos, Node *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
+
+    Node *CreateSpecificSyntheticRoot(const CUnorderedSet<Node *> &specificRootSet,
+                                      const CString &rootNamePrefix, size_t insertPosition);
+    void CreateSyntheticRootToSpecificSyntheticRootEdge(Node *syntheticRoot, Node *handleSyntheticRoot,
+                                                        CVector<Edge *> &rootEdges);
+    void CreateSpecificSyntheticRootToRootEdges(Node *specificSyntheticRoot,
+                                                const CUnorderedSet<Node *> &specificRootSet,
+                                                CVector<Edge *> &rootEdges);
+    void ReindexAllNodes();
 
     void LogLeakedLocalHandleBackTrace(ObjectSlot slot);
     void LogLeakedLocalHandleBackTrace(common::RefField<> &refField);
 
+    class GenerateNodeRootVisitor final : public RootVisitor {
+    public:
+        GenerateNodeRootVisitor(HeapSnapshot &snapshot, bool isInFinish, bool isSimplify)
+            : snapshot_(snapshot), isInFinish_(isInFinish), isSimplify_(isSimplify) {}
+        ~GenerateNodeRootVisitor() override = default;
+
+        void VisitRoot(Root type, ObjectSlot slot) override;
+        void VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end) override;
+        void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) override;
+
+    private:
+        void ProcessRoot(Root type, const JSTaggedValue &value);
+
+        HeapSnapshot &snapshot_;
+        bool isInFinish_;
+        bool isSimplify_;
+    };
+
+    class EdgeBuilderRootVisitor : public RootVisitor {
+    public:
+        EdgeBuilderRootVisitor(HeapSnapshot &snapshot, Node *syntheticRoot, CVector<Edge *> &rootEdges)
+            : snapshot_(snapshot), syntheticRoot_(syntheticRoot), rootEdges_(rootEdges) {}
+        ~EdgeBuilderRootVisitor() override = default;
+
+        void VisitRoot(Root type, ObjectSlot slot) override;
+        void VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end) override;
+        void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) override;
+
+    protected:
+        HeapSnapshot &snapshot_;
+        void NewRootEdge(const JSTaggedValue &value);
+
+    private:
+        Node *syntheticRoot_;
+        CVector<Edge *> &rootEdges_;
+        CUnorderedSet<JSTaggedType> visitedRoots_;
+    };
+
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
+    class EdgeBuilderWithLeakDetectRootVisitor : public EdgeBuilderRootVisitor {
+    public:
+        using EdgeBuilderRootVisitor::EdgeBuilderRootVisitor;
+        ~EdgeBuilderWithLeakDetectRootVisitor() override = default;
+
+        void VisitRoot(Root type, ObjectSlot slot) override;
+        void VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end) override;
+        void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) override;
+    };
+#endif
+
     CVector<Node *> nodes_ {};
     CVector<Edge *> edges_ {};
+    CUnorderedSet<Node *> localHandleRoots_ {};
+    CUnorderedSet<Node *> globalHandleRoots_ {};
     CVector<TimeStamp> timeStamps_ {};
     uint32_t nodeCount_ {0};
     uint32_t edgeCount_ {0};

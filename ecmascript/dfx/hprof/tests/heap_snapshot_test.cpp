@@ -244,4 +244,34 @@ HWTEST_F_L0(HeapSnapShotTest, TestNodeIdCacheClearScopeWithNullptr)
     ASSERT_TRUE(true);
 #endif
 }
+
+HWTEST_F_L0(HeapSnapShotTest, TestHandleSyntheticRoots)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "heap_snapshot.abc";
+    std::string entryPoint = "heap_snapshot";
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, entryPoint);
+    ASSERT_TRUE(result);
+
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+
+    // LocalHandleSyntheticRoot and GlobalHandleSyntheticRoot are inserted at fixed positions 1 and 2
+    const auto &nodes = *snapshot->GetNodes();
+    ASSERT_GE(nodes.size(), 3U) << "Not enough nodes in snapshot";
+
+    // Verify LocalHandleSyntheticRoot at position 1
+    const Node *localHandleRoot = nodes[1];
+    ASSERT_NE(localHandleRoot->GetName(), nullptr) << "LocalHandleSyntheticRoot name should not be null";
+    ASSERT_EQ(localHandleRoot->GetType(), NodeType::HANDLE) << "LocalHandleSyntheticRoot type should be HANDLE";
+    CString localName = *localHandleRoot->GetName();
+    ASSERT_TRUE(localName.find("LocalHandleRoot[") == 0) << "Expected LocalHandleRoot, got: " << localName;
+
+    // Verify GlobalHandleSyntheticRoot at position 2
+    const Node *globalHandleRoot = nodes[2];
+    ASSERT_NE(globalHandleRoot->GetName(), nullptr) << "GlobalHandleSyntheticRoot name should not be null";
+    ASSERT_EQ(globalHandleRoot->GetType(), NodeType::HANDLE) << "GlobalHandleSyntheticRoot type should be HANDLE";
+    CString globalName = *globalHandleRoot->GetName();
+    ASSERT_TRUE(globalName.find("GlobalHandleRoot[") == 0) << "Expected GlobalHandleRoot, got: " << globalName;
+}
 }
