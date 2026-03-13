@@ -71,6 +71,7 @@ public:
     static bool CheckBundleUidAndGidFromArgsMap(const std::unordered_map<std::string, std::string> &argsMap);
     static bool ParseUint32Field(const nlohmann::json &jsonObj, const char *key, uint32_t &output);
     static bool ParseInt32Field(const nlohmann::json &jsonObj, const char *key, int32_t &output);
+    static bool ParseUint32FieldFromHex(const std::string &hexStr, uint32_t &output);
     static bool ParseAotPkgInfo(const std::string &pkgInfoStr, AotPkgInfo &info);
     static bool ParseStringField(const nlohmann::json &jsonObj, const char *key, std::string &output);
     static bool CheckSharedBundlesUidAndGid(const std::unordered_map<std::string, std::string> &argsMap);

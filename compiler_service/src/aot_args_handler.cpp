@@ -847,4 +847,5 @@ std::string StaticFrameworkAOTArgsParser::ParseFrameworkBootPandaFiles(const std
     }
     return frameworkBootPandaFiles;
 }
+
 } // namespace OHOS::ArkCompiler
