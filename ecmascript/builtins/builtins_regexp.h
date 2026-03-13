@@ -169,7 +169,8 @@ private:
     using ReplacePositionField = ReplaceLengthField::NextField<uint32_t, REPLACE_POSITION_BITS>; // 60
 
     static bool Matcher(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
-                        const uint8_t *buffer, size_t length, int32_t lastindex, bool isUtf16, StringSource source);
+                        const uint8_t *buffer, size_t length, int32_t lastindex,
+                        bool isUtf16, StringSource source, uint32_t extraFlags);
 
     static JSTaggedValue GetFlagsInternal(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                           const JSHandle<JSTaggedValue> &constructor, const uint8_t mask);
@@ -203,7 +204,7 @@ private:
         const std::vector<std::pair<JSTaggedValue, JSTaggedValue>>& indices,
         const std::vector<JSHandle<JSTaggedValue>>& groupNames, bool hasGroups);
     static bool RegExpExecInternal(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
-                                   JSHandle<EcmaString> inputString, int32_t lastIndex);
+                                   JSHandle<EcmaString> inputString, int32_t lastIndex, uint32_t extraFlags = 0);
     static JSTaggedValue RegExpSplitFast(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                                          JSHandle<JSTaggedValue> string, uint32_t limit, bool useCache);
     static JSHandle<EcmaString> CreateStringFromResultArray(JSThread *thread,

@@ -18,7 +18,8 @@
 namespace panda::ecmascript {
 using RegExpState = RegExpExecutor::RegExpState;
 using RegExpGlobalResult = builtins::RegExpGlobalResult;
-bool RegExpExecutor::Execute(const uint8_t *input, uint32_t lastIndex, uint32_t length, uint8_t *buf, bool isWideChar)
+bool RegExpExecutor::Execute(const uint8_t *input, uint32_t lastIndex, uint32_t length,
+                             uint8_t *buf, bool isWideChar, uint32_t extraFlags)
 {
     DynChunk buffer(buf, chunk_);
     input_ = const_cast<uint8_t *>(input);
@@ -26,7 +27,7 @@ bool RegExpExecutor::Execute(const uint8_t *input, uint32_t lastIndex, uint32_t 
     uint32_t size = buffer.GetU32(0);
     nCapture_ = buffer.GetU32(RegExpParser::NUM_CAPTURE__OFFSET);
     nStack_ = buffer.GetU32(RegExpParser::NUM_STACK_OFFSET);
-    flags_ = buffer.GetU32(RegExpParser::FLAGS_OFFSET);
+    flags_ = buffer.GetU32(RegExpParser::FLAGS_OFFSET) | extraFlags;
     prefilter_ = buffer.GetU32(RegExpParser::PREFILTER_OFFSET);
     isWideChar_ = isWideChar;
 
