@@ -31,6 +31,7 @@
 
 namespace panda::test {
 class MockHeapProfiler;
+class HeapDumpTestHelper;
 };  // panda::test
 namespace panda::ecmascript {
 class HeapSnapshot;
@@ -215,6 +216,7 @@ private:
 
     friend class HeapProfilerFriendTest;
     friend class panda::test::MockHeapProfiler;
+    friend class panda::test::HeapDumpTestHelper;
 };
 
 class NodeIdCacheClearScope {

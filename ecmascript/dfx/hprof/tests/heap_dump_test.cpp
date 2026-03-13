@@ -121,6 +121,12 @@ public:
         return ret;
     }
 
+    void DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const DumpSnapShotOption &dumpOption)
+    {
+        HeapProfiler *heapprofiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(instance));
+        heapprofiler->DumpHeapSnapshotFromSharedGCForOOM(stream, dumpOption);
+    }
+
     bool DecodeRawHeapObjectTableV1(std::string &filePath, CSet<JSTaggedType> &result)
     {
         uint64_t fileSize = rawheap_translate::FileReader::GetFileSize(filePath);
@@ -1762,6 +1768,51 @@ HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV2)
     ASSERT_FALSE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
 }
 
+HWTEST_F_L0(HeapDumpTest, TestThreadBinaryDumpForSharedGCTriggeredOOM)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread_);
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_sharedgc_oom1.rawheap");
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT);
+    ASSERT_TRUE(fd > 0);
+
+    FileDescriptorStream stream(fd);
+    DumpSnapShotOption dumpOption;
+    dumpOption.isForSharedOOM = true;
+    tester.DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestProcBinaryDumpForSharedGCTriggeredOOM)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread_);
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread_, undefined, undefined, undefined, 1);
+    info->SetCallArg(JSTaggedValue::True());
+    ecmascript::builtins::BuiltinsArkTools::EnableProcDumpInSharedOOM(info);
+
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_sharedgc_oom2.rawheap");
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT);
+    ASSERT_TRUE(fd > 0);
+
+    FileDescriptorStream stream(fd);
+    DumpSnapShotOption dumpOption;
+    dumpOption.isForSharedOOM = true;
+    dumpOption.isProcDump = true;
+    tester.DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
+}
+
 HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV1)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
@@ -1779,6 +1830,7 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV1)
     std::string rawHeapPath("test_binary_dump_v1.rawheap");
     DumpSnapShotOption dumpOption;
     dumpOption.isForSharedOOM = true;
+    dumpOption.isProcDump = true;
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
     Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 
@@ -1809,6 +1861,7 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV2)
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     DumpSnapShotOption dumpOption;
     dumpOption.isForSharedOOM = true;
+    dumpOption.isProcDump = true;
     ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
     Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 
