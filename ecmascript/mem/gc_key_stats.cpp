@@ -142,7 +142,8 @@ void GCKeyStats::SendSysEventBeforeDump(std::string type, size_t limitSize, size
 #ifdef ENABLE_HISYSEVENT
     pid_t pid = getprocpid();
     long tid = syscall(SYS_gettid);
-    std::string threadType = (pid == tid) ? MAIN_THREAD_STR : CHILD_THREAD_STR;
+    std::string threadType = (heapType == SHARED_HEAP_STR ? "" :
+        ((pid == tid) ? MAIN_THREAD_STR : CHILD_THREAD_STR));
 
     int32_t ret = HiSysEventWrite(OHOS::HiviewDFX::HiSysEvent::Domain::FRAMEWORK,
         "ARK_STATS_DUMP",
