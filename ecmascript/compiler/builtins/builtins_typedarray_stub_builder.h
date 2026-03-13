@@ -70,7 +70,7 @@ public:
     GateRef GetOnHeapHclassFromType(GateRef glue, GateRef objHclass, const DataViewType arrayType);
     void FastCopyElementFromArray(Variable *result, GateRef glue, GateRef array,
         Label *exit, Label *slowPath, const DataViewType arrayType);
-    void FastCopyFromArrayToTypedArray(GateRef glue, GateRef array, Variable *result,
+    void CopyArrayToTypedArrayForCtor(GateRef glue, GateRef array, Variable *result,
         GateRef targetOffset, GateRef srcLength, Label *check, Label *slowPath,
         const DataViewType arrayType, bool typedArrayFromCtor);
     void CopyElementsToArrayBuffer(GateRef glue, GateRef srcLength, GateRef array,

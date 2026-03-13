@@ -1699,4 +1699,20 @@ assert_equal(typedArrEleAssertLengthRes,typedArrEleAssertLengthEqual);
     assert_equal(v4, -Infinity);
 }
 
+{
+    let arr = new Array();
+    let arr1 = arr;
+    let fn = function() {
+        arr1.length = (35);
+        arr1[(9)] = arr;
+        arr1.unshift(undefined);
+    }
+    arr1.splice((60), 0, {valueOf:fn});
+    let v = arr1.valueOf();
+    v.length = (254);
+    v.constructor = undefined;
+    let uint16Arr = new Uint16Array(arr);
+    assert_equal(uint16Arr.length, 254);
+}
+
 test_end();
