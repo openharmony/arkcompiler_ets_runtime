@@ -69,7 +69,7 @@ JSTaggedValue TypedArrayHelper::TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
         return TypedArrayHelper::CreateFromArrayBuffer(argv, obj, arrayType);
     }
     if (firstArg->IsStableJSArray(thread)) {
-        return TypedArrayHelper::FastCopyElementFromArray(argv, obj, arrayType);
+        return TypedArrayHelper::FastCopyElementFromArrayForCtor(argv, obj, arrayType);
     }
     if (firstArg->IsSendableArrayBuffer()) {
         auto error = ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
@@ -127,7 +127,7 @@ JSTaggedValue TypedArrayHelper::SharedTypedArrayConstructor(EcmaRuntimeCallInfo 
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     if (firstArg->IsStableJSArray(thread)) {
-        return TypedArrayHelper::FastCopyElementFromArray<TypedArrayKind::SHARED>(argv, obj, arrayType);
+        return TypedArrayHelper::FastCopyElementFromArrayForCtor<TypedArrayKind::SHARED>(argv, obj, arrayType);
     }
     return TypedArrayHelper::CreateFromOrdinaryObject<TypedArrayKind::SHARED>(argv, obj, arrayType);
 }
@@ -295,13 +295,13 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer<TypedArrayKind::SH
     return obj;
 }
 
-template JSTaggedValue TypedArrayHelper::FastCopyElementFromArray<TypedArrayKind::NON_SHARED>(
+template JSTaggedValue TypedArrayHelper::FastCopyElementFromArrayForCtor<TypedArrayKind::NON_SHARED>(
     EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj, const DataViewType arrayType);
-template JSTaggedValue TypedArrayHelper::FastCopyElementFromArray<TypedArrayKind::SHARED>(
+template JSTaggedValue TypedArrayHelper::FastCopyElementFromArrayForCtor<TypedArrayKind::SHARED>(
     EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj, const DataViewType arrayType);
 
 template<TypedArrayKind typedArrayKind>
-JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(
+JSTaggedValue TypedArrayHelper::FastCopyElementFromArrayForCtor(
     EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj, const DataViewType arrayType)
 {
     ASSERT(argv);
@@ -321,7 +321,7 @@ JSTaggedValue TypedArrayHelper::FastCopyElementFromArray(
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTypedArray> targetObj = JSHandle<JSTypedArray>::Cast(obj);
 
-    JSStableArray::FastCopyFromArrayToTypedArray<typedArrayKind>(
+    JSStableArray::CopyArrayToTypedArrayForCtor<typedArrayKind>(
         thread, targetObj, arrayType, 0, len, argObj);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSHandle<JSObject>::Cast(targetObj).GetTaggedValue();

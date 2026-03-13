@@ -97,6 +97,10 @@ public:
     static JSTaggedValue FastCopyFromArrayToTypedArray(JSThread *thread, JSHandle<JSTypedArray> &target,
                                                        DataViewType targetType, uint64_t targetOffset,
                                                        uint32_t srcLength, JSHandle<JSObject> &obj);
+    template<base::TypedArrayKind typedArrayKind = base::TypedArrayKind::NON_SHARED>
+    static JSTaggedValue CopyArrayToTypedArrayForCtor(JSThread *thread, JSHandle<JSTypedArray> &target,
+                                                      DataViewType targetType, uint64_t targetOffset,
+                                                      uint32_t srcLength, JSHandle<JSObject> &obj);
     static JSTaggedValue At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue At(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue With(JSThread *thread, JSHandle<JSArray> receiver,
