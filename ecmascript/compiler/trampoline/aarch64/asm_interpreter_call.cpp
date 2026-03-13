@@ -25,12 +25,12 @@ using Label = panda::ecmascript::Label;
 
 // Generate code for entering asm interpreter
 // c++ calling convention
-// Input: glue           - %X0
-//        callTarget     - %X1
-//        method         - %X2
-//        callField      - %X3
-//        argc           - %X4
-//        argv           - %X5(<callTarget, newTarget, this> are at the beginning of argv)
+// Input: glue           - %x0
+//        callTarget     - %x1
+//        method         - %x2
+//        callField      - %x3
+//        argc           - %x4
+//        argv           - %x5(<callTarget, newTarget, this> are at the beginning of argv)
 void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(AsmInterpreterEntry));
@@ -52,30 +52,30 @@ void AsmInterpreterCall::AsmInterpreterEntry(ExtendedAssembler *assembler)
     }
 }
 
-// Input: glue           - %X0
-//        callTarget     - %X1
-//        method         - %X2
-//        callField      - %X3
-//        argc           - %X4
-//        argv           - %X5(<callTarget, newTarget, this> are at the beginning of argv)
+// Input: glue           - %x0
+//        callTarget     - %x1
+//        method         - %x2
+//        callField      - %x3
+//        argc           - %x4
+//        argv           - %x5(<callTarget, newTarget, this> are at the beginning of argv)
 void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
 {
     Label notJSFunction;
     Label callNativeEntry;
     Label callJSFunctionEntry;
     Label notCallable;
-    Register glueRegister(X0);
-    Register argcRegister(X4, W);
-    Register argvRegister(X5);
-    Register callTargetRegister(X1);
-    Register callFieldRegister(X3);
-    Register bitFieldRegister(X16);
-    Register tempRegister(X17); // can not be used to store any variable
-    Register functionTypeRegister(X18, W);
+    Register glueRegister = x0;
+    Register argcRegister = w4;
+    Register argvRegister = x5;
+    Register callTargetRegister = x1;
+    Register callFieldRegister = x3;
+    Register bitFieldRegister = x16;
+    Register tempRegister = x17; // can not be used to store any variable
+    Register functionTypeRegister = w18;
     __ Ldr(tempRegister, MemoryOperand(callTargetRegister, TaggedObject::HCLASS_OFFSET));
-    __ And(tempRegister, tempRegister, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, RegXSize));
+    __ And(tempRegister, tempRegister, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, X_REG_SIZE));
     __ Ldr(bitFieldRegister, MemoryOperand(tempRegister, JSHClass::BIT_FIELD_OFFSET));
-    __ And(functionTypeRegister, bitFieldRegister.W(), LogicalImmediate::Create(0xFF, RegWSize));
+    __ And(functionTypeRegister, bitFieldRegister.W(), LogicalImmediate::Create(0xFF, W_REG_SIZE));
     __ Mov(tempRegister.W(), Immediate(static_cast<int64_t>(JSType::JS_FUNCTION_FIRST)));
     __ Cmp(functionTypeRegister, tempRegister.W());
     __ B(Condition::LO, &notJSFunction);
@@ -85,7 +85,7 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     __ Bind(&notJSFunction);
     {
         __ Tst(bitFieldRegister,
-            LogicalImmediate::Create(static_cast<int64_t>(1ULL << JSHClass::CallableBit::START_BIT), RegXSize));
+            LogicalImmediate::Create(static_cast<int64_t>(1ULL << JSHClass::CallableBit::START_BIT), X_REG_SIZE));
         __ B(Condition::EQ, &notCallable);
         CallNativeEntry(assembler, false);
     }
@@ -100,14 +100,14 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     }
     __ Bind(&notCallable);
     {
-        Register runtimeId(X11);
-        Register trampoline(X12);
+        Register runtimeId = x11;
+        Register trampoline = x12;
         __ Mov(runtimeId, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowNotCallableException));
         // 3 : 3 means *8
         __ Add(trampoline, glueRegister, Operand(runtimeId, LSL, 3));
         __ Ldr(trampoline, MemoryOperand(trampoline, JSThread::GlueData::GetRTStubEntriesOffset(false)));
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
-        __ Mov(Register(X28), glueRegister); // move glue to a callee-save register
+        __ Mov(x28, glueRegister); // move glue to a callee-save register
 #endif
         __ Blr(trampoline);
         __ UpdateGlueAndReadBarrier();
@@ -130,15 +130,15 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
         __ PushFpAndLr();
     }
     // save fp
-    __ Mov(fpRegister, Register(SP));
-    __ Mov(currentSlotRegister, Register(SP));
+    __ Mov(fpRegister, sp);
+    __ Mov(currentSlotRegister, sp);
 
     {
         // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
         [[maybe_unused]] TempRegister1Scope scope(assembler);
         Register tempRegister = __ TempRegister1();
         __ Ldr(tempRegister, MemoryOperand(glueRegister, JSThread::GlueData::GetStackLimitOffset(false)));
-        __ Mov(Register(SP), tempRegister);
+        __ Mov(sp, tempRegister);
     }
 
     Register declaredNumArgsRegister = __ AvailableRegister2();
@@ -163,26 +163,26 @@ void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
 
     __ Bind(&stackOverflow);
     if (kungfu::AssemblerModule::IsJumpToCallCommonEntry(mode)) {
-        __ Mov(Register(SP), fpRegister);
+        __ Mov(sp, fpRegister);
         [[maybe_unused]] TempRegister1Scope scope(assembler);
         Register temp = __ TempRegister1();
         // only glue and acc are useful in exception handler
-        if (glueRegister.GetId() != X19) {
-            __ Mov(Register(X19), glueRegister);
+        if (glueRegister != x19) {
+            __ Mov(x19, glueRegister);
         }
-        Register acc(X23);
+        Register acc = x23;
         __ Mov(acc, Immediate(JSTaggedValue::VALUE_EXCEPTION));
         Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
         Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
         // Reload pc to make sure stack trace is right
         __ Mov(temp, callTargetRegister);
-        __ Ldr(Register(X20), MemoryOperand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
+        __ Ldr(x20, MemoryOperand(methodRegister, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         // Reload constpool and profileInfo to make sure gc map work normally
-        __ Ldr(Register(X22), MemoryOperand(temp, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
-        __ Ldr(Register(X22), MemoryOperand(Register(X22), ProfileTypeInfoCell::VALUE_OFFSET));
-        __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
+        __ Ldr(x22, MemoryOperand(temp, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+        __ Ldr(x22, MemoryOperand(x22, ProfileTypeInfoCell::VALUE_OFFSET));
+        __ Ldr(x21, MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
 
-        __ Mov(temp, kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException);
+        __ Mov(temp, Immediate(kungfu::BytecodeStubCSigns::ID_ThrowStackOverflowException));
         __ Add(temp, glueRegister, Operand(temp, UXTW, 3));  // 3： bc * 8
         __ Ldr(temp, MemoryOperand(temp, JSThread::GlueData::GetBCStubEntriesOffset(false)));
         __ Br(temp);
@@ -351,7 +351,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    return INVALID_REG;
+    return invalidReg;
 }
 
 Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode,
@@ -375,7 +375,7 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    return INVALID_REG;
+    return invalidReg;
 }
 
 // void PushCallArgsxAndDispatch(uintptr_t glue, uintptr_t sp, uint64_t callTarget, uintptr_t method,
@@ -490,27 +490,26 @@ void AsmInterpreterCall::PushNewTargetAndDispatchNative(ExtendedAssembler *assem
 
 void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget)
 {
-    Register glue(X0);
-    Register nativeCode(X1);
-    Register callTarget(X2);
-    Register thisObj(X3);
-    Register argc(X4);
-    Register argv(X5);
-    Register newTarget(X6);
-    Register opArgc(X8);
-    Register opArgv(X9);
-    Register temp(X10);
-    Register currentSlotRegister(X11);
-    Register spRegister(SP);
+    Register glue = x0;
+    Register nativeCode = x1;
+    Register callTarget = x2;
+    Register thisObj = x3;
+    Register argc = x4;
+    Register argv = x5;
+    Register newTarget = x6;
+    Register opArgc = x8;
+    Register opArgv = x9;
+    Register temp = x10;
+    Register currentSlotRegister = x11;
 
     Label pushThis;
     Label stackOverflow;
     bool isFrameComplete = PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV, temp, argc);
 
-    __ Mov(currentSlotRegister, spRegister);
+    __ Mov(currentSlotRegister, sp);
     // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
     __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
-    __ Mov(Register(SP), temp);
+    __ Mov(sp, temp);
 
     __ Mov(opArgc, argc);
     __ Mov(opArgv, argv);
@@ -535,20 +534,20 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Str(callTarget, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Add(temp, currentSlotRegister, Immediate(QUINTUPLE_SLOT_SIZE));
     if (!isFrameComplete) {
-        __ Add(Register(FP), temp, Operand(argc, LSL, 3));  // 3: argc * 8
+        __ Add(fp, temp, Operand(argc, LSL, 3));  // 3: argc * 8
     }
 
     __ Add(temp, argc, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     // 2: thread & argc
     __ Stp(glue, temp, MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
-    Register calleeSaveGlue(X28);
+    Register calleeSaveGlue = x28;
     __ Mov(calleeSaveGlue, glue); // move glue to a callee-save register
 #endif
-    __ Add(Register(X0), currentSlotRegister, Immediate(0));
+    __ Add(x0, currentSlotRegister, Immediate(0));
 
     __ Align16(currentSlotRegister);
-    __ Mov(spRegister, currentSlotRegister);
+    __ Mov(sp, currentSlotRegister);
 
     CallNativeInternal(assembler, nativeCode);
     __ Ret();
@@ -556,18 +555,18 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Bind(&stackOverflow);
     {
         // use builtin_with_argv_frame to mark gc map
-        Register frameType(X11);
+        Register frameType = x11;
         __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
-        __ Mov(spRegister, temp);
+        __ Mov(sp, temp);
         __ Mov(frameType, Immediate(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME)));
         // 2: frame type and argc
-        __ Stp(Register(Zero), frameType, MemoryOperand(Register(SP), -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Stp(xzr, frameType, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         __ Mov(temp, Immediate(JSTaggedValue::VALUE_UNDEFINED));
         // 2: fill this&newtgt slots
-        __ Stp(temp, temp, MemoryOperand(spRegister, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Stp(temp, temp, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
         // 2: fill func&align slots
-        __ Stp(Register(Zero), temp, MemoryOperand(spRegister, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
-        __ Mov(temp, spRegister);
+        __ Stp(xzr, temp, MemoryOperand(sp, -FRAME_SLOT_SIZE * 2, AddrMode::PREINDEX));
+        __ Mov(temp, sp);
         // 6：frame type, argc, this, newTarget, func and align
         // +----------------------------------------------------------------+ <---- fp = sp + 6 * frame_slot_size
         // |     FrameType =  BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME |
@@ -582,22 +581,22 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         // |----------------------------------------------------------------|
         // |                               align                            |
         // +----------------------------------------------------------------+  <---- sp
-        __ Add(Register(FP), temp, Immediate(FRAME_SLOT_SIZE * 6));
+        __ Add(fp, temp, Immediate(FRAME_SLOT_SIZE * 6));
 
-        Register runtimeId(X11);
-        Register trampoline(X12);
+        Register runtimeId = x11;
+        Register trampoline = x12;
         __ Mov(runtimeId, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException));
         // 3 : 3 means *8
         __ Add(trampoline, glue, Operand(runtimeId, LSL, 3));
         __ Ldr(trampoline, MemoryOperand(trampoline, JSThread::GlueData::GetRTStubEntriesOffset(false)));
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
-        __ Mov(Register(X28), glue); // move glue to a callee-save register
+        __ Mov(x28, glue); // move glue to a callee-save register
 #endif
         __ Blr(trampoline);
         __ UpdateGlueAndReadBarrier();
 
         // resume rsp
-        __ Mov(Register(SP), Register(FP));
+        __ Mov(sp, fp);
         __ RestoreFpAndLr();
         __ Ret();
     }
@@ -639,21 +638,20 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
 {
     __ BindAssemblerStub(RTSTUB_ID(PushCallArgsAndDispatchNative));
 
-    Register nativeCode(X0);
-    Register glue(X1);
-    Register argv(X5);
-    Register temp(X6);
-    Register sp(SP);
-    Register nativeCodeTemp(X2);
+    Register nativeCode = x0;
+    Register glue = x1;
+    Register argv = x5;
+    Register temp = x6;
+    Register nativeCodeTemp = x2;
 
     __ Mov(nativeCodeTemp, nativeCode);
 
     __ Ldr(glue, MemoryOperand(sp, 0));
-    __ Add(Register(X0), sp, Immediate(0));
+    __ Add(x0, sp, Immediate(0));
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME, temp, argv);
 
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
-    Register calleeSaveGlue(X28);
+    Register calleeSaveGlue = x28;
     __ Mov(calleeSaveGlue, glue); // move glue to a callee-save register
 #endif
     CallNativeInternal(assembler, nativeCodeTemp);
@@ -663,7 +661,6 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
 bool AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register glue,
     FrameType type, Register op, Register next)
 {
-    Register sp(SP);
     __ PushFpAndLr();
     __ Mov(op, sp);
     __ Str(op, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
@@ -674,13 +671,13 @@ bool AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler, Register
         // 2: -2 * FRAME_SLOT_SIZE means type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         // 2: 2 * FRAME_SLOT_SIZE means skip next and frame type
-        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));
+        __ Add(fp, sp, Immediate(2 * FRAME_SLOT_SIZE));
         return true;
     } else if (type == FrameType::BUILTIN_ENTRY_FRAME) {
         // 2: -2 * FRAME_SLOT_SIZE means type & next
         __ Stp(next, op, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         // 2: 2 * FRAME_SLOT_SIZE means skip next and frame type
-        __ Add(Register(FP), sp, Immediate(2 * FRAME_SLOT_SIZE));
+        __ Add(fp, sp, Immediate(2 * FRAME_SLOT_SIZE));
         return true;
     } else if (type == FrameType::BUILTIN_FRAME_WITH_ARGV) {
         // this frame push stack args must before update FP, otherwise cpu profiler maybe visit incomplete stack
@@ -699,36 +696,36 @@ void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Regist
     __ Blr(nativeCode);
     __ UpdateGlueAndReadBarrier();
     // resume rsp
-    __ Mov(Register(SP), Register(FP));
+    __ Mov(sp, fp);
     __ RestoreFpAndLr();
 }
 
 // ResumeRspAndDispatch(uintptr_t glue, uintptr_t sp, uintptr_t pc, uintptr_t constantPool,
 //     uint64_t profileTypeInfo, uint64_t acc, uint32_t hotnessCounter, size_t jumpSize)
 // GHC calling convention
-// X19 - glue
-// FP  - sp
-// X20 - pc
-// X21 - constantPool
-// X22 - profileTypeInfo
-// X23 - acc
-// X24 - hotnessCounter
-// X25 - jumpSizeAfterCall
+// x19 - glue
+// fp  - sp
+// x20 - pc
+// x21 - constantPool
+// x22 - profileTypeInfo
+// x23 - acc
+// x24 - hotnessCounter
+// x25 - jumpSizeAfterCall
 void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndDispatch));
 
     Register glueRegister = __ GlueRegister();
-    Register sp(FP);
-    Register rsp(SP);
-    Register pc(X20);
-    Register jumpSizeRegister(X25);
+    Register rsp = sp;
+    Register currentSp = fp;
+    Register pc = x20;
+    Register jumpSizeRegister = x25;
 
-    Register ret(X23);
-    Register opcode(X6, W);
-    Register temp(X7);
-    Register bcStub(X7);
-    Register fp(X8);
+    Register ret = x23;
+    Register opcode = w6;
+    Register temp = x7;
+    Register bcStub = x7;
+    Register fpReg = x8;
 
     int64_t fpOffset = static_cast<int64_t>(AsmInterpretedFrame::GetFpOffset(false))
         - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
@@ -741,16 +738,16 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
 
     Label newObjectRangeReturn;
     Label dispatch;
-    __ Ldur(fp, MemoryOperand(sp, fpOffset));  // store fp for temporary
+    __ Ldur(fpReg, MemoryOperand(currentSp, fpOffset));  // store fp for temporary
     __ Cmp(jumpSizeRegister, Immediate(0));
     __ B(Condition::LE, &newObjectRangeReturn);
-    __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
+    __ Ldur(currentSp, MemoryOperand(currentSp, spOffset));  // update currentSp
 
     __ Add(pc, pc, Operand(jumpSizeRegister, LSL, 0));
     __ Ldrb(opcode, MemoryOperand(pc, 0));
     __ Bind(&dispatch);
     {
-        __ Mov(rsp, fp);  // resume rsp
+        __ Mov(rsp, fpReg);  // resume rsp
         __ Add(bcStub, glueRegister, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
         __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
         __ Br(bcStub);
@@ -764,9 +761,9 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ B(Condition::NE, &notUndefined);
         ASSERT(thisOffset < 0);
         __ Bind(&getThis);
-        __ Ldur(ret, MemoryOperand(sp, thisOffset));  // update acc
-        __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
-        __ Mov(rsp, fp);  // resume rsp
+        __ Ldur(ret, MemoryOperand(currentSp, thisOffset));  // update acc
+        __ Ldur(currentSp, MemoryOperand(currentSp, spOffset));  // update currentSp
+        __ Mov(rsp, fpReg);  // resume rsp
         __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
         __ Add(bcStub, glueRegister, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
@@ -782,15 +779,15 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
         __ B(Condition::NE, &notEcmaObject);
         // acc is heap object
         __ Ldr(temp, MemoryOperand(ret, TaggedObject::HCLASS_OFFSET));
-        __ And(temp, temp, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, RegXSize));
+        __ And(temp, temp, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, X_REG_SIZE));
         __ Ldr(temp, MemoryOperand(temp, JSHClass::BIT_FIELD_OFFSET));
-        __ And(temp.W(), temp.W(), LogicalImmediate::Create(0xFF, RegWSize));
+        __ And(temp.W(), temp.W(), LogicalImmediate::Create(0xFF, W_REG_SIZE));
         __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST)));
         __ B(Condition::HI, &notEcmaObject);
         __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_FIRST)));
         __ B(Condition::LO, &notEcmaObject);
         // acc is ecma object
-        __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
+        __ Ldur(currentSp, MemoryOperand(currentSp, spOffset));  // update currentSp
         __ Sub(pc, pc, jumpSizeRegister); // sub negative jmupSize
         __ Ldrb(opcode, MemoryOperand(pc, 0));
         __ B(&dispatch);
@@ -800,18 +797,18 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
             int64_t constructorOffset = static_cast<int64_t>(AsmInterpretedFrame::GetFunctionOffset(false))
                 - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
             ASSERT(constructorOffset < 0);
-            __ Ldur(temp, MemoryOperand(sp, constructorOffset));  // load constructor
+            __ Ldur(temp, MemoryOperand(currentSp, constructorOffset));  // load constructor
             __ Ldr(temp, MemoryOperand(temp, JSFunctionBase::METHOD_OFFSET));
             __ Ldr(temp, MemoryOperand(temp, Method::EXTRA_LITERAL_INFO_OFFSET));
             __ Lsr(temp.W(), temp.W(), Method::FunctionKindBits::START_BIT);
             __ And(temp.W(), temp.W(),
-                LogicalImmediate::Create((1LU << Method::FunctionKindBits::SIZE) - 1, RegWSize));
+                LogicalImmediate::Create((1LU << Method::FunctionKindBits::SIZE) - 1, W_REG_SIZE));
             __ Cmp(temp.W(), Immediate(static_cast<int64_t>(FunctionKind::CLASS_CONSTRUCTOR)));
             __ B(Condition::LS, &getThis);  // constructor is base
             // exception branch
             {
-                __ Mov(opcode, kungfu::BytecodeStubCSigns::ID_NewObjectRangeThrowException);
-                __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
+                __ Mov(opcode, Immediate(kungfu::BytecodeStubCSigns::ID_NewObjectRangeThrowException));
+                __ Ldur(currentSp, MemoryOperand(currentSp, spOffset));  // update sp
                 __ B(&dispatch);
             }
         }
@@ -826,8 +823,8 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
 void AsmInterpreterCall::ResumeRspAndReturn(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturn));
-    Register rsp(SP);
-    Register currentSp(X20);
+    Register rsp = sp;
+    Register currentSp = x20;
 
     [[maybe_unused]] TempRegister1Scope scope1(assembler);
     Register fpRegister = __ TempRegister1();
@@ -840,7 +837,7 @@ void AsmInterpreterCall::ResumeRspAndReturn(ExtendedAssembler *assembler)
     // return
     {
         __ RestoreFpAndLr();
-        __ Mov(Register(X0), Register(X19));
+        __ Mov(x0, x19);
         __ Ret();
     }
 }
@@ -855,9 +852,9 @@ void AsmInterpreterCall::ResumeRspAndReturn(ExtendedAssembler *assembler)
 void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturnBaseline));
-    Register glue(X19);
-    Register rsp(SP);
-    Register currentSp(X21);
+    Register glue = x19;
+    Register rsp = sp;
+    Register currentSp = x21;
 
     [[maybe_unused]] TempRegister1Scope scope1(assembler);
     Register fpRegister = __ TempRegister1();
@@ -867,11 +864,11 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
     __ Ldur(fpRegister, MemoryOperand(currentSp, fpOffset));
     __ Mov(rsp, fpRegister);
     __ RestoreFpAndLr();
-    __ Mov(Register(X0), Register(FP));
+    __ Mov(x0, fp);
 
     // Check and set result
-    Register ret = X0;
-    Register jumpSizeRegister = X22;
+    Register ret = x0;
+    Register jumpSizeRegister = x22;
     Label getThis;
     Label notUndefined;
     Label normalReturn;
@@ -893,7 +890,7 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
 
         __ Bind(&notUndefined);
         {
-            Register temp = X19;
+            Register temp = x19;
             Label notEcmaObject;
             __ Mov(temp, Immediate(JSTaggedValue::TAG_HEAPOBJECT_MASK));
             __ And(temp, temp, ret);
@@ -901,9 +898,9 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
             __ B(Condition::NE, &notEcmaObject);
             // acc is heap object
             __ Ldr(temp, MemoryOperand(ret, TaggedObject::HCLASS_OFFSET));
-            __ And(temp, temp, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, RegXSize));
+            __ And(temp, temp, LogicalImmediate::Create(TaggedObject::GC_STATE_MASK, X_REG_SIZE));
             __ Ldr(temp, MemoryOperand(temp, JSHClass::BIT_FIELD_OFFSET));
-            __ And(temp.W(), temp.W(), LogicalImmediate::Create(0xFF, RegWSize));
+            __ And(temp.W(), temp.W(), LogicalImmediate::Create(0xFF, W_REG_SIZE));
             __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_LAST)));
             __ B(Condition::HI, &notEcmaObject);
             __ Cmp(temp.W(), Immediate(static_cast<int64_t>(JSType::ECMA_OBJECT_FIRST)));
@@ -921,7 +918,7 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
                 __ Ldr(temp, MemoryOperand(temp, Method::EXTRA_LITERAL_INFO_OFFSET));
                 __ Lsr(temp.W(), temp.W(), Method::FunctionKindBits::START_BIT);
                 __ And(temp.W(), temp.W(),
-                       LogicalImmediate::Create((1LU << Method::FunctionKindBits::SIZE) - 1, RegWSize));
+                       LogicalImmediate::Create((1LU << Method::FunctionKindBits::SIZE) - 1, W_REG_SIZE));
                 __ Cmp(temp.W(), Immediate(static_cast<int64_t>(FunctionKind::CLASS_CONSTRUCTOR)));
                 __ B(Condition::LS, &getThis);  // constructor is base
                 // fall through
@@ -946,18 +943,18 @@ void AsmInterpreterCall::ResumeCaughtFrameAndDispatch(ExtendedAssembler *assembl
 {
     __ BindAssemblerStub(RTSTUB_ID(ResumeCaughtFrameAndDispatch));
 
-    Register glue(X19);
-    Register pc(X20);
-    Register fp(X5);
-    Register opcode(X6, W);
-    Register bcStub(X7);
+    Register glue = x19;
+    Register pc = x20;
+    Register fpReg = x5;
+    Register opcode = w6;
+    Register bcStub = x7;
 
     Label dispatch;
-    __ Ldr(fp, MemoryOperand(glue, JSThread::GlueData::GetLastFpOffset(false)));
-    __ Cmp(fp, Immediate(0));
+    __ Ldr(fpReg, MemoryOperand(glue, JSThread::GlueData::GetLastFpOffset(false)));
+    __ Cmp(fpReg, Immediate(0));
     __ B(Condition::EQ, &dispatch);
     // up frame
-    __ Mov(Register(SP), fp);
+    __ Mov(sp, fpReg);
     // fall through
     __ Bind(&dispatch);
     {
@@ -977,13 +974,13 @@ void AsmInterpreterCall::ResumeUncaughtFrameAndReturn(ExtendedAssembler *assembl
 {
     __ BindAssemblerStub(RTSTUB_ID(ResumeUncaughtFrameAndReturn));
 
-    Register glue(X19);
-    Register fp(X5);
-    Register acc(X20);
-    Register cppRet(X0);
+    Register glue = x19;
+    Register fpReg = x5;
+    Register acc = x20;
+    Register cppRet = x0;
 
-    __ Ldr(fp, MemoryOperand(glue, JSThread::GlueData::GetLastFpOffset(false)));
-    __ Mov(Register(SP), fp);
+    __ Ldr(fpReg, MemoryOperand(glue, JSThread::GlueData::GetLastFpOffset(false)));
+    __ Mov(sp, fpReg);
     // this method will return to Execute(cpp calling convention), and the return value should be put into X0.
     __ Mov(cppRet, acc);
     __ RestoreFpAndLr();
@@ -1006,15 +1003,15 @@ void AsmInterpreterCall::ResumeRspAndRollback(ExtendedAssembler *assembler)
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndRollback));
 
     Register glueRegister = __ GlueRegister();
-    Register sp(FP);
-    Register rsp(SP);
-    Register pc(X20);
-    Register jumpSizeRegister(X25);
+    Register rsp = sp;
+    Register currentSp = fp;
+    Register pc = x20;
+    Register jumpSizeRegister = x25;
 
-    Register ret(X23);
-    Register opcode(X6, W);
-    Register bcStub(X7);
-    Register fp(X8);
+    Register ret = x23;
+    Register opcode = w6;
+    Register bcStub = x7;
+    Register fpReg = x8;
 
     int64_t fpOffset = static_cast<int64_t>(AsmInterpretedFrame::GetFpOffset(false))
         - static_cast<int64_t>(AsmInterpretedFrame::GetSize(false));
@@ -1026,14 +1023,14 @@ void AsmInterpreterCall::ResumeRspAndRollback(ExtendedAssembler *assembler)
     ASSERT(spOffset < 0);
     ASSERT(funcOffset < 0);
 
-    __ Ldur(fp, MemoryOperand(sp, fpOffset));  // store fp for temporary
-    __ Ldur(ret, MemoryOperand(sp, funcOffset)); // restore acc
-    __ Ldur(sp, MemoryOperand(sp, spOffset));  // update sp
+    __ Ldur(fpReg, MemoryOperand(currentSp, fpOffset));  // store fp for temporary
+    __ Ldur(ret, MemoryOperand(currentSp, funcOffset)); // restore acc
+    __ Ldur(currentSp, MemoryOperand(currentSp, spOffset));  // update currentSp
 
     __ Add(pc, pc, Operand(jumpSizeRegister, LSL, 0));
     __ Ldrb(opcode, MemoryOperand(pc, 0));
 
-    __ Mov(rsp, fp);  // resume rsp
+    __ Mov(rsp, fpReg);  // resume rsp
     __ Add(bcStub, glueRegister, Operand(opcode, UXTW, FRAME_SLOT_SIZE_LOG2));
     __ Ldr(bcStub, MemoryOperand(bcStub, JSThread::GlueData::GetBCStubEntriesOffset(false)));
     __ Br(bcStub);
@@ -1182,41 +1179,41 @@ void AsmInterpreterCall::PreserveMostCall(ExtendedAssembler* assembler)
     // calleeSP ---> +--------------------------+
     {
         // prologue to save fp, frametype, and update fp.
-        __ Stp(X29, X30, MemoryOperand(SP, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ Stp(fp, lr, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
         // Zero register means OPTIMIZED_FRAME
-        __ Stp(X0, Zero, MemoryOperand(SP, -DOUBLE_SLOT_SIZE, PREINDEX));
-        __ Add(FP, SP, Immediate(DOUBLE_SLOT_SIZE));
+        __ Stp(x0, xzr, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ Add(fp, sp, Immediate(DOUBLE_SLOT_SIZE));
     }
     int32_t PreserveRegPairIndex = 9;
     // x0~x14,x16,x17,x18 should be preserved,
     // other general registers are callee saved register, callee will save them.
-    __ Sub(SP, SP, Immediate(DOUBLE_SLOT_SIZE * PreserveRegPairIndex));
-    __ Stp(X1, X2, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
-    __ Stp(X3, X4, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
-    __ Stp(X5, X6, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
-    __ Stp(X7, X8, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
-    __ Stp(X9, X10, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
-    __ Stp(X11, X12, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
-    __ Stp(X13, X14, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
-    __ Stp(X16, X17, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
-    __ Str(X18, MemoryOperand(SP, FRAME_SLOT_SIZE));
-    __ Blr(X15);
-    __ Ldr(X18, MemoryOperand(SP, FRAME_SLOT_SIZE));
-    __ Ldp(X16, X17, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
-    __ Ldp(X13, X14, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
-    __ Ldp(X11, X12, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
-    __ Ldp(X9, X10, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
-    __ Ldp(X7, X8, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
-    __ Ldp(X5, X6, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
-    __ Ldp(X3, X4, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
-    __ Ldp(X1, X2, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
-    __ Ldr(X0, MemoryOperand(SP, DOUBLE_SLOT_SIZE * PreserveRegPairIndex));
+    __ Sub(sp, sp, Immediate(DOUBLE_SLOT_SIZE * PreserveRegPairIndex));
+    __ Stp(x1, x2, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(x3, x4, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(x5, x6, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(x7, x8, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(x9, x10, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(x11, x12, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(x13, x14, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(x16, x17, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Str(x18, MemoryOperand(sp, FRAME_SLOT_SIZE));
+    __ Blr(x15);
+    __ Ldr(x18, MemoryOperand(sp, FRAME_SLOT_SIZE));
+    __ Ldp(x16, x17, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(x13, x14, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(x11, x12, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(x9, x10, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(x7, x8, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(x5, x6, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(x3, x4, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(x1, x2, MemoryOperand(sp, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldr(x0, MemoryOperand(sp, DOUBLE_SLOT_SIZE * PreserveRegPairIndex));
     {
         // epilogue to restore sp, fp, lr.
         // Skip x0 slot and frametype slot
-        __ Add(SP, SP, Immediate(DOUBLE_SLOT_SIZE * PreserveRegPairIndex +
+        __ Add(sp, sp, Immediate(DOUBLE_SLOT_SIZE * PreserveRegPairIndex +
             FRAME_SLOT_SIZE + FRAME_SLOT_SIZE));
-        __ Ldp(FP, X30, MemoryOperand(SP, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
+        __ Ldp(fp, lr, MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
         __ Ret();
     }
 }
@@ -1256,11 +1253,11 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
         //    goto valueMaybeSweepableShare
         // }
 
-        __ And(X15, X3, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), RegXSize));
+        __ And(x15, x3, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), X_REG_SIZE));
         // X15 is the region address of value.
-        __ Ldrb(Register(X15, W), MemoryOperand(X15, 0));
+        __ Ldrb(w15, MemoryOperand(x15, 0));
         // X15 is the flag load from region of value.
-        __ Cmp(Register(X15, W), Immediate(SHARED_SWEEPABLE_SPACE_BEGIN));
+        __ Cmp(w15, Immediate(SHARED_SWEEPABLE_SPACE_BEGIN));
         __ B(GE, &valueMaybeSweepableShare);
         // if value may be SweepableShare, goto valueMaybeSweepableShare
     }
@@ -1276,15 +1273,15 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
         //    goto needCallNotShare
         // }
 
-        __ Cmp(Register(X15, W), Immediate(RegionSpaceFlag::IN_YOUNG_SPACE));
+        __ Cmp(w15, Immediate(RegionSpaceFlag::IN_YOUNG_SPACE));
         __ B(NE, &checkMark);
         // if value is not in young, goto checkMark
 
-        __ And(X15, X1, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), RegXSize));
+        __ And(x15, x1, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), X_REG_SIZE));
         // X15 is the region address of obj.
-        __ Ldrb(Register(X15, W), MemoryOperand(X15, 0));
+        __ Ldrb(w15, MemoryOperand(x15, 0));
         // X15 is the flag load from region of obj.
-        __ Cmp(Register(X15, W), Immediate(RegionSpaceFlag::IN_YOUNG_SPACE));
+        __ Cmp(w15, Immediate(RegionSpaceFlag::IN_YOUNG_SPACE));
         __ B(NE, &needCallNotShare);
         // if obj is not in young, goto needCallNotShare
     }
@@ -1298,9 +1295,9 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
         // }
         // return
 
-        __ Mov(X15, JSThread::GlueData::GetGCStateBitFieldOffset(false));
-        __ Ldrb(Register(X15, W), MemoryOperand(X0, Register(X15), UXTX));
-        __ Tst(Register(X15, W), LogicalImmediate::Create(JSThread::CONCURRENT_MARKING_BITFIELD_MASK, RegWSize));
+        __ Mov(x15, Immediate(JSThread::GlueData::GetGCStateBitFieldOffset(false)));
+        __ Ldrb(w15, MemoryOperand(x0, x15, UXTX));
+        __ Tst(w15, LogicalImmediate::Create(JSThread::CONCURRENT_MARKING_BITFIELD_MASK, W_REG_SIZE));
         __ B(NE, &needCallNotShare);
         // if GCState is not READY_TO_MARK, go to needCallNotShare.
         __ Ret();
@@ -1313,7 +1310,7 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
         //    goto needShareBarrier
         // }
         // return
-        __ Cmp(Register(X15, W), Immediate(RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE));
+        __ Cmp(w15, Immediate(RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE));
         __ B(NE, &needShareBarrier);
         __ Ret();
     }
@@ -1322,11 +1319,11 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     {
         int32_t NonSValueBarrier = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
             kungfu::CommonStubCSigns::SetNonSValueWithBarrier * FRAME_SLOT_SIZE;
-        __ Mov(X15, NonSValueBarrier);
+        __ Mov(x15, Immediate(NonSValueBarrier));
     }
     __ Bind(&needCall);
     {
-        __ Ldr(X15, MemoryOperand(X0, Register(X15), UXTX));
+        __ Ldr(x15, MemoryOperand(x0, x15, UXTX));
         PreserveMostCall(assembler);
     }
     __ Bind(&needShareBarrier);
@@ -1340,52 +1337,52 @@ void AsmInterpreterCall::LoadBarrierCopyBack(ExtendedAssembler *assembler)
     __ BindAssemblerStub(RTSTUB_ID(LoadBarrierCopyBack));
     Label copyBackTable;
     int ldrOffset = -4;
-    __ Ldur(Register(X1, W), MemoryOperand(X30, ldrOffset));
-    __ And(Register(X1, W), Register(X1, W), LogicalImmediate::Create(0x1F, RegWSize));
-    __ Adr(X2, &copyBackTable);
+    __ Ldur(w1, MemoryOperand(x30, ldrOffset));
+    __ And(w1, w1, LogicalImmediate::Create(0x1F, W_REG_SIZE));
+    __ Adr(x2, &copyBackTable);
     // every item in copyback table is 8 bytes.
     int copyBackItemInsnShift = 3;
-    __ Add(X2, X2, Operand(Register(X1, W), UXTW, copyBackItemInsnShift));
-    __ Br(X2);
+    __ Add(x2, x2, Operand(w1, UXTW, copyBackItemInsnShift));
+    __ Br(x2);
 
     __ Bind(&copyBackTable);
     {
-        auto MovX0ToXregAndBlLr = [&assembler](RegisterId xreg) {
-            __ Mov(xreg, Register(X0));
-            __ Br(X30);
+        auto MovX0ToXregAndBlLr = [&assembler](Register xreg) {
+            __ Mov(xreg, x0);
+            __ Br(lr);
         };
-        MovX0ToXregAndBlLr(X0);
-        MovX0ToXregAndBlLr(X1);
-        MovX0ToXregAndBlLr(X2);
-        MovX0ToXregAndBlLr(X3);
-        MovX0ToXregAndBlLr(X4);
-        MovX0ToXregAndBlLr(X5);
-        MovX0ToXregAndBlLr(X6);
-        MovX0ToXregAndBlLr(X7);
-        MovX0ToXregAndBlLr(X8);
-        MovX0ToXregAndBlLr(X9);
-        MovX0ToXregAndBlLr(X10);
-        MovX0ToXregAndBlLr(X11);
-        MovX0ToXregAndBlLr(X12);
-        MovX0ToXregAndBlLr(X13);
-        MovX0ToXregAndBlLr(X14);
-        MovX0ToXregAndBlLr(X15);
-        MovX0ToXregAndBlLr(X16);
-        MovX0ToXregAndBlLr(X17);
-        MovX0ToXregAndBlLr(X18);
-        MovX0ToXregAndBlLr(X19);
-        MovX0ToXregAndBlLr(X20);
-        MovX0ToXregAndBlLr(X21);
-        MovX0ToXregAndBlLr(X22);
-        MovX0ToXregAndBlLr(X23);
-        MovX0ToXregAndBlLr(X24);
-        MovX0ToXregAndBlLr(X25);
-        MovX0ToXregAndBlLr(X26);
-        MovX0ToXregAndBlLr(X27);
-        MovX0ToXregAndBlLr(X28);
-        MovX0ToXregAndBlLr(X29);
-        MovX0ToXregAndBlLr(X30);
-        MovX0ToXregAndBlLr(SP);
+        MovX0ToXregAndBlLr(x0);
+        MovX0ToXregAndBlLr(x1);
+        MovX0ToXregAndBlLr(x2);
+        MovX0ToXregAndBlLr(x3);
+        MovX0ToXregAndBlLr(x4);
+        MovX0ToXregAndBlLr(x5);
+        MovX0ToXregAndBlLr(x6);
+        MovX0ToXregAndBlLr(x7);
+        MovX0ToXregAndBlLr(x8);
+        MovX0ToXregAndBlLr(x9);
+        MovX0ToXregAndBlLr(x10);
+        MovX0ToXregAndBlLr(x11);
+        MovX0ToXregAndBlLr(x12);
+        MovX0ToXregAndBlLr(x13);
+        MovX0ToXregAndBlLr(x14);
+        MovX0ToXregAndBlLr(x15);
+        MovX0ToXregAndBlLr(x16);
+        MovX0ToXregAndBlLr(x17);
+        MovX0ToXregAndBlLr(x18);
+        MovX0ToXregAndBlLr(x19);
+        MovX0ToXregAndBlLr(x20);
+        MovX0ToXregAndBlLr(x21);
+        MovX0ToXregAndBlLr(x22);
+        MovX0ToXregAndBlLr(x23);
+        MovX0ToXregAndBlLr(x24);
+        MovX0ToXregAndBlLr(x25);
+        MovX0ToXregAndBlLr(x26);
+        MovX0ToXregAndBlLr(x27);
+        MovX0ToXregAndBlLr(x28);
+        MovX0ToXregAndBlLr(x29);
+        MovX0ToXregAndBlLr(x30);
+        MovX0ToXregAndBlLr(sp);
     }
 }
 
@@ -1405,10 +1402,10 @@ void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler,
         //    // share to share, just check the barrier
         //    goto checkBarrierForSharedValue
         // }
-        __ And(X15, X1, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), RegXSize));
-        __ Ldrb(Register(X15, W), MemoryOperand(X15, 0));
+        __ And(x15, x1, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), X_REG_SIZE));
+        __ Ldrb(w15, MemoryOperand(x15, 0));
         // X15 is the flag load from region of obj.
-        __ Cmp(Register(X15, W), Immediate(RegionSpaceFlag::SHARED_SPACE_BEGIN));
+        __ Cmp(w15, Immediate(RegionSpaceFlag::SHARED_SPACE_BEGIN));
         __ B(GE, &checkBarrierForSharedValue);  // if objflag >= SHARED_SPACE_BEGIN  => checkBarrierForSharedValue
     }
     {
@@ -1417,22 +1414,22 @@ void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler,
         // if (localToShareSet == 0){
         //    goto callSharedBarrier
         // }
-        __ And(X15, X1, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), RegXSize));
-        __ Ldr(X15, MemoryOperand(X15, Region::PackedData::GetLocalToShareSetOffset(false)));
+        __ And(x15, x1, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), X_REG_SIZE));
+        __ Ldr(x15, MemoryOperand(x15, Region::PackedData::GetLocalToShareSetOffset(false)));
         // X15 is localToShareSet for obj region.
-        __ Cbz({X15, X}, &callSharedBarrier);   // if localToShareSet == 0  => callSharedBarrier
+        __ Cbz(x15, &callSharedBarrier);   // if localToShareSet == 0  => callSharedBarrier
     }
     {
         // X16, X17 will be used as scratch register, spill them.
         // the caller will call this function with inline asm, it will not save any registers except x15.
         // So we need spill and restore x16, x17 when we need them as scratch register.
         {
-            __ Stp(X16, X17, MemoryOperand(SP, -DOUBLE_SLOT_SIZE, PREINDEX));
+            __ Stp(x16, x17, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
         }
         // int64_t objOffset = obj & DEFAULT_REGION_MASK
         // int64_t slotOffset = objOffset + offset
-        __ And(X16, X1, LogicalImmediate::Create(DEFAULT_REGION_MASK, RegXSize));
-        __ Add(X16, X16, Operand(Register(X2)));
+        __ And(x16, x1, LogicalImmediate::Create(DEFAULT_REGION_MASK, X_REG_SIZE));
+        __ Add(x16, x16, Operand(x2));
 
         // the logic to get mask in stub_builder.cpp
         //               [63-------------------------35][34------------------------8][7---3][2-0]
@@ -1447,7 +1444,7 @@ void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler,
         // slotOffset:    aaaaaaaaaaaaaaaaaaaaaaaaaaaaa  bbbbbbbbbbbbbbbbbbbbbbbbbbb  ccccc  ddd
         // Ubfm X16 slotOffset 3 7
         // indexInWord:                                                                  cc  ccc
-        __ Ubfm(X17, X16, TAGGED_TYPE_SIZE_LOG, TAGGED_TYPE_SIZE_LOG + GCBitset::BIT_PER_WORD_LOG2 - 1);
+        __ Ubfm(x17, x16, TAGGED_TYPE_SIZE_LOG, TAGGED_TYPE_SIZE_LOG + GCBitset::BIT_PER_WORD_LOG2 - 1);
 
         // the logic to get byteIndex in stub_builder.cpp
         //               [63-------------------------35][34------------------------8][7---3][2-0]
@@ -1466,25 +1463,25 @@ void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler,
         // slotOffset:    aaaaaaaaaaaaaaaaaaaaaaaaaaaaa  bbbbbbbbbbbbbbbbbbbbbbbbbbb  ccccc  ddd
         // Ubfm X16 slotOffset 8 34
         // index:                                                bbbbbbbbbbbbbbbbbbb  bbbbb  bbb
-        __ Ubfm(X16, X16, TAGGED_TYPE_SIZE_LOG + GCBitset::BIT_PER_WORD_LOG2,
+        __ Ubfm(x16, x16, TAGGED_TYPE_SIZE_LOG + GCBitset::BIT_PER_WORD_LOG2,
                 sizeof(uint32_t) * GCBitset::BIT_PER_BYTE + TAGGED_TYPE_SIZE_LOG - 1);
-        __ Add(X15, X15, Operand(Register(X16), LSL, GCBitset::BYTE_PER_WORD_LOG2));
-        __ Add(X15, X15, Immediate(RememberedSet::GCBITSET_DATA_OFFSET));
+        __ Add(x15, x15, Operand(x16, LSL, GCBitset::BYTE_PER_WORD_LOG2));
+        __ Add(x15, x15, Immediate(RememberedSet::GCBITSET_DATA_OFFSET));
         // X15 is the address of bitset value. X15 = X15 + X16 << BYTE_PER_WORD_LOG2 + GCBITSET_DATA_OFFSET
 
         // mask = 1 << indexInWord
-        __ Mov(Register(X16, W), 1);
-        __ Lsl(Register(X17, W), Register(X16, W), Register(X17, W)); // X17 is the mask
+        __ Mov(w16, Immediate(1));
+        __ Lsl(w17, w16, w17); // X17 is the mask
 
-        __ Ldr(Register(X16, W), MemoryOperand(X15, 0)); // x16: oldsetValue
-        __ Tst(Register(X16, W), Register(X17, W));
+        __ Ldr(w16, MemoryOperand(x15, 0)); // x16: oldsetValue
+        __ Tst(w16, w17);
         __ B(NE, &restoreScratchRegister);
-        __ Orr(Register(X16, W), Register(X16, W), Register(X17, W));
-        __ Str(Register(X16, W), MemoryOperand(X15, 0));
+        __ Orr(w16, w16, w17);
+        __ Str(w16, MemoryOperand(x15, 0));
     }
     __ Bind(&restoreScratchRegister);
     {
-        __ Ldp(X16, X17, MemoryOperand(SP, DOUBLE_SLOT_SIZE, POSTINDEX));
+        __ Ldp(x16, x17, MemoryOperand(sp, DOUBLE_SLOT_SIZE, POSTINDEX));
     }
     __ Bind(&checkBarrierForSharedValue);
     {
@@ -1494,10 +1491,10 @@ void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler,
         //    goto callSharedBarrier
         // }
         // return
-        __ Mov(X15, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false));
-        __ Ldrb(Register(X15, W), MemoryOperand(X0, Register(X15), UXTX));
+        __ Mov(x15, Immediate(JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)));
+        __ Ldrb(w15, MemoryOperand(x0, x15, UXTX));
         static_assert(JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_MASK == 1 && "Tbnz can't handle other bit mask");
-        __ Tbnz(Register(X15, W), 0, &callSharedBarrier);
+        __ Tbnz(w15, 0, &callSharedBarrier);
         // if GCState is not READY_TO_MARK, go to needCallNotShare.
         __ Ret();
     }
@@ -1506,7 +1503,7 @@ void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler,
     {
         int32_t SValueBarrierOffset = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
             kungfu::CommonStubCSigns::SetSValueWithBarrier * FRAME_SLOT_SIZE;
-        __ Mov(X15, SValueBarrierOffset);
+        __ Mov(x15, Immediate(SValueBarrierOffset));
         __ B(&needCall);
     }
 }
@@ -1540,28 +1537,27 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     Label pushFrameState;
     Label stackOverflow;
     Register glue = __ GlueRegister();
-    Register contextRegister(X1);
-    Register spRegister(SP);
-    Register pc(X8);
-    Register prevSpRegister(FP);
-    Register callTarget(X4);
-    Register method(X5);
-    Register temp(X6); // can not be used to store any variable
-    Register currentSlotRegister(X7);
-    Register fpRegister(X9);
-    Register thisRegister(X25);
-    Register nRegsRegister(X26, W);
-    Register regsArrayRegister(X27);
-    Register newSp(X28);
+    Register contextRegister = x1;
+    Register pc = x8;
+    Register prevSpRegister = fp;
+    Register callTarget = x4;
+    Register method = x5;
+    Register temp = x6; // can not be used to store any variable
+    Register currentSlotRegister = x7;
+    Register fpRegister = x9;
+    Register thisRegister = x25;
+    Register nRegsRegister = w26;
+    Register regsArrayRegister = x27;
+    Register newSp = x28;
     __ Ldr(callTarget, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_METHOD_OFFSET));
     __ Ldr(method, MemoryOperand(callTarget, JSFunctionBase::METHOD_OFFSET));
     __ PushFpAndLr();
     // save fp
-    __ Mov(fpRegister, spRegister);
-    __ Mov(currentSlotRegister, spRegister);
+    __ Mov(fpRegister, sp);
+    __ Mov(currentSlotRegister, sp);
     // Reserve enough sp space to prevent stack parameters from being covered by cpu profiler.
     __ Ldr(temp, MemoryOperand(glue, JSThread::GlueData::GetStackLimitOffset(false)));
-    __ Mov(Register(SP), temp);
+    __ Mov(sp, temp);
     // push context regs
     __ Ldr(nRegsRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_NREGS_OFFSET));
     __ Ldr(thisRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_THIS_OFFSET));
@@ -1576,7 +1572,7 @@ void AsmInterpreterCall::GeneratorReEnterAsmInterpDispatch(ExtendedAssembler *as
     PushGeneratorFrameState(assembler, prevSpRegister, fpRegister, currentSlotRegister, callTarget, thisRegister,
                             method, contextRegister, pc, temp);
     __ Align16(currentSlotRegister);
-    __ Mov(Register(SP), currentSlotRegister);
+    __ Mov(sp, currentSlotRegister);
     // call bc stub
     CallBCStub(assembler, newSp, glue, callTarget, method, pc, temp);
 
@@ -1607,7 +1603,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
             __ Mov(thisRegister, thisArgRegister);
         }
     }
-    __ Tst(callFieldRegister, LogicalImmediate::Create(CALL_TYPE_MASK, RegXSize));
+    __ Tst(callFieldRegister, LogicalImmediate::Create(CALL_TYPE_MASK, X_REG_SIZE));
     __ B(Condition::EQ, &pushVregs);
     __ Tbz(callFieldRegister, Method::HaveThisBit::START_BIT, &pushNewTarget);
     if (!haveThis) {
@@ -1676,7 +1672,7 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
             methodRegister, pcRegister, tempRegister);
 
         __ Align16(currentSlotRegister);
-        __ Mov(Register(SP), currentSlotRegister);
+        __ Mov(sp, currentSlotRegister);
         if (type == FrameTransitionType::OTHER_TO_BASELINE_CHECK ||
             type == FrameTransitionType::BASELINE_TO_BASELINE_CHECK) {
             // check baselinecode, temp modify TOOD: need to check
@@ -1695,16 +1691,16 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
                 ASSERT(MachineCode::FUNCADDR_OFFSET < 256); // 256: imm in ldur insn must be in the range -256 to 255
                 __ Ldur(tempRegister, MemoryOperand(tempRegister, MachineCode::FUNCADDR_OFFSET));
             }
-            if (glue != X19) {
-                __ Mov(X19, glue);
+            if (glue != x19) {
+                __ Mov(x19, glue);
             }
-            if (methodRegister != X21) {
-                __ Mov(X21, methodRegister);
+            if (methodRegister != x21) {
+                __ Mov(x21, methodRegister);
             }
             __ Mov(currentSlotRegister, Immediate(BASELINEJIT_PC_FLAG));
             // -3: frame type, prevSp, pc
             __ Stur(currentSlotRegister, MemoryOperand(newSpRegister, -3 * FRAME_SLOT_SIZE));
-            __ Mov(Register(X29), newSpRegister);
+            __ Mov(x29, newSpRegister);
             __ Br(tempRegister);
             __ Bind(&baselineCodeUndefined);
         }
@@ -1723,20 +1719,20 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
 
-    if (glueRegister.GetId() != X19) {
-        __ Mov(Register(X19), glueRegister);
+    if (glueRegister != x19) {
+        __ Mov(x19, glueRegister);
     }
-    __ Ldrh(Register(X24, W), MemoryOperand(methodRegister, Method::LITERAL_INFO_OFFSET));
-    if (accRegister == INVALID_REG) {
-        __ Mov(Register(X23), Immediate(JSTaggedValue::VALUE_HOLE));
+    __ Ldrh(w24, MemoryOperand(methodRegister, Method::LITERAL_INFO_OFFSET));
+    if (!accRegister.IsValid()) {
+        __ Mov(x23, Immediate(JSTaggedValue::VALUE_HOLE));
     } else {
-        ASSERT(accRegister == Register(X23));
+        ASSERT(accRegister == x23);
     }
-    __ Ldr(Register(X22), MemoryOperand(callTargetRegister, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
-    __ Ldr(Register(X22), MemoryOperand(Register(X22), ProfileTypeInfoCell::VALUE_OFFSET));
-    __ Ldr(Register(X21), MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
-    __ Mov(Register(X20), pcRegister);
-    __ Mov(Register(FP), newSpRegister);
+    __ Ldr(x22, MemoryOperand(callTargetRegister, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+    __ Ldr(x22, MemoryOperand(x22, ProfileTypeInfoCell::VALUE_OFFSET));
+    __ Ldr(x21, MemoryOperand(methodRegister, Method::CONSTANT_POOL_OFFSET));
+    __ Mov(x20, pcRegister);
+    __ Mov(fp, newSpRegister);
 
     Register bcIndexRegister = __ AvailableRegister1();
     Register tempRegister = __ AvailableRegister2();
@@ -1751,17 +1747,17 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
     __ Br(tempRegister);
 }
 
-void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fp,
+void AsmInterpreterCall::PushFrameState(ExtendedAssembler *assembler, Register prevSp, Register fpReg,
     Register currentSlot, Register callTarget, Register thisObj, Register method, Register pc, Register op)
 {
     __ Mov(op, Immediate(static_cast<int32_t>(FrameType::ASM_INTERPRETER_FRAME)));
     __ Stp(prevSp, op, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX)); // -2: frame type & prevSp
     __ Ldr(pc, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
-    __ Stp(fp, pc, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX)); // -2: pc & fp
+    __ Stp(fpReg, pc, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX)); // -2: pc & fp
     __ Ldr(op, MemoryOperand(callTarget, JSFunction::LEXICAL_ENV_OFFSET));
-    __ Stp(op, Register(Zero), MemoryOperand(currentSlot,
-                                             -2 * FRAME_SLOT_SIZE, // -2: jumpSizeAfterCall & env
-                                             AddrMode::PREINDEX));
+    __ Stp(op, xzr, MemoryOperand(currentSlot,
+                                  -2 * FRAME_SLOT_SIZE, // -2: jumpSizeAfterCall & env
+                                  AddrMode::PREINDEX));
     __ Mov(op, Immediate(JSTaggedValue::VALUE_HOLE));
     __ Stp(thisObj, op, MemoryOperand(currentSlot, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));    // -2: acc & this
     __ Str(callTarget, MemoryOperand(currentSlot, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));         // -1: callTarget
@@ -1772,7 +1768,7 @@ void AsmInterpreterCall::GetNumVregsFromCallField(ExtendedAssembler *assembler, 
     __ Mov(numVregs, callField);
     __ Lsr(numVregs, numVregs, Method::NumVregsBits::START_BIT);
     __ And(numVregs.W(), numVregs.W(), LogicalImmediate::Create(
-        Method::NumVregsBits::Mask() >> Method::NumVregsBits::START_BIT, RegWSize));
+        Method::NumVregsBits::Mask() >> Method::NumVregsBits::START_BIT, W_REG_SIZE));
 }
 
 void AsmInterpreterCall::GetDeclaredNumArgsFromCallField(ExtendedAssembler *assembler, Register callField,
@@ -1781,14 +1777,12 @@ void AsmInterpreterCall::GetDeclaredNumArgsFromCallField(ExtendedAssembler *asse
     __ Mov(declaredNumArgs, callField);
     __ Lsr(declaredNumArgs, declaredNumArgs, Method::NumArgsBits::START_BIT);
     __ And(declaredNumArgs.W(), declaredNumArgs.W(), LogicalImmediate::Create(
-        Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, RegWSize));
+        Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, W_REG_SIZE));
 }
 
 void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
 {
     Register glue = __ GlueRegister();
-    Register fp(X29);
-    Register sp(SP);
 
     size_t begin = __ GetCurrentPosition();
     if (!assembler->FromInterpreterHandler()) {
@@ -1808,7 +1802,7 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
     // 2 : prevSp & frame type
     __ Stp(prevFrameRegister, frameTypeRegister, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // 2 : pc & glue
-    __ Stp(glue, Register(Zero), MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // pc
+    __ Stp(glue, xzr, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));  // pc
     if (!assembler->FromInterpreterHandler()) {
         size_t end = __ GetCurrentPosition();
         if ((end - begin) != FrameCompletionPos::ARM64CppToAsmInterp) {
@@ -1821,18 +1815,16 @@ void AsmInterpreterCall::PushAsmInterpEntryFrame(ExtendedAssembler *assembler)
 
 void AsmInterpreterCall::PopAsmInterpEntryFrame(ExtendedAssembler *assembler)
 {
-    Register sp(SP);
-
     [[maybe_unused]] TempRegister1Scope scope1(assembler);
     Register prevFrameRegister = __ TempRegister1();
     [[maybe_unused]] TempRegister2Scope scope2(assembler);
     Register glue = __ TempRegister2();
     // 2: glue & pc
-    __ Ldp(glue, Register(Zero), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Ldp(glue, xzr, MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
     __ Ldr(prevFrameRegister, MemoryOperand(sp, 0));
     __ Str(prevFrameRegister, MemoryOperand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
     // 2: skip frame type & prev
-    __ Ldp(prevFrameRegister, Register(Zero), MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
+    __ Ldp(prevFrameRegister, xzr, MemoryOperand(sp, 2 * FRAME_SLOT_SIZE, AddrMode::POSTINDEX));
     size_t begin = __ GetCurrentPosition();
     __ RestoreFpAndLr();
     if (!assembler->FromInterpreterHandler()) {
@@ -1861,7 +1853,7 @@ void AsmInterpreterCall::PushGeneratorFrameState(ExtendedAssembler *assembler, R
     // 2 : pc and fp
     __ Stp(fpRegister, pcRegister, MemoryOperand(currentSlotRegister, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // jumpSizeAfterCall
-    __ Str(Register(Zero), MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Str(xzr, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     __ Ldr(operatorRegister, MemoryOperand(contextRegister, GeneratorContext::GENERATOR_LEXICALENV_OFFSET));
     // env
     __ Str(operatorRegister, MemoryOperand(currentSlotRegister, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
@@ -1876,14 +1868,14 @@ void AsmInterpreterCall::CallBCStub(ExtendedAssembler *assembler, Register &newS
     Register &callTarget, Register &method, Register &pc, Register &temp)
 {
     // prepare call entry
-    __ Mov(Register(X19), glue);    // X19 - glue
-    __ Mov(Register(FP), newSp);    // FP - sp
-    __ Mov(Register(X20), pc);      // X20 - pc
-    __ Ldr(Register(X21), MemoryOperand(method, Method::CONSTANT_POOL_OFFSET));   // X21 - constantpool
-    __ Ldr(Register(X22), MemoryOperand(callTarget, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
-    __ Ldr(Register(X22), MemoryOperand(Register(X22), ProfileTypeInfoCell::VALUE_OFFSET));  // X22 - profileTypeInfo
-    __ Mov(Register(X23), Immediate(JSTaggedValue::Hole().GetRawData()));                   // X23 - acc
-    __ Ldr(Register(X24), MemoryOperand(method, Method::LITERAL_INFO_OFFSET)); // X24 - hotnessCounter
+    __ Mov(x19, glue);    // X19 - glue
+    __ Mov(fp, newSp);    // FP - sp
+    __ Mov(x20, pc);      // X20 - pc
+    __ Ldr(x21, MemoryOperand(method, Method::CONSTANT_POOL_OFFSET));   // X21 - constantpool
+    __ Ldr(x22, MemoryOperand(callTarget, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+    __ Ldr(x22, MemoryOperand(x22, ProfileTypeInfoCell::VALUE_OFFSET));  // X22 - profileTypeInfo
+    __ Mov(x23, Immediate(JSTaggedValue::Hole().GetRawData()));                   // X23 - acc
+    __ Ldr(x24, MemoryOperand(method, Method::LITERAL_INFO_OFFSET)); // X24 - hotnessCounter
 
     // call the first bytecode handler
     __ Ldrb(temp.W(), MemoryOperand(pc, 0));
@@ -1898,11 +1890,11 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
 {
     Label callFastBuiltin;
     Label callNativeBuiltin;
-    Register glue(X0);
-    Register argv(X5);
-    Register function(X1);
-    Register nativeCode(X7);
-    Register temp(X9);
+    Register glue = x0;
+    Register argv = x5;
+    Register function = x1;
+    Register nativeCode = x7;
+    Register temp = x9;
     // get native pointer
     if (isJSFunction) {
         Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
@@ -1910,7 +1902,7 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
         __ Tbnz(callFieldRegister, Method::IsFastBuiltinBit::START_BIT, &callFastBuiltin);
     } else {
         // JSProxy or JSBoundFunction
-        Register method(X2);
+        Register method = x2;
         __ Ldr(nativeCode, MemoryOperand(method, Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
     }
 
@@ -1925,18 +1917,17 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
         __ Str(lexicalEnv, MemoryOperand(glue, JSThread::GlueData::GetCurrentEnvOffset(false)));
         __ Bind(&next);
     }
-    Register sp(SP);
     // 2: function & align
-    __ Stp(function, Register(Zero), MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
+    __ Stp(function, xzr, MemoryOperand(sp, -2 * FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     // 2: skip argc & thread
     __ Sub(sp, sp, Immediate(2 * FRAME_SLOT_SIZE));
     PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_ENTRY_FRAME, temp, argv);
     __ Mov(temp, argv);
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
-    Register calleeSaveGlue(X28);
+    Register calleeSaveGlue = x28;
     __ Mov(calleeSaveGlue, glue); // move glue to a callee-save register
 #endif
-    __ Sub(Register(X0), temp, Immediate(2 * FRAME_SLOT_SIZE));  // 2: skip argc & thread
+    __ Sub(x0, temp, Immediate(2 * FRAME_SLOT_SIZE));  // 2: skip argc & thread
     CallNativeInternal(assembler, nativeCode);
 
     // 4: skip function
@@ -1969,13 +1960,12 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
 {
     Label dispatchTable[3]; // 3: call with argc = 0, 1, 2
     Label callEntryAndRet;
-    Register sp(SP);
-    Register glue(X0);
-    Register function(X1);
-    Register method(X2);
-    Register argc(X4);
-    Register argv(X5);
-    Register nativeCode(X7);
+    Register glue = x0;
+    Register function = x1;
+    Register method = x2;
+    Register argc = x4;
+    Register argv = x5;
+    Register nativeCode = x7;
 
     Register builtinId = __ AvailableRegister1();
     Register temp = __ AvailableRegister2();
@@ -1983,7 +1973,7 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
     __ Ldr(builtinId, MemoryOperand(method, Method::EXTRA_LITERAL_INFO_OFFSET));
     __ Lsr(builtinId.W(), builtinId.W(), Method::BuiltinIdBits::START_BIT);
     __ And(builtinId.W(), builtinId.W(),
-           LogicalImmediate::Create((1LU << Method::BuiltinIdBits::SIZE) - 1, RegWSize));
+           LogicalImmediate::Create((1LU << Method::BuiltinIdBits::SIZE) - 1, W_REG_SIZE));
     __ Cmp(builtinId.W(), Immediate(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)));
     __ B(Condition::GE, callNativeBuiltin);
 
@@ -1997,50 +1987,50 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
     PushAsmBridgeFrame(assembler);
     // Shuffle registers to match C calling convention, X0(glue) already in place
     __ Mov(temp, function); // Save function to temp
-    __ Mov(X1, nativeCode); // X1 = nativeCode
-    __ Mov(X2, temp); // X2 = func
+    __ Mov(x1, nativeCode); // X1 = nativeCode
+    __ Mov(x2, temp); // X2 = func
     __ Mov(temp, argv); // temp = argv
-    __ Mov(X5, argc); // X5 = argc
-    __ Ldr(X3, MemoryOperand(temp, FRAME_SLOT_SIZE)); // X3 = newTarget
-    __ Ldr(X4, MemoryOperand(temp, DOUBLE_SLOT_SIZE)); // X4 = this
+    __ Mov(x5, argc); // X5 = argc
+    __ Ldr(x3, MemoryOperand(temp, FRAME_SLOT_SIZE)); // X3 = newTarget
+    __ Ldr(x4, MemoryOperand(temp, DOUBLE_SLOT_SIZE)); // X4 = this
 
     // Dispatch according to argc (0, 1, 2, or 3)
-    __ Cmp(X5, Immediate(0));
-    __ B(Condition::EQ, &dispatchTable[0]);
-    __ Cmp(X5, Immediate(1));
-    __ B(Condition::EQ, &dispatchTable[1]);
-    __ Cmp(X5, Immediate(2));
-    __ B(Condition::EQ, &dispatchTable[2]);
+    __ Cmp(x5, Immediate(0)); // 0: acgc = 0
+    __ B(Condition::EQ, &dispatchTable[0]); // 0: acgc = 0
+    __ Cmp(x5, Immediate(1)); // 1: acgc = 1
+    __ B(Condition::EQ, &dispatchTable[1]); // 1: acgc = 1
+    __ Cmp(x5, Immediate(2)); // 2: acgc = 2
+    __ B(Condition::EQ, &dispatchTable[2]); // 2: acgc = 2
     // fallthrough to argc = 3
 
     // argc = 3
-    __ Ldr(Register(X7), MemoryOperand(temp, QUINTUPLE_SLOT_SIZE));
-    __ Stp(Register(X7), Register(X7), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
-    __ Ldp(Register(X6), Register(X7), MemoryOperand(temp, TRIPLE_SLOT_SIZE));
+    __ Ldr(x7, MemoryOperand(temp, QUINTUPLE_SLOT_SIZE));
+    __ Stp(x7, x7, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+    __ Ldp(x6, x7, MemoryOperand(temp, TRIPLE_SLOT_SIZE));
     __ B(&callEntryAndRet);
 
     // argc = 0
     __ Bind(&dispatchTable[0]);
     {
-        __ Mov(Register(X6), Immediate(JSTaggedValue::VALUE_UNDEFINED));
-        __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));
-        __ Stp(Register(X7), Register(X7), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ Mov(x6, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+        __ Mov(x7, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+        __ Stp(x7, x7, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
         __ B(&callEntryAndRet);
     }
     // argc = 1
     __ Bind(&dispatchTable[1]);
     {
-        __ Ldr(Register(X6), MemoryOperand(temp, TRIPLE_SLOT_SIZE));
-        __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED));
-        __ Stp(Register(X7), Register(X7), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ Ldr(x6, MemoryOperand(temp, TRIPLE_SLOT_SIZE));
+        __ Mov(x7, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+        __ Stp(x7, x7, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
         __ B(&callEntryAndRet);
     }
     // argc = 2
     __ Bind(&dispatchTable[2]);
     {
-        __ Mov(Register(X7), Immediate(JSTaggedValue::VALUE_UNDEFINED)); // dummy for stack slot
-        __ Stp(Register(X7), Register(X7), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
-        __ Ldp(Register(X6), Register(X7), MemoryOperand(temp, TRIPLE_SLOT_SIZE));
+        __ Mov(x7, Immediate(JSTaggedValue::VALUE_UNDEFINED)); // dummy for stack slot
+        __ Stp(x7, x7, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ Ldp(x6, x7, MemoryOperand(temp, TRIPLE_SLOT_SIZE));
         // fallthrough to callEntryAndRet
     }
 
@@ -2055,23 +2045,21 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
 }
 
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue,
-    Register fp, Register op)
+    Register fpReg, Register op)
 {
-    Register sp(SP);
-
-    if (fp != sp) {
-        __ Mov(sp, fp);
+    if (fpReg != sp) {
+        __ Mov(sp, fpReg);
     }
     __ Mov(op, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException));
     // 3 : 3 means *8
     __ Add(op, glue, Operand(op, LSL, 3));
     __ Ldr(op, MemoryOperand(op, JSThread::GlueData::GetRTStubEntriesOffset(false)));
-    if (glue.GetId() != X0) {
-        __ Mov(Register(X0), glue);
+    if (glue != x0) {
+        __ Mov(x0, glue);
     }
 
 #ifdef ENABLE_CMC_IR_FIX_REGISTER
-    __ Mov(Register(X28), glue); // move glue to a callee-save register
+    __ Mov(x28, glue); // move glue to a callee-save register
 #endif
     __ Blr(op);
     __ UpdateGlueAndReadBarrier();
@@ -2080,35 +2068,33 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
 }
 
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler,
-    Register glue, Register fp, Register op)
+    Register glue, Register fpReg, Register op)
 {
-    Register sp(SP);
-
-    if (fp != sp) {
-        __ Mov(sp, fp);
+    if (fpReg != sp) {
+        __ Mov(sp, fpReg);
     }
 
-    if (glue.GetId() != X0) {
-        __ Mov(Register(X0), glue);
+    if (glue != x0) {
+        __ Mov(x0, glue);
     }
 
     __ PushFpAndLr();
     __ Mov(op, Immediate(static_cast<int64_t>(FrameType::ASM_BRIDGE_FRAME)));
-    __ Stp(Register(X10), op, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX)); // frame type and caller save
-    __ Add(Register(FP), sp, Immediate(DOUBLE_SLOT_SIZE));
+    __ Stp(x10, op, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX)); // frame type and caller save
+    __ Add(fp, sp, Immediate(DOUBLE_SLOT_SIZE));
 
     __ Mov(op, Immediate(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException));
-    __ Stp(op, Register(Zero), MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX)); // argc and runtime id
-    __ Mov(Register(X10), Immediate(kungfu::RuntimeStubCSigns::ID_CallRuntime));
+    __ Stp(op, xzr, MemoryOperand(sp, -DOUBLE_SLOT_SIZE, PREINDEX)); // argc and runtime id
+    __ Mov(x10, Immediate(kungfu::RuntimeStubCSigns::ID_CallRuntime));
     // 3 : 3 means *8
-    __ Add(Register(X10), glue, Operand(Register(X10), LSL, 3));
-    __ Ldr(Register(X10), MemoryOperand(Register(X10), JSThread::GlueData::GetRTStubEntriesOffset(false)));
-    __ Blr(Register(X10));
+    __ Add(x10, glue, Operand(x10, LSL, 3));
+    __ Ldr(x10, MemoryOperand(x10, JSThread::GlueData::GetRTStubEntriesOffset(false)));
+    __ Blr(x10);
     // 2: skip argc and runtime_id
     __ Add(sp, sp, Immediate(2 * FRAME_SLOT_SIZE));
-    __ Ldr(Register(X10), MemoryOperand(sp, FRAME_SLOT_SIZE, POSTINDEX));
+    __ Ldr(x10, MemoryOperand(sp, FRAME_SLOT_SIZE, POSTINDEX));
 
-    __ Mov(sp, Register(FP));
+    __ Mov(sp, fp);
     __ RestoreFpAndLr();
 
     // +----------------------------------------------------+
@@ -2127,7 +2113,7 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFr
     // Base on PushAsmInterpBridgeFrame, need to skip AsmInterpBridgeFrame size and callee Save Registers(18)
     // but no lr(-1), x64 should skip lr because Ret in x64 will set stack pointer += 8
     int32_t skipNum = static_cast<int32_t>(AsmInterpretedBridgeFrame::GetSize(false)) / FRAME_SLOT_SIZE + 18 - 1;
-    __ Add(Register(SP), Register(FP), Immediate(-skipNum * FRAME_SLOT_SIZE));
+    __ Add(sp, fp, Immediate(-skipNum * FRAME_SLOT_SIZE));
     __ Ret();
 }
 #undef __

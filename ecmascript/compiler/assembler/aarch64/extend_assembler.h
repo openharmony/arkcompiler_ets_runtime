@@ -43,10 +43,10 @@ public:
     void PushLrAndFp();
     void SaveLrAndFp();
     void RestoreLrAndFp();
-    void PushArgc(int32_t argc, Register op, Register fp);
-    void PushArgc(Register argc, Register op, Register fp);
-    void Align16(Register fp);
-    void UpdateGlueAndReadBarrier(Register glueReg = X28);
+    void PushArgc(int32_t argc, Register op, Register fpReg);
+    void PushArgc(Register argc, Register op, Register fpReg);
+    void Align16(Register fpReg);
+    void UpdateGlueAndReadBarrier(Register glueReg = x28);
 
     Register TempRegister1()
     {
@@ -55,7 +55,7 @@ public:
             UNREACHABLE();
         }
         temp1InUse_ = true;
-        return X9;
+        return x9;
     }
     Register TempRegister2()
     {
@@ -64,40 +64,40 @@ public:
             UNREACHABLE();
         }
         temp2InUse_ = true;
-        return X10;
+        return x10;
     }
     Register AvailableRegister1() const
     {
-        // X11 is neither callee saved reegister nor argument register
-        return X11;
+        // x11 is neither callee saved reegister nor argument register
+        return x11;
     }
     Register AvailableRegister2() const
     {
-        // X12 is neither callee saved reegister nor argument register
-        return X12;
+        // x12 is neither callee saved reegister nor argument register
+        return x12;
     }
     Register AvailableRegister3() const
     {
-        // X13 is neither callee saved reegister nor argument register
-        return X13;
+        // x13 is neither callee saved reegister nor argument register
+        return x13;
     }
     Register AvailableRegister4() const
     {
-        // X14 is neither callee saved reegister nor argument register
-        return X14;
+        // x14 is neither callee saved reegister nor argument register
+        return x14;
     }
     Register CallDispatcherArgument(kungfu::CallDispatchInputs index)
     {
         size_t i = static_cast<size_t>(index);
         Register ret = isGhcCallingConv_ ? ghcJSCallDispacherArgs_[i] : cppJSCallDispacherArgs_[i];
-        if (ret.GetId() == INVALID_REG) {
+        if (!ret.IsValid()) {
             LOG_COMPILER(FATAL) << "arm64 invalid call argument:" << i;
         }
         return ret;
     }
     Register GlueRegister()
     {
-        return isGhcCallingConv_ ? X19 : X0;
+        return isGhcCallingConv_ ? x19 : x0;
     }
 
     bool FromInterpreterHandler() const
