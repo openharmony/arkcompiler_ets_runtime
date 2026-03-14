@@ -20,9 +20,9 @@
 #include "constants.h"
 #include "file_path_utils.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/log_wrapper.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 namespace {
 constexpr char EXT_NAME_ABC[] = ".abc";
 }
@@ -72,6 +72,7 @@ bool Extractor::GetFileList(const std::string& srcPath, std::vector<std::string>
     }
     zipFile_.GetAllFileList(srcPath, assetList);
     if (assetList.empty()) {
+        LOG_ECMA(ERROR) << "GetFileList empty dir: " << srcPath;
     }
 
     return true;
@@ -122,6 +123,7 @@ bool Extractor::ExtractFile(const std::string &fileName, const std::string &targ
         fileStream.clear();
         fileStream.close();
         if (remove(targetPath.c_str()) != 0) {
+            LOG_ECMA(ERROR) << "ExtractFile: Failed to remove file after error: " << targetPath;
         }
         return false;
     }
@@ -212,6 +214,7 @@ bool Extractor::GetFileList(const std::string &srcPath, std::set<std::string> &f
 
     zipFile_.GetChildNames(srcPath, fileSet);
     if (fileSet.empty()) {
+        LOG_ECMA(ERROR) << "GetFileList empty dir: " << srcPath;
     }
 
     return true;
@@ -278,5 +281,4 @@ void ExtractorUtil::DeleteExtractor(const std::string &hapPath)
         extractorMap_.erase(mapIter);
     }
 }
-}  // namespace AbilityBase
-}  // namespace OHOS
+}  // namespace panda::ecmascript

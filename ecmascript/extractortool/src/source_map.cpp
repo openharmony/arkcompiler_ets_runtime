@@ -209,33 +209,6 @@ MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targe
     return MappingInfo { targetMap.afterPos_[res].beforeRow + 1, targetMap.afterPos_[res].beforeColumn + 1 };
 }
 
-void SourceMap::ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo)
-{
-    uint32_t cnt = 0;
-    std::string tempStr;
-    for (uint32_t i = 0; i < sourceMap.size(); i++) {
-        // reslove json file
-        if (sourceMap[i] == DOUBLE_SLASH) {
-            i++;
-            tempStr += sourceMap[i];
-            continue;
-        }
-        // cnt is used to represent a pair of double quotation marks: ""
-        if (sourceMap[i] == '"') {
-            cnt++;
-        }
-        if (cnt == INDEX_TWO) {
-            sourceKeyInfo.push_back(tempStr);
-            tempStr = "";
-            cnt = 0;
-        } else if (cnt == 1) {
-            if (sourceMap[i] != '"') {
-                tempStr += sourceMap[i];
-            }
-        }
-    }
-}
-
 void SourceMap::GetPosInfo(const std::string& temp, int32_t start, std::string& line, std::string& column)
 {
     // 0 for colum, 1 for row

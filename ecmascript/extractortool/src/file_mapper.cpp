@@ -19,8 +19,7 @@
 
 #include "ecmascript/log_wrapper.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 namespace {
 long g_pageSize = 0;
 }
@@ -122,5 +121,4 @@ int32_t FileMapper::GetOffset()
 {
     return offset_;
 }
-}  // namespace AbilityBase
-}  // namespace OHOS
+}  // namespace panda::ecmascript

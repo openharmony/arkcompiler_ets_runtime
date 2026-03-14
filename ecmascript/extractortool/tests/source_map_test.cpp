@@ -219,19 +219,6 @@ HWTEST_F_L0(SourceMapTest, FindTest)
     EXPECT_EQ(mappingInfo.col, 2);
 }
 
-HWTEST_F_L0(SourceMapTest, ExtractKeyInfoTest)
-{
-    SourceMapFriend sourceMapFriend(sourceMapData4);
-    std::string sourceMap = R"({"key1": "value1", "key2": "value\"2"})";
-    std::vector<std::string> sourceKey;
-    std::vector<std::string> &sourceKeyInfo = sourceKey;
-    sourceMapFriend.ExtractKeyInfo(sourceMap, sourceKeyInfo);
-    EXPECT_EQ(sourceKeyInfo[0], "key1");
-    EXPECT_EQ(sourceKeyInfo[1], "value1");
-    EXPECT_EQ(sourceKeyInfo[2], "key2");
-    EXPECT_EQ(sourceKeyInfo[3], "value\"2");
-}
-
 HWTEST_F_L0(SourceMapTest, GetPosInfoTest)
 {
     SourceMapFriend sourceMapFriend(sourceMapData4);

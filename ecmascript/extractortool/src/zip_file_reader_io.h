@@ -13,15 +13,14 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_BASE_ZIP_FILE_READER_IO_H
-#define OHOS_ABILITY_BASE_ZIP_FILE_READER_IO_H
+#ifndef ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_IO_H
+#define ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_IO_H
 
 #include <string>
 
 #include "zip_file_reader.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 class ZipFileReaderIo : public ZipFileReader {
 public:
     ZipFileReaderIo(const std::string &filePath) : ZipFileReader(filePath) {}
@@ -30,6 +29,5 @@ public:
     std::string ReadBuffer(size_t startPos, size_t bufferSize) override;
     bool ReadBuffer(uint8_t *dst, size_t startPos, size_t bufferSize) override;
 };
-}
-}
-#endif
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_IO_H

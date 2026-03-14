@@ -252,11 +252,6 @@ public:
         return sourceMap_->Find(row, col, targetMap, isReplaces);
     }
 
-    void ExtractKeyInfo(const std::string &aSourceMap, std::vector<std::string> &sourceKeyInfo)
-    {
-        sourceMap_->ExtractKeyInfo(aSourceMap, sourceKeyInfo);
-    }
-
     void GetPosInfo(const std::string &temp, int32_t start, std::string &line, std::string &column)
     {
         sourceMap_->GetPosInfo(temp, start, line, column);
