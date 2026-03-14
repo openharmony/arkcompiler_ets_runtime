@@ -55,6 +55,11 @@ public:
         return regionList_.GetLength();
     }
 
+    bool IsEmpty() const
+    {
+        return regionList_.IsEmpty();
+    }
+
     inline void AddNewRegion(Region *region);
 
     inline SlotFreeListMetaInfo TryTakeSlotFreeList();
@@ -79,6 +84,11 @@ public:
     void FinishSweeping();
 
     void PrepareCompact(std::vector<Region *> &pendingReclaimFromRegions);
+
+    void ClearRegionList()
+    {
+        regionList_.Clear();
+    }
 
 private:
     inline SlotFreeListMetaInfo TryTakeUsableSlotFreeList();

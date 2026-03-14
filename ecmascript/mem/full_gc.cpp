@@ -232,6 +232,8 @@ void FullGC::Finish()
         if (!forAppSpawn_) {
             heap_->SwapOldSpace();
         }
+    } else {
+        heap_->GetSlotSpace()->MergeToRegions();
     }
     workManager_->Finish();
     if (forAppSpawn_) {

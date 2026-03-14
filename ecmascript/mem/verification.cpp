@@ -491,7 +491,9 @@ void Verification::VerifyMark(Heap *heap)
 void Verification::VerifyCC(Heap *heap)
 {
     Verification(heap, VerifyKind::VERIFY_CONCURRENT_COPY).VerifyAll();
-    Verification(heap, VerifyKind::VERIFY_CONCURRENT_COPY).VerifyOldToNewRSet();
+    if constexpr (!G_USE_CMS_GC) {
+        Verification(heap, VerifyKind::VERIFY_CONCURRENT_COPY).VerifyOldToNewRSet();
+    }
 }
 
 void Verification::VerifyEvacuate(Heap *heap)

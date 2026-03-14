@@ -36,8 +36,17 @@ SlotSpace::~SlotSpace()
     for (SlotAllocator *allocator : allocatorInstances_) {
         delete allocator;
     }
+    for (CMSRegionChainManager *gcRegionChainManager : gcRegionChainManagerInstances_) {
+        delete gcRegionChainManager;
+    }
+    for (SlotAllocator *gcAllocator : gcAllocatorInstances_) {
+        delete gcAllocator;
+    }
+
     regionChainManagerInstances_.clear();
     allocatorInstances_.clear();
+    gcRegionChainManagerInstances_.clear();
+    gcAllocatorInstances_.clear();
 }
 
 void SlotSpace::InitializeAllocators()
@@ -47,15 +56,23 @@ void SlotSpace::InitializeAllocators()
         size_t slotSize = GetSlotSizeByIdx(i);
         if (slotSize > preSize) {
             SlotAllocator *allocator = new SlotAllocator();
+            SlotAllocator *gcAllocator = new SlotAllocator();
             CMSRegionChainManager *regionChainManager = new CMSRegionChainManager();
+            CMSRegionChainManager *gcRegionChainManager = new CMSRegionChainManager();
             allocator->Initialize(slotSize, regionChainManager);
+            gcAllocator->Initialize(slotSize, gcRegionChainManager);
             regionChainManager->Initialize(localHeap_, slotSize);
+            gcRegionChainManager->Initialize(localHeap_, slotSize);
 
             allocatorInstances_.emplace_back(allocator);
+            gcAllocatorInstances_.emplace_back(gcAllocator);
             regionChainManagerInstances_.emplace_back(regionChainManager);
+            gcRegionChainManagerInstances_.emplace_back(gcRegionChainManager);
         }
         allocators_[i] = allocatorInstances_.back();
+        gcAllocators_[i] = gcAllocatorInstances_.back();
         ASSERT(allocators_[i]->GetSlotSize() >= i * SlotSpaceConfig::SLOT_STEP_SIZE);
+        ASSERT(gcAllocators_[i]->GetSlotSize() >= i * SlotSpaceConfig::SLOT_STEP_SIZE);
         preSize = slotSize;
     }
 }
@@ -92,11 +109,18 @@ bool SlotSpace::TryExpandAllocator(SlotAllocator *allocator, MemoryCheckerKind c
     return true;
 }
 
+template<bool expandInGC>
 void SlotSpace::ExpandAllocator(SlotAllocator *allocator)
 {
     Region *region = AllocateRegion(allocator->GetSlotSize());
     allocator->Expand(region);
-    IncreaseCommitted(region->GetCapacity());
+    if constexpr(!expandInGC) {
+        IncreaseCommitted(region->GetCapacity());
+    } else {
+        region->SetRegionTypeFlag(RegionTypeFlag::TO);
+        region->CreateLocalToShareRememberedSet();
+        region->SwapLocalToShareRSetForCS();
+    }
 }
 
 Region *SlotSpace::AllocateRegion(size_t slotSize)
@@ -237,6 +261,26 @@ void SlotSpace::ReclaimFromRegions(bool needCacheRegion)
     pendingReclaimFromRegions_.clear();
 }
 
+void SlotSpace::MergeToRegions()
+{
+    for (size_t i = 0; i < gcRegionChainManagerInstances_.size(); i++) {
+        CMSRegionChainManager *gcRegionChainManager = gcRegionChainManagerInstances_[i];
+        if (!gcRegionChainManager->IsEmpty()) {
+            CMSRegionChainManager *regionChainManager = regionChainManagerInstances_[i];
+            gcRegionChainManager->EnumerateRegions([this, regionChainManager](Region *toRegion) {
+                toRegion->ResetSwept();
+                toRegion->MergeLocalToShareRSetForCS();
+                regionChainManager->AddNewRegion(toRegion);
+                IncreaseCommitted(toRegion->GetCapacity());
+            });
+            gcRegionChainManager->ClearRegionList();
+        }
+    }
+    for (SlotAllocator *allocator : gcAllocatorInstances_) {
+        allocator->Discard();
+    }
+}
+
 void SlotSpace::AdjustCapacity(JSThread *thread)
 {
     allocateAfterLastGC_ = 0;
@@ -269,4 +313,7 @@ void SlotSpace::AdjustCapacity(JSThread *thread)
     cacheRegionSize_ = newCapacity - committedSize_;
     SetInitialCapacity(newCapacity);
 }
+
+template void SlotSpace::ExpandAllocator<true>(SlotAllocator *allocator);
+template void SlotSpace::ExpandAllocator<false>(SlotAllocator *allocator);
 }  // namespace panda::ecmascript

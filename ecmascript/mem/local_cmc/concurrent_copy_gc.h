@@ -16,8 +16,10 @@
 #ifndef ECMASCRIPT_MEM_LOCAL_CMC_CONCURRENT_COPY_GC_H
 #define ECMASCRIPT_MEM_LOCAL_CMC_CONCURRENT_COPY_GC_H
 
+#include "ecmascript/mem/cms_mem/slot_allocator-inl.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/tlab_allocator.h"
+
 namespace panda {
 namespace ecmascript {
 class ConcurrentCopyGC {
@@ -50,15 +52,23 @@ private:
     void PostGC();
 
     int CalculateCopyThreadNum();
-    CCTlabAllocator *GetTlabAllocator(uint32_t threadIndex)
-    {
-        return &tlabAllocators_.at(threadIndex);
-    }
 
     Heap *heap_{nullptr};
     JSThread *thread_ {nullptr};
     bool ccUpdateFinished_{false};
+#if USE_CMS_GC
+    SlotGCAllocator *GetTlabAllocator(uint32_t threadIndex)
+    {
+        return &tlabAllocators_.at(threadIndex);
+    }
+    std::array<SlotGCAllocator, common::MAX_TASKPOOL_THREAD_NUM + 1> tlabAllocators_;
+#else
+    CCTlabAllocator *GetTlabAllocator(uint32_t threadIndex)
+    {
+        return &tlabAllocators_.at(threadIndex);
+    }
     std::array<CCTlabAllocator, common::MAX_TASKPOOL_THREAD_NUM + 1> tlabAllocators_;
+#endif
     std::atomic<size_t> runningTaskCount_ {0};
     Mutex waitMutex_;
     ConditionVariable waitCV_;

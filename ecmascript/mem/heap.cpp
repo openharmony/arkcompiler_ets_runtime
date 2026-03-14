@@ -1063,19 +1063,23 @@ void Heap::InitializeSpaces()
 
 void Heap::SelectFromSpace()
 {
-    size_t liveObjectSize = 0;
-    activeSemiSpace_->EnumerateRegions([&liveObjectSize, this](Region *current) {
-        liveObjectSize += current->IsFreshRegion() ? current->GetAllocatedBytes() : current->AliveObject();
-        current->SetRegionTypeFlag(RegionTypeFlag::FROM);
-    });
-    liveObjectSize = std::min(activeSemiSpace_->GetHeapObjectSize(), liveObjectSize);
-    oldSpace_->EnumerateRegions([&liveObjectSize](Region *current) {
-        liveObjectSize += current->AliveObject();
-        current->SetRegionTypeFlag(RegionTypeFlag::FROM);
-    });
-    SwapOldSpace();
-    SwapNewSpace();
-    oldSpace_->SetPreservedSize(liveObjectSize);
+    if constexpr (G_USE_CMS_GC) {
+        GetSlotSpace()->PrepareCompact();
+    } else {
+        size_t liveObjectSize = 0;
+        activeSemiSpace_->EnumerateRegions([&liveObjectSize, this](Region *current) {
+            liveObjectSize += current->IsFreshRegion() ? current->GetAllocatedBytes() : current->AliveObject();
+            current->SetRegionTypeFlag(RegionTypeFlag::FROM);
+        });
+        liveObjectSize = std::min(activeSemiSpace_->GetHeapObjectSize(), liveObjectSize);
+        oldSpace_->EnumerateRegions([&liveObjectSize](Region *current) {
+            liveObjectSize += current->AliveObject();
+            current->SetRegionTypeFlag(RegionTypeFlag::FROM);
+        });
+        SwapOldSpace();
+        SwapNewSpace();
+        oldSpace_->SetPreservedSize(liveObjectSize);
+    }
 }
 
 void Heap::ResetLargeCapacity(size_t heapSize)

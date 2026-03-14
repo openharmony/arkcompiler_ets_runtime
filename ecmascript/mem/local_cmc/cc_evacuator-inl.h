@@ -104,7 +104,7 @@ void CCUpdateVisitor<needUpdateLocalToShare>::HandleSlot(ObjectSlot slot, Region
     Region *objectRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
     if (objectRegion->InSharedSweepableSpace()) {
         if constexpr (needUpdateLocalToShare) {
-            rootRegion->InsertLocalToShareRSetForCC(slot.SlotAddress());
+            rootRegion->InsertSweepingLocalToShareRSetForCC(slot.SlotAddress());
         }
         return;
     }
