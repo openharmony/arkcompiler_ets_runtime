@@ -551,6 +551,9 @@ void HeapSnapshot::GenerateNodeRootVisitor::VisitBaseAndDerivedRoot([[maybe_unus
 void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTaggedValue &value)
 {
     Node *node = snapshot_.GenerateNode(value, 0, isInFinish_, isSimplify_);
+    if (node == nullptr || !value.IsHeapObject()) {
+        return;
+    }
     switch (type) {
         case Root::ROOT_LOCAL_HANDLE:
             snapshot_.localHandleRoots_.emplace(node);
