@@ -165,6 +165,14 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
         CreateJitResources();
     }
 
+    // When starting JIT through the application, the initialization of JIT fort is completed in app spawn.
+    // When starting JIT through ark_js_vm, the initialization of JIT fort needs to be completed on the main thread.
+    // Note: All threads using JIT fort must have access to JIT fort memory. It is best to ensure that all threads
+    // that require directional JIT fort memory come from a thread that has already initialized JIT fort memory.
+    if (!IsAppJit()) {
+        JitFort::InitJitFort();
+    }
+
     if (IsLibResourcesResolved()) {
         jitDfx_ = JitDfx::GetInstance();
         jitDfx_->Init(options, bundleName_);
