@@ -1207,13 +1207,27 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethodForDefineMethod(GateRef glue, 
     Label exit(env);
     Label defaultLabel(env);
 
-    Label labelBuffer[1] = { Label(env) };
-    int64_t valueBuffer[1] = { static_cast<int64_t>(FunctionKind::ASYNC_FUNCTION) };
+    Label labelBuffer[3] = { Label(env), Label(env), Label(env) };
+    int64_t valueBuffer[3] = {
+        static_cast<int64_t>(FunctionKind::ASYNC_FUNCTION),
+        static_cast<int64_t>(FunctionKind::GENERATOR_FUNCTION),
+        static_cast<int64_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION)
+    };
     GateRef globalEnv = GetCurrentGlobalEnv();
-    Switch(kind, &defaultLabel, valueBuffer, labelBuffer, 1);
+    Switch(kind, &defaultLabel, valueBuffer, labelBuffer, 3);
     Bind(&labelBuffer[0]);
     {
         hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ASYNC_FUNCTION_CLASS);
+        Jump(&exit);
+    }
+    Bind(&labelBuffer[1]);
+    {
+        hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::GENERATOR_FUNCTION_CLASS);
+        Jump(&exit);
+    }
+    Bind(&labelBuffer[2]);
+    {
+        hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS);
         Jump(&exit);
     }
     Bind(&defaultLabel);

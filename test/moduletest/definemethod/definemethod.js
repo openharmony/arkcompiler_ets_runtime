@@ -91,6 +91,8 @@ print(e1.method(e));
 print(e2.method(e2));
 
 class Model {
+    *genMethod() {}
+    async *asyncGenMethod() {}
     get id(){
         return "id";
     }
@@ -98,7 +100,13 @@ class Model {
         this.id = "new id"
     }
     async asyncFunction() {}
+    *genMethod1() {}
+    async *asyncGenMethod1() {}
 }
 let m = new Model();
 
 print(ArkTools.isAsyncFunction(m.asyncFunction))
+print(m.genMethod.constructor.name)
+print(m.asyncGenMethod.constructor.name)
+print(m.genMethod1.constructor.name)
+print(m.asyncGenMethod1.constructor.name)
