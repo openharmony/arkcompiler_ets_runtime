@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "objects/dynamic_object_accessor_util.h"
+#include "common_runtime/common_interfaces/objects/dynamic_object_accessor_util.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
@@ -32,7 +32,7 @@
 #include "ecmascript/object_operator.h"
 
 
-namespace common {
+namespace common_vm {
 
 using panda::ecmascript::EcmaHandleScope;
 using panda::ecmascript::EcmaVM;
@@ -55,7 +55,8 @@ TaggedType* DynamicObjectAccessorUtil::GetProperty(const BaseObject *obj, const 
     panda::ecmascript::ThreadManagedScope managedScope(jsThread);
     ObjectFactory *factory = jsThread->GetEcmaVM()->GetFactory();
     panda::EscapeLocalScope scope(jsThread->GetEcmaVM());
-    JSHandle<JSTaggedValue> holderHandle(jsThread, TaggedObject::Cast(obj));
+    JSHandle<JSTaggedValue> holderHandle(jsThread,
+        TaggedObject::Cast(reinterpret_cast<const common::BaseObject *>(obj)));
     JSHandle<JSTaggedValue> keyHandle(factory->NewFromUtf8(name));
     auto resultValue = JSTaggedValue::GetProperty(jsThread, holderHandle, keyHandle).GetValue();
     auto ret = scope.Escape(panda::JSNApiHelper::ToLocal<panda::JSValueRef>(resultValue));
@@ -68,7 +69,8 @@ bool DynamicObjectAccessorUtil::SetProperty(const BaseObject *obj, const char *n
     panda::ecmascript::ThreadManagedScope managedScope(jsThread);
     ObjectFactory *factory = jsThread->GetEcmaVM()->GetFactory();
     panda::EscapeLocalScope scope(jsThread->GetEcmaVM());
-    JSHandle<JSTaggedValue> holderHandle(jsThread, TaggedObject::Cast(obj));
+    JSHandle<JSTaggedValue> holderHandle(jsThread,
+        TaggedObject::Cast(reinterpret_cast<const common::BaseObject *>(obj)));
     JSHandle<JSTaggedValue> keyHandle(factory->NewFromUtf8(name));
     JSTaggedValue taggedValue(value);
     JSHandle<JSTaggedValue> valueHandle(jsThread, taggedValue);
