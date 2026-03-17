@@ -340,7 +340,6 @@ public:
     GateRef DoubleAbs(GateRef x);
     GateRef DoubleIsInteger(GateRef x);
     GateRef DoubleIsWithinInt32(GateRef x);
-    GateRef DoubleInRangeInt32(GateRef x);
     GateRef DoubleTrunc(GateRef x);
     GateRef TaggedIsNull(GateRef x);
     GateRef TaggedIsNotNull(GateRef x);
