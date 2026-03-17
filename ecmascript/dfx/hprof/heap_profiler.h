@@ -136,6 +136,10 @@ public:
     {
         return const_cast<EntryIdMap *>(entryIdMap_);
     }
+    CUnorderedMap<uintptr_t, NodeId> GetNodeAddressIdMap()
+    {
+        return nodeAddressIdMap_;
+    }
     Chunk *GetChunk() const
     {
         return const_cast<Chunk *>(&chunk_);
@@ -183,6 +187,7 @@ private:
     HeapSnapshot *MakeHeapSnapshot(SampleType sampleType, const DumpSnapShotOption &dumpOption,
                                    bool traceAllocation = false);
     bool DoDump(Stream *stream, Progress *progress, const DumpSnapShotOption &dumpOption);
+    void UpdateNodeAddressIdMap();
     std::string GenDumpFileName(DumpFormat dumpFormat);
     CString GetTimeStamp();
     void UpdateHeapObjects(HeapSnapshot *snapshot);
@@ -201,6 +206,7 @@ private:
     StringHashMap stringTable_;
     bool isProfiling_ {false};
     EntryIdMap *entryIdMap_;
+    CUnorderedMap<uintptr_t, NodeId> nodeAddressIdMap_ {};
     std::unique_ptr<HeapTracker> heapTracker_;
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};

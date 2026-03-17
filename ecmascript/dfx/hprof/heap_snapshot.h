@@ -521,6 +521,16 @@ public:
         return 1; // 1 : invalid id
     }
 
+    void SetNodeAddressIdMap(const CUnorderedMap<uintptr_t, NodeId> &nodeAddressIdMap)
+    {
+        nodeAddressIdMap_ = nodeAddressIdMap;
+    }
+
+    CUnorderedMap<uintptr_t, NodeId> GetNodeAddressIdMap()
+    {
+        return nodeAddressIdMap_;
+    }
+
     // Insert a string into the string table and return its ID.
     StringId InsertString(CString &str)
     {
@@ -640,6 +650,7 @@ private:
     CMap<MethodLiteral *, uint32_t> methodToTraceNodeId_;
     CVector<uint32_t> traceNodeIndex_;
     EntryIdMap* entryIdMap_;
+    CUnorderedMap<uintptr_t, NodeId> nodeAddressIdMap_;
     Chunk chunk_;
     friend class HeapSnapShotFriendTest;
 };

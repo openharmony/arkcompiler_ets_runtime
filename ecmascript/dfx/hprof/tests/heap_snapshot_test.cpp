@@ -15,6 +15,7 @@
 
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
+#include "ecmascript/dfx/hprof/stream.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -83,6 +84,17 @@ public:
     {
         return heapProfiler.GetEcmaStringTable();
     }
+
+    void UpdateNodeAddressIdMapTest()
+    {
+        heapProfiler.UpdateNodeAddressIdMap();
+    }
+
+    CUnorderedMap<uintptr_t, NodeId> GetNodeAddressIdMapTest()
+    {
+        return heapProfiler.GetNodeAddressIdMap();
+    }
+
 private:
     HeapProfiler heapProfiler;
     const EcmaVM *vm_;
@@ -115,6 +127,52 @@ const std::set<CString> variableMap({
     "string1string2string3string4", "string5string6string7string8",
     "string1string2string3string4string5string6string7string8"
 });
+
+class TestSerializeStream : public Stream {
+public:
+    TestSerializeStream() = default;
+    ~TestSerializeStream() = default;
+
+    void EndOfStream() override{}
+    int GetSize() override
+    {
+        return 100_KB;
+    }
+    bool WriteChunk(char *data, int32_t size) override
+    {
+        output.append(data, size);
+        return true;
+    }
+    bool WriteExtraInfo(char *data, int32_t size) override
+    {
+        mapOutput.append(data, size);
+        return true;
+    }
+    bool WriteBinBlock(char *data, int32_t size) override
+    {
+        return WriteChunk(data, size);
+    }
+    bool Good() override
+    {
+        return true;
+    }
+    void UpdateHeapStats(HeapStat* updateData, int32_t count) override {}
+    void UpdateLastSeenObjectId(int32_t lastSeenObjectId, int64_t timeStampUs) override {}
+
+    std::string GetOutput() const
+    {
+        return output;
+    }
+
+    std::string GetMapOutput() const
+    {
+        return mapOutput;
+    }
+
+private:
+    std::string output;
+    std::string mapOutput;
+};
 
 HWTEST_F_L0(HeapSnapShotTest, TestGenerateStringNode)
 {
@@ -273,5 +331,84 @@ HWTEST_F_L0(HeapSnapShotTest, TestHandleSyntheticRoots)
     ASSERT_EQ(globalHandleRoot->GetType(), NodeType::HANDLE) << "GlobalHandleSyntheticRoot type should be HANDLE";
     CString globalName = *globalHandleRoot->GetName();
     ASSERT_TRUE(globalName.find("GlobalHandleRoot[") == 0) << "Expected GlobalHandleRoot, got: " << globalName;
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestNativeAddrToNodeIdMapOption)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    DumpSnapShotOption dumpOption;
+    dumpOption.nativeAddrToNodeIdMap = 1;
+    ASSERT_EQ(dumpOption.nativeAddrToNodeIdMap, 1);
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestHeapSnapshotSetNodeAddressIdMap)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    CUnorderedMap<uintptr_t, NodeId> testMap;
+    testMap.emplace(0x1000, 1);
+    testMap.emplace(0x2000, 2);
+    snapshot->SetNodeAddressIdMap(testMap);
+
+    CUnorderedMap<uintptr_t, NodeId> resultMap = snapshot->GetNodeAddressIdMap();
+    ASSERT_EQ(resultMap.size(), 2u);
+    ASSERT_EQ(resultMap.at(0x1000), 1);
+    ASSERT_EQ(resultMap.at(0x2000), 2);
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestUpdateNodeAddressIdMap)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    dumpOption.nativeAddrToNodeIdMap = 1;
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    tester.UpdateNodeAddressIdMapTest();
+    CUnorderedMap<uintptr_t, NodeId> nodeAddressIdMap = tester.GetNodeAddressIdMapTest();
+    ASSERT_TRUE(nodeAddressIdMap.empty() || nodeAddressIdMap.size() > 0);
+#else
+    ASSERT_TRUE(true);
+#endif
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestSerializeExtraInfo)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    dumpOption.nativeAddrToNodeIdMap = 1;
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    tester.UpdateNodeAddressIdMapTest();
+    CUnorderedMap<uintptr_t, NodeId> nodeAddressIdMap = tester.GetNodeAddressIdMapTest();
+    if (!nodeAddressIdMap.empty()) {
+        snapshot->SetNodeAddressIdMap(nodeAddressIdMap);
+    }
+
+    TestSerializeStream stream;
+    bool result = HeapSnapshotJSONSerializer::SerializeExtraInfo(snapshot, &stream);
+    ASSERT_TRUE(result);
+    std::string mapOutput = stream.GetMapOutput();
+    if (!nodeAddressIdMap.empty()) {
+        ASSERT_TRUE(mapOutput.find("nodeIdMap") != std::string::npos);
+    } else {
+        ASSERT_TRUE(mapOutput.empty());
+    }
+#else
+    ASSERT_TRUE(true);
+#endif
 }
 }

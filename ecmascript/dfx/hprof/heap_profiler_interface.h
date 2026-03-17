@@ -32,6 +32,7 @@ struct DumpSnapShotOption {
     bool isVmMode = true; // vmMode do more dump.
     bool isPrivate = false;
     bool captureNumericValue = false; // heapdump add numeric object.
+    int32_t nativeAddrToNodeIdMap = 0; // heapdump add node address to id map.
     bool isFullGC = true; // whether do FullGC.
     bool isSimplify = false; // whether trim heapdump snapshot.
     bool isSync = true; // OOM and Ide dump need sync dump.

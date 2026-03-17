@@ -291,22 +291,72 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
     }
     // In async mode, EntryIdMap is filled and updated in parent-process,
     // so EntryIdMap needs to be updated only in sync mode.
+    bool writeMap = false;
     if (dumpOption.isSync) {
         entryIdMap_->UpdateEntryIdMap(snapshot);
+        if (dumpOption.nativeAddrToNodeIdMap != 0) {
+            writeMap = true;
+            UpdateNodeAddressIdMap();
+            snapshot->SetNodeAddressIdMap(nodeAddressIdMap_);
+        }
     }
     isProfiling_ = true;
     if (progress != nullptr) {
         progress->ReportProgress(heapCount, heapCount);
     }
+    auto serializeAndDelete = [&](Stream* targetStream) -> bool {
+        auto result = HeapSnapshotJSONSerializer::Serialize(snapshot, targetStream);
+        if (writeMap) result = HeapSnapshotJSONSerializer::SerializeExtraInfo(snapshot, targetStream);
+        GetChunk()->Delete(snapshot);
+        return result;
+    };
     if (!stream->Good()) {
         FileStream newStream(GenDumpFileName(dumpOption.dumpFormat));
-        auto serializerResult = HeapSnapshotJSONSerializer::Serialize(snapshot, &newStream);
-        GetChunk()->Delete(snapshot);
-        return serializerResult;
+        return serializeAndDelete(&newStream);
     }
-    auto serializerResult = HeapSnapshotJSONSerializer::Serialize(snapshot, stream);
-    GetChunk()->Delete(snapshot);
-    return serializerResult;
+    return serializeAndDelete(stream);
+}
+
+void HeapProfiler::UpdateNodeAddressIdMap()
+{
+    class NodeAddressRootVisitor final : public RootVisitor {
+    public:
+        explicit NodeAddressRootVisitor(CUnorderedMap<uintptr_t, NodeId> &nodeAddrIdMap,
+                                        EntryIdMap *entryIdMap)
+            : nodeAddrIdMap_(nodeAddrIdMap), entryIdMap_(entryIdMap) {}
+        ~NodeAddressRootVisitor() = default;
+
+        void VisitRoot(Root type, ObjectSlot slot) override
+        {
+            auto it = entryIdMap_->GetIdMap()->find(slot.GetTaggedType());
+            if (it != entryIdMap_->GetIdMap()->end()) {
+                nodeAddrIdMap_[slot.SlotAddress()] = it->second;
+            }
+        }
+
+        void VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end) override
+        {
+            for (ObjectSlot slot = start; slot < end; slot++) {
+                VisitRoot(type, slot);
+            }
+        }
+
+        void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived,
+                                     [[maybe_unused]] uintptr_t baseOldObject) override {}
+
+    private:
+        CUnorderedMap<uintptr_t, NodeId> &nodeAddrIdMap_;
+        EntryIdMap *entryIdMap_;
+    };
+
+    JSThread *thread = vm_->GetAssociatedJSThread();
+    EcmaVM* ecmaVm = thread->GetEcmaVM();
+    ThreadManagedScope managedScope(thread);
+
+    NodeAddressRootVisitor visitor(nodeAddressIdMap_, entryIdMap_);
+    ecmaVm->IterateHandle(visitor);
+    thread->Iterate(visitor, GlobalVisitType::ALL_GLOBAL_VISIT);
+    Runtime::GetInstance()->IterateSendableGlobalStorage(visitor);
 }
 
 [[maybe_unused]]static void WaitProcess(pid_t pid, const std::function<void(uint8_t)> &callback)
