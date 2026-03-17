@@ -46,6 +46,8 @@ HWTEST_F_L0(DynamicObjectAccessorUtilTest, SetGetProperty01)
     auto *obj = reinterpret_cast<const common_vm::BaseObject *>(jsobject.GetTaggedValue().GetTaggedObject());
     auto setResult = common_vm::DynamicObjectAccessorUtil::SetProperty(obj, key, taggedValue.GetRawData());
     EXPECT_EQ(setResult, true);
+    // Re-extract pointer: GC inside SetProperty may have moved the object
+    obj = reinterpret_cast<const common_vm::BaseObject *>(jsobject.GetTaggedValue().GetTaggedObject());
     auto taggedType = common_vm::DynamicObjectAccessorUtil::GetProperty(obj, key);
     EXPECT_EQ(JSTaggedValue(*taggedType).GetInt(), value);
 }
