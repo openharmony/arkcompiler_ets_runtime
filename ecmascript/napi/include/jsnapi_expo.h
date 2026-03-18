@@ -46,6 +46,16 @@ class EscapeLocalScope;
 class PromiseRejectInfo;
 template<typename T>
 class CopyableGlobal;
+
+struct SerializeOptions {
+    bool defaultTransfer;
+    bool defaultCloneShared;
+    bool needSerializeStack;
+
+    SerializeOptions(bool transfer = false, bool cloneShared = true, bool serializeStack = false)
+        : defaultTransfer(transfer), defaultCloneShared(cloneShared), needSerializeStack(serializeStack) {}
+};
+
 template<typename T>
 class Global;
 template<typename T>
@@ -1941,9 +1951,14 @@ public:
                                 bool defaultTransfer = false,
                                 bool defaultCloneShared = true,
                                 bool needSerializeStack = false);
+    static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+                                Local<JSValueRef> cloneList, const SerializeOptions& options);
     static void* SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
                                          Local<JSValueRef> cloneList, std::string &error, bool defaultTransfer = false,
                                          bool defaultCloneShared = true, bool needSerializeStack = false);
+    static void* SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+                                         Local<JSValueRef> cloneList, std::string &error,
+                                         const SerializeOptions& options);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     // InterOp Serialize & Deserialize.
     static void* InterOpSerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,

@@ -6452,6 +6452,25 @@ void *JSNApi::SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> value,
     }
 }
 
+void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
+                             Local<JSValueRef> cloneList, const SerializeOptions& options)
+{
+    return SerializeValue(vm, value, transfer, cloneList,
+                          options.defaultTransfer,
+                          options.defaultCloneShared,
+                          options.needSerializeStack);
+}
+
+void *JSNApi::SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> value, Local<JSValueRef> transfer,
+                                      Local<JSValueRef> cloneList, std::string &error,
+                                      const SerializeOptions& options)
+{
+    return SerializeValueWithError(vm, value, transfer, cloneList, error,
+                                   options.defaultTransfer,
+                                   options.defaultCloneShared,
+                                   options.needSerializeStack);
+}
+
 Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void *hint)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
