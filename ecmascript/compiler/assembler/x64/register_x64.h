@@ -35,8 +35,8 @@ enum RegisterCode : int8_t {
 // Register class
 class Register : public RegisterBase<Register, REG_AFTER_LAST> {
 public:
-    constexpr int HighBit() const { return Code() >> 3; }
-    constexpr int LowBits() const { return Code() & 0x7; }
+    constexpr uint32_t HighBit() const { return static_cast<uint32_t>(Code()) >> LOW_BITS_SIZE; }
+    constexpr uint32_t LowBits() const { return static_cast<uint32_t>(Code()) & LOW_BITS_MASK; }
 
     static constexpr Register FromCode(int8_t code) { return Register(code); }
     static constexpr Register Invalid() { return RegisterBase::InvalidReg(); }
@@ -44,6 +44,9 @@ public:
     constexpr Register(RegisterCode code) : RegisterBase(static_cast<int8_t>(code)) {}
 
 private:
+    static constexpr uint32_t LOW_BITS_SIZE = 3;
+    static constexpr uint32_t LOW_BITS_MASK = (1 << LOW_BITS_SIZE) - 1;
+
     friend class RegisterBase<Register, REG_AFTER_LAST>;
     explicit constexpr Register(int8_t code) : RegisterBase(code) {}
 };
@@ -71,9 +74,6 @@ enum XMMRegisterCode : int8_t {
 // XMM Register class
 class XMMRegister : public RegisterBase<XMMRegister, kXMMRegAfterLast> {
 public:
-    constexpr int HighBit() const { return Code() >> 3; }
-    constexpr int LowBits() const { return Code() & 0x7; }
-
     static constexpr XMMRegister FromCode(int8_t code) { return XMMRegister(code); }
     static constexpr XMMRegister Invalid() { return RegisterBase::InvalidReg(); }
 
