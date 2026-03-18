@@ -1149,6 +1149,11 @@ public:
 
     static int InitializeStartRealTime();
 
+    ArkTSMode GetArkTSMode() const
+    {
+        return options_.GetArkTSMode();
+    }
+
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     void ResetScopeLockStats()
     {

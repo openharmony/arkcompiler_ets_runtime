@@ -689,7 +689,6 @@ namespace panda::ecmascript {
     V(PromiseJob, Reaction)                   \
     V(PromiseJob, ResolveThenableJob)         \
     V(PromiseJob, DynamicImportJob)           \
-    V(PromiseJob, CatchException)             \
     V(Promise, Constructor)                   \
     V(Promise, All)                           \
     V(Promise, Race)                          \

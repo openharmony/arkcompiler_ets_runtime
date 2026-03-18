@@ -36,6 +36,9 @@
 namespace {
 constexpr size_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
 constexpr size_t DEFAULT_REL_MODE = 2;
+constexpr std::string_view LANGUAGE_DYNAMIC = "dynamic";
+constexpr std::string_view LANGUAGE_STATIC = "static";
+constexpr std::string_view LANGUAGE_HYBRID = "hybrid";
 }  // namespace
 
 // namespace panda {
@@ -78,6 +81,12 @@ enum ArkProperties {
     ENABLE_RAWHEAP_CROP = 1ULL << 31,
     DISABLE_BOOT_SNAPSHOT_ESCAPE = 1ULL << 32,
     DISABLE_STRING_TABLE_CONCURRENT_SWEEP = 1ULL << 33,
+};
+
+enum ArkTSMode {
+    DYNAMIC = 0,
+    STATIC = 1,
+    HYBRID = 2,
 };
 
 // asm interpreter control parsed option
@@ -2379,6 +2388,22 @@ public:
         return enableGCTimeoutCheck_;
     }
 
+    void SetArkTSMode(const std::string& arkTSMode)
+    {
+        if (arkTSMode == LANGUAGE_DYNAMIC) {
+            arkTSMode_ = ArkTSMode::DYNAMIC;
+        } else if (arkTSMode == LANGUAGE_STATIC) {
+            arkTSMode_ = ArkTSMode::STATIC;
+        } else if (arkTSMode == LANGUAGE_HYBRID) {
+            arkTSMode_ = ArkTSMode::HYBRID;
+        }
+    }
+
+    ArkTSMode GetArkTSMode() const
+    {
+        return arkTSMode_;
+    }
+
     static bool ParseBool(const std::string &arg, bool* argBool);
     static bool ParseInt(const std::string &arg, int* argInt);
     static bool ParseUint32(const std::string &arg, uint32_t* argUInt32);
@@ -2709,6 +2734,7 @@ private:
     bool enableWarmStartupSmartGC_ {false};
     bool disableModuleSnapshot_ { false };
     bool enableGCTimeoutCheck_ {true};
+    ArkTSMode arkTSMode_ {ArkTSMode::DYNAMIC};
 };
 } // namespace panda::ecmascript
 

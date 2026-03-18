@@ -1969,6 +1969,7 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);
+    static void UpdateArkTSMode(EcmaVM *vm, const std::string &arkTSMode);
     static void AddWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     // Must be called from non-JS thread or JS thread in NON-RUNNING state
