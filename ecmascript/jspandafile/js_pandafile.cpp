@@ -16,8 +16,13 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 #include "common_components/taskpool/taskpool.h"
+#include "ecmascript/jspandafile/js_pandafile_snapshot.h"
+#include "ecmascript/jspandafile/js_pandafile_record_info_snapshot.h"
+#include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/runtime.h"
+#include "ecmascript/ohos/ohos_constants.h"
+#include "ecmascript/ohos/ohos_version_info_tools.h"
 
 namespace panda::ecmascript {
 namespace {
@@ -35,6 +40,71 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, 
     }
     checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
+}
+
+JSPandaFile::JSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &descriptor,
+                         std::string_view entryPoint, CreateMode mode)
+    : pf_(pf), desc_(descriptor), mode_(mode)
+{
+    ASSERT(pf_ != nullptr);
+    CheckIsBundlePack();
+    checksum_ = pf->GetHeader()->checksum;
+    isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
+
+    EcmaVM *vm = thread->GetEcmaVM();
+
+    if (!vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
+        if (JSPandaFileSnapshot::ReadData(thread, this, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR)) {
+            // Use snapshot to skip InitializeMergedPF and TranslateClasses
+            return;
+        }
+        ResetAfterSnapshotFail();
+    }
+
+    // If snapshot loading fails, fall back to normal initialization and translation
+    CString methodName = entryPoint.data();
+    if (isBundlePack_) {
+        InitializeUnMergedPF();
+        // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
+        auto pos = entryPoint.find_last_of("::");
+        if (pos != std::string_view::npos) {
+            methodName = entryPoint.substr(pos + 1);
+        } else {
+            // default use func_main_0 as entryPoint
+            methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
+        }
+    } else {
+        InitializeMergedPF();
+    }
+
+    if (isNewVersion_ && vm->IsAsynTranslateClasses()) {
+        TranslateClasses(thread, methodName);
+    } else {
+        PandaFileTranslator::TranslateClasses(thread, this, methodName);
+    }
+}
+
+void JSPandaFile::ResetAfterSnapshotFail()
+{
+    for (const auto &recordInfoPair : jsRecordInfo_) {
+        delete recordInfoPair.second;
+    }
+    jsRecordInfo_.clear();
+    npmEntries_.clear();
+    ownedRecordNames_.clear();
+    ownedNpmEntries_.clear();
+
+    if (methodLiterals_ != nullptr) {
+        JSPandaFileManager::FreeBuffer(methodLiterals_, sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_);
+        methodLiterals_ = nullptr;
+    }
+#if ENABLE_LATEST_OPTIMIZATION
+    methodLiteralMap_.Clear();
+#else
+    methodLiteralMap_.clear();
+#endif
+    numMethods_ = 0;
+    numClasses_ = 0;
 }
 
 void JSPandaFile::CheckIsBundlePack()

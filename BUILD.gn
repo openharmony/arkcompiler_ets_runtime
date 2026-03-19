@@ -993,6 +993,7 @@ ecma_source = [
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",
   "ecmascript/jspandafile/js_pandafile_manager.cpp",
+  "ecmascript/jspandafile/js_pandafile_record_info_snapshot.cpp",
   "ecmascript/jspandafile/js_pandafile_snapshot.cpp",
   "ecmascript/jspandafile/class_info_extractor.cpp",
   "ecmascript/jspandafile/debug_info_extractor.cpp",
