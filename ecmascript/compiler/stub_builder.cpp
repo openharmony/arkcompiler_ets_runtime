@@ -9858,15 +9858,37 @@ void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
             BRANCH(IsNativePointer(glue, value), &isNativePointer, &notNativePointer);
             Bind(&isNativePointer);
             {
-                NewObjectStubBuilder newBuilder(this);
-                GateRef array = newBuilder.NewTaggedArray(glue, Int32(ECMAObject::RESOLVED_MAX_SIZE));
-                SetExtraLengthOfTaggedArray(glue, array, Int32(0));
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, array,
-                                      Int32(ECMAObject::HASH_INDEX), IntToTaggedInt(hash));
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, array,
-                                      Int32(ECMAObject::FUNCTION_EXTRA_INDEX), value);
-                Store(VariableType::JS_ANY(), glue, object, hashOffset, array);
-                Jump(&exit);
+                Label isJSShared(env);
+                Label notJSShared(env);
+                Label setArrayValues(env);
+                DEFVARIABLE(array, VariableType::JS_ANY(), Undefined());
+                BRANCH(IsJSShared(glue, object), &isJSShared, &notJSShared);
+                Bind(&isJSShared);
+                {
+                    // For shared objects, create a shared TaggedArray
+                    NewObjectStubBuilder newBuilder(this);
+                    array = newBuilder.NewSTaggedArray(glue, Int32(ECMAObject::RESOLVED_MAX_SIZE));
+                    SetExtraLengthOfTaggedArray(glue, *array, Int32(0));
+                    Jump(&setArrayValues);
+                }
+                Bind(&notJSShared);
+                {
+                    // For local objects, use the original logic
+                    NewObjectStubBuilder newBuilder(this);
+                    array = newBuilder.NewTaggedArray(glue, Int32(ECMAObject::RESOLVED_MAX_SIZE));
+                    SetExtraLengthOfTaggedArray(glue, *array, Int32(0));
+                    Jump(&setArrayValues);
+                }
+                Bind(&setArrayValues);
+                {
+                    // Set hash and function extra info
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array,
+                                          Int32(ECMAObject::HASH_INDEX), IntToTaggedInt(hash));
+                    SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array,
+                                          Int32(ECMAObject::FUNCTION_EXTRA_INDEX), value);
+                    Store(VariableType::JS_ANY(), glue, object, hashOffset, *array);
+                    Jump(&exit);
+                }
             }
             Bind(&notNativePointer);
             FatalPrint(glue, { Int32(GET_MESSAGE_STRING_ID(ThisBranchIsUnreachable)) });
