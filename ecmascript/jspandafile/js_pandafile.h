@@ -536,7 +536,6 @@ private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
 
-    void IncreasePostTaskCount();
     void IncreaseRunningTaskCount();
 
     void TranslateClassInMainThread(JSThread *thread, const CString &methodName);
@@ -552,7 +551,6 @@ private:
                                   CurClassTranslateWork &curTranslateWorks, std::atomic<bool> &isTaskRunning,
                                   const std::shared_ptr<std::atomic<bool>> &waitingFinish);
 
-    void ReducePostTaskCount();
     void ReduceTaskCount();
 
     void SetAllMethodLiteralToMap();
@@ -583,7 +581,6 @@ private:
     Mutex jsRecordInfoMutex_;
     ConditionVariable waitTranslateClassFinishedCV_;
     uint32_t runningTaskCount_ {0};
-    uint32_t postTaskCount_ {0};
     uint32_t classIndex_ {0};
     uint32_t methodIndex_ {0};
 
