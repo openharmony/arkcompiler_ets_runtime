@@ -100,4 +100,10 @@
     assert_equal(regex2.test("hello world"), true);
 }
 
+{
+    let reg2 = /((?<=a))/;
+    let str = "aba";
+    assert_equal(JSON.stringify(str.split(reg2)), '["a","","ba"]');
+}
+
 test_end();
