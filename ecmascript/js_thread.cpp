@@ -1652,6 +1652,11 @@ std::string JSThread::GetThreadName() const
     return threadName_;
 }
 
+void JSThread::SetThreadName(const std::string &name)
+{
+    threadName_ = name;
+}
+
 #ifndef NDEBUG
 bool JSThread::IsInManagedState() const
 {
