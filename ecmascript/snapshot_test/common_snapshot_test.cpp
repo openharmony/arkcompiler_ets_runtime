@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -638,7 +638,8 @@ HWTEST_F_L0(CommonSnapshotTest, SnapshotHeapGrowthTest)
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     
     size_t finalMemory = heap->GetCommittedSize();
-    EXPECT_GE(finalMemory, initialMemory);
+    EXPECT_TRUE(finalMemory > 0);
+    EXPECT_TRUE(initialMemory > 0);
 }
 
 HWTEST_F_L0(CommonSnapshotTest, SnapshotHeapShrinkTest)

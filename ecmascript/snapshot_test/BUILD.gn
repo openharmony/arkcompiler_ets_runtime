@@ -16,12 +16,62 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 module_output_path = "ets_runtime/ets_runtime"
 
-host_unittest_action("Common_Snapshot_Test") {
+host_unittest_action("Common_Snapshot_Test1") {
   module_out_path = module_output_path
 
   sources = [
     "common_snapshot_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Common_Snapshot_Test2") {
+  module_out_path = module_output_path
+
+  sources = [
     "common_snapshot_test2.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("Common_Snapshot_Test3") {
+  module_out_path = module_output_path
+
+  sources = [
     "common_snapshot_test3.cpp",
   ]
 
@@ -49,7 +99,9 @@ group("unittest") {
 
   # deps file
   deps = [
-    ":Common_Snapshot_Test",
+    ":Common_Snapshot_Test1",
+    ":Common_Snapshot_Test2",
+    ":Common_Snapshot_Test3",
   ]
 }
 
@@ -58,6 +110,8 @@ group("host_unittest") {
 
   # deps file
   deps = [
-    ":Common_Snapshot_TestAction",
+    ":Common_Snapshot_Test1Action",
+    ":Common_Snapshot_Test2Action",
+    ":Common_Snapshot_Test3Action",
   ]
 }
