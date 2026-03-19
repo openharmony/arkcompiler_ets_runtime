@@ -160,7 +160,11 @@ config("common_components_common_config") {
 
   if (enable_latest_optimization) {
     defines += [ "LATEST_OPTIMIZATION_MACRO" ]
-  }  
+  }
+
+  if (enable_v70_optimization) {
+    defines += [ "V70_OPTIMIZATION_MACRO" ]
+  }
 
   cflags_cc = [
     "-Wall",
