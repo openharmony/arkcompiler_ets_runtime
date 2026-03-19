@@ -105,3 +105,73 @@ if (isSendable(arr)) {
 } else {
     print("Arr is not sendable");
 }
+
+print("=== Test Map with sendable objects ===");
+
+class TestKey {
+    constructor(public id: number) {
+        "use sendable"
+    }
+}
+
+print("Test 1: Empty Map");
+let emptyMap: SendableMap = new SendableMap<object, string>();
+let key1 = new TestKey(1);
+let result1 = emptyMap.get(key1);
+if (result1 === undefined) {
+    print("Empty Map get returns undefined");
+} else {
+    print("Empty Map get returns: " + result1);
+}
+
+print("Test 2: Non-empty Map");
+let nonEmptyMap: SendableMap = new SendableMap<object, number>();
+let key2 = new TestKey(2);
+let key3 = new TestKey(3);
+nonEmptyMap.set(key2, 100);
+nonEmptyMap.set(key3, 200);
+print("Set key2=100, key3=200");
+
+let value2 = nonEmptyMap.get(key2);
+let value3 = nonEmptyMap.get(key3);
+let value4 = nonEmptyMap.get(new TestKey(4));
+
+if (value2 === 100) {
+    print("Get key2 returns 100");
+} else {
+    print("Get key2 returns: " + value2);
+}
+
+if (value3 === 200) {
+    print("Get key3 returns 200");
+} else {
+    print("Get key3 returns: " + value3);
+}
+
+if (value4 === undefined) {
+    print("Get non-existent key returns undefined");
+} else {
+    print("Get non-existent key returns: " + value4);
+}
+
+print("Test 3: Multiple Map operations");
+let testMap: SendableMap = new SendableMap<object, string>();
+for (let i = 0; i < 10; i++) {
+    let key = new TestKey(i);
+    testMap.set(key, "value" + i);
+}
+
+let count = 0;
+for (let i = 0; i < 10; i++) {
+    let key = new TestKey(i);
+    let val = testMap.get(key);
+    if (val === "value" + i) {
+        count++;
+    }
+}
+
+if (count === 10) {
+    print("All 10 Map operations successful");
+} else {
+    print("Map operations count: " + count);
+}

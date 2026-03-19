@@ -378,6 +378,15 @@ DEF_RUNTIME_STUBS(NewTaggedArray)
     return factory->NewTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NewSTaggedArray)
+{
+    RUNTIME_STUBS_HEADER(NewSTaggedArray);
+    JSTaggedValue length = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewSTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CopyArray)
 {
     RUNTIME_STUBS_HEADER(CopyArray);
