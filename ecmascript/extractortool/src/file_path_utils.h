@@ -13,15 +13,14 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_BASE_FILE_PATH_UTILS_H
-#define OHOS_ABILITY_BASE_FILE_PATH_UTILS_H
+#ifndef ECMASCRIPT_EXTRACTORTOOL_SRC_FILE_PATH_UTILS_H
+#define ECMASCRIPT_EXTRACTORTOOL_SRC_FILE_PATH_UTILS_H
 
 #include <string>
 #include <vector>
 #include <iostream>
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
     bool StringStartWith(const std::string& str, const char* startStr, size_t startStrLen);
     bool StringEndWith(const std::string& str, const char* endStr, size_t endStrLen);
     void SplitString(const std::string& str, std::vector<std::string>& out, size_t pos = 0, const char* seps = "\\/");
@@ -42,6 +41,5 @@ namespace ecmascript {
     bool MakeFilePath(const std::string& codePath, const std::string& modulePath, std::string& fileName);
     std::string GetLoadPath(const std::string& hapPath);
     std::string GetRelativePath(const std::string& srcPath);
-}  // namespace AbilityBase
-}  // namespace OHOS
-#endif  // OHOS_ABILITY_BASE_FILE_PATH_UTILS_H
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_EXTRACTORTOOL_SRC_FILE_PATH_UTILS_H

@@ -13,11 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_BASE_CONSTANTS_H
-#define OHOS_ABILITY_BASE_CONSTANTS_H
+#ifndef ECMASCRIPT_EXTRACTORTOOL_SRC_CONSTANTS_H
+#define ECMASCRIPT_EXTRACTORTOOL_SRC_CONSTANTS_H
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 namespace Constants {
 constexpr const char* ABS_CODE_PATH = "/data/app/el1/bundle/public";
 constexpr const char* LOCAL_CODE_PATH = "/data/storage/el1/bundle";
@@ -27,6 +26,5 @@ constexpr const char* FILE_DOT = "\\.";
 
 constexpr const char* COMPRESS_PROPERTY = "compress";
 }  // namespace Constants
-}  // namespace AbilityBase
-}  // namespace OHOS
-#endif  // OHOS_ABILITY_BASE_CONSTANTS_H
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_EXTRACTORTOOL_SRC_CONSTANTS_H

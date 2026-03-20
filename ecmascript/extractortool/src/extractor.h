@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_BASE_EXTRACTOR_H
-#define OHOS_ABILITY_BASE_EXTRACTOR_H
+#ifndef ECMASCRIPT_EXTRACTORTOOL_SRC_EXTRACTOR_H
+#define ECMASCRIPT_EXTRACTORTOOL_SRC_EXTRACTOR_H
 
 #include <memory>
 #include <mutex>
@@ -27,8 +27,7 @@
 #include "file_mapper.h"
 #include "zip_file.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 struct FileInfo {
     std::string fileName;
     uint32_t offset = 0;
@@ -114,6 +113,5 @@ private:
     static std::mutex mapMutex_;
     static std::unordered_map<std::string, std::shared_ptr<Extractor>> extractorMap_;
 };
-}  // namespace AbilityBase
-}  // namespace OHOS
-#endif  // OHOS_ABILITY_BASE_EXTRACTOR_H
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_EXTRACTORTOOL_SRC_EXTRACTOR_H

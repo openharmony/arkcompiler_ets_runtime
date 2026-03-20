@@ -22,8 +22,7 @@
 
 #include "ecmascript/log_wrapper.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 namespace {
 constexpr char EXT_NAME_ABC[] = ".abc";
 constexpr uint32_t MAX_FILE_NAME = 4096;
@@ -668,6 +667,7 @@ std::unique_ptr<FileMapper> ZipFile::CreateFileMapper(const std::string &fileNam
     }
     bool compress = zipEntry.compressionMethod > 0;
     if (type == FileMapperType::SAFE_ABC && compress) {
+        LOG_ECMA(ERROR) << "Entry is compressed for safe: " << fileName.c_str();
     }
     std::unique_ptr<FileMapper> fileMapper = std::make_unique<FileMapper>();
     auto result = false;
@@ -785,5 +785,4 @@ bool ZipFile::ExtractToBufByName(const std::string &fileName, std::unique_ptr<ui
 
     return true;
 }
-}  // namespace AbilityBase
-}  // namespace OHOS
+}  // namespace panda::ecmascript
