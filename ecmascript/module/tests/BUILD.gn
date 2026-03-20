@@ -113,10 +113,12 @@ host_unittest_action("ModuleTest") {
   sources = [
     # test file
     "ecma_module_test.cpp",
+    "js_dynamic_import_test.cpp",
     "js_module_deregister_test.cpp",
     "js_module_manager_test.cpp",
     "js_module_namespace_test.cpp",
     "js_shared_module_test.cpp",
+    "napi_module_loader_test.cpp",
     "static_module_loader_test.cpp",
     "static_module_proxy_test.cpp"
   ]
