@@ -45,6 +45,23 @@ bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *strea
     return true;
 }
 
+bool HeapSnapshotJSONSerializer::SerializeExtraInfo(HeapSnapshot *snapshot, Stream *stream)
+{
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeExtraInfo begin";
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+                      "HeapSnapshotJSONSerializer::SerializeExtraInfo", "");
+    ASSERT(!snapshot->GetNodeAddressIdMap().empty());
+    auto writer = new IdMapWriter(stream);
+
+    SerializeNodeAddressIdMap(snapshot, writer);
+    writer->End();
+
+    delete writer;
+
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeExtraInfo exit";
+    return true;
+}
+
 void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot, StreamWriter *writer)
 {
     writer->WriteString("{\"snapshot\":\n");  // 1.
@@ -341,5 +358,31 @@ void HeapSnapshotJSONSerializer::SerializeUnicodeChar(uint32_t unicodeChar, Stre
 void HeapSnapshotJSONSerializer::SerializerSnapshotClosure(StreamWriter *writer)
 {
     writer->WriteString("}\n");
+}
+
+void HeapSnapshotJSONSerializer::SerializeNodeAddressIdMap(HeapSnapshot *snapshot, StreamWriter *writer)
+{
+    LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeNodeAddressIdMap";
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+        "HeapSnapshotJSONSerializer::SerializeNodeAddressIdMap", "");
+    size_t i = 0;
+    writer->WriteString("{\"nodeIdMap\":[");
+    const CUnorderedMap<uintptr_t, NodeId>& nodeAddressIdMap = snapshot->GetNodeAddressIdMap();
+    for (auto node : nodeAddressIdMap) {
+        if (i > 0) {
+            writer->WriteChar(',');
+        }
+        writer->WriteString("{\"");
+        std::ostringstream oss;
+        const int width = sizeof(uintptr_t) * 2;
+        oss << "0x" << std::setfill('0') << std::setw(width) << std::uppercase << std::hex << node.first;
+        std::string address = oss.str();
+        writer->WriteString(address.c_str());
+        writer->WriteString("\":\"");
+        writer->WriteString(std::to_string(node.second).c_str());
+        writer->WriteString("\"}");
+        i++;
+    }
+    writer->WriteString("]}");
 }
 }  // namespace panda::ecmascript
