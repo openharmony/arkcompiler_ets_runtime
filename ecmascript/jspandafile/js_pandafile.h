@@ -33,6 +33,7 @@
 namespace panda {
 namespace ecmascript {
 class EcmaVM;
+class JSPandaFileRecordInfoSnapshot;
 using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
 
 enum class CreateMode : uint8_t {
@@ -104,6 +105,8 @@ public:
     static constexpr uint32_t DEFAULT_MAIN_METHOD_INDEX = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
+    JSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &descriptor,
+                std::string_view entryPoint, CreateMode state = CreateMode::RUNTIME);
     ~JSPandaFile();
 
     using ClassTranslateWork = std::vector<std::pair<uint32_t, uint32_t>>;
@@ -394,7 +397,7 @@ public:
     {
         return isBundlePack_;
     }
-    
+
     // note : it only uses in TDD
     void SetBundlePack(bool isBundlePack)
     {
@@ -533,6 +536,7 @@ public:
     static void CallReleaseSecureMemFunc(void* fileMapper);
 
 private:
+    void ResetAfterSnapshotFail();
     void InitializeUnMergedPF();
     void InitializeMergedPF();
 
@@ -603,7 +607,15 @@ private:
     CreateMode mode_ {CreateMode::RUNTIME};
     // This tag shows if main thread is waiting for the sub-threads to finish translate class tasks.
     std::shared_ptr<std::atomic<bool>> waitingFinish_ = std::make_shared<std::atomic<bool>>(false);
+
     friend class JSPandaFileSnapshot;
+    friend class JSPandaFileRecordInfoSnapshot;
+
+    // Storage for owned strings when loading from recordInfo snapshot.
+    // These strings provide persistent memory for string_view keys in jsRecordInfo_ and npmEntries_.
+    // Without this storage, string_view keys would become dangling pointers.
+    std::vector<CString> ownedRecordNames_;
+    std::vector<std::pair<CString, CString>> ownedNpmEntries_;
 };
 }  // namespace ecmascript
 }  // namespace panda

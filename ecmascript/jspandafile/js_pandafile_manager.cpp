@@ -425,6 +425,15 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::NewJSPandaFile(const panda_file
     return jsPandaFile;
 }
 
+std::shared_ptr<JSPandaFile> JSPandaFileManager::NewJSPandaFile(JSThread *thread, const panda_file::File *pf,
+                                                                const CString &desc, std::string_view entryPoint)
+{
+    std::shared_ptr<JSPandaFile> jsPandaFile = std::make_shared<JSPandaFile>(thread, pf, desc, entryPoint);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(jsPandaFile->GetChecksum(),
+                                                           jsPandaFile->GetJSPandaFileDesc());
+    return jsPandaFile;
+}
+
 DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPandaFile)
 {
     LOG_ECMA_IF(jsPandaFile == nullptr, FATAL) << "GetJSPtExtractor error, js pandafile is nullptr";
@@ -532,7 +541,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
 {
     ThreadNativeScope nativeScope(thread);
     ASSERT(GetJSPandaFile(pf) == nullptr);
-    std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
+    std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(thread, pf, desc, entryPoint);
     EcmaVM *vm = thread->GetEcmaVM();
     newJsPandaFile->SetFileMapper(fileMapper);
     std::string moduleName = GetModuleNameFromDesc(desc.c_str());
@@ -543,25 +552,6 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
         LOG_ECMA(DEBUG) << "SearchHapPathCallBack moduleName: " << moduleName
                         << ", fileName:" << desc << ", hapPath: " << hapPath;
         newJsPandaFile->SetHapPath(hapPath.c_str());
-    }
-
-    CString methodName = entryPoint.data();
-    if (newJsPandaFile->IsBundlePack()) {
-        // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
-        auto pos = entryPoint.find_last_of("::");
-        if (pos != std::string_view::npos) {
-            methodName = entryPoint.substr(pos + 1);
-        } else {
-            // default use func_main_0 as entryPoint
-            methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
-        }
-    }
-    if (newJsPandaFile->IsNewVersion() && vm->IsAsynTranslateClasses()) {
-        if (!UseSnapshot(thread, newJsPandaFile.get())) {
-            newJsPandaFile->TranslateClasses(thread, methodName);
-        }
-    } else {
-        PandaFileTranslator::TranslateClasses(thread, newJsPandaFile.get(), methodName);
     }
 
     {
@@ -701,7 +691,7 @@ bool JSPandaFileManager::UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile)
             return false;
         }
         return JSPandaFileSnapshot::ReadData(
-            thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR, version);
+            thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
     }
     return false;
 }

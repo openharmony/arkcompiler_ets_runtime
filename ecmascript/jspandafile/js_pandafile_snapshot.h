@@ -25,7 +25,7 @@ public:
     static constexpr std::string_view JSPANDAFILE_FILE_NAME = "_Pandafile.ams";
 
     static void PostWriteDataToFileJob(const EcmaVM *vm, const CString &path, const CString &version);
-    static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path, const CString &version);
+    static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path);
 
 protected:
     static bool IsJSPandaFileSnapshotFileExist(const CString &fileName, const CString &path);
@@ -40,7 +40,32 @@ protected:
 // +---------------------------------+
 // |        JSPandaFile Size         |
 // +---------------------------------+
+// |        moduleName Length        |
 // |           moduleName            |
+// +---------------------------------+<-------- RecordInfoSection
+// |      hasRecordInfoSection       |  // 1 byte: 0 = no recordInfo, 1 = has recordInfo
+// +---------------------------------+
+// |           numClasses_           |
+// |           numMethods_           |
+// |          isBundlePack_          |
+// +---------------------------------+
+// |       jsRecordInfo_ count       |
+// +---------------------------------+
+// |         JSRecordInfo[0]         |
+// |  recordName (len + data)        |
+// |  flags (isCjs, isJson, etc.)    |
+// |  classId, moduleRecordIdx, etc. |
+// |  npmPackageName (len + data)    |
+// +---------------------------------+
+// |              ...                |
+// +---------------------------------+
+// |         npmEntries_ count       |
+// +---------------------------------+
+// |           npmEntry[0]           |
+// |       key (len + data)          |
+// |       value (len + data)        |
+// +---------------------------------+
+// |              ...                |
 // +---------------------------------+<-------- MethodLiterals
 // |           numMethods            |
 // +---------------------------------+
