@@ -611,6 +611,8 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
     // 1: means the first parameter
     ASSERT(receiver->IsJSArray());
     auto array = JSHandle<JSArray>(receiver);
+    ASSERT(JSHClass::IsInitialArrayHClassWithElementsKind(thread, receiver->GetTaggedObject()->GetClass(),
+                                                          receiver->GetTaggedObject()->GetClass()->GetElementsKind()));
     if (!JSHClass::TransitToElementsKindUncheck(thread, JSHandle<JSObject>(array), elementsKind)) {
         return JSTaggedValue::Hole().GetRawData();
     }

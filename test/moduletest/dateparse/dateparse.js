@@ -87,3 +87,19 @@ print(new Date(1942, 0, 31));
     print(d1)
     print(d1.getHours())
 }
+
+{
+    let d0 = new Date("1970-01-01T00:00:00.000Z");
+    let d1 = d0;
+    d1.setMilliseconds(1773056119150);
+    print(d1);
+    let d2 = d0;
+    d2.setSeconds(1773056119150);
+    print(d2);
+    let d3 = d0;
+    d3.setMinutes(77305611915);
+    print(d3);
+    let d4 = d0;
+    d4.setHours(3730561191);
+    print(d4);
+}
