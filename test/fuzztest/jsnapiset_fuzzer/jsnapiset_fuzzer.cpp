@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsnapiset_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_vm.h"
@@ -28,11 +29,13 @@ void JSNApiSetAssetPathFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
         return;
     }
+    FuzzedDataProvider fdp(data, size);
+    std::string dynamicPart = fdp.ConsumeRandomLengthString(size);
     std::string str = "/data/storage/el1/bundle/";
-    str += std::string((char *)data, size);
+    str += dynamicPart;
     str += "/ets/modules.abc";
     JSNApi::SetAssetPath(vm, str);
     JSNApi::DestroyJSVM(vm);
@@ -47,9 +50,9 @@ void JSNApiSetBundleFuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    uint8_t *ptr = nullptr;
-    ptr = const_cast<uint8_t *>(data);
-    JSNApi::SetBundle(vm, (*data & size) > 0 ? true : false);
+    FuzzedDataProvider fdp(data, size);
+    bool bundleFlag = fdp.ConsumeBool();
+    JSNApi::SetBundle(vm, bundleFlag);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -62,7 +65,9 @@ void JSNApiSetHostEnqueueJobFuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
+    FuzzedDataProvider fdp(data, size);
+    std::string keyData = fdp.ConsumeRandomLengthString(size);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm, keyData.data(), static_cast<int>(keyData.size()));
     JSNApi::SetHostEnqueueJob(vm, key);
     JSNApi::DestroyJSVM(vm);
 }
@@ -72,10 +77,12 @@ void JSNApiSetMockModuleListFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
         return;
     }
-    std::map<std::string, std::string> str = { { std::string((char *)data, size), "20" } };
+    FuzzedDataProvider fdp(data, size);
+    std::string key = fdp.ConsumeRandomLengthString(size);
+    std::map<std::string, std::string> str = {{key, "20"}};
     JSNApi::SetMockModuleList(vm, str);
     JSNApi::DestroyJSVM(vm);
 }

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
+
 #include "stringrefwritelatin1_fuzzer.h"
 #include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -28,19 +30,14 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(common::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
+        if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        Local<StringRef> res = StringRef::StringRef::NewFromUtf8(vm, (char*)data, (int)size);
-        char *value = new char[size]();
-        if (memcpy_s(value, size, data, size) != EOK) {
-            LOG_ECMA(ERROR) << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        res->WriteLatin1(vm, value, (int)size);
-        delete[] value;
-        value = nullptr;
+        FuzzedDataProvider fdp(data, size);
+        std::string value = fdp.ConsumeRandomLengthString(size);
+        Local<StringRef> res = StringRef::StringRef::NewFromUtf8(vm, value.data(), static_cast<int>(value.size()));
+        res->WriteLatin1(vm, value.data(), static_cast<int>(value.size()));
         JSNApi::DestroyJSVM(vm);
     }
 }

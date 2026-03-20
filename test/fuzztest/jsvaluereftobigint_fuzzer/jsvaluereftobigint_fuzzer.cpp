@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluereftobigint_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -30,15 +31,10 @@ void JSValueRefToBigIntFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    char *input = new char[size]();
-    if (memcpy_s(input, size, data, size) != 0) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<JSValueRef> message = StringRef::NewFromUtf8(vm, input, (int)size);
+    FuzzedDataProvider fdp(data, size);
+    std::string input = fdp.ConsumeRandomLengthString(size);
+    Local<JSValueRef> message = StringRef::NewFromUtf8(vm, input.data(), static_cast<int>(input.size()));
     message->ToBigInt(vm);
-    delete[] input;
-    input = nullptr;
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -51,15 +47,10 @@ void JSValueRefTypeofFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    char *input = new char[size]();
-    if (memcpy_s(input, size, data, size) != 0) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-        UNREACHABLE();
-    }
-    Local<JSValueRef> message = StringRef::NewFromUtf8(vm, input, (int)size);
+    FuzzedDataProvider fdp(data, size);
+    std::string input = fdp.ConsumeRandomLengthString(size);
+    Local<JSValueRef> message = StringRef::NewFromUtf8(vm, input.data(), static_cast<int>(input.size()));
     message->Typeof(vm);
-    delete[] input;
-    input = nullptr;
     JSNApi::DestroyJSVM(vm);
 }
 }
