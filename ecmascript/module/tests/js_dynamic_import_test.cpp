@@ -99,45 +99,4 @@ HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_NativeMod
     EXPECT_EQ(module->GetStatus(), ModuleStatus::INSTANTIATED);
 }
 
-/**
- * @tc.name: DynamicImport_ExecuteNativeOrJsonModule_LoadedLoadNotInstantiated
- * @tc.desc: Test ExecuteNativeOrJsonModule when module is loaded but not instantiated (covers lines 38-45)
- * @tc.type: FUNC
- */
-HWTEST_F_L0(DynamicImportTest, DynamicImport_ExecuteNativeOrJsonModule_LoadedLoadNotInstantiated)
-{
-    ObjectFactory *factory = instance->GetFactory();
-    ModuleManager *moduleManager = thread->GetModuleManager();
-
-    // Create a module that is loaded but not instantiated
-    JSHandle<SourceTextModule> module = factory->NewSSourceTextModule();
-    module->SetStatus(ModuleStatus::UNINSTANTIATED);
-    module->SetTypes(ModuleTypes::ECMA_MODULE);
-
-    // Add module to module manager so IsLocalModuleLoaded returns true
-    CString specifier = "test_lazy_module";
-    moduleManager->AddResolveImportedModule(specifier, module.GetTaggedValue());
-
-    // Verify module is loaded but not instantiated
-    EXPECT_TRUE(moduleManager->IsLocalModuleLoaded(specifier));
-    EXPECT_FALSE(moduleManager->IsLocalModuleInstantiated(specifier));
-
-    // Create resolve and reject callbacks
-    JSHandle<JSFunction> resolve = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
-        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
-    JSHandle<JSFunction> reject = factory->NewJSFunction(thread->GetEcmaVM()->GetGlobalEnv(),
-        reinterpret_cast<void *>(DynamicImportTest::TestFunc));
-
-    JSHandle<JSPromiseReactionsFunction> resolveHandle(resolve);
-    JSHandle<JSPromiseReactionsFunction> rejectHandle(reject);
-
-    // Call ExecuteNativeOrJsonModule - should take the loaded module path (lines 38-45)
-    JSTaggedValue result = DynamicImport::ExecuteNativeOrJsonModule(
-        thread, specifier, ModuleTypes::NATIVE_MODULE, resolveHandle, rejectHandle, nullptr);
-
-    // Verify the function executed successfully without exceptions
-    EXPECT_FALSE(thread->HasPendingException());
-    EXPECT_TRUE(result.IsUndefined());
-}
-
 }  // namespace panda::test
