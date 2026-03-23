@@ -1040,6 +1040,7 @@ uintptr_t JSSymbolExtractor::GetDataSize()
 }
 
 bool JSSymbolExtractor::InitializeHapFileInfo([[maybe_unused]]uintptr_t offset,
+                                              [[maybe_unused]]bool needTranslate,
                                               [[maybe_unused]]const char* filePath)
 {
 #if defined(PANDA_TARGET_OHOS)
@@ -1078,7 +1079,7 @@ bool JSSymbolExtractor::InitializeHapFileInfo([[maybe_unused]]uintptr_t offset,
         return false;
     }
     auto &entrys = zipFile->GetAllEntries();
-    if (isInitialized_) {
+    if (isInitialized_ && needTranslate) {
         std::string filePath = "ets/sourceMaps.map";
         if (entrys.find(filePath) == entrys.end()) {
             LOG_ECMA(INFO) << "Can't find sourceMaps.map in hap/hsp";
@@ -1115,17 +1116,18 @@ bool JSSymbolExtractor::InitializeAbcFileInfo([[maybe_unused]]const char* filePa
     return isInitialized_;
 }
 
-bool JSSymbolExtractor::Initialize(uintptr_t offset, const char* filePath)
+bool JSSymbolExtractor::Initialize(uintptr_t offset, bool needTranslate, const char* filePath)
 {
     if (base::StringHelper::StringEndWith(filePath, ModulePathHelper::EXT_NAME_ABC)) {
         return InitializeAbcFileInfo(filePath);
     }
-    return InitializeHapFileInfo(offset, filePath);
+    return InitializeHapFileInfo(offset, needTranslate, filePath);
 }
 
 bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] uintptr_t mapBase,
                         [[maybe_unused]] uintptr_t offset, [[maybe_unused]] const char* filePath,
-                        [[maybe_unused]] uintptr_t extractorptr, [[maybe_unused]] JsFunction *jsFunction)
+                        [[maybe_unused]] uintptr_t extractorptr, [[maybe_unused]] bool needTranslate,
+                        [[maybe_unused]] JsFunction *jsFunction)
 {
     bool ret = false;
 #if defined(PANDA_TARGET_OHOS)
@@ -1138,7 +1140,7 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
         LOG_ECMA(ERROR) << "Parse JSframe info failed, extractor is nullptr.";
         return false;
     }
-    if (!extractor->Initialize(offset, filePath)) {
+    if (!extractor->Initialize(offset, needTranslate, filePath)) {
         return false;
     }
     ret = ArkParseJsFrameInfo(byteCodePc, mapBase, extractor->GetLoadOffset(),
@@ -1476,10 +1478,11 @@ __attribute__((visibility("default"))) int ark_parse_js_frame_info(
 }
 
 __attribute__((visibility("default"))) int ark_parse_js_file_info(
-    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t offset, const char* filePath, uintptr_t extractorptr,
-    panda::ecmascript::JsFunction *jsFunction)
+    uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t offset, const char* filePath,
+    uintptr_t extractorptr, bool needTranslate, panda::ecmascript::JsFunction *jsFunction)
 {
-    if (panda::ecmascript::ArkParseJSFileInfo(byteCodePc, mapBase, offset, filePath, extractorptr, jsFunction)) {
+    if (panda::ecmascript::ArkParseJSFileInfo(byteCodePc, mapBase, offset, filePath,
+        extractorptr, needTranslate, jsFunction)) {
         return 1;
     }
     return -1;
