@@ -243,6 +243,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::SENDABLE_ENV:
         case JSType::CONSTANT_POOL:
         case JSType::PROFILE_TYPE_INFO:
+        case JSType::IC_INFO:
+            return GetArrayString(TaggedArray::Cast(entry), *nodename);
         case JSType::TAGGED_DICTIONARY:
         case JSType::AOT_LITERAL_INFO:
         case JSType::VTABLE:
@@ -266,6 +268,7 @@ CString HeapSnapshot::GetNodeName(JSType type, bool isVmMode)
         {JSType::SENDABLE_ENV, "SendableEnv"},
         {JSType::CONSTANT_POOL, "ArkInternalConstantPool"},
         {JSType::PROFILE_TYPE_INFO, "ArkInternalProfileTypeInfo"},
+        {JSType::IC_INFO, "ArkInternalICInfo"},
         {JSType::TAGGED_DICTIONARY, "ArkInternalDict"},
         {JSType::AOT_LITERAL_INFO, "ArkInternalAOTLiteralInfo"},
         {JSType::VTABLE, "ArkInternalVTable"},

@@ -24,6 +24,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -1028,6 +1029,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::PROFILE_TYPE_INFO: {
                 JSHandle<ProfileTypeInfo> info = factory->NewProfileTypeInfo(4);
                 DUMP_FOR_HANDLE(info);
+                break;
+            }
+            case JSType::IC_INFO: {
+                JSHandle<ICInfo> csInfo = factory->NewICInfo(3);
+                DUMP_FOR_HANDLE(csInfo);
                 break;
             }
             case JSType::EXTRA_PROFILE_TYPE_INFO: {

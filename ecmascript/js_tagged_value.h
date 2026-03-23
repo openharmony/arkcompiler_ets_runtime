@@ -548,6 +548,7 @@ public:
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
     bool IsExtraProfileTypeInfo() const;
+    bool IsICInfo() const;
     bool IsProfileTypeInfoCell() const;
     bool IsProfileTypeInfoCell0() const;
     bool IsFunctionTemplate() const;

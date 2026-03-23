@@ -15,6 +15,7 @@
 
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/linked_hash_table.h"
@@ -65,6 +66,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ConstantPool";
         case JSType::PROFILE_TYPE_INFO:
             return "ProfileTypeInfo";
+        case JSType::IC_INFO:
+            return "ICInfo";
         case JSType::COW_TAGGED_ARRAY:
             return "COWArray";
         case JSType::MUTANT_TAGGED_ARRAY:
@@ -726,6 +729,9 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
             break;
         case JSType::PROFILE_TYPE_INFO:
             ProfileTypeInfo::Cast(obj)->Dump(thread, os);
+            break;
+        case JSType::IC_INFO:
+            ICInfo::Cast(obj)->Dump(thread, os);
             break;
         case JSType::PROFILE_TYPE_INFO_CELL_0:
         case JSType::PROFILE_TYPE_INFO_CELL_1:
@@ -1774,6 +1780,21 @@ void ProfileTypeInfo::Dump(const JSThread *thread, std::ostream &os) const
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t len = GetIcSlotLength();
     os << " <ProfileTypeInfo[" << std::dec << len << "]>\n";
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(Get(thread, i));
+        if (!val.IsHole()) {
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
+            val.DumpTaggedValue(thread, os);
+            os << "\n";
+        }
+    }
+}
+
+void ICInfo::Dump(const JSThread *thread, std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = GetLength();
+    os << " <ICInfo[" << std::dec << len << "]>\n";
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(Get(thread, i));
         if (!val.IsHole()) {
@@ -4185,6 +4206,9 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::PROFILE_TYPE_INFO:
             ProfileTypeInfo::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
+        case JSType::IC_INFO:
+            ICInfo::Cast(obj)->DumpForSnapshot(thread, vec);
+            break;
         case JSType::LINE_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
@@ -5121,6 +5145,18 @@ void ProfileTypeInfo::DumpForSnapshot(const JSThread *thread, std::vector<Refere
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t len = GetIcSlotLength();
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(Get(thread, i));
+        CString str = ToCString(i);
+        vec.emplace_back(str, val);
+    }
+}
+
+void ICInfo::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = GetLength();
     vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(Get(thread, i));

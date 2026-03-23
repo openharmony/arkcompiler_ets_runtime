@@ -2076,9 +2076,9 @@ public:
         return &jitMutex_;
     }
 
-    RecursiveMutex &GetProfileTypeAccessorLock()
+    RecursiveMutex &GetIcAccessorLock()
     {
-        return profileTypeAccessorLockMutex_;
+        return icAccessorLockMutex_;
     }
 
     void SetMachineCodeLowMemory(bool isLow)
@@ -2339,7 +2339,7 @@ private:
     ThreadType threadType_ {ThreadType::JS_THREAD};
     RecursiveMutex jitMutex_;
     bool machineCodeLowMemory_ {false};
-    RecursiveMutex profileTypeAccessorLockMutex_;
+    RecursiveMutex icAccessorLockMutex_;
     DateUtils *dateUtils_ {nullptr};
     std::weak_ptr<base::JsonStringifierKeyCache> jsonStringifierKeyCache_;
 

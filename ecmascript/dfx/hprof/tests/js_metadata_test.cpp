@@ -182,6 +182,7 @@ public:
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"ReceiverObject", "HolderObject", "EXTRA_PROFILE_TYPE_INFO"}},
             {JSType::FUNCTION_TEMPLATE, {"Method", "Module", "RawProfileTypeInfo", "FUNCTION_TEMPLATE"}},
             {JSType::GLOBAL_ENV, {"GLOBAL_ENV"}},
+            {JSType::IC_INFO, {"IC_INFO"}},
             {JSType::IMPORTENTRY_RECORD, {"ImportName", "LocalName", "ModuleRequestIndex", "IMPORTENTRY_RECORD"}},
             {JSType::INDIRECT_EXPORTENTRY_RECORD, {"ExportName", "ImportName",
                                                    "ModuleRequestIndex", "INDIRECT_EXPORTENTRY_RECORD"}},
@@ -471,6 +472,7 @@ public:
                                          FunctionTemplate::RAW_PROFILE_TYPE_INFO_OFFSET,
                                          FunctionTemplate::SIZE - FunctionTemplate::METHOD_OFFSET}},
             {JSType::GLOBAL_ENV, {GlobalEnv::SIZE - GlobalEnv::HEADER_SIZE}},
+            {JSType::IC_INFO, {0}},
             {JSType::IMPORTENTRY_RECORD, {ImportEntry::IMPORT_ENTRY_OFFSET,
                                           ImportEntry::LOCAL_NAME_OFFSET,
                                           ImportEntry::MODULE_REQUEST_INDEX_OFFSET,
@@ -1064,6 +1066,7 @@ public:
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"TAGGED_OBJECT"}},
             {JSType::FUNCTION_TEMPLATE, {"TAGGED_OBJECT"}},
             {JSType::GLOBAL_ENV, {"TAGGED_ARRAY"}},
+            {JSType::IC_INFO, {"TAGGED_ARRAY"}},
             {JSType::IMPORTENTRY_RECORD, {"RECORD"}},
             {JSType::INDIRECT_EXPORTENTRY_RECORD, {"RECORD"}},
             {JSType::INTERNAL_ACCESSOR, {"RECORD"}},
@@ -1225,7 +1228,7 @@ public:
             {JSType::MUTANT_TAGGED_ARRAY, {"TAGGED_ARRAY"}},
             {JSType::NATIVE_MODULE_FAILURE_INFO, {"JS_OBJECT"}},
             {JSType::PENDING_JOB, {"RECORD"}},
-            {JSType::PROFILE_TYPE_INFO, {"TAGGED_ARRAY"}},
+            {JSType::PROFILE_TYPE_INFO, {"IC_INFO"}},
             {JSType::PROFILE_TYPE_INFO_CELL_0, {"TAGGED_OBJECT"}},
             {JSType::PROFILE_TYPE_INFO_CELL_1, {"TAGGED_OBJECT"}},
             {JSType::PROFILE_TYPE_INFO_CELL_N, {"TAGGED_OBJECT"}},
@@ -1312,6 +1315,7 @@ public:
                 FunctionTemplate::RAW_PROFILE_TYPE_INFO_OFFSET - FunctionTemplate::MODULE_OFFSET,
                 FunctionTemplate::LENGTH_OFFSET - FunctionTemplate::RAW_PROFILE_TYPE_INFO_OFFSET}},
             {JSType::GLOBAL_ENV, {}},
+            {JSType::IC_INFO, {}},
             {JSType::IMPORTENTRY_RECORD, {
                 ImportEntry::LOCAL_NAME_OFFSET - ImportEntry::IMPORT_ENTRY_OFFSET,
                 ImportEntry::MODULE_REQUEST_INDEX_OFFSET - ImportEntry::LOCAL_NAME_OFFSET,
@@ -2483,6 +2487,17 @@ HWTEST_F_L0(JSMetadataTest, TestGlobalEnvMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::GLOBAL_ENV, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestIcInfoMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"ic_info.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::IC_INFO, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestImportentryRecordMetadata)

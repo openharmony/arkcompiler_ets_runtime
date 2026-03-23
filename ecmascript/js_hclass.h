@@ -256,6 +256,7 @@ struct Reference;
         V(TAGGED_DICTIONARY), /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(CONSTANT_POOL), /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(PROFILE_TYPE_INFO), /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
+        V(IC_INFO),          /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(COW_MUTANT_TAGGED_ARRAY), /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         V(COW_TAGGED_ARRAY), /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(LINKED_NODE),  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -753,6 +754,7 @@ public:
             case JSType::SENDABLE_ENV:
             case JSType::CONSTANT_POOL:
             case JSType::PROFILE_TYPE_INFO:
+            case JSType::IC_INFO:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
@@ -1785,6 +1787,13 @@ public:
     inline bool IsExtraProfileTypeInfo() const
     {
         return GetObjectType() == JSType::EXTRA_PROFILE_TYPE_INFO;
+    }
+
+    // ICInfo is the base for both bare IC containers (IC_INFO) and ProfileTypeInfo (PROFILE_TYPE_INFO).
+    inline bool IsICInfo() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::IC_INFO || jsType == JSType::PROFILE_TYPE_INFO;
     }
 
     inline bool IsProfileTypeInfoCell() const

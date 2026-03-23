@@ -544,7 +544,7 @@ void JITProfiler::TraceICState(int32_t bcOffset, std::string_view s) {}
 
 void JITProfiler::ConvertICByName(int32_t bcOffset, uint32_t slotId, BCType type)
 {
-    ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
+    IcAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
     TraceICState(bcOffset, "IC-All");
     JSTaggedValue firstValue = profileTypeInfo_->Get(mainThread_, slotId);
     if (!firstValue.IsHeapObject()) {
@@ -800,7 +800,7 @@ void JITProfiler::ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JS
 
 void JITProfiler::ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType type)
 {
-    ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
+    IcAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
     JSTaggedValue firstValue = profileTypeInfo_->Get(mainThread_, slotId);
     if (!firstValue.IsHeapObject()) {
         if (firstValue.IsHole()) {

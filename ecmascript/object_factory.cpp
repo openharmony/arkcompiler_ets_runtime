@@ -23,6 +23,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/enum_cache.h"
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/jobs/pending_job.h"
@@ -3803,6 +3804,17 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t icSlotSize)
         uint16_t threshold = vm_->GetJSOptions().GetBaselineJitHotnessThreshold();
         array->SetBaselineJitHotnessThreshold(threshold);
     }
+    return array;
+}
+
+JSHandle<ICInfo> ObjectFactory::NewICInfo(uint32_t length)
+{
+    NewObjectHook();
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetICInfoClass().GetTaggedObject()), size);
+    JSHandle<ICInfo> array(thread_, header);
+    array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
     return array;
 }
 

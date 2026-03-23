@@ -24,6 +24,7 @@
 #include "ecmascript/func_slot.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -548,6 +549,9 @@ public:
                 break;
             case JSType::PROFILE_TYPE_INFO:
                 ProfileTypeInfo::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::IC_INFO:
+                ICInfo::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::GLOBAL_ENV:
                 GlobalEnv::Cast(object)->VisitRangeSlot<visitType>(visitor);
