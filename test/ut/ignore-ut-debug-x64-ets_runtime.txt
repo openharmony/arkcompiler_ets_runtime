@@ -37,11 +37,15 @@ obj/arkcompiler/ets_runtime/ecmascript/ohos/tests/OhosTest
 #267
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_Test
 
-#1
+#33882
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapProfilerDumpTest
+
+#33873
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapSnapShotTest
 
 #33765
 obj/arkcompiler/ets_runtime/ecmascript/containers/tests/Containers_003_Test
 obj/arkcompiler/ets_runtime/ecmascript/tests/Dynamic_Object_Accessor_Util_Test
-obj/arkcompiler/ets_runtime/ecmascript/snapshot_test/Common_Snapshot_Test
+obj/arkcompiler/ets_runtime/ecmascript/snapshot_test/Common_Snapshot_Test2
+
+
