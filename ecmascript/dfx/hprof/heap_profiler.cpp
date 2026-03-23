@@ -305,10 +305,10 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
         progress->ReportProgress(heapCount, heapCount);
     }
     auto serializeAndDelete = [&](Stream* targetStream) -> bool {
-        auto result = HeapSnapshotJSONSerializer::Serialize(snapshot, targetStream);
-        if (writeMap) result = HeapSnapshotJSONSerializer::SerializeExtraInfo(snapshot, targetStream);
+        HeapSnapshotJSONSerializer::Serialize(snapshot, targetStream);
+        if (writeMap) HeapSnapshotJSONSerializer::SerializeExtraInfo(snapshot, targetStream);
         GetChunk()->Delete(snapshot);
-        return result;
+        return true;
     };
     if (!stream->Good()) {
         FileStream newStream(GenDumpFileName(dumpOption.dumpFormat));
@@ -328,6 +328,10 @@ void HeapProfiler::UpdateNodeAddressIdMap()
 
         void VisitRoot(Root type, ObjectSlot slot) override
         {
+            if (type != Root::ROOT_LOCAL_HANDLE && type != Root::ROOT_GLOBAL_HANDLE) {
+                return;
+            }
+
             auto it = entryIdMap_->GetIdMap()->find(slot.GetTaggedType());
             if (it != entryIdMap_->GetIdMap()->end()) {
                 nodeAddrIdMap_[slot.SlotAddress()] = it->second;
