@@ -749,7 +749,7 @@ JSTaggedValue BuiltinsString::IsWellFormed(EcmaRuntimeCallInfo *argv)
         if (!IsUTF16HighSurrogate(first) && !IsUTF16LowSurrogate(first)) {
             codeUnitCount = 1; // 1 means: code unit count
             isUnpairedSurrogate = false;
-        } else if (IsUTF16HighSurrogate(first) && position + 1 == size) {
+        } else if (IsUTF16LowSurrogate(first) || position + 1 == size) {
             // iii. If first is a trailing surrogate or position + 1 = size, then
             //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
             codeUnitCount = 1;
@@ -822,7 +822,7 @@ JSTaggedValue BuiltinsString::ToWellFormed(EcmaRuntimeCallInfo *argv)
         if (!IsUTF16HighSurrogate(first) && !IsUTF16LowSurrogate(first)) {
             codeUnitCount = 1; // 1 means: code unit count
             isUnpairedSurrogate = false;
-        } else if (IsUTF16HighSurrogate(first) && position + 1 == size) {
+        } else if (IsUTF16LowSurrogate(first) || position + 1 == size) {
             // iii. If first is a trailing surrogate or position + 1 = size, then
             //   a. Return the Record { [[CodePoint]]: cp, [[CodeUnitCount]]: 1, [[IsUnpairedSurrogate]]: true }.
             codeUnitCount = 1;

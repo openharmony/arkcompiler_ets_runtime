@@ -186,3 +186,18 @@ native Func toString test Success!
 5
 0
 RangeError: Invalid string length
+false
+普通字符 'A': true
+中文字符 '中': true
+孤立低代理项: false
+两个低代理项: false
+末尾高代理项: false
+字符+低代理项: false
+高代理项+普通字符: false
+高代理项+高代理项: false
+合法代理对(Emoji): true
+合法代理对(CJK扩展): true
+多个合法代理对: true
+合法对+孤立低代理项: false
+孤立高代理项+合法对: false
+空字符串: true
