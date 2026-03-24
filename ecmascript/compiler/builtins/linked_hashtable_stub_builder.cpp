@@ -741,15 +741,26 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     env->SubCfgEntry(&cfgEntry);
     Label exit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
-    HashStubBuilder hashBuilder(this, glue_);
-    GateRef hash = hashBuilder.GetHash(key);
-    GateRef entry = FindElement(linkedTable, key, hash);
-    Label findEntry(env);
-    Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
-    Bind(&findEntry);
+    GateRef numberOfElements = GetNumberOfElements(linkedTable);
+    Label sizeZero(env);
+    Label sizeNotZero(env);
+    BRANCH(Int32Equal(numberOfElements, Int32(0)), &sizeZero, &sizeNotZero);
+    Bind(&sizeZero);
     {
-        res = GetValue(linkedTable, entry);
         Jump(&exit);
+    }
+    Bind(&sizeNotZero);
+    {
+        HashStubBuilder hashBuilder(this, glue_);
+        GateRef hash = hashBuilder.GetHash(key);
+        GateRef entry = FindElement(linkedTable, key, hash);
+        Label findEntry(env);
+        Branch(Int32Equal(entry, Int32(-1)), &exit, &findEntry);
+        Bind(&findEntry);
+        {
+            res = GetValue(linkedTable, entry);
+            Jump(&exit);
+        }
     }
 
     Bind(&exit);

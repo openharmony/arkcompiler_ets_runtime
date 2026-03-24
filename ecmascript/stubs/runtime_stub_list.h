@@ -446,6 +446,7 @@ namespace panda::ecmascript {
     V(GetHash32)                                               \
     V(NewInternalString)                                       \
     V(NewTaggedArray)                                          \
+    V(NewSTaggedArray)                                         \
     V(NewCOWTaggedArray)                                       \
     V(NewMutantTaggedArray)                                    \
     V(NewCOWMutantTaggedArray)                                 \
