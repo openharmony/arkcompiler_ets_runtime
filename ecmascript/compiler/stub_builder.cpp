@@ -2668,7 +2668,11 @@ GateRef StubBuilder::TryToElementsIndex(GateRef glue, GateRef key)
         BRANCH(TaggedIsString(glue, key), &isString, &notString);
         Bind(&isString);
         {
+#if ENABLE_V70_OPTIMIZATION
+            BuiltinsStringStubBuilder stringStub(this);
+#else
             BuiltinsStringStubBuilder stringStub(this, GetCurrentGlobalEnv());
+#endif
             resultKey = stringStub.StringToUint(glue, key, JSObject::MAX_ELEMENT_INDEX - 1);
             Jump(&exit);
         }
@@ -2985,8 +2989,12 @@ GateRef StubBuilder::LoadICWithHandler(
             BRANCH(Equal(*holder, Undefined()), &handleInfoIsNotFound, &handleInfoIsFound);
             Bind(&handleInfoIsFound);
             {
-            handler = GetPrototypeHandlerHandlerInfo(glue, *handler);
-            LoopEndWithCheckSafePoint(&loopHead, env, glue);
+                handler = GetPrototypeHandlerHandlerInfo(glue, *handler);
+#if ENABLE_V70_OPTIMIZATION
+                LoopEnd(&loopHead);
+#else
+                LoopEndWithCheckSafePoint(&loopHead, env, glue);
+#endif
             }
 
             // For "Not Found" case (holder equals Undefined()),
@@ -3052,8 +3060,8 @@ GateRef StubBuilder::LoadICWithHandler(
     }
     Bind(&handlerNotPrototypeHandler);
     {
-    result = LoadGlobal(glue, *handler);
-    Jump(&exit);
+        result = LoadGlobal(glue, *handler);
+        Jump(&exit);
     }
     Bind(&exit);
     auto ret = *result;
@@ -3140,7 +3148,11 @@ GateRef StubBuilder::LoadStringElement(GateRef glue, GateRef receiver, GateRef k
         Bind(&lengthLessIndex);
         Jump(&exit);
         Bind(&lengthNotLessIndex);
+#if ENABLE_V70_OPTIMIZATION
+        BuiltinsStringStubBuilder stringBuilder(this);
+#else
         BuiltinsStringStubBuilder stringBuilder(this, GetCurrentGlobalEnv());
+#endif
         StringInfoGateRef stringInfoGate(&thisFlat);
         result = stringBuilder.CreateFromEcmaString(glue, index, stringInfoGate);
         Jump(&exit);
@@ -3240,6 +3252,9 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             {
                 GateRef hclass = LoadHClass(glue, receiver);
                 GateRef jsType = GetObjectType(hclass);
+#if ENABLE_V70_OPTIMIZATION
+                GlobalEnvScope scope(this);
+#endif
                 BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetCurrentGlobalEnv());
                 result = typedArrayBuilder.StoreTypedArrayElement(glue, receiver, index64, value, jsType);
                 Jump(&exit);
@@ -3380,7 +3395,11 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
 
             Bind(&loopEnd);
             {
+#if ENABLE_V70_OPTIMIZATION
+                LoopEnd(&loopHead);
+#else
                 LoopEndWithCheckSafePoint(&loopHead, env, glue);
+#endif
             }
         }
     }
@@ -3567,7 +3586,11 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
         }
         Bind(&JumpLoopHead);
         {
+#if ENABLE_V70_OPTIMIZATION
+            LoopEnd(&loopHead);
+#else
             LoopEndWithCheckSafePoint(&loopHead, env, glue);
+#endif
         }
     }
     Bind(&exit);
@@ -12934,7 +12957,7 @@ GateRef StubBuilder::FastLoadExternalmodulevar(GateRef glue, GateRef index, Gate
 
                 Bind(&getModuleSlow);
                 {
-                    LazySetGlobalEnv();
+                    SetCurrentGlobalEnv(LazyGetGlobalEnv());
                     result = GetModuleValue(glue, *resolvedModule, idxOfResolvedBinding);
                     Jump(&exit);
                 }
@@ -12947,7 +12970,7 @@ GateRef StubBuilder::FastLoadExternalmodulevar(GateRef glue, GateRef index, Gate
             Label isSharedModule(env);
             Label notHole(env);
             Label notLdEndExecPatchMain1(env);
-            LazySetGlobalEnv();
+            SetCurrentGlobalEnv(LazyGetGlobalEnv());
             GateRef resolvedModuleOfHotReload = CallNGCRuntime(glue, RTSTUB_ID(FindPatchModule),
                                                                 {glue, *resolvedModule});
             BRANCH(TaggedIsHole(resolvedModuleOfHotReload), &notLdEndExecPatchMain1, &notHole);
@@ -12972,7 +12995,7 @@ GateRef StubBuilder::FastLoadExternalmodulevar(GateRef glue, GateRef index, Gate
 
     Bind(&judgeResolvedBinding);
     {
-        LazySetGlobalEnv();
+        SetCurrentGlobalEnv(LazyGetGlobalEnv());
         Label isResolvedBinding(env);
         BRANCH(IsResolvedBinding(glue, resolvedBinding), &isResolvedBinding, &judgeResolvedRecordIndexBinding);
 
@@ -13021,7 +13044,7 @@ GateRef StubBuilder::FastLoadExternalmodulevar(GateRef glue, GateRef index, Gate
 
     Bind(&isSendableFunctionModule);
     {
-        LazySetGlobalEnv();
+        SetCurrentGlobalEnv(LazyGetGlobalEnv());
         result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
                                           {IntToTaggedInt(index), curModule});
         Jump(&exit);
@@ -13035,7 +13058,7 @@ GateRef StubBuilder::FastLoadExternalmodulevar(GateRef glue, GateRef index, Gate
 
     Bind(&notNullPtr);
     {
-        LazySetGlobalEnv();
+        SetCurrentGlobalEnv(LazyGetGlobalEnv());
         result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(GetModuleValueOuterInternal),
                                           {curModule, IntToTaggedInt(index)});
         Jump(&exit);

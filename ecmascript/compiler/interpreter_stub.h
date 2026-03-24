@@ -163,7 +163,8 @@ public:
     inline GateRef GetResumeModeFromGeneratorObject(GateRef obj);
     inline GateRef GetResumeModeFromAsyncGeneratorObject(GateRef obj);
     inline GateRef GetHotnessCounterFromMethod(GateRef method);
-
+    inline GateRef ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info);
+    
     inline void SetCurrentSpFrame(GateRef glue, GateRef sp);
     inline void SetLastLeaveFrame(GateRef glue, GateRef sp);
     inline void SetPcToFrame(GateRef glue, GateRef frame, GateRef value);
