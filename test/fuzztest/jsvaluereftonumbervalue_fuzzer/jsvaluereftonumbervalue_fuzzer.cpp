@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluereftonumbervalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -32,8 +33,9 @@ void JSValueRefToNumberValueFuzzTest(const uint8_t *data, size_t size)
         std::cout << "illegal input!";
         return;
     }
-    Local<StringRef> toString = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    Local<JSValueRef> toValue(toString);
+    FuzzedDataProvider fdp(data, size);
+    std::string input = fdp.ConsumeRandomLengthString(size);
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm, input.data(), static_cast<int>(input.size()));
     toString->ToNumber(vm);
     JSNApi::DestroyJSVM(vm);
 }

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
+
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -30,12 +32,10 @@ void JSNApiGetOwnPropertyFuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    char *value = new char[size]();
-    if (memcpy_s(value, size, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-    }
+    FuzzedDataProvider fdp(data, size);
+    std::string value = fdp.ConsumeRandomLengthString(size);
     Local<ObjectRef> object = ObjectRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, value, (int)size);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, value.data(), static_cast<int>(value.size()));
     Local<JSValueRef> objectvalue = ObjectRef::New(vm_);
     PropertyAttribute attribute(objectvalue, true, true, true);
     object->GetOwnProperty(vm_, key, attribute);

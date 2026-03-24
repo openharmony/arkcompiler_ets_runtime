@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefisarrayvalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -28,21 +29,16 @@ void JSValueRefIsArrayValueFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    uint32_t length = 3;
     if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    size_t maxByteLen = 4;
-    if (size > maxByteLen) {
-        size = maxByteLen;
-    }
-    if (memcpy_s(&length, maxByteLen, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-    }
+    FuzzedDataProvider fdp(data, size);
+    uint32_t length = fdp.ConsumeIntegral<uint32_t>();
+    std::string utf8Data = fdp.ConsumeRandomLengthString(size);
     Local<ArrayRef> arrayObject = ArrayRef::New(vm, length);
     arrayObject->IsArray(vm);
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
+    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, utf8Data.data(), static_cast<int>(utf8Data.size()));
     stringUtf8->IsArray(vm);
     JSNApi::DestroyJSVM(vm);
 }

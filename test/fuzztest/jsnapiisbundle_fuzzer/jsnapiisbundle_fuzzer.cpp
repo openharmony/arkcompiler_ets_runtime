@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsnapiisbundle_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -25,6 +26,7 @@ constexpr size_t DIVISOR = 2;
 
 void JSNApiIsBundleFuzztest(const uint8_t *data, size_t size)
 {
+    // test
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
@@ -32,13 +34,13 @@ void JSNApiIsBundleFuzztest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    bool bundleFalg = (*data + size) % DIVISOR ? true : false;
-    vm->SetIsBundlePack(bundleFalg);
+    bool bundleFlag = (*data + size) % DIVISOR ? true : false;
+    vm->SetIsBundlePack(bundleFlag);
     JSNApi::IsBundle(vm);
     JSNApi::DestroyJSVM(vm);
 }
-}
 
+}
 // Fuzzer entry point.
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {

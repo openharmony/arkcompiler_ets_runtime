@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefint32value_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -21,26 +22,18 @@
 using namespace panda;
 using namespace panda::ecmascript;
 
-#define MAXBYTELEN sizeof(int32_t)
-
 namespace OHOS {
 void JSValueRefInt32ValueFuzzTest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    int inputNum = 0;
     if (data == nullptr || size <= 0) {
         std::cout << "illegal input!";
         return;
     }
-    if (size > MAXBYTELEN) {
-        size = MAXBYTELEN;
-    }
-    if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-        std::cout << "memcpy_s failed!";
-        UNREACHABLE();
-    }
+    FuzzedDataProvider fdp(data, size);
+    int32_t inputNum = fdp.ConsumeIntegral<int32_t>();
     Local<JSValueRef> res = IntegerRef::New(vm, inputNum);
     res->Int32Value(vm);
     JSNApi::DestroyJSVM(vm);

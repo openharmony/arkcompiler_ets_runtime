@@ -45,12 +45,8 @@ void JSValueRefIsTrueFuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    int value;
-    size = size > sizeof(int) ? sizeof(int) : size;
-    if (memcpy_s(&value, sizeof(int), data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed !";
-        UNREACHABLE();
-    }
+    FuzzedDataProvider fdp(data, size);
+    int value = fdp.ConsumeIntegral<int>();
     Local<JSValueRef> object = IntegerRef::New(vm, value);
     object->IsTrue();
     JSNApi::DestroyJSVM(vm);
@@ -66,12 +62,8 @@ void JSValueRefIsHoleFuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    int value;
-    size = size > sizeof(int) ? sizeof(int) : size;
-    if (memcpy_s(&value, sizeof(int), data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-        UNREACHABLE();
-    }
+    FuzzedDataProvider fdp(data, size);
+    int value = fdp.ConsumeIntegral<int>();
     Local<JSValueRef> object = IntegerRef::New(vm, value);
     object->IsHole();
     JSNApi::DestroyJSVM(vm);
@@ -87,7 +79,9 @@ void JSValueRefIsUndefinedFuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<JSValueRef> tag = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
+    FuzzedDataProvider fdp(data, size);
+    std::string tagData = fdp.ConsumeRandomLengthString(size);
+    Local<JSValueRef> tag = StringRef::NewFromUtf8(vm, tagData.data(), static_cast<int>(tagData.size()));
     tag->IsUndefined();
     JSNApi::DestroyJSVM(vm);
     return;

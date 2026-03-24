@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsvaluerefwithinint32_fuzzer.h"
 #include "common_components/base/utf_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -32,7 +33,9 @@ void JSValueRefWithinInt32FuzzTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    Local<JSValueRef> tag = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
+    FuzzedDataProvider fdp(data, size);
+    std::string tagData = fdp.ConsumeRandomLengthString(size);
+    Local<JSValueRef> tag = StringRef::NewFromUtf8(vm, tagData.data(), static_cast<int>(tagData.size()));
     tag->WithinInt32();
     JSNApi::DestroyJSVM(vm);
     return;

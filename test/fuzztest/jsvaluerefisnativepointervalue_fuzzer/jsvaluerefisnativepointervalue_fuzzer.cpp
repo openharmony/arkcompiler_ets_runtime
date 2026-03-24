@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
+#include <vector>
 #include "jsvaluerefisnativepointervalue_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -33,8 +35,11 @@ void JSValueRefIsNativePointerValueFuzzTest(const uint8_t *data, size_t size)
             std::cout << "illegal input!";
             return;
         }
+        FuzzedDataProvider fdp(data, size);
+        std::string nativeData = fdp.ConsumeRandomLengthString(size);
+        std::vector<uint8_t> nativeBuffer(nativeData.begin(), nativeData.end());
         NativePointerCallback callBack = nullptr;
-        Local<NativePointerRef> res = NativePointerRef::New(vm, (void *)(data + size), callBack, (void *)data);
+        Local<NativePointerRef> res = NativePointerRef::New(vm, nativeBuffer.data(), callBack, nativeBuffer.data());
         res->IsNativePointer(vm);
     }
     JSNApi::DestroyJSVM(vm);

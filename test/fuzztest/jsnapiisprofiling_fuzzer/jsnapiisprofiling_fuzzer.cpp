@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 #include "jsnapiisprofiling_fuzzer.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -21,18 +22,17 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-constexpr size_t DIVISOR = 2;
-
-void JSNApiIsProfilingFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
+void JSNApiIsProfilingFuzztest(const uint8_t *data, size_t size)
 {
     RuntimeOption option;
     option.SetLogLevel(common::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    bool profilerFalg = (*data + size) % DIVISOR ? true : false;
+    FuzzedDataProvider fdp(data, size);
+    bool profilerFalg = fdp.ConsumeBool();
     vm->SetProfilerState(profilerFalg);
     JSNApi::IsProfiling(vm);
     JSNApi::DestroyJSVM(vm);
