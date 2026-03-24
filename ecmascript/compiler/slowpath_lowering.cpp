@@ -1738,15 +1738,10 @@ void SlowPathLowering::LowerIsIn(GateRef gate)
 {
     // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
-#if ENABLE_NEXT_OPTIMIZATION
 
     GateRef newGate =
         builder_.CallStub(glue_, gate, CommonStubCSigns::IsIn,
                           {glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1), circuit_->GetGlobalEnvCache()});
-#else
-    const int id = RTSTUB_ID(IsIn);
-    GateRef newGate = LowerCallRuntime(gate, id, {acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
-#endif
     ReplaceHirWithValue(gate, newGate);
 }
 

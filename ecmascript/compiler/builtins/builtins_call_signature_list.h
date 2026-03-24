@@ -159,14 +159,10 @@
     V(IsSafeInteger,   Number,    Undefined(),  NUMBER_IS_SAFEINTEGER)                           \
     V(ToStringFunc,    Number,    Undefined(),  NUMBER_TO_STRING_FUNC)
 
-#if ENABLE_NEXT_OPTIMIZATION
 #define BUILTINS_WITH_REFLECT_STUB_BUILDER(V)                                                                      \
     V(Get, Reflect, Undefined(), REFLECT_GET)                                                                      \
     V(Has, Reflect, Undefined(), REFLECT_HAS)                                                                      \
     V(Set, Reflect, Undefined(), REFLECT_SET)
-#else
-#define BUILTINS_WITH_REFLECT_STUB_BUILDER(V) V(Get, Reflect, Undefined(), REFLECT_GET)
-#endif
 
 #define BUILTINS_WITH_COLLATOR_STUB_BUILDER(V)                                                   \
     V(ResolvedOptions, Collator,   Undefined(),  COLLATOR_RESOLVED_OPTIONS)
@@ -289,19 +285,10 @@
     V(BigUint64ArrayConstructor)
 
 // NEXT_AOT_AND_BUILTINS_STUB_LIST: List of functions that is optimized for Next
-#if ENABLE_NEXT_OPTIMIZATION
-    #define NEXT_AOT_AND_BUILTINS_STUB_LIST(V)             \
-        V(ArrayIteratorProtoNext)                          \
-        V(MapIteratorProtoNext)                            \
-        V(SetIteratorProtoNext)
-    #define NEXT_AOT_BUILTINS_STUB_LIST(V)
-#else
-    #define NEXT_AOT_AND_BUILTINS_STUB_LIST(V)
-    #define NEXT_AOT_BUILTINS_STUB_LIST(V)                 \
-        V(ArrayIteratorProtoNext)                          \
-        V(MapIteratorProtoNext)                            \
-        V(SetIteratorProtoNext)
-#endif
+#define NEXT_AOT_AND_BUILTINS_STUB_LIST(V)          \
+    V(ArrayIteratorProtoNext)                       \
+    V(MapIteratorProtoNext)                         \
+    V(SetIteratorProtoNext)
 
 #define AOT_AND_BUILTINS_STUB_LIST(V)               \
     V(StringLocaleCompare)                          \
@@ -316,14 +303,7 @@
     V(StringProtoIterator)                              \
     V(ArrayProtoIterator)                               \
     V(TypedArrayProtoIterator)                          \
-    V(IteratorProtoReturn)                              \
-    NEXT_AOT_BUILTINS_STUB_LIST(V)
-
-#if ENABLE_NEXT_OPTIMIZATION
-#define CONDITION_REFLECT_HAS(V)
-#else
-#define CONDITION_REFLECT_HAS(V) V(ReflectHas)
-#endif
+    V(IteratorProtoReturn)
 
 // List of builtins which will try to be inlined in TypedNativeInlineLoweringPass
 #define AOT_BUILTINS_INLINE_LIST(V)                 \
@@ -377,7 +357,6 @@
     V(ObjectGetProto)                               \
     V(ObjectIsPrototypeOf)                          \
     V(ReflectGetPrototypeOf)                        \
-    CONDITION_REFLECT_HAS(V)                        \
     V(ReflectConstruct)                             \
     V(ReflectApply)                                 \
     V(FunctionPrototypeHasInstance)                 \

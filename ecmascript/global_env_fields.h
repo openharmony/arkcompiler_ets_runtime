@@ -372,12 +372,6 @@
     V(JSTaggedValue, BitVectorPrototype, BITVECTOR_PROTOTYPE_INDEX)                                              \
     V(JSTaggedValue, BitVectorFunction, BITVECTOR_FUNCTION_INDEX)
 
-#if ENABLE_NEXT_OPTIMIZATION
-#define CONDITION_GLOBAL_REFLECT_HAS(V)
-#else
-#define CONDITION_GLOBAL_REFLECT_HAS(V) V(JSTaggedValue, ReflectHas, REFLECT_HAS_INDEX)
-#endif
-
 // Use for builtins inlining
 #define GLOBAL_ENV_INLINED_BUILTINS(V)                                                    \
     V(JSTaggedValue, MathSqrt, MATH_SQRT_INDEX)                                           \
@@ -437,7 +431,6 @@
     V(JSTaggedValue, ObjectGetProto, OBJECT_GET_PROTO_INDEX)                              \
     V(JSTaggedValue, ObjectIsPrototypeOf, OBJECT_IS_PROTOTYPE_OF_INDEX)                   \
     V(JSTaggedValue, ReflectGetPrototypeOf, REFLECT_GET_PROTOTYPE_OF_INDEX)               \
-    CONDITION_GLOBAL_REFLECT_HAS(V)                                                       \
     V(JSTaggedValue, ReflectConstruct, REFLECT_CONSTRUCT_INDEX)                           \
     V(JSTaggedValue, ReflectApply, REFLECT_APPLY_INDEX)                                   \
     V(JSTaggedValue, FunctionPrototypeHasInstance, FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX) \

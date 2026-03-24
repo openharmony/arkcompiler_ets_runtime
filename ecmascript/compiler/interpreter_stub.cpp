@@ -1387,11 +1387,7 @@ DECLARE_ASM_HANDLER(HandleIsinImm8V8)
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
-#if ENABLE_NEXT_OPTIMIZATION
     GateRef result = IsIn(glue, prop, acc); // acc is obj
-#else
-    GateRef result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(IsIn), {prop, acc}); // acc is obj
-#endif
     CHECK_EXCEPTION_WITH_ACC(result, INT_PTR(ISIN_IMM8_V8));
 }
 
@@ -4167,15 +4163,9 @@ DECLARE_ASM_HANDLER(HandleGetmodulenamespaceImm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst8_0(pc);
-#if ENABLE_NEXT_OPTIMIZATION
     GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef moduleRef = LoadModuleNamespaceByIndex(glue, ZExtInt8ToInt32(index), module);
-#else
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef moduleRef = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetModuleNamespaceByIndex),
-                                                  { IntToTaggedInt(index) });
-#endif
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(GETMODULENAMESPACE_IMM8);
 }
@@ -4185,15 +4175,9 @@ DECLARE_ASM_HANDLER(HandleWideGetmodulenamespacePrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
-#if ENABLE_NEXT_OPTIMIZATION
     GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef moduleRef = LoadModuleNamespaceByIndex(glue, ZExtInt16ToInt32(index), module);
-#else
-    GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
-    GateRef moduleRef = CallRuntimeWithCurrentEnv(glue, currentEnv, RTSTUB_ID(GetModuleNamespaceByIndex),
-                                                  { Int16ToTaggedInt(index) });
-#endif
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(WIDE_GETMODULENAMESPACE_PREF_IMM16);
 }
@@ -4255,13 +4239,8 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
-#if ENABLE_NEXT_OPTIMIZATION
     GateRef indexInt32 = ZExtInt8ToInt32(index);
     varAcc = LoadExternalmodulevar(glue, indexInt32, module);
-#else
-    varAcc = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
-                                      {Int8ToTaggedInt(index), module});
-#endif
 #endif
     DISPATCH_WITH_ACC(LDEXTERNALMODULEVAR_IMM8);
 }
@@ -4289,13 +4268,8 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     SetCurrentGlobalEnv(globalEnv);
-#if ENABLE_NEXT_OPTIMIZATION
     GateRef indexInt32 = ZExtInt16ToInt32(index);
     varAcc = LoadExternalmodulevar(glue, indexInt32, module);
-#else
-    varAcc = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
-                                      {Int16ToTaggedInt(index), module});
-#endif
 #endif
     DISPATCH_WITH_ACC(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }
@@ -5440,13 +5414,8 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm8Id16Imm8)
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
-#if ENABLE_NEXT_OPTIMIZATION
     NewObjectStubBuilder newBuilder(this, globalEnv);
     result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), currentEnv, GetModule(glue, sp));
-#else
-    result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
-        currentEnv, GetModule(glue, sp) });
-#endif
 
 #if ECMASCRIPT_ENABLE_IC
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
@@ -5472,13 +5441,8 @@ DECLARE_ASM_HANDLER(HandleDefinemethodImm16Id16Imm8)
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     DEFVARIABLE(result, VariableType::JS_POINTER(),
         GetMethodFromConstPool(glue, constpool, ZExtInt16ToInt32(methodId)));
-#if ENABLE_NEXT_OPTIMIZATION        
     NewObjectStubBuilder newBuilder(this, globalEnv);
     result = newBuilder.DefineMethod(glue, *result, acc, ZExtInt8ToInt32(length), currentEnv, GetModule(glue, sp));
-#else
-    result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(DefineMethod), { *result, acc, Int8ToTaggedInt(length),
-                                      currentEnv, GetModule(glue, sp) });
-#endif
 
 #if ECMASCRIPT_ENABLE_IC
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));

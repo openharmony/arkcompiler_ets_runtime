@@ -737,11 +737,7 @@ GateRef StubBuilder::DefineField(GateRef glue, GateRef obj, GateRef propKey, Gat
     BRANCH(IsEcmaObject(glue, obj), &isObj, &notObj);
     Bind(&isObj);
     {
-#if ENABLE_NEXT_OPTIMIZATION
         key = ToPropertyKey(glue, propKey);
-#else
-        key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {propKey});
-#endif
         BRANCH(HasPendingException(glue), &hasPendingException, &next);
     }
     Bind(&next);
@@ -1210,7 +1206,6 @@ GateRef StubBuilder::ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef ol
     env->SubCfgExit();
     return ret;
 }
-#if ENABLE_NEXT_OPTIMIZATION
 GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
 {
     auto env = GetEnvironment();
@@ -1229,32 +1224,7 @@ GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
     env->SubCfgExit();
     return ret;
 }
-#else
-GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
-{
-    auto env = GetEnvironment();
-    Label subEntry(env);
-    env->SubCfgEntry(&subEntry);
-    Label exit(env);
-    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
-    GateRef newL = Int32Add(oldLength, Int32LSR(oldLength, Int32(1)));
-    Label reachMin(env);
-    Label notReachMin(env);
-    BRANCH(Int32UnsignedGreaterThan(newL, Int32(JSObject::MIN_ELEMENTS_LENGTH)), &reachMin, &notReachMin);
-    {
-        Bind(&reachMin);
-        result = newL;
-        Jump(&exit);
-        Bind(&notReachMin);
-        result = Int32(JSObject::MIN_ELEMENTS_LENGTH);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-#endif
+
 GateRef StubBuilder::CallGetterHelper(
     GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback, GateRef hir)
 {
@@ -2731,11 +2701,7 @@ GateRef StubBuilder::LoadFromField(GateRef glue, GateRef receiver, GateRef handl
     Label handlerPost(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef index = HandlerBaseGetOffset(handlerInfo);
-#if ENABLE_NEXT_OPTIMIZATION
     BRANCH_LIKELY(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
-#else
-    BRANCH(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
-#endif
     Bind(&handlerInfoIsInlinedProps);
     {
         result = Load(VariableType::JS_ANY(), glue, receiver, PtrMul(ZExtInt32ToPtr(index),
@@ -2752,11 +2718,7 @@ GateRef StubBuilder::LoadFromField(GateRef glue, GateRef receiver, GateRef handl
         Label nonDoubleToTagged(env);
         Label doubleToTagged(env);
         GateRef rep = HandlerBaseGetRep(handlerInfo);
-#if ENABLE_NEXT_OPTIMIZATION
         BRANCH_UNLIKELY(IsDoubleRepInPropAttr(rep), &doubleToTagged, &nonDoubleToTagged);
-#else
-        BRANCH(IsDoubleRepInPropAttr(rep), &doubleToTagged, &nonDoubleToTagged);
-#endif
         Bind(&doubleToTagged);
         {
             result = TaggedPtrToTaggedDoublePtr(*result);
@@ -2765,11 +2727,7 @@ GateRef StubBuilder::LoadFromField(GateRef glue, GateRef receiver, GateRef handl
         Bind(&nonDoubleToTagged);
         {
             Label intToTagged(env);
-#if ENABLE_NEXT_OPTIMIZATION
             BRANCH_UNLIKELY(IsIntRepInPropAttr(rep), &intToTagged, &exit);
-#else
-            BRANCH(IsIntRepInPropAttr(rep), &intToTagged, &exit);
-#endif
             Bind(&intToTagged);
             {
                 result = TaggedPtrToTaggedIntPtr(*result);
@@ -2913,11 +2871,7 @@ GateRef StubBuilder::LoadICWithHandler(
         Bind(&handlerIsInt);
         {
             GateRef handlerInfo = GetInt64OfTInt(*handler);
-#if ENABLE_NEXT_OPTIMIZATION
             BRANCH_LIKELY(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
-#else
-            BRANCH(IsField(handlerInfo), &handlerInfoIsField, &handlerInfoNotField);
-#endif
             Bind(&handlerInfoIsField);
             {
                 result = LoadFromField(glue, *holder, handlerInfo);
@@ -4162,7 +4116,6 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
             BRANCH(IsJSPrimitiveRef(glue, *holder), &notSIndexObj, &notJsPrimitiveRef);
             Bind(&notJsPrimitiveRef);  // not string prototype etc.
             {
-#if ENABLE_NEXT_OPTIMIZATION
                 Label isJsProxy(env);
                 Label notJsProxy(env);
                 BRANCH(IsJSProxy(jsType), &isJsProxy, &notJsProxy);
@@ -4191,10 +4144,6 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                     result = Hole();
                     Jump(&exit);
                 }
-#else
-                result = Hole();
-                Jump(&exit);
-#endif
             }
         }
         Bind(&notSIndexObj);
@@ -5406,7 +5355,6 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
         }
         Bind(&notSpecialContainer);
         {
-#if ENABLE_NEXT_OPTIMIZATION
             Label isJsProxy(env);
             Label notJsProxy(env);
             BRANCH(IsJSProxy(jsType), &isJsProxy, &notJsProxy);
@@ -5437,10 +5385,6 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
                 result = Hole();
                 Jump(&exit);
             }
-#else
-            result = Hole();
-            Jump(&exit);
-#endif
         }
     }
     Bind(&notSIndexObj);
@@ -6074,27 +6018,9 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue,
                     BRANCH(IsInternalString(*varKey), &setByName, &notIntenalString);
                     Bind(&notIntenalString);
                     {
-                    #if ENABLE_NEXT_OPTIMIZATION
                         GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTrieTable), { *varKey });
                         varKey = res;
                         Jump(&checkDetector);
-                    #else
-                        Label notFind(env);
-                        Label find(env);
-                        GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *varKey });
-                        BRANCH(TaggedIsHole(res), &notFind, &find);
-                        Bind(&notFind);
-                        {
-                            varKey = CallRuntime(glue, RTSTUB_ID(InsertStringToTable), { *varKey });
-                            isInternal = False();
-                            Jump(&checkDetector);
-                        }
-                        Bind(&find);
-                        {
-                            varKey = res;
-                            Jump(&checkDetector);
-                        }
-                    #endif
                     }
                 }
             }
@@ -6171,27 +6097,9 @@ GateRef StubBuilder::DefinePropertyByValue(GateRef glue, GateRef receiver, GateR
                     BRANCH(IsInternalString(*varKey), &setByName, &notIntenalString);
                     Bind(&notIntenalString);
                     {
-                    #if ENABLE_NEXT_OPTIMIZATION
                         GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTrieTable), { *varKey });
                         varKey = res;
                         Jump(&checkDetector);
-                    #else
-                        Label notFind(env);
-                        Label find(env);
-                        GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *varKey });
-                        BRANCH(TaggedIsHole(res), &notFind, &find);
-                        Bind(&notFind);
-                        {
-                            varKey = CallRuntime(glue, RTSTUB_ID(InsertStringToTable), { *varKey });
-                            isInternal = False();
-                            Jump(&checkDetector);
-                        }
-                        Bind(&find);
-                        {
-                            varKey = res;
-                            Jump(&checkDetector);
-                        }
-                    #endif
                     }
                 }
             }
@@ -6647,27 +6555,9 @@ void StubBuilder::FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, 
             Jump(&getByName);
             Bind(&notIntenalString);
             {
-            #if ENABLE_NEXT_OPTIMIZATION
                 GateRef res = CallRuntime(glue, RTSTUB_ID(GetOrInternStringFromHashTrieTable), { *keyVar });
                 keyVar = res;
                 Jump(&getByName);
-            #else
-                Label notFind(env);
-                Label find(env);
-                GateRef res = CallRuntime(glue, RTSTUB_ID(TryGetInternString), { *keyVar });
-                BRANCH(TaggedIsHole(res), &notFind, &find);
-                Bind(&notFind);
-                {
-                    keyVar = CallRuntime(glue, RTSTUB_ID(InsertStringToTable), { key });
-                    isInternal = False();
-                    Jump(&getByName);
-                }
-                Bind(&find);
-                {
-                    keyVar = res;
-                    Jump(&getByName);
-                }
-            #endif
             }
         }
         Bind(&getByName);
@@ -9487,11 +9377,7 @@ GateRef StubBuilder::DeletePropertyOrThrow(GateRef glue, GateRef obj, GateRef va
     Bind(&isNotExceptiont);
     {
         Label deleteProper(env);
-#if ENABLE_NEXT_OPTIMIZATION
         key = ToPropertyKey(glue, value);
-#else
-        key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {value});
-#endif
         BRANCH(HasPendingException(glue), &exit, &deleteProper);
         Bind(&deleteProper);
         {
@@ -10477,7 +10363,6 @@ void StubBuilder::TryFastGetIterator(GateRef glue, GateRef obj, GateRef hclass,
     }
 }
 
-#if ENABLE_NEXT_OPTIMIZATION
 GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation callback)
 {
     auto env = GetEnvironment();
@@ -10544,67 +10429,6 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     env->SubCfgExit();
     return ret;
 }
-#else
-GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation callback)
-{
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    Label exit(env);
-    env->SubCfgEntry(&entryPass);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Exception());
-    DEFVARIABLE(taggedId, VariableType::INT32(), Int32(GET_MESSAGE_STRING_ID(ObjIsNotCallable)));
-
-    Label isPendingException(env);
-    Label noPendingException(env);
-    Label isHeapObject(env);
-    Label objIsCallable(env);
-    Label throwError(env);
-    Label callExit(env);
-
-    GateRef iteratorKey = CalIteratorKey(glue);
-    result = FastGetPropertyByName(glue, obj, iteratorKey, ProfileOperation());
-    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
-    Bind(&isPendingException);
-    {
-        result = Exception();
-        Jump(&exit);
-    }
-    Bind(&noPendingException);
-    callback.ProfileGetIterator(*result);
-    BRANCH(TaggedIsHeapObject(*result), &isHeapObject, &throwError);
-    Bind(&isHeapObject);
-    BRANCH(IsCallable(glue, *result), &objIsCallable, &throwError);
-    Bind(&objIsCallable);
-    {
-        JSCallArgs callArgs(JSCallMode::CALL_GETTER);
-        callArgs.callGetterArgs = { obj };
-        CallStubBuilder callBuilder(this, glue, *result, Int32(0), 0, &result, Circuit::NullGate(), callArgs,
-            ProfileOperation());
-        if (env->IsBaselineBuiltin()) {
-            callBuilder.JSCallDispatchForBaseline(&callExit);
-            Bind(&callExit);
-            Jump(&exit);
-        } else {
-            result = callBuilder.JSCallDispatch();
-            Label modifyErrorInfo(env);
-            BRANCH(TaggedIsHeapObject(*result), &exit, &modifyErrorInfo);
-            Bind(&modifyErrorInfo);
-            taggedId = Int32(GET_MESSAGE_STRING_ID(IterNotObject));
-            Jump(&throwError);
-        }
-    }
-    Bind(&throwError);
-    {
-        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(*taggedId) });
-        result = Exception();
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-#endif
 
 GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
 {

@@ -29,7 +29,6 @@ void BuiltinsReflectStubBuilder::Get(Variable *result, Label *exit, Label *slowP
         GateRef propKey = GetCallArg1(numArgs_);
         Label twoArgs(env);
         Label threeArgs(env);
-#if ENABLE_NEXT_OPTIMIZATION
         BRANCH(Int64Equal(numArgs_, IntPtr(2)), &twoArgs, &threeArgs); // 2 : two args
         Bind(&twoArgs);
         {
@@ -42,18 +41,9 @@ void BuiltinsReflectStubBuilder::Get(Variable *result, Label *exit, Label *slowP
             *result = GetPropertyByValue(glue_, target, propKey, receiver);
             BRANCH(TaggedIsHole(result->ReadVariable()), slowPath, exit);
         }
-#else
-        BRANCH(Int64Equal(numArgs_, IntPtr(2)), &twoArgs, slowPath); // 2 : two args
-        Bind(&twoArgs);
-        {
-            *result = GetPropertyByValue(glue_, target, propKey);
-            BRANCH(TaggedIsHole(result->ReadVariable()), slowPath, exit);
-        }
-#endif
     }
 }
 
-#if ENABLE_NEXT_OPTIMIZATION
 void BuiltinsReflectStubBuilder::Has(Variable* result, Label* exit, Label* slowPath)
 {
     auto env = GetEnvironment();
@@ -112,6 +102,5 @@ void BuiltinsReflectStubBuilder::Set(Variable* result, Label* exit, Label* slowP
         }
     }
 }
-#endif
 
 }  // namespace panda::ecmascript::kungfu

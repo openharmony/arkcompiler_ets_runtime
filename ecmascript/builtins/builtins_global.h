@@ -183,7 +183,6 @@ private:
     static void PrintValue(int64_t value, int64_t tag);
     static JSTaggedValue Encode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet);
     static JSTaggedValue Decode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet);
-#if ENABLE_NEXT_OPTIMIZATION
     template <typename T>
     static JSTaggedValue DoDecode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet,
                                            const T *data);
@@ -211,27 +210,6 @@ private:
     static inline bool IsInMarkURISet(uint16_t ch);
     static inline void AppendPercentEncodedByte(std::u16string& sStr, uint8_t byte, uint8_t &len);
     static inline void AppendU32Data(std::u16string &resStr, uint32_t data);
-#else // ENABLE_NEXT_OPTIMIZATION
-    static JSTaggedValue UTF16EncodeCodePoint(JSThread *thread, judgURIFunc IsInURISet,
-                                              const std::vector<uint8_t> &oct, const JSHandle<EcmaString> &str,
-                                              uint32_t &start, int32_t &k, std::u16string &sStr);
-    static void HandleSingleByteCharacter(JSThread *thread, uint8_t &bb,
-                                          const JSHandle<EcmaString> &str,
-                                          uint32_t &start, int32_t &k,
-                                          std::u16string &sStr, judgURIFunc IsInURISet);
-    static JSTaggedValue DecodePercentEncoding(JSThread *thread, int32_t &n,
-                                               int32_t &k, const JSHandle<EcmaString> &str,
-                                               uint8_t &bb, std::vector<uint8_t> &oct);
-    static JSTaggedValue DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
-                                               judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr);
-    static bool IsUnescapedURI(uint16_t ch);
-    static bool IsInUnescapedURISet(uint16_t ch);
-    static bool IsInReservedURISet(uint16_t ch);
-    static bool IsReservedURI(uint16_t ch);
-    static bool IsInMarkURISet(uint16_t ch);
-    static bool IsHexDigits(uint16_t ch);
-    static uint8_t GetValueFromTwoHex(uint16_t front, uint16_t behind);
-#endif // ENABLE_NEXT_OPTIMIZATION
     static uint16_t GetValueFromHexString(JSThread *thread, const JSHandle<EcmaString> &string);
     // 22.1.3.17.2 StringPad ( S, maxLength, fillString, placement )
     static EcmaString *StringPad(JSThread *thread,
