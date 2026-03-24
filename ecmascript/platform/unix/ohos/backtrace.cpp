@@ -139,7 +139,7 @@ std::string SymbolicAddress(const void* const *pc,
 #if defined(ENABLE_BACKTRACE_LOCAL)
     std::vector<OHOS::HiviewDFX::DfxFrame> frames;
     int index = 0;
-    auto fpBacktrace = FpBacktrace();
+    static auto fpBacktrace = FpBacktrace();
     for (int i = 0; i < size; i++) {
         auto dfx_frame = fpBacktrace->SymbolicAddress(const_cast<void *>(pc[i]));
         if (dfx_frame == nullptr) {
