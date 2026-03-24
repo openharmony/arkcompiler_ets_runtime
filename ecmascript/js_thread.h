@@ -570,6 +570,8 @@ public:
 
     std::string GetThreadName() const;
 
+    void SetThreadName(const std::string &name);
+
     void PostFork();
 
     void CaptureThreadName();
