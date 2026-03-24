@@ -24,6 +24,7 @@
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/mem/cms_mem/slot_space-inl.h"
 #include "ecmascript/mem/guarded_task.h"
+#include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/mark_stack.h"
@@ -1181,6 +1182,14 @@ public:
         return idleGCTrigger_;
     }
 
+    JitFort *GetOrCreateJitFort()
+    {
+        if (jitFort_ == nullptr) {
+            jitFort_ = new JitFort();
+        }
+        return jitFort_;
+    }
+
     void SetRSetWorkListHandler(RSetWorkListHandler *handler)
     {
         ASSERT((sharedGCData_.rSetWorkListHandler_ == nullptr) != (handler == nullptr));
@@ -2011,6 +2020,8 @@ private:
     std::vector<std::pair<FinishGCListener, void *>> gcListeners_;
 
     IdleGCTrigger *idleGCTrigger_ {nullptr};
+
+    JitFort *jitFort_ {nullptr};
 
     bool hasOOMDump_ {false};
 

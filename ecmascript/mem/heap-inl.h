@@ -681,7 +681,7 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
     ASSERT(GetEcmaVM()->GetJSOptions().GetEnableJitFort());
     if (!GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort()) {
         desc->instructionsAddr = 0;
-        if (size <= g_maxRegularHeapObjectSize) {
+        if (!desc->isHugeObj) {
             // for non huge code cache obj, allocate fort space before allocating the code object
             uintptr_t mem = machineCodeSpace_->JitFortAllocate(desc);
             if (mem == ToUintPtr(nullptr)) {
@@ -691,12 +691,12 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
         }
     }
     if (UNLIKELY(g_isEnableCMCGC)) {
-        object = (size > g_maxRegularHeapObjectSize) ?
+        object = (desc->isHugeObj) ?
             reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
             reinterpret_cast<TaggedObject *>(common::HeapAllocator::AllocateInNonmoveOrHuge(
                 size, common::LanguageType::DYNAMIC));
     } else {
-        object = (size > g_maxRegularHeapObjectSize) ?
+        object = (desc->isHugeObj) ?
             reinterpret_cast<TaggedObject *>(AllocateHugeMachineCodeObject(size, desc)) :
             reinterpret_cast<TaggedObject *>(machineCodeSpace_->Allocate(size, desc, true));
     }
