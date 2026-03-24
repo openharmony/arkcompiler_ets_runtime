@@ -18,7 +18,6 @@
 
 #include "ecmascript/mem/cms_mem/cms_region_chain_manager.h"
 
-#include "ecmascript/free_object.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/platform/mutex.h"
 
@@ -37,7 +36,7 @@ SlotFreeListMetaInfo CMSRegionChainManager::TryTakeSlotFreeList()
             return maybeFreeList;
         }
 
-        if (maybeFreeList.firstFreeObject_ != nullptr) {
+        if (maybeFreeList.firstFreeSegment_ != nullptr) {
             return maybeFreeList;
         }
     }
@@ -45,7 +44,7 @@ SlotFreeListMetaInfo CMSRegionChainManager::TryTakeSlotFreeList()
     {
         RetrieveSweptSlotFreeLists();
         SlotFreeListMetaInfo maybeFreeList = TryTakeUsableSlotFreeList();
-        if (maybeFreeList.firstFreeObject_ != nullptr) {
+        if (maybeFreeList.firstFreeSegment_ != nullptr) {
             return maybeFreeList;
         }
     }
@@ -73,7 +72,7 @@ void CMSRegionChainManager::RetrieveSweptSlotFreeLists()
         SlotFreeListMetaInfo freeList = sweptSlotFreeList_.back();
         sweptSlotFreeList_.pop_back();
         // fixme: move outside lock
-        Region *region = Region::ObjectAddressToRange(const_cast<FreeObject *>(freeList.firstFreeObject_));
+        Region *region = Region::ObjectAddressToRange(ToUintPtr(freeList.firstFreeSegment_));
         region->ResetSwept();
         region->MergeLocalToShareRSetForCS();
         usableSlotFreeList_.emplace_back(freeList);

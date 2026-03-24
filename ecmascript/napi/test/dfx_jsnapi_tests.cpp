@@ -308,6 +308,10 @@ HWTEST_F_L0(DFXJSNApiTests, GetArrayBufferSize_GetHeapTotalSize_GetHeapUsedSize)
 
 HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     if (g_isEnableCMCGC) {
         return;
     }

@@ -1031,10 +1031,11 @@ class FreeListBasedRegion : public Region, public FreeListDispatcher<freeListTyp
 private:
     using DerivedRegion = FreeListBasedRegion<freeListType>;
 public:
-    static size_t GetRegionAvailableSize()
+    static constexpr size_t GetRegionAvailableSize()
     {
-        size_t regionHeaderSize = AlignUp(sizeof(DerivedRegion), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        size_t bitsetSize = GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE);
+        size_t alignSize = static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION);
+        size_t regionHeaderSize = AlignUp(sizeof(DerivedRegion), alignSize);
+        size_t bitsetSize = AlignUp(GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE), alignSize);
         return DEFAULT_REGION_SIZE - regionHeaderSize - bitsetSize;
     }
 

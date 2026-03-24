@@ -18,7 +18,7 @@
 
 #include "common_components/taskpool/runner.h"
 #include "ecmascript/cross_vm/work_manager_hybrid.h"
-#include "ecmascript/mem/cms_mem/slot_gc_allocator.h"
+#include "ecmascript/mem/cms_mem/slot_gc_allocator-inl.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/work_space_chunk.h"

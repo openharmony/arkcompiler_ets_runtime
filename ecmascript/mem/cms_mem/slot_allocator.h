@@ -22,6 +22,7 @@
 
 namespace panda::ecmascript {
 class CMSRegionChainManager;
+class Region;
 
 class SlotAllocator {
 public:
@@ -30,6 +31,11 @@ public:
 
     NO_COPY_SEMANTIC(SlotAllocator);
     NO_MOVE_SEMANTIC(SlotAllocator);
+
+    static constexpr size_t GetSlotFreeListOffset()
+    {
+        return offsetof(SlotAllocator, freeList_);
+    }
 
     size_t GetSlotSize() const
     {

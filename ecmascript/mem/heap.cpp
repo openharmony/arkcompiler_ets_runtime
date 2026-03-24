@@ -1039,6 +1039,8 @@ void Heap::InitializeSpaces()
         oldSpaceCapacity = maxHeapSize - capacities;
         size_t minSlotSpaceCapacity = config_.GetMinSlotSpaceSize();
         slotSpace_ = new SlotSpace(this, minSlotSpaceCapacity, oldSpaceCapacity);
+        const void *allocatorsAddress = slotSpace_->GetAllocatorsAddress();
+        thread_->SetSlotSpaceAllocatorsAddress(allocatorsAddress);
 
         globalSpaceAllocLimit_ = maxHeapSize - minSemiSpaceCapacity;
         globalSpaceNativeLimit_ = INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT;
@@ -1086,17 +1088,26 @@ void Heap::ResetLargeCapacity(size_t heapSize)
         nonMovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
     }
     size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();
-    size_t capacities = minSemiSpaceCapacity * 2 + nonMovableSpaceCapacity +
-        machineCodeSpaceCapacity + readOnlySpaceCapacity;
+    size_t capacities = nonMovableSpaceCapacity + machineCodeSpaceCapacity + readOnlySpaceCapacity;
+    // fixme: refactor?
+    if constexpr (!G_USE_CMS_GC) {
+        capacities += minSemiSpaceCapacity * 2; // 2 means double.
+    }
     if (heapSize < capacities || heapSize - capacities < MIN_OLD_SPACE_LIMIT) {
         LOG_ECMA_MEM(FATAL) << "Capacities is too big to reset oldspace: " << capacities;
     }
     size_t newOldCapacity = heapSize - capacities;
     LOG_ECMA(INFO) << "Main thread heap reset old capacity size: " << newOldCapacity;
-    oldSpace_->SetInitialCapacity(newOldCapacity);
-    oldSpace_->SetMaximumCapacity(newOldCapacity);
-    compressSpace_->SetInitialCapacity(newOldCapacity);
-    compressSpace_->SetMaximumCapacity(newOldCapacity);
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        slotSpace_->SetInitialCapacity(newOldCapacity);
+        slotSpace_->SetMaximumCapacity(newOldCapacity);
+    } else {
+        oldSpace_->SetInitialCapacity(newOldCapacity);
+        oldSpace_->SetMaximumCapacity(newOldCapacity);
+        compressSpace_->SetInitialCapacity(newOldCapacity);
+        compressSpace_->SetMaximumCapacity(newOldCapacity);
+    }
     hugeObjectSpace_->SetInitialCapacity(newOldCapacity);
     hugeObjectSpace_->SetMaximumCapacity(newOldCapacity);
 }
@@ -1370,18 +1381,19 @@ void Heap::ResumeForAppSpawn()
     hugeMachineCodeSpace_->ReclaimHugeRegion();
     // fixme: reafactor?
     if constexpr (G_USE_CMS_GC) {
-        slotSpace_->ReclaimFromRegions();
+        slotSpace_->ReclaimFromRegions(false);
     } else {
         inactiveSemiSpace_->ReclaimRegions();
         oldSpace_->Reset();
     }
     auto cb = [] (Region *region) {
         region->ClearMarkGCBitset();
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            region->ResetAliveObject();
+        }
     };
-    nonMovableSpace_->EnumerateRegions(cb);
-    machineCodeSpace_->EnumerateRegions(cb);
-    hugeObjectSpace_->EnumerateRegions(cb);
-    hugeMachineCodeSpace_->EnumerateRegions(cb);
+    EnumerateNonNewSpaceRegions(cb);
 }
 
 void Heap::CompactHeapBeforeFork()

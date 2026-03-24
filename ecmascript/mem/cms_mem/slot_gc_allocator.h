@@ -24,8 +24,8 @@ class SlotSpace;
 
 class SlotGCAllocator {
 public:
-    SlotGCAllocator() = default;
-    ~SlotGCAllocator() = default;
+    inline SlotGCAllocator();
+    inline ~SlotGCAllocator();
 
     NO_COPY_SEMANTIC(SlotGCAllocator);
     NO_MOVE_SEMANTIC(SlotGCAllocator);
@@ -36,31 +36,34 @@ public:
 
     inline uintptr_t Allocate(size_t size);
 
-    inline void Finalize(BaseHeap *heap);
+    inline void Finalize();
 
 private:
     class SlotBumpPointerAllocator {
     public:
-        SlotBumpPointerAllocator() = default;
+        inline explicit SlotBumpPointerAllocator(size_t slotSize);
         ~SlotBumpPointerAllocator() = default;
-
-        inline void Setup(size_t slotSize);
 
         inline void Reset(uintptr_t top, uintptr_t end);
 
-        inline void Finalize(BaseHeap *heap);
+        inline void Finalize();
 
         inline uintptr_t Allocate();
 
         inline bool IsEmpty() const;
+
+        inline size_t GetSlotSize() const;
     private:
         size_t slotSize_ {0};
         uintptr_t top_ {0};
         uintptr_t end_ {0};
     };
 
+    inline void InitializeAllocators();
+
     SlotSpace *slotSpace_ {nullptr};
-    std::array<SlotBumpPointerAllocator, SlotSpaceConfig::NUM_SLOTS> tlabAllocators_ {};
+    std::array<SlotBumpPointerAllocator *, SlotSpaceConfig::NUM_SLOTS> tlabAllocators_ {};
+    std::vector<SlotBumpPointerAllocator *> tlabAllocatorInstances_ {};
 };
 }  // namespace panda::ecmascript
 

@@ -34,8 +34,14 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
         switch (flag) {
             case RegionSpaceFlag::IN_OLD_SPACE:
             case RegionSpaceFlag::IN_YOUNG_SPACE:
-            case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+                ASSERT(!G_USE_CMS_GC);
                 return SerializedObjectSpace::OLD_SPACE;
+            case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+                if constexpr (G_USE_CMS_GC) {
+                    return SerializedObjectSpace::SLOT_SPACE;
+                } else {
+                    return SerializedObjectSpace::OLD_SPACE;
+                }
             case RegionSpaceFlag::IN_SLOT_SPACE:
                 return SerializedObjectSpace::SLOT_SPACE;
             case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:

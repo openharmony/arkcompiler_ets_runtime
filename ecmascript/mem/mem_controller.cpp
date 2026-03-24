@@ -196,6 +196,7 @@ void MemController::ResetCalculationWithoutGC()
     allocDurationSinceGc_ = 0.0;
     newSpaceAllocSizeSinceGC_ = 0;
     oldSpaceAllocSizeSinceGC_ = 0;
+    slotAndHugeSpaceAllocSizeSinceGC_ = 0;
     nonMovableSpaceAllocSizeSinceGC_ = 0;
     codeSpaceAllocSizeSinceGC_ = 0;
 }
@@ -226,6 +227,7 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
     allocDurationSinceGc_ = 0.0;
     newSpaceAllocSizeSinceGC_ = 0;
     oldSpaceAllocSizeSinceGC_ = 0;
+    slotAndHugeSpaceAllocSizeSinceGC_ = 0;
     nonMovableSpaceAllocSizeSinceGC_ = 0;
     codeSpaceAllocSizeSinceGC_ = 0;
 

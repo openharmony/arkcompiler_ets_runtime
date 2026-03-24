@@ -333,6 +333,12 @@ public:
         return heapRegionAllocator_;
     }
 
+    void SetSlotSpaceAllocatorsAddress(const void *addr)
+    {
+        ASSERT(glueData_.slotSpaceAllocatorsAddress_ == nullptr);
+        glueData_.slotSpaceAllocatorsAddress_ = addr;
+    }
+
     void ReSetNewSpaceAllocationAddress(const uintptr_t *top, const uintptr_t* end)
     {
         glueData_.newSpaceAllocationTopAddress_ = top;
@@ -1240,6 +1246,7 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  RTStubEntries,
                                                  COStubEntries,
                                                  BuiltinStubEntries,
@@ -1295,6 +1302,7 @@ public:
             LeaveFrameIndex,
             LastFpIndex,
             BaseAddressIndex,
+            SlotSpaceAllocatorsAddressIndex,
             NewSpaceAllocationTopAddressIndex,
             NewSpaceAllocationEndAddressIndex,
             SOldSpaceAllocationTopAddressIndex,
@@ -1413,6 +1421,11 @@ public:
         static size_t GetLastFpOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::LastFpIndex)>(isArch32);
+        }
+
+        static size_t GetSlotSpaceAllocatorsAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SlotSpaceAllocatorsAddressIndex)>(isArch32);
         }
 
         static size_t GetNewSpaceAllocationTopAddressOffset(bool isArch32)
@@ -1677,6 +1690,7 @@ public:
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
         alignas(EAS) JSTaggedType baseAddress_ {0};
+        alignas(EAS) const void *slotSpaceAllocatorsAddress_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sOldSpaceAllocationTopAddress_ {nullptr};

@@ -80,7 +80,12 @@ void FullGC::Initialize()
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->Prepare();
     auto callback = [](Region *current) {
-        current->ResetAliveObject();
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            ASSERT(current->AliveObject() == 0);
+        } else {
+            current->ResetAliveObject();
+        }
         current->ClearOldToNewRSet();
     };
     heap_->EnumerateNonMovableRegions(callback);

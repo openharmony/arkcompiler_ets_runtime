@@ -159,6 +159,7 @@ namespace panda::ecmascript {
     V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
     V(SharedGCMarkingBarrier)                  \
+    V(TryFillSweptRegion)                      \
     V(CMCGCMarkingBarrier)                     \
     V(DoubleToInt)                             \
     V(SaturateTruncDoubleToInt32)              \

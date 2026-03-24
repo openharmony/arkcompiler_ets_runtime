@@ -16,16 +16,42 @@
 #ifndef ECMASCRIPT_MEM_CMS_MEM_SLOT_FREE_LIST_H
 #define ECMASCRIPT_MEM_CMS_MEM_SLOT_FREE_LIST_H
 
-#include "ecmascript/free_object.h"
 #include "ecmascript/mem/cms_mem/slot_free_list_meta_info.h"
 #include "ecmascript/mem/cms_mem/slot_space_config.h"
 
 namespace panda::ecmascript {
 
-class SlotFreeList {
+class SlotFreeList : public base::AlignedStruct<base::AlignedPointer::Size(),
+                                                base::AlignedPointer,
+                                                base::AlignedPointer,
+                                                base::AlignedPointer,
+                                                base::AlignedSize,
+                                                base::AlignedSize> {
 public:
-    static constexpr uintptr_t INVALID_OBJECT_FAST_CHECK_MASK = 1;
-    static_assert((static_cast<uintptr_t>(JSTaggedValue::NULL_POINTER) & INVALID_OBJECT_FAST_CHECK_MASK) != 0);
+    static size_t GetTopOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::TopIndex)>(isArch32);
+    }
+
+    static size_t GetEndOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::EndIndex)>(isArch32);
+    }
+
+    static size_t GetNextTopOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::NextTopIndex)>(isArch32);
+    }
+
+    static size_t GetSlotSizeOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::SlotSizeIndex)>(isArch32);
+    }
+
+    static size_t GetTotalUsableSizeOffset(bool isArch32)
+    {
+        return GetOffset<static_cast<size_t>(Index::TotalUsableSizeIndex)>(isArch32);
+    }
 
     SlotFreeList() = default;
     ~SlotFreeList() = default;
@@ -53,24 +79,30 @@ public:
      * \brief Discard the remain slots
      * @return Allocated size from this free list
      */
-    template <typename DiscardCurrentSegmentRemainMemory>
-    inline size_t Discard(DiscardCurrentSegmentRemainMemory &&discardCurrentSegmentRemainMemory);
+    inline size_t Discard();
 
     inline uintptr_t TryAllocate();
 
     inline std::pair<uintptr_t, size_t> TryAllocateBuffer(size_t bufferSize);
 
 private:
+    enum class Index : size_t {
+        TopIndex = 0,
+        EndIndex,
+        NextTopIndex,
+        SlotSizeIndex,
+        TotalUsableSizeIndex,
+    };
+
     inline bool HasNextSegment() const;
 
-    inline void FetchAndUpdateSegment(FreeObject *freeObject);
+    inline void FetchAndUpdateSegment(SlotFreeSegment *freeSegment);
 
-    uintptr_t top_ {0};
-    uintptr_t end_ {0};
-    uintptr_t nextTop_ {static_cast<uintptr_t>(JSTaggedValue::NULL_POINTER)};
-    uintptr_t nextEnd_ {static_cast<uintptr_t>(JSTaggedValue::NULL_POINTER)};
-    size_t slotSize_ {0};
-    size_t totalUsableSize_ {0};
+    alignas(EAS) uintptr_t top_ {0};
+    alignas(EAS) uintptr_t end_ {0};
+    alignas(EAS) uintptr_t nextTop_ {0};
+    alignas(EAS) size_t slotSize_ {0};
+    alignas(EAS) size_t totalUsableSize_ {0};
 };
 }  // namespace panda::ecmascript
 

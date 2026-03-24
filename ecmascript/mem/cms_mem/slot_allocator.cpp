@@ -21,7 +21,8 @@ namespace panda::ecmascript {
 
 void SlotAllocator::Initialize(size_t slotSize, CMSRegionChainManager *regionChainManager)
 {
-    ASSERT(regionChainManager_ == nullptr && regionChainManager != nullptr);
+    ASSERT(regionChainManager_ == nullptr);
+    ASSERT(regionChainManager != nullptr);
     freeList_.Initialize(slotSize);
     regionChainManager_ = regionChainManager;
 }
@@ -34,9 +35,7 @@ size_t SlotAllocator::RecordFreeListSoldOut()
 
 size_t SlotAllocator::Discard()
 {
-    size_t allocatedSize = freeList_.Discard([this](uintptr_t start, size_t size) {
-        FreeObject::FillFreeObject(regionChainManager_->GetLocalHeap(), start, size);
-    });
+    size_t allocatedSize = freeList_.Discard();
     ASSERT(freeList_.IsSoldOut());
     return allocatedSize;
 }
@@ -50,7 +49,7 @@ void SlotAllocator::Expand(Region *region)
     uintptr_t end = region->GetEnd();
     size_t totalUsableSize = (end - start) / freeList_.GetSlotSize() * freeList_.GetSlotSize();
     ASSERT(totalUsableSize > 0 && totalUsableSize % freeList_.GetSlotSize() == 0);
-    FreeObject::FillFreeObject(regionChainManager_->GetLocalHeap(), start, totalUsableSize);
-    ResetFreeList({FreeObject::Cast(start), totalUsableSize});
+    SlotFreeSegment::FillFreeSegment(start, totalUsableSize);
+    ResetFreeList({SlotFreeSegment::Cast(start), totalUsableSize});
 }
 }  // namespace panda::ecmascript
