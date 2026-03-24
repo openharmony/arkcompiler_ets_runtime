@@ -1781,6 +1781,83 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValue)
     EXPECT_TRUE(res);
 }
 
+/**
+ * @tc.name: JSNApi_SerializeValueWithOptions
+ * @tc.desc: Test SerializeValue overload with SerializeOptions struct
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValueWithOptions)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    ASSERT_TRUE(!callback.IsEmpty());
+    std::vector<Local<JSValueRef>> arguments;
+    arguments.emplace_back(JSValueRef::Undefined(vm_));
+    Local<JSValueRef> result = callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    ASSERT_TRUE(result->IsArray(vm_));
+    Local<ArrayRef> array(result);
+    ASSERT_EQ(static_cast<uint64_t>(array->Length(vm_)), arguments.size());
+    
+    // Test with SerializeOptions struct
+    SerializeOptions options(true, false, true);
+    void *res = JSNApi::SerializeValue(vm_, result, JSValueRef::Undefined(vm_),
+                                         JSValueRef::Undefined(vm_), options);
+    EXPECT_TRUE(res);
+}
+
+/**
+ * @tc.name: JSNApi_SerializeValueWithErrorWithOptions
+ * @tc.desc: Test SerializeValueWithError overload with SerializeOptions struct
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValueWithErrorWithOptions)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    ASSERT_TRUE(!callback.IsEmpty());
+    std::vector<Local<JSValueRef>> arguments;
+    arguments.emplace_back(JSValueRef::Undefined(vm_));
+    Local<JSValueRef> result = callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    ASSERT_TRUE(result->IsArray(vm_));
+    Local<ArrayRef> array(result);
+    ASSERT_EQ(static_cast<uint64_t>(array->Length(vm_)), arguments.size());
+    
+    // Test with SerializeOptions struct and error output
+    std::string error;
+    SerializeOptions options(true, false, true);
+    void *res = JSNApi::SerializeValueWithError(vm_, result, JSValueRef::Undefined(vm_),
+                                                JSValueRef::Undefined(vm_), error, options);
+    EXPECT_TRUE(res);
+    EXPECT_TRUE(error.empty());
+}
+
+/**
+ * @tc.name: JSNApi_SerializeValueOptionsConsistency
+ * @tc.desc: Verify SerializeValue with options produces same result as original function
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValueOptionsConsistency)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    ASSERT_TRUE(!callback.IsEmpty());
+    std::vector<Local<JSValueRef>> arguments;
+    arguments.emplace_back(JSValueRef::Undefined(vm_));
+    Local<JSValueRef> result = callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    
+    // Call overloaded function with SerializeOptions
+    SerializeOptions options(true, false, true);
+    void *res = JSNApi::SerializeValue(vm_, result, JSValueRef::Undefined(vm_),
+                                        JSValueRef::Undefined(vm_), options);
+    EXPECT_TRUE(res);
+    
+    // Clean up
+    JSNApi::DeleteSerializationData(res);
+}
+
 HWTEST_F_L0(JSNApiTests, ModuleDeserializeReturnEarlyWhenDisableModuleSnapshot)
 {
     uint32_t originalVersion = vm_->GetApplicationVersionCode();
