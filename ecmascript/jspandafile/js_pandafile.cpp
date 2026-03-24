@@ -537,11 +537,11 @@ void JSPandaFile::GetClassAndMethodIndexes(ClassTranslateWork &indexes)
 
 bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    jsPandaFile_->IncreaseRunningTaskCount();
     if (waitingFinish_->load(std::memory_order_acquire)) {
-        jsPandaFile_->ReducePostTaskCount();
+        jsPandaFile_->ReduceTaskCount();
         return true;
     }
-    jsPandaFile_->IncreaseRunningTaskCount();
     jsPandaFile_->TranslateClassInSubThread(thread_, *methodNamePtr_, curTranslateWorks_, needDoRemainingWork_);
     jsPandaFile_->ReduceTaskCount();
     return true;
@@ -588,15 +588,8 @@ void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_p
                                            std::atomic<bool> &needDoRemainingWork,
                                            const std::shared_ptr<std::atomic<bool>> &waitingFinish)
 {
-    IncreasePostTaskCount();
     common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<TranslateClassesTask>(
         thread->GetThreadId(), thread, this, methodNamePtr, curTranslateWorks, needDoRemainingWork, waitingFinish));
-}
-
-void JSPandaFile::IncreasePostTaskCount()
-{
-    LockHolder holder(waitTranslateClassFinishedMutex_);
-    postTaskCount_++;
 }
 
 void JSPandaFile::IncreaseRunningTaskCount()
@@ -608,19 +601,9 @@ void JSPandaFile::IncreaseRunningTaskCount()
 void JSPandaFile::ReduceTaskCount()
 {
     LockHolder holder(waitTranslateClassFinishedMutex_);
-    postTaskCount_--;
     runningTaskCount_--;
     // if runningTaskCount_ decrease, let main thread check remaining work.
     waitTranslateClassFinishedCV_.SignalAll();
-}
-
-void JSPandaFile::ReducePostTaskCount()
-{
-    LockHolder holder(waitTranslateClassFinishedMutex_);
-    postTaskCount_--;
-    if (runningTaskCount_ == 0) {
-        waitTranslateClassFinishedCV_.SignalAll();
-    }
 }
 
 void JSPandaFile::SetAllMethodLiteralToMap()
