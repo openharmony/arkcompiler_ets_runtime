@@ -46,7 +46,6 @@ bool BuiltinsGlobal::IsInReservedURISet(uint16_t ch)
     return IsReservedURI(ch);
 }
 
-#if ENABLE_NEXT_OPTIMIZATION
 bool BuiltinsGlobal::IsReservedURI(uint16_t ch)
 {
     if (ch == '@') {
@@ -72,7 +71,6 @@ bool BuiltinsGlobal::IsInMarkURISet(uint16_t ch)
 
     return ((1ULL << ch) & MARK_URI_MASK) != 0;
 }
-#endif // ENABLE_NEXT_OPTIMIZATION
 }  // namespace panda::ecmascript::builtins
 
 #endif  // ECMASCRIPT_BUILTINS_GLOBAL_URI_INL_H

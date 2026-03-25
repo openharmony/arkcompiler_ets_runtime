@@ -20,11 +20,7 @@
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_array.h"
 
-#if ENABLE_NEXT_OPTIMIZATION
 #define CONDITION_BUILTIN_REFLECT_HAS_FUNCTION(V) V("set", ReflectSet, 3, ReflectSet)
-#else
-#define CONDITION_BUILTIN_REFLECT_HAS_FUNCTION(V) V("set", ReflectSet, 3, INVALID)
-#endif
 
 // List of functions in Reflect, excluding the '@@' properties.
 // V(name, func, length, stubIndex)

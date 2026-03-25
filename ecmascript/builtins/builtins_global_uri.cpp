@@ -22,7 +22,6 @@
 namespace panda::ecmascript::builtins {
 using StringHelper = base::StringHelper;
 
-#if ENABLE_NEXT_OPTIMIZATION
 void BuiltinsGlobal::AppendPercentEncodedByte(std::u16string &sStr, uint8_t byte, uint8_t &len)
 {
     sStr[++len] = common::utf_helper::GetHexChar16((byte >> 4) & BIT_MASK); // 4: high 4 bits
@@ -386,5 +385,4 @@ JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc
     }
     return JSTaggedValue::True();
 }
-#endif // ENABLE_NEXT_OPTIMIZATION
 }  // namespace panda::ecmascript::builtins
