@@ -20,7 +20,6 @@
 #include <functional>
 #include <mutex>
 #include <string>
-#include <unordered_map>
 
 #include "iaot_compiler_interface.h"
 #include "singleton.h"
@@ -31,8 +30,8 @@ public:
     AotCompilerClient();
     virtual ~AotCompilerClient() = default;
     static AotCompilerClient &GetInstance();
-    int32_t AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
-                        std::vector<int16_t> &sigData);
+    int32_t AotCompiler(const AotCompilerArgs &args,
+                        std::vector<uint8_t> &sigData);
     int32_t StopAotCompiler();
     int32_t NeedReCompile(const std::string& oldVersion, bool& sigData);
     int32_t GetAOTVersion(std::string& sigData);

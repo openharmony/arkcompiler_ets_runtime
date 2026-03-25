@@ -22,6 +22,7 @@
 #define protected public
 #include "aot_compiler_client.h"
 #include "aot_compiler_service.h"
+#include "aot_compiler_args.h"
 #include "aot_compiler_error_utils.h"
 #include "aot_compiler_load_callback.h"
 #undef protected
@@ -154,9 +155,9 @@ HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_005, TestSize.Level0)
 HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_006, TestSize.Level0)
 {
     AotCompilerService aotService;
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> fileData;
-    int32_t ret = aotService.AotCompiler(argsMap, fileData);
+    AotCompilerArgs args;
+    std::vector<uint8_t> fileData;
+    int32_t ret = aotService.AotCompiler(args, fileData);
     EXPECT_NE(ret, ERR_OK);
 }
 
@@ -355,12 +356,12 @@ HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_018, TestSize.Level0)
 HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_019, TestSize.Level0)
 {
     AotCompilerService aotService;
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap["bundleName"] = "com.example.test";
-    argsMap["moduleName"] = "entry";
-    argsMap["aot-file"] = "/data/test/entry.an";
-    std::vector<int16_t> fileData;
-    int32_t ret = aotService.AotCompiler(argsMap, fileData);
+    AotCompilerArgs args;
+    args.bundleName = "com.example.test";
+    args.moduleName = "entry";
+    args.anFileName = "/data/test/entry.an";
+    std::vector<uint8_t> fileData;
+    int32_t ret = aotService.AotCompiler(args, fileData);
     EXPECT_NE(ret, ERR_OK);
 }
 
@@ -562,9 +563,9 @@ HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_032, TestSize.Level0)
 HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_033, TestSize.Level0)
 {
     AotCompilerService aotService;
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> fileData = {1, 2, 3, 4, 5};
-    int32_t ret = aotService.AotCompiler(argsMap, fileData);
+    AotCompilerArgs args;
+    std::vector<uint8_t> fileData = {1, 2, 3, 4, 5};
+    int32_t ret = aotService.AotCompiler(args, fileData);
     EXPECT_NE(ret, ERR_OK);
 }
 

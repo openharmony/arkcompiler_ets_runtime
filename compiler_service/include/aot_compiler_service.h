@@ -18,7 +18,6 @@
 
 #include <mutex>
 #include <string>
-#include <unordered_map>
 
 #include "aot_compiler_interface_stub.h"
 #include "event_handler.h"
@@ -41,8 +40,8 @@ class AotCompilerService : public SystemAbility, public AotCompilerInterfaceStub
     DECLARE_DELAYED_SINGLETON(AotCompilerService)
 public:
     AotCompilerService(int32_t systemAbilityId, bool runOnCreate);
-    int32_t AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
-                        std::vector<int16_t> &sigData) override;
+    int32_t AotCompiler(const AotCompilerArgs &args,
+                        std::vector<uint8_t> &sigData) override;
     int32_t StopAotCompiler() override;
     int32_t GetAOTVersion(std::string& sigData) override;
     int32_t NeedReCompile(const std::string& args, bool& sigData) override;

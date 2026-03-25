@@ -66,6 +66,7 @@ public:
                 dlclose(handle);
                 return false;
             }
+
             fd_t fd = open(realPath.c_str(), FILE_RDONLY);
             if (fd == INVALID_FD) {
                 LOG_ECMA(ERROR) << realPath.c_str() << " file open failed";

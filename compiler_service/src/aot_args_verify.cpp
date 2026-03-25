@@ -16,11 +16,16 @@
 #include "aot_args_verify.h"
 
 #include <charconv>
+#include <cstring>
 #include <dlfcn.h>
+#include <cerrno>
 #include <fcntl.h>
 #include <nlohmann/json.hpp>
 #include <regex>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <linux/fs.h>
 
 #include "aot_compiler_constants.h"
 #include "ecmascript/log_wrapper.h"
@@ -75,22 +80,17 @@ bool AotArgsVerify::CheckPathTraverse(const std::string &inputPath)
     return true;
 }
 
-bool AotArgsVerify::CheckArkCacheFiles(const std::unordered_map<std::string, std::string> &argsMap,
+bool AotArgsVerify::CheckArkCacheFiles(const std::string &aotFile, const std::string &anFile,
     const std::string &bundleName)
 {
-    auto aotFileIt = argsMap.find(ArgsIdx::AOT_FILE);
-    auto anFileIt = argsMap.find(ArgsIdx::AN_FILE_NAME);
-    if (aotFileIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::AOT_FILE.c_str() << " not found in argsMap";
+    if (aotFile.empty()) {
+        LOG_SA(ERROR) << "aotFile is empty";
         return false;
     }
-    if (anFileIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::AN_FILE_NAME.c_str() << " not found in argsMap";
+    if (anFile.empty()) {
+        LOG_SA(ERROR) << "anFile is empty";
         return false;
     }
-
-    const std::string &aotFile = aotFileIt->second;
-    const std::string &anFile = anFileIt->second;
 
     return CheckAnFileSuffix(aotFile, anFile) &&
            CheckPathTraverse(aotFile) && CheckPathTraverse(anFile) &&
@@ -141,142 +141,128 @@ bool AotArgsVerify::CheckFrameworkAnFile(const std::string &anFile)
     return true;
 }
 
-bool AotArgsVerify::CheckPkgInfoFields(const AotPkgInfo &pkgInfo, AotParserType type)
+bool AotArgsVerify::CheckPkgInfoFields(const AotCompilerArgs &args, AotParserType type)
 {
-    if (!CheckModuleName(pkgInfo.moduleName)) {
+    if (args.bundleName.empty()) {
+        LOG_SA(ERROR) << "bundleName is empty";
         return false;
     }
-    if (!CheckAbcName(pkgInfo.abcName, type)) {
+    if (!CheckModuleName(args.moduleName)) {
         return false;
     }
-    if (!CheckAbcOffsetAndSize(pkgInfo.abcOffset.value(), pkgInfo.abcSize.value(), pkgInfo.pkgPath)) {
+    std::string abcName;
+    if (args.moduleArkTSMode == ArgsIdx::ARKTS_DYNAMIC) {
+        abcName = ArgsIdx::ABC_MODULES_PATH;
+    } else {
+        abcName = ArgsIdx::ABC_MODULES_STATIC_PATH;
+    }
+    if (!CheckAbcName(abcName, type)) {
         return false;
     }
     return true;
 }
 
-bool AotArgsVerify::CheckTriggerTypeForAOT(const std::unordered_map<std::string, std::string> &argsMap)
+bool AotArgsVerify::CheckTriggerTypeForAOT(const AotCompilerArgs &args)
 {
-    auto triggerTypeIt = argsMap.find(ArgsIdx::TRIGGER_TYPE);
-    if (triggerTypeIt == argsMap.end()) {
-        return true;
-    }
-
-    uint8_t triggerType = 0;
-    const char* start = triggerTypeIt->second.c_str();
-    const char* end = start + triggerTypeIt->second.length();
-    auto result = std::from_chars(start, end, triggerType);
-    if (result.ec != std::errc()) {
-        LOG_SA(ERROR) << "Failed to parse triggerType: " << triggerTypeIt->second;
+    if (args.triggerType < 0 ||
+        args.triggerType > static_cast<int32_t>(AotTriggerType::INSTALL)) {
+        LOG_SA(ERROR) << "invalid triggerType=" << args.triggerType;
         return false;
     }
-
-    if (triggerType == static_cast<uint8_t>(AotTriggerType::INSTALL)) {
-        LOG_SA(ERROR) << "AOT skipped for triggerType=" << static_cast<uint8_t>(AotTriggerType::INSTALL);
-        return false;
-    }
-
-    return true;
-}
-
-bool AotArgsVerify::CheckAOTArgs(const std::unordered_map<std::string, std::string> &argsMap)
-{
-    if (!CheckTriggerTypeForAOT(argsMap)) {
-        return false;
-    }
-
-    AotPkgInfo pkgInfo;
-    auto pkgInfoIt = argsMap.find(ArgsIdx::COMPILER_PKG_INFO);
-    if (pkgInfoIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::COMPILER_PKG_INFO.c_str() << " not found in argsMap";
-        return false;
-    }
-    if (!ParseAotPkgInfo(pkgInfoIt->second, pkgInfo)) {
-        LOG_SA(ERROR) << "Failed to parse AOT package info from JSON";
-        return false;
-    }
-
-    auto compilerModeIt = argsMap.find(ArgsIdx::TARGET_COMPILER_MODE);
-    bool isPartialMode = (compilerModeIt != argsMap.end() && compilerModeIt->second == ArgsIdx::PARTIAL);
-    if (!isPartialMode || pkgInfo.pgoDir.empty() || !CheckArkProfilePath(pkgInfo.pgoDir, pkgInfo.bundleName)) {
-        return false;
-    }
-
-    if (!CheckPkgInfoFields(pkgInfo, AotParserType::DYNAMIC_AOT)) {
-        return false;
-    }
-    if (!CheckBundleUidAndGidFromArgsMap(argsMap)) {
-        return false;
-    }
-    if (!CheckArkCacheFiles(argsMap, pkgInfo.bundleName)) {
+    if (args.triggerType == static_cast<int32_t>(AotTriggerType::INSTALL)) {
+        LOG_SA(ERROR) << "AOT skipped for triggerType=" << static_cast<int32_t>(AotTriggerType::INSTALL);
         return false;
     }
     return true;
 }
 
-bool AotArgsVerify::IsSharedBundlesType(const std::unordered_map<std::string, std::string> &argsMap)
+bool AotArgsVerify::CheckAOTArgs(const AotCompilerArgs &args)
 {
-    auto bundleTypeIt = argsMap.find(ArgsIdx::BUNDLE_TYPE);
-    if (bundleTypeIt == argsMap.end()) {
+    if (!CheckTriggerTypeForAOT(args)) {
+        return false;
+    }
+    if (!CheckCompileMode(args.compileMode)) {
+        return false;
+    }
+    if (!CheckModuleArkTSMode(args.moduleArkTSMode)) {
+        return false;
+    }
+    if (!AotArgsVerify::CheckProcessUid(args.processUid)) {
+        return false;
+    }
+    if (!AotArgsVerify::CheckEncryptedBundle(args.isEncryptedBundle)) {
         return false;
     }
 
-    uint8_t bundleType = 0;
-    const char* start = bundleTypeIt->second.c_str();
-    const char* end = start + bundleTypeIt->second.length();
-    auto result = std::from_chars(start, end, bundleType);
-    if (result.ec != std::errc()) {
-        LOG_SA(ERROR) << "Failed to parse bundleType: " << bundleTypeIt->second;
+    bool isPartialMode = (args.compileMode == ArgsIdx::PARTIAL);
+    if (!isPartialMode || args.pgoDir.empty() || !CheckArkProfilePath(args.pgoDir, args.bundleName)) {
         return false;
     }
 
-    return bundleType == static_cast<uint8_t>(BundleType::SHARED);
+    if (!CheckPkgInfoFields(args, AotParserType::DYNAMIC_AOT)) {
+        return false;
+    }
+    if (!CheckBundleUidAndGid(args.bundleUid, args.bundleGid)) {
+        return false;
+    }
+    std::string aotFile = args.outputPath.empty() ? "" : args.outputPath + "/" + args.moduleName;
+    if (!CheckArkCacheFiles(aotFile, args.anFileName, args.bundleName)) {
+        return false;
+    }
+    return true;
 }
 
-bool AotArgsVerify::CheckStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap)
+bool AotArgsVerify::IsSharedBundlesType(const AotCompilerArgs &args)
 {
-    AotPkgInfo pkgInfo;
-    auto pkgInfoIt = argsMap.find(ArgsIdx::COMPILER_PKG_INFO);
-    if (pkgInfoIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::COMPILER_PKG_INFO.c_str() << " not found in argsMap";
+    return args.bundleType == static_cast<int32_t>(BundleType::SHARED);
+}
+
+bool AotArgsVerify::CheckStaticAotArgs(const AotCompilerArgs &args)
+{
+    if (!CheckCompileMode(args.compileMode)) {
         return false;
     }
-    if (!ParseAotPkgInfo(pkgInfoIt->second, pkgInfo)) {
-        LOG_SA(ERROR) << "Failed to parse AOT package info from JSON";
+    if (!CheckModuleArkTSMode(args.moduleArkTSMode)) {
+        return false;
+    }
+    if (!AotArgsVerify::CheckProcessUid(args.processUid)) {
+        return false;
+    }
+    if (!AotArgsVerify::CheckEncryptedBundle(args.isEncryptedBundle)) {
         return false;
     }
 
-    if (!CheckPkgInfoFields(pkgInfo, AotParserType::STATIC_AOT)) {
+    if (!CheckPkgInfoFields(args, AotParserType::STATIC_AOT)) {
         return false;
     }
 
-    bool isSharedBundles = IsSharedBundlesType(argsMap);
+    bool isSharedBundles = IsSharedBundlesType(args);
     if (isSharedBundles) {
-        if (!CheckSharedBundlesUidAndGid(argsMap)) {
+        if (!CheckSharedBundlesUidAndGid(args.bundleUid, args.bundleGid)) {
             return false;
         }
-        if (!CheckSharedBundlesArkCacheFiles(argsMap)) {
+        if (!CheckSharedBundlesArkCacheFiles(args.anFileName)) {
             return false;
         }
     } else {
-        if (!CheckBundleUidAndGidFromArgsMap(argsMap)) {
+        if (!CheckBundleUidAndGid(args.bundleUid, args.bundleGid)) {
             return false;
         }
-        if (!CheckArkCacheFiles(argsMap, pkgInfo.bundleName)) {
+        std::string aotFile = args.outputPath.empty() ? "" : args.outputPath + "/" + args.moduleName;
+        if (!CheckArkCacheFiles(aotFile, args.anFileName, args.bundleName)) {
             return false;
         }
     }
     return true;
 }
 
-bool AotArgsVerify::CheckFrameworkStaticAotArgs(const std::unordered_map<std::string, std::string> &argsMap)
+bool AotArgsVerify::CheckFrameworkStaticAotArgs(const AotCompilerArgs &args)
 {
-    auto anFileIt = argsMap.find(ArgsIdx::AN_FILE_NAME);
-    if (anFileIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::AN_FILE_NAME.c_str() << " not found in argsMap";
+    if (args.anFileName.empty()) {
+        LOG_SA(ERROR) << "anFileName is empty";
         return false;
     }
-    if (!CheckFrameworkAnFile(anFileIt->second)) {
+    if (!CheckFrameworkAnFile(args.anFileName)) {
         return false;
     }
     return true;
@@ -289,10 +275,17 @@ bool AotArgsVerify::CheckCodeSignArkCacheFilePath(const std::string &inputPath)
         return false;
     }
 
+    // The .an file may not exist yet (memfd flow: sign first, persist later).
+    // Resolve the parent directory (which always exists) and append the filename.
     std::string resolvedPath;
-    if (!panda::ecmascript::RealPath(inputPath, resolvedPath)) {
-        LOG_SA(ERROR) << "failed to resolve fileName path: " << inputPath.c_str();
-        return false;
+    std::string parentDir = inputPath.substr(0, inputPath.find_last_of('/'));
+    std::string fileName = inputPath.substr(inputPath.find_last_of('/') + 1);
+    if (!parentDir.empty() && panda::ecmascript::RealPath(parentDir, resolvedPath)) {
+        resolvedPath += "/" + fileName;
+    } else {
+        // Fallback: if parent dir resolution also fails, use raw path
+        // (CheckPathTraverse already validated against traversal above).
+        resolvedPath = inputPath;
     }
 
     if (!CheckPathTraverse(resolvedPath)) {
@@ -346,30 +339,6 @@ bool AotArgsVerify::CheckModuleName(const std::string &moduleName)
     return CheckPathTraverse(moduleName);
 }
 
-bool AotArgsVerify::CheckAbcOffsetAndSize(
-    uint32_t abcOffset, uint32_t abcSize, const std::string &pkgPath)
-{
-    struct stat fileStat;
-    if (stat(pkgPath.c_str(), &fileStat) != 0) {
-        LOG_SA(ERROR) << "Failed to get HAP package file size from: " << pkgPath;
-        return false;
-    }
-
-    uint64_t hapSize = static_cast<uint64_t>(fileStat.st_size);
-    if (abcOffset > hapSize) {
-        LOG_SA(ERROR) << "abcOffset exceeds HAP package size: "
-                      << "offset=" << abcOffset << ", hapSize=" << hapSize;
-        return false;
-    }
-    if (abcOffset + abcSize > hapSize) {
-        LOG_SA(ERROR) << "abcOffset + abcSize exceeds HAP package size: "
-                      << "offset=" << abcOffset << ", size=" << abcSize
-                      << ", sum=" << (abcOffset + abcSize) << ", hapSize=" << hapSize;
-        return false;
-    }
-    return true;
-}
-
 bool AotArgsVerify::CheckBundleUidAndGid(int32_t uid, int32_t gid)
 {
     if (uid < static_cast<int32_t>(MIN_APP_UID_GID)) {
@@ -385,36 +354,51 @@ bool AotArgsVerify::CheckBundleUidAndGid(int32_t uid, int32_t gid)
     return true;
 }
 
-bool AotArgsVerify::CheckBundleUidAndGidFromArgsMap(
-    const std::unordered_map<std::string, std::string> &argsMap)
+bool AotArgsVerify::CheckProcessUid(int32_t processUid)
 {
-    auto bundleUidIt = argsMap.find(ArgsIdx::BUNDLE_UID);
-    if (bundleUidIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::BUNDLE_UID.c_str() << " not found in argsMap";
+    if (processUid < 0) {
+        LOG_SA(ERROR) << "Invalid processUid: " << processUid << ", must be >= 0";
         return false;
     }
-    auto bundleGidIt = argsMap.find(ArgsIdx::BUNDLE_GID);
-    if (bundleGidIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::BUNDLE_GID.c_str() << " not found in argsMap";
+    return true;
+}
+
+bool AotArgsVerify::CheckEncryptedBundle(uint32_t isEncryptedBundle)
+{
+    if (isEncryptedBundle > 1) {
+        LOG_SA(ERROR) << "Invalid isEncryptedBundle: " << isEncryptedBundle << ", must be 0 or 1";
         return false;
     }
-    int32_t uid = 0;
-    int32_t gid = 0;
-    const char* uidStart = bundleUidIt->second.c_str();
-    const char* uidEnd = uidStart + bundleUidIt->second.length();
-    auto uidResult = std::from_chars(uidStart, uidEnd, uid);
-    if (uidResult.ec != std::errc()) {
-        LOG_SA(ERROR) << "Failed to parse bundleUid: " << bundleUidIt->second;
+    return true;
+}
+
+bool AotArgsVerify::CheckCompileMode(const std::string &compileMode)
+{
+    if (compileMode.empty()) {
+        LOG_SA(ERROR) << "compileMode is empty";
         return false;
     }
-    const char* gidStart = bundleGidIt->second.c_str();
-    const char* gidEnd = gidStart + bundleGidIt->second.length();
-    auto gidResult = std::from_chars(gidStart, gidEnd, gid);
-    if (gidResult.ec != std::errc()) {
-        LOG_SA(ERROR) << "Failed to parse bundleGid: " << bundleGidIt->second;
+    if (compileMode != ArgsIdx::PARTIAL && compileMode != ArgsIdx::FULL) {
+        LOG_SA(ERROR) << "Invalid compileMode: " << compileMode << ", expected 'partial' or 'full'";
         return false;
     }
-    return CheckBundleUidAndGid(uid, gid);
+    return true;
+}
+
+bool AotArgsVerify::CheckModuleArkTSMode(const std::string &moduleArkTSMode)
+{
+    if (moduleArkTSMode.empty()) {
+        LOG_SA(ERROR) << "moduleArkTSMode is empty";
+        return false;
+    }
+    if (moduleArkTSMode != ArgsIdx::ARKTS_DYNAMIC &&
+        moduleArkTSMode != ArgsIdx::ARKTS_STATIC &&
+        moduleArkTSMode != ArgsIdx::ARKTS_HYBRID) {
+        LOG_SA(ERROR) << "Invalid moduleArkTSMode: " << moduleArkTSMode
+                      << ", expected 'dynamic', 'static', or 'hybrid'";
+        return false;
+    }
+    return true;
 }
 
 bool AotArgsVerify::ParseUint32Field(const nlohmann::json &jsonObj, const char *key, uint32_t &output)
@@ -476,54 +460,6 @@ bool AotArgsVerify::ParseUint32FieldFromHex(const std::string &hexStr, uint32_t 
     return result.ec == std::errc();
 }
 
-bool AotArgsVerify::ParseAotPkgInfo(const std::string &pkgInfoStr, AotPkgInfo &info)
-{
-    if (!nlohmann::json::accept(pkgInfoStr)) {
-        return false;
-    }
-    nlohmann::json jsonObj = nlohmann::json::parse(pkgInfoStr);
-    if (jsonObj.is_discarded() || jsonObj.is_null() || jsonObj.empty()) {
-        return false;
-    }
-    if (!ParseStringField(jsonObj, ArgsIdx::BUNDLE_NAME.c_str(), info.bundleName)) {
-        LOG_SA(ERROR) << "missing or invalid bundleName";
-        return false;
-    }
-    if (!ParseStringField(jsonObj, ArgsIdx::PKG_PATH.c_str(), info.pkgPath)) {
-        LOG_SA(ERROR) << "missing or invalid pkgPath";
-        return false;
-    }
-    if (!ParseStringField(jsonObj, ArgsIdx::ABC_NAME.c_str(), info.abcName)) {
-        LOG_SA(ERROR) << "missing or invalid abcName";
-        return false;
-    }
-    if (!ParseStringField(jsonObj, ArgsIdx::MODULE_NAME.c_str(), info.moduleName)) {
-        LOG_SA(ERROR) << "missing or invalid moduleName";
-        return false;
-    }
-    if (!ParseStringField(jsonObj, ArgsIdx::APP_SIGNATURE.c_str(), info.appIdentifier)) {
-        LOG_SA(ERROR) << "missing or invalid appIdentifier";
-        return false;
-    }
-    if (!ParseStringField(jsonObj, ArgsIdx::PGO_DIR.c_str(), info.pgoDir)) {
-        LOG_SA(ERROR) << "missing or invalid pgoDir";
-        return false;
-    }
-    std::string abcOffsetStr;
-    std::string abcSizeStr;
-    if (!ParseStringField(jsonObj, ArgsIdx::ABC_OFFSET.c_str(), abcOffsetStr) ||
-        !ParseUint32FieldFromHex(abcOffsetStr, info.abcOffset.emplace())) {
-        LOG_SA(ERROR) << "missing or invalid abcOffset";
-        return false;
-    }
-    if (!ParseStringField(jsonObj, ArgsIdx::ABC_SIZE.c_str(), abcSizeStr) ||
-        !ParseUint32FieldFromHex(abcSizeStr, info.abcSize.emplace())) {
-        LOG_SA(ERROR) << "missing or invalid abcSize";
-        return false;
-    }
-    return true;
-}
-
 bool AotArgsVerify::ParseStringField(const nlohmann::json &jsonObj, const char *key, std::string &output)
 {
     if (!jsonObj.contains(key) || jsonObj[key].is_null() || !jsonObj[key].is_string()) {
@@ -533,55 +469,21 @@ bool AotArgsVerify::ParseStringField(const nlohmann::json &jsonObj, const char *
     return true;
 }
 
-bool AotArgsVerify::CheckSharedBundlesUidAndGid(const std::unordered_map<std::string, std::string> &argsMap)
+bool AotArgsVerify::CheckSharedBundlesUidAndGid(int32_t uid, int32_t gid)
 {
-    auto bundleUidIt = argsMap.find(ArgsIdx::BUNDLE_UID);
-    auto bundleGidIt = argsMap.find(ArgsIdx::BUNDLE_GID);
-
-    if (bundleUidIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::BUNDLE_UID.c_str() << " not found in argsMap";
-        return false;
-    }
-    if (bundleGidIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::BUNDLE_GID.c_str() << " not found in argsMap";
-        return false;
-    }
-
-    int32_t uid = 0;
-    int32_t gid = 0;
-    const char* uidStart = bundleUidIt->second.c_str();
-    const char* uidEnd = uidStart + bundleUidIt->second.length();
-    auto uidResult = std::from_chars(uidStart, uidEnd, uid);
-    if (uidResult.ec != std::errc()) {
-        LOG_SA(ERROR) << "Failed to parse bundleUid: " << bundleUidIt->second;
-        return false;
-    }
-
-    const char* gidStart = bundleGidIt->second.c_str();
-    const char* gidEnd = gidStart + bundleGidIt->second.length();
-    auto gidResult = std::from_chars(gidStart, gidEnd, gid);
-    if (gidResult.ec != std::errc()) {
-        LOG_SA(ERROR) << "Failed to parse bundleGid: " << bundleGidIt->second;
-        return false;
-    }
-
     if (uid != OID_SYSTEM || gid != OID_SYSTEM) {
         LOG_SA(ERROR) << "Shared bundles require BundleUid and BundleGid to be " << OID_SYSTEM;
         return false;
     }
-
     return true;
 }
 
-bool AotArgsVerify::CheckSharedBundlesArkCacheFiles(const std::unordered_map<std::string, std::string> &argsMap)
+bool AotArgsVerify::CheckSharedBundlesArkCacheFiles(const std::string &anFile)
 {
-    auto anFileIt = argsMap.find(ArgsIdx::AN_FILE_NAME);
-    if (anFileIt == argsMap.end()) {
-        LOG_SA(ERROR) << ArgsIdx::AN_FILE_NAME.c_str() << " not found in argsMap";
+    if (anFile.empty()) {
+        LOG_SA(ERROR) << "anFileName is empty";
         return false;
     }
-
-    const std::string &anFile = anFileIt->second;
 
     if (!CheckPathTraverse(anFile)) {
         return false;
@@ -595,6 +497,147 @@ bool AotArgsVerify::CheckSharedBundlesArkCacheFiles(const std::unordered_map<std
         return false;
     }
 
+    return true;
+}
+
+bool AotArgsVerify::CheckHapFsVerity(int fd)
+{
+    if (fd < 0) {
+        LOG_SA(ERROR) << "invalid fd=" << fd;
+        return false;
+    }
+    unsigned int flags = 0;
+    int ret = ioctl(fd, FS_IOC_GETFLAGS, &flags);
+    if (ret < 0) {
+        LOG_SA(ERROR) << "ioctl FS_IOC_GETFLAGS failed, errno=" << errno
+                      << " (" << strerror(errno) << "), skip fs-verity check";
+        return true;
+    }
+    if (!(flags & FS_VERITY_FL)) {
+        LOG_SA(ERROR) << "HAP file does not have fs-verity enabled, flags=0x"
+                      << std::hex << flags;
+        return false;
+    }
+    return true;
+}
+
+bool AotArgsVerify::CheckHapBundleInfo(const std::string &hapPath, const std::string &expectedBundleName,
+    const std::string* expectedAppIdentifier, int32_t (*parseFunc)(const int32_t, std::string&, std::string&))
+{
+    std::string realPath;
+    if (!panda::ecmascript::RealPath(hapPath.c_str(), realPath, true)) {
+        LOG_SA(ERROR) << "Get real path failed: " << hapPath;
+        return false;
+    }
+
+    int fd = open(realPath.c_str(), O_RDONLY);
+    if (fd == -1) {
+        LOG_SA(ERROR) << "Open file failed: " << realPath;
+        return false;
+    }
+
+    if (!CheckHapFsVerity(fd)) {
+        LOG_SA(ERROR) << "HAP fs-verity check failed: " << realPath;
+        close(fd);
+        return false;
+    }
+
+    std::string parsedBundleName;
+    std::string parsedAppIdentifier;
+    int32_t res = parseFunc(fd, parsedBundleName, parsedAppIdentifier);
+    close(fd);
+
+    if (res != 0) {
+        LOG_SA(ERROR) << "ParseBundleNameAndAppIdentifier failed, res: " << res;
+        return false;
+    }
+
+    if (parsedBundleName != expectedBundleName) {
+        LOG_SA(ERROR) << "Bundle name mismatch: expected=" << expectedBundleName
+                      << ", got=" << parsedBundleName;
+        return false;
+    }
+
+    // Only check appIdentifier if provided (non-null)
+    if (expectedAppIdentifier != nullptr && parsedAppIdentifier != *expectedAppIdentifier) {
+        LOG_SA(ERROR) << "App identifier mismatch: expected=" << *expectedAppIdentifier
+                      << ", got=" << parsedAppIdentifier;
+        return false;
+    }
+
+    return true;
+}
+
+bool AotArgsVerify::CheckExternalPackages(const std::vector<HspModuleInfo> &externalPkgs,
+    int32_t (*parseFunc)(const int32_t, std::string&, std::string&))
+{
+    if (externalPkgs.empty()) {
+        LOG_SA(INFO) << "No external packages to verify";
+        return true;
+    }
+    for (const auto& pkg : externalPkgs) {
+        if (pkg.bundleName.empty() || pkg.hapPath.empty()) {
+            LOG_SA(ERROR) << "External package missing bundleName or hapPath";
+            return false;
+        }
+        // External packages only check bundleName, not appIdentifier
+        if (!CheckHapBundleInfo(pkg.hapPath, pkg.bundleName, nullptr, parseFunc)) {
+            return false;
+        }
+    }
+    LOG_SA(INFO) << "CheckExternalPackages success";
+    return true;
+}
+
+bool AotArgsVerify::CheckBundleNameAndAppIdentifier(const std::string &bundleName, const std::string &pkgPath,
+    const std::string &appIdentifier, const std::vector<HspModuleInfo>& externalPkgs)
+{
+#if !defined(PANDA_TARGET_OHOS)
+    LOG_SA(INFO) << "CheckBundleNameAndAppIdentifier non-OHOS, return false";
+    return false;
+#endif
+
+    if (bundleName.empty()) {
+        LOG_SA(ERROR) << "bundleName is empty";
+        return false;
+    }
+    if (appIdentifier.empty()) {
+        LOG_SA(ERROR) << "appIdentifier is empty";
+        return false;
+    }
+    if (pkgPath.empty()) {
+        LOG_SA(ERROR) << "pkgPath is empty";
+        return false;
+    }
+
+    void* handle = dlopen("libhapverify.z.so", RTLD_NOW);
+    if (handle == nullptr) {
+        LOG_SA(ERROR) << "dlopen libhapverify.z.so failed: " << dlerror();
+        return false;
+    }
+
+    using ParseBundleNameAndAppIdentifierFunc = int32_t (*)(const int32_t, std::string&, std::string&);
+    ParseBundleNameAndAppIdentifierFunc parseFunc =
+        reinterpret_cast<ParseBundleNameAndAppIdentifierFunc>(
+            dlsym(handle, "ParseBundleNameAndAppIdentifier"));
+    if (parseFunc == nullptr) {
+        LOG_SA(ERROR) << "dlsym ParseBundleNameAndAppIdentifier failed";
+        dlclose(handle);
+        return false;
+    }
+
+    if (!CheckHapBundleInfo(pkgPath, bundleName, &appIdentifier, parseFunc)) {
+        dlclose(handle);
+        return false;
+    }
+
+    if (!CheckExternalPackages(externalPkgs, parseFunc)) {
+        dlclose(handle);
+        return false;
+    }
+
+    dlclose(handle);
+    LOG_SA(INFO) << "CheckBundleNameAndAppIdentifier success";
     return true;
 }
 

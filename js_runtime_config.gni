@@ -260,15 +260,6 @@ template("libark_jsruntime_common_set") {
   _is_dfx = defined(is_dfx) && is_dfx
 
   ohos_source_set(target_name) {
-    if ((target_name == "libark_jsruntime_arm_set" ||
-        target_name == "libark_jsruntime_dfx_arm_set") && is_ohos &&
-        is_standard_system && !is_arkui_x && target_cpu == "arm64") {
-      include_dirs = [
-        "$js_root",
-        "$js_root/ecmascript/napi/include",
-      ]
-    }
-
     stack_protector_ret = false
 
     if (is_ohos && is_standard_system) {
@@ -357,6 +348,14 @@ template("libark_jsruntime_common_set") {
     }
 
     include_dirs = []
+    if ((target_name == "libark_jsruntime_arm_set" ||
+        target_name == "libark_jsruntime_dfx_arm_set") && is_ohos &&
+        is_standard_system && !is_arkui_x && target_cpu == "arm64") {
+      include_dirs += [
+        "$js_root",
+        "$js_root/ecmascript/napi/include",
+      ]
+    }
     if (enable_jit_code_sign) {
       defines += [ "JIT_ENABLE_CODE_SIGN" ]
       external_deps += [ "code_signature:libjit_code_sign" ]

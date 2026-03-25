@@ -58,6 +58,8 @@ ohos_unittest("AotArgsVerifyUnitTest") {
   } else {
     sources += [
       "${js_root}/ecmascript/platform/unix/file.cpp",
+      "${js_root}/ecmascript/platform/unix/ohos/directory.cpp",
+      "${js_root}/ecmascript/platform/unix/linux/os.cpp",
     ]
   }
   deps = [

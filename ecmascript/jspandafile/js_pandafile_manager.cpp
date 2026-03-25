@@ -20,6 +20,8 @@
 
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
+#include <unistd.h>
+
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
@@ -33,6 +35,13 @@
 #include "ecmascript/jspandafile/js_pandafile_snapshot.h"
 #include "ecmascript/ohos/ohos_constants.h"
 #include "ecmascript/ohos/ohos_version_info_tools.h"
+
+// Forward-declare existing function from libpandafile (not in public header)
+namespace panda::panda_file {
+std::unique_ptr<const panda_file::File> OpenPandaFileFromZip(
+    FILE *fp, std::string_view location, std::string_view archive_filename,
+    panda_file::File::OpenMode open_mode);
+}
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -426,6 +435,40 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFileFromBuffer(uint8
     }
 
     return NewJSPandaFile(pf.release(), filename);
+}
+
+std::shared_ptr<JSPandaFile> JSPandaFileManager::OpenJSPandaFileFromFd(int fd, const CString &abcName,
+    const CString &desc)
+{
+    if (fd < 0) {
+        LOG_ECMA(ERROR) << "OpenJSPandaFileFromFd: invalid fd=" << fd;
+        return nullptr;
+    }
+    // dup so fclose won't close the caller's fd
+    int dupFd = dup(fd);
+    if (dupFd < 0) {
+        LOG_ECMA(ERROR) << "OpenJSPandaFileFromFd: dup failed for fd=" << fd;
+        return nullptr;
+    }
+    FILE *fp = fdopen(dupFd, "rbe");
+    if (fp == nullptr) {
+        LOG_ECMA(ERROR) << "OpenJSPandaFileFromFd: fdopen failed for fd=" << fd;
+        close(dupFd);
+        return nullptr;
+    }
+    CString location = CString("fd:") + std::to_string(fd).c_str();
+    auto pf = panda_file::OpenPandaFileFromZip(fp, location.c_str(), std::string_view(abcName.c_str()),
+        panda_file::File::READ_WRITE);
+    // OpenPandaFileFromZip in libpandafile never closes fp; we close it here.
+    // fclose closes dupFd, not the original fd.
+    if (fclose(fp) != 0) {
+        LOG_ECMA(WARN) << "OpenJSPandaFileFromFd: fclose failed for fd=" << fd;
+    }
+    if (pf == nullptr) {
+        LOG_ECMA(ERROR) << "OpenJSPandaFileFromFd: OpenPandaFileFromZip failed for fd=" << fd;
+        return nullptr;
+    }
+    return NewJSPandaFile(pf.release(), desc);
 }
 
 std::shared_ptr<JSPandaFile> JSPandaFileManager::NewJSPandaFile(const panda_file::File *pf, const CString &desc)

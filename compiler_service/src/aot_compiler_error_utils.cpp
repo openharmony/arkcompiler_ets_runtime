@@ -20,13 +20,18 @@ namespace OHOS::ArkCompiler {
 namespace {
 const std::map<int32_t, std::string> ERR_MSG_MAP = {
     { ERR_OK,                             "success" },
+    { ERR_AOT_COMPILER_OFFSET,            "aot compiler internal error" },
     { ERR_AOT_COMPILER_PARAM_FAILED,      "aot compiler arguments error" },
     { ERR_AOT_COMPILER_CONNECT_FAILED,    "connect failed" },
     { ERR_AOT_COMPILER_CALL_FAILED,       "call failed" },
     { ERR_AOT_COMPILER_SIGNATURE_FAILED,  "local code sign failed" },
     { ERR_AOT_COMPILER_SIGNATURE_DISABLE, "local code sign disable" },
-    { ERR_OK_NO_AOT_FILE,                 "no aot file save" },
-    { ERR_AOT_COMPILER_STOP_FAILED,       "aot compiler stop error" }
+    { ERR_AOT_COMPILER_STOP_FAILED,       "aot compiler stop error" },
+    { ERR_AOT_COMPILER_CALL_CRASH,        "aot compiler crash" },
+    { ERR_AOT_COMPILER_CALL_CANCELLED,    "aot compiler cancelled" },
+    { ERR_AOT_COMPILER_WHITELIST_BLOCKED, "bundle not in aot whitelist" },
+    { ERR_AOT_COMPILER_CHOWN_FAILED,      "chown aot files to bundle failed" },
+    { ERR_OK_AOT_FILE_EXIST,              "aot file already exists" }
 };
 } // namespace
 

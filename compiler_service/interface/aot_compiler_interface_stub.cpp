@@ -52,19 +52,14 @@ int32_t AotCompilerInterfaceStub::OnRemoteRequest(
 int32_t AotCompilerInterfaceStub::CommandAOTCompiler(MessageParcel &data,
                                                      MessageParcel &reply)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    int32_t argsMapSize = data.ReadInt32();
-    if (static_cast<unsigned long>(argsMapSize) > mapMaxSize) {
-        LOG_SA(ERROR) << "The map size exceeds ths security limit!";
+    auto args = AotCompilerArgs::Unmarshalling(data);
+    if (args == nullptr) {
+        LOG_SA(ERROR) << "Read AotCompilerArgs failed!";
         return ERR_INVALID_DATA;
     }
-    for (int32_t i = 0; i < argsMapSize; ++i) {
-        std::string key = Str16ToStr8(data.ReadString16());
-        std::string value = Str16ToStr8(data.ReadString16());
-        argsMap[key] = value;
-    }
-    std::vector<int16_t> sigData;
-    ErrCode errCode = AotCompiler(argsMap, sigData);
+    std::vector<uint8_t> sigData;
+    ErrCode errCode = AotCompiler(*args, sigData);
+    delete args;
     if (!reply.WriteInt32(errCode)) {
         LOG_SA(ERROR) << "Write Int32 failed!";
         return ERR_INVALID_VALUE;
@@ -76,7 +71,7 @@ int32_t AotCompilerInterfaceStub::CommandAOTCompiler(MessageParcel &data,
         }
         reply.WriteInt32(sigData.size());
         for (auto it = sigData.begin(); it != sigData.end(); ++it) {
-            if (!reply.WriteInt32(*it)) {
+            if (!reply.WriteUint8(*it)) {
                 LOG_SA(ERROR) << "Write sigData array failed!";
                 return ERR_INVALID_DATA;
             }

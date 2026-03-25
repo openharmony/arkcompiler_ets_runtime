@@ -273,6 +273,12 @@ enum CommandValues {
     OPTION_MULTI_CONTEXT,
     OPTION_PGO_NAPI,
 
+    // .an file descriptor passed from compiler_service via Binder
+    OPTION_AN_FD,
+
+    // .hap file descriptor passed from compiler_service via Binder
+    OPTION_HAP_FD,
+
     // OPTION_LAST should at the last
     OPTION_LAST,
 };
@@ -385,6 +391,26 @@ public:
     const std::string& GetCompilerPkgJsonInfo() const
     {
         return compilerPkgInfo_;
+    }
+
+    void SetAnFd(int fd)
+    {
+        anFd_ = fd;
+    }
+
+    int GetAnFd() const
+    {
+        return anFd_;
+    }
+
+    void SetHapFd(int fd)
+    {
+        hapFd_ = fd;
+    }
+
+    int GetHapFd() const
+    {
+        return hapFd_;
     }
 
     void SetCompilerExternalPkgJsonInfo(std::string pkgJsonInfo)
@@ -2606,6 +2632,8 @@ private:
     std::string stubFile_ {"stub.an"};
     std::string compilerPkgInfo_ {};
     std::string compilerExternalPkgInfo_ {};
+    int anFd_ {-1};
+    int hapFd_ {-1};
     bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
     bool enableLoadingStubsLog_ {false};

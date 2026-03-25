@@ -24,6 +24,7 @@
 #include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/ohos/aot_runtime_info.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
 #endif

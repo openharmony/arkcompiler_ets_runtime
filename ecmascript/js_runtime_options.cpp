@@ -15,6 +15,8 @@
 
 #include "ecmascript/js_runtime_options.h"
 
+#include <chrono>
+#include <fstream>
 #include <getopt.h>
 #include <type_traits>
 
@@ -26,6 +28,7 @@
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
+
 const std::string PUBLIC_API COMMON_HELP_HEAD_MSG =
     "Usage: jsvm  <option>  <filename.abc>\n"
     "\n"
@@ -179,6 +182,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-pipeline-host-aot          Enable pipeline host aot compiler. Default: 'false'\n"
     "--compiler-opt-loop-peeling:          Enable loop peeling for aot compiler: Default: 'true'\n"
     "--compiler-pkg-info                   Specify the package json info for ark aot compiler\n"
+    "--an-fd                               Specify the .an file descriptor passed from compiler_service\n"
+    "--hap-fd                              Specify the HAP file descriptor passed from compiler_service\n"
     "--compiler-external-pkg-info          Specify the external package json info for ark aot compiler\n"
     "--compiler-enable-external-pkg        Enable compile with external package for ark aot compiler\n"
     "--compiler-enable-lexenv-specialization: Enable replace ldlexvar with specific values: Default: 'true'\n"
@@ -348,6 +353,8 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-opt-loop-peeling", required_argument, nullptr, OPTION_COMPILER_OPT_LOOP_PEELING},
         {"compiler-opt-array-onheap-check", required_argument, nullptr, OPTION_COMPILER_OPT_ON_HEAP_CHECK},
         {"compiler-pkg-info", required_argument, nullptr, OPTION_COMPILER_PKG_INFO},
+        {"an-fd", required_argument, nullptr, OPTION_AN_FD},
+        {"hap-fd", required_argument, nullptr, OPTION_HAP_FD},
         {"compiler-external-pkg-info", required_argument, nullptr, OPTION_COMPILER_EXTERNAL_PKG_INFO},
         {"compiler-enable-external-pkg", required_argument, nullptr, OPTION_COMPILER_ENABLE_EXTERNAL_PKG},
         {"compiler-framework-abc-path", required_argument, nullptr, OPTION_COMPILER_FRAMEWORK_ABC_PATH},
@@ -1187,6 +1194,30 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_COMPILER_PKG_INFO:
                 SetCompilerPkgJsonInfo(optarg);
                 break;
+            case OPTION_AN_FD: {
+                char* end = nullptr;
+                errno = 0;
+                long fd = std::strtol(optarg, std::addressof(end), 10);
+                if (end == optarg || errno != 0 || fd < 0 || fd > INT_MAX) {
+                    LOG_ECMA(ERROR) << "invalid --an-fd value: " << optarg;
+                    return false;
+                }
+                LOG_ECMA(INFO) << "parsed --an-fd=" << fd;
+                SetAnFd(static_cast<int>(fd));
+                break;
+            }
+            case OPTION_HAP_FD: {
+                char* end = nullptr;
+                errno = 0;
+                long fd = std::strtol(optarg, std::addressof(end), 10);
+                if (end == optarg || errno != 0 || fd < 0 || fd > INT_MAX) {
+                    LOG_ECMA(ERROR) << "invalid --hap-fd value: " << optarg;
+                    return false;
+                }
+                LOG_ECMA(INFO) << "parsed --hap-fd=" << fd;
+                SetHapFd(static_cast<int>(fd));
+                break;
+            }
             case OPTION_COMPILER_EXTERNAL_PKG_INFO:
                 SetCompilerExternalPkgJsonInfo(optarg);
                 break;

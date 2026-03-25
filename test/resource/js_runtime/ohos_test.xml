@@ -3854,11 +3854,6 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="GetJSPandaFileFuzzTest">
-        <preparer>
-            <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
     <target name="PrimitiveRefGetValueFuzzTest">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>

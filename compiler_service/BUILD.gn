@@ -68,6 +68,7 @@ ohos_shared_library("libcompiler_service") {
     ]
   } else {
     sources += [
+      "${js_root}/ecmascript/platform/common/filesystem.cpp",
       "${js_root}/ecmascript/platform/unix/directory.cpp",
       "${js_root}/ecmascript/platform/unix/linux/os.cpp",
     ]

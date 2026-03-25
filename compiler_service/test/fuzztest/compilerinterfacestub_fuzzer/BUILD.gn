@@ -82,6 +82,10 @@ ohos_fuzztest("CompilerInterfaceStubFuzzTest") {
   if (code_sign_enable_test) {
     external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
     defines += [ "CODE_SIGN_ENABLE" ]
+    sources += [
+      "${js_root}/ecmascript/platform/unix/ohos/directory.cpp",
+      "${js_root}/ecmascript/platform/unix/linux/os.cpp",
+    ]
   }
   sources += [ "compilerinterfacestub_fuzzer.cpp" ]
 }

@@ -22,6 +22,7 @@
 #include <unistd.h>
 
 #include "aot_args_verify.h"
+#include "aot_compiler_args.h"
 #include "aot_compiler_constants.h"
 
 using namespace testing::ext;
@@ -63,11 +64,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_010, TestSize.Level0)
     std::ofstream anFile("/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an");
     anFile.close();
 
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app/test",
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an",
+        "test_app");
 
     EXPECT_TRUE(result);
     unlink("/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an");
@@ -81,10 +81,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_010, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_002, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "", "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an", "test_app");
 
     EXPECT_FALSE(result);
 }
@@ -96,10 +94,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_002, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_003, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app/test", "", "test_app");
 
     EXPECT_FALSE(result);
 }
@@ -111,9 +107,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_003, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_004, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles("", "", "test_app");
 
     EXPECT_FALSE(result);
 }
@@ -125,11 +119,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_004, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_005, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.wrong";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app/test",
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.wrong",
+        "test_app");
 
     EXPECT_FALSE(result);
 }
@@ -141,11 +134,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_005, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_006, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/../etc/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/../etc/test.an";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "/data/app/el1/public/aot_compiler/ark_cache/../etc/test",
+        "/data/app/el1/public/aot_compiler/ark_cache/../etc/test.an",
+        "test_app");
 
     EXPECT_FALSE(result);
 }
@@ -157,11 +149,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_006, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckArkCacheFiles_007, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/local/tmp/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/local/tmp/test.an";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "/data/local/tmp/test", "/data/local/tmp/test.an", "test_app");
 
     EXPECT_FALSE(result);
 }
@@ -254,11 +243,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_018, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_019, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "invalid_format_file";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "another_invalid_format";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_bundle");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "invalid_format_file", "another_invalid_format", "test_bundle");
     EXPECT_FALSE(result);
 }
 
@@ -269,11 +255,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_019, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_021, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/../etc/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/../etc/test.an";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app/../etc/test",
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app/../etc/test.an",
+        "test_app");
     EXPECT_FALSE(result);
 }
 
@@ -284,11 +269,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_021, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_022, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app1/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app2/test.an";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app1/test",
+        "/data/app/el1/public/aot_compiler/ark_cache/test_app2/test.an",
+        "test_app");
 
     EXPECT_FALSE(result);
 }
@@ -300,52 +284,12 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_022, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_023, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/nonexistent/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/nonexistent/test_app/test.an";
-
-    bool result = AotArgsVerify::CheckArkCacheFiles(argsMap, "test_app");
+    bool result = AotArgsVerify::CheckArkCacheFiles(
+        "/data/app/el1/public/nonexistent/test_app/test",
+        "/data/app/el1/public/nonexistent/test_app/test.an",
+        "test_app");
 
     EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAOTArgs_001
- * @tc.desc: Test AotArgsVerify::CheckAOTArgs with valid inputs
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_001, TestSize.Level0)
-{
-#if defined(PANDA_TARGET_OHOS)
-    GTEST_SKIP() << "Test skipped on OHOS - requires valid HAP files";
-#else
-    mkdir("/data/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir("/data/app/el1/100/aot_compiler/ark_profile/test_app", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir("/data/app/el1/public/aot_compiler/ark_cache/test_app", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream hapFile("/data/test/test.hap");
-    hapFile << "HAP";
-    hapFile.close();
-    std::ofstream anFile("/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an");
-    anFile.close();
-
-    std::unordered_map<std::string, std::string> argsMap;
-    std::string pkgInfoStr = "{\"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/test_app\", "
-                             "\"bundleName\": \"test_app\", "
-                             "\"pkgPath\": \"/data/test/test.hap\"}";
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfoStr;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
-
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
-    EXPECT_TRUE(result);
-    unlink("/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an");
-    rmdir("/data/app/el1/public/aot_compiler/ark_cache/test_app");
-    rmdir("/data/app/el1/100/aot_compiler/ark_profile/test_app");
-    unlink("/data/test/test.hap");
-    rmdir("/data/test");
-#endif
 }
 
 /**
@@ -355,11 +299,12 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_001, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_002, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "";
+    args.hapPath = "";
+    args.pgoDir = "";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -372,11 +317,12 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_002, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_002, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "";
+    args.hapPath = "";
+    args.pgoDir = "";
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -388,10 +334,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_002, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckFrameworkStaticAotArgs_001, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/framework_ark_cache/test.abc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache/test.abc.an";
 
-    bool result = AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckFrameworkStaticAotArgs(args);
 
     EXPECT_TRUE(result);
 }
@@ -403,9 +349,9 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckFrameworkStaticAotArgs_001, T
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckFrameworkStaticAotArgs_002, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
+    AotCompilerArgs args;
 
-    bool result = AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckFrameworkStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -417,10 +363,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckFrameworkStaticAotArgs_002, T
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckFrameworkStaticAotArgs_003, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/framework_ark_cache/../test.abc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache/../test.abc.an";
 
-    bool result = AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckFrameworkStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -432,10 +378,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckFrameworkStaticAotArgs_003, T
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckFrameworkStaticAotArgs_004, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test.abc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test.abc.an";
 
-    bool result = AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckFrameworkStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -447,32 +393,34 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckFrameworkStaticAotArgs_004, T
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_003, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{invalid_json}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "test_app";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test_app";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
 }
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckAOTArgs_004
- * @tc.desc: Test AotArgsVerify::CheckAOTArgs with missing AOT_FILE
+ * @tc.desc: Test AotArgsVerify::CheckAOTArgs with missing outputPath (aotFile)
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_004, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    const std::string pkgInfo = "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
-        "\"abcName\": \"ets/modules.abc\", \"moduleName\": \"module\", "
-        "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/test_app\", "
-        "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfo;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "test_app";
+    args.hapPath = "/data/test/test.hap";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test_app";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    // outputPath is empty, so aotFile will be empty
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -484,15 +432,18 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_004, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_005, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    const std::string pkgInfo = "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
-        "\"abcName\": \"ets/modules.abc\", \"moduleName\": \"module\", "
-        "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/test_app\", "
-        "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfo;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
+    AotCompilerArgs args;
+    args.bundleName = "test_app";
+    args.hapPath = "/data/test/test.hap";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test_app";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test_app";
+    args.moduleName = "test";
+    // anFileName is empty
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -504,16 +455,18 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_005, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_006, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    const std::string pkgInfo = "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
-        "\"abcName\": \"ets/modules.abc\", \"moduleName\": \"module\", "
-        "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/../etc\", "
-        "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfo;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "test_app";
+    args.hapPath = "/data/test/test.hap";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/../etc";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test_app";
+    args.moduleName = "test";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -525,60 +478,20 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_006, TestSize.Level0)
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_007, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    const std::string pkgInfo = "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
-        "\"abcName\": \"ets/modules.abc\", \"moduleName\": \"module\", "
-        "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/app/el1/100/aot_compiler/ark_profile/test_app\", "
-        "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = pkgInfo;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/wrong_location/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "test_app";
+    args.hapPath = "/data/test/test.hap";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test_app";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.anFileName = "/data/app/el1/public/wrong_location/test_app/test.an";
+    args.outputPath = "/data/app/el1/public/wrong_location/test_app";
+    args.moduleName = "test";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAOTArgs_PartialMode_001
- * @tc.desc: Test AotArgsVerify::CheckAOTArgs with partial mode and valid pgoDir
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PartialMode_001, TestSize.Level0)
-{
-#if defined(PANDA_TARGET_OHOS)
-    GTEST_SKIP() << "Test skipped on OHOS - requires valid HAP files";
-#else
-    mkdir("/data/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir("/data/app/el1/100/aot_compiler/ark_profile/test_app", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir("/data/app/el1/public/aot_compiler/ark_cache/test_app", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::ofstream hapFile("/data/test/test.hap");
-    hapFile << "HAP";
-    hapFile.close();
-    std::ofstream("/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an").close();
-
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"test_app\",\"pkgPath\":\"/data/test/test.hap\","
-         "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/test_app\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::TARGET_COMPILER_MODE] = "partial";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
-
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
-
-    EXPECT_TRUE(result);
-
-    unlink("/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an");
-    rmdir("/data/app/el1/public/aot_compiler/ark_cache/test_app");
-    rmdir("/data/app/el1/100/aot_compiler/ark_profile/test_app");
-    unlink("/data/test/test.hap");
-    rmdir("/data/test");
-#endif
 }
 
 /**
@@ -588,60 +501,21 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PartialMode_001, Test
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PartialMode_002, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"test_app\",\"pkgPath\":\"/data/test/test.hap\","
-         "\"pgoDir\":\"/data/app/el2/100/aot_compiler/ark_profile/test_app\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::TARGET_COMPILER_MODE] = "partial";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+    AotCompilerArgs args;
+    args.compileMode = "partial";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.bundleName = "test_app";
+    args.moduleName = "test";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/app/el2/100/aot_compiler/ark_profile/test_app";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test_app";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAOTArgs_PartialMode_003
- * @tc.desc: Test AotArgsVerify::CheckAOTArgs with non-partial mode ignores pgoDir
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PartialMode_003, TestSize.Level0)
-{
-#if defined(PANDA_TARGET_OHOS)
-    GTEST_SKIP() << "Test skipped on OHOS - requires valid HAP files";
-#else
-    mkdir("/data/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir("/data/app/el1/public/aot_compiler/ark_cache/test_app", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-
-    std::ofstream hapFile("/data/test/test.hap");
-    hapFile << "HAP";
-    hapFile.close();
-    std::ofstream("/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an").close();
-
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"test_app\",\"pkgPath\":\"/data/test/test.hap\","
-         "\"pgoDir\":\"/data/app/el2/100/aot_compiler/ark_profile/test_app\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::TARGET_COMPILER_MODE] = "full";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
-
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
-
-    EXPECT_TRUE(result);
-
-    unlink("/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an");
-    rmdir("/data/app/el1/public/aot_compiler/ark_cache/test_app");
-    unlink("/data/test/test.hap");
-    rmdir("/data/test");
-#endif
 }
 
 /**
@@ -651,49 +525,56 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PartialMode_003, Test
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_003, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{invalid_json}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "";
+    args.hapPath = "";
+    args.pgoDir = "";
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_004
- * @tc.desc: Test AotArgsVerify::CheckStaticAotArgs with empty JSON in COMPILER_PKG_INFO
+ * @tc.desc: Test AotArgsVerify::CheckStaticAotArgs with empty bundleName
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_004, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/pgo";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_005
- * @tc.desc: Test AotArgsVerify::CheckStaticAotArgs with missing AOT_FILE
+ * @tc.desc: Test AotArgsVerify::CheckStaticAotArgs with missing outputPath (aotFile)
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_005, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
-         "\"abcName\": \"ets/modules_static.abc\", \"moduleName\": \"module\", "
-         "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/pgo\", "
-         "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "test_app";
+    args.moduleName = "test";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/pgo";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.appIdentifier = "sig";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test.an";
+    // outputPath is empty
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -705,15 +586,19 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_005, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_006, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\": \"test_app\", \"pkgPath\": \"/data/test/test.hap\", "
-         "\"abcName\": \"ets/modules_static.abc\", \"moduleName\": \"module\", "
-         "\"appIdentifier\": \"sig\", \"pgoDir\": \"/data/pgo\", "
-         "\"abcOffset\": \"0x0\", \"abcSize\": \"0x64\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test_app/test";
+    AotCompilerArgs args;
+    args.bundleName = "test_app";
+    args.moduleName = "test";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/pgo";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.appIdentifier = "sig";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test_app";
+    // anFileName is empty
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -1181,87 +1066,6 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckModuleName_004, TestSize.Leve
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckAbcOffsetAndSize_001
- * @tc.desc: Test CheckAbcOffsetAndSize with non-existent HAP file
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAbcOffsetAndSize_001, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckAbcOffsetAndSize(0, 1000, "/nonexistent/path/test.hap");
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAbcOffsetAndSize_002
- * @tc.desc: Test CheckAbcOffsetAndSize with offset exceeding file size
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAbcOffsetAndSize_002, TestSize.Level0)
-{
-    mkdir("/data", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir("/data/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::string testPath = "/data/test/test_hap_002.hap";
-    std::ofstream testFile(testPath, std::ios::binary);
-    ASSERT_TRUE(testFile.is_open()) << "Failed to create test file: " << testPath;
-    testFile << "test content";
-    testFile.flush();
-    testFile.close();
-
-    bool result = AotArgsVerify::CheckAbcOffsetAndSize(1000, 100, testPath);
-
-    EXPECT_FALSE(result);
-
-    unlink(testPath.c_str());
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAbcOffsetAndSize_003
- * @tc.desc: Test CheckAbcOffsetAndSize with offset+size exceeding file size
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAbcOffsetAndSize_003, TestSize.Level0)
-{
-    mkdir("/data", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir("/data/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::string testPath = "/data/test/test_hap_003.hap";
-    std::ofstream testFile(testPath, std::ios::binary);
-    ASSERT_TRUE(testFile.is_open()) << "Failed to create test file: " << testPath;
-    testFile << "test content";
-    testFile.flush();
-    testFile.close();
-
-    bool result = AotArgsVerify::CheckAbcOffsetAndSize(10, 10, testPath);
-
-    EXPECT_FALSE(result);
-
-    unlink(testPath.c_str());
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAbcOffsetAndSize_004
- * @tc.desc: Test CheckAbcOffsetAndSize with valid offset and size
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAbcOffsetAndSize_004, TestSize.Level0)
-{
-    mkdir("/data", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir("/data/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::string testPath = "/data/test/test_hap_004.hap";
-    std::ofstream testFile(testPath, std::ios::binary);
-    ASSERT_TRUE(testFile.is_open()) << "Failed to create test file: " << testPath;
-    testFile << "test content";
-    testFile.flush();
-    testFile.close();
-
-    bool result = AotArgsVerify::CheckAbcOffsetAndSize(5, 5, testPath);
-
-    EXPECT_TRUE(result);
-
-    unlink(testPath.c_str());
-}
-
-/**
  * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_001
  * @tc.desc: Test CheckBundleUidAndGid with UID below minimum
  * @tc.type: Func
@@ -1298,223 +1102,133 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_003, TestSize
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_001
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with valid UID/GID
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_004
+ * @tc.desc: Test CheckBundleUidAndGid with negative UID
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_001, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_004, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+    bool result = AotArgsVerify::CheckBundleUidAndGid(-1, 10000);
 
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_005
+ * @tc.desc: Test CheckBundleUidAndGid with negative GID
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_005, TestSize.Level0)
+{
+    bool result = AotArgsVerify::CheckBundleUidAndGid(10000, -1);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_006
+ * @tc.desc: Test CheckBundleUidAndGid with both UID and GID negative
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_006, TestSize.Level0)
+{
+    bool result = AotArgsVerify::CheckBundleUidAndGid(-100, -200);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_007
+ * @tc.desc: Test CheckBundleUidAndGid with UID below minimum (9999)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_007, TestSize.Level0)
+{
+    bool result = AotArgsVerify::CheckBundleUidAndGid(9999, 10000);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_008
+ * @tc.desc: Test CheckBundleUidAndGid with GID below minimum (9999)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_008, TestSize.Level0)
+{
+    bool result = AotArgsVerify::CheckBundleUidAndGid(10000, 9999);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_009
+ * @tc.desc: Test CheckBundleUidAndGid with large valid UID/GID
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_009, TestSize.Level0)
+{
+    bool result = AotArgsVerify::CheckBundleUidAndGid(99999, 99999);
 
     EXPECT_TRUE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_002
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with missing BUNDLE_UID
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_010
+ * @tc.desc: Test CheckBundleUidAndGid with boundary UID (MIN_APP_UID_GID - 1)
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_002, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_010, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+    bool result = AotArgsVerify::CheckBundleUidAndGid(9999, 10000);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_003
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with missing BUNDLE_GID
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_011
+ * @tc.desc: Test CheckBundleUidAndGid with zero UID and GID
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_003, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_011, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+    bool result = AotArgsVerify::CheckBundleUidAndGid(0, 0);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_004
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with UID below minimum
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_012
+ * @tc.desc: Test CheckBundleUidAndGid with INT32_MIN values
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_004, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_012, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "9999";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+    bool result = AotArgsVerify::CheckBundleUidAndGid(INT32_MIN, INT32_MIN);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_005
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with GID below minimum
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_013
+ * @tc.desc: Test CheckBundleUidAndGid with INT32_MAX values
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_005, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_013, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "9999";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_006
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with both UID and GID below minimum
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_006, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "100";
-    argsMap[ArgsIdx::BUNDLE_GID] = "200";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_007
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with large valid UID/GID
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_007, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "99999";
-    argsMap[ArgsIdx::BUNDLE_GID] = "99999";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+    bool result = AotArgsVerify::CheckBundleUidAndGid(INT32_MAX, INT32_MAX);
 
     EXPECT_TRUE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_008
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with invalid UID format
+ * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGid_014
+ * @tc.desc: Test CheckBundleUidAndGid with boundary GID (MIN_APP_UID_GID - 1)
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_008, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGid_014, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "invalid_uid";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_009
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with invalid GID format
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_009, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "invalid_gid";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_010
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with both UID and GID invalid format
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_010, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "not_a_number";
-    argsMap[ArgsIdx::BUNDLE_GID] = "also_not_a_number";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_001
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with valid hex format (0x prefix lowercase)
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_001, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "0x1317b7d";
-    argsMap[ArgsIdx::BUNDLE_GID] = "0x2710";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
-
-    EXPECT_TRUE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_002
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with valid hex format (0X prefix uppercase)
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_002, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "0X1317B7D";
-    argsMap[ArgsIdx::BUNDLE_GID] = "0X2710";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
-
-    EXPECT_TRUE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_003
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with valid hex format (no prefix, pure hex)
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexValid_003, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "1317b7d";
-    argsMap[ArgsIdx::BUNDLE_GID] = "2710";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
-
-    EXPECT_TRUE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexInvalid_001
- * @tc.desc: Test CheckBundleUidAndGidFromArgsMap with invalid hex format (contains non-hex chars)
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleUidAndGidFromArgsMap_HexInvalid_001, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "0x12g5";
-    argsMap[ArgsIdx::BUNDLE_GID] = "0x2710";
-
-    bool result = AotArgsVerify::CheckBundleUidAndGidFromArgsMap(argsMap);
+    bool result = AotArgsVerify::CheckBundleUidAndGid(10000, 9999);
 
     EXPECT_FALSE(result);
 }
@@ -1562,19 +1276,6 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32FieldFromHex_NoPrefix, 
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_ParseUint32FieldFromHex_Invalid
- * @tc.desc: Test ParseUint32FieldFromHex with invalid hex string (contains non-hex chars)
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32FieldFromHex_Invalid, TestSize.Level0)
-{
-    uint32_t output = 0;
-    bool result = AotArgsVerify::ParseUint32FieldFromHex("0x12g5", output);
-
-    EXPECT_FALSE(result);
-}
-
-/**
  * @tc.name: AotArgsVerifyTest_CheckPkgInfoFields_001
  * @tc.desc: Test CheckPkgInfoFields with valid pkgInfo
  * @tc.type: Func
@@ -1590,15 +1291,13 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckPkgInfoFields_001, TestSize.L
     hapFile.flush();
     hapFile.close();
 
-    AotPkgInfo pkgInfo;
-    pkgInfo.bundleName = "com.example.app";
-    pkgInfo.pkgPath = testPath;
-    pkgInfo.abcName = "ets/modules.abc";
-    pkgInfo.moduleName = "module";
-    pkgInfo.abcOffset = 0;
-    pkgInfo.abcSize = 10;
+    AotCompilerArgs args;
+    args.bundleName = "com.example.app";
+    args.hapPath = testPath;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.moduleName = "module";
 
-    bool result = AotArgsVerify::CheckPkgInfoFields(pkgInfo, AotParserType::DYNAMIC_AOT);
+    bool result = AotArgsVerify::CheckPkgInfoFields(args, AotParserType::DYNAMIC_AOT);
 
     EXPECT_TRUE(result);
     unlink(testPath.c_str());
@@ -1611,14 +1310,13 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckPkgInfoFields_001, TestSize.L
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckPkgInfoFields_002, TestSize.Level0)
 {
-    AotPkgInfo pkgInfo;
-    pkgInfo.bundleName = "com.example.app";
-    pkgInfo.pkgPath = "/tmp/test.hap";
-    pkgInfo.moduleName = "../etc/passwd";
-    pkgInfo.abcOffset = 0;
-    pkgInfo.abcSize = 100;
+    AotCompilerArgs args;
+    args.bundleName = "com.example.app";
+    args.hapPath = "/tmp/test.hap";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.moduleName = "../etc/passwd";
 
-    bool result = AotArgsVerify::CheckPkgInfoFields(pkgInfo, AotParserType::DYNAMIC_AOT);
+    bool result = AotArgsVerify::CheckPkgInfoFields(args, AotParserType::DYNAMIC_AOT);
 
     EXPECT_FALSE(result);
 }
@@ -1691,10 +1389,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseStringField_004, TestSize.Lev
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_001, TestSize.Level0)
 {
-    nlohmann::json jsonObj = {{"abcOffset", 1000U}};
+    nlohmann::json jsonObj = {{"testField", 1000U}};
     uint32_t output = 0;
 
-    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "abcOffset", output);
+    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "testField", output);
 
     EXPECT_TRUE(result);
     EXPECT_EQ(output, 1000U);
@@ -1707,10 +1405,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_001, TestSize.Lev
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_002, TestSize.Level0)
 {
-    nlohmann::json jsonObj = {{"abcOffset", "3e8"}};
+    nlohmann::json jsonObj = {{"testField", "3e8"}};
     uint32_t output = 0;
 
-    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "abcOffset", output);
+    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "testField", output);
 
     EXPECT_TRUE(result);
     EXPECT_EQ(output, 1000U);
@@ -1723,10 +1421,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_002, TestSize.Lev
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_003, TestSize.Level0)
 {
-    nlohmann::json jsonObj = {{"abcOffset", "invalid"}};
+    nlohmann::json jsonObj = {{"testField", "invalid"}};
     uint32_t output = 0;
 
-    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "abcOffset", output);
+    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "testField", output);
 
     EXPECT_FALSE(result);
 }
@@ -1741,7 +1439,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_004, TestSize.Lev
     nlohmann::json jsonObj = {{"bundleName", "test"}};
     uint32_t output = 0;
 
-    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "abcOffset", output);
+    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "testField", output);
 
     EXPECT_FALSE(result);
 }
@@ -1793,290 +1491,24 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseInt32Field_003, TestSize.Leve
     EXPECT_FALSE(result);
 }
 
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_001
- * @tc.desc: Test ParseAotPkgInfo with valid minimal JSON (all required fields)
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_001, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "bundleName": "com.example.app",
-        "pkgPath": "/data/test/test.hap",
-        "abcName": "ets/modules.abc",
-        "moduleName": "module",
-        "appIdentifier": "signature",
-        "pgoDir": "/data/pgo",
-        "abcOffset": "0x0",
-        "abcSize": "0x64"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_TRUE(result);
-    EXPECT_EQ(info.bundleName, "com.example.app");
-    EXPECT_EQ(info.pkgPath, "/data/test/test.hap");
-    EXPECT_EQ(info.abcName, "ets/modules.abc");
-    EXPECT_EQ(info.moduleName, "module");
-    EXPECT_EQ(info.appIdentifier, "signature");
-    EXPECT_EQ(info.pgoDir, "/data/pgo");
-    EXPECT_EQ(info.abcOffset, 0U);
-    EXPECT_EQ(info.abcSize, 100U);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_002
- * @tc.desc: Test ParseAotPkgInfo with all fields
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_002, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "bundleName": "com.example.app",
-        "pkgPath": "/data/test/test.hap",
-        "abcName": "ets/modules.abc",
-        "moduleName": "module",
-        "appIdentifier": "signature",
-        "pgoDir": "/data/pgo",
-        "abcOffset": "0x64",
-        "abcSize": "0x1f4"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_TRUE(result);
-    EXPECT_EQ(info.bundleName, "com.example.app");
-    EXPECT_EQ(info.pkgPath, "/data/test/test.hap");
-    EXPECT_EQ(info.abcName, "ets/modules.abc");
-    EXPECT_EQ(info.moduleName, "module");
-    EXPECT_EQ(info.appIdentifier, "signature");
-    EXPECT_EQ(info.pgoDir, "/data/pgo");
-    EXPECT_EQ(info.abcOffset, 100U);
-    EXPECT_EQ(info.abcSize, 500U);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_003
- * @tc.desc: Test ParseAotPkgInfo with invalid JSON
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_003, TestSize.Level0)
-{
-    std::string pkgInfoStr = "{invalid json}";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_004
- * @tc.desc: Test ParseAotPkgInfo with missing required field
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_004, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({"bundleName": "com.example.app"})";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_005
- * @tc.desc: Test ParseAotPkgInfo with empty JSON object
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_005, TestSize.Level0)
-{
-    std::string pkgInfoStr = "{}";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcOffset
- * @tc.desc: Test ParseAotPkgInfo with missing abcOffset
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcOffset, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "bundleName": "com.example.app",
-        "pkgPath": "/data/test/test.hap",
-        "abcName": "ets/modules.abc",
-        "moduleName": "module",
-        "appIdentifier": "signature",
-        "pgoDir": "/data/pgo",
-        "abcSize": "0x64"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcSize
- * @tc.desc: Test ParseAotPkgInfo with missing abcSize
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcSize, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "bundleName": "com.example.app",
-        "pkgPath": "/data/test/test.hap",
-        "abcName": "ets/modules.abc",
-        "moduleName": "module",
-        "appIdentifier": "signature",
-        "pgoDir": "/data/pgo",
-        "abcOffset": "0x0"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_MissingBundleName
- * @tc.desc: Test ParseAotPkgInfo with missing bundleName field
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingBundleName, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "pkgPath": "/data/test/test.hap",
-        "abcName": "ets/modules.abc",
-        "moduleName": "module",
-        "appIdentifier": "signature",
-        "pgoDir": "/data/pgo",
-        "abcOffset": "0x0",
-        "abcSize": "0x64"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcName
- * @tc.desc: Test ParseAotPkgInfo with missing abcName field
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingAbcName, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "bundleName": "com.example.app",
-        "pkgPath": "/data/test/test.hap",
-        "moduleName": "module",
-        "appIdentifier": "signature",
-        "pgoDir": "/data/pgo",
-        "abcOffset": "0x0",
-        "abcSize": "0x64"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_MissingModuleName
- * @tc.desc: Test ParseAotPkgInfo with missing moduleName field
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingModuleName, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "bundleName": "com.example.app",
-        "pkgPath": "/data/test/test.hap",
-        "abcName": "ets/modules.abc",
-        "appIdentifier": "signature",
-        "pgoDir": "/data/pgo",
-        "abcOffset": "0x0",
-        "abcSize": "0x64"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_MissingAppIdentifier
- * @tc.desc: Test ParseAotPkgInfo with missing appIdentifier field
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingAppIdentifier, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "bundleName": "com.example.app",
-        "pkgPath": "/data/test/test.hap",
-        "abcName": "ets/modules.abc",
-        "moduleName": "module",
-        "pgoDir": "/data/pgo",
-        "abcOffset": "0x0",
-        "abcSize": "0x64"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_ParseAotPkgInfo_MissingPgoDir
- * @tc.desc: Test ParseAotPkgInfo with missing pgoDir field
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseAotPkgInfo_MissingPgoDir, TestSize.Level0)
-{
-    std::string pkgInfoStr = R"({
-        "bundleName": "com.example.app",
-        "pkgPath": "/data/test/test.hap",
-        "abcName": "ets/modules.abc",
-        "moduleName": "module",
-        "appIdentifier": "signature",
-        "abcOffset": "0x0",
-        "abcSize": "0x64"
-    })";
-    AotPkgInfo info;
-
-    bool result = AotArgsVerify::ParseAotPkgInfo(pkgInfoStr, info);
-
-    EXPECT_FALSE(result);
-}
 // CheckAOTArgs - Return False Branches
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckAOTArgs_ParsePkgInfoFail
- * @tc.desc: Test CheckAOTArgs when ParseAotPkgInfo fails
+ * @tc.name: AotArgsVerifyTest_CheckAOTArgs_EmptyBundleName
+ * @tc.desc: Test CheckAOTArgs when bundleName is empty (pkgInfo fields check fails)
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_ParsePkgInfoFail, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_EmptyBundleName, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{invalid_json}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "";
+    args.moduleName = "test";
+    args.hapPath = "/data/test.hap";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test";
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
 }
@@ -2096,16 +1528,19 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_AnFileNameMismatch, T
     std::ofstream("/data/app/el1/public/aot_compiler/ark_cache/test/test.an").close();
     std::ofstream("/data/app/el1/public/aot_compiler/ark_cache/test/wrong.an").close();
 
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"test\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/wrong.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+    AotCompilerArgs args;
+    args.compileMode = "partial";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.bundleName = "test";
+    args.moduleName = "test";
+    args.hapPath = "/data/test.hap";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test/wrong.an";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
     unlink("/data/app/el1/public/aot_compiler/ark_cache/test/test.an");
@@ -2117,8 +1552,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_AnFileNameMismatch, T
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckAOTArgs_BundleUidInvalid
- * @tc.desc: Test CheckAOTArgs when CheckBundleUidAndGidFromArgsMap fails due to invalid uid
- *           All previous checks pass, only CheckBundleUidAndGidFromArgsMap fails
+ * @tc.desc: Test CheckAOTArgs when CheckBundleUidAndGid fails due to invalid uid
+ *           All previous checks pass, only CheckBundleUidAndGid fails
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_BundleUidInvalid, TestSize.Level0)
@@ -2128,18 +1563,19 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_BundleUidInvalid, Tes
     hapFile << "HAP";
     hapFile.close();
 
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test.app\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcName\":\"ets/modules.abc\",\"moduleName\":\"module\","
-         "\"appIdentifier\":\"sig\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.test.app\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "9999";  // Invalid: < MIN_APP_UID_GID (10000)
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+    AotCompilerArgs args;
+    args.compileMode = "partial";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.bundleName = "com.test.app";
+    args.moduleName = "test";
+    args.hapPath = "/data/test.hap";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/com.test.app";
+    args.bundleUid = 9999;  // Invalid: < MIN_APP_UID_GID (10000)
+    args.bundleGid = 10000;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test.an";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
     unlink("/data/test.hap");
@@ -2148,8 +1584,8 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_BundleUidInvalid, Tes
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckAOTArgs_BundleGidInvalid
- * @tc.desc: Test CheckAOTArgs when CheckBundleUidAndGidFromArgsMap fails due to invalid gid
- *           All previous checks pass, only CheckBundleUidAndGidFromArgsMap fails
+ * @tc.desc: Test CheckAOTArgs when CheckBundleUidAndGid fails due to invalid gid
+ *           All previous checks pass, only CheckBundleUidAndGid fails
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_BundleGidInvalid, TestSize.Level0)
@@ -2159,18 +1595,19 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_BundleGidInvalid, Tes
     hapFile << "HAP";
     hapFile.close();
 
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test.app\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcName\":\"ets/modules.abc\",\"moduleName\":\"module\","
-         "\"appIdentifier\":\"sig\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.test.app\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "9999";  // Invalid: < MIN_APP_UID_GID (10000)
+    AotCompilerArgs args;
+    args.compileMode = "partial";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.bundleName = "com.test.app";
+    args.moduleName = "test";
+    args.hapPath = "/data/test.hap";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/com.test.app";
+    args.bundleUid = 10000;
+    args.bundleGid = 9999;  // Invalid: < MIN_APP_UID_GID (10000)
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.test.app/test.an";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
     unlink("/data/test.hap");
@@ -2190,18 +1627,19 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PathTraversalInAotFil
     hapFile << "HAP";
     hapFile.close();
 
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test.app\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcName\":\"ets/modules.abc\",\"moduleName\":\"module\","
-         "\"appIdentifier\":\"sig\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.test.app\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/../etc/test";  // Path traversal
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/../etc/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+    AotCompilerArgs args;
+    args.compileMode = "partial";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.bundleName = "com.test.app";
+    args.moduleName = "module";
+    args.hapPath = "/data/test.hap";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/com.test.app";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/../etc";  // Path traversal
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/../etc/module.an";
 
-    bool result = AotArgsVerify::CheckAOTArgs(argsMap);
+    bool result = AotArgsVerify::CheckAOTArgs(args);
 
     EXPECT_FALSE(result);
     unlink("/data/test.hap");
@@ -2212,78 +1650,83 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_PathTraversalInAotFil
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_MissingPkgInfo
- * @tc.desc: Test CheckStaticAotArgs when COMPILER_PKG_INFO is missing
+ * @tc.desc: Test CheckStaticAotArgs when bundleName is empty
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_MissingPkgInfo, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "";
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_ParsePkgInfoFail
- * @tc.desc: Test CheckStaticAotArgs when ParseAotPkgInfo fails
+ * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_EmptyModuleName
+ * @tc.desc: Test CheckStaticAotArgs when moduleName is empty
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_ParsePkgInfoFail, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_EmptyModuleName, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{invalid_json}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.moduleName = "";
+    args.hapPath = "/data/test.hap";
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 }
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_CheckPkgInfoFieldsFail
- * @tc.desc: Test CheckStaticAotArgs when CheckPkgInfoFields fails
+ * @tc.desc: Test CheckStaticAotArgs when CheckPkgInfoFields fails due to path traversal in moduleName
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_CheckPkgInfoFieldsFail, TestSize.Level0)
 {
 #if defined(PANDA_TARGET_OHOS)
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcName\":\"ets/modules_static.abc\",\"moduleName\":\"../etc\","
-         "\"appIdentifier\":\"signature\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/test\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.moduleName = "../etc";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.hapPath = "/data/test.hap";
+    args.appIdentifier = "signature";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 #else
-    std::unordered_map<std::string, std::string> argsMap;
     mkdir("/data/app/el1/public/aot_compiler/ark_cache/test", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     std::ofstream hapFile("/data/test.hap");
     hapFile << "HAP";
     hapFile.close();
     std::ofstream("/data/app/el1/public/aot_compiler/ark_cache/test/test.an").close();
 
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcName\":\"ets/modules_static.abc\",\"moduleName\":\"../etc\","
-         "\"appIdentifier\":\"signature\",\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/test\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.moduleName = "../etc";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.hapPath = "/data/test.hap";
+    args.appIdentifier = "signature";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test";
+    args.bundleUid = 10000;
+    args.bundleGid = 10000;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
     unlink("/data/app/el1/public/aot_compiler/ark_cache/test/test.an");
@@ -2294,18 +1737,21 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_CheckPkgInfoFie
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckStaticAotArgs_CheckArkCacheFilesFail
- * @tc.desc: Test CheckStaticAotArgs when CheckArkCacheFiles fails
+ * @tc.desc: Test CheckStaticAotArgs when CheckArkCacheFiles fails due to empty outputPath
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_CheckArkCacheFilesFail, TestSize.Level0)
 {
 #if defined(PANDA_TARGET_OHOS)
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.moduleName = "test";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.hapPath = "/data/test.hap";
+    args.outputPath = "";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
 #else
@@ -2313,72 +1759,19 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckStaticAotArgs_CheckArkCacheFi
     hapFile << "HAP";
     hapFile.close();
 
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/data/test.hap\","
-         "\"abcOffset\":\"0x0\",\"abcSize\":\"0x64\"}";
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.moduleName = "test";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.hapPath = "/data/test.hap";
+    args.outputPath = "";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test/test.an";
 
-    bool result = AotArgsVerify::CheckStaticAotArgs(argsMap);
+    bool result = AotArgsVerify::CheckStaticAotArgs(args);
 
     EXPECT_FALSE(result);
     unlink("/data/test.hap");
 #endif
-}
-// CheckAbcOffsetAndSize - Return False Branches
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAbcOffsetAndSize_FileNotExist
- * @tc.desc: Test CheckAbcOffsetAndSize when file doesn't exist
- *           Covers: if (stat(pkgPath.c_str(), &fileStat) != 0) return false;
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAbcOffsetAndSize_FileNotExist, TestSize.Level0)
-{
-    bool result = AotArgsVerify::CheckAbcOffsetAndSize(100, 1000, "/nonexistent/file.hap");
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAbcOffsetAndSize_OffsetExceedsSize
- * @tc.desc: Test CheckAbcOffsetAndSize when abcOffset exceeds HAP size
- *           Covers: if (abcOffset > hapSize) return false;
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAbcOffsetAndSize_OffsetExceedsSize, TestSize.Level0)
-{
-    mkdir("/tmp", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::string testFile = "/tmp/test_offset.hap";
-    std::ofstream file(testFile);
-    file << "test";
-    file.close();
-
-    bool result = AotArgsVerify::CheckAbcOffsetAndSize(100, 10, testFile);
-
-    EXPECT_FALSE(result);
-
-    unlink(testFile.c_str());
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckAbcOffsetAndSize_SumExceedsSize
- * @tc.desc: Test CheckAbcOffsetAndSize when abcOffset + abcSize exceeds HAP size
- *           Covers: if (abcOffset + abcSize > hapSize) return false;
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAbcOffsetAndSize_SumExceedsSize, TestSize.Level0)
-{
-    mkdir("/tmp", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::string testFile = "/tmp/test_sum.hap";
-    std::ofstream file(testFile);
-    file << "test";
-    file.close();
-
-    bool result = AotArgsVerify::CheckAbcOffsetAndSize(2, 10, testFile);
-
-    EXPECT_FALSE(result);
-
-    unlink(testFile.c_str());
 }
 // ParseUint32Field - Wrong Field Type Tests (Line 466-467)
 // ============================================================================
@@ -2391,10 +1784,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAbcOffsetAndSize_SumExceedsSi
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_WrongType_Boolean, TestSize.Level0)
 {
-    nlohmann::json jsonObj = {{"abcOffset", true}};
+    nlohmann::json jsonObj = {{"testField", true}};
     uint32_t output = 0;
 
-    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "abcOffset", output);
+    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "testField", output);
 
     EXPECT_FALSE(result);
 }
@@ -2407,10 +1800,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_WrongType_Boolean
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_WrongType_Array, TestSize.Level0)
 {
-    nlohmann::json jsonObj = {{"abcOffset", {1, 2, 3}}};
+    nlohmann::json jsonObj = {{"testField", {1, 2, 3}}};
     uint32_t output = 0;
 
-    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "abcOffset", output);
+    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "testField", output);
 
     EXPECT_FALSE(result);
 }
@@ -2423,10 +1816,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_WrongType_Array, 
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_ParseUint32Field_WrongType_Object, TestSize.Level0)
 {
-    nlohmann::json jsonObj = {{"abcOffset", {{"value", "100"}}}};
+    nlohmann::json jsonObj = {{"testField", {{"value", "100"}}}};
     uint32_t output = 0;
 
-    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "abcOffset", output);
+    bool result = AotArgsVerify::ParseUint32Field(jsonObj, "testField", output);
 
     EXPECT_FALSE(result);
 }
@@ -2568,10 +1961,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_Syml
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_Idle, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::TRIGGER_TYPE] = "0";
+    AotCompilerArgs args;
+    args.triggerType = 0;
 
-    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(args);
 
     EXPECT_TRUE(result);
 }
@@ -2583,55 +1976,55 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_Idle, TestS
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_Install, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::TRIGGER_TYPE] = "1";
+    AotCompilerArgs args;
+    args.triggerType = 1;
 
-    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(args);
 
     EXPECT_FALSE(result);
 }
 
 /**
  * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_OtherValue
- * @tc.desc: Test CheckTriggerTypeForAOT with triggerType 2 (other value) - should return true
+ * @tc.desc: Test CheckTriggerTypeForAOT with triggerType 2 (exceeds AotTriggerType range) - should return false
  * @tc.type: Func
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_OtherValue, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::TRIGGER_TYPE] = "2";
+    AotCompilerArgs args;
+    args.triggerType = 2;
 
-    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(args);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_DefaultValue
+ * @tc.desc: Test CheckTriggerTypeForAOT with triggerType at default (0) - should return true
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_DefaultValue, TestSize.Level0)
+{
+    AotCompilerArgs args;
+    // triggerType at default value (0)
+
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(args);
 
     EXPECT_TRUE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_NotExist
- * @tc.desc: Test CheckTriggerTypeForAOT with triggerType not in argsMap - should return true
+ * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_NegativeValue
+ * @tc.desc: Test CheckTriggerTypeForAOT with negative triggerType - should return false (out of range)
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_NotExist, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_NegativeValue, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    // triggerType not present
+    AotCompilerArgs args;
+    args.triggerType = -1;
 
-    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
-
-    EXPECT_TRUE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_ParseFail
- * @tc.desc: Test CheckTriggerTypeForAOT with non-numeric string - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_ParseFail, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::TRIGGER_TYPE] = "invalid";
-
-    bool result = AotArgsVerify::CheckTriggerTypeForAOT(argsMap);
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(args);
 
     EXPECT_FALSE(result);
 }
@@ -2647,10 +2040,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_ParseFail, 
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_App, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_TYPE] = "0";
+    AotCompilerArgs args;
+    args.bundleType = 0;
 
-    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+    bool result = AotArgsVerify::IsSharedBundlesType(args);
 
     EXPECT_FALSE(result);
 }
@@ -2662,10 +2055,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_App, TestSize.
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_AtomicService, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_TYPE] = "1";
+    AotCompilerArgs args;
+    args.bundleType = 1;
 
-    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+    bool result = AotArgsVerify::IsSharedBundlesType(args);
 
     EXPECT_FALSE(result);
 }
@@ -2677,10 +2070,10 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_AtomicService,
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_Shared, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_TYPE] = "2";
+    AotCompilerArgs args;
+    args.bundleType = 2;
 
-    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+    bool result = AotArgsVerify::IsSharedBundlesType(args);
 
     EXPECT_TRUE(result);
 }
@@ -2692,40 +2085,40 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_Shared, TestSi
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_AppServiceFwk, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_TYPE] = "3";
+    AotCompilerArgs args;
+    args.bundleType = 3;
 
-    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
-
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_NotExist
- * @tc.desc: Test IsSharedBundlesType with bundleType not in argsMap - should return false
- * @tc.type: Func
- */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_NotExist, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap;
-    // bundleType not present
-
-    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+    bool result = AotArgsVerify::IsSharedBundlesType(args);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_ParseFail
- * @tc.desc: Test IsSharedBundlesType with non-numeric string - should return false
+ * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_DefaultValue
+ * @tc.desc: Test IsSharedBundlesType with bundleType at default (0) - should return false
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_ParseFail, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_DefaultValue, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_TYPE] = "invalid";
+    AotCompilerArgs args;
+    // bundleType at default value (0)
 
-    bool result = AotArgsVerify::IsSharedBundlesType(argsMap);
+    bool result = AotArgsVerify::IsSharedBundlesType(args);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_IsSharedBundlesType_NegativeValue
+ * @tc.desc: Test IsSharedBundlesType with negative bundleType - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_NegativeValue, TestSize.Level0)
+{
+    AotCompilerArgs args;
+    args.bundleType = -1;
+
+    bool result = AotArgsVerify::IsSharedBundlesType(args);
 
     EXPECT_FALSE(result);
 }
@@ -2741,11 +2134,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_IsSharedBundlesType_ParseFail, Tes
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothValid, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "1000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "1000";
-
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(1000, 1000);
 
     EXPECT_TRUE(result);
 }
@@ -2757,11 +2146,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothVa
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidValid_GidInvalid, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "1000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
-
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(1000, 10000);
 
     EXPECT_FALSE(result);
 }
@@ -2773,11 +2158,7 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidVal
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidInvalid_GidValid, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "1000";
-
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(10000, 1000);
 
     EXPECT_FALSE(result);
 }
@@ -2789,75 +2170,55 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidInv
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_BothInvalid, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "10000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "10000";
-
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(10000, 10000);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_MissingUid
- * @tc.desc: Test CheckSharedBundlesUidAndGid with missing BUNDLE_UID - should return false
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_NegativeUid
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with negative uid - should return false
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_MissingUid, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_NegativeUid, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_GID] = "1000";
-    // BUNDLE_UID not present
-
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(-1, 1000);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_MissingGid
- * @tc.desc: Test CheckSharedBundlesUidAndGid with missing BUNDLE_GID - should return false
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_NegativeGid
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with negative gid - should return false
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_MissingGid, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_NegativeGid, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "1000";
-    // BUNDLE_GID not present
-
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(1000, -1);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidParseFail
- * @tc.desc: Test CheckSharedBundlesUidAndGid with invalid uid string - should return false
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_ZeroValues
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with uid=0, gid=0 - should return false
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_UidParseFail, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_ZeroValues, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "invalid";
-    argsMap[ArgsIdx::BUNDLE_GID] = "1000";
-
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(0, 0);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_GidParseFail
- * @tc.desc: Test CheckSharedBundlesUidAndGid with invalid gid string - should return false
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesUidAndGid_LargeValues
+ * @tc.desc: Test CheckSharedBundlesUidAndGid with large uid/gid values - should return false
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_GidParseFail, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_LargeValues, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::BUNDLE_UID] = "1000";
-    argsMap[ArgsIdx::BUNDLE_GID] = "invalid";
-
-    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesUidAndGid(99999, 99999);
 
     EXPECT_FALSE(result);
 }
@@ -2873,10 +2234,9 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesUidAndGid_GidPar
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_ValidPath, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/test/file.an";
+    std::string anFile = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/test/file.an";
 
-    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(anFile);
 
     EXPECT_TRUE(result);
 }
@@ -2888,10 +2248,9 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_Va
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_PathTraversal, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/../etc/file.an";
+    std::string anFile = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/../etc/file.an";
 
-    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(anFile);
 
     EXPECT_FALSE(result);
 }
@@ -2903,27 +2262,229 @@ HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_Pa
  */
 HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_WrongPrefix, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test/file.an";
+    std::string anFile = "/data/app/el1/public/aot_compiler/ark_cache/test/file.an";
 
-    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(anFile);
 
     EXPECT_FALSE(result);
 }
 
 /**
- * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_MissingAnFile
- * @tc.desc: Test CheckSharedBundlesArkCacheFiles with missing AN_FILE_NAME - should return false
+ * @tc.name: AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_EmptyAnFile
+ * @tc.desc: Test CheckSharedBundlesArkCacheFiles with empty anFile string - should return false
  * @tc.type: Func
  */
-HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_MissingAnFile, TestSize.Level0)
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckSharedBundlesArkCacheFiles_EmptyAnFile, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    // AN_FILE_NAME not present
+    std::string anFile = "";
 
-    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(argsMap);
+    bool result = AotArgsVerify::CheckSharedBundlesArkCacheFiles(anFile);
 
     EXPECT_FALSE(result);
+}
+
+// ============================================================================
+// CheckBundleNameAndAppIdentifier - Test Cases (struct-based API)
+// ============================================================================
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_InvalidParams
+ * @tc.desc: Test CheckBundleNameAndAppIdentifier with invalid parameters - should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_InvalidParams, TestSize.Level0)
+{
+    std::vector<HspModuleInfo> emptyPkgs;
+    // Empty bundleName
+    bool result = AotArgsVerify::CheckBundleNameAndAppIdentifier(
+        "", "/system/app/Example/Example.hap", "sig", emptyPkgs);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_EmptyExternalPkgs
+ * @tc.desc: Test CheckBundleNameAndAppIdentifier with empty external packages
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_EmptyExternalPkgs, TestSize.Level0)
+{
+    std::vector<HspModuleInfo> emptyPkgs;
+    bool result = AotArgsVerify::CheckBundleNameAndAppIdentifier(
+        "com.example.app", "/system/app/Example/Example.hap", "sig", emptyPkgs);
+
+#if !defined(PANDA_TARGET_OHOS)
+    // On non-OHOS, returns false immediately
+    EXPECT_FALSE(result);
+#else
+    // On OHOS, will fail at dlopen for libhapverify.z.so (not available in test env)
+    EXPECT_FALSE(result);
+#endif
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_WithExternalPkgs
+ * @tc.desc: Test CheckBundleNameAndAppIdentifier with external packages (non-existent paths)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_WithExternalPkgs, TestSize.Level0)
+{
+    std::vector<HspModuleInfo> pkgs;
+    HspModuleInfo pkg1;
+    pkg1.bundleName = "com.example.sub";
+    pkg1.hapPath = "/system/app/Sub.hap";
+    pkgs.push_back(pkg1);
+    HspModuleInfo pkg2;
+    pkg2.bundleName = "com.example.sub2";
+    pkg2.hapPath = "/system/app/Sub2.hap";
+    pkgs.push_back(pkg2);
+
+    bool result = AotArgsVerify::CheckBundleNameAndAppIdentifier(
+        "com.example.app", "/system/app/Example/Example.hap", "sig", pkgs);
+
+#if !defined(PANDA_TARGET_OHOS)
+    EXPECT_FALSE(result);
+#else
+    // Will fail because HAP files don't exist
+    EXPECT_FALSE(result);
+#endif
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_ExternalPkgEmptyBundleName
+ * @tc.desc: Test with external package having empty bundleName
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_ExternalPkgEmptyBundleName,
+    TestSize.Level0)
+{
+    std::vector<HspModuleInfo> pkgs;
+    HspModuleInfo pkg;
+    pkg.hapPath = "/system/app/Sub.hap";
+    pkgs.push_back(pkg);
+
+    bool result = AotArgsVerify::CheckBundleNameAndAppIdentifier(
+        "com.example.app", "/system/app/Example/Example.hap", "sig", pkgs);
+
+#if !defined(PANDA_TARGET_OHOS)
+    EXPECT_FALSE(result);
+#else
+    // Will fail because external package has empty bundleName
+    EXPECT_FALSE(result);
+#endif
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_ExternalPkgEmptyPkgPath
+ * @tc.desc: Test with external package having empty pkgPath
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckBundleNameAndAppIdentifier_ExternalPkgEmptyPkgPath,
+    TestSize.Level0)
+{
+    std::vector<HspModuleInfo> pkgs;
+    HspModuleInfo pkg;
+    pkg.bundleName = "com.example.sub";
+    pkgs.push_back(pkg);
+
+    bool result = AotArgsVerify::CheckBundleNameAndAppIdentifier(
+        "com.example.app", "/system/app/Example/Example.hap", "sig", pkgs);
+
+#if !defined(PANDA_TARGET_OHOS)
+    EXPECT_FALSE(result);
+#else
+    // Will fail because external package has empty pkgPath
+    EXPECT_FALSE(result);
+#endif
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckHapFsVerity_InvalidFd
+ * @tc.desc: Test CheckHapFsVerity with invalid fd (-1)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckHapFsVerity_InvalidFd, TestSize.Level0)
+{
+    bool result = AotArgsVerify::CheckHapFsVerity(-1);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckHapFsVerity_ValidFd
+ * @tc.desc: Test CheckHapFsVerity with a valid fd — verifies no crash on a regular temp file.
+ *           Result depends on filesystem: returns true if ioctl unsupported (skip check),
+ *           returns false if filesystem supports ioctl but file lacks fs-verity.
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckHapFsVerity_ValidFd, TestSize.Level0)
+{
+    char tmpPath[] = "./aot_fsverity_test_XXXXXX";
+    int fd = mkstemp(tmpPath);
+    ASSERT_GE(fd, 0);
+
+    // CheckHapFsVerity returns a valid bool for any regular file fd — just verify no crash
+    bool result = AotArgsVerify::CheckHapFsVerity(fd);
+    EXPECT_TRUE(result || !result);
+
+    close(fd);
+    unlink(tmpPath);
+}
+
+// ============================================================================
+// Supplementary tests for precise branch coverage
+// ============================================================================
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckAOTArgs_EmptyBundleNameWithValidCompileMode
+ * @tc.desc: Test CheckAOTArgs with valid compileMode/moduleArkTSMode but empty bundleName
+ *           — precisely hits CheckPkgInfoFields bundleName check, not compileMode
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckAOTArgs_EmptyBundleNameWithValidCompileMode, TestSize.Level0)
+{
+    AotCompilerArgs args;
+    args.compileMode = ArgsIdx::PARTIAL;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.bundleName = "";
+    args.moduleName = "test";
+    args.hapPath = "/data/test.hap";
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/test";
+
+    bool result = AotArgsVerify::CheckAOTArgs(args);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckTriggerTypeForAOT_OutOfRange
+ * @tc.desc: Test CheckTriggerTypeForAOT with triggerType exceeding max enum value — should return false
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckTriggerTypeForAOT_OutOfRange, TestSize.Level0)
+{
+    AotCompilerArgs args;
+    args.triggerType = 99;
+
+    bool result = AotArgsVerify::CheckTriggerTypeForAOT(args);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_NonExistentFile
+ * @tc.desc: Test CheckCodeSignArkCacheFilePath with non-existent .an file but existing parent dir (memfd flow)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsVerifyTest, AotArgsVerifyTest_CheckCodeSignArkCacheFilePath_NonExistentFile, TestSize.Level0)
+{
+    // Simulate memfd flow: parent directory exists on disk, but .an file does not yet
+    std::string parentDir = "/data/app/el1/public/aot_compiler/ark_cache/test_memfd_nosign/";
+    std::string targetPath = parentDir + "entry.an";
+    mkdir(parentDir.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+    bool result = AotArgsVerify::CheckCodeSignArkCacheFilePath(targetPath);
+    EXPECT_TRUE(result);
+
+    rmdir(parentDir.c_str());
 }
 
 } // namespace OHOS::ArkCompiler

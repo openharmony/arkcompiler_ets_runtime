@@ -155,12 +155,6 @@ public:
 
     bool HasSkipMethod(const CVector<std::string> &methodList, const std::string &methodName) const;
 
-    bool ForbidenRebuildAOT(std::string &fileName) const;
-
-    bool PUBLIC_API HasPreloadAotFile() const;
-
-    bool PUBLIC_API HasExistsAOTFiles(CompilationOptions &cOptions) const;
-
     void SetIsFastCall(CString fileDesc, uint32_t methodOffset, bool isFastCall)
     {
         callMethodFlagMap_.SetIsFastCall(fileDesc, methodOffset, isFastCall);

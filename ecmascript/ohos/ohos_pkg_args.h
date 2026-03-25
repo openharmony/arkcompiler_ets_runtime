@@ -51,22 +51,15 @@ public:
     constexpr static const char *const KEY_MODULE_NAME = "moduleName";
     constexpr static const char *const KEY_PKG_PATH = "pkgPath";
     constexpr static const char *const KEY_FILE_NAME = "abcName";
-    constexpr static const char *const KEY_ABC_OFFSET = "abcOffset";
-    constexpr static const char *const KEY_ABC_SIZE = "abcSize";
     constexpr static const char *const KEY_PGO_DIR = "pgoDir";
     constexpr static const char *const KEY_PROCESS_UID = "processUid";
     constexpr static const char *const KEY_BUNDLE_UID = "bundleUid";
     constexpr static const char *const IS_ENCRYPTED_BUNDLE = "isEncryptedBundle";
     constexpr static const char *const APP_IDENTIFIER = "appIdentifier";
+    constexpr static const char *const KEY_HAP_FD = "hapFd";
 
     OhosPkgArgs() = default;
-    ~OhosPkgArgs()
-    {
-        if (GetPkgFd() != -1) {
-            Close(reinterpret_cast<fd_t>(GetPkgFd()));
-            SetPkgFd(-1);
-        }
-    }
+    ~OhosPkgArgs() = default;
 
     static bool ParseArgs(AotCompilerPreprocessor &preProcessor, CompilationOptions &cOptions)
     {
@@ -79,6 +72,15 @@ public:
             LOG_COMPILER(INFO) << "Parse main pkg info success.";
             preProcessor.mainPkgName_ = pkgArgs->GetFullName();
             preProcessor.pkgsArgs_[preProcessor.mainPkgName_] = pkgArgs;
+
+            // If compiler_service passed a HAP fd via --hap-fd, set it on the main pkg args.
+            // The fd is managed by the caller (compiler_service child process), so we don't own it.
+            int hapFd = preProcessor.runtimeOptions_.GetHapFd();
+            if (hapFd >= 0) {
+                pkgArgs->SetPkgFd(hapFd);
+                LOG_COMPILER(INFO) << "Set main pkg hapFd=" << hapFd << " from --hap-fd";
+            }
+
             if (!ParseProfilerPath(pkgArgs, preProcessor, cOptions)) {
                 return false;
             }
@@ -131,16 +133,9 @@ public:
     bool GetJSPandaFileinfo(const JSRuntimeOptions &runtimeOptions, std::string &hapPath,
                             uint32_t &offset, uint32_t &size, std::string &realPath) const
     {
-        if (Valid()) {
-            hapPath = GetPath();
-            offset = GetOffset();
-            size = GetSize();
-        } else {
-            // for legacy params
-            hapPath = runtimeOptions.GetHapPath();
-            offset = runtimeOptions.GetHapAbcOffset();
-            size = runtimeOptions.GetHapAbcSize();
-        }
+        hapPath = Valid() ? GetPath() : runtimeOptions.GetHapPath();
+        offset = runtimeOptions.GetHapAbcOffset();
+        size = runtimeOptions.GetHapAbcSize();
         if (size == 0) {
             LOG_ECMA(ERROR) << "buffer is empty in target compiler mode!";
             return false;
@@ -276,12 +271,6 @@ public:
             pkgPath_ = value;
         } else if (strcmp(key, KEY_FILE_NAME) == 0) {
             abcName_ = value;
-        } else if (strcmp(key, KEY_ABC_OFFSET) == 0) {
-            char *str = nullptr;
-            abcOffset_ = static_cast<uint32_t>(strtol(value, &str, 0));
-        } else if (strcmp(key, KEY_ABC_SIZE) == 0) {
-            char *str = nullptr;
-            abcSize_ = static_cast<uint32_t>(strtol(value, &str, 0));
         } else if (strcmp(key, KEY_PGO_DIR) == 0) {
             pgoDir_ = value;
         } else if (strcmp(key, KEY_BUNDLE_UID) == 0) {
@@ -295,6 +284,12 @@ public:
             IsEncryptedBundle_ = static_cast<uint32_t>(strtol(value, &str, 0));
         } else if (strcmp(key, APP_IDENTIFIER) == 0) {
             appSignature_ = value;
+        } else if (strcmp(key, KEY_HAP_FD) == 0) {
+            char *str = nullptr;
+            long fdVal = strtol(value, &str, 10);
+            if (str != value && fdVal >= 0 && fdVal <= std::numeric_limits<int>::max()) {
+                pkgFd_ = static_cast<int>(fdVal);
+            }
         } else {
             LOG_COMPILER(ERROR) << "Unknown keyword when parse pkg info. key: " << key << ", value: " << value;
         }
@@ -306,8 +301,7 @@ public:
             LOG_COMPILER(ERROR) << KEY_FILE_NAME << " must be abc file, but now is: " << abcName_;
             return false;
         }
-        return !bundleName_.empty() && !moduleName_.empty() && !pkgPath_.empty() && (abcOffset_ != INVALID_VALUE) &&
-               (abcSize_ != INVALID_VALUE);
+        return !bundleName_.empty() && !moduleName_.empty() && !pkgPath_.empty();
     }
 
     void Dump() const
@@ -316,13 +310,12 @@ public:
                            << KEY_BUNDLE_NAME << ": " << bundleName_ << ", "
                            << KEY_MODULE_NAME << ": " << moduleName_ << ", "
                            << KEY_PKG_PATH << ": " << pkgPath_ << ", "
-                           << KEY_ABC_OFFSET << ": " << std::hex << abcOffset_ << ", "
-                           << KEY_ABC_SIZE << ": " << abcSize_ << ", "
                            << KEY_PGO_DIR << ": " << pgoDir_ << ", "
                            << KEY_BUNDLE_UID << ": " << bundleUid_ << ", "
                            << KEY_PROCESS_UID << ": " << processUid_ << ", "
-                           << IS_ENCRYPTED_BUNDLE << ": " << IsEncryptedBundle_
-                           << APP_IDENTIFIER << ": " << appSignature_;
+                           << IS_ENCRYPTED_BUNDLE << ": " << IsEncryptedBundle_ << ", "
+                           << APP_IDENTIFIER << ": " << appSignature_ << ", "
+                           << KEY_HAP_FD << ": " << pkgFd_;
     }
 
     const std::string &GetBundleName() const
@@ -340,6 +333,11 @@ public:
         return pkgPath_;
     }
 
+    const std::string &GetAbcName() const
+    {
+        return abcName_;
+    }
+
     const std::string &GetAppSignature() const
     {
         return appSignature_;
@@ -348,16 +346,6 @@ public:
     std::string GetFullName() const
     {
         return pkgPath_ + GetPathSeparator() + moduleName_ + GetPathSeparator() + abcName_;
-    }
-
-    uint32_t GetOffset() const
-    {
-        return abcOffset_;
-    }
-
-    uint32_t GetSize() const
-    {
-        return abcSize_;
     }
 
     uint32_t GetBundleUid() const
@@ -495,8 +483,6 @@ private:
     std::string abcName_{""};
     std::string pgoDir_{""};
     std::string appSignature_{""};
-    uint32_t abcOffset_ {INVALID_VALUE};
-    uint32_t abcSize_ {INVALID_VALUE};
     uint32_t bundleUid_ {INVALID_VALUE};
     uint32_t processUid_ {INVALID_VALUE};
     bool IsEncryptedBundle_{false};

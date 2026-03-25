@@ -651,6 +651,9 @@ bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
         return true;
     }
     std::string path = realPath.substr(0, index);
+    if (panda::ecmascript::FileExist(path.c_str())) {
+        return true;
+    }
     if (!panda::ecmascript::ForceCreateDirectory(path)) {
         LOG_COMPILER(ERROR) << "Fail to make dir: " << path;
         return false;
@@ -659,7 +662,7 @@ bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
 }
 
 bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::string &appSignature,
-                                   const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+    const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
 {
     if (aotInfo_.GetTotalCodeSize() == 0) {
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
@@ -713,6 +716,28 @@ void AOTFileGenerator::SaveEmptyAOTFile(const std::string& filename, const std::
         panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
     }
     LOG_COMPILER(ERROR) << "create empty AOT file: " << realPath << " due to illegal AP file";
+}
+
+bool AOTFileGenerator::SaveAOTFile(int anFd, const std::string &filename, const std::string &appSignature,
+    const std::unordered_map<CString, uint32_t> &fileNameToChecksumMap)
+{
+    LOG_COMPILER(DEBUG) << "SaveAOTFile via FD enter, anFd=" << anFd << " filename=" << filename;
+    if (aotInfo_.GetTotalCodeSize() == 0) {
+        LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
+        return false;
+    }
+    PrintMergedCodeComment();
+    if (!GenerateMergedStackmapSection()) {
+        LOG_COMPILER(ERROR) << "Fail to generate merged stackmap section";
+        return false;
+    }
+    aotInfo_.GenerateMethodToEntryIndexMap();
+    if (!aotInfo_.Save(anFd, filename, cfg_.GetTriple(), anFileMaxByteSize_, fileNameToChecksumMap)) {
+        LOG_COMPILER(ERROR) << "Fail to save an file (fd version): " << filename;
+        return false;
+    }
+    // Skip SetFileModeAsDefault/SetSecurityLabel/CodeSignatureForAOTFile - child process has dropped privs
+    return true;
 }
 
 bool AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)

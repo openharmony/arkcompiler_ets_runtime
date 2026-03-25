@@ -19,6 +19,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/ohos/ohos_pkg_verifier.h"
 #include "ecmascript/platform/aot_crash_info.h"
+#include <unistd.h>
 
 
 namespace panda::ecmascript::kungfu {
@@ -101,12 +102,6 @@ int Main(const int argc, const char **argv)
             return ERR_HELP;
         }
 
-        // Need to verify package information to prevent abnormal input of information
-        if (!ohos::OhosPkgVerifier::VerifyPkgInfo(cPreprocessor, cOptions)) {
-            LOG_COMPILER(ERROR) << "hap verify wrong";
-            return ERR_FAIL;
-        }
-
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
             // no need to compile in partial mode without any ap files.
             return ERR_NO_AP;
@@ -129,11 +124,6 @@ int Main(const int argc, const char **argv)
         std::unordered_map<CString, uint32_t> fileNameToChecksumMap;
         cPreprocessor.GenerateAbcFileInfos(fileNameToChecksumMap);
 
-        if (runtimeOptions.IsTargetCompilerMode() && (cPreprocessor.HasExistsAOTFiles(cOptions) ||
-            cPreprocessor.HasPreloadAotFile())) {
-            LOG_COMPILER(ERROR) << "The AOT file already exists and will not be compiled anymore";
-            return ERR_OK;
-        }
         ret = cPreprocessor.GetCompilerResult();
         // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
         // need support multiple abc
@@ -142,11 +132,24 @@ int Main(const int argc, const char **argv)
             return ERR_CHECK_VERSION;
         }
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
+        int anFd = runtimeOptions.GetAnFd();
+        std::string anPath = cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN;
         if (!isPgoMerged) {
-            AOTFileGenerator::SaveEmptyAOTFile(
-                cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature, true);
-            AOTFileGenerator::SaveEmptyAOTFile(
-                cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI, appSignature, false);
+            if (anFd >= 0) {
+#ifdef PANDA_TARGET_OHOS
+                if (ftruncate(anFd, 0) != 0) {
+                    LOG_COMPILER(ERROR) << "Fail to truncate an file: " << anPath;
+                    return ERR_FAIL;
+                }
+#endif
+                LOG_COMPILER(WARN) << "Skip AOT compilation, create empty an file: " << anPath;
+                AOTFileGenerator::SaveEmptyAOTFile(
+                    cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI, appSignature, false);
+            } else {
+                AOTFileGenerator::SaveEmptyAOTFile(anPath, appSignature, true);
+                AOTFileGenerator::SaveEmptyAOTFile(
+                    cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI, appSignature, false);
+            }
             return ERR_MERGE_AP;
         }
         cPreprocessor.Process(cOptions);
@@ -205,9 +208,17 @@ int Main(const int argc, const char **argv)
         if (compilerStats.GetCompilerMethodCount() == 0) {
             return runtimeOptions.IsPartialCompilerMode() ? ERR_AN_EMPTY : ERR_OK;
         }
-        if (!generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature,
-                                   fileNameToChecksumMap)) {
-            return ERR_AN_FAIL;
+        if (anFd >= 0) {
+            LOG_COMPILER(DEBUG) << "SaveAOTFile via FD, anFd=" << anFd << " anPath=" << anPath;
+            if (!generator.SaveAOTFile(anFd, anPath, appSignature, fileNameToChecksumMap)) {
+                return ERR_AN_FAIL;
+            }
+            LOG_COMPILER(DEBUG) << "SaveAOTFile via FD completed successfully";
+        } else {
+            if (!generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature,
+                                       fileNameToChecksumMap)) {
+                return ERR_AN_FAIL;
+            }
         }
         if (!generator.SaveSnapshotFile()) {
             return ERR_AI_FAIL;

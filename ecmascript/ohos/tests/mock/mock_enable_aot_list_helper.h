@@ -27,8 +27,6 @@ public:
 
     MockEnableAotJitListHelper() = default;
     ~MockEnableAotJitListHelper() = default;
-
-    bool IsEnabledByArkProfiler() const override;
 };
 };  // namespace panda::test
 #endif // MOCK_ECMASCRIPT_ENABLE_AOT_LIST_HELPER_H

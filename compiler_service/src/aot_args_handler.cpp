@@ -16,8 +16,11 @@
 #include "aot_args_handler.h"
 
 #include <charconv>
-#include <cstdio>
+#include <fcntl.h>
 #include <fstream>
+#include <sstream>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "aot_args_list.h"
 #include "aot_args_verify.h"
@@ -30,42 +33,23 @@
 #endif
 
 namespace OHOS::ArkCompiler {
-const std::string COMPILER_MODE = "target-compiler-mode";
-const std::string PATH = "path";
-
-const std::string STATIC_BOOT_PANDA_FILES = "boot-panda-files";
-const std::string STATIC_PAOC_PANDA_FILES = "paoc-panda-files";
-const std::string STATIC_PAOC_LOCATION = "paoc-location";
-const std::string STATIC_PAOC_OUTPUT = "paoc-output";
-const std::string STATIC_PAOC_USE_PROFILE = "paoc-use-profile";
-const std::string STATIC_BOOT_PATH = "/system/framework/bootpath.json";
-const std::string STATIC_COMPILER_REGEX = "compiler-regex";
-const std::string STATIC_PAOC_BLACK_LIST_PATH = "/etc/ark/static_aot_methods_black_list.json";
-
-const std::string AN_SUFFIX = ".an";
-const std::string AP_SUFFIX = ".ap";
-const std::string HSP_SUFFIX = ".hsp";
-const std::string APP_SANBOX_PATH_PREFIX = "/data/storage/el1/bundle/";
-const std::string SYS_OUTER_HSP_PATH_PREFIX = "/system/app/";
-const std::string APP_ABC_PHYS_PATH_PREFIX = "/data/app/el1/bundle/public/";
-const std::string ETS_PATH = "/ets";
-const std::string OWNERID_SHARED_TAG = "SHARED_LIB_ID";
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
 const bool ARK_AOT_ENABLE_STATIC_COMPILER_DEFAULT_VALUE = true;
 #endif
 
-AOTArgsHandler::AOTArgsHandler(const std::unordered_map<std::string, std::string> &argsMap) : argsMap_(argsMap)
+AOTArgsHandler::AOTArgsHandler(const AotCompilerArgs &args)
+    : args_(args)
 {
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
     SetIsEnableStaticCompiler(AOTArgsParserBase::IsEnableStaticCompiler());
 #endif
-    SetParser(argsMap);
+    SetParser();
 }
 
-void AOTArgsHandler::SetParser(const std::unordered_map<std::string, std::string> &argsMap)
+void AOTArgsHandler::SetParser()
 {
-    auto parserOpt = AOTArgsParserFactory::GetParser(argsMap, IsEnableStaticCompiler());
+    auto parserOpt = AOTArgsParserFactory::GetParser(args_, IsEnableStaticCompiler());
     if (parserOpt.has_value()) {
         parser_ = std::move(parserOpt.value());
     } else {
@@ -75,33 +59,46 @@ void AOTArgsHandler::SetParser(const std::unordered_map<std::string, std::string
 
 int32_t AOTArgsHandler::Handle(int32_t thermalLevel)
 {
-    if (argsMap_.empty()) {
-        LOG_SA(ERROR) << "pass empty args to aot sa";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
     if (!parser_) {
         LOG_SA(ERROR) << "AOTArgsParser is null, invalid parameters";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
     // Perform validation before parsing
-    if (!parser_->Check(argsMap_)) {
+    if (!parser_->Check(args_)) {
         LOG_SA(ERROR) << "Parser check validation failed";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    int32_t ret = parser_->Parse(argsMap_, hapArgs_, thermalLevel);
+    std::lock_guard<std::mutex> lock(argsMutex_);
+    int32_t ret = parser_->Parse(args_, argVector_, thermalLevel);
     return ret;
 }
 
 std::vector<const char*> AOTArgsHandler::GetAotArgs() const
 {
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
+    std::lock_guard<std::mutex> lock(argsMutex_);
     std::vector<const char*> argv;
-    argv.reserve(hapArgs_.argVector.size() + 1);  // 1: for nullptr
-    for (auto &arg : hapArgs_.argVector) {
+    constexpr size_t extraArgsCapacity = 4; // --an-fd + --hap-fd + nullptr terminator + margin
+    argv.reserve(argVector_.size() + extraArgsCapacity);
+    for (auto &arg : argVector_) {
         argv.emplace_back(arg.c_str());
+    }
+
+    // Append FD argument (child process inherits the .an FD via fork)
+    if (childAnFd_ >= 0 && parser_) {
+        anFdArg_ = Symbols::PREFIX + parser_->GetFdArgName() + Symbols::EQ
+            + std::to_string(childAnFd_);
+        argv.emplace_back(anFdArg_.c_str());
+        LOG_SA(INFO) << "GetAotArgs appended " << anFdArg_;
+    }
+
+    // Append HAP FD argument (child process inherits the HAP FD via fork)
+    if (childHapFd_ >= 0 && parser_) {
+        hapFdArg_ = Symbols::PREFIX + parser_->GetHapFdArgName() + Symbols::EQ
+            + std::to_string(childHapFd_);
+        argv.emplace_back(hapFdArg_.c_str());
+        LOG_SA(INFO) << "GetAotArgs appended " << hapFdArg_;
     }
 
     return argv;
@@ -109,98 +106,180 @@ std::vector<const char*> AOTArgsHandler::GetAotArgs() const
 
 void AOTArgsHandler::GetBundleId(int32_t &bundleUid, int32_t &bundleGid) const
 {
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    bundleUid = hapArgs_.bundleUid;
-    bundleGid = hapArgs_.bundleGid;
+    std::lock_guard<std::mutex> lock(argsMutex_);
+    bundleUid = args_.bundleUid;
+    bundleGid = args_.bundleGid;
 }
 
 std::string AOTArgsHandler::GetFileName() const
 {
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    return hapArgs_.fileName;
+    std::lock_guard<std::mutex> lock(argsMutex_);
+    return args_.anFileName;
 }
 
 std::string AOTArgsHandler::GetCodeSignArgs() const
 {
-    std::lock_guard<std::mutex> lock(hapArgsMutex_);
-    return hapArgs_.signature;
+    std::lock_guard<std::mutex> lock(argsMutex_);
+    return args_.appIdentifier;
 }
 
-int32_t AOTArgsParserBase::FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
-                                                const std::string &keyName, int32_t &bundleID)
+AotParserType AOTArgsHandler::GetParserType() const
 {
-    if (argsMap.find(keyName) == argsMap.end()) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
+    if (parser_) {
+        return parser_->GetParserType();
     }
-
-    if (argsMap.at(keyName).empty() || !isdigit(argsMap.at(keyName).at(0))) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-
-    const char* beginPtr = argsMap.at(keyName).data();
-    const char* endPtr = argsMap.at(keyName).data() + argsMap.at(keyName).size();
-    auto res = std::from_chars(beginPtr, endPtr, bundleID);
-    if ((res.ec != std::errc()) || (res.ptr != endPtr)) {
-        LOG_SA(ERROR) << "trigger exception as converting string to integer";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
-    }
-    return ERR_OK;
+    return AotParserType::UNKNOWN;
 }
 
-int32_t AOTArgsParserBase::FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
-                                               const std::string &keyName, std::string &bundleArg)
+bool AOTArgsHandler::IsDynamicAOT() const
 {
-    if (argsMap.find(keyName) == argsMap.end()) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
+    if (!parser_) {
+        return false;
     }
-
-    bundleArg = argsMap.at(keyName);
-    return ERR_OK;
+    return parser_->GetParserType() == AotParserType::DYNAMIC_AOT;
 }
 
-int32_t AOTArgsParser::Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
-                             int32_t thermalLevel)
+std::string AOTArgsHandler::BuildCompilerPkgInfo(const AotCompilerArgs &args)
 {
-    std::string abcPath;
-    if ((FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_UID, hapArgs.bundleUid) != ERR_OK)   ||
-        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_GID, hapArgs.bundleGid) != ERR_OK)   ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs.fileName) != ERR_OK)   ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::APP_SIGNATURE, hapArgs.signature) != ERR_OK) ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::ABC_PATH, abcPath) != ERR_OK)) {
-        LOG_SA(ERROR) << "aot compiler args parsing error";
-        return ERR_AOT_COMPILER_PARAM_FAILED;
+    nlohmann::json pkgInfo;
+    pkgInfo["bundleName"] = args.bundleName;
+    pkgInfo["moduleName"] = args.moduleName;
+    pkgInfo["pkgPath"] = args.hapPath;
+    pkgInfo["pgoDir"] = args.pgoDir;
+    pkgInfo["bundleUid"] = std::to_string(args.bundleUid);
+    pkgInfo["processUid"] = std::to_string(args.processUid);
+    pkgInfo["appIdentifier"] = args.appIdentifier;
+    pkgInfo["isEncryptedBundle"] = std::to_string(args.isEncryptedBundle);
+    // NOTE: isScreenOff is NOT included here - the engine's UpdateProperty()
+    // in ohos_pkg_args.h does not recognize this key. It is only used at the
+    // SA level via the separate "compiler-device-state" argument.
+    std::string abcName;
+    if (args.moduleArkTSMode == ArgsIdx::ARKTS_DYNAMIC) {
+        abcName = ArgsIdx::ABC_MODULES_PATH;
+    } else {
+        abcName = ArgsIdx::ABC_MODULES_STATIC_PATH;
     }
+    pkgInfo["abcName"] = abcName;
+    return pkgInfo.dump();
+}
 
-    hapArgs.argVector.clear();
-    hapArgs.argVector.emplace_back(AOT_EXE);
+std::string AOTArgsHandler::BuildExternalPkgInfo(const AotCompilerArgs &args)
+{
+    nlohmann::json extPkgArray = nlohmann::json::array();
+    for (const auto &hsp : args.hspModules) {
+        nlohmann::json hspObj;
+        hspObj["bundleName"] = hsp.bundleName;
+        hspObj["moduleName"] = hsp.moduleName;
+        hspObj["pkgPath"] = hsp.hapPath;
+        hspObj["moduleArkTSMode"] = hsp.moduleArkTSMode;
+        // abcName is required by engine's ParseFromJsObject -> Valid() check
+        std::string hspAbcName = (hsp.moduleArkTSMode == ArgsIdx::ARKTS_DYNAMIC)
+            ? ArgsIdx::ABC_MODULES_PATH : ArgsIdx::ABC_MODULES_STATIC_PATH;
+        hspObj["abcName"] = hspAbcName;
+        extPkgArray.push_back(hspObj);
+    }
+    return extPkgArray.dump();
+}
 
-    // service process add aot compile args here
-    AddExpandArgs(hapArgs.argVector, thermalLevel);
+std::string AOTArgsHandler::BuildExternalPkgInfo(const AotCompilerArgs &args,
+    const std::map<std::string, int32_t> &hspFdMap)
+{
+    nlohmann::json extPkgArray = nlohmann::json::array();
+    for (const auto &hsp : args.hspModules) {
+        nlohmann::json hspObj;
+        hspObj["bundleName"] = hsp.bundleName;
+        hspObj["moduleName"] = hsp.moduleName;
+        hspObj["pkgPath"] = hsp.hapPath;
+        hspObj["moduleArkTSMode"] = hsp.moduleArkTSMode;
+        std::string hspAbcName = (hsp.moduleArkTSMode == ArgsIdx::ARKTS_DYNAMIC)
+            ? ArgsIdx::ABC_MODULES_PATH : ArgsIdx::ABC_MODULES_STATIC_PATH;
+        hspObj["abcName"] = hspAbcName;
+        auto it = hspFdMap.find(hsp.hapPath);
+        if (it != hspFdMap.end() && it->second >= 0) {
+            hspObj["hapFd"] = std::to_string(it->second);
+        }
+        extPkgArray.push_back(hspObj);
+    }
+    return extPkgArray.dump();
+}
 
-    for (auto &argPair : argsMap) {
-        if (aotArgsList.find(argPair.first) != aotArgsList.end()) {
-            hapArgs.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
+void AOTArgsHandler::UpdateExternalPkgInfo(const std::string &extPkgJson)
+{
+    std::lock_guard<std::mutex> lock(argsMutex_);
+    std::string prefix = Symbols::PREFIX + ArgsIdx::COMPILER_EXTERNAL_PKG_INFO + Symbols::EQ;
+    for (auto &arg : argVector_) {
+        if (arg.compare(0, prefix.size(), prefix) == 0) {
+            arg = prefix + extPkgJson;
+            LOG_SA(INFO) << "Updated external pkg info with HSP fd data";
+            return;
         }
     }
+    if (!extPkgJson.empty() && extPkgJson != ArgsIdx::EMPTY_JSON_ARRAY) {
+        argVector_.emplace_back(prefix + extPkgJson);
+    }
+}
+
+int32_t AOTArgsParser::Parse(AotCompilerArgs &args, std::vector<std::string> &argVector,
+                             int32_t thermalLevel)
+{
+    std::string abcPath = args.sysCompPath.empty() ? args.abcPath : args.sysCompPath;
+    if (abcPath.empty()) {
+        LOG_SA(ERROR) << "aot compiler args parsing error: abcPath is empty";
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+
+    argVector.clear();
+    argVector.emplace_back(AOT_EXE);
+    AddThermalLevelArg(argVector, thermalLevel);
+
+    BuildDynamicCompilerArgs(args, argVector);
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-    SetEnableCodeCommentBySysParam(hapArgs);
-    SetAnFileMaxSizeBySysParam(hapArgs);
+    SetEnableCodeCommentBySysParam(argVector);
+    SetAnFileMaxSizeBySysParam(argVector);
 #endif
 
-    hapArgs.argVector.emplace_back(abcPath);
+    argVector.emplace_back(abcPath);
     return ERR_OK;
 }
 
-bool AOTArgsParserBase::Check(const std::unordered_map<std::string, std::string> &argsMap)
+void AOTArgsParser::BuildDynamicCompilerArgs(const AotCompilerArgs &args, std::vector<std::string> &argVector)
+{
+    std::string aotFile = args.outputPath.empty() ? "" : args.outputPath + "/" + args.moduleName;
+    if (!aotFile.empty()) {
+        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::AOT_FILE + Symbols::EQ + aotFile);
+    }
+    if (!args.compileMode.empty()) {
+        argVector.emplace_back(
+            Symbols::PREFIX + ArgsIdx::TARGET_COMPILER_MODE + Symbols::EQ + args.compileMode);
+    }
+    if (!args.optBCRangeList.empty()) {
+        argVector.emplace_back(
+            Symbols::PREFIX + ArgsIdx::COMPILER_OPT_BC_RANGE + Symbols::EQ + args.optBCRangeList);
+    }
+    argVector.emplace_back(
+        Symbols::PREFIX + ArgsIdx::COMPILER_DEVICE_STATE + Symbols::EQ + std::to_string(args.isScreenOff));
+    argVector.emplace_back(
+        Symbols::PREFIX + ArgsIdx::COMPILER_BASELINE_PGO + Symbols::EQ +
+        std::to_string(args.isEnableBaselinePgo));
+    argVector.emplace_back(
+        Symbols::PREFIX + ArgsIdx::COMPILER_PKG_INFO + Symbols::EQ + AOTArgsHandler::BuildCompilerPkgInfo(args));
+    std::string extPkgInfo = AOTArgsHandler::BuildExternalPkgInfo(args);
+    if (!extPkgInfo.empty() && extPkgInfo != ArgsIdx::EMPTY_JSON_ARRAY) {
+        argVector.emplace_back(
+            Symbols::PREFIX + ArgsIdx::COMPILER_EXTERNAL_PKG_INFO + Symbols::EQ + extPkgInfo);
+    }
+}
+
+bool AOTArgsParserBase::Check(const AotCompilerArgs &args)
 {
     switch (GetParserType()) {
         case AotParserType::DYNAMIC_AOT:
-            return AotArgsVerify::CheckAOTArgs(argsMap);
+            return AotArgsVerify::CheckAOTArgs(args);
         case AotParserType::STATIC_AOT:
-            return AotArgsVerify::CheckStaticAotArgs(argsMap);
+            return AotArgsVerify::CheckStaticAotArgs(args);
         case AotParserType::FRAMEWORK_STATIC_AOT:
-            return AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
+            return AotArgsVerify::CheckFrameworkStaticAotArgs(args);
         default:
             LOG_SA(ERROR) << "Unknown parser type in Check";
             return false;
@@ -208,22 +287,22 @@ bool AOTArgsParserBase::Check(const std::unordered_map<std::string, std::string>
 }
 
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
-void AOTArgsParser::SetAnFileMaxSizeBySysParam(HapArgs &hapArgs)
+void AOTArgsParser::SetAnFileMaxSizeBySysParam(std::vector<std::string> &argVector)
 {
     int anFileMaxSize = OHOS::system::GetIntParameter<int>("ark.aot.compiler_an_file_max_size", -1);
     if (anFileMaxSize >= 0) {
-        hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_AN_FILE_MAX_SIZE + Symbols::EQ +
+        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_AN_FILE_MAX_SIZE + Symbols::EQ +
                                        std::to_string(anFileMaxSize));
     }
 }
 
-void AOTArgsParser::SetEnableCodeCommentBySysParam(HapArgs &hapArgs)
+void AOTArgsParser::SetEnableCodeCommentBySysParam(std::vector<std::string> &argVector)
 {
     bool enableAotCodeComment = OHOS::system::GetBoolParameter("ark.aot.code_comment.enable", false);
     if (enableAotCodeComment) {
-        hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT + Symbols::EQ +
+        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_ENABLE_AOT_CODE_COMMENT + Symbols::EQ +
                                        "true");
-        hapArgs.argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT + Symbols::EQ + "allasm");
+        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_LOG_OPT + Symbols::EQ + ArgsIdx::LOG_OPT_ALLASM);
     }
 }
 
@@ -236,99 +315,91 @@ bool AOTArgsParserBase::IsEnableStaticCompiler()
 }
 #endif
 
-void AOTArgsParser::AddExpandArgs(std::vector<std::string> &argVector, int32_t thermalLevel)
+void AOTArgsParser::AddThermalLevelArg(std::vector<std::string> &argVector, int32_t thermalLevel)
 {
-    std::string thermalLevelArg = "--compiler-thermal-level=" + std::to_string(thermalLevel);
+    std::string thermalLevelArg = Symbols::PREFIX + std::string("compiler-thermal-level") + Symbols::EQ
+        + std::to_string(thermalLevel);
     argVector.emplace_back(thermalLevelArg);
 }
 
-void StaticAOTArgsParser::ProcessArgsMap(const std::unordered_map<std::string, std::string> &argsMap,
-                                         std::string &anfilePath, std::string &pkgInfo, bool &partialMode,
-                                         HapArgs &hapArgs)
+void StaticAOTArgsParser::ProcessArgs(const AotCompilerArgs &args, std::string &anfilePath, bool &partialMode,
+    std::vector<std::string> &argVector)
 {
-    for (auto &argPair : argsMap) {
-        // for 1.2, replace aot-file by paoc-output
-        if (argPair.first == ArgsIdx::AOT_FILE) {
-            anfilePath = argPair.second;
-            std::string anFileName = anfilePath + AN_SUFFIX;
-            hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_OUTPUT + Symbols::EQ + anFileName);
-            continue;
-        }
+    // aot-file → paoc-output
+    std::string aotFile = args.outputPath.empty() ? "" : args.outputPath + "/" + args.moduleName;
+    anfilePath = aotFile;
+    if (!anfilePath.empty()) {
+        std::string anFileName = anfilePath + ArgsIdx::AN_SUFFIX;
+        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::PAOC_OUTPUT + Symbols::EQ + anFileName);
+    }
 
-        if (argPair.first == COMPILER_MODE && argPair.second == ArgsIdx::PARTIAL) {
-            partialMode = true;
-            continue;
-        }
+    if (args.compileMode == ArgsIdx::PARTIAL) {
+        partialMode = true;
+    }
 
-        if (argPair.first == ArgsIdx::COMPILER_PKG_INFO) {
-            pkgInfo = argPair.second;
-            continue;
-        }
-
-        if (staticAOTArgsList.find(argPair.first) != staticAOTArgsList.end()) {
-            hapArgs.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
-        }
+    // Emit staticAOTArgsList-matching args
+    if (!args.optBCRangeList.empty()) {
+        argVector.emplace_back(
+            Symbols::PREFIX + ArgsIdx::COMPILER_OPT_BC_RANGE + Symbols::EQ + args.optBCRangeList);
     }
 }
 
-void StaticAOTArgsParser::ProcessBlackListMethods(const std::string &pkgInfo, const std::string &anfilePath,
-                                                  HapArgs &hapArgs)
+void StaticAOTArgsParser::ProcessBlackListMethods(const std::string &bundleName, const std::string &anfilePath,
+                                                  std::vector<std::string> &argVector)
 {
     std::string moduleName = ParseModuleName(anfilePath);
-    std::string blackListMethods = ParseBlackListMethods(pkgInfo, moduleName);
+    std::string blackListMethods = ParseBlackListMethods(bundleName, moduleName);
     if (!blackListMethods.empty()) {
         // Use the generated regex pattern instead of comma-separated list
-        hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_COMPILER_REGEX + Symbols::EQ + blackListMethods);
+        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_REGEX + Symbols::EQ + blackListMethods);
     }
 }
 
-int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::string> &argsMap,
-                                   HapArgs &hapArgs, [[maybe_unused]] int32_t thermalLevel)
+int32_t StaticAOTArgsParser::Parse(AotCompilerArgs &args, std::vector<std::string> &argVector,
+                                   [[maybe_unused]] int32_t thermalLevel)
 {
-    std::string abcPath;
-    if ((FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_UID, hapArgs.bundleUid) != ERR_OK) ||
-        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_GID, hapArgs.bundleGid) != ERR_OK) ||
-        (FindArgsIdxToInteger(argsMap, ArgsIdx::BUNDLE_TYPE, hapArgs.bundleType) != ERR_OK) ||
-        (FindArgsIdxToInteger(argsMap, ArgsIdx::TRIGGER_TYPE, hapArgs.triggerType) != ERR_OK) ||
-        (FindArgsIdxToInteger(argsMap, ArgsIdx::STATIC_HYBRID_MODULE_CNT,
-            hapArgs.staticAndHybridModuleCnt) != ERR_OK) ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs.fileName) != ERR_OK) ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::APP_SIGNATURE, hapArgs.signature) != ERR_OK) ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::ABC_PATH, abcPath) != ERR_OK)) {
-        LOG_SA(ERROR) << "aot compiler args parsing error";
+    std::string abcPath = args.sysCompPath.empty() ? args.abcPath : args.sysCompPath;
+    if (abcPath.empty()) {
+        LOG_SA(ERROR) << "aot compiler args parsing error: abcPath is empty";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
-    hapArgs.argVector.clear();
-    hapArgs.argVector.emplace_back(STATIC_AOT_EXE);
+    argVector.clear();
+    argVector.emplace_back(STATIC_AOT_EXE);
 
     for (auto &defaultArg : staticAOTDefaultArgs) {
-        hapArgs.argVector.emplace_back(defaultArg);
+        argVector.emplace_back(defaultArg);
     }
+
+    return BuildStaticCompilerArgs(args, argVector);
+}
+
+int32_t StaticAOTArgsParser::BuildStaticCompilerArgs(AotCompilerArgs &args, std::vector<std::string> &argVector)
+{
+    std::string abcPath = args.sysCompPath.empty() ? args.abcPath : args.sysCompPath;
 
     std::string bootfiles;
     if (!ParseBootPandaFiles(bootfiles)) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_BOOT_PANDA_FILES + Symbols::EQ + bootfiles);
+    argVector.emplace_back(Symbols::PREFIX + ArgsIdx::BOOT_PANDA_FILES + Symbols::EQ + bootfiles);
 
     std::string anfilePath;
-    std::string pkgInfo;
     bool partialMode = false;
 
-    ProcessArgsMap(argsMap, anfilePath, pkgInfo, partialMode, hapArgs);
+    ProcessArgs(args, anfilePath, partialMode, argVector);
 
-    ProcessBlackListMethods(pkgInfo, anfilePath, hapArgs);
+    ProcessBlackListMethods(args.bundleName, anfilePath, argVector);
 
     std::string location;
-    if (ParseLocationByBundleType(hapArgs.bundleType, abcPath, anfilePath, location) != ERR_OK) {
+    if (ParseLocationByBundleType(args.bundleType, abcPath, anfilePath, location) != ERR_OK) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_LOCATION + Symbols::EQ + location);
-    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_PANDA_FILES + Symbols::EQ + abcPath);
+    argVector.emplace_back(Symbols::PREFIX + ArgsIdx::PAOC_LOCATION + Symbols::EQ + location);
+    argVector.emplace_back(Symbols::PREFIX + ArgsIdx::PAOC_PANDA_FILES + Symbols::EQ + abcPath);
 
     std::string moduleName = ParseModuleName(anfilePath);
-    if (partialMode && !ParseProfileUse(hapArgs, pkgInfo, moduleName)) {
+    if (partialMode && !AddProfilePathArg(argVector, args.pgoDir, moduleName)) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
 
@@ -338,7 +409,7 @@ int32_t StaticAOTArgsParser::Parse(const std::unordered_map<std::string, std::st
 bool StaticAOTArgsParser::ParseBootPandaFiles(std::string &bootfiles)
 {
     std::ifstream inFile;
-    inFile.open(STATIC_BOOT_PATH, std::ios::in);
+    inFile.open(ArgsIdx::STATIC_BOOT_PATH, std::ios::in);
     if (!inFile.is_open()) {
         LOG_SA(ERROR) << "read json error";
         return false;
@@ -381,7 +452,7 @@ std::string StaticAOTArgsParser::ParseLocation(const std::string &anFilePath)
         LOG_SA(FATAL) << "aot sa parse invalid location";
     }
     std::string moduleName = anFilePath.substr(pos + 1);
-    std::string location = APP_SANBOX_PATH_PREFIX + moduleName + ETS_PATH;
+    std::string location = ArgsIdx::APP_SANDBOX_PATH_PREFIX + moduleName + ArgsIdx::ETS_PATH;
     return location;
 }
 
@@ -400,21 +471,23 @@ std::string StaticAOTArgsParser::ParseLocation(const std::string &anFilePath)
 std::string StaticAOTArgsParser::ParseOuterHspLocation(const std::string &abcPath)
 {
     // system outer hsp
-    if (abcPath.rfind(SYS_OUTER_HSP_PATH_PREFIX, 0) == 0) {
-        size_t pos = abcPath.find(HSP_SUFFIX);
+    if (abcPath.rfind(ArgsIdx::SYS_OUTER_HSP_PATH_PREFIX, 0) == 0) {
+        size_t pos = abcPath.find(ArgsIdx::HSP_SUFFIX);
         if (pos == std::string::npos) {
             return "";
         }
-        return abcPath.substr(0, pos) + ETS_PATH;
+        return abcPath.substr(0, pos) + ArgsIdx::ETS_PATH;
     }
 
     // data outer hsp
-    size_t hspSuffixPos = abcPath.find(HSP_SUFFIX);
+    size_t hspSuffixPos = abcPath.find(ArgsIdx::HSP_SUFFIX);
     if (hspSuffixPos == std::string::npos) {
         return "";
     }
-    std::string hspLocationIncludingVersionCode = APP_SANBOX_PATH_PREFIX +
-        abcPath.substr(APP_ABC_PHYS_PATH_PREFIX.size(), hspSuffixPos - APP_ABC_PHYS_PATH_PREFIX.size()) + ETS_PATH;
+    std::string hspLocationIncludingVersionCode = ArgsIdx::APP_SANDBOX_PATH_PREFIX +
+        abcPath.substr(ArgsIdx::APP_ABC_PHYS_PATH_PREFIX.size(),
+                       hspSuffixPos - ArgsIdx::APP_ABC_PHYS_PATH_PREFIX.size()) +
+        ArgsIdx::ETS_PATH;
 
     // exclude the versionCode for hsp
     // hspLocationIncludingVersionCode: /data/storage/el1/bundle/com.example.app/v122000200/
@@ -434,7 +507,7 @@ std::string StaticAOTArgsParser::ParseOuterHspLocation(const std::string &abcPat
     std::string hspLocation = "";
     bool foundBundle = false;
     for (size_t i = 0; i < segments.size(); ++i) {
-        if (!foundBundle && segments[i] == "bundle") {
+        if (!foundBundle && segments[i] == ArgsIdx::BUNDLE_PATH_SEGMENT) {
             foundBundle = true;
             hspLocation += "/" + segments[i]; // add bundle
             if (i + 1 < segments.size()) {
@@ -477,63 +550,27 @@ int32_t StaticAOTArgsParser::ParseLocationByBundleType(int32_t bundleType, const
     return ERR_OK;
 }
 
-bool StaticAOTArgsParser::ParseProfilePath(std::string &pkgInfo, std::string &profilePath)
+bool StaticAOTArgsParser::AddProfilePathArg(std::vector<std::string> &argVector, const std::string &pgoDir,
+    const std::string &moduleName)
 {
-    if (!nlohmann::json::accept(pkgInfo)) {
-        LOG_SA(ERROR) << "invalid json when parse profile path";
+    if (pgoDir.empty()) {
+        LOG_SA(ERROR) << "pgoDir is empty in partial mode";
         return false;
     }
-    nlohmann::json jsonPkgInfo = nlohmann::json::parse(pkgInfo);
-    if (jsonPkgInfo.is_null() || jsonPkgInfo.empty()) {
-        LOG_SA(ERROR) << "invalid json when parse profile path";
-        return false;
-    }
-
-    std::string pgoDir = "pgoDir";
-    if (!jsonPkgInfo.contains(pgoDir) || jsonPkgInfo[pgoDir].is_null() || !jsonPkgInfo[pgoDir].is_string()) {
-        LOG_SA(ERROR) << "invalid pgoDir when parse profile path";
-        return false;
-    }
-
-    profilePath = jsonPkgInfo[pgoDir].get<std::string>();
-    return true;
-}
-
-bool AOTArgsParserBase::ParseBundleName(const std::string &pkgInfo, std::string &bundleName)
-{
-    if (!nlohmann::json::accept(pkgInfo)) {
-        LOG_SA(ERROR) << "invalid json when parse profile path";
-        return false;
-    }
-    nlohmann::json jsonPkgInfo = nlohmann::json::parse(pkgInfo);
-    if (jsonPkgInfo.is_discarded()) {
-        LOG_SA(ERROR) << "json discarded error";
-        return false;
-    }
-    if (jsonPkgInfo.is_null() || jsonPkgInfo.empty()) {
-        LOG_SA(ERROR) << "invalid json when parse profile path";
-        return false;
-    }
-
-    std::string bundleNameKey = "bundleName";
-    if (!jsonPkgInfo.contains(bundleNameKey) ||
-        jsonPkgInfo[bundleNameKey].is_null() ||
-        !jsonPkgInfo[bundleNameKey].is_string()) {
-        LOG_SA(ERROR) << "invalid bundleNameKey when parse bundleName path";
-        return false;
-    }
-
-    bundleName = jsonPkgInfo[bundleNameKey].get<std::string>();
+    std::string profilePath = pgoDir;
+    std::string profileName = profilePath + "/" + moduleName + ArgsIdx::AP_SUFFIX;
+    std::string pathArg = std::string("path") + Symbols::EQ + profileName;
+    argVector.emplace_back(Symbols::PREFIX + ArgsIdx::PAOC_USE_PROFILE + Symbols::COLON + pathArg);
     return true;
 }
 
 bool AOTArgsParserBase::ParseBlackListJson(nlohmann::json &jsonObject)
 {
-    if (!IsFileExists(STATIC_PAOC_BLACK_LIST_PATH)) {
+    if (!IsFileExists(ArgsIdx::STATIC_PAOC_BLACK_LIST_PATH)) {
         return false;
     }
     std::ifstream inFile;
-    inFile.open(STATIC_PAOC_BLACK_LIST_PATH, std::ios::in);
+    inFile.open(ArgsIdx::STATIC_PAOC_BLACK_LIST_PATH, std::ios::in);
     if (!inFile.is_open()) {
         LOG_SA(ERROR) << "read json error";
         return false;
@@ -671,7 +708,7 @@ std::vector<std::string> StaticAOTArgsParser::ProcessMatchingModules(
     return resultVec;
 }
 
-std::string StaticAOTArgsParser::ParseBlackListMethods(const std::string &pkgInfo,
+std::string StaticAOTArgsParser::ParseBlackListMethods(const std::string &bundleName,
     const std::string &moduleName)
 {
     nlohmann::json jsonObject;
@@ -679,44 +716,20 @@ std::string StaticAOTArgsParser::ParseBlackListMethods(const std::string &pkgInf
         return "";
     }
 
-    std::string bundleName;
-    if (!ParseBundleName(pkgInfo, bundleName) || bundleName.empty()) {
+    if (bundleName.empty()) {
         return "";
     }
 
     return ProcessBlackListForBundleAndModule(jsonObject, bundleName, moduleName);
 }
 
-bool StaticAOTArgsParser::ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo, const std::string &moduleName)
-{
-    std::string profilePath;
-    bool parseRet = ParseProfilePath(pkgInfo, profilePath);
-    if (!parseRet) {
-        LOG_SA(ERROR) << "parse profile path failed in partial mode";
-        return false;
-    }
-    std::string profileName = profilePath + "/" + moduleName + AP_SUFFIX;
-    std::string pathArg = PATH + Symbols::EQ + profileName;
-    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_USE_PROFILE + Symbols::COLON + pathArg);
-    return true;
-}
-
 std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParser(
-    const std::unordered_map<std::string, std::string> &argsMap, bool isEnableStaticCompiler)
+    const AotCompilerArgs &args, bool isEnableStaticCompiler)
 {
-    int32_t isSystemComponent = 0;
-    if ((AOTArgsParserBase::FindArgsIdxToInteger(argsMap, ArgsIdx::IS_SYSTEM_COMPONENT, isSystemComponent) != ERR_OK)) {
-        LOG_SA(INFO) << "aot sa failed to get isSystemComponent";
-    }
-    if (isSystemComponent && isEnableStaticCompiler) {
+    if (args.isSysComp && isEnableStaticCompiler) {
         return std::make_unique<StaticFrameworkAOTArgsParser>();
     }
-    std::string arkTsMode;
-    if (AOTArgsParserBase::FindArgsIdxToString(argsMap, ArgsIdx::ARKTS_MODE, arkTsMode) != ERR_OK) {
-        LOG_SA(INFO) << "aot sa failed to get arkTsMode";
-        return std::make_unique<AOTArgsParser>();
-    }
-    if (arkTsMode == ArgsIdx::ARKTS_DYNAMIC) {
+    if (args.moduleArkTSMode == ArgsIdx::ARKTS_DYNAMIC) {
         LOG_SA(INFO) << "aot sa use default compiler";
         return std::make_unique<AOTArgsParser>();
     }
@@ -724,7 +737,7 @@ std::optional<std::unique_ptr<AOTArgsParserBase>> AOTArgsParserFactory::GetParse
     if (!isEnableStaticCompiler) {
         return std::nullopt;
     }
-    if (arkTsMode == ArgsIdx::ARKTS_STATIC || arkTsMode == ArgsIdx::ARKTS_HYBRID) {
+    if (args.moduleArkTSMode == ArgsIdx::ARKTS_STATIC || args.moduleArkTSMode == ArgsIdx::ARKTS_HYBRID) {
         return std::make_unique<StaticAOTArgsParser>();
     }
     LOG_SA(ERROR) << "aot sa get invalid code arkTsMode";
@@ -741,31 +754,30 @@ bool AOTArgsParserBase::IsFileExists(const std::string &fileName)
     return panda::ecmascript::FileExist(realPath.c_str());
 }
 
-int32_t StaticFrameworkAOTArgsParser::Parse(const std::unordered_map<std::string, std::string> &argsMap,
-    HapArgs &hapArgs, [[maybe_unused]] int32_t thermalLevel)
+int32_t StaticFrameworkAOTArgsParser::Parse(AotCompilerArgs &args, std::vector<std::string> &argVector,
+    [[maybe_unused]] int32_t thermalLevel)
 {
-    std::string abcPath;
-    if ((FindArgsIdxToString(argsMap, ArgsIdx::ABC_PATH, abcPath) != ERR_OK) ||
-        (FindArgsIdxToString(argsMap, ArgsIdx::AN_FILE_NAME, hapArgs.fileName) != ERR_OK)) {
-        LOG_SA(ERROR) << "aot compiler args parsing error";
+    std::string abcPath = args.sysCompPath.empty() ? args.abcPath : args.sysCompPath;
+    if (abcPath.empty()) {
+        LOG_SA(ERROR) << "aot compiler args parsing error: abcPath is empty";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    
-    if (IsFileExists(hapArgs.fileName)) {
+
+    if (IsFileExists(args.anFileName)) {
         LOG_SA(INFO) << "framework's an is exist";
         return ERR_AOT_COMPILER_CALL_CANCELLED;
     }
 
-    hapArgs.argVector.clear();
-    hapArgs.argVector.emplace_back(STATIC_AOT_EXE);
+    argVector.clear();
+    argVector.emplace_back(STATIC_AOT_EXE);
 
-    hapArgs.signature = OWNERID_SHARED_TAG;
+    // Override fields for framework compilation
+    args.appIdentifier = ArgsIdx::OWNERID_SHARED_TAG;
+    args.bundleUid = OID_SYSTEM;
+    args.bundleGid = OID_SYSTEM;
 
-    hapArgs.bundleUid = OID_SYSTEM;
-    hapArgs.bundleGid = OID_SYSTEM;
-    
     for (auto &defaultArg : staticFrameworkAOTDefaultArgs) {
-        hapArgs.argVector.emplace_back(defaultArg);
+        argVector.emplace_back(defaultArg);
     }
 
     std::string fullBootfiles;
@@ -776,20 +788,18 @@ int32_t StaticFrameworkAOTArgsParser::Parse(const std::unordered_map<std::string
         LOG_SA(ERROR) << "can not find paoc panda files ";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
-    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_BOOT_PANDA_FILES + Symbols::EQ + fullBootfiles);
+    argVector.emplace_back(Symbols::PREFIX + ArgsIdx::BOOT_PANDA_FILES + Symbols::EQ + fullBootfiles);
 
     std::string bundleName = abcPath;
-    for (auto &argPair : argsMap) {
-        if (argPair.first == ArgsIdx::AN_FILE_NAME) {
-            hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_OUTPUT + Symbols::EQ + argPair.second);
-        }
+    if (!args.anFileName.empty()) {
+        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::PAOC_OUTPUT + Symbols::EQ + args.anFileName);
     }
-    hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_PAOC_PANDA_FILES + Symbols::EQ + abcPath);
+    argVector.emplace_back(Symbols::PREFIX + ArgsIdx::PAOC_PANDA_FILES + Symbols::EQ + abcPath);
 
     std::string blackListMethods = ParseBlackListMethods(bundleName);
     if (!blackListMethods.empty()) {
         // Use the generated regex pattern instead of comma-separated list
-        hapArgs.argVector.emplace_back(Symbols::PREFIX + STATIC_COMPILER_REGEX + Symbols::EQ + blackListMethods);
+        argVector.emplace_back(Symbols::PREFIX + ArgsIdx::COMPILER_REGEX + Symbols::EQ + blackListMethods);
     }
     return ERR_OK;
 }

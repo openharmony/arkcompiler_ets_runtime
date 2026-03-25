@@ -56,125 +56,160 @@ public:
 
 /**
  * @tc.name: AotArgsHandlerTest_001
- * @tc.desc: AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID)
+ * @tc.desc: Test AOTArgsHandler::BuildCompilerPkgInfo with basic args
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_001, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    std::string keyName = "compiler-pkg-info";
-    int32_t bundleID = 0;
-    int32_t ret = AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.moduleName = "entry";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/pgo";
+    args.bundleUid = 10000;
+    args.processUid = 3000;
+    args.appIdentifier = "test_sig";
+    args.isEncryptedBundle = 0;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+
+    std::string pkgInfo = AOTArgsHandler::BuildCompilerPkgInfo(args);
+    EXPECT_FALSE(pkgInfo.empty());
+    EXPECT_TRUE(pkgInfo.find("com.test") != std::string::npos);
+    EXPECT_TRUE(pkgInfo.find("ets/modules.abc") != std::string::npos);
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_002
- * @tc.desc: AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID)
+ * @tc.desc: Test AOTArgsHandler::BuildCompilerPkgInfo with static mode
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_002, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "argValueNotInteger");
-    std::string keyName = "argKey";
-    int32_t bundleID = 0;
-    int32_t ret = AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.moduleName = "entry";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/pgo";
+    args.bundleUid = 10000;
+    args.processUid = 3000;
+    args.appIdentifier = "test_sig";
+    args.isEncryptedBundle = 0;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+
+    std::string pkgInfo = AOTArgsHandler::BuildCompilerPkgInfo(args);
+    EXPECT_TRUE(pkgInfo.find("ets/modules_static.abc") != std::string::npos);
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_003
- * @tc.desc: AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID)
+ * @tc.desc: Test AOTArgsHandler::BuildExternalPkgInfo with empty hspModules
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_003, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "123456_argValueNotInteger");
-    std::string keyName = "argKey";
-    int32_t bundleID = 0;
-    int32_t ret = AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+    AotCompilerArgs args;
+    std::string extPkg = AOTArgsHandler::BuildExternalPkgInfo(args);
+    EXPECT_STREQ(extPkg.c_str(), "[]");
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_004
- * @tc.desc: AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID)
+ * @tc.desc: Test AOTArgsHandler::BuildExternalPkgInfo with hspModules
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_004, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "20020079");
-    std::string keyName = "argKey";
-    int32_t bundleID = 0;
-    int32_t ret = AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(bundleID, 20020079);
+    AotCompilerArgs args;
+    HspModuleInfo hsp;
+    hsp.bundleName = "com.test.hsp";
+    hsp.moduleName = "hsp_module";
+    hsp.hapPath = "/data/test/hsp.hap";
+    hsp.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.hspModules.push_back(hsp);
+
+    std::string extPkg = AOTArgsHandler::BuildExternalPkgInfo(args);
+    EXPECT_TRUE(extPkg.find("com.test.hsp") != std::string::npos);
+    EXPECT_TRUE(extPkg.find("ets/modules.abc") != std::string::npos);
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_005
- * @tc.desc: AOTArgsParserBase::FindArgsIdxToString(argsMap, keyName, bundleArg)
+ * @tc.desc: Test AOTArgsHandler::BuildCompilerPkgInfo hex format
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_005, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    std::string keyName = "argKey";
-    std::string bundleArg = "";
-    int32_t ret = AOTArgsParserBase::FindArgsIdxToString(argsMap, keyName, bundleArg);
-    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.moduleName = "entry";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/pgo";
+    args.bundleUid = 20020079;
+    args.processUid = 3060;
+    args.appIdentifier = "sig";
+    args.isEncryptedBundle = 0;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+
+    std::string pkgInfo = AOTArgsHandler::BuildCompilerPkgInfo(args);
+    EXPECT_TRUE(pkgInfo.find("0xff") != std::string::npos);
+    EXPECT_TRUE(pkgInfo.find("0x100") != std::string::npos);
+    EXPECT_TRUE(pkgInfo.find("20020079") != std::string::npos);
+    EXPECT_TRUE(pkgInfo.find("3060") != std::string::npos);
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_006
- * @tc.desc: AOTArgsParserBase::FindArgsIdxToString(argsMap, keyName, bundleArg)
+ * @tc.desc: Test AOTArgsHandler::BuildExternalPkgInfo with static mode hsp
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_006, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "com.ohos.contacts");
-    std::string keyName = "argKey";
-    std::string bundleArg = "";
-    int32_t ret = AOTArgsParserBase::FindArgsIdxToString(argsMap, keyName, bundleArg);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_STREQ(bundleArg.c_str(), "com.ohos.contacts");
+    AotCompilerArgs args;
+    HspModuleInfo hsp;
+    hsp.bundleName = "com.test.hsp";
+    hsp.moduleName = "hsp_module";
+    hsp.hapPath = "/data/test/hsp.hap";
+    hsp.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.hspModules.push_back(hsp);
+
+    std::string extPkg = AOTArgsHandler::BuildExternalPkgInfo(args);
+    EXPECT_TRUE(extPkg.find("ets/modules_static.abc") != std::string::npos);
 }
 
 
 /**
  * @tc.name: AotArgsHandlerTest_009
- * @tc.desc: AOTArgsParser::AddExpandArgs(aotVector, thermalLevel)
+ * @tc.desc: AOTArgsParser::AddThermalLevelArg(aotVector, thermalLevel)
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_009, TestSize.Level0)
 {
     std::unique_ptr<AOTArgsParser> parser = std::make_unique<AOTArgsParser>();
     std::vector<std::string> aotVector;
-    parser->AddExpandArgs(aotVector, 0);
+    parser->AddThermalLevelArg(aotVector, 0);
     std::string arg = aotVector[0];
     EXPECT_STREQ(arg.c_str(), "--compiler-thermal-level=0");
 }
 
-const std::unordered_map<std::string, std::string> framewordArgsMapForTest {
-    {"outputPath", "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an"},
-    {"anFileName", "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an"},
-    {"isSysComp", "1"},
-    {ArgsIdx::ARKTS_MODE, "static"},
-    {"sysCompPath", "/system/framework/etsstdlib_bootabc.abc"},
-    {"ABC-Path", "/system/framework/etsstdlib_bootabc.abc"}
-};
+const AotCompilerArgs framewordArgsForTest = []() {
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.sysCompPath = "/system/framework/etsstdlib_bootabc.abc";
+    args.abcPath = "/system/framework/etsstdlib_bootabc.abc";
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an";
+    args.outputPath = "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc";
+    args.moduleName = "etsstdlib_bootabc.an";
+    return args;
+}();
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
 {
     std::ofstream(staticPaocBlackListPath) << "{\"blackMethodList\":[]}";
 
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsMapForTest);
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsForTest);
     argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(framewordArgsMapForTest);
+    argsHandler->SetParser();
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
     std::string fileName = argsHandler->GetFileName();
@@ -201,147 +236,136 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_011, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_012
- * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.desc: AOTArgsParserFactory::GetParser(args)
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_012, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_HYBRID;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_013
- * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.desc: AOTArgsParserFactory::GetParser(args)
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_013, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_014
- * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.desc: AOTArgsParserFactory::GetParser(args)
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_014, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_NE(result, nullptr);
     EXPECT_NE(result.value(), nullptr);
 }
 
 /**
  * @tc.name: AotArgsHandlerTest_015
- * @tc.desc: AOTArgsParserFactory::GetParser(argsMap)
+ * @tc.desc: AOTArgsParserFactory::GetParser(args)
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_015, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_016, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "static"},
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"}
-    };
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.isSysComp = true;
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(args);
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
- 
+
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_017, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "dynamic"},
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
-    };
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.isSysComp = false;
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(args);
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
- 
+
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_018, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
-    };
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(args);
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
- 
+
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_019, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "static"},
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"}
-    };
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.isSysComp = true;
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(args);
     argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
+    argsHandler->SetParser();
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
- 
+
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_020, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "static"},
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
-    };
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
+    args.isSysComp = false;
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(args);
     argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
+    argsHandler->SetParser();
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
- 
+
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_021, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "INVALID_VALUE"}
-    };
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    AotCompilerArgs args;
+    args.moduleArkTSMode = "INVALID_VALUE";
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(args);
     argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
+    argsHandler->SetParser();
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
@@ -359,237 +383,160 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_022, TestSize.Level0)
     EXPECT_EQ(location, expected);
 }
 
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_023, TestSize.Level0)
-{
-    StaticAOTArgsParser parser;
-    std::string pkgInfo = R"(
-        {
-            "pgoDir": "/path/to",
-            "bundleName": "bundle",
-            "mode": "static"
-        }
-    )";
-    std::string profilePath;
-
-    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
-
-    EXPECT_TRUE(result);
-
-    std::string expectedPath = "/path/to";
-    EXPECT_EQ(profilePath, expectedPath);
-}
-
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_024, TestSize.Level0)
-{
-    StaticAOTArgsParser parser;
-    std::string pkgInfo = R"({invalidjson})";
-    std::string profilePath;
-
-    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
-
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_025, TestSize.Level0)
-{
-    StaticAOTArgsParser parser;
-    std::string pkgInfo = R"({})";
-    std::string profilePath;
-
-    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
-
-    EXPECT_FALSE(result);
-}
-
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_026, TestSize.Level0)
-{
-    StaticAOTArgsParser parser;
-    std::string pkgInfo = R"(
-        {
-            "bundleName": "bundle",
-            "mode": "static"
-        }
-    )";
-    std::string profilePath;
-
-    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
-    EXPECT_FALSE(result);
-}
-
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_027, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    HapArgs hapArgs;
-    std::string pkgInfo = R"(
-        {
-            "pgoDir": "/path/to",
-            "bundleName": "bundle",
-            "mode": "static"
-        }
-    )";
+    std::vector<std::string> argVector;
+    std::string pgoDir = "/path/to";
 
     std::string moduleName = "module";
-    bool result = parser.ParseProfileUse(hapArgs, pkgInfo, moduleName);
+    bool result = parser.AddProfilePathArg(argVector, pgoDir, moduleName);
 
     EXPECT_TRUE(result);
 
     size_t expectedVecSize = 1;
-    EXPECT_EQ(hapArgs.argVector.size(), expectedVecSize);
+    EXPECT_EQ(argVector.size(), expectedVecSize);
 
     std::string expectedProfileUse = "--paoc-use-profile:path=/path/to/module.ap";
-    EXPECT_EQ(hapArgs.argVector[0], expectedProfileUse);
+    EXPECT_EQ(argVector[0], expectedProfileUse);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_028, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    HapArgs hapArgs;
-    std::string pkgInfo = R"({})";
+    std::vector<std::string> argVector;
+    std::string pgoDir;  // empty
 
     std::string moduleName = "module";
-    bool result = parser.ParseProfileUse(hapArgs, pkgInfo, moduleName);
+    bool result = parser.AddProfilePathArg(argVector, pgoDir, moduleName);
 
     EXPECT_FALSE(result);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_029, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {};
+    AotCompilerArgs args;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_NE(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_030, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_NE(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_031, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_NE(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_032, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_NE(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_033, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_034, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_HYBRID;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_035, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "invalid"}
-    };
+    AotCompilerArgs args;
+    args.moduleArkTSMode = "invalid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_036, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_NE(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_037, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_038, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_HYBRID;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_039, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "invalid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "invalid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_040, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_NE(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_041, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_042, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_HYBRID;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_043, TestSize.Level0) {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "invalid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = "invalid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
@@ -634,9 +581,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_045, TestSize.Level0)
     file.close();
 
     StaticAOTArgsParser parser;
-    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string bundleName = "com.example.test";
     std::string moduleName = "entry";
-    std::string result = parser.ParseBlackListMethods(pkgInfo, moduleName);
+    std::string result = parser.ParseBlackListMethods(bundleName, moduleName);
 
     EXPECT_STREQ(result.c_str(), "");
 
@@ -654,9 +601,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_046, TestSize.Level0)
     file.close();
 
     StaticAOTArgsParser parser;
-    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string bundleName = "com.example.test";
     std::string moduleName = "entry";
-    std::string result = parser.ParseBlackListMethods(pkgInfo, moduleName);
+    std::string result = parser.ParseBlackListMethods(bundleName, moduleName);
 
     EXPECT_STREQ(result.c_str(), "");
 
@@ -684,29 +631,33 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_047, TestSize.Level0)
 
 /**
  * @tc.name: AotArgsHandlerTest_048
- * @tc.desc: Test StaticAOTArgsParser::ProcessArgsMap with staticAOTArgsList.find branch
+ * @tc.desc: Test StaticAOTArgsParser::ProcessArgs with AotCompilerArgs
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_048, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    HapArgs hapArgs;
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap["boot-panda-files"] = "entry.abc";
+    std::vector<std::string> argVector;
+    AotCompilerArgs args;
+    args.outputPath = "/data/test/output";
+    args.moduleName = "entry";
+    args.bundleName = "com.test";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/pgo";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
     std::string anfilePath;
-    std::string pkgInfo;
     bool partialMode = false;
 
-    parser.ProcessArgsMap(argsMap, anfilePath, pkgInfo, partialMode, hapArgs);
+    parser.ProcessArgs(args, anfilePath, partialMode, argVector);
 
-    bool foundStaticArg = false;
-    for (const auto& arg : hapArgs.argVector) {
-        if (arg.find("--boot-panda-files=entry.abc") != std::string::npos) {
-            foundStaticArg = true;
+    bool foundPaocOutput = false;
+    for (const auto& arg : argVector) {
+        if (arg.find("--paoc-output=") != std::string::npos) {
+            foundPaocOutput = true;
             break;
         }
     }
-    EXPECT_TRUE(foundStaticArg);
+    EXPECT_TRUE(foundPaocOutput);
 }
 
 /**
@@ -736,14 +687,14 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_049, TestSize.Level0)
     file.close();
 
     StaticAOTArgsParser parser;
-    HapArgs hapArgs;
-    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::vector<std::string> argVector;
+    std::string bundleName = "com.example.test";
     std::string anfilePath = "/data/local/ark-cache/com.example.test/arm64/entry";
 
-    parser.ProcessBlackListMethods(pkgInfo, anfilePath, hapArgs);
+    parser.ProcessBlackListMethods(bundleName, anfilePath, argVector);
 
     bool foundBlackMethods = false;
-    for (const auto& arg : hapArgs.argVector) {
+    for (const auto& arg : argVector) {
         if (arg.find("--compiler-regex=") != std::string::npos &&
             arg.find("Test:m1") != std::string::npos) {
             foundBlackMethods = true;
@@ -920,14 +871,14 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_060, TestSize.Level0)
 
 /**
  * @tc.name: AotArgsHandlerTest_061
- * @tc.desc: Test StaticAOTArgsParser::ParseBlackListMethods with ParseBundleName failure
+ * @tc.desc: Test StaticAOTArgsParser::ParseBlackListMethods with empty bundleName
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_061, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    std::string invalidPkgInfo = "{}";
-    std::string result = parser.ParseBlackListMethods(invalidPkgInfo, "entry");
+    std::string emptyBundleName;  // empty bundleName
+    std::string result = parser.ParseBlackListMethods(emptyBundleName, "entry");
 
     EXPECT_STREQ(result.c_str(), "");
 }
@@ -940,8 +891,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_061, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_062, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    std::string emptyBundlePkgInfo = "{\"bundleName\": \"\"}";
-    std::string result = parser.ParseBlackListMethods(emptyBundlePkgInfo, "entry");
+    std::string emptyBundleName = "";
+    std::string result = parser.ParseBlackListMethods(emptyBundleName, "entry");
 
     EXPECT_STREQ(result.c_str(), "");
 }
@@ -1007,25 +958,29 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_067, TestSize.Level0)
 
 /**
  * @tc.name: AotArgsHandlerTest_068
- * @tc.desc: Test StaticAOTArgsParser::ProcessArgsMap with staticAOTArgsList.find branch emplace_back
+ * @tc.desc: Test StaticAOTArgsParser::ProcessArgs with AotCompilerArgs emplace_back
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_068, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    HapArgs hapArgs;
-    std::unordered_map<std::string, std::string> argsMap;
+    std::vector<std::string> argVector;
+    AotCompilerArgs args;
+    args.outputPath = "/data/test/output";
+    args.moduleName = "entry";
+    args.bundleName = "com.test";
+    args.hapPath = "/data/test/test.hap";
+    args.pgoDir = "/data/pgo";
+    args.moduleArkTSMode = ArgsIdx::ARKTS_STATIC;
 
-    argsMap["boot-panda-files"] = "entry.abc";
     std::string anfilePath;
-    std::string pkgInfo;
     bool partialMode = false;
 
-    parser.ProcessArgsMap(argsMap, anfilePath, pkgInfo, partialMode, hapArgs);
+    parser.ProcessArgs(args, anfilePath, partialMode, argVector);
 
     bool foundArg = false;
-    for (const auto& arg : hapArgs.argVector) {
-        if (arg.find("--boot-panda-files=entry.abc") != std::string::npos) {
+    for (const auto& arg : argVector) {
+        if (arg.find("--paoc-output=") != std::string::npos) {
             foundArg = true;
             break;
         }
@@ -1128,14 +1083,14 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_071, TestSize.Level0)
 
 /**
  * @tc.name: AotArgsHandlerTest_072
- * @tc.desc: Test StaticAOTArgsParser::ParseBlackListMethods with ParseBundleName failure/empty
+ * @tc.desc: Test StaticAOTArgsParser::ParseBlackListMethods with empty bundleName
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_072, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    std::string emptyBundlePkgInfo = "{\"bundleName\": \"\"}";
-    std::string result = parser.ParseBlackListMethods(emptyBundlePkgInfo, "entry");
+    std::string emptyBundleName = "";
+    std::string result = parser.ParseBlackListMethods(emptyBundleName, "entry");
 
     EXPECT_STREQ(result.c_str(), "");
 }
@@ -1160,13 +1115,10 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
     std::ofstream file(staticPaocBlackListPath);
     file << blackListJsonStr << std::endl;
     file.close();
-    std::unordered_map<std::string, std::string> argsMap(framewordArgsMapForTest);
-    argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
-    argsMap.emplace(ArgsIdx::IS_SYSTEM_COMPONENT, "1");
 
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsForTest);
     argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
+    argsHandler->SetParser();
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
 
@@ -1354,85 +1306,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_082, TestSize.Level0)
     EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2|Test:m3|Test:m4)$).*");
 
     unlink("/etc/ark/static_aot_methods_black_list.json");
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_083
- * @tc.desc: Test AOTArgsParserBase::ParseBundleName with valid bundleName
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_083, TestSize.Level0)
-{
-    std::string pkgInfo = "{\"bundleName\": \"com.example.app\"}";
-    std::string bundleName;
-    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
-    EXPECT_STREQ(bundleName.c_str(), "com.example.app");
-    EXPECT_TRUE(result);
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_084
- * @tc.desc: Test AOTArgsParserBase::ParseBundleName with null pkgInfo
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_084, TestSize.Level0)
-{
-    std::string pkgInfo = "null";
-    std::string bundleName;
-    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_085
- * @tc.desc: Test AOTArgsParserBase::ParseBundleName with non-string bundleName
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_085, TestSize.Level0)
-{
-    std::string pkgInfo = "{\"bundleName\":false}";
-    std::string bundleName;
-    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_086
- * @tc.desc: Test AOTArgsParserBase::ParseBundleName with null bundleName
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_086, TestSize.Level0)
-{
-    std::string pkgInfo = "{\"bundleName\":null}";
-    std::string bundleName;
-    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_087
- * @tc.desc: Test AOTArgsParserBase::ParseBundleName with missing bundleName
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_087, TestSize.Level0)
-{
-    std::string pkgInfo = "{\"test\":\"aa\"}";
-    std::string bundleName;
-    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
-    EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_088
- * @tc.desc: Test AOTArgsParserBase::ParseBundleName with empty pkgInfo
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_088, TestSize.Level0)
-{
-    std::string pkgInfo = "{}";
-    std::string bundleName;
-    bool result = AOTArgsParserBase::ParseBundleName(pkgInfo, bundleName);
-    EXPECT_FALSE(result);
 }
 
 /**
@@ -1690,9 +1563,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_101, TestSize.Level0)
     file.close();
 
     StaticAOTArgsParser parser;
-    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string bundleName = "com.example.test";
     std::string moduleName = "entry";
-    std::string result = parser.ParseBlackListMethods(pkgInfo, moduleName);
+    std::string result = parser.ParseBlackListMethods(bundleName, moduleName);
 
     EXPECT_STREQ(result.c_str(), "^(?!(Test:f1|Test:f2)$).*");
 
@@ -1786,9 +1659,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_104, TestSize.Level0)
     file.close();
 
     StaticAOTArgsParser parser;
-    std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
+    std::string bundleName = "com.example.test";
     std::string moduleName = "entry";
-    std::string result = parser.ParseBlackListMethods(pkgInfo, moduleName);
+    std::string result = parser.ParseBlackListMethods(bundleName, moduleName);
 
     EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m3|Test:m4)$).*");
 
@@ -1810,18 +1683,19 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_105, TestSize.Level0)
 
 /**
  * @tc.name: AotArgsHandlerTest_106
- * @tc.desc: Test AOTArgsParserBase::FindArgsIdxToInteger with zero value
+ * @tc.desc: Test AOTArgsHandler with zero bundleUid
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_106, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap.emplace("argKey", "0");
-    std::string keyName = "argKey";
-    int32_t bundleID = 999;
-    int32_t ret = AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID);
-    EXPECT_EQ(ret, ERR_OK);
-    EXPECT_EQ(bundleID, 0);
+    AotCompilerArgs args;
+    args.moduleArkTSMode = ArgsIdx::ARKTS_DYNAMIC;
+    args.isSysComp = false;
+    args.bundleUid = 0;
+    args.bundleGid = 0;
+    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(args);
+    int32_t ret = argsHandler->Handle(0);
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
 
 /**
@@ -1862,30 +1736,16 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_108, TestSize.Level0)
 
 /**
  * @tc.name: AotArgsHandlerTest_109
- * @tc.desc: Test AOTArgsParser::AddExpandArgs with different thermal levels
+ * @tc.desc: Test AOTArgsParser::AddThermalLevelArg with different thermal levels
  * @tc.type: Func
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_109, TestSize.Level0)
 {
     std::unique_ptr<AOTArgsParser> parser = std::make_unique<AOTArgsParser>();
     std::vector<std::string> aotVector;
-    parser->AddExpandArgs(aotVector, 3);
+    parser->AddThermalLevelArg(aotVector, 3);
     std::string arg = aotVector[0];
     EXPECT_STREQ(arg.c_str(), "--compiler-thermal-level=3");
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_110
- * @tc.desc: Test StaticAOTArgsParser::ParseProfilePath with missing pgoDir and bundleName
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_110, TestSize.Level0)
-{
-    StaticAOTArgsParser parser;
-    std::string pkgInfo = R"({"mode": "static"})";
-    std::string profilePath;
-    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
-    EXPECT_FALSE(result);
 }
 
 /**
@@ -1895,11 +1755,10 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_110, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_111, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -1939,11 +1798,10 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_114, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_115, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -1984,13 +1842,13 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_118, TestSize.Level0)
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_001, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
-    argsMap[ArgsIdx::AN_FILE_NAME] =
-        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+    AotCompilerArgs args;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64";
+    args.moduleName = "entry";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2002,14 +1860,13 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_001, TestSize.Level0)
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_002, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
-    argsMap[ArgsIdx::AN_FILE_NAME] =
-        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+    AotCompilerArgs args;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64";
+    args.moduleName = "entry";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2021,15 +1878,15 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_002, TestSize.Level0)
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_003, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\": \"com.example.myapplication\", \"pkgPath\": \"/data/test/test.hap\", "
-         "\"abcOffset\": \"0\", \"abcSize\": \"100\", \"bundleUid\": \"2710\", \"bundleGid\": \"2710\"}";
-    argsMap[ArgsIdx::AN_FILE_NAME] =
-        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+    AotCompilerArgs args;
+    args.bundleName = "com.example.myapplication";
+    args.hapPath = "/data/test/test.hap";
+    args.bundleUid = 2710;
+    args.bundleGid = 2710;
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2041,14 +1898,16 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_003, TestSize.Level0)
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_004, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\": \"com.example.myapplication\", \"pkgPath\": \"/data/test/test.hap\", "
-         "\"abcOffset\": \"0\", \"abcSize\": \"100\", \"bundleUid\": \"2710\", \"bundleGid\": \"2710\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
+    AotCompilerArgs args;
+    args.bundleName = "com.example.myapplication";
+    args.hapPath = "/data/test/test.hap";
+    args.bundleUid = 2710;
+    args.bundleGid = 2710;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64";
+    args.moduleName = "entry";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2060,16 +1919,17 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_004, TestSize.Level0)
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_005, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\": \"com.example.myapplication\", \"pkgPath\": \"/data/test/test.hap\", "
-         "\"abcOffset\": \"0\", \"abcSize\": \"100\", \"bundleUid\": \"2710\", \"bundleGid\": \"2710\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/../etc/entry";
-    argsMap[ArgsIdx::AN_FILE_NAME] =
-        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/../etc/entry.an";
+    AotCompilerArgs args;
+    args.bundleName = "com.example.myapplication";
+    args.hapPath = "/data/test/test.hap";
+    args.bundleUid = 2710;
+    args.bundleGid = 2710;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/../etc";
+    args.moduleName = "entry";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/../etc/entry.an";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2081,17 +1941,17 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_005, TestSize.Level0)
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_006, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\": \"com.example.myapplication\", \"pkgPath\": \"/data/test/test.hap\", "
-         "\"abcOffset\": \"0\", \"abcSize\": \"100\", \"bundleUid\": \"2710\", \"bundleGid\": \"2710\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/wrong_location/" \
-                                  "com.example.myapplication/arm64/entry";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/wrong_location/" \
-                                   "com.example.myapplication/arm64/entry.an";
+    AotCompilerArgs args;
+    args.bundleName = "com.example.myapplication";
+    args.hapPath = "/data/test/test.hap";
+    args.bundleUid = 2710;
+    args.bundleGid = 2710;
+    args.outputPath = "/data/app/el1/public/aot_compiler/wrong_location/com.example.myapplication/arm64";
+    args.moduleName = "entry";
+    args.anFileName = "/data/app/el1/public/aot_compiler/wrong_location/com.example.myapplication/arm64/entry.an";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2103,11 +1963,11 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_006, TestSize.Level0)
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_SUCCESS_001, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::IS_SYSTEM_COMPONENT] = "0";
-    argsMap[ArgsIdx::ARKTS_MODE] = "static";
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
@@ -2120,10 +1980,10 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_SUCCESS_001, TestSize.Level
  */
 HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_001, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
+    AotCompilerArgs args;
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2135,12 +1995,11 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_001, TestSize.Leve
  */
 HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_002, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
-                                      "framework_ark_cache/../etc/etsstdlib_bootabc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache/../etc/etsstdlib_bootabc.an";
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2152,12 +2011,11 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_002, TestSize.Leve
  */
 HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_003, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/" \
-                                      "framework_ark_cache/etsstdlib_bootabc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/app/el1/public/wrong_location/framework_ark_cache/etsstdlib_bootabc.an";
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2169,12 +2027,11 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_003, TestSize.Leve
  */
 HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_004, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
-                                      "framework_ark_cache\\..\\etsstdlib_bootabc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache\\..\\etsstdlib_bootabc.an";
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2186,16 +2043,15 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_004, TestSize.Leve
  */
 HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_SUCCESS_001, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
-                                      "framework_ark_cache/etsstdlib_bootabc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an";
 
     std::ofstream anFile("/data/service/el1/public/for-all-app/" \
                          "framework_ark_cache/etsstdlib_bootabc.an");
     anFile.close();
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
     EXPECT_TRUE(result);
 
     unlink("/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an");
@@ -2209,11 +2065,10 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_SUCCESS_001, TestS
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_MissingIsSystemComponent, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2224,11 +2079,10 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_MissingIsSystemCompone
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_MissingArkTsMode, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2239,12 +2093,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_MissingArkTsMode, Test
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidIsSystemComponent, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2255,12 +2108,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidIsSystemCompone
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_EmptyArkTsMode, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2271,12 +2123,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_EmptyArkTsMode, TestSi
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Dynamic_StaticEnabled_NonSystem, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2287,12 +2138,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Dynamic_StaticEnabled_
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Static_StaticEnabled_NonSystem, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2303,12 +2153,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Static_StaticEnabled_N
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_StaticEnabled_NonSystem, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "hybrid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2319,12 +2168,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_StaticEnabled_N
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_StaticEnabled_System, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2335,12 +2183,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_StaticEnable
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidMode_StaticEnabled_NonSystem, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "invalid_mode"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "invalid_mode";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_EQ(result, std::nullopt);
 }
 
@@ -2351,12 +2198,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidMode_StaticEnab
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_StaticMode_StaticDisabled_NonSystem, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
@@ -2367,12 +2213,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_StaticMode_StaticDisab
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_HybridMode_StaticDisabled_NonSystem, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "hybrid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
@@ -2383,12 +2228,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_HybridMode_StaticDisab
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidMode_StaticDisabled_NonSystem, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "invalid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "invalid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
@@ -2399,9 +2243,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidMode_StaticDisa
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_BothParamsMissing_StaticEnabled, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {};
+    AotCompilerArgs args;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2412,9 +2256,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_BothParamsMissing_Stat
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_BothParamsMissing_StaticDisabled, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {};
+    AotCompilerArgs args;
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2425,12 +2269,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_BothParamsMissing_Stat
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_System_Component_StaticDisabled, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2441,12 +2284,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_System_Component_Stati
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_NegativeIsSystemComponent, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2457,12 +2299,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_NegativeIsSystemCompon
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ZeroIsSystemComponent_StaticMode, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2473,12 +2314,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ZeroIsSystemComponent_
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Failure_Static, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
@@ -2490,12 +2330,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Failure_Static, TestSi
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_Static_System_StaticMode, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2506,12 +2345,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_Static_Syste
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_Static_System_HybridMode, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = "hybrid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2522,12 +2360,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_Static_Syste
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidIsSystemComponent_StaticEnabled, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2538,12 +2375,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidIsSystemCompone
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_Empty_Dynamic, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2554,12 +2390,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_E
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_StaticForAOT, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
@@ -2570,12 +2405,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_S
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_DynamicForStatic, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
@@ -2587,12 +2421,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_D
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_HybridForAOT, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "hybrid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_EQ(result, std::nullopt);
 }
 
@@ -2603,12 +2436,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_H
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckIsSystemComponent_Empty, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, ""},
-        {ArgsIdx::ARKTS_MODE, "dynamic"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_NE(result, std::nullopt);
     EXPECT_EQ(result.value()->GetParserType(), AotParserType::DYNAMIC_AOT);
 }
@@ -2620,15 +2452,15 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckIsSystemComponent
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ValidAbcName_AOT, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "dynamic"},
-        {ArgsIdx::COMPILER_PKG_INFO,
-         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\",\"abcName\":\"ets/modules.abc\","
-          "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
+    args.bundleName = "com.test";
+    args.hapPath = "/test.hap";
+    args.bundleUid = 2710;
+    args.moduleName = "ets/modules.abc";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2639,15 +2471,15 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ValidAbcName_AOT, Test
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ValidAbcName_Static, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "static"},
-        {ArgsIdx::COMPILER_PKG_INFO,
-         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\",\"abcName\":\"ets/modules_static.abc\","
-          "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "static";
+    args.bundleName = "com.test";
+    args.hapPath = "/test.hap";
+    args.bundleUid = 2710;
+    args.moduleName = "ets/modules_static.abc";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
 }
 
@@ -2659,12 +2491,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ValidAbcName_Static, T
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_FrameworkStaticAOT, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
@@ -2679,12 +2510,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_FrameworkStaticAOT, Te
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Static_Fail, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "static"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
@@ -2698,12 +2528,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Static_Fail, TestSize.
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_Fail, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
-        {ArgsIdx::ARKTS_MODE, "hybrid"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = true;
+    args.moduleArkTSMode = "hybrid";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
@@ -2716,15 +2545,15 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_Fail, TestSize.
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_Success, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
-        {ArgsIdx::ARKTS_MODE, "hybrid"},
-        {ArgsIdx::COMPILER_PKG_INFO,
-         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\",\"abcName\":\"ets/modules_static.abc\","
-          "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}"}
-    };
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "hybrid";
+    args.bundleName = "com.test";
+    args.hapPath = "/test.hap";
+    args.bundleUid = 2710;
+    args.moduleName = "ets/modules_static.abc";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
 }
@@ -2737,11 +2566,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_Success, TestSi
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_AOT_Branch, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::IS_SYSTEM_COMPONENT] = "0";
-    argsMap[ArgsIdx::ARKTS_MODE] = "dynamic";
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "dynamic";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    auto result = AOTArgsParserFactory::GetParser(args, false);
 
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
@@ -2754,11 +2583,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_AOT_Branch, TestSize.Level0
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_STATIC_AOT_Branch, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::IS_SYSTEM_COMPONENT] = "0";
-    argsMap[ArgsIdx::ARKTS_MODE] = "static";
+    AotCompilerArgs args;
+    args.isSysComp = false;
+    args.moduleArkTSMode = "static";
 
-    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    auto result = AOTArgsParserFactory::GetParser(args, true);
 
     EXPECT_TRUE(result.has_value());
     EXPECT_NE(result.value(), nullptr);
@@ -2773,11 +2602,11 @@ HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_STATIC_AOT_Branch, TestSize
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_FRAMEWORK_STATIC_AOT_Branch, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/framework_ark_cache/test.abc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache/test.abc.an";
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_TRUE(result);
 }
@@ -2790,12 +2619,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_FRAMEWORK_STATIC_AOT_Branch
  */
 HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_DEFAULT_Branch, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/framework_ark_cache/test.abc.an";
-
     class TestUnknownParser : public AOTArgsParserBase {
     public:
-        int32_t Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
+        int32_t Parse(AotCompilerArgs &args, std::vector<std::string> &argVector,
                       int32_t thermalLevel) override
         {
             return ERR_OK;
@@ -2805,10 +2631,21 @@ HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_DEFAULT_Branch, TestSize.Le
         {
             return AotParserType::UNKNOWN;
         }
+
+        std::string GetFdArgName() const override
+        {
+            return "";
+        }
+
+        std::string GetHapFdArgName() const override
+        {
+            return "";
+        }
     };
 
+    AotCompilerArgs checkArgs;
     TestUnknownParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(checkArgs);
 
     EXPECT_FALSE(result);
 }
@@ -2822,12 +2659,13 @@ HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_DEFAULT_Branch, TestSize.Le
  */
 HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_MissingPkgInfo, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
+    AotCompilerArgs args;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.test";
+    args.moduleName = "test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
 
     AOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2840,16 +2678,18 @@ HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_Missing
  */
 HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_InvalidPgoDir, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\","
-         "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/../etc\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.hapPath = "/test.hap";
+    args.bundleUid = 2710;
+    args.bundleGid = 2710;
+    args.pgoDir = "/data/app/el1/100/aot_compiler/ark_profile/../etc";
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.test";
+    args.moduleName = "test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
 
     AOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2862,15 +2702,17 @@ HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_Invalid
  */
 HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_WrongCacheDir, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/wrong_location/com.test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/com.test/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.hapPath = "/test.hap";
+    args.bundleUid = 2710;
+    args.bundleGid = 2710;
+    args.outputPath = "/data/app/el1/public/wrong_location/com.test";
+    args.moduleName = "test";
+    args.anFileName = "/data/app/el1/public/wrong_location/com.test/test.an";
 
     AOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2883,12 +2725,13 @@ HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_WrongCa
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_MissingPkgInfo, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
+    AotCompilerArgs args;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.test";
+    args.moduleName = "test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2901,13 +2744,13 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_InvalidPkgInfo, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{invalid_json}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
+    AotCompilerArgs args;
+    args.outputPath = "/data/app/el1/public/aot_compiler/ark_cache/com.test";
+    args.moduleName = "test";
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2920,15 +2763,17 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs
  */
 HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_WrongCacheDir, TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
-        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\","
-         "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}";
-    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/wrong_location/com.test/test";
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/com.test/test.an";
+    AotCompilerArgs args;
+    args.bundleName = "com.test";
+    args.hapPath = "/test.hap";
+    args.bundleUid = 2710;
+    args.bundleGid = 2710;
+    args.outputPath = "/data/app/el1/public/wrong_location/com.test";
+    args.moduleName = "test";
+    args.anFileName = "/data/app/el1/public/wrong_location/com.test/test.an";
 
     StaticAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2942,10 +2787,10 @@ HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs
 HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_MissingAnFile,
     TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
+    AotCompilerArgs args;
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2959,11 +2804,11 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFram
 HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_PathTraversal,
     TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/framework_ark_cache/../test.abc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/service/el1/public/for-all-app/framework_ark_cache/../test.abc.an";
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }
@@ -2977,11 +2822,11 @@ HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFram
 HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_WrongPathPrefix,
     TestSize.Level0)
 {
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test.abc.an";
+    AotCompilerArgs args;
+    args.anFileName = "/data/app/el1/public/aot_compiler/ark_cache/test.abc.an";
 
     StaticFrameworkAOTArgsParser parser;
-    bool result = parser.Check(argsMap);
+    bool result = parser.Check(args);
 
     EXPECT_FALSE(result);
 }

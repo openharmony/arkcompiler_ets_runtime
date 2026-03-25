@@ -149,6 +149,7 @@ std::unordered_set<std::string> aotArgsList {
     "compiler-force-baselinejit-compile-main",
     "compiler-baseline-pgo",
     "compiler-trace-builtins",
+    "hap-fd",
 };
 
 std::unordered_set<std::string> staticAOTArgsList {

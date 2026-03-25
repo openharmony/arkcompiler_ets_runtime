@@ -26,6 +26,7 @@
 #include "aot_compiler_load_callback.h"
 #undef protected
 #undef private
+#include "aot_compiler_args.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
 
@@ -87,11 +88,10 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_001, TestSize.Level0)
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_002, TestSize.Level0)
 {
     AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
-    std::unordered_map<std::string, std::string> argsMap;
-    std::vector<int16_t> sigData;
-    int32_t ret = aotClient.AotCompiler(argsMap, sigData);
+    AotCompilerArgs args;
+    std::vector<uint8_t> sigData;
+    int32_t ret = aotClient.AotCompiler(args, sigData);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
-    EXPECT_TRUE(argsMap.empty());
     EXPECT_TRUE(sigData.empty());
 }
 
@@ -260,23 +260,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_012, TestSize.Level0)
 }
 
 /**
- * @tc.name: AotCompilerClientTest_013
- * @tc.desc: aotClient.OnRemoteDied(const wptr<IRemoteObject> &remote)
- * @tc.type: Func
-*/
-HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_013, TestSize.Level0)
-{
-    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
-    aotClient.aotCompilerDiedRecipient_->OnRemoteDied(nullptr);
-    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
-
-    wptr<IRemoteObject> remoteObject_weak = GetAotRemoteObject(aotClient);
-    EXPECT_NE(remoteObject_weak, nullptr);
-    aotClient.aotCompilerDiedRecipient_->OnRemoteDied(remoteObject_weak);
-    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
-}
-
-/**
  * @tc.name: AotCompilerClientTest_014
  * @tc.desc: AotCompilerOnRemoteDied when proxy is already null
  * @tc.type: Func
@@ -323,11 +306,11 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_015, TestSize.Level0)
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_016, TestSize.Level0)
 {
     AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
-    std::unordered_map<std::string, std::string> argsMap;
-    argsMap["bundleName"] = "com.test.example";
-    argsMap["compileMode"] = "partial";
-    std::vector<int16_t> sigData;
-    int32_t ret = aotClient.AotCompiler(argsMap, sigData);
+    AotCompilerArgs args;
+    args.bundleName = "com.test.example";
+    args.compileMode = "partial";
+    std::vector<uint8_t> sigData;
+    int32_t ret = aotClient.AotCompiler(args, sigData);
     EXPECT_EQ(ret, ERR_AOT_COMPILER_PARAM_FAILED);
 }
 

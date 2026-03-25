@@ -16,9 +16,6 @@
 #include "ecmascript/ohos/tests/mock/mock_enable_aot_list_helper.h"
 
 namespace panda::test {
-
-bool MockEnableAotJitListHelper::IsEnabledByArkProfiler() const
-{
-    return true;
-}
+// MockEnableAotJitListHelper inherits all behavior from EnableAotJitListHelper
+// No additional method overrides needed after refactoring.
 };
