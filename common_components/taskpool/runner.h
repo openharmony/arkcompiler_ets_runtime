@@ -35,7 +35,8 @@ using native_handle_type = std::thread::native_handle_type;
 enum class PriorityMode {
     STW,
     FOREGROUND,
-    BACKGROUND
+    BACKGROUND,
+    HIGH_PRIORITY_BACKGROUND
 };
 
 class Runner {

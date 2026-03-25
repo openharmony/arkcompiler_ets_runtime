@@ -18,6 +18,7 @@
 #include "libpandabase/os/thread.h"
 #ifdef ENABLE_QOS
 #include "qos.h"
+#include <sys/resource.h>
 #endif
 
 namespace common {
@@ -102,6 +103,12 @@ void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
             for (uint32_t threadId : gcThreadId_) {
                 OHOS::QOS::ResetQosForOtherThread(threadId);
                 OHOS::QOS::RemoveThreadFromProcRtg(threadId);
+            }
+            return;
+        }
+        case PriorityMode::HIGH_PRIORITY_BACKGROUND: {
+            for (uint32_t threadId : gcThreadId_) {
+                setpriority(PRIO_PROCESS, threadId, -20); // -20: priority is 40, priority = 20 - nice
             }
             return;
         }

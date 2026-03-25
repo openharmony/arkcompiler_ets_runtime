@@ -29,6 +29,11 @@ FullGC::FullGC(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {
 void FullGC::RunPhases()
 {
     ASSERT("FullGC should be disabled" && !g_isEnableCMCGC);
+    if (Runtime::GetInstance()->IsInBackground()) {
+        common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::HIGH_PRIORITY_BACKGROUND);
+    } else {
+        common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::STW);
+    }
     GCStats *gcStats = heap_->GetEcmaVM()->GetEcmaGCStats();
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("FullGC::RunPhases;GCReason"
         + std::to_string(static_cast<int>(gcStats->GetGCReason()))
@@ -64,6 +69,7 @@ void FullGC::RunPhases()
         LOG_ECMA(DEBUG) << "start verify post fullgc";
         Verification(heap_, VerifyKind::VERIFY_SHARED_RSET_POST_FULL_GC).VerifyAll();
     }
+    common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
 }
 
 void FullGC::RunPhasesForAppSpawn()
