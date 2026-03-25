@@ -111,6 +111,7 @@ private:
     void BuildArrayEdges(Node *node, JSType type);
     void BuildFieldEdges(Node *node, JSType type);
     void BuildJSObjectEdges(Node *node, JSType type);
+    void BuildDictionaryEdges(Node *node, JSType type, bool usePropertyBox);
     void CreateEdge(Node *node, uint64_t addr, uint32_t nameOrIndex, EdgeType type);
     Node* CreatePrimitiveNode(uint64_t addr);
     void CreateHClassEdge(Node *node, Node *hclass);

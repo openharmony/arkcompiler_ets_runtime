@@ -39,6 +39,8 @@ public:
     NodeType GetNodeType(JSType type);
     uint32_t GetNativateSize(Node *node, JSType type);
     uint32_t GetPropsNumberOfJSObject(Node *hclass);
+    uint32_t GetInlinedPropertiesCount(Node *hclass);
+    bool IsPropertyInlinedProps(uint64_t attrValue);
     std::string GetTypeName(JSType type);
     std::string GetNodeName(JSType type);
     MetaData* GetMetaData(const std::string &name);
@@ -53,6 +55,11 @@ public:
     BitField* GetBitField()
     {
         return &bitField_;
+    }
+
+    DictionaryLayout* GetDictLayout()
+    {
+        return &dictionaryLayout_;
     }
 
     const Version& GetMetaVersion() const

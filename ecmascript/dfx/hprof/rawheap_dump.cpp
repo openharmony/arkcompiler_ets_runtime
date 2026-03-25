@@ -68,18 +68,6 @@ void ObjectMarker::VisitObjectRangeImpl([[maybe_unused]]BaseObject *root, uintpt
 
 void ObjectMarker::ProcessMarkObjectsFromRoot()
 {
-    if (option_->isProcDump) {
-        CVector<JSTaggedType> heapObjects;
-        heapObjects.reserve(markedObjects_.size());
-        heapSize_ = 0;
-        IterateOverObjects([&heapObjects, this](TaggedObject *object) {
-            heapObjects.push_back(reinterpret_cast<JSTaggedType>(object));
-            heapSize_ += object->GetSize();
-        });
-        markedObjects_.swap(heapObjects);
-        return;
-    }
-
     while (!bfsQueue_.empty()) {
         JSTaggedType addr = bfsQueue_.front();
         bfsQueue_.pop();
@@ -128,20 +116,6 @@ void ObjectMarker::MarkRootObjects()
 
     LOG_ECMA(INFO) << "rawheap dump, local handle count " << localHandleRoots_.size()
                    << ", global handle count " << globalHandleRoots_.size();
-}
-
-void ObjectMarker::IterateOverObjects(const std::function<void(TaggedObject *)> &visitor)
-{
-    if (option_->isProcDump) {
-        Runtime::GetInstance()->GCIterateThreadList([&visitor](JSThread *thread) {
-            thread->GetEcmaVM()->GetHeap()->IterateOverObjects(visitor, false);
-        });
-    } else {
-        vm_->GetHeap()->IterateOverObjects(visitor, false);
-    }
-    SharedHeap::GetInstance()->IterateOverObjects(visitor);
-    SharedHeap::GetInstance()->GetReadOnlySpace()->IterateOverObjects(visitor);
-    SharedHeap::GetInstance()->GetCompressSpace()->IterateOverObjects(visitor);
 }
 
 RawHeapDump::RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
@@ -207,7 +181,11 @@ void RawHeapDump::BinaryDump()
     DumpRootTable();
 
     marker_.ProcessMarkObjectsFromRoot();
-    AddExemptedStringNode();
+    // properties name was only exempted in mode RawHeapDumpCropLevel::LEVEL_V1
+    if (Runtime::GetInstance()->GetRawHeapDumpCropLevel() == RawHeapDumpCropLevel::LEVEL_V1) {
+        AddExemptedStringNode();
+    }
+
     UpdateStringTable();
     DumpStringTable();
     DumpObjectTable();
