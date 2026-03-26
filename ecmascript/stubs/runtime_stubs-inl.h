@@ -3610,12 +3610,7 @@ JSTaggedValue RuntimeStubs::ArrayNumberSort(JSThread *thread, JSHandle<JSObject>
 JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, const JSHandle<EcmaString> &string)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-#if ENABLE_NEXT_OPTIMIZATION
     EcmaString *str = thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(thread, string);
-#else
-    EcmaString *str =
-        thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(thread, string);
-#endif
     if (str == nullptr) {
         return JSTaggedValue::Hole().GetRawData();
     }

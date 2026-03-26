@@ -799,7 +799,7 @@ HWTEST_F_L0(JsonStringifierTest, Stringify_021)
     EXPECT_STREQ("[null]", EcmaStringAccessor(handleEcmaStr1).ToCString(thread).c_str());
 }
 
-#if ENABLE_NEXT_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION
 HWTEST_F_L0(JsonStringifierTest, AppendSpecialDouble_01)
 {
     struct TestCase {

@@ -330,9 +330,7 @@ void JSHClass::ProcessAotHClassTransition(const JSThread *thread, const JSHandle
     if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, jshclass, key)) {
         JSHClass::NotifyHclassChanged(thread, jshclass, newHClass);
     } else {
-#if ENABLE_NEXT_OPTIMIZATION
         JSHClass::NotifyHClassChangedForAot(thread, jshclass, newHClass);
-#endif
         JSHClass::RefreshUsers(thread, jshclass, newHClass);
     }
     JSHClass::EnablePHCProtoChangeMarker(thread, newHClass);

@@ -165,7 +165,6 @@ void Runtime::PreInitialization(const EcmaVM *vm)
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
 
-#if ENABLE_NEXT_OPTIMIZATION
     if (g_isEnableCMCGC) {
         baseStringTable_ = new (std::nothrow) BaseStringTableImpl();
         if (baseStringTable_ == nullptr) {
@@ -197,9 +196,6 @@ void Runtime::PreInitialization(const EcmaVM *vm)
         stringTable_->GetCleaner()->SetEnableConcurrentSweep(
             const_cast<EcmaVM*>(vm)->GetJSOptions().EnableStringTableConcurrentSweep());
     }
-#else
-    stringTable_ = std::make_unique<EcmaStringTable>();
-#endif
 
     SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get(),
         const_cast<EcmaVM*>(vm)->GetJSOptions(), DaemonThread::GetInstance());

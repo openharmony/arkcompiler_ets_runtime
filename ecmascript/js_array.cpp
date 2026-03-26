@@ -498,7 +498,6 @@ bool JSArray::IsProtoNotModifiedDictionaryJSArray(JSThread *thread, const JSHand
            JSObject::AttributesUnchanged(thread, obj);
 }
 
-#if ENABLE_NEXT_OPTIMIZATION
 // ecma6 7.3 Operations on Objects
 JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
 {
@@ -527,29 +526,6 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
     JSHClass::TransitToElementsKind(thread, arr, ElementsKind::GENERIC);
     return arr;
 }
-# else
-// ecma6 7.3 Operations on Objects
-JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
-{
-    // Assert: elements is a List whose elements are all ECMAScript language values.
-    // 2. Let array be ArrayCreate(0) (see 9.4.2.2).
-    uint32_t length = elements->GetLength();
-
-    // 4. For each element e of elements
-    auto env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> arrayFunc(env->GetArrayFunction());
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc);
-    obj->GetJSHClass()->SetExtensible(true);
-    JSArray::Cast(*obj)->SetArrayLength(thread, length);
-
-    obj->SetElements(thread, elements);
-    JSHandle<JSArray> arr(obj);
-    JSHClass::TransitToElementsKind(thread, arr, ElementsKind::GENERIC);
-
-    return arr;
-}
-#endif
 
 // used for array contructor with (...items)
 JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<JSTaggedValue> &newtarget,
@@ -607,7 +583,6 @@ bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedVa
 bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                         const JSHandle<JSTaggedValue> &value,  SCheckMode sCheckMode)
 {
-#if ENABLE_NEXT_OPTIMIZATION
     JSHandle<JSTaggedValue> objVal(obj);
     if (!objVal->IsStableJSArray(thread)) {
         // if JSArray is DictionaryMode goto slowPath
@@ -643,9 +618,6 @@ bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObjec
         ElementAccessor::Set(thread, obj, index, value, true);
     }
     return true;
-#else
-    return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);
-#endif
 }
 
 JSTaggedValue JSArray::CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &obj,

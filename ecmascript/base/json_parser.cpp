@@ -1299,27 +1299,7 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
 bool Utf8JsonParser::ReadJsonStringRange(bool &isFastString)
 {
     Advance();
-#if ENABLE_NEXT_OPTIMIZATION
     return JsonPlatformHelper::ReadJsonStringRangeForPlatformForUtf8(isFastString, current_, range_, end_);
-#else
-    // chars are within Ascii
-    for (Text current = current_; current != range_; ++current) {
-        uint8_t c = *current;
-        if (c == '"') {
-            end_ = current;
-            return true;
-        } else if (UNLIKELY(c == '\\')) {
-            isFastString = false;
-            // early return for ParseStringWithBackslash
-            return true;
-        } else if (UNLIKELY(c < CODE_SPACE)) {
-            current_ = current;
-            return false;
-        }
-    }
-    current_ = range_;
-    return false;
-#endif
 }
 
 bool Utf8JsonParser::IsFastParseJsonString(bool &isFastString)

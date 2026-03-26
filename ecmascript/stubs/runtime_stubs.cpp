@@ -4174,18 +4174,8 @@ DEF_RUNTIME_STUBS(LocaleCompareCacheable)
     JSHandle<JSTaggedValue> locales = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
     JSHandle<EcmaString> thisHandle = GetHArg<EcmaString>(argv, argc, 1);    // 1: means the first parameter
     JSHandle<EcmaString> thatHandle = GetHArg<EcmaString>(argv, argc, 2);    // 2: means the second parameter
-#if ENABLE_NEXT_OPTIMIZATION
     const CompareStringsOption csOption = JSCollator::CompareStringsOptionFor(thread, locales);
     JSTaggedValue result = JSCollator::FastCachedCompareStrings(thread, locales, thisHandle, thatHandle, csOption);
-#else
-    auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
-    JSTaggedValue result = JSTaggedValue::Undefined();
-    if (collator != nullptr) {
-        [[maybe_unused]]const CompareStringsOption csOption = JSCollator::CompareStringsOptionFor(
-            thread, locales);
-        result = JSCollator::CompareStrings(thread, collator, thisHandle, thatHandle, csOption);
-    }
-#endif
     return result.GetRawData();
 }
 

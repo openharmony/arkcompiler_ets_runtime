@@ -95,11 +95,9 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
 void ObjectOperator::UpdateHolder()
 {
-#if ENABLE_NEXT_OPTIMIZATION
     if (holder_->IsECMAObject()) {
         return;
     }
-#endif
     if (holder_->IsString()) {
         if (CheckValidIndexOrKeyIsLength()) {
             // key is 'length' of string or key is index and this index < strLength

@@ -1045,16 +1045,7 @@ std::string EcmaStringAccessor::ToStdString(const JSThread *thread, StringConver
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
     common::Span<const uint8_t> sp = string_->ToUtf8Span(thread, buf, modify);
-#if ENABLE_NEXT_OPTIMIZATION
     return std::string(reinterpret_cast<const char*>(sp.data()), sp.size());
-#else
-    std::string res;
-    res.reserve(sp.size());
-    for (const auto &c : sp) {
-        res.push_back(c);
-    }
-    return res;
-#endif
 }
 
 CString EcmaStringAccessor::Utf8ConvertToString(const JSThread *thread)
@@ -1084,16 +1075,7 @@ std::string EcmaStringAccessor::DebuggerToStdString(const JSThread *thread, Stri
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
     common::Span<const uint8_t> sp = string_->DebuggerToUtf8Span(thread, buf, modify);
-#if ENABLE_NEXT_OPTIMIZATION
     return std::string(reinterpret_cast<const char*>(sp.data()), sp.size());
-#else
-    std::string res;
-    res.reserve(sp.size());
-    for (const auto &c : sp) {
-        res.push_back(c);
-    }
-    return res;
-#endif
 }
 
 CString EcmaStringAccessor::ToCString(const JSThread *thread, StringConvertedUsage usage, bool cesu8)
@@ -1104,19 +1086,9 @@ CString EcmaStringAccessor::ToCString(const JSThread *thread, StringConvertedUsa
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
     common::Span<const uint8_t> sp = string_->ToUtf8Span(thread, buf, modify, cesu8);
-#if ENABLE_NEXT_OPTIMIZATION
     return CString(reinterpret_cast<const char*>(sp.data()), sp.size());
-#else
-    CString res;
-    res.reserve(sp.size());
-    for (const auto &c : sp) {
-        res.push_back(c);
-    }
-    return res;
-#endif
 }
 
-#if ENABLE_NEXT_OPTIMIZATION
 void EcmaStringAccessor::AppendToCString(const JSThread *thread, CString &str)
 {
     if (string_ == nullptr) {
@@ -1147,7 +1119,7 @@ void EcmaStringAccessor::AppendToC16String(const JSThread *thread, C16String &st
         str.append(reinterpret_cast<const char16_t*>(data), GetLength());
     }
 }
-#endif
+
 // static
 EcmaString *EcmaStringAccessor::CreateLineString(const EcmaVM *vm, size_t length, bool compressed)
 {
