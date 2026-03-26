@@ -160,4 +160,56 @@ assert_equal(split_res1, split_res2);
     RegExp.prototype[Symbol.matchAll] = originalMatchAll;
 }
 
+// Test large string to trigger caching
+{
+    let largeString = "";
+    for (let i = 0; i < 100; i++) {
+        largeString += "word" + i + " ";
+    }
+
+    const pattern = /word\d+/g;
+    const results = [];
+
+    for (let i = 0; i < 5; i++) {
+        pattern.lastIndex = 0;
+        let count = 0;
+        while (pattern.exec(largeString) !== null && count < 200) {
+            count++;
+        }
+        results.push(count);
+    }
+
+    const allCorrect = results.every(r => r === 100);
+    assert_equal(allCorrect, true);
+    print("Lines 1716 & 2071 - Large string caching: " + allCorrect);
+}
+
+// Test mixed operations
+{
+    const execResults = [];
+    const splitResults = [];
+
+    for (let i = 0; i < 10; i++) {
+        const p1 = /\d+/g;
+        const s1 = "123 456 789";
+        p1.lastIndex = 0;
+        let c1 = 0;
+        while (p1.exec(s1) !== null && c1 < 10) {
+            c1++;
+        }
+        execResults.push(c1);
+
+        const s2 = "a1b2c3d4e5f6";
+        const parts = s2.split(/\d/);
+        splitResults.push(parts.length);
+    }
+
+    const execCorrect = execResults.every(r => r === 3);
+    const splitCorrect = splitResults.every(r => r === 7);
+    const mixedCorrect = execCorrect && splitCorrect;
+
+    assert_equal(mixedCorrect, true);
+    print("Lines 1716 & 2071 - Mixed operations: " + mixedCorrect);
+}
+
 test_end();
