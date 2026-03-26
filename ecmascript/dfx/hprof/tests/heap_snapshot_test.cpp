@@ -370,14 +370,21 @@ HWTEST_F_L0(HeapSnapShotTest, TestUpdateNodeAddressIdMap)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     HeapProfilerFriendTest tester(ecmaVm_);
+    
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<JSTaggedValue> obj1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> obj2(factory->CreateNapiObject());
+    Global<ObjectRef> globalObj1(ecmaVm_, Local<JSTaggedValue>(obj1.GetAddress()));
+    Global<ObjectRef> globalObj2(ecmaVm_, Local<JSTaggedValue>(obj2.GetAddress()));
+
     DumpSnapShotOption dumpOption;
     dumpOption.nativeAddrToNodeIdMap = 1;
     HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
     ASSERT_NE(snapshot, nullptr);
-
+    tester.GetEntryIdMapTest()->UpdateEntryIdMap(snapshot);
     tester.UpdateNodeAddressIdMapTest();
     CUnorderedMap<uintptr_t, NodeId> nodeAddressIdMap = tester.GetNodeAddressIdMapTest();
-    ASSERT_TRUE(nodeAddressIdMap.empty() || nodeAddressIdMap.size() > 0);
+    ASSERT_TRUE(nodeAddressIdMap.size() > 0);
 #else
     ASSERT_TRUE(true);
 #endif
@@ -405,7 +412,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestSerializeExtraInfo)
     if (!nodeAddressIdMap.empty()) {
         ASSERT_TRUE(mapOutput.find("nodeIdMap") != std::string::npos);
     } else {
-        ASSERT_TRUE(mapOutput.empty());
+        ASSERT_EQ(mapOutput, "{\"nodeIdMap\":[]}");
     }
 #else
     ASSERT_TRUE(true);
