@@ -20,9 +20,11 @@
 #include "base_runtime.h"
 #include "thread/thread_holder_manager.h"
 #include "profiler/heap_profiler_listener.h"
+#if !defined(CROSS_PLATFORM)
 #include "ecmascript/cross_vm/dynamic_object_accessor.h"
 #include "ecmascript/cross_vm/dynamic_object_descriptor.h"
 #include "ecmascript/cross_vm/dynamic_type_converter.h"
+#endif
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
@@ -156,9 +158,11 @@ void Runtime::PreInitialization(const EcmaVM *vm)
 {
     DynamicObjectOperator::Initialize();
     if (g_isEnableCMCGC) {
+#if !defined(CROSS_PLATFORM)
         DynamicObjectAccessor::Initialize();
         DynamicObjectDescriptor::Initialize();
         DynamicTypeConverter::Initialize();
+#endif
     }
     mainThread_ = vm->GetAssociatedJSThread();
     mainThread_->SetMainThread();
