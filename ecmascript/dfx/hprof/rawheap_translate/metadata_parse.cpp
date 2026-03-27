@@ -79,6 +79,28 @@ uint32_t MetaParser::GetPropsNumberOfJSObject(Node *hclass)
     return ByteToU32(hclass->data + bitField_.objectBitField1.offset) & NUM_OF_PROP_BITS;
 }
 
+uint32_t MetaParser::GetInlinedPropertiesCount(Node *hclass)
+{
+    if (!hclass || !hclass->data) {
+        return 0;
+    }
+    uint32_t bits = ByteToU32(hclass->data + bitField_.objectBitField1.offset);
+
+    // ObjectSizeInWordsBits: bits 15-29 (15 bits)
+    uint32_t objectSizeInWords = (bits >> 15) & 0x7FFF;
+
+    // InlinedPropsStartBits: bits 10-14 (5 bits)
+    uint32_t inlinedPropsStart = (bits >> 10) & 0x1F;
+
+    return objectSizeInWords - inlinedPropsStart;
+}
+
+bool MetaParser::IsPropertyInlinedProps(uint64_t attrValue)
+{
+    constexpr uint32_t PROPERTY_ATTR_IS_INLINED_PROPS_BIT = 4;
+    return (attrValue & (1ULL << PROPERTY_ATTR_IS_INLINED_PROPS_BIT)) != 0;
+}
+
 std::string MetaParser::GetTypeName(JSType type)
 {
     MetaData *meta = GetMetaData(type);

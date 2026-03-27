@@ -40,7 +40,6 @@ public:
     void IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor);
     void MarkObject(JSTaggedType addr);
     void MarkRootObjects();
-    void IterateOverObjects(const std::function<void(TaggedObject *)> &visitor);
 
     size_t GetMarkedObjects()
     {

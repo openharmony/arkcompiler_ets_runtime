@@ -590,6 +590,11 @@ void RawHeapTranslateV1::BuildGlobalEnvEdges(Node *node, JSType type)
 
 void RawHeapTranslateV1::BuildArrayEdges(Node *node, JSType type)
 {
+    if (metaParser_->IsDictionaryMode(type)) {
+        BuildDictionaryEdges(node, type, false);
+        return;
+    }
+
     BitField *bitField = metaParser_->GetBitField();
     uint32_t lengthOffset = bitField->taggedArrayLengthField.offset;
     uint32_t dataOffset = bitField->taggedArrayDataField.offset;
@@ -630,31 +635,51 @@ void RawHeapTranslateV1::BuildFieldEdges(Node *node, JSType type)
 
 void RawHeapTranslateV1::BuildJSObjectEdges(Node *node, JSType type)
 {
-    MetaData *meta = metaParser_->GetMetaData(type);
-    if (meta == nullptr) {
-        return;
-    }
-
     BitField *bitField = metaParser_->GetBitField();
-    Node *layout = FindNode(ByteToU64(node->hclass->data + bitField->hclassLayoutField.offset));
-    if (!layout || !layout->data) {
+
+    Node *properties = FindNode(ByteToU64(node->data + bitField->jsObjectPropertiesField.offset));
+    if (!properties || !properties->data) {
         return;
     }
 
-    StringId defaultName = InsertAndGetStringId("InlineProperty");
-    uint32_t propCnt = metaParser_->GetPropsNumberOfJSObject(node->hclass);
-    uint32_t index = 0;
-    while (meta->endOffset + index * sizeof(uint64_t) < node->size && index < propCnt) {
-        Node *key = FindNode(ByteToU64(layout->data + sizeof(uint64_t) * (2 + index * 2)));
-        if (!key) {
-            index++;
-            continue;
+    bool isDictionaryMode = metaParser_->IsDictionaryMode(properties->jsType);
+    if (!isDictionaryMode && node->hclass != nullptr) {
+        Node *layout = FindNode(ByteToU64(node->hclass->data + bitField->hclassLayoutField.offset));
+        if (!layout || !layout->data) {
+            return;
         }
 
-        uint64_t addr  = ByteToU64(node->data + meta->endOffset + index * sizeof(uint64_t));
-        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
-        CreateEdge(node, addr, key->strId == 1 ? defaultName : key->strId, edgeType);
-        index++;
+        MetaData *meta = metaParser_->GetMetaData(type);
+        if (meta == nullptr) {
+            return;
+        }
+
+        uint32_t propNumber = metaParser_->GetPropsNumberOfJSObject(node->hclass);
+        uint32_t inlinedPropsCount = metaParser_->GetInlinedPropertiesCount(node->hclass);
+        for (uint32_t i = 0; i < propNumber; i++) {
+            uint32_t entryOffset = bitField->taggedArrayDataField.offset + sizeof(uint64_t) * (i * 2);
+            Node *key = FindNode(ByteToU64(layout->data + entryOffset));
+            if (!key) {
+                continue;
+            }
+
+            uint64_t attrValue = ByteToU64(layout->data + entryOffset + sizeof(uint64_t));
+            bool isInlinedProps = metaParser_->IsPropertyInlinedProps(attrValue);
+
+            uint64_t valueAddr;
+            if (isInlinedProps) {
+                uint32_t inlinedPropsOffset = meta->endOffset + i * sizeof(uint64_t);
+                valueAddr = ByteToU64(node->data + inlinedPropsOffset);
+            } else {
+                uint32_t noInlinedPropsOffset = (i - inlinedPropsCount) * sizeof(uint64_t);
+                valueAddr = ByteToU64(properties->data + bitField->taggedArrayDataField.offset + noInlinedPropsOffset);
+            }
+
+            EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, valueAddr);
+            CreateEdge(node, valueAddr, key->strId, edgeType);
+        }
+    } else {
+        BuildDictionaryEdges(properties, type, false);
     }
 }
 
@@ -664,11 +689,9 @@ Node* RawHeapTranslateV1::CreatePrimitiveNode(uint64_t addr)
     to->nodeId = 0;
     to->type = HEAP_NUMBER;
     if ((addr & TAG_MARK) == TAG_INT) {
-        int value = static_cast<int>(addr & (~TAG_MARK));
-        to->strId = InsertAndGetStringId("Int:" + std::to_string(value));
+        to->strId = InsertAndGetStringId("Int");
     } else if ((addr & TAG_MARK) != TAG_INT && (addr & TAG_MARK) != TAG_OBJECT) {
-        double value = BitCastToDouble(addr - DOUBLE_ENCODE_OFFSET);
-        to->strId = InsertAndGetStringId("Double:" + std::to_string(value));
+        to->strId = InsertAndGetStringId("Double");
     } else if (addr == VALUE_HOLE || addr == 0U) {
         to->strId = InsertAndGetStringId("Hole");
     } else if (addr == VALUE_NULL) {
@@ -709,6 +732,50 @@ void RawHeapTranslateV1::CreateHClassEdge(Node *node, Node *hclass)
     static StringId hclassStrId = InsertAndGetStringId("hclass");
     InsertEdge(hclass, hclassStrId, EdgeType::DEFAULT);
     node->edgeCount++;
+}
+
+void RawHeapTranslateV1::BuildDictionaryEdges(Node *node, JSType type, bool usePropertyBox)
+{
+    if (node->data == nullptr) {
+        return;
+    }
+
+    DictionaryLayout *dictLayout = metaParser_->GetDictLayout();
+    BitField *bitField = metaParser_->GetBitField();
+    uint32_t size = ByteToU32(node->data + bitField->taggedArrayDataField.offset + sizeof(uint64_t) * 2);
+    uint32_t entryStart = bitField->taggedArrayDataField.offset + dictLayout->headerSize * sizeof(uint64_t);
+    uint32_t entrySize = dictLayout->entrySize * sizeof(uint64_t);
+
+    for (uint32_t entry = 0; entry < size; ++entry) {
+        uint32_t entryOffset = entryStart + entry * entrySize;
+        if (entryOffset + entrySize > node->size) {
+            break;
+        }
+
+        uint64_t keyAddr = ByteToU64(node->data + entryOffset + dictLayout->keyIndex * sizeof(uint64_t));
+        uint64_t valueAddr = ByteToU64(node->data + entryOffset + dictLayout->valueIndex * sizeof(uint64_t));
+
+        if (keyAddr == VALUE_HOLE || keyAddr == VALUE_UNDEFINED) {
+            continue;
+        }
+
+        Node *keyNode = FindNode(keyAddr);
+        if (keyNode == nullptr) {
+            continue;
+        }
+
+        uint64_t actualValueAddr = valueAddr;
+        if (usePropertyBox && IsHeapObject(valueAddr)) {
+            Node *propertyBox = FindNode(valueAddr);
+            if (propertyBox != nullptr && propertyBox->data != nullptr &&
+                propertyBox->size > sizeof(uint64_t)) {
+                actualValueAddr = ByteToU64(propertyBox->data + sizeof(uint64_t));
+            }
+        }
+
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, actualValueAddr);
+        CreateEdge(node, actualValueAddr, keyNode->strId, edgeType);
+    }
 }
 
 EdgeType RawHeapTranslateV1::GenerateEdgeTypeAndRemoveWeak(Node *node, JSType type, uint64_t &addr)
