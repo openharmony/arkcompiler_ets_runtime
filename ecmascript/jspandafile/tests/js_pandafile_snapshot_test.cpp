@@ -246,7 +246,7 @@ public:
     bool ReadCorruptRecordInfoSection(size_t mappedSize, const char *sceneName) const
     {
         const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
-        NormalTranslateJSPandaFile(pf);
+        pf->ResetAfterSnapshotFail();
         pf->SetBundlePack(false);
 
         std::vector<uint8_t> buffer = JSPandaFileSnapshotTest::BuildValidRecordInfoSectionBuffer();
@@ -477,6 +477,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, WriteAndReadRecordInfoSectionWithMergedPF)
     CString version = "version 205.0.1.120(SP20)";
     const std::shared_ptr<JSPandaFile> serializePf = NewMockJSPandaFile();
     NormalTranslateJSPandaFile(serializePf);
+    bool bundlePackSave = serializePf->IsBundlePack();
     serializePf->SetBundlePack(false);
     JSRecordInfo *recordInfo = serializePf->CheckAndGetRecordInfo("func_main_0");
     if (recordInfo != nullptr) {
@@ -492,6 +493,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, WriteAndReadRecordInfoSectionWithMergedPF)
         {std::string_view(serializeNpmEntry.first.c_str(), serializeNpmEntry.first.size()),
          std::string_view(serializeNpmEntry.second.c_str(), serializeNpmEntry.second.size())});
     ASSERT_TRUE(MockJSPandaFileSnapshot::WriteDataToFile(thread, serializePf.get(), path, version));
+    serializePf->SetBundlePack(bundlePackSave);
 
     // deserialize
     const std::shared_ptr<JSPandaFile> deserializePf = NewMockJSPandaFile();
@@ -518,7 +520,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, WriteAndReadRecordInfoSectionWithMergedPF)
 HWTEST_F_L0(JSPandaFileSnapshotTest, ReadRecordInfoSection)
 {
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
-    NormalTranslateJSPandaFile(pf);
+    pf->ResetAfterSnapshotFail();
     pf->SetBundlePack(false);
 
     std::vector<uint8_t> buffer = JSPandaFileSnapshotTest::BuildValidRecordInfoSectionBuffer();
@@ -543,6 +545,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, WriteRecordInfoSection_EmptyPkgName)
 {
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     NormalTranslateJSPandaFile(pf);
+    bool bundlePackSave = pf->IsBundlePack();
     pf->SetBundlePack(false);
     JSRecordInfo *recordInfo = pf->CheckAndGetRecordInfo("func_main_0");
     ASSERT_NE(recordInfo, nullptr);
@@ -551,6 +554,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, WriteRecordInfoSection_EmptyPkgName)
     MemMap memMap(buffer.data(), buffer.size());
     FileMemMapWriter writer(memMap, "WriteRecordInfoSection_EmptyPkgName");
     ASSERT_TRUE(JSPandaFileRecordInfoSnapshot::WriteRecordInfoSection(thread->GetEcmaVM(), pf.get(), writer));
+    pf->SetBundlePack(bundlePackSave);
 }
 
 HWTEST_F_L0(JSPandaFileSnapshotTest, ReadRecordInfoSection_EmptyPkgNameAndZeroMethods)
@@ -744,12 +748,12 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, UseSnapshotSuccessTest)
     }
     JSRuntimeOptions &options = thread->GetEcmaVM()->GetJSOptions();
     int arkProperties = options.GetArkProperties();
-    options.SetArkProperties(options.GetArkProperties() &
-                             ~static_cast<int>(ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT));
+    options.SetArkProperties(arkProperties & ~static_cast<int>(ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT));
     ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
     ModulesSnapshotHelper::g_featureLoaded_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
     const std::shared_ptr<JSPandaFile> serializePf = NewMockJSPandaFile();
     NormalTranslateJSPandaFile(serializePf);
+    bool bundlePackSave = serializePf->IsBundlePack();
     serializePf->SetBundlePack(false);
     JSRecordInfo *recordInfo = serializePf->CheckAndGetRecordInfo("func_main_0");
     if (recordInfo != nullptr) {
@@ -773,6 +777,7 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, UseSnapshotSuccessTest)
     }
     MockJSPandaFileSnapshot::WriteDataToFile(thread, serializePf.get(), path,
                                              ohos::OhosVersionInfoTools::GetRomVersion());
+    serializePf->SetBundlePack(bundlePackSave);
     ASSERT_TRUE(FileExist(fileName.c_str()));
     const std::shared_ptr<JSPandaFile> deserializePf = NewMockJSPandaFileWithSnapshotLoad();
     JSRecordInfo *deserializeRecordInfo = deserializePf->CheckAndGetRecordInfo("func_main_0");
@@ -791,7 +796,6 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ResetAfterSnapshotFailTest)
 {
     const std::shared_ptr<JSPandaFile> pf = NewMockJSPandaFile();
     NormalTranslateJSPandaFile(pf);
-    pf->SetBundlePack(false);
     JSRecordInfo *recordInfo = pf->CheckAndGetRecordInfo("func_main_0");
     if (recordInfo != nullptr) {
         recordInfo->npmPackageName = "@ohos/testpkg";
