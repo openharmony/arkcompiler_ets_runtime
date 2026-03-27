@@ -926,9 +926,18 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
 template <bool ReplacerAndGapUndefined>
 bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, bool hasContent)
 {
-    if (!ElementAccessor::IsDictionaryMode(thread_, obj)) {
+    bool useFastPath = !ElementAccessor::IsDictionaryMode(thread_, obj);
+    uint32_t processedIndex = 0;
+
+    if (useFastPath) {
         uint32_t elementsLen = ElementAccessor::GetElementsLength(thread_, obj);
         for (uint32_t i = 0; i < elementsLen; ++i) {
+            if (ElementAccessor::IsDictionaryMode(thread_, obj) &&
+                i < ElementAccessor::GetElementsLength(thread_, obj)) {
+                useFastPath = false;
+                processedIndex = i;
+                break;
+            }
             if (!ElementAccessor::Get(thread_, obj, i).IsHole()) {
                 handleKey_.Update(JSTaggedValue(i));
                 handleValue_.Update(ElementAccessor::Get(thread_, obj, i));
@@ -936,7 +945,9 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, bool hasC
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
         }
-    } else {
+    }
+
+    if (!useFastPath) {
         JSHandle<TaggedArray> elementsArr(thread_, obj->GetElements(thread_));
         JSHandle<NumberDictionary> numberDic(elementsArr);
         CVector<JSHandle<JSTaggedValue>> sortArr;
@@ -944,6 +955,10 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, bool hasC
         for (int hashIndex = 0; hashIndex < size; hashIndex++) {
             JSTaggedValue key = numberDic->GetKey(thread_, hashIndex);
             if (!key.IsUndefined() && !key.IsHole()) {
+                // Skip elements already processed in fast path
+                if (key.IsInt() && static_cast<uint32_t>(key.GetInt()) < processedIndex) {
+                    continue;
+                }
                 PropertyAttributes attr = numberDic->GetAttributes(thread_, hashIndex);
                 if (attr.IsEnumerable()) {
                     JSTaggedValue numberKey = key.IsInt() ? JSTaggedValue(static_cast<uint32_t>(key.GetInt())) :
