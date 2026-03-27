@@ -25,6 +25,7 @@
 #include "ecmascript/serializer/serialize_chunk.h"
 #include "ecmascript/tests/ecma_test_common.h"
 #include "ecmascript/string/external_string.h"
+#include "ecmascript/runtime.h"
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
 #endif
@@ -465,6 +466,60 @@ HWTEST_F(HeapMemoryPressureTest, HeapMemoryPressureTest18, testing::ext::TestSiz
     EXPECT_FALSE(vm->GetNeedSharedMemoryPressureCallback());
 
     vm->ResetMemoryPressure();
+}
+
+HWTEST_F(HeapMemoryPressureTest, HeapMemoryPressureTest19, testing::ext::TestSize.Level0)
+{
+    // Test CheckAndTriggerMemoryPressureCallback returns early when already in callback
+    auto vm = thread->GetEcmaVM();
+
+    // Create a valid callback
+    Local<FunctionRef> callback = FunctionRef::New(vm, TestCallback);
+    DFXJSNApi::HeapMemoryPressureOptions options = {0.0, 0.0, 0.0};
+    vm->SetHeapMemoryPressure(options, callback);
+
+    // Set flag to simulate being in callback
+    vm->SetInMemoryPressureCallback(true);
+    EXPECT_TRUE(vm->GetIsInMemoryPressureCallback());
+
+    // Manually set the flags to trigger
+    vm->SetNeedProcessMemoryPressureCallback(true);
+    vm->SetNeedSharedMemoryPressureCallback(true);
+    EXPECT_TRUE(vm->GetNeedProcessMemoryPressureCallback());
+    EXPECT_TRUE(vm->GetNeedSharedMemoryPressureCallback());
+
+    // Call CheckAndTriggerMemoryPressureCallback - should return early due to in callback
+    vm->CheckAndTriggerMemoryPressureCallback();
+
+    // Flags should remain true because callback was blocked
+    EXPECT_TRUE(vm->GetNeedProcessMemoryPressureCallback());
+    EXPECT_TRUE(vm->GetNeedSharedMemoryPressureCallback());
+
+    // Cleanup
+    vm->SetInMemoryPressureCallback(false);
+    vm->ResetMemoryPressure();
+}
+
+HWTEST_F(HeapMemoryPressureTest, HeapMemoryPressureTest20, testing::ext::TestSize.Level0)
+{
+    // Test SetHeapMemoryPressure sets main thread alive flag
+    auto vm = thread->GetEcmaVM();
+    Local<FunctionRef> callback = FunctionRef::New(vm, TestCallback);
+
+    // Verify initial state
+    EXPECT_FALSE(Runtime::GetInstance()->IsMainThreadAliveForMemoryPressure());
+
+    // Set heap memory pressure - should set main thread alive flag
+    DFXJSNApi::HeapMemoryPressureOptions options = {0.8, 0.85, 0.9};
+    bool result = vm->SetHeapMemoryPressure(options, callback);
+    EXPECT_TRUE(result);
+
+    // Verify flag is set
+    EXPECT_TRUE(Runtime::GetInstance()->IsMainThreadAliveForMemoryPressure());
+
+    // Reset should clear the flag
+    vm->ResetMemoryPressure();
+    EXPECT_FALSE(Runtime::GetInstance()->IsMainThreadAliveForMemoryPressure());
 }
 #endif
 }  // namespace panda::test

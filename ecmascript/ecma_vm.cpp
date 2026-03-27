@@ -2509,11 +2509,15 @@ void EcmaVM::CheckSharedHeapMemoryPressure()
     // Check shared heap memory pressure - set flag instead of triggering callback directly
     double sharedThreshold = sharedMemoryPressureThreshold_;
     if (sharedThreshold > 0.0) {
-        size_t sharedHeapSize = SharedHeap::GetInstance()->GetHeapObjectSize();
-        size_t sharedHeapLimit = SharedHeap::GetInstance()->GetEcmaParamConfiguration().GetMaxHeapSize();
-        double sharedRatio = static_cast<double>(sharedHeapSize) / static_cast<double>(sharedHeapLimit);
-
-        if (sharedRatio >= sharedThreshold) {
+        auto oldSpace = SharedHeap::GetInstance()->GetOldSpace();
+        size_t sharedOldHeapSize = oldSpace->GetHeapObjectSize();
+        size_t sharedOldHeapLimit = oldSpace->GetMaximumCapacity();
+        double sharedOldRatio = static_cast<double>(sharedOldHeapSize) / static_cast<double>(sharedOldHeapLimit);
+        auto hugeSpace = SharedHeap::GetInstance()->GetHugeObjectSpace();
+        size_t sharedHugeHeapSize = hugeSpace->GetHeapObjectSize();
+        size_t sharedHugeHeapLimit = hugeSpace->GetMaximumCapacity();
+        double sharedHugeRatio = static_cast<double>(sharedHugeHeapSize) / static_cast<double>(sharedHugeHeapLimit);
+        if (sharedOldRatio >= sharedThreshold || sharedHugeRatio >= sharedThreshold) {
             needSharedMemoryPressureCallback_ = true;
             return;
         }
@@ -2522,6 +2526,10 @@ void EcmaVM::CheckSharedHeapMemoryPressure()
 
 void EcmaVM::CheckAndTriggerMemoryPressureCallback()
 {
+    if (isInMemoryPressureCallback_) {
+        return;
+    }
+    MemoryPressureCallbackScope scope(this);
     // Check and trigger process memory pressure callback at safe point
     if (needProcessMemoryPressureCallback_) {
         needProcessMemoryPressureCallback_ = false;
