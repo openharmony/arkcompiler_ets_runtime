@@ -22,8 +22,6 @@
 #include "ecmascript/string/hashtriemap-inl.h"
 
 namespace panda::ecmascript {
-#if ENABLE_NEXT_OPTIMIZATION
-
 template <typename Traits, typename LoaderCallback, typename EqualsCallback>
 EcmaString* EcmaStringTableImpl::GetOrInternString(EcmaVM* vm, uint32_t hashcode, LoaderCallback loaderCallback,
                                                    EqualsCallback equalsCallback)
@@ -68,7 +66,5 @@ inline void EcmaStringTableMutex::LockWithThreadState(JSThread* thread)
 {
     return RuntimeLock(thread, mtx_);
 }
-
-#endif
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STRING_TABLE_OPTIMIZ_INL_H

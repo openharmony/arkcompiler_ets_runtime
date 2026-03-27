@@ -447,10 +447,7 @@ group("ark_aot_ts_test") {
     ]
   }
 
-  deps = []
-  if (enable_next_optimization) {
-    deps += [ "builtin_inlining:ark_aot_builtin_inlining_test" ]
-  }
+  deps = [ "builtin_inlining:ark_aot_builtin_inlining_test" ]
 
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]

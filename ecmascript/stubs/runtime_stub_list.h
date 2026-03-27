@@ -527,7 +527,6 @@ namespace panda::ecmascript {
     V(StringEqual)                                             \
     V(StringIndexOf)                                           \
     V(DeoptHandler)                                            \
-    V(InsertStringToTable)                                     \
     V(GetOrInternStringFromHashTrieTable)                      \
     V(SlowFlattenString)                                       \
     V(NotifyConcurrentResult)                                  \

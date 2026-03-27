@@ -355,7 +355,7 @@ group("ark_js_assert_moduletest") {
     "functionbind",
   ]
 
-  if (enable_next_optimization) {
+  if (enable_latest_optimization) {
     assert_test_list += ["jsonstringifier_optimized"]
   }
 
