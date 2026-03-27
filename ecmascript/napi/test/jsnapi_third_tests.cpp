@@ -4380,8 +4380,7 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
 {
     std::map<std::string, std::vector<std::vector<std::string>>> pkgList;
     std::vector<std::string> entryList = {
-        "entry",
-        "packageName", "entry",
+        "entry", "packageName", "entry",
         "bundleName", "",
         "moduleName", "",
         "version", "",
@@ -4390,11 +4389,9 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
     };
     pkgList["entry"] = {entryList};
     JSNApi::SetpkgContextInfoList(vm_, pkgList);
-
     std::map<std::string, std::vector<std::vector<std::string>>> newPkgList;
     std::vector<std::string> hspList = {
-        "hsp",
-        "packageName", "hsp",
+        "hsp", "packageName", "hsp",
         "bundleName", "",
         "moduleName", "",
         "version", "1.1.0",
@@ -4403,13 +4400,12 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
     };
     newPkgList["hsp"] = {hspList};
     JSNApi::UpdatePkgContextInfoList(vm_, newPkgList);
-
     CMap<CString, CMap<CString, CVector<CString>>> vmPkgList = vm_->GetPkgContextInfoList();
     EXPECT_EQ(vmPkgList.size(), 2);
     EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 12);
     EXPECT_EQ(vmPkgList["hsp"].size(), 1);
     EXPECT_EQ(vmPkgList["hsp"]["hsp"].size(), 12);
-
+#if ENABLE_LATEST_OPTIMIZATION
     CVector<CString> hapInfo{};
     vm_->GetPkgContextInfoListElements("entry", "entry", hapInfo);
     EXPECT_EQ(hapInfo.size(), 12);
@@ -4419,7 +4415,6 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
     EXPECT_EQ(hapInfo[7], "");
     EXPECT_EQ(hapInfo[9], "src/main/");
     EXPECT_EQ(hapInfo[11], "false");
-
     CVector<CString> hspInfo{};
     vm_->GetPkgContextInfoListElements("hsp", "hsp", hspInfo);
     EXPECT_EQ(hspInfo.size(), 12);
@@ -4429,6 +4424,7 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoList)
     EXPECT_EQ(hspInfo[7], "1.1.0");
     EXPECT_EQ(hspInfo[9], "Index.ets");
     EXPECT_EQ(hspInfo[11], "false");
+#endif
 }
 
 HWTEST_F_L0(JSNApiTests, UpdatePkgNameList)
@@ -4484,7 +4480,7 @@ HWTEST_F_L0(JSNApiTests, SetPkgContextInfoListWithBuffer)
     EXPECT_EQ(vmPkgList["entry"]["entry"].size(), 12);
     EXPECT_EQ(vmPkgList["library"].size(), 1);
     EXPECT_EQ(vmPkgList["library"]["library"].size(), 12);
-
+#if ENABLE_LATEST_OPTIMIZATION
     CVector<CString> hapInfo{};
     vm_->GetPkgContextInfoListElements("entry", "entry", hapInfo);
     EXPECT_EQ(hapInfo.size(), 12);
@@ -4494,7 +4490,6 @@ HWTEST_F_L0(JSNApiTests, SetPkgContextInfoListWithBuffer)
     EXPECT_EQ(hapInfo[7], "");
     EXPECT_EQ(hapInfo[9], "src/main/");
     EXPECT_EQ(hapInfo[11], "false");
-
     CVector<CString> libraryInfo{};
     vm_->GetPkgContextInfoListElements("library", "library", libraryInfo);
     EXPECT_EQ(libraryInfo.size(), 12);
@@ -4504,6 +4499,7 @@ HWTEST_F_L0(JSNApiTests, SetPkgContextInfoListWithBuffer)
     EXPECT_EQ(libraryInfo[7], "1.0.0");
     EXPECT_EQ(libraryInfo[9], "Index.ets");
     EXPECT_EQ(libraryInfo[11], "false");
+#endif
 }
 
 HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoListWithBuffer)
@@ -4519,6 +4515,7 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoListWithBuffer)
     std::unordered_map<std::string, std::pair<std::unique_ptr<uint8_t[]>, size_t>> updatePkgContentMap;
     updatePkgContentMap["hsp"] = createBufferFromString(hspString);
     JSNApi::UpdatePkgContextInfoList(vm_, updatePkgContentMap);
+#if ENABLE_LATEST_OPTIMIZATION
     CVector<CString> hspInfo{};
     vm_->GetPkgContextInfoListElements("hsp", "hsp", hspInfo);
     EXPECT_EQ(hspInfo.size(), 12);
@@ -4528,6 +4525,7 @@ HWTEST_F_L0(JSNApiTests, UpdatePkgContextInfoListWithBuffer)
     EXPECT_EQ(hspInfo[7], "1.1.0");
     EXPECT_EQ(hspInfo[9], "Index.ets");
     EXPECT_EQ(hspInfo[11], "false");
+#endif
 }
 
 HWTEST_F_L0(JSNApiTests, TryGetArrayLengthTest001)

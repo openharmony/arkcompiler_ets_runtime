@@ -15,7 +15,6 @@
 
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/json_stringifier.h"
-#include "ecmascript/base/json_stringifier_optimized.cpp"
 #include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_array.h"
@@ -27,6 +26,9 @@
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/tests/ecma_test_common.h"
+#if ENABLE_LATEST_OPTIMIZATION
+#include "ecmascript/base/json_stringifier_optimized.cpp"
+#endif
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
