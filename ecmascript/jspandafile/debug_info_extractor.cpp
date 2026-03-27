@@ -353,4 +353,78 @@ void DebugInfoExtractor::Extract()
         });
     }
 }
+
+bool DebugInfoExtractor::MatchWithLocation(const std::function<bool(const JSPtLocation &)> &cb, int32_t line,
+    int32_t column, const std::string &url, const std::unordered_set<std::string> &debugRecordName)
+{
+    if (line == SPECIAL_LINE_MARK) {
+        return false;
+    }
+    auto &pandaFile = *jsPandaFile_->GetPandaFile();
+    auto classes = jsPandaFile_->GetClasses();
+    for (size_t i = 0; i < classes.Size(); i++) {
+        panda_file::File::EntityId id(classes[i]);
+        if (jsPandaFile_->IsExternal(id)) {
+            continue;
+        }
+
+        CVector<panda_file::File::EntityId> methodIds;
+        panda_file::ClassDataAccessor cda(pandaFile, id);
+        CString recordName = JSPandaFile::ParseEntryPoint(CString(utf::Mutf8AsCString(cda.GetDescriptor())));
+        // Check record name in stage mode
+        if (!jsPandaFile_->IsBundlePack()) {
+            // the recordName for testcases is empty
+            if (!debugRecordName.empty()) {
+                auto iter = debugRecordName.find(std::string(recordName.c_str()));
+                if (iter == debugRecordName.end()) {
+                    continue;
+                }
+            }
+        }
+        cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+            methodIds.push_back(mda.GetMethodId());
+        });
+
+        int32_t minColumn = INT32_MAX;
+        uint32_t currentOffset = UINT32_MAX;
+        uint32_t minColumnOffset = UINT32_MAX;
+        EntityId currentMethodId;
+        EntityId minColumnMethodId;
+        for (auto &methodId : methodIds) {
+            const std::string &sourceFile = GetSourceFile(methodId);
+            // the url for testcases is empty
+            if (!url.empty() && sourceFile != url) {
+                continue;
+            }
+            const LineNumberTable &lineTable = GetLineNumberTable(methodId);
+            const ColumnNumberTable &columnTable = GetColumnNumberTable(methodId);
+            for (uint32_t j = 0; j < lineTable.size(); j++) {
+                if (lineTable[j].line != line) {
+                    continue;
+                }
+                currentMethodId = methodId;
+                currentOffset = lineTable[j].offset;
+                uint32_t nextOffset = ((j == lineTable.size() - 1) ? UINT32_MAX : lineTable[j + 1].offset);
+                for (const auto &pair : columnTable) {
+                    if (pair.offset >= currentOffset && pair.offset < nextOffset) {
+                        if (pair.column == column) {
+                            return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, url));
+                        } else if (pair.column < minColumn && currentOffset < minColumnOffset) {
+                            minColumn = pair.column;
+                            minColumnOffset = currentOffset;
+                            minColumnMethodId = currentMethodId;
+                        }
+                    }
+                }
+            }
+        }
+        if (minColumn != INT32_MAX) { // find the smallest column for the corresponding row
+            return cb(JSPtLocation(jsPandaFile_, minColumnMethodId, minColumnOffset, url));
+        }
+        if (currentOffset != UINT32_MAX) { // find corresponding row, but not find corresponding column
+            return cb(JSPtLocation(jsPandaFile_, currentMethodId, currentOffset, url));
+        }
+    }
+    return false;
+}
 }  // namespace panda::ecmascript
