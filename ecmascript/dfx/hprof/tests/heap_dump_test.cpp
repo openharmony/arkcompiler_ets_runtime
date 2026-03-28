@@ -105,7 +105,7 @@ public:
         return heapProfile->GetIdCount();
     }
 
-    bool GenerateRawHeapSnashot(const std::string &filePath, DumpSnapShotOption &dumpOption,
+    bool GenerateRawHeapSnapshot(const std::string &filePath, DumpSnapShotOption &dumpOption,
                                 Progress *progress = nullptr, std::function<void(uint8_t)> callback = [] (uint8_t) {})
     {
         HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
@@ -1610,7 +1610,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV0)
 
     std::string rawHeapPath("test_binary_dump_v0.rawheap");
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     FILE* file = std::fopen(rawHeapPath.c_str(), "rb+");
     ASSERT_TRUE(file != nullptr);
@@ -1635,7 +1635,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1)
 
     std::string rawHeapPath("test_binary_dump_v1.rawheap");
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     CSet<JSTaggedType> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawHeapPath, dumpObjects));
@@ -1657,7 +1657,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2)
     std::string rawHeapPath("test_binary_dump_v2.rawheap");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     CSet<uint32_t> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawHeapPath, dumpObjects));
@@ -1686,7 +1686,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
     };
     DumpSnapShotOption dumpOption;
     dumpOption.isSync = false;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption, nullptr, cb));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption, nullptr, cb));
     ASSERT_TRUE(status);
 }
 
@@ -1709,7 +1709,7 @@ HWTEST_F_L0(HeapDumpTest, TestGenerateHashInRawheap)
     DumpSnapShotOption dumpOption;
     dumpOption.isSync = true;
     dumpOption.isJSLeakWatcher = true;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
     ASSERT_TRUE(tester.CheckHashInRawheap(thread_, vec, rawHeapPath));
 }
@@ -1723,7 +1723,7 @@ HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV1)
 
     std::string rawHeapPath("test_binary_dump_addrtable_size_min_V1.rawheap");
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     std::vector<uint32_t> sections;
     ASSERT_TRUE(tester.ReadRawHeapSectionInfo(rawHeapPath, sections));
@@ -1750,7 +1750,7 @@ HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV2)
     std::string rawHeapPath("test_binary_dump_addrtable_size_min_V2.rawheap");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     std::vector<uint32_t> sections;
     ASSERT_TRUE(tester.ReadRawHeapSectionInfo(rawHeapPath, sections));
@@ -1831,7 +1831,7 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV1)
     DumpSnapShotOption dumpOption;
     dumpOption.isForSharedOOM = true;
     dumpOption.isProcDump = true;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
     Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 
     CSet<JSTaggedType> dumpObjects;
@@ -1862,7 +1862,7 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV2)
     DumpSnapShotOption dumpOption;
     dumpOption.isForSharedOOM = true;
     dumpOption.isProcDump = true;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
     Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 
     CSet<uint32_t> dumpObjects;
@@ -1894,7 +1894,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1WithHandleClassification1)
     std::string rawheapPath("test_binary_dump_v1_with_handle.rawheap");
 
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawheapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawheapPath, dumpOption));
 
     CSet<JSTaggedType> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawheapPath, dumpObjects));
@@ -1925,7 +1925,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1WithHandleClassification2)
     std::string rawheapPath("test_binary_dump_v1_with_handle.rawheap");
 
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawheapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawheapPath, dumpOption));
 
     CSet<JSTaggedType> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawheapPath, dumpObjects));
@@ -1959,7 +1959,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2WithHandleClassification1)
     std::string rawheapPath("test_binary_dump_v2_with_handle.rawheap");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawheapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawheapPath, dumpOption));
 
     CSet<uint32_t> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawheapPath, dumpObjects));
@@ -1993,7 +1993,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2WithHandleClassification2)
     std::string rawheapPath("test_binary_dump_v2_with_handle.rawheap");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawheapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawheapPath, dumpOption));
 
     CSet<uint32_t> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawheapPath, dumpObjects));
@@ -2200,7 +2200,7 @@ HWTEST_F_L0(HeapDumpTest, TestPropertyNameInBinaryDump)
     std::string rawHeapPath("test_property_name.rawheap");
     HeapDumpTestHelper tester(ecmaVm_);
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     std::string heapsnapshotPath("test_property_name.heapsnapshot");
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
@@ -2229,5 +2229,26 @@ HWTEST_F_L0(HeapDumpTest, TestPropertyNameInBinaryDump)
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"enabled\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"counter\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"metadata\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestProxyClassName)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "proxy_class_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_proxy_class_name.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_proxy_class_name.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassA\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassB\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy\""));
 }
 }

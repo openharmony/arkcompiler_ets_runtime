@@ -28,6 +28,7 @@ test_js_files = [
   "allocation",
   "heap_snapshot",
   "property_name",
+  "proxy_class_name",
 ]
 
 foreach(file, test_js_files) {

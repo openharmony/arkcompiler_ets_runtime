@@ -459,6 +459,7 @@ public:
     }
     CString *GenerateNodeName(TaggedObject *entry);
     static CString GetNodeName(JSType type, bool isVmMode);
+    CString GetProxyClassNameSuffix(TaggedObject *entry);
     NodeType GenerateNodeType(TaggedObject *entry);
     const CVector<Node *> *GetNodes() const
     {
@@ -470,7 +471,7 @@ public:
     }
 
     CString *GetString(const CString &as);
-    CString *GetArrayString(TaggedArray *array, const CString &as);
+    CString GetArrayString(TaggedArray *array, const CString &as);
 
     bool IsInVmMode() const
     {
