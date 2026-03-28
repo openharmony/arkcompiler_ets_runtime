@@ -654,6 +654,7 @@ void RawHeapTranslateV1::BuildJSObjectEdges(Node *node, JSType type)
             return;
         }
 
+        StringId defaultStrId = InsertAndGetStringId("InlineProperty");
         uint32_t propNumber = metaParser_->GetPropsNumberOfJSObject(node->hclass);
         uint32_t inlinedPropsCount = metaParser_->GetInlinedPropertiesCount(node->hclass);
         for (uint32_t i = 0; i < propNumber; i++) {
@@ -676,7 +677,7 @@ void RawHeapTranslateV1::BuildJSObjectEdges(Node *node, JSType type)
             }
 
             EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, valueAddr);
-            CreateEdge(node, valueAddr, key->strId, edgeType);
+            CreateEdge(node, valueAddr, key->strId == 1 ? defaultStrId : key->strId, edgeType);
         }
     } else {
         BuildDictionaryEdges(properties, type, false);
