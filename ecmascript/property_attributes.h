@@ -98,6 +98,9 @@ public:
     static constexpr uint32_t REPRESENTATION_NUM = 2;
     static constexpr uint32_t TRACK_TYPE_NUM = 3;
     static constexpr uint32_t FIELD_TYPE_NUM = 8;
+    // The OffsetBits of IC limits the total bytes occupied by inlined properties and the object itself to the
+    // representable range of 10 bits. So in fact, the number of inlined properties cannot reach 1023, and the size of
+    // the object needs to be excluded to avoid problems with IC.
     static constexpr uint32_t MAX_FAST_PROPS_CAPACITY = (1U << MAX_FAST_PROPS_CAPACITY_LOG2) - 1;
     static constexpr uint32_t MAX_LITERAL_HCLASS_CACHE_SIZE = 63;
     static constexpr unsigned BITS_PER_BYTE = 8;

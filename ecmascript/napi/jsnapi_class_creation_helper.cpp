@@ -23,6 +23,12 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
+// The OffsetBits of IC limits the total bytes occupied by inlined properties and the object itself to the representable
+// range of 10 bits.
+static constexpr size_t maxInlPropCountForClassFunc = ecmascript::PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
+                                                      JSFunction::SIZE / JSTaggedValue::TaggedTypeSize() -
+                                                      JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS;
+
 void JSNApiClassCreationHelper::ConstructDescByAttr(const JSThread *thread, const PropertyAttribute &attr,
                                                     PropertyDescriptor *desc)
 {
@@ -75,8 +81,7 @@ JSHandle<JSObject> JSNApiClassCreationHelper::NewClassFuncProtoWithProperties(
 {
     ASSERT(propertyCount >= nonStaticPropCount);
     JSHandle<GlobalEnv> env = thread->GetGlobalEnv();
-    size_t inlNonStaticPropCount =
-        std::min(nonStaticPropCount, static_cast<size_t>(ecmascript::PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
+    size_t inlNonStaticPropCount = std::min(nonStaticPropCount, maxInlPropCountForClassFunc);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> classPrototypeHClass = factory->CreateClassFuncProtoHClass(thread, inlNonStaticPropCount);
     // Step1: create hClass of protoOrHClass in class function
@@ -98,7 +103,7 @@ JSHandle<JSObject> JSNApiClassCreationHelper::NewClassFuncProtoWithProperties(
         // +------------------+ ... + -------------------------------------+ ... +---------------------+
         for (size_t i = 0; i < inlNonStaticPropCount; ++i) {
             size_t curNonStaticPropIdx = nonStaticPropStartIdx - i;
-            propTags[curNonStaticPropIdx] =
+            propTags[i] =
                 TryAddOriKeyAndOriAttrToHClass(thread, keys[curNonStaticPropIdx], attrs[curNonStaticPropIdx],
                                                descs[curNonStaticPropIdx], nextInlinedPropIdx, classPrototypeHClass);
         }
@@ -112,7 +117,7 @@ JSHandle<JSObject> JSNApiClassCreationHelper::NewClassFuncProtoWithProperties(
         JSHandle<JSTaggedValue> classPrototypeHandle(classPrototype);
         for (size_t i = 0; i < inlNonStaticPropCount; ++i) {
             size_t curNonStaticPropIdx = nonStaticPropStartIdx - i;
-            if (propTags[curNonStaticPropIdx]) {
+            if (propTags[i]) {
                 classPrototype->SetPropertyInlinedProps<true>(thread, curInlPropIdx++,
                                                               descs[curNonStaticPropIdx].GetValue().GetTaggedValue());
             } else {
@@ -146,8 +151,7 @@ JSHandle<JSFunction> JSNApiClassCreationHelper::CreateClassFuncWithProperties(
     size_t staticPropCount, const Local<JSValueRef> *keys, PropertyAttribute *attrs, PropertyDescriptor *descs)
 {
     ASSERT(propertyCount >= staticPropCount);
-    size_t inlinedStaticPropCount =
-        std::min(staticPropCount, static_cast<size_t>(ecmascript::PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
+    size_t inlinedStaticPropCount = std::min(staticPropCount, maxInlPropCountForClassFunc);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 #if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> functionClass = factory->CreateApiClassFuncHClass(thread, inlinedStaticPropCount);

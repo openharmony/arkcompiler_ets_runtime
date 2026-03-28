@@ -216,6 +216,8 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     if (thread->GetEcmaVM()->GetJSOptions().IsEnableInlinePropertyOptimization()) {
         bool isStartObjSizeTracking = true;
         uint32_t expectedOfProperties = JSFunction::CalcuExpotedOfProperties(thread, fun, &isStartObjSizeTracking);
+        // The OffsetBits of IC limits the total bytes occupied by inlined properties and the object itself to the
+        // representable range of 10 bits.
         uint32_t maxInlinedProperties = static_cast<uint32_t>(PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
             JSObject::SIZE / JSTaggedValue::TaggedTypeSize());
         expectedOfProperties = std::min(expectedOfProperties, maxInlinedProperties);
