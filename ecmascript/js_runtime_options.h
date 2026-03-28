@@ -2611,11 +2611,7 @@ private:
     bool enableValueNumbering_ {true};
     bool enableOptString_ {true};
     bool enableMutantArray_ {false};
-#if ENABLE_NEXT_OPTIMIZATION
     bool enableElementsKind_ {false};
-#else
-    bool enableElementsKind_ {false};
-#endif
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};

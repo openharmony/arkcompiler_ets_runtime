@@ -46,9 +46,6 @@ public:
         bool holeAsUndefined = false;
     };
 
-#if !ENABLE_NEXT_OPTIMIZATION
-    enum SeparatorFlag : int { MINUS_ONE = -1, MINUS_TWO = -2 };
-#endif
     static JSTaggedValue Push(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Push(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Pop(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv);
@@ -164,21 +161,11 @@ private:
                             JSThread *thread, uint32_t &start, JSHandle<JSObject> &thisObjHandle,
                             JSHandle<JSTaggedValue> &holeHandle);
 
-#if !ENABLE_NEXT_OPTIMIZATION
-    static void SetSepValue(JSThread *thread, JSHandle<EcmaString> sepStringHandle, int &sep, uint32_t &sepLength);
-    static JSTaggedValue JoinUseTreeString(const JSThread *thread,
-                                           const JSHandle<JSTaggedValue> receiverValue,
-                                           const JSHandle<EcmaString> sepStringHandle, const int sep,
-                                           CVector<JSHandle<EcmaString>> &vec);
-    inline static bool WorthUseTreeString(int sep, size_t allocateLength, uint32_t len);
-#endif
-
     // Allocate object larger than 256 need liner search in the free object list,
     // so try to use tree string when the join result is larger than 256.
     static constexpr size_t TREE_STRING_THRESHOLD = 256;
     static constexpr size_t NUM_2 = 2;
 
-#if ENABLE_NEXT_OPTIMIZATION
     // When Array length is no more than 64, use array (stack memory) instead of vector to store the elements.
     static constexpr int64_t USE_STACK_MEMORY_THRESHOLD = 64;
     inline static bool WorthUseTreeString(uint32_t sepLength, size_t allocateLength, uint32_t len);
@@ -193,7 +180,6 @@ private:
     static JSTaggedValue JoinUseTreeString(const JSThread *thread, JSHandle<JSTaggedValue> receiverValue,
                                            JSHandle<EcmaString> sepStringHandle, uint32_t sepLength,
                                            Container &arrElements, uint32_t elemNum);
-#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

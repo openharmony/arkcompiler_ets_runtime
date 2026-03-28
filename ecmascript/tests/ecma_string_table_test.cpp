@@ -40,11 +40,9 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternFlattenString_EmptyString)
 
     table->GetOrInternFlattenString(thread->GetEcmaVM(), *emptyEcmaStrHandle);
     EXPECT_TRUE(!EcmaStringAccessor(emptyEcmaStrHandle).IsInternString());
-#if ENABLE_NEXT_OPTIMIZATION
     EcmaString *emptyEcmaStr = table->TryGetInternString(thread, emptyEcmaStrHandle);
     EXPECT_STREQ(EcmaStringAccessor(emptyEcmaStr).ToCString(thread).c_str(), "");
     EXPECT_TRUE(EcmaStringAccessor(emptyEcmaStr).IsInternString());
-#endif
 }
 
 /**
@@ -110,11 +108,9 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_EcmaString)
     EXPECT_STREQ(EcmaStringAccessor(ecmaStrGetPtr).ToCString(thread).c_str(), "hello world");
     EXPECT_TRUE(EcmaStringAccessor(ecmaStrGetPtr).IsInternString());
 
-#if ENABLE_NEXT_OPTIMIZATION
     EcmaString *ecmaStr = table->TryGetInternString(thread, ecmaStrCreateHandle);
     EXPECT_STREQ(EcmaStringAccessor(ecmaStr).ToCString(thread).c_str(), "hello world");
     EXPECT_TRUE(EcmaStringAccessor(ecmaStr).IsInternString());
-#endif
 }
 
 /**
@@ -126,14 +122,8 @@ HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_EcmaString)
  */
 HWTEST_F_L0(EcmaStringTableTest, GetOrInternString_CheckStringTable)
 {
-#if ENABLE_NEXT_OPTIMIZATION
     EXPECT_TRUE(thread->GetEcmaVM()->GetEcmaStringTable()->CheckStringTableValidity(thread));
-#else
-    EXPECT_TRUE(thread->GetEcmaVM()->GetEcmaStringTable()->CheckStringTableValidity(thread));
-#endif
 }
-
-#if ENABLE_NEXT_OPTIMIZATION
 
 // Check BitFiled of Entry
 template<typename Mutex, typename ThreadHolder, TrieMapConfig::SlotBarrier SlotBarrier>
@@ -220,7 +210,6 @@ HWTEST_F_L0(EcmaStringTableTest, TryGetInternString_ExistingString)
     EXPECT_STREQ(EcmaStringAccessor(retrieved).ToCString(thread).c_str(), "test");
     EXPECT_TRUE(EcmaStringAccessor(retrieved).IsInternString());
 }
-#endif
 
 HWTEST_F_L0(EcmaStringTableTest, GetOrInternFlattenStringNoGC)
 {

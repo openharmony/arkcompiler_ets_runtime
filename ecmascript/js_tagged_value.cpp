@@ -1598,11 +1598,9 @@ bool JSTaggedValue::ToArrayLength(JSThread *thread, const JSHandle<JSTaggedValue
 
 JSHandle<JSTaggedValue> JSTaggedValue::ToPrototypeOrObj(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
-#if ENABLE_NEXT_OPTIMIZATION
     if (obj->IsECMAObject()) {
         return obj;
     }
-#endif
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     if (obj->IsNumber()) {
         return JSHandle<JSTaggedValue>(thread,
@@ -1827,14 +1825,12 @@ JSTaggedNumber JSTaggedValue::StringToNumber(JSThread *thread, JSTaggedValue tag
     }
     if (strLen < MAX_ELEMENT_INDEX_LEN && strAccessor.IsUtf8()) {
         IntegerCache *cache = nullptr;
-#if ENABLE_NEXT_OPTIMIZATION
         if ((strLen <= IntegerCache::MAX_INTEGER_CACHE_SIZE) && strAccessor.IsInternString()) {
             cache = IntegerCache::Extract(EcmaString::Cast(tagged)->ToBaseString());
             if (cache->IsInteger()) {
                 return JSTaggedNumber(cache->GetInteger());
             }
         }
-#endif
         common::Span<const uint8_t> str = strAccessor.FastToUtf8Span();
         if (strAccessor.GetLength() == 0) {
             return JSTaggedNumber(0);

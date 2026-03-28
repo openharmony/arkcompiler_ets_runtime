@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-
-// Disable ENABLE_NEXT_OPTIMIZATION cannot run the following tests
-
 {
     // chainese and english space with length 9
     let obj = { a: 1, b: { c: 2 } };

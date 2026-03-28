@@ -1009,10 +1009,8 @@ public:
     CString ToCString(const JSThread *thread, StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION,
                       bool cesu8 = false);
 
-#if ENABLE_NEXT_OPTIMIZATION
     void AppendToCString(const JSThread *thread, CString &str);
     void AppendToC16String(const JSThread *thread, C16String &str);
-#endif
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
