@@ -1150,10 +1150,10 @@ bool JsonParser<T>::IsExponentLegal(bool &hasExponent)
         return false;
     }
     while (current_ != end_) {
+        Advance();
         if (!IsNumberCharacter(*current_)) {
             return false;
         }
-        Advance();
     }
     return true;
 }
