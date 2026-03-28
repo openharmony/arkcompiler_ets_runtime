@@ -1414,6 +1414,7 @@ if (is_mingw) {
     "ecmascript/platform/unix/map.cpp",
     "ecmascript/platform/unix/time.cpp",
     "ecmascript/platform/unix/aot_crash_info.cpp",
+    "ecmascript/platform/unix/time_common.cpp",
   ]
   if (is_mac) {
     ecma_platform_source += [

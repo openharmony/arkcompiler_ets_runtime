@@ -15,18 +15,23 @@
 
 #include "modules_snapshot_helper.h"
 
+#include "ecmascript/base/error_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/js_runtime_options.h"
+#include "ecmascript/js_thread.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/signal_manager.h"
-#include "securec.h"
+#include "ecmascript/platform/time.h"
 
 #include <csignal>
 #include <mutex>
+#include <securec.h>
 #include <string_view>
 #include <system_error>
+#include <unistd.h>
 #include <vector>
 
 namespace panda::ecmascript {
@@ -34,6 +39,7 @@ bool ModulesSnapshotHelper::g_escaperDisabled_ = false;
 int ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
 int ModulesSnapshotHelper::g_featureLoaded_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
 char ModulesSnapshotHelper::g_stateFilePathBuffer_[PATH_MAX] = {};
+volatile bool g_escaperTriggered {false};
 
 void ModulesSnapshotHelper::RegisterSignalHandler()
 {
@@ -83,6 +89,12 @@ void ModulesSnapshotHelper::RegisterSignalHandler()
 
 bool ModulesSnapshotHelper::SigchainHandler(int signo, void *info, void *ucontext)
 {
+    // snapshot feature is not loaded
+    if (g_featureLoaded_ == static_cast<int>(SnapshotFeatureState::DEFAULT) || g_escaperTriggered) {
+        return false;
+    }
+    g_escaperTriggered = true;
+
     TryDisableSnapshot(signo);
     return false;
 }
@@ -103,13 +115,10 @@ void ModulesSnapshotHelper::MarkSnapshotDisabledByOption()
         static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
 }
 
-void ModulesSnapshotHelper::TryDisableSnapshot(int reason)
+bool ModulesSnapshotHelper::TryDisableSnapshot(int reason)
 {
-    // snapshot feature is not loaded
-    if (g_featureLoaded_ == static_cast<int>(SnapshotFeatureState::DEFAULT)) {
-        return;
-    }
-
+    // get crrent timestamp att first
+    int64_t timestamp = GetCurrentTimestamp();
     PosixFile stateFile(g_stateFilePathBuffer_, "w");
     std::string_view disableWord = "";
     // it means both snapshot feature is enabled at least during the process running,
@@ -127,17 +136,61 @@ void ModulesSnapshotHelper::TryDisableSnapshot(int reason)
     if (reason == 0) {
         LOG_ECMA(WARN) << "js crash occurred, try to disable snapshot";
         stateFile.Write(DISABLE_REASON_UNCAUGHT_EXCEPTION);
-        return;
-    }
-    if (reason > 0) {
+    } else if (reason > 0) {
         stateFile.Write(DISABLE_REASON_SIGNAL);
         constexpr size_t SIG_MAX_DIGITS = 2;
         char sigBuf[SIG_MAX_DIGITS]{};
         auto written = IntToString(reason, sigBuf, SIG_MAX_DIGITS);
         stateFile.Write(sigBuf, written);
+    } else {
+        stateFile.Write(DISABLE_REASON_UNKNOWN);
+    }
+    constexpr size_t TIMESTAMP_MAX_DIGITS = 20;
+    char timestampBuf[TIMESTAMP_MAX_DIGITS]{};
+    stateFile.Write(std::string_view(", timestamp: "));
+    auto written = IntToString(timestamp, timestampBuf, TIMESTAMP_MAX_DIGITS);
+    stateFile.Write(timestampBuf, written);
+    stateFile.Write(std::string_view("\n"));
+
+    return true;
+}
+
+void ModulesSnapshotHelper::TryDisableSnapshot(JSThread* thread)
+{
+    // snapshot feature is not loaded
+    if (g_featureLoaded_ == static_cast<int>(SnapshotFeatureState::DEFAULT) || g_escaperTriggered) {
         return;
     }
-    stateFile.Write(DISABLE_REASON_UNKNOWN);
+    g_escaperTriggered = true;
+
+    if (!TryDisableSnapshot(0)) {
+        return;
+    }
+    // Print exception info if there is a pending exception
+    if (thread == nullptr || !thread->HasPendingException()) {
+        return;
+    }
+    JSHandle<JSTaggedValue> exceptionHandle(thread, thread->GetException());
+    if (!exceptionHandle->IsJSError()) {
+        return;
+    }
+    // tostring method requires an exception-free environment
+    thread->ClearException();
+    std::string content {};
+    content += "name: ";
+    content += base::ErrorHelper::GetJSErrorInfo(thread, exceptionHandle, base::ErrorHelper::JSErrorProps::NAME);
+    content += "\n";
+    content += "message: ";
+    content += base::ErrorHelper::GetJSErrorInfo(thread, exceptionHandle, base::ErrorHelper::JSErrorProps::MESSAGE);
+    content += "\n";
+    content += base::ErrorHelper::GetJSErrorInfo(thread, exceptionHandle, base::ErrorHelper::JSErrorProps::STACK);
+    content += "\n";
+    PosixFile stateFile(g_stateFilePathBuffer_, "r+");
+    stateFile.Seek(0, PosixFile::SeekOrigin::END);
+    stateFile.Write(content);
+    LOG_ECMA(WARN) << "uncaught exception occurs, modues and (or) pandafile snapshot(s) will be disabled next time.\n"
+        << content;
+    thread->SetException(exceptionHandle.GetTaggedValue());
 }
 
 void ModulesSnapshotHelper::DisableSnapshotEscaper() { g_escaperDisabled_ = true; }
@@ -163,7 +216,7 @@ bool ModulesSnapshotHelper::SetReadOnly(const std::string_view &path, std::strin
     return false;
 }
 
-size_t ModulesSnapshotHelper::IntToString(int value, char *buf, size_t bufSize)
+size_t ModulesSnapshotHelper::IntToString(int64_t value, char *buf, size_t bufSize)
 {
     if (buf == nullptr || bufSize == 0) {
         return 0;
@@ -231,31 +284,44 @@ void ModulesSnapshotHelper::UpdateFromStateFile(const CString &path)
     if (memcpy_s(g_stateFilePathBuffer_, PATH_MAX, stateFilePath.c_str(), stateFilePath.length()) != EOK) {
         LOG_ECMA(WARN) << "memcpy_s failed when copy state file path";
     }
-    if (g_escaperDisabled_) {
-        return;
-    }
     // maybe snapshot is running well
-    if (!FileExist(stateFilePath.c_str())) {
+    if (g_escaperDisabled_ || !FileExist(stateFilePath.c_str())) {
         return;
     }
     PosixFile stateFile(stateFilePath, "r");
     char stateWord{};
     if (stateFile.IsValid() && stateFile.Read(&stateWord, sizeof(stateWord)) <= 0) {
+        g_featureState_ = disableAll;
+        LOG_ECMA(WARN) << "module snapshot is disabled: invalid state file";
         return;
     }
+
+    stateFile.Seek(1, PosixFile::SeekOrigin::CURRENT); // skip first ":"
+    // Read reason
+    std::string report = "unknown";
+    report.resize(stateFile.Size());
+    if (auto len = stateFile.Read(report); len > 0) {
+        report.resize((len));
+    }
+    size_t sumLen = report.find("\n");
+    auto summary = std::string_view(report.c_str(), sumLen != std::string::npos ? sumLen : report.size());
+    auto detail = std::string_view(summary.end() + 1, report.size() - sumLen - 1);
+
     switch (stateWord) {
         case STATE_WORD_MODULE_SNAPSHOT_DISABLED:
             g_featureState_ |= static_cast<int>(SnapshotFeatureState::MODULE);
-            LOG_ECMA(WARN) << "module snapshot is disabled due to crash occurs";
+            LOG_ECMA(INFO) << "module snapshot is disabled: crash occurs. recent error: " << summary;
+            LOG_ECMA(DEBUG)  << detail;
             break;
         case STATE_WORD_ALL_SNAPSHOT_DISABLED:
             g_featureState_ = disableAll;
-            LOG_ECMA(WARN) << "module and pandafile snapshots is disabled due to crash occurs";
+            LOG_ECMA(INFO) << "module and pandafile snapshots are disabled: crash occurs. recent error: " << summary;
+            LOG_ECMA(DEBUG)  << detail;
             break;
         default:
             // invalid state word, file maybe create by user or application
             g_featureState_ = disableAll;
-            LOG_ECMA(WARN) << "module and pandafile snapshots is disabled due to unexpected state word";
+            LOG_ECMA(WARN) << "module and pandafile snapshots are disabled: unexpected state word";
             break;
     }
 }

@@ -1537,9 +1537,12 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
     bool isNativeModule = IsNativeModule(moduleType);
     JSHandle<JSTaggedValue> resolution;
     if (UNLIKELY(isNativeModule || moduleType == ModuleTypes::CJS_MODULE)) {
-        thread->GetEcmaVM()->GetJSOptions().SetDisableModuleSnapshot(true);
-        LOG_ECMA(DEBUG) << "ModuleSnapshot is disable: export * from "
-                << GetModuleName(importedModule.GetTaggedValue());
+        if (!thread->GetEcmaVM()->GetJSOptions().DisableModuleSnapshot() ||
+            thread->GetEcmaVM()->GetJSOptions().EnableModuleLog()) {
+            thread->GetEcmaVM()->GetJSOptions().SetDisableModuleSnapshot(true);
+            LOG_ECMA(INFO) << "ModuleSnapshot is disabled: export * from "
+                    << GetModuleName(importedModule.GetTaggedValue());
+        }
         resolution = isNativeModule
             ? SourceTextModule::ResolveNativeStarExport(thread, importedModule, exportName)
             : SourceTextModule::ResolveCjsStarExport(thread, importedModule, exportName);

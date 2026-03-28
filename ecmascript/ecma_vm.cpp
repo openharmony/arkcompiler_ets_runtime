@@ -312,6 +312,7 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
     }
 #endif
     if (option.DisableJSPandaFileAndModuleSnapshot()) {
+        LOG_ECMA(INFO) << "Modules snapshot disabled: runtime option";
         ModulesSnapshotHelper::MarkSnapshotDisabledByOption();
     } else {
         ModulesSnapshotHelper::RegisterSignalHandler();
