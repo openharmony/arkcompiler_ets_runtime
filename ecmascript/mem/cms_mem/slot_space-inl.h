@@ -137,7 +137,7 @@ std::pair<uintptr_t, size_t> SlotSpace::AllocateBufferSyncByIdx(size_t idx)
     size_t slotSize = GetSlotSizeByIdx(idx);
     ASSERT(slotSize > 0);
     size_t maxBufferSize = (SlotSpaceConfig::MAX_GC_TLAB_BUFFER_SIZE + slotSize - 1) / slotSize * slotSize;
-    SlotAllocator *allocator = allocators_[idx];
+    SlotAllocator *allocator = gcAllocators_[idx];
 
     // fixme: optimize?
     {
@@ -150,7 +150,7 @@ std::pair<uintptr_t, size_t> SlotSpace::AllocateBufferSyncByIdx(size_t idx)
             }
         }
 
-        ExpandAllocator(allocator);
+        ExpandAllocator<true>(allocator);
     
         {
             auto result = allocator->TryAllocateBuffer(maxBufferSize);
@@ -190,6 +190,22 @@ void SlotSpace::SetRecordRegion()
 {
     for (CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
         regionChainManager->SetRecordRegion();
+    }
+}
+
+template <typename Callback>
+void SlotSpace::EnumerateFromRegions(Callback &&cb) const
+{
+    for (Region *region : pendingReclaimFromRegions_) {
+        cb(region);
+    }
+}
+
+template <typename Callback>
+void SlotSpace::EnumerateToRegions(Callback &&cb) const
+{
+    for (const CMSRegionChainManager *regionChainManager : gcRegionChainManagerInstances_) {
+        regionChainManager->EnumerateRegions(cb);
     }
 }
 }  // namespace panda::ecmascript

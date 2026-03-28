@@ -364,7 +364,7 @@ public:
     bool HasLocalToShareRememberedSet() const;
     RememberedSet *CollectLocalToShareRSet();
     void InsertLocalToShareRSet(uintptr_t addr);
-    void InsertLocalToShareRSetForCC(uintptr_t addr);
+    void InsertSweepingLocalToShareRSetForCC(uintptr_t addr);
     template<RegionSpaceKind kind>
     Updater<kind> GetBatchRSetUpdater(uintptr_t addr);
     void AtomicInsertLocalToShareRSet(uintptr_t addr);
@@ -952,6 +952,7 @@ protected:
     friend class SnapshotProcessor;
     friend class RuntimeStubs;
     friend class ToSpace;
+    friend class SlotSpace;
 };
 
 class BumpPointerFreeListWrapper {

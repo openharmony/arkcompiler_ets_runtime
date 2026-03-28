@@ -202,6 +202,7 @@ void CMSRegionChainManager::PrepareCompact(std::vector<Region *> &pendingReclaim
     ASSERT(sweptFullRegionList_.empty());
     EnumerateRegions([&pendingReclaimFromRegions](Region *region) {
         pendingReclaimFromRegions.emplace_back(region);
+        region->SetRegionTypeFlag(RegionTypeFlag::FROM);
     });
     regionList_.Clear();
     usableSlotFreeList_.clear();

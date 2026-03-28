@@ -83,7 +83,6 @@ public:
 };
 
 #ifdef PANDA_TARGET_64
-#if !USE_CMS_GC
 void SimulateWorker()
 {
     JSRuntimeOptions options;
@@ -279,6 +278,7 @@ HWTEST_F_L0(LocalCCTest, GCConflictTest3)
     }
 }
 
+#if !USE_CMS_GC
 HWTEST_F_L0(LocalCCTest, GCConflictOOMTest)
 {
     constexpr size_t OBJ_SIZE = 3_KB;
@@ -291,6 +291,7 @@ HWTEST_F_L0(LocalCCTest, GCConflictOOMTest)
         EXPECT_FALSE(thread->IsConcurrentCopying());
     }
 }
+#endif
 
 HWTEST_F_L0(LocalCCTest, SkipGCTest)
 {
@@ -580,7 +581,6 @@ HWTEST_F_L0(LocalCCTest, ArkToolsTriggerImplTest)
         EXPECT_FALSE(thread->IsConcurrentCopying());
     }
 }
-#endif
 #endif
 
 HWTEST_F_L0(LocalCCTest, DisableTest)

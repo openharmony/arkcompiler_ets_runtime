@@ -58,6 +58,12 @@ public:
 
     inline void SetRecordRegion();
 
+    template <typename Callback>
+    inline void EnumerateFromRegions(Callback &&cb) const;
+
+    template <typename Callback>
+    inline void EnumerateToRegions(Callback &&cb) const;
+
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor);
 
     void PrepareSweeping() override;
@@ -97,6 +103,8 @@ public:
     void ReclaimFromRegions(bool needCacheRegion);
 
     void AdjustCapacity(JSThread *thread);
+
+    void MergeToRegions();
 
 private:
     static constexpr int GROWING_FACTOR = 2;
@@ -182,6 +190,7 @@ private:
 
     bool TryExpandAllocator(SlotAllocator *allocator, MemoryCheckerKind checkerKind);
 
+    template<bool expandInGC = false>
     void ExpandAllocator(SlotAllocator *allocator);
     
     inline ARK_INLINE void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
@@ -191,6 +200,10 @@ private:
     std::array<SlotAllocator*, SlotSpaceConfig::NUM_SLOTS> allocators_ {};
     std::vector<CMSRegionChainManager *> regionChainManagerInstances_ {};
     std::vector<SlotAllocator *> allocatorInstances_ {};
+
+    std::array<SlotAllocator*, SlotSpaceConfig::NUM_SLOTS> gcAllocators_ {};
+    std::vector<CMSRegionChainManager *> gcRegionChainManagerInstances_ {};
+    std::vector<SlotAllocator *> gcAllocatorInstances_ {};
 
     std::vector<Region *> pendingReclaimFromRegions_ {};
     size_t cacheRegionSize_ {0};

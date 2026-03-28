@@ -19,7 +19,6 @@
 #include "ecmascript/mem/cms_mem/slot_allocator.h"
 
 namespace panda::ecmascript {
-class BaseHeap;
 class SlotSpace;
 
 class SlotGCAllocator {
