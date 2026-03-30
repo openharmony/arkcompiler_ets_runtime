@@ -359,12 +359,26 @@ StringId RawHeapDump::GenerateStringIdForString(TaggedObject *object, JSThread *
     return 1;  // 1 : invalid id
 }
 
+StringId RawHeapDump::GenerateStringIdForJSProxy(TaggedObject *object)
+{
+    CString suffix = snapshot_->GetProxyClassNameSuffix(object);
+    if (!suffix.empty()) {
+        CString nodeName = HeapSnapshot::GetNodeName(JSType::JS_PROXY, snapshot_->IsInVmMode()) + suffix;
+        return const_cast<StringHashMap*>(snapshot_->GetEcmaStringTable())->InsertStrAndGetStringId(nodeName);
+    }
+    return 1;  // 1 : invalid id
+}
+
 // Generate a string ID for an object. Normally string objects are skipped due to content trimming,
 // but when strAllowed is true, property name strings are allowed in the string table.
 StringId RawHeapDump::GenerateStringId(TaggedObject *object, bool strAllowed)
 {
     JSTaggedValue entry(object);
     JSThread *thread = vm_->GetAssociatedJSThread();
+
+    if (entry.IsJSProxy()) {
+        return GenerateStringIdForJSProxy(object);
+    }
 
     if (entry.IsOnlyJSObject()) {
         return GenerateStringIdForJSObject(object, thread);

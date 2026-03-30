@@ -26,13 +26,13 @@ CString *HeapSnapshot::GetString(const CString &as)
     return stringTable_->GetString(as);
 }
 
-CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
+CString HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
 {
     CString arrayName = as;
     arrayName.append("[");
     arrayName.append(ToCString(array->GetLength()));
     arrayName.append("]");
-    return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
+    return arrayName;  // String type was handled singly, see#GenerateStringNode
 }
 
 Node *Node::NewNode(Chunk &chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
@@ -227,12 +227,38 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
     }
 }
 
+CString HeapSnapshot::GetProxyClassNameSuffix(TaggedObject *entry)
+{
+    JSThread *thread = vm_->GetAssociatedJSThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> arkUiObservedObjName = thread->GlobalConstants()->GetHandledArkUiObservedName();
+    JSHandle<JSTaggedValue> globalThisHandle(thread, vm_->GetGlobalEnv()->GetGlobalObject());
+    if (!JSTaggedValue::HasProperty(thread, globalThisHandle, arkUiObservedObjName)) {
+        return "";
+    }
+    JSHandle<JSTaggedValue> arkUiObservedSymbolName =
+        JSTaggedValue::GetProperty(thread, globalThisHandle, arkUiObservedObjName).GetValue();
+
+    JSTaggedValue obj(entry);
+    auto proxy = JSProxy::Cast(obj);
+    JSTaggedValue proxyHandler = proxy->GetHandler(thread);
+    JSHandle<JSTaggedValue> proxyHandlerHandle(thread, proxyHandler);
+    if (JSTaggedValue::HasProperty(thread, proxyHandlerHandle, arkUiObservedSymbolName)) {
+        JSHandle<JSTaggedValue> finalName =
+            JSTaggedValue::GetProperty(thread, proxyHandlerHandle, arkUiObservedSymbolName).GetValue();
+        CString className = EcmaStringAccessor(JSTaggedValue::ToString(thread, finalName)).ToCString(thread);
+        return "-" + className;
+    }
+    return "";
+}
+
 // NOLINTNEXTLINE(readability-function-size)
 CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
 {
     auto *hCls = entry->GetClass();
     JSType type = hCls->GetObjectType();
-    CString *nodename = GetString(GetNodeName(type, IsInVmMode()));
+    CString nodeName = GetNodeName(type, IsInVmMode());
     switch (type) {
         case JSType::TAGGED_ARRAY:
         case JSType::JS_SHARED_TYPED_ARRAY:
@@ -244,16 +270,19 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
         case JSType::CONSTANT_POOL:
         case JSType::PROFILE_TYPE_INFO:
         case JSType::IC_INFO:
-            return GetArrayString(TaggedArray::Cast(entry), *nodename);
         case JSType::TAGGED_DICTIONARY:
         case JSType::AOT_LITERAL_INFO:
         case JSType::VTABLE:
         case JSType::COW_TAGGED_ARRAY:
-            return GetArrayString(TaggedArray::Cast(entry), *nodename);
+            nodeName = GetArrayString(TaggedArray::Cast(entry), nodeName);
+            break;
+        case JSType::JS_PROXY:
+            nodeName += GetProxyClassNameSuffix(entry);
+            break;
         default:
             break;
     }
-    return nodename;
+    return GetString(nodeName);
 }
 
 CString HeapSnapshot::GetNodeName(JSType type, bool isVmMode)

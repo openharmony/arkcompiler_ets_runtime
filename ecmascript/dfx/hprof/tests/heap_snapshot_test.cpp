@@ -370,7 +370,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestUpdateNodeAddressIdMap)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     HeapProfilerFriendTest tester(ecmaVm_);
-    
+
     ObjectFactory *factory = ecmaVm_->GetFactory();
     JSHandle<JSTaggedValue> obj1(factory->CreateNapiObject());
     JSHandle<JSTaggedValue> obj2(factory->CreateNapiObject());
@@ -417,5 +417,41 @@ HWTEST_F_L0(HeapSnapShotTest, TestSerializeExtraInfo)
 #else
     ASSERT_TRUE(true);
 #endif
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestProxyClassName)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
+    std::string entryPoint = "proxy_class_name";
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, entryPoint);
+    ASSERT_TRUE(result);
+
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+
+    bool foundProxyA = false;
+    bool foundProxyB = false;
+    bool foundProxyNoName = false;
+
+    for (auto node : *snapshot->GetNodes()) {
+        CString name = *node->GetName();
+        if (name == "Proxy-ClassA") {
+            foundProxyA = true;
+            continue;
+        }
+        if (name == "Proxy-ClassB") {
+            foundProxyB = true;
+            continue;
+        }
+        if (name == "Proxy") {
+            foundProxyNoName = true;
+            continue;
+        }
+    }
+
+    ASSERT_TRUE(foundProxyA) << "Proxy-ClassA not found";
+    ASSERT_TRUE(foundProxyB) << "Proxy-ClassB not found";
+    ASSERT_TRUE(foundProxyNoName) << "Proxy without class name not found";
 }
 }

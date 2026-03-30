@@ -141,6 +141,7 @@ protected:
 private:
     StringId GenerateStringIdForJSObject(TaggedObject *object, JSThread *thread);
     StringId GenerateStringIdForJSFunction(TaggedObject *object, JSThread *thread);
+    StringId GenerateStringIdForJSProxy(TaggedObject *object);
     StringId GenerateStringIdForString(TaggedObject *object, JSThread *thread);
 
     const EcmaVM *vm_ {nullptr};

@@ -501,6 +501,7 @@ class ObjectFactory;
     V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")                     \
     V(InteropJsNapiString,            INTEROP_JS_NAPI,                       "ets_interop_js_napi")         \
     V(GetModuleString,                GET_MODULE,                            "getModule")                   \
+    V(ArkUiObservedName,              ARKUI_OBSERVED_NAME,                   "__OBSERVED_OBJECT_NAME")      \
     SHARED_GLOBAL_ENV_CONSTANT_STRING_HYBRID(V)
 
 #define SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(V)                                                              \
