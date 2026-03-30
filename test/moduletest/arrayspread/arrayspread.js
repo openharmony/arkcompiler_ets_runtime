@@ -27,6 +27,7 @@ function foo0() { return arguments.hasOwnProperty(0); }
 print(foo0(...a));
 a.__proto__.push(2);
 print([...a]);
+a.__proto__.pop()
 
 //  ========================normal tests========================
 print("\n=== Basic Spread Tests ===");
@@ -41,6 +42,8 @@ print("\n=== Empty Array Spread ===");
 var empty = [];
 print([...empty]);
 print([...empty].length);
+let spreadEmptyArr = [1, ...new Array(3), 1];
+print(JSON.stringify(spreadEmptyArr))
 
 // Spread with single element
 print("\n=== Single Element Spread ===");

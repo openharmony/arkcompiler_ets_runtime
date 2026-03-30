@@ -1053,8 +1053,14 @@ void BuiltinsArrayStubBuilder::ArrayIteratorNext(GateRef glue, GateRef thisValue
                    &createIterResult, &kindIsNotKey);
             Bind(&kindIsNotKey);
             {
+                Label resultIsHole(env);
                 iterValue = GetTaggedValueWithElementsKind(glue, array, index);
-                Jump(&checkNeedCreateEntry);
+                BRANCH(TaggedIsHole(*iterValue), &resultIsHole, &checkNeedCreateEntry);
+                Bind(&resultIsHole);
+                {
+                    iterValue = Undefined();
+                    Jump(&checkNeedCreateEntry);
+                }
             }
         }
     }

@@ -25,6 +25,7 @@ true
 === Empty Array Spread ===
 
 0
+[1,null,null,null,1]
 
 === Single Element Spread ===
 42
