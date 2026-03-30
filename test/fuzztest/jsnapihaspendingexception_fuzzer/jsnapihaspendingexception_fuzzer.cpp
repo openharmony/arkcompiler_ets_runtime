@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/log_wrapper.h"
@@ -29,15 +30,13 @@ void JSNApiUncaughtClearExceptionFuzzTest([[maybe_unused]]const uint8_t *data, s
     EcmaVM *vm_ = JSNApi::CreateJSVM(option);
     JSThread *thread_ = nullptr;
     thread_ = vm_->GetJSThread();
-    if (size <= 0) {
+    if (data == nullptr || size <= 0) {
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    char *value = new char[size]();
-    if (memcpy_s(value, size, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-    }
-    Local<StringRef> message = StringRef::NewFromUtf8(vm_, value, (int)size);
+    FuzzedDataProvider fdp(data, size);
+    std::string messageData = fdp.ConsumeRandomLengthString(size);
+    Local<StringRef> message = StringRef::NewFromUtf8(vm_, messageData.data(), static_cast<int>(messageData.size()));
     Local<JSValueRef> error = Exception::Error(vm_, message);
     JSNApi::ThrowException(vm_, error);
     JSNApi::HasPendingException(vm_);

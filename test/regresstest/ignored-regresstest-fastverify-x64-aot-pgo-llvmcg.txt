@@ -21,9 +21,3 @@ regresstest/ark-regress/mjsunit/regress/regress-crbug-551287.js
 #20325
 regresstest/ark-regress/mjsunit/regress/regress-448711.js
 regresstest/ark-regress/mjsunit/es6/regress/regress-508074.js
-
-#31537
-regresstest/ark-regress/mjsunit/compiler/regress-1127319.js
-
-#31869
-regresstest/ark-regress/mjsunit/compiler/regress-gap.js

@@ -35,8 +35,8 @@ constexpr std::array<uint64_t, kMaxBitTableSize> kBitmaskImmMultTable = {
 
 void MacroAssemblerAArch64::Move(const StackSlotOperand &dstStackSlot, Immediate value)
 {
-    aarch64::Register baseReg = (dstStackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
-                                                               aarch64::Register(aarch64::SP);
+    aarch64::Register baseReg = (dstStackSlot.IsFrameBase()) ? aarch64::fp :
+                                                               aarch64::sp;
     aarch64::MemoryOperand dstOpnd(baseReg, static_cast<int64_t>(dstStackSlot.GetOffset()));
     assembler.Mov(LOCAL_SCOPE_REGISTER, aarch64::Immediate(value.GetValue()));
     PickLoadStoreInsn(LOCAL_SCOPE_REGISTER, dstOpnd, false);
@@ -45,11 +45,11 @@ void MacroAssemblerAArch64::Move(const StackSlotOperand &dstStackSlot, Immediate
 void MacroAssemblerAArch64::Move(const StackSlotOperand &dstStackSlot,
                                  const StackSlotOperand &srcStackSlot)
 {
-    aarch64::Register dstBaseReg = (dstStackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
-                                                                  aarch64::Register(aarch64::SP);
+    aarch64::Register dstBaseReg = (dstStackSlot.IsFrameBase()) ? aarch64::fp :
+                                                                  aarch64::sp;
     aarch64::MemoryOperand dstOpnd(dstBaseReg, static_cast<int64_t>(dstStackSlot.GetOffset()));
-    aarch64::Register srcBaseReg = (srcStackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
-                                                                  aarch64::Register(aarch64::SP);
+    aarch64::Register srcBaseReg = (srcStackSlot.IsFrameBase()) ? aarch64::fp :
+                                                                  aarch64::sp;
     aarch64::MemoryOperand srcOpnd(srcBaseReg, static_cast<int64_t>(srcStackSlot.GetOffset()));
     PickLoadStoreInsn(LOCAL_SCOPE_REGISTER, srcOpnd);
     PickLoadStoreInsn(LOCAL_SCOPE_REGISTER, dstOpnd, false);
@@ -57,8 +57,8 @@ void MacroAssemblerAArch64::Move(const StackSlotOperand &dstStackSlot,
 
 void MacroAssemblerAArch64::Cmp(const StackSlotOperand &stackSlot, Immediate value)
 {
-    aarch64::Register baseReg = (stackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
-                                                            aarch64::Register(aarch64::SP);
+    aarch64::Register baseReg = (stackSlot.IsFrameBase()) ? aarch64::fp :
+                                                            aarch64::sp;
     aarch64::MemoryOperand opnd(baseReg, static_cast<int64_t>(stackSlot.GetOffset()));
     aarch64::Operand immOpnd = aarch64::Immediate(value.GetValue());
     PickLoadStoreInsn(LOCAL_SCOPE_REGISTER, opnd);
@@ -103,8 +103,8 @@ void MacroAssemblerAArch64::CallBuiltin(Address funcAddress,
 
 void MacroAssemblerAArch64::SaveReturnRegister(const StackSlotOperand &dstStackSlot)
 {
-    aarch64::Register baseReg = (dstStackSlot.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
-                                                               aarch64::Register(aarch64::SP);
+    aarch64::Register baseReg = (dstStackSlot.IsFrameBase()) ? aarch64::fp :
+                                                               aarch64::sp;
     aarch64::MemoryOperand dstOpnd(baseReg, static_cast<int64_t>(dstStackSlot.GetOffset()));
     PickLoadStoreInsn(RETURN_REGISTER, dstOpnd, false);
 }
@@ -120,7 +120,7 @@ void MacroAssemblerAArch64::MovParameterIntoParamReg(MacroParameter param, aarch
             }
             case BaselineSpecialParameter::PROFILE_TYPE_INFO: {
                 assembler.Ldur(LOCAL_SCOPE_REGISTER,
-                               aarch64::MemoryOperand(aarch64::Register(aarch64::X29),
+                               aarch64::MemoryOperand(aarch64::x29,
                                                       static_cast<int64_t>(FUNCTION_OFFSET_FROM_SP)));
                 assembler.Ldr(LOCAL_SCOPE_REGISTER,
                               aarch64::MemoryOperand(LOCAL_SCOPE_REGISTER, JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
@@ -129,11 +129,11 @@ void MacroAssemblerAArch64::MovParameterIntoParamReg(MacroParameter param, aarch
                 break;
             }
             case BaselineSpecialParameter::SP: {
-                assembler.Mov(paramReg, aarch64::Register(aarch64::X29));
+                assembler.Mov(paramReg, aarch64::x29);
                 break;
             }
             case BaselineSpecialParameter::HOTNESS_COUNTER: {
-                assembler.Ldur(LOCAL_SCOPE_REGISTER, aarch64::MemoryOperand(aarch64::Register(aarch64::X29),
+                assembler.Ldur(LOCAL_SCOPE_REGISTER, aarch64::MemoryOperand(aarch64::x29,
                     static_cast<int64_t>(FUNCTION_OFFSET_FROM_SP)));
                 assembler.Ldr(LOCAL_SCOPE_REGISTER,
                               aarch64::MemoryOperand(LOCAL_SCOPE_REGISTER, JSFunctionBase::METHOD_OFFSET));
@@ -170,8 +170,8 @@ void MacroAssemblerAArch64::MovParameterIntoParamReg(MacroParameter param, aarch
     }
     if (std::holds_alternative<StackSlotOperand>(param)) {
         StackSlotOperand stackSlotOpnd = std::get<StackSlotOperand>(param);
-        aarch64::Register dstBaseReg = (stackSlotOpnd.IsFrameBase()) ? aarch64::Register(aarch64::FP) :
-                                                                       aarch64::Register(aarch64::SP);
+        aarch64::Register dstBaseReg = (stackSlotOpnd.IsFrameBase()) ? aarch64::fp :
+                                                                       aarch64::sp;
         aarch64::MemoryOperand paramOpnd(dstBaseReg, static_cast<int64_t>(stackSlotOpnd.GetOffset()));
         PickLoadStoreInsn(paramReg, paramOpnd);
         return;

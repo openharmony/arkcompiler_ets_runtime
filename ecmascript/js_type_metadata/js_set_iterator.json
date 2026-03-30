@@ -1,5 +1,6 @@
 {
     "name": "JS_SET_ITERATOR",
+    "node_name": "SetIterator",
     "offsets": [
         {
             "name": "IteratorSet",

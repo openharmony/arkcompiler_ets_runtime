@@ -20,6 +20,13 @@
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #endif
 
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+#ifdef HOOK_ENABLE
+#include "memory_trace.h"
+#include "musl_preinit_common.h"
+#endif // HOOK_ENABLE
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
+
 namespace panda::ecmascript {
 EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
 {
@@ -31,6 +38,10 @@ EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
     heapProfiler->IncreaseScopeCount();
     heapProfiler->PushToActiveScopeStack(nullptr, this);
 #endif
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    const_cast<EcmaVM *>(vm)->IncreaseOpenHandleScopes();
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 }
 
 void EcmaHandleScope::OpenHandleScope(EcmaVM *vm)
@@ -57,6 +68,10 @@ EcmaHandleScope::~EcmaHandleScope()
     heapProfiler->DecreaseScopeCount();
     heapProfiler->PopFromActiveScopeStack();
 #endif
+
+#if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    const_cast<EcmaVM *>(vm)->DecreaseOpenHandleScopes();
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 }
 
 void EcmaHandleScope::CloseHandleScope(EcmaVM *vm)
@@ -109,6 +124,14 @@ uintptr_t EcmaHandleScope::NewHandle(JSThread *thread, JSTaggedType value)
         heapProfiler->StorePotentiallyLeakHandles(reinterpret_cast<uintptr_t>(result));
     }
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+
+#ifdef ENABLE_HITRACE_LOCAL_HANDLE_DETECT
+    if (vm->GetOpenHandleScopes() == 0) {
+#ifdef HOOK_ENABLE
+        restraceExt(RES_ARK_LOCAL_HANDLE, (void *)result, sizeof(JSTaggedType), TAG_RES_ARK_LOCAL_HANDLE, true, false);
+#endif // HOOK_ENABLE
+    }
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
     return reinterpret_cast<uintptr_t>(result);
 }
 
@@ -136,6 +159,14 @@ uintptr_t EcmaHandleScope::NewPrimitiveHandle(JSThread *thread, JSTaggedType val
         heapProfiler->StorePotentiallyLeakHandles(reinterpret_cast<uintptr_t>(result));
     }
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+
+#ifdef ENABLE_HITRACE_LOCAL_HANDLE_DETECT
+    if (vm->GetOpenHandleScopes() == 0) {
+#ifdef HOOK_ENABLE
+        restraceExt(RES_ARK_LOCAL_HANDLE, (void *)result, sizeof(JSTaggedType), TAG_RES_ARK_LOCAL_HANDLE, true, false);
+#endif // HOOK_ENABLE
+    }
+#endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
     return reinterpret_cast<uintptr_t>(result);
 }
 }  // namespace panda::ecmascript

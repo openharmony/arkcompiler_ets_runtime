@@ -99,7 +99,7 @@ bool ICRuntime::GetHandler(const ObjectOperator &op, const JSHandle<JSHClass> &h
 void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedValue> key,
                                   JSHandle<JSTaggedValue> receiver)
 {
-    if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
+    if (icAccessor_.GetICState() == IcAccessor::ICState::MEGA) {
         return;
     }
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
@@ -145,7 +145,7 @@ void ICRuntime::UpdateLoadHandler(const ObjectOperator &op, JSHandle<JSTaggedVal
 
 void ICRuntime::UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver)
 {
-    if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
+    if (icAccessor_.GetICState() == IcAccessor::ICState::MEGA) {
         return;
     }
     JSHandle<JSTaggedValue> handlerValue = LoadHandler::LoadStringElement(thread_);
@@ -155,7 +155,7 @@ void ICRuntime::UpdateLoadStringHandler(JSHandle<JSTaggedValue> receiver)
 
 void ICRuntime::UpdateTypedArrayHandler(JSHandle<JSTaggedValue> receiver)
 {
-    if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
+    if (icAccessor_.GetICState() == IcAccessor::ICState::MEGA) {
         return;
     }
     JSHandle<JSTaggedValue> handlerValue =
@@ -169,7 +169,7 @@ void ICRuntime::UpdateStoreHandler(const ObjectOperator &op, JSHandle<JSTaggedVa
 {
     JSHandle<JSTaggedValue> handlerValue;
     ASSERT(op.IsFound());
-    if (icAccessor_.GetICState() == ProfileTypeAccessor::ICState::MEGA) {
+    if (icAccessor_.GetICState() == IcAccessor::ICState::MEGA) {
         return;
     }
 
@@ -227,7 +227,8 @@ JSTaggedValue LoadICRuntime::LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSH
     // fixme(hzzhouzebin) Open IC for SharedArray later.
     if (receiver->IsJSSharedArray()) {
         icAccessor_.SetAsMega();
-        return JSSharedArray::GetProperty(thread_, receiver, key, SCheckMode::CHECK).GetValue().GetTaggedValue();
+        return JSSharedArray::GetProperty(thread_, receiver, key, SCheckMode::CHECK,
+                                          SCheckMode::CHECK).GetValue().GetTaggedValue();
     }
     ObjectOperator op(GetThread(), receiver, key);
     auto result = JSHandle<JSTaggedValue>(thread_, JSObject::GetProperty(GetThread(), &op));
@@ -280,7 +281,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
         JSTaggedValue box = SlowRuntimeStub::LdGlobalRecord(thread_, key.GetTaggedValue());
         if (!box.IsUndefined()) {
             ASSERT(box.IsPropertyBox());
-            if (icAccessor_.GetICState() != ProfileTypeAccessor::ICState::MEGA) {
+            if (icAccessor_.GetICState() != IcAccessor::ICState::MEGA) {
                 icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
             }
             return PropertyBox::Cast(box.GetTaggedObject())->GetValue(thread_);
@@ -308,7 +309,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     }
     TraceIC(GetThread(), receiver, key);
 
-#if ENABLE_LATEST_OPTIMIZATION
+#if ENABLE_LATEST_OPTIMIZATION && defined(USE_CMC_GC)
     if (!op.IsFastMode() && op.IsFound()) {
         icAccessor_.SetAsMegaForTraceSlowMode(op);
         return result.GetTaggedValue();
@@ -408,7 +409,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             ASSERT(box.IsPropertyBox());
             SlowRuntimeStub::TryUpdateGlobalRecord(thread_, key.GetTaggedValue(), value.GetTaggedValue());
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-            if (icAccessor_.GetICState() != ProfileTypeAccessor::ICState::MEGA) {
+            if (icAccessor_.GetICState() != IcAccessor::ICState::MEGA) {
                 icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
             }
             return JSTaggedValue::Undefined();
@@ -580,7 +581,7 @@ void ICRuntime::TraceIC([[maybe_unused]] JSThread *thread,
     LOG_ECMA(ERROR) << strTraceIC;
 
     auto kind = ICKindToString(GetICKind());
-    auto state = ProfileTypeAccessor::ICStateToString(icAccessor_.GetICState());
+    auto state = IcAccessor::ICStateToString(icAccessor_.GetICState());
     if (key->IsString()) {
         auto keyStrHandle = JSHandle<EcmaString>::Cast(key);
         LOG_ECMA(ERROR) << kind << " miss, key is: " << EcmaStringAccessor(keyStrHandle).ToCString(thread)

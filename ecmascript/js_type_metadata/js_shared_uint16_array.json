@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_UINT16_ARRAY",
+    "node_name": "Shared Uint16 Array",
     "offsets": [],
     "end_offset": 8,
     "parents": [

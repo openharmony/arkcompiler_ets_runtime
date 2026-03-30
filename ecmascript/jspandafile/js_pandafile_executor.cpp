@@ -174,13 +174,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
 #endif
     }
     AbcBufferCacheScope bufferScope(thread, name, buffer, size, AbcBufferType::NORMAL_BUFFER);
-    bool isBundle = jsPandaFile->IsBundlePack();
-
-    // realEntry is used to record the original record, which is easy to throw when there are exceptions
-    const CString realEntry = entry;
-    if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
-    } else if (!isBundle) {
+    if (!vm->IsNormalizedOhmUrlPack() && !jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -188,12 +182,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
     }
     JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
     if (recordInfo == nullptr) {
-        CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
 
     if (!jsPandaFile->IsModule(recordInfo)) {
-        LOG_ECMA(FATAL) << "Input file is not esmodule";
+        LOG_ECMA(FATAL) << "Input file is not esmodule"; // LCOV_EXCL_BR_LINE
     }
     return CommonExecuteBuffer(thread, name, entry, buffer, size);
 }
@@ -355,11 +349,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
 #endif
     }
     AbcBufferCacheScope bufferScope(thread, name, buffer, size, AbcBufferType::SECURE_BUFFER);
-    // realEntry is used to record the original record, which is easy to throw when there are exceptions
-    const CString realEntry = entry;
-    if (vm->IsNormalizedOhmUrlPack()) {
-        entry = ModulePathHelper::TransformToNormalizedOhmUrl(vm, filename, name, entry);
-    } else if (!jsPandaFile->IsBundlePack()) {
+    if (!vm->IsNormalizedOhmUrlPack() && !jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
             PathHelper::AdaptOldIsaRecord(entry);
@@ -369,12 +359,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     // will be refactored, temporarily use the function IsModule to verify realEntry
     JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entry);
     if (recordInfo == nullptr) {
-        CString msg = "Cannot find module '" + realEntry + "' , which is application Entry Point";
+        CString msg = "Cannot find module '" + entry + "' , which is application Entry Point";
         THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
     }
 
     if (!jsPandaFile->IsModule(recordInfo)) {
-        LOG_ECMA(FATAL) << "Input file is not esmodule";
+        LOG_ECMA(FATAL) << "Input file is not esmodule"; // LCOV_EXCL_BR_LINE
     }
     return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
 }
@@ -444,8 +434,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
 
     std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(
-            thread, filename, recordName, false, ExecuteTypes::STATIC);
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename, recordName, false, ExecuteTypes::STATIC);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST
@@ -540,7 +529,7 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFileCommon(JSThread *thread,
         abcFilePath, "", entry);
     JSRecordInfo *recordInfo = jsPandaFile->CheckAndGetRecordInfo(entryPoint);
     if (recordInfo == nullptr) {
-        LOG_ECMA(WARN) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
+        LOG_ECMA(DEBUG) << "When checking if module is in abc file, Cannot find module '" << entryPoint << "'";
         return false;
     }
     return true;
@@ -560,18 +549,9 @@ bool JSPandaFileExecutor::IsExecuteModuleInAbcFile(JSThread *thread, [[maybe_unu
     return IsExecuteModuleInAbcFileCommon(thread, jsPandaFile, abcFilePath, entry);
 }
 
-bool JSPandaFileExecutor::IsExecuteModuleInAbcFileSecure(JSThread *thread, uint8_t *buffer,
-    size_t size, const CString &abcFilePath, const CString &entry)
+bool JSPandaFileExecutor::FindModuleInAbcFile(JSThread *thread, const CString &abcFilePath, const CString &entry)
 {
-    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
-        LoadJSPandaFileSecure(thread, abcFilePath, entry, buffer, size);
-    AbcBufferCacheScope bufferScope(thread, abcFilePath, buffer, size, AbcBufferType::SECURE_BUFFER);
-    if (jsPandaFile == nullptr) {
-        LOG_ECMA(WARN) << "When checking if module is in abc file, loading panda file failed. Current file is " <<
-            abcFilePath;
-        return false;
-    }
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindJSPandaFile(abcFilePath);
     return IsExecuteModuleInAbcFileCommon(thread, jsPandaFile, const_cast<CString&>(abcFilePath), entry);
 }
 

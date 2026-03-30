@@ -114,9 +114,6 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
-    if (mAttr.GetBarrier() == MemoryAttribute::Barrier::UNKNOWN_BARRIER && acc_.IsConstant(value)) {
-        mAttr.SetBarrier(MemoryAttribute::Barrier::NO_BARRIER);
-    }
     auto bit = LoadStoreAccessor::ToValue(mAttr);
     GateRef result = GetCircuit()->NewGate(circuit_->Store(bit),
         MachineType::NOVALUE, { depend, glue, base, offset, value, value }, type.GetGateType());
@@ -225,6 +222,13 @@ GateRef CircuitBuilder::NeedSkipReadBarrier(GateRef glue)
     GateRef readBarrierStateBit = Int64And(gcStateBitField, Int64(JSThread::READ_BARRIER_STATE_BITFIELD_MASK));
     GateRef ret = Int64Equal(readBarrierStateBit, Int64(0));
     return ret;
+}
+
+GateRef CircuitBuilder::NotSwitchToStwStub(GateRef glue)
+{
+    GateRef hasSwitchedToStwStub = LoadWithoutBarrier(VariableType::BOOL(), glue,
+        IntPtr(JSThread::GlueData::GetHasSwitchedToStwStubOffset(false)));
+    return BoolNot(hasSwitchedToStwStub);
 }
 
 GateRef CircuitBuilder::DoubleTrunc(GateRef glue, GateRef gate, GateRef value, const char* comment)

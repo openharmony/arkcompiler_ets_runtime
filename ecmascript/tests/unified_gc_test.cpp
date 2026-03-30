@@ -53,8 +53,8 @@ HWTEST_F_L0(UnifiedGCTest, UnifiedGCMarkRootsScopeTest)
     }
     [[maybe_unused]] UnifiedGCMarkRootsScope unifiedGCMarkRootsScope(thread);
     vm->CollectGarbage(TriggerGCType::FULL_GC);
-    EXPECT_TRUE(weakRefArray->Get(INT_VALUE_0).IsUndefined());
-    EXPECT_TRUE(!weakRefArray->Get(INT_VALUE_1).IsUndefined());
+    EXPECT_TRUE(weakRefArray->Get(thread, INT_VALUE_0).IsUndefined());
+    EXPECT_TRUE(!weakRefArray->Get(thread, INT_VALUE_1).IsUndefined());
     vm->SetEnableForceGC(true);
 }
 
@@ -160,7 +160,7 @@ HWTEST_F_L0(UnifiedGCTest, MarkFromObjectTest)
 
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     vm->GetCrossVMOperator()->MarkFromObject(arrayInXRefRoot->GetRawData());
-    heap->WaitRunningTaskFinished();
+    heap->WaitAllMarkTaskFinished();
     EXPECT_TRUE(IsObjectMarked(arrayInXRefRoot->GetHeapObject()));
     EXPECT_TRUE(IsObjectMarked(arrayRefByXRefRoot->GetHeapObject()));
 

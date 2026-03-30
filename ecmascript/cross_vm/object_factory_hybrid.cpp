@@ -21,7 +21,7 @@ namespace panda::ecmascript {
 JSHandle<JSObject> ObjectFactory::NewJSXRefObject()
 {
     JSHandle<JSHClass> jsXRefHClass = JSHandle<JSHClass>::Cast(thread_->GlobalConstants()->GetHandledXRefObjectClass());
-    JSHandle<JSObject> object(NewJSObject(jsXRefHClass));
+    JSHandle<JSObject> object(NewJSObjectWithInit(jsXRefHClass));
     return object;
 }
 }  // namespace panda::ecmascript

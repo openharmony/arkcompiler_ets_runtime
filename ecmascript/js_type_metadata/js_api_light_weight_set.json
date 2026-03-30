@@ -1,5 +1,6 @@
 {
     "name": "JS_API_LIGHT_WEIGHT_SET",
+    "node_name": "LightWeightSet",
     "offsets": [
         {
             "name": "Hashes",

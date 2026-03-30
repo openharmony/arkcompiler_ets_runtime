@@ -1,5 +1,6 @@
 {
     "name": "CELL_RECORD",
+    "node_name": "CellRecord",
     "offsets": [
         {
             "name": "WeakRefTarget",

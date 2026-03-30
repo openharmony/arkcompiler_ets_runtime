@@ -108,8 +108,8 @@ void OptimizedFastCall::OptimizedFastCallAndPushArgv(ExtendedAssembler *assemble
     __ Mov(Operand(jsFuncReg, JSFunctionBase::METHOD_OFFSET), method); // get method
     __ Mov(Operand(jsFuncReg, JSFunctionBase::CODE_ENTRY_OFFSET), codeAddrReg); // get codeAddress
     __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField); // get call field
-    __ Shr(MethodLiteral::NumArgsBits::START_BIT, methodCallField);
-    __ Andl(((1LU <<  MethodLiteral::NumArgsBits::SIZE) - 1), methodCallField);
+    __ Shr(Method::NumArgsBits::START_BIT, methodCallField);
+    __ Andl(((1LU <<  Method::NumArgsBits::SIZE) - 1), methodCallField);
     __ Addl(NUM_MANDATORY_JSFUNC_ARGS, methodCallField); // add mandatory argumentr
     Register expectedNumArgsReg = rbx;
 

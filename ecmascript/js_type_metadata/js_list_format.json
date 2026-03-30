@@ -1,5 +1,6 @@
 {
     "name": "JS_LIST_FORMAT",
+    "node_name": "JSListFormat",
     "offsets": [
         {
             "name": "Locale",

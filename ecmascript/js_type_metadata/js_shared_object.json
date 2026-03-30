@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_OBJECT",
+    "node_name": "JSSharedObject",
     "offsets": [],
     "end_offset": 0,
     "parents": [

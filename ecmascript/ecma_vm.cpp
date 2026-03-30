@@ -15,6 +15,7 @@
 
 #include "ecmascript/ecma_vm.h"
 
+#include <cmath>
 #include "common_components/taskpool/taskpool.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
@@ -43,11 +44,14 @@
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/jit/jit_task.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/mem/mem_map_allocator.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/module/module_tools.h"
+#include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/ohos/aot_tools.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
@@ -55,6 +59,7 @@
 #include "ecmascript/platform/signal_manager.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/snapshot/common/modules_snapshot_helper.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -62,6 +67,8 @@
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/base/gc_helper.h"
 #include "ecmascript/platform/backtrace.h"
+#include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -71,11 +78,50 @@ namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
 using JitTools = ohos::JitTools;
+constexpr const char* HEAP_MEM_PRESSURE_PROCESS = "ProcessHeapMemPressure";
+constexpr const char* HEAP_MEM_PRESSURE_LOCAL = "LocalHeapMemPressure";
+constexpr const char* HEAP_MEM_PRESSURE_SHARED = "SharedHeapMemPressure";
 
 AOTFileManager *JsStackInfo::loader = nullptr;
 std::atomic<bool> EcmaVM::multiThreadCheck_ = false;
 std::atomic<bool> EcmaVM::checkCountApi_ = false;
 bool EcmaVM::errorInfoEnhanced_ = false;
+
+void EcmaVM::TriggerMemoryPressureCallback(const char *heapType)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "EcmaVM::TriggerMemoryPressureCallback", "");
+    ASSERT(GetJSThread()->IsMainThread());
+    [[maybe_unused]] EcmaHandleScope scope(GetJSThread());
+    Local<FunctionRef> callback = GetMemoryPressureCallback();
+    ASSERT(!callback.IsEmpty());
+    panda::Local<panda::JSValueRef> undefined = panda::JSValueRef::Undefined(this);
+    panda::Local<panda::JSValueRef> argv[] = { panda::StringRef::NewFromUtf8(this, heapType) };
+    callback->Call(this, undefined, argv, 1);
+}
+
+bool EcmaVM::SetHeapMemoryPressure(const DFXJSNApi::HeapMemoryPressureOptions &options, Local<FunctionRef> callback)
+{
+    if (!SetMemoryPressureCallback(callback)) {
+        return false;
+    }
+    localMemoryPressureThreshold_ = options.localHeapThreshold;
+    sharedMemoryPressureThreshold_ = options.sharedHeapThreshold;
+    processMemoryPressureThreshold_ = options.processHeapThreshold;
+    Runtime::GetInstance()->SetMainThreadAliveForMemoryPressure(true);
+    return true;
+}
+
+void EcmaVM::ResetMemoryPressure()
+{
+    localMemoryPressureThreshold_ = 0.0;
+    sharedMemoryPressureThreshold_ = 0.0;
+    processMemoryPressureThreshold_ = 0.0;
+    memoryPressureCallback_.FreeGlobalHandleAddr();
+    needProcessMemoryPressureCallback_ = false;
+    needSharedMemoryPressureCallback_ = false;
+    Runtime::GetInstance()->SetMainThreadAliveForMemoryPressure(false);
+}
+
 // To find the current js thread without parameters
 thread_local void *g_currentThread = nullptr;
 
@@ -173,6 +219,8 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     vm->GetJSOptions().SetArkProperties(arkProperties);
+    bool pgoNapi = OHOS::system::GetBoolParameter("persist.ark.pgonapi", false);
+    vm ->GetJSOptions().SetPgoNapi(pgoNapi);
 #endif
     vm->SetEnableRuntimeAsyncStack(vm->GetJSOptions().EnableRuntimeAsyncStack());
     return vm;
@@ -251,6 +299,8 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
+    bool pgoNapi = OHOS::system::GetBoolParameter("persist.ark.pgonapi", false);
+    GetJSOptions().SetPgoNapi(pgoNapi);
 #endif
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     if (enableWarmStartup) {
@@ -262,6 +312,7 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
     }
 #endif
     if (option.DisableJSPandaFileAndModuleSnapshot()) {
+        LOG_ECMA(INFO) << "Modules snapshot disabled: runtime option";
         ModulesSnapshotHelper::MarkSnapshotDisabledByOption();
     } else {
         ModulesSnapshotHelper::RegisterSignalHandler();
@@ -353,6 +404,11 @@ bool EcmaVM::IsEnablePGOProfiler() const
     return options_.GetEnableAsmInterpreter() && options_.IsEnablePGOProfiler();
 }
 
+bool EcmaVM::IsPgoNapi() const
+{
+    return options_.IsPgoNapi();
+}
+
 bool EcmaVM::IsEnableMutantArray() const
 {
     return options_.GetEnableAsmInterpreter() && options_.IsEnableMutantArray();
@@ -415,6 +471,8 @@ bool EcmaVM::Initialize()
     pcVector_.reserve(MAX_HYBRID_STACK_SIZE);
     if (options_.GetEnableAsmInterpreter()) {
         LoadStubFile();
+        UpdateStubFileRange(aotFileManager_->GetStubFileStart(),
+            aotFileManager_->GetStubFileSize());
     }
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
@@ -454,7 +512,6 @@ bool EcmaVM::Initialize()
     microJobQueue_ = factory_->NewMicroJobQueue().GetTaggedValue();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
         Jit::GetInstance()->ConfigJit(this);
-        heap_->DisableLocalCC();
     }
     sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
@@ -554,7 +611,7 @@ EcmaVM::~EcmaVM()
     if (JsStackInfo::loader == aotFileManager_) {
         JsStackInfo::loader = nullptr;
     }
-
+    Runtime::GetInstance()->SetMainThreadAliveForMemoryPressure(false);
     if (heap_ != nullptr) {
         heap_->Destroy();
         delete heap_;
@@ -804,6 +861,7 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
+    ASSERT(thread_->HasSwitchedToStwStub());
     // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
@@ -1026,7 +1084,7 @@ void EcmaVM::IterateSTWRoots(RootVisitor &v)
             auto node = handleStorageNodes_.at(i);
             auto start = node->data();
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            v.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            v.VisitRangeRoot(Root::ROOT_LOCAL_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
         }
     }
 
@@ -1078,7 +1136,7 @@ size_t EcmaVM::IterateHandle(RootVisitor &visitor)
             auto node = handleStorageNodes_.at(i);
             auto start = node->data();
             auto end = (i != nid) ? &(node->data()[NODE_BLOCK_SIZE]) : handleScopeStorageNext_;
-            visitor.VisitRangeRoot(Root::ROOT_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
+            visitor.VisitRangeRoot(Root::ROOT_LOCAL_HANDLE, ObjectSlot(ToUintPtr(start)), ObjectSlot(ToUintPtr(end)));
             handleCount += (ToUintPtr(end) - ToUintPtr(start)) / sizeof(JSTaggedType);
         }
     }
@@ -1210,13 +1268,12 @@ void EcmaVM::LoadStubFile()
 
 bool EcmaVM::LoadAOTFilesInternal(const std::string& aotFileName)
 {
-#ifdef AOT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
     std::string bundleName = pgo::PGOProfilerManager::GetInstance()->GetBundleName();
     if (AotCrashInfo::GetInstance().IsAotEscapedOrNotInEnableList(this, bundleName)) {
         return false;
     }
 #endif
-    heap_->DisableLocalCC();
     std::string anFile = aotFileName + AOTFileManager::FILE_EXTENSION_AN;
     if (!aotFileManager_->LoadAnFile(anFile)) {
         LOG_ECMA(WARN) << "Load " << anFile << " failed. Destroy aot data and rollback to interpreter";
@@ -1623,6 +1680,7 @@ void EcmaVM::SetpkgContextInfoList(const CMap<CString, CMap<CString, CVector<CSt
     pkgContextInfoList_ = list;
 }
 
+#if ENABLE_LATEST_OPTIMIZATION
 void EcmaVM::GetPkgContextInfoListElements(const CString &moduleName, const CString &packageName,
                                            CVector<CString> &resultList)
 {
@@ -1641,6 +1699,7 @@ void EcmaVM::GetPkgContextInfoListElements(const CString &moduleName, const CStr
     }
     resultList = pkgIt->second;
 }
+#endif
 
 void EcmaVM::StopPreLoadSoOrAbc()
 {
@@ -1652,6 +1711,39 @@ void EcmaVM::StopPreLoadSoOrAbc()
         }
         stopPreLoadCallbacks_.clear();
     }
+}
+
+void EcmaVM::SetOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
+    CUnorderedSet<CString>>> &ohExportsMap)
+{
+    WriteLockHolder lock(ohExportListLock_);
+    ohExportsList_ = ohExportsMap;
+}
+
+void EcmaVM::UpdateOhExportsList(const CUnorderedMap<CString, CUnorderedMap<CString,
+                                 CUnorderedSet<CString>>> &ohExportsMap)
+{
+    WriteLockHolder lock(ohExportListLock_);
+    ohExportsList_.insert(ohExportsMap.begin(), ohExportsMap.end());
+}
+
+bool EcmaVM::CheckOhExportsWithOhmurl(const CString &moduleName, const CString &packageName, const CString &ohmurl)
+{
+    ReadLockHolder lock(ohExportListLock_);
+    if (packageName.empty()) {
+        return true;
+    }
+    auto moduleIt = ohExportsList_.find(moduleName);
+    if (moduleIt == ohExportsList_.end()) {
+        return true;
+    }
+    const CUnorderedMap<CString, CUnorderedSet<CString>> &moduleExportsList = moduleIt->second;
+    auto packageIt = moduleExportsList.find(packageName);
+    if (packageIt == moduleExportsList.end()) {
+        return true;
+    }
+    const CUnorderedSet<CString> &packageExportsList = packageIt->second;
+    return (packageExportsList.find(ohmurl) != packageExportsList.end());
 }
 
 // Initialize IcuData Path
@@ -2046,6 +2138,7 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
+    ASSERT(thread_->HasSwitchedToStwStub());
     // When C++ enters ASM, save the current globalenv and restore to glue after call
     SaveEnv envScope(thread_);
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
@@ -2064,7 +2157,7 @@ Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFi
     ASSERT(thread_->IsInManagedState());
     JSHandle<JSTaggedValue> global = GetGlobalEnv()->GetJSGlobalObject();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-    if (IsEnablePGOProfiler()) {
+    if (IsEnablePGOProfiler() && IsPgoNapi()) {
         JSHandle<JSFunction> objectFunction(GetGlobalEnv()->GetObjectFunction());
         JSHandle<JSHClass> protoOrHClass(GetGlobalEnv()->GetObjectFunctionNapiClass());
         GetPGOProfiler()->ProfileNapiRootHClass(
@@ -2105,10 +2198,10 @@ Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFi
     if (jsPandaFile->IsCjs(recordInfo)) {
         CJSExecution(func, global, jsPandaFile, entryPoint);
     } else {
-        if (aotFileManager_->IsLoadMain(jsPandaFile, entry)) {
+        if (aotFileManager_->IsLoadMain(jsPandaFile, entry) && thread_->HasSwitchedToStwStub()) {
             EcmaRuntimeStatScope runtimeStatScope(this);
             result = InvokeEcmaAotEntrypoint(func, global, jsPandaFile, entryPoint);
-        } else if (GetJSOptions().IsEnableForceJitCompileMain()) {
+        } else if (GetJSOptions().IsEnableForceJitCompileMain() && thread_->HasSwitchedToStwStub()) {
             Jit::Compile(this, func, CompilerTier::Tier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(this);
             result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, nullptr);
@@ -2210,7 +2303,7 @@ void EcmaVM::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &t
     JSHandle<JSTaggedValue> dirName = JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8(dirNameStr));
     CJSInfo cjsInfo(module, require, exports, fileName, dirName);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
-    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
+    if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data()) && thread_->HasSwitchedToStwStub()) {
         EcmaRuntimeStatScope runtimeStateScope(this);
         InvokeEcmaAotEntrypoint(func, thisArg, jsPandaFile, entryPoint, &cjsInfo);
     } else {
@@ -2355,4 +2448,99 @@ void EcmaVM::SetEnableRuntimeAsyncStack(const bool state)
     }
     enableRuntimeAsyncStack_ = state;
 }
+
+void EcmaVM::CheckHeapMemoryPressure(const Heap *heap)
+{
+    // Check if already in callback to prevent recursive GC trigger
+    if (isInMemoryPressureCallback_) {
+        return;
+    }
+    MemoryPressureCallbackScope scope(this);
+    if (!HasMemoryPressureCallback()) {
+        return;
+    }
+
+    // Check process heap memory pressure first (highest priority)
+    double processThreshold = processMemoryPressureThreshold_;
+    if (processThreshold > 0.0) {
+        size_t processSize = MemMapAllocator::GetInstance()->GetTotalSize();
+        size_t processLimit = MemMapAllocator::GetInstance()->GetCapacity();
+        double processRatio = static_cast<double>(processSize) / static_cast<double>(processLimit);
+
+        if (processRatio >= processThreshold) {
+            TriggerMemoryPressureCallback(HEAP_MEM_PRESSURE_PROCESS);
+            return;
+        }
+    }
+
+    // Check local heap memory pressure
+    double localThreshold = localMemoryPressureThreshold_;
+    if (localThreshold > 0.0) {
+        size_t heapSize = heap->GetHeapObjectSize();
+        size_t heapLimit = heap->GetHeapLimitSize();
+        double ratio = static_cast<double>(heapSize) / static_cast<double>(heapLimit);
+
+        if (ratio >= localThreshold) {
+            TriggerMemoryPressureCallback(HEAP_MEM_PRESSURE_LOCAL);
+            return;
+        }
+    }
+}
+
+void EcmaVM::CheckSharedHeapMemoryPressure()
+{
+    ASSERT(GetJSThread()->IsMainThread());
+    if (!HasMemoryPressureCallback()) {
+        return;
+    }
+
+    // Check process heap memory pressure first (highest priority)
+    double processThreshold = processMemoryPressureThreshold_;
+    if (processThreshold > 0.0) {
+        size_t processSize = MemMapAllocator::GetInstance()->GetTotalSize();
+        size_t processLimit = MemMapAllocator::GetInstance()->GetCapacity();
+        double processRatio = static_cast<double>(processSize) / static_cast<double>(processLimit);
+
+        if (processRatio >= processThreshold) {
+            needProcessMemoryPressureCallback_ = true;
+            return;
+        }
+    }
+
+    // Check shared heap memory pressure - set flag instead of triggering callback directly
+    double sharedThreshold = sharedMemoryPressureThreshold_;
+    if (sharedThreshold > 0.0) {
+        auto oldSpace = SharedHeap::GetInstance()->GetOldSpace();
+        size_t sharedOldHeapSize = oldSpace->GetHeapObjectSize();
+        size_t sharedOldHeapLimit = oldSpace->GetMaximumCapacity();
+        double sharedOldRatio = static_cast<double>(sharedOldHeapSize) / static_cast<double>(sharedOldHeapLimit);
+        auto hugeSpace = SharedHeap::GetInstance()->GetHugeObjectSpace();
+        size_t sharedHugeHeapSize = hugeSpace->GetHeapObjectSize();
+        size_t sharedHugeHeapLimit = hugeSpace->GetMaximumCapacity();
+        double sharedHugeRatio = static_cast<double>(sharedHugeHeapSize) / static_cast<double>(sharedHugeHeapLimit);
+        if (sharedOldRatio >= sharedThreshold || sharedHugeRatio >= sharedThreshold) {
+            needSharedMemoryPressureCallback_ = true;
+            return;
+        }
+    }
+}
+
+void EcmaVM::CheckAndTriggerMemoryPressureCallback()
+{
+    if (isInMemoryPressureCallback_) {
+        return;
+    }
+    MemoryPressureCallbackScope scope(this);
+    // Check and trigger process memory pressure callback at safe point
+    if (needProcessMemoryPressureCallback_) {
+        needProcessMemoryPressureCallback_ = false;
+        TriggerMemoryPressureCallback(HEAP_MEM_PRESSURE_PROCESS);
+    }
+
+    // Check and trigger shared memory pressure callback at safe point
+    if (needSharedMemoryPressureCallback_) {
+        needSharedMemoryPressureCallback_ = false;
+        TriggerMemoryPressureCallback(HEAP_MEM_PRESSURE_SHARED);
+    }
 }  // namespace panda::ecmascript
+}

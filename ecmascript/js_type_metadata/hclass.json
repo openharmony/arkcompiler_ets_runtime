@@ -1,5 +1,6 @@
 {
   "name": "HCLASS",
+  "node_name": "HiddenClass(NonMovable)",
   "offsets": [
     {
       "name": "BitField",

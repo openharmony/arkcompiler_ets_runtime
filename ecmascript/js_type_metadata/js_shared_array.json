@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_ARRAY",
+    "node_name": "SharedArray",
     "offsets": [
         {
             "name": "TrackInfo",

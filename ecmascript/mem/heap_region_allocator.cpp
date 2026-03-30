@@ -17,6 +17,8 @@
 
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/runtime.h"
+#include "ecmascript/runtime_lock.h"
 
 namespace panda::ecmascript {
 
@@ -49,19 +51,19 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     }
     auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
         ToSpaceTypeName(space->GetSpaceType()), isRegular, isCompress, isMachineCode,
-        Jit::GetInstance()->IsEnableJitFort(), shouldPageTag);
+        Jit::GetInstance()->IsEnableJitFort(), shouldPageTag, false);
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) { // LOCV_EXCL_BR_LINE
         if (heap->InGC()) {
-            // Donot crash in GC.
-            TemporarilyEnsureAllocateionAlwaysSuccess(heap);
+            // Donot crash in GC, and record to Dump&Fatal when GC completed.
+            heap->ShouldForceThrowOOMError();
             pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
                 ToSpaceTypeName(space->GetSpaceType()), isRegular, isCompress, isMachineCode,
-                Jit::GetInstance()->IsEnableJitFort(), shouldPageTag);
+                Jit::GetInstance()->IsEnableJitFort(), shouldPageTag, true);
             mapMem = pool.GetMem();
             if (mapMem == nullptr) {
                 // This should not happen
-                LOG_ECMA_MEM(FATAL) << "pool is empty in GC unexpectedly";
+                LOG_ECMA_MEM(FATAL) << "pool is empty in GC unexpectedly, process out of memory";
                 UNREACHABLE();
             }
         } else {
@@ -72,11 +74,23 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
             }
             if (thread != nullptr && thread->GetEcmaVM()->IsInitialized()) {
                 Heap *localHeap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-                localHeap->DumpHeapSnapshotBeforeOOM();
+                // Ensure that Dump is executed only once across all threads.
+                // Other threads will block here until the first thread completes the dump.
+                {
+                    static bool needDumpHeapSnapshot = true;
+                    static Mutex dumpMutex;
+                    RuntimeLockHolder lock(thread, dumpMutex);
+                    if (needDumpHeapSnapshot) {
+                        localHeap->DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM(),
+                                                             "", capacity, PROCESS_HEAP_STR);
+                        needDumpHeapSnapshot = false;
+                    }
+                }
                 heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
                     "HeapRegionAllocator::AllocateAlignedRegion", false);
             }
-            LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed);
+            LOG_ECMA_MEM(FATAL) << "pool is empty " << annoMemoryUsage_.load(std::memory_order_relaxed)
+                                << ", process out of memory";
             UNREACHABLE();
         }
     }
@@ -120,19 +134,8 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize, bool ski
         region->InReadOnlySpace() || region->InSharedReadOnlySpace();
     auto allocateBase = region->GetAllocateBase();
     bool shouldPageTag = FreeRegionShouldPageTag(region);
-    bool inHugeMachineCodeSpace = region->InHugeMachineCodeSpace();
-
     DecreaseAnnoMemoryUsage(size);
     region->Invalidate();
-
-    // Use the mmap interface to clean up the MAP_JIT tag bits on memory.
-    // The MAP_JIT flag prevents the mprotect interface from setting PROT_WRITE for memory.
-    if (inHugeMachineCodeSpace) {
-        MemMap memMap = PageMap(size, PAGE_PROT_NONE, 0, ToVoidPtr(allocateBase), PAGE_FLAG_MAP_FIXED);
-        if (memMap.GetMem() == nullptr) {
-            LOG_ECMA_MEM(FATAL) << "Failed to clear the MAP_JIT flag for the huge machine code space.";
-        }
-    }
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     if (memset_s(ToVoidPtr(allocateBase), size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "memset_s failed";
@@ -156,21 +159,19 @@ void HeapRegionAllocator::DecreaseMemMapUsage(Region *region)
     MemMapAllocator::GetInstance()->DecreaseMemUsage(region->GetCapacity(), isRegular);
 }
 
-void HeapRegionAllocator::TemporarilyEnsureAllocateionAlwaysSuccess(BaseHeap *heap)
-{
-    // Make MemMapAllocator infinite, and record to Dump&Fatal when GC completed.
-    heap->ShouldForceThrowOOMError();
-    MemMapAllocator::GetInstance()->TransferToInfiniteModeForGC();
-}
-
 bool HeapRegionAllocator::AllocateRegionShouldPageTag(Space *space) const
 {
     if (enablePageTagThreadId_) {
         return true;
     }
     MemSpaceType type = space->GetSpaceType();
-    // Both LocalSpace and OldSpace belong to OldSpace.
-    return type != MemSpaceType::OLD_SPACE && type != MemSpaceType::LOCAL_SPACE;
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        return type != MemSpaceType::SLOT_SPACE;
+    } else {
+        // Both LocalSpace and OldSpace belong to OldSpace.
+        return type != MemSpaceType::OLD_SPACE && type != MemSpaceType::LOCAL_SPACE;
+    }
 }
 
 bool HeapRegionAllocator::FreeRegionShouldPageTag(Region *region) const
@@ -178,8 +179,13 @@ bool HeapRegionAllocator::FreeRegionShouldPageTag(Region *region) const
     if (enablePageTagThreadId_) {
         return true;
     }
-    // There is no LocalSpace tag in region.
-    return !region->InOldSpace();
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        return !region->InSlotSpace();
+    } else {
+        // There is no LocalSpace tag in region.
+        return !region->InOldSpace();
+    }
 }
 
 template void HeapRegionAllocator::FreeRegion<true>(Region *region, size_t cachedSize, bool skipCache);

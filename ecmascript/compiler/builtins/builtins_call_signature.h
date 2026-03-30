@@ -119,11 +119,7 @@ public:
             BUILTINS_METHOD_STUB_LIST(BUILTINS_ID, BUILTINS_ID, BUILTINS_ID)
         };
 #undef BUILTINS_ID
-#if ENABLE_NEXT_OPTIMIZATION
         return callThisBuiltinsIds.count(builtinId);
-#else
-        return false;
-#endif
     }
 
     static bool IsTypedInlineBuiltin(ID builtinId)

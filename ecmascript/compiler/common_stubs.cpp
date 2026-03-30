@@ -1125,7 +1125,12 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
                &hclassNotEqualFirstValue);
         Bind(&hclassEqualFirstValue);
         {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+            Return(LoadICWithHandler(glue, receiver, receiver, secondValue, ProfileOperation(), Undefined(),
+                                     StringIdInfo()));
+#else
             Return(LoadICWithHandler(glue, receiver, receiver, secondValue, ProfileOperation()));
+#endif
         }
         Bind(&hclassNotEqualFirstValue);
         {
@@ -1133,7 +1138,12 @@ void TryLoadICByNameStubBuilder::GenerateCircuit()
             BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
             Bind(&cachedHandlerNotHole);
             {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+                Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation(), Undefined(),
+                                         StringIdInfo()));
+#else
                 Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
+#endif
             }
         }
     }
@@ -1177,7 +1187,12 @@ void TryLoadICByValueStubBuilder::GenerateCircuit()
                 auto cachedHandler = CheckPolyHClass(glue, secondValue, hclass);
                 BRANCH(TaggedIsHole(cachedHandler), &receiverNotHeapObject, &cachedHandlerNotHole);
                 Bind(&cachedHandlerNotHole);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+                Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation(), Undefined(),
+                                         StringIdInfo()));
+#else
                 Return(LoadICWithHandler(glue, receiver, receiver, cachedHandler, ProfileOperation()));
+#endif
             }
         }
     }
@@ -1406,8 +1421,8 @@ void JsBoundCallInternalStubBuilder::GenerateCircuit()
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     GateRef method = GetMethodFromFunction(glue, func);
     GateRef callfield = LoadPrimitive(VariableType::INT64(), method, IntPtr(Method::CALL_FIELD_OFFSET));
-    GateRef expectedNum = Int64And(Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
-        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+    GateRef expectedNum = Int64And(Int64LSR(callfield, Int64(Method::NumArgsBits::START_BIT)),
+        Int64((1LU << Method::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
 

@@ -24,7 +24,7 @@
 #include "ecmascript/object_operator.h"
 
 namespace panda::ecmascript {
-class ProfileTypeInfo;
+class ICInfo;
 class JSThread;
 class ObjectOperator;
 
@@ -32,6 +32,11 @@ class ICRuntime {
 public:
     ICRuntime(JSThread *thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind)
         : thread_(thread), icAccessor_(thread, profileTypeInfo, slotId, kind)
+    {
+    }
+
+    ICRuntime(JSThread *thread, JSHandle<ICInfo> icInfo, uint32_t slotId, ICKind kind)
+        : thread_(thread), icAccessor_(thread, icInfo, slotId, kind)
     {
     }
 
@@ -46,7 +51,7 @@ public:
 
     bool IsMegaIC()
     {
-        return icAccessor_.GetICState() == ProfileTypeAccessor::ICState::IC_MEGA;
+        return icAccessor_.GetICState() == IcAccessor::ICState::IC_MEGA;
     }
 
     JSThread *GetThread() const
@@ -74,13 +79,18 @@ public:
 protected:
     JSThread *thread_;
     JSHandle<JSTaggedValue> receiverHClass_{};
-    ProfileTypeAccessor icAccessor_;
+    IcAccessor icAccessor_;
 };
 
 class LoadICRuntime : public ICRuntime {
 public:
     LoadICRuntime(JSThread *thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind)
         : ICRuntime(thread, profileTypeInfo, slotId, kind)
+    {
+    }
+
+    LoadICRuntime(JSThread *thread, JSHandle<ICInfo> icInfo, uint32_t slotId, ICKind kind)
+        : ICRuntime(thread, icInfo, slotId, kind)
     {
     }
 
@@ -98,6 +108,11 @@ class StoreICRuntime : public ICRuntime {
 public:
     StoreICRuntime(JSThread *thread, JSHandle<ProfileTypeInfo> profileTypeInfo, uint32_t slotId, ICKind kind)
         : ICRuntime(thread, profileTypeInfo, slotId, kind)
+    {
+    }
+
+    StoreICRuntime(JSThread *thread, JSHandle<ICInfo> icInfo, uint32_t slotId, ICKind kind)
+        : ICRuntime(thread, icInfo, slotId, kind)
     {
     }
 

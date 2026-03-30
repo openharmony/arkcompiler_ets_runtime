@@ -59,7 +59,6 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
     jitEnable &= ohos::JitTools::IsSupportJitCodeSigner();
     jitEnable &= HasJitFortACL();
     if (jitEnable) {
-        const_cast<Heap*>(vm->GetHeap())->DisableLocalCC();
         bool isEnableFastJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
         bool isEnableBaselineJit = options.IsEnableBaselineJIT() && options.GetEnableAsmInterpreter();
         options.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
@@ -169,6 +168,13 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
     if (IsLibResourcesResolved()) {
         jitDfx_ = JitDfx::GetInstance();
         jitDfx_->Init(options, bundleName_);
+        // When starting JIT through the application, the initialization of JIT fort is completed in app spawn.
+        // When starting JIT through ark_js_vm, the initialization of JIT fort needs to be completed on the main thread.
+        // Note: All threads using JIT fort must have access to JIT fort memory. It is best to ensure that all threads
+        // that require directional JIT fort memory come from a thread that has already initialized JIT fort memory.
+        if (!IsAppJit()) {
+            JitFort::InitJitFort();
+        }
         jitResources_->InitJitEnv(options);
         initialized_ = true;
     }

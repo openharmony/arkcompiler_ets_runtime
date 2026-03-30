@@ -400,12 +400,12 @@ HWTEST_F_L0(IdleGCTriggerTest, NotifyNeedFreeze001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     bool freeze = false;
-    auto callback = [&freeze](bool needNextGC, bool needFreeze) {
-        if (needFreeze && !needNextGC) {
+    auto callback = [&freeze](bool needFreeze) {
+        if (needFreeze) {
             freeze = true;
         }
     };
-    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
+    Runtime::GetInstance()->SetNotifyDeferFreezeCallback(callback);
     SharedHeap *sheap = SharedHeap::GetInstance();
     sheap->NotifyHeapAliveSizeAfterGC(1);
     sheap->GetOldSpace()->SetInitialCapacity(10000);
@@ -416,201 +416,6 @@ HWTEST_F_L0(IdleGCTriggerTest, NotifyNeedFreeze001)
     ASSERT_TRUE(freeze);
 }
 
-
-/**
- * @tc.name: NotifyNextGC001
- * @tc.desc: NotifyNextGC
- * @tc.type: FUNC
- */
-HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
-    bool freeze = false;
-    bool nextGC = false;
-    auto callback = [&freeze, &nextGC](bool needNextGC, bool needFreeze) {
-        if (needNextGC) {
-            nextGC = true;
-            return;
-        }
-        if (needFreeze && !needNextGC) {
-            nextGC = false;
-            freeze = true;
-            return;
-        }
-        if (!needNextGC) {
-            nextGC = false;
-            return;
-        }
-    };
-    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
-
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
-    ASSERT_TRUE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
-    ASSERT_TRUE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
-    ASSERT_FALSE(nextGC);
-    ASSERT_TRUE(freeze);
-}
-
-/**
- * @tc.name: NotifyNextGC002
- * @tc.desc: NotifyNextGC
- * @tc.type: FUNC
- */
-HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC002)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
-    bool freeze = false;
-    bool nextGC = false;
-    auto callback = [&freeze, &nextGC](bool needNextGC, bool needFreeze) {
-        if (needNextGC) {
-            nextGC = true;
-            return;
-        }
-        if (needFreeze && !needNextGC) {
-            nextGC = false;
-            freeze = true;
-            return;
-        }
-        if (!needNextGC) {
-            nextGC = false;
-            return;
-        }
-    };
-    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
-
-    auto oldSpace = heap->GetOldSpace();
-    oldSpace->IncreaseLiveObjectSize(100_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
-    ASSERT_TRUE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    oldSpace->IncreaseLiveObjectSize(100_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
-    ASSERT_TRUE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    SharedHeap *sheap = SharedHeap::GetInstance();
-    sheap->GetOldSpace()->IncreaseLiveObjectSize(200_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
-    ASSERT_FALSE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    sheap->WaitAllTasksFinished(thread);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ASSERT_FALSE(nextGC);
-    ASSERT_TRUE(freeze);
-}
-
-/**
- * @tc.name: NotifyNextGC003
- * @tc.desc: NotifyNextGC
- * @tc.type: FUNC
- */
-HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC003)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
-    bool freeze = false;
-    bool nextGC = false;
-    auto callback = [&freeze, &nextGC](bool needNextGC, bool needFreeze) {
-        if (needNextGC) {
-            nextGC = true;
-            return;
-        }
-        if (needFreeze && !needNextGC) {
-            nextGC = false;
-            freeze = true;
-            return;
-        }
-        if (!needNextGC) {
-            nextGC = false;
-            return;
-        }
-    };
-    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
-
-    auto oldSpace = heap->GetOldSpace();
-    oldSpace->IncreaseLiveObjectSize(100_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
-    ASSERT_TRUE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    oldSpace->IncreaseLiveObjectSize(100_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
-    ASSERT_TRUE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    SharedHeap *sheap = SharedHeap::GetInstance();
-    sheap->GetOldSpace()->IncreaseLiveObjectSize(200_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
-    ASSERT_FALSE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    sheap->WaitAllTasksFinished(thread);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ASSERT_FALSE(nextGC);
-    ASSERT_TRUE(freeze);
-}
-
-/**
- * @tc.name: NotifyNextGC004
- * @tc.desc: NotifyNextGC
- * @tc.type: FUNC
- */
-HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC004)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
-    bool freeze = false;
-    bool nextGC = false;
-    auto callback = [&freeze, &nextGC](bool needNextGC, bool needFreeze) {
-        if (needNextGC) {
-            nextGC = true;
-            return;
-        }
-        if (needFreeze && !needNextGC) {
-            nextGC = false;
-            freeze = true;
-            return;
-        }
-        if (!needNextGC) {
-            nextGC = false;
-            return;
-        }
-    };
-    Runtime::GetInstance()->SetNotifyNextCompressGCCallback(callback);
-
-    SharedHeap *sheap = SharedHeap::GetInstance();
-    sheap->GetOldSpace()->IncreaseLiveObjectSize(200_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
-    ASSERT_FALSE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    sheap->WaitAllTasksFinished(thread);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    ASSERT_FALSE(nextGC);
-    ASSERT_TRUE(freeze);
-
-    freeze = false;
-    auto oldSpace = heap->GetOldSpace();
-    oldSpace->IncreaseLiveObjectSize(100_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
-    ASSERT_TRUE(nextGC);
-    ASSERT_FALSE(freeze);
-
-    oldSpace->IncreaseLiveObjectSize(100_MB);
-    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
-    ASSERT_TRUE(nextGC);
-    ASSERT_FALSE(freeze);
-}
 /**
  * @tc.name: ExpectedMemoryReclamationSize001
  * @tc.desc: ExpectedMemoryReclamationSize
@@ -618,6 +423,10 @@ HWTEST_F_L0(IdleGCTriggerTest, NotifyNextGC004)
  */
 HWTEST_F_L0(IdleGCTriggerTest, ExpectedMemoryReclamationSize001)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
 
@@ -764,6 +573,10 @@ HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest003)
  */
 HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest004)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
 
@@ -795,6 +608,10 @@ HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest004)
  */
 HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest005)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
 
@@ -826,6 +643,10 @@ HWTEST_F_L0(IdleGCTriggerTest, PossiblePostGCTaskTest005)
  */
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest1)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
 
@@ -875,6 +696,10 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest1)
  */
 HWTEST_F_L0(IdleGCTriggerTest, ReachIdleLocalOldGCThresholdsTest1)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
 
@@ -927,6 +752,10 @@ HWTEST_F_L0(IdleGCTriggerTest, ReachIdleSharedGCThresholdsTest1)
  */
 HWTEST_F_L0(IdleGCTriggerTest, TryPostHandleMarkFinishedTest2)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto idleGCTrigger = const_cast<IdleGCTrigger *>(heap->GetIdleGCTrigger());
     SharedHeap *sheap = SharedHeap::GetInstance();
@@ -1227,5 +1056,156 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGC1)
     EXPECT_FALSE(heap->NeedStopCollection());
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK);
     trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, CheckIdleYoungGCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    bool result = trigger->CheckIdleYoungGC(false);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, CheckIdleYoungGCTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    bool result = trigger->CheckIdleYoungGC(true);
+    EXPECT_FALSE(result);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, CheckIdleYoungGCTest003)
+{
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 100; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    
+    bool result = trigger->CheckIdleYoungGC(false);
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, CheckIdleYoungGCTest004)
+{
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 100; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    
+    bool result = trigger->CheckIdleYoungGC(true);
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, IdleStateTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    EXPECT_FALSE(trigger->IsIdleState());
+    
+    trigger->NotifyLooperIdleStart(1, 1);
+    EXPECT_TRUE(trigger->IsIdleState());
+    
+    trigger->NotifyLooperIdleEnd(1);
+    EXPECT_FALSE(trigger->IsIdleState());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalCCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    heap->DisableLocalCC();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->TryTriggerLocalCC());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalCCTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->TryTriggerLocalCC());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, TryTriggerLocalCCTest003)
+{
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+
+    heap->GetOldSpace()->IncreaseLiveObjectSize(100_MB);
+    heap->DisableLocalCC();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    EXPECT_FALSE(trigger->TryTriggerLocalCC());
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, HintGCTest001)
+{
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    bool lowResult = trigger->HintGCInLowDegree(heap);
+    bool middleResult = trigger->HintGCInMiddleDegree(heap);
+    bool highResult = trigger->HintGCInHighDegree(heap);
+    
+    EXPECT_FALSE(lowResult);
+    EXPECT_FALSE(middleResult);
+    EXPECT_FALSE(highResult);
+}
+
+HWTEST_F_L0(IdleGCTriggerTest, GetGCTypeNameTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    SharedHeap *sheap = SharedHeap::GetInstance();
+    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
+    
+    EXPECT_STREQ(trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::FULL_GC), "full gc");
+    EXPECT_STREQ(trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK), "shared concurrent mark");
+    EXPECT_STREQ(
+        trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_PARTIAL_MARK), "shared concurrent partial mark");
+    EXPECT_STREQ(trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC), "shared full gc");
+    EXPECT_STREQ(
+        trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_YOUNG_MARK), "local concurrent young mark");
+    EXPECT_STREQ(
+        trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_FULL_MARK), "local concurrent full mark");
+    EXPECT_STREQ(trigger->GetGCTypeName(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK), "local remark");
+    EXPECT_STREQ(trigger->GetGCTypeName(static_cast<TRIGGER_IDLE_GC_TYPE>(999)), "UnknownType");
 }
 }  // namespace panda::test

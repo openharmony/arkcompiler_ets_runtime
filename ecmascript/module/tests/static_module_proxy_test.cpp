@@ -488,6 +488,208 @@ HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DeleteProperty)
 }
 
 /**
+ * @tc.name: StaticModuleProxyHandler_GetOwnPropertyInternal_SymbolKey
+ * @tc.desc: Test GetOwnPropertyInternal with symbol key to cover line 123
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_GetOwnPropertyInternal_SymbolKey)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Create a symbol key
+    JSHandle<JSSymbol> symbolKey = thread->GetEcmaVM()->GetFactory()->NewJSSymbol();
+    JSHandle<JSTaggedValue> key(symbolKey);
+    PropertyDescriptor desc(thread);
+    // Call GetOwnPropertyInternal with symbol key
+    bool result = StaticModuleProxyHandler::GetOwnPropertyInternal(thread,
+        JSHandle<JSTaggedValue>::Cast(exportObject), key, desc);
+
+    // This should trigger the symbol key branch (line 123)
+    EXPECT_FALSE(result); // Result depends on whether the symbol exists as a property
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_GetOwnPropertyInternal_UndefinedValue
+ * @tc.desc: Test GetOwnPropertyInternal with undefined value to cover line 129
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_GetOwnPropertyInternal_UndefinedValue)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Create a key that doesn't exist in the object
+    JSHandle<JSTaggedValue> nonExistentKey(factory->NewFromASCII("nonExistentKey"));
+
+    PropertyDescriptor desc(thread);
+    // Call GetOwnPropertyInternal with non-existent key
+    bool result = StaticModuleProxyHandler::GetOwnPropertyInternal(thread,
+        JSHandle<JSTaggedValue>::Cast(exportObject), nonExistentKey, desc);
+
+    // This should trigger the undefined value branch (line 129)
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_SymbolKey
+ * @tc.desc: Test DefineOwnProperty with symbol key to cover line 165
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_SymbolKey)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Create a symbol key
+    JSHandle<JSSymbol> symbolKey = thread->GetEcmaVM()->GetFactory()->NewJSSymbol();
+    JSHandle<JSTaggedValue> key(symbolKey);
+    // Create a property descriptor object
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> valueKey(factory->NewFromASCII("value"));
+    JSHandle<JSTaggedValue> newValue(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, descObj, valueKey, newValue);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty with symbol key
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // This should trigger the symbol key branch (line 165)
+    EXPECT_TRUE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_CurrentUndefined
+ * @tc.desc: Test DefineOwnProperty when current is undefined to cover line 174
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_CurrentUndefined)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Create a key that doesn't exist in the object
+    JSHandle<JSTaggedValue> nonExistentKey(factory->NewFromASCII("nonExistentKey"));
+
+    // Create a property descriptor object
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> valueKey(factory->NewFromASCII("value"));
+    JSHandle<JSTaggedValue> newValue(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, descObj, valueKey, newValue);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, nonExistentKey.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty with non-existent key
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // This should trigger the current undefined branch (line 174)
+    EXPECT_FALSE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_AccessorDescriptor
+ * @tc.desc: Test DefineOwnProperty with accessor descriptor to cover line 181
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_AccessorDescriptor)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a property descriptor object with getter/setter (accessor descriptor)
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> getFunc(factory->NewJSFunction(thread->GetGlobalEnv()));
+    JSHandle<JSTaggedValue> getKey(factory->NewFromASCII("get"));
+    JSObject::SetProperty(thread, descObj, getKey, getFunc);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty with accessor descriptor
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // This should trigger the accessor descriptor branch (line 181)
+    EXPECT_TRUE(result.IsFalse());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_ConfigurableField
+ * @tc.desc: Test DefineOwnProperty with configurable field to cover line 184
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_ConfigurableField)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a property descriptor object with configurable=true
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> valueKey(factory->NewFromASCII("value"));
+    JSHandle<JSTaggedValue> newValue(factory->NewFromASCII("newValue"));
+    JSObject::SetProperty(thread, descObj, valueKey, newValue);
+
+    JSHandle<JSTaggedValue> configurableKey(factory->NewFromASCII("configurable"));
+    JSHandle<JSTaggedValue> configurableValue(thread, JSTaggedValue::True());
+    JSObject::SetProperty(thread, descObj, configurableKey, configurableValue);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty with configurable=true
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // This should trigger the configurable field branch (line 184)
+    EXPECT_TRUE(result.IsFalse());
+}
+
+/**
  * @tc.name: StaticModuleProxyHandler_IsExtensible
  * @tc.desc: Test IsExtensible method to validate extensibility checking in static module proxy
  * @tc.type: FUNC
@@ -515,6 +717,482 @@ HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_IsExtensible)
 
     // Verify the result is false (as per implementation)
     EXPECT_FALSE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_EnumerableField
+ * @tc.desc: Test DefineOwnProperty with enumerable field to cover line 187
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_EnumerableField)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a property descriptor object with enumerable=false
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> valueKey(factory->NewFromASCII("value"));
+    JSHandle<JSTaggedValue> newValue(factory->NewFromASCII("newValue"));
+    JSObject::SetProperty(thread, descObj, valueKey, newValue);
+
+    JSHandle<JSTaggedValue> enumerableKey(factory->NewFromASCII("enumerable"));
+    JSHandle<JSTaggedValue> enumerableValue(thread, JSTaggedValue::False());
+    JSObject::SetProperty(thread, descObj, enumerableKey, enumerableValue);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty with enumerable=false
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // This should trigger the enumerable field branch (line 187)
+    EXPECT_TRUE(result.IsFalse());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_WritableField
+ * @tc.desc: Test DefineOwnProperty with writable field to cover line 190
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_WritableField)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a property descriptor object with writable=false
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> valueKey(factory->NewFromASCII("value"));
+    JSHandle<JSTaggedValue> newValue(factory->NewFromASCII("newValue"));
+    JSHandle<JSTaggedValue> writableKey(factory->NewFromASCII("writable"));
+    JSHandle<JSTaggedValue> writableValue(thread, JSTaggedValue::False());
+
+    JSObject::SetProperty(thread, descObj, valueKey, newValue);
+    JSObject::SetProperty(thread, descObj, writableKey, writableValue);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty with writable=false
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // This should trigger the writable field branch (line 190)
+    EXPECT_TRUE(result.IsFalse());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_ValueField
+ * @tc.desc: Test DefineOwnProperty with value field to cover line 201
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_ValueField)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a property descriptor object with same value
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> valueKey(factory->NewFromASCII("value"));
+    JSHandle<JSTaggedValue> sameValue(factory->NewFromASCII("testValue")); // Same as original value
+
+    JSObject::SetProperty(thread, descObj, valueKey, sameValue);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty with same value
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // This should trigger the value field branch (line 201) and return true
+    EXPECT_TRUE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_GetOwnProperty
+ * @tc.desc: Test GetOwnProperty method to cover the method itself
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_GetOwnProperty)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a property descriptor object
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+
+    // Prepare runtime call info for GetOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call GetOwnProperty
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::GetOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // Verify the result
+    EXPECT_TRUE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DeleteProperty_SymbolKey
+ * @tc.desc: Test DeleteProperty with symbol key to cover line 261
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DeleteProperty_SymbolKey)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Create a symbol key
+    JSHandle<JSSymbol> symbolKey = thread->GetEcmaVM()->GetFactory()->NewJSSymbol();
+    JSHandle<JSTaggedValue> key(symbolKey);
+    // Prepare runtime call info for DeleteProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+
+    // Call DeleteProperty with symbol key
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DeleteProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // This should trigger the symbol key branch (line 261)
+    EXPECT_TRUE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_UndefinedDescObj
+ * @tc.desc: Test DefineOwnProperty with undefined descriptor object to cover line 161
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_UndefinedDescObj)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Prepare runtime call info for DefineOwnProperty with undefined descObj
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue::Undefined());
+
+    // Call DefineOwnProperty with undefined descObj
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // When descObj is undefined, Should return true (line 201)
+    EXPECT_TRUE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_GetOwnProperty_UndefinedDescObj
+ * @tc.desc: Test GetOwnProperty with undefined descriptor object to cover line 234
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_GetOwnProperty_UndefinedDescObj)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Prepare runtime call info for GetOwnProperty with undefined descObj
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue::Undefined());
+
+    // Call GetOwnProperty with undefined descObj
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::GetOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // Should return true when property exists
+    EXPECT_TRUE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_NoValueField
+ * @tc.desc: Test DefineOwnProperty without value field to cover line 201 return true
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_NoValueField)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a property descriptor object without value field
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> writableKey(factory->NewFromASCII("writable"));
+    JSHandle<JSTaggedValue> writableValue(thread, JSTaggedValue::True());
+    JSObject::SetProperty(thread, descObj, writableKey, writableValue);
+
+    JSHandle<JSTaggedValue> enumerableKey(factory->NewFromASCII("enumerable"));
+    JSHandle<JSTaggedValue> enumerableValue(thread, JSTaggedValue::True());
+    JSObject::SetProperty(thread, descObj, enumerableKey, enumerableValue);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty without value field
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // Should return true when no value field (line 201)
+    EXPECT_TRUE(result.IsTrue());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_DefineOwnProperty_DifferentValue
+ * @tc.desc: Test DefineOwnProperty with different value to cover line 197 return false
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_DefineOwnProperty_DifferentValue)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("originalValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a property descriptor object with different value
+    JSHandle<JSObject> descObj = factory->NewJSObject(objectClass);
+    JSHandle<JSTaggedValue> valueKey(factory->NewFromASCII("value"));
+    JSHandle<JSTaggedValue> differentValue(factory->NewFromASCII("differentValue"));
+
+    JSObject::SetProperty(thread, descObj, valueKey, differentValue);
+
+    // Prepare runtime call info for DefineOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, descObj.GetTaggedValue());
+
+    // Call DefineOwnProperty with different value
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::DefineOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // Should return false when values are different (line 197)
+    EXPECT_TRUE(result.IsFalse());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_GetProperty
+ * @tc.desc: Test GetProperty method to cover line 86-95
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_GetProperty)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Prepare runtime call info for GetProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, key.GetTaggedValue());
+
+    // Call GetProperty
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::GetProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // Should return the property value
+    EXPECT_TRUE(result.IsString());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_GetPropertyInternal
+ * @tc.desc: Test GetPropertyInternal method to cover line 97-105
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_GetPropertyInternal)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Call GetPropertyInternal
+    JSTaggedValue result = StaticModuleProxyHandler::GetPropertyInternal(thread,
+        JSHandle<JSTaggedValue>::Cast(exportObject), key);
+
+    // Should return the property value
+    EXPECT_TRUE(result.IsString());
+    EXPECT_EQ(JSTaggedValue::SameValue(thread, JSHandle<JSTaggedValue>(thread, result), value), true);
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_GetPropertyInternal_NonExistent
+ * @tc.desc: Test GetPropertyInternal with non-existent property
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_GetPropertyInternal_NonExistent)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Create a key that doesn't exist in the object
+    JSHandle<JSTaggedValue> nonExistentKey(factory->NewFromASCII("nonExistentKey"));
+
+    // Call GetPropertyInternal with non-existent key
+    JSTaggedValue result = StaticModuleProxyHandler::GetPropertyInternal(thread,
+        JSHandle<JSTaggedValue>::Cast(exportObject), nonExistentKey);
+
+    // Should return undefined
+    EXPECT_TRUE(result.IsUndefined());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_GetOwnProperty_NonExistent
+ * @tc.desc: Test GetOwnProperty with non-existent property and undefined descObj
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_GetOwnProperty_NonExistent)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Create a key that doesn't exist in the object
+    JSHandle<JSTaggedValue> nonExistentKey(factory->NewFromASCII("nonExistentKey"));
+
+    // Prepare runtime call info for GetOwnProperty
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, exportObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(1, nonExistentKey.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(2, JSTaggedValue::Undefined());
+
+    // Call GetOwnProperty with non-existent key
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = StaticModuleProxyHandler::GetOwnProperty(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    // Should return false when property doesn't exist
+    EXPECT_TRUE(result.IsFalse());
+}
+
+/**
+ * @tc.name: StaticModuleProxyHandler_CreateStaticModuleProxyHandler
+ * @tc.desc: Test CreateStaticModuleProxyHandler to cover line 31-84
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(StaticModuleProxyTest, StaticModuleProxyHandler_CreateStaticModuleProxyHandler)
+{
+    ObjectFactory *factory = instance->GetFactory();
+    JSHandle<JSHClass> objectClass(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> exportObject = factory->NewJSObject(objectClass);
+
+    // Add a property to the export object
+    JSHandle<JSTaggedValue> key(factory->NewFromASCII("testProperty"));
+    JSHandle<JSTaggedValue> value(factory->NewFromASCII("testValue"));
+    JSObject::SetProperty(thread, exportObject, key, value);
+
+    // Create a proxy with the export object
+    JSHandle<JSProxy> proxy = StaticModuleProxyHandler::CreateStaticModuleProxyHandler(thread,
+        JSHandle<JSTaggedValue>::Cast(exportObject));
+
+    // Verify the proxy was created successfully
+    EXPECT_TRUE(proxy.GetTaggedValue().IsJSProxy());
+    EXPECT_TRUE(proxy->GetHandler(thread).IsJSObject());
 }
 
 }  // namespace panda::test

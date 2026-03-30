@@ -21,8 +21,7 @@
 #include "zip_file_reader_io.h"
 #include "zip_file_reader_mem.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 constexpr size_t MEM_MAX_FILE_SIZE = 1u;
 
 std::shared_ptr<ZipFileReader> ZipFileReader::CreateZipFileReader(const std::string &filePath)
@@ -80,5 +79,4 @@ bool ZipFileReader::init()
     FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd_));
     return true;
 }
-}
-}
+}  // namespace panda::ecmascript

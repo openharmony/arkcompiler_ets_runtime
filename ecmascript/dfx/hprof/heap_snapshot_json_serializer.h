@@ -40,6 +40,7 @@ public:
         : stream_(stream), chunkSize_(stream->GetSize()), chunk_(chunkSize_), current_(0)
     {
     }
+    virtual ~StreamWriter() = default;
 
     void WriteString(const CString &str)
     {
@@ -83,6 +84,26 @@ public:
         }
         stream_->EndOfStream();
     }
+protected:
+    Stream *GetStream()
+    {
+        return stream_;
+    }
+
+    int GetCurrent()
+    {
+        return current_;
+    }
+
+    void ResetChunk()
+    {
+        current_ = 0;
+    }
+
+    CVector<char> &GetChunk()
+    {
+        return chunk_;
+    }
 
 private:
     void MaybeWriteChunk()
@@ -93,7 +114,7 @@ private:
         }
     }
 
-    void WriteChunk()
+    virtual void WriteChunk()
     {
         stream_->WriteChunk(chunk_.data(), current_);
         current_ = 0;
@@ -105,6 +126,18 @@ private:
     int current_ {0};
 };
 
+class IdMapWriter : public StreamWriter {
+public:
+    explicit IdMapWriter(Stream *stream) : StreamWriter(stream) {}
+
+private:
+    void WriteChunk() override
+    {
+        GetStream()->WriteExtraInfo(GetChunk().data(), GetCurrent());
+        ResetChunk();
+    }
+};
+
 class HeapSnapshotJSONSerializer {
 public:
     explicit HeapSnapshotJSONSerializer() = default;
@@ -112,6 +145,7 @@ public:
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);
     static bool Serialize(HeapSnapshot *snapshot, Stream *stream);
+    static bool SerializeExtraInfo(HeapSnapshot *snapshot, Stream *stream);
 
 private:
     static constexpr char ASCII_US = 31;
@@ -131,6 +165,7 @@ private:
     static void SerializeString(CString *str, StreamWriter *writer);
     static void SerializeUnicodeChar(uint32_t unicodeChar, StreamWriter *writer);
     static void SerializerSnapshotClosure(StreamWriter *writer);
+    static void SerializeNodeAddressIdMap(HeapSnapshot *snapshot, StreamWriter *writer);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_SNAPSHOT_SERIALIZER_H

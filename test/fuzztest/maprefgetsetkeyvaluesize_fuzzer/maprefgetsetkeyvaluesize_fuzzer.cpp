@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
+
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_weak_container.h"
@@ -34,13 +36,11 @@ void Int32GetSizeFuzzerTest(const uint8_t *data, size_t size)
         LOG_ECMA(ERROR) << "illegal input!";
         return;
     }
-    char *value = new char[size]();
-    if (memcpy_s(value, size, data, size) != EOK) {
-        LOG_ECMA(ERROR) << "memcpy_s failed!";
-    }
+    FuzzedDataProvider fdp(data, size);
+    std::string value = fdp.ConsumeRandomLengthString(size);
     Local<MapRef> object = MapRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, value, (int32_t)size);
-    Local<JSValueRef> objectvalue = StringRef::NewFromUtf8(vm_, value, (int32_t)size);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, value.data(), static_cast<int32_t>(value.size()));
+    Local<JSValueRef> objectvalue = StringRef::NewFromUtf8(vm_, value.data(), static_cast<int32_t>(value.size()));
     object->Set(vm_, key, objectvalue);
     object->GetSize(vm_);
     object->GetTotalElements(vm_);

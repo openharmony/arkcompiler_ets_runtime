@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "objects/dynamic_object_accessor_util.h"
+#include "common_runtime/common_interfaces/objects/dynamic_object_accessor_util.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tests/test_helper.h"
@@ -43,10 +43,12 @@ HWTEST_F_L0(DynamicObjectAccessorUtilTest, SetGetProperty01)
     int value = 123;
     JSTaggedValue taggedValue(value);
 
-    auto setResult = common::DynamicObjectAccessorUtil::SetProperty(jsobject.GetTaggedValue().GetTaggedObject(), key,
-                                                                    taggedValue.GetRawData());
+    auto *obj = reinterpret_cast<const common_vm::BaseObject *>(jsobject.GetTaggedValue().GetTaggedObject());
+    auto setResult = common_vm::DynamicObjectAccessorUtil::SetProperty(obj, key, taggedValue.GetRawData());
     EXPECT_EQ(setResult, true);
-    auto taggedType = common::DynamicObjectAccessorUtil::GetProperty(jsobject.GetTaggedValue().GetTaggedObject(), key);
+    // Re-extract pointer: GC inside SetProperty may have moved the object
+    obj = reinterpret_cast<const common_vm::BaseObject *>(jsobject.GetTaggedValue().GetTaggedObject());
+    auto taggedType = common_vm::DynamicObjectAccessorUtil::GetProperty(obj, key);
     EXPECT_EQ(JSTaggedValue(*taggedType).GetInt(), value);
 }
 } // namespace panda::test

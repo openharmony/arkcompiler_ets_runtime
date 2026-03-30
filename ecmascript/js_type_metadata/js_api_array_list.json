@@ -1,5 +1,6 @@
 {
     "name": "JS_API_ARRAY_LIST",
+    "node_name": "ArrayList",
     "offsets": [
         {
             "name": "Length",

@@ -15,7 +15,9 @@
 
 #include "ecmascript/js_thread.h"
 
+#include "ecmascript/ecma_vm.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/platform/os.h"
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/mem/local_cmc/cc_evacuator-inl.h"
 #include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
@@ -157,6 +159,7 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.barrierAndglue_ = jsThread->GetGlueAddr();
     SetCurrentThreadId();
     jsThread->SetThreadId();
+    jsThread->CaptureThreadName();
 
     if (UNLIKELY(g_isEnableCMCGC)) {
         jsThread->glueData_.threadHolder_ = ToUintPtr(ThreadHolder::CreateAndRegisterNewThreadHolder(vm));
@@ -342,6 +345,7 @@ void JSThread::HandleUncaughtException(JSTaggedValue exception)
             Local<ObjectRef> exceptionRef = JSNApiHelper::ToLocal<ObjectRef>(exceptionHandle);
             ThreadNativeScope nativeScope(this);
             callback(exceptionRef, GetOnErrorData());
+            SetExtraErrorMessage(JSTaggedValue::Hole());
         }
     }
     // if caught exceptionHandle type is JSError
@@ -529,6 +533,9 @@ void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
     if (!glueData_.exception_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.exception_)));
     }
+    if (!glueData_.extraErrorMessage_.IsHole()) {
+        visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.extraErrorMessage_)));
+    }
     if (!glueData_.currentEnv_.IsHole()) {
         visitor.VisitRoot(Root::ROOT_VM, ObjectSlot(ToUintPtr(&glueData_.currentEnv_)));
     }
@@ -550,7 +557,7 @@ void JSThread::Iterate(RootVisitor &visitor, GlobalVisitType visitType)
         auto callback = [&visitor, &globalCount](Node *node) {
             JSTaggedValue value(node->GetObject());
             if (value.IsHeapObject()) {
-                visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+                visitor.VisitRoot(Root::ROOT_GLOBAL_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             }
             globalCount++;
         };
@@ -611,7 +618,7 @@ void JSThread::IterateHandleWithCheck(RootVisitor &visitor, GlobalVisitType visi
         node->MarkCount();
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
-            visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            visitor.VisitRoot(Root::ROOT_GLOBAL_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
             auto object = reinterpret_cast<TaggedObject *>(node->GetObject());
             typeCount[static_cast<int>(object->GetClass()->GetObjectType())]++;
 
@@ -768,7 +775,9 @@ bool JSThread::DoStackLimitCheck()
 {
     if (UNLIKELY(!IsCrossThreadExecutionEnable() && GetCurrentStackPosition() < GetStackLimit())) {
         vm_->CheckThread();
-        LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition() << " limit:" << GetStackLimit();
+        LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition()
+                        << " limit:" << GetStackLimit()
+                        << " current frame: " << GetCurrentFrame();
         if (LIKELY(!HasPendingException())) {
             ObjectFactory *factory = vm_->GetFactory();
             JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR,
@@ -786,13 +795,6 @@ void JSThread::SetInitialBuiltinHClass(
 {
     size_t index = BuiltinHClassEntries::GetEntryIndex(type);
     auto &entry = glueData_.builtinHClassEntries_.entries[index];
-    LOG_ECMA(DEBUG) << "JSThread::SetInitialBuiltinHClass: "
-                    << "Builtin = " << ToString(type)
-                    << ", builtinHClass = " << builtinHClass
-                    << ", instanceHClass = " << instanceHClass
-                    << ", prototypeHClass = " << prototypeHClass
-                    << ", prototypeOfPrototypeHClass = " << prototypeOfPrototypeHClass
-                    << ", extraHClass = " << extraHClass;
     entry.builtinHClass = builtinHClass;
     entry.instanceHClass = instanceHClass;
     entry.prototypeHClass = prototypeHClass;
@@ -1028,6 +1030,7 @@ void JSThread::SwitchAllStub(bool isStwCopy)
     SwitchStwCopyBCStubs(isStwCopy);
     SwitchStwCopyCommonStubs(isStwCopy);
     SwitchStwCopyBuiltinsStubs(isStwCopy);
+    glueData_.switchToStwStub_ = isStwCopy;
 }
 
 void JSThread::TerminateExecution()
@@ -1074,6 +1077,9 @@ bool JSThread::ShouldHandleMarkOrCopyFinishedInSafepoint()
 bool JSThread::CheckSafepoint()
 {
     ResetCheckSafePointStatus();
+
+    // Check and trigger memory pressure callback at safe point
+    GetEcmaVM()->CheckAndTriggerMemoryPressureCallback();
 
     if UNLIKELY(HasTerminationRequest()) {
         TerminateExecution();
@@ -1529,6 +1535,10 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
                 suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
             }
             ASSERT(!HasSuspendRequest());
+        } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_FLIP_FUNCTION) != 0) {
+            TryRunFlipFunction();
+        } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::RUNNING_FLIP_FUNCTION) != 0) {
+            WaitFlipFunctionFinished();
         } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_SHARED_HEAP_OOM) != 0) {
             ThreadStateAndFlags newStateAndFlags;
             newStateAndFlags.asNonvolatileStruct.flags = oldStateAndFlags.asNonvolatileStruct.flags;
@@ -1544,6 +1554,53 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
     }
 }
 
+bool JSThread::TryRunFlipFunction()
+{
+    while (true) {
+        ThreadStateAndFlags oldStateAndFlags;
+        oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
+        if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::PENDING_FLIP_FUNCTION) == 0) {
+            return false;
+        }
+        ThreadStateAndFlags newStateAndFlags;
+        newStateAndFlags.asNonvolatileStruct.flags =
+            (oldStateAndFlags.asNonvolatileStruct.flags & ~ThreadFlag::PENDING_FLIP_FUNCTION) |
+            ThreadFlag::RUNNING_FLIP_FUNCTION;
+        newStateAndFlags.asNonvolatileStruct.state = oldStateAndFlags.asNonvolatileStruct.state;
+        if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
+                                                                       newStateAndFlags.asNonvolatileInt,
+                                                                       std::memory_order_release)) {
+            RunFlipFunction();
+            return true;
+        }
+    }
+}
+
+void JSThread::RunFlipFunction()
+{
+    ASSERT(!ReadFlag(ThreadFlag::PENDING_FLIP_FUNCTION));
+    ASSERT(ReadFlag(ThreadFlag::RUNNING_FLIP_FUNCTION));
+    Closure *func = GetFlipFunction();
+    ClearFlipFunction();
+    ASSERT(func != nullptr);
+    func->Run(this);
+    {
+        LockHolder holder(flipMutex_);
+        // fixme: atomic order could use relaxed here
+        ClearFlag(ThreadFlag::RUNNING_FLIP_FUNCTION);
+        flipCV_.Signal();
+    }
+}
+
+void JSThread::WaitFlipFunctionFinished()
+{
+    LockHolder holder(flipMutex_);
+    // fixme: atomic order could use relaxed here
+    while (ReadFlag(ThreadFlag::RUNNING_FLIP_FUNCTION)) {
+        flipCV_.Wait(&flipMutex_);
+    }
+}
+
 inline void JSThread::StoreSuspendedState(ThreadState newState)
 {
     ASSERT(!g_isEnableCMCGC);
@@ -1555,6 +1612,7 @@ void JSThread::PostFork()
 {
     SetCurrentThreadId();
     SetThreadId();
+    CaptureThreadName();
     if (currentThread == nullptr) {
         currentThread = this;
         if (LIKELY(!g_isEnableCMCGC)) {
@@ -1573,6 +1631,32 @@ void JSThread::PostFork()
         }
     }
 }
+
+void JSThread::CaptureThreadName()
+{
+#if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
+    char pthreadName[16];
+    int result = pthread_getname_np(pthread_self(), pthreadName, sizeof(pthreadName));
+    if (result == 0 && pthreadName[0] != '\0') {
+        threadName_ = std::string(pthreadName);
+    } else {
+        threadName_ = "JSThread-" + std::to_string(GetThreadId());
+    }
+#else
+    threadName_ = "JSThread-" + std::to_string(GetThreadId());
+#endif
+}
+
+std::string JSThread::GetThreadName() const
+{
+    return threadName_;
+}
+
+void JSThread::SetThreadName(const std::string &name)
+{
+    threadName_ = name;
+}
+
 #ifndef NDEBUG
 bool JSThread::IsInManagedState() const
 {

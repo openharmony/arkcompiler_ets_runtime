@@ -165,7 +165,6 @@ void Runtime::PreInitialization(const EcmaVM *vm)
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
 
-#if ENABLE_NEXT_OPTIMIZATION
     if (g_isEnableCMCGC) {
         baseStringTable_ = new (std::nothrow) BaseStringTableImpl();
         if (baseStringTable_ == nullptr) {
@@ -194,10 +193,9 @@ void Runtime::PreInitialization(const EcmaVM *vm)
                                                           GetInternalTable()->GetHashTrieMap());
     } else {
         stringTable_ = std::make_unique<EcmaStringTable>(false);
+        stringTable_->GetCleaner()->SetEnableConcurrentSweep(
+            const_cast<EcmaVM*>(vm)->GetJSOptions().EnableStringTableConcurrentSweep());
     }
-#else
-    stringTable_ = std::make_unique<EcmaStringTable>();
-#endif
 
     SharedHeap::GetInstance()->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get(),
         const_cast<EcmaVM*>(vm)->GetJSOptions(), DaemonThread::GetInstance());
@@ -316,32 +314,76 @@ void Runtime::UnregisterThread(JSThread* thread)
 
 void Runtime::SuspendAll(JSThread *current)
 {
-    ASSERT(current != nullptr);
-    ASSERT(!current->IsInRunningState());
+    ASSERT(current == nullptr || !current->IsInRunningState());
 #ifndef NDEBUG
-    ASSERT(!current->HasLaunchedSuspendAll());
-    current->LaunchSuspendAll();
+    if (current != nullptr) {
+        ASSERT(!current->HasLaunchedSuspendAll());
+        current->LaunchSuspendAll();
+    }
 #endif
     SuspendAllThreadsImpl(current);
 }
 
 void Runtime::ResumeAll(JSThread *current)
 {
-    ASSERT(current != nullptr);
-    ASSERT(!current->IsInRunningState());
+    ASSERT(current == nullptr || !current->IsInRunningState());
 #ifndef NDEBUG
-    ASSERT(current->HasLaunchedSuspendAll());
-    current->CompleteSuspendAll();
+    if (current != nullptr) {
+        ASSERT(current->HasLaunchedSuspendAll());
+        current->CompleteSuspendAll();
+    }
 #endif
     ResumeAllThreadsImpl(current);
 }
 
+void Runtime::FlipAllThreads(DaemonThread *current, Closure *suspendCallback, Closure *flipFunction)
+{
+    ASSERT(!g_isEnableCMCGC);
+
+    std::vector<JSThread *> threads;
+    {
+        SuspendAllScope scope(current);
+        suspendCallback->Run(current);
+
+        LockHolder holder(threadsLock_);
+        size_t numThreads = GetThreadListSizeUnsafe();
+        threads.reserve(numThreads);
+        GCIterateThreadListUnsafe([&threads, flipFunction](JSThread *thread) {
+            threads.emplace_back(thread);
+            thread->SetFlipFunction(flipFunction);
+        });
+    }
+
+    size_t numThreads = threads.size();
+    std::reverse(threads.begin(), threads.end());
+
+    LockHolder lock(threadsLock_);
+    for (size_t i = 0; i < numThreads; ++i) {
+        JSThread *thread = threads[i];
+        // fixme: optimize by use thread exit flag
+        if (std::find(threads_.begin(), threads_.end(), thread) == threads_.end()) {
+            threads[i] = nullptr;
+            continue;
+        }
+        if (thread->TryRunFlipFunction()) {
+            threads[i] = nullptr;
+        }
+    }
+
+    for (JSThread *thread : threads) {
+        if (thread == nullptr) {
+            continue;
+        }
+        thread->WaitFlipFunctionFinished();
+    }
+}
+
 void Runtime::SuspendAllThreadsImpl(JSThread *current)
 {
-    // fixme: support suspend in a non JS Thread.
-    ASSERT(current != nullptr);
+    // Support suspend initiated from non-JS thread (current == nullptr)
     if (g_isEnableCMCGC) {
-        common::BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(current->GetThreadHolder());
+        ThreadHolder* holder = (current != nullptr) ? current->GetThreadHolder() : nullptr;
+        common::BaseRuntime::GetInstance()->GetThreadHolderManager().SuspendAll(holder);
         return;
     }
     bool suspendMainThreadLater = false;
@@ -353,7 +395,9 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
             if (suspendNewCount_ == 0) {
                 suspendNewCount_++;
                 ASSERT(threads_.size() > 0);
-                barrier.Initialize(threads_.size() - 1);
+                // When current is nullptr (non-JS thread initiated), suspend all JS threads
+                size_t barrierCount = (current != nullptr) ? threads_.size() - 1 : threads_.size();
+                barrier.Initialize(barrierCount);
                 for (const auto& thread: threads_) {
                     if (thread == current) {
                         continue;
@@ -427,8 +471,10 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
 
 void Runtime::ResumeAllThreadsImpl(JSThread *current)
 {
+    // Support resume initiated from non-JS thread (current == nullptr)
     if (g_isEnableCMCGC) {
-        common::BaseRuntime::GetInstance()->GetThreadHolderManager().ResumeAll(current->GetThreadHolder());
+        ThreadHolder* holder = (current != nullptr) ? current->GetThreadHolder() : nullptr;
+        common::BaseRuntime::GetInstance()->GetThreadHolderManager().ResumeAll(holder);
     } else {
         LockHolder lock(threadsLock_);
         if (suspendNewCount_ > 0) {
@@ -767,7 +813,7 @@ void Runtime::IterateSendableGlobalStorage(RootVisitor &visitor)
     auto callback = [&visitor, &globalCount](Node *node) {
         JSTaggedValue value(node->GetObject());
         if (value.IsHeapObject()) {
-            visitor.VisitRoot(Root::ROOT_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
+            visitor.VisitRoot(Root::ROOT_GLOBAL_HANDLE, ecmascript::ObjectSlot(node->GetObjectAddress()));
         }
         globalCount++;
     };

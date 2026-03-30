@@ -1,5 +1,6 @@
 {
     "name": "NATIVE_MODULE_FAILURE_INFO",
+    "node_name": "NativeModuleFailureInfo",
     "offsets": [
         {
             "name": "ArkNativeModuleFailureInfo",

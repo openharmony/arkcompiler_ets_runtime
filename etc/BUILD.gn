@@ -19,3 +19,10 @@ ohos_prebuilt_etc("arkcompiler.para.dac") {
   module_install_dir = "etc/param"
   subsystem_name = "arkcompiler"
 }
+
+ohos_prebuilt_etc("arkcompiler.jsruntime.para") {
+  source = "arkcompiler.jsruntime.para"
+  part_name = "ets_runtime"
+  module_install_dir = "etc/param"
+  subsystem_name = "arkcompiler"
+}

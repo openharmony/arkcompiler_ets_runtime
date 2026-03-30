@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/byte_array.h"
+#include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
@@ -181,6 +182,7 @@ public:
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"ReceiverObject", "HolderObject", "EXTRA_PROFILE_TYPE_INFO"}},
             {JSType::FUNCTION_TEMPLATE, {"Method", "Module", "RawProfileTypeInfo", "FUNCTION_TEMPLATE"}},
             {JSType::GLOBAL_ENV, {"GLOBAL_ENV"}},
+            {JSType::IC_INFO, {"IC_INFO"}},
             {JSType::IMPORTENTRY_RECORD, {"ImportName", "LocalName", "ModuleRequestIndex", "IMPORTENTRY_RECORD"}},
             {JSType::INDIRECT_EXPORTENTRY_RECORD, {"ExportName", "ImportName",
                                                    "ModuleRequestIndex", "INDIRECT_EXPORTENTRY_RECORD"}},
@@ -282,6 +284,7 @@ public:
                                               "MinimumSignificantDigits", "MaximumSignificantDigits",
                                               "UseGrouping", "BoundFormat", "IcuField", "JS_NUMBER_FORMAT"}},
             {JSType::JS_OBJECT, {"Properties", "Elements", "JS_OBJECT"}},
+            {JSType::JS_WRAPPED_NAPI_OBJECT, {"NativePointers", "JS_WRAPPED_NAPI_OBJECT"}},
             {JSType::JS_OOM_ERROR, {"Properties", "Elements", "JS_OOM_ERROR"}},
             {JSType::JS_PLURAL_RULES, {"Locale", "MinimumIntegerDigits",
                                        "MinimumFractionDigits", "MaximumFractionDigits",
@@ -412,7 +415,8 @@ public:
             {JSType::FREE_OBJECT_WITH_ONE_FIELD, {"FREE_OBJECT_WITH_ONE_FIELD"}},
             {JSType::FREE_OBJECT_WITH_NONE_FIELD, {"FREE_OBJECT_WITH_NONE_FIELD"}},
             {JSType::FREE_OBJECT_WITH_TWO_FIELD, {"FREE_OBJECT_WITH_TWO_FIELD"}},
-            {JSType::VTABLE, {"VTABLE"}}
+            {JSType::VTABLE, {"VTABLE"}},
+            {JSType::WEAK_LINKED_HASH_MAP, {"WEAK_LINKED_HASH_MAP"}}
         };
         // { typeName: [all fields' start offset of this type in the same order as declared in .h files + endOffset] }
         // endOffset: LAST_OFFSET - (start offset of the first field of this type)
@@ -468,6 +472,7 @@ public:
                                          FunctionTemplate::RAW_PROFILE_TYPE_INFO_OFFSET,
                                          FunctionTemplate::SIZE - FunctionTemplate::METHOD_OFFSET}},
             {JSType::GLOBAL_ENV, {GlobalEnv::SIZE - GlobalEnv::HEADER_SIZE}},
+            {JSType::IC_INFO, {0}},
             {JSType::IMPORTENTRY_RECORD, {ImportEntry::IMPORT_ENTRY_OFFSET,
                                           ImportEntry::LOCAL_NAME_OFFSET,
                                           ImportEntry::MODULE_REQUEST_INDEX_OFFSET,
@@ -746,6 +751,9 @@ public:
             {JSType::JS_OBJECT, {JSObject::PROPERTIES_OFFSET,
                                  JSObject::ELEMENTS_OFFSET,
                                  JSObject::SIZE - JSObject::PROPERTIES_OFFSET}},
+            {JSType::JS_WRAPPED_NAPI_OBJECT, {
+                JSWrappedNapiObject::NATIVE_POINTERS_OFFSET,
+                JSWrappedNapiObject::LAST_OFFSET - JSWrappedNapiObject::NATIVE_POINTERS_OFFSET}},
             {JSType::JS_OOM_ERROR, {JSObject::PROPERTIES_OFFSET,
                                     JSObject::ELEMENTS_OFFSET,
                                     JSObject::SIZE - JSObject::PROPERTIES_OFFSET}},
@@ -993,7 +1001,7 @@ public:
                 ResolvingFunctionsRecord::SIZE - ResolvingFunctionsRecord::RESOLVE_FUNCTION_OFFSET}},
             {JSType::SENDABLE_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
             {JSType::SFUNCTION_ENV, {TaggedArray::SIZE - TaggedArray::SIZE}},
-            {JSType::JS_XREF_OBJECT, {JSObject::SIZE - JSObject::SIZE}},
+            {JSType::JS_XREF_OBJECT, {JSWrappedNapiObject::SIZE - JSWrappedNapiObject::SIZE}},
             {JSType::SLICED_STRING, {SlicedString::PARENT_OFFSET, SlicedString::SIZE - SlicedString::PARENT_OFFSET}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {
                 SourceTextModule::SOURCE_TEXT_MODULE_OFFSET,
@@ -1035,7 +1043,8 @@ public:
                 TransWithProtoHandler::SIZE - TransWithProtoHandler::HANDLER_INFO_OFFSET}},
             {JSType::TREE_STRING, {TreeString::LEFT_OFFSET, TreeString::RIGHT_OFFSET,
                                        TreeString::SIZE - TreeString::LEFT_OFFSET}},
-            {JSType::VTABLE, {TaggedArray::LAST_OFFSET - TaggedArray::LENGTH_OFFSET}}
+            {JSType::VTABLE, {TaggedArray::LAST_OFFSET - TaggedArray::LENGTH_OFFSET}},
+            {JSType::WEAK_LINKED_HASH_MAP, {TaggedArray::SIZE - TaggedArray::SIZE}}
         };
         // { typeName: [all parents of this type]}
         parentsTable_ = {
@@ -1057,6 +1066,7 @@ public:
             {JSType::EXTRA_PROFILE_TYPE_INFO, {"TAGGED_OBJECT"}},
             {JSType::FUNCTION_TEMPLATE, {"TAGGED_OBJECT"}},
             {JSType::GLOBAL_ENV, {"TAGGED_ARRAY"}},
+            {JSType::IC_INFO, {"TAGGED_ARRAY"}},
             {JSType::IMPORTENTRY_RECORD, {"RECORD"}},
             {JSType::INDIRECT_EXPORTENTRY_RECORD, {"RECORD"}},
             {JSType::INTERNAL_ACCESSOR, {"RECORD"}},
@@ -1145,6 +1155,7 @@ public:
             {JSType::JS_NATIVE_POINTER, {"TAGGED_OBJECT"}},
             {JSType::JS_NUMBER_FORMAT, {"JS_OBJECT"}},
             {JSType::JS_OBJECT, {"ECMA_OBJECT"}},
+            {JSType::JS_WRAPPED_NAPI_OBJECT, {"JS_OBJECT"}},
             {JSType::JS_OOM_ERROR, {"ECMA_OBJECT"}},
             {JSType::JS_PLURAL_RULES, {"JS_OBJECT"}},
             {JSType::JS_PRIMITIVE_REF, {"JS_OBJECT"}},
@@ -1217,7 +1228,7 @@ public:
             {JSType::MUTANT_TAGGED_ARRAY, {"TAGGED_ARRAY"}},
             {JSType::NATIVE_MODULE_FAILURE_INFO, {"JS_OBJECT"}},
             {JSType::PENDING_JOB, {"RECORD"}},
-            {JSType::PROFILE_TYPE_INFO, {"TAGGED_ARRAY"}},
+            {JSType::PROFILE_TYPE_INFO, {"IC_INFO"}},
             {JSType::PROFILE_TYPE_INFO_CELL_0, {"TAGGED_OBJECT"}},
             {JSType::PROFILE_TYPE_INFO_CELL_1, {"TAGGED_OBJECT"}},
             {JSType::PROFILE_TYPE_INFO_CELL_N, {"TAGGED_OBJECT"}},
@@ -1238,7 +1249,7 @@ public:
             {JSType::RESOLVING_FUNCTIONS_RECORD, {"RECORD"}},
             {JSType::SENDABLE_ENV, {"TAGGED_ARRAY"}},
             {JSType::SFUNCTION_ENV, {"TAGGED_ARRAY"}},
-            {JSType::JS_XREF_OBJECT, {"JS_OBJECT"}},
+            {JSType::JS_XREF_OBJECT, {"JS_WRAPPED_NAPI_OBJECT"}},
             {JSType::SLICED_STRING, {"ECMA_STRING"}},
             {JSType::SOURCE_TEXT_MODULE_RECORD, {"MODULE_RECORD"}},
             {JSType::STAR_EXPORTENTRY_RECORD, {"RECORD"}},
@@ -1251,7 +1262,8 @@ public:
             {JSType::TRANSITION_HANDLER, {"TAGGED_OBJECT"}},
             {JSType::TRANS_WITH_PROTO_HANDLER, {"TAGGED_OBJECT"}},
             {JSType::TREE_STRING, {"ECMA_STRING"}},
-            {JSType::VTABLE, {"TAGGED_OBJECT"}}
+            {JSType::VTABLE, {"TAGGED_OBJECT"}},
+            {JSType::WEAK_LINKED_HASH_MAP, {"TAGGED_ARRAY"}}
         };
         // { typeName: [size of all fields' in the same order as declared in .h files]}
         fieldSizeTable_ = {
@@ -1303,6 +1315,7 @@ public:
                 FunctionTemplate::RAW_PROFILE_TYPE_INFO_OFFSET - FunctionTemplate::MODULE_OFFSET,
                 FunctionTemplate::LENGTH_OFFSET - FunctionTemplate::RAW_PROFILE_TYPE_INFO_OFFSET}},
             {JSType::GLOBAL_ENV, {}},
+            {JSType::IC_INFO, {}},
             {JSType::IMPORTENTRY_RECORD, {
                 ImportEntry::LOCAL_NAME_OFFSET - ImportEntry::IMPORT_ENTRY_OFFSET,
                 ImportEntry::MODULE_REQUEST_INDEX_OFFSET - ImportEntry::LOCAL_NAME_OFFSET,
@@ -1524,6 +1537,7 @@ public:
             {JSType::JS_OBJECT, {
                 JSObject::ELEMENTS_OFFSET - JSObject::PROPERTIES_OFFSET,
                 JSObject::SIZE - JSObject::ELEMENTS_OFFSET}},
+            {JSType::JS_WRAPPED_NAPI_OBJECT, {JSWrappedNapiObject::SIZE - JSWrappedNapiObject::NATIVE_POINTERS_OFFSET}},
             {JSType::JS_OOM_ERROR, {
                 JSObject::ELEMENTS_OFFSET - JSObject::PROPERTIES_OFFSET,
                 JSObject::SIZE - JSObject::ELEMENTS_OFFSET}},
@@ -1773,8 +1787,14 @@ public:
                 TransWithProtoHandler::SIZE - TransWithProtoHandler::PROTO_CELL_OFFSET}},
             {JSType::TREE_STRING, {TreeString::RIGHT_OFFSET - TreeString::LEFT_OFFSET,
                                    TreeString::SIZE - TreeString::RIGHT_OFFSET}},
-            {JSType::VTABLE, {}}
+            {JSType::VTABLE, {}},
+            {JSType::WEAK_LINKED_HASH_MAP, {}}
         };
+    }
+
+    CString GetNodeNameTest(JSType type)
+    {
+        return HeapSnapshot::GetNodeName(type, true);
     }
 
     ~JSMetadataTestHelper() = default;
@@ -1786,6 +1806,7 @@ public:
 
     struct Metadata {
         std::string name {};
+        std::string nodeName {};
         std::unordered_map<std::string, std::pair<int, int>> offsets {};
         int endOffset {};
         std::vector<std::string> parents {};
@@ -1841,6 +1862,10 @@ public:
         jsonFile.close();
         // Get "name" from json and set it to metadata.name
         if (!GetStringFromJson(json, "name", metadata.name)) {
+            std::cout << "Fail to read name: " << filePath << std::endl;
+            return;
+        }
+        if (!GetStringFromJson(json, "node_name", metadata.nodeName)) {
             std::cout << "Fail to read name: " << filePath << std::endl;
             return;
         }
@@ -1905,6 +1930,11 @@ public:
         auto fieldNames = GetFieldNamesByType(type);
         auto fieldOffsets = GetFieldOffsetsByType(type);
         auto sizeTable = GetFieldSizesByType(type);
+        auto fieldNodeName = GetNodeNameTest(type);
+        if (metadata.nodeName != std::string(fieldNodeName)) {
+            std::cout << "Type fields' number inconsistent with offsets' number" << std::endl;
+            return false;
+        }
         // Fields count should be the same as offsets'
         if (fieldNames.size() != fieldOffsets.size()) {
             std::cout << "Type fields' number inconsistent with offsets' number" << std::endl;
@@ -2457,6 +2487,17 @@ HWTEST_F_L0(JSMetadataTest, TestGlobalEnvMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::GLOBAL_ENV, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestIcInfoMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"ic_info.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::IC_INFO, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestImportentryRecordMetadata)
@@ -3425,6 +3466,17 @@ HWTEST_F_L0(JSMetadataTest, TestJsObjectMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::JS_OBJECT, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestJSWrappedNapiObjectMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_wrapped_napi_object.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::JS_WRAPPED_NAPI_OBJECT, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestJsOomErrorMetadata)
@@ -4445,8 +4497,7 @@ HWTEST_F_L0(JSMetadataTest, TestSFunctionEnvMetadata)
 
 HWTEST_F_L0(JSMetadataTest, TestJsXrefObjectMetadata) {
     JSMetadataTestHelper tester{};
-    std::string metadataFilePath =
-        METADATA_SOURCE_FILE_DIR "js_xref_object.json";
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"js_xref_object.json";
     JSMetadataTestHelper::Metadata metadata{};
 
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
@@ -4597,6 +4648,17 @@ HWTEST_F_L0(JSMetadataTest, TestVtableMetadata)
     tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
     ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
     ASSERT_TRUE(tester.Test(JSType::VTABLE, metadata));
+}
+
+HWTEST_F_L0(JSMetadataTest, TestWeakLinkedHashMapMetadata)
+{
+    JSMetadataTestHelper tester {};
+    std::string metadataFilePath = METADATA_SOURCE_FILE_DIR"weak_linked_hash_map.json";
+    JSMetadataTestHelper::Metadata metadata {};
+
+    tester.ReadAndParseMetadataJson(metadataFilePath, metadata);
+    ASSERT_TRUE(metadata.status == JSMetadataTestHelper::INITIALIZED);
+    ASSERT_TRUE(tester.Test(JSType::WEAK_LINKED_HASH_MAP, metadata));
 }
 
 HWTEST_F_L0(JSMetadataTest, TestDictionaryLayoutMetadata)

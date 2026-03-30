@@ -1,5 +1,6 @@
 {
     "name": "JS_RELATIVE_TIME_FORMAT",
+    "node_name": "JSRelativeTimeFormat",
     "offsets": [
         {
             "name": "Locale",

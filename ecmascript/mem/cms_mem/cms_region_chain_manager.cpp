@@ -37,6 +37,7 @@ size_t CMSRegionChainManager::Sweep(std::vector<Region *> &pendingReclaimFromReg
     size_t survivalObjectSize = 0;
     EnumerateRegions([this, &pendingReclaimFromRegions, &survivalObjectSize](Region *region) {
         size_t survivalSize = region->AliveObject();
+        region->ResetAliveObject();
         survivalObjectSize += survivalSize;
         if (survivalSize == 0) {
             regionList_.RemoveNode(region);
@@ -45,8 +46,8 @@ size_t CMSRegionChainManager::Sweep(std::vector<Region *> &pendingReclaimFromReg
         } else {
             // fixme: Full alived region do not need to sweep
             SlotFreeListMetaInfo freeList = SweepRegionImpl(region);
-            if (freeList.firstFreeObject_ != nullptr) {
-                ASSERT(Region::ObjectAddressToRange(const_cast<FreeObject *>(freeList.firstFreeObject_)) == region);
+            if (freeList.firstFreeSegment_ != nullptr) {
+                ASSERT(Region::ObjectAddressToRange(ToUintPtr(freeList.firstFreeSegment_)) == region);
                 usableSlotFreeList_.emplace_back(freeList);
             }
         }
@@ -66,6 +67,7 @@ size_t CMSRegionChainManager::PrepareSweeping(std::vector<Region *> &pendingRecl
     EnumerateRegions([this, &pendingReclaimFromRegions, &survivalObjectSize](Region *region) {
         ASSERT(!region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
         size_t survivalSize = region->AliveObject();
+        region->ResetAliveObject();
         survivalObjectSize += survivalSize;
         if (survivalSize == 0) {
             regionList_.RemoveNode(region);
@@ -77,24 +79,30 @@ size_t CMSRegionChainManager::PrepareSweeping(std::vector<Region *> &pendingRecl
             sweepingRegionList_.emplace_back(region);
         }
     });
-    std::sort(sweepingRegionList_.begin(), sweepingRegionList_.end(), [](Region *first, Region *second) {
-        return first->AliveObject() > second->AliveObject();
-    });
-    sweepState_ = SweepingState::SWEEPING;
+    size_t num = sweepingRegionList_.size();
+    if (num > 0) {
+        numPendingSweepingRegions_.store(num, std::memory_order_relaxed);
+        sweepState_ = SweepingState::SWEEPING;
+    }
     return survivalObjectSize;
 }
 
 void CMSRegionChainManager::ConcurrentSweep(const SweepMode sweepMode)
 {
+    size_t swept = 0;
     while (true) {
         Region *region = TryTakeSweepingRegion();
         if (region == nullptr) {
-            return;
+            break;
         }
 
+        ++swept;
         if (ConcurrentSweepRegion(region) && sweepMode == SweepMode::SWEEP_UNTIL_ONE_FREE_LIST) {
-            return;
+            break;
         }
+    }
+    if (swept > 0 && numPendingSweepingRegions_.fetch_sub(swept, std::memory_order_relaxed) == swept) {
+        localHeap_->GetSlotSpace()->AddSweptRegionChainManager(this);
     }
 }
 
@@ -118,16 +126,16 @@ Region *CMSRegionChainManager::TryTakeSweepingRegion()
 SlotFreeListMetaInfo CMSRegionChainManager::SweepRegionImpl(Region *region)
 {
     uintptr_t freeStart = region->GetBegin();
-    FreeObject *prevFreeObject = nullptr;
+    SlotFreeSegment *prevFreeSegment = nullptr;
     size_t totalUsableSize = 0;
-    auto appendToFreeSegmentsChain = [&prevFreeObject, &totalUsableSize](uintptr_t freeStart, uintptr_t freeEnd) {
+    auto appendToFreeSegmentsChain = [&prevFreeSegment, &totalUsableSize](uintptr_t freeStart, uintptr_t freeEnd) {
         size_t freeSize = freeEnd - freeStart;
         totalUsableSize += freeSize;
-        FreeObject *currentFreeObject = FreeObject::Cast(freeStart);
-        if (LIKELY(prevFreeObject != nullptr)) {
-            currentFreeObject->SetNext(prevFreeObject);
+        SlotFreeSegment *currentFreeSegment = SlotFreeSegment::Cast(freeStart);
+        if (LIKELY(prevFreeSegment != nullptr)) {
+            currentFreeSegment->SetNextFreeSegment(prevFreeSegment);
         }
-        prevFreeObject = currentFreeObject;
+        prevFreeSegment = currentFreeSegment;
     };
     region->IterateAllMarkedBits([this, region, &freeStart, &appendToFreeSegmentsChain](void *mem) {
         ASSERT(region->InRange(ToUintPtr(mem)));
@@ -145,21 +153,21 @@ SlotFreeListMetaInfo CMSRegionChainManager::SweepRegionImpl(Region *region)
         appendToFreeSegmentsChain(freeStart, freeEnd);
     }
 
-    return {prevFreeObject, totalUsableSize};
+    return {prevFreeSegment, totalUsableSize};
 }
 
 void CMSRegionChainManager::FreeLiveRange(Region *region, uintptr_t freeStart, uintptr_t freeEnd)
 {
     size_t freeSize = freeEnd - freeStart;
     ASSERT(freeSize % slotSize_ == 0);
-    FreeObject::FillFreeObject(localHeap_, freeStart, freeSize);
+    SlotFreeSegment::FillFreeSegment(freeStart, freeSize);
     localHeap_->GetSweeper()->ClearRSetInRange(region, freeStart, freeEnd);
 }
 
 bool CMSRegionChainManager::SaveSweptRegion(Region *region, SlotFreeListMetaInfo maybeFreeList)
 {
-    if (maybeFreeList.firstFreeObject_ != nullptr) {
-        ASSERT(Region::ObjectAddressToRange(const_cast<FreeObject *>(maybeFreeList.firstFreeObject_)) == region);
+    if (maybeFreeList.firstFreeSegment_ != nullptr) {
+        ASSERT(Region::ObjectAddressToRange(ToUintPtr(maybeFreeList.firstFreeSegment_)) == region);
         {
             LockHolder holder(mutex_);
             region->SetSwept();
@@ -194,6 +202,7 @@ void CMSRegionChainManager::PrepareCompact(std::vector<Region *> &pendingReclaim
     ASSERT(sweptFullRegionList_.empty());
     EnumerateRegions([&pendingReclaimFromRegions](Region *region) {
         pendingReclaimFromRegions.emplace_back(region);
+        region->SetRegionTypeFlag(RegionTypeFlag::FROM);
     });
     regionList_.Clear();
     usableSlotFreeList_.clear();

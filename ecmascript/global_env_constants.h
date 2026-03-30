@@ -46,6 +46,7 @@ class ObjectFactory;
     V(JSTaggedValue, ByteArrayClass, BYTE_ARRAY_CLASS_INDEX, ecma_roots_class)                                        \
     V(JSTaggedValue, ConstantPoolClass, CONSTANT_POOL_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, ProfileTypeInfoClass, PROFILE_TYPE_INFO_CLASS_INDEX, ecma_roots_class)                           \
+    V(JSTaggedValue, ICInfoClass, IC_INFO_CLASS_INDEX, ecma_roots_class)                                              \
     V(JSTaggedValue, DictionaryClass, DICTIONARY_CLASS_INDEX, ecma_roots_class)                                       \
     V(JSTaggedValue, COWArrayClass, COW_ARRAY_CLASS_INDEX, ecma_roots_class)                                          \
     V(JSTaggedValue, MutantTaggedArrayClass, MUTANT_TAGGED_ARRAY_CLASS_INDEX, ecma_roots_class)                       \
@@ -54,6 +55,7 @@ class ObjectFactory;
     V(JSTaggedValue, JSNativePointerClass, JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                           \
     V(JSTaggedValue, SJSNativePointerClass, SENDABLE_JS_NATIVE_POINTER_CLASS_INDEX, ecma_roots_class)                 \
     V(JSTaggedValue, LexicalEnvClass, LEXICAL_ENV_CLASS_INDEX, ecma_roots_class)                                      \
+    V(JSTaggedValue, WeakLinkedHashMapClass, WEAK_LINKED_HASH_MAP_CLASS_INDEX, ecma_roots_class)                      \
     V(JSTaggedValue, SFunctionEnvClass, SFUNCTION_ENV_CLASS_INDEX, ecma_roots_class)                                  \
     V(JSTaggedValue, SymbolClass, SYMBOL_CLASS_INDEX, ecma_roots_class)                                               \
     V(JSTaggedValue, AccessorDataClass, ACCESSOR_DATA_CLASS_INDEX, ecma_roots_class)                                  \
@@ -260,6 +262,7 @@ class ObjectFactory;
     V(TerminationErrorString,         TERMINATION_ERROR_STRING_INDEX,        "TerminationError")            \
     V(ErrorFuncString,                ERROR_FUNC_STRING_INDEX,               "errorfunc")                   \
     V(StackString,                    STACK_STRING_INDEX,                    "stack")                       \
+    V(TopStackString,                 TOP_STACK_STRING_INDEX,                "topstack")                    \
     V(AsyncStackString,               ASYNC_STACK_STRING_INDEX,              "asyncStack")                  \
     V(StackEmptyString,               STACK_EMPTY_STRING_INDEX,              "stackisempty")                \
     V(ObjNotCoercibleString,          OBJ_NOT_COERCIBLE_STRING_INDEX,        "objectnotcoercible")          \
@@ -498,6 +501,7 @@ class ObjectFactory;
     V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")                     \
     V(InteropJsNapiString,            INTEROP_JS_NAPI,                       "ets_interop_js_napi")         \
     V(GetModuleString,                GET_MODULE,                            "getModule")                   \
+    V(ArkUiObservedName,              ARKUI_OBSERVED_NAME,                   "__OBSERVED_OBJECT_NAME")      \
     SHARED_GLOBAL_ENV_CONSTANT_STRING_HYBRID(V)
 
 #define SHARED_GLOBAL_ENV_DETECTOR_CONSTANT_STRING(V)                                                              \

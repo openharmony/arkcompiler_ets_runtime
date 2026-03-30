@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -511,7 +511,14 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
         BRANCH_LIKELY(IsCallableFromBitField(bitfield_), funcIsCallable, funcNotCallable);
         Bind(funcNotCallable);
         {
-            CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {func_});
+            // withname call sites always provide constpool + stringId.
+            // Do not use gate-id nullness of stringId_ as semantic signal.
+            if (constPool_ != Circuit::NullGate()) {
+                GateRef funcName = GetStringFromConstPool(glue_, constPool_, stringId_);
+                CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {funcName});
+            } else {
+                CallRuntime(glue_, RTSTUB_ID(ThrowNotCallableException), {func_});
+            }
             Jump(exit);
         }
         Bind(funcIsCallable);
@@ -521,7 +528,7 @@ void CallStubBuilder::JSCallInit(Label *exit, Label *funcIsHeapObject, Label *fu
     }
     method_ = GetMethodFromJSFunctionOrProxy(glue_, func_);
     callField_ = GetCallFieldFromMethod(method_);
-    isNativeMask_ = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsNativeBit::START_BIT);
+    isNativeMask_ = Int64(static_cast<uint64_t>(1) << Method::IsNativeBit::START_BIT);
 }
 
 void CallStubBuilder::JSCallNative(Label *exit)
@@ -687,7 +694,7 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
         newTarget_ = Undefined();
         thisValue_ = Undefined();
         realNumArgs_ = Int64Add(ZExtInt32ToInt64(actualNumArgs_), Int64(NUM_MANDATORY_JSFUNC_ARGS));
-        BRANCH(IsJsProxy(glue_, func_), &methodNotAot, &checkAot);
+        BRANCH(BitOr(NotSwitchToStwStub(glue_), IsJsProxy(glue_, func_)), &methodNotAot, &checkAot);
         Bind(&checkAot);
         BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &methodIsFastCall,
             &methodNotFastCall);
@@ -737,8 +744,8 @@ void CallStubBuilder::JSFastAotCall(Label *exit)
     Label fastCallBridge(env);
     isFast_ = true;
 
-    GateRef expectedNum = Int64And(Int64LSR(callField_, Int64(MethodLiteral::NumArgsBits::START_BIT)),
-        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+    GateRef expectedNum = Int64And(Int64LSR(callField_, Int64(Method::NumArgsBits::START_BIT)),
+        Int64((1LU << Method::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     BRANCH(Int64Equal(expectedArgc, realNumArgs_), &fastCall, &fastCallBridge);
     GateRef code;
@@ -762,8 +769,8 @@ void CallStubBuilder::JSSlowAotCall(Label *exit)
     Label slowCallBridge(env);
     isFast_ = false;
 
-    GateRef expectedNum = Int64And(Int64LSR(callField_, Int64(MethodLiteral::NumArgsBits::START_BIT)),
-        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+    GateRef expectedNum = Int64And(Int64LSR(callField_, Int64(Method::NumArgsBits::START_BIT)),
+        Int64((1LU << Method::NumArgsBits::SIZE) - 1));
     GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
     BRANCH(Int64Equal(expectedArgc, realNumArgs_), &slowCall, &slowCallBridge);
     GateRef code;
@@ -1791,7 +1798,7 @@ void CallStubBuilder::CallFastBuiltin(Label* notFastBuiltins, Label *exit, GateR
     Label isFastBuiltins(env);
     Label supportCall(env);
     numArgs_ = ZExtInt32ToPtr(actualNumArgs_);
-    GateRef isFastBuiltinsMask = Int64(static_cast<uint64_t>(1) << MethodLiteral::IsFastBuiltinBit::START_BIT);
+    GateRef isFastBuiltinsMask = Int64(static_cast<uint64_t>(1) << Method::IsFastBuiltinBit::START_BIT);
     BRANCH(Int64NotEqual(Int64And(callField_, isFastBuiltinsMask), Int64(0)), &isFastBuiltins, notFastBuiltins);
     Bind(&isFastBuiltins);
     GateRef builtinId = GetBuiltinId(method_);

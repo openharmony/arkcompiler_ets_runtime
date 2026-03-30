@@ -112,27 +112,6 @@ JSTaggedValue BuiltinsGlobal::IsNaN(EcmaRuntimeCallInfo *msg)
     return GetTaggedBoolean(false);
 }
 
-#if !ENABLE_NEXT_OPTIMIZATION
-bool BuiltinsGlobal::IsReservedURI(uint16_t ch)
-{
-    std::u16string str(u";/?:@&=+$,");
-    std::u16string::size_type index = str.find(ch);
-    return (index != std::u16string::npos);
-}
-
-bool BuiltinsGlobal::IsInMarkURISet(uint16_t ch)
-{
-    std::u16string str(u"-_.!~*'()");
-    std::u16string::size_type index = str.find(ch);
-    return (index != std::u16string::npos);
-}
-
-bool BuiltinsGlobal::IsHexDigits(uint16_t ch)
-{
-    return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f');
-}
-#endif // ENABLE_NEXT_OPTIMIZATION
-
 // 18.2.6
 JSTaggedValue BuiltinsGlobal::DecodeURI(EcmaRuntimeCallInfo *msg)
 {
@@ -199,127 +178,6 @@ JSTaggedValue BuiltinsGlobal::EncodeURIComponent(EcmaRuntimeCallInfo *msg)
     return Encode(thread, componentString, IsUnescapedURI);
 }
 
-#if !ENABLE_NEXT_OPTIMIZATION
-// Runtime Semantics
-JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
-{
-    BUILTINS_API_TRACE(thread, Global, Encode);
-    // 1. Let strLen be the number of code units in string.
-    CString errorMsg;
-    uint32_t strLen = EcmaStringAccessor(str).GetLength();
-    // 2. Let R be the empty String.
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    std::u16string resStr;
-    JSHandle<EcmaString> string = str;
-    if (EcmaStringAccessor(str).IsTreeString()) {
-        string = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), str));
-    }
-    // 3. Let k be 0.
-    // 4. Repeat
-    uint32_t k = 0;
-    while (true) {
-        // a. If k equals strLen, return R.
-        if (k == strLen) {
-            auto *uint16tData = reinterpret_cast<uint16_t *>(resStr.data());
-            uint32_t resSize = resStr.size();
-            return factory->NewFromUtf16Literal(uint16tData, resSize).GetTaggedValue();
-        }
-
-        // b. Let C be the code unit at index k within string.
-        // c. If C is in unescapedSet, then
-        //   i. Let S be a String containing only the code unit C.
-        //   ii. Let R be a new String value computed by concatenating the previous value of R and S.
-        // d. Else C is not in unescapedSet,
-        uint16_t cc = EcmaStringAccessor(string).Get(thread, k);
-        if (IsInURISet(cc)) {
-            std::u16string sStr = StringHelper::Utf16ToU16String(&cc, 1);
-            resStr.append(sStr);
-        } else {
-            // i. If the code unit value of C is not less than 0xDC00 and not greater than 0xDFFF,
-            //    throw a URIError exception.
-            if (cc >= common::utf_helper::DECODE_TRAIL_LOW && cc <= common::utf_helper::DECODE_TRAIL_HIGH) {
-                errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, string.GetTaggedValue());
-                THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-            }
-
-            // ii. If the code unit value of C is less than 0xD800 or greater than 0xDBFF, then
-            //    1. Let V be the code unit value of C.
-            // iii. Else,
-            //    1. Increase k by 1.
-            //    2. If k equals strLen, throw a URIError exception.
-            //    3. Let kChar be the code unit value of the code unit at index k within string.
-            //    4. If kChar is less than 0xDC00 or greater than 0xDFFF, throw a URIError exception.
-            //    5. Let V be UTF16Decode(C, kChar).
-            uint32_t vv;
-            if (cc < common::utf_helper::DECODE_LEAD_LOW || cc > common::utf_helper::DECODE_LEAD_HIGH) {
-                vv = cc;
-            } else {
-                k++;
-                if (k == strLen) {
-                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, string.GetTaggedValue());
-                    THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-                }
-                uint16_t kc = EcmaStringAccessor(string).Get(thread, k);
-                if (kc < common::utf_helper::DECODE_TRAIL_LOW || kc > common::utf_helper::DECODE_TRAIL_HIGH) {
-                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, string.GetTaggedValue());
-                    THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-                }
-                vv = common::utf_helper::UTF16Decode(cc, kc);
-            }
-
-            // iv. Let Octets be the array of octets resulting by applying the UTF-8 transformation to V,
-            //     and let L be the array size.
-            // v. Let j be 0.
-            // vi. Repeat, while j < L
-            //    1. Let jOctet be the value at index j within Octets.
-            //    2. Let S be a String containing three code units "%XY" where XY are two uppercase hexadecimal
-            //       digits encoding the value of jOctet.
-            //    3. Let R be a new String value computed by concatenating the previous value of R and S.
-            //    4. Increase j by 1.
-            std::string oct = StringHelper::Utf32ToString(vv);
-            std::string hexStr("0123456789ABCDEF");
-
-            uint32_t length = oct.length();
-            std::stringstream tmpStr;
-            for (uint32_t j = 0; j < length; j++) {
-                uint8_t joct = static_cast<uint8_t>(oct.at(j));
-                tmpStr << '%' << hexStr.at((joct >> 4U) & BIT_MASK)  // NOLINT
-                       << hexStr.at(joct & BIT_MASK);                // 4: means shift right by 4 digits
-            }
-            resStr.append(StringHelper::StringToU16string(tmpStr.str()));
-        }
-
-        // e. Increase k by 1.
-        k++;
-    }
-}
-
-uint8_t BuiltinsGlobal::GetValueFromTwoHex(uint16_t front, uint16_t behind)
-{
-    ASSERT(IsHexDigits(front) && IsHexDigits(behind));
-    std::u16string hexString(u"0123456789ABCDEF");
-
-    size_t idxf = StringHelper::FindFromU16ToUpper(hexString, &front);
-    size_t idxb = StringHelper::FindFromU16ToUpper(hexString, &behind);
-    uint8_t res = ((idxf << 4U) | idxb) & BIT_MASK_FF;  // NOLINT 4: means shift left by 4 digits
-    return res;
-}
-
-uint16_t BuiltinsGlobal::GetValueFromHexString(JSThread *thread, const JSHandle<EcmaString> &string)
-{
-    uint32_t size = EcmaStringAccessor(string).GetLength();
-    ASSERT(size > 0 && size <= 4); // NOLINT 4: means 4 hex digits
-    std::u16string hexString(u"0123456789ABCDEF");
-
-    uint16_t ret = 0;
-    for (uint32_t i = 0; i < size; ++i) {
-        uint16_t ch = EcmaStringAccessor(string).Get(thread, i);
-        size_t idx = StringHelper::FindFromU16ToUpper(hexString, &ch);
-        ret = ((ret << 4U) | idx) & BIT_MASK_4F; // NOLINT 4: means shift left by 4
-    }
-    return ret;
-}
-#else // ENABLE_NEXT_OPTIMIZATION
 uint16_t BuiltinsGlobal::GetValueFromHexString(JSThread *thread, const JSHandle<EcmaString> &string)
 {
     auto stringAcc = EcmaStringAccessor(string);
@@ -334,7 +192,6 @@ uint16_t BuiltinsGlobal::GetValueFromHexString(JSThread *thread, const JSHandle<
     }
     return ret;
 }
-#endif // ENABLE_NEXT_OPTIMIZATION
 
 // 22.1.3.17.2 StringPad ( S, maxLength, fillString, placement )
 EcmaString *BuiltinsGlobal::StringPad(JSThread *thread, const JSHandle<EcmaString> &source,
@@ -441,216 +298,6 @@ EcmaString *BuiltinsGlobal::StringToCodePoints(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> codePointsString = factory->NewFromUtf16Literal(ptr, codePoints.size());
     return *codePointsString;
 }
-
-#if !ENABLE_NEXT_OPTIMIZATION
-// Runtime Semantics
-JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString> &str, judgURIFunc IsInURISet)
-{
-    BUILTINS_API_TRACE(thread, Global, Decode);
-    // 1. Let strLen be the number of code units in string.
-    int32_t strLen = static_cast<int32_t>(EcmaStringAccessor(str).GetLength());
-    // 2. Let R be the empty String.
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    std::u16string resStr;
-    JSHandle<EcmaString> string = str;
-    if (EcmaStringAccessor(str).IsTreeString()) {
-        string = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), str));
-    }
-
-    // 3. Let k be 0.
-    // 4. Repeat
-    int32_t k = 0;
-    while (true) {
-        if (k == strLen) {
-            // a. If k equals strLen, return R.
-            auto *uint16tData = reinterpret_cast<uint16_t *>(resStr.data());
-            uint32_t resSize = resStr.size();
-            return factory->NewFromUtf16Literal(uint16tData, resSize).GetTaggedValue();
-        }
-
-        // b. Let C be the code unit at index k within string.
-        // c. If C is not "%", then
-        //    i. Let S be the String containing only the code unit C.
-        // d. Else C is "%",
-        //   i. Let start be k.
-        //   iv. Let B be the 8-bit value represented by the two hexadecimal digits at index (k + 1) and (k + 2).
-        //   v. Increase k by 2.
-        //   vi. If the most significant bit in B is 0, then
-        //      1. Let C be the code unit with code unit value B.
-        //      2. If C is not in reservedSet, then
-        //         a. Let S be the String containing only the code unit C.
-        //      3. Else C is in reservedSet,
-        //         a. Let S be the substring of string from index start to index k inclusive.
-        uint16_t cc = EcmaStringAccessor(string).Get(thread, k);
-        std::u16string sStr;
-        if (cc != '%') {
-            if (cc == 0 && strLen == 1) {
-                JSHandle<EcmaString> tmpEcmaString = factory->NewFromUtf16Literal(&cc, 1);
-                return tmpEcmaString.GetTaggedValue();
-            }
-            sStr = StringHelper::Utf16ToU16String(&cc, 1);
-        } else {
-            DecodePercentEncoding(thread, string, k, IsInURISet, strLen, sStr);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        }
-        resStr.append(sStr);
-        k++;
-    }
-}
-
-void BuiltinsGlobal::HandleSingleByteCharacter(JSThread *thread, uint8_t &bb,
-                                               const JSHandle<EcmaString> &str,
-                                               uint32_t &start, int32_t &k,
-                                               std::u16string &sStr, judgURIFunc IsInURISet)
-{
-    if (!IsInURISet(bb)) {
-        sStr = StringHelper::Utf8ToU16String(&bb, 1);
-    } else {
-        auto substr = EcmaStringAccessor::FastSubString(
-            thread->GetEcmaVM(), str, start, k - start + 1U);
-        sStr = StringHelper::StringToU16string(
-            EcmaStringAccessor(substr).ToStdString(thread, StringConvertedUsage::LOGICOPERATION));
-    }
-}
-
-JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
-                                                    judgURIFunc IsInURISet, int32_t strLen, std::u16string &sStr)
-{
-    [[maybe_unused]] uint32_t start = static_cast<uint32_t>(k);
-    CString errorMsg;
-    // ii. If k + 2 is greater than or equal to strLen, throw a URIError exception.
-    // iii. If the code units at index (k+1) and (k + 2) within string do not represent hexadecimal digits,
-    //      throw a URIError exception.
-    if ((k + 2) >= strLen) {  // 2: means plus 2
-        errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
-        THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-    }
-    uint16_t frontChar = EcmaStringAccessor(str).Get(thread, k + 1);
-    uint16_t behindChar = EcmaStringAccessor(str).Get(thread, k + 2);  // 2: means plus 2
-    if (!(IsHexDigits(frontChar) && IsHexDigits(behindChar))) {
-        errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
-        THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-    }
-    uint8_t bb = GetValueFromTwoHex(frontChar, behindChar);
-    k += 2;  // 2: means plus 2
-    if ((bb & BIT_MASK_ONE) == 0) {
-        HandleSingleByteCharacter(thread, bb, str, start, k, sStr, IsInURISet);
-    } else {
-        // vii. Else the most significant bit in B is 1,
-        //   1. Let n be the smallest nonnegative integer such that (B << n) & 0x80 is equal to 0.
-        //   3. Let Octets be an array of 8-bit integers of size n.
-        //   4. Put B into Octets at index 0.
-        //   6. Let j be 1.
-        //   7. Repeat, while j < n
-        //     a. Increase k by 1.
-        //     d. Let B be the 8-bit value represented by the two hexadecimal digits at
-        //        index (k + 1) and (k + 2).
-        //     f. Increase k by 2.
-        //     g. Put B into Octets at index j.
-        //     h. Increase j by 1.
-        //   9. If V < 0x10000, then
-        //     a. Let C be the code unit V.
-        //     b. If C is not in reservedSet, then
-        //        i. Let S be the String containing only the code unit C.
-        //     c. Else C is in reservedSet,
-        //        i. Let S be the substring of string from index start to index k inclusive.
-        //   10. Else V ≥ 0x10000,
-        //     a. Let L be (((V – 0x10000) & 0x3FF) + 0xDC00).
-        //     b. Let H be ((((V – 0x10000) >> 10) & 0x3FF) + 0xD800).
-        //     c. Let S be the String containing the two code units H and L.
-        int32_t n = 0;
-        while ((((static_cast<uint32_t>(bb) << static_cast<uint32_t>(n)) & BIT_MASK_ONE) != 0)) {
-            n++;
-            if (n > 4) { // 4 : 4 means less than 4
-                break;
-            }
-        }
-        // 2. If n equals 1 or n is greater than 4, throw a URIError exception.
-        if ((n == 1) || (n > 4)) {
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
-            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-        }
-
-        std::vector<uint8_t> oct = {bb};
-
-        // 5. If k + (3 × (n – 1)) is greater than or equal to strLen, throw a URIError exception.
-        if (k + (3 * (n - 1)) >= strLen) {  // 3: means multiply by 3
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
-            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-        }
-        DecodePercentEncoding(thread, n, k, str, bb, oct);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        UTF16EncodeCodePoint(thread, IsInURISet, oct, str, start, k, sStr);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    }
-    return JSTaggedValue::True();
-}
-
-JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, int32_t &n,
-                                                    int32_t &k, const JSHandle<EcmaString> &str,
-                                                    uint8_t &bb, std::vector<uint8_t> &oct)
-{
-    CString errorMsg;
-    int32_t j = 1;
-    while (j < n) {
-        k++;
-        uint16_t codeUnit = EcmaStringAccessor(str).Get(thread, k);
-        // b. If the code unit at index k within string is not "%", throw a URIError exception.
-        // c. If the code units at index (k +1) and (k + 2) within string do not represent hexadecimal
-        //    digits, throw a URIError exception.
-        if (!(codeUnit == '%')) {
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
-            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-        }
-        if (!(IsHexDigits(EcmaStringAccessor(str).Get(thread, k + 1)) &&
-                IsHexDigits(EcmaStringAccessor(str).Get(thread, k + 2)))) {  // 2: means plus 2
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
-            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-        }
-        uint16_t frontChart = EcmaStringAccessor(str).Get(thread, k + 1);
-        uint16_t behindChart = EcmaStringAccessor(str).Get(thread, k + 2);  // 2: means plus 2
-        bb = GetValueFromTwoHex(frontChart, behindChart);
-        // e. If the two most significant bits in B are not 10, throw a URIError exception.
-        if (!((bb & BIT_MASK_TWO) == BIT_MASK_ONE)) {
-            errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
-            THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-        }
-        k += 2;  // 2: means plus 2
-        oct.push_back(bb);
-        j++;
-    }
-    return JSTaggedValue::True();
-}
-
-JSTaggedValue BuiltinsGlobal::UTF16EncodeCodePoint(JSThread *thread, judgURIFunc IsInURISet,
-                                                   const std::vector<uint8_t> &oct, const JSHandle<EcmaString> &str,
-                                                   uint32_t &start, int32_t &k, std::u16string &sStr)
-{
-    if (!common::utf_helper::IsValidUTF8(oct)) {
-        CString errorMsg = "DecodeURI: invalid character: " + ConvertToString(thread, str.GetTaggedValue());
-        THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
-    }
-    uint32_t vv = StringHelper::Utf8ToU32String(oct);
-    if (vv < common::utf_helper::DECODE_SECOND_FACTOR) {
-        if (!IsInURISet(vv)) {
-            sStr = StringHelper::Utf16ToU16String(reinterpret_cast<uint16_t *>(&vv), 1);
-        } else {
-            auto substr = EcmaStringAccessor::FastSubString(
-                thread->GetEcmaVM(), str, start, static_cast<uint32_t>(k) - start + 1U);
-            sStr = StringHelper::StringToU16string(
-                EcmaStringAccessor(substr).ToStdString(thread, StringConvertedUsage::LOGICOPERATION));
-        }
-    } else {
-        uint16_t lv = (((vv - common::utf_helper::DECODE_SECOND_FACTOR) & BIT16_MASK) +
-            common::utf_helper::DECODE_TRAIL_LOW);
-        uint16_t hv = ((((vv - common::utf_helper::DECODE_SECOND_FACTOR) >> 10U) & BIT16_MASK) +  // NOLINT
-            common::utf_helper::DECODE_LEAD_LOW);  // 10: means shift left by 10 digits
-        sStr = StringHelper::Append(StringHelper::Utf16ToU16String(&hv, 1),
-                                    StringHelper::Utf16ToU16String(&lv, 1));
-    }
-    return JSTaggedValue::True();
-}
-#endif // ENABLE_NEXT_OPTIMIZATION
 
 void BuiltinsGlobal::PrintString([[maybe_unused]] JSThread *thread, EcmaString *string)
 {
@@ -949,17 +596,10 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 uint16_t c3 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET3);
                 uint16_t c4 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET4);
                 uint16_t c5 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET5);
-#if !ENABLE_NEXT_OPTIMIZATION
-                bool c2IsHexDigits = IsHexDigits(c2);
-                bool c3IsHexDigits = IsHexDigits(c3);
-                bool c4IsHexDigits = IsHexDigits(c4);
-                bool c5IsHexDigits = IsHexDigits(c5);
-#else // ENABLE_NEXT_OPTIMIZATION
                 bool c2IsHexDigits = common::utf_helper::IsHexDigits(c2);
                 bool c3IsHexDigits = common::utf_helper::IsHexDigits(c3);
                 bool c4IsHexDigits = common::utf_helper::IsHexDigits(c4);
                 bool c5IsHexDigits = common::utf_helper::IsHexDigits(c5);
-#endif // ENABLE_NEXT_OPTIMIZATION
                 bool isHexDigits = c2IsHexDigits && c3IsHexDigits && c4IsHexDigits && c5IsHexDigits;
                 if (isHexDigits) {
                     c = ESCAPE_CHAR_TO_HEX[c2];
@@ -970,13 +610,8 @@ JSTaggedValue BuiltinsGlobal::Unescape(EcmaRuntimeCallInfo *msg)
                 }
             } else if (k + ESCAPE_CHAR_OFFSET3 <= len) {
                 uint16_t c2 = EcmaStringAccessor(string).Get(thread, k + ESCAPE_CHAR_OFFSET2);
-#if !ENABLE_NEXT_OPTIMIZATION
-                bool c1IsHexDigits = IsHexDigits(c1);
-                bool c2IsHexDigits = IsHexDigits(c2);
-#else // ENABLE_NEXT_OPTIMIZATION
                 bool c1IsHexDigits = common::utf_helper::IsHexDigits(c1);
                 bool c2IsHexDigits = common::utf_helper::IsHexDigits(c2);
-#endif // ENABLE_NEXT_OPTIMIZATION
                 bool isHexDigits = c1IsHexDigits && c2IsHexDigits;
                 if (isHexDigits) {
                     c = ESCAPE_CHAR_TO_HEX[c1];

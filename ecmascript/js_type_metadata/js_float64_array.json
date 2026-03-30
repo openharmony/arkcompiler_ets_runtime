@@ -1,5 +1,6 @@
 {
     "name": "JS_FLOAT64_ARRAY",
+    "node_name": "Float64 Array",
     "offsets": [
         {
             "name": "ViewedArrayBufferOrByteArray",

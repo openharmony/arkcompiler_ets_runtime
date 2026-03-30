@@ -15,6 +15,7 @@
 
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/vtable.h"
 #include "ecmascript/linked_hash_table.h"
@@ -53,6 +54,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "FuncSlot";
         case JSType::LEXICAL_ENV:
             return "LexicalEnv";
+        case JSType::WEAK_LINKED_HASH_MAP:
+            return "WeakLinkedHashMap";
         case JSType::SFUNCTION_ENV:
             return "SFunctionEnv";
         case JSType::SENDABLE_ENV:
@@ -63,6 +66,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ConstantPool";
         case JSType::PROFILE_TYPE_INFO:
             return "ProfileTypeInfo";
+        case JSType::IC_INFO:
+            return "ICInfo";
         case JSType::COW_TAGGED_ARRAY:
             return "COWArray";
         case JSType::MUTANT_TAGGED_ARRAY:
@@ -78,6 +83,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "NativePointer";
         case JSType::JS_OBJECT:
             return "Object";
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
+            return "WrappedNapiObject";
         case JSType::JS_XREF_OBJECT:
             return "XRefObject";
         case JSType::JS_SHARED_OBJECT:
@@ -701,6 +708,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
         case JSType::TAGGED_DICTIONARY:
         case JSType::TEMPLATE_MAP:
         case JSType::LEXICAL_ENV:
+        case JSType::WEAK_LINKED_HASH_MAP:
         case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::COW_TAGGED_ARRAY:
@@ -721,6 +729,9 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
             break;
         case JSType::PROFILE_TYPE_INFO:
             ProfileTypeInfo::Cast(obj)->Dump(thread, os);
+            break;
+        case JSType::IC_INFO:
+            ICInfo::Cast(obj)->Dump(thread, os);
             break;
         case JSType::PROFILE_TYPE_INFO_CELL_0:
         case JSType::PROFILE_TYPE_INFO_CELL_1:
@@ -746,7 +757,6 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
         case JSType::JS_NATIVE_POINTER:
             break;
         case JSType::JS_OBJECT:
-        case JSType::JS_XREF_OBJECT:
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_GLOBAL_OBJECT:
         case JSType::JS_ERROR:
@@ -771,6 +781,11 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
             GlobalEnv::Cast(obj)->Dump(thread, os);
             break;
         case JSType::ACCESSOR_DATA:
+            break;
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
+        case JSType::JS_XREF_OBJECT:
+            needDumpHClass = true;
+            JSWrappedNapiObject::Cast(obj)->Dump(thread, os);
             break;
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_FUNCTION:
@@ -1542,6 +1557,23 @@ void LinkedHashMap::Dump(const JSThread *thread, std::ostream &os) const
     }
 }
 
+void WeakLinkedHashMap::Dump(const JSThread *thread, std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    int capacity = NumberOfElements() + NumberOfDeletedElements();
+    for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
+        JSTaggedValue key(GetKey(thread, hashIndex));
+        if (!key.IsUndefined() && !key.IsHole()) {
+            JSTaggedValue val(GetValue(thread, hashIndex));
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET);
+            key.DumpTaggedValue(thread, os);
+            os << ": ";
+            val.DumpTaggedValue(thread, os);
+            os << "\n";
+        }
+    }
+}
+
 void TaggedDoubleList::Dump(const JSThread *thread, std::ostream &os) const
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -1665,6 +1697,14 @@ void JSObject::Dump(const JSThread *thread, std::ostream &os, bool isPrivacy) co
     }
 }
 
+void JSWrappedNapiObject::Dump(const JSThread *thread, std::ostream &os) const
+{
+    os << " - NativePointers: ";
+    GetNativePointers(thread).Dump(thread, os);
+    os << "\n";
+    JSObject::Dump(thread, os);
+}
+
 void TaggedArray::Dump(const JSThread *thread, std::ostream &os) const
 {
     DumpArrayClass(thread, this, os);
@@ -1740,6 +1780,21 @@ void ProfileTypeInfo::Dump(const JSThread *thread, std::ostream &os) const
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t len = GetIcSlotLength();
     os << " <ProfileTypeInfo[" << std::dec << len << "]>\n";
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(Get(thread, i));
+        if (!val.IsHole()) {
+            os << std::right << std::setw(DUMP_PROPERTY_OFFSET) << i << ": ";
+            val.DumpTaggedValue(thread, os);
+            os << "\n";
+        }
+    }
+}
+
+void ICInfo::Dump(const JSThread *thread, std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = GetLength();
+    os << " <ICInfo[" << std::dec << len << "]>\n";
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(Get(thread, i));
         if (!val.IsHole()) {
@@ -2246,7 +2301,7 @@ void JSSharedSet::Dump(const JSThread *thread, std::ostream &os) const
 
 void JSWeakMap::Dump(const JSThread *thread, std::ostream &os) const
 {
-    LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject());
+    WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject());
     os << " - length: " << std::dec << GetSize(thread) << "\n";
     os << " - elements: " << std::dec << map->NumberOfElements() << "\n";
     os << " - deleted-elements: " << std::dec << map->NumberOfDeletedElements() << "\n";
@@ -4118,6 +4173,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::TAGGED_ARRAY:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::WEAK_LINKED_HASH_MAP:
         case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::COW_TAGGED_ARRAY:
@@ -4150,6 +4206,9 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::PROFILE_TYPE_INFO:
             ProfileTypeInfo::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
+        case JSType::IC_INFO:
+            ICInfo::Cast(obj)->DumpForSnapshot(thread, vec);
+            break;
         case JSType::LINE_STRING:
         case JSType::TREE_STRING:
         case JSType::SLICED_STRING:
@@ -4159,7 +4218,6 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::JS_NATIVE_POINTER:
             break;
         case JSType::JS_OBJECT:
-        case JSType::JS_XREF_OBJECT:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
         case JSType::JS_RANGE_ERROR:
@@ -4174,6 +4232,10 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
         case JSType::JS_GLOBAL_OBJECT:
         case JSType::JS_SHARED_OBJECT:
             JSObject::Cast(obj)->DumpForSnapshot(thread, vec);
+            break;
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
+        case JSType::JS_XREF_OBJECT:
+            JSWrappedNapiObject::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
         case JSType::JS_FUNCTION_BASE:
         case JSType::JS_FUNCTION:
@@ -4698,8 +4760,9 @@ void JSAPIPlainArray::DumpForSnapshot(const JSThread *thread, std::vector<Refere
     vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
         CString str;
-        KeyToStd(thread, str, keys->Get(thread, i));
-        vec.emplace_back(str, values->Get(thread, i));
+        auto key = keys->Get(thread, i);
+        KeyToStd(thread, str, key);
+        vec.emplace_back(str, key, values->Get(thread, i));
     }
     JSObject::DumpForSnapshot(thread, vec);
 }
@@ -4739,7 +4802,7 @@ void NameDictionary::DumpForSnapshot(const JSThread *thread, std::vector<Referen
             JSTaggedValue val(GetValue(thread, hashIndex));
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         }
     }
 }
@@ -4755,7 +4818,7 @@ void GlobalDictionary::DumpForSnapshot(const JSThread *thread, std::vector<Refer
             CString str;
             KeyToStd(thread, str, key);
             JSTaggedValue val = GetValue(thread, hashIndex);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         }
     }
 }
@@ -4770,7 +4833,7 @@ void LinkedHashSet::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, JSTaggedValue::Hole());
+            vec.emplace_back(str, key, JSTaggedValue::Hole());
         }
     }
 }
@@ -4786,7 +4849,23 @@ void LinkedHashMap::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
             JSTaggedValue val = GetValue(thread, hashIndex);
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
+        }
+    }
+}
+
+void WeakLinkedHashMap::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    int capacity = NumberOfElements() + NumberOfDeletedElements();
+    vec.reserve(vec.size() + capacity);
+    for (int hashIndex = 0; hashIndex < capacity; hashIndex++) {
+        JSTaggedValue key(GetKey(thread, hashIndex));
+        if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
+            JSTaggedValue val = GetValue(thread, hashIndex);
+            CString str;
+            KeyToStd(thread, str, key);
+            vec.emplace_back(str, key, val);
         }
     }
 }
@@ -4841,7 +4920,7 @@ void TaggedTreeMap::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
             JSTaggedValue val = GetValue(thread, index);
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         } else {
             DumpForSnapshotTaggedTreeEntry(thread, const_cast<TaggedTreeMap *>(this), index, vec, true);
         }
@@ -4863,7 +4942,7 @@ void TaggedTreeSet::DumpForSnapshot(const JSThread *thread, std::vector<Referenc
         if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, JSTaggedValue::Hole());
+            vec.emplace_back(str, key, JSTaggedValue::Hole());
         } else {
             DumpForSnapshotTaggedTreeEntry(thread, const_cast<TaggedTreeSet *>(this), index, vec, true);
         }
@@ -4948,12 +5027,18 @@ void JSObject::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &v
 
             CString str;
             KeyToStd(thread, str, key);
-            vec.emplace_back(str, val);
+            vec.emplace_back(str, key, val);
         }
     } else {
         NameDictionary *dict = NameDictionary::Cast(properties);
         dict->DumpForSnapshot(thread, vec);
     }
+}
+
+void JSWrappedNapiObject::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("NativePointers"), GetNativePointers(thread));
+    JSObject::DumpForSnapshot(thread, vec);
 }
 
 void JSHClass::DumpForSnapshot(const JSThread *thread, [[maybe_unused]] std::vector<Reference> &vec) const
@@ -5023,7 +5108,7 @@ void LinkedNode::DumpForSnapshot(const JSThread *thread, std::vector<Reference> 
     JSTaggedValue key = GetKey(thread);
     CString str;
     KeyToStd(thread, str, key);
-    vec.emplace_back(str, GetValue(thread));
+    vec.emplace_back(str, key, GetValue(thread));
 }
 
 void ConstantPool::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
@@ -5060,6 +5145,18 @@ void ProfileTypeInfo::DumpForSnapshot(const JSThread *thread, std::vector<Refere
 {
     DISALLOW_GARBAGE_COLLECTION;
     uint32_t len = GetIcSlotLength();
+    vec.reserve(vec.size() + len);
+    for (uint32_t i = 0; i < len; i++) {
+        JSTaggedValue val(Get(thread, i));
+        CString str = ToCString(i);
+        vec.emplace_back(str, val);
+    }
+}
+
+void ICInfo::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    uint32_t len = GetLength();
     vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(Get(thread, i));
@@ -5195,9 +5292,9 @@ void JSSharedSet::DumpForSnapshot(const JSThread *thread, std::vector<Reference>
 
 void JSWeakMap::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
-    if (!(GetLinkedMap(thread).IsInvalidValue())) {
-        LinkedHashMap *map = LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject());
-        vec.emplace_back("linkedmap", GetLinkedMap(thread));
+    if (!(GetWeakLinkedMap(thread).IsInvalidValue())) {
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(GetWeakLinkedMap(thread).GetTaggedObject());
+        vec.emplace_back("linkedmap", GetWeakLinkedMap(thread));
         map->DumpForSnapshot(thread, vec);
     }
 
@@ -5307,7 +5404,7 @@ void JSAPILightWeightMap::DumpForSnapshot(const JSThread *thread, std::vector<Re
     for (uint32_t i = 0; i < len; i++) {
         CString str;
         KeyToStd(thread, str, keys->Get(thread, i));
-        vec.emplace_back(str, values->Get(thread, i));
+        vec.emplace_back(str, keys->Get(thread, i), values->Get(thread, i));
     }
     JSObject::DumpForSnapshot(thread, vec);
 }
@@ -5372,7 +5469,7 @@ void JSAPILightWeightSet::DumpForSnapshot(const JSThread *thread, std::vector<Re
     for (uint32_t i = 0; i < len; i++) {
         CString str;
         KeyToStd(thread, str, hashes->Get(thread, i));
-        vec.emplace_back(str, values->Get(thread, i));
+        vec.emplace_back(str, hashes->Get(thread, i), values->Get(thread, i));
     }
     JSObject::DumpForSnapshot(thread, vec);
 }

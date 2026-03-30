@@ -1,5 +1,6 @@
 {
     "name": "JS_PROMISE",
+    "node_name": "Promise",
     "offsets": [
         {
             "name": "PromiseResult",

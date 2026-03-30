@@ -31,7 +31,11 @@ namespace panda::ecmascript {
 ConcurrentCopyGC::ConcurrentCopyGC(Heap *heap) : heap_(heap), thread_(heap->GetJSThread())
 {
     for (uint32_t i = 0; i < common::MAX_TASKPOOL_THREAD_NUM + 1; i++) {
+#if USE_CMS_GC
+        tlabAllocators_.at(i).Setup(heap_->GetSlotSpace());
+#else
         tlabAllocators_.at(i).Setup(heap_);
+#endif
     }
     auto mainEvacuator = new CCEvacuator(heap_, GetTlabAllocator(MAIN_THREAD_INDEX));
     thread_->InstallLocalCCEvacuator(mainEvacuator);
@@ -48,8 +52,12 @@ void ConcurrentCopyGC::RunPhase()
         + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))
         + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
+#if USE_CMS_GC  // fixme: refactor?
+        + ";Slot" + std::to_string(heap_->GetSlotSpace()->GetCommittedSize())
+#else
         + ";Young" + std::to_string(heap_->GetNewSpace()->GetCommittedSize())
         + ";Old" + std::to_string(heap_->GetOldSpace()->GetCommittedSize())
+#endif
         + ";TotalCommit" + std::to_string(heap_->GetCommittedSize())
         + ";NativeBindingSize" + std::to_string(heap_->GetNativeBindingSize())
         + ";NativeLimitSize" + std::to_string(heap_->GetGlobalSpaceNativeLimit())
@@ -90,7 +98,7 @@ void ConcurrentCopyGC::ProcessWeakReference()
         UpdateRecordWeakReference(i);
     }
     for (uint32_t i = 0; i < totalThreadCount; i++) {
-        UpdateRecordJSWeakMap(i);
+        UpdateRecordWeakLinkedHashMap(i);
     }
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         Verification(heap_, VerifyKind::VERIFY_WEAK_REF).VerifyAll();
@@ -211,8 +219,12 @@ int ConcurrentCopyGC::CalculateCopyThreadNum()
     auto collectTask = [this](Region *region) {
         tasks_.emplace_back(region);
     };
-    heap_->GetFromSpaceDuringEvacuation()->EnumerateRegions(collectTask);
-    heap_->GetCompressSpace()->EnumerateRegions(collectTask);
+    if constexpr (!G_USE_CMS_GC) {
+        heap_->GetFromSpaceDuringEvacuation()->EnumerateRegions(collectTask);
+        heap_->GetCompressSpace()->EnumerateRegions(collectTask);
+    } else {
+        heap_->GetSlotSpace()->EnumerateFromRegions(collectTask);
+    }
     uint32_t count = tasks_.size();
     constexpr uint32_t regionPerThread = 8;
     uint32_t maxThreadNum = std::min(heap_->GetMaxEvacuateTaskCount(),
@@ -244,27 +256,27 @@ void ConcurrentCopyGC::UpdateRecordWeakReference(uint32_t threadIndex)
     }
 }
 
-void ConcurrentCopyGC::UpdateRecordJSWeakMap(uint32_t threadIndex)
+void ConcurrentCopyGC::UpdateRecordWeakLinkedHashMap(uint32_t threadIndex)
 {
-    std::function<bool(JSTaggedValue)> visitor = [this](JSTaggedValue key) {
-        ASSERT(!key.IsHole());
-        return key.IsUndefined();   // Dead key, and set to undefined by GC
-    };
     auto workManager = heap_->GetWorkManager();
-    JSWeakMapProcessQueue *queue = workManager->GetWorkNodeHolder(threadIndex)->GetJSWeakMapQueue();
+    WeakLinkedHashMapProcessQueue *queue = workManager->GetWorkNodeHolder(threadIndex)->GetWeakLinkedHashMapQueue();
+    JSThread *thread = heap_->GetJSThread();
     while (true) {
         TaggedObject *obj = queue->PopBack();
         if (UNLIKELY(obj == nullptr)) {
             break;
         }
-        JSWeakMap *weakMap = JSWeakMap::Cast(obj);
-        JSThread *thread = heap_->GetJSThread();
-        JSTaggedValue maybeMap = weakMap->GetLinkedMap(thread);
-        if (maybeMap.IsUndefined()) {
-            continue;
+        WeakLinkedHashMap *map = WeakLinkedHashMap::Cast(obj);
+        ASSERT(map->VerifyLayout());
+
+        int entries = map->NumberOfAllUsedElements();
+        for (int i = 0; i < entries; ++i) {
+            JSTaggedValue maybeKey = map->GetKey(thread, i);
+            if (maybeKey.IsUndefined()) {
+                // set to undefined by GC since key is dead, and the weak ref of key is updated.
+                map->RemoveEntryFromGCThread(i);
+            }
         }
-        LinkedHashMap *map = LinkedHashMap::Cast(maybeMap.GetTaggedObject());
-        map->ClearAllDeadEntries(thread, visitor);
     }
 }
 
@@ -272,14 +284,19 @@ void ConcurrentCopyGC::RunUpdatePhase()
 {
     ASSERT(thread_->NeedReadBarrier());
     CCUpdateVisitor<true> updatorWithBarrier(thread_);
-    heap_->GetToSpace()->EnumerateRegions([&](Region *region) {
+    auto toSpaceUpdator = [&](Region *region) {
         region->IterateAllMarkedBits([&](void *mem) {
             TaggedObject *object = reinterpret_cast<TaggedObject *>(mem);
             JSHClass *jsHclass = object->SynchronizedGetClass();
             ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, jsHclass, updatorWithBarrier);
         });
         region->SetSwept();
-    });
+    };
+    if constexpr (!G_USE_CMS_GC) {
+        heap_->GetToSpace()->EnumerateRegions(toSpaceUpdator);
+    } else {
+        heap_->GetSlotSpace()->EnumerateToRegions(toSpaceUpdator);
+    }
     CCUpdateVisitor<false> updatorWithoutBarrier(thread_);
     heap_->EnumerateNonmovableRegionsWithRecord([&](Region *region) {
         region->IterateAllMarkedBits([&](void *mem) {
@@ -318,7 +335,11 @@ void ConcurrentCopyGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ConcurrentCopyGC::Finish", "");
     GetTlabAllocator(MAIN_THREAD_INDEX)->Finalize();
-    heap_->GetOldSpace()->MergeToSpace(heap_->GetToSpace());
+    if constexpr (!G_USE_CMS_GC) {
+        heap_->GetOldSpace()->MergeToSpace(heap_->GetToSpace());
+    } else {
+        heap_->GetSlotSpace()->MergeToRegions();
+    }
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         Verification::VerifyCC(heap_);
     }

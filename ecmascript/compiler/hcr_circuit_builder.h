@@ -472,8 +472,8 @@ inline GateRef CircuitBuilder::IsBase(GateRef glue, GateRef ctor)
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
     GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), method, extraLiteralInfoOffset);
 
-    GateRef kind = Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
-                            Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1));
+    GateRef kind = Int32And(Int32LSR(bitfield, Int32(Method::FunctionKindBits::START_BIT)),
+                            Int32((1LU << Method::FunctionKindBits::SIZE) - 1));
     return Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
 }
 
@@ -483,8 +483,8 @@ inline GateRef CircuitBuilder::IsDerived(GateRef glue, GateRef ctor)
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
     GateRef bitfield = LoadWithoutBarrier(VariableType::INT32(), method, extraLiteralInfoOffset);
 
-    GateRef kind = Int32And(Int32LSR(bitfield, Int32(MethodLiteral::FunctionKindBits::START_BIT)),
-                            Int32((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1));
+    GateRef kind = Int32And(Int32LSR(bitfield, Int32(Method::FunctionKindBits::START_BIT)),
+                            Int32((1LU << Method::FunctionKindBits::SIZE) - 1));
     return Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::DERIVED_CONSTRUCTOR)));
 }
 
@@ -503,8 +503,8 @@ inline GateRef CircuitBuilder::GetBuiltinsId(GateRef glue, GateRef func)
     GateRef method = GetMethodFromFunction(glue, func);
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
     GateRef extraLiteralInfo = LoadWithoutBarrier(VariableType::INT64(), method, extraLiteralInfoOffset);
-    GateRef builtinsId = Int64And(Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
-        Int64((1LLU << MethodLiteral::BuiltinIdBits::SIZE) - 1));
+    GateRef builtinsId = Int64And(Int64LSR(extraLiteralInfo, Int64(Method::BuiltinIdBits::START_BIT)),
+        Int64((1LLU << Method::BuiltinIdBits::SIZE) - 1));
     return builtinsId;
 }
 }

@@ -447,3 +447,34 @@ findIndex failed. err: TypeError: the predicate is not callable., code: undefine
 4
 5,12,0,0,10
 slice element failed. err: TypeError: Callable is false, code: undefined
+undefined
+
+
+undefined
+-1
+undefined
+false
+-1
+
+[object Array Iterator]
+
+undefined
+__proto__ call reduce error
+
+
+
+0
+[object SharedArray Iterator]
+undefined
+__proto__ call extendTo error
+__proto__ call splice error
+true
+false
+-1
+
+undefined
+
+undefined
+-1
+1,2,3,4
+1

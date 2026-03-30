@@ -72,6 +72,7 @@ static const char *TEST_KEY = "TestKey";
 static const char *TEST_VALUE = "TestValue";
 static const char *TEST_NUM1 = "-3.14";
 static const char *TEST_NUM2 = "-123.3";
+static int32_t TEST_NUM = 2;
 
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
@@ -1781,11 +1782,7 @@ HWTEST_F_L0(JSNApiTests, NewConcurrentWithName)
         },
         nullptr, name.c_str());
     JSHandle<JSTaggedValue> handle = JSNApiHelper::ToJSHandle(func);
-#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
-    ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
-#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     ASSERT_EQ(handle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
-#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     Local<JSValueRef> res = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
     ASSERT_EQ("funcResult", res->ToString(vm_)->ToString(vm_));
     Local<StringRef> funcName = func->GetName(vm_);
@@ -2003,17 +2000,10 @@ HWTEST_F_L0(JSNApiTests, NewInternalConcurrentNormalFunctionUseApiFunctionType)
     Local<FunctionRef> concurrentFunc = FunctionRef::NewConcurrent(vm_, InternalFunctionCallback, nullptr);
     JSHandle<JSTaggedValue> funcHandle = JSNApiHelper::ToJSHandle(concurrentFunc);
     JSHClass* hClass = funcHandle.GetTaggedValue().GetTaggedObject()->GetClass();
-#if defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
-    ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_API_FUNCTION);
-    JSHClass* normalApiFunctionClass =
-        JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalApiFunctionClass().GetTaggedValue().GetTaggedObject());
-    ASSERT_EQ(hClass, normalApiFunctionClass);
-#else // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     JSHClass* normalFunctionClass =
         JSHClass::Cast(vm_->GetGlobalEnv()->GetNormalFunctionClass().GetTaggedValue().GetTaggedObject());
     ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
     ASSERT_EQ(hClass, normalFunctionClass);
-#endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
     // Call will not crash
     Local<JSValueRef> res = concurrentFunc->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
     ASSERT_TRUE(res->IsArray(vm_));
@@ -2095,5 +2085,97 @@ HWTEST_F_L0(JSNApiTests, NewInternalConcurrentConstructorFunctionUseApiFunctionT
     ASSERT_EQ(funcHandle.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType(), JSType::JS_FUNCTION);
     ASSERT_EQ(hClass, constructorFunctionClass);
 #endif // defined(ENABLE_API_FUNCTION_OPTIMIZATION) && ENABLE_MEMORY_OPTIMIZATION
+}
+
+/**
+ * @tc.number: ffi_interface_api_155
+ * @tc.name: GetNativePointerWrapperDataValue
+ * @tc.desc: Test GetNativePointerWrapperDataValue with a normal JS object (not a native pointer)
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetNativePointerWrapperDataValueWithObjectRefNEW)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> normalObj = ObjectRef::New(vm_);
+    bool isNativePointer = true;
+    bool isWrapperData = false;
+    void* result = normalObj->GetNativePointerWrapperDataValue(vm_, isNativePointer, isWrapperData);
+
+    EXPECT_FALSE(isNativePointer);
+    EXPECT_FALSE(isWrapperData);
+    EXPECT_EQ(result, nullptr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_156
+ * @tc.name: GetNativePointerWrapperDataValue_RegularNativePointer
+ * @tc.desc: Test GetNativePointerWrapperDataValue with a regular native pointer (not WRAPPER_DATA)
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetNativePointerWrapperDataValueWithNativePointerRefNew)
+{
+    LocalScope scope(vm_);
+    Local<NativePointerRef> object = NativePointerRef::New(
+        vm_, &TEST_NUM, nullptr, nullptr, 0);
+        
+    Local<JSValueRef> jsVal = object;
+    bool isNativePointer = false;
+    bool isWrapperData = true;
+    void* result = jsVal->GetNativePointerWrapperDataValue(vm_, isNativePointer, isWrapperData);
+
+    EXPECT_TRUE(isNativePointer);
+    EXPECT_FALSE(isWrapperData);
+    EXPECT_EQ(result, nullptr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_157
+ * @tc.name: GetNativePointerWrapperDataValue_WrapperData
+ * @tc.desc: Test GetNativePointerWrapperDataValue with a native pointer created as WRAPPER_DATA
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetNativePointerWrapperDataValueWithNewWrapperData)
+{
+    LocalScope scope(vm_);
+    Local<NativePointerRef> wrapper = NativePointerRef::NewWrapperData(
+        vm_, &TEST_NUM, nullptr, nullptr, 0);
+    Local<JSValueRef> jsVal = wrapper;
+
+    bool isNativePointer = false;
+    bool isWrapperData = false;
+    void* result = jsVal->GetNativePointerWrapperDataValue(vm_, isNativePointer, isWrapperData);
+
+    EXPECT_TRUE(isNativePointer);
+    EXPECT_TRUE(isWrapperData);
+    EXPECT_EQ(result, &TEST_NUM);
+}
+
+/**
+ * @tc.number: ffi_interface_api_158
+ * @tc.name: NativePointerRef_NewWrapperData_DirectFlagCheck
+ * @tc.desc: Directly verify that NewWrapperData sets NativeFlag::WRAPPER_DATA
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NativePointerRefNewWrapperDataFlagCheck)
+{
+    LocalScope scope(vm_);
+    Local<NativePointerRef> wrapper = NativePointerRef::NewWrapperData(
+        vm_, &TEST_NUM, nullptr, nullptr, 0);
+    EXPECT_FALSE(wrapper.IsEmpty());
+
+    Local<JSValueRef> jsVal = wrapper;
+    JSTaggedValue tagged = JSNApiHelper::ToJSTaggedValue(*jsVal);
+    EXPECT_TRUE(tagged.IsJSNativePointer());
+
+    JSHandle<JSTaggedValue> nativePointerHandle = JSNApiHelper::ToJSHandle(jsVal);
+    ecmascript::NativeFlag nativeflag = JSHandle<JSNativePointer>(nativePointerHandle)->GetNativeFlag();
+    EXPECT_EQ(nativeflag, ecmascript::NativeFlag::WRAPPER_DATA);
+
+    void* externalPtr = JSHandle<JSNativePointer>(nativePointerHandle)->GetExternalPointer();
+    EXPECT_EQ(externalPtr, &TEST_NUM);
 }
 } // namespace panda::test

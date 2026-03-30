@@ -48,7 +48,7 @@ public:
         return EcmaString::CalculateConcatHashCode(thread, firstString, secondString);
     }
 };
-#if ENABLE_NEXT_OPTIMIZATION
+
 /*
 * @tc.name: ComputeHashForData
 * @tc.desc: For short data,
@@ -125,5 +125,4 @@ HWTEST_F_L0(EcmaStringHashTest, CalculateConcatHashCode)
     uint32_t concatHash = ComputeConcatHash(thread, firstString, secondString);
     EXPECT_EQ(totalHash, concatHash);
 }
-#endif
 }

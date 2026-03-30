@@ -1782,6 +1782,154 @@ static void PrintExceptionInfo(const EcmaVM *vm);
  JSNApi::PrintExceptionInfo(vm);
 ```
 
+### NapiCreateCallsiteInfo
+
+uintptr_t JSNApi::NapiCreateCallsiteInfo(const EcmaVM *vm)；
+
+创建一个供 `NapiGetPropertyWithCallsiteInfo` 或 `NapiSetPropertyWithCallsiteInfo` 复用的调用点信息句柄。
+
+建议每个原生代码中的固定属性访问位置创建一个 `info`，并在该位置重复使用。不再需要时通过 `NapiDeleteCallsiteInfo` 释放。传入 `0` 也可以调用带调用点信息的接口，但不会复用调用点缓存。
+
+> **重要：同一 `info` 只能用于 get 或 set 中的一种方向。** 运行时会记录 `info` 被填充时的方向（读取或写入）。如果将已被 get 填充的 `info` 传给 set（或反过来），`info` 无效，无法达到属性访问加速效果。建议为 get 和 set 分别创建独立的 `info`。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明         |
+| :----: | -------------- | ---- | ------------ |
+|   vm   | const EcmaVM * | 是   | 虚拟机对象。 |
+
+**返回值：**
+
+| 类型      | 说明                                                         |
+| --------- | ------------------------------------------------------------ |
+| uintptr_t | 调用点信息句柄。失败时返回 0。 |
+
+### NapiDeleteCallsiteInfo
+
+void JSNApi::NapiDeleteCallsiteInfo(const EcmaVM *vm, uintptr_t info)；
+
+释放由 `NapiCreateCallsiteInfo` 创建的调用点信息句柄。传入 `0` 时为空操作。
+
+**参数：**
+
+| 参数名 | 类型           | 必填 | 说明                                    |
+| :----: | -------------- | ---- | --------------------------------------- |
+|   vm   | const EcmaVM * | 是   | 虚拟机对象。                            |
+|  info  | uintptr_t      | 是   | NapiCreateCallsiteInfo 返回的句柄，或 0。 |
+
+**返回值：**
+
+| 类型 | 说明       |
+| ---- | ---------- |
+| void | 无返回值。 |
+
+### NapiGetPropertyWithCallsiteInfo
+
+Local\<JSValueRef\> JSNApi::NapiGetPropertyWithCallsiteInfo(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key, uintptr_t info, bool* hit = nullptr)；
+
+用于重复属性读取的快速接口，语义上与 `NapiGetProperty` 保持一致。
+
+当 `info` 为有效调用点信息并且同一调用点被重复访问时，运行时会尽量复用缓存以减少属性查找开销；当缓存不可用或不适用时，会自动回退到通用读取路径。
+
+**参数：**
+
+| 参数名    | 类型           | 必填 | 说明                                                                 |
+| :-------: | -------------- | ---- | -------------------------------------------------------------------- |
+|    vm     | const EcmaVM * | 是   | 虚拟机对象。                                                         |
+| nativeObj | uintptr_t      | 是   | 目标对象的句柄地址。                                                 |
+|    key    | uintptr_t      | 是   | 属性键的句柄地址。 |
+|   info    | uintptr_t      | 是   | `NapiCreateCallsiteInfo` 返回的调用点信息句柄；传 `0` 时按无缓存方式执行。 |
+|    hit    | bool*          | 否   | 可选输出参数。若非 nullptr，写入 IC 缓存是否命中：true 表示命中（快速路径），false 表示未命中。默认 nullptr。 |
+
+**返回值：**
+
+| 类型              | 说明                                                                      |
+| ----------------- | ------------------------------------------------------------------------- |
+| Local\<JSValueRef\> | 属性值。接收者非法时返回 Hole；其余行为与 `NapiGetProperty` 一致。 |
+
+### NapiSetPropertyWithCallsiteInfo
+
+bool JSNApi::NapiSetPropertyWithCallsiteInfo(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key, uintptr_t value, uintptr_t info, bool* hit = nullptr)；
+
+用于重复属性写入的快速接口，语义上与常规 `Set` 路径保持一致。
+
+当 `info` 为有效调用点信息并且同一调用点被重复写入时，运行时会尽量复用缓存以减少属性写入开销。调用方只需要保证同一调用点复用同一个 `info`。
+
+**参数：**
+
+| 参数名    | 类型           | 必填 | 说明                                                                 |
+| :-------: | -------------- | ---- | -------------------------------------------------------------------- |
+|    vm     | const EcmaVM * | 是   | 虚拟机对象。                                                         |
+| nativeObj | uintptr_t      | 是   | 目标对象的句柄地址。                                                 |
+|    key    | uintptr_t      | 是   | 属性键的句柄地址。 |
+|   value   | uintptr_t      | 是   | 要设置的值的句柄地址。                                               |
+|   info    | uintptr_t      | 是   | `NapiCreateCallsiteInfo` 返回的调用点信息句柄；传 `0` 时按无缓存方式执行。 |
+|    hit    | bool*          | 否   | 可选输出参数。若非 nullptr，写入 IC 缓存是否命中：true 表示命中（快速路径），false 表示未命中。默认 nullptr。 |
+
+**返回值：**
+
+| 类型 | 说明                                                         |
+| ---- | ------------------------------------------------------------ |
+| bool | 写入成功返回 `true`，失败返回 `false`。 |
+
+**示例：**
+
+```c++
+// info 只创建一次，后续调用直接复用。
+// 注意：get 和 set 必须使用各自独立的 info。
+uintptr_t xGetInfo = JSNApi::NapiCreateCallsiteInfo(vm);
+uintptr_t yGetInfo = JSNApi::NapiCreateCallsiteInfo(vm);
+uintptr_t sumSetInfo = JSNApi::NapiCreateCallsiteInfo(vm);
+
+// 一个被频繁调用的原生函数：从 obj 读取 x、y 属性并将 x+y 写回 sum 属性。
+// 每个属性访问位置各创建一个独立的 callsite info，在多次调用之间复用。
+Local<JSValueRef> AccumulateXY(const EcmaVM *vm, Local<ObjectRef> obj
+                               uintptr_t xGetInfo, uintptr_t yGetInfo, uintptr_t sumSetInfo)
+{
+    LocalScope scope(vm);
+    Local<JSValueRef> xKey = StringRef::NewFromUtf8(vm, "x");
+    Local<JSValueRef> yKey = StringRef::NewFromUtf8(vm, "y");
+    Local<JSValueRef> sumKey = StringRef::NewFromUtf8(vm, "sum");
+
+    uintptr_t objAddr = reinterpret_cast<uintptr_t>(*obj);
+
+    // 第一次调用时 IC miss，运行时自动缓存 handler；
+    // 后续调用（相同 Shape 的对象）将命中 IC 快速路径。
+    Local<JSValueRef> xVal = JSNApi::NapiGetPropertyWithCallsiteInfo(
+        vm, objAddr, reinterpret_cast<uintptr_t>(*xKey), xGetInfo);
+    Local<JSValueRef> yVal = JSNApi::NapiGetPropertyWithCallsiteInfo(
+        vm, objAddr, reinterpret_cast<uintptr_t>(*yKey), yGetInfo);
+
+    int32_t sum = xVal->Int32Value(vm) + yVal->Int32Value(vm);
+    Local<JSValueRef> sumVal = IntegerRef::New(vm, sum);
+
+    JSNApi::NapiSetPropertyWithCallsiteInfo(
+        vm, objAddr, reinterpret_cast<uintptr_t>(*sumKey),
+        reinterpret_cast<uintptr_t>(*sumVal), sumSetInfo);
+
+    return sumVal;
+}
+
+// 调用方
+void Example(const EcmaVM *vm)
+{
+    LocalScope scope(vm);
+    Local<ObjectRef> obj = ObjectRef::New(vm);
+    obj->Set(vm, StringRef::NewFromUtf8(vm, "x"), IntegerRef::New(vm, 10));
+    obj->Set(vm, StringRef::NewFromUtf8(vm, "y"), IntegerRef::New(vm, 20));
+
+    // 多次调用，后续调用均会命中 IC
+    AccumulateXY(vm, obj, xGetInfo, yGetInfo, sumSetInfo);  // IC miss → 缓存建立
+    AccumulateXY(vm, obj, xGetInfo, yGetInfo, sumSetInfo);  // IC hit  → 快速路径
+    AccumulateXY(vm, obj, xGetInfo, yGetInfo, sumSetInfo);  // IC hit  → 快速路径
+}
+
+// 不再使用时释放（例如在模块卸载时）：
+// JSNApi::NapiDeleteCallsiteInfo(vm, xGetInfo);
+// JSNApi::NapiDeleteCallsiteInfo(vm, yGetInfo);
+// JSNApi::NapiDeleteCallsiteInfo(vm, sumSetInfo);
+```
+
 ## JSValueRef
 
 JSValueRef是一个用于表示JS值的类。它提供了一些方式来操作和访问JS中的各种数据类型，如字符串、数字、布尔值、对象、数组等。通过使用JSValueRef，您可以获取和设置JS值的属性和方法，执行函数调用，转换数据类型等。

@@ -148,11 +148,6 @@ private:
     private:
         SnapshotProcessor *processor_ {nullptr};
     };
-    size_t GetMarkGCBitSetSize() const
-    {
-        return GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE -
-            AlignUp(sizeof(DefaultRegion), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION)));
-    }
 
     bool VisitObjectBodyWithRep(TaggedObject *root, ObjectSlot slot, uintptr_t obj, int index, VisitObjectArea area);
     void SetObjectEncodeField(uintptr_t obj, size_t offset, uint64_t value);

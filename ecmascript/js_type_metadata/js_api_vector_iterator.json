@@ -1,5 +1,6 @@
 {
     "name": "JS_API_VECTOR_ITERATOR",
+    "node_name": "VectorIterator",
     "offsets": [
         {
             "name": "IteratedVector",

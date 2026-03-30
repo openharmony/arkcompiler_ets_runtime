@@ -120,9 +120,9 @@ let true_findIndex = newArr.findIndex
 newArr.find = replace
 newArr.findIndex = replace
 
-print(newArr.find(x => {})); //: Cannot get source code of funtion
+print(newArr.find(x => {})); //: Cannot get source code of function
 newArr.find = true_find
-print(newArr.findIndex(x => { return x == 11 })); //: Cannot get source code of funtion
+print(newArr.findIndex(x => { return x == 11 })); //: Cannot get source code of function
 newArr.findIndex = true_findIndex
 
 //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -170,7 +170,7 @@ function findCase2() {
 
   //aot: [trace] aot inline builtin: Array.prototype.find, caller function name:#*#findCase2@builtinArrayFindFindIndex
   print(arr1.find(x => x == 1)); //: 1
-  print(arr2.find(x => x == 1)); //: Cannot get source code of funtion
+  print(arr2.find(x => x == 1)); //: Cannot get source code of function
 }
 function findIndexCase2() {
   print('case 2 findIndex') //: case 2 findIndex
@@ -185,7 +185,7 @@ function findIndexCase2() {
 
   //aot: [trace] aot inline builtin: Array.prototype.findIndex, caller function name:#*#findIndexCase2@builtinArrayFindFindIndex
   print(arr1.findIndex(x => x == 1)); //: 0
-  print(arr2.findIndex(x => x == 1)); //: Cannot get source code of funtion
+  print(arr2.findIndex(x => x == 1)); //: Cannot get source code of function
 }
 findCase2()
 findIndexCase2()

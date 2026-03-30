@@ -750,7 +750,8 @@ GateRef NewObjectStubBuilder::NewSObject(GateRef glue, GateRef hclass)
     return ret;
 }
 
-void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit)
+void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit,
+                                                 RegionSpaceFlag spaceType)
 {
     auto env = GetEnvironment();
     Label overflow(env);
@@ -769,7 +770,14 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     Label noException(env);
     auto hclass = GetGlobalConstantValue(
         VariableType::JS_POINTER(), glue_, ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
-    AllocateInYoung(result, exit, &noException, hclass);
+
+    // Select allocation method based on spaceType
+    if (spaceType == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
+        AllocateInSOld(result, &noException, hclass);
+    } else {
+        AllocateInYoung(result, exit, &noException, hclass);
+    }
+
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), hclass);
@@ -853,6 +861,46 @@ GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
         Bind(&slowPath);
         {
             result = CallRuntime(glue_, RTSTUB_ID(NewTaggedArray), { IntToTaggedInt(len) });
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewSTaggedArray(GateRef glue, GateRef len)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isEmpty(env);
+    Label notEmpty(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    SetGlue(glue);
+    BRANCH(Int32Equal(len, Int32(0)), &isEmpty, &notEmpty);
+    Bind(&isEmpty);
+    {
+        result = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notEmpty);
+    {
+        Label next(env);
+        Label slowPath(env);
+        BRANCH(Int32LessThan(len, Int32(MAX_TAGGED_ARRAY_LENGTH)), &next, &slowPath);
+        Bind(&next);
+        {
+            NewTaggedArrayChecked(&result, len, &exit, RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+        }
+        Bind(&slowPath);
+        {
+            result = CallRuntime(glue_, RTSTUB_ID(NewSTaggedArray), { IntToTaggedInt(len) });
             Jump(&exit);
         }
     }
@@ -1207,13 +1255,27 @@ GateRef NewObjectStubBuilder::LoadHClassFromMethodForDefineMethod(GateRef glue, 
     Label exit(env);
     Label defaultLabel(env);
 
-    Label labelBuffer[1] = { Label(env) };
-    int64_t valueBuffer[1] = { static_cast<int64_t>(FunctionKind::ASYNC_FUNCTION) };
+    Label labelBuffer[3] = { Label(env), Label(env), Label(env) };
+    int64_t valueBuffer[3] = {
+        static_cast<int64_t>(FunctionKind::ASYNC_FUNCTION),
+        static_cast<int64_t>(FunctionKind::GENERATOR_FUNCTION),
+        static_cast<int64_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION)
+    };
     GateRef globalEnv = GetCurrentGlobalEnv();
-    Switch(kind, &defaultLabel, valueBuffer, labelBuffer, 1);
+    Switch(kind, &defaultLabel, valueBuffer, labelBuffer, 3);
     Bind(&labelBuffer[0]);
     {
         hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ASYNC_FUNCTION_CLASS);
+        Jump(&exit);
+    }
+    Bind(&labelBuffer[1]);
+    {
+        hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::GENERATOR_FUNCTION_CLASS);
+        Jump(&exit);
+    }
+    Bind(&labelBuffer[2]);
+    {
+        hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv, GlobalEnv::ASYNC_GENERATOR_FUNCTION_CLASS);
         Jump(&exit);
     }
     Bind(&defaultLabel);
@@ -1838,6 +1900,81 @@ void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef
     }
 }
 
+void NewObjectStubBuilder::AllocateInYoungPrologueImplForCMSGC(Variable *result, Label *callRuntime, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label tryAllocate(env);
+
+    BRANCH_UNLIKELY(IntPtrGreaterThan(size_, IntPtr(SlotSpaceConfig::MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE)),
+                    callRuntime, &tryAllocate);
+
+    Bind(&tryAllocate);
+    {
+        Label allocateFast(env);
+        Label tryFetchNextSegment(env);
+        GateRef slotIdx = IntPtrDiv(size_, IntPtr(SlotSpaceConfig::SLOT_STEP_SIZE));
+
+        size_t slotAllocatorsAddressOffset = JSThread::GlueData::GetSlotSpaceAllocatorsAddressOffset(env->Is32Bit());
+        GateRef slotAllocatorsAddress = LoadPrimitive(VariableType::NATIVE_POINTER(), glue_,
+                                                      IntPtr(slotAllocatorsAddressOffset));
+        GateRef allocator = LoadPrimitive(VariableType::NATIVE_POINTER(), slotAllocatorsAddress,
+                                          PtrMul(slotIdx, IntPtrSize()));
+        size_t topOffsetToAllocator = SlotAllocator::GetSlotFreeListOffset()
+                                      + SlotFreeList::GetTopOffset(env->Is32Bit());
+        size_t endOffsetToAllocator = SlotAllocator::GetSlotFreeListOffset()
+                                      + SlotFreeList::GetEndOffset(env->Is32Bit());
+        size_t nextTopOffsetToAllocator = SlotAllocator::GetSlotFreeListOffset()
+                                          + SlotFreeList::GetNextTopOffset(env->Is32Bit());
+        size_t slotSizeOffsetToAllocator = SlotAllocator::GetSlotFreeListOffset()
+                                           + SlotFreeList::GetSlotSizeOffset(env->Is32Bit());
+
+        GateRef top = LoadPrimitive(VariableType::NATIVE_POINTER(), allocator, IntPtr(topOffsetToAllocator));
+        GateRef end = LoadPrimitive(VariableType::NATIVE_POINTER(), allocator, IntPtr(endOffsetToAllocator));
+        GateRef slotSize = LoadPrimitive(VariableType::NATIVE_POINTER(), allocator, IntPtr(slotSizeOffsetToAllocator));
+        BRANCH_LIKELY(IntPtrLessThan(top, end), &allocateFast, &tryFetchNextSegment);
+
+        Bind(&allocateFast);
+        {
+            GateRef newTop = PtrAdd(top, slotSize);
+            Store(VariableType::NATIVE_POINTER(), glue_, allocator, IntPtr(topOffsetToAllocator), newTop);
+            if (env->Is32Bit()) {
+                top = ZExtInt32ToInt64(top);
+            }
+            result->WriteVariable(Int64ToTaggedPtr(top));
+            Jump(exit);
+        }
+
+        Bind(&tryFetchNextSegment);
+        {
+            Label fetchNextSegmentAndAllocate(env);
+            GateRef nextTop = LoadPrimitive(VariableType::NATIVE_POINTER(), allocator,
+                                            IntPtr(nextTopOffsetToAllocator));
+            BRANCH_UNLIKELY(IntPtrEqual(nextTop, IntPtr(0)), callRuntime, &fetchNextSegmentAndAllocate);
+
+            Bind(&fetchNextSegmentAndAllocate);
+            {
+                GateRef encodedSegmentSize = LoadPrimitive(VariableType::NATIVE_POINTER(), nextTop,
+                    IntPtr(SlotFreeSegment::GetMaybeEncodedSizeIndex(env->Is32Bit())));
+                GateRef segmentSize = IntPtrAnd(encodedSegmentSize,
+                    IntPtrNot(IntPtr(SlotFreeSegment::SLOT_FREE_SEGMENT_MASK_IN_SIZE)));
+                GateRef nextSegment = LoadPrimitive(VariableType::NATIVE_POINTER(), nextTop,
+                    IntPtr(SlotFreeSegment::GetNextFreeSegmentIndex(env->Is32Bit())));
+                GateRef newTop = PtrAdd(nextTop, slotSize);
+                GateRef newEnd = PtrAdd(nextTop, segmentSize);
+                Store(VariableType::NATIVE_POINTER(), glue_, allocator, IntPtr(topOffsetToAllocator), newTop);
+                Store(VariableType::NATIVE_POINTER(), glue_, allocator, IntPtr(endOffsetToAllocator), newEnd);
+                Store(VariableType::NATIVE_POINTER(), glue_, allocator, IntPtr(nextTopOffsetToAllocator), nextSegment);
+                
+                if (env->Is32Bit()) {
+                    nextTop = ZExtInt32ToInt64(nextTop);
+                }
+                result->WriteVariable(Int64ToTaggedPtr(nextTop));
+                Jump(exit);
+            }
+        }
+    }
+}
+
 void NewObjectStubBuilder::AllocateInYoungPrologueImplForCMCGC(Variable *result, Label *callRuntime, Label *exit)
 {
     auto env = GetEnvironment();
@@ -1891,13 +2028,13 @@ void NewObjectStubBuilder::AllocateInYoungPrologueImpl(Variable *result, Label *
 void NewObjectStubBuilder::AllocateInYoungPrologue([[maybe_unused]] Variable *result,
     Label *callRuntime, [[maybe_unused]] Label *exit)
 {
-    auto env = GetEnvironment();
-    Label next(env);
-    // fixme: support ir
+    // fixme: refactor?
     if constexpr (G_USE_CMS_GC) {
-        Jump(callRuntime);
+        AllocateInYoungPrologueImplForCMSGC(result, callRuntime, exit);
         return;
     }
+    auto env = GetEnvironment();
+    Label next(env);
 #if defined(ARK_ASAN_ON)
     Jump(callRuntime);
 #else
@@ -2402,7 +2539,6 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, GateRef jsFunc, Tra
         trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo,
             slotId, slotValue, Circuit::NullGate(), callback);
         hclass = LoadPrimitive(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
-        trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
     Bind(&slowpath);
@@ -2446,7 +2582,6 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index,
     {
         trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, slotValue, obj, callback);
         hclass = LoadPrimitive(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
-        trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
     }
     Bind(&slowpath);

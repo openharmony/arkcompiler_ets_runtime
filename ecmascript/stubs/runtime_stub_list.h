@@ -159,6 +159,7 @@ namespace panda::ecmascript {
     V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
     V(SharedGCMarkingBarrier)                  \
+    V(TryFillSweptRegion)                      \
     V(CMCGCMarkingBarrier)                     \
     V(DoubleToInt)                             \
     V(SaturateTruncDoubleToInt32)              \
@@ -298,6 +299,7 @@ namespace panda::ecmascript {
     V(StOwnByIndex)                                            \
     V(CreateClassWithBuffer)                                   \
     V(LoadICByName)                                            \
+    V(LoadPrototype)                                           \
     V(StoreICByName)                                           \
     V(StoreOwnICByName)                                        \
     V(GetModuleNamespaceByIndex)                               \
@@ -444,6 +446,7 @@ namespace panda::ecmascript {
     V(GetHash32)                                               \
     V(NewInternalString)                                       \
     V(NewTaggedArray)                                          \
+    V(NewSTaggedArray)                                         \
     V(NewCOWTaggedArray)                                       \
     V(NewMutantTaggedArray)                                    \
     V(NewCOWMutantTaggedArray)                                 \

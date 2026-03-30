@@ -15,6 +15,8 @@
 
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 
+#include <iomanip>
+
 #include "ecmascript/js_thread.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -69,22 +71,27 @@ bool PGOPandaFileInfos::VerifyChecksum(const PGOPandaFileInfos &pandaFileInfos, 
     return true;
 }
 
-void PGOPandaFileInfos::ProcessToText(std::ofstream &stream) const
+void PGOPandaFileInfos::ProcessToText(TextFormatter& fmt) const
 {
-    std::string pandaFileInfo = DumpUtils::NEW_LINE + DumpUtils::PANDA_FILE_INFO_HEADER;
-    bool isFirst = true;
+    fmt.Text("[Panda Files]").NewLine();
+    fmt.Indent()
+        .Right("ABC ID", TextFormatter::COL_WIDTH_ABC_ID)
+        .Pipe()
+        .Right("Checksum", TextFormatter::COL_WIDTH_CHECKSUM)
+        .NewLine();
+    fmt.Indent()
+        .Text(std::string(TextFormatter::COL_WIDTH_ABC_ID, '-'))
+        .Pipe()
+        .Text(std::string(TextFormatter::COL_WIDTH_CHECKSUM, '-'))
+        .NewLine();
     for (auto &info : fileInfos_) {
-        if (!isFirst) {
-            pandaFileInfo += DumpUtils::BLOCK_SEPARATOR + DumpUtils::SPACE;
-        } else {
-            isFirst = false;
-        }
-        pandaFileInfo += (std::to_string(info.GetAbcId()) + DumpUtils::BLOCK_START);
-        pandaFileInfo += std::to_string(info.GetChecksum());
+        fmt.Indent()
+            .Right(info.GetAbcId(), TextFormatter::COL_WIDTH_ABC_ID)
+            .Pipe()
+            .Right(TextFormatter::HexStr(info.GetChecksum()), TextFormatter::COL_WIDTH_CHECKSUM)
+            .NewLine();
     }
-
-    pandaFileInfo += (DumpUtils::SPACE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
-    stream << pandaFileInfo;
+    fmt.NewLine();
 }
 
 bool PGOPandaFileInfos::Checksum(const std::unordered_map<CString, uint32_t>& fileNameToChecksumMap,
@@ -139,28 +146,11 @@ void PGOPandaFileInfos::UpdateFileInfosAbcID(const PGOContext &context)
     fileInfos_.swap(newFileInfos);
 }
 
-void PGOMethodInfo::ProcessToText(std::string &text) const
-{
-    text += std::to_string(GetMethodId().GetOffset());
-    text += DumpUtils::ELEMENT_SEPARATOR;
-    text += std::to_string(GetCount());
-    text += DumpUtils::ELEMENT_SEPARATOR;
-    text += GetSampleModeToString();
-    text += DumpUtils::ELEMENT_SEPARATOR;
-    text += GetMethodName();
-}
-
 void PGOMethodInfo::ProcessToJson(ProfileType::VariantMap &function) const
 {
     std::string methodName = GetMethodName();
     std::string functionName = methodName + "(" + std::to_string(GetMethodId().GetOffset()) + ")";
     function.insert(std::make_pair(DumpJsonUtils::FUNCTION_NAME, functionName));
-}
-
-std::vector<std::string> PGOMethodInfo::ParseFromText(const std::string &infoString)
-{
-    std::vector<std::string> infoStrings = StringHelper::SplitString(infoString, DumpUtils::ELEMENT_SEPARATOR);
-    return infoStrings;
 }
 
 uint32_t PGOMethodInfo::CalcChecksum(const char *name, const uint8_t *byteCodeArray, uint32_t byteCodeLength)
@@ -331,9 +321,6 @@ bool PGOMethodInfoMap::ParseMethodFromBinary(
 {
     PGOProfilerHeader* const header = context.GetHeader();
     methodInfos_.emplace(info->GetMethodId(), info);
-    LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << DumpUtils::ELEMENT_SEPARATOR << info->GetCount()
-                    << DumpUtils::ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
-                    << DumpUtils::ELEMENT_SEPARATOR << info->GetMethodName();
 
     if (header->SupportMethodChecksum()) {
         auto checksum = base::ReadBuffer<uint32_t>(addr, sizeof(uint32_t));
@@ -392,10 +379,6 @@ bool PGOMethodInfoMap::ProcessToBinary(PGOContext& context,
     SectionInfo secInfo;
     std::stringstream methodStream;
     for (auto iter = methodInfos_.begin(); iter != methodInfos_.end(); iter++) {
-        LOG_ECMA(DEBUG) << "Method:" << iter->first << DumpUtils::ELEMENT_SEPARATOR << iter->second->GetCount()
-                        << DumpUtils::ELEMENT_SEPARATOR
-                        << std::to_string(static_cast<int>(iter->second->GetSampleMode()))
-                        << DumpUtils::ELEMENT_SEPARATOR << iter->second->GetMethodName();
         auto curMethodInfo = iter->second;
         if (curMethodInfo->IsFilter(context.GetHotnessThreshold())) {
             continue;
@@ -431,102 +414,70 @@ bool PGOMethodInfoMap::ProcessToBinary(PGOContext& context,
     return false;
 }
 
-bool PGOMethodInfoMap::ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content)
+void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString& recordName, TextFormatter& fmt) const
 {
-    for (auto infoString : content) {
-        std::vector<std::string> infoStrings = PGOMethodInfo::ParseFromText(infoString);
-        if (infoStrings.size() < PGOMethodInfo::METHOD_INFO_COUNT) {
-            LOG_ECMA(ERROR) << "method info:" << infoString << " format error";
-            return false;
-        }
-        uint32_t count;
-        if (!StringHelper::StrToUInt32(infoStrings[PGOMethodInfo::METHOD_COUNT_INDEX].c_str(), &count)) {
-            LOG_ECMA(ERROR) << "count: " << infoStrings[PGOMethodInfo::METHOD_COUNT_INDEX] << " parse failed";
-            return false;
-        }
-        SampleMode mode;
-        if (!PGOMethodInfo::GetSampleMode(infoStrings[PGOMethodInfo::METHOD_MODE_INDEX], mode)) {
-            LOG_ECMA(ERROR) << "mode: " << infoStrings[PGOMethodInfo::METHOD_MODE_INDEX] << " parse failed";
-            return false;
-        }
-        if (count < threshold && mode == SampleMode::CALL_MODE) {
-            return true;
-        }
-        uint32_t methodId;
-        if (!StringHelper::StrToUInt32(infoStrings[PGOMethodInfo::METHOD_ID_INDEX].c_str(), &methodId)) {
-            LOG_ECMA(ERROR) << "method id: " << infoStrings[PGOMethodInfo::METHOD_ID_INDEX] << " parse failed";
-            return false;
-        }
-        std::string methodName = infoStrings[PGOMethodInfo::METHOD_NAME_INDEX];
+    // Collect statistics first
+    MethodStats stats = CollectStats(threshold);
+    // Output record header and stats
+    fmt.SetLabelWidth(TextFormatter::LABEL_WIDTH_MEDIUM);
+    fmt.SectionLine().NewLine();
+    fmt.Indent().Label("Record").Value(recordName.c_str()).Pipe();
+    fmt.Label("Methods").Value(stats.hotMethods).Pipe();
+    fmt.Label("Total Calls").Value(stats.totalCalls).NewLine();
+    fmt.SectionLine().NewLine();
 
-        void *infoAddr = chunk->Allocate(PGOMethodInfo::Size(methodName.size()));
-        auto info = new (infoAddr) PGOMethodInfo(PGOMethodId(methodId), count, mode, methodName.c_str());
-        methodInfos_.emplace(methodId, info);
-
-        // Parse Type Info
-        if (infoStrings.size() <= PGOMethodTypeSet::METHOD_TYPE_INFO_INDEX) {
-            continue;
-        }
-        std::string typeInfos = infoStrings[PGOMethodTypeSet::METHOD_TYPE_INFO_INDEX];
-        if (!typeInfos.empty()) {
-            size_t start = typeInfos.find_first_of(DumpUtils::ARRAY_START);
-            size_t end = typeInfos.find_last_of(DumpUtils::ARRAY_END);
-            if (start == std::string::npos || end == std::string::npos || start > end) {
-                LOG_ECMA(ERROR) << "Type info: " << typeInfos << " parse failed";
-                return false;
-            }
-            ASSERT(end > start + 1);
-            auto typeContent = typeInfos.substr(start + 1, end - (start + 1) - 1);
-            auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
-            if (!typeInfoSet->ParseFromText(typeContent)) {
-                // delete by chunk
-                LOG_ECMA(ERROR) << "Type info: " << typeInfos << " parse failed";
-                return false;
-            }
-            methodTypeInfos_.emplace(info->GetMethodId(), typeInfoSet);
-        }
-    }
-
-    return true;
-}
-
-void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString &recordName, std::ofstream &stream) const
-{
-    std::string profilerString;
-    bool isFirst = true;
+    // Output method info
+    fmt.PushIndent();
     for (auto methodInfoIter : methodInfos_) {
         auto methodInfo = methodInfoIter.second;
         if (methodInfo->IsFilter(threshold)) {
             continue;
         }
-        if (isFirst) {
-            profilerString += DumpUtils::NEW_LINE;
-            profilerString += recordName;
-            profilerString += DumpUtils::BLOCK_START + DumpUtils::SPACE + DumpUtils::ARRAY_START;
-            profilerString += DumpUtils::NEW_LINE + DumpUtils::ALIGN;
-            isFirst = false;
-        } else {
-            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::NEW_LINE + DumpUtils::ALIGN;
-        }
-        methodInfo->ProcessToText(profilerString);
-        profilerString += DumpUtils::ELEMENT_SEPARATOR;
+
+        // Get checksum
+        std::string checksumStr;
         auto checksumIter = methodsChecksum_.find(methodInfo->GetMethodId());
         if (checksumIter != methodsChecksum_.end()) {
-            std::stringstream parseStream;
-            parseStream << std::internal << std::setfill('0') << std::showbase
-                        << std::setw(DumpUtils::HEX_FORMAT_WIDTH_FOR_32BITS) << std::hex << checksumIter->second
-                        << DumpUtils::ELEMENT_SEPARATOR;
-            profilerString += parseStream.str();
+            checksumStr = TextFormatter::HexStr(checksumIter->second);
         }
+
+        // Output method as label-value pairs
+        fmt.NewLine();
+        fmt.AutoIndent().Text("[Method]").Indent();
+        fmt.Label("Name").Value(methodInfo->GetMethodName()).Pipe();
+        fmt.Label("Method ID").Value(methodInfo->GetMethodId().GetOffset()).Pipe();
+        fmt.Label("Count").Value(methodInfo->GetCount()).Pipe();
+        fmt.Label("Mode").Value(methodInfo->GetSampleModeToString()).Pipe();
+        fmt.Label("Checksum").Value(checksumStr).NewLine();
+
+        // Output type information for this method
         auto iter = methodTypeInfos_.find(methodInfo->GetMethodId());
         if (iter != methodTypeInfos_.end()) {
-            iter->second->ProcessToText(profilerString);
+            IndentScope indentScope(fmt);
+            fmt.AutoIndent().Text("[Types]");
+            iter->second->ProcessToText(fmt);
         }
     }
-    if (!isFirst) {
-        profilerString += (DumpUtils::NEW_LINE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
-        stream << profilerString;
+    fmt.PopIndent();
+    fmt.NewLine();
+}
+
+PGOMethodInfoMap::MethodStats PGOMethodInfoMap::CollectStats(uint32_t threshold) const
+{
+    MethodStats stats;
+    for (auto methodInfoIter: methodInfos_) {
+        auto methodInfo = methodInfoIter.second;
+        stats.totalMethods++;
+        uint32_t count = methodInfo->GetCount();
+        stats.totalCalls += count;
+        if (count > stats.maxCalls) {
+            stats.maxCalls = count;
+        }
+        if (!methodInfo->IsFilter(threshold)) {
+            stats.hotMethods++;
+        }
     }
+    return stats;
 }
 
 void PGOMethodInfoMap::ProcessToJson(uint32_t threshold, ProfileType::jModuleType &jModule) const
@@ -572,10 +523,7 @@ bool PGOMethodIdSet::ParseFromBinary(PGOContext &context, void **buffer)
         }
         auto ret = methodInfoMap_.try_emplace(info->GetMethodName(), chunk_);
         auto methodNameSetIter = ret.first;
-        auto &methodInfo = methodNameSetIter->second.GetOrCreateMethodInfo(checksum, info->GetMethodId());
-        LOG_ECMA(DEBUG) << "Method:" << info->GetMethodId() << DumpUtils::ELEMENT_SEPARATOR << info->GetCount()
-                        << DumpUtils::ELEMENT_SEPARATOR << std::to_string(static_cast<int>(info->GetSampleMode()))
-                        << DumpUtils::ELEMENT_SEPARATOR << info->GetMethodName();
+        auto& methodInfo = methodNameSetIter->second.GetOrCreateMethodInfo(checksum, info->GetMethodId());
         if (header->SupportType()) {
             methodInfo.GetPGOMethodTypeSet().ParseFromBinary(context, buffer, PGOProfilerEncoder::MAX_AP_FILE_SIZE);
         }
@@ -993,26 +941,56 @@ bool PGORecordDetailInfos::ProcessToBinaryForLayout(NativeAreaAllocator* allocat
     return true;
 }
 
-void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
+PGORecordDetailInfos::OverallStats PGORecordDetailInfos::CollectOverallStats() const
 {
-    std::string profilerString;
-    bool isFirst = true;
-    for (auto layoutInfoIter : hclassTreeDescInfos_) {
-        if (isFirst) {
-            profilerString += DumpUtils::NEW_LINE;
-            profilerString += DumpUtils::ARRAY_START + DumpUtils::NEW_LINE;
-            profilerString += DumpUtils::ALIGN;
-            isFirst = false;
-        } else {
-            profilerString += DumpUtils::BLOCK_SEPARATOR + DumpUtils::NEW_LINE;
-            profilerString += DumpUtils::ALIGN;
+    OverallStats stats;
+    for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
+        stats.totalRecords++;
+        auto methodStats = iter->second->CollectStats(hotnessThreshold_);
+        stats.totalMethods += methodStats.totalMethods;
+        stats.hotMethods += methodStats.hotMethods;
+        stats.totalCalls += methodStats.totalCalls;
+        if (methodStats.maxCalls > stats.maxCalls) {
+            stats.maxCalls = methodStats.maxCalls;
         }
-        profilerString += PGOHClassTreeDescInner::GetTypeString(layoutInfoIter);
     }
-    if (!isFirst) {
-        profilerString += (DumpUtils::NEW_LINE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
-        stream << profilerString;
+    return stats;
+}
+
+void PGORecordDetailInfos::ProcessToText(TextFormatter& fmt) const
+{
+    // Collect and output overall statistics first
+    OverallStats stats = CollectOverallStats();
+    fmt.SectionLine().NewLine();
+    fmt.CenteredTitle("Methods Summary").NewLine();
+    fmt.SectionLine().NewLine();
+    fmt.SetLabelWidth(TextFormatter::LABEL_WIDTH_LARGE).LabelAlign();
+    fmt.Indent().Label("Total Records", true).Value(stats.totalRecords).NewLine();
+    fmt.Indent().Label("Total Methods", true).Value(stats.totalMethods).NewLine();
+    fmt.Indent()
+        .Label("Hotness Methods", true)
+        .Value(std::to_string(stats.hotMethods) + " (threshold: " + std::to_string(hotnessThreshold_) + ")")
+        .NewLine();
+    fmt.Indent().Label("Total Call Count", true).Value(stats.totalCalls).NewLine();
+    if (stats.totalMethods > 0) {
+        fmt.Indent().Label("Average Calls", true).Fixed(stats.GetAverageCalls()).NewLine();
     }
+    fmt.Indent().Label("Max Calls", true).Value(stats.maxCalls).NewLine();
+    fmt.NewLine();
+    fmt.LabelReset();
+
+    // Output HClass tree descriptions if any
+    if (!hclassTreeDescInfos_.empty()) {
+        fmt.SectionLine().NewLine();
+        fmt.CenteredTitle("HClass Tree Desc").NewLine();
+        fmt.SectionLine().NewLine();
+        for (auto layoutInfoIter: hclassTreeDescInfos_) {
+            fmt.Indent().Text(PGOHClassTreeDescInner::GetTypeString(layoutInfoIter)).NewLine();
+        }
+        fmt.NewLine();
+    }
+
+    // Output each record's method information
     for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
         const CString recordName(recordPool_->GetName(iter->first));
         if (recordName.empty()) {
@@ -1020,12 +998,14 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
             continue;
         }
         auto methodInfos = iter->second;
-        methodInfos->ProcessToText(hotnessThreshold_, recordName, stream);
+        methodInfos->ProcessToText(hotnessThreshold_, recordName, fmt);
     }
-    recordPool_->ProcessToText(stream);
-    protoTransitionPool_->ProcessToText(stream);
+
+    // Output pools information
+    recordPool_->ProcessToText(fmt);
+    protoTransitionPool_->ProcessToText(fmt);
     // ProfileTypePool must be processed at last
-    profileTypePool_->GetPool()->ProcessToText(stream);
+    profileTypePool_->GetPool()->ProcessToText(fmt);
 }
 
 void PGORecordDetailInfos::InitSections()

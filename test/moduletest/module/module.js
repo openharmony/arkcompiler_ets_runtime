@@ -22,7 +22,7 @@
 import { Car } from './B.js';   // Test direct Export & use after import
 import { Star } from './C.js';  // Test indirect Export & use after import
 import * as ns from './A.js';
-import { D as ClassD} from './D.js';
+import { D as ClassD, PI, VERSION, counter, message, increment, multiply, getMessage, config, utils } from './D.js';
 import {tmp, f} from './exportas.js'
 let A = Car;
 
@@ -64,6 +64,20 @@ var classTestD = new ClassD()
 print(classTestD.d)
 print("export as ... case test : " + tmp);
 f();
+
+// Test extended D module exports
+print("D.PI: " + PI);
+print("D.VERSION: " + VERSION);
+print("D.message: " + message);
+print("D.counter initial: " + counter);
+print("D.increment(): " + increment());
+print("D.increment(): " + increment());
+print("D.multiply(2,3,4): " + multiply(2, 3, 4));
+print("D.getMessage(): " + getMessage());
+print("D.config.name: " + config.name);
+print("D.config.value: " + config.value);
+print("D.utils.square(5): " + utils.square(5));
+print("D.utils.cube(3): " + utils.cube(3));
 
 const {add} = await import('./exportas');
 const sum = add(1, 2);

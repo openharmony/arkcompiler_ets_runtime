@@ -1,5 +1,6 @@
 {
     "name": "JS_API_QUEUE_ITERATOR",
+    "node_name": "QueueIterator",
     "offsets": [
         {
             "name": "IteratedQueue",

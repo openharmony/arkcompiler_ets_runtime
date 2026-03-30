@@ -27,7 +27,7 @@
 #include "llvm/BinaryFormat/ELF.h"
 
 namespace panda::ecmascript {
-#ifdef JIT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
 void GetSignalHandler(int signal, siginfo_t *info, void *context);
 void SignalReg(int signo);
 #endif

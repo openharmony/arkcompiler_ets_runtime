@@ -1,5 +1,6 @@
 {
     "name": "JS_PROXY",
+    "node_name": "Proxy",
     "offsets": [
         {
             "name": "Target",

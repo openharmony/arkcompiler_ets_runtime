@@ -1,5 +1,6 @@
 {
     "name": "JS_API_PLAIN_ARRAY",
+    "node_name": "PlainArray",
     "offsets": [
         {
             "name": "Keys",

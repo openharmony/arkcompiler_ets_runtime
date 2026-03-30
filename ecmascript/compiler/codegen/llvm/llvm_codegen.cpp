@@ -358,13 +358,8 @@ void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlo
 {
     LLVMValueRef function = module_->GetFunction(index);
     const CallSignature* cs = module_->GetCSign(index);
-#if ENABLE_NEXT_OPTIMIZATION
     LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_, false, cs->GetName(),
                           true, false, true, cs->IsStwCopyStub());
-#else
-    LLVMIRBuilder builder(&graph, circuit, module_, function, cfg, cs->GetCallConv(), enableLog_, false, cs->GetName(),
-                          false, false, true, cs->IsStwCopyStub());
-#endif
     builder.Build();
 }
 

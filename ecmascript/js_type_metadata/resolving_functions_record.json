@@ -1,5 +1,6 @@
 {
     "name": "RESOLVING_FUNCTIONS_RECORD",
+    "node_name": "ResolvingFunctionsRecord",
     "offsets": [
         {
             "name": "ResolveFunction",

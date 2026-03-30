@@ -1,5 +1,6 @@
 {
     "name": "JS_TYPED_ARRAY",
+    "node_name": "Typed Array",
     "offsets": [
         {
             "name": "ViewedArrayBufferOrByteArray",

@@ -230,6 +230,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::FUNC_SLOT:
         case JSType::TAGGED_DICTIONARY:
         case JSType::LEXICAL_ENV:
+        case JSType::WEAK_LINKED_HASH_MAP:
         case JSType::SFUNCTION_ENV:
         case JSType::SENDABLE_ENV:
         case JSType::CONSTANT_POOL:
@@ -239,6 +240,7 @@ inline size_t JSHClass::SizeFromJSHClass(TaggedObject *header)
         case JSType::MUTANT_TAGGED_ARRAY:
         case JSType::COW_MUTANT_TAGGED_ARRAY:
         case JSType::PROFILE_TYPE_INFO:
+        case JSType::IC_INFO:
             size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(),
                 reinterpret_cast<TaggedArray *>(header)->GetLength());
             break;

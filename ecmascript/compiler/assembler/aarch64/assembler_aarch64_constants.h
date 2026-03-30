@@ -15,32 +15,18 @@
 
 #ifndef ECMASCRIPT_COMPILER_ASSEMBLER_AARCH64_CONSTANTS_H
 #define ECMASCRIPT_COMPILER_ASSEMBLER_AARCH64_CONSTANTS_H
+
 namespace panda::ecmascript::aarch64 {
-enum RegisterId : uint8_t {
-    X0, X1, X2, X3, X4, X5, X6, X7,
-    X8, X9, X10, X11, X12, X13, X14, X15,
-    X16, X17, X18, X19, X20, X21, X22, X23,
-    X24, X25, X26, X27, X28, X29, X30, SP,
-    Zero = SP,
-    FP = X29,
-    INVALID_REG = 0xFF,
-};
 
-enum RegisterType {
-    W = 0,
-    X = 1,
-};
-
-static const int RegXSize = 64;
-static const int RegWSize = 32;
-
-enum VectorRegisterId : uint8_t {
-    v0, v1, v2, v3, v4, v5, v6, v7,
-    v8, v9, v10, v11, v12, v13, v14, v15,
-    v16, v17, v18, v19, v20, v21, v22, v23,
-    v24, v25, v26, v27, v28, v29, v30, v31,
-    INVALID_VREG = 0xFF,
-};
+// Register size constants
+static constexpr int B_REG_SIZE = 8;
+static constexpr int H_REG_SIZE = 16;
+static constexpr int S_REG_SIZE = 32;
+static constexpr int W_REG_SIZE = 32;
+static constexpr int D_REG_SIZE = 64;
+static constexpr int X_REG_SIZE = 64;
+static constexpr int Q_REG_SIZE = 128;
+static constexpr int V_REG_SIZE = 128;
 
 enum Extend : uint8_t {
     NO_EXTEND = 0xFF,

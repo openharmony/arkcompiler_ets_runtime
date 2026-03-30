@@ -150,11 +150,10 @@ public:
     MemMapFreeList() = default;
     ~MemMapFreeList() = default;
 
-    void Initialize(MemMap memMap, size_t capacity)
+    void Initialize(MemMap memMap)
     {
         memMaps_.emplace_back(memMap);
         freeList_.emplace(memMap.GetSize(), memMap);
-        capacity_ = capacity;
     }
 
     void Finalize()
@@ -164,11 +163,6 @@ public:
         }
         memMaps_.clear();
         freeList_.clear();
-    }
-
-    void ResetCapacity(size_t capacity)
-    {
-        capacity_ = capacity;
     }
 
     NO_COPY_SEMANTIC(MemMapFreeList);
@@ -201,10 +195,6 @@ public:
 
     MemMap GetMemFromList(size_t size)
     {
-        if (freeListPoolSize_ + size > capacity_) {
-            LOG_GC(ERROR) << "Freelist pool oom: overflow(" << freeListPoolSize_ << ")";
-            return MemMap();
-        }
         LockHolder lock(lock_);
         auto iterate = freeList_.lower_bound(size);
         if (iterate == freeList_.end()) {
@@ -248,7 +238,6 @@ private:
     std::vector<MemMap> memMaps_;
     std::multimap<size_t, MemMap> freeList_;
     std::atomic_size_t freeListPoolSize_ {0};
-    size_t capacity_ {0};
 };
 
 class MemMapAllocator {
@@ -284,10 +273,14 @@ public:
         return capacity_;
     }
 
+    size_t GetTotalSize() const
+    {
+        return memMapTotalSize_.load();
+    }
+
     void ResetLargePoolSize()
     {
         capacity_ = LARGE_HEAP_POOL_SIZE;
-        memMapFreeList_.ResetCapacity(capacity_);
     }
 
     void IncreaseMemMapTotalSize(size_t bytes)
@@ -314,18 +307,12 @@ public:
 
     MemMap Allocate(const uint32_t threadId, size_t size, size_t alignment,
                     const std::string &spaceName, bool regular, bool isCompress, bool isMachineCode,
-                    bool isEnableJitFort, bool shouldPageTag);
+                    bool isEnableJitFort, bool shouldPageTag, bool skipCheckCapacity);
 
     void CacheOrFree(void *mem, size_t size, bool isRegular, bool isCompress, size_t cachedSize,
                      bool shouldPageTag, bool skipCache);
 
     void AsyncFree(void *mem, size_t size, bool isRegular, bool isCompress, bool shouldPageTag);
-
-    // This is only used when allocating region failed during GC, since it's unsafe to do HeapDump or throw OOM,
-    // just make MemMapAllocator infinite to complete this GC, this will temporarily lead that all JSThread could
-    // always AllcationRegion success, breaking the global region limit, but thread calling this will soon complete
-    // GC and then fatal.
-    void TransferToInfiniteModeForGC();
 
 private:
     void InitializeRegularRegionMap(size_t alignment);

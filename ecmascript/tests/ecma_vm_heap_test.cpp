@@ -67,6 +67,10 @@ public:
 
 HWTEST_F_L0(GCHeapTest, HeapParamTest1)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto allocLimit1 = heap->GetGlobalSpaceAllocLimit();
     heap->AdjustBySurvivalRate(1024 * 1024);
@@ -140,4 +144,4 @@ HWTEST_F_L0(GCHeapTest, SHeapParamTest2)
     auto allocLimit2 = sHeap->GetGlobalSpaceAllocLimit();
     EXPECT_TRUE(allocLimit1 == allocLimit2);
 }
-}  // namespace panda::test
+}

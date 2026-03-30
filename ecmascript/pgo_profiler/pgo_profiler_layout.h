@@ -583,26 +583,23 @@ public:
 
     static std::string GetTypeString(const PGOHClassTreeDesc &desc)
     {
-        std::string text;
-        text += desc.GetProfileType().GetTypeString();
-        text += DumpUtils::BLOCK_AND_ARRAY_START;
+        TextFormatter fmt;
+        fmt.Text(desc.GetProfileType().GetTypeString()).Text(": [ ");
         auto layoutDesc = desc.GetHClassLayoutDesc(desc.GetProfileType());
         if (layoutDesc != nullptr) {
-            bool isLayoutFirst = true;
+            bool isFirst = true;
             ASSERT(layoutDesc->GetProfileType().IsRootType());
             auto rootLayoutDesc = reinterpret_cast<RootHClassLayoutDesc *>(layoutDesc);
-            rootLayoutDesc->IterateProps([&text, &isLayoutFirst] (const PropertyDesc &propDesc) {
-                if (!isLayoutFirst) {
-                    text += DumpUtils::SPACE + DumpUtils::TYPE_SEPARATOR + DumpUtils::SPACE;
+            rootLayoutDesc->IterateProps([&fmt, &isFirst](const PropertyDesc& propDesc) {
+                if (!isFirst) {
+                    fmt.Pipe();
                 }
-                isLayoutFirst = false;
-                text += propDesc.first;
-                text += DumpUtils::BLOCK_START;
-                text += std::to_string(propDesc.second.GetValue());
+                isFirst = false;
+                fmt.Text(propDesc.first).Text(":").Text(propDesc.second.GetValue());
             });
         }
-        text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
-        return text;
+        fmt.Text(" ]");
+        return fmt.Str();
     }
 
     void Merge(const PGOHClassTreeDesc &desc)

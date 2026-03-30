@@ -39,6 +39,9 @@ using namespace panda::ecmascript::base;
 
 namespace panda::test {
 class JSObjectTest : public BaseTestWithScope<false> {
+public:
+    static constexpr int idx = 3;
+    static constexpr int fieldCount = 5;
 };
 
 static JSFunction *JSObjectTestCreate(JSThread *thread)
@@ -1249,21 +1252,134 @@ HWTEST_F_L0(JSObjectTest, ChangeProtoAndNoticeTheChain)
     EXPECT_TRUE(result6 == obj6Class.GetTaggedValue());
 }
 
-HWTEST_F_L0(JSObjectTest, NativePointerField)
+HWTEST_F_L0(JSObjectTest, NativePointerFieldInJSObject)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> objFunc(thread, JSObjectTestCreate(thread));
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);
-    ECMAObject::SetHash(thread, 87, JSHandle<ECMAObject>::Cast(obj));
-    EXPECT_TRUE(obj->GetHash(thread) == 87);
+    JSHandle<JSObject> object = factory->CreateNapiObject(false);
 
-    ECMAObject::SetNativePointerFieldCount(thread, obj, 1);
+    ECMAObject::SetHash(thread, 87, JSHandle<ECMAObject>::Cast(object));
+    JSObject::SetNativePointerFieldCount(thread, object, fieldCount);
     char array[] = "Hello World!";
-    ECMAObject::SetNativePointerField(thread, obj, 0, array, nullptr, nullptr);
-    int32_t count = obj->GetNativePointerFieldCount(thread);
-    EXPECT_TRUE(count == 1);
-    void *pointer = obj->GetNativePointerField(thread, 0);
-    EXPECT_TRUE(pointer == array);
+    JSObject::SetNativePointerField(thread, object, idx, array, nullptr, nullptr);
+
+    EXPECT_TRUE(object->GetHash(thread) == 87);
+    JSTaggedValue hashfield = JSTaggedValue(
+        Barriers::GetTaggedValue(thread, object.GetTaggedValue().GetTaggedObject(), JSObject::HASH_OFFSET));
+    EXPECT_TRUE(hashfield.IsTaggedArray());
+    JSHandle<TaggedArray> hashArray(thread, hashfield);
+    EXPECT_EQ(hashArray->GetExtraLength(), fieldCount);
+    EXPECT_EQ(hashArray->GetLength(), fieldCount + 1);
+    JSTaggedValue nativePointer = hashArray->Get(thread, idx);
+    EXPECT_TRUE(nativePointer.IsJSNativePointer());
+    void *pointer = JSNativePointer::Cast(nativePointer.GetTaggedObject())->GetExternalPointer();
+    EXPECT_EQ(pointer, array);
+
+    nativePointer = object->GetNativePointerByIndex(thread, idx);
+    EXPECT_TRUE(nativePointer.IsJSNativePointer());
+    pointer = JSNativePointer::Cast(nativePointer.GetTaggedObject())->GetExternalPointer();
+    EXPECT_EQ(pointer, array);
+
+    pointer = object->GetNativePointerField(thread, idx);
+    EXPECT_EQ(pointer, array);
+}
+
+HWTEST_F_L0(JSObjectTest, NativePointerFieldInSendableObj1)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSFunction> constructor(globalEnv->GetSObjectFunction());
+    JSHandle<JSObject> object = factory->NewJSObjectByConstructor(constructor);
+
+    JSObject::SetNativePointerFieldCount(thread, object, fieldCount);
+    char array[] = "Hello World!";
+    JSObject::SetNativePointerField(thread, object, idx, array, nullptr, nullptr);
+
+    JSTaggedValue hashfield = JSTaggedValue(
+        Barriers::GetTaggedValue(thread, object.GetTaggedValue().GetTaggedObject(), JSObject::HASH_OFFSET));
+    EXPECT_FALSE(hashfield.IsTaggedArray());
+    JSHandle<TaggedArray> properties(thread, object->GetProperties(thread));
+    EXPECT_EQ(properties->GetExtraLength(), fieldCount);
+    JSTaggedValue nativePointer = properties->Get(thread, idx);
+    EXPECT_TRUE(nativePointer.IsJSNativePointer());
+    void *pointer = JSNativePointer::Cast(nativePointer.GetTaggedObject())->GetExternalPointer();
+    EXPECT_EQ(pointer, array);
+
+    nativePointer = object->GetNativePointerByIndex(thread, idx);
+    EXPECT_TRUE(nativePointer.IsJSNativePointer());
+    pointer = JSNativePointer::Cast(nativePointer.GetTaggedObject())->GetExternalPointer();
+    EXPECT_EQ(pointer, array);
+
+    pointer = object->GetNativePointerField(thread, idx);
+    EXPECT_EQ(pointer, array);
+}
+
+HWTEST_F_L0(JSObjectTest, NativePointerFieldInSendableObj2)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSFunction> constructor(globalEnv->GetSObjectFunction());
+    JSHandle<JSObject> object = factory->NewJSObjectByConstructor(constructor);
+    JSHandle<JSHClass> hclass(thread, object->GetJSHClass());
+    hclass->SetNumberOfProps(100);
+
+    JSObject::SetNativePointerFieldCount(thread, object, fieldCount);
+    char array[] = "Hello World!";
+    JSObject::SetNativePointerField(thread, object, idx, array, nullptr, nullptr);
+
+    EXPECT_TRUE(hclass->IsNonInlinedPropExist());
+    JSTaggedValue hashfield = JSTaggedValue(
+        Barriers::GetTaggedValue(thread, object.GetTaggedValue().GetTaggedObject(), JSObject::HASH_OFFSET));
+    EXPECT_TRUE(hashfield.IsTaggedArray());
+    JSHandle<TaggedArray> hashArray(thread, hashfield);
+    EXPECT_EQ(hashArray->GetExtraLength(), fieldCount);
+    EXPECT_EQ(hashArray->GetLength(), fieldCount + 1);
+    JSTaggedValue nativePointer = hashArray->Get(thread, idx);
+    EXPECT_TRUE(nativePointer.IsJSNativePointer());
+    void *pointer = JSNativePointer::Cast(nativePointer.GetTaggedObject())->GetExternalPointer();
+    EXPECT_EQ(pointer, array);
+
+    nativePointer = object->GetNativePointerByIndex(thread, idx);
+    EXPECT_TRUE(nativePointer.IsJSNativePointer());
+    pointer = JSNativePointer::Cast(nativePointer.GetTaggedObject())->GetExternalPointer();
+    EXPECT_EQ(pointer, array);
+
+    pointer = object->GetNativePointerField(thread, idx);
+    EXPECT_EQ(pointer, array);
+}
+
+HWTEST_F_L0(JSObjectTest, NativePointerFieldInWrappedNapiObj)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSObject> object = factory->CreateNapiObject(true);
+
+    JSObject::SetNativePointerFieldCount(thread, object, fieldCount);
+    char array[] = "Hello World!";
+    JSObject::SetNativePointerField(thread, object, idx, array, nullptr, nullptr);
+
+    JSTaggedValue hashfield = JSTaggedValue(
+        Barriers::GetTaggedValue(thread, object.GetTaggedValue().GetTaggedObject(), JSObject::HASH_OFFSET));
+    EXPECT_FALSE(hashfield.IsTaggedArray());
+    EXPECT_TRUE(object.GetTaggedValue().IsJSWrappedNapiObject());
+    JSHandle<JSWrappedNapiObject> wrappeObj(object);
+    JSTaggedValue value = wrappeObj->GetNativePointers(thread);
+    EXPECT_TRUE(value.IsTaggedArray());
+    JSHandle<TaggedArray> nativePointerArray(thread, value);
+    EXPECT_EQ(nativePointerArray->GetExtraLength(), fieldCount);
+    JSTaggedValue nativePointer = nativePointerArray->Get(thread, idx);
+    EXPECT_TRUE(nativePointer.IsJSNativePointer());
+    void *pointer = JSNativePointer::Cast(nativePointer.GetTaggedObject())->GetExternalPointer();
+    EXPECT_EQ(pointer, array);
+
+    nativePointer = object->GetNativePointerByIndex(thread, idx);
+    EXPECT_TRUE(nativePointer.IsJSNativePointer());
+    pointer = JSNativePointer::Cast(nativePointer.GetTaggedObject())->GetExternalPointer();
+    EXPECT_EQ(pointer, array);
+
+    pointer = object->GetNativePointerField(thread, idx);
+    EXPECT_EQ(pointer, array);
 }
 
 static JSHandle<JSHClass> CreateTestHClass(JSThread *thread)

@@ -163,8 +163,9 @@ JSTaggedValue JSArray::ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObj
         JSTaggedValue proto = JSObject::GetPrototype(thread, originalArray);
         // fastpath: if the hclass of proto is the default Array Prototype hclass,
         // the constructor must in the inline properties.
-        if LIKELY(proto.IsECMAObject()
-            && JSObject::Cast(proto)->GetJSHClass() == thread->GetBuiltinPrototypeHClass(BuiltinTypeId::ARRAY)) {
+        if LIKELY(proto.IsECMAObject() &&
+            !JSObject::Cast(proto)->GetJSHClass()->IsDictionaryMode() &&
+            JSObject::Cast(proto)->GetJSHClass() == thread->GetBuiltinPrototypeHClass(BuiltinTypeId::ARRAY)) {
             constructor.Update(GetConstructorOrSpeciesInlinedProp(thread, proto, CONSTRUCTOR_INLINE_PROPERTY_INDEX));
         }
     }
@@ -497,7 +498,6 @@ bool JSArray::IsProtoNotModifiedDictionaryJSArray(JSThread *thread, const JSHand
            JSObject::AttributesUnchanged(thread, obj);
 }
 
-#if ENABLE_NEXT_OPTIMIZATION
 // ecma6 7.3 Operations on Objects
 JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
 {
@@ -526,29 +526,6 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
     JSHClass::TransitToElementsKind(thread, arr, ElementsKind::GENERIC);
     return arr;
 }
-# else
-// ecma6 7.3 Operations on Objects
-JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements)
-{
-    // Assert: elements is a List whose elements are all ECMAScript language values.
-    // 2. Let array be ArrayCreate(0) (see 9.4.2.2).
-    uint32_t length = elements->GetLength();
-
-    // 4. For each element e of elements
-    auto env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> arrayFunc(env->GetArrayFunction());
-    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc);
-    obj->GetJSHClass()->SetExtensible(true);
-    JSArray::Cast(*obj)->SetArrayLength(thread, length);
-
-    obj->SetElements(thread, elements);
-    JSHandle<JSArray> arr(obj);
-    JSHClass::TransitToElementsKind(thread, arr, ElementsKind::GENERIC);
-
-    return arr;
-}
-#endif
 
 // used for array contructor with (...items)
 JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<JSTaggedValue> &newtarget,
@@ -606,7 +583,6 @@ bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedVa
 bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                         const JSHandle<JSTaggedValue> &value,  SCheckMode sCheckMode)
 {
-#if ENABLE_NEXT_OPTIMIZATION
     JSHandle<JSTaggedValue> objVal(obj);
     if (!objVal->IsStableJSArray(thread)) {
         // if JSArray is DictionaryMode goto slowPath
@@ -642,9 +618,6 @@ bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObjec
         ElementAccessor::Set(thread, obj, index, value, true);
     }
     return true;
-#else
-    return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);
-#endif
 }
 
 JSTaggedValue JSArray::CopySortedListToReceiver(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
@@ -1050,8 +1023,8 @@ JSHandle<JSHClass> JSArray::CreateJSArrayFunctionClass(const JSThread *thread, O
 void JSArray::UpdateTrackInfo(const JSThread *thread)
 {
     JSTaggedValue trackInfoVal = GetTrackInfo(thread);
-    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
-        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+    if (trackInfoVal.IsHeapObject()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         ElementsKind oldKind = trackInfo->GetElementsKind();
         if (Elements::IsGeneric(oldKind)) {
             return;

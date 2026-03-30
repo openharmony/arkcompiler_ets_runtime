@@ -239,16 +239,37 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     // Copy all
     newJsHClass->Copy(thread, *jshclass);
     newJsHClass->SetIsStable(true);
+    newJsHClass->SetAOT(false);
     
     // reuse Attributes first.
     newJsHClass->SetLayout(thread, jshclass->GetLayout(thread));
 
-    if (jshclass->IsAOT()) {
-        newJsHClass->SetAOT(false);
+    return newJsHClass;
+}
+
+JSHandle<JSHClass> JSHClass::CloneWithNewSizeAndType(const JSThread *thread, const JSHandle<JSHClass> &jsHClass,
+                                                     uint32_t newHClassSize, JSType type)
+{
+    uint32_t numInlinedProps = jsHClass->GetInlinedProperties();
+    JSHandle<JSHClass> newJsHClass;
+    if (jsHClass.GetTaggedValue().IsInSharedHeap()) {
+        newJsHClass = thread->GetEcmaVM()->GetFactory()->NewSEcmaHClass(newHClassSize, type, numInlinedProps);
+    } else {
+        newJsHClass = thread->GetEcmaVM()->GetFactory()->NewEcmaHClass(newHClassSize, type, numInlinedProps);
     }
+
+    // Copy all
+    newJsHClass->Copy(thread, *jsHClass);
+    newJsHClass->SetObjectType(type);
+    newJsHClass->SetIsStable(true);
+    newJsHClass->SetAOT(false);
+    
+    // reuse Attributes first.
+    newJsHClass->SetLayout(thread, jsHClass->GetLayout(thread));
 
     return newJsHClass;
 }
+                                               
 
 JSHandle<JSHClass> JSHClass::CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                           uint32_t expectedOfProperties)
@@ -309,9 +330,7 @@ void JSHClass::ProcessAotHClassTransition(const JSThread *thread, const JSHandle
     if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, jshclass, key)) {
         JSHClass::NotifyHclassChanged(thread, jshclass, newHClass);
     } else {
-#if ENABLE_NEXT_OPTIMIZATION
         JSHClass::NotifyHClassChangedForAot(thread, jshclass, newHClass);
-#endif
         JSHClass::RefreshUsers(thread, jshclass, newHClass);
     }
     JSHClass::EnablePHCProtoChangeMarker(thread, newHClass);

@@ -27,6 +27,9 @@
 
 namespace panda::ecmascript::kungfu {
 struct StringInfoGateRef;
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+class StringIdInfo;
+#endif
 using namespace panda::ecmascript;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define DEFVARIABLE(varname, type, val) Variable varname(GetEnvironment(), type, NextVariableId(), val)
@@ -743,8 +746,15 @@ public:
     GateRef LoadStringElement(GateRef glue, GateRef receiver, GateRef key);
     GateRef TryToElementsIndex(GateRef glue, GateRef key);
     GateRef CheckPolyHClass(GateRef glue, GateRef cachedValue, GateRef hClass);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+    GateRef ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info, GateRef jsFunc = Circuit::NullGate());
+    GateRef LoadICWithHandler(GateRef glue, GateRef receiver, GateRef holder, GateRef handler,
+                              ProfileOperation callback, GateRef prop, const StringIdInfo &info,
+                              GateRef jsFunc = Circuit::NullGate());
+#else
     GateRef LoadICWithHandler(
         GateRef glue, GateRef receiver, GateRef holder, GateRef handler, ProfileOperation callback);
+#endif
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
                                GateRef value, GateRef handler, ProfileOperation callback = ProfileOperation());
     GateRef TaggedArraySetValue(GateRef glue, GateRef receiver, GateRef value, GateRef index, GateRef capacity);
@@ -834,7 +844,6 @@ public:
     template<typename DictionaryT>
     void UpdateValueInDict(GateRef glue, GateRef elements, GateRef index, GateRef value);
     GateRef GetBitMask(GateRef bitoffset);
-    GateRef IntPtrEuqal(GateRef x, GateRef y);
     GateRef IntPtrNotEqual(GateRef x, GateRef y);
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
@@ -850,6 +859,7 @@ public:
     GateRef ShouldProcessSATB(GateRef gcPhase);
     GateRef ShouldUpdateRememberSet(GateRef glue, GateRef gcPhase);
     GateRef NeedSkipReadBarrier(GateRef glue);
+    GateRef NotSwitchToStwStub(GateRef glue);
     void CMCSetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     void CMCArrayCopyWriteBarrier(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count);
     void CMCArrayCopyWriteBarrierSameArray(GateRef glue, GateRef dstObj, GateRef src, GateRef dst, GateRef count);
@@ -1248,12 +1258,13 @@ public:
     inline GateRef IsResolvedRecordBinding(GateRef glue, GateRef resolvedBinding);
     inline GateRef IsLdEndExecPatchMain(GateRef glue);
     inline GateRef GetModuleType(GateRef module);
+    inline GateRef IsNativeOrCjsModule(GateRef module);
     inline GateRef IsNativeModule(GateRef module);
     inline GateRef IsCjsModule(GateRef module);
+    inline GateRef IsEcmaModule(GateRef module);
     inline GateRef GetSharedType(GateRef module);
     inline GateRef IsSharedModule(GateRef module);
     inline GateRef GetCjsModuleFunction(GateRef glue);
-    void ModuleEnvMustBeValid(GateRef glue, GateRef curEnv);
     GateRef SearchFromModuleCache(GateRef glue, GateRef moduleName);
     GateRef GetNativeOrCjsExports(GateRef glue, GateRef resolvedModule);
     GateRef GetValueFromExportObject(GateRef glue, GateRef exports, GateRef index);
@@ -1269,6 +1280,7 @@ public:
     GateRef GetResolvedRecordIndexBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding);
     GateRef GetResolvedRecordBindingModule(GateRef glue, GateRef module, GateRef resolvedBinding);
     GateRef LoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule);
+    GateRef FastLoadExternalmodulevar(GateRef glue, GateRef index, GateRef curModule);
     // end: Fast path of Loading Module variable.
 
     GateRef LoadModuleNamespaceByIndex(GateRef glue, GateRef index, GateRef module);
@@ -1314,6 +1326,18 @@ public:
     // Note: dstObj is the object address for dstAddr, it must point to the head of an object.
     void ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
                    GateRef taggedValueCount, GateRef needBarrier, CopyKind copyKind);
+
+    void SetCallBackForLazySetGlobalEnv(std::function<void()> func)
+    {
+        lazySetGlobalEnvCallBack_ = func;
+    }
+
+    void LazySetGlobalEnv()
+    {
+        ASSERT(lazySetGlobalEnvCallBack_ != nullptr);
+        lazySetGlobalEnvCallBack_();
+    }
+
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;
     static constexpr int ELEMENTS_KIND_HCLASS_NUM = 12;
@@ -1353,6 +1377,7 @@ private:
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
     GateRef globalEnv_ {Gate::InvalidGateRef};
+    std::function<void()> lazySetGlobalEnvCallBack_ = nullptr;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_STUB_BUILDER_H

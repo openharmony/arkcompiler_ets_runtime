@@ -13,16 +13,15 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_BASE_ZIP_FILE_READER_H
-#define OHOS_ABILITY_BASE_ZIP_FILE_READER_H
+#ifndef ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_H
+#define ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_H
 
 #include <fcntl.h>
 #include <memory>
 #include <unistd.h>
 #include <string>
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 class ZipFileReader {
 public:
     static std::shared_ptr<ZipFileReader> CreateZipFileReader(const std::string &filePath);
@@ -59,7 +58,5 @@ protected:
     // close fd in destructor
     bool closable_ = true;
 };
-}
-}
-
-#endif
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_H

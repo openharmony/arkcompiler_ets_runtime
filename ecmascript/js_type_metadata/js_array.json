@@ -1,5 +1,6 @@
 {
     "name": "JS_ARRAY",
+    "node_name": "JSArray",
     "offsets": [
         {
             "name": "Length",

@@ -240,7 +240,7 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDataValue_003)
     PropertyDescriptor handleDesc(thread);
     PropertyAttributes handleAttr(handleDesc);
     handleAttr.SetIsInlinedProps(true);
-    objectOperator.SetAttr(PropertyAttributes(handleDesc));
+    objectOperator.SetAttr(handleAttr);
 
     // object is not DictionaryMode
     JSHandle<JSObject> handleObject = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);

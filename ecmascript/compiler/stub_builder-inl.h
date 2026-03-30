@@ -3288,11 +3288,6 @@ void StubBuilder::SetHClassBit(GateRef glue, GateRef hClass, GateRef value)
     Store(VariableType::INT32(), glue, hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET), newVal);
 }
 
-inline GateRef StubBuilder::IntPtrEuqal(GateRef x, GateRef y)
-{
-    return env_->Is32Bit() ? Int32Equal(x, y) : Int64Equal(x, y);
-}
-
 inline GateRef StubBuilder::IntPtrNotEqual(GateRef x, GateRef y)
 {
     return env_->Is32Bit() ? Int32NotEqual(x, y) : Int64NotEqual(x, y);
@@ -3928,8 +3923,8 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
     GateRef callfield = LoadPrimitive(VariableType::INT64(), method, callFieldOffset);
     return Int64NotEqual(
         Int64And(
-            Int64LSR(callfield, Int64(MethodLiteral::IsNativeBit::START_BIT)),
-            Int64((1LU << MethodLiteral::IsNativeBit::SIZE) - 1)),
+            Int64LSR(callfield, Int64(Method::IsNativeBit::START_BIT)),
+            Int64((1LU << Method::IsNativeBit::SIZE) - 1)),
         Int64(0));
 }
 
@@ -3943,8 +3938,8 @@ inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)
     GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = LoadPrimitive(VariableType::INT64(), method, callFieldOffset);
     return TruncInt64ToInt32(Int64And(
-        Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
-        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1)));
+        Int64LSR(callfield, Int64(Method::NumArgsBits::START_BIT)),
+        Int64((1LU << Method::NumArgsBits::SIZE) - 1)));
 }
 
 inline GateRef StubBuilder::GetMethodFromJSProxy(GateRef glue, GateRef proxy)
@@ -4040,8 +4035,8 @@ inline GateRef StubBuilder::GetBuiltinId(GateRef method)
     GateRef extraLiteralInfoOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
     GateRef extraLiteralInfo = LoadPrimitive(VariableType::INT64(), method, extraLiteralInfoOffset);
     return TruncInt64ToInt32(Int64And(
-        Int64LSR(extraLiteralInfo, Int64(MethodLiteral::BuiltinIdBits::START_BIT)),
-        Int64((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1)));
+        Int64LSR(extraLiteralInfo, Int64(Method::BuiltinIdBits::START_BIT)),
+        Int64((1LU << Method::BuiltinIdBits::SIZE) - 1)));
 }
 
 inline GateRef StubBuilder::ComputeSizeUtf8(GateRef length)
@@ -4418,6 +4413,11 @@ inline GateRef StubBuilder::NeedSkipReadBarrier(GateRef glue)
     return env_->GetBuilder()->NeedSkipReadBarrier(glue);
 }
 
+inline GateRef StubBuilder::NotSwitchToStwStub(GateRef glue)
+{
+    return env_->GetBuilder()->NotSwitchToStwStub(glue);
+}
+
 inline void StubBuilder::StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value)
 {
     GateRef addr = PtrAdd(base, offset);
@@ -4625,6 +4625,18 @@ inline GateRef StubBuilder::GetModuleType(GateRef module)
                     Int32((1LU << SourceTextModule::MODULE_TYPE_BITS) - 1));
 }
 
+inline GateRef StubBuilder::IsNativeOrCjsModule(GateRef module)
+{
+    GateRef moduleType = GetModuleType(module);
+    return LogicOrBuilder(env_)
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::OHOS_MODULE))))
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::APP_MODULE))))
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::NATIVE_MODULE))))
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::INTERNAL_MODULE))))
+        .Or(Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::CJS_MODULE))))
+        .Done();
+}
+
 inline GateRef StubBuilder::IsNativeModule(GateRef module)
 {
     GateRef moduleType = GetModuleType(module);
@@ -4640,6 +4652,12 @@ inline GateRef StubBuilder::IsCjsModule(GateRef module)
 {
     GateRef moduleType = GetModuleType(module);
     return Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::CJS_MODULE)));
+}
+
+inline GateRef StubBuilder::IsEcmaModule(GateRef module)
+{
+    GateRef moduleType = GetModuleType(module);
+    return Int32Equal(moduleType, Int32(static_cast<int>(ModuleTypes::ECMA_MODULE)));
 }
 
 inline GateRef StubBuilder::GetSharedType(GateRef module)

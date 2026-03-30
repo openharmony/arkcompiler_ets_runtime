@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_MAP_ITERATOR",
+    "node_name": "SharedMapIterator",
     "offsets": [
         {
             "name": "IteratorMap",

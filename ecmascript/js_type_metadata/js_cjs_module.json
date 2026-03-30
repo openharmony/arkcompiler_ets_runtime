@@ -1,5 +1,6 @@
 {
     "name": "JS_CJS_MODULE",
+    "node_name": "CJS Module",
     "offsets": [
         {
             "name": "Id",

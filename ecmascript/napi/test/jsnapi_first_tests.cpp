@@ -68,6 +68,34 @@ using namespace panda::ecmascript::kungfu;
 
 static constexpr char TEST_CHAR_STRING_FLAGS[] = "gimsuy";
 static constexpr char TEST_CHAR_STRING_STATE[] = "closed";
+static constexpr char TEST_ORIGINAL_SOURCE[] = "string";
+static constexpr char TEST_CHAR_STRING_STATE_SUSPEND[] = "suspended";
+static const char TEST_STRING[] = "test";
+static const char TEST_FROZEN_KEY[] = "frozen";
+static const char TEST_SHOULD_FAIL[] = "should_fail";
+
+static constexpr int32_t TEST_INT_VALUE = 42;
+static constexpr int32_t TEST_NEG_INT_VALUE = -100;
+static constexpr double TEST_DOUBLE_VALUE = 3.14159;
+static constexpr double TEST_NEG_DOUBLE_VALUE = -2.71828;
+static constexpr double TEST_LARGE_DOUBLE = 9876543210.123;
+static constexpr int32_t TEST_ARRAYBUFFER_LENGTH = 32;
+static constexpr int32_t TEST_DATAVIEW_BYTEOFFSET = 5;
+static constexpr int32_t TEST_DATAVIEW_BYTELENGTH = 10;
+static constexpr int32_t TEST_BUFFER_LENGTH = 15;
+static constexpr int32_t TEST_DATAVIEW_LENGTH = 20;
+static const char TEST_SYMBOL_DESCRIPTION[] = "testSymbol";
+static constexpr int32_t TEST_STRING_LENGTH = 10;
+static const char16_t TEST_UTF16_STRING[] = u"testUtf16";
+static constexpr int32_t TEST_STRING_LENGTH_FOUR = 4;
+static constexpr int32_t TEST_STRING_LENGTH_MINUS_ONE = -1;
+static const char TEST_EMPTY_STRING[] = "";
+static const char TEST_ERROR_INFO[] = "test error info";
+static constexpr uint64_t TEST_BIGINT_VALUE = 12345678901234ULL;
+static constexpr uint32_t TEST_BIGINT_WORDS_SIZE = 1;
+static const char TEST_PROPERTY_KEY[] = "propertyKey";
+static constexpr int32_t TEST_INDEX_VALUE = 1;
+
 
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
@@ -180,6 +208,45 @@ HWTEST_F_L0(JSNApiTests, ThreadIdCheck)
     EXPECT_TRUE(vm_->GetJSThread()->GetThreadId() == JSThread::GetCurrentThreadId());
 }
 
+HWTEST_F_L0(JSNApiTests, GetThreadName)
+{
+    std::string threadName = vm_->GetJSThread()->GetThreadName();
+    ASSERT_FALSE(threadName.empty());
+}
+
+/**
+ * @tc.number: ffi_interface_api_GetAllVMHeapMemoryInfo
+ * @tc.name: GetAllVMHeapMemoryInfo
+ * @tc.desc: Test GetAllVMHeapMemoryInfo API to retrieve all VM heap memory information including
+ * thread ID, thread name, and heap memory usage (in KB).
+ * @tc.type: FUNC
+ * @tc.require: Issue#12406
+ */
+HWTEST_F_L0(JSNApiTests, GetAllVMHeapMemoryInfo)
+{
+    ThreadStateTransitionScope<JSThread, ThreadState::NATIVE> scope(thread_);
+    auto heapInfos = JSNApi::GetAllVMHeapMemoryInfo();
+    ASSERT_FALSE(heapInfos.empty());
+
+    uint32_t currentThreadId = vm_->GetJSThread()->GetThreadId();
+    bool foundCurrentThread = false;
+    bool foundSharedHeap = false;
+    for (const auto& info : heapInfos) {
+        if (info.threadId == currentThreadId) {
+            foundCurrentThread = true;
+            ASSERT_FALSE(info.threadName.empty());
+            ASSERT_EQ(info.heapType, "local");
+        }
+        if (info.heapType == "shared") {
+            foundSharedHeap = true;
+            ASSERT_EQ(info.threadId, 0U);
+            ASSERT_EQ(info.threadName, "[SharedHeap]");
+        }
+    }
+    ASSERT_TRUE(foundCurrentThread);
+    ASSERT_TRUE(foundSharedHeap);
+}
+
 /**
  * @tc.number: ffi_interface_api_001
  * @tc.name: RegisterFunction
@@ -251,6 +318,24 @@ HWTEST_F_L0(JSNApiTests, JsonParser)
 
     const char * const test { R"({"orientation": "portrait"})" };
     Local<ObjectRef> jsonString = StringRef::NewFromUtf8(vm_, test);
+
+    Local<JSValueRef> result = JSON::Parse(vm_, jsonString);
+    ASSERT_TRUE(result->IsObject(vm_));
+
+    Local<ObjectRef> keyString = StringRef::NewFromUtf8(vm_, "orientation");
+    Local<JSValueRef> property = Local<ObjectRef>(result)->Get(vm_, keyString);
+    ASSERT_TRUE(property->IsString(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, JsonParser_2)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm_);
+    ASSERT_FALSE(globalObject.IsEmpty());
+    ASSERT_TRUE(globalObject->IsObject(vm_));
+
+    const char16_t * const test { uR"({"orientation": "portrait"})" };
+    Local<ObjectRef> jsonString = StringRef::NewFromUtf16(vm_, test);
 
     Local<JSValueRef> result = JSON::Parse(vm_, jsonString);
     ASSERT_TRUE(result->IsObject(vm_));
@@ -1696,6 +1781,123 @@ HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValue)
     EXPECT_TRUE(res);
 }
 
+/**
+ * @tc.name: JSNApi_SerializeValueWithOptions
+ * @tc.desc: Test SerializeValue overload with SerializeOptions struct
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValueWithOptions)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    ASSERT_TRUE(!callback.IsEmpty());
+    std::vector<Local<JSValueRef>> arguments;
+    arguments.emplace_back(JSValueRef::Undefined(vm_));
+    Local<JSValueRef> result = callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    ASSERT_TRUE(result->IsArray(vm_));
+    Local<ArrayRef> array(result);
+    ASSERT_EQ(static_cast<uint64_t>(array->Length(vm_)), arguments.size());
+    
+    // Test with SerializeOptions struct
+    SerializeOptions options(true, false, true);
+    void *res = JSNApi::SerializeValue(vm_, result, JSValueRef::Undefined(vm_),
+                                         JSValueRef::Undefined(vm_), options);
+    EXPECT_TRUE(res);
+}
+
+/**
+ * @tc.name: JSNApi_SerializeValueWithErrorWithOptions
+ * @tc.desc: Test SerializeValueWithError overload with SerializeOptions struct
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValueWithErrorWithOptions)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    ASSERT_TRUE(!callback.IsEmpty());
+    std::vector<Local<JSValueRef>> arguments;
+    arguments.emplace_back(JSValueRef::Undefined(vm_));
+    Local<JSValueRef> result = callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    ASSERT_TRUE(result->IsArray(vm_));
+    Local<ArrayRef> array(result);
+    ASSERT_EQ(static_cast<uint64_t>(array->Length(vm_)), arguments.size());
+    
+    // Test with SerializeOptions struct and error output
+    std::string error;
+    SerializeOptions options(true, false, true);
+    void *res = JSNApi::SerializeValueWithError(vm_, result, JSValueRef::Undefined(vm_),
+                                                JSValueRef::Undefined(vm_), error, options);
+    EXPECT_TRUE(res);
+    EXPECT_TRUE(error.empty());
+}
+
+/**
+ * @tc.name: JSNApi_SerializeValueOptionsConsistency
+ * @tc.desc: Verify SerializeValue with options produces same result as original function
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNApi_SerializeValueOptionsConsistency)
+{
+    LocalScope scope(vm_);
+    Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
+    ASSERT_TRUE(!callback.IsEmpty());
+    std::vector<Local<JSValueRef>> arguments;
+    arguments.emplace_back(JSValueRef::Undefined(vm_));
+    Local<JSValueRef> result = callback->Call(vm_, JSValueRef::Undefined(vm_), arguments.data(), arguments.size());
+    
+    // Call overloaded function with SerializeOptions
+    SerializeOptions options(true, false, true);
+    void *res = JSNApi::SerializeValue(vm_, result, JSValueRef::Undefined(vm_),
+                                        JSValueRef::Undefined(vm_), options);
+    EXPECT_TRUE(res);
+    
+    // Clean up
+    JSNApi::DeleteSerializationData(res);
+}
+
+HWTEST_F_L0(JSNApiTests, ModuleDeserializeReturnEarlyWhenDisableModuleSnapshot)
+{
+    uint32_t originalVersion = vm_->GetApplicationVersionCode();
+    vm_->GetJSOptions().SetDisableModuleSnapshot(true);
+    int arkProperties = vm_->GetJSOptions().GetArkProperties();
+    vm_->GetJSOptions().SetArkProperties(arkProperties & (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT));
+    JSNApi::ModuleDeserialize(vm_, originalVersion + 1);
+    EXPECT_EQ(vm_->GetApplicationVersionCode(), originalVersion);
+}
+
+HWTEST_F_L0(JSNApiTests, ModuleDeserializeReturnEarlyWhenDisableJSPandaFileAndModuleSnapshot)
+{
+    uint32_t originalVersion = vm_->GetApplicationVersionCode();
+    vm_->GetJSOptions().SetDisableModuleSnapshot(false);
+    int arkProperties = vm_->GetJSOptions().GetArkProperties();
+    vm_->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT);
+    JSNApi::ModuleDeserialize(vm_, originalVersion + 1);
+    EXPECT_EQ(vm_->GetApplicationVersionCode(), originalVersion);
+}
+
+HWTEST_F_L0(JSNApiTests, ModuleDeserializeReturnEarlyWhenBothDisabled)
+{
+    uint32_t originalVersion = vm_->GetApplicationVersionCode();
+    vm_->GetJSOptions().SetDisableModuleSnapshot(true);
+    int arkProperties = vm_->GetJSOptions().GetArkProperties();
+    vm_->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT);
+    JSNApi::ModuleDeserialize(vm_, originalVersion);
+    EXPECT_EQ(vm_->GetApplicationVersionCode(), originalVersion);
+}
+
+HWTEST_F_L0(JSNApiTests, ModuleDeserializeNormalExecution)
+{
+    uint32_t originalVersion = vm_->GetApplicationVersionCode();
+    vm_->GetJSOptions().SetDisableModuleSnapshot(false);
+    int arkProperties = vm_->GetJSOptions().GetArkProperties();
+    vm_->GetJSOptions().SetArkProperties(arkProperties & (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT));
+    JSNApi::ModuleDeserialize(vm_, originalVersion + 1);
+    EXPECT_EQ(vm_->GetApplicationVersionCode(), originalVersion + 1);
+}
+
 /*
  * @tc.number: ffi_interface_api_033
  * @tc.name: JSNApi_SetHostPromiseRejectionTracker_Call
@@ -1763,7 +1965,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnEnumerablePropertyNames)
 HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFieldCount)
 {
     LocalScope scope(vm_);
-    Local<ObjectRef> object = ObjectRef::New(vm_);
+    Local<ObjectRef> object = ObjectRef::NewWrappedNapiObject(vm_);
     int32_t input = 34;
     object->SetNativePointerFieldCount(vm_, input);
     int32_t res = object->GetNativePointerFieldCount(vm_);
@@ -2386,6 +2588,22 @@ HWTEST_F_L0(JSNApiTests, GetOriginalSource)
     ASSERT_EQ(object->GetOriginalSource(vm_)->ToString(vm_), "");
 }
 
+HWTEST_F_L0(JSNApiTests, GetOriginalSource_2)
+{
+    LocalScope scope(vm_);
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> regExpFunc = globalEnv->GetRegExpFunction();
+    JSHandle<JSRegExp> jSRegExp =
+        JSHandle<JSRegExp>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(regExpFunc), regExpFunc));
+    const char *utf8 = TEST_ORIGINAL_SOURCE;
+    JSHandle<JSTaggedValue> sourceString(factory->NewFromUtf8(utf8));
+    jSRegExp->SetOriginalSource(thread, sourceString);
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(JSHandle<JSTaggedValue>::Cast(jSRegExp));
+    ASSERT_EQ(object->GetOriginalSource(vm_)->ToString(vm_), TEST_ORIGINAL_SOURCE);
+}
+
 HWTEST_F_L0(JSNApiTests, GetOriginalFlags)
 {
     LocalScope scope(vm_);
@@ -2402,6 +2620,20 @@ HWTEST_F_L0(JSNApiTests, GetOriginalFlags)
     ASSERT_EQ(object->GetOriginalFlags(vm_), TEST_CHAR_STRING_FLAGS);
 }
 
+HWTEST_F_L0(JSNApiTests, GetOriginalFlags_2)
+{
+    LocalScope scope(vm_);
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> regExpFunc = globalEnv->GetRegExpFunction();
+    JSHandle<JSRegExp> jSRegExp =
+        JSHandle<JSRegExp>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(regExpFunc), regExpFunc));
+    jSRegExp->SetOriginalFlags(thread, JSTaggedValue(RegExpParser::FLAG_HASINDICES));
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(JSHandle<JSTaggedValue>::Cast(jSRegExp));
+    ASSERT_EQ(object->GetOriginalFlags(vm_), "");
+}
+
 HWTEST_F_L0(JSNApiTests, GetGeneratorState)
 {
     LocalScope scope(vm_);
@@ -2414,6 +2646,20 @@ HWTEST_F_L0(JSNApiTests, GetGeneratorState)
     Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
 
     ASSERT_EQ(object->GetGeneratorState(vm_)->ToString(vm_)->ToString(vm_), TEST_CHAR_STRING_STATE);
+}
+
+HWTEST_F_L0(JSNApiTests, GetGeneratorState_2)
+{
+    LocalScope scope(vm_);
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+    genObjHandleVal->SetGeneratorState(JSGeneratorState::EXECUTING);
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+
+    ASSERT_EQ(object->GetGeneratorState(vm_)->ToString(vm_)->ToString(vm_), TEST_CHAR_STRING_STATE_SUSPEND);
 }
 
 HWTEST_F_L0(JSNApiTests, SetReleaseSecureMemCallback)
@@ -2454,4 +2700,1290 @@ HWTEST_F_L0(JSNApiTests, IgnoreFinalizeCallback)
     ASSERT_FALSE(g_finalizeCallbackExecuted);
     delete ref;
 }
+
+HWTEST_F_L0(JSNApiTests, RegisterCallback_1)
+{
+    LocalScope scope(vm_);
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *objCallInfo =
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, undefined, undefined, undefined, 1);
+    ASSERT_TRUE(Callback::RegisterCallback(objCallInfo).IsFalse());
+}
+
+HWTEST_F_L0(JSNApiTests, RegisterCallback_2)
+{
+    LocalScope scope(vm_);
+    JSHandle<GlobalEnv> globalEnv = vm_->GetGlobalEnv();
+    ObjectFactory *objectFactory = vm_->GetFactory();
+    JSHandle<JSFunction> current(objectFactory->NewJSFunction(globalEnv,
+        reinterpret_cast<void *>(Callback::RegisterCallback)));
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *objCallInfo =
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, JSHandle<JSTaggedValue>::Cast(current), undefined, undefined, 1);
+    ASSERT_TRUE(Callback::RegisterCallback(objCallInfo).IsFalse());
+}
+
+/**
+ * @tc.number: ffi_interface_api_054
+ * @tc.name: ToObject_Undefined_Null
+ * @tc.desc: Verify the behavior of ToObject when the value is undefined or null.
+ * When JSValueRef is undefined or null, ToObject should return Undefined.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToObject_Undefined_Null)
+{
+    LocalScope scope(vm_);
+
+    // Test undefined case
+    Local<JSValueRef> undefinedValue = JSValueRef::Undefined(vm_);
+    Local<ObjectRef> undefinedObj = undefinedValue->ToObject(vm_);
+    ASSERT_TRUE(undefinedObj->IsUndefined());
+
+    // Test null case
+    Local<JSValueRef> nullValue = JSValueRef::Null(vm_);
+    Local<ObjectRef> nullObj = nullValue->ToObject(vm_);
+    ASSERT_TRUE(nullObj->IsUndefined());
+}
+
+/**
+ * @tc.number: ffi_interface_api_055
+ * @tc.name: ToEcmaObject_NonECMAObject
+ * @tc.desc: Verify the behavior of ToEcmaObject when the value is not an ECMAObject.
+ * When JSValueRef is undefined, null, or primitive types, ToEcmaObject should return Undefined.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObject_NonECMAObject)
+{
+    LocalScope scope(vm_);
+
+    // Test undefined case
+    Local<JSValueRef> undefinedValue = JSValueRef::Undefined(vm_);
+    Local<ObjectRef> undefinedObj = undefinedValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(undefinedObj->IsUndefined());
+
+    // Test null case
+    Local<JSValueRef> nullValue = JSValueRef::Null(vm_);
+    Local<ObjectRef> nullObj = nullValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(nullObj->IsUndefined());
+
+    // Test number case
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    Local<ObjectRef> numberObj = numberValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(numberObj->IsUndefined());
+
+    // Test string case
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    Local<ObjectRef> stringObj = stringValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(stringObj->IsUndefined());
+
+    // Test boolean case
+    Local<BooleanRef> boolValue = BooleanRef::New(vm_, true);
+    Local<ObjectRef> boolObj = boolValue->ToEcmaObject(vm_);
+    ASSERT_TRUE(boolObj->IsUndefined());
+}
+
+/**
+ * @tc.number: ffi_interface_api_056
+ * @tc.name: IntegerValue_Infinite_NaN
+ * @tc.desc: Verify the behavior of IntegerValue when the value is Infinity or NaN.
+ * When the number is not finite or is NaN, IntegerValue should return 0.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IntegerValue_Infinite_NaN)
+{
+    LocalScope scope(vm_);
+
+    // Test positive Infinity
+    Local<NumberRef> posInf = NumberRef::New(vm_, std::numeric_limits<double>::infinity());
+    ASSERT_EQ(posInf->IntegerValue(vm_), 0);
+
+    // Test negative Infinity
+    Local<NumberRef> negInf = NumberRef::New(vm_, -std::numeric_limits<double>::infinity());
+    ASSERT_EQ(negInf->IntegerValue(vm_), 0);
+
+    // Test NaN
+    Local<NumberRef> nanValue = NumberRef::New(vm_, std::numeric_limits<double>::quiet_NaN());
+    ASSERT_EQ(nanValue->IntegerValue(vm_), 0);
+}
+
+/**
+ * @tc.number: ffi_interface_api_057
+ * @tc.name: GetValueDouble_Int_Double
+ * @tc.desc: Verify the behavior of GetValueDouble when the value is Int or Double type.
+ * When the value is Int type, isNumber should be true and return the value as double.
+ * When the value is Double type, isNumber should be true and return the double value.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueDouble_Int_Double)
+{
+    LocalScope scope(vm_);
+
+    // Test Int type
+    Local<NumberRef> intValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isIntNumber = false;
+    double intResult = intValue->GetValueDouble(isIntNumber);
+    ASSERT_TRUE(isIntNumber);
+    ASSERT_EQ(intResult, static_cast<double>(TEST_INT_VALUE));
+
+    // Test Double type
+    Local<NumberRef> doubleValue = NumberRef::New(vm_, TEST_DOUBLE_VALUE);
+    bool isDoubleNumber = false;
+    double doubleResult = doubleValue->GetValueDouble(isDoubleNumber);
+    ASSERT_TRUE(isDoubleNumber);
+    ASSERT_DOUBLE_EQ(doubleResult, TEST_DOUBLE_VALUE);
+
+    // Test negative Int
+    Local<NumberRef> negIntValue = NumberRef::New(vm_, TEST_NEG_INT_VALUE);
+    bool isNegIntNumber = false;
+    double negIntResult = negIntValue->GetValueDouble(isNegIntNumber);
+    ASSERT_TRUE(isNegIntNumber);
+    ASSERT_EQ(negIntResult, static_cast<double>(TEST_NEG_INT_VALUE));
+
+    // Test negative Double
+    Local<NumberRef> negDoubleValue = NumberRef::New(vm_, TEST_NEG_DOUBLE_VALUE);
+    bool isNegDoubleNumber = false;
+    double negDoubleResult = negDoubleValue->GetValueDouble(isNegDoubleNumber);
+    ASSERT_TRUE(isNegDoubleNumber);
+    ASSERT_DOUBLE_EQ(negDoubleResult, TEST_NEG_DOUBLE_VALUE);
+}
+
+/**
+ * @tc.number: ffi_interface_api_058
+ * @tc.name: GetValueInt32_Int_Double
+ * @tc.desc: Verify the behavior of GetValueInt32 when the value is Int or Double type.
+ * When the value is Int type, isNumber should be true and return the int32 value.
+ * When the value is Double type, isNumber should be true and return the converted int32 value.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueInt32_Int_Double)
+{
+    LocalScope scope(vm_);
+
+    // Test Int type
+    Local<NumberRef> intValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isIntNumber = false;
+    int32_t intResult = intValue->GetValueInt32(isIntNumber);
+    ASSERT_TRUE(isIntNumber);
+    ASSERT_EQ(intResult, TEST_INT_VALUE);
+
+    // Test negative Int
+    Local<NumberRef> negIntValue = NumberRef::New(vm_, TEST_NEG_INT_VALUE);
+    bool isNegIntNumber = false;
+    int32_t negIntResult = negIntValue->GetValueInt32(isNegIntNumber);
+    ASSERT_TRUE(isNegIntNumber);
+    ASSERT_EQ(negIntResult, TEST_NEG_INT_VALUE);
+
+    // Test Double type
+    Local<NumberRef> doubleValue = NumberRef::New(vm_, TEST_DOUBLE_VALUE);
+    bool isDoubleNumber = false;
+    int32_t doubleResult = doubleValue->GetValueInt32(isDoubleNumber);
+    ASSERT_TRUE(isDoubleNumber);
+    ASSERT_EQ(doubleResult, static_cast<int32_t>(TEST_DOUBLE_VALUE));
+
+    // Test negative Double
+    Local<NumberRef> negDoubleValue = NumberRef::New(vm_, TEST_NEG_DOUBLE_VALUE);
+    bool isNegDoubleNumber = false;
+    int32_t negDoubleResult = negDoubleValue->GetValueInt32(isNegDoubleNumber);
+    ASSERT_TRUE(isNegDoubleNumber);
+    ASSERT_EQ(negDoubleResult, static_cast<int32_t>(TEST_NEG_DOUBLE_VALUE));
+}
+
+/**
+ * @tc.number: ffi_interface_api_059
+ * @tc.name: GetValueInt64_Infinite_NaN_Double
+ * @tc.desc: Verify the behavior of GetValueInt64 when the value is Infinite, NaN, or normal Double.
+ * When the value is Infinite or NaN, should return 0.
+ * When the value is normal Double, should return the converted int64 value.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueInt64_Infinite_NaN_Double)
+{
+    LocalScope scope(vm_);
+
+    // Test positive Infinity
+    Local<NumberRef> posInf = NumberRef::New(vm_, std::numeric_limits<double>::infinity());
+    bool isPosInfNumber = false;
+    int64_t posInfResult = posInf->GetValueInt64(isPosInfNumber);
+    ASSERT_TRUE(isPosInfNumber);
+    ASSERT_EQ(posInfResult, 0);
+
+    // Test negative Infinity
+    Local<NumberRef> negInf = NumberRef::New(vm_, -std::numeric_limits<double>::infinity());
+    bool isNegInfNumber = false;
+    int64_t negInfResult = negInf->GetValueInt64(isNegInfNumber);
+    ASSERT_TRUE(isNegInfNumber);
+    ASSERT_EQ(negInfResult, 0);
+
+    // Test NaN
+    Local<NumberRef> nanValue = NumberRef::New(vm_, std::numeric_limits<double>::quiet_NaN());
+    bool isNanNumber = false;
+    int64_t nanResult = nanValue->GetValueInt64(isNanNumber);
+    ASSERT_TRUE(isNanNumber);
+    ASSERT_EQ(nanResult, 0);
+
+    // Test normal Double
+    Local<NumberRef> normalDouble = NumberRef::New(vm_, TEST_DOUBLE_VALUE);
+    bool isNormalDoubleNumber = false;
+    int64_t normalDoubleResult = normalDouble->GetValueInt64(isNormalDoubleNumber);
+    ASSERT_TRUE(isNormalDoubleNumber);
+    ASSERT_EQ(normalDoubleResult, static_cast<int64_t>(TEST_DOUBLE_VALUE));
+
+    // Test large Double value
+    Local<NumberRef> largeDouble = NumberRef::New(vm_, TEST_LARGE_DOUBLE);
+    bool isLargeDoubleNumber = false;
+    int64_t largeDoubleResult = largeDouble->GetValueInt64(isLargeDoubleNumber);
+    ASSERT_TRUE(isLargeDoubleNumber);
+    ASSERT_EQ(largeDoubleResult, static_cast<int64_t>(TEST_LARGE_DOUBLE));
+
+    // Test negative Double
+    Local<NumberRef> negDouble = NumberRef::New(vm_, TEST_NEG_DOUBLE_VALUE);
+    bool isNegDoubleNumber = false;
+    int64_t negDoubleResult = negDouble->GetValueInt64(isNegDoubleNumber);
+    ASSERT_TRUE(isNegDoubleNumber);
+    ASSERT_EQ(negDoubleResult, static_cast<int64_t>(TEST_NEG_DOUBLE_VALUE));
+}
+
+/**
+ * @tc.number: ffi_interface_api_060
+ * @tc.name: ToEcmaObjectWithoutSwitchState_NormalObject
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when the value is a normal object.
+ * When JSValueRef is a normal object, ToEcmaObjectWithoutSwitchState should return the object itself.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_NormalObject)
+{
+    LocalScope scope(vm_);
+
+    // Test normal object case
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    Local<ObjectRef> result = obj->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(result->IsObject(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_061
+ * @tc.name: ToEcmaObjectWithoutSwitchState_PrimitiveTypes
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when the value is a primitive type.
+ * ToEcmaObjectWithoutSwitchState directly converts the value to ObjectRef without type checking.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_PrimitiveTypes)
+{
+    LocalScope scope(vm_);
+
+    // Test number case - should return NumberRef as ObjectRef
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    Local<ObjectRef> numberObj = numberValue->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(numberObj->IsNumber());
+
+    // Test string case - should return StringRef as ObjectRef
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    Local<ObjectRef> stringObj = stringValue->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(stringObj->IsString(vm_));
+
+    // Test boolean case - should return BooleanRef as ObjectRef
+    Local<BooleanRef> boolValue = BooleanRef::New(vm_, true);
+    Local<ObjectRef> boolObj = boolValue->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(boolObj->IsBoolean());
+}
+
+/**
+ * @tc.number: ffi_interface_api_062
+ * @tc.name: ToEcmaObjectWithoutSwitchState_WithException
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when there is a pending exception.
+ * When there is a pending exception, ToEcmaObjectWithoutSwitchState should return Undefined.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_WithException)
+{
+    LocalScope scope(vm_);
+
+    // Create an object and set an invalid property to trigger an exception
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    Local<StringRef> frozenKey = StringRef::NewFromUtf8(vm_, TEST_FROZEN_KEY);
+
+    // Freeze the object to make it read-only
+    obj->Freeze(vm_);
+
+    // Try to set a property on the frozen object, which should throw an exception
+    ASSERT_FALSE(vm_->GetJSThread()->HasPendingException());
+    obj->Set(vm_, frozenKey, StringRef::NewFromUtf8(vm_, TEST_SHOULD_FAIL));
+    ASSERT_TRUE(vm_->GetJSThread()->HasPendingException());
+
+    // Now call ToEcmaObjectWithoutSwitchState with the exception pending
+    Local<ObjectRef> result = obj->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(result->IsUndefined());
+
+    // Clear the exception
+    JSNApi::GetAndClearUncaughtException(vm_);
+}
+
+/**
+ * @tc.number: ffi_interface_api_063
+ * @tc.name: ToEcmaObjectWithoutSwitchState_Array
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when the value is an array.
+ * When JSValueRef is an array, ToEcmaObjectWithoutSwitchState should return the array itself.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_Array)
+{
+    LocalScope scope(vm_);
+
+    // Test array case
+    Local<ArrayRef> array = ArrayRef::New(vm_, TEST_INT_VALUE);
+    Local<ObjectRef> arrayObj = array->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(arrayObj->IsArray(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_064
+ * @tc.name: ToEcmaObjectWithoutSwitchState_Function
+ * @tc.desc: Verify the behavior of ToEcmaObjectWithoutSwitchState when the value is a function.
+ * When JSValueRef is a function, ToEcmaObjectWithoutSwitchState should return the function itself.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToEcmaObjectWithoutSwitchState_Function)
+{
+    LocalScope scope(vm_);
+
+    // Test function case
+    Local<FunctionRef> func = FunctionRef::New(vm_, FunctionCallback);
+    Local<ObjectRef> funcObj = func->ToEcmaObjectWithoutSwitchState(vm_);
+    ASSERT_TRUE(funcObj->IsFunction(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_065
+ * @tc.name: GetValueBool_True_False
+ * @tc.desc: Verify the behavior of GetValueBool when the value is true or false.
+ * When the value is true, GetValueBool should return true.
+ * When the value is false, GetValueBool should return false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueBool_True_False)
+{
+    LocalScope scope(vm_);
+
+    // Test true value
+    Local<BooleanRef> trueValue = BooleanRef::New(vm_, true);
+    bool isTrueBool = false;
+    bool trueResult = trueValue->GetValueBool(isTrueBool);
+    ASSERT_TRUE(isTrueBool);
+    ASSERT_TRUE(trueResult);
+
+    // Test false value
+    Local<BooleanRef> falseValue = BooleanRef::New(vm_, false);
+    bool isFalseBool = false;
+    bool falseResult = falseValue->GetValueBool(isFalseBool);
+    ASSERT_TRUE(isFalseBool);
+    ASSERT_FALSE(falseResult);
+
+    // Test non-boolean value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isNumberBool = false;
+    bool numberResult = numberValue->GetValueBool(isNumberBool);
+    ASSERT_FALSE(isNumberBool);
+    ASSERT_FALSE(numberResult);
+}
+
+/**
+ * @tc.number: ffi_interface_api_066
+ * @tc.name: ToBigInt_Boolean
+ * @tc.desc: Verify the behavior of ToBigInt when converting values.
+ * ToBigInt should succeed for Boolean values.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToBigInt_Boolean)
+{
+    LocalScope scope(vm_);
+
+    // Test that converting Boolean true to BigInt succeeds
+    Local<BooleanRef> trueValue = BooleanRef::New(vm_, true);
+    Local<BigIntRef> bigIntFromTrue = trueValue->ToBigInt(vm_);
+    ASSERT_TRUE(bigIntFromTrue->IsBigInt(vm_));
+
+    // Test that converting Boolean false to BigInt succeeds
+    Local<BooleanRef> falseValue = BooleanRef::New(vm_, false);
+    Local<BigIntRef> bigIntFromFalse = falseValue->ToBigInt(vm_);
+    ASSERT_TRUE(bigIntFromFalse->IsBigInt(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_067
+ * @tc.name: IsNativeBindingObject_NonObject
+ * @tc.desc: Verify the behavior of IsNativeBindingObject when the value is not an ECMAObject.
+ * When the value is not an ECMAObject, IsNativeBindingObject should return false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsNativeBindingObject_NonObject)
+{
+    LocalScope scope(vm_);
+
+    // Test number value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isNativeBinding = numberValue->IsNativeBindingObject(vm_);
+    ASSERT_FALSE(isNativeBinding);
+
+    // Test string value
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    isNativeBinding = stringValue->IsNativeBindingObject(vm_);
+    ASSERT_FALSE(isNativeBinding);
+
+    // Test boolean value
+    Local<BooleanRef> boolValue = BooleanRef::New(vm_, true);
+    isNativeBinding = boolValue->IsNativeBindingObject(vm_);
+    ASSERT_FALSE(isNativeBinding);
+
+    // Test undefined value
+    Local<JSValueRef> undefinedValue = JSValueRef::Undefined(vm_);
+    isNativeBinding = undefinedValue->IsNativeBindingObject(vm_);
+    ASSERT_FALSE(isNativeBinding);
+}
+
+/**
+ * @tc.number: ffi_interface_api_068
+ * @tc.name: GetNativePointer_ValidPointer
+ * @tc.desc: Verify the behavior of GetNativePointer when the value has a valid native pointer.
+ * When the value has a valid native pointer, GetNativePointer should return the external pointer.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetNativePointer_ValidPointer)
+{
+    LocalScope scope(vm_);
+
+    // Test with a valid native pointer
+    int* testData = new int(TEST_INT_VALUE);
+    Local<NativePointerRef> nativePtr = NativePointerRef::New(vm_, testData, nullptr, nullptr, 0);
+
+    bool isNativePointer = false;
+    void* externalPtr = nativePtr->GetNativePointerValue(vm_, isNativePointer);
+    ASSERT_TRUE(isNativePointer);
+    ASSERT_EQ(externalPtr, testData);
+
+    delete testData;
+}
+
+/**
+ * @tc.number: ffi_interface_api_069
+ * @tc.name: GetNativePointerValue_InvalidPointer
+ * @tc.desc: Verify the behavior of GetNativePointerValue when the value is not a native pointer.
+ * When the value is not a native pointer, GetNativePointerValue should return nullptr and set isNativePointer to false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetNativePointerValue_InvalidPointer)
+{
+    LocalScope scope(vm_);
+
+    // Test with number value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isNativePointer = false;
+    void* externalPtr = numberValue->GetNativePointerValue(vm_, isNativePointer);
+    ASSERT_FALSE(isNativePointer);
+    ASSERT_EQ(externalPtr, nullptr);
+
+    // Test with string value
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    isNativePointer = false;
+    externalPtr = stringValue->GetNativePointerValue(vm_, isNativePointer);
+    ASSERT_FALSE(isNativePointer);
+    ASSERT_EQ(externalPtr, nullptr);
+
+    // Test with undefined value
+    Local<JSValueRef> undefinedValue = JSValueRef::Undefined(vm_);
+    isNativePointer = false;
+    externalPtr = undefinedValue->GetNativePointerValue(vm_, isNativePointer);
+    ASSERT_FALSE(isNativePointer);
+    ASSERT_EQ(externalPtr, nullptr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_070
+ * @tc.name: IsDetachedArraybuffer_NonArrayBuffer
+ * @tc.desc: Verify the behavior of IsDetachedArraybuffer when the value is not an ArrayBuffer.
+ * When the value is not an ArrayBuffer, isArrayBuffer should be set to false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsDetachedArraybuffer_NonArrayBuffer)
+{
+    LocalScope scope(vm_);
+
+    // Test with number value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isArrayBuffer = true;
+    bool isDetached = numberValue->IsDetachedArraybuffer(vm_, isArrayBuffer);
+    ASSERT_FALSE(isArrayBuffer);
+    ASSERT_FALSE(isDetached);
+
+    // Test with string value
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    isArrayBuffer = true;
+    isDetached = stringValue->IsDetachedArraybuffer(vm_, isArrayBuffer);
+    ASSERT_FALSE(isArrayBuffer);
+    ASSERT_FALSE(isDetached);
+}
+
+/**
+ * @tc.number: ffi_interface_api_071
+ * @tc.name: DetachedArraybuffer_AlreadyDetached
+ * @tc.desc: Verify the behavior of DetachedArraybuffer when ArrayBuffer is already detached.
+ * When the ArrayBuffer is already detached, DetachedArraybuffer should return early.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, DetachedArraybuffer_AlreadyDetached)
+{
+    LocalScope scope(vm_);
+
+    // Create an ArrayBuffer and detach it
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    bool isArrayBuffer = false;
+    arrayBuffer->DetachedArraybuffer(vm_, isArrayBuffer);
+    ASSERT_TRUE(isArrayBuffer);
+
+    // Try to detach again - should return early without modifying isArrayBuffer
+    isArrayBuffer = false;
+    arrayBuffer->DetachedArraybuffer(vm_, isArrayBuffer);
+    // When already detached, returns early at line 1222 without setting isArrayBuffer
+    ASSERT_FALSE(isArrayBuffer);
+}
+
+/**
+ * @tc.number: ffi_interface_api_072
+ * @tc.name: DetachedArraybuffer_SendableAlreadyDetached
+ * @tc.desc: Verify the behavior of DetachedArraybuffer when SendableArrayBuffer is already detached.
+ * When the SendableArrayBuffer is already detached, DetachedArraybuffer should return early.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, DetachedArraybuffer_SendableAlreadyDetached)
+{
+    LocalScope scope(vm_);
+
+    // Create a SendableArrayBuffer and detach it
+    Local<ArrayBufferRef> sendableArrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    bool isArrayBuffer = false;
+    sendableArrayBuffer->DetachedArraybuffer(vm_, isArrayBuffer);
+    ASSERT_TRUE(isArrayBuffer);
+
+    // Try to detach again - should return early without modifying isArrayBuffer
+    isArrayBuffer = false;
+    sendableArrayBuffer->DetachedArraybuffer(vm_, isArrayBuffer);
+    // When already detached, returns early at line 1229 without setting isArrayBuffer
+    ASSERT_FALSE(isArrayBuffer);
+}
+
+/**
+ * @tc.number: ffi_interface_api_073
+ * @tc.name: DetachedArraybuffer_NonArrayBuffer
+ * @tc.desc: Verify the behavior of DetachedArraybuffer when the value is not an ArrayBuffer or SendableArrayBuffer.
+ * When the value is not an ArrayBuffer or SendableArrayBuffer, isArrayBuffer should be set to false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, DetachedArraybuffer_NonArrayBuffer)
+{
+    LocalScope scope(vm_);
+
+    // Test with number value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isArrayBuffer = true;
+    numberValue->DetachedArraybuffer(vm_, isArrayBuffer);
+    ASSERT_FALSE(isArrayBuffer);
+
+    // Test with string value
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    isArrayBuffer = true;
+    stringValue->DetachedArraybuffer(vm_, isArrayBuffer);
+    ASSERT_FALSE(isArrayBuffer);
+}
+
+/**
+ * @tc.number: ffi_interface_api_074
+ * @tc.name: GetDataViewInfo_NonDataView
+ * @tc.desc: Verify the behavior of GetDataViewInfo when the value is not a DataView.
+ * When the value is not a DataView, isDataView should be set to false.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetDataViewInfo_NonDataView)
+{
+    LocalScope scope(vm_);
+
+    // Test with number value
+    Local<NumberRef> numberValue = NumberRef::New(vm_, TEST_INT_VALUE);
+    bool isDataView = true;
+    numberValue->GetDataViewInfo(vm_, isDataView, nullptr, nullptr, nullptr, nullptr);
+    ASSERT_FALSE(isDataView);
+
+    // Test with string value
+    Local<StringRef> stringValue = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    isDataView = true;
+    stringValue->GetDataViewInfo(vm_, isDataView, nullptr, nullptr, nullptr, nullptr);
+    ASSERT_FALSE(isDataView);
+}
+
+/**
+ * @tc.number: ffi_interface_api_075
+ * @tc.name: GetDataViewInfo_AllParameters
+ * @tc.desc: Verify the behavior of GetDataViewInfo with all parameters provided.
+ * GetDataViewInfo should successfully retrieve all information from DataView.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetDataViewInfo_AllParameters)
+{
+    LocalScope scope(vm_);
+
+    // Create ArrayBuffer and DataView
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, TEST_DATAVIEW_BYTEOFFSET,
+                                                   TEST_DATAVIEW_BYTELENGTH);
+
+    // Test with all parameters
+    bool isDataView = false;
+    size_t byteLength = 0;
+    void* data = nullptr;
+    JSValueRef* arrayBufferPtr = nullptr;
+    size_t byteOffset = 0;
+
+    dataView->GetDataViewInfo(vm_, isDataView, &byteLength, &data, &arrayBufferPtr, &byteOffset);
+
+    ASSERT_TRUE(isDataView);
+    ASSERT_EQ(byteLength, static_cast<size_t>(TEST_DATAVIEW_BYTELENGTH));
+    ASSERT_NE(data, nullptr);
+    ASSERT_NE(arrayBufferPtr, nullptr);
+    ASSERT_EQ(byteOffset, static_cast<size_t>(TEST_DATAVIEW_BYTEOFFSET));
+}
+
+/**
+ * @tc.number: ffi_interface_api_076
+ * @tc.name: GetDataViewInfo_OnlyByteLength
+ * @tc.desc: Verify the behavior of GetDataViewInfo with only byteLength parameter.
+ * GetDataViewInfo should successfully retrieve byteLength from DataView.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetDataViewInfo_OnlyByteLength)
+{
+    LocalScope scope(vm_);
+
+    // Create ArrayBuffer and DataView
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, TEST_DATAVIEW_BYTEOFFSET,
+                                                   TEST_DATAVIEW_BYTELENGTH);
+
+    // Test with only byteLength parameter
+    bool isDataView = false;
+    size_t byteLength = 0;
+
+    dataView->GetDataViewInfo(vm_, isDataView, &byteLength, nullptr, nullptr, nullptr);
+
+    ASSERT_TRUE(isDataView);
+    ASSERT_EQ(byteLength, static_cast<size_t>(TEST_DATAVIEW_BYTELENGTH));
+}
+
+/**
+ * @tc.number: ffi_interface_api_077
+ * @tc.name: GetDataViewInfo_OnlyDataAndArrayBuffer
+ * @tc.desc: Verify the behavior of GetDataViewInfo with only data and arrayBuffer parameters.
+ * GetDataViewInfo should successfully retrieve data and arrayBuffer from DataView.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetDataViewInfo_OnlyDataAndArrayBuffer)
+{
+    LocalScope scope(vm_);
+
+    // Create ArrayBuffer and DataView
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, TEST_DATAVIEW_BYTEOFFSET,
+                                                   TEST_DATAVIEW_BYTELENGTH);
+
+    // Test with only data and arrayBuffer parameters
+    bool isDataView = false;
+    void* data = nullptr;
+    JSValueRef* arrayBufferPtr = nullptr;
+
+    dataView->GetDataViewInfo(vm_, isDataView, nullptr, &data, &arrayBufferPtr, nullptr);
+
+    ASSERT_TRUE(isDataView);
+    ASSERT_NE(data, nullptr);
+    ASSERT_NE(arrayBufferPtr, nullptr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_078
+ * @tc.name: GetDataViewInfo_OnlyByteOffset
+ * @tc.desc: Verify the behavior of GetDataViewInfo with only byteOffset parameter.
+ * GetDataViewInfo should successfully retrieve byteOffset from DataView.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetDataViewInfo_OnlyByteOffset)
+{
+    LocalScope scope(vm_);
+
+    // Create ArrayBuffer and DataView
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, TEST_DATAVIEW_BYTEOFFSET,
+                                                   TEST_DATAVIEW_BYTELENGTH);
+
+    // Test with only byteOffset parameter
+    bool isDataView = false;
+    size_t byteOffset = 0;
+
+    dataView->GetDataViewInfo(vm_, isDataView, nullptr, nullptr, nullptr, &byteOffset);
+
+    ASSERT_TRUE(isDataView);
+    ASSERT_EQ(byteOffset, static_cast<size_t>(TEST_DATAVIEW_BYTEOFFSET));
+}
+
+/**
+ * @tc.number: ffi_interface_api_079
+ * @tc.name: GetDataViewInfo_NullParameters
+ * @tc.desc: Verify the behavior of GetDataViewInfo with all null parameters.
+ * GetDataViewInfo should only set isDataView to true when all other parameters are null.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetDataViewInfo_NullParameters)
+{
+    LocalScope scope(vm_);
+
+    // Create ArrayBuffer and DataView
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, TEST_DATAVIEW_BYTEOFFSET,
+                                                   TEST_DATAVIEW_BYTELENGTH);
+
+    // Test with all null parameters
+    bool isDataView = false;
+    dataView->GetDataViewInfo(vm_, isDataView, nullptr, nullptr, nullptr, nullptr);
+
+    ASSERT_TRUE(isDataView);
+}
+
+/**
+ * @tc.number: ffi_interface_api_080
+ * @tc.name: DataViewRef_NewWithoutSwitchState
+ * @tc.desc: Create a DataView using NewWithoutSwitchState and verify its properties.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, DataViewRef_NewWithoutSwitchState)
+{
+    LocalScope scope(vm_);
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_DATAVIEW_LENGTH);
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
+
+    Local<DataViewRef> dataView = DataViewRef::NewWithoutSwitchState(vm_, arrayBuffer, TEST_DATAVIEW_BYTEOFFSET,
+                                                                      TEST_DATAVIEW_BYTELENGTH);
+    ASSERT_TRUE(dataView->IsDataView(vm_));
+    ASSERT_EQ(dataView->ByteLength(), static_cast<uint32_t>(TEST_DATAVIEW_BYTELENGTH));
+    ASSERT_EQ(dataView->ByteOffset(), static_cast<uint32_t>(TEST_DATAVIEW_BYTEOFFSET));
+}
+
+/**
+ * @tc.number: ffi_interface_api_081
+ * @tc.name: DataViewRef_NewWithoutSwitchState_OutOfRange
+ * @tc.desc: Verify that NewWithoutSwitchState returns hole when byteOffset + byteLength exceeds buffer length.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, DataViewRef_NewWithoutSwitchState_OutOfRange)
+{
+    LocalScope scope(vm_);
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_DATAVIEW_LENGTH);
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
+
+    Local<DataViewRef> dataView = DataViewRef::NewWithoutSwitchState(vm_, arrayBuffer, TEST_DATAVIEW_BYTEOFFSET,
+                                                                      TEST_DATAVIEW_LENGTH);
+    ASSERT_TRUE(dataView->IsHole());
+}
+
+/**
+ * @tc.number: ffi_interface_api_082
+ * @tc.name: MapIteratorRef_GetKind_Default
+ * @tc.desc: Verify GetKind returns correct string for default MapIterator.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, MapIteratorRef_GetKind_Default)
+{
+    LocalScope scope(vm_);
+    Local<MapRef> mapRef = MapRef::New(vm_);
+    Local<MapIteratorRef> mapIterator = MapIteratorRef::New(vm_, mapRef);
+    ASSERT_TRUE(mapIterator->IsHeapObject());
+    Local<JSValueRef> kind = mapIterator->GetKind(vm_);
+    ASSERT_TRUE(kind->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_083
+ * @tc.name: SetIteratorRef_GetKind_Value
+ * @tc.desc: Verify GetKind returns correct string for SetIterator.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, SetIteratorRef_GetKind_Value)
+{
+    LocalScope scope(vm_);
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+    JSHandle<JSSet> set =
+        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
+    set->SetLinkedSet(thread, hashSet);
+    JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
+    Local<SetRef> setRef = JSNApiHelper::ToLocal<SetRef>(setTag);
+    Local<SetIteratorRef> setIterator = SetIteratorRef::New(vm_, setRef);
+    ASSERT_TRUE(setIterator->IsHeapObject());
+    Local<JSValueRef> kind = setIterator->GetKind(vm_);
+    ASSERT_TRUE(kind->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_084
+ * @tc.name: BufferRef_New_WithContext
+ * @tc.desc: Create a BufferRef with context parameter.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, BufferRef_New_WithContext)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> context = ObjectRef::New(vm_);
+    Local<BufferRef> buffer = BufferRef::New(vm_, context, TEST_BUFFER_LENGTH);
+    ASSERT_TRUE(buffer->IsBuffer(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_085
+ * @tc.name: BufferRef_New_WithBuffer
+ * @tc.desc: Create a BufferRef with external buffer and deleter callback.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, BufferRef_New_WithBuffer)
+{
+    LocalScope scope(vm_);
+    static bool isFree = false;
+    struct Data {
+        int32_t length;
+    };
+    NativePointerCallback deleter = []([[maybe_unused]] void *env, void *buffer, void *data) -> void {
+        delete[] reinterpret_cast<uint8_t *>(buffer);
+        Data *currentData = reinterpret_cast<Data *>(data);
+        delete currentData;
+        isFree = true;
+    };
+    isFree = false;
+    uint8_t *buffer = new uint8_t[TEST_BUFFER_LENGTH]();
+    Data *data = new Data();
+    data->length = TEST_BUFFER_LENGTH;
+    Local<BufferRef> bufferRef = BufferRef::New(vm_, buffer, TEST_BUFFER_LENGTH, deleter, data);
+    ASSERT_TRUE(bufferRef->IsBuffer(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_086
+ * @tc.name: BufferRef_GetBuffer
+ * @tc.desc: Verify GetBuffer returns valid pointer for BufferRef.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, BufferRef_GetBuffer)
+{
+    LocalScope scope(vm_);
+    Local<BufferRef> buffer = BufferRef::New(vm_, TEST_BUFFER_LENGTH);
+    ASSERT_TRUE(buffer->IsBuffer(vm_));
+    void *ptr = buffer->GetBuffer(vm_);
+    EXPECT_NE(ptr, nullptr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_087
+ * @tc.name: SymbolRef_GetDescription_Empty
+ * @tc.desc: Verify GetDescription returns empty string for Symbol without description.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, SymbolRef_GetDescription_Empty)
+{
+    LocalScope scope(vm_);
+    Local<SymbolRef> symbol = SymbolRef::New(vm_, Local<StringRef>());
+    ASSERT_TRUE(symbol->IsSymbol(vm_));
+    Local<StringRef> description = symbol->GetDescription(vm_);
+    ASSERT_TRUE(description->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_088
+ * @tc.name: StringRef_GetBufferUtf16
+ * @tc.desc: Verify GetBufferUtf16 returns nullptr for non-utf16 string.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, StringRef_GetBufferUtf16)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> str = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    ASSERT_TRUE(str->IsString(vm_));
+    uint32_t length = 0;
+    const uint16_t *buffer = str->GetBufferUtf16(vm_, length);
+    EXPECT_EQ(buffer, nullptr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_089
+ * @tc.name: StringRef_NewFromUtf8Replacement
+ * @tc.desc: Verify NewFromUtf8Replacement creates string correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, StringRef_NewFromUtf8Replacement)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> str = StringRef::NewFromUtf8Replacement(vm_, TEST_STRING, TEST_STRING_LENGTH_MINUS_ONE);
+    ASSERT_TRUE(str->IsString(vm_));
+    Local<StringRef> strWithLength = StringRef::NewFromUtf8Replacement(vm_, TEST_STRING, TEST_STRING_LENGTH_FOUR);
+    ASSERT_TRUE(strWithLength->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_090
+ * @tc.name: StringRef_NewFromUtf16WithoutStringTable
+ * @tc.desc: Verify NewFromUtf16WithoutStringTable creates string correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, StringRef_NewFromUtf16WithoutStringTable)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> str = StringRef::NewFromUtf16WithoutStringTable(vm_, TEST_UTF16_STRING, -1);
+    ASSERT_TRUE(str->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_091
+ * @tc.name: StringRef_EncodeIntoUint8Array_EmptyString
+ * @tc.desc: Verify EncodeIntoUint8Array returns undefined for empty string.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, StringRef_EncodeIntoUint8Array_EmptyString)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> emptyStr = StringRef::NewFromUtf8(vm_, TEST_EMPTY_STRING);
+    Local<TypedArrayRef> result = emptyStr->EncodeIntoUint8Array(vm_);
+    ASSERT_TRUE(result->IsUndefined());
+}
+
+/**
+ * @tc.number: ffi_interface_api_092
+ * @tc.name: BigIntRef_GetWordsArray
+ * @tc.desc: Verify GetWordsArray returns correct words for BigInt.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, BigIntRef_GetWordsArray)
+{
+    LocalScope scope(vm_);
+    Local<BigIntRef> bigint = BigIntRef::New(vm_, TEST_BIGINT_VALUE);
+    ASSERT_TRUE(bigint->IsBigInt(vm_));
+    uint32_t size = bigint->GetWordsArraySize(vm_);
+    ASSERT_EQ(size, TEST_BIGINT_WORDS_SIZE);
+    uint64_t words = 0;
+    bool signBit = false;
+    bigint->GetWordsArray(vm_, &signBit, size, &words);
+    EXPECT_FALSE(signBit);
+    EXPECT_NE(words, 0ULL);
+}
+
+/**
+ * @tc.number: ffi_interface_api_093
+ * @tc.name: ObjectRef_CreateNativeModuleFailureInfo
+ * @tc.desc: Verify CreateNativeModuleFailureInfo returns undefined when error info is not enhanced.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_CreateNativeModuleFailureInfo)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> errorObj = ObjectRef::CreateNativeModuleFailureInfo(vm_, TEST_ERROR_INFO);
+    ASSERT_TRUE(errorObj->IsUndefined());
+}
+
+/**
+ * @tc.number: ffi_interface_api_094
+ * @tc.name: ObjectRef_Set_NonHeapObject
+ * @tc.desc: Verify Set handles non-heap object correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_Set_NonHeapObject)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> key = NumberRef::New(vm_, 1);
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "test");
+    bool result = obj->Set(vm_, key, value);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.number: ffi_interface_api_095
+ * @tc.name: ObjectRef_Set_WithUtf8Key
+ * @tc.desc: Verify Set with utf8 key works correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_Set_WithUtf8Key)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    bool result = obj->Set(vm_, TEST_PROPERTY_KEY, value);
+    EXPECT_TRUE(result);
+    Local<JSValueRef> retrieved = obj->Get(vm_, TEST_PROPERTY_KEY);
+    ASSERT_TRUE(retrieved->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_096
+ * @tc.name: ObjectRef_SetWithoutSwitchState
+ * @tc.desc: Verify SetWithoutSwitchState works correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_SetWithoutSwitchState)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    bool result = obj->SetWithoutSwitchState(vm_, TEST_PROPERTY_KEY, value);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.number: ffi_interface_api_097
+ * @tc.name: ObjectRef_Get_NonHeapObject
+ * @tc.desc: Verify Get handles non-heap object correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_Get_NonHeapObject)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> key = NumberRef::New(vm_, TEST_INDEX_VALUE);
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    obj->Set(vm_, key, value);
+    Local<JSValueRef> result = obj->Get(vm_, key);
+    ASSERT_TRUE(result->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_098
+ * @tc.name: ObjectRef_Get_CharKey
+ * @tc.desc: Verify Get with char key works correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_Get_CharKey)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    obj->Set(vm_, TEST_PROPERTY_KEY, value);
+    Local<JSValueRef> result = obj->Get(vm_, TEST_PROPERTY_KEY);
+    ASSERT_TRUE(result->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_099
+ * @tc.name: ObjectRef_Get_IntKey
+ * @tc.desc: Verify Get with int key works correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_Get_IntKey)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    obj->Set(vm_, TEST_INDEX_VALUE, value);
+    Local<JSValueRef> result = obj->Get(vm_, TEST_INDEX_VALUE);
+    ASSERT_TRUE(result->IsString(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_100
+ * @tc.name: ObjectRef_GetOwnProperty_WithGetterSetter
+ * @tc.desc: Verify GetOwnProperty handles object with getter and setter.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnProperty_WithGetterSetter)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<FunctionRef> getter = FunctionRef::New(vm_, nullptr);
+    Local<FunctionRef> setter = FunctionRef::New(vm_, nullptr);
+    PropertyAttribute attr(Local<JSValueRef>(), true, true, true);
+    obj->SetAccessorProperty(vm_, StringRef::NewFromUtf8(vm_, TEST_PROPERTY_KEY), getter, setter, attr);
+    PropertyAttribute property;
+    bool result = obj->GetOwnProperty(vm_, StringRef::NewFromUtf8(vm_, TEST_PROPERTY_KEY), property);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(property.HasGetter());
+    EXPECT_TRUE(property.HasSetter());
+}
+
+/**
+ * @tc.number: ffi_interface_api_101
+ * @tc.name: ObjectRef_GetOwnProperty_WithWritable
+ * @tc.desc: Verify GetOwnProperty handles property with writable flag.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnProperty_WithWritable)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    PropertyAttribute attr(value, true, true, true);
+    obj->DefineProperty(vm_, StringRef::NewFromUtf8(vm_, TEST_PROPERTY_KEY), attr);
+    PropertyAttribute property;
+    bool result = obj->GetOwnProperty(vm_, StringRef::NewFromUtf8(vm_, TEST_PROPERTY_KEY), property);
+    EXPECT_TRUE(result);
+    EXPECT_TRUE(property.HasWritable());
+    EXPECT_TRUE(property.IsWritable());
+}
+
+/**
+ * @tc.number: ffi_interface_api_102
+ * @tc.name: ObjectRef_GetOwnProperty_WithoutProperty
+ * @tc.desc: Verify GetOwnProperty returns false for non-existent property.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_GetOwnProperty_WithoutProperty)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    PropertyAttribute property;
+    bool result = obj->GetOwnProperty(vm_, StringRef::NewFromUtf8(vm_, TEST_PROPERTY_KEY), property);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.number: ffi_interface_api_103
+ * @tc.name: ObjectRef_SetWithoutSwitchState_NumberKey
+ * @tc.desc: Verify SetWithoutSwitchState with number key.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_SetWithoutSwitchState_NumberKey)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_STRING);
+    bool result = obj->SetWithoutSwitchState(vm_, "123", value);
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.number: ffi_interface_api_104
+ * @tc.name: ObjectRef_Freeze
+ * @tc.desc: Verify Freeze function freezes object correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_Freeze)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> result = obj->Freeze(vm_);
+    ASSERT_TRUE(result->IsObject(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_105
+ * @tc.name: ObjectRef_Seal
+ * @tc.desc: Verify Seal function seals object correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef_Seal)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> obj = ObjectRef::New(vm_);
+    ASSERT_TRUE(obj->IsObject(vm_));
+    Local<JSValueRef> result = obj->Seal(vm_);
+    ASSERT_TRUE(result->IsObject(vm_));
+}
+
+/**
+ * @tc.number: ffi_interface_api_106
+ * @tc.name: ArrayBufferRef_GetBuffer_Null
+ * @tc.desc: Verify GetBuffer returns valid buffer for internal ArrayBuffer.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ArrayBufferRef_GetBuffer_Null)
+{
+    LocalScope scope(vm_);
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
+    void *buffer = arrayBuffer->GetBuffer(vm_);
+    EXPECT_NE(buffer, nullptr);
+}
+
+/**
+ * @tc.number: ffi_interface_api_107
+ * @tc.name: ArrayBufferRef_GetBufferAndLength
+ * @tc.desc: Verify GetBufferAndLength returns buffer and length correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, ArrayBufferRef_GetBufferAndLength)
+{
+    LocalScope scope(vm_);
+    Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, TEST_ARRAYBUFFER_LENGTH);
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
+    int32_t length = 0;
+    void *buffer = arrayBuffer->GetBufferAndLength(vm_, &length);
+    EXPECT_NE(buffer, nullptr);
+    EXPECT_EQ(length, TEST_ARRAYBUFFER_LENGTH);
+}
+
 }  // namespace panda::test

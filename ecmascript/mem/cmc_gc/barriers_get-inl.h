@@ -82,6 +82,12 @@ inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForObject(const JSThread *th
 #endif
 }
 
+inline ARK_INLINE JSTaggedType Barriers::ReadBarrierForStringTableSlot(JSTaggedType value)
+{
+    LOG_COMMON(FATAL) << "Not implemented";
+    UNREACHABLE();
+}
+
 inline ARK_INLINE JSTaggedType Barriers::GetTaggedValue(const JSThread *thread, const void *obj, size_t offset)
 {
     JSTaggedValue value = *reinterpret_cast<JSTaggedValue *>(ToUintPtr(obj) + offset);

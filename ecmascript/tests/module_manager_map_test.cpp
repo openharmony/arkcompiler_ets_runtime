@@ -162,8 +162,11 @@ HWTEST_F_L0(ModuleManagerMapTest, ForEach)
     map.Insert(2, value2);
 
     std::vector<std::pair<int, JSTaggedValue>> collected;
+#if ENABLE_LATEST_OPTIMIZATION
+    map.ForEach([&](const int& key, GCRoot& root) { collected.emplace_back(key, root.Read()); });
+#else
     map.ForEach([&](auto it) { collected.emplace_back(it->first, it->second.Read()); });
-
+#endif
     ASSERT_EQ(collected.size(), 2U);
 
     // Sort for deterministic comparison

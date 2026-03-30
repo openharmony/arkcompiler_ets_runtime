@@ -86,4 +86,72 @@ assert_equal("After reverse (BigInt64Array): "+bigInt64Array,"After reverse (Big
     assert_equal(arr1.length, 0);
 }
 
+{
+    let arr = new Int8Array([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+
+{
+    let arr = new Uint8Array([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+
+{
+    let arr = new Int16Array([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+
+{
+    let arr = new Uint16Array([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+
+{
+    let arr = new Int32Array([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+{
+    let arr = new Uint32Array([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+{
+    let arr = new BigInt64Array([10n, 9n, 8n, 7n, 6n, 5n, 4n, 3n, 2n, 1n]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+{
+    let arr = new BigUint64Array([10n, 9n, 8n, 7n, 6n, 5n, 4n, 3n, 2n, 1n]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+
+{
+    let arr = new Float32Array([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+
+{
+    let arr = new Float64Array([10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+    let subarr = arr.subarray(2, 5);
+    subarr.reverse();
+    assert_equal(subarr.toString(), '6,7,8');
+}
+
+
 test_end();

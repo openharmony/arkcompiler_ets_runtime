@@ -75,7 +75,7 @@ public:
     {
         size_t i = static_cast<size_t>(index);
         Register ret = isGhcCallingConv_ ? ghcJSCallDispacherArgs_[i] : cppJSCallDispacherArgs_[i];
-        if (ret == rInvalid) {
+        if (!ret.IsValid()) {
             LOG_COMPILER(FATAL) << "x64 invalid call argument:" << i;
         }
         return ret;

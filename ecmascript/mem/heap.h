@@ -23,6 +23,8 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/mem/cms_mem/slot_space-inl.h"
+#include "ecmascript/mem/guarded_task.h"
+#include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/mark_stack.h"
@@ -141,6 +143,10 @@ enum class SharedHeapOOMSource {
     DESERIALIZE,
     SHARED_GC,
 };
+
+const std::string LOCAL_HEAP_STR = "local heap";
+const std::string SHARED_HEAP_STR = "shared heap";
+const std::string PROCESS_HEAP_STR = "process heap";
 
 class BaseHeap {
 public:
@@ -343,6 +349,12 @@ public:
         return maxMarkTaskCount_;
     }
 
+    void UpdateMaxMarkTaskCount(uint32_t maxTaskCount)
+    {
+        maxMarkTaskCount_ = maxTaskCount;
+        markTaskMonitor_->UpdateCapacity(maxMarkTaskCount_);
+    }
+
     bool InSensitiveStatus() const
     {
         return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE || OnStartupEvent();
@@ -351,10 +363,9 @@ public:
     void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
     inline void SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
                                             [[maybe_unused]] size_t size);
-    bool CheckCanDistributeTask();
-    void IncreaseTaskCount();
-    void ReduceTaskCount();
-    void WaitRunningTaskFinished();
+    inline bool CheckCanDistributeTask() const;
+    void WaitRunningMarkTaskFinished();
+    void WaitAllMarkTaskFinished();
     void WaitClearTaskFinished();
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
@@ -432,10 +443,8 @@ protected:
     size_t heapBasicLoss_ {1_MB};
     size_t fragmentSizeAfterGC_ {0};
     // parallel marker task count.
-    uint32_t runningTaskCount_ {0};
     uint32_t maxMarkTaskCount_ {0};
-    Mutex waitTaskFinishedMutex_;
-    ConditionVariable waitTaskFinishedCV_;
+    std::shared_ptr<EpochGuardedTaskMonitor> markTaskMonitor_;
     Mutex waitClearTaskFinishedMutex_;
     ConditionVariable waitClearTaskFinishedCV_;
     bool clearTaskFinished_ {true};
@@ -482,12 +491,14 @@ public:
 
     void ResetLargeCapacity(size_t heapSize);
 
-    class ParallelMarkTask : public common::Task {
+    class ParallelMarkTask : public GuardedTask {
     public:
-        ParallelMarkTask(int32_t id, SharedHeap *heap, SharedParallelMarkPhase taskPhase)
-            : common::Task(id), sHeap_(heap), taskPhase_(taskPhase) {};
+        ParallelMarkTask(int32_t id, SharedHeap *heap, SharedParallelMarkPhase taskPhase,
+            std::shared_ptr<EpochGuardedTaskMonitor> monitor, uint32_t epoch)
+            : GuardedTask(id), sHeap_(heap), taskPhase_(taskPhase), monitor_(monitor), epoch_(epoch) {}
         ~ParallelMarkTask() override = default;
-        bool Run(uint32_t threadIndex) override;
+        bool RunInternal(uint32_t threadIndex) override;
+        bool Scheduable() override;
 
         NO_COPY_SEMANTIC(ParallelMarkTask);
         NO_MOVE_SEMANTIC(ParallelMarkTask);
@@ -495,6 +506,8 @@ public:
     private:
         SharedHeap *sHeap_ {nullptr};
         SharedParallelMarkPhase taskPhase_;
+        std::shared_ptr<EpochGuardedTaskMonitor> monitor_;
+        uint32_t epoch_ {0};
     };
 
     class AsyncClearTask : public common::Task {
@@ -719,11 +732,6 @@ public:
 
     void DaemonCollectGarbage(TriggerGCType gcType, GCReason reason);
 
-    void SetMaxMarkTaskCount(uint32_t maxTaskCount)
-    {
-        maxMarkTaskCount_ = maxTaskCount;
-    }
-
     inline size_t GetCommittedSize() const override
     {
         size_t result = sOldSpace_->GetCommittedSize() +
@@ -812,8 +820,9 @@ public:
     }
 
     void Prepare(bool inTriggerGCThread);
+    void PrepareByJSThread(JSThread *thread, bool inTriggerGCThread);
     void Reclaim(TriggerGCType gcType);
-    void PostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase);
+    void TryPostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase);
     void CompactHeapBeforeFork(JSThread *thread);
     void ReclaimForAppSpawn();
 
@@ -886,7 +895,8 @@ public:
 
     inline void MergeToOldSpaceSync(SharedLocalSpace *localSpace);
 
-    void DumpHeapSnapshotBeforeOOM(JSThread *thread, SharedHeapOOMSource source);
+    void DumpHeapSnapshotBeforeOOM(JSThread *thread, SharedHeapOOMSource source, const std::string &spaceType,
+                                   size_t lastAllocObjSize, const std::string &heapType);
 
     inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void ProcessSharedExternalStringDelete(const WeakRootVisitor& visitor);
@@ -909,6 +919,11 @@ public:
     void CheckInHeapProfiler();
     void SetGCThreadQosPriority(common::PriorityMode mode);
 
+    Mutex& GetSuspensionRequestMutex()
+    {
+        return suspensionRequestMutex_;
+    }
+
     SHAREDHEAP_PUBLIC_HYBRID_EXTENSION();
 
 private:
@@ -917,7 +932,7 @@ private:
 
     void MoveOldSpaceToAppspawn();
 
-    void ReclaimRegions(TriggerGCType type);
+    void ReclaimRegions(TriggerGCType type, bool gcThread);
 
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
     inline TaggedObject *AllocateInSOldSpace(JSThread *thread, size_t size);
@@ -954,6 +969,8 @@ private:
     bool gcFinished_ {true};
     Mutex waitGCFinishedMutex_;
     ConditionVariable waitGCFinishedCV_;
+
+    Mutex suspensionRequestMutex_;
 
     DaemonThread *dThread_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
@@ -995,7 +1012,7 @@ public:
     void Initialize();
     void Destroy() override;
     void Prepare();
-    void GetHeapPrepare();
+    void GetHeapPrepare(JSThread *thread);
     void PrepareForIteration() const;
     void ResetLargeCapacity(size_t heapSize);
     void Resume(TriggerGCType gcType);
@@ -1155,7 +1172,7 @@ public:
         return workManager_;
     }
 
-    WorkNode *&GetMarkingObjectLocalBuffer()
+    MarkWorkNode *&GetMarkingObjectLocalBuffer()
     {
         return sharedGCData_.sharedConcurrentMarkingLocalBuffer_;
     }
@@ -1163,6 +1180,14 @@ public:
     IdleGCTrigger *GetIdleGCTrigger() const
     {
         return idleGCTrigger_;
+    }
+
+    JitFort *GetOrCreateJitFort()
+    {
+        if (jitFort_ == nullptr) {
+            jitFort_ = new JitFort();
+        }
+        return jitFort_;
     }
 
     void SetRSetWorkListHandler(RSetWorkListHandler *handler)
@@ -1256,10 +1281,15 @@ public:
      */
 
     void PostParallelGCTask(ParallelGCTaskPhase taskPhase);
+    void TryPostParallelGCTask(ParallelGCTaskPhase taskPhase);
 
     bool IsParallelGCEnabled() const
     {
         return parallelGC_;
+    }
+    void SetParallelGCEnabled(bool enable)
+    {
+        parallelGC_ = enable;
     }
     void ChangeGCParams(bool inBackground) override;
 
@@ -1690,7 +1720,8 @@ public:
     }
 
     void CheckNonMovableSpaceOOM();
-    void DumpHeapSnapshotBeforeOOM();
+    void DumpHeapSnapshotBeforeOOM(bool isProcDump, const std::string &spaceType, size_t lastAllocObjSize,
+                                   const std::string &heapType);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
     MachineCode *GetMachineCodeObject(uintptr_t pc) const;
     void SetMachineCodeObject(uintptr_t start, uintptr_t end, uintptr_t address) const;
@@ -1733,6 +1764,7 @@ private:
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
     static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
     static constexpr size_t INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT = 100_MB;
+    static constexpr size_t MIN_USABLE_MEMORY_THRESHOLD_TO_OOM_AFTER_FULL_GC = 20_MB;
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
@@ -1755,12 +1787,14 @@ private:
     }
     bool CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIndex,
                                            [[maybe_unused]] const char* traceName);
-    class ParallelGCTask : public common::Task {
+    class ParallelGCTask : public GuardedTask {
     public:
-        ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
-            : common::Task(id), heap_(heap), taskPhase_(taskPhase) {};
+        ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase,
+            std::shared_ptr<EpochGuardedTaskMonitor> monitor, uint32_t epoch)
+            : GuardedTask(id), heap_(heap), taskPhase_(taskPhase), monitor_(monitor), epoch_(epoch) {}
         ~ParallelGCTask() override = default;
-        bool Run(uint32_t threadIndex) override;
+        bool RunInternal(uint32_t threadIndex) override;
+        bool Scheduable() override;
 
         NO_COPY_SEMANTIC(ParallelGCTask);
         NO_MOVE_SEMANTIC(ParallelGCTask);
@@ -1768,6 +1802,8 @@ private:
     private:
         Heap *heap_ {nullptr};
         ParallelGCTaskPhase taskPhase_;
+        std::shared_ptr<EpochGuardedTaskMonitor> monitor_;
+        uint32_t epoch_ {0};
     };
 
     class AsyncClearTask : public common::Task {
@@ -1840,12 +1876,12 @@ private:
     struct SharedGCLocalStoragePackedData {
         /**
          * During SharedGC concurrent marking, barrier will push shared object to mark stack for marking,
-         * in LocalGC can just push non-shared object to WorkNode for MAIN_THREAD_INDEX, but in SharedGC, only can
-         * either use a global lock for DAEMON_THREAD_INDEX's WorkNode, or push to a local WorkNode, and push to global
-         * in remark.
+         * in LocalGC can just push non-shared object to MarkWorkNode for MAIN_THREAD_INDEX, but in SharedGC, only can
+         * either use a global lock for DAEMON_THREAD_INDEX's MarkWorkNode, or push to a local MarkWorkNode,
+         * and push to global in remark.
          * If the heap is destructed before push this node to global, check and try to push remain object as well.
         */
-        WorkNode *sharedConcurrentMarkingLocalBuffer_ {nullptr};
+        MarkWorkNode *sharedConcurrentMarkingLocalBuffer_ {nullptr};
         /**
          * Recording the local_to_share rset used in SharedGC concurrentMark,
          * which lifecycle is in one SharedGC.
@@ -1984,6 +2020,8 @@ private:
     std::vector<std::pair<FinishGCListener, void *>> gcListeners_;
 
     IdleGCTrigger *idleGCTrigger_ {nullptr};
+
+    JitFort *jitFort_ {nullptr};
 
     bool hasOOMDump_ {false};
 

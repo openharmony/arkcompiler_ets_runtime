@@ -364,7 +364,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
                 std::string align = std::to_string(
                     static_cast<int>(
                         log2(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex()))));
-            else {
+            } else {
                 std::string align =
                     std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex()));
             }
@@ -1311,7 +1311,8 @@ void Emitter::EmitIntConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst, ui
         std::string strTabName = reflectStrTabPrefix + cg->GetMIRModule()->GetFileNameAsPostfix();
         /* left shift 2 bit to get low 30 bit data for MIRIntConst */
         ASSERT_NOT_NULL(elemConst);
-        elemConst = GlobalTables::GetIntConstTable().GetOrCreateIntConst(index >> 2, elemConst->GetType());
+        elemConst = GlobalTables::GetIntConstTable().GetOrCreateIntConst(index >> kBitsForAlignment,
+                                                                         elemConst->GetType());
         intConst = safe_cast<MIRIntConst>(elemConst);
         aggConst.SetItem(static_cast<uint32>(idx), intConst, aggConst.GetFieldIdItem(idx));
 #ifdef USE_32BIT_REF
@@ -2577,6 +2578,7 @@ void Emitter::EmitGlobalRootList(const MIRSymbol &mirSymbol)
                     CHECK_FATAL(symAddr != nullptr, "nullptr of symAddr");
                     MIRSymbol *symAddrSym =
                         GlobalTables::GetGsymTable().GetSymbolFromStidx(symAddr->GetSymbolIndex().Idx());
+                    CHECK_FATAL(symAddr != nullptr, "nullptr check");
                     const std::string &symAddrName = symAddrSym->GetName();
                     EmitAddressString(symAddrName + "\n");
                 } else {

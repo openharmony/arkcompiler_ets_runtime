@@ -151,7 +151,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             JSMutableHandle<SourceTextModule> module(thread, targetModule);
             thread->GetEcmaVM()->GetQuickFixManager()->UpdateHotReloadModule(thread, module);
             // DFX: make sure lazy module is already evaluated.
-            if (module->GetStatus() == ModuleStatus::INSTANTIATED) {
+            if (module->GetStatus() == ModuleStatus::INSTANTIATED) { // LCOV_EXCL_BR_LINE
                 LOG_FULL(ERROR) << "Module is not evaluated, module is :" << module->GetEcmaModuleRecordNameString();
             }
             ModuleTypes moduleType = module->GetTypes();
@@ -177,7 +177,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             LOG_FULL(INFO) << "RESOLVEDRECORDINDEXBINDING_RECORD";
             break;
-        default:
+        default: // LCOV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "UNREACHABLE";
     }
     return OperationResult(thread, result, PropertyMetaData(true));
@@ -402,7 +402,7 @@ void ModuleNamespace::SetModuleDeregisterProcession(JSThread *thread, const JSHa
     int srcLength = strlen(moduleStr.c_str()) + 1;
     auto moduleNameData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(srcLength);
     if (memcpy_s(moduleNameData, srcLength, moduleStr.c_str(), srcLength) != EOK) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "Failed to copy module name's data.";
+        LOG_ECMA(FATAL) << "Failed to copy module name's data."; // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
     char *tmpData = reinterpret_cast<char *>(moduleNameData);

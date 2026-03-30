@@ -35,6 +35,8 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
+#include "ecmascript/runtime_lock.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/jit/jit.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
@@ -44,6 +46,7 @@
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #endif
 #include "ecmascript/dfx/tracing/tracing.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "syspara/parameter.h"
 #endif
@@ -77,6 +80,10 @@ void SharedHeap::CreateNewInstance()
 #endif
     EcmaParamConfiguration config(EcmaParamConfiguration::HeapType::SHARED_HEAP,
         MemMapAllocator::GetInstance()->GetCapacity(), heapShared);
+
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    EcmaVM::InitConfigurableParam(config);
+#endif
     instance_ = new SharedHeap(config);
 }
 
@@ -96,39 +103,46 @@ void SharedHeap::DestroyInstance()
 
 void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread)
 {
-    SuspendAllScope scope(thread);
-    SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
-    RecursionScope recurScope(this, HeapType::SHARED_HEAP);
-    CheckInHeapProfiler();
-    GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
-    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // pre gc heap verify
-        LOG_ECMA(DEBUG) << "pre gc shared heap verify";
-        sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
-        SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
-    }
-    switch (gcType) { // LCOV_EXCL_BR_LINE
-        case TriggerGCType::SHARED_PARTIAL_GC:
-        case TriggerGCType::SHARED_GC: {
-            sharedGC_->RunPhases();
-            break;
+    RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+    {
+        SuspendAllScope scope(thread);
+        SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
+        RecursionScope recurScope(this, HeapType::SHARED_HEAP);
+        CheckInHeapProfiler();
+        GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
+        if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "pre gc shared heap verify";
+            sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
+            SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
         }
-        case TriggerGCType::SHARED_FULL_GC: {
-            sharedFullGC_->RunPhases();
-            break;
+        switch (gcType) { // LCOV_EXCL_BR_LINE
+            case TriggerGCType::SHARED_PARTIAL_GC:
+            case TriggerGCType::SHARED_GC: {
+                sharedGC_->RunPhases();
+                break;
+            }
+            case TriggerGCType::SHARED_FULL_GC: {
+                sharedFullGC_->RunPhases();
+                break;
+            }
+            default: // LOCV_EXCL_BR_LINE
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+                break;
         }
-        default: // LOCV_EXCL_BR_LINE
-            LOG_ECMA(FATAL) << "this branch is unreachable";
-            UNREACHABLE();
-            break;
+        if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
+            // pre gc heap verify
+            LOG_ECMA(DEBUG) << "after gc shared heap verify";
+            SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+        }
+        CollectGarbageFinish(false, gcType);
+        InvokeSharedNativePointerCallbacks();
     }
-    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
-        // pre gc heap verify
-        LOG_ECMA(DEBUG) << "after gc shared heap verify";
-        SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
+    if (gcType != TriggerGCType::SHARED_FULL_GC && sharedGC_->IsConcurrentProcessStringTable()) {
+        Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->WaitConcurrentSweepWeakRefTaskAndSuspend(thread);
+        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
     }
-    CollectGarbageFinish(false, gcType);
-    InvokeSharedNativePointerCallbacks();
 }
 
 bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
@@ -327,9 +341,10 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
 {
     uint32_t totalThreadNum = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = totalThreadNum - 1;
+    markTaskMonitor_ = std::make_shared<EpochGuardedTaskMonitor>(maxMarkTaskCount_);
     sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
     sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
-    sharedGCMovableMarker_ = new SharedGCMovableMarker(sWorkManager_, this);
+    sharedGCMovableMarker_ = new SharedGCMovableMarker(sWorkManager_);
     sConcurrentMarker_ = new SharedConcurrentMarker(option.EnableSharedConcurrentMark() ?
         EnableConcurrentMarkType::ENABLE : EnableConcurrentMarkType::CONFIG_DISABLE);
     sSweeper_ = new SharedConcurrentSweeper(this, option.EnableConcurrentSweep() ?
@@ -342,15 +357,23 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
     }
 }
 
-void SharedHeap::PostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase)
+void SharedHeap::TryPostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase)
 {
-    IncreaseTaskCount();
-    common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(dThread_->GetThreadId(),
-                                                                                this, sharedTaskPhase));
+    auto [succ, currentEpoch] = markTaskMonitor_->TryPostTask();
+    if (succ) {
+        common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(dThread_->GetThreadId(),
+            this, sharedTaskPhase, markTaskMonitor_, currentEpoch));
+    }
 }
 
-bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
+bool SharedHeap::ParallelMarkTask::Scheduable()
 {
+    return monitor_->TryRunTask(epoch_);
+}
+
+bool SharedHeap::ParallelMarkTask::RunInternal(uint32_t threadIndex)
+{
+    ASSERT(!monitor_->IsExpired(epoch_));
     // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
     while (!sHeap_->GetWorkManager()->HasInitialized());
     switch (taskPhase_) {
@@ -363,14 +386,14 @@ bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
         default: // LOCV_EXCL_BR_LINE
             break;
     }
-    sHeap_->ReduceTaskCount();
+    monitor_->NotifyFinish();
     return true;
 }
 
 bool SharedHeap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedHeap::AsyncClearTask::Run", "");
-    sHeap_->ReclaimRegions(gcType_);
+    sHeap_->ReclaimRegions(gcType_, true);
     return true;
 }
 
@@ -409,6 +432,8 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
         gcType == TriggerGCType::SHARED_FULL_GC);
     ASSERT(JSThread::GetCurrent() == dThread_);
+    Mutex& suspensionRequestMutex = SharedHeap::GetInstance()->GetSuspensionRequestMutex();
+    RuntimeLock(dThread_, suspensionRequestMutex);
     {
         ThreadManagedScope runningScope(dThread_);
         SuspendAllScope scope(dThread_);
@@ -447,12 +472,19 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
     }
     InvokeSharedNativePointerCallbacks();
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
+    if (gcType != TriggerGCType::SHARED_FULL_GC && sharedGC_->IsConcurrentProcessStringTable()) {
+        Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->
+            WaitConcurrentSweepWeakRefTaskAndSuspendByDaemonThread(dThread_);
+        SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+    }
+    RuntimeUnLock(suspensionRequestMutex);
 }
 
 void SharedHeap::WaitAllTasksFinished(JSThread *thread)
 {
     WaitGCFinished(thread);
     sSweeper_->WaitAllTaskFinished();
+    Runtime::GetInstance()->GetEcmaStringTable()->TransferToNativeAndWaitSweepWeakRefTaskFinished(thread);
     WaitClearTaskFinished();
 }
 
@@ -460,6 +492,7 @@ void SharedHeap::WaitAllTasksFinishedAfterAllJSThreadEliminated()
 {
     WaitGCFinishedAfterAllJSThreadEliminated();
     sSweeper_->WaitAllTaskFinished();
+    Runtime::GetInstance()->GetEcmaStringTable()->WaitSweepWeakRefTaskFinished();
     WaitClearTaskFinished();
 }
 
@@ -489,12 +522,25 @@ void SharedHeap::CheckInHeapProfiler()
 
 void SharedHeap::Prepare(bool inTriggerGCThread)
 {
-    WaitRunningTaskFinished();
+    WaitAllMarkTaskFinished();
     if (inTriggerGCThread) {
         sSweeper_->EnsureAllTaskFinished();
     } else {
         sSweeper_->WaitAllTaskFinished();
     }
+    Runtime::GetInstance()->GetEcmaStringTable()->WaitSweepWeakRefTaskFinished();
+    WaitClearTaskFinished();
+}
+
+void SharedHeap::PrepareByJSThread(JSThread *thread, bool inTriggerGCThread)
+{
+    WaitAllMarkTaskFinished();
+    if (inTriggerGCThread) {
+        sSweeper_->EnsureAllTaskFinished();
+    } else {
+        sSweeper_->WaitAllTaskFinished();
+    }
+    Runtime::GetInstance()->GetEcmaStringTable()->TransferToNativeAndWaitSweepWeakRefTaskFinished(thread);
     WaitClearTaskFinished();
 }
 
@@ -516,7 +562,7 @@ SharedHeap::SharedGCScope::SharedGCScope()
 SharedHeap::SharedGCScope::~SharedGCScope()
 {
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ProcessGCListeners();
         std::shared_ptr<pgo::PGOProfiler> pgoProfiler =  thread->GetEcmaVM()->GetPGOProfiler();
         if (pgoProfiler != nullptr) {
@@ -544,14 +590,19 @@ void SharedHeap::Reclaim(TriggerGCType gcType)
         common::Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<AsyncClearTask>(dThread_->GetThreadId(), this, gcType));
     } else {
-        ReclaimRegions(gcType);
+        ReclaimRegions(gcType, false);
     }
 }
 
-void SharedHeap::ReclaimRegions(TriggerGCType gcType)
+void SharedHeap::ReclaimRegions(TriggerGCType gcType, bool gcThread)
 {
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
         sCompressSpace_->Reset();
+    }
+    if (gcThread) {
+        Runtime::GetInstance()->GetEcmaStringTable()->WaitSweepWeakRefTaskFinished();
+    } else {
+        ASSERT(!Runtime::GetInstance()->GetEcmaStringTable()->IsSweeping());
     }
     sHugeObjectSpace_->ReclaimHugeRegion();
     sOldSpace_->ReclaimCSets();
@@ -572,7 +623,7 @@ void SharedHeap::DisableParallelGC(JSThread *thread)
     WaitAllTasksFinished(thread);
     dThread_->Stop();
     parallelGC_ = false;
-    maxMarkTaskCount_ = 0;
+    UpdateMaxMarkTaskCount(0);
     sSweeper_->ConfigConcurrentSweep(false);
     sConcurrentMarker_->ConfigConcurrentMark(false);
 }
@@ -580,7 +631,7 @@ void SharedHeap::DisableParallelGC(JSThread *thread)
 void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
 {
     uint32_t totalThreadNum = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-    maxMarkTaskCount_ = totalThreadNum - 1;
+    UpdateMaxMarkTaskCount(totalThreadNum - 1);
     parallelGC_ = option.EnableParallelGC();
     if (auto workThreadNum = sWorkManager_->GetTotalThreadNum();
         workThreadNum != totalThreadNum + 1) {
@@ -665,16 +716,16 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon, TriggerGCType gcType)
     if (shouldThrowOOMError_ || shouldForceThrowOOMError_) {
         // LocalHeap could do FullGC later instead of Fatal at once if only set `shouldThrowOOMError_` because there
         // is kind of partial compress GC in LocalHeap, but SharedHeap differs.
-        DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC);
-        Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-            ASSERT(!thread->IsInRunningState());
-            thread->NotifyPendingSharedHeapOOM();
-        });
+        DumpHeapSnapshotBeforeOOM(Runtime::GetInstance()->GetMainThread(), SharedHeapOOMSource::SHARED_GC,
+                                  "", 0, SHARED_HEAP_STR);
+    }
+    if (Runtime::GetInstance()->IsMainThreadAliveForMemoryPressure()) {
+        Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->CheckSharedHeapMemoryPressure();
     }
     if (gcType == TriggerGCType::SHARED_FULL_GC) {
-        auto notifyNextCompressGCCallback = Runtime::GetInstance()->GetNotifyNextCompressGCCallback();
-        if (notifyNextCompressGCCallback != nullptr) {
-            notifyNextCompressGCCallback(false, true);
+        auto notifyDeferFreezeCallback = Runtime::GetInstance()->GetNotifyDeferFreezeCallback();
+        if (notifyDeferFreezeCallback != nullptr) {
+            notifyDeferFreezeCallback(true);
         }
     }
 }
@@ -789,6 +840,7 @@ void SharedHeap::MoveOldSpaceToAppspawn()
 void SharedHeap::ReclaimForAppSpawn()
 {
     sSweeper_->WaitAllTaskFinished();
+    ASSERT(!Runtime::GetInstance()->GetEcmaStringTable()->IsSweeping());
     sHugeObjectSpace_->ReclaimHugeRegion();
     sCompressSpace_->Reset();
     MoveOldSpaceToAppspawn();
@@ -799,16 +851,21 @@ void SharedHeap::ReclaimForAppSpawn()
     sHugeObjectSpace_->EnumerateRegions(cb);
 }
 
-void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
-                                           [[maybe_unused]] SharedHeapOOMSource source)
+void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] JSThread *thread,
+                                           [[maybe_unused]] SharedHeapOOMSource source,
+                                           [[maybe_unused]] const std::string &spaceType,
+                                           [[maybe_unused]] size_t lastAllocObjSize,
+                                           [[maybe_unused]] const std::string &heapType)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     std::string eventConfig;
     bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
     EcmaVM *vm = thread->GetEcmaVM();
-    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
-                                                    GetHeapObjectSize(), eventConfig);
+    if (!thread->IsThrowingOOMError()) {
+        vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
+            GetHeapObjectSize(), eventConfig, spaceType, lastAllocObjSize, heapType);
+    }
     if (!shouldDump) {
         LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1, "MESSAGE", "Dump not permitted.",
@@ -842,10 +899,11 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]JSThread *thread,
     dumpOption.captureNumericValue = false;
     dumpOption.isFullGC = false;
     dumpOption.isSimplify = true;
-    dumpOption.isSync = true;
+    dumpOption.isSync = false;
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
     dumpOption.isForSharedOOM = true;
+    dumpOption.isProcDump = Runtime::GetInstance()->IsEnableProcDumpInSharedOOM();
     if (source == SharedHeapOOMSource::SHARED_GC) {
         heapProfile->DumpHeapSnapshotForOOM(dumpOption, true);
         HeapProfilerInterface::DestroyInstance(heapProfile);
@@ -981,6 +1039,8 @@ void Heap::InitializeSpaces()
         oldSpaceCapacity = maxHeapSize - capacities;
         size_t minSlotSpaceCapacity = config_.GetMinSlotSpaceSize();
         slotSpace_ = new SlotSpace(this, minSlotSpaceCapacity, oldSpaceCapacity);
+        const void *allocatorsAddress = slotSpace_->GetAllocatorsAddress();
+        thread_->SetSlotSpaceAllocatorsAddress(allocatorsAddress);
 
         globalSpaceAllocLimit_ = maxHeapSize - minSemiSpaceCapacity;
         globalSpaceNativeLimit_ = INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT;
@@ -998,23 +1058,28 @@ void Heap::InitializeSpaces()
     maxEvacuateTaskCount_ = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
+    markTaskMonitor_ = std::make_shared<EpochGuardedTaskMonitor>(maxMarkTaskCount_);
 }
 
 void Heap::SelectFromSpace()
 {
-    size_t liveObjectSize = 0;
-    activeSemiSpace_->EnumerateRegions([&liveObjectSize, this](Region *current) {
-        liveObjectSize += current->IsFreshRegion() ? current->GetAllocatedBytes() : current->AliveObject();
-        current->SetRegionTypeFlag(RegionTypeFlag::FROM);
-    });
-    liveObjectSize = std::min(activeSemiSpace_->GetHeapObjectSize(), liveObjectSize);
-    oldSpace_->EnumerateRegions([&liveObjectSize](Region *current) {
-        liveObjectSize += current->AliveObject();
-        current->SetRegionTypeFlag(RegionTypeFlag::FROM);
-    });
-    SwapOldSpace();
-    SwapNewSpace();
-    oldSpace_->SetPreservedSize(liveObjectSize);
+    if constexpr (G_USE_CMS_GC) {
+        GetSlotSpace()->PrepareCompact();
+    } else {
+        size_t liveObjectSize = 0;
+        activeSemiSpace_->EnumerateRegions([&liveObjectSize, this](Region *current) {
+            liveObjectSize += current->IsFreshRegion() ? current->GetAllocatedBytes() : current->AliveObject();
+            current->SetRegionTypeFlag(RegionTypeFlag::FROM);
+        });
+        liveObjectSize = std::min(activeSemiSpace_->GetHeapObjectSize(), liveObjectSize);
+        oldSpace_->EnumerateRegions([&liveObjectSize](Region *current) {
+            liveObjectSize += current->AliveObject();
+            current->SetRegionTypeFlag(RegionTypeFlag::FROM);
+        });
+        SwapOldSpace();
+        SwapNewSpace();
+        oldSpace_->SetPreservedSize(liveObjectSize);
+    }
 }
 
 void Heap::ResetLargeCapacity(size_t heapSize)
@@ -1027,17 +1092,26 @@ void Heap::ResetLargeCapacity(size_t heapSize)
         nonMovableSpaceCapacity = ecmaVm_->GetJSOptions().MaxNonmovableSpaceCapacity();
     }
     size_t machineCodeSpaceCapacity = config_.GetDefaultMachineCodeSpaceSize();
-    size_t capacities = minSemiSpaceCapacity * 2 + nonMovableSpaceCapacity +
-        machineCodeSpaceCapacity + readOnlySpaceCapacity;
+    size_t capacities = nonMovableSpaceCapacity + machineCodeSpaceCapacity + readOnlySpaceCapacity;
+    // fixme: refactor?
+    if constexpr (!G_USE_CMS_GC) {
+        capacities += minSemiSpaceCapacity * 2; // 2 means double.
+    }
     if (heapSize < capacities || heapSize - capacities < MIN_OLD_SPACE_LIMIT) {
         LOG_ECMA_MEM(FATAL) << "Capacities is too big to reset oldspace: " << capacities;
     }
     size_t newOldCapacity = heapSize - capacities;
     LOG_ECMA(INFO) << "Main thread heap reset old capacity size: " << newOldCapacity;
-    oldSpace_->SetInitialCapacity(newOldCapacity);
-    oldSpace_->SetMaximumCapacity(newOldCapacity);
-    compressSpace_->SetInitialCapacity(newOldCapacity);
-    compressSpace_->SetMaximumCapacity(newOldCapacity);
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        slotSpace_->SetInitialCapacity(newOldCapacity);
+        slotSpace_->SetMaximumCapacity(newOldCapacity);
+    } else {
+        oldSpace_->SetInitialCapacity(newOldCapacity);
+        oldSpace_->SetMaximumCapacity(newOldCapacity);
+        compressSpace_->SetInitialCapacity(newOldCapacity);
+        compressSpace_->SetMaximumCapacity(newOldCapacity);
+    }
     hugeObjectSpace_->SetInitialCapacity(newOldCapacity);
     hugeObjectSpace_->SetMaximumCapacity(newOldCapacity);
 }
@@ -1233,13 +1307,17 @@ void Heap::Destroy()
         delete evacuator_;
         evacuator_ = nullptr;
     }
+    if (GetEcmaVM()->GetJSOptions().GetEnableJitFort() && jitFort_ != nullptr) {
+        delete jitFort_;
+        jitFort_ = nullptr;
+    }
 }
 
 void Heap::Prepare()
 {
     MEM_ALLOCATE_AND_GC_TRACE(ecmaVm_, HeapPrepare);
     WaitAndHandleCCFinished();
-    WaitRunningTaskFinished();
+    WaitAllMarkTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
 }
@@ -1250,12 +1328,12 @@ void Heap::PrepareForIteration() const
     sweeper_->EnsureAllTaskFinished();
 }
 
-void Heap::GetHeapPrepare()
+void Heap::GetHeapPrepare(JSThread *thread)
 {
     // Ensure local and shared heap prepared.
     Prepare();
     SharedHeap *sHeap = SharedHeap::GetInstance();
-    sHeap->Prepare(false);
+    sHeap->PrepareByJSThread(thread, false);
 }
 
 void Heap::Resume(TriggerGCType gcType)
@@ -1307,18 +1385,19 @@ void Heap::ResumeForAppSpawn()
     hugeMachineCodeSpace_->ReclaimHugeRegion();
     // fixme: reafactor?
     if constexpr (G_USE_CMS_GC) {
-        slotSpace_->ReclaimFromRegions();
+        slotSpace_->ReclaimFromRegions(false);
     } else {
         inactiveSemiSpace_->ReclaimRegions();
         oldSpace_->Reset();
     }
     auto cb = [] (Region *region) {
         region->ClearMarkGCBitset();
+        // fixme: refactor?
+        if constexpr (G_USE_CMS_GC) {
+            region->ResetAliveObject();
+        }
     };
-    nonMovableSpace_->EnumerateRegions(cb);
-    machineCodeSpace_->EnumerateRegions(cb);
-    hugeObjectSpace_->EnumerateRegions(cb);
-    hugeMachineCodeSpace_->EnumerateRegions(cb);
+    EnumerateNonNewSpaceRegions(cb);
 }
 
 void Heap::CompactHeapBeforeFork()
@@ -1331,7 +1410,7 @@ void Heap::DisableParallelGC()
     WaitAllTasksFinished();
     parallelGC_ = false;
     maxEvacuateTaskCount_ = 0;
-    maxMarkTaskCount_ = 0;
+    UpdateMaxMarkTaskCount(0);
     sweeper_->ConfigConcurrentSweep(false);
     concurrentMarker_->ConfigConcurrentMark(false);
     common::Taskpool::GetCurrentTaskpool()->Destroy(GetJSThread()->GetThreadId());
@@ -1350,8 +1429,8 @@ void Heap::EnableParallelGC()
         UpdateWorkManager(workManager_);
     }
     ASSERT(maxEvacuateTaskCount_ > 0);
-    maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
-                                         maxEvacuateTaskCount_ - 1);
+    UpdateMaxMarkTaskCount(std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
+                           maxEvacuateTaskCount_ - 1));
     bool concurrentMarkerEnabled = ecmaVm_->GetJSOptions().EnableConcurrentMark();
 #if ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     concurrentMarkerEnabled = false;
@@ -1564,9 +1643,11 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
         oldSpace_->ResetCommittedOverSizeLimit();
         if (oldSpace_->CommittedSizeExceed()) { // LCOV_EXCL_BR_LINE
             sweeper_->EnsureAllTaskFinished();
-            DumpHeapSnapshotBeforeOOM();
+            DumpHeapSnapshotBeforeOOM(false, "old space", 0, LOCAL_HEAP_STR);
             StatisticHeapDetail();
-            ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
+            ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(),
+                " OldSpace::Merge, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+                " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes");
         }
         oldSpace_->ResetMergeSize();
         shouldThrowOOMError_ = false;
@@ -1574,7 +1655,7 @@ void Heap::CollectGarbageImpl(TriggerGCType gcType, GCReason reason)
     // Allocate region failed during GC, MUST throw OOM here
     if (shouldForceThrowOOMError_) {
         sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM();
+        DumpHeapSnapshotBeforeOOM(false, "", 0, LOCAL_HEAP_STR);
         StatisticHeapDetail();
         ThrowOutOfMemoryError(thread_, DEFAULT_REGION_SIZE, " HeapRegionAllocator::AllocateAlignedRegion");
     }
@@ -1639,10 +1720,14 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         CheckOngoingConcurrentMarking();
         concurrentMarker_->Reset();
+        thread_->SwitchAllStub(true);
         markType_ = MarkType::MARK_YOUNG;
     }
     CollectGarbageImpl(gcType, reason);
     ProcessGCCallback();
+    if (gcType != TriggerGCType::YOUNG_GC) {
+        GetEcmaVM()->CheckHeapMemoryPressure(this);
+    }
 }
 
 void Heap::CollectGarbageFromCCMark(GCReason reason)
@@ -1752,9 +1837,12 @@ void Heap::CheckNonMovableSpaceOOM()
 {
     if (nonMovableSpace_->GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE) { // LCOV_EXCL_BR_LINE
         sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM();
+        DumpHeapSnapshotBeforeOOM(false, ToSpaceTypeName(nonMovableSpace_->GetSpaceType()),
+                                  nonMovableSpace_->GetHeapObjectSize(), LOCAL_HEAP_STR);
         StatisticHeapDetail();
-        ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(), "Heap::CheckNonMovableSpaceOOM", true);
+        ThrowOutOfMemoryError(thread_, nonMovableSpace_->GetHeapObjectSize(),
+            "Heap::CheckNonMovableSpaceOOM, local heap oom, used size: " + std::to_string(GetHeapObjectSize()) +
+            " bytes, committed size: " + std::to_string(GetCommittedSize()) + " bytes", true);
     }
 }
 
@@ -1902,13 +1990,18 @@ void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]]
 #endif
 }
 
-void Heap::DumpHeapSnapshotBeforeOOM()
+void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump, [[maybe_unused]] const std::string &spaceType,
+                                     [[maybe_unused]] size_t lastAllocObjSize,
+                                     [[maybe_unused]] const std::string &heapType)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     AppFreezeFilterCallback appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     std::string eventConfig;
     bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
-    GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig);
+    if (!thread_->IsThrowingOOMError()) {
+        GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig,
+                                                    spaceType, lastAllocObjSize, heapType);
+    }
     if (!shouldDump) {
         LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, no dump quota.";
         SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1, "MESSAGE", "Dump not permitted.",
@@ -1935,9 +2028,10 @@ void Heap::DumpHeapSnapshotBeforeOOM()
     dumpOption.captureNumericValue = false;
     dumpOption.isFullGC = false;
     dumpOption.isSimplify = true;
-    dumpOption.isSync = true;
+    dumpOption.isSync = false;
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
+    dumpOption.isProcDump = isProcDump;
     heapProfile->DumpHeapSnapshotForOOM(dumpOption);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
@@ -2144,7 +2238,7 @@ bool Heap::CheckOngoingConcurrentMarkingImpl(ThreadType threadType, int threadIn
             WaitConcurrentMarkingFinished();
         }
     }
-    WaitRunningTaskFinished();
+    WaitRunningMarkTaskFinished();
     memController_->RecordAfterConcurrentMark(markType_, concurrentMarker_);
     return true;
 }
@@ -2450,7 +2544,7 @@ void Heap::TriggerConcurrentMarking(MarkReason markReason)
 void Heap::WaitAllTasksFinished()
 {
     WaitAndHandleCCFinished();
-    WaitRunningTaskFinished();
+    WaitAllMarkTaskFinished();
     sweeper_->EnsureAllTaskFinished();
     WaitClearTaskFinished();
     if (concurrentMarker_->IsEnabled() && thread_->IsMarking() && concurrentMarker_->IsTriggeredConcurrentMark()) {
@@ -2478,11 +2572,22 @@ void Heap::WaitAndHandleCCFinished() const
     }
 }
 
+void Heap::TryPostParallelGCTask(ParallelGCTaskPhase gcTask)
+{
+    auto [succ, currentEpoch] = markTaskMonitor_->TryPostTask();
+    if (succ) {
+        common::Taskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask,
+            markTaskMonitor_, currentEpoch));
+    }
+}
+
 void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 {
-    IncreaseTaskCount();
+    uint32_t currentEpoch = markTaskMonitor_->ForcePostTask();
     common::Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask));
+        std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask,
+        markTaskMonitor_, currentEpoch));
 }
 
 void Heap::ChangeGCParams(bool inBackground)
@@ -2512,8 +2617,8 @@ void Heap::ChangeGCParams(bool inBackground)
         }
         concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
-        maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
-            common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1);
+        UpdateMaxMarkTaskCount(std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
+            common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1));
         maxEvacuateTaskCount_ = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
     }
@@ -2585,7 +2690,7 @@ void Heap::NotifyFinishColdStartSoon()
     // post 2s task
     startupDurationInMs_ = DEFAULT_STARTUP_DURATION_MS;
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-    startupDurationInMs_ = OHOS::system::GetUintParameter<uint64_t>("persist.ark.startupDuration",
+    startupDurationInMs_ = OHOS::system::GetUintParameter<uint64_t>("const.ark.startup_duration",
                                                                     DEFAULT_STARTUP_DURATION_MS);
     startupDurationInMs_ = std::max(startupDurationInMs_, static_cast<uint64_t>(MIN_CONFIGURABLE_STARTUP_DURATION_MS));
     startupDurationInMs_ = std::min(startupDurationInMs_, static_cast<uint64_t>(MAX_CONFIGURABLE_STARTUP_DURATION_MS));
@@ -2784,8 +2889,14 @@ bool Heap::NeedStopCollection()
     return false;
 }
 
-bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
+bool Heap::ParallelGCTask::Scheduable()
 {
+    return monitor_->TryRunTask(epoch_);
+}
+
+bool Heap::ParallelGCTask::RunInternal(uint32_t threadIndex)
+{
+    ASSERT(!monitor_->IsExpired(epoch_));
     // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
     ASSERT(heap_->GetWorkManager()->HasInitialized());
     while (!heap_->GetWorkManager()->HasInitialized());
@@ -2806,7 +2917,7 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
             LOG_GC(FATAL) << "this branch is unreachable, type: " << static_cast<int>(taskPhase_);
             UNREACHABLE();
     }
-    heap_->ReduceTaskCount();
+    monitor_->NotifyFinish();
     return true;
 }
 
@@ -3148,7 +3259,7 @@ void Heap::ProcessGCListeners()
 void SharedHeap::ProcessAllGCListeners()
 {
     Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ProcessGCListeners();
     });
 }
@@ -3192,7 +3303,8 @@ void Heap::ThresholdReachedDump()
             std::string eventConfig;
             bool shouldDump = (appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig));
             GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
-                                                        GetHeapLimitSize(), GetLiveObjectSize(), eventConfig);
+                                                        GetHeapLimitSize(), GetLiveObjectSize(), eventConfig,
+                                                        "", 0, LOCAL_HEAP_STR);
             if (shouldDump) {
                 LOG_ECMA(INFO) << "ThresholdReachedDump and avoid freeze success.";
             } else {
@@ -3208,7 +3320,6 @@ void Heap::ThresholdReachedDump()
             dumpOption.isSimplify = true;
             dumpOption.isSync = false;
             dumpOption.isBeforeFill = false;
-            dumpOption.isDumpOOM = true; // aim's to do binary dump
             heapProfile->DumpHeapSnapshotForOOM(dumpOption);
             hasOOMDump_ = false;
             HeapProfilerInterface::Destroy(ecmaVm_);
@@ -3221,33 +3332,14 @@ void Heap::RemoveGCListener(GCListenerId listenerId)
     gcListeners_.erase(listenerId);
 }
 
-void BaseHeap::IncreaseTaskCount()
+void BaseHeap::WaitAllMarkTaskFinished()
 {
-    LockHolder holder(waitTaskFinishedMutex_);
-    runningTaskCount_++;
+    markTaskMonitor_->WaitAllTaskFinished();
 }
 
-void BaseHeap::WaitRunningTaskFinished()
+void BaseHeap::WaitRunningMarkTaskFinished()
 {
-    LockHolder holder(waitTaskFinishedMutex_);
-    while (runningTaskCount_ > 0) {
-        waitTaskFinishedCV_.Wait(&waitTaskFinishedMutex_);
-    }
-}
-
-bool BaseHeap::CheckCanDistributeTask()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    return runningTaskCount_ < maxMarkTaskCount_;
-}
-
-void BaseHeap::ReduceTaskCount()
-{
-    LockHolder holder(waitTaskFinishedMutex_);
-    runningTaskCount_--;
-    if (runningTaskCount_ == 0) {
-        waitTaskFinishedCV_.SignalAll();
-    }
+    markTaskMonitor_->WaitRunningTaskFinished();
 }
 
 void BaseHeap::WaitClearTaskFinished()

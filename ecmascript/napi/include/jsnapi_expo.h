@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -46,6 +46,16 @@ class EscapeLocalScope;
 class PromiseRejectInfo;
 template<typename T>
 class CopyableGlobal;
+
+struct SerializeOptions {
+    bool defaultTransfer;
+    bool defaultCloneShared;
+    bool needSerializeStack;
+
+    SerializeOptions(bool transfer = false, bool cloneShared = true, bool serializeStack = false)
+        : defaultTransfer(transfer), defaultCloneShared(cloneShared), needSerializeStack(serializeStack) {}
+};
+
 template<typename T>
 class Global;
 template<typename T>
@@ -80,6 +90,12 @@ class JSRuntimeOptions;
 class EcmaContext;
 class JSThread;
 struct EcmaRuntimeCallInfo;
+struct HeapMemoryInfo {
+    uint32_t threadId;
+    std::string threadName;
+    std::string heapType;  // "local" or "shared"
+    uint32_t heapObjectSize;  // Heap object size in KB (ceiled)
+};
 namespace base {
 template<size_t ElementAlign, typename... Ts>
 struct AlignedStruct;
@@ -96,6 +112,12 @@ enum class QueueType : uint8_t {
 enum class ForHybridApp {
     Normal,
     Hybrid
+};
+
+enum class SwitchContextResult {
+    FAILED = 0,
+    EMPTY = 1,
+    SUCCESS = 2
 };
 
 struct HmsMap {
@@ -116,7 +138,7 @@ using NativePointerCallbackData = std::pair<NativePointerCallback, std::tuple<vo
 using TriggerGCData = std::pair<void*, uint8_t>;
 using TriggerGCTaskCallback = std::function<void(TriggerGCData& data)>;
 using StartIdleMonitorCallback = std::function<void()>;
-using NotifyNextCompressGCCallback = std::function<void(bool isNeedNextGC, bool isNeedFreeze)>;
+using NotifyDeferFreezeCallback = std::function<void(bool needFreeze)>;
 using EcmaVM = ecmascript::EcmaVM;
 using JSThread = ecmascript::JSThread;
 using JSTaggedType = uint64_t;
@@ -717,6 +739,9 @@ public:
     bool IsSharedMapIterator(const EcmaVM *vm);
     bool IsHeapObject();
     void *GetNativePointerValue(const EcmaVM *vm, bool &isNativePointer);
+    void *GetNativePointerWrapperDataValue(const EcmaVM* vm,
+                                           bool &isNativePointer,
+                                           bool &flag);
     bool IsDetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
     void DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
     void GetDataViewInfo(const EcmaVM *vm,
@@ -729,6 +754,7 @@ public:
         bool *isArrayOrSharedArray, uint32_t *arrayLength);
     bool IsJsGlobalEnv(const EcmaVM *vm);
     bool IsSendable(const EcmaVM *vm);
+    bool IsWrappedNapiObject(const EcmaVM *vm);
 
 private:
     JSTaggedType value_;
@@ -738,6 +764,9 @@ private:
     template<typename T>
     friend class Local;
     void *GetNativePointerValueImpl(const EcmaVM *vm, bool &isNativePointer);
+    void *GetNativePointerWrapperDataValueImpl(const EcmaVM* vm,
+                                               bool &isNativePointer,
+                                               bool &flag);
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
@@ -870,6 +899,9 @@ public:
                                                void *data = nullptr,
                                                size_t nativeBindingsize = 0);
     void *Value();
+    static Local<NativePointerRef> NewWrapperData(const EcmaVM *vm, void *nativePointer,
+                                                  NativePointerCallback callBack, void *data,
+                                                  size_t nativeBindingsize);
 };
 
 class PUBLIC_API ObjectRef : public JSValueRef {
@@ -890,6 +922,7 @@ public:
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static Local<ObjectRef> NewWrappedNapiObject(const EcmaVM *vm);
     static uintptr_t NewObject(const EcmaVM *vm);
     static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
@@ -1834,7 +1867,9 @@ public:
                                                              const std::string &module_path);
     static Local<ObjectRef> GetModuleNameSpaceWithModuleInfoForHybridApp(EcmaVM *vm, const std::string &file,
                                                              const std::string &module_path);
-
+    static bool IsCrossBundleHsp(const EcmaVM *vm, const std::string &ohmurl);
+    static Local<ObjectRef> GetModuleNameSpaceWithOhmurlForHybridApp(EcmaVM *vm, const std::string &ohmurl,
+                                                                     const std::string &fileName = "");
     /*
      * Execute panda file from secure mem. secure memory lifecycle managed externally.
      * The data parameter needs to be created externally by an external caller and managed externally
@@ -1856,8 +1891,7 @@ public:
     static bool ExecuteSecureWithOhmUrl(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &srcFilename,
                                         const std::string &ohmUrl);
 
-    static bool IsExecuteModuleInAbcFileSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &srcFilename,
-                                               const std::string &ohmUrl);
+    static bool FindModuleInAbcFile(EcmaVM *vm, const std::string &srcFilename, const std::string &ohmUrl);
 
     // ObjectRef Operation
     static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm);
@@ -1874,7 +1908,7 @@ public:
     static size_t GetEcmaVMExpectedMemoryReclamationSize(const EcmaVM *vm);
     static void SetStartIdleMonitorCallback(const StartIdleMonitorCallback& callback);
     static StartIdleMonitorCallback GetStartIdleMonitorCallback();
-    static void SetNotifyNextCompressGCCallback(const NotifyNextCompressGCCallback& callback);
+    static void SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback);
     // Exception
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
     static void PrintExceptionInfo(const EcmaVM *vm);
@@ -1917,9 +1951,14 @@ public:
                                 bool defaultTransfer = false,
                                 bool defaultCloneShared = true,
                                 bool needSerializeStack = false);
+    static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+                                Local<JSValueRef> cloneList, const SerializeOptions& options);
     static void* SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
                                          Local<JSValueRef> cloneList, std::string &error, bool defaultTransfer = false,
-                                         bool defaultCloneShared = true);
+                                         bool defaultCloneShared = true, bool needSerializeStack = false);
+    static void* SerializeValueWithError(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
+                                         Local<JSValueRef> cloneList, std::string &error,
+                                         const SerializeOptions& options);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
     // InterOp Serialize & Deserialize.
     static void* InterOpSerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
@@ -1945,8 +1984,11 @@ public:
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);
+    static void UpdateArkTSMode(EcmaVM *vm, const std::string &arkTSMode);
     static void AddWorker(EcmaVM *hostVm, EcmaVM *workerVm);
     static bool DeleteWorker(EcmaVM *hostVm, EcmaVM *workerVm);
+    // Must be called from non-JS thread or JS thread in NON-RUNNING state
+    static std::vector<ecmascript::HeapMemoryInfo> GetAllVMHeapMemoryInfo();
     static void GetStackBeforeCallNapiSuccess(EcmaVM *vm, bool &getStackBeforeCallNapiSuccess);
     static void GetStackAfterCallNapi(EcmaVM *vm);
     static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
@@ -1978,6 +2020,10 @@ public:
         std::vector<std::vector<std::string>>> &list);
     static void UpdatePkgContextInfoList(EcmaVM *vm,
         const std::map<std::string, std::vector<std::vector<std::string>>> &list);
+    static void SetPkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
+        std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap);
+    static void UpdatePkgContextInfoList(EcmaVM *vm, const std::unordered_map<std::string,
+        std::pair<std::unique_ptr<uint8_t[]>, size_t>> &pkgInfoMap);
     static void SetExecuteBufferMode(const EcmaVM *vm);
     // Stop preloading so task callback.
     static void SetStopPreLoadSoCallback(EcmaVM *vm, const StopPreLoadSoCallback &callback);
@@ -1996,10 +2042,12 @@ public:
     static void SetModuleName(EcmaVM *vm, const std::string &moduleName);
     static std::string GetModuleName(EcmaVM *vm);
     static void SetLargeHeap(bool isLargeHeap);
+    static void SetThreadName(EcmaVM *vm, const std::string &name);
     static std::pair<std::string, std::string> GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName = false);
     static std::string NormalizePath(const std::string &string);
     static void AllowCrossThreadExecution(EcmaVM *vm);
     static bool CheckAndSetAllowCrossThreadExecution(EcmaVM *vm);
+    static void DisallowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static bool IsProfiling(EcmaVM *vm);
     static void SetProfilerState(const EcmaVM *vm, bool value);
@@ -2021,6 +2069,15 @@ public:
     static Local<JSValueRef> NapiGetNamedProperty(const EcmaVM *vm, uintptr_t nativeObj, const char* utf8Key);
     static Local<JSValueRef> CreateLocal(const EcmaVM *vm, JSValueRef src);
 
+    // Napi Callsite IC for accelerated property access
+    static uintptr_t NapiCreateCallsiteInfo(const EcmaVM *vm);
+    static void NapiDeleteCallsiteInfo(const EcmaVM *vm, uintptr_t info);
+    static Local<JSValueRef> NapiGetPropertyWithCallsiteInfo(
+        const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key, uintptr_t info, bool* hit = nullptr);
+    static bool NapiSetPropertyWithCallsiteInfo(
+        const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key, uintptr_t value, uintptr_t info,
+        bool* hit = nullptr);
+
     // Napi helper function
     static bool KeyIsNumber(const char* utf8);
     static int GetStartRealTime(const EcmaVM *vm);
@@ -2039,7 +2096,7 @@ public:
 
     static Local<JSValueRef> GetCurrentContext(const EcmaVM *vm);
 
-    static void SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
+    static int SwitchContext(const EcmaVM *vm, const Local<JSValueRef> &context);
     // 1.2runtime interface info
     static Local<JSValueRef> GetImplements(const EcmaVM *vm, Local<JSValueRef> instance);
 

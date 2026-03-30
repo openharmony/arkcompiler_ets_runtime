@@ -79,7 +79,9 @@ public:
     GateRef LdObjByIndex(GateRef glue, GateRef receiver, GateRef index);
 
 private:
+#if !ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
     GateRef ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info);
+#endif
     GateRef jsFunc_ { Circuit::NullGate() };
 };
 }  // namespace panda::ecmascript::kungfu

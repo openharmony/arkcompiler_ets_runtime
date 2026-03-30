@@ -536,7 +536,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             // no gc for this allocate
             res = common::HeapAllocator::AllocateLargeRegion(objSize);
             if (res == 0) {
-                DeserializeFatalOutOfMemory(objSize, false, false);
+                DeserializeFatalOutOfMemory("", objSize, false, false);
             }
             break;
         }
@@ -576,7 +576,8 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             // no gc for this allocate
             res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_, AllocateEventType::DESERIALIZE);
             if (res == 0) {
-                DeserializeFatalOutOfMemory(objSize, false, false);
+                DeserializeFatalOutOfMemory(ToSpaceTypeName(heap_->GetHugeObjectSpace()->GetSpaceType()),
+                                            objSize, false, false);
             }
             break;
         }
@@ -602,7 +603,8 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             // no gc for this allocate
             res = sheap_->GetHugeObjectSpace()->Allocate(thread_, objSize, AllocateEventType::DESERIALIZE);
             if (res == 0) {
-                DeserializeFatalOutOfMemory(objSize, false, true);
+                DeserializeFatalOutOfMemory(
+                    ToSpaceTypeName(sheap_->GetHugeObjectSpace()->GetSpaceType()), objSize, false, true);
             }
             break;
         }
@@ -729,14 +731,15 @@ void BaseDeserializer::AllocateToDifferentSpaces()
     if (g_isEnableCMCGC) {
         AllocateToDifferentCMCSpaces();
     } else {
+        // Check whether it's needed to trigger old gc
+        size_t oldOrHugeSize = data_->GetOldSpaceSize() + data_->GetHugeSpaceSize();
+        if (heap_->OldSpaceExceedCapacity(oldOrHugeSize)) {
+            heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+        }
         if (!AllocateToDifferentLocalSpaces(true)) {
             // If allocate local obj fail, trigger old gc and retry again
             heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
             AllocateToDifferentLocalSpaces(false);
-        }
-        // Check huge obj size and decide whether it's needed to trigger old gc
-        if (heap_->OldSpaceExceedCapacity(data_->GetHugeSpaceSize())) {
-            heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
         }
         AllocateToDifferentSharedSpaces();
     }
@@ -883,7 +886,7 @@ bool BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
         space->ResetTopPointer(space->GetCurrentRegion()->GetBegin() + regionAliveObjSize);
         if (!space->Expand()) {
             if (!isFirstAllocate) {
-                DeserializeFatalOutOfMemory(spaceObjSize);
+                DeserializeFatalOutOfMemory(ToSpaceTypeName(space->GetSpaceType()), spaceObjSize);
             }
             regionVector_.clear();
             return false;
@@ -915,7 +918,7 @@ bool BaseDeserializer::AllocateMultiNonmovableRegion(SparseSpace *space, size_t 
         uintptr_t obj = space->Allocate(size, false);
         if (obj == 0) {
             if (!isFirstAllocate) {
-                DeserializeFatalOutOfMemory(spaceObjSize);
+                DeserializeFatalOutOfMemory(ToSpaceTypeName(space->GetSpaceType()), spaceObjSize);
             }
             regionVector_.clear();
             return false;
@@ -952,7 +955,7 @@ void BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_
     size_t index = 0;
     while (regionNum > 0) {
         if (space->CommittedSizeExceed()) {
-            DeserializeFatalOutOfMemory(spaceObjSize, true, true);
+            DeserializeFatalOutOfMemory(ToSpaceTypeName(space->GetSpaceType()), spaceObjSize, true, true);
         }
         Region *region = space->AllocateDeserializeRegion(thread_);
         FreeObject::FillFreeObject(sheap_, region->GetBegin(), region->GetSize());
@@ -977,7 +980,7 @@ bool BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize, bool isFirstAlloc
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
             if (!isFirstAllocate) {
-                DeserializeFatalOutOfMemory(oldSpaceSize);
+                DeserializeFatalOutOfMemory(ToSpaceTypeName(space->GetSpaceType()), oldSpaceSize);
             }
             return false;
         }
@@ -1011,7 +1014,7 @@ bool BaseDeserializer::AllocateToMachineCodeSpace(size_t machineCodeSpaceSize, b
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
             if (!isFirstAllocate) {
-                DeserializeFatalOutOfMemory(machineCodeSpaceSize);
+                DeserializeFatalOutOfMemory(ToSpaceTypeName(space->GetSpaceType()), machineCodeSpaceSize);
             }
             return false;
         }

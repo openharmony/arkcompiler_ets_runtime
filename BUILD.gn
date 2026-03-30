@@ -35,6 +35,12 @@ group("ark_js_packages") {
     "ecmascript/js_vm:ark_js_vm",
     "ecmascript/quick_fix:quick_fix",
   ]
+
+  if (ets_runtime_feature_enable_dfx) {
+    deps += [
+      ":libark_jsruntime_dfx"
+    ]
+  }
   if (is_clang && clang_version != "9.0.3" && current_cpu == "arm64" &&
       is_ohos) {
     deps += [
@@ -131,12 +137,16 @@ group("ark_js_unittest_suit") {
     "ecmascript/napi/test:unittest",
     "ecmascript/napi/test:workload_test",
     "ecmascript/platform/unix/ohos/tests:unittest",
+    "ecmascript/platform/unix/tests:unittest",
     "ecmascript/regexp/tests:unittest",
     "ecmascript/require/tests:unittest",
     "ecmascript/serializer/tests:unittest",
     "ecmascript/snapshot/tests:unittest",
     "ecmascript/string/tests:unittest",
     "ecmascript/tests:unittest",
+    "ecmascript/mem_test:unittest",
+    "ecmascript/serializer_test:unittest",
+    "ecmascript/snapshot_test:unittest",
     "common_components/base/tests:unittest",
     "common_components/common_runtime/tests:unittest",
     "common_components/common/tests:unittest",
@@ -207,12 +217,16 @@ group("ark_unittest") {
     "ecmascript/napi/test:host_unittest",
     "ecmascript/pgo_profiler/tests:host_unittest",
     "ecmascript/platform/unix/ohos/tests:host_unittest",
+    "ecmascript/platform/unix/tests:host_unittest",
     "ecmascript/regexp/tests:host_unittest",
     "ecmascript/require/tests:host_unittest",
     "ecmascript/serializer/tests:host_unittest",
     "ecmascript/snapshot/tests:host_unittest",
     "ecmascript/string/tests:host_unittest",
     "ecmascript/tests:host_unittest",
+    "ecmascript/mem_test:host_unittest",
+    "ecmascript/serializer_test:host_unittest",
+    "ecmascript/snapshot_test:host_unittest",
     "common_components/base/tests:host_unittest",
     "common_components/common_runtime/tests:host_unittest",
     "common_components/common/tests:host_unittest",
@@ -422,7 +436,18 @@ config("hiviewdfx_config") {
   if (enable_async_stack) {
     defines += [ "ENABLE_ASYNC_STACK" ]
   }
+
+  if (enable_static_backtrace) {
+    defines += [ "ENABLE_STATIC_BACKTRACE" ]
+  }
+
   include_dirs = [ "$hilog_root/include" ]
+}
+
+# This config is used to compile libark_jsruntime_dfx.so.
+# NOTE: The macro in this config must not be used in header files.
+config("dfx_extra_config") {
+  defines = [ "ENABLE_HITRACE_LOCAL_HANDLE_DETECT" ]
 }
 
 config("ark_jsruntime_common_config") {
@@ -465,7 +490,11 @@ config("ark_jsruntime_common_config") {
 
   if (enable_latest_optimization) {
     defines += [ "LATEST_OPTIMIZATION_MACRO" ]
-  }  
+  }
+
+  if (enable_v70_optimization) {
+    defines += [ "V70_OPTIMIZATION_MACRO" ]
+  }
 
   if (ets_runtime_feature_enable_list) {
     defines += [ "ENABLE_API_FUNCTION_OPTIMIZATION" ]
@@ -517,6 +546,7 @@ config("ark_jsruntime_common_config") {
         "-Wno-profile-instr-unprofiled",
         "-mllvm",
         "-enable-partial-inlining",
+        "-O3",
       ]
     }
   }
@@ -871,6 +901,7 @@ ecma_source = [
   "ecmascript/builtins/shared_builtins.cpp",
   "ecmascript/byte_array.cpp",
   "ecmascript/base/config.cpp",
+  "ecmascript/ohos/adapter/modulemanager/module_pkg_parser.cpp",
   "ecmascript/ohos/code_decrypt.cpp",
   "ecmascript/ohos/enable_aot_list_helper.cpp",
   "ecmascript/ohos/js_pandafile_snapshot_interfaces.cpp",
@@ -945,8 +976,8 @@ ecma_source = [
   "ecmascript/global_env.cpp",
   "ecmascript/global_env_constants.cpp",
   "ecmascript/ic/ic_handler.cpp",
+  "ecmascript/ic/ic_info.cpp",
   "ecmascript/ic/ic_runtime.cpp",
-  "ecmascript/ic/profile_type_info.cpp",
   "ecmascript/ic/mega_ic_cache.cpp",
   "ecmascript/ic/property_box.cpp",
   "ecmascript/ic/proto_change_details.cpp",
@@ -966,6 +997,7 @@ ecma_source = [
   "ecmascript/jobs/micro_job_queue.cpp",
   "ecmascript/jspandafile/js_pandafile.cpp",
   "ecmascript/jspandafile/js_pandafile_manager.cpp",
+  "ecmascript/jspandafile/js_pandafile_record_info_snapshot.cpp",
   "ecmascript/jspandafile/js_pandafile_snapshot.cpp",
   "ecmascript/jspandafile/class_info_extractor.cpp",
   "ecmascript/jspandafile/debug_info_extractor.cpp",
@@ -1368,6 +1400,7 @@ if (is_mingw) {
     "ecmascript/platform/windows/log.cpp",
     "ecmascript/platform/windows/aot_crash_info.cpp",
     "ecmascript/platform/windows/dfx_hisys_event.cpp",
+    "ecmascript/platform/windows/process.cpp",
     "ecmascript/platform/windows/pandafile.cpp",
     "ecmascript/platform/windows/module.cpp",
     "ecmascript/platform/windows/asm_stack.cpp",
@@ -1381,6 +1414,7 @@ if (is_mingw) {
     "ecmascript/platform/unix/map.cpp",
     "ecmascript/platform/unix/time.cpp",
     "ecmascript/platform/unix/aot_crash_info.cpp",
+    "ecmascript/platform/unix/time_common.cpp",
   ]
   if (is_mac) {
     ecma_platform_source += [
@@ -1392,6 +1426,7 @@ if (is_mingw) {
       "ecmascript/platform/unix/mac/async_detect.cpp",
       "ecmascript/platform/unix/mac/log.cpp",
       "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
+      "ecmascript/platform/unix/mac/process.cpp",
       "ecmascript/platform/unix/mac/pandafile.cpp",
       "ecmascript/platform/unix/mac/module.cpp",
       "ecmascript/platform/unix/mac/asm_stack.cpp",
@@ -1408,6 +1443,7 @@ if (is_mingw) {
       "ecmascript/platform/common/dfx_crash_obj.cpp",
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/mac/dfx_hisys_event.cpp",
+      "ecmascript/platform/unix/mac/process.cpp",
       "ecmascript/platform/common/pandafile.cpp",
       "ecmascript/platform/common/module.cpp",
       "ecmascript/platform/common/ecma_context.cpp",
@@ -1424,6 +1460,7 @@ if (is_mingw) {
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/ohos/memory.cpp",
       "ecmascript/platform/unix/ohos/dfx_hisys_event.cpp",
+      "ecmascript/platform/unix/ohos/process.cpp",
       "ecmascript/platform/common/module.cpp",
       "ecmascript/platform/common/asm_stack.cpp",
     ]
@@ -1465,6 +1502,7 @@ if (is_mingw) {
       "ecmascript/platform/common/log.cpp",
       "ecmascript/platform/unix/linux/memory.cpp",
       "ecmascript/platform/unix/linux/dfx_hisys_event.cpp",
+      "ecmascript/platform/unix/linux/process.cpp",
       "ecmascript/platform/unix/linux/pandafile.cpp",
       "ecmascript/platform/common/module.cpp",
       "ecmascript/platform/common/ecma_context.cpp",
@@ -1531,26 +1569,28 @@ ohos_source_set("libcommon_components_set") {
   subsystem_name = "arkcompiler"
 }
 
-libark_jsruntime_common_set("libark_jsruntime_set") {
+# =================================================================
+# Create runtime libraries using unified template approach
+# =================================================================
+# Both standard and dfx versions are created through the same template,
+# ensuring consistency and minimizing code duplication.
+#
+# The templates automatically create the necessary source sets:
+#   - libark_jsruntime[_dfx]_set
+#   - libark_jsruntime[_dfx]_arm_set
+#   - libark_js_intl[_dfx]_set
+#   - libark_js_intl[_dfx]_arm_set
+#
+# Parameters:
+#   is_dfx: Set to true to enable dfx_extra_config
+# =================================================================
+
+# Static libraries
+libark_jsruntime_static_template("libark_jsruntime_static") {
 }
 
-libark_jsruntime_common_set("libark_jsruntime_arm_set") {
-  if (enable_sanitize) {
-    sanitize = {
-      ubsan = true
-    }
-  }
-}
-
-libark_jsruntime_intl_common_set("libark_js_intl_set") {
-}
-
-libark_jsruntime_intl_common_set("libark_js_intl_arm_set") {
-  if (enable_sanitize) {
-    sanitize = {
-      ubsan = true
-    }
-  }
+libark_jsruntime_static_template("libark_jsruntime_dfx_static") {
+  is_dfx = true
 }
 
 config("ark_jsruntime_test_nolto") {
@@ -1585,7 +1625,13 @@ ohos_source_set("libark_jsruntime_test_set") {
   external_deps = [
     "libuv:uv",
     "zlib:libz",
+    "json:nlohmann_json_static"
   ]
+
+  if (enable_static_backtrace) {
+    external_deps += [ "runtime_core:arkbacktrace" ]
+  }
+
   if (enable_hilog) {
     external_deps += [ "hilog:libhilog" ]
   }
@@ -1659,62 +1705,6 @@ ohos_source_set("libark_jsruntime_test_set") {
   subsystem_name = "arkcompiler"
 }
 
-ohos_source_set("libark_jsruntime_static") {
-  stack_protector_ret = false
-  if (enable_sanitize) {
-    sanitize = {
-      ubsan = true
-    }
-  }
-
-  if (is_ohos && is_standard_system) {
-    deps = [
-      ":libark_js_intl_arm_set",
-      ":libark_jsruntime_arm_set",
-    ]
-  } else {
-    # in this case libark_jsruntime_arm_set and libark_jsruntime_set are identical
-    deps = [
-      ":libark_js_intl_set",
-      ":libark_jsruntime_set",
-    ]
-  }
-
-  deps += [ ":libcommon_components_set" ]
-
-  external_deps = []
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:arkfile_header_deps" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
-    all_dependent_configs = [ ":ark_jsruntime_public_config" ]
-  }
-
-  if (ark_js_hybrid) {
-    if (is_arkui_x) {
-      deps += [ "$arkplatform_root:arkplatform_static" ]
-    } else if (ark_standalone_build) {
-      external_deps += [ "runtime_core:libarkplatform" ]
-    } else {
-      public_external_deps = [ "runtime_core:libarkplatform" ]
-    }
-  }
-
-  public_configs = [ "$js_root:ark_jsruntime_public_config" ]
-
-  if (!is_ohos) {
-    if ((current_cpu == "amd64" || current_cpu == "x64" ||
-         current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-        !is_mac && target_os != "ios") {
-      deps += [ "ecmascript/compiler:libark_stub_set" ]
-    } else {
-      deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
-    }
-  }
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
-}
-
 config("arkjs_runtime_lto_link_config") {
   ldflags = []
   if (!ark_standalone_build && is_ohos && enhanced_opt && is_clang &&
@@ -1727,6 +1717,14 @@ config("arkjs_runtime_lto_link_config") {
         "-Wl,--aarch64-inline-plt",
         "-Wl,-mllvm,-enable-partial-inlining",
       ]
+      if (ets_runtime_feature_enable_inst_prefetch && target_cpu == "arm64") {
+        ldflags += [
+          "-Wl,-mllvm,--aarch64-enable-inst-prefetch",
+          "-Wl,-mllvm,--mir-cachemiss-profile-l2i=" + rebase_path(
+                  "${ets_runtime_feature_pgo_path}/afdo/libark_jsruntime.so-l2i.afdo",
+                  root_build_dir),
+        ]
+      }
       if (ets_runtime_feature_enable_codemerge) {
         ldflags += [
           "-Wl,-plugin-opt=-split-machine-functions",
@@ -1747,93 +1745,77 @@ config("arkjs_runtime_lto_link_config") {
   }
 }
 
-ohos_shared_library("libark_jsruntime") {
-  stack_protector_ret = false
+libark_jsruntime_common_set("libark_jsruntime_set") {
+}
+
+libark_jsruntime_common_set("libark_jsruntime_arm_set") {
+   if (enable_sanitize) {
+     sanitize = {
+       ubsan = true
+     }
+   }
+}
+
+libark_jsruntime_common_set("libark_jsruntime_dfx_set") {
+  is_dfx = true
+}
+
+libark_jsruntime_common_set("libark_jsruntime_dfx_arm_set") {
+  is_dfx = true
   if (enable_sanitize) {
     sanitize = {
       ubsan = true
     }
   }
+}
 
-  deps = [ ":libark_jsruntime_static" ]
+libark_jsruntime_intl_common_set("libark_js_intl_set") {
+}
 
-  external_deps = []
-  if (is_arkui_x && target_os == "ios") {
-    deps += [ "$ark_third_party_root/bounds_checking_function:libsec_static" ]
-  } else {
-    external_deps += [ "bounds_checking_function:libsec_shared" ]
+libark_jsruntime_intl_common_set("libark_js_intl_arm_set") {
+  if (enable_sanitize) {
+    sanitize = {
+      ubsan = true
+    }
   }
+}
 
-  if (!is_arkui_x) {
-    external_deps += [ "runtime_core:libarkfile_runtime_static" ]
-  } else {
-    deps += [ "$ark_root/libpandafile:libarkfile_runtime_static" ]
+libark_jsruntime_intl_common_set("libark_js_intl_dfx_set") {
+  is_dfx = true
+}
+
+libark_jsruntime_intl_common_set("libark_js_intl_dfx_arm_set") {
+  is_dfx = true
+  if (enable_sanitize) {
+    sanitize = {
+      ubsan = true
+    }
   }
+}
 
-  all_dependent_configs = [ ":ark_jsruntime_public_config" ]
-  public_configs = [ ":ark_jsruntime_public_config" ]
+# =================================================================
+# Summary of created targets:
+# =================================================================
+# Source sets (auto-created by templates):
+#   libark_jsruntime_set, libark_jsruntime_arm_set
+#   libark_js_intl_set, libark_js_intl_arm_set
+#   libark_jsruntime_dfx_set, libark_jsruntime_dfx_arm_set
+#   libark_js_intl_dfx_set, libark_js_intl_dfx_arm_set
+#
+# Static libraries:
+#   libark_jsruntime_static → links standard source sets
+#   libark_jsruntime_dfx_static → links dfx source sets
+#
+# Shared libraries (.so files):
+#   libark_jsruntime.so → standard version
+#   libark_jsruntime_dfx.so → dfx version with dfx_extra_config
+# =================================================================
+# Shared libraries (final output .so files)
+libark_jsruntime_shared_library_template("libark_jsruntime") {
+}
 
-  if (is_ohos && is_standard_system && !is_debug) {
-    version_script = "libark_jsruntime.map"
-  }
-
-  # hiviewdfx libraries
-  external_deps += hiviewdfx_ext_deps
-  deps += hiviewdfx_deps
-
-  if (!enable_ark_intl) {
-    external_deps += [ "i18n:intl_util" ]
-  }
-
-  install_enable = true
-
-  if (!is_mingw && !is_mac) {
-    output_extension = "so"
-  }
-  if (!is_standard_system) {
-    relative_install_dir = "ark"
-  }
-
-  if (target_os == "android" && !ark_standalone_build) {
-    libs = [ "log" ]
-    version_script = "libark_jsruntime.map"
-  }
-
-  if (is_ohos && is_clang && target_cpu == "arm64" && defined(build_ext_path)) {
-    ldflags = [
-      "-Wl,--emit-relocs",
-      "-Wl,--no-relax",
-      "-mno-fix-cortex-a53-843419"
-    ]
-  }
-
-  if (ark_standalone_build || (defined(is_arkui_x) && is_arkui_x)) {
-    deps += [
-      "$ark_third_party_root/icu/icu4c:static_icui18n",
-      "$ark_third_party_root/icu/icu4c:static_icuuc",
-    ]
-  } else {
-    public_external_deps = [
-      "icu:shared_icui18n",
-      "icu:shared_icuuc",
-      "runtime_core:arkplatform_header",
-      "runtime_core:common_interfaces_header",
-    ]
-  }
-  innerapi_tags = [ "platformsdk_indirect" ]
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
-
-  configs = [
-    ":ark_jsruntime_common_config",
-    ":arkjs_runtime_lto_link_config",
-  ]
-  if (defined(ohos_indep_compiler_enable) && ohos_indep_compiler_enable) {
-    external_deps += [
-      "runtime_core:libarkbase_static",
-      "runtime_core:libarkziparchive_static",
-    ]
-  }
+libark_jsruntime_shared_library_template("libark_jsruntime_dfx") {
+  is_dfx = true
 }
 
 ohos_shared_library("libark_jsruntime_test") {
@@ -1918,6 +1900,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/function_template.json",
   "ecmascript/js_type_metadata/global_env.json",
   "ecmascript/js_type_metadata/hclass.json",
+  "ecmascript/js_type_metadata/ic_info.json",
   "ecmascript/js_type_metadata/importentry_record.json",
   "ecmascript/js_type_metadata/indirect_exportentry_record.json",
   "ecmascript/js_type_metadata/internal_accessor.json",
@@ -2062,6 +2045,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/js_uint8_array.json",
   "ecmascript/js_type_metadata/js_uint8_clamped_array.json",
   "ecmascript/js_type_metadata/js_uri_error.json",
+  "ecmascript/js_type_metadata/js_wrapped_napi_object.json",
   "ecmascript/js_type_metadata/js_weak_map.json",
   "ecmascript/js_type_metadata/js_weak_ref.json",
   "ecmascript/js_type_metadata/js_weak_set.json",
@@ -2117,6 +2101,7 @@ js_type_metadata_sources = [
   "ecmascript/js_type_metadata/type_enums.json",
   "ecmascript/js_type_metadata/type_range.json",
   "ecmascript/js_type_metadata/vtable.json",
+  "ecmascript/js_type_metadata/weak_linked_hash_map.json",
 ]
 
 action("gen_js_type_metadata") {

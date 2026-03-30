@@ -57,6 +57,7 @@ class DateUtils;
 class EcmaVM;
 class GlobalIndex;
 class HeapRegionAllocator;
+class JSThread;
 class PropertiesCache;
 class MegaICCache;
 class ModuleLogger;
@@ -167,35 +168,15 @@ private:
     std::atomic<int32_t> passBarrierCount_;
 };
 
-static constexpr uint32_t MAIN_THREAD_INDEX = 0;
-
-class LazyDeoptRecord {
+class Closure {
 public:
-    LazyDeoptRecord(JSTaggedType jsFunctionAddr, JSTaggedType machineCodeAddr, uintptr_t frameType,
-                    uintptr_t returnAddr, uintptr_t textBegin, size_t textSize, const std::string &jsFunctionName)
-        : jsFunctionAddr_(jsFunctionAddr), machineCodeAddr_(machineCodeAddr), frameType_(frameType),
-          returnAddr_(returnAddr), textBegin_(textBegin), textSize_(textSize), jsFunctionName_(jsFunctionName) {}
+    Closure() = default;
+    virtual ~Closure() = default;
 
-    void Dump()
-    {
-        LOG_ECMA(INFO) << "jsFunctionAddr: " << std::hex << jsFunctionAddr_
-                       << " machineCodeAddr: " << std::hex << machineCodeAddr_
-                       << " textBegin: " << std::hex << textBegin_
-                       << " textSize: " << std::hex << textSize_
-                       << " returnAddr: " << std::hex << returnAddr_
-                       << " frameType: " << std::hex << frameType_
-                       << " jsFunctionName: " << jsFunctionName_;
-    }
-private:
-    JSTaggedType jsFunctionAddr_;
-    JSTaggedType machineCodeAddr_;
-    uintptr_t frameType_;
-    uintptr_t returnAddr_;
-    uintptr_t textBegin_;
-    size_t textSize_;
-    std::string jsFunctionName_;
+    virtual void Run(JSThread *thread) = 0;
 };
 
+static constexpr uint32_t MAIN_THREAD_INDEX = 0;
 static constexpr size_t MAX_LAZYDEOPT_RECORD_NUM = 100;
 
 class JSThread {
@@ -352,6 +333,12 @@ public:
         return heapRegionAllocator_;
     }
 
+    void SetSlotSpaceAllocatorsAddress(const void *addr)
+    {
+        ASSERT(glueData_.slotSpaceAllocatorsAddress_ == nullptr);
+        glueData_.slotSpaceAllocatorsAddress_ = addr;
+    }
+
     void ReSetNewSpaceAllocationAddress(const uintptr_t *top, const uintptr_t* end)
     {
         glueData_.newSpaceAllocationTopAddress_ = top;
@@ -428,6 +415,12 @@ public:
 
     void ClearException()
     {
+        glueData_.exception_ = JSTaggedValue::Hole();
+    }
+    
+    void ClearExceptionAndExtraErrorMessage()
+    {
+        glueData_.extraErrorMessage_ = JSTaggedValue::Hole();
         glueData_.exception_ = JSTaggedValue::Hole();
     }
 
@@ -581,7 +574,13 @@ public:
         return id_.load(std::memory_order_acquire);
     }
 
+    std::string GetThreadName() const;
+
+    void SetThreadName(const std::string &name);
+
     void PostFork();
+
+    void CaptureThreadName();
 
     static ThreadId GetCurrentThreadId();
 
@@ -1050,9 +1049,9 @@ public:
         return isWeak_(addr);
     }
 
-    void EnableCrossThreadExecution()
+    void SetCrossThreadExecution(bool enable)
     {
-        glueData_.allowCrossThreadExecution_ = true;
+        glueData_.allowCrossThreadExecution_ = enable;
     }
 
     bool IsCrossThreadExecutionEnable() const
@@ -1113,6 +1112,11 @@ public:
     void ResetDebugModeState()
     {
         glueData_.isDebugMode_ = false;
+    }
+
+    bool HasSwitchedToStwStub() const
+    {
+        return glueData_.switchToStwStub_;
     }
 
     template<typename T, typename V>
@@ -1230,6 +1234,9 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  JSTaggedValue,
+                                                 JSTaggedValue,
+                                                 base::AlignedUint32,
+                                                 base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
@@ -1257,6 +1264,7 @@ public:
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
                                                  JSTaggedValue,
+                                                 base::AlignedBool,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
                                                  base::AlignedUint32,
@@ -1288,10 +1296,13 @@ public:
             AllocBufferIndex,
             StateAndFlagsIndex,
             ExceptionIndex,
+            ExtraErrorMessageIndex,
+            JsonErrorPositionIndex,
             CurrentFrameIndex,
             LeaveFrameIndex,
             LastFpIndex,
             BaseAddressIndex,
+            SlotSpaceAllocatorsAddressIndex,
             NewSpaceAllocationTopAddressIndex,
             NewSpaceAllocationEndAddressIndex,
             SOldSpaceAllocationTopAddressIndex,
@@ -1317,6 +1328,7 @@ public:
             IsStartHeapSamplingIndex,
             IsDebugModeIndex,
             IsFrameDroppedIndex,
+            HasSwitchedToStwStubIndex,
             PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
             BuiltinEntriesIndex,
@@ -1409,6 +1421,11 @@ public:
         static size_t GetLastFpOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::LastFpIndex)>(isArch32);
+        }
+
+        static size_t GetSlotSpaceAllocatorsAddressOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SlotSpaceAllocatorsAddressIndex)>(isArch32);
         }
 
         static size_t GetNewSpaceAllocationTopAddressOffset(bool isArch32)
@@ -1542,6 +1559,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsFrameDroppedIndex)>(isArch32);
         }
 
+        static size_t GetHasSwitchedToStwStubOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::HasSwitchedToStwStubIndex)>(isArch32);
+        }
+
         static size_t GetPropertiesGrowStepOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::PropertiesGrowStepIndex)>(isArch32);
@@ -1641,6 +1663,18 @@ public:
             return GetOffset<static_cast<size_t>(Index::isMultiContextTriggeredIndex)>(
                 isArch32);
         }
+        
+        static size_t GetExtraErrorMessageOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::ExtraErrorMessageIndex)>(
+                isArch32);
+        }
+        
+        static size_t GetJsonErrorPositionOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::JsonErrorPositionIndex)>(
+                isArch32);
+        }
 
         alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) uint32_t isEnableCMCGC_ {0};
@@ -1650,10 +1684,13 @@ public:
         alignas(EAS) uintptr_t allocBuffer_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
+        alignas(EAS) JSTaggedValue extraErrorMessage_ {JSTaggedValue::Hole()};
+        alignas(EAS) uint32_t jsonErrorPosition_ {0};
         alignas(EAS) JSTaggedType *currentFrame_ {nullptr};
         alignas(EAS) JSTaggedType *leaveFrame_ {nullptr};
         alignas(EAS) JSTaggedType *lastFp_ {nullptr};
         alignas(EAS) JSTaggedType baseAddress_ {0};
+        alignas(EAS) const void *slotSpaceAllocatorsAddress_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *newSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sOldSpaceAllocationTopAddress_ {nullptr};
@@ -1679,6 +1716,7 @@ public:
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
         alignas(EAS) bool isDebugMode_ {false};
         alignas(EAS) bool isFrameDropped_ {false};
+        alignas(EAS) bool switchToStwStub_ {true};
         alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) BuiltinEntries builtinEntries_ {};
@@ -1741,6 +1779,26 @@ public:
         glueData_.isMultiContextTriggered_ = isMultiContextTriggered;
     }
 
+    JSTaggedValue GetExtraErrorMessage() const
+    {
+        return glueData_.extraErrorMessage_;
+    }
+
+    void SetExtraErrorMessage(JSTaggedValue extraErrorMessage)
+    {
+        glueData_.extraErrorMessage_ = extraErrorMessage;
+    }
+
+    uint32_t GetJsonErrorPosition() const
+    {
+        return glueData_.jsonErrorPosition_;
+    }
+
+    void SetJsonErrorPosition(uint32_t jsonErrorPosition)
+    {
+        glueData_.jsonErrorPosition_ = jsonErrorPosition;
+    }
+
     JSHandle<DependentInfos> GetDependentInfo() const;
 
     void SetDependentInfo(JSTaggedValue info);
@@ -1785,6 +1843,33 @@ public:
     {
         fullMarkRequest_ = false;
     }
+
+    Closure *GetFlipFunction() const
+    {
+        return flipFunction_;
+    }
+
+    void SetFlipFunction(Closure *flipFunction)
+    {
+        ASSERT(IsSuspended() || HasLaunchedSuspendAll());
+        ASSERT(!ReadFlag(ThreadFlag::PENDING_FLIP_FUNCTION));
+        ASSERT(GetFlipFunction() == nullptr);
+        ASSERT(flipFunction != nullptr);
+        flipFunction_ = flipFunction;
+        SetFlag(ThreadFlag::PENDING_FLIP_FUNCTION);
+    }
+
+    void ClearFlipFunction()
+    {
+        ASSERT(GetFlipFunction() != nullptr);
+        flipFunction_ = nullptr;
+    }
+
+    bool TryRunFlipFunction();
+
+    void RunFlipFunction();
+
+    void WaitFlipFunctionFinished();
 
     void NotifyPendingSharedHeapOOM()
     {
@@ -2007,9 +2092,9 @@ public:
         return &jitMutex_;
     }
 
-    RecursiveMutex &GetProfileTypeAccessorLock()
+    RecursiveMutex &GetIcAccessorLock()
     {
-        return profileTypeAccessorLockMutex_;
+        return icAccessorLockMutex_;
     }
 
     void SetMachineCodeLowMemory(bool isLow)
@@ -2120,20 +2205,14 @@ public:
         ClearMegaStat();
     }
 
-    void PushLazyDeoptRecord(const LazyDeoptRecord& lazyDeoptRecord)
+    bool IsThrowingOOMError() const
     {
-        lazyDeoptRecords.push(lazyDeoptRecord);
-        if (lazyDeoptRecords.size() > MAX_LAZYDEOPT_RECORD_NUM) {
-            lazyDeoptRecords.pop();
-        }
+        return isThrowingOOMError_;
     }
 
-    void DumpLazyDeoptRecord()
+    void SetIsThrowingOOMError(bool isThrowingOOMError)
     {
-        while (!lazyDeoptRecords.empty()) {
-            lazyDeoptRecords.front().Dump();
-            lazyDeoptRecords.pop();
-        }
+        isThrowingOOMError_ = isThrowingOOMError;
     }
 
     JSTHREAD_PUBLIC_HYBRID_EXTENSION();
@@ -2186,6 +2265,7 @@ private:
     void ClearFlag(ThreadFlag flag)
     {
         ASSERT(!IsEnableCMCGC());
+        ASSERT(ReadFlag(flag));
         glueData_.stateAndFlags_.asAtomicInt.fetch_and(UINT32_MAX ^ flag, std::memory_order_seq_cst);
     }
 
@@ -2241,10 +2321,13 @@ private:
     bool gcState_ {false};
     std::atomic_bool needProfiling_ {false};
     std::string profileName_ {""};
+    std::string threadName_ {""};
 
     // Error callback
     OnErrorCallback onErrorCallback_ {nullptr};
     void *onErrorData_ {nullptr};
+    // Record in throwing oom process
+    bool isThrowingOOMError_ {false};
 
     bool finalizationCheckState_ {false};
     // Shared heap
@@ -2263,12 +2346,16 @@ private:
     ConditionVariable suspendCondVar_;
     SuspendBarrier *suspendBarrier_ {nullptr};
 
+    Closure *flipFunction_ {nullptr};
+    Mutex flipMutex_ {};
+    ConditionVariable flipCV_ {};
+
     uint64_t jobId_ {0};
 
     ThreadType threadType_ {ThreadType::JS_THREAD};
     RecursiveMutex jitMutex_;
     bool machineCodeLowMemory_ {false};
-    RecursiveMutex profileTypeAccessorLockMutex_;
+    RecursiveMutex icAccessorLockMutex_;
     DateUtils *dateUtils_ {nullptr};
     std::weak_ptr<base::JsonStringifierKeyCache> jsonStringifierKeyCache_;
 
@@ -2280,8 +2367,6 @@ private:
     // It will be used to keep MachineCode objects alive (for dump) before JsError object be free.
     std::map<JSTaggedType, JitCodeVector*> jitCodeMaps_;
     std::unordered_map<uintptr_t, uintptr_t> callSiteSpToReturnAddrTable_;
-
-    std::queue<LazyDeoptRecord> lazyDeoptRecords;
 
     std::atomic<bool> needTermination_ {false};
     std::atomic<bool> hasTerminated_ {false};

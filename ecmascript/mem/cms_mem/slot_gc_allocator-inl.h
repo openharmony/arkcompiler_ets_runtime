@@ -23,20 +23,45 @@
 
 namespace panda::ecmascript {
 
+SlotGCAllocator::SlotGCAllocator()
+{
+    InitializeAllocators();
+}
+
+SlotGCAllocator::~SlotGCAllocator()
+{
+    for (SlotBumpPointerAllocator *tlab : tlabAllocatorInstances_) {
+        delete tlab;
+    }
+    tlabAllocatorInstances_.clear();
+    tlabAllocators_.fill(nullptr);
+}
+
+void SlotGCAllocator::InitializeAllocators()
+{
+    size_t preSize = 0;
+    for (size_t i = 0; i < SlotSpaceConfig::NUM_SLOTS; ++i) {
+        size_t slotSize = SlotSpace::GetSlotSizeByIdx(i);
+        if (slotSize > preSize) {
+            SlotBumpPointerAllocator *tlab = new SlotBumpPointerAllocator(slotSize);
+            tlabAllocatorInstances_.emplace_back(tlab);
+        }
+        tlabAllocators_[i] = tlabAllocatorInstances_.back();
+        ASSERT(tlabAllocators_[i]->GetSlotSize() >= i * SlotSpaceConfig::SLOT_STEP_SIZE);
+        preSize = slotSize;
+    }
+}
+
 void SlotGCAllocator::Setup(SlotSpace *slotSpace)
 {
     ASSERT(slotSpace_ == nullptr && slotSpace != nullptr);
     slotSpace_ = slotSpace;
-    for (size_t i = 0; i < SlotSpaceConfig::NUM_SLOTS; ++i) {
-        size_t slotSize = SlotSpace::GetSlotSizeByIdx(i);
-        tlabAllocators_[i].Setup(slotSize);
-    }
 }
 
 void SlotGCAllocator::Initialize()
 {
-    for (SlotGCAllocator::SlotBumpPointerAllocator &bpAllocator : tlabAllocators_) {
-        ASSERT(bpAllocator.IsEmpty());
+    for ([[maybe_unused]] SlotBumpPointerAllocator *bpAllocator : tlabAllocatorInstances_) {
+        ASSERT(bpAllocator->IsEmpty());
     }
 }
 
@@ -44,33 +69,32 @@ uintptr_t SlotGCAllocator::Allocate(size_t size)
 {
     size_t idx = SlotSpace::GetSlotIdxBySize(size);
 
-    SlotGCAllocator::SlotBumpPointerAllocator &tlab = tlabAllocators_[idx];
+    SlotBumpPointerAllocator *tlab = tlabAllocators_[idx];
     {
-        uintptr_t result = tlab.Allocate();
+        uintptr_t result = tlab->Allocate();
         if (LIKELY(result > 0)) {
             return result;
         }
     }
 
     auto [bufferBegin, bufferSize] = slotSpace_->AllocateBufferSyncByIdx(idx);
-    tlab.Reset(bufferBegin, bufferBegin + bufferSize);
-    uintptr_t result = tlab.Allocate();
+    tlab->Reset(bufferBegin, bufferBegin + bufferSize);
+    uintptr_t result = tlab->Allocate();
     ASSERT(result > 0);
     return result;
 }
 
-void SlotGCAllocator::Finalize(BaseHeap *heap)
+void SlotGCAllocator::Finalize()
 {
-    for (SlotGCAllocator::SlotBumpPointerAllocator &tlab : tlabAllocators_) {
-        tlab.Finalize(heap);
-        ASSERT(tlab.IsEmpty());
+    for (SlotBumpPointerAllocator *tlab : tlabAllocatorInstances_) {
+        tlab->Finalize();
+        ASSERT(tlab->IsEmpty());
     }
 }
 
-void SlotGCAllocator::SlotBumpPointerAllocator::Setup(size_t slotSize)
+SlotGCAllocator::SlotBumpPointerAllocator::SlotBumpPointerAllocator(size_t slotSize) : slotSize_(slotSize)
 {
-    ASSERT(slotSize_ == 0);
-    slotSize_ = slotSize;
+    ASSERT(slotSize_ % SlotSpaceConfig::SLOT_STEP_SIZE == 0);
 }
 
 void SlotGCAllocator::SlotBumpPointerAllocator::Reset(uintptr_t top, uintptr_t end)
@@ -81,11 +105,11 @@ void SlotGCAllocator::SlotBumpPointerAllocator::Reset(uintptr_t top, uintptr_t e
     end_ = end;
 }
 
-void SlotGCAllocator::SlotBumpPointerAllocator::Finalize(BaseHeap *heap)
+void SlotGCAllocator::SlotBumpPointerAllocator::Finalize()
 {
     if (top_ < end_) {
         size_t left = end_ - top_;
-        FreeObject::FillFreeObject(heap, top_, left);
+        SlotFreeSegment::FillFreeSegment(top_, left);
     }
     top_ = 0;
     end_ = 0;
@@ -105,6 +129,11 @@ bool SlotGCAllocator::SlotBumpPointerAllocator::IsEmpty() const
 {
     ASSERT(top_ <= end_);
     return top_ == end_;
+}
+
+size_t SlotGCAllocator::SlotBumpPointerAllocator::GetSlotSize() const
+{
+    return slotSize_;
 }
 
 }  // namespace panda::ecmascript

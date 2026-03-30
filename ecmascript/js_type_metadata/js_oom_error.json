@@ -1,5 +1,6 @@
 {
     "name": "JS_OOM_ERROR",
+    "node_name": "OutOfMemory Error",
     "offsets": [
         {
             "name": "Properties",

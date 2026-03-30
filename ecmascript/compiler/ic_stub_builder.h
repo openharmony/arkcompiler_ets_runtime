@@ -16,6 +16,9 @@
 #define ECMASCRIPT_COMPILER_IC_STUB_BUILDER_H
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/stub_builder.h"
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+#include "ecmascript/compiler/interpreter_stub.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
 enum class ICStubType { LOAD, STORE };
@@ -53,6 +56,18 @@ public:
         propKey_ = propKey;
         megaStubCache_ = megaStubCache;
     }
+
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+    void SetParameters(GateRef glue, GateRef receiver, GateRef profileTypeInfo, GateRef value, GateRef slotId,
+                       GateRef prop, const StringIdInfo &info, GateRef jsFunc = Circuit::NullGate(),
+                       ProfileOperation callback = ProfileOperation())
+    {
+        SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
+        prop_ = prop;
+        info_ = info;
+        jsFunc_ = jsFunc;
+    }
+#endif
 
     void LoadICByName(Variable* result, Label* tryFastPath, Label *slowPath, Label *success,
         ProfileOperation callback);
@@ -95,6 +110,11 @@ private:
     GateRef slotId_ {0};
     GateRef propKey_ {0};
     GateRef megaStubCache_ {0};
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+    GateRef prop_ {Circuit::NullGate()};
+    StringIdInfo info_ {};
+    GateRef jsFunc_ {Circuit::NullGate()};
+#endif
     ProfileOperation callback_;
 
     Label *tryFastPath_ {nullptr};

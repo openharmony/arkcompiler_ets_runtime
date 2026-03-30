@@ -1,5 +1,6 @@
 {
     "name": "PROMISE_ITERATOR_RECORD",
+    "node_name": "PromiseIteratorRecord",
     "offsets": [
         {
             "name": "Iterator",

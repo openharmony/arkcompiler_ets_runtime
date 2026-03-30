@@ -1,5 +1,6 @@
 {
     "name": "JS_COLLATOR",
+    "node_name": "JSCollator",
     "offsets": [
         {
             "name": "IcuFiled",

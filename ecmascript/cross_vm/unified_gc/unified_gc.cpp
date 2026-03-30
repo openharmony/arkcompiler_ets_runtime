@@ -66,7 +66,7 @@ void UnifiedGC::Mark()
         bool noMarkTask = true;
         Runtime::GetInstance()->GCIterateThreadList([&noMarkTask](JSThread *thread) {
             Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            if (heap->GetRunningTaskCount() != 0) {
+            if (heap->GetTotalMarkTaskCount() != 0) {
                 noMarkTask = false;
                 return;
             }
@@ -76,14 +76,14 @@ void UnifiedGC::Mark()
     while (!stsVMInterface_->WaitForConcurrentMark(noMarkTaskCheck)) {
         Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
             Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            heap->WaitRunningTaskFinished();
+            heap->WaitAllMarkTaskFinished();
         });
     }
     stsVMInterface_->RemarkStartBarrier();
     while (!stsVMInterface_->WaitForRemark(noMarkTaskCheck)) {
         Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
             Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            heap->WaitRunningTaskFinished();
+            heap->WaitAllMarkTaskFinished();
         });
     }
 #endif // PANDA_JS_ETS_HYBRID_MODE

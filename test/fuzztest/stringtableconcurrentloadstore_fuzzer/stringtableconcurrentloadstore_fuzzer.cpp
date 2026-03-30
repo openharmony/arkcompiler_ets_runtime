@@ -102,14 +102,15 @@ namespace OHOS {
         EcmaVM *vm = JSNApi::CreateJSVM(option);
         JSThread *thread = vm->GetJSThread();
 
-        auto *map = new HashTrieMap<EcmaStringTableMutex, JSThread, TrieMapConfig::NeedSlotBarrier>();
+        auto *map = new HashTrieMap<EcmaStringTableMutex>();
+        HashTrieMapOperation<EcmaStringTableMutex, JSThread, TrieMapConfig::NeedSlotBarrier> hashTrieMapOperation(map);
         std::vector<uint8_t> utf8Data = CreateValidUtf8(data, size);
         uint32_t hashcode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data.data(), utf8Data.size(), true);
         JSHandle<EcmaString> value(thread,
                                    EcmaStringAccessor::CreateFromUtf8(vm, utf8Data.data(), utf8Data.size(), true));
 
-        map->template LoadOrStore<true>(thread, hashcode, [value]() { return value; },
-            [](BaseString *) { return false; });
+        hashTrieMapOperation.template LoadOrStore<true>(thread, hashcode, [value]() { return value; },
+                                                        [](BaseString *) { return false; });
         delete map;
         JSNApi::DestroyJSVM(vm);
     }

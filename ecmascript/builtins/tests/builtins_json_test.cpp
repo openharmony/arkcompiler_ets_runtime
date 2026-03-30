@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
 
+#include "gtest/gtest.h"
 #include <algorithm>
 #include <iomanip>
 #include <sstream>
@@ -578,4 +580,1239 @@ HWTEST_F_L0(BuiltinsJsonTest, StringifyAndParse)
     ASSERT_TRUE(res->IsDouble());
     ASSERT_EQ(res->GetDouble(), 2.2); // 2.2:use to test double value
 }
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMessageUtf16)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(
+        factory->NewFromUtf8("{\"姓名\": \"小明\",\n \"age\": 30,\"表情\":\"aaaaaaaaaa😄🙃😇😄🙃😇😄🙃😇aaa\""));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    std::string str1 = "a*a*🙃*😄*😇*🙃*a*a\"";
+    ASSERT_EQ(str1.length(), res.first.length());
+    ASSERT_EQ(str1, res.first);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMessageUtf8)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromUtf8(
+        "{\"namxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxe\":\"tom\","
+        "sex:\"F\",age:18,email:\"123@qq.com\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    std::string str1 = "x*x*x*e\":\"t*m\",s*x:\"F\",a*e:1*,";
+    ASSERT_EQ(str1.length(), res.first.length());
+    ASSERT_EQ(str1, res.first);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMissingComma)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"tom\"\"age\":18}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"t*m\"\"a*e\":1*}");
+    ASSERT_EQ(res.second, 13U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorUnclosedObject)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"tom\",\"age\":18"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "\":\"t*m\",\"a*e\":1*");
+    ASSERT_EQ(res.second, 15U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorUnclosedArray)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("[1,2,3"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "[1,2,3");
+    ASSERT_EQ(res.second, 5U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorTrailingCommaInObject)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"tom\",\"age\":18,}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "\"t*m\",\"a*e\":1*,}");
+    ASSERT_EQ(res.second, 15U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorTrailingCommaInArray)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("[1,2,3,]"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "[1,2,3,]");
+    ASSERT_EQ(res.second, 7U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMissingColon)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\"\"tom\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\"\"t*m\"}");
+    ASSERT_EQ(res.second, 7U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorInvalidStringEscape)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"tom\\x\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"t*m*x\"}");
+    ASSERT_EQ(res.second, 13U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorUnclosedString)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"tom"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"t*m");
+    ASSERT_EQ(res.second, 11U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorInvalidNumber)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"age\":01}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"a*e\":0*}");
+    ASSERT_EQ(res.second, 8U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorInvalidLiteral)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"active\":tru}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"a*t*v*\":t*u}");
+    ASSERT_EQ(res.second, 10U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorUnquotedKey)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{name:\"tom\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{n*m*:\"t*m\"}");
+    ASSERT_EQ(res.second, 1U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorUnexpectedEnd)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":");
+    ASSERT_EQ(res.second, 8U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorControlCharInString)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"to\x01m\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"t*\x01*\"}");
+    ASSERT_EQ(res.second, 11U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorNewlineInString)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"tom\n\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"t*m\n\"}");
+    ASSERT_EQ(res.second, 12U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorTabInString)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"to\tm\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"t*\tm\"}");
+    ASSERT_EQ(res.second, 11U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorNullByteInString)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    std::string data = "{\"name\":\"tom";
+    data += '\x00';
+    data += "\"}";
+    JSHandle<EcmaString> str = factory->NewFromStdString(data);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"t*m*\"}");
+    ASSERT_EQ(res.second, 12U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMissingOpeningQuote)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{name:\"tom\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{n*m*:\"t*m\"}");
+    ASSERT_EQ(res.second, 1U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMissingClosingQuote)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name:\"tom\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*:\"t*m\"}");
+    ASSERT_EQ(res.second, 8U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorSingleQuotes)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{'name':'tom'}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{'*a*e*:'*o*'}");
+    ASSERT_EQ(res.second, 1U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorInvalidUnicodeEscape)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"\\u00\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"\\*0*\"}");
+    ASSERT_EQ(res.second, 10U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorInvalidHexInUnicode)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\":\"\\u00GG\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\":\"\\*0*G*\"}");
+    ASSERT_EQ(res.second, 13U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorEmptyString)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<EcmaString> str = factory->NewFromStdString("");
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "");
+    ASSERT_EQ(res.second, 0U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorWhitespaceOnly)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("   \t\n\r  "));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "   \t\n\r  ");
+    ASSERT_EQ(res.second, 8U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorNegativeNumberWithLeadingZero)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"age\": 01}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"a*e\": 0*}");
+    ASSERT_EQ(res.second, 9U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMultipleDecimalPoints)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"v\": 1..}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"v\": 1*.}");
+    ASSERT_EQ(res.second, 8U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorIncompleteScientificNotation)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"v\": 1e}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"v\": 1*}");
+    ASSERT_EQ(res.second, 7U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorScientificNotationMissingExponent)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"v\": 1e+}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"v\": 1*+}");
+    ASSERT_EQ(res.second, 8U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorNegativeSignWithoutNumber)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"v\": -}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"v\": -}");
+    ASSERT_EQ(res.second, 6U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorCommentNotAllowed)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\": \"tom\" // comment}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\": \"t*m\" /* c*m*e*t}");
+    ASSERT_EQ(res.second, 15U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorNestedObjectError)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"outer\": {\"inner\": {\"key\": \"unclosed}}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "e*\": \"u*c*o*e*}}");
+    ASSERT_EQ(res.second, 15U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorString)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("\"abcdefghijk"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "\"a*c*e*g*i*k");
+    ASSERT_EQ(res.second, 11U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorNestedArrayError)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("[[1, 2, [3, 4, \"err]], 5]"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "3, 4, \"e*r]], 5]");
+    ASSERT_EQ(res.second, 15U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorAtBeginning)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("@{\"name\": \"tom\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "@{\"n*m*\": \"t*m\"");
+    ASSERT_EQ(res.second, 0U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorAtEnd)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\": \"tom\""));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{\"n*m*\": \"t*m\"");
+    ASSERT_EQ(res.second, 13U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorSingleOpenBrace)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{");
+    ASSERT_EQ(res.second, 1U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorSingleOpenBracket)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("["));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "[");
+    ASSERT_EQ(res.second, 1U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorMultipleErrorsFirstPosition)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{'name': 'tom'}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "{'*a*e*: '*o*'}");
+    ASSERT_EQ(res.second, 1U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorDuplicateKey)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSHandle<JSTaggedValue> str(factory->NewFromASCII("{\"name\": \"tom\", \"name\": \"jerry\"}"));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_FALSE(hasPendingException);
+
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_EQ(position, 0U);
+
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    if (extraErrorMessage->IsString()) {
+        ASSERT_EQ(EcmaStringAccessor(extraErrorMessage.GetTaggedValue()).GetLength(), 0U);
+    }
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorVeryLongString)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    std::string longJson = "{\"key\": \"";
+    for (int i = 0; i < 500; i++) {
+        longJson += "a";
+    }
+    longJson += "\"}";
+    JSHandle<EcmaString> str = factory->NewFromStdString(longJson);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_FALSE(hasPendingException);
+
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_EQ(position, 0U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorVeryLongStringWithError)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    std::string longJson = "{\"key\": \"";
+    for (int i = 0; i < 100; i++) {
+        longJson += "a";
+    }
+    longJson += "\n";
+    for (int i = 0; i < 100; i++) {
+        longJson += "a";
+    }
+    longJson += "\"}";
+    JSHandle<EcmaString> str = factory->NewFromStdString(longJson);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "a*a*a*a*a*a*a*a\na*a*a*a*a*a*a*");
+    ASSERT_EQ(res.second, 15U);
+}
+
+HWTEST_F_L0(BuiltinsJsonTest, ParseErrorWithError)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    std::string longJson = "{\"key\": \"";
+    for (int i = 0; i < 100; i++) {
+        longJson += "a";
+    }
+    longJson += "\n";
+    for (int i = 0; i < 100; i++) {
+        longJson += "a";
+    }
+    longJson += "\"}";
+    JSHandle<EcmaString> str = factory->NewFromStdString(longJson);
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetCallArg(0, str.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    BuiltinsJson::Parse(ecmaRuntimeCallInfo);
+    TestHelper::TearDownFrame(thread, prev);
+    bool hasPendingException = false;
+    if (thread->HasPendingException()) {
+        hasPendingException = true;
+        thread->ClearException();
+    }
+    ASSERT_TRUE(hasPendingException);
+    JSHandle<JSTaggedValue> extraErrorMessage(thread, thread->GetExtraErrorMessage());
+    uint32_t position = thread->GetJsonErrorPosition();
+    ASSERT_TRUE(extraErrorMessage->IsString());
+    std::pair<std::string, uint32_t> res =
+        base::JsonHelper::AnonymizeJsonString(thread, extraErrorMessage, position, 15);
+    ASSERT_EQ(res.first, "a*a*a*a*a*a*a*a\na*a*a*a*a*a*a*");
+    ASSERT_EQ(res.second, 15U);
+}
+
 }  // namespace panda::test

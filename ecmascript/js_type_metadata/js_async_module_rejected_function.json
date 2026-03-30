@@ -1,5 +1,6 @@
 {
     "name": "JS_ASYNC_MODULE_REJECTED_FUNCTION",
+    "node_name": "AsyncModuleRejectedFunction",
     "offsets": [],
     "end_offset": 0,
     "parents": [

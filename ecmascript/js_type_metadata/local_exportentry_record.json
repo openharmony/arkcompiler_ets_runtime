@@ -1,5 +1,6 @@
 {
     "name": "LOCAL_EXPORTENTRY_RECORD",
+    "node_name": "LocalExportEntry",
     "offsets": [
         {
             "name": "ExportName",

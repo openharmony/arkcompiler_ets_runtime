@@ -157,7 +157,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
     if (exports->IsJSObject()) {
-        JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Hole());
+        JSHandle<JSTaggedValue> resolution(thread, JSTaggedValue::Undefined());
         JSObject *exportObject = JSObject::Cast(exports.GetTaggedValue().GetTaggedObject());
         TaggedArray *properties = TaggedArray::Cast(exportObject->GetProperties(thread).GetTaggedObject());
         if (!properties->IsDictionaryMode()) {
@@ -455,6 +455,7 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleMayThrowError(JSThread
 
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     if (exportObject->IsNativeModuleFailureInfo() || exportObject->IsUndefined()) {
+        SourceTextModule::StoreModuleValue(thread, requiredModule, 0, exportObject);
         CString errorMsg = "load native module failed.";
         LOG_FULL(DEBUG) << errorMsg.c_str();
         auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
@@ -472,6 +473,7 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     CString moduleName = requiredModule->GetEcmaModuleRecordNameString();
     if (UNLIKELY(exportObject->IsUndefined())) {
+        SourceTextModule::StoreModuleValue(thread, requiredModule, 0, exportObject);
         LOG_ECMA(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
         return false;
     }
@@ -542,7 +544,7 @@ int SourceTextModule::Instantiate(JSThread *thread, const JSHandle<JSTaggedValue
         // handle exception here may cause incompatible changes, therefore, resolve module failed still need to bind.
         // clear exception here, save the exception, handle exception in FinishModuleInstantiation process.
         exception = JSHandle<JSTaggedValue>(thread, thread->GetException());
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
     }
     // 3. Let stack be a new empty List.
     CVector<JSHandle<SourceTextModule>> stack;
@@ -608,9 +610,14 @@ bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
         return true;
     }
     bool isShared = SourceTextModule::IsSharedModule(module);
-    if (isShared && status == ModuleStatus::EVALUATING) {
-        LOG_FULL(INFO) << "circular dependency occurred of shared-module";
-        return true;
+    if (status == ModuleStatus::EVALUATING) {
+        LOG_FULL(DEBUG) << "ModuleSnapshot is disabled: circular dependency" <<
+            ", current module: " << *SourceTextModule::GetModuleName(module);
+        thread->GetEcmaVM()->GetJSOptions().SetDisableModuleSnapshot(true);
+        if (isShared) {
+            LOG_FULL(INFO) << "circular dependency occurred of shared-module";
+            return true;
+        }
     }
     module->SetStatus(ModuleStatus::PREINSTANTIATING);
     JSHandle<TaggedArray> moduleRequests(thread, module->GetModuleRequests(thread));
@@ -1530,9 +1537,12 @@ JSHandle<JSTaggedValue> SourceTextModule::GetStarResolution(JSThread *thread,
     bool isNativeModule = IsNativeModule(moduleType);
     JSHandle<JSTaggedValue> resolution;
     if (UNLIKELY(isNativeModule || moduleType == ModuleTypes::CJS_MODULE)) {
-        thread->GetEcmaVM()->GetJSOptions().SetDisableModuleSnapshot(true);
-        LOG_ECMA(DEBUG) << "ModuleSnapshot is disable: export * from "
-                << GetModuleName(importedModule.GetTaggedValue());
+        if (!thread->GetEcmaVM()->GetJSOptions().DisableModuleSnapshot() ||
+            thread->GetEcmaVM()->GetJSOptions().EnableModuleLog()) {
+            thread->GetEcmaVM()->GetJSOptions().SetDisableModuleSnapshot(true);
+            LOG_ECMA(INFO) << "ModuleSnapshot is disabled: export * from "
+                    << GetModuleName(importedModule.GetTaggedValue());
+        }
         resolution = isNativeModule
             ? SourceTextModule::ResolveNativeStarExport(thread, importedModule, exportName)
             : SourceTextModule::ResolveCjsStarExport(thread, importedModule, exportName);
@@ -2155,7 +2165,7 @@ void SourceTextModule::SetExceptionToModule(JSThread *thread, JSHandle<SourceTex
     JSHandle<JSTaggedValue> ecmaErrMsg(thread, JSTaggedValue::Undefined());
     bool hasPendingException = thread->HasPendingException();
     if (hasPendingException) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
     }
     // process error message for share module
     if (exceptionInfo->IsJSError()) {
@@ -2308,37 +2318,6 @@ void SourceTextModule::SetRequestedModules(JSThread *thread, JSHandle<TaggedArra
             thread->GetEcmaVM()->GetFactory()->NewFromUtf8(recordName);
         requestedModules->Set(thread, idx, requireModuleName.GetTaggedValue());
     }
-}
-
-void SourceTextModule::StoreAndResetMutableFields(JSThread* thread, JSHandle<SourceTextModule> module,
-    MutableFields& fields)
-{
-    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
-    fields.TopLevelCapability = module->GetTopLevelCapability(thread);
-    fields.NameDictionary = module->GetNameDictionary(thread);
-    fields.CycleRoot = module->GetCycleRoot(thread);
-    fields.AsyncParentModules = module->GetAsyncParentModules(thread);
-    fields.SendableEnv = module->GetSendableEnv(thread);
-    fields.Exception = module->GetException(thread);
-    fields.Namespace = module->GetNamespace(thread);
-    module->SetTopLevelCapability(thread, undefinedValue);
-    module->SetNameDictionary(thread, undefinedValue);
-    module->SetCycleRoot(thread, undefinedValue);
-    module->SetAsyncParentModules(thread, undefinedValue);
-    module->SetSendableEnv(thread, undefinedValue);
-    module->SetException(thread, undefinedValue);
-    module->SetNamespace(thread, undefinedValue);
-}
-
-void SourceTextModule::RestoreMutableFields(JSThread* thread, JSHandle<SourceTextModule> module, MutableFields& fields)
-{
-    module->SetTopLevelCapability(thread, fields.TopLevelCapability);
-    module->SetNameDictionary(thread, fields.NameDictionary);
-    module->SetCycleRoot(thread, fields.CycleRoot);
-    module->SetAsyncParentModules(thread, fields.AsyncParentModules);
-    module->SetSendableEnv(thread, fields.SendableEnv);
-    module->SetException(thread, fields.Exception);
-    module->SetNamespace(thread, fields.Namespace);
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::CreateBindingByIndexBinding(JSThread* thread,

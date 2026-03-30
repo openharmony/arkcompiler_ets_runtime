@@ -130,7 +130,7 @@ void ConcurrentMarker::ReMark()
     Marker *marker = heap_->GetNonMovableMarker();
     MarkRoots();
     marker->ProcessMarkStack(MAIN_THREAD_INDEX);
-    heap_->WaitRunningTaskFinished();
+    heap_->WaitRunningMarkTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
     marker->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }
@@ -221,11 +221,17 @@ void ConcurrentMarker::InitializeMarking()
             heap_->GetOldSpace()->SelectCSet();
         }
         heap_->EnumerateNonNewSpaceRegions([](Region *current) {
-            current->ResetAliveObject();
+            // fixme: refactor?
+            if constexpr (G_USE_CMS_GC) {
+                ASSERT(current->AliveObject() == 0);
+            } else {
+                // The alive object size of Region in OldSpace will be recalculated.
+                current->ResetAliveObject();
+            }
         });
     }
     MarkRoots();
-    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->PushWorkNodeToGlobal(false);
+    workManager_->GetWorkNodeHolder(MAIN_THREAD_INDEX)->FlushAll();
 }
 
 bool ConcurrentMarker::ShouldNotifyMarkingFinished()

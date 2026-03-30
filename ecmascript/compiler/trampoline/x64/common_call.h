@@ -202,10 +202,10 @@ private:
         Register numVregsRegister);
     static void PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,
         Register op1, Register op2, Label *stackOverflow);
-    static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
+    static void ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fpReg,
         Register op);
     static void ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler, Register glue,
-        Register fp, Register op);
+        Register fpReg, Register op);
     static void HasPendingException(ExtendedAssembler *assembler, Register threadRegister);
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
                              Label *stackOverflow, FrameTransitionType type);
@@ -213,7 +213,7 @@ private:
     static Register GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode, Register defaultRegister);
     static void PushVregs(ExtendedAssembler *assembler, Label *stackOverflow, FrameTransitionType type);
     static void DispatchCall(ExtendedAssembler *assembler, Register pcRegister, Register newSpRegister,
-                             Register callTargetRegister, Register methodRegister, Register accRegister = rInvalid,
+                             Register callTargetRegister, Register methodRegister, Register accRegister = invalidReg,
                              bool hasException = false);
     static void CallNativeEntry(ExtendedAssembler *assembler, bool isJSFunction);
     static void CallFastBuiltin(ExtendedAssembler *assembler, Label *callNativeBuiltin);

@@ -22,6 +22,8 @@
 
 namespace panda::test {
 class HeapDumpTestHelper;
+class RawHeapTranslateV1TestHelper;
+class RawHeapTranslateV2TestHelper;
 };
 
 namespace rawheap_translate {
@@ -39,7 +41,7 @@ public:
 
     static bool TranslateRawheap(const std::string &inputPath, const std::string &outputPath);
     static bool ParseMetaData(FileReader &file, MetaParser *parser);
-    static RawHeap *ParseRawheap(FileReader &file, MetaParser *metaParser);
+    static RawHeap *ParseRawheap(const Version &version, MetaParser *metaParser);
     static std::string ReadVersion(FileReader &file);
 
     std::vector<Node *>* GetNodes();
@@ -56,6 +58,7 @@ protected:
     void SetVersion(const std::string &version);
     void CreateHashEdge(Node *node);
     void AddPrimitiveNodes();
+    void CreateHandleRootNode(Node *handleRoot, const std::string &name, size_t count);
 
     static bool ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section);
 
@@ -94,10 +97,13 @@ private:
     bool ReadStringTable(FileReader &file);
     bool ReadObjectTable(FileReader &file, uint32_t offset, uint32_t totalSize);
     bool ParseStringTable(FileReader &file);
+    bool ReadLocalHandleRoots(FileReader &file);
+    bool ReadGlobalHandleRoots(FileReader &file);
     void AddSyntheticRootNode(std::vector<uint64_t> &roots);
     void SetNodeStringId(const std::vector<uint64_t> &objects, StringId strId);
     Node* FindOrCreateNode(uint64_t addr);
     Node* FindNode(uint64_t addr);
+    void AddHandleRootEdges(const std::vector<uint64_t> &handleRoots);
 
     void FillNodes(Node *node, JSType type);
     void BuildEdges(Node *node, JSType type);
@@ -105,22 +111,44 @@ private:
     void BuildArrayEdges(Node *node, JSType type);
     void BuildFieldEdges(Node *node, JSType type);
     void BuildJSObjectEdges(Node *node, JSType type);
+    void BuildDictionaryEdges(Node *node, JSType type, bool usePropertyBox);
     void CreateEdge(Node *node, uint64_t addr, uint32_t nameOrIndex, EdgeType type);
+    Node* CreatePrimitiveNode(uint64_t addr);
     void CreateHClassEdge(Node *node, Node *hclass);
     EdgeType GenerateEdgeTypeAndRemoveWeak(Node *node, JSType type, uint64_t &addr);
 
     static bool IsHeapObject(uint64_t addr);
     static bool IsWeak(uint64_t addr);
     static void RemoveWeak(uint64_t &addr);
-    static constexpr uint64_t TAG_WEAK = 0x01ULL;
-    static constexpr uint64_t TAG_WEAK_MASK = 0x01ULL;
-    static constexpr uint64_t TAG_HEAPOBJECT_MASK = (0xFFFFULL << 48) | 0x02ULL | 0x04ULL;  // 48 means 6 byte shift
+    static constexpr uint64_t TAG_WEAK = 0x01ULL;      // Weak reference tag bit
+    static constexpr uint64_t TAG_WEAK_MASK = 0x01ULL; // Mask for weak reference tag
+    // Mask for heap object (excludes special/boolean values)
+    static constexpr uint64_t TAG_HEAPOBJECT_MASK = (0xFFFFULL << 48) | 0x02ULL | 0x04ULL;
+    static constexpr uint64_t TAG_MARK = 0xFFFFULL << 48; // Tag mask for integer values
+
+    static constexpr uint64_t TAG_NULL = 0x01ULL;      // Null value tag bit
+    static constexpr uint64_t TAG_SPECIAL = 0x02ULL;   // Special value tag bit
+    static constexpr uint64_t TAG_BOOLEAN = 0x04ULL;   // Boolean value tag bit
+    static constexpr uint64_t TAG_EXCEPTION = 0x08ULL; // Exception value tag bit
+    static constexpr uint64_t TAG_BOOLEAN_MASK = TAG_SPECIAL | TAG_BOOLEAN;
+
+    static constexpr uint64_t TAG_INT = TAG_MARK;
+    static constexpr uint64_t TAG_OBJECT = 0x0000ULL << 48; // Object tag (zero high bits)
+    static constexpr uint64_t VALUE_HOLE = 0x05ULL;    // Hole (empty) value
+    static constexpr uint64_t VALUE_NULL = TAG_OBJECT | TAG_SPECIAL | TAG_NULL;
+    static constexpr uint64_t VALUE_EXCEPTION = TAG_SPECIAL | TAG_EXCEPTION;
+    static constexpr uint64_t VALUE_UNDEFINED = TAG_SPECIAL;
+
+    static constexpr uint64_t DOUBLE_ENCODE_OFFSET = 1ULL << 48; // Offset for double encoding
 
     MetaParser *metaParser_ {nullptr};
     std::vector<char *> mem_ {};
     std::vector<uint32_t> sections_ {};
     std::unordered_map<uint64_t, Node *> nodesMap_ {};
+    std::vector<uint64_t> localHandleRoots_;
+    std::vector<uint64_t> globalHandleRoots_;
     friend class panda::test::HeapDumpTestHelper;
+    friend class panda::test::RawHeapTranslateV1TestHelper;
 };
 
 class RawHeapTranslateV2 : public RawHeap {
@@ -144,8 +172,11 @@ private:
     bool ReadStringTable(FileReader &file);
     bool ReadObjectTable(FileReader &file);
     bool ParseStringTable(FileReader &file);
+    bool ReadLocalHandleRoots(FileReader &file);
+    bool ReadGlobalHandleRoots(FileReader &file);
     void AddSyntheticRootNode(std::vector<uint32_t> &roots);
     Node* FindNode(uint32_t addr);
+    void AddHandleRootEdges(const std::vector<uint32_t> &handleRoots);
 
     void FillNodes();
     void BuildEdges(Node *node);
@@ -163,7 +194,13 @@ private:
     std::vector<uint32_t> sections_ {};
     std::unordered_map<uint32_t, Node *> nodesMap_ {};
     Node *syntheticRoot_ {nullptr};
+    Node *localHandleRoot_ {nullptr};
+    Node *globalHandleRoot_ {nullptr};
+
+    std::vector<uint32_t> localHandleRoots_;
+    std::vector<uint32_t> globalHandleRoots_;
     friend class panda::test::HeapDumpTestHelper;
+    friend class panda::test::RawHeapTranslateV2TestHelper;
 };
 }  // namespace rawheap_translate
 #endif  // RAWHEAP_TRANSLATE_H

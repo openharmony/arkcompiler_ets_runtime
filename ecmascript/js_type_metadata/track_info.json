@@ -1,5 +1,6 @@
 {
     "name": "TRACK_INFO",
+    "node_name": "TrackInfo",
     "offsets": [
         {
             "name": "CachedHClass",

@@ -209,6 +209,9 @@ public:
 
     static void DumpAOTInfo() DUMP_API_ATTR;
 
+    uint64_t GetStubFileStart();
+    uint64_t GetStubFileSize();
+
 private:
     using MultiConstantPoolMap = CMap<int32_t, JSTaggedValue>; // key: constpool id, value: constantpool
 

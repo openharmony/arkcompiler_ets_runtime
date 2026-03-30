@@ -17,8 +17,9 @@
 #include <sys/mman.h>
 #include "zip_file_reader.h"
 
-namespace panda {
-namespace ecmascript {
+#include "ecmascript/log_wrapper.h"
+
+namespace panda::ecmascript {
 namespace {
 long g_pageSize = 0;
 }
@@ -31,7 +32,7 @@ FileMapper::FileMapper()
 
 FileMapper::~FileMapper()
 {
-    if (basePtr_ != nullptr && type_ == FileMapperType::SHARED_MMAP) {
+    if (basePtr_ != nullptr) {
         munmap(basePtr_, baseLen_);
     }
 }
@@ -59,6 +60,8 @@ bool FileMapper::CreateFileMapper(const std::string &fileName, bool compress,
     basePtr_ = reinterpret_cast<uint8_t*>(mmap(nullptr, baseLen_, PROT_READ,
         mmapFlag, fd, adjOffset));
     if (basePtr_ == MAP_FAILED) {
+        LOG_ECMA(ERROR) << fileName <<  " mmap failed, errno: " << errno
+                        << ", " << strerror(errno);
         baseLen_ = 0;
         return false;
     }
@@ -118,5 +121,4 @@ int32_t FileMapper::GetOffset()
 {
     return offset_;
 }
-}  // namespace AbilityBase
-}  // namespace OHOS
+}  // namespace panda::ecmascript

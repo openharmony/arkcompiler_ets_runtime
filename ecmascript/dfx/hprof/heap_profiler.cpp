@@ -26,7 +26,9 @@
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/mem/object_xray.h"
 #include "ecmascript/platform/backtrace.h"
+#include "ecmascript/platform/process.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/runtime_lock.h"
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
@@ -35,9 +37,12 @@
 #ifdef ENABLE_HISYSEVENT
     #include "hisysevent.h"
     #include "dfx_signal_handler.h"
+    #include "client/memory_collector_client.h"
 #endif
 
 namespace panda::ecmascript {
+
+bool HeapProfiler::oomDumpActive_ = false;
 
 std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
 {
@@ -189,8 +194,6 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
                         "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
         return;
     }
-    FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(&stream, doDumpOption);
 #else
     if (dumpOption.isDumpOOM && dumpOption.dumpFormat == DumpFormat::BINARY) {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
@@ -204,27 +207,62 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
                         "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
         return;
     }
-    FileDescriptorStream stream(fd);
-    if (!fromSharedGC) {
-        DumpHeapSnapshot(&stream, dumpOption);
-    } else {
-        DumpHeapSnapshotFromSharedGC(&stream, dumpOption);
-    }
 #endif
+    FileDescriptorStream stream(fd);
+    if (fromSharedGC) {
+        DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+    } else {
+        DumpHeapSnapshot(&stream, dumpOption);
+    }
+#else
+    LOG_ECMA(ERROR) << "oom dump not supported.";
 #endif
 }
 
-void HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
+void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const DumpSnapShotOption &dumpOption)
+{
+    if (!TryStartOOMDump()) {
+        LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
+        return;
+    }
+
+    SharedHeap::GetInstance()->PrepareByJSThread(vm_->GetAssociatedJSThread(), true);
+    if (dumpOption.isProcDump) {
+        Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->Prepare();
+        });
+    } else {
+        const_cast<Heap*>(vm_->GetHeap())->Prepare();
+    }
+
+    pid_t pid = -1;
+    // fork for oom
+    if ((pid = fork()) < 0) {
+        LOG_ECMA(ERROR) << "DumpHeapSnapshotFromSharedGCForOOM fork failed: " << strerror(errno);
+        return;
+    }
+    if (pid == 0) {
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
+        DumpHeapSnapshotFromSharedGC(stream, dumpOption);
+        _exit(0);
+    }
+    if (pid != 0) {
+        if (!Process::IsolateSubProcess(vm_->GetBundleName().c_str(), getpid(), pid)) {
+            LOG_ECMA(ERROR) << "OOM Fork dump snapshot failed!";
+        }
+    }
+}
+
+bool HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
     base::BlockHookScope blockScope;
-    const_cast<Heap*>(vm_->GetHeap())->Prepare();
-    SharedHeap::GetInstance()->Prepare(true);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
     });
     BinaryDump(stream, dumpOption);
     stream->EndOfStream();
+    return true;
 }
 
 bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShotOption &dumpOption)
@@ -253,22 +291,76 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
     }
     // In async mode, EntryIdMap is filled and updated in parent-process,
     // so EntryIdMap needs to be updated only in sync mode.
+    bool writeMap = false;
     if (dumpOption.isSync) {
         entryIdMap_->UpdateEntryIdMap(snapshot);
+        if (dumpOption.nativeAddrToNodeIdMap != 0) {
+            writeMap = true;
+            UpdateNodeAddressIdMap();
+            snapshot->SetNodeAddressIdMap(nodeAddressIdMap_);
+        }
     }
     isProfiling_ = true;
     if (progress != nullptr) {
         progress->ReportProgress(heapCount, heapCount);
     }
+    auto serializeAndDelete = [&](Stream* targetStream) -> bool {
+        HeapSnapshotJSONSerializer::Serialize(snapshot, targetStream);
+        if (writeMap) HeapSnapshotJSONSerializer::SerializeExtraInfo(snapshot, targetStream);
+        GetChunk()->Delete(snapshot);
+        return true;
+    };
     if (!stream->Good()) {
         FileStream newStream(GenDumpFileName(dumpOption.dumpFormat));
-        auto serializerResult = HeapSnapshotJSONSerializer::Serialize(snapshot, &newStream);
-        GetChunk()->Delete(snapshot);
-        return serializerResult;
+        return serializeAndDelete(&newStream);
     }
-    auto serializerResult = HeapSnapshotJSONSerializer::Serialize(snapshot, stream);
-    GetChunk()->Delete(snapshot);
-    return serializerResult;
+    return serializeAndDelete(stream);
+}
+
+void HeapProfiler::UpdateNodeAddressIdMap()
+{
+    class NodeAddressRootVisitor final : public RootVisitor {
+    public:
+        explicit NodeAddressRootVisitor(CUnorderedMap<uintptr_t, NodeId> &nodeAddrIdMap,
+                                        EntryIdMap *entryIdMap)
+            : nodeAddrIdMap_(nodeAddrIdMap), entryIdMap_(entryIdMap) {}
+        ~NodeAddressRootVisitor() = default;
+
+        void VisitRoot(Root type, ObjectSlot slot) override
+        {
+            if (type != Root::ROOT_LOCAL_HANDLE && type != Root::ROOT_GLOBAL_HANDLE) {
+                return;
+            }
+
+            auto it = entryIdMap_->GetIdMap()->find(slot.GetTaggedType());
+            if (it != entryIdMap_->GetIdMap()->end()) {
+                nodeAddrIdMap_[slot.SlotAddress()] = it->second;
+            }
+        }
+
+        void VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end) override
+        {
+            for (ObjectSlot slot = start; slot < end; slot++) {
+                VisitRoot(type, slot);
+            }
+        }
+
+        void VisitBaseAndDerivedRoot(Root type, ObjectSlot base, ObjectSlot derived,
+                                     [[maybe_unused]] uintptr_t baseOldObject) override {}
+
+    private:
+        CUnorderedMap<uintptr_t, NodeId> &nodeAddrIdMap_;
+        EntryIdMap *entryIdMap_;
+    };
+
+    JSThread *thread = vm_->GetAssociatedJSThread();
+    EcmaVM* ecmaVm = thread->GetEcmaVM();
+    ThreadManagedScope managedScope(thread);
+
+    NodeAddressRootVisitor visitor(nodeAddressIdMap_, entryIdMap_);
+    ecmaVm->IterateHandle(visitor);
+    thread->Iterate(visitor, GlobalVisitType::ALL_GLOBAL_VISIT);
+    Runtime::GetInstance()->IterateSendableGlobalStorage(visitor);
 }
 
 [[maybe_unused]]static void WaitProcess(pid_t pid, const std::function<void(uint8_t)> &callback)
@@ -381,7 +473,6 @@ void HeapProfiler::FillIdMap()
 bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress,
                                     std::function<void(uint8_t)> callback)
 {
-    bool res = false;
     base::BlockHookScope blockScope;
     ThreadManagedScope managedScope(vm_->GetAssociatedJSThread());
     pid_t pid = -1;
@@ -395,24 +486,20 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
                 ASSERT(heapClean);
             }
         }
-        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread()); // suspend All.
+        JSThread *thread = vm_->GetAssociatedJSThread();
+        RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+        SuspendAllScope suspendScope(thread); // suspend All.
         if (g_isEnableCMCGC) {
             common::Heap::GetHeap().WaitForGCFinish();
         } else {
             const_cast<Heap*>(vm_->GetHeap())->Prepare();
-            SharedHeap::GetInstance()->Prepare(true);
+            SharedHeap::GetInstance()->PrepareByJSThread(thread, true);
             Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-                ASSERT(!thread->IsInRunningState());
+                ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
                 const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
             });
         }
         ASSERT(!vm_->GetAssociatedJSThread()->IsConcurrentCopying());
-        // OOM and ThresholdReachedDump.
-        if (dumpOption.isDumpOOM) {
-            res = BinaryDump(stream, dumpOption);
-            stream->EndOfStream();
-            return res;
-        }
         // ide.
         if (dumpOption.isSync) {
             if (dumpOption.dumpFormat == DumpFormat::BINARY) {
@@ -431,32 +518,59 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         if (dumpOption.isBeforeFill) {
             FillIdMap();
         }
-        // fork
-        if ((pid = fork()) < 0) {
-            LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed: " << strerror(errno);
+        if (dumpOption.isDumpOOM) {
+            if (!TryStartOOMDump()) {
+                LOG_ECMA(WARN) << "OOM dump already in progress, skip dump";
+                return false;
+            }
+        }
+        // fork for hidumper or oom
+        pid = ForkAndPerformDump(stream, dumpOption, progress);
+        if (pid < 0) {
             if (callback) {
                 callback(static_cast<uint8_t>(DumpHeapSnapshotStatus::FORK_FAILED));
             }
             return false;
         }
-        if (pid == 0) {
-            vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
-            prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
-            if (dumpOption.dumpFormat == DumpFormat::BINARY) {
-                res = BinaryDump(stream, dumpOption);
-                stream->EndOfStream();
-            } else {
-                res = DoDump(stream, progress, dumpOption);
-            }
-            _exit(0);
-        }
     }
     if (pid != 0) {
+        // if OOM, main thread will destroy itself upon immediate return
+        if (dumpOption.isDumpOOM) {
+            if (!Process::IsolateSubProcess(vm_->GetBundleName().c_str(), getpid(), pid)) {
+                LOG_ECMA(ERROR) << "OOM Fork dump snapshot failed!";
+                return false;
+            }
+            return true;
+        }
         std::thread thread(&WaitProcess, pid, callback);
         thread.detach();
     }
     isProfiling_ = true;
-    return res;
+    return true;
+}
+
+pid_t HeapProfiler::ForkAndPerformDump(Stream *stream,
+                                       const DumpSnapShotOption &dumpOption,
+                                       Progress *progress)
+{
+    pid_t pid = fork();
+    if (pid < 0) {
+        LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed: " << strerror(errno);
+        return -1;
+    }
+    if (pid == 0) {
+        vm_->GetAssociatedJSThread()->SetCrossThreadExecution(true);
+        prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
+        if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+            BinaryDump(stream, dumpOption);
+            stream->EndOfStream();
+        } else {
+            DoDump(stream, progress, dumpOption);
+        }
+        vm_->GetAssociatedJSThread()->SetCrossThreadExecution(false);
+        _exit(0);
+    }
+    return pid;
 }
 
 bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream *stream,
@@ -468,7 +582,9 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
         vm_->CollectGarbage(TriggerGCType::OLD_GC);
         ForceSharedGC();
     }
-    SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+    JSThread *thread = vm_->GetAssociatedJSThread();
+    RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+    SuspendAllScope suspendScope(thread);
     DumpSnapShotOption dumpOption;
     dumpOption.isVmMode = isVmMode;
     dumpOption.isPrivate = false;
@@ -499,7 +615,9 @@ bool HeapProfiler::UpdateHeapTracking(Stream *stream)
     }
 
     {
-        SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+        JSThread *thread = vm_->GetAssociatedJSThread();
+        RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+        SuspendAllScope suspendScope(thread);
         UpdateHeapObjects(snapshot);
         snapshot->RecordSampleTime();
     }
@@ -538,7 +656,9 @@ bool HeapProfiler::StopHeapTracking(Stream *stream, Progress *progress, bool new
             snapshot->FinishSnapshot();
         } else {
             ForceSharedGC();
-            SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
+            JSThread *thread = vm_->GetAssociatedJSThread();
+            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+            SuspendAllScope suspendScope(thread);
             SharedHeap::GetInstance()->GetSweeper()->WaitAllTaskFinished();
             snapshot->FinishSnapshot();
         }
@@ -800,5 +920,17 @@ void HeapProfiler::StorePotentiallyLeakHandles(const uintptr_t handle)
         Backtrace(stack, true);
         InsertHandleBackTrace(handle, stack.str());
     }
+}
+
+bool HeapProfiler::TryStartOOMDump()
+{
+    bool result = oomDumpActive_;
+    oomDumpActive_ = true;
+    return !result;
+}
+
+void HeapProfiler::ResetOOMDump()
+{
+    oomDumpActive_ = false;
 }
 }  // namespace panda::ecmascript

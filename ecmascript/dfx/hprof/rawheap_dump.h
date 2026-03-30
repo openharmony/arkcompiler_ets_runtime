@@ -40,7 +40,6 @@ public:
     void IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor);
     void MarkObject(JSTaggedType addr);
     void MarkRootObjects();
-    void IterateOverObjects(const std::function<void(TaggedObject *)> &visitor);
 
     size_t GetMarkedObjects()
     {
@@ -52,15 +51,23 @@ public:
         return heapSize_;
     }
 
-private:
-    bool IsProcessDump()
+    const CSet<JSTaggedType>& GetLocalHandleRoots() const
     {
-        return Runtime::GetInstance()->IsEnableProcDumpInSharedOOM() && option_->isForSharedOOM;
+        return localHandleRoots_;
     }
+
+    const CSet<JSTaggedType>& GetGlobalHandleRoots() const
+    {
+        return globalHandleRoots_;
+    }
+
+private:
 
     const EcmaVM *vm_ {nullptr};
     const DumpSnapShotOption *option_ {nullptr};
     CQueue<JSTaggedType> bfsQueue_ {};
+    CSet<JSTaggedType> localHandleRoots_ {};
+    CSet<JSTaggedType> globalHandleRoots_ {};
     CVector<JSTaggedType> markedObjects_ {};
     uint32_t heapSize_ {0};
 };
@@ -88,13 +95,25 @@ public:
         return version_;
     }
 
+    const CSet<JSTaggedType>& GetLocalHandleRoots() const
+    {
+        return marker_.GetLocalHandleRoots();
+    }
+
+    const CSet<JSTaggedType>& GetGlobalHandleRoots() const
+    {
+        return marker_.GetGlobalHandleRoots();
+    }
+
 protected:
     virtual void DumpRootTable() = 0;
     virtual void DumpStringTable() = 0;
     virtual void DumpObjectTable() = 0;
     virtual void DumpObjectMemory() = 0;
-    virtual void UpdateStringTable() = 0;
+    virtual void UpdateStringTable(JSTaggedType addr, StringId strId) = 0;
+    virtual void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) = 0;
 
+    void UpdateStringTable();
     void IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor);
     void DumpVersion(const std::string &version);
     void DumpSectionIndex();
@@ -109,8 +128,10 @@ protected:
     void AddSectionRecord(uint32_t value);
     void AddSectionOffset();
     void AddSectionBlockSize();
-    StringId GenerateStringId(TaggedObject *object);
+    StringId GenerateStringId(TaggedObject *object, bool strAllowed = false);
     const StringHashMap *GetEcmaStringTable();
+    void AddExemptedStringNode();
+    void IterateExemptedStringNode(const std::function<void(JSTaggedType)> &visitor);
 
     void SetRawheapVersion(const std::string &version)
     {
@@ -118,6 +139,11 @@ protected:
     }
 
 private:
+    StringId GenerateStringIdForJSObject(TaggedObject *object, JSThread *thread);
+    StringId GenerateStringIdForJSFunction(TaggedObject *object, JSThread *thread);
+    StringId GenerateStringIdForJSProxy(TaggedObject *object);
+    StringId GenerateStringIdForString(TaggedObject *object, JSThread *thread);
+
     const EcmaVM *vm_ {nullptr};
     const DumpSnapShotOption *dumpOption_ {};
     HeapSnapshot *snapshot_ {nullptr};
@@ -127,6 +153,7 @@ private:
     CVector<uint32_t> secIndexVec_ {};
     CUnorderedMap<JSTaggedType, StringId> objectStrIds_ {};
     CUnorderedMap<Method *, StringId> functionStrIds_ {};
+    CUnorderedSet<JSTaggedType> exemptedStrNodes_ {};
     uint32_t preOffset_ {0};
     std::string version_;
     std::chrono::time_point<std::chrono::steady_clock> startTime_;
@@ -150,7 +177,9 @@ private:
     void DumpStringTable() override;
     void DumpObjectTable() override;
     void DumpObjectMemory() override;
-    void UpdateStringTable() override;
+    void UpdateStringTable(JSTaggedType addr, StringId strId) override;
+
+    void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) override;
 
     constexpr static const char *const RAWHEAP_VERSION = "1.0.0";
 
@@ -176,7 +205,9 @@ private:
     void DumpStringTable() override;
     void DumpObjectTable() override;
     void DumpObjectMemory() override;
-    void UpdateStringTable() override;
+    void UpdateStringTable(JSTaggedType addr, StringId strId) override;
+
+    void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) override;
 
     uint32_t GenerateRegionId(JSTaggedType addr);
     uint32_t GenerateSyntheticAddr(JSTaggedType addr);

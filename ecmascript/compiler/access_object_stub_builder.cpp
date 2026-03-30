@@ -34,11 +34,19 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     GateRef value = 0;
     ICStubBuilder builder(this, GetCurrentGlobalEnv());
     StartTraceLoadDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId));
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, prop, info, jsFunc_);
+#else
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
+#endif
     builder.LoadICByName(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result = GetPropertyByName(glue, receiver, propKey, Circuit::NullGate(), callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
@@ -51,7 +59,11 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     {
         EndTraceLoad(glue);
         StartTraceLoadSlowPath(glue);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result =
             CallRuntime(glue, RTSTUB_ID(LoadICByName), {profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId)});
         Jump(&exit);
@@ -209,7 +221,11 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     {
         EndTraceStore(glue);
         StartTraceStoreFastPath(glue);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result = SetPropertyByName(glue, receiver, propKey, value, false, True(), callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
@@ -222,7 +238,11 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     {
         EndTraceStore(glue);
         StartTraceStoreSlowPath(glue);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result = CallRuntime(
             glue, RTSTUB_ID(StoreICByName), {profileTypeInfo, receiver, propKey, value, IntToTaggedInt(slotId)});
         Jump(&exit);
@@ -253,7 +273,11 @@ GateRef AccessObjectStubBuilder::StOwnICByName(GateRef glue, GateRef receiver, G
     builder.StoreICByName(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result = SetPropertyByName(glue, receiver, propKey, value, true, True(), callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
@@ -264,7 +288,11 @@ GateRef AccessObjectStubBuilder::StOwnICByName(GateRef glue, GateRef receiver, G
     }
     Bind(&slowPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result = CallRuntime(glue, RTSTUB_ID(StoreOwnICByName),
             {profileTypeInfo, receiver, propKey, value, IntToTaggedInt(slotId)});
         Jump(&exit);
@@ -319,6 +347,7 @@ GateRef AccessObjectStubBuilder::StorePrivatePropertyByName(GateRef glue,
     return ret;
 }
 
+#if !ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
 GateRef AccessObjectStubBuilder::ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info)
 {
     if (jsFunc_ != Circuit::NullGate()) {
@@ -333,6 +362,7 @@ GateRef AccessObjectStubBuilder::ResolvePropKey(GateRef glue, GateRef prop, cons
     GateRef stringId = builder.GetStringId(info);
     return GetStringFromConstPool(glue, info.GetConstantPool(), stringId);
 }
+#endif
 
 GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, GateRef key, GateRef profileTypeInfo,
                                                 GateRef slotId, ProfileOperation callback)
@@ -502,7 +532,11 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
     builder.TryLoadGlobalICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         GateRef record = LdGlobalRecord(glue, propKey);
         Label foundInRecord(env);
         Label notFoundInRecord(env);
@@ -521,7 +555,11 @@ GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop,
     }
     Bind(&slowPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(TryLdGlobalICByName),
                                           { profileTypeInfo, propKey, IntToTaggedInt(slotId) });
         Jump(&exit);
@@ -552,7 +590,11 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
     builder.TryStoreGlobalICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         GateRef record = LdGlobalRecord(glue, propKey);
         Label foundInRecord(env);
         Label notFoundInRecord(env);
@@ -583,7 +625,11 @@ GateRef AccessObjectStubBuilder::TryStoreGlobalByName(GateRef glue, GateRef prop
     }
     Bind(&slowPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         GateRef globalObject = GetGlobalObject(glue, globalEnv);
         result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StoreMiss),
             { profileTypeInfo, globalObject, propKey, value, IntToTaggedInt(slotId),
@@ -617,14 +663,22 @@ GateRef AccessObjectStubBuilder::LoadGlobalVar(GateRef glue, GateRef prop, const
     Bind(&tryFastPath);
     {
         GateRef globalObject = GetGlobalObject(glue, globalEnv);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result = GetGlobalOwnProperty(glue, globalObject, propKey, callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&slowPath);
     {
         GateRef globalObject = GetGlobalObject(glue, globalEnv);
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(LdGlobalICVar),
                                           { globalObject, propKey, profileTypeInfo, IntToTaggedInt(slotId) });
         Jump(&exit);
@@ -654,14 +708,22 @@ GateRef AccessObjectStubBuilder::StoreGlobalVar(GateRef glue, GateRef prop, cons
     builder.TryStoreGlobalICByName(&result, &tryFastPath, &slowPath, &exit);
     Bind(&tryFastPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         // IR later
         result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StGlobalVar), { propKey, value });
         Jump(&exit);
     }
     Bind(&slowPath);
     {
+#if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
+        GateRef propKey = ResolvePropKey(glue, prop, info, jsFunc_);
+#else
         GateRef propKey = ResolvePropKey(glue, prop, info);
+#endif
         GateRef globalObject = GetGlobalObject(glue, globalEnv);
         result = CallRuntimeWithGlobalEnv(glue, globalEnv, RTSTUB_ID(StoreMiss),
             { profileTypeInfo, globalObject, propKey, value, IntToTaggedInt(slotId),

@@ -58,6 +58,7 @@ constexpr char kHugeSoPostFix[] = "$$hugeso_";
 constexpr char kDebugMapleThis[] = "_this";
 constexpr uint32 kDwarfVersion = 4;
 constexpr uint32 kSizeOfPTR = 8;
+constexpr int kBitsForAlignment = 2;
 class StructEmitInfo {
 public:
     /* default ctor */

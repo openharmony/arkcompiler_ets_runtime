@@ -1,5 +1,6 @@
 {
     "name": "LINKED_NODE",
+    "node_name": "LinkedNode",
     "offsets": [
         {
             "name": "Next",

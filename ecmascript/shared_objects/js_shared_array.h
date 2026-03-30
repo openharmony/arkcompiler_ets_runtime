@@ -36,7 +36,7 @@ public:
                                                const JSHandle<JSTaggedValue> &newTarget,
                                                ArrayMode mode = ArrayMode::UNDEFINED);
     static JSTaggedValue ArraySpeciesCreate(JSThread *thread, const JSHandle<JSObject> &originalArray,
-                                            JSTaggedNumber length);
+                                            JSTaggedNumber length, SCheckMode sCheckMode = SCheckMode::CHECK);
     static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc);
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, const JSHandle<JSTaggedValue> &key,
                                   const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
@@ -128,7 +128,8 @@ public:
 
     static JSHandle<JSTaggedValue> FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                           const JSHandle<JSTaggedValue> &key,
-                                                          SCheckMode sCheckMode = SCheckMode::SKIP);
+                                                          SCheckMode sCheckMode = SCheckMode::SKIP,
+                                                          SCheckMode concurChk = SCheckMode::SKIP);
 
     static bool FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t index,
                                        const JSHandle<JSTaggedValue> &value);
@@ -137,7 +138,7 @@ public:
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                      const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode);
+                                      const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode, SCheckMode concurChk);
     static bool SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                            const JSHandle<JSTaggedValue> &value, bool mayThrow, SCheckMode sCheckMode);
     static bool SetProperty(JSThread *thread,

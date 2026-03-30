@@ -58,7 +58,8 @@ public:
     NO_COPY_SEMANTIC(RegExpExecutor);
     NO_MOVE_SEMANTIC(RegExpExecutor);
 
-    bool Execute(const uint8_t *input, uint32_t lastIndex, uint32_t length, uint8_t *buf, bool isWideChar = false);
+    bool Execute(const uint8_t *input, uint32_t lastIndex, uint32_t length, uint8_t *buf,
+                 bool isWideChar = false, uint32_t extraFlags = 0);
 
     bool ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd);
     inline bool HandleFirstSplit()

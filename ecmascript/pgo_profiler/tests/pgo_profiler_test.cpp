@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -720,8 +720,8 @@ HWTEST_F_L0(PGOProfilerTest, ProfileCallTest)
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     ASSERT_TRUE(decoder1.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
     ASSERT_TRUE(decoder2.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -752,8 +752,8 @@ HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler14/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -790,8 +790,8 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler15/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -841,10 +841,11 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler16/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    std::string types[17] = {"1", "5", "4", "4", "4", "4", "4", "4", "5", "4", "4", "1", "1", "4", "5", "1", "1"};
+    std::string types[17] = {"int", "number", "double", "double", "double", "double", "double", "double",
+                              "number", "double", "double", "int", "int", "double", "number", "int", "int"};
     int index = 0;
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -861,8 +862,8 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
                 }
                 if (std::string(methodName) == "advance") {
                     if (sampleType.GetWeight() > 0) {
-                        auto trueWeight = sampleType.GetWeight() >> 10;
-                        auto falseWeight = sampleType.GetWeight() & 0x7FF;
+                        auto trueWeight = sampleType.GetTrueWeight();
+                        auto falseWeight = sampleType.GetFalseWeight();
                         auto primitiveType = sampleType.GetPrimitiveType();
                         ASSERT_GT(trueWeight, falseWeight);
                         ASSERT_EQ(static_cast<uint32_t>(primitiveType), PGOSampleType::IntType());
@@ -889,8 +890,8 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler18/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -955,8 +956,8 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler20/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1002,8 +1003,8 @@ HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler21/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1038,8 +1039,8 @@ HWTEST_F_L0(PGOProfilerTest, StringEqualProfileTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler22/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1074,8 +1075,8 @@ HWTEST_F_L0(PGOProfilerTest, BuiltinsTest)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler23/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1240,8 +1241,8 @@ HWTEST_F_L0(PGOProfilerTest, TypedArrayOnHeap)
     // Loader
     PGOProfilerDecoder decoder("ark-profiler24/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadAndVerify({{pf_->GetNormalizedFileDesc(), checksum}}));
-    auto methodLiterals = pf_->GetMethodLiteralMap();
-    for (auto iter : methodLiterals) {
+    const auto& methodLiterals = pf_->GetMethodLiteralMap();
+    for (const auto& iter : methodLiterals) {
         auto methodLiteral = iter.second;
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
@@ -1279,6 +1280,35 @@ HWTEST_F_L0(PGOProfilerTest, ProfileTypeConstructor)
     EXPECT_TRUE(expectTrue.has_value());
     unlink("ark-profiler25/modules.ap");
     rmdir("ark-profiler25/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, CreateFromProfileTest)
+{
+    // Test 1: if (!context.GetHeader()->SupportWideProfileType())
+    PGOContextMock context(PGOProfilerHeader::RECORD_POOL_MINI_VERSION);
+    ASSERT_FALSE(context.GetHeader()->SupportWideProfileType());
+    ProfileTypeRef typeRef(456);
+    auto result = ProfileType::CreateFromProfileTypeRef(context, typeRef);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_EQ(result->GetId(), 456U);
+    EXPECT_EQ(result->GetKind(), ProfileType::Kind::ClassId);
+}
+
+HWTEST_F_L0(PGOProfilerTest, ProfileTypeTest)
+{
+    // Test 1: if (!context.GetHeader()->SupportWideProfileType())
+    PGOContextMock context1(PGOProfilerHeader::RECORD_POOL_MINI_VERSION);
+    ASSERT_FALSE(context1.GetHeader()->SupportWideProfileType());
+    ProfileTypeRef typeRef1(123);
+    ProfileType profileType1(context1, typeRef1);
+    EXPECT_EQ(profileType1.GetId(), 123U);
+
+    // Test 2: if (typeEntry == nullptr)
+    PGOContextMock context2(PGOProfilerHeader::WIDE_CLASS_TYPE_MINI_VERSION);
+    ASSERT_TRUE(context2.GetHeader()->SupportWideProfileType());
+    ProfileTypeRef typeRef2(999);
+    ProfileType profileType2(context2, typeRef2);
+    EXPECT_EQ(profileType2.GetRaw(), 0ULL);
 }
 
 HWTEST_F_L0(PGOProfilerTest, CompatibleWithAOTFileTest)
@@ -1475,5 +1505,207 @@ HWTEST_F_L0(PGOProfilerTest, PgoChecksumTest)
     ASSERT_FALSE(infos1.Checksum(fileNameToChecksumMap1, infos1AbcFilePool));
     unlink("ark-pgoChecksumTest/modules.ap");
     unlink("ark-pgoChecksumTest/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, VerifyFileSizeTest)
+{
+    PGOProfilerHeader header;
+    bool result;
+    // Test 1: !SupportFileSize()
+    header.SetVersion({0, 0, 0, 5});
+    result = header.VerifyFileSize(111);
+    ASSERT_TRUE(result);
+    result = header.VerifyFileSize(222);
+    ASSERT_TRUE(result);
+    result = header.VerifyFileSize(333);
+    ASSERT_TRUE(result);
+    // Test 2: GetFileSize() != bufferSize
+    header.SetVersion(PGOProfilerHeader::LAST_VERSION);
+    header.SetFileSize(1000);
+    result = header.VerifyFileSize(2000);
+    ASSERT_FALSE(result);
+    result = header.VerifyFileSize(0);
+    ASSERT_FALSE(result);
+    result = header.VerifyFileSize(500);
+    ASSERT_FALSE(result);
+    // Test 3: Version supports file size checking, and sizes match
+    header.SetVersion(PGOProfilerHeader::LAST_VERSION);
+    header.SetFileSize(1000);
+    result = header.VerifyFileSize(1000);
+    ASSERT_TRUE(result);
+    header.SetFileSize(500);
+    result = header.VerifyFileSize(500);
+    ASSERT_TRUE(result);
+    header.SetFileSize(0);
+    result = header.VerifyFileSize(0);
+    ASSERT_TRUE(result);
+}
+
+HWTEST_F_L0(PGOProfilerTest, ParseFromBinaryVersionCheckTest)
+{
+    // Test 1: Version higher than LAST_VERSION (should fail VerifyVersion)
+    PGOProfilerHeader highVersionHeader;
+    highVersionHeader.SetVersion({0, 0, 0, 100});  // Much higher than LAST_VERSION
+    size_t bufferSize = sizeof(PGOProfilerHeader);
+    void *buffer = malloc(bufferSize);
+    ASSERT_NE(buffer, nullptr);
+    memcpy_s(buffer, bufferSize, &highVersionHeader, bufferSize);
+    PGOProfilerHeader *parsedHeader = nullptr;
+    bool result = highVersionHeader.ParseFromBinary(buffer, bufferSize, &parsedHeader);
+    // Should return false because version > LAST_VERSION
+    ASSERT_FALSE(result);
+    ASSERT_EQ(parsedHeader, nullptr);
+    free(buffer);
+    // Test 2: Version lower than LAST_VERSION in strictMatch mode
+    PGOProfilerHeader::SetStrictMatch(true);
+    PGOProfilerHeader lowVersionHeader;
+    lowVersionHeader.SetVersion({0, 0, 0, 10});  // Lower than LAST_VERSION
+    bufferSize = sizeof(PGOProfilerHeader);
+    buffer = malloc(bufferSize);
+    ASSERT_NE(buffer, nullptr);
+    memcpy_s(buffer, bufferSize, &lowVersionHeader, bufferSize);
+    parsedHeader = nullptr;
+    result = lowVersionHeader.ParseFromBinary(buffer, bufferSize, &parsedHeader);
+    // Should return false because version < LAST_VERSION in strict mode
+    ASSERT_FALSE(result);
+    ASSERT_EQ(parsedHeader, nullptr);
+    free(buffer);
+}
+
+HWTEST_F_L0(PGOProfilerTest, ParseFromBinaryBuildFromLegacyTest)
+{
+    // Test 1: BuildFromLegacy false
+    PGOProfilerHeader::SetStrictMatch(false);
+    PGOProfilerHeader headerTest3;
+    headerTest3.SetVersion({0, 0, 0, 5});
+    size_t bufferSize = sizeof(PGOProfilerHeader);
+    void *buffer = malloc(bufferSize);
+    ASSERT_NE(buffer, nullptr);
+    memcpy_s(buffer, bufferSize, &headerTest3, bufferSize);
+    PGOProfilerHeader *parsedHeader = nullptr;
+    bool result = headerTest3.ParseFromBinary(buffer, bufferSize, nullptr);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(parsedHeader, nullptr);
+    free(buffer);
+    // Test 2: BuildFromLegacy true
+    PGOProfilerHeader headerLegacy;
+    headerLegacy.SetVersion({0, 0, 0, 5});
+    bufferSize = sizeof(PGOProfilerHeaderLegacy);
+    buffer = malloc(bufferSize);
+    ASSERT_NE(buffer, nullptr);
+    PGOProfilerHeaderLegacy legacyHeader;
+    legacyHeader.SetVersion({0, 0, 0, 5});
+    memcpy_s(buffer, bufferSize, &legacyHeader, bufferSize);
+    parsedHeader = nullptr;
+    result = headerLegacy.ParseFromBinary(buffer, bufferSize, &parsedHeader);
+    ASSERT_TRUE(result);
+    ASSERT_NE(parsedHeader, nullptr);
+    EXPECT_EQ(parsedHeader->GetVersion()[0], 0U);
+    EXPECT_EQ(parsedHeader->GetVersion()[1], 0U);
+    EXPECT_EQ(parsedHeader->GetVersion()[2], 0U);
+    EXPECT_EQ(parsedHeader->GetVersion()[3], 5U);
+    PGOProfilerHeader::Destroy(&parsedHeader);
+    free(buffer);
+    // Test 3: BuildFromLegacy with size error (if (desSize > LastSize()))
+    PGOProfilerHeader headerLegacy2;
+    headerLegacy2.SetVersion({0, 0, 0, 5});  // Version 5 for legacy
+    bufferSize = sizeof(PGOProfilerHeaderLegacy);
+    buffer = malloc(bufferSize);
+    ASSERT_NE(buffer, nullptr);
+    PGOProfilerHeaderLegacy legacyHeader2;
+    auto *legacySectionNumberPtr = reinterpret_cast<uint32_t *>(
+        reinterpret_cast<char *>(&legacyHeader2) + sizeof(base::FileHeaderBase));
+    *legacySectionNumberPtr = 1000000;  // Set a very large section number
+    memcpy_s(buffer, bufferSize, &legacyHeader2, bufferSize);
+    parsedHeader = nullptr;
+    result = headerLegacy2.ParseFromBinary(buffer, bufferSize, &parsedHeader);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(parsedHeader, nullptr);
+    free(buffer);
+}
+
+HWTEST_F_L0(PGOProfilerTest, ParseFromBinaryBuildFromElasticTest)
+{
+    // Test 1: BuildFromElastic with Verify failure (if (!inHeader->Verify(buffer, bufferSize)))
+    PGOProfilerHeader::SetStrictMatch(false);
+    PGOProfilerHeader headerElastic;
+    headerElastic.SetVersion(PGOProfilerHeader::LAST_VERSION);
+    headerElastic.SetFileSize(2000);  // Set file size to trigger Verify failure
+    size_t bufferSize = sizeof(PGOProfilerHeader);
+    void *buffer = malloc(bufferSize);
+    ASSERT_NE(buffer, nullptr);
+    memcpy_s(buffer, bufferSize, &headerElastic, bufferSize);
+    // Corrupt the buffer to make Verify fail
+    auto *corruptBuffer = reinterpret_cast<char *>(buffer);
+    corruptBuffer[0] = 'X';  // Corrupt magic number
+    PGOProfilerHeader *parsedHeader = nullptr;
+    bool result = headerElastic.ParseFromBinary(buffer, bufferSize, &parsedHeader);
+    // Should return false because Verify fails
+    ASSERT_FALSE(result);
+    ASSERT_EQ(parsedHeader, nullptr);
+    free(buffer);
+    // Test 2: BuildFromElastic with size error (if (desSize > LastSize()))
+    PGOProfilerHeader::SetStrictMatch(false);
+    PGOProfilerHeader headerElastic2;
+    headerElastic2.SetVersion(PGOProfilerHeader::LAST_VERSION);
+    bufferSize = sizeof(PGOProfilerHeader);
+    buffer = malloc(bufferSize);
+    ASSERT_NE(buffer, nullptr);
+    memcpy_s(buffer, bufferSize, &headerElastic2, bufferSize);
+    auto *sectionNumberPtr = reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(buffer) + 28);
+    *sectionNumberPtr = 1000000;  // Set a very large section number
+    parsedHeader = nullptr;
+    result = headerElastic2.ParseFromBinary(buffer, bufferSize, &parsedHeader);
+    // Should return false because size is too large
+    ASSERT_FALSE(result);
+    ASSERT_EQ(parsedHeader, nullptr);
+    free(buffer);
+}
+
+HWTEST_F_L0(PGOProfilerTest, ProcessToTextVerifyFailureTest)
+{
+    PGOProfilerHeader header;
+    // Test : !Verify()
+    header.SetVersion({0, 0, 0, 100}); // Much higher than LAST_VERSION
+    TextFormatter fmt;
+    bool result = header.ProcessToText(fmt);
+    ASSERT_FALSE(result);
+    ASSERT_TRUE(fmt.Str().empty());
+}
+
+HWTEST_F_L0(PGOProfilerTest, ProcessToTextCompatibleVersionTest)
+{
+    PGOProfilerHeader header;
+    // Test : SupportFileConsistency():false
+    PGOProfilerHeader::SetStrictMatch(false);
+    header.SetVersion({0, 0, 0, 5});
+    TextFormatter fmt;
+    bool result = header.ProcessToText(fmt);
+    ASSERT_TRUE(result);
+    std::string content = fmt.Str();
+    ASSERT_FALSE(content.empty());
+    EXPECT_TRUE(content.find("File Size") == std::string::npos);
+    EXPECT_TRUE(content.find("Checksum") == std::string::npos);
+}
+
+HWTEST_F_L0(PGOProfilerTest, ProcessToTextFileConsistencyTest)
+{
+    PGOProfilerHeader header;
+    // Test : SupportFileConsistency():true
+    PGOProfilerHeader::SetStrictMatch(true);
+    header.SetVersion(PGOProfilerHeader::LAST_VERSION);
+    header.SetFileSize(1000);
+    header.SetHeaderSize(100);
+    header.SetChecksum(12345);
+    TextFormatter fmt;
+    bool result = header.ProcessToText(fmt);
+    ASSERT_TRUE(result);
+    std::string content = fmt.Str();
+    ASSERT_FALSE(content.empty());
+    EXPECT_TRUE(content.find("File Size") != std::string::npos);
+    EXPECT_TRUE(content.find("1000") != std::string::npos);
+    EXPECT_TRUE(content.find("Header Size") != std::string::npos);
+    EXPECT_TRUE(content.find("100") != std::string::npos);
+    EXPECT_TRUE(content.find("Checksum") != std::string::npos);
 }
 }  // namespace panda::test

@@ -1,5 +1,6 @@
 {
     "name": "JS_GENERATOR_CONTEXT",
+    "node_name": "JSGeneratorContext",
     "offsets": [
         {
             "name": "RegsArray",

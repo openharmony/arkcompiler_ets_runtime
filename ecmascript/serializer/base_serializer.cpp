@@ -14,6 +14,7 @@
  */
 
 #include "common_components/serialize/serialize_utils.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/serializer/base_serializer-inl.h"
 
 namespace panda::ecmascript {
@@ -33,8 +34,14 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
         switch (flag) {
             case RegionSpaceFlag::IN_OLD_SPACE:
             case RegionSpaceFlag::IN_YOUNG_SPACE:
-            case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+                ASSERT(!G_USE_CMS_GC);
                 return SerializedObjectSpace::OLD_SPACE;
+            case RegionSpaceFlag::IN_APPSPAWN_SPACE:
+                if constexpr (G_USE_CMS_GC) {
+                    return SerializedObjectSpace::SLOT_SPACE;
+                } else {
+                    return SerializedObjectSpace::OLD_SPACE;
+                }
             case RegionSpaceFlag::IN_SLOT_SPACE:
                 return SerializedObjectSpace::SLOT_SPACE;
             case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
@@ -136,6 +143,9 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
             return true;
         case JSType::JS_ASYNC_FUNCTION:
             SerializeAsyncFunctionFieldIndividually(root, start, end);
+            return true;
+        case JSType::SOURCE_TEXT_MODULE_RECORD:
+            SerializeSourceTextModuleFieldIndividually(root, start, end);
             return true;
         default:
             return false;
@@ -395,6 +405,34 @@ void BaseSerializer::SerializeInObjField(TaggedObject *object, ObjectSlot start,
             data_->WriteRawData(reinterpret_cast<uint8_t *>(fieldAddr), sizeof(JSTaggedType));
         } else {
             SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
+        }
+    }
+}
+
+void BaseSerializer::SerializeSourceTextModuleFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
+{
+    ASSERT(root->GetClass()->GetObjectType() == JSType::SOURCE_TEXT_MODULE_RECORD);
+    ObjectSlot slot = start;
+    while (slot < end) {
+        size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);
+        switch (fieldOffset) {
+            case SourceTextModule::NAMESPACE_OFFSET:
+            case SourceTextModule::NAME_DICTIONARY_OFFSET:
+            case SourceTextModule::CYCLE_ROOT_OFFSET:
+            case SourceTextModule::TOP_LEVEL_CAPABILITY_OFFSET:
+            case SourceTextModule::ASYNC_PARENT_MODULES_OFFSET:
+            case SourceTextModule::SENDABLE_ENV_OFFSET:
+            case SourceTextModule::EXCEPTION_OFFSET: {
+                data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
+                data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
+                slot++;
+                break;
+            }
+            default: {
+                SerializeJSTaggedValue(JSTaggedValue(Barriers::GetTaggedValue(thread_, slot.SlotAddress())));
+                slot++;
+                break;
+            }
         }
     }
 }

@@ -65,6 +65,7 @@ template("host_unittest_action") {
       "0",
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
+          rebase_path(_root_out_dir_) + "/arkcompiler/runtime_core:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
           rebase_path(_root_out_dir_) + "/thirdparty/zlib:" +
           rebase_path(_root_out_dir_) + "/resourceschedule/frame_aware_sched:" +

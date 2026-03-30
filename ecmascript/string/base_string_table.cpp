@@ -54,6 +54,8 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternFlattenString(
     common::ThreadHolder* holder, const HandleCreator& handleCreator,
     BaseString* string)
 {
+    HashTrieMapOperationType hashTrieMapOperation(&hashTrieMap_);
+    HashTrieMapInUseScopeType mapInUse(&hashTrieMap_);
     DCHECK_CC(!string->IsTreeString());
     if (string->IsInternString()) {
         return string;
@@ -65,12 +67,12 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternFlattenString(
     };
     uint32_t hashcode = string->GetHashcode(readBarrier);
     // Strings in string table should not be in the young space.
-    auto loadResult = stringTable_.template Load(readBarrier, hashcode, string);
+    auto loadResult = hashTrieMapOperation.template Load(readBarrier, hashcode, string);
     if (loadResult.value != nullptr) {
         return loadResult.value;
     }
     common::ReadOnlyHandle<BaseString> stringHandle = handleCreator(holder, string);
-    BaseString* result = stringTable_.template StoreOrLoad(
+    BaseString* result = hashTrieMapOperation.template StoreOrLoad(
         holder, readBarrier, hashcode, loadResult, stringHandle);
     DCHECK_CC(result != nullptr);
     return result;
@@ -83,6 +85,8 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternStringFromCompr
     const common::ReadOnlyHandle<BaseString>& string,
     uint32_t offset, uint32_t utf8Len)
 {
+    HashTrieMapOperationType hashTrieMapOperation(&hashTrieMap_);
+    HashTrieMapInUseScopeType mapInUse(&hashTrieMap_);
     DCHECK_CC(!string.IsEmpty());
     const uint8_t* utf8Data = common::ReadOnlyHandle<LineString>::Cast(string)->GetDataUtf8() + offset;
     uint32_t hashcode = BaseString::ComputeHashcodeUtf8(utf8Data, utf8Len, true);
@@ -91,7 +95,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternStringFromCompr
             reinterpret_cast<common::MAddress>(common::BaseRuntime::ReadBarrier(
                 obj, reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(obj) + offset))));
     };
-    auto loadResult = stringTable_.template Load(readBarrier, hashcode, string, offset, utf8Len);
+    auto loadResult = hashTrieMapOperation.template Load(readBarrier, hashcode, string, offset, utf8Len);
     if (loadResult.value != nullptr) {
         return loadResult.value;
     }
@@ -99,7 +103,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternStringFromCompr
         DCHECK_CC(type == EcmaStringType::LINE_STRING);
         return AllocateLineStringObject(size);
     };
-    BaseString* result = stringTable_.template StoreOrLoad(
+    BaseString* result = hashTrieMapOperation.template StoreOrLoad(
         holder, hashcode, loadResult,
         [holder, string, offset, utf8Len, hashcode, handleCreator, allocator]() {
             BaseString* str = LineString::CreateFromUtf8CompressedSubString(
@@ -131,12 +135,14 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternString(common::
                                                                         uint32_t utf8Len,
                                                                         bool canBeCompress)
 {
+    HashTrieMapOperationType hashTrieMapOperation(&hashTrieMap_);
+    HashTrieMapInUseScopeType mapInUse(&hashTrieMap_);
     uint32_t hashcode = BaseString::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     auto allocator = [](size_t size, EcmaStringType type)-> BaseString* {
         DCHECK_CC(type == EcmaStringType::LINE_STRING);
         return AllocateLineStringObject(size);
     };
-    BaseString* result = stringTable_.template LoadOrStore<true>(
+    BaseString* result = hashTrieMapOperation.template LoadOrStore<true>(
         holder, hashcode,
         [holder, hashcode, utf8Data, utf8Len, canBeCompress, handleCreator, allocator]() {
             BaseString* value = LineString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
@@ -165,12 +171,14 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::GetOrInternString(
     const uint16_t* utf16Data, uint32_t utf16Len,
     bool canBeCompress)
 {
+    HashTrieMapOperationType hashTrieMapOperation(&hashTrieMap_);
+    HashTrieMapInUseScopeType mapInUse(&hashTrieMap_);
     uint32_t hashcode = BaseString::ComputeHashcodeUtf16(const_cast<uint16_t*>(utf16Data), utf16Len);
     auto allocator = [](size_t size, EcmaStringType type)-> BaseString* {
         DCHECK_CC(type == EcmaStringType::LINE_STRING);
         return AllocateLineStringObject(size);
     };
-    BaseString* result = stringTable_.template LoadOrStore<true>(
+    BaseString* result = hashTrieMapOperation.template LoadOrStore<true>(
         holder, hashcode,
         [holder, utf16Data, utf16Len, canBeCompress, hashcode, handleCreator, allocator]() {
             BaseString* value = LineString::CreateFromUtf16(std::move(allocator), utf16Data, utf16Len,
@@ -198,6 +206,8 @@ template <bool ConcurrentSweep>
 BaseString* BaseStringTableInternal<ConcurrentSweep>::TryGetInternString(
     const common::ReadOnlyHandle<BaseString>& string)
 {
+    HashTrieMapOperationType hashTrieMapOperation(&hashTrieMap_);
+    HashTrieMapInUseScopeType mapInUse(&hashTrieMap_);
     auto readBarrier = [](void* obj, size_t offset)-> common::BaseObject* {
         return common::BaseObject::Cast(
             reinterpret_cast<common::MAddress>(common::BaseRuntime::ReadBarrier(
@@ -205,7 +215,7 @@ BaseString* BaseStringTableInternal<ConcurrentSweep>::TryGetInternString(
     };
     DCHECK_CC(!string.IsEmpty());
     uint32_t hashcode = string->GetHashcode(readBarrier);
-    return stringTable_.template Load<false>(readBarrier, hashcode, *string);
+    return hashTrieMapOperation.template Load<false>(readBarrier, hashcode, *string);
 }
 
 template <bool ConcurrentSweep>
@@ -213,13 +223,14 @@ template <bool B, std::enable_if_t<B, int>>
 void BaseStringTableInternal<ConcurrentSweep>::SweepWeakRef(const WeakRefFieldVisitor& visitor, uint32_t rootID,
                                                             std::vector<HashTrieMapEntry*>& waitDeleteEntries)
 {
+    HashTrieMapOperationType hashTrieMapOperation(&hashTrieMap_);
     DCHECK_CC(rootID >= 0 && rootID < TrieMapConfig::ROOT_SIZE);
-    auto rootNode = stringTable_.root_[rootID].load(std::memory_order_relaxed);
+    auto rootNode = hashTrieMap_.root_[rootID].load(std::memory_order_relaxed);
     if (rootNode == nullptr) {
         return;
     }
     for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
-        stringTable_.ClearNodeFromGC(rootNode, index, visitor, waitDeleteEntries);
+        hashTrieMapOperation.ClearNodeFromGC(rootNode, index, visitor, waitDeleteEntries);
     }
 }
 
@@ -227,21 +238,22 @@ template <bool ConcurrentSweep>
 template <bool B, std::enable_if_t<B, int>>
 void BaseStringTableInternal<ConcurrentSweep>::CleanUp()
 {
-    stringTable_.CleanUp();
+    hashTrieMap_.CleanUp();
 }
 
 template <bool ConcurrentSweep>
 template <bool B, std::enable_if_t<!B, int>>
 void BaseStringTableInternal<ConcurrentSweep>::SweepWeakRef(const WeakRefFieldVisitor& visitor)
 {
+    HashTrieMapOperationType hashTrieMapOperation(&hashTrieMap_);
     // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
     for (uint32_t rootID = 0; rootID < TrieMapConfig::ROOT_SIZE; ++rootID) {
-        auto rootNode = stringTable_.root_[rootID].load(std::memory_order_relaxed);
+        auto rootNode = hashTrieMap_.root_[rootID].load(std::memory_order_relaxed);
         if (rootNode == nullptr) {
             continue;
         }
         for (uint32_t index = 0; index < TrieMapConfig::INDIRECT_SIZE; ++index) {
-            stringTable_.ClearNodeFromGC(rootNode, index, visitor);
+            hashTrieMapOperation.ClearNodeFromGC(rootNode, index, visitor);
         }
     }
 }

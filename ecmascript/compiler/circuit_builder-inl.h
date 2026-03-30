@@ -71,8 +71,8 @@ GateRef CircuitBuilder::GetExpectedNumOfArgs(GateRef method)
     GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
     GateRef callfield = LoadWithoutBarrier(VariableType::INT64(), method, callFieldOffset);
     return Int64And(
-        Int64LSR(callfield, Int64(MethodLiteral::NumArgsBits::START_BIT)),
-        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+        Int64LSR(callfield, Int64(Method::NumArgsBits::START_BIT)),
+        Int64((1LU << Method::NumArgsBits::SIZE) - 1));
 }
 
 int CircuitBuilder::NextVariableId()

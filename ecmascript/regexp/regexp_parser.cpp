@@ -1651,8 +1651,9 @@ bool RegExpParser::NeedIntersection(uint32_t c)
 void RegExpParser::DoParserStackOverflowCheck(const char *errorMessage)
 {
     if (UNLIKELY(thread_->GetCurrentStackPosition() < thread_->GetStackLimit())) {
-        LOG_ECMA(ERROR) << "Stack overflow! current:" << thread_->GetCurrentStackPosition() <<
-            " limit:" << thread_->GetStackLimit();
+        LOG_ECMA(ERROR) << "Stack overflow! current:" << thread_->GetCurrentStackPosition()
+                        << " limit:" << thread_->GetStackLimit()
+                        << " current frame: " << thread_->GetCurrentFrame();
         ParseError(errorMessage);
         return;
     }

@@ -1,5 +1,6 @@
 {
     "name": "JS_API_LIST_ITERATOR",
+    "node_name": "ListIterator",
     "offsets": [
         {
             "name": "IteratedList",

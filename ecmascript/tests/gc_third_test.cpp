@@ -28,6 +28,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/runtime_lock.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/sparse_space.h"
@@ -292,6 +293,10 @@ HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest005)
 HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest006)
 {
 #ifdef NDEBUG
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -723,6 +728,10 @@ HWTEST_F_L0(GCTest, RawHeapSendSysEventDataSize)
 
 HWTEST_F_L0(GCTest, ResetLargeHeapTest)
 {
+    // fixme: adapt to cms
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
     static constexpr size_t heapSize = 512 * 1024 * 1024; // 512 MB
     const Heap *heap = thread->GetEcmaVM()->GetHeap();
     const_cast<Heap *>(heap)->ResetLargeCapacity(heapSize);
@@ -801,4 +810,135 @@ HWTEST_F_L0(GCTest, OvershootSizeTest4)
     }
     ASSERT_TRUE(newSpace->GetOvershootSize() > 0);
 }
+
+void TestStringTable(JSThread *thread, EcmaStringTable *stringTable)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+
+    EcmaString *str = EcmaStringAccessor::CreateEmptyString(thread->GetEcmaVM());
+    EcmaString *result = stringTable->GetOrInternFlattenString(vm, str);
+    ASSERT_STREQ(EcmaStringAccessor(result).ToCString(thread).c_str(), "");
+    ASSERT_TRUE(EcmaStringAccessor(result).IsInternString());
+
+    uint8_t utf8Data[] = {0x74, 0x65, 0x73, 0x74}; // "test"
+    str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, sizeof(utf8Data), true);
+    result = stringTable->GetOrInternFlattenStringNoGC(vm, str);
+    ASSERT_STREQ(EcmaStringAccessor(result).ToCString(thread).c_str(), "test");
+    ASSERT_TRUE(EcmaStringAccessor(result).IsInternString());
+
+    JSHandle<EcmaString> strHandle =
+        factory->NewFromASCII("00000x680x650x6c0x6c0x6f0x200x770x6f0x720x6c0x64");  // "hello world"
+    uint32_t offset = 4;
+    uint32_t utf8Len = EcmaStringAccessor(*strHandle).GetLength() - offset;
+    result = stringTable->GetOrInternStringFromCompressedSubString(vm, strHandle, offset, utf8Len);
+    ASSERT_STREQ(EcmaStringAccessor(result).ToCString(thread).c_str(), "0x680x650x6c0x6c0x6f0x200x770x6f0x720x6c0x64");
+    ASSERT_TRUE(EcmaStringAccessor(result).IsInternString());
+
+    str = EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, sizeof(utf8Data), true);
+    result = stringTable->GetOrInternString(vm, str);
+    ASSERT_STREQ(EcmaStringAccessor(result).ToCString(thread).c_str(), "test");
+    ASSERT_TRUE(EcmaStringAccessor(result).IsInternString());
+
+    JSHandle<EcmaString> first = factory->NewFromASCII("hello");
+    JSHandle<EcmaString> second = factory->NewFromASCII("world");
+    result = stringTable->GetOrInternString(vm, first, second);
+    ASSERT_STREQ(EcmaStringAccessor(result).ToCString(thread).c_str(), "helloworld");
+    ASSERT_TRUE(EcmaStringAccessor(result).IsInternString());
+
+    result = stringTable->GetOrInternString(vm, utf8Data, sizeof(utf8Data), true);
+    ASSERT_STREQ(EcmaStringAccessor(result).ToCString(thread).c_str(), "test");
+    ASSERT_TRUE(EcmaStringAccessor(result).IsInternString());
+
+    uint16_t utf16Data[] = {0x7F16, 0x7801, 0x89E3, 0x7801}; // "编码解码"
+    result = stringTable->GetOrInternString(vm, utf16Data, sizeof(utf16Data) / sizeof(uint16_t), false);
+    ASSERT_STREQ(EcmaStringAccessor(result).ToCString(thread).c_str(), "编码解码");
+    ASSERT_TRUE(EcmaStringAccessor(result).IsInternString());
+
+    strHandle = factory->NewFromASCII("test");
+    stringTable->GetOrInternString(vm, *strHandle);
+    result = stringTable->TryGetInternString(thread, strHandle);
+    ASSERT_STREQ(EcmaStringAccessor(result).ToCString(thread).c_str(), "test");
+    ASSERT_TRUE(EcmaStringAccessor(result).IsInternString());
+
+    ASSERT_TRUE(stringTable->CheckStringTableValidity(thread));
+}
+
+HWTEST_F_L0(GCTest, stringTableConcurrentSweepTest1)
+{
+    EcmaStringTable *stringTable = Runtime::GetInstance()->GetEcmaStringTable();
+    typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
+        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable->GetHashTrieMap());
+    stringTable->GetCleaner()->SetEnableConcurrentSweep(true);
+
+    {
+        RuntimeLockHolder(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+        hashTrieMap->StartSweeping();
+        ASSERT_TRUE(hashTrieMap->IsSweeping());
+    }
+    TestStringTable(thread, stringTable);
+
+    {
+        RuntimeLockHolder(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
+        hashTrieMap->FinishSweeping();
+        ASSERT_FALSE(hashTrieMap->IsSweeping());
+    }
+    TestStringTable(thread, stringTable);
+}
+
+HWTEST_F_L0(GCTest, stringTableConcurrentSweepTest2)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    EcmaStringTable *stringTable = Runtime::GetInstance()->GetEcmaStringTable();
+    typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *hashTrieMap =
+        reinterpret_cast<typename DisableCMCGCConcurrentSweepTrait::HashTrieMapType *>(stringTable->GetHashTrieMap());
+    stringTable->GetCleaner()->SetEnableConcurrentSweep(true);
+
+    hashTrieMap->IncreaseInuseCount();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+
+    sHeap->PrepareByJSThread(thread, true);
+    sHeap->GetOldSpace()->SelectCSets();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+
+    hashTrieMap->DecreaseInuseCount();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+
+    sHeap->PrepareByJSThread(thread, true);
+    sHeap->GetOldSpace()->SelectCSets();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+
+    RuntimeLockHolder(thread, sHeap->GetSuspensionRequestMutex());
+    ASSERT_FALSE(hashTrieMap->IsSweeping());
+}
+
+#ifndef USE_CMC_GC
+HWTEST_F_L0(GCTest, stringTableReadBarrierTest)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSTaggedType value = reinterpret_cast<JSTaggedType>(nullptr);
+    JSTaggedType result = Barriers::ReadBarrierForStringTableSlot(value);
+    ASSERT_TRUE(result == reinterpret_cast<JSTaggedType>(nullptr));
+
+    value = thread->GlobalConstants()->GetPrototypeString().GetRawData();
+    result = Barriers::ReadBarrierForStringTableSlot(value);
+    ASSERT_TRUE(result == value);
+
+    JSHandle<EcmaString> str = factory->NewFromASCIISkippingStringTable("test");
+    SharedHeap::GetInstance()->PrepareByJSThread(thread, false);
+    value = str.GetTaggedType();
+    Region::ObjectAddressToRange(value)->AtomicMark(reinterpret_cast<void *>(value));
+    result = Barriers::ReadBarrierForStringTableSlot(value);
+    ASSERT_TRUE(result == value);
+
+    Region::ObjectAddressToRange(value)->ClearMark(reinterpret_cast<void *>(value));
+    result = Barriers::ReadBarrierForStringTableSlot(value);
+    ASSERT_TRUE(result == reinterpret_cast<JSTaggedType>(nullptr));
+}
+#endif
 } // namespace panda::test

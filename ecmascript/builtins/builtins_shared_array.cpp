@@ -1834,7 +1834,7 @@ JSTaggedValue BuiltinsSharedArray::Splice(EcmaRuntimeCallInfo *argv)
     }
     // 12. Let A be ArraySpeciesCreate(O, actualDeleteCount).
     JSTaggedValue newArray = JSSharedArray::ArraySpeciesCreate(
-        thread, thisObjHandle, JSTaggedNumber(static_cast<double>(actualDeleteCount)));
+        thread, thisObjHandle, JSTaggedNumber(static_cast<double>(actualDeleteCount)), SCheckMode::SKIP);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
 

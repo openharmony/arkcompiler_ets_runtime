@@ -19,10 +19,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/aot_crash_info.h"
 
-#if defined(JIT_ESCAPE_ENABLE) || defined(GET_PARAMETER_FOR_JIT) || defined(JIT_ENABLE_CODE_SIGN)
-#include "parameters.h"
-#endif
-#if defined(COMPILER_ENABLE_OHOS_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER) || defined(JIT_ENABLE_CODE_SIGN)
 #include "parameters.h"
 #endif
 #if defined(JIT_ENABLE_CODE_SIGN)
@@ -42,113 +39,113 @@ public:
 
     static bool GetJitEscapeDisable()
     {
-    #ifdef JIT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("ark.jit.escape.disable", false);
-    #endif
+#endif
         return true;
     }
 
     static bool IsJitEnableLitecg(bool value)
     {
-    #ifdef GET_PARAMETER_FOR_JIT
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
-    #endif
+#endif
         return value;
     }
 
     static uint32_t GetJitHotnessThreshold([[maybe_unused]] uint32_t threshold)
     {
-    #ifdef GET_PARAMETER_FOR_JIT
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetUintParameter("ark.jit.hotness.threshold", threshold);
-    #endif
+#endif
         return threshold;
     }
 
     static uint16_t GetJitCallThreshold(uint16_t threshold)
     {
-    #ifdef GET_PARAMETER_FOR_JIT
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetUintParameter("ark.jit.call.threshold", threshold);
-    #endif
+#endif
         return threshold;
     }
 
     static bool GetJitDumpObjEanble()
     {
-    #ifdef JIT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("ark.jit.enable.dumpobj", false);
-    #endif
+#endif
         return false;
     }
 
     static bool GetJitFrameEnable()
     {
-    #ifdef JIT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("ark.jit.enable.jitframe", false);
-    #endif
+#endif
         return false;
     }
 
     static bool GetCodeSignDisable(bool value)
     {
-    #ifdef JIT_ENABLE_CODE_SIGN
+#ifdef JIT_ENABLE_CODE_SIGN
         return OHOS::system::GetBoolParameter("persist.ark.jit.codesign.disable", false) ||
                !OHOS::Security::CodeSign::IsSupportJitCodeSigner();
-    #endif
+#endif
         return value;
     }
 
     static bool IsSupportJitCodeSigner()
     {
-    #ifdef JIT_ENABLE_CODE_SIGN
+#ifdef JIT_ENABLE_CODE_SIGN
         return OHOS::Security::CodeSign::IsSupportJitCodeSigner();
-    #endif
+#endif
         return false;
     }
 
     static bool GetEnableJitFort(bool value)
     {
-    #ifdef GET_PARAMETER_FOR_JIT
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitfort", true);
-    #endif
+#endif
         return value;
     }
 
     static bool GetEnableJitVerifyPass(bool value)
     {
-    #ifdef GET_PARAMETER_FOR_JIT
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitverify", false);
-    #endif
+#endif
         return value;
     }
 
     static bool GetEnableAsyncCopyToFort(bool value)
     {
-    #ifdef GET_PARAMETER_FOR_JIT
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("persist.ark.jit.enable.async.copytofort", true);
-    #endif
+#endif
         return value;
     }
 
     static bool GetSkipJitLogEnable()
     {
-    #ifdef GET_PARAMETER_FOR_JIT
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("ark.jit.enable.jitLogSkip", true);
-    #endif
+#endif
         // host no need skip jit log
         return false;
     }
 
     static std::string GetJitMethodDichotomy(const std::string& value)
     {
-    #ifdef GET_PARAMETER_FOR_JIT
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetParameter("persist.ark.jit.method.dichotomy", value);
-    #endif
+#endif
         return value;
     }
 
     static bool GetEnableJitLiteCompile()
     {
-#if defined(COMPILER_ENABLE_OHOS_PARAMETER)
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter("ark.jit.enable.liteCompile", false);
 #endif
         return false;

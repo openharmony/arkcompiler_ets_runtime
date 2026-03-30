@@ -24,8 +24,11 @@
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
     if (object != 0) {                                                                  \
         IncreaseLiveObjectSize(size);                                                   \
-        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {       \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
+        /* fixme: refactor? */                                                          \
+        if constexpr (!G_USE_CMS_GC) {                                                  \
+            if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {   \
+                Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);        \
+            }                                                                           \
         }                                                                               \
         InvokeAllocationInspector(object, size, size);                                  \
         return object;                                                                  \
@@ -34,8 +37,11 @@
 #define CHECK_OBJECT_AND_INC_OBJ_SIZE(size)                                             \
     if (object != 0) {                                                                  \
         IncreaseLiveObjectSize(size);                                                   \
-        if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {       \
-            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);            \
+        /* fixme: refactor? */                                                          \
+        if constexpr (!G_USE_CMS_GC) {                                                  \
+            if (!heap_->IsConcurrentFullMark() || heap_->IsReadyToConcurrentMark()) {   \
+                Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);        \
+            }                                                                           \
         }                                                                               \
         return object;                                                                  \
     }
@@ -70,7 +76,7 @@ public:
     // For sweeping
     void PrepareSweeping() override;
     void Sweep() override;
-    void AsyncSweep(bool isMain) override;
+    void AsyncSweep(bool isMain, bool releaseMemory = false) override;
 
     bool TryFillSweptRegion() override;
     // Ensure All region finished sweeping
@@ -83,7 +89,10 @@ public:
     Region *GetSweptRegionSafe();
     Region *TryToGetSuitableSweptRegion(size_t size);
 
+    template<bool releaseMemory = false>
     void FreeRegion(Region *current, bool isMain = true);
+
+    template<bool releaseMemory = false>
     void FreeLiveRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain);
 
     void DetachFreeObjectSet(Region *region);
@@ -143,6 +152,7 @@ protected:
     SweepState sweepState_ = SweepState::NO_SWEEP;
     Heap *localHeap_ {nullptr};
     size_t liveObjectSize_ {0};
+    const size_t pageSize_ {0};
     uintptr_t AllocateAfterSweepingCompleted(size_t size);
 
 private:
@@ -311,12 +321,11 @@ struct MachineCodeDesc;
 class MachineCodeSpace : public SparseSpace {
 public:
     MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
-    ~MachineCodeSpace() override;
     NO_COPY_SEMANTIC(MachineCodeSpace);
     NO_MOVE_SEMANTIC(MachineCodeSpace);  // Note: Expand() left for define
     uintptr_t GetMachineCodeObject(uintptr_t pc);
     size_t CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &machineCode, uintptr_t pc);
-    void AsyncSweep(bool isMain) override;
+    void AsyncSweep(bool isMain, bool releaseMemory = false) override;
     void Sweep() override;
     void PrepareSweeping() override;
     // Used by CMCGC to clear the marking bits in Young GC.
@@ -353,7 +362,7 @@ public:
     bool InJitFortRange(uintptr_t address) const
     {
         if (jitFort_) {
-            return jitFort_->InRange(address);
+            return jitFort_->InJitFortRange(address);
         }
         return false;
     }

@@ -48,6 +48,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
 PUBLIC_API extern "C" JSTaggedType LazyDeoptEntry();
 class RuntimeStubs {
 public:
+    static void MarkInBuffer(uintptr_t argGlue, BaseObject* ref);
     static constexpr uint32_t TRACE_NUMBER = 100;
     static constexpr uint32_t RT_STUB_FUNC_SIZE = 8;
 
@@ -101,6 +102,7 @@ public:
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static void SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);
+    static void TryFillSweptRegion(uintptr_t argGlue);
     static void CMCGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType ReadBarrier(uintptr_t argGlue, uintptr_t addr);
     static void CopyCallTarget(uintptr_t argGlue, uintptr_t callTarget);
@@ -183,7 +185,6 @@ public:
     static void TraceLazyDeoptCommitSuccess(uintptr_t argGlue, JSHandle<JSTaggedValue> func);
     static JSTaggedValue GetExternalModuleVar(uintptr_t argGlue, JSFunction *jsFunc, int32_t index);
     static bool MarkRSetCardTable(BaseObject* obj);
-    static void MarkInBuffer(uintptr_t argGlue, BaseObject* ref);
     static void BatchMarkInBuffer(uintptr_t argGlue, void* src, size_t count);
 
 private:

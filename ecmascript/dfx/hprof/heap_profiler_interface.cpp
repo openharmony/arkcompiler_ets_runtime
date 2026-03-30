@@ -19,6 +19,7 @@
 
 
 namespace panda::ecmascript {
+
 HeapProfilerInterface *HeapProfilerInterface::GetInstance(EcmaVM *vm)
 {
     return vm->GetOrNewHeapProfile();
@@ -39,7 +40,7 @@ void HeapProfilerInterface::DestroyInstance(HeapProfilerInterface *heapProfiler)
     delete heapProfiler;
 }
 
-void panda::ecmascript::HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *thread)
+void HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *thread)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(ENABLE_DUMP_IN_FAULTLOG)
     EcmaVM *vm = Runtime::GetInstance()->GetMainThread()->GetEcmaVM();
@@ -50,7 +51,9 @@ void panda::ecmascript::HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *t
     auto appfreezeCallback = Runtime::GetInstance()->GetAppFreezeFilterCallback();
     std::string eventConfig;
     bool shouldDump = appfreezeCallback == nullptr || appfreezeCallback(getprocpid(), true, eventConfig);
-    vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", 0, 0, eventConfig);
+    if (!vm->GetJSThread()->IsThrowingOOMError()) {
+        vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", 0, 0, eventConfig);
+    }
     if (!shouldDump) {
         LOG_ECMA(INFO) << "DumpHeapSnapshotForCMCOOM, no dump quota.";
         return;
@@ -59,9 +62,12 @@ void panda::ecmascript::HeapProfilerInterface::DumpHeapSnapshotForCMCOOM(void *t
     DumpSnapShotOption dumpOption;
     dumpOption.dumpFormat = panda::ecmascript::DumpFormat::BINARY;
     dumpOption.isFullGC = false;
+    dumpOption.isSync = false;
+    dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
 
     vm->GetOrNewHeapProfile()->DumpHeapSnapshotForOOM(dumpOption);
 #endif
 }
+
 }  // namespace panda::ecmascript

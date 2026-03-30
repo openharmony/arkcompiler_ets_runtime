@@ -56,6 +56,8 @@ public:
     std::shared_ptr<JSPandaFile> OpenJSPandaFileFromBuffer(uint8_t *buffer, size_t size, const CString &filename);
 
     std::shared_ptr<JSPandaFile> NewJSPandaFile(const panda_file::File *pf, const CString &desc);
+    std::shared_ptr<JSPandaFile> NewJSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &desc,
+                                                std::string_view entryPoint);
 
     DebugInfoExtractor *GetJSPtExtractor(const JSPandaFile *jsPandaFile);
 
@@ -105,12 +107,15 @@ public:
     void RemoveJSPandaFile(const JSPandaFile *jsPandaFile);
     void ClearNameMap();
 
-    std::unordered_set<std::shared_ptr<JSPandaFile>> GetHapJSPandaFiles()
+    std::unordered_set<std::shared_ptr<JSPandaFile>> GetHapJSPandaFiles(const EcmaVM *vm)
     {
         std::unordered_set<std::shared_ptr<JSPandaFile>> hapJSPandaFiles;
+        if (!const_cast<EcmaVM *>(vm)->IsAsynTranslateClasses()) {
+            return hapJSPandaFiles;
+        }
         LockHolder lock(jsPandaFileLock_);
         for (const auto &item : loadedJSPandaFiles_) {
-            if (!item.second->IsBundlePack() && item.second->IsHapPath()) {
+            if (!item.second->IsBundlePack() && item.second->IsHapPath() && item.second->IsNewVersion()) {
                 hapJSPandaFiles.emplace(item.second);
             }
         }
@@ -149,6 +154,7 @@ private:
     std::unordered_map<const JSPandaFile *, std::unique_ptr<DebugInfoExtractor>> extractors_;
 
     friend class JSPandaFile;
+    friend class JSPandaFileRecordInfoSnapshot;
 };
 }  // namespace ecmascript
 }  // namespace panda

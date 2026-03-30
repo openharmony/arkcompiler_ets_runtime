@@ -128,7 +128,7 @@ inline std::string_view IntToStringView(int n, char* buffer, int bufferSize)
         n = -n;
         isNeg = false;
     }
-    size_t position = bufferSize;
+    size_t position = static_cast<size_t>(bufferSize);
     do {
         buffer[--position] = '0' - (n % DEC_BASE);
         n /= DEC_BASE;
@@ -136,7 +136,7 @@ inline std::string_view IntToStringView(int n, char* buffer, int bufferSize)
     if (isNeg) {
         buffer[--position] = '-';
     }
-    return {buffer + position, bufferSize - position};
+    return {buffer + position, static_cast<size_t>(bufferSize) - position};
 }
 
 template<class T>

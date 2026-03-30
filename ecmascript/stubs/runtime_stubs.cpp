@@ -378,6 +378,15 @@ DEF_RUNTIME_STUBS(NewTaggedArray)
     return factory->NewTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(NewSTaggedArray)
+{
+    RUNTIME_STUBS_HEADER(NewSTaggedArray);
+    JSTaggedValue length = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    return factory->NewSTaggedArray(length.GetInt()).GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CopyArray)
 {
     RUNTIME_STUBS_HEADER(CopyArray);
@@ -626,8 +635,8 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         return JSTaggedValue::Hole().GetRawData();
     }
     JSTaggedValue trackInfoVal = JSHandle<JSArray>(receiver)->GetTrackInfo(thread);
-    if (trackInfoVal.IsHeapObject() && trackInfoVal.IsWeak()) {
-        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetWeakReferentUnChecked());
+    if (trackInfoVal.IsHeapObject()) {
+        TrackInfo *trackInfo = TrackInfo::Cast(trackInfoVal.GetTaggedObject());
         thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackInfo(JSTaggedValue(trackInfo));
     }
     return JSTaggedValue::Hole().GetRawData();
@@ -1733,6 +1742,16 @@ DEF_RUNTIME_STUBS(LoadICByName)
     return icRuntime.LoadMiss(receiverHandle, keyHandle).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(LoadPrototype)
+{
+    RUNTIME_STUBS_HEADER(LoadPrototype);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> handler = GetHArg<JSTaggedValue>(argv, argc, 1);
+    JSTaggedValue result = ICRuntimeStub::LoadPrototype(thread, receiver.GetTaggedValue(), handler.GetTaggedValue());
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+    return result.GetRawData();
+}
+
 DEF_RUNTIME_STUBS(TryLdGlobalICByName)
 {
     RUNTIME_STUBS_HEADER(TryLdGlobalICByName);
@@ -2087,6 +2106,19 @@ DEF_RUNTIME_STUBS(HandleResolutionIsNullOrString)
     CString msg = "the requested module '" + requestMod + SourceTextModule::GetResolveErrorReason(resolution) +
                   ModulePathHelper::Utf8ConvertToString(thread, bindingName) + "' which imported by '" + recordStr +
                   "'";
+
+    // Print hmsModules content only if requestMod starts with "hms:"
+    if (StringHelper::StringStartWith(requestMod, ModulePathHelper::PREFIX_HMS)) {
+        const auto& hmsModuleList = thread->GetEcmaVM()->GetHmsModuleList();
+        LOG_ECMA(ERROR) << "HMS Module List contents:";
+        for (const auto& [key, hmsMap] : hmsModuleList) {
+            LOG_ECMA(ERROR) << "  Key: " << key.c_str()
+                            << ", originalPath: " << hmsMap.originalPath.c_str()
+                            << ", targetPath: " << hmsMap.targetPath.c_str()
+                            << ", sinceVersion: " << hmsMap.sinceVersion;
+        }
+    }
+
     THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(
         thread, ErrorType::SYNTAX_ERROR, msg.c_str(), JSTaggedValue::Exception().GetRawData());
 }
@@ -2880,7 +2912,8 @@ DEF_RUNTIME_STUBS(ThrowStackOverflowException)
     // so check thread here to distinguish it with the actual stack overflow.
     ecmaVm->CheckThread();
     LOG_ECMA(ERROR) << "Stack overflow! current:" << thread->GetCurrentStackPosition()
-        << " limit:" << thread->GetStackLimit();
+                    << " limit:" << thread->GetStackLimit()
+                    << " current frame: " << thread->GetCurrentFrame();
     ObjectFactory *factory = ecmaVm->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::RANGE_ERROR, "Stack overflow!", StackCheck::NO);
     if (LIKELY(!thread->HasPendingException())) {
@@ -3627,6 +3660,12 @@ void RuntimeStubs::SharedGCMarkingBarrier(uintptr_t argGlue, uintptr_t object, s
     }
 }
 
+void RuntimeStubs::TryFillSweptRegion(uintptr_t argGlue)
+{
+    JSThread *thread = JSThread::GlueToJSThread(argGlue);
+    thread->GetEcmaVM()->GetHeap()->GetSlotSpace()->TryFillSweptRegion();
+}
+
 void RuntimeStubs::CMCGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue,
                                        [[maybe_unused]] uintptr_t object,
                                        [[maybe_unused]] size_t offset,
@@ -4152,18 +4191,8 @@ DEF_RUNTIME_STUBS(LocaleCompareCacheable)
     JSHandle<JSTaggedValue> locales = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
     JSHandle<EcmaString> thisHandle = GetHArg<EcmaString>(argv, argc, 1);    // 1: means the first parameter
     JSHandle<EcmaString> thatHandle = GetHArg<EcmaString>(argv, argc, 2);    // 2: means the second parameter
-#if ENABLE_NEXT_OPTIMIZATION
     const CompareStringsOption csOption = JSCollator::CompareStringsOptionFor(thread, locales);
     JSTaggedValue result = JSCollator::FastCachedCompareStrings(thread, locales, thisHandle, thatHandle, csOption);
-#else
-    auto collator = JSCollator::GetCachedIcuCollator(thread, locales);
-    JSTaggedValue result = JSTaggedValue::Undefined();
-    if (collator != nullptr) {
-        [[maybe_unused]]const CompareStringsOption csOption = JSCollator::CompareStringsOptionFor(
-            thread, locales);
-        result = JSCollator::CompareStrings(thread, collator, thisHandle, thatHandle, csOption);
-    }
-#endif
     return result.GetRawData();
 }
 
@@ -4233,7 +4262,9 @@ void RuntimeStubs::SortTypedArray(uintptr_t argGlue, JSTypedArray *typedArray)
     if (len == 0) {
         return;
     }
-    void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer);
+    const uint32_t offset = typedArray->GetByteOffset();
+    void *pointer = offset + static_cast<int8_t*>(
+        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer));
     switch (jsType) {
         case JSType::JS_INT8_ARRAY:
             std::sort(static_cast<int8_t*>(pointer), static_cast<int8_t*>(pointer) + len);
@@ -4273,7 +4304,9 @@ void RuntimeStubs::ReverseTypedArray(uintptr_t argGlue, JSTypedArray *typedArray
     JSThread *thread = JSThread::GlueToJSThread(argGlue);
     JSTaggedValue buffer = typedArray->GetViewedArrayBufferOrByteArray(thread);
     const uint32_t len = typedArray->GetArrayLength();
-    void *pointer = builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer);
+    const uint32_t offset = typedArray->GetByteOffset();
+    void *pointer = offset + static_cast<int8_t*>(
+        builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(thread, buffer));
     switch (jsType) {
         case JSType::JS_INT8_ARRAY:
             std::reverse(static_cast<int8_t*>(pointer), static_cast<int8_t*>(pointer) + len);
@@ -4382,10 +4415,10 @@ DEF_RUNTIME_STUBS(TraceLoadDetail)
             if (second.IsHole()) {
                 msg += "other-mega, ";
             // 1: Call SetAsMegaDFX and set it to 1 (for placeholder purposes)..
-            } else if (second == JSTaggedValue(ProfileTypeAccessor::MegaState::NOTFOUND_MEGA)) {
+            } else if (second == JSTaggedValue(IcAccessor::MegaState::NOTFOUND_MEGA)) {
                 msg += "not_found-mage, ";
             // 2: Call SetAsMegaDFX and set it to 2 (for placeholder purposes).
-            } else if (second == JSTaggedValue(ProfileTypeAccessor::MegaState::DICT_MEGA)) {
+            } else if (second == JSTaggedValue(IcAccessor::MegaState::DICT_MEGA)) {
                 msg += "dictionary-mega, ";
             } else if (second.IsString()) {
                 msg += "ic-mega, ";

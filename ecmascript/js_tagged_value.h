@@ -430,6 +430,7 @@ public:
     static JSHandle<EcmaString> PUBLIC_API ToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static std::string ExceptionToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<EcmaString> ToString(JSThread *thread, JSTaggedValue val);
+    static JSHandle<EcmaString> PropertyAccessToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<JSObject> ToObject(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSHandle<JSTaggedValue> ToPropertyKey(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
     static JSTaggedNumber ToLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
@@ -476,7 +477,8 @@ public:
 
     // ecma6 7.3
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK);
+                                       const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode = SCheckMode::CHECK,
+                                       SCheckMode concurChk = SCheckMode::CHECK);
 
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, uint32_t key);
     static OperationResult GetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
@@ -537,6 +539,7 @@ public:
     bool IsCachedExternalString() const;
     bool IsStringOrSymbol() const;
     bool IsLexicalEnv() const;
+    bool IsWeakLinkedHashMap() const;
     bool IsSFunctionEnv() const;
     bool PUBLIC_API IsTaggedArray() const;
     bool PUBLIC_API IsFuncSlot() const;
@@ -545,6 +548,7 @@ public:
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
     bool IsExtraProfileTypeInfo() const;
+    bool IsICInfo() const;
     bool IsProfileTypeInfoCell() const;
     bool IsProfileTypeInfoCell0() const;
     bool IsFunctionTemplate() const;
@@ -610,6 +614,7 @@ public:
     bool IsJSFunctionBase() const;
     bool CheckIsJSFunctionBase() const;
     bool IsECMAObject() const;
+    bool IsJSWrappedNapiObject() const;
     bool IsJSPrimitiveRef() const;
     bool IsJSPrimitive() const;
     bool IsAccessorData() const;

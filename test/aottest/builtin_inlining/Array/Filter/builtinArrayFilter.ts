@@ -87,7 +87,7 @@ let newArr = [1, 2]
 let true_filter = newArr.filter
 newArr.filter = replace
 
-print(newArr.filter(x => {})); //: Cannot get source code of funtion
+print(newArr.filter(x => {})); //: Cannot get source code of function
 newArr.filter = true_filter
 
 //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -122,7 +122,7 @@ function filterCase2() {
 
     //aot: [trace] aot inline builtin: Array.prototype.filter, caller function name:#*#filterCase2@builtinArrayFilter
     print(arr1.filter(x => x == 1)); //: 1
-    print(arr2.filter(x => x == 1)); //: Cannot get source code of funtion
+    print(arr2.filter(x => x == 1)); //: Cannot get source code of function
 }
 filterCase2()
 

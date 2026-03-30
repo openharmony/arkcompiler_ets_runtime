@@ -59,6 +59,7 @@ private:
     void BarrierBatchBitSet(uint8_t select);
     void FlushBatchBitSet(uint8_t bitSetSelect, GateRef quadIdx,
                           Variable &localToShareBitSetVar, Variable &oldToNewBitSetVar, Label *next);
+    GateRef IsLocalToShareSwappedFast(GateRef region);
     GateRef IsLocalToShareSwapped(GateRef region);
     GateRef IsOldToNewSwapped(GateRef region);
     void BitSetRangeMove(GateRef srcBitSet, GateRef dstBitSet, GateRef srcStart, GateRef dstStart, GateRef length);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -30,6 +30,7 @@
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/module/module_resolver.h"
 #include "ecmascript/module/module_value_accessor.h"
+#include "ecmascript/module/module_path_helper.h"
 
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::ALLOW_BINARY;
@@ -167,6 +168,28 @@ JSPandaFile *DebuggerApi::GetJSPandaFile(const EcmaVM *ecmaVm)
     return const_cast<JSPandaFile *>(method->GetJSPandaFile(thread));
 }
 
+const CString& DebuggerApi::GetJSPandaFileDesc(const JSPandaFile *jsPandaFile)
+{
+    return jsPandaFile->GetJSPandaFileDesc();
+}
+
+uint32_t DebuggerApi::GetJSPandaFileMainMethodIndex(const JSPandaFile *jsPandaFile, const CString &recordName,
+                                                    bool isNewVersion)
+{
+    return jsPandaFile->GetMainMethodIndex(recordName, isNewVersion);
+}
+
+bool DebuggerApi::JSPandaFileIsBundlePack(const JSPandaFile *jsPandaFile)
+{
+    return jsPandaFile->IsBundlePack();
+}
+
+
+bool DebuggerApi::JSPandaFileIsNewVersion(const JSPandaFile *jsPandaFile)
+{
+    return jsPandaFile->IsNewVersion();
+}
+
 JSTaggedValue DebuggerApi::GetEnv(const FrameHandler *frameHandler)
 {
     return frameHandler->GetEnv();
@@ -226,7 +249,7 @@ Local<JSValueRef> DebuggerApi::GetAndClearException(const EcmaVM *ecmaVm)
 {
     auto exception = ecmaVm->GetJSThread()->GetException();
     JSHandle<JSTaggedValue> handledException(ecmaVm->GetJSThread(), exception);
-    ecmaVm->GetJSThread()->ClearException();
+    ecmaVm->GetJSThread()->ClearExceptionAndExtraErrorMessage();
     return JSNApiHelper::ToLocal<JSValueRef>(handledException);
 }
 
@@ -237,7 +260,7 @@ void DebuggerApi::SetException(const EcmaVM *ecmaVm, Local<JSValueRef> exception
 
 void DebuggerApi::ClearException(const EcmaVM *ecmaVm)
 {
-    return ecmaVm->GetJSThread()->ClearException();
+    return ecmaVm->GetJSThread()->ClearExceptionAndExtraErrorMessage();
 }
 
 // NumberHelper
@@ -434,14 +457,11 @@ Local<JSValueRef> DebuggerApi::GetGlobalValue(const EcmaVM *ecmaVm, const FrameH
     }
 
     JSTaggedValue globalVar = FastRuntimeStub::GetGlobalOwnProperty(thread, globalObj.GetTaggedValue(), key);
-    if (!globalVar.IsHole()) {
-        return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, globalVar));
-    } else {
+    if (globalVar.IsHole()) {
         result = SlowRuntimeStub::TryLdGlobalByNameFromGlobalProto(thread, globalObj.GetTaggedValue(), key);
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, result));
     }
-
-    return Local<JSValueRef>();
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, globalVar));
 }
 
 bool DebuggerApi::SetGlobalValue(const EcmaVM *ecmaVm, const FrameHandler *frameHandler,
@@ -524,8 +544,17 @@ JSHandle<JSTaggedValue> DebuggerApi::GetImportModule(const EcmaVM *ecmaVm,
                 currentModule->GetTaggedObject())->GetEnvironment(thread);
             environment.Update(moduleEnvironment);
             JSTaggedValue resolvedBinding = environment->Get(thread, idx);
-            ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-            importModule.Update(binding->GetModule(thread));
+            if (resolvedBinding.IsResolvedIndexBinding()) {
+                ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+                importModule.Update(binding->GetModule(thread));
+            } else if (resolvedBinding.IsResolvedRecordIndexBinding()) {
+                JSHandle<ResolvedRecordIndexBinding> resolvBindingHandle(thread, resolvedBinding);
+                JSHandle<SourceTextModule> resolveModule = ModuleValueAccessor::GetResolvedModule
+                    <true, ResolvedRecordIndexBinding>(thread, JSHandle<SourceTextModule>::Cast(currentModule),
+                    resolvBindingHandle, ModulePathHelper::Utf8ConvertToString(thread,
+                    resolvBindingHandle->GetModuleRecord(thread)));
+                importModule.Update(resolveModule);
+            }
             name = EcmaStringAccessor(importName).ToStdString(thread);
             return importModule;
         }
@@ -835,7 +864,7 @@ void DebuggerApi::HandleUncaughtException(const EcmaVM *ecmaVm, std::string &mes
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> exHandle(thread, thread->GetException());
-    thread->ClearException();
+    thread->ClearExceptionAndExtraErrorMessage();
     if (exHandle->IsJSError()) {
         JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
         JSHandle<EcmaString> name(JSObject::GetProperty(thread, exHandle, nameKey).GetValue());
@@ -1473,7 +1502,10 @@ Local<JSValueRef> DebuggerApi::GetHashMapValueWithRange(const EcmaVM *ecmaVm, Lo
     JSHandle<TaggedHashArray> table(thread, hashMap->GetTable(thread));
     uint32_t length = table->GetLength();
     uint32_t size = static_cast<uint32_t>(hashMap->GetSize());
-    uint32_t allocateSize = start >= size ? 0 : start + count > size ? size - start : count;
+    uint32_t startNodeCount = static_cast<uint32_t>(start);
+    uint32_t nodeCount = static_cast<uint32_t>(count);
+    uint32_t allocateSize = (startNodeCount >= size) ? 0 :
+        (startNodeCount + nodeCount) > size ? (size - startNodeCount) : nodeCount;
     originalSize = size;
     Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, allocateSize);
     if (allocateSize == 0) {
@@ -1494,7 +1526,7 @@ Local<JSValueRef> DebuggerApi::GetHashMapValueWithRange(const EcmaVM *ecmaVm, Lo
     uint32_t nodeIndex = 0; // index of traversed nodes
     uint32_t skipNodeCount = 0; // count of skipping nodes
     // traverse first # of start nodes
-    while (skipNodeCount < start && nodeIndex < length) {
+    while (skipNodeCount < startNodeCount && nodeIndex < length) {
         node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, nodeIndex));
         skipNodeCount++;
     }

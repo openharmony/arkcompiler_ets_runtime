@@ -554,7 +554,7 @@ JSTaggedValue BuiltinsPromiseHandler::InnerResolve(JSThread *thread, const JSHan
         if (!thenValue->IsJSError()) {
             thenValue = JSHandle<JSTaggedValue>(thread, thread->GetException());
         }
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         return JSPromise::RejectPromise(thread, promise, thenValue);
     }
     // 10. Let thenAction be then.[[value]].

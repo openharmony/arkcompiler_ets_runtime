@@ -19,6 +19,7 @@
 #include "ecmascript/cross_vm/heap_hybrid-inl.h"
 #include "ecmascript/cross_vm/unified_gc/unified_gc.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/mem/heap-inl.h"
 
 namespace panda::ecmascript {
@@ -54,7 +55,7 @@ void CrossVMOperator::MarkFromObject(JSTaggedType value, std::function<void(uint
         return;
     }
     TaggedObject *object = taggedValue.GetHeapObject();
-    visitor(reinterpret_cast<uintptr_t>(object));       // This is only mark, so could pass a stack reference
+    visitor(reinterpret_cast<uintptr_t>(object));  // This is only mark, so could pass a stack reference
 }
 
 void CrossVMOperator::MarkFromObject(JSTaggedType value)
@@ -93,14 +94,42 @@ bool CrossVMOperator::IsValidHeapObject(JSTaggedType value)
 
 bool CrossVMOperator::EcmaVMInterfaceImpl::StartXRefMarking()
 {
-    return SharedHeap::GetInstance()->TriggerUnifiedGCMark<
-        TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(vm_->GetJSThread());
+    return SharedHeap::GetInstance()->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(
+        vm_->GetJSThread());
 }
 
 void CrossVMOperator::EcmaVMInterfaceImpl::NotifyXGCInterruption()
 {
     UnifiedGC *unifiedGC = SharedHeap::GetInstance()->GetUnifiedGC();
     unifiedGC->SetInterruptUnifiedGC(true);
+}
+
+JSTaggedType *CrossVMOperator::EcmaVMInterfaceImpl::GetTopFrameSPFromDynamic() const
+{
+    JSThread *jsThread = vm_->GetJSThread();
+    FrameHandler frameHandler(jsThread);
+    return frameHandler.GetSp();
+}
+
+bool CrossVMOperator::EcmaVMInterfaceImpl::ForEachDynamicFrame(void *currFrameSP, void *toFrameSP,
+                                                               const std::function<void(const void *)> &cb) const
+{
+    auto *jsThread = vm_->GetJSThread();
+    if (jsThread == nullptr) {
+        return false;
+    }
+    ASSERT(currFrameSP != nullptr);
+    FrameHandler currHandle(reinterpret_cast<JSTaggedType *>(currFrameSP), jsThread);
+    for (; currHandle.HasFrame(); currHandle.PrevJSFrame()) {
+        if (toFrameSP != nullptr && currHandle.GetSp() == toFrameSP) {
+            break;
+        }
+        if (currHandle.IsEntryFrame() || currHandle.IsBuiltinFrame()) {
+            continue;
+        }
+        cb(static_cast<void *>(&currHandle));
+    }
+    return true;
 }
 
 }  // namespace panda::ecmascript

@@ -95,6 +95,15 @@ public:
 
     void NativeObjDestory()
     {
+#if ENABLE_LATEST_OPTIMIZATION
+        resolvedModules_.ForEach([](const CString& key, GCRoot& root) {
+            ASSERT(!key.empty());
+            JSTaggedValue module = root.Read();
+            SourceTextModule::Cast(module)->DestoryLazyImportArray();
+            SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
+            SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
+        });
+#else
         resolvedModules_.ForEach([](auto it) {
             CString key = it->first;
             ASSERT(!key.empty());
@@ -104,6 +113,7 @@ public:
             SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
             SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
         });
+#endif
     }
 
     inline uint32_t GetResolvedModulesSize() const
@@ -113,8 +123,13 @@ public:
 
     inline void AddNormalSerializeModule(JSThread *thread, JSHandle<TaggedArray> serializerArray, uint32_t idx)
     {
+#if ENABLE_LATEST_OPTIMIZATION
+        resolvedModules_.ForEachValue(
+            [thread, &idx, serializerArray](GCRoot& root) { serializerArray->Set(thread, idx++, root.Read()); });
+#else
         resolvedModules_.ForEach(
             [thread, &idx, serializerArray](auto it) { serializerArray->Set(thread, idx++, it->second.Read()); });
+#endif
     }
 
     inline bool IsVMBundlePack()
@@ -150,7 +165,11 @@ private:
     uint32_t nextModuleAsyncEvaluatingOrdinal_{SourceTextModule::FIRST_ASYNC_EVALUATING_ORDINAL};
 
     EcmaVM *vm_ {nullptr};
+#if ENABLE_LATEST_OPTIMIZATION
+    ModuleManagerMap<CString, CStringHash> resolvedModules_;
+#else
     ModuleManagerMap<CString> resolvedModules_;
+#endif
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
 
     // for module deregister. <recordName <unsharedConstPoolIndex, value index>.

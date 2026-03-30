@@ -1,5 +1,6 @@
 {
     "name": "RB_TREENODE",
+    "node_name": "RBTreeNode",
     "offsets": [
         {
             "name": "Left",

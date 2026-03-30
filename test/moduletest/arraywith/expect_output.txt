@@ -27,3 +27,4 @@ RangeError: out of range.
 [1,"two",null,"four"]
 [1,"two",3,null,5]
 [1,2,3,2]
+[{},{},{},{},{},{},{},{},{},{},{}]

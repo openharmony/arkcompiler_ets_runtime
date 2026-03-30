@@ -1,5 +1,6 @@
 {
     "name": "JS_REFERENCE_ERROR",
+    "node_name": "Reference Error",
     "offsets": [
         {
             "name": "Properties",

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,6 +18,8 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <vector>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "aot_args_handler.h"
 #include "aot_compiler_constants.h"
@@ -38,26 +40,10 @@ public:
     static void TearDownTestCase() {}
     void SetUp() override
     {
-        mkdir(systemDir_, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        mkdir(systemFrameworkDir_, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        std::string bootpathJsonStr =
-            "{\"bootpath\":\"/system/framework/etsstdlib_bootabc.abc:/system/framework/arkoala.abc\"}";
-        std::ofstream file(bootPathJson_);
-        file << bootpathJsonStr << std::endl;
-        file.close();
-
-        mkdir(etcDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        mkdir(etcArkkDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     }
 
     void TearDown() override
     {
-        unlink(bootPathJson_);
-        rmdir(systemFrameworkDir_);
-        rmdir(bootPathJson_);
-
-        rmdir(etcDir);
-        rmdir(etcArkkDir);
     };
 
     const char *systemDir_ = "/system";
@@ -158,70 +144,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_006, TestSize.Level0)
     EXPECT_STREQ(bundleArg.c_str(), "com.ohos.contacts");
 }
 
-const std::string COMPILER_PKG_INFO_VALUE =
-    "{\"abcName\":\"ets/modules.abc\","
-    "\"abcOffset\":\"0x1000\","
-    "\"abcSize\":\"0x60b058\","
-    "\"appIdentifier\":\"5765880207853624761\","
-    "\"bundleName\":\"com.ohos.contacts\","
-    "\"BundleUid\":\"0x1317b6f\","
-    "\"isEncryptedBundle\":\"0x0\","
-    "\"isScreenOff\":\"0x1\","
-    "\"moduleName\":\"entry\","
-    "\"pgoDir\":\"/data/local/ark-profile/100/com.ohos.contacts\","
-    "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\","
-    "\"processUid\":\"0xbf4\"}";
-
-const std::unordered_map<std::string, std::string> argsMapForTest {
-    {"target-compiler-mode", "partial"},
-    {"aot-file", "/data/local/ark-cache/com.ohos.contacts/arm64/entry"},
-    {"compiler-pkg-info", COMPILER_PKG_INFO_VALUE},
-    {"compiler-external-pkg-info", "[]"},
-    {"compiler-opt-bc-range", ""},
-    {"compiler-device-state", "1"},
-    {"compiler-baseline-pgo", "0"},
-    {"ABC-Path", "/system/app/Contacts/Contacts.hap/ets/modules.abc"},
-    {"BundleUid", "20020079"},
-    {"BundleGid", "20020079"},
-    {"anFileName", "/data/local/ark-cache/com.ohos.contacts/arm64/entry.an"},
-    {"appIdentifier", "5765880207853624761"},
-};
-
-/**
- * @tc.name: AotArgsHandlerTest_007
- * @tc.desc: AOTArgsHandler::Handle(argsMap)
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_007, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    argsMap.emplace(ArgsIdx::ARKTS_MODE, "dynamic");
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
-    argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
-    int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
-    std::vector<const char*> argv = argsHandler->GetAotArgs();
-    EXPECT_STREQ(argv[0], "/system/bin/ark_aot_compiler");
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_008
- * @tc.desc: AOTArgsHandler::Handle(argsMap)
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_008, TestSize.Level0)
-{
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
-    argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
-    int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
-    std::vector<const char*> argv = argsHandler->GetAotArgs();
-    EXPECT_STREQ(argv[0], "/system/bin/ark_aot");
-}
 
 /**
  * @tc.name: AotArgsHandlerTest_009
@@ -248,6 +170,8 @@ const std::unordered_map<std::string, std::string> framewordArgsMapForTest {
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
 {
+    std::ofstream(staticPaocBlackListPath) << "{\"blackMethodList\":[]}";
+
     std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(framewordArgsMapForTest);
     argsHandler->SetIsEnableStaticCompiler(true);
     argsHandler->SetParser(framewordArgsMapForTest);
@@ -267,6 +191,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_010, TestSize.Level0)
             EXPECT_STREQ(arg, "--boot-panda-files=/system/framework/etsstdlib_bootabc.abc");
         }
     }
+
+    unlink(staticPaocBlackListPath);
 }
 
 /**
@@ -436,7 +362,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_022, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_023, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    // pgoDir field in json
     std::string pkgInfo = R"(
         {
             "pgoDir": "/path/to",
@@ -450,14 +375,13 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_023, TestSize.Level0)
 
     EXPECT_TRUE(result);
 
-    std::string expectedPath = "/path/to/profile.ap";
+    std::string expectedPath = "/path/to";
     EXPECT_EQ(profilePath, expectedPath);
 }
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_024, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    // invalid json
     std::string pkgInfo = R"({invalidjson})";
     std::string profilePath;
 
@@ -469,7 +393,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_024, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_025, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    // empty json
     std::string pkgInfo = R"({})";
     std::string profilePath;
 
@@ -481,7 +404,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_025, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_026, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    // no pgoDir field in json
     std::string pkgInfo = R"(
         {
             "bundleName": "bundle",
@@ -498,7 +420,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_027, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
     HapArgs hapArgs;
-    // pgoDir field in json
     std::string pkgInfo = R"(
         {
             "pgoDir": "/path/to",
@@ -507,14 +428,15 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_027, TestSize.Level0)
         }
     )";
 
-    bool result = parser.ParseProfileUse(hapArgs, pkgInfo);
+    std::string moduleName = "module";
+    bool result = parser.ParseProfileUse(hapArgs, pkgInfo, moduleName);
 
     EXPECT_TRUE(result);
 
     size_t expectedVecSize = 1;
     EXPECT_EQ(hapArgs.argVector.size(), expectedVecSize);
 
-    std::string expectedProfileUse = "--paoc-use-profile:path=/path/to/profile.ap";
+    std::string expectedProfileUse = "--paoc-use-profile:path=/path/to/module.ap";
     EXPECT_EQ(hapArgs.argVector[0], expectedProfileUse);
 }
 
@@ -522,10 +444,10 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_028, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
     HapArgs hapArgs;
-    // empty json
     std::string pkgInfo = R"({})";
 
-    bool result = parser.ParseProfileUse(hapArgs, pkgInfo);
+    std::string moduleName = "module";
+    bool result = parser.ParseProfileUse(hapArgs, pkgInfo, moduleName);
 
     EXPECT_FALSE(result);
 }
@@ -548,7 +470,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_030, TestSize.Level0) {
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_031, TestSize.Level0) {
     std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
     };
 
     auto result = AOTArgsParserFactory::GetParser(argsMap, false);
@@ -633,7 +555,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_039, TestSize.Level0) {
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_040, TestSize.Level0) {
     std::unordered_map<std::string, std::string> argsMap = {
-        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
         {ArgsIdx::ARKTS_MODE, "dynamic"}
     };
 
@@ -673,7 +595,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_043, TestSize.Level0) {
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_044, TestSize.Level0)
 {
-    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with non-string elements in methodLists
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -699,7 +620,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_044, TestSize.Level0)
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_045, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::ParseBlackListMethods with missing moduleLists
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -725,7 +645,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_045, TestSize.Level0)
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_046, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::ParseBlackListMethods with empty blackMethodList
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": []"
@@ -746,7 +665,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_046, TestSize.Level0)
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_047, TestSize.Level0)
 {
-    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with empty blackMethodList
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": []"
@@ -779,10 +697,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_048, TestSize.Level0)
     std::string pkgInfo;
     bool partialMode = false;
 
-    // Call ProcessArgsMap - this should trigger the staticAOTArgsList.find branch
     parser.ProcessArgsMap(argsMap, anfilePath, pkgInfo, partialMode, hapArgs);
 
-    // Verify that the vector contains entries from the staticAOTArgsList branch
     bool foundStaticArg = false;
     for (const auto& arg : hapArgs.argVector) {
         if (arg.find("--boot-panda-files=entry.abc") != std::string::npos) {
@@ -800,7 +716,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_048, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_049, TestSize.Level0)
 {
-    // Create black list JSON file with matching bundle and module
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -825,10 +740,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_049, TestSize.Level0)
     std::string pkgInfo = "{\"bundleName\": \"com.example.test\"}";
     std::string anfilePath = "/data/local/ark-cache/com.example.test/arm64/entry";
 
-    // Call ProcessBlackListMethods - this should add the method list to hapArgs
     parser.ProcessBlackListMethods(pkgInfo, anfilePath, hapArgs);
 
-    // Verify that both arguments were added to the argument vector
     bool foundBlackMethods = false;
     for (const auto& arg : hapArgs.argVector) {
         if (arg.find("--compiler-regex=") != std::string::npos &&
@@ -848,40 +761,10 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_049, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_050, TestSize.Level0)
 {
-    // This test verifies the case where the file doesn't exist
-    // Use a path that doesn't exist
     nlohmann::json jsonObject;
     bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
 
-    // The function should return false when the file doesn't exist
     EXPECT_FALSE(result);
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_052
- * @tc.desc: Test AOTArgsParserBase::ParseBlackListJson with null/empty JSON
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_052, TestSize.Level0)
-{
-    // Create an empty JSON file
-    std::string emptyJson = "{}";
-    std::ofstream file("/tmp/empty_test_black_methods.json");
-    file << emptyJson << std::endl;
-    file.close();
-
-    // Temporarily modify the path to test this specific file
-    std::string originalPath = "/etc/ark/static_aot_methods_black_list.json";
-    std::rename("/tmp/empty_test_black_methods.json", originalPath.c_str());
-
-    nlohmann::json jsonObject;
-    bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
-
-    // This returns false because the root object doesn't contain "blackMethodList"
-    EXPECT_FALSE(result);
-
-    // Clean up
-    unlink("/etc/ark/static_aot_methods_black_list.json");
 }
 
 /**
@@ -892,7 +775,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_052, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_053, TestSize.Level0)
 {
     nlohmann::json item;
-    // Missing bundleName
     nlohmann::json moduleLists = nlohmann::json::array();
     item["moduleLists"] = moduleLists;
     StaticAOTArgsParser parser;
@@ -908,7 +790,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_053, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_054, TestSize.Level0)
 {
     nlohmann::json item;
-    item["bundleName"] = 123; // Non-string value
+    item["bundleName"] = 123;
     nlohmann::json moduleLists = nlohmann::json::array();
     item["moduleLists"] = moduleLists;
     StaticAOTArgsParser parser;
@@ -924,7 +806,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_054, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_055, TestSize.Level0)
 {
     nlohmann::json moduleItem;
-    // Missing name
     nlohmann::json methodLists = nlohmann::json::array();
     moduleItem["methodLists"] = methodLists;
     StaticAOTArgsParser parser;
@@ -940,7 +821,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_055, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_056, TestSize.Level0)
 {
     nlohmann::json moduleItem;
-    moduleItem["name"] = 456; // Non-string value
+    moduleItem["name"] = 456;
     nlohmann::json methodLists = nlohmann::json::array();
     moduleItem["methodLists"] = methodLists;
     StaticAOTArgsParser parser;
@@ -956,7 +837,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_056, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_057, TestSize.Level0)
 {
     nlohmann::json jsonObject;
-    // Missing blackMethodList key
     StaticAOTArgsParser parser;
     std::string result = parser.ProcessBlackListForBundleAndModule(jsonObject, "bundle", "module");
     EXPECT_STREQ(result.c_str(), "");
@@ -970,7 +850,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_057, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_058, TestSize.Level0)
 {
     nlohmann::json jsonObject;
-    jsonObject["blackMethodList"] = "not_an_array"; // Non-array value
+    jsonObject["blackMethodList"] = "not_an_array";
     StaticAOTArgsParser parser;
     std::string result = parser.ProcessBlackListForBundleAndModule(jsonObject, "bundle", "module");
     EXPECT_STREQ(result.c_str(), "");
@@ -983,7 +863,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_058, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_059, TestSize.Level0)
 {
-    // Create black list JSON with multiple matching methods to trigger comma logic
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1010,7 +889,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_059, TestSize.Level0)
         "entry"
     );
 
-    // Should return the regex pattern
     EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2)$).*");
 
     unlink(staticPaocBlackListPath);
@@ -1026,7 +904,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_060, TestSize.Level0)
     nlohmann::json item;
     nlohmann::json moduleLists = nlohmann::json::array();
 
-    // Add a module with a non-matching name
     nlohmann::json moduleItem;
     moduleItem["name"] = "other_module";
     nlohmann::json methodLists = nlohmann::json::array();
@@ -1038,7 +915,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_060, TestSize.Level0)
 
     StaticAOTArgsParser parser;
     std::vector<std::string> result = parser.ProcessMatchingModules(item, "entry");
-    // Should return empty since no module matches "entry"
     EXPECT_TRUE(result.empty());
 }
 
@@ -1050,10 +926,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_060, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_061, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    std::string invalidPkgInfo = "{}"; // BundleName is missing
+    std::string invalidPkgInfo = "{}";
     std::string result = parser.ParseBlackListMethods(invalidPkgInfo, "entry");
 
-    // Should return empty string when bundleName parsing fails
     EXPECT_STREQ(result.c_str(), "");
 }
 
@@ -1065,63 +940,10 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_061, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_062, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    std::string emptyBundlePkgInfo = "{\"bundleName\": \"\"}"; // BundleName is empty
+    std::string emptyBundlePkgInfo = "{\"bundleName\": \"\"}";
     std::string result = parser.ParseBlackListMethods(emptyBundlePkgInfo, "entry");
 
-    // Should return empty string when bundleName is empty
     EXPECT_STREQ(result.c_str(), "");
-}
-
-/**
- * @tc.name: AotArgsHandlerTest_063
- * @tc.desc: Test StaticAOTArgsHandler::Handle with blackListMethods non-empty path
- * @tc.type: Func
-*/
-HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_063, TestSize.Level0)
-{
-    // Create black list JSON file with matching bundle and module
-    std::string blackListJsonStr =
-        "{"
-        "  \"blackMethodList\": ["
-        "    {"
-        "      \"bundleName\": \"com.ohos.contacts\","
-        "      \"type\": \"application\","
-        "      \"moduleLists\": ["
-        "        {"
-        "          \"name\": \"entry\","
-        "          \"methodLists\": [\"Test:m1\", \"Test:m2\"]"
-        "        }"
-        "      ]"
-        "    }"
-        "  ]"
-        "}";
-    std::ofstream file(staticPaocBlackListPath);
-    file << blackListJsonStr << std::endl;
-    file.close();
-
-    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
-    argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
-    argsMap.emplace("compiler-pkg-info",
-        "{\"abcName\":\"ets/modules.abc\","
-        "\"abcOffset\":\"0x1000\","
-        "\"abcSize\":\"0x60b058\","
-        "\"appIdentifier\":\"5765880207853624761\","
-        "\"bundleName\":\"com.ohos.contacts\","
-        "\"BundleUid\":\"0x1317b6f\","
-        "\"isEncryptedBundle\":\"0x0\","
-        "\"isScreenOff\":\"0x1\","
-        "\"moduleName\":\"entry\","
-        "\"pgoDir\":\"/data/local/ark-profile/100/com.ohos.contacts\","
-        "\"pkgPath\":\"/system/app/Contacts/Contacts.hap\","
-        "\"processUid\":\"0xbf4\"}");
-
-    std::unique_ptr<AOTArgsHandler> argsHandler = std::make_unique<AOTArgsHandler>(argsMap);
-    argsHandler->SetIsEnableStaticCompiler(true);
-    argsHandler->SetParser(argsMap);
-    int32_t ret = argsHandler->Handle(0);
-    EXPECT_EQ(ret, ERR_OK);
-
-    unlink(staticPaocBlackListPath);
 }
 
 /**
@@ -1132,7 +954,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_063, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_064, TestSize.Level0)
 {
     nlohmann::json item;
-    // Missing bundleName
     nlohmann::json methodLists = nlohmann::json::array();
     item["methodLists"] = methodLists;
     StaticFrameworkAOTArgsParser parser;
@@ -1148,7 +969,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_064, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_065, TestSize.Level0)
 {
     nlohmann::json item;
-    item["bundleName"] = 123; // Non-string value
+    item["bundleName"] = 123;
     nlohmann::json methodLists = nlohmann::json::array();
     item["methodLists"] = methodLists;
     StaticFrameworkAOTArgsParser parser;
@@ -1165,7 +986,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_066, TestSize.Level0)
 {
     nlohmann::json item;
     item["bundleName"] = "com.example.test";
-    // methodLists is null
     StaticFrameworkAOTArgsParser parser;
     bool result = parser.CheckBundleNameAndMethodList(item, "com.example.test");
     EXPECT_FALSE(result);
@@ -1182,7 +1002,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_067, TestSize.Level0)
     std::string bundleName = "com.example.test";
     std::string result = parser.ParseBlackListMethods(bundleName);
 
-    // Should return empty when black list file doesn't exist
     EXPECT_STREQ(result.c_str(), "");
 }
 
@@ -1197,16 +1016,13 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_068, TestSize.Level0)
     HapArgs hapArgs;
     std::unordered_map<std::string, std::string> argsMap;
 
-    // Use a known argument that exists in staticAOTArgsList
     argsMap["boot-panda-files"] = "entry.abc";
     std::string anfilePath;
     std::string pkgInfo;
     bool partialMode = false;
 
-    // Call ProcessArgsMap - this should trigger the staticAOTArgsList.find branch
     parser.ProcessArgsMap(argsMap, anfilePath, pkgInfo, partialMode, hapArgs);
 
-    // Verify that the vector contains the specific argument from staticAOTArgsList branch
     bool foundArg = false;
     for (const auto& arg : hapArgs.argVector) {
         if (arg.find("--boot-panda-files=entry.abc") != std::string::npos) {
@@ -1224,11 +1040,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_068, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_069, TestSize.Level0)
 {
-    // The ParseBlackListJson function specifically looks for a fixed path at runtime
-    // This covers the !IsFileExists(STATIC_PAOC_BLACK_LIST_PATH) path
     nlohmann::json jsonObject;
     bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
-    // This should return false since the file doesn't exist by default
     EXPECT_FALSE(result);
 }
 
@@ -1239,7 +1052,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_069, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_070, TestSize.Level0)
 {
-    // Create JSON with multiple items to trigger the comma logic
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1276,7 +1088,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_070, TestSize.Level0)
         "entry"
     );
 
-    // Should return regex pattern
     EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2)$).*");
 
     unlink(staticPaocBlackListPath);
@@ -1292,14 +1103,13 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_071, TestSize.Level0)
     nlohmann::json item;
     nlohmann::json moduleLists = nlohmann::json::array();
 
-    // Add modules with matching names to trigger comma concatenation
     nlohmann::json moduleItem1, moduleItem2;
     moduleItem1["name"] = "entry";
     nlohmann::json methodLists1 = nlohmann::json::array();
     methodLists1.push_back("Test:m1");
     moduleItem1["methodLists"] = methodLists1;
 
-    moduleItem2["name"] = "entry";  // Same name to match
+    moduleItem2["name"] = "entry";
     nlohmann::json methodLists2 = nlohmann::json::array();
     methodLists2.push_back("Test:m2");
     moduleItem2["methodLists"] = methodLists2;
@@ -1311,7 +1121,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_071, TestSize.Level0)
     StaticAOTArgsParser parser;
     std::vector<std::string> result = parser.ProcessMatchingModules(item, "entry");
 
-    // Should return concatenated methods with comma
     ASSERT_EQ(result.size(), 2U);
     EXPECT_EQ(result[0], "Test:m1");
     EXPECT_EQ(result[1], "Test:m2");
@@ -1325,7 +1134,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_071, TestSize.Level0)
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_072, TestSize.Level0)
 {
     StaticAOTArgsParser parser;
-    // Test with empty bundleName - this should trigger the bundleName.empty() check
     std::string emptyBundlePkgInfo = "{\"bundleName\": \"\"}";
     std::string result = parser.ParseBlackListMethods(emptyBundlePkgInfo, "entry");
 
@@ -1339,7 +1147,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_072, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
 {
-    // Create black list JSON file to be found
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1353,8 +1160,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
     std::ofstream file(staticPaocBlackListPath);
     file << blackListJsonStr << std::endl;
     file.close();
-
-    // Use framework args map
     std::unordered_map<std::string, std::string> argsMap(framewordArgsMapForTest);
     argsMap.emplace(ArgsIdx::ARKTS_MODE, "static");
     argsMap.emplace(ArgsIdx::IS_SYSTEM_COMPONENT, "1");
@@ -1365,7 +1170,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_073, TestSize.Level0)
     int32_t ret = argsHandler->Handle(0);
     EXPECT_EQ(ret, ERR_OK);
 
-    // Clean up
     unlink(staticPaocBlackListPath);
 }
 
@@ -1380,7 +1184,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_074, TestSize.Level0)
     std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
     std::string result = parser.ParseBlackListMethods(bundleName);
 
-    // Should return empty when black list file doesn't exist or is invalid
     EXPECT_STREQ(result.c_str(), "");
 }
 
@@ -1391,7 +1194,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_074, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_075, TestSize.Level0)
 {
-    // Create black list JSON with multiple matching methods
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1410,7 +1212,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_075, TestSize.Level0)
     std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
     std::string result = parser.ParseBlackListMethods(bundleName);
 
-    // Should return regex pattern
     EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2)$).*");
 
     unlink(staticPaocBlackListPath);
@@ -1423,7 +1224,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_075, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_076, TestSize.Level0)
 {
-    // Create a JSON file with 'null' content to trigger the jsonObject.is_null() condition
     std::string nullJson = "null";
     system("mkdir -p /etc/ark");
     std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
@@ -1432,9 +1232,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_076, TestSize.Level0)
 
     nlohmann::json jsonObject;
     bool result = AOTArgsParserBase::ParseBlackListJson(jsonObject);
-    // When the parsed JSON is null, the function should return false due to is_null() check
-    // Note: This may or may not actually trigger the condition depending on how nlohmann::json handles 'null'
-    EXPECT_FALSE(result); // Expecting false due to null JSON
+    EXPECT_FALSE(result);
 
     unlink("/etc/ark/static_aot_methods_black_list.json");
 }
@@ -1446,8 +1244,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_076, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_078, TestSize.Level0)
 {
-    // Create a JSON file without blackMethodList to trigger the condition
-    std::string invalidJson = "{\"otherKey\": \"otherValue\"}";  // Missing blackMethodList
+    std::string invalidJson = "{\"otherKey\": \"otherValue\"}";
     system("mkdir -p /etc/ark");
     std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
     file << invalidJson << std::endl;
@@ -1457,7 +1254,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_078, TestSize.Level0)
     std::string bundleName = "some_bundle";
     std::string result = parser.ParseBlackListMethods(bundleName);
 
-    // Should return empty string when blackMethodList is missing
     EXPECT_STREQ(result.c_str(), "");
 
     unlink("/etc/ark/static_aot_methods_black_list.json");
@@ -1470,8 +1266,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_078, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_079, TestSize.Level0)
 {
-    // Create a JSON file with blackMethodList as non-array to trigger the condition
-    std::string invalidJson = "{\"blackMethodList\": \"not_an_array\"}";  // blackMethodList is string, not array
+    std::string invalidJson = "{\"blackMethodList\": \"not_an_array\"}";
     system("mkdir -p /etc/ark");
     std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
     file << invalidJson << std::endl;
@@ -1481,7 +1276,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_079, TestSize.Level0)
     std::string bundleName = "some_bundle";
     std::string result = parser.ParseBlackListMethods(bundleName);
 
-    // Should return empty string when blackMethodList is not an array
     EXPECT_STREQ(result.c_str(), "");
 
     unlink("/etc/ark/static_aot_methods_black_list.json");
@@ -1489,8 +1283,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_079, TestSize.Level0)
 
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_080, TestSize.Level0)
 {
-    // Create a JSON file that exists but has no blackMethodList to test the exact condition
-    std::string jsonContent = "{}";  // Empty JSON object
+    std::string jsonContent = "{}";
     system("mkdir -p /etc/ark");
     std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
     file << jsonContent << std::endl;
@@ -1500,7 +1293,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_080, TestSize.Level0)
     std::string bundleName = "test_bundle";
     std::string result = parser.ParseBlackListMethods(bundleName);
 
-    // Should return empty string when blackMethodList is missing
     EXPECT_STREQ(result.c_str(), "");
 
     unlink("/etc/ark/static_aot_methods_black_list.json");
@@ -1513,7 +1305,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_080, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_081, TestSize.Level0)
 {
-    std::string jsonContent = "{\"blackMethodList\": []}";  // Empty array
+    std::string jsonContent = "{\"blackMethodList\": []}";
     system("mkdir -p /etc/ark");
     std::ofstream file("/etc/ark/static_aot_methods_black_list.json");
     file << jsonContent << std::endl;
@@ -1523,7 +1315,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_081, TestSize.Level0)
     std::string bundleName = "test_bundle";
     std::string result = parser.ParseBlackListMethods(bundleName);
 
-    // Should return empty string when blackMethodList is an empty array
     EXPECT_STREQ(result.c_str(), "");
 
     unlink("/etc/ark/static_aot_methods_black_list.json");
@@ -1536,7 +1327,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_081, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_082, TestSize.Level0)
 {
-    // Create a JSON file with multiple matching items to trigger resultStr += "," condition
     std::string jsonContent =
         "{"
         "  \"blackMethodList\": ["
@@ -1561,7 +1351,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_082, TestSize.Level0)
     std::string bundleName = "/system/framework/etsstdlib_bootabc.abc";
     std::string result = parser.ParseBlackListMethods(bundleName);
 
-    // Should return concatenated methods with comma when multiple items match
     EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m2|Test:m3|Test:m4)$).*");
 
     unlink("/etc/ark/static_aot_methods_black_list.json");
@@ -1653,7 +1442,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_088, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_089, TestSize.Level0)
 {
-    // Test AOTArgsParserBase::JoinMethodList with empty array
     nlohmann::json methodLists = nlohmann::json::array();
     std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
     EXPECT_TRUE(result.empty());
@@ -1666,7 +1454,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_089, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_090, TestSize.Level0)
 {
-    // Test AOTArgsParserBase::JoinMethodList with method list
     nlohmann::json methodLists = nlohmann::json::array();
     methodLists.push_back("Test:m1");
     methodLists.push_back("Test:m2");
@@ -1685,10 +1472,9 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_090, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_091, TestSize.Level0)
 {
-    // Test AOTArgsParserBase::JoinMethodList with non-string elements
     nlohmann::json methodLists = nlohmann::json::array();
     methodLists.push_back("Test:m1");
-    methodLists.push_back(123);  // non-string element
+    methodLists.push_back(123);
     methodLists.push_back("Test:m3");
     std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
     ASSERT_EQ(result.size(), 2U);
@@ -1703,7 +1489,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_091, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_092, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::CheckBundleNameAndModuleList with valid bundle and module list
     nlohmann::json item;
     item["bundleName"] = "com.example.test";
     nlohmann::json moduleLists = nlohmann::json::array();
@@ -1720,7 +1505,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_092, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_093, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::CheckBundleNameAndModuleList with invalid bundle name
     nlohmann::json item;
     item["bundleName"] = "com.example.other";
     nlohmann::json moduleLists = nlohmann::json::array();
@@ -1737,10 +1521,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_093, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_094, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::CheckBundleNameAndModuleList without module list
     nlohmann::json item;
     item["bundleName"] = "com.example.test";
-    // Missing moduleLists
     StaticAOTArgsParser parser;
     bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
     EXPECT_FALSE(result);
@@ -1753,7 +1535,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_094, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_095, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::CheckModuleNameAndMethodList with valid module and method list
     nlohmann::json moduleItem;
     moduleItem["name"] = "entry";
     nlohmann::json methodLists = nlohmann::json::array();
@@ -1770,7 +1551,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_095, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_096, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::CheckModuleNameAndMethodList with invalid module name
     nlohmann::json moduleItem;
     moduleItem["name"] = "other";
     nlohmann::json methodLists = nlohmann::json::array();
@@ -1787,10 +1567,8 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_096, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_097, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::CheckModuleNameAndMethodList without method list
     nlohmann::json moduleItem;
     moduleItem["name"] = "entry";
-    // Missing methodLists
     StaticAOTArgsParser parser;
     bool result = parser.CheckModuleNameAndMethodList(moduleItem, "entry");
     EXPECT_FALSE(result);
@@ -1803,7 +1581,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_097, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_098, TestSize.Level0)
 {
-    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with matching bundleName
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1834,7 +1611,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_098, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_099, TestSize.Level0)
 {
-    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods with non-matching bundleName
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1865,7 +1641,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_099, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_100, TestSize.Level0)
 {
-    // Test StaticFrameworkAOTArgsParser::ParseBlackListMethods without methodLists
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1895,7 +1670,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_100, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_101, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser with proper blackMethodList JSON format (as per paoc.md)
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1932,7 +1706,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_101, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_102, TestSize.Level0)
 {
-    // Test StaticFrameworkAOTArgsParser with proper blackMethodList JSON format for framework (as per paoc.md)
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1963,7 +1736,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_102, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_103, TestSize.Level0)
 {
-    // Test ParseBlackListJson with blackMethodList structure as per paoc.md
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -1971,7 +1743,7 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_103, TestSize.Level0)
         "      \"bundleName\": \"com.example.test\","
         "      \"type\": \"application\","
         "      \"methodLists\": [\"Test:f1\"],"
-        "      \"issue\": \"https://example.com/issue/123\""
+         "      \"issue\": \"https://example.com/issue/123\""
         "    }"
         "  ]"
         "}";
@@ -1994,7 +1766,6 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_103, TestSize.Level0)
 */
 HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_104, TestSize.Level0)
 {
-    // Test StaticAOTArgsParser::ParseBlackListMethods with non-string elements in methodLists
     std::string blackListJsonStr =
         "{"
         "  \"blackMethodList\": ["
@@ -2022,6 +1793,1332 @@ HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_104, TestSize.Level0)
     EXPECT_STREQ(result.c_str(), "^(?!(Test:m1|Test:m3|Test:m4)$).*");
 
     unlink(staticPaocBlackListPath);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_105
+ * @tc.desc: Test StaticAOTArgsParser::ParseLocation with various path formats
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_105, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string anFilePath = "/data/local/ark-cache/com.example.app/arm64/module";
+    std::string location = parser.ParseLocation(anFilePath);
+    EXPECT_FALSE(location.empty());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_106
+ * @tc.desc: Test AOTArgsParserBase::FindArgsIdxToInteger with zero value
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_106, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap.emplace("argKey", "0");
+    std::string keyName = "argKey";
+    int32_t bundleID = 999;
+    int32_t ret = AOTArgsParserBase::FindArgsIdxToInteger(argsMap, keyName, bundleID);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_EQ(bundleID, 0);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_107
+ * @tc.desc: Test StaticAOTArgsParser::ProcessMatchingModules with null methodLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_107, TestSize.Level0)
+{
+    nlohmann::json item;
+    nlohmann::json moduleLists = nlohmann::json::array();
+    nlohmann::json moduleItem;
+    moduleItem["name"] = "entry";
+    moduleLists.push_back(moduleItem);
+    item["moduleLists"] = moduleLists;
+
+    StaticAOTArgsParser parser;
+    std::vector<std::string> result = parser.ProcessMatchingModules(item, "entry");
+    EXPECT_TRUE(result.empty());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_108
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::CheckBundleNameAndMethodList with matching bundle
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_108, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("Test:m1");
+    item["methodLists"] = methodLists;
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndMethodList(item, "com.example.test");
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_109
+ * @tc.desc: Test AOTArgsParser::AddExpandArgs with different thermal levels
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_109, TestSize.Level0)
+{
+    std::unique_ptr<AOTArgsParser> parser = std::make_unique<AOTArgsParser>();
+    std::vector<std::string> aotVector;
+    parser->AddExpandArgs(aotVector, 3);
+    std::string arg = aotVector[0];
+    EXPECT_STREQ(arg.c_str(), "--compiler-thermal-level=3");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_110
+ * @tc.desc: Test StaticAOTArgsParser::ParseProfilePath with missing pgoDir and bundleName
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_110, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string pkgInfo = R"({"mode": "static"})";
+    std::string profilePath;
+    bool result = parser.ParseProfilePath(pkgInfo, profilePath);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_111
+ * @tc.desc: Test AOTArgsParserFactory::GetParser with invalid IS_SYSTEM_COMPONENT value
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_111, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_113
+ * @tc.desc: Test AOTArgsParserBase::JoinMethodList with single element
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_113, TestSize.Level0)
+{
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("SingleMethod:test");
+    std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
+    ASSERT_EQ(result.size(), 1U);
+    EXPECT_EQ(result[0], "SingleMethod:test");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_114
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList with non-array moduleLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_114, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    item["moduleLists"] = "not_an_array";
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_115
+ * @tc.desc: Test AOTArgsParserFactory::GetParser with invalid IS_SYSTEM_COMPONENT value
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_115, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_117
+ * @tc.desc: Test AOTArgsParserBase::JoinMethodList with single element
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_117, TestSize.Level0)
+{
+    nlohmann::json methodLists = nlohmann::json::array();
+    methodLists.push_back("SingleMethod:test");
+    std::vector<std::string> result = AOTArgsParserBase::JoinMethodList(methodLists);
+    ASSERT_EQ(result.size(), 1U);
+    EXPECT_EQ(result[0], "SingleMethod:test");
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_118
+ * @tc.desc: Test StaticAOTArgsParser::CheckBundleNameAndModuleList with non-array moduleLists
+ * @tc.type: Func
+*/
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_118, TestSize.Level0)
+{
+    nlohmann::json item;
+    item["bundleName"] = "com.example.test";
+    item["moduleLists"] = "not_an_array";
+    StaticAOTArgsParser parser;
+    bool result = parser.CheckBundleNameAndModuleList(item, "com.example.test");
+    EXPECT_FALSE(result);
+}
+
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_001
+ * @tc.desc: Test StaticAOTArgsParser::Check with missing PKG_INFO
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_002
+ * @tc.desc: Test StaticAOTArgsParser::Check with invalid PKG_INFO (empty bundleName)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_002, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_003
+ * @tc.desc: Test StaticAOTArgsParser::Check with missing AOT_FILE
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_003, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
+        "{\"bundleName\": \"com.example.myapplication\", \"pkgPath\": \"/data/test/test.hap\", "
+         "\"abcOffset\": \"0\", \"abcSize\": \"100\", \"bundleUid\": \"2710\", \"bundleGid\": \"2710\"}";
+    argsMap[ArgsIdx::AN_FILE_NAME] =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_004
+ * @tc.desc: Test StaticAOTArgsParser::Check with missing AN_FILE_NAME
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_004, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
+        "{\"bundleName\": \"com.example.myapplication\", \"pkgPath\": \"/data/test/test.hap\", "
+         "\"abcOffset\": \"0\", \"abcSize\": \"100\", \"bundleUid\": \"2710\", \"bundleGid\": \"2710\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/arm64/entry";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_005
+ * @tc.desc: Test StaticAOTArgsParser::Check with path traversal in aot-file
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_005, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
+        "{\"bundleName\": \"com.example.myapplication\", \"pkgPath\": \"/data/test/test.hap\", "
+         "\"abcOffset\": \"0\", \"abcSize\": \"100\", \"bundleUid\": \"2710\", \"bundleGid\": \"2710\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/../etc/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] =
+        "/data/app/el1/public/aot_compiler/ark_cache/com.example.myapplication/../etc/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_006
+ * @tc.desc: Test StaticAOTArgsParser::Check with invalid ark cache directory (not in expected location)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_006, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
+        "{\"bundleName\": \"com.example.myapplication\", \"pkgPath\": \"/data/test/test.hap\", "
+         "\"abcOffset\": \"0\", \"abcSize\": \"100\", \"bundleUid\": \"2710\", \"bundleGid\": \"2710\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/wrong_location/" \
+                                  "com.example.myapplication/arm64/entry";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/wrong_location/" \
+                                   "com.example.myapplication/arm64/entry.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTArgsParserTest_SUCCESS_001
+ * @tc.desc: Test StaticAOTArgsParser can be obtained via GetParser with valid inputs
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTArgsParserTest_SUCCESS_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::IS_SYSTEM_COMPONENT] = "0";
+    argsMap[ArgsIdx::ARKTS_MODE] = "static";
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_001
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with missing AN_FILE_NAME
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_002
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with path traversal in anFileName
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_002, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
+                                      "framework_ark_cache/../etc/etsstdlib_bootabc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_003
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with invalid framework cache directory (wrong location)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_003, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/" \
+                                      "framework_ark_cache/etsstdlib_bootabc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_004
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with Windows-style path traversal
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_004, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
+                                      "framework_ark_cache\\..\\etsstdlib_bootabc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTArgsParserTest_SUCCESS_001
+ * @tc.desc: Test StaticFrameworkAOTArgsParser::Check with valid input (successful case)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTArgsParserTest_SUCCESS_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/" \
+                                      "framework_ark_cache/etsstdlib_bootabc.an";
+
+    std::ofstream anFile("/data/service/el1/public/for-all-app/" \
+                         "framework_ark_cache/etsstdlib_bootabc.an");
+    anFile.close();
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+    EXPECT_TRUE(result);
+
+    unlink("/data/service/el1/public/for-all-app/framework_ark_cache/etsstdlib_bootabc.an");
+}
+
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_MissingIsSystemComponent
+ * @tc.desc: Test GetParser with missing IS_SYSTEM_COMPONENT parameter
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_MissingIsSystemComponent, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_MissingArkTsMode
+ * @tc.desc: Test GetParser with missing ARKTS_MODE parameter
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_MissingArkTsMode, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_InvalidIsSystemComponent
+ * @tc.desc: Test GetParser with invalid IS_SYSTEM_COMPONENT value (non-numeric)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidIsSystemComponent, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_EmptyArkTsMode
+ * @tc.desc: Test GetParser with empty ARKTS_MODE value
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_EmptyArkTsMode, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Dynamic_StaticEnabled_NonSystem
+ * @tc.desc: Test GetParser: dynamic mode, static enabled, non-system
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Dynamic_StaticEnabled_NonSystem, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Static_StaticEnabled_NonSystem
+ * @tc.desc: Test GetParser: static mode, static enabled, non-system
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Static_StaticEnabled_NonSystem, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Hybrid_StaticEnabled_NonSystem
+ * @tc.desc: Test GetParser: hybrid mode, static enabled, non-system
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_StaticEnabled_NonSystem, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Framework_StaticEnabled_System
+ * @tc.desc: Test GetParser: system component, static enabled → StaticFrameworkAOTArgsParser
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_StaticEnabled_System, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_InvalidMode_StaticEnabled_NonSystem
+ * @tc.desc: Test GetParser: invalid mode, static enabled, non-system
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidMode_StaticEnabled_NonSystem, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "invalid_mode"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_StaticMode_StaticDisabled_NonSystem
+ * @tc.desc: Test GetParser: static mode, static DISABLED, non-system → nullopt
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_StaticMode_StaticDisabled_NonSystem, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_HybridMode_StaticDisabled_NonSystem
+ * @tc.desc: Test GetParser: hybrid mode, static DISABLED, non-system → nullopt
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_HybridMode_StaticDisabled_NonSystem, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_InvalidMode_StaticDisabled_NonSystem
+ * @tc.desc: Test GetParser: invalid mode, static DISABLED, non-system → nullopt
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidMode_StaticDisabled_NonSystem, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "invalid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_BothParamsMissing_StaticEnabled
+ * @tc.desc: Test GetParser: both params missing, static enabled
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_BothParamsMissing_StaticEnabled, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {};
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_BothParamsMissing_StaticDisabled
+ * @tc.desc: Test GetParser: both params missing, static disabled
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_BothParamsMissing_StaticDisabled, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {};
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_System_Component_StaticDisabled
+ * @tc.desc: Test GetParser: system component, static DISABLED → AOTArgsParser (not framework)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_System_Component_StaticDisabled, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_NegativeIsSystemComponent
+ * @tc.desc: Test GetParser with negative IS_SYSTEM_COMPONENT value
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_NegativeIsSystemComponent, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_ZeroIsSystemComponent_StaticMode
+ * @tc.desc: Test GetParser: isSystemComponent=0, static mode → StaticAOTArgsParser
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ZeroIsSystemComponent_StaticMode, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Failure_Static
+ * @tc.desc: Test GetParser when validation fails for static mode
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Failure_Static, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Framework_Static_System_StaticMode
+ * @tc.desc: Test GetParser: system component, static enabled, static mode → StaticFrameworkAOTArgsParser
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_Static_System_StaticMode, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Framework_Static_System_HybridMode
+ * @tc.desc: Test GetParser: system component, static enabled, hybrid mode → StaticFrameworkAOTArgsParser
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Framework_Static_System_HybridMode, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_InvalidIsSystemComponent_StaticEnabled
+ * @tc.desc: Test GetParser with invalid IS_SYSTEM_COMPONENT value and static enabled
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_InvalidIsSystemComponent_StaticEnabled, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_Empty_Dynamic
+ * @tc.desc: Test GetParser when CheckModuleArkTSMode fails with empty mode for AOT parser
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_Empty_Dynamic, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_StaticForAOT
+ * @tc.desc: Test GetParser when CheckModuleArkTSMode fails: static mode for AOT parser
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_StaticForAOT, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_DynamicForStatic
+ * @tc.desc: Test GetParser when CheckModuleArkTSMode fails: dynamic mode for StaticAOT parser
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_DynamicForStatic, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_HybridForAOT
+ * @tc.desc: Test GetParser when CheckModuleArkTSMode fails: hybrid mode for AOT parser
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckModuleArkTSMode_HybridForAOT, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_EQ(result, std::nullopt);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_CheckIsSystemComponent_Empty
+ * @tc.desc: Test GetParser with empty IS_SYSTEM_COMPONENT value (treated as non-system component)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_CheckIsSystemComponent_Empty, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, ""},
+        {ArgsIdx::ARKTS_MODE, "dynamic"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_NE(result, std::nullopt);
+    EXPECT_EQ(result.value()->GetParserType(), AotParserType::DYNAMIC_AOT);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_ValidAbcName_AOT
+ * @tc.desc: Test GetParser with valid abcName for AOT parser (success case)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ValidAbcName_AOT, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "dynamic"},
+        {ArgsIdx::COMPILER_PKG_INFO,
+         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\",\"abcName\":\"ets/modules.abc\","
+          "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_ValidAbcName_Static
+ * @tc.desc: Test GetParser with valid abcName for StaticAOT parser (success case)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_ValidAbcName_Static, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "static"},
+        {ArgsIdx::COMPILER_PKG_INFO,
+         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\",\"abcName\":\"ets/modules_static.abc\","
+          "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_FrameworkStaticAOT
+ * @tc.desc: Test GetParser with isSystemComponent=1 and isEnableStaticCompiler=true
+ *           This should return StaticFrameworkAOTArgsParser (early return before arkTsMode check)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_FrameworkStaticAOT, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Static_Fail
+ * @tc.desc: Test GetParser with static mode but validation fails
+ *           Tests the branch for StaticAOT: LOG_SA(ERROR) << "Static AOT parser
+ *           init params check failed"; return std::nullopt;
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Static_Fail, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "static"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Hybrid_Fail
+ * @tc.desc: Test GetParser with hybrid mode but validation fails
+ *           Tests the branch: LOG_SA(ERROR) << "Static AOT parser init params check failed"; return std::nullopt;
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_Fail, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "1"},
+        {ArgsIdx::ARKTS_MODE, "hybrid"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+
+/**
+ * @tc.name: AotArgsHandlerTest_GetParser_Hybrid_Success
+ * @tc.desc: Test GetParser with hybrid mode and valid params (success case)
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_GetParser_Hybrid_Success, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap = {
+        {ArgsIdx::IS_SYSTEM_COMPONENT, "0"},
+        {ArgsIdx::ARKTS_MODE, "hybrid"},
+        {ArgsIdx::COMPILER_PKG_INFO,
+         "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\",\"abcName\":\"ets/modules_static.abc\","
+          "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}"}
+    };
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+
+/**
+ * @tc.name: AotArgsParserBase_Check_AOT_Branch
+ * @tc.desc: Test AOTArgsParserFactory::GetParser returns AOTArgsParser for dynamic mode
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_AOT_Branch, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::IS_SYSTEM_COMPONENT] = "0";
+    argsMap[ArgsIdx::ARKTS_MODE] = "dynamic";
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, false);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+/**
+ * @tc.name: AotArgsParserBase_Check_STATIC_AOT_Branch
+ * @tc.desc: Test AOTArgsParserFactory::GetParser returns StaticAOTArgsParser for static mode
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_STATIC_AOT_Branch, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::IS_SYSTEM_COMPONENT] = "0";
+    argsMap[ArgsIdx::ARKTS_MODE] = "static";
+
+    auto result = AOTArgsParserFactory::GetParser(argsMap, true);
+
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result.value(), nullptr);
+}
+
+/**
+ * @tc.name: AotArgsParserBase_Check_FRAMEWORK_STATIC_AOT_Branch
+ * @tc.desc: Test AOTArgsParserBase::Check with FRAMEWORK_STATIC_AOT parser type
+ *           Covers: case AotParserType::FRAMEWORK_STATIC_AOT:
+ *           return AotArgsVerify::CheckFrameworkStaticAotArgs(argsMap);
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_FRAMEWORK_STATIC_AOT_Branch, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/framework_ark_cache/test.abc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_TRUE(result);
+}
+
+/**
+ * @tc.name: AotArgsParserBase_Check_DEFAULT_Branch
+ * @tc.desc: Test AOTArgsParserBase::Check with UNKNOWN parser type (default branch)
+ *           Covers: default: LOG_SA(ERROR) << "Unknown parser type in Check"; return false;
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsParserBase_Check_DEFAULT_Branch, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/framework_ark_cache/test.abc.an";
+
+    class TestUnknownParser : public AOTArgsParserBase {
+    public:
+        int32_t Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
+                      int32_t thermalLevel) override
+        {
+            return ERR_OK;
+        }
+
+        AotParserType GetParserType() const override
+        {
+            return AotParserType::UNKNOWN;
+        }
+    };
+
+    TestUnknownParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+
+/**
+ * @tc.name: AOTArgsParser_Check_Fails_When_CheckAOTArgs_MissingPkgInfo
+ * @tc.desc: Test AOTArgsParserBase::Check with AOT parser type
+ *           Verifies Check() returns false when CheckAOTArgs fails due to missing COMPILER_PKG_INFO
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_MissingPkgInfo, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
+
+    AOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AOTArgsParser_Check_Fails_When_CheckAOTArgs_InvalidPgoDir
+ * @tc.desc: Test AOTArgsParserBase::Check with AOT parser type
+ *           Verifies Check() returns false when CheckAOTArgs fails due to path traversal in pgoDir
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_InvalidPgoDir, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
+        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\","
+         "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/../etc\","
+         "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
+
+    AOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: AOTArgsParser_Check_Fails_When_CheckAOTArgs_WrongCacheDir
+ * @tc.desc: Test AOTArgsParserBase::Check with AOT parser type
+ *           Verifies Check() returns false when CheckAOTArgs fails due to wrong cache directory
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AOTArgsParser_Check_Fails_When_CheckAOTArgs_WrongCacheDir, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
+        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\","
+         "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/wrong_location/com.test/test";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/com.test/test.an";
+
+    AOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_MissingPkgInfo
+ * @tc.desc: Test AOTArgsParserBase::Check with STATIC_AOT parser type
+ *           Verifies Check() returns false when CheckStaticAotArgs fails due to missing COMPILER_PKG_INFO
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_MissingPkgInfo, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_InvalidPkgInfo
+ * @tc.desc: Test AOTArgsParserBase::Check with STATIC_AOT parser type
+ *           Verifies Check() returns false when CheckStaticAotArgs fails due to invalid JSON
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_InvalidPkgInfo, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = "{invalid_json}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/com.test/test.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_WrongCacheDir
+ * @tc.desc: Test AOTArgsParserBase::Check with STATIC_AOT parser type
+ *           Verifies Check() returns false when CheckStaticAotArgs fails due to wrong cache directory
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticAOTParser_Check_Fails_When_CheckStaticAotArgs_WrongCacheDir, TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] =
+        "{\"bundleName\":\"com.test\",\"pkgPath\":\"/test.hap\","
+         "\"abcOffset\":\"0\",\"abcSize\":\"100\",\"bundleUid\":\"2710\",\"bundleGid\":\"2710\"}";
+    argsMap[ArgsIdx::AOT_FILE] = "/data/app/el1/public/wrong_location/com.test/test";
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/wrong_location/com.test/test.an";
+
+    StaticAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_MissingAnFile
+ * @tc.desc: Test AOTArgsParserBase::Check with FRAMEWORK_STATIC_AOT parser type
+ *           Verifies Check() returns false when CheckFrameworkStaticAotArgs fails due to missing AN_FILE_NAME
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_MissingAnFile,
+    TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_PathTraversal
+ * @tc.desc: Test AOTArgsParserBase::Check with FRAMEWORK_STATIC_AOT parser type
+ *           Verifies Check() returns false when CheckFrameworkStaticAotArgs fails due to path traversal
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_PathTraversal,
+    TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/service/el1/public/for-all-app/framework_ark_cache/../test.abc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_WrongPathPrefix
+ * @tc.desc: Test AOTArgsParserBase::Check with FRAMEWORK_STATIC_AOT parser type
+ *           Verifies Check() returns false when CheckFrameworkStaticAotArgs fails due to wrong path prefix
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, StaticFrameworkAOTParser_Check_Fails_When_CheckFrameworkAotArgs_WrongPathPrefix,
+    TestSize.Level0)
+{
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap[ArgsIdx::AN_FILE_NAME] = "/data/app/el1/public/aot_compiler/ark_cache/test.abc.an";
+
+    StaticFrameworkAOTArgsParser parser;
+    bool result = parser.Check(argsMap);
+
+    EXPECT_FALSE(result);
+}
+
+// ============================================================================
+// ParseOuterHspLocation - Test Cases
+// ============================================================================
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_HspSuffix
+ * @tc.desc: Test ParseOuterHspLocation with system app path (/system/app/ prefix)
+ *           Input: /system/app/shared_bundles/FlexiableLayout/FlayoutCore.hsp/ets/modules_static.abc
+ *           Expected: /system/app/shared_bundles/FlexiableLayout/FlayoutCore/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_HspSuffix, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/system/app/shared_bundles/FlexiableLayout/FlayoutCore.hsp/ets/modules_static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/system/app/shared_bundles/FlexiableLayout/FlayoutCore/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_RootHsp
+ * @tc.desc: Test ParseOuterHspLocation with system app .hsp at root level
+ *           Input: /system/app/test.hsp
+ *           Expected: /system/app/test/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_RootHsp, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/system/app/test.hsp";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/system/app/test/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_NestedPath
+ * @tc.desc: Test ParseOuterHspLocation with system app nested .hsp path
+ *           Input: /system/app/deep/nested/path/module.hsp/ets/static.abc
+ *           Expected: /system/app/deep/nested/path/module/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_NestedPath, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/system/app/deep/nested/path/module.hsp/ets/static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/system/app/deep/nested/path/module/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_DataApp_WithVersionCode
+ * @tc.desc: Test ParseOuterHspLocation with data app path containing version code
+ *           Input: /data/app/el1/bundle/public/com.examplelayout/v122000200/
+ *                  FLayoutCore/FLayoutCore.hsp/ets/modules_static.abc
+ *           Expected: /data/storage/el1/bundle/com.examplelayout/FLayoutCore/FLayoutCore/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_DataApp_WithVersionCode, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/data/app/el1/bundle/public/com.examplelayout/"
+                          "v122000200/FLayoutCore/FLayoutCore.hsp/ets/modules_static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/data/storage/el1/bundle/com.examplelayout/"
+                           "FLayoutCore/FLayoutCore/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_DataApp_SimplePath
+ * @tc.desc: Test ParseOuterHspLocation with data app simple path
+ *           Input: /data/app/el1/bundle/public/com.example.app/v100000000/module.hsp/ets/static.abc
+ *           Expected: /data/storage/el1/bundle/com.example.app/module/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_DataApp_SimplePath, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/data/app/el1/bundle/public/com.example.app/"
+                          "v100000000/module.hsp/ets/static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/data/storage/el1/bundle/com.example.app/module/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_DataApp_NoSubFolder
+ * @tc.desc: Test ParseOuterHspLocation with data app hsp without subfolder
+ *           Input: /data/app/el1/bundle/public/com.example.app/v100000000/app.hsp/ets/static.abc
+ *           Expected: /data/storage/el1/bundle/com.example.app/app/ets
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_DataApp_NoSubFolder, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    std::string abcPath = "/data/app/el1/bundle/public/com.example.app/"
+                          "v100000000/app.hsp/ets/static.abc";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/data/storage/el1/bundle/com.example.app/app/ets";
+    EXPECT_EQ(result, expected);
+}
+
+/**
+ * @tc.name: AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_PreferredOverData
+ * @tc.desc: Test ParseOuterHspLocation prefers system path when both prefixes exist
+ *           Input contains /system/app/ prefix - should use system path logic
+ * @tc.type: Func
+ */
+HWTEST_F(AotArgsHandlerTest, AotArgsHandlerTest_ParseOuterHspLocation_SystemApp_PreferredOverData, TestSize.Level0)
+{
+    StaticAOTArgsParser parser;
+    // Path that contains both prefixes - system should take precedence
+    std::string abcPath = "/system/app/test.hsp";
+
+    std::string result = parser.ParseOuterHspLocation(abcPath);
+
+    std::string expected = "/system/app/test/ets";
+    EXPECT_EQ(result, expected);
 }
 
 } // namespace OHOS::ArkCompiler

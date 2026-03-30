@@ -95,11 +95,9 @@ void ObjectOperator::HandleKey(const JSHandle<JSTaggedValue> &key)
 
 void ObjectOperator::UpdateHolder()
 {
-#if ENABLE_NEXT_OPTIMIZATION
     if (holder_->IsECMAObject()) {
         return;
     }
-#endif
     if (holder_->IsString()) {
         if (CheckValidIndexOrKeyIsLength()) {
             // key is 'length' of string or key is index and this index < strLength
@@ -411,7 +409,8 @@ void ObjectOperator::UpdateDetector(const JSThread *thread, JSTaggedValue receiv
             return;
         }
         // check String.prototype or Number.prototype or Object.prototype
-        if ((JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() &&
+        if (receiver.IsECMAObject() &&
+            (JSObject::Cast(receiver)->GetJSHClass()->IsPrototype() &&
             (receiver.IsJSPrimitiveRef() || receiver == env->GetTaggedObjectFunctionPrototype()))) {
             env->SetNumberStringNotRegexpLikeDetector(true);
         }
@@ -770,11 +769,11 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
         PropertyAttributes attr = GetAttr();
         uint32_t offset = index_;
         if (!attr.IsInlinedProps()) {
-            auto *hclass = receiver_->GetTaggedObject()->GetClass();
+            auto *hclass = receiver->GetJSHClass();
             offset += hclass->GetInlinedProperties();
         }
         attr.SetOffset(offset);
-        JSHandle<JSObject> objHandle(receiver_);
+        JSHandle<JSObject> objHandle(receiver);
         ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
         auto actualValue =
             JSHClass::ConvertOrTransitionWithRep(thread_, objHandle, key_, value, attr);

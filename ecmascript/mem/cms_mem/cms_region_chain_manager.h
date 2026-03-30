@@ -55,6 +55,11 @@ public:
         return regionList_.GetLength();
     }
 
+    bool IsEmpty() const
+    {
+        return regionList_.IsEmpty();
+    }
+
     inline void AddNewRegion(Region *region);
 
     inline SlotFreeListMetaInfo TryTakeSlotFreeList();
@@ -79,6 +84,11 @@ public:
     void FinishSweeping();
 
     void PrepareCompact(std::vector<Region *> &pendingReclaimFromRegions);
+
+    void ClearRegionList()
+    {
+        regionList_.Clear();
+    }
 
 private:
     inline SlotFreeListMetaInfo TryTakeUsableSlotFreeList();
@@ -108,6 +118,7 @@ private:
     Region *recordRegion_ {nullptr};
 
     Mutex mutex_;
+    std::atomic<size_t> numPendingSweepingRegions_ {0};
     std::vector<Region *> sweepingRegionList_ {};
     std::vector<SlotFreeListMetaInfo> sweptSlotFreeList_ {};
     // fixme: if a region is full alived, do not need to sweep at all.

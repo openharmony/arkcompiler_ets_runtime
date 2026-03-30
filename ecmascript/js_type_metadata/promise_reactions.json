@@ -1,5 +1,6 @@
 {
     "name": "PROMISE_REACTIONS",
+    "node_name": "PromiseReaction",
     "offsets": [
         {
             "name": "PromiseCapability",

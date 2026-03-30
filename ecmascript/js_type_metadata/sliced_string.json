@@ -1,5 +1,6 @@
 {
     "name": "SLICED_STRING",
+    "node_name": "BaseString",
     "offsets": [
         {
             "name": "Parent",

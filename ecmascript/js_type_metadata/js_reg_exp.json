@@ -1,5 +1,6 @@
 {
     "name": "JS_REG_EXP",
+    "node_name": "Regexp",
     "offsets": [
         {
             "name": "ByteCodeBuffer",

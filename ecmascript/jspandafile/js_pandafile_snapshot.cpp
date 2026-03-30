@@ -19,15 +19,17 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/filesystem.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/js_pandafile_record_info_snapshot.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/snapshot/common/modules_snapshot_helper.h"
+#include "ecmascript/ohos/ohos_version_info_tools.h"
 #include "zlib.h"
 
 namespace panda::ecmascript {
-bool JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
-    const CString &version)
+bool JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::ReadData", "");
+    CString version = ohos::OhosVersionInfoTools::GetRomVersion();
     // check application white list & specific file
     if (IsJSPandaFileSnapshotFileExist(jsPandaFile->GetJSPandaFileDesc(), path)) {
         return ReadDataFromFile(thread, jsPandaFile, path, version);
@@ -40,7 +42,7 @@ void JSPandaFileSnapshot::PostWriteDataToFileJob(const EcmaVM *vm, const CString
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFileSnapshot::PostWriteDataToFileJob", "");
     LOG_ECMA(DEBUG) << "JSPandaFileSnapshot::PostWriteDataToFileJob";
     std::unordered_set<std::shared_ptr<JSPandaFile>> jspandaFiles =
-        JSPandaFileManager::GetInstance()->GetHapJSPandaFiles();
+        JSPandaFileManager::GetInstance()->GetHapJSPandaFiles(vm);
     JSThread *thread = vm->GetJSThread();
     int32_t tid = static_cast<int32_t>(thread->GetThreadId());
     for (const auto &item : jspandaFiles) {
@@ -89,6 +91,10 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
     uint32_t moduleNameLen = moduleName.size();
     bufSize += sizeof(uint32_t); // len
     bufSize += moduleNameLen; // ptr
+    // calc recordInfo section size (if not bundle pack)
+    size_t recordInfoSectionSize = JSPandaFileRecordInfoSnapshot::CalculateRecordInfoSectionSize(jsPandaFile);
+    bufSize += sizeof(uint8_t); // hasRecordInfoSection flag
+    bufSize += recordInfoSectionSize;
     // add methodLiteral size
     uint32_t numMethods = jsPandaFile->numMethods_;
     bufSize += sizeof(numMethods); // numMethods
@@ -139,6 +145,17 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
     if (!writer.WriteSingleData(moduleName.c_str(), moduleNameLen, "moduleName")) {
         return false;
     }
+    // write hasRecordInfoSection flag and recordInfo section
+    uint8_t hasRecordInfoSection = (recordInfoSectionSize > 0) ? 1 : 0;
+    if (!writer.WriteSingleData(&hasRecordInfoSection, sizeof(hasRecordInfoSection), "hasRecordInfoSection")) {
+        return false;
+    }
+    if (recordInfoSectionSize > 0) {
+        if (!JSPandaFileRecordInfoSnapshot::WriteRecordInfoSection(thread->GetEcmaVM(), jsPandaFile, writer)) {
+            LOG_ECMA(ERROR) << "JSPandaFileSnapshot::WriteDataToFile write recordInfo section failed";
+            return false;
+        }
+    }
     // write numMethods
     if (!writer.WriteSingleData(&numMethods, sizeof(numMethods), "numMethods")) {
         return false;
@@ -185,6 +202,7 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);
+    ModulesSnapshotHelper::SetReadOnly(filename);
     LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile success with: " << filename;
     return true;
 }
@@ -278,6 +296,20 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
         ModulesSnapshotHelper::RemoveSnapshotFiles(path);
         return false;
     }
+
+    // read hasRecordInfoSection flag and recordInfo section
+    uint8_t hasRecordInfoSection = 0;
+    if (!reader.ReadSingleData(&hasRecordInfoSection, sizeof(hasRecordInfoSection), "hasRecordInfoSection")) {
+        return false;
+    }
+    if (hasRecordInfoSection) {
+        // Read recordInfo section - this will set numClasses_, numMethods_, jsRecordInfo_, etc.
+        if (!JSPandaFileRecordInfoSnapshot::ReadRecordInfoSection(jsPandaFile, reader)) {
+            LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile recordInfo section failed";
+            return false;
+        }
+    }
+
     // read numMethods
     uint32_t numMethods = 0;
     if (!reader.ReadSingleData(&numMethods, sizeof(numMethods), "numMethods")) {

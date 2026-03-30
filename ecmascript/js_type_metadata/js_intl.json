@@ -1,5 +1,6 @@
 {
     "name": "JS_INTL",
+    "node_name": "JSIntl",
     "offsets": [
         {
             "name": "FallbackSymbol",

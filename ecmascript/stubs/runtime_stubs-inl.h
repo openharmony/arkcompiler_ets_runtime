@@ -2651,7 +2651,11 @@ JSTaggedValue RuntimeStubs::RuntimeCallSpread(JSThread *thread,
                                               const JSHandle<JSTaggedValue> &obj,
                                               const JSHandle<JSTaggedValue> &array)
 {
-    if ((!obj->IsUndefined() && !obj->IsECMAObject()) || !func->IsCallable() || !array->IsJSArray()) {
+    // Allow primitive values (including undefined/null) as 'this' argument.
+    // obj can be primitive type, e.g., primitive.func(...[])
+    // obj can be undefined type, e.g., foo(...[])
+    // Otherwise, obj is Object type
+    if (!func->IsCallable() || !array->IsJSArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "cannot Callspread", JSTaggedValue::Exception());
     }
 
@@ -3138,7 +3142,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
     CVector<JSTaggedType> &values, JSHandle<JSTaggedValue> newTgt, uint32_t &size, JSHandle<JSTaggedValue> obj)
 {
     JSTaggedValue resultValue;
-    if (isAotMethod) {
+    if (isAotMethod && thread->HasSwitchedToStwStub()) {
         uint32_t numArgs = ctor->GetCallTarget(thread)->GetNumArgsWithCallField();
         bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
@@ -3606,12 +3610,7 @@ JSTaggedValue RuntimeStubs::ArrayNumberSort(JSThread *thread, JSHandle<JSObject>
 JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, const JSHandle<EcmaString> &string)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);
-#if ENABLE_NEXT_OPTIMIZATION
     EcmaString *str = thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(thread, string);
-#else
-    EcmaString *str =
-        thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(thread, string);
-#endif
     if (str == nullptr) {
         return JSTaggedValue::Hole().GetRawData();
     }

@@ -23,17 +23,17 @@ regular
 3
 medium
 func
-Cannot get source code of funtion
+Cannot get source code of function
 wode
 55
 hhh
 wwww
 func1
-Cannot get source code of funtion
+Cannot get source code of function
 index
 0
 next
-Cannot get source code of funtion
+Cannot get source code of function
 isDone
 false
 val

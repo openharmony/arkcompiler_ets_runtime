@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,7 @@
 
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 
+#include <memory>
 
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #if defined(ENABLE_FFRT_INTERFACES)
@@ -29,10 +30,10 @@ SamplingProcessor::~SamplingProcessor() {}
 void *SamplingProcessor::Run(void *arg)
 {
     LOG_ECMA(INFO) << "SamplingProcessor::Run start";
-    RunParams params = *reinterpret_cast<RunParams *>(arg);
-    SamplesRecord *generator = params.generator_;
-    uint32_t interval = params.interval_;
-    pthread_t jsThreadId = params.tid_;
+    std::unique_ptr<RunParams> runParams(reinterpret_cast<RunParams*>(arg));
+    SamplesRecord *generator = runParams->generator_;
+    uint32_t interval = runParams->interval_;
+    pthread_t jsThreadId = runParams->tid_;
     pthread_t samplingThreadId = pthread_self();
     pthread_setname_np(samplingThreadId, "SamplingThread");
     uint64_t startTime = generator->GetThreadStartTime();
@@ -49,10 +50,10 @@ void *SamplingProcessor::Run(void *arg)
 #if defined(ENABLE_FFRT_INTERFACES)
         // When the ffrt is disabled for js thread, including main thread and worker thread,
         // then the taskHandle is a nullptr
-        if (params.taskHandle_ != nullptr) {
+        if (runParams->taskHandle_ != nullptr) {
             // When the ffrt task is not running on any threads (hang),
             // the tid returned by ffrt_task_get_tid will be zero
-            pthread_t tid = ffrt_task_get_tid(params.taskHandle_);
+            pthread_t tid = ffrt_task_get_tid(runParams->taskHandle_);
             if (tid != 0 && jsThreadId != tid) {
                 jsThreadId = tid;
             }

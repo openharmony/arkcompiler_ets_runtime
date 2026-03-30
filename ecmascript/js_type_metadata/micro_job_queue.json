@@ -1,5 +1,6 @@
 {
     "name": "MICRO_JOB_QUEUE",
+    "node_name": "MicroJobQueue",
     "offsets": [
         {
             "name": "PromiseJobQueue",

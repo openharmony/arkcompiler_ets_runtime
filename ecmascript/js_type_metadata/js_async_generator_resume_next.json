@@ -1,5 +1,6 @@
 {
     "name": "JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN",
+    "node_name": "AsyncGeneratorResumeNextReturnProcessorRstFtn",
     "offsets": [
         {
             "name": "AsyncGeneratorObject",

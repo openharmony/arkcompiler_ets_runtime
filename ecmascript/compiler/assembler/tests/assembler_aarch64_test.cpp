@@ -133,10 +133,10 @@ HWTEST_F_L0(AssemblerAarch64Test, Mov)
                              "00000020:f2824683 \tmovk\tx3, #4660\n"
                              "00000024:32083fe4 \tmov\tw4, #-16776961\n");
     AssemblerAarch64 masm(chunk_);
-    __ Mov(Register(X1),  Immediate(0xffff000012345678));
-    __ Mov(Register(X2),  Immediate(0x12345678abcd00ef));
-    __ Mov(Register(X3),  Immediate(0x7fff001234));
-    __ Mov(Register(X4).W(),  Immediate(0xff0000ff));
+    __ Mov(x1,  Immediate(0xffff000012345678));
+    __ Mov(x2,  Immediate(0x12345678abcd00ef));
+    __ Mov(x3,  Immediate(0x7fff001234));
+    __ Mov(w4,  Immediate(0xff0000ff));
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
@@ -148,9 +148,9 @@ HWTEST_F_L0(AssemblerAarch64Test, MovReg)
                              "00000004:910003e2 \tmov\tx2, sp\n"
                              "00000008:2a0203e1 \tmov\tw1, w2\n");
     AssemblerAarch64 masm(chunk_);
-    __ Mov(Register(X1),  Register(X2));
-    __ Mov(Register(X2),  Register(SP));
-    __ Mov(Register(X1, W),  Register(X2, W));
+    __ Mov(x1,  x2);
+    __ Mov(x2,  sp);
+    __ Mov(w1,  w2);
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
@@ -164,10 +164,10 @@ HWTEST_F_L0(AssemblerAarch64Test, LdpStp)
                              "0000000c:294113e3 \tldp\tw3, w4, [sp, #8]\n");
 
     AssemblerAarch64 masm(chunk_);
-    __ Stp(Register(X1),  Register(X2), MemoryOperand(Register(SP), 8, POSTINDEX));
-    __ Ldp(Register(X1),  Register(X2), MemoryOperand(Register(SP), 8, PREINDEX));
-    __ Ldp(Register(X3),  Register(X4), MemoryOperand(Register(SP), 8, OFFSET));
-    __ Ldp(Register(X3).W(),  Register(X4).W(), MemoryOperand(Register(SP), 8, OFFSET));
+    __ Stp(x1,  x2, MemoryOperand(sp, 8, POSTINDEX));
+    __ Ldp(x1,  x2, MemoryOperand(sp, 8, PREINDEX));
+    __ Ldp(x3,  x4, MemoryOperand(sp, 8, OFFSET));
+    __ Ldp(w3,  w4, MemoryOperand(sp, 8, OFFSET));
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
@@ -188,17 +188,17 @@ HWTEST_F_L0(AssemblerAarch64Test, LdrStr)
                              "00000028:f81f83e3 \tstur\tx3, [sp, #-8]\n");
 
     AssemblerAarch64 masm(chunk_);
-    __ Str(Register(X1), MemoryOperand(Register(SP), 8, POSTINDEX));
-    __ Str(Register(X1), MemoryOperand(Register(SP), -8, POSTINDEX));
-    __ Ldr(Register(X1), MemoryOperand(Register(SP), 8, PREINDEX));
-    __ Ldr(Register(X3), MemoryOperand(Register(SP), 8, OFFSET));
-    __ Ldr(Register(X3).W(), MemoryOperand(Register(SP), 8, OFFSET));
-    __ Ldrb(Register(X1).W(), MemoryOperand(Register(SP), 8, PREINDEX));
-    __ Ldrb(Register(X1).W(), MemoryOperand(Register(SP), 8, OFFSET));
-    __ Ldrh(Register(X1).W(), MemoryOperand(Register(SP), 8, PREINDEX));
-    __ Ldrh(Register(X1).W(), MemoryOperand(Register(SP), 8, OFFSET));
-    __ Ldur(Register(X1), MemoryOperand(Register(SP), -8, OFFSET));
-    __ Stur(Register(X3), MemoryOperand(Register(SP), -8, OFFSET));
+    __ Str(x1, MemoryOperand(sp, 8, POSTINDEX));
+    __ Str(x1, MemoryOperand(sp, -8, POSTINDEX));
+    __ Ldr(x1, MemoryOperand(sp, 8, PREINDEX));
+    __ Ldr(x3, MemoryOperand(sp, 8, OFFSET));
+    __ Ldr(w3, MemoryOperand(sp, 8, OFFSET));
+    __ Ldrb(w1, MemoryOperand(sp, 8, PREINDEX));
+    __ Ldrb(w1, MemoryOperand(sp, 8, OFFSET));
+    __ Ldrh(w1, MemoryOperand(sp, 8, PREINDEX));
+    __ Ldrh(w1, MemoryOperand(sp, 8, OFFSET));
+    __ Ldur(x1, MemoryOperand(sp, -8, OFFSET));
+    __ Stur(x3, MemoryOperand(sp, -8, OFFSET));
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
     ASSERT_EQ(oss.str(), expectResult);
@@ -213,12 +213,12 @@ HWTEST_F_L0(AssemblerAarch64Test, AddSub)
                              "00000010:8b234c41 \tadd\tx1, x2, w3, uxtw #3\n"
                              "00000014:8b224fff \tadd\tsp, sp, w2, uxtw #3\n");
     AssemblerAarch64 masm(chunk_);
-    __ Add(Register(SP), Register(SP), Immediate(8));
-    __ Add(Register(SP), Register(SP), Immediate(-8));
-    __ Add(Register(X1), Register(X1), Operand(Register(X2)));
-    __ Add(Register(X1), Register(X2), Operand(Register(X3), LSL, 3));
-    __ Add(Register(X1), Register(X2), Operand(Register(X3), UXTW, 3));
-    __ Add(Register(SP), Register(SP), Operand(Register(X2), UXTW, 3));
+    __ Add(sp, sp, Immediate(8));
+    __ Add(sp, sp, Immediate(-8));
+    __ Add(x1, x1, Operand(x2));
+    __ Add(x1, x2, Operand(x3, LSL, 3));
+    __ Add(x1, x2, Operand(x3, UXTW, 3));
+    __ Add(sp, sp, Operand(x2, UXTW, 3));
 
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
@@ -230,8 +230,8 @@ HWTEST_F_L0(AssemblerAarch64Test, CMP)
     std::string expectResult("00000000:eb02003f \tcmp\tx1, x2\n"
                              "00000004:f100203f \tcmp\tx1, #8\n");
     AssemblerAarch64 masm(chunk_);
-    __ Cmp(Register(X1), Register(X2));
-    __ Cmp(Register(X1), Immediate(8));
+    __ Cmp(x1, x2);
+    __ Cmp(x1, Immediate(8));
 
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
@@ -250,18 +250,18 @@ HWTEST_F_L0(AssemblerAarch64Test, Branch)
     AssemblerAarch64 masm(chunk_);
     Label label1;
     Label label2;
-    __ Cmp(Register(X1), Register(X2));
+    __ Cmp(x1, x2);
     __ B(Condition::EQ, &label1);
-    __ Cmp(Register(X1), Immediate(8));
+    __ Cmp(x1, Immediate(8));
     __ B(Condition::GT, &label1);
     __ B(&label2);
     __ Bind(&label1);
     {
-        __ Mov(Register(X0), Immediate(0xa));
+        __ Mov(x0, Immediate(0xa));
     }
     __ Bind(&label2);
     {
-        __ Mov(Register(X0), Immediate(0x2));
+        __ Mov(x0, Immediate(0x2));
     }
 
     std::ostringstream oss;
@@ -283,9 +283,9 @@ HWTEST_F_L0(AssemblerAarch64Test, Loop)
     AssemblerAarch64 masm(chunk_);
     Label label1;
     Label labelLoop;
-    Register count(X2, W);
-    Register base(X4);
-    Register temp(X5);
+    Register count = w2;
+    Register base = x4;
+    Register temp = x5;
     __ Cmp(count, Immediate(0));
     __ B(Condition::EQ, &label1);
     __ Add(count, count, Immediate(-1));
@@ -293,13 +293,13 @@ HWTEST_F_L0(AssemblerAarch64Test, Loop)
     __ Bind(&labelLoop);
     {
         __ Ldr(temp, MemoryOperand(base, -8, POSTINDEX));
-        __ Str(temp, MemoryOperand(Register(SP), -8, PREINDEX));
+        __ Str(temp, MemoryOperand(sp, -8, PREINDEX));
         __ Add(count, count, Immediate(-1));
         __ B(Condition::PL, &labelLoop);
     }
     __ Bind(&label1);
     {
-        __ Mov(Register(X0), Immediate(0xa));
+        __ Mov(x0, Immediate(0xa));
     }
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
@@ -321,23 +321,23 @@ HWTEST_F_L0(AssemblerAarch64Test, TbzAndCbz)
     Label label1;
     Label label2;
     Label label3;
-    __ Tbz(Register(X1), 15, &label1);
-    __ Tbz(Register(X2), 32,  &label2);
-    __ Tbnz(Register(X2), 5,  &label3);
-    __ Cbz(Register(X3).W(), &label1);
-    __ Cbnz(Register(X4), &label2);
-    __ Cbz(Register(X5), &label3);
+    __ Tbz(x1, 15, &label1);
+    __ Tbz(x2, 32,  &label2);
+    __ Tbnz(x2, 5,  &label3);
+    __ Cbz(w3, &label1);
+    __ Cbnz(x4, &label2);
+    __ Cbz(x5, &label3);
     __ Bind(&label1);
     {
-        __ Mov(Register(X0), Immediate(0x1));
+        __ Mov(x0, Immediate(0x1));
     }
     __ Bind(&label2);
     {
-        __ Mov(Register(X0), Immediate(0x2));
+        __ Mov(x0, Immediate(0x2));
     }
     __ Bind(&label3);
     {
-        __ Mov(Register(X0), Immediate(0x3));
+        __ Mov(x0, Immediate(0x3));
     }
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
@@ -355,11 +355,11 @@ HWTEST_F_L0(AssemblerAarch64Test, Call)
     Label label1;
     __ Bind(&label1);
     {
-        __ Mov(Register(X0), Immediate(0x1));
-        __ Mov(Register(X1), Immediate(0x2));
-        __ Mov(Register(X2), Immediate(0x3));
+        __ Mov(x0, Immediate(0x1));
+        __ Mov(x1, Immediate(0x2));
+        __ Mov(x2, Immediate(0x3));
         __ Bl(&label1);
-        __ Blr(Register(X2));
+        __ Blr(x2);
     }
     std::ostringstream oss;
     DisassembleChunk(TARGET_AARCH64, &masm, oss);
@@ -373,7 +373,7 @@ HWTEST_F_L0(AssemblerAarch64Test, RetAndBrk)
                              "00000008:d4200000 \tbrk\t#0\n");
     AssemblerAarch64 masm(chunk_);
     __ Ret();
-    __ Ret(Register(X20));
+    __ Ret(x20);
     __ Brk(Immediate(0));
 
     std::ostringstream oss;

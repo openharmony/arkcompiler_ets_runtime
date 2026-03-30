@@ -23,6 +23,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/enum_cache.h"
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/jobs/pending_job.h"
@@ -78,6 +79,7 @@
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/js_weak_ref.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/marker_cell.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/require/js_cjs_exports.h"
@@ -133,7 +135,7 @@ JSHandle<Method> ObjectFactory::NewMethodForNativeFunction(const void *func, Fun
     if (builtinId != BUILTINS_STUB_ID(INVALID)) {
         bool isFast = kungfu::BuiltinsStubCSigns::IsFastBuiltin(builtinId);
         method->SetFastBuiltinBit(isFast);
-        method->SetBuiltinId(static_cast<uint8_t>(builtinId));
+        method->SetBuiltinId(static_cast<uint16_t>(builtinId));
     }
     method->SetNumArgsWithCallField(numArgs);
     method->SetFunctionKind(kind);
@@ -727,14 +729,21 @@ JSHandle<JSFunction> ObjectFactory::CreateJSFunctionFromTemplate(JSHandle<Functi
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
     auto kind = funcTemp->GetFunctionKind(thread_);
     JSHandle<JSHClass> jshclass;
-    if (kind == FunctionKind::NORMAL_FUNCTION ||
-        kind == FunctionKind::GETTER_FUNCTION ||
-        kind == FunctionKind::SETTER_FUNCTION) {
-        jshclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
-    } else if (kind == FunctionKind::ASYNC_FUNCTION) {
-        jshclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
-    } else {
-        jshclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+    switch (kind) {
+        case FunctionKind::NORMAL_FUNCTION:
+        case FunctionKind::GETTER_FUNCTION:
+        case FunctionKind::SETTER_FUNCTION:
+            jshclass = JSHandle<JSHClass>::Cast(env->GetFunctionClassWithoutProto());
+            break;
+        case FunctionKind::ASYNC_FUNCTION:
+            jshclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            break;
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION:
+            jshclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
+            break;
+        default:
+            jshclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+            break;
     }
     JSHandle<Method> method = JSHandle<Method>(thread_, funcTemp->GetMethod(thread_));
     JSHandle<JSFunction> newFunc = NewJSFunctionByHClass(method, jshclass);
@@ -1074,6 +1083,11 @@ JSHandle<JSObject> ObjectFactory::NewJSError(const JSHandle<GlobalEnv> &env, con
     [[maybe_unused]] bool status = JSObject::DefineOwnProperty(thread_, nativeInstanceObj,
         globalConst->GetHandledStackString(), stackDesc);
     ASSERT_PRINT(status == true, "return result exception!");
+    // Uncaught exception parsing source code
+    PropertyDescriptor topStackDesc(thread_, JSHandle<JSTaggedValue>::Cast(stack), true, false, true);
+    [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread_, nativeInstanceObj,
+        globalConst->GetHandledTopStackString(), topStackDesc);
+    ASSERT_PRINT(topStackstatus == true, "return result exception!");
 
     return nativeInstanceObj;
 }
@@ -1135,18 +1149,12 @@ JSHandle<JSObject> ObjectFactory::NewJSAggregateError()
     return NewJSObjectByConstructor(constructor);
 }
 
-JSHandle<JSObject> ObjectFactory::CreateNapiObject()
+JSHandle<JSObject> ObjectFactory::CreateNapiObject(bool isWrapped)
 {
     JSHandle<GlobalEnv> globalEnv = vm_->GetGlobalEnv();
-    JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
-    JSHandle<JSHClass> ihc(globalEnv->GetObjectFunctionNapiClass());
-    JSHandle<JSHClass> tsIhc(globalEnv->GetObjectFunctionTsNapiClass());
-    JSHandle<JSObject> jsObject;
-    if (ihc != tsIhc) {
-        jsObject = NewJSObjectWithInit(tsIhc);
-    } else {
-        jsObject = NewJSObjectWithInit(ihc);
-    }
+    JSHandle<JSTaggedValue> tsIhc =
+        isWrapped ? globalEnv->GetWrappedObjectFunctionClass() : globalEnv->GetObjectFunctionTsNapiClass();
+    JSHandle<JSObject> jsObject = NewJSObjectWithInit(JSHandle<JSHClass>(tsIhc));
     return jsObject;
 }
 
@@ -1299,7 +1307,6 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
     JSType type = jshclass->GetObjectType();
     switch (type) {
         case JSType::JS_OBJECT:
-        case JSType::JS_XREF_OBJECT:
         case JSType::JS_ERROR:
         case JSType::JS_EVAL_ERROR:
         case JSType::JS_RANGE_ERROR:
@@ -1314,6 +1321,11 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_OBJECT:
         case JSType::JS_SHARED_FUNCTION:
         case JSType::JS_ITERATOR: {
+            break;
+        }
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
+        case JSType::JS_XREF_OBJECT: {
+            JSWrappedNapiObject::InitializeNativePointersField(thread_, obj);
             break;
         }
 #ifdef ARK_SUPPORT_INTL
@@ -1536,7 +1548,7 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
             JSSharedMap::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_WEAK_MAP:
-            JSWeakMap::Cast(*obj)->SetLinkedMap<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSWeakMap::Cast(*obj)->SetWeakLinkedMap<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
             break;
         case JSType::JS_WEAK_SET:
             JSWeakSet::Cast(*obj)->SetLinkedSet<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
@@ -2685,6 +2697,17 @@ JSHandle<GlobalEnv> ObjectFactory::NewGlobalEnv(bool lazyInit, bool isRealm)
     return globalEnv;
 }
 
+JSHandle<WeakLinkedHashMap> ObjectFactory::NewWeakLinkedHashMap(int numSlots)
+{
+    NewObjectHook();
+    size_t size = WeakLinkedHashMap::ComputeSize(numSlots);
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetWeakLinkedHashMapClass().GetTaggedObject()), size);
+    JSHandle<WeakLinkedHashMap> weakMap(thread_, header);
+    weakMap->InitializeWithSpecialValue(JSTaggedValue::Hole(), numSlots);
+    return weakMap;
+}
+
 JSHandle<LexicalEnv> ObjectFactory::NewLexicalEnv(int numSlots)
 {
     NewObjectHook();
@@ -3781,6 +3804,17 @@ JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t icSlotSize)
         uint16_t threshold = vm_->GetJSOptions().GetBaselineJitHotnessThreshold();
         array->SetBaselineJitHotnessThreshold(threshold);
     }
+    return array;
+}
+
+JSHandle<ICInfo> ObjectFactory::NewICInfo(uint32_t length)
+{
+    NewObjectHook();
+    size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    auto header = heap_->AllocateYoungOrHugeObject(
+        JSHClass::Cast(thread_->GlobalConstants()->GetICInfoClass().GetTaggedObject()), size);
+    JSHandle<ICInfo> array(thread_, header);
+    array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
     return array;
 }
 
@@ -5637,6 +5671,14 @@ JSHandle<JSFunction> ObjectFactory::NewJSFunctionForDefineMethod(const JSHandle<
     switch (kind) {
         case FunctionKind::ASYNC_FUNCTION: {
             hclass = JSHandle<JSHClass>::Cast(env->GetAsyncFunctionClass());
+            break;
+        }
+        case FunctionKind::GENERATOR_FUNCTION: {
+            hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+            break;
+        }
+        case FunctionKind::ASYNC_GENERATOR_FUNCTION: {
+            hclass = JSHandle<JSHClass>::Cast(env->GetAsyncGeneratorFunctionClass());
             break;
         }
         default:{

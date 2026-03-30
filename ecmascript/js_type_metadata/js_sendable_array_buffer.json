@@ -1,5 +1,6 @@
 {
     "name": "JS_SENDABLE_ARRAY_BUFFER",
+    "node_name": "SendableArrayBuffer",
     "offsets": [
         {
             "name": "ArrayBufferData",

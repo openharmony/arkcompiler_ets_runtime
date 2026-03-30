@@ -19,16 +19,23 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "aot_compiler_constants.h"
+
 namespace OHOS::ArkCompiler {
+
 struct HapArgs {
     std::vector<std::string> argVector;
     std::string fileName;
     std::string signature;
     int32_t bundleUid {0};
     int32_t bundleGid {0};
+    int32_t bundleType {0};
+    int32_t triggerType {0};
+    int32_t staticAndHybridModuleCnt {0};
 };
 
 class AOTArgsParserBase;
@@ -77,6 +84,10 @@ public:
     virtual int32_t Parse(const std::unordered_map<std::string, std::string> &argsMap, HapArgs &hapArgs,
                           int32_t thermalLevel) = 0;
 
+    virtual AotParserType GetParserType() const = 0;
+
+    bool Check(const std::unordered_map<std::string, std::string> &argsMap);
+
     static int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
                                         const std::string &keyName, int32_t &bundleID);
 
@@ -100,6 +111,11 @@ public:
 
     void AddExpandArgs(std::vector<std::string> &argVector, int32_t thermalLevel);
 
+    AotParserType GetParserType() const override
+    {
+        return AotParserType::DYNAMIC_AOT;
+    }
+
 #ifdef ENABLE_COMPILER_SERVICE_GET_PARAMETER
     void SetAnFileMaxSizeBySysParam(HapArgs &hapArgs);
     void SetEnableCodeCommentBySysParam(HapArgs &hapArgs);
@@ -113,12 +129,21 @@ public:
 
     bool ParseBootPandaFiles(std::string &bootfiles);
 
-    std::string ParseLocation(std::string &anfilePath);
+    std::string ParseLocation(const std::string &anfilePath);
+    std::string ParseOuterHspLocation(const std::string &abcPath);
     std::string ParseModuleName(const std::string &anFilePath);
+
+    int32_t ParseLocationByBundleType(int32_t bundleType, const std::string &abcPath, const std::string &anfilePath,
+        std::string &location);
 
     bool ParseProfilePath(std::string &pkgInfo, std::string &profilePath);
 
-    bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo);
+    bool ParseProfileUse(HapArgs &hapArgs, std::string &pkgInfo, const std::string &moduleName);
+
+    AotParserType GetParserType() const override
+    {
+        return AotParserType::STATIC_AOT;
+    }
 
     std::string ParseBlackListMethods(const std::string &pkgInfo, const std::string &moduleName);
     std::string ProcessBlackListForBundleAndModule(const nlohmann::json &jsonObject,
@@ -144,6 +169,11 @@ public:
 
     std::string ParseBlackListMethods(const std::string &bundleName);
     bool CheckBundleNameAndMethodList(const nlohmann::json &item, const std::string &bundleName);
+
+    AotParserType GetParserType() const override
+    {
+        return AotParserType::FRAMEWORK_STATIC_AOT;
+    }
 };
 
 class AOTArgsParserFactory {
@@ -151,6 +181,6 @@ public:
     static std::optional<std::unique_ptr<AOTArgsParserBase>> GetParser(
         const std::unordered_map<std::string, std::string> &argsMap, bool IsEnableStaticCompiler = true);
 };
+
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOT_ARGS_HANDLER_H
- 

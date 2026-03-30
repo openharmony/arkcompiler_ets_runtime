@@ -31,6 +31,7 @@ bool InterOpValueSerializer::TrySerializeInterOpObject(TaggedObject *object, boo
     JSHandle<JSTaggedValue> target(thread_, object);
     switch (type) {
         case JSType::JS_OBJECT:
+        case JSType::JS_WRAPPED_NAPI_OBJECT:
         case JSType::JS_FUNCTION:
         case JSType::JS_API_FUNCTION:
             break;

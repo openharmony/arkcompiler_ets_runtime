@@ -442,8 +442,9 @@ HWTEST_F_L0(JSHClassTest, UpdatePropertyMetaData)
     JSHClass::AddProperty(thread, Obj, objKey, oldAttr);
     JSObject::TryMigrateToGenericKindForJSObject(thread, Obj, oldKind);
     // update metaData
-    objClass->UpdatePropertyMetaData(thread, objKey.GetTaggedValue(), newAttr);
-    LayoutInfo *layoutInfo = LayoutInfo::Cast(objClass->GetLayout(thread).GetTaggedObject());
+    JSHandle<JSHClass> objNewClass(thread, Obj->GetJSHClass());
+    objNewClass->UpdatePropertyMetaData(thread, objKey.GetTaggedValue(), newAttr);
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(objNewClass->GetLayout(thread).GetTaggedObject());
     EXPECT_EQ(layoutInfo->GetAttr(thread, oldAttr.GetOffset()).GetPropertyMetaData(), newAttr.GetPropertyMetaData());
 }
 

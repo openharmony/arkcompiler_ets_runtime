@@ -30,10 +30,16 @@ namespace common {
 #define ENABLE_LATEST_OPTIMIZATION 0
 #endif
 
-#if ENABLE_NEXT_OPTIMIZATION
-    #define NEXT_OPTIMIZATION_BOOL true
+#if defined (V70_OPTIMIZATION_MACRO)
+#define ENABLE_V70_OPTIMIZATION 1      // Optimization used for 7.0 version
 #else
-    #define NEXT_OPTIMIZATION_BOOL false
+#define ENABLE_V70_OPTIMIZATION 0
+#endif
+
+#if ENABLE_NEXT_OPTIMIZATION
+#define NEXT_OPTIMIZATION_BOOL true
+#else
+#define NEXT_OPTIMIZATION_BOOL false
 #endif
 
 #define ENABLE_MEMORY_OPTIMIZATION 1

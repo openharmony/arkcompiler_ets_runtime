@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_ARRAY_ITERATOR",
+    "node_name": "SharedArrayIterator",
     "offsets": [
         {
             "name": "IteratedArray",

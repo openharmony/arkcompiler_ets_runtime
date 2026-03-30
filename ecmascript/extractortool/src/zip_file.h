@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_BASE_ZIP_FILE_H
-#define OHOS_ABILITY_BASE_ZIP_FILE_H
+#ifndef ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_H
+#define ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_H
 
 #include <memory>
 #include <set>
@@ -25,8 +25,7 @@
 #include "file_mapper.h"
 #include <contrib/minizip/unzip.h>
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 class ZipFileReader;
 struct CentralDirEntry;
 struct ZipEntry;
@@ -151,6 +150,7 @@ struct ZipEntry {
     uint16_t flags = 0;
     uint16_t modifiedTime = 0;
     uint16_t modifiedDate = 0;
+    uint32_t offset = 0;
     std::string fileName;
 };
 
@@ -218,6 +218,8 @@ public:
      * @return Returns true if file is successfully extracted; returns false otherwise.
      */
     bool ExtractFile(const std::string &file, std::ostream &dest) const;
+
+    const std::string &GetFileNameByOffset(uint32_t offset);
 
     std::unique_ptr<FileMapper> CreateFileMapper(const std::string &fileName, FileMapperType type) const;
     bool ExtractToBufByName(const std::string &fileName, std::unique_ptr<uint8_t[]> &dataPtr,
@@ -333,6 +335,5 @@ private:
     ZipPos fileLength_ = 0;
     bool isOpen_ = false;
 };
-}  // namespace AbilityBase
-}  // namespace OHOS
-#endif  // OHOS_ABILITY_BASE_ZIP_FILE_H
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_H

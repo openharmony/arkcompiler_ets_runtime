@@ -114,7 +114,7 @@ JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(const CString &r
 {
     auto entry = resolvedModules_.Find(referencing);
     if (!entry) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "Can not get module: " << referencing;
+        LOG_ECMA(FATAL) << "Can not get module: " << referencing; // LCOV_EXCL_BR_LINE
     }
     return JSHandle<SourceTextModule>(vm_->GetJSThread(), entry.value());
 }
@@ -194,8 +194,13 @@ bool ModuleManager::NeedExecuteModule(const CString &referencing)
 
 void ModuleManager::Iterate(RootVisitor &v)
 {
+#if ENABLE_LATEST_OPTIMIZATION
+    resolvedModules_.ForEachValue(
+        [&v](GCRoot& root) { root.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
+#else
     resolvedModules_.ForEach(
         [&v](auto iter) { iter->second.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
+#endif
 }
 
 CString ModuleManager::GetRecordName(const JSThread *thread, JSTaggedValue module)
@@ -362,7 +367,7 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
     auto entry = resolvedModules_.Find(recordName);
     if (!entry) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Can not get module: " << recordName <<
-            ", when try to remove the module";
+            ", when try to remove the module"; // LCOV_EXCL_BR_LINE
     }
     JSTaggedValue result = entry.value();
     SourceTextModule* module = SourceTextModule::Cast(result);

@@ -38,7 +38,11 @@ public:
     JSType GetJSTypeFromTypeName(const std::string &name);
     NodeType GetNodeType(JSType type);
     uint32_t GetNativateSize(Node *node, JSType type);
+    uint32_t GetPropsNumberOfJSObject(Node *hclass);
+    uint32_t GetInlinedPropertiesCount(Node *hclass);
+    bool IsPropertyInlinedProps(uint64_t attrValue);
     std::string GetTypeName(JSType type);
+    std::string GetNodeName(JSType type);
     MetaData* GetMetaData(const std::string &name);
     MetaData* GetMetaData(const JSType type);
     bool IsNativePointer(JSType type);
@@ -51,6 +55,11 @@ public:
     BitField* GetBitField()
     {
         return &bitField_;
+    }
+
+    DictionaryLayout* GetDictLayout()
+    {
+        return &dictionaryLayout_;
     }
 
     const Version& GetMetaVersion() const
@@ -76,6 +85,8 @@ private:
     static bool GetString(const cJSON *json, std::string &value);
     static bool GetUInt32(const cJSON *json, const char *key, uint32_t &value);
     static bool GetUInt32(const cJSON *json, uint32_t &value);
+
+    static constexpr uint32_t NUM_OF_PROP_BITS = 0x3FFULL; // Number of props bits
 
     Version version_;
     std::unordered_map<std::string, MetaData *> meta_ {};

@@ -20,19 +20,47 @@
 
 namespace panda {
 namespace ecmascript {
+#if USE_CMS_GC
+class SlotGCAllocator;
+class CCEvacuator {
+public:
+    explicit CCEvacuator(Heap *heap) : heap_(heap) {}
+    CCEvacuator(Heap *heap, SlotGCAllocator *tlab) : heap_(heap), tlab_(tlab) {}
+    ~CCEvacuator() = default;
+    NO_COPY_SEMANTIC(CCEvacuator);
+    NO_MOVE_SEMANTIC(CCEvacuator);
+
+    void Initialize(SlotGCAllocator *tlab)
+    {
+        tlab_ = tlab;
+    }
+
+    TaggedObject* Copy(TaggedObject *fromObj, const MarkWord &markWord);
+private:
+    Heap *heap_ {nullptr};
+    SlotGCAllocator *tlab_ {nullptr};
+};
+#else
 class CCTlabAllocator;
 class CCEvacuator {
 public:
+    explicit CCEvacuator(Heap *heap) : heap_(heap) {}
     CCEvacuator(Heap *heap, CCTlabAllocator *tlab) : heap_(heap), tlab_(tlab) {}
     ~CCEvacuator() = default;
     NO_COPY_SEMANTIC(CCEvacuator);
     NO_MOVE_SEMANTIC(CCEvacuator);
+
+    void Initialize(CCTlabAllocator *tlab)
+    {
+        tlab_ = tlab;
+    }
 
     TaggedObject* Copy(TaggedObject *fromObj, const MarkWord &markWord);
 private:
     Heap *heap_ {nullptr};
     CCTlabAllocator *tlab_ {nullptr};
 };
+#endif
 
 class CCUpdateRootVisitor final : public RootVisitor {
 public:

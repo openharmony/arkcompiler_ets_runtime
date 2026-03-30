@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_FUNCTION",
+    "node_name": "JSSharedFunction",
     "offsets": [],
     "end_offset": 0,
     "parents": [

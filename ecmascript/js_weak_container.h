@@ -43,7 +43,7 @@ public:
     JSTaggedValue GetValue(const JSThread *thread, int entry) const;
 
     static constexpr size_t LINKED_MAP_OFFSET = JSObject::SIZE;
-    ACCESSORS(LinkedMap, LINKED_MAP_OFFSET, SIZE)
+    ACCESSORS(WeakLinkedMap, LINKED_MAP_OFFSET, SIZE)
 
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, LINKED_MAP_OFFSET, SIZE)
     DECL_DUMP()

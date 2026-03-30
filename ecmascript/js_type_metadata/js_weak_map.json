@@ -1,5 +1,6 @@
 {
     "name": "JS_WEAK_MAP",
+    "node_name": "WeakMap",
     "offsets": [
         {
             "name": "LinkedMap",

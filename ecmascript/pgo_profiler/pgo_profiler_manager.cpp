@@ -270,7 +270,9 @@ void PGOProfilerManager::Destroy(JSThread *thread, std::shared_ptr<PGOProfiler>&
         }
         profiler->DumpBeforeDestroy(thread);
         {
+#ifdef USE_CMC_GC
             ThreadNativeScope scope(thread);
+#endif
             profiler.reset();
         }
         LOG_PGO(INFO) << "pgo profiler destroyed";
@@ -349,7 +351,7 @@ void PGOProfilerManager::DumpPendingProfilersByDumpThread()
     {
         ConcurrentGuard guard(v_, "DumpPendingProfilers");
         std::set<PGOProfiler*> notDumpedProfilers;
-#if defined(OHOS_GET_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER)
         bool resetCPUCore = false;
         if (!pendingProfilers_.Empty()) {
             resetCPUCore = true;
@@ -372,7 +374,7 @@ void PGOProfilerManager::DumpPendingProfilersByDumpThread()
         for (const auto profiler: notDumpedProfilers) {
             pendingProfilers_.PushBack(profiler);
         }
-#if defined(OHOS_GET_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER)
         if (resetCPUCore) {
             BindAllCpuCore();
         }

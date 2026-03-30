@@ -26,8 +26,23 @@ namespace OHOS::ArkCompiler {
 namespace ArgsIdx {
 const std::string BUNDLE_UID = "BundleUid";
 const std::string BUNDLE_GID = "BundleGid";
+const std::string BUNDLE_TYPE = "bundleType";
+const std::string TRIGGER_TYPE = "triggerType";
+const std::string STATIC_HYBRID_MODULE_CNT = "staticAndHybridModuleCnt";
 const std::string AN_FILE_NAME = "anFileName";
 const std::string APP_SIGNATURE = "appIdentifier";
+const std::string BUNDLE_NAME = "bundleName";
+const std::string PKG_PATH = "pkgPath";
+const std::string ABC_NAME = "abcName";
+const std::string MODULE_NAME = "moduleName";
+const std::string PGO_DIR = "pgoDir";
+const std::string ABC_OFFSET = "abcOffset";
+const std::string ABC_SIZE = "abcSize";
+const std::string ARKTS_DYNAMIC = "dynamic";
+const std::string ARKTS_STATIC = "static";
+const std::string ARKTS_HYBRID = "hybrid";
+const std::string ABC_MODULES_PATH = "ets/modules.abc";
+const std::string ABC_MODULES_STATIC_PATH = "ets/modules_static.abc";
 const std::string ABC_PATH = "ABC-Path";
 const std::string TARGET_COMPILER_MODE = "target-compiler-mode";
 const std::string COMPILER_PKG_INFO = "compiler-pkg-info";
@@ -37,12 +52,23 @@ const std::string COMPILER_AN_FILE_MAX_SIZE = "compiler-an-file-max-size";
 const std::string AOT_FILE = "aot-file";
 const std::string IS_SYSTEM_COMPONENT = "isSysComp";
 
+const std::string APP_ARK_CACHE_PREFIX = "/data/app/el1/public/aot_compiler/ark_cache/";
+const std::string FRAMEWORK_ARK_CACHE_PREFIX = "/data/service/el1/public/for-all-app/framework_ark_cache/";
+const std::string SHARED_BUNDLES_ARK_CACHE_PREFIX = "/data/service/el1/public/for-all-app/shared_bundles_ark_cache/";
 
 const std::string ARKTS_MODE = "moduleArkTSMode";
+const std::string PARTIAL = "partial";
 } // namespace ArgsIdx
 
 // UID and GID of system users
 constexpr uid_t OID_SYSTEM = 1000;
+constexpr uid_t MIN_APP_UID_GID = 10000;  // Minimum app UID/GID
+
+// AOT trigger type values, must keep consistent with BMS
+enum class AotTriggerType {
+    IDLE = 0,
+    INSTALL = 1,
+};
 
 constexpr const char* BOOLEAN_FALSE = "0";
 
@@ -52,10 +78,27 @@ constexpr const char* EQ = "=";
 constexpr const char* COLON = ":";
 } // namespace Symbols
 
+// Bundle type values, must keep consistent with BMS
+enum class BundleType {
+    APP = 0,
+    ATOMIC_SERVICE = 1,
+    SHARED = 2,
+    APP_SERVICE_FWK = 3,
+    APP_PLUGIN = 4,
+};
+
 /**
  * @param RetStatusOfCompiler return code of ark_aot_compiler
  * @attention it must sync with ErrCode of "ets_runtime/ecmascript/aot_compiler.cpp"
  */
+// AOT Parser type for unified validation
+enum class AotParserType {
+    UNKNOWN,              // Unknown parser type (default)
+    DYNAMIC_AOT,          // Dynamic AOT parser
+    STATIC_AOT,           // Static AOT parser
+    FRAMEWORK_STATIC_AOT  // Framework static AOT parser
+};
+
 enum class RetStatusOfCompiler {
     ERR_OK = (0),   // IMPORTANT: Only if aot compiler SUCCESS and save an/ai SUCCESS, return ERR_OK.
     ERR_FAIL = (-1),

@@ -1,5 +1,6 @@
 {
     "name": "PROTOTYPE_INFO",
+    "node_name": "ProtoChangeDetails",
     "offsets": [
         {
             "name": "ChangeListener",

@@ -1,5 +1,6 @@
 {
     "name": "JS_API_TREE_MAP",
+    "node_name": "TreeMap",
     "offsets": [
         {
             "name": "TreeMap",

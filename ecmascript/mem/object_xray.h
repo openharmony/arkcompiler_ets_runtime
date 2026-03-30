@@ -24,6 +24,7 @@
 #include "ecmascript/func_slot.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -184,7 +185,9 @@ public:
         }
     }
 
-    template<VisitType visitType, class DerivedVisitor>
+    template<VisitType visitType,
+             VisitLinkedWeakHashMapType visitWeakMapType = VisitLinkedWeakHashMapType::AS_TAGGED_ARRAY,
+             class DerivedVisitor>
     static inline void VisitObjectBody(TaggedObject *object, JSHClass *klass,
                                        BaseObjectVisitor<DerivedVisitor> &visitor)
     {
@@ -192,7 +195,6 @@ public:
         JSType type = klass->GetObjectType();
         switch (type) {
             case JSType::JS_OBJECT:
-            case JSType::JS_XREF_OBJECT:
             case JSType::JS_ERROR:
             case JSType::JS_EVAL_ERROR:
             case JSType::JS_RANGE_ERROR:
@@ -210,6 +212,12 @@ public:
             case JSType::JS_SHARED_OBJECT: {
                 auto jsSharedObject = JSSharedObject::Cast(object);
                 jsSharedObject->VisitRangeSlot<visitType>(visitor);
+                break;
+            }
+            case JSType::JS_XREF_OBJECT:
+            case JSType::JS_WRAPPED_NAPI_OBJECT: {
+                auto jsWrappedNapiObj = JSWrappedNapiObject::Cast(object);
+                jsWrappedNapiObj->VisitRangeSlot<visitType>(visitor);
                 break;
             }
             case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
@@ -336,7 +344,6 @@ public:
                 break;
             case JSType::JS_WEAK_MAP:
                 JSWeakMap::Cast(object)->VisitRangeSlot<visitType>(visitor);
-                visitor.VisitJSWeakMap(object);
                 break;
             case JSType::JS_WEAK_SET:
                 JSWeakSet::Cast(object)->VisitRangeSlot<visitType>(visitor);
@@ -518,6 +525,12 @@ public:
             case JSType::COW_TAGGED_ARRAY:
                 TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::WEAK_LINKED_HASH_MAP:
+                if constexpr (visitWeakMapType == VisitLinkedWeakHashMapType::AS_TAGGED_ARRAY) {
+                    TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
+                visitor.VisitWeakLinkedHashMap(object);
+                break;
             case JSType::FUNC_SLOT:
                 FuncSlot::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
@@ -536,6 +549,9 @@ public:
                 break;
             case JSType::PROFILE_TYPE_INFO:
                 ProfileTypeInfo::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::IC_INFO:
+                ICInfo::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::GLOBAL_ENV:
                 GlobalEnv::Cast(object)->VisitRangeSlot<visitType>(visitor);

@@ -17,6 +17,7 @@
 
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/base/config.h"
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/builtins/builtins_ark_tools.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "common_components/mutator/mutator_manager.h"
@@ -28,10 +29,12 @@
 #include "ecmascript/dfx/tracing/tracing.h"
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/ohos/ohos_constants.h"
 #include "ecmascript/platform/backtrace.h"
+#include "jsnapi_expo.h"
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
@@ -62,7 +65,6 @@ using ecmascript::g_isEnableCMCGC;
 using ecmascript::JSFunction;
 using ecmascript::JSPandaFileExecutor;
 using ecmascript::SourceTextModule;
-
 sem_t g_heapdumpCnt;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &path,
@@ -104,6 +106,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     }
 #endif  // ENABLE_DUMP_IN_FAULTLOG
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
+    ecmascript::NodeIdCacheClearScope guard(const_cast<EcmaVM *>(vm), dumpOption);
     heapProfile->DumpHeapSnapshot(stream, dumpOption, progress, callback);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
@@ -167,6 +170,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm,
     FileDescriptorStream stream(fd);
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
+    ecmascript::NodeIdCacheClearScope guard(const_cast<EcmaVM *>(vm), dumpOption);
     heapProfile->DumpHeapSnapshot(&stream, dumpOption);
 
     sem_post(&g_heapdumpCnt);
@@ -602,7 +606,7 @@ size_t DFXJSNApi::GetFullGCLongTimeCount(const EcmaVM *vm)
 void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare();
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare(vm->GetJSThread());
 }
 
 void DFXJSNApi::SetJsDumpThresholds([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] size_t thresholds)
@@ -964,6 +968,24 @@ bool DFXJSNApi::BuildJsStackInfoList(const EcmaVM *hostVm, uint32_t tid, std::ve
     return false;
 }
 
+std::pair<std::string, std::uint32_t> DFXJSNApi::GetAnonymizeExtraErrorMessage(const EcmaVM *vm, uint32_t width)
+{
+    JSThread *thread = vm->GetJSThread();
+    JSHandle<JSTaggedValue> string(thread, thread->GetExtraErrorMessage());
+    if (string->IsHole()) {
+        return {"", 0};
+    }
+    int32_t position = thread->GetJsonErrorPosition();
+    return ecmascript::base::JsonHelper::AnonymizeJsonString(thread, string, position, width);
+}
+
+void DFXJSNApi::ClearExtraErrorMessage(const EcmaVM *vm)
+{
+    JSThread *thread = vm->GetJSThread();
+    thread->SetExtraErrorMessage(JSTaggedValue::Hole());
+}
+
+
 //When some objects invoke GetObjectHash, the return result is 0.
 //The GetObjectHashCode function is added to rectify the fault.
 int32_t DFXJSNApi::GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject)
@@ -1156,6 +1178,8 @@ void DFXJSNApi::GetMainThreadStackTrace(const EcmaVM *vm, std::string &stackTrac
             stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
                 mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
         } else {
+            // ensure that BuildJsStackTrace does not need to wait gc finish,
+            // otherwise should acquire suspensionRequestMutex before suspend
             ecmascript::SuspendOtherScope suspendOtherScope(thread, mainThread);
             stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(
                 mainThread, false, false, ecmascript::JS_STACK_TRACE_DEPTH_MAX);
@@ -1173,6 +1197,23 @@ void DFXJSNApi::SetMultithreadingDetectionEnabled(const EcmaVM *vm, bool enabled
     EcmaVM::SetCheckCountApi(enabled);
 }
 
+bool DFXJSNApi::OnVMHeapMemoryPressure(const EcmaVM *vm, HeapMemoryPressureOptions options,
+                                       Local<FunctionRef> callback)
+{
+    LOG_ECMA(INFO) << "OnVMHeapMemoryPressure called: localThreshold=" << options.localHeapThreshold
+                   << ", sharedThreshold=" << options.sharedHeapThreshold
+                   << ", processThreshold=" << options.processHeapThreshold;
+    auto ecmaVm = const_cast<EcmaVM *>(vm);
+    return ecmaVm->SetHeapMemoryPressure(options, callback);
+}
+
+void DFXJSNApi::OffVMHeapMemoryPressure(const EcmaVM *vm)
+{
+    auto ecmaVm = const_cast<EcmaVM *>(vm);
+    ecmaVm->ResetMemoryPressure();
+    LOG_ECMA(INFO) << "OffVMHeapMemoryPressure called. Memory pressure listener cleared, thresholds reset to 0";
+}
+
 void DFXJSNApi::GetHybridStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
     // only for js crash
@@ -1184,6 +1225,12 @@ void DFXJSNApi::SetJsRawHeapCropLevel(CropLevel level)
     // SetJsRawHeapCropLevel
     ecmascript::Runtime::GetInstance()->SetRawHeapDumpCropLevel(level);
     LOG_ECMA(INFO) << "Set raw heap dump level " << static_cast<int>(level);
+}
+
+void DFXJSNApi::SetProcDumpInSharedOOM(bool enable)
+{
+    ecmascript::Runtime::GetInstance()->SetProcDumpInSharedOOM(enable);
+    LOG_ECMA(INFO) << "SetProcDumpInSharedOOM " << enable;
 }
 
 JSHandle<JSTaggedValue> DFXJSNApi::FindFunctionForHook(const EcmaVM *vm, const std::string &recordName,

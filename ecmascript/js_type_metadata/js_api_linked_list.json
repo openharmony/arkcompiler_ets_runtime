@@ -1,5 +1,6 @@
 {
     "name": "JS_API_LINKED_LIST",
+    "node_name": "LinkedList",
     "offsets": [
         {
             "name": "DoubleList",

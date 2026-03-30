@@ -68,6 +68,7 @@ public:
     {
         TestHelper::CreateEcmaVMWithScope(ecmaVm_, thread_, scope_);
         ecmaVm_->SetEnableForceGC(false);
+        HeapProfiler::ResetOOMDump();
     }
 
     void TearDown() override
@@ -104,12 +105,11 @@ public:
         return heapProfile->GetIdCount();
     }
 
-    bool GenerateRawHeapSnashot(const std::string &filePath, DumpSnapShotOption &dumpOption,
+    bool GenerateRawHeapSnapshot(const std::string &filePath, DumpSnapShotOption &dumpOption,
                                 Progress *progress = nullptr, std::function<void(uint8_t)> callback = [] (uint8_t) {})
     {
         HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
         dumpOption.dumpFormat = DumpFormat::BINARY;
-        dumpOption.isDumpOOM = true;
         dumpOption.isFullGC = false;
         fstream outputString(filePath, std::ios::out);
         outputString.close();
@@ -119,6 +119,12 @@ public:
         auto ret = heapProfile->DumpHeapSnapshot(&stream, dumpOption, progress, callback);
         stream.EndOfStream();
         return ret;
+    }
+
+    void DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const DumpSnapShotOption &dumpOption)
+    {
+        HeapProfiler *heapprofiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(instance));
+        heapprofiler->DumpHeapSnapshotFromSharedGCForOOM(stream, dumpOption);
     }
 
     bool DecodeRawHeapObjectTableV1(std::string &filePath, CSet<JSTaggedType> &result)
@@ -489,8 +495,8 @@ public:
         JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
         JSHandle<JSObject> jsWeakMapObject = NewObject(JSWeakMap::SIZE, JSType::JS_WEAK_MAP, proto);
         JSHandle<JSWeakMap> jsWeakMap = JSHandle<JSWeakMap>::Cast(jsWeakMapObject);
-        JSHandle<LinkedHashMap> weakLinkedMap(LinkedHashMap::Create(thread));
-        jsWeakMap->SetLinkedMap(thread, weakLinkedMap);
+        JSHandle<WeakLinkedHashMap> weakLinkedMap(WeakLinkedHashMap::Create(thread));
+        jsWeakMap->SetWeakLinkedMap(thread, weakLinkedMap);
         return jsWeakMap;
     }
 
@@ -1604,7 +1610,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV0)
 
     std::string rawHeapPath("test_binary_dump_v0.rawheap");
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     FILE* file = std::fopen(rawHeapPath.c_str(), "rb+");
     ASSERT_TRUE(file != nullptr);
@@ -1629,7 +1635,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1)
 
     std::string rawHeapPath("test_binary_dump_v1.rawheap");
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     CSet<JSTaggedType> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawHeapPath, dumpObjects));
@@ -1651,7 +1657,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2)
     std::string rawHeapPath("test_binary_dump_v2.rawheap");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     CSet<uint32_t> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawHeapPath, dumpObjects));
@@ -1680,7 +1686,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpByForkWithCallback)
     };
     DumpSnapShotOption dumpOption;
     dumpOption.isSync = false;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption, nullptr, cb));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption, nullptr, cb));
     ASSERT_TRUE(status);
 }
 
@@ -1701,9 +1707,9 @@ HWTEST_F_L0(HeapDumpTest, TestGenerateHashInRawheap)
 
     std::string rawHeapPath("test_binary_dump_for_mixed_node_id.rawheap");
     DumpSnapShotOption dumpOption;
-    dumpOption.isSync = false;
+    dumpOption.isSync = true;
     dumpOption.isJSLeakWatcher = true;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
     ASSERT_TRUE(tester.CheckHashInRawheap(thread_, vec, rawHeapPath));
 }
@@ -1717,7 +1723,7 @@ HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV1)
 
     std::string rawHeapPath("test_binary_dump_addrtable_size_min_V1.rawheap");
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     std::vector<uint32_t> sections;
     ASSERT_TRUE(tester.ReadRawHeapSectionInfo(rawHeapPath, sections));
@@ -1744,7 +1750,7 @@ HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV2)
     std::string rawHeapPath("test_binary_dump_addrtable_size_min_V2.rawheap");
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
 
     std::vector<uint32_t> sections;
     ASSERT_TRUE(tester.ReadRawHeapSectionInfo(rawHeapPath, sections));
@@ -1760,6 +1766,51 @@ HWTEST_F_L0(HeapDumpTest, TestDecodeRawheapAddrTableItemSizeMinV2)
     std::string heapsnapshotPath("test_binary_dump_addrtable_size_min_V2.heapsnapshot");
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
     ASSERT_FALSE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestThreadBinaryDumpForSharedGCTriggeredOOM)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread_);
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_sharedgc_oom1.rawheap");
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT);
+    ASSERT_TRUE(fd > 0);
+
+    FileDescriptorStream stream(fd);
+    DumpSnapShotOption dumpOption;
+    dumpOption.isForSharedOOM = true;
+    tester.DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestProcBinaryDumpForSharedGCTriggeredOOM)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    [[maybe_unused]] EcmaHandleScope handleScope(thread_);
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread_, undefined, undefined, undefined, 1);
+    info->SetCallArg(JSTaggedValue::True());
+    ecmascript::builtins::BuiltinsArkTools::EnableProcDumpInSharedOOM(info);
+
+    std::vector<Reference> vec;
+    CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
+
+    std::string rawHeapPath("test_sharedgc_oom2.rawheap");
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT);
+    ASSERT_TRUE(fd > 0);
+
+    FileDescriptorStream stream(fd);
+    DumpSnapShotOption dumpOption;
+    dumpOption.isForSharedOOM = true;
+    dumpOption.isProcDump = true;
+    tester.DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 }
 
 HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV1)
@@ -1779,8 +1830,9 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV1)
     std::string rawHeapPath("test_binary_dump_v1.rawheap");
     DumpSnapShotOption dumpOption;
     dumpOption.isForSharedOOM = true;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
-    Runtime::GetInstance()->EnableProcDumpInSharedOOM(false);
+    dumpOption.isProcDump = true;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 
     CSet<JSTaggedType> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawHeapPath, dumpObjects));
@@ -1809,8 +1861,9 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV2)
     Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
     DumpSnapShotOption dumpOption;
     dumpOption.isForSharedOOM = true;
-    ASSERT_TRUE(tester.GenerateRawHeapSnashot(rawHeapPath, dumpOption));
-    Runtime::GetInstance()->EnableProcDumpInSharedOOM(false);
+    dumpOption.isProcDump = true;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
 
     CSet<uint32_t> dumpObjects;
     ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawHeapPath, dumpObjects));
@@ -1821,6 +1874,136 @@ HWTEST_F_L0(HeapDumpTest, TestProcHeapDumpBinaryDumpV2)
     std::string heapsnapshotPath("test_binary_dump_v2.heapsnapshot");
     ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
     ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1WithHandleClassification1)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // create localhandle
+    JSHandle<JSTaggedValue> object1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object2(factory->CreateNapiObject());
+    Local<JSTaggedValue> localObject1(object1.GetAddress());
+    Local<JSTaggedValue> localObject2(object2.GetAddress());
+
+    // create globalHandle
+    Global<ObjectRef> globalObject1(ecmaVm_, localObject1);
+    Global<ObjectRef> globalObject2(ecmaVm_, localObject2);
+
+    std::string rawheapPath("test_binary_dump_v1_with_handle.rawheap");
+
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawheapPath, dumpOption));
+
+    CSet<JSTaggedType> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawheapPath, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v1_with_handle.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawheapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawheapPath, heapsnapshotPath));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"handle\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"LocalHandleRoot[2]\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"GlobalHandleRoot[2]"));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV1WithHandleClassification2)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // create localhandle
+    JSHandle<JSTaggedValue> object1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object2(factory->CreateNapiObject());
+    Local<JSTaggedValue> localObject1(object1.GetAddress());
+    Local<JSTaggedValue> localObject2(object1.GetAddress());
+
+    // create globalHandle
+    Global<ObjectRef> globalObject1(ecmaVm_, localObject1);
+    Global<ObjectRef> globalObject2(ecmaVm_, localObject2);
+
+    std::string rawheapPath("test_binary_dump_v1_with_handle.rawheap");
+
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawheapPath, dumpOption));
+
+    CSet<JSTaggedType> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV1(rawheapPath, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v1_with_handle.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawheapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawheapPath, heapsnapshotPath));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"handle\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"LocalHandleRoot[2]\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v1_with_handle.heapsnapshot", "\"GlobalHandleRoot[1]"));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2WithHandleClassification1)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // create localhandle
+    JSHandle<JSTaggedValue> object1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object2(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object3(factory->CreateNapiObject());
+    Local<JSTaggedValue> localObject1(object1.GetAddress());
+    Local<JSTaggedValue> localObject2(object2.GetAddress());
+    Local<JSTaggedValue> localObject3(object3.GetAddress());
+
+    // create globalHandle
+    Global<ObjectRef> globalObject1(ecmaVm_, localObject1);
+    Global<ObjectRef> globalObject2(ecmaVm_, localObject2);
+    Global<ObjectRef> globalObject3(ecmaVm_, localObject3);
+
+    std::string rawheapPath("test_binary_dump_v2_with_handle.rawheap");
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawheapPath, dumpOption));
+
+    CSet<uint32_t> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawheapPath, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v2_with_handle.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawheapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawheapPath, heapsnapshotPath));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"handle\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"LocalHandleRoot[3]\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"GlobalHandleRoot[3]"));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2WithHandleClassification2)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // create localhandle
+    JSHandle<JSTaggedValue> object1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object2(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> object3(factory->CreateNapiObject());
+    Local<JSTaggedValue> localObject1(object1.GetAddress());
+    Local<JSTaggedValue> localObject2(object1.GetAddress());
+    Local<JSTaggedValue> localObject3(object3.GetAddress());
+
+    // create globalHandle
+    Global<ObjectRef> globalObject1(ecmaVm_, localObject1);
+    Global<ObjectRef> globalObject2(ecmaVm_, localObject2);
+    Global<ObjectRef> globalObject3(ecmaVm_, localObject3);
+
+    std::string rawheapPath("test_binary_dump_v2_with_handle.rawheap");
+    Runtime::GetInstance()->SetRawHeapDumpCropLevel(RawHeapDumpCropLevel::LEVEL_V2);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawheapPath, dumpOption));
+
+    CSet<uint32_t> dumpObjects;
+    ASSERT_TRUE(tester.DecodeRawHeapObjectTableV2(rawheapPath, dumpObjects));
+
+    std::string heapsnapshotPath("test_binary_dump_v2_with_handle.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawheapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawheapPath, heapsnapshotPath));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"handle\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"LocalHandleRoot[3]\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"GlobalHandleRoot[2]"));
 }
 #endif
 
@@ -1943,5 +2126,129 @@ HWTEST_F_L0(HeapDumpTest, TestRemoveUnmarkedObjects)
 
     entryIdMap.RemoveUnmarkedObjects(marker);
     ASSERT_EQ(entryIdMap.GetIdMap()->size(), 4);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestPropertyNameInJSObject)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"property_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
+    EXPECT_TRUE(result);
+
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> global(thread_, env->GetGlobalObject());
+    JSHandle<EcmaString> testObjKey = ecmaVm_->GetFactory()->NewFromStdString("testObj");
+
+    JSHandle<JSTaggedValue> testObjValue =
+        JSObject::GetProperty(thread_, global, JSHandle<JSTaggedValue>::Cast(testObjKey)).GetValue();
+    ASSERT_TRUE(testObjValue->IsJSObject());
+
+    std::vector<Reference> refs;
+    testObjValue->DumpForSnapshot(thread_, refs, true);
+
+    std::unordered_set<CString> expectedKeys = {
+        "id",
+        "name",
+        "score",
+        "isActive",
+        "tags",
+        "userSet",
+        "configMap",
+        "calculate",
+        "nested",
+        "stringProperty1",
+        "stringProperty2",
+        "stringProperty3",
+        "stringProperty4",
+        "stringProperty5",
+        "description",
+        "address",
+        "phoneNumber",
+        "creationDate",
+        "version",
+        "enabled",
+        "counter",
+        "metadata"
+    };
+
+    std::unordered_set<CString> foundKeys;
+
+    for (const auto &ref : refs) {
+        if (!ref.key_.IsHole() && ref.key_.IsString()) {
+            EcmaString *keyStr = EcmaString::Cast(ref.key_.GetTaggedObject());
+            CString keyCStr = ConvertToString(thread_, keyStr);
+            foundKeys.insert(keyCStr);
+        }
+    }
+
+    for (const auto &expectedKey : expectedKeys) {
+        ASSERT_TRUE(foundKeys.find(expectedKey) != foundKeys.end())
+            << "Expected key '" << expectedKey << "' not found in DumpForSnapshot";
+    }
+
+    ASSERT_EQ(foundKeys.size(), expectedKeys.size())
+        << "Found " << foundKeys.size() << " keys, expected " << expectedKeys.size();
+}
+
+HWTEST_F_L0(HeapDumpTest, TestPropertyNameInBinaryDump)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"property_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_property_name.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_property_name.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"id\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"name\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"score\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"isActive\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"tags\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"userSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"configMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"calculate\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"nested\""));
+    // Additional string properties
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty1\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty2\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty3\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty4\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty5\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"description\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"address\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"phoneNumber\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"creationDate\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"version\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"enabled\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"counter\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"metadata\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestProxyClassName)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "proxy_class_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_proxy_class_name.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_proxy_class_name.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassA\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassB\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy\""));
 }
 }

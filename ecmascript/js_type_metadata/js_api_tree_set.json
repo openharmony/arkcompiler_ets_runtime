@@ -1,5 +1,6 @@
 {
     "name": "JS_API_TREE_SET",
+    "node_name": "TreeSet",
     "offsets": [
         {
             "name": "TreeSet",

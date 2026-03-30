@@ -1,5 +1,6 @@
 {
     "name": "JS_GENERATOR_OBJECT",
+    "node_name": "JSGeneratorObject",
     "offsets": [
         {
             "name": "GeneratorContext",

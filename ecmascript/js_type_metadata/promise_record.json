@@ -1,5 +1,6 @@
 {
     "name": "PROMISE_RECORD",
+    "node_name": "PromiseRecord",
     "offsets": [
         {
             "name": "Value",

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
+
 #include "stringtableloadstore_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_string-inl.h"
@@ -34,12 +36,12 @@ namespace OHOS {
 
     bool IsValidMultiByteSequence(const uint8_t* data, size_t start, int seqLen, size_t size)
     {
-        // 检查序列长度是否超出数据范围
+        // Check whether the sequence extends beyond the input range.
         if (start + seqLen > size) {
             return false;
         }
 
-        // 检查后续字节是否符合 UTF-8 格式（10xxxxxx）
+        // Check whether continuation bytes match UTF-8 format (10xxxxxx).
         for (int j = 1; j < seqLen; j++) {
             if ((data[start + j] & 0xC0) != 0x80) {
                 return false;
@@ -61,13 +63,13 @@ namespace OHOS {
         result.reserve(size);
         for (size_t i = 0; i < size;) {
             uint8_t byte = data[i];
-            // ascii 字符直接保留
+            // Keep ASCII bytes unchanged.
             if (byte <= 0x7F) {
                 result.push_back(byte);
                 i++;
                 continue;
             }
-            // 多字节序列
+            // Multi-byte sequence.
             int seqLen = 0;
             if ((byte & 0xE0) == 0xC0) {
                 seqLen = DOUBLE_SEQUENCE;
@@ -97,23 +99,27 @@ namespace OHOS {
 
     void StringTableLoadStoreFuzzTest(const uint8_t *data, size_t size)
     {
+        RuntimeOption option;
+        option.SetLogLevel(common::LOG_LEVEL::ERROR);
+        EcmaVM *vm = JSNApi::CreateJSVM(option);
         if (data == nullptr || size <= 0) {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        RuntimeOption option;
-        option.SetLogLevel(common::LOG_LEVEL::ERROR);
-        EcmaVM *vm = JSNApi::CreateJSVM(option);
+        FuzzedDataProvider fdp(data, size);
+        uint32_t key = fdp.ConsumeIntegral<uint32_t>() % 0x10000000;
+        std::string seedString = fdp.ConsumeRandomLengthString(size);
+        std::vector<uint8_t> seedData(seedString.begin(), seedString.end());
         JSThread *thread = vm->GetJSThread();
 
-        uint32_t key = size % 0x10000000;
-        std::vector<uint8_t> utf8Data = CreateValidUtf8(data, size);
+        std::vector<uint8_t> utf8Data = CreateValidUtf8(seedData.data(), seedData.size());
         JSHandle<EcmaString> value(thread,
                                    EcmaStringAccessor::CreateFromUtf8(vm, utf8Data.data(), utf8Data.size(), true));
-        auto *map = new HashTrieMap<EcmaStringTableMutex, JSThread, TrieMapConfig::NeedSlotBarrier>();
-        map->template Load<false>([](const void *, size_t) { return nullptr; }, key, nullptr);
-        map->template LoadOrStore<true>(thread, key, [value]() { return value; },
-                                        [](BaseString *) { return false; });
+        auto *map = new HashTrieMap<EcmaStringTableMutex>();
+        HashTrieMapOperation<EcmaStringTableMutex, JSThread, TrieMapConfig::NeedSlotBarrier> hashTrieMapOperation(map);
+        hashTrieMapOperation.template Load<false>([](const void *, size_t) { return nullptr; }, key, nullptr);
+        hashTrieMapOperation.template LoadOrStore<true>(thread, key, [value]() { return value; },
+                                                        [](BaseString *) { return false; });
         delete map;
 
         JSNApi::DestroyJSVM(vm);

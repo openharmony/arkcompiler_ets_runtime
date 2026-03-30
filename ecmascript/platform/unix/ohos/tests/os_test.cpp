@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <fstream>
+
 #include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/tests/test_helper.h"
@@ -55,5 +57,26 @@ HWTEST_F_L0(OSTest, CheckDiskSpaceTest)
     size_t largeSize = SIZE_MAX;
     ASSERT_FALSE(CheckDiskSpace(tempDir_, largeSize));
     ASSERT_TRUE(CheckDiskSpace(tempDir_, 0));
+}
+
+HWTEST_F_L0(OSTest, FileSizeTest)
+{
+    // Test case 1: file does not exist, stat fails, should return 0
+    std::string nonExistentPath = tempDir_ + "/non_existent_file.txt";
+    ASSERT_EQ(filesystem::FileSize(nonExistentPath), 0);
+
+    // Test case 2: create an empty file, should return 0
+    std::string emptyFilePath = tempDir_ + "/empty_file.txt";
+    std::ofstream emptyFile(emptyFilePath);
+    emptyFile.close();
+    ASSERT_EQ(filesystem::FileSize(emptyFilePath), 0);
+
+    // Test case 3: create a file with content, should return correct size
+    std::string contentFilePath = tempDir_ + "/content_file.txt";
+    std::string testContent = "Hello, World!";
+    std::ofstream contentFile(contentFilePath);
+    contentFile << testContent;
+    contentFile.close();
+    ASSERT_EQ(filesystem::FileSize(contentFilePath), testContent.size());
 }
 }

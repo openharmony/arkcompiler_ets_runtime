@@ -80,7 +80,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
         if (thread->HasPendingException()) {
             JSHandle<JSTaggedValue> throwValue = JSPromise::IfThrowGetThrowValue(thread);
             callArg.Update(throwValue);
-            thread->ClearException();
+            thread->ClearExceptionAndExtraErrorMessage();
             isRejected = true;
         } else {
             callArg.Update(taggedValue);
@@ -153,7 +153,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseReactionJob(EcmaRuntimeCallInfo *argv)
         if (thread->HasPendingException()) {
             JSHandle<JSTaggedValue> throwValue = JSPromise::IfThrowGetThrowValue(thread);
             runtimeInfo->SetCallArg(throwValue.GetTaggedValue());
-            thread->ClearException();
+            thread->ClearExceptionAndExtraErrorMessage();
             runtimeInfo->SetFunction(capability->GetReject(thread));
         } else {
             runtimeInfo->SetCallArg(taggedValue);
@@ -191,7 +191,7 @@ JSTaggedValue BuiltinsPromiseJob::PromiseResolveThenableJob(EcmaRuntimeCallInfo 
     // b. NextJob Completion(status).
     if (thread->HasPendingException()) {
         thenResult = JSPromise::IfThrowGetThrowValue(thread);
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         JSHandle<JSTaggedValue> reject(thread, resolvingFunctions->GetRejectFunction(thread));
         EcmaRuntimeCallInfo *runtimeInfo =
             EcmaInterpreter::NewRuntimeCallInfo(thread, reject, undefined, undefined, 1);
@@ -258,7 +258,13 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         return DynamicImport::ExecuteNativeOrJsonModule(thread, requestPath,
             SourceTextModule::GetNativeModuleType(requestPath), resolve, reject);
     }
-
+    bool isExport = ModulePathHelper::CheckExportsWithOhmurl(vm, fileName, recordNameStr, requestPath);
+    if (!isExport) {
+        CString normalizeStr = ModulePathHelper::ReformatPath(requestPath);
+        CString msg = "Cannot find dynamic-import module in oh-exports:'" + normalizeStr;
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(),
+            HandleModuleException(thread, resolve, reject, specifierString));
+    }
     CString moduleName;
     if (recordName->IsUndefined()) {
         fileName = ResolveFilenameFromNative(thread, fileName, requestPath);
@@ -339,11 +345,10 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
 
 JSTaggedValue BuiltinsPromiseJob::CatchException(JSThread *thread, JSHandle<JSPromiseReactionsFunction> reject)
 {
-    BUILTINS_API_TRACE(thread, PromiseJob, CatchException);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     ASSERT(thread->HasPendingException());
     JSHandle<JSTaggedValue> thenResult = JSPromise::IfThrowGetThrowValue(thread);
-    thread->ClearException();
+    thread->ClearExceptionAndExtraErrorMessage();
     JSHandle<JSTaggedValue> rejectfun(reject);
     EcmaRuntimeCallInfo *runtimeInfo =
         EcmaInterpreter::NewRuntimeCallInfo(thread, rejectfun, undefined, undefined, 1);
@@ -364,14 +369,17 @@ JSTaggedValue BuiltinsPromiseJob::HandleModuleException(JSThread *thread, JSHand
 {
     ASSERT(thread->HasPendingException());
     LOG_ECMA(DEBUG) << "start handle module exception " << requestPath;
-    // If the ohmurl is detected to be in compliance with the 1.0 prefix rule, then throw an exception directly
+    if (thread->GetEcmaVM()->GetArkTSMode() == ArkTSMode::DYNAMIC) {
+        return CatchException(thread, reject);
+    }
+    // If the ohmurl is detected to be in compliance with the dynamic prefix rule, then throw an exception directly
     if (!StaticModuleLoader::CanTryLoadStaticModulePath(requestPath)) {
         LOG_ECMA(DEBUG) << "handle dynamic module exception " << requestPath;
         return CatchException(thread, reject);
     }
     LOG_ECMA(DEBUG) << "try to start load static module: " << requestPath;
     JSHandle<JSTaggedValue> errorReuslt = JSPromise::IfThrowGetThrowValue(thread);
-    thread->ClearException();
+    thread->ClearExceptionAndExtraErrorMessage();
     EcmaVM *vm = thread->GetEcmaVM();
     Local<JSValueRef> getEsModule = StaticModuleLoader::GetStaticModuleLoadFunc(vm);
     if (!getEsModule->IsFunction(vm)) {
@@ -379,7 +387,7 @@ JSTaggedValue BuiltinsPromiseJob::HandleModuleException(JSThread *thread, JSHand
         thread->SetException(errorReuslt.GetTaggedValue());
         return CatchException(thread, reject);
     }
-    // try load 1.2 module;
+    // try load static module;
     Local<FunctionRef> getEsModuleFunc = getEsModule;
     ModuleManager *moduleManager = thread->GetModuleManager();
     JSHandle<JSTaggedValue> exportObject = StaticModuleLoader::LoadStaticModule(thread, getEsModuleFunc, requestPath);

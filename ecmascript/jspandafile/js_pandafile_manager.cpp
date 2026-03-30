@@ -85,7 +85,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         }
         if (resolveBufferCallback == nullptr) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package is not supported in the Previewer.");
-            LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
+            if constexpr (isHybrid == ForHybridApp::Hybrid) {
+                LOG_FULL(FATAL) << "[LoadJSPandaFile] resolveBufferCallbackForHybridApp is nullptr";
+            } else {
+                LOG_FULL(FATAL) << "[LoadJSPandaFile] resolveBufferCallback is nullptr";
+            }
             return nullptr;
         }
         std::string hspPath = ModulePathHelper::ParseHapPath(filename);
@@ -102,12 +106,19 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         size_t dataSize = 0;
         std::string errorMsg;
         bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, nullptr);
         if (!getBuffer) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package in the Previewer.");
             CString msg = "resolveBufferCallback get hsp buffer failed, hsp path:" + filename +
                 ", errorMsg:" + errorMsg.c_str();
             if (executeType == ExecuteTypes::NAPI) {
+#ifdef ENABLE_HILOG
+                HILOG_COMM_ERROR(
+                    "resolveBufferCallback get hsp buffer failed, "\
+                    "hsp path:%{public}s, errorMsg:%{public}s", filename.c_str(), msg.c_str());
+#else
                 LOG_FULL(ERROR) << msg;
+#endif
                 THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), nullptr);
             }
             LOG_FULL(FATAL) << msg;
@@ -336,7 +347,7 @@ void JSPandaFileManager::AddJSPandaFile(const std::shared_ptr<JSPandaFile> &jsPa
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     LockHolder lock(jsPandaFileLock_);
     if (loadedJSPandaFiles_.find(filename) != loadedJSPandaFiles_.end()) {
-        LOG_ECMA(FATAL) << "add failed, file already exist: " << filename;
+        LOG_ECMA(FATAL) << "add failed, file already exist: " << filename; // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
 
@@ -418,6 +429,15 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::NewJSPandaFile(const panda_file
     return jsPandaFile;
 }
 
+std::shared_ptr<JSPandaFile> JSPandaFileManager::NewJSPandaFile(JSThread *thread, const panda_file::File *pf,
+                                                                const CString &desc, std::string_view entryPoint)
+{
+    std::shared_ptr<JSPandaFile> jsPandaFile = std::make_shared<JSPandaFile>(thread, pf, desc, entryPoint);
+    PGOProfilerManager::GetInstance()->SamplePandaFileInfo(jsPandaFile->GetChecksum(),
+                                                           jsPandaFile->GetJSPandaFileDesc());
+    return jsPandaFile;
+}
+
 DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPandaFile)
 {
     LOG_ECMA_IF(jsPandaFile == nullptr, FATAL) << "GetJSPtExtractor error, js pandafile is nullptr";
@@ -426,7 +446,7 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPa
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
         LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename
-            << " file addr is " << reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader());
+            << " file addr is " << reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader()); // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
 
@@ -448,7 +468,7 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractorAndExtract(const JSPanda
     LockHolder lock(jsPandaFileLock_);
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
-        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
+        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename; // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
 
@@ -471,7 +491,7 @@ DebugInfoExtractor *JSPandaFileManager::CpuProfilerGetJSPtExtractor(const JSPand
     LockHolder lock(jsPandaFileLock_);
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
-        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
+        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename; // LCOV_EXCL_BR_LINE
         UNREACHABLE();
     }
 
@@ -525,7 +545,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
 {
     ThreadNativeScope nativeScope(thread);
     ASSERT(GetJSPandaFile(pf) == nullptr);
-    std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(pf, desc);
+    std::shared_ptr<JSPandaFile> newJsPandaFile = NewJSPandaFile(thread, pf, desc, entryPoint);
     EcmaVM *vm = thread->GetEcmaVM();
     newJsPandaFile->SetFileMapper(fileMapper);
     std::string moduleName = GetModuleNameFromDesc(desc.c_str());
@@ -536,25 +556,6 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
         LOG_ECMA(DEBUG) << "SearchHapPathCallBack moduleName: " << moduleName
                         << ", fileName:" << desc << ", hapPath: " << hapPath;
         newJsPandaFile->SetHapPath(hapPath.c_str());
-    }
-
-    CString methodName = entryPoint.data();
-    if (newJsPandaFile->IsBundlePack()) {
-        // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
-        auto pos = entryPoint.find_last_of("::");
-        if (pos != std::string_view::npos) {
-            methodName = entryPoint.substr(pos + 1);
-        } else {
-            // default use func_main_0 as entryPoint
-            methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
-        }
-    }
-    if (newJsPandaFile->IsNewVersion() && vm->IsAsynTranslateClasses()) {
-        if (!UseSnapshot(thread, newJsPandaFile.get())) {
-            newJsPandaFile->TranslateClasses(thread, methodName);
-        }
-    } else {
-        PandaFileTranslator::TranslateClasses(thread, newJsPandaFile.get(), methodName);
     }
 
     {
@@ -588,16 +589,21 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
             resolveBufferCallback = vm->GetResolveBufferCallbackForHybridApp();
         }
         if (resolveBufferCallback == nullptr) {
-            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr";
+            if constexpr (isHybrid == ForHybridApp::Hybrid) {
+                LOG_FULL(ERROR) << "When checking file path, resolveBufferCallbackForHybridApp is nullptr";
+            } else {
+                LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr";
+            }
             return false;
         }
         uint8_t *data = nullptr;
         size_t dataSize = 0;
         std::string errorMsg;
         bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize, errorMsg);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         if (!getBuffer) {
-            LOG_FULL(ERROR)
-                << "When checking file path, resolveBufferCallback get buffer failed, errorMsg = " << errorMsg;
+            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback get buffer failed, isHybrid = "
+                            << (isHybrid == ForHybridApp::Hybrid ? "Hybrid" : "Normal") << ", errorMsg = " << errorMsg;
             return false;
         }
     }
@@ -692,7 +698,7 @@ bool JSPandaFileManager::UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile)
             return false;
         }
         return JSPandaFileSnapshot::ReadData(
-            thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR, version);
+            thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
     }
     return false;
 }

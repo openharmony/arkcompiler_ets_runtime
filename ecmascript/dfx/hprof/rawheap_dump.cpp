@@ -30,6 +30,16 @@ void ObjectMarker::VisitRoot([[maybe_unused]]Root type, ObjectSlot slot)
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsHeapObject()) {
         MarkObject(slot.GetTaggedType());
+        switch (type) {
+            case Root::ROOT_LOCAL_HANDLE:
+                localHandleRoots_.insert(slot.GetTaggedType());
+                break;
+            case Root::ROOT_GLOBAL_HANDLE:
+                globalHandleRoots_.insert(slot.GetTaggedType());
+                break;
+            default:
+                break;
+        }
     }
 }
 
@@ -58,18 +68,6 @@ void ObjectMarker::VisitObjectRangeImpl([[maybe_unused]]BaseObject *root, uintpt
 
 void ObjectMarker::ProcessMarkObjectsFromRoot()
 {
-    if (IsProcessDump()) {
-        CVector<JSTaggedType> heapObjects;
-        heapObjects.reserve(markedObjects_.size());
-        heapSize_ = 0;
-        IterateOverObjects([&heapObjects, this](TaggedObject *object) {
-            heapObjects.push_back(reinterpret_cast<JSTaggedType>(object));
-            heapSize_ += object->GetSize();
-        });
-        markedObjects_.swap(heapObjects);
-        return;
-    }
-
     while (!bfsQueue_.empty()) {
         JSTaggedType addr = bfsQueue_.front();
         bfsQueue_.pop();
@@ -104,8 +102,8 @@ void ObjectMarker::MarkObject(JSTaggedType addr)
 void ObjectMarker::MarkRootObjects()
 {
     HeapRootVisitor rootVisitor;
-    if (IsProcessDump()) {
-        Runtime::GetInstance()->GCIterateThreadListWithoutLock([&rootVisitor, this](JSThread *thread) {
+    if (option_->isProcDump) {
+        Runtime::GetInstance()->GCIterateThreadList([&rootVisitor, this](JSThread *thread) {
             rootVisitor.VisitHeapRoots(thread, *this);
         });
         LOG_ECMA(INFO) << "rawheap dump, process dump";
@@ -115,20 +113,9 @@ void ObjectMarker::MarkRootObjects()
     SharedModuleManager::GetInstance()->Iterate(*this);
     Runtime::GetInstance()->IterateCachedStringRoot(*this);
     Runtime::GetInstance()->IterateSendableGlobalStorage(*this);
-}
 
-void ObjectMarker::IterateOverObjects(const std::function<void(TaggedObject *)> &visitor)
-{
-    if (IsProcessDump()) {
-        Runtime::GetInstance()->GCIterateThreadListWithoutLock([&visitor](JSThread *thread) {
-            thread->GetEcmaVM()->GetHeap()->IterateOverObjects(visitor, false);
-        });
-    } else {
-        vm_->GetHeap()->IterateOverObjects(visitor, false);
-    }
-    SharedHeap::GetInstance()->IterateOverObjects(visitor);
-    SharedHeap::GetInstance()->GetReadOnlySpace()->IterateOverObjects(visitor);
-    SharedHeap::GetInstance()->GetCompressSpace()->IterateOverObjects(visitor);
+    LOG_ECMA(INFO) << "rawheap dump, local handle count " << localHandleRoots_.size()
+                   << ", global handle count " << globalHandleRoots_.size();
 }
 
 RawHeapDump::RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
@@ -194,6 +181,11 @@ void RawHeapDump::BinaryDump()
     DumpRootTable();
 
     marker_.ProcessMarkObjectsFromRoot();
+    // properties name was only exempted in mode RawHeapDumpCropLevel::LEVEL_V1
+    if (Runtime::GetInstance()->GetRawHeapDumpCropLevel() == RawHeapDumpCropLevel::LEVEL_V1) {
+        AddExemptedStringNode();
+    }
+
     UpdateStringTable();
     DumpStringTable();
     DumpObjectTable();
@@ -205,6 +197,26 @@ void RawHeapDump::BinaryDump()
 void RawHeapDump::IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor)
 {
     marker_.IterateMarkedObjects(visitor);
+}
+
+// Update string table for all marked objects and property name strings.
+// String objects are normally skipped due to content trimming, but property name strings are exempted.
+// For each object, generate a string ID and call the virtual UpdateStringTable(addr, strId).
+// This function handles both regular objects and exempted string nodes.
+void RawHeapDump::UpdateStringTable()
+{
+    int strCnt = 0;
+    IterateMarkedObjects([&strCnt, this](JSTaggedType addr) {
+        StringId strId = GenerateStringId(reinterpret_cast<TaggedObject *>(addr));
+        UpdateStringTable(addr, strId);
+        strId != 1 ? strCnt++ : 0;
+    });
+    IterateExemptedStringNode([&strCnt, this](JSTaggedType addr) {
+        StringId strId = GenerateStringId(reinterpret_cast<TaggedObject *>(addr), true);
+        UpdateStringTable(addr, strId);
+        strId != 1 ? strCnt++ : 0;
+    });
+    LOG_ECMA(INFO) << "rawheap dump, update string table count " << strCnt;
 }
 
 void RawHeapDump::DumpVersion(const std::string &version)
@@ -306,37 +318,78 @@ void RawHeapDump::AddSectionBlockSize()
     secIndexVec_.push_back(GetRawHeapFileOffset() - preOffset_);
 }
 
-StringId RawHeapDump::GenerateStringId(TaggedObject *object)
+StringId RawHeapDump::GenerateStringIdForJSObject(TaggedObject *object, JSThread *thread)
+{
+    JSTaggedValue entry(object);
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    bool isCallGetter = false;
+    JSHandle<JSTaggedValue> contructorKey = globalConst->GetHandledConstructorString();
+    JSTaggedValue objConstructor = ObjectFastOperator::GetPropertyByName(thread, entry,
+                                                                         contructorKey.GetTaggedValue(), true,
+                                                                         &isCallGetter);
+    auto it = objectStrIds_.find(objConstructor.GetRawData());
+    if (it != objectStrIds_.end()) {
+        return it->second;
+    }
+    StringId strId = snapshot_->GenerateStringId(object);
+    objectStrIds_.emplace(objConstructor.GetRawData(), strId);
+    return strId;
+}
+
+StringId RawHeapDump::GenerateStringIdForJSFunction(TaggedObject *object, JSThread *thread)
+{
+    JSFunctionBase *func = JSFunctionBase::Cast(object);
+    Method *method = Method::Cast(func->GetMethod(thread).GetTaggedObject());
+    auto it = functionStrIds_.find(method);
+    if (it != functionStrIds_.end()) {
+        return it->second;
+    }
+    StringId strId = snapshot_->GenerateStringId(object);
+    functionStrIds_.emplace(method, strId);
+    return strId;
+}
+
+StringId RawHeapDump::GenerateStringIdForString(TaggedObject *object, JSThread *thread)
+{
+    EcmaString *str = EcmaString::Cast(object);
+    if (EcmaStringAccessor(str).GetLength() > 0) {
+        CString string = ConvertToString(vm_->GetJSThread(), str);
+        return snapshot_->InsertString(string);
+    }
+    return 1;  // 1 : invalid id
+}
+
+StringId RawHeapDump::GenerateStringIdForJSProxy(TaggedObject *object)
+{
+    CString suffix = snapshot_->GetProxyClassNameSuffix(object);
+    if (!suffix.empty()) {
+        CString nodeName = HeapSnapshot::GetNodeName(JSType::JS_PROXY, snapshot_->IsInVmMode()) + suffix;
+        return const_cast<StringHashMap*>(snapshot_->GetEcmaStringTable())->InsertStrAndGetStringId(nodeName);
+    }
+    return 1;  // 1 : invalid id
+}
+
+// Generate a string ID for an object. Normally string objects are skipped due to content trimming,
+// but when strAllowed is true, property name strings are allowed in the string table.
+StringId RawHeapDump::GenerateStringId(TaggedObject *object, bool strAllowed)
 {
     JSTaggedValue entry(object);
     JSThread *thread = vm_->GetAssociatedJSThread();
 
+    if (entry.IsJSProxy()) {
+        return GenerateStringIdForJSProxy(object);
+    }
+
     if (entry.IsOnlyJSObject()) {
-        const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-        bool isCallGetter = false;
-        JSHandle<JSTaggedValue> contructorKey = globalConst->GetHandledConstructorString();
-        JSTaggedValue objConstructor = ObjectFastOperator::GetPropertyByName(thread, entry,
-                                                                             contructorKey.GetTaggedValue(), true,
-                                                                             &isCallGetter);
-        auto it = objectStrIds_.find(objConstructor.GetRawData());
-        if (it != objectStrIds_.end()) {
-            return it->second;
-        }
-        StringId strId = snapshot_->GenerateStringId(object);
-        objectStrIds_.emplace(objConstructor.GetRawData(), strId);
-        return strId;
+        return GenerateStringIdForJSObject(object, thread);
     }
 
     if (entry.IsJSFunction()) {
-        JSFunctionBase *func = JSFunctionBase::Cast(object);
-        Method *method = Method::Cast(func->GetMethod(thread).GetTaggedObject());
-        auto it = functionStrIds_.find(method);
-        if (it != functionStrIds_.end()) {
-            return it->second;
-        }
-        StringId strId = snapshot_->GenerateStringId(object);
-        functionStrIds_.emplace(method, strId);
-        return strId;
+        return GenerateStringIdForJSFunction(object, thread);
+    }
+
+    if (strAllowed && entry.IsString()) {
+        return GenerateStringIdForString(object, thread);
     }
 
     return 1;  // 1 : invalid id
@@ -345,6 +398,41 @@ StringId RawHeapDump::GenerateStringId(TaggedObject *object)
 const StringHashMap *RawHeapDump::GetEcmaStringTable()
 {
     return snapshot_->GetEcmaStringTable();
+}
+
+// Collect string objects that are used as property names (keys) in JSObjects.
+// String objects are normally skipped because their content is often trimmed/compressed,
+// but property name strings need to be exempted and included in the string table for heap dump.
+void RawHeapDump::AddExemptedStringNode()
+{
+    IterateMarkedObjects([this](JSTaggedType addr) {
+        JSTaggedValue value(addr);
+        if (!value.IsJSObject()) {
+            return;
+        }
+
+        std::vector<Reference> refs {};
+        value.DumpForSnapshot(vm_->GetJSThread(), refs, true);
+        for (auto &ref : refs) {
+            if (ref.key_.IsHole()) {
+                continue;
+            }
+            if (ref.key_.IsWeak()) {
+                ref.key_.RemoveWeakTag();
+            }
+            JSTaggedType keyAddr = ref.key_.GetRawData();
+            exemptedStrNodes_.insert(keyAddr);
+        }
+    });
+    LOG_ECMA(INFO) << "rawheap dump, caught exempted string count " << exemptedStrNodes_.size();
+}
+
+// Iterate over the collected property name string nodes (exempted from normal string trimming).
+void RawHeapDump::IterateExemptedStringNode(const std::function<void(JSTaggedType)> &visitor)
+{
+    for (auto addr : exemptedStrNodes_) {
+        visitor(addr);
+    }
 }
 
 RawHeapDumpV1::RawHeapDumpV1(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
@@ -367,7 +455,20 @@ void RawHeapDumpV1::DumpRootTable()
         WriteU64(addr);
     });
     AddSectionBlockSize();
+
+    // dump address of various root nodes
+    CollectRootAddrByType(GetLocalHandleRoots()); // ROOT_LOCAL_HANDLE
+    CollectRootAddrByType(GetGlobalHandleRoots()); // ROOT_GLOBAL_HANDLE
+
     LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
+}
+
+void RawHeapDumpV1::CollectRootAddrByType(const CSet<JSTaggedType>& rootSet)
+{
+    WriteU32(static_cast<uint32_t>(rootSet.size()));
+    for (auto addr : rootSet) {
+        WriteU64(addr);
+    }
 }
 
 void RawHeapDumpV1::DumpStringTable()
@@ -427,26 +528,20 @@ void RawHeapDumpV1::DumpObjectMemory()
     LOG_ECMA(INFO) << "rawheap dump, objects memory size " << memSize;
 }
 
-void RawHeapDumpV1::UpdateStringTable()
+void RawHeapDumpV1::UpdateStringTable(JSTaggedType addr, StringId strId)
 {
-    uint32_t strCnt = 0;
-    IterateMarkedObjects([&strCnt, this](JSTaggedType addr) {
-        JSTaggedValue value(addr);
-        StringId strId = GenerateStringId(value.GetTaggedObject());
-        if (strId == 1) {  // 1 : invalid str id
-            return;
-        }
-        ++strCnt;
-        auto vec = strIdMapObjVec_.find(strId);
-        if (vec != strIdMapObjVec_.end()) {
-            vec->second.push_back(addr);
-        } else {
-            CVector<uint64_t> objVec;
-            objVec.push_back(addr);
-            strIdMapObjVec_.emplace(strId, objVec);
-        }
-    });
-    LOG_ECMA(INFO) << "rawheap dump, update string table count " << strCnt;
+    if (strId == 1) {  // 1 : invalid str id
+        return;
+    }
+
+    auto vec = strIdMapObjVec_.find(strId);
+    if (vec != strIdMapObjVec_.end()) {
+        vec->second.push_back(addr);
+    } else {
+        CVector<uint64_t> objVec;
+        objVec.push_back(addr);
+        strIdMapObjVec_.emplace(strId, objVec);
+    }
 }
 
 RawHeapDumpV2::RawHeapDumpV2(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
@@ -469,7 +564,20 @@ void RawHeapDumpV2::DumpRootTable()
         WriteU32(GenerateSyntheticAddr(addr));
     });
     AddSectionBlockSize();
+
+    // dump address of various root nodes
+    CollectRootAddrByType(GetLocalHandleRoots()); // ROOT_LOCAL_HANDLE
+    CollectRootAddrByType(GetGlobalHandleRoots()); // ROOT_GLOBAL_HANDLE
+
     LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
+}
+
+void RawHeapDumpV2::CollectRootAddrByType(const CSet<JSTaggedType>& rootSet)
+{
+    WriteU32(static_cast<uint32_t>(rootSet.size()));
+    for (auto addr : rootSet) {
+        WriteU32(GenerateSyntheticAddr(addr));
+    }
 }
 
 void RawHeapDumpV2::DumpStringTable()
@@ -535,26 +643,21 @@ void RawHeapDumpV2::DumpObjectMemory()
     LOG_ECMA(INFO) << "rawheap dump, objects memory size " << memSize;
 }
 
-void RawHeapDumpV2::UpdateStringTable()
+void RawHeapDumpV2::UpdateStringTable(JSTaggedType addr, StringId strId)
 {
-    uint32_t strCnt = 0;
-    IterateMarkedObjects([&strCnt, this](JSTaggedType addr) {
-        uint32_t syntheticAddr = GenerateSyntheticAddr(addr);
-        StringId strId = GenerateStringId(reinterpret_cast<TaggedObject *>(addr));
-        if (strId == 1) {  // 1 : invalid str id
-            return;
-        }
-        ++strCnt;
-        auto vec = strIdMapObjVec_.find(strId);
-        if (vec != strIdMapObjVec_.end()) {
-            vec->second.push_back(syntheticAddr);
-        } else {
-            CVector<uint32_t> objVec;
-            objVec.push_back(syntheticAddr);
-            strIdMapObjVec_.emplace(strId, objVec);
-        }
-    });
-    LOG_ECMA(INFO) << "rawheap dump, update string table count " << strCnt;
+    if (strId == 1) {  // 1 : invalid str id
+        return;
+    }
+
+    uint32_t syntheticAddr = GenerateSyntheticAddr(addr);
+    auto vec = strIdMapObjVec_.find(strId);
+    if (vec != strIdMapObjVec_.end()) {
+        vec->second.push_back(syntheticAddr);
+    } else {
+        CVector<uint32_t> objVec;
+        objVec.push_back(syntheticAddr);
+        strIdMapObjVec_.emplace(strId, objVec);
+    }
 }
 
 uint32_t RawHeapDumpV2::GenerateRegionId(JSTaggedType addr)

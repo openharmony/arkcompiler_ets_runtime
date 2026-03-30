@@ -849,6 +849,13 @@ void SharedGCStats::PrintGCStatistic()
                      << scopeDuration_[Scope::ScopeId::TotalGC]
                      << "ms, GCReason: " << GCReasonToString()
                      << ", MarkReason: " << MarkReasonToString();
+        LOG_GC(INFO) << "IsInBackground: " << Runtime::GetInstance()->IsInBackground() << "; "
+                     << "SensitiveStatus: " << static_cast<int>(sHeap_->GetSensitiveStatus()) << "; "
+                     << "StartupStatus: " << std::to_string(static_cast<int>(sHeap_->GetStartupStatus())) << "; "
+                     << "Old: " << std::to_string(sHeap_->GetOldSpace()->GetCommittedSize()) << "; "
+                     << "Huge:" << std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize()) << "; "
+                     << "NonMov:" << std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize()) << "; "
+                     << "TotCommit:" << std::to_string(sHeap_->GetCommittedSize());
         PrintSharedGCDuration();
         PrintGCMemoryStatistic();
         PrintSharedGCSummaryStatistic();

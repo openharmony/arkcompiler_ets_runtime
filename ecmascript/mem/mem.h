@@ -61,7 +61,7 @@ static constexpr size_t MIN_BACKGROUNG_GC_LIMIT = 30_MB;
 static constexpr size_t MAX_NONMOVABLE_LIVE_OBJ_SIZE = 60_MB;
 
 #if USE_CMS_GC
-static constexpr size_t REGION_SIZE_LOG2 = 14U;
+static constexpr size_t REGION_SIZE_LOG2 = 18U;
 #else
 static constexpr size_t REGION_SIZE_LOG2 = 18U;
 #endif
@@ -70,6 +70,9 @@ static constexpr size_t MIN_HEAP_SIZE = 5_MB;
 
 static constexpr size_t DEFAULT_REGION_SIZE = 1U << REGION_SIZE_LOG2;
 static constexpr size_t DEFAULT_REGION_MASK = DEFAULT_REGION_SIZE - 1;
+
+static constexpr size_t HUGE_JITFORT_REGION_SIZE = 4_MB;
+static constexpr size_t HUGE_JITFORT_REGION_MASK = HUGE_JITFORT_REGION_SIZE - 1;
 
 static constexpr size_t DEFAULT_MARK_STACK_SIZE = 4_KB;
 
@@ -135,11 +138,13 @@ constexpr size_t HEAD_SIZE = TaggedObject::TaggedObjectSize();
 template<typename T>
 constexpr inline bool IsAligned(T value, size_t alignment)
 {
+    // alignment must be a power of two.
+    ASSERT(alignment != 0 && ((alignment & (alignment - 1U)) == 0));
     return (value & (alignment - 1U)) == 0;
 }
 
 template<typename T>
-inline T AlignDown(T x, size_t alignment)
+constexpr inline T AlignDown(T x, size_t alignment)
 {
     ASSERT(std::is_integral<T>::value);
     // alignment must be a power of two.
@@ -148,11 +153,12 @@ inline T AlignDown(T x, size_t alignment)
 }
 
 template<typename T>
-inline T AlignUp(T x, size_t alignment)
+constexpr inline T AlignUp(T x, size_t alignment)
 {
     ASSERT(std::is_integral<T>::value && (x + alignment) > 0);
     return AlignDown<T>(static_cast<T>(x + alignment - 1U), alignment);
 }
+
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_MEM_H

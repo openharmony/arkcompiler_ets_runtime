@@ -23,7 +23,16 @@ namespace panda::ecmascript {
 int64_t GetLocalOffsetFromOS(int64_t timeMs, bool isLocal);
 // Note that the parameter "year" in this file is the difference from 1900 to the actual year.
 // Get the timestamp (in millisecond) through the explicit time
-int64_t GetUTCTimestamp(int year, int month, int day, int hour, int minute, int second, int millisecond);
+int64_t GetUTCTimestamp(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute, int64_t second,
+                        int64_t millisecond);
+
+/**
+ * @brief Get current timestamp in milliseconds.
+ * @return Current timestamp in milliseconds since epoch.
+ * @note This function is async-signal-safe on Unix platforms.
+ * @warning This function is not applicable on Windows platforms (returns 0).
+ */
+int64_t GetCurrentTimestamp();
 
 bool IsDst(int64_t timeMs);
 }  // namespace panda::ecmascript

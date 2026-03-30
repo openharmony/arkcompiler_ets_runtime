@@ -59,7 +59,9 @@ void SharedGC::RunPhases()
         SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_SWEEP).VerifySweep(markingInProgress_);
     }
     Finish();
-    sHeap_->SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+    if (!concurrentProcessStringTable_) {
+        sHeap_->SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
+    }
     sHeap_->ResetNativeSizeAfterLastGC();
 }
 
@@ -77,13 +79,13 @@ void SharedGC::Initialize()
             ASSERT(current->InSharedSweepableSpace());
             current->ResetAliveObject();
         });
-        sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK);
+        sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK, 0);
     }
 }
 
 void SharedGC::MarkRoots(SharedMarkType markType)
 {
-    SharedGCMarkRootVisitor sharedGCMarkRootVisitor(sWorkManager_, DAEMON_THREAD_INDEX);
+    SharedGCMarkRootVisitor sharedGCMarkRootVisitor(sWorkManager_->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
     sHeap_->GetSharedGCMarker()->MarkRoots(sharedGCMarkRootVisitor, markType);
 }
 
@@ -97,9 +99,12 @@ void SharedGC::Mark()
     }
     SharedGCMarker *marker = sHeap_->GetSharedGCMarker();
     MarkRoots(SharedMarkType::NOT_CONCURRENT_MARK);
-    marker->DoMark<SharedMarkType::NOT_CONCURRENT_MARK>(DAEMON_THREAD_INDEX);
+    SharedGCMarkLocalToShareRSetVisitor<SharedMarkType::NOT_CONCURRENT_MARK> rSetVisitor(
+        sWorkManager_->GetSharedGCWorkNodeHolder(DAEMON_THREAD_INDEX));
+    sHeap_->GetSharedGCMarker()->ProcessLocalToShareRSet(rSetVisitor);
+    sHeap_->GetSharedGCMarker()->ProcessMarkStack(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
-    sHeap_->WaitRunningTaskFinished();
+    sHeap_->WaitRunningMarkTaskFinished();
 }
 void SharedGC::PreSweep()
 {
@@ -111,6 +116,9 @@ void SharedGC::Evacuate()
 {
     if (sHeap_->HasCSetRegions()) {
         sHeap_->GetSharedGCEvacuator()->Evacuate();
+        evacuated_ = true;
+    } else {
+        evacuated_ = false;
     }
 }
 
@@ -121,7 +129,8 @@ void SharedGC::Sweep()
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
         if (UNLIKELY(objectRegion == nullptr)) {
-            LOG_GC(ERROR) << "SharedGC updateWeakReference: region is nullptr, header is " << header;
+            // existance of string table entry with null value is possible
+            // only if concurrent sweeping for string table is enabled
             return nullptr;
         }
         if (!objectRegion->InSharedSweepableSpace()) {
@@ -140,11 +149,20 @@ void SharedGC::Sweep()
         return nullptr;
     };
     auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
-    stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
+    if (stringTableCleaner->IsEnableConcurrentSweep()) {
+        concurrentProcessStringTable_ = !evacuated_ && sHeap_->IsParallelGCEnabled() &&
+                                        !Runtime::GetInstance()->GetEcmaStringTable()->IsInUse();
+    } else {
+        concurrentProcessStringTable_ = false;
+    }
+    if (!concurrentProcessStringTable_) {
+        LOG_GC(DEBUG) << "process string table stw";
+        stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
+    }
     bool needClearCache = sHeap_->HasCSetRegions();
     Runtime::GetInstance()->ProcessSharedDelete(gcUpdateWeak);
     Runtime::GetInstance()->GCIterateThreadList([&gcUpdateWeak, needClearCache](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         thread->IterateWeakEcmaGlobalStorage(gcUpdateWeak, GCKind::SHARED_GC);
         thread->GetEcmaVM()->ProcessSnapShotEnv(gcUpdateWeak);
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
@@ -153,29 +171,36 @@ void SharedGC::Sweep()
         }
     });
 
-    stringTableCleaner->JoinAndWaitSweepWeakRefTask(gcUpdateWeak);
+    if (!concurrentProcessStringTable_) {
+        stringTableCleaner->JoinAndWaitSweepWeakRefTask(gcUpdateWeak);
+    }
     sHeap_->GetSweeper()->PostTask(false);
+
+    if (concurrentProcessStringTable_) {
+        LOG_GC(DEBUG) << "process string table concurrently";
+        stringTableCleaner->PostConcurrentSweepWeakRefTask(gcUpdateWeak);
+    }
 }
 
 void SharedGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGC::Finish", "");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
-    sHeap_->Reclaim(TriggerGCType::SHARED_GC);
     if (markingInProgress_) {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "ConcurrentMarker::Reset", "");
         sHeap_->GetConcurrentMarker()->Reset(false);
     } else {
+        ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "WorkManager::Finish", "");
         sWorkManager_->Finish();
     }
+    sHeap_->Reclaim(TriggerGCType::SHARED_GC);
     sHeap_->GetSweeper()->TryFillSweptRegion();
 }
 
 void SharedGC::UpdateRecordWeakReference()
 {
-    auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
-    for (uint32_t i = 0; i < totalThreadCount; i++) {
-        ProcessQueue *queue = sHeap_->GetWorkManager()->GetWeakReferenceQueue(i);
-
+    auto processWeakReference = [](SharedGCWorkNodeHolder *holder) {
+        ProcessQueue *queue = holder->GetWeakReferenceQueue();
         while (true) {
             auto obj = queue->PopBack();
             if (UNLIKELY(obj == nullptr)) {
@@ -191,7 +216,12 @@ void SharedGC::UpdateRecordWeakReference()
                 }
             }
         }
+    };
+    auto totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+    for (uint32_t i = 0; i < totalThreadCount; i++) {
+        processWeakReference(sWorkManager_->GetSharedGCWorkNodeHolder(i));
     }
+    sWorkManager_->ForEachExtraTemporaryWorkNodeHolder(processWeakReference);
 }
 
 void SharedGC::ResetWorkManager(SharedGCWorkManager *sWorkManager)

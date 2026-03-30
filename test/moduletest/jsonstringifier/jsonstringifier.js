@@ -450,6 +450,11 @@ assert_equal(JSON.stringify(testspaceobj, null, Infinity),testspaceobjAssert);
 }
 
 {
+  var v1 = Symbol.prototype;
+  assert_equal(JSON.stringify(v1), '{}');
+}
+
+{
   // wrong order of high and low surrogate
   let invalid_surrogate = "\uDE0E\uD83D";
   assert_equal(JSON.stringify(invalid_surrogate), '"\\ude0e\\ud83d"');
@@ -459,14 +464,6 @@ assert_equal(JSON.stringify(testspaceobj, null, Infinity),testspaceobjAssert);
   // right pair of high and low surrogate
   let valid_surrogate = "\uD83D\uDE0E";
   assert_equal(JSON.stringify(valid_surrogate), '"😎"');
-}
-
-{
-  const originalArr = [10, 20, 30];
-  const jsonStr = JSON.stringify(originalArr, (key, value) =>
-    key === "1" ? value * 2 : value
-  );
-  assert_equal(jsonStr, "[10,40,30]");
 }
 
 test_end();

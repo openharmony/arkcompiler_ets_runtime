@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -136,6 +136,19 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return LoadModuleNameSpaceFromFile(thread, entryPoint, abcFilePath);
 }
+
+template<ForHybridApp isHybrid>
+JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithOhmurl(JSThread *thread, const CString &ohmurl,
+    const CString &abcFilePath)
+{
+    CString baseFileName = abcFilePath;
+    CString recordName = ModulePathHelper::ParseNormalizedOhmUrl(thread, baseFileName, "", ohmurl);
+    return LoadModuleNameSpaceFromFile<isHybrid>(thread, recordName, baseFileName);
+}
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Normal>(
+    JSThread *thread, const CString &ohmurl, const CString &abcFilePath);
+template JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithOhmurl<ForHybridApp::Hybrid>(
+    JSThread *thread, const CString &ohmurl, const CString &abcFilePath);
 
 template<ForHybridApp isHybrid>
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceFromFile(

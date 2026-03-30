@@ -16,6 +16,7 @@
 #include "ecmascript/module/module_logger.h"
 
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/platform/file.h"
 #include "ecmascript/platform/parameters.h"
 #include "ecmascript/runtime_lock.h"
 namespace panda::ecmascript {
@@ -50,7 +51,8 @@ bool ModuleLogger::CreateResultFile(std::string &path) const
         LOG_ECMA(ERROR) << "file create failed, errno = "<< errno;
         return false;
     }
-    close(fd);
+    FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
+    Close(reinterpret_cast<fd_t>(fd));
     return true;
 }
 
@@ -289,10 +291,10 @@ void ModuleLogger::PrintModuleLoadInfoTask(void *data)
 void ModuleLogger::SetModuleLoggerTask(EcmaVM *vm)
 {
     ModuleLogger *moduleLogger = nullptr;
-    if (vm->GetJSOptions().EnableModuleLog() &&
-        vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
+    if (vm->GetJSOptions().EnableModuleLog()) {
         moduleLogger = new ModuleLogger(vm);
         vm->GetJSThread()->SetModuleLogger(moduleLogger);
+        vm->GetJSOptions().SetDisableModuleSnapshot(true);
     }
 
     if (moduleLogger == nullptr) {

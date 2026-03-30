@@ -1,5 +1,6 @@
 {
     "name": "JS_API_FUNCTION",
+    "node_name": "JSApiFunction",
     "offsets": [
         {
             "name": "ProtoOrHClass",

@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,7 +14,6 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 
 module_test_list = [
-  "addelementinternal",
   "allocatearraybuffer",
   "arraypushproto",
   "arraySome",
@@ -23,7 +22,6 @@ module_test_list = [
   "arrayspliceproto",
   "arrayunshiftproto",
   "arrayfind",
-  "arrayfill",
   "arrayflat",
   "arrayflatmap",
   "arrayfindindex",
@@ -41,7 +39,6 @@ module_test_list = [
   "arrayshift",
   "arrayslice",
   "arraysplice",
-  "arktoolsgetundetectable",
   "arktoolshavesamemap",
   "assignproxy",
   "asyncgenerator",
@@ -53,6 +50,7 @@ module_test_list = [
   "builtins",
   "call",
   "callframe",
+  "callthisrangewithname",
   "calltype",
   "changelistener",
   "changelistener2",
@@ -99,14 +97,12 @@ module_test_list = [
   "functionapply",
   "generator",
   "getdeletedelementsat",
-  "getpropertybyindex",
   "getunmappedargs",
   "global",
   "globalaccessor",
   "globalrecord",
   "globalthis",
   "helloworld",
-  "ic",
   "ictest",
   "includesindexof",
   "inline_property",
@@ -158,35 +154,6 @@ module_test_list = [
   "string",
   "stringlocalecompare",
   "stringrepeat",
-  "string_wrapper_class_extends_toprimitive",
-  "string_wrapper_class_middle_proto_toprimitive",
-  "string_wrapper_class_proto_toprimitive",
-  "string_wrapper_class_prototype_toprimitive",
-  "string_wrapper_defineproperty_instance_toprimitive",
-  "string_wrapper_defineproperty_object_prototype_toprimitive",
-  "string_wrapper_defineproperty_prototype_toprimitive",
-  "string_wrapper_defineproperty_prototype_valueof",
-  "string_wrapper_defineproperty_instance_valueof",
-  "string_wrapper_delete_valueof",
-  "string_wrapper_function_chain_toprimitive",
-  "string_wrapper_function_constructor_toprimitive",
-  "string_wrapper_instance_toprimitive",
-  "string_wrapper_instance_toprimitive_assign",
-  "string_wrapper_instance_valueof",
-  "string_wrapper_multilevel_class_prototype_toprimitive",
-  "string_wrapper_multilevel_class_toprimitive",
-  "string_wrapper_object_prototype_toprimitive",
-  "string_wrapper_prototype_toprimitive",
-  "string_wrapper_prototype_valueof",
-  "string_wrapper_reflect_construct_function_toprimitive",
-  "string_wrapper_reflect_construct_newtarget_toprimitive",
-  "string_wrapper_reflect_construct_no_newtarget_toprimitive",
-  "string_wrapper_reflect_construct_optimized_toprimitive",
-  "string_wrapper_reflect_construct_warmup_toprimitive",
-  "string_wrapper_set_proto_toprimitive",
-  "string_wrapper_set_proto_valueof",
-  "string_wrapper_string_prototype_proto_toprimitive",
-  "string_wrapper_unrelated_class_toprimitive",
   "sharedcheck",
   "sharedarray",
   "shareduse",
@@ -207,7 +174,48 @@ module_test_list = [
   "sendable",
   "sendablearray",
   "sharedobjectstorebarrier_treestring",
+
+  "weakmap",
+  "weakmap_complex_scenarios",
 ]
+
+callable_test_list = [
+  "callthisrangewithname",
+]
+
+if (enable_latest_optimization) {
+  module_test_list += [
+    "string_wrapper_class_extends_toprimitive",
+    "string_wrapper_class_middle_proto_toprimitive",
+    "string_wrapper_class_proto_toprimitive",
+    "string_wrapper_class_prototype_toprimitive",
+    "string_wrapper_defineproperty_instance_toprimitive",
+    "string_wrapper_defineproperty_object_prototype_toprimitive",
+    "string_wrapper_defineproperty_prototype_toprimitive",
+    "string_wrapper_defineproperty_prototype_valueof",
+    "string_wrapper_defineproperty_instance_valueof",
+    "string_wrapper_delete_valueof",
+    "string_wrapper_function_chain_toprimitive",
+    "string_wrapper_function_constructor_toprimitive",
+    "string_wrapper_instance_toprimitive",
+    "string_wrapper_instance_toprimitive_assign",
+    "string_wrapper_instance_valueof",
+    "string_wrapper_multilevel_class_prototype_toprimitive",
+    "string_wrapper_multilevel_class_toprimitive",
+    "string_wrapper_object_prototype_toprimitive",
+    "string_wrapper_prototype_toprimitive",
+    "string_wrapper_prototype_valueof",
+    "string_wrapper_reflect_construct_function_toprimitive",
+    "string_wrapper_reflect_construct_newtarget_toprimitive",
+    "string_wrapper_reflect_construct_no_newtarget_toprimitive",
+    "string_wrapper_reflect_construct_optimized_toprimitive",
+    "string_wrapper_reflect_construct_warmup_toprimitive",
+    "string_wrapper_set_proto_toprimitive",
+    "string_wrapper_set_proto_valueof",
+    "string_wrapper_string_prototype_proto_toprimitive",
+    "string_wrapper_unrelated_class_toprimitive",
+  ]
+}
 
 # TODO: CMC-GC UT FIX LATER
 if (ets_runtime_enable_cmc_gc) {
@@ -229,6 +237,12 @@ group("ark_js_moduletest") {
       deps += [ "${test}:${test}ContextAction" ]
     }
   }
+  foreach(test, callable_test_list) {
+    deps += [ "${test}:${test}ActionCallable" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}ContextActionCallable" ]
+    }
+  }
 
   if (!is_debug) {
     release_test_list = [ "typedarrayrelease" ]
@@ -245,6 +259,10 @@ group("ark_js_moduletest") {
 group("ark_js_assert_moduletest") {
   testonly = true
   assert_test_list = [
+    "getpropertybyindex",
+    "addelementinternal",
+    "arktoolsgetundetectable",
+    "arrayfill",
     "array",
     "arrayconcat",
     "arrayconstructor",
@@ -254,6 +272,7 @@ group("ark_js_assert_moduletest") {
     "arrayfindlast",
     "arrayfrom",
     "arrayjoin",
+    "arraytospliced",
     "atomics",
     "addpropertybyname",
     "cowarray",
@@ -275,7 +294,7 @@ group("ark_js_assert_moduletest") {
     "nanhash",
     "obj_dictionarymode",
     "object_assign",
-    "arraytospliced",
+    "proxy2",
     "regressdefineproperty",
     "regresssstring",
     "require",
@@ -313,7 +332,6 @@ group("ark_js_assert_moduletest") {
     "typedarraywith",
     "typedarrayjoin",
     "watch",
-    "reflectandproxy",
     "reflectownkeys",
     "weakcollectionswithsymbol",
     "wrapperclassfunc",
@@ -333,6 +351,7 @@ group("ark_js_assert_moduletest") {
     "getvaluefrombuffer",
     "getregexpcachecount",
     "cppcallirbuiltins",
+    "functionbind",
   ]
 
   if (enable_next_optimization) {
@@ -362,6 +381,7 @@ group("ark_js_assert_moduletest") {
       "proxyget",
       "proxyrelease",
       "proxyset",
+      "typedarray2",
     ]
 
     foreach(test, release_test_assert_list) {
@@ -408,6 +428,10 @@ group("ark_asm_test") {
 group("ark_asm_assert_test") {
   testonly = true
   assert_test_list = [
+    "getpropertybyindex",
+    "addelementinternal",
+    "arktoolsgetundetectable",
+    "arrayfill",
     "array",
     "arrayconcat",
     "arrayconstructor",
@@ -463,7 +487,6 @@ group("ark_asm_assert_test") {
     "typedarraytosorted",
     "typedarraywith",
     "watch",
-    "reflectandproxy",
     "reflectownkeys",
     "weakcollectionswithsymbol",
     "wrapperclassfunc",
@@ -477,6 +500,7 @@ group("ark_asm_assert_test") {
     "getvaluefrombuffer",
     "getregexpcachecount",
     "cppcallirbuiltins",
+    "functionbind",
   ]
 
   if (enable_latest_optimization) {

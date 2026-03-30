@@ -14,6 +14,7 @@
 group("compiler_service_unittest") {
   testonly = true
   deps = [
+    "unittest/aotargsverify_unit:AotArgsVerifyUnitTest",
     "unittest/aotcompilerargshandler_unit:AotCompilerArgsHandlerUnitTest",
     "unittest/aotcompilerclient_unit:AotCompilerClientUnitTest",
     "unittest/aotcompilererrorutils_unit:AotCompilerErrorUtilsUnitTest",

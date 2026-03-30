@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+#include <fuzzer/FuzzedDataProvider.h>
+#include <vector>
+
 #include "stringrefwriteutf16_fuzzer.h"
 #include "ecmascript/base/string_helper.h"
 #include "common_components/base/utf_helper.h"
@@ -32,21 +35,20 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        int length = size / sizeof(char16_t);
-        char16_t* buffer = new char16_t[length];
-        if (memset_s(buffer, length, 0, length) != EOK) {
-            LOG_ECMA(ERROR) << "memset_s fail!";
-            UNREACHABLE();
+        FuzzedDataProvider fdp(data, size);
+        int length = fdp.ConsumeIntegralInRange<int>(1, 1024);
+        std::vector<char16_t> input(length, 0);
+        for (int i = 0; i < length; i++) {
+            input[i] = static_cast<char16_t>(fdp.ConsumeIntegral<uint16_t>());
         }
-        Local<StringRef> res = StringRef::NewFromUtf16(vm, (char16_t*)data, length);
+        std::vector<char16_t> buffer(length, 0);
+        Local<StringRef> res = StringRef::NewFromUtf16(vm, input.data(), length);
         if (length == 1) {
             buffer[0] = '\0';
         } else if (length != 0) {
-            int count = res->WriteUtf16(vm, buffer, length - 1);
+            int count = res->WriteUtf16(vm, buffer.data(), length - 1);
             buffer[count] = '\0';
         }
-        delete[] buffer;
-        buffer = nullptr;
         JSNApi::DestroyJSVM(vm);
     }
 }

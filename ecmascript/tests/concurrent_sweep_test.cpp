@@ -38,4 +38,96 @@ TEST_F(ConcurrentSweepTest, ConcurrentSweep)
     ASSERT_EQ(EcmaStringAccessor(test1).GetLength(), 4U);
     ASSERT_NE(test1.GetTaggedValue().GetTaggedObject(), test2.GetTaggedValue().GetTaggedObject());
 }
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(false);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
+    EXPECT_TRUE(sweeper->IsConfigDisabled());
+}
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(true);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
+    EXPECT_TRUE(sweeper->ConcurrentSweepEnabled());
+}
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(true);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
+    EXPECT_TRUE(sweeper->ConcurrentSweepEnabled());
+}
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(true);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    sweeper->EnsureAllTaskFinished();
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    EXPECT_TRUE(sweeper->IsDisabled());
+}
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest005)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(true);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
+    EXPECT_TRUE(sweeper->ConcurrentSweepEnabled());
+}
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest006)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(true);
+    sweeper->EnsureAllTaskFinished();
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    EXPECT_TRUE(sweeper->IsDisabled());
+}
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest007)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(true);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    EXPECT_TRUE(sweeper->IsDisabled());
+}
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest008)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(true);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    EXPECT_TRUE(sweeper->IsRequestDisabled());
+}
+
+HWTEST_F_L0(ConcurrentSweepTest, EnableConcurrentSweepTest009)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sweeper = heap->GetSweeper();
+    sweeper->ConfigConcurrentSweep(true);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::OTHER);
+    sweeper->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
+    sweeper->EnsureAllTaskFinished();
+    EXPECT_TRUE(sweeper->IsDisabled());
+}
 }  // namespace panda::test

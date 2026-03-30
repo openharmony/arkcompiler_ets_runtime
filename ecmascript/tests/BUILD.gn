@@ -14,7 +14,7 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-module_output_path = "ets_runtime"
+module_output_path = "ets_runtime/ets_runtime"
 
 host_unittest_action("JS_AccessorData_Test") {
   module_out_path = module_output_path
@@ -1935,6 +1935,32 @@ host_unittest_action("JS_TaggedQueue_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("JS_WeakMapComplexScenarios_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "js_weakmap_complex_scenarios_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "../../:icu_path_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("JS_TypedArray_Test") {
   module_out_path = module_output_path
 
@@ -2017,6 +2043,30 @@ host_unittest_action("JS_LinkHashTable_Test") {
   sources = [
     # test file
     "linked_hash_table_test.cpp",
+  ]
+
+  configs = [ "../../:ecma_test_config" ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("JS_WeakLinkHashMap_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "weak_linked_hash_map_test.cpp",
   ]
 
   configs = [ "../../:ecma_test_config" ]
@@ -2853,6 +2903,34 @@ host_unittest_action("GC_ModuleManagerMap_Test") {
   deps = [ "../../:libark_jsruntime_test" ]
 
   # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("MethodLiteralIDMap_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "method_literal_id_map_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  
   external_deps = hiviewdfx_ext_deps
   external_deps += [
     "icu:shared_icui18n",
@@ -3705,6 +3783,33 @@ host_unittest_action("ECMA_VM_Heap_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("ECMA_VM_Heap_Memory_Pressure_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "ecma_vm_heap_memory_pressure_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("GC_SharedHeap_Test") {
   module_out_path = module_output_path
 
@@ -3728,6 +3833,59 @@ host_unittest_action("GC_SharedHeap_Test") {
     "runtime_core:libarkassembler_static",
     "runtime_core:libarkverifier",
     "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("GC_KeyStats_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "gc_key_stats_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("GlobalConstants_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+  # test file
+    "global_constants_test.cpp",
+  ]
+
+  configs = [
+    "../../:asm_interp_enable_config",
+    "../../:ecma_test_config",
+  ]
+
+  deps = [ "../../:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "runtime_core:libarkassembler_static",
+    "runtime_core:libarkverifier",
   ]
   deps += hiviewdfx_deps
 }
@@ -3771,6 +3929,7 @@ group("unittest") {
     ":GC_WeakRefOldGC_Test",
     ":GC_WeakRefSemiGC_Test",
     ":GC_SharedHeap_Test",
+    ":GC_KeyStats_Test",
     ":JS_APIArrayListIterator_Test",
     ":JS_APIArrayList_Test",
     ":JS_APIBitVectorIterator_Test",
@@ -3831,6 +3990,7 @@ group("unittest") {
     ":JS_LayoutInfo_Test",
     ":JS_LexicalEnv_Test",
     ":JS_LinkHashTable_Test",
+    ":JS_WeakLinkHashMap_Test",
     ":JS_LinkNode_Test",
     ":JS_ListFormat_Test",
     ":JS_LocaleHelper_Test",
@@ -3869,11 +4029,15 @@ group("unittest") {
     ":JS_TransitionsDictionary_Test",
     ":JS_TypedArray_Test",
     ":JS_WaiterList_Test",
+    ":JS_WeakMapComplexScenarios_Test",
+    ":MethodLiteralIDMap_Test",
     ":Sendable_JsSendableArrayBuffer_Test",
     ":Sendable_JsSharedArray_Test",
     ":Sendable_SharedObjectFactory_Test",
     ":Runtime_Test",
     ":ECMA_VM_Heap_Test",
+    ":ECMA_VM_Heap_Memory_Pressure_Test",
+    ":GlobalConstants_Test",
   ]
 
  # TODO: CMC-GC UT FIX LATER
@@ -3898,6 +4062,7 @@ group("unittest") {
       ":GC_WeakRefOldGC_Test",
       ":GC_WeakRefSemiGC_Test",
       ":GC_SharedHeap_Test",
+      ":GC_KeyStats_Test",
       ":JS_Barrier_Test",
       ":JS_FinalizationRegistry_Test",
       ":JS_GlueRegs_Test",
@@ -3955,6 +4120,7 @@ group("host_unittest") {
     ":GC_WeakRefOldGC_TestAction",
     ":GC_WeakRefSemiGC_TestAction",
     ":GC_SharedHeap_TestAction",
+    ":GC_KeyStats_TestAction",
     ":JS_APIArrayListIterator_TestAction",
     ":JS_APIArrayList_TestAction",
     ":JS_APIBitVectorIterator_TestAction",
@@ -4015,6 +4181,7 @@ group("host_unittest") {
     ":JS_LayoutInfo_TestAction",
     ":JS_LexicalEnv_TestAction",
     ":JS_LinkHashTable_TestAction",
+    ":JS_WeakLinkHashMap_TestAction",
     ":JS_LinkNode_TestAction",
     ":JS_ListFormat_TestAction",
     ":JS_LocaleHelper_TestAction",
@@ -4053,12 +4220,16 @@ group("host_unittest") {
     ":JS_TransitionsDictionary_TestAction",
     ":JS_TypedArray_TestAction",
     ":JS_WaiterList_TestAction",
+    ":JS_WeakMapComplexScenarios_TestAction",
+    ":MethodLiteralIDMap_TestAction",
     ":Sendable_JsSendableArrayBuffer_TestAction",
     ":Sendable_JsSharedArray_TestAction",
     ":Sendable_SharedObjectFactory_TestAction",
     ":Dynamic_Object_Accessor_Util_TestAction",
     ":Runtime_TestAction",
     ":ECMA_VM_Heap_TestAction",
+    ":ECMA_VM_Heap_Memory_Pressure_TestAction",
+    ":GlobalConstants_TestAction",
   ]
 
   if (is_mac) {
@@ -4095,6 +4266,7 @@ group("host_unittest") {
       ":GC_WeakRefOldGC_TestAction",
       ":GC_WeakRefSemiGC_TestAction",
       ":GC_SharedHeap_TestAction",
+      ":GC_KeyStats_TestAction",
       ":JS_APIArrayListIterator_TestAction",
       ":JS_APIArrayList_TestAction",
       ":JS_APIBitVectorIterator_TestAction",
@@ -4155,6 +4327,7 @@ group("host_unittest") {
       ":JS_LayoutInfo_TestAction",
       ":JS_LexicalEnv_TestAction",
       ":JS_LinkHashTable_TestAction",
+      ":JS_WeakLinkHashMap_TestAction",
       ":JS_LinkNode_TestAction",
       ":JS_ListFormat_TestAction",
       ":JS_LocaleHelper_TestAction",
@@ -4180,6 +4353,7 @@ group("host_unittest") {
       ":JS_StableArray_TestAction",
       ":JS_SymbolTable_TestAction",
       ":JS_Symbol_TestAction",
+      ":JS_WeakMapComplexScenarios_TestAction",
       ":JS_TaggedArray_TestAction",
       ":JS_TaggedDictionary_TestAction",
       ":JS_TaggedHashArray_TestAction",
@@ -4212,6 +4386,7 @@ group("host_unittest") {
       ":GC_NewToOldPromotion_TestAction",
       ":GC_Second_TestAction",
       ":GC_SharedPartialGC_TestAction",
+      ":GC_KeyStats_TestAction",
       ":GC_Third_TestAction",
       ":GC_Verification_TestAction",
       ":GC_Verify_TestAction",

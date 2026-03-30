@@ -278,6 +278,7 @@ HWTEST_F_L0(LocalCCTest, GCConflictTest3)
     }
 }
 
+#if !USE_CMS_GC
 HWTEST_F_L0(LocalCCTest, GCConflictOOMTest)
 {
     constexpr size_t OBJ_SIZE = 3_KB;
@@ -290,6 +291,7 @@ HWTEST_F_L0(LocalCCTest, GCConflictOOMTest)
         EXPECT_FALSE(thread->IsConcurrentCopying());
     }
 }
+#endif
 
 HWTEST_F_L0(LocalCCTest, SkipGCTest)
 {
@@ -352,8 +354,8 @@ HWTEST_F_L0(LocalCCTest, UpdateRecordJSWeakMapTest)
     JSHandle<JSWeakMap> weakMap =
         JSHandle<JSWeakMap>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor),
                                                                     constructor));
-    JSHandle<LinkedHashMap> hashMap = LinkedHashMap::Create(thread);
-    weakMap->SetLinkedMap(thread, hashMap);
+    JSHandle<WeakLinkedHashMap> hashMap = WeakLinkedHashMap::Create(thread);
+    weakMap->SetWeakLinkedMap(thread, hashMap);
     {
         EcmaHandleScope scope(thread);
         JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(AllocateWithoutGC(OBJ_SIZE));

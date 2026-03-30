@@ -88,6 +88,13 @@ host_unittest_action("JsStackInfoTest") {
     "zlib:libz",
     "runtime_core:libarkassembler_static",
   ]
+  if (enable_static_backtrace) {
+    external_deps += [
+      "runtime_core:arkbacktrace",
+      "runtime_core:libarktsbase",
+      "runtime_core:libarkruntime",
+    ]
+  }
   if (!ark_standalone_build && !is_arkui_x) {
     external_deps += [ 
       "runtime_core:arkassembler_public_headers",

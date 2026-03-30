@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,20 +33,21 @@ public:
     template<ForHybridApp isHybrid = ForHybridApp::Normal>
     static JSHandle<JSTaggedValue> LoadModuleNameSpaceFromFile(JSThread *thread, const CString &entryPoint,
                                                                const CString &abcFilePath);
+    template<ForHybridApp isHybrid = ForHybridApp::Normal>
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithOhmurl(JSThread *thread, const CString &ohmurl,
+                                                                 const CString &abcFilePath);
 private:
     template<ForHybridApp isHybrid = ForHybridApp::Normal>
-    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(
-        EcmaVM *vm, CString &requestPath, CString &modulePath,
-        CString &abcFilePath);
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
+                                                                     CString &modulePath, CString &abcFilePath);
     
-    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(
-        JSThread *thread, CString &abcFilePath, const CString &requestPath,
-        const CString &modulePath, const JSPandaFile *pandaFile);
-    
+    static JSHandle<JSTaggedValue> LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
+                                                               const CString &requestPath, const CString &modulePath,
+                                                               const JSPandaFile *pandaFile);
     template<ForHybridApp isHybrid = ForHybridApp::Normal>
-    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(
-        JSThread *thread, const CString &abcFilePath, const CString &srcPrefix,
-        const CString &requestPath, const CString &modulePath);
+    static JSHandle<JSTaggedValue> LoadFilePathWithinModule(JSThread *thread, const CString &abcFilePath,
+                                                            const CString &srcPrefix, const CString &requestPath,
+                                                            const CString &modulePath);
 };
 }
 

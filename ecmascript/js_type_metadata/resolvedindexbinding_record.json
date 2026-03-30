@@ -1,5 +1,6 @@
 {
     "name": "RESOLVEDINDEXBINDING_RECORD",
+    "node_name": "ResolvedIndexBinding",
     "offsets": [
         {
             "name": "Module",

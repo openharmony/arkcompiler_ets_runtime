@@ -364,7 +364,7 @@ public:
     bool HasLocalToShareRememberedSet() const;
     RememberedSet *CollectLocalToShareRSet();
     void InsertLocalToShareRSet(uintptr_t addr);
-    void InsertLocalToShareRSetForCC(uintptr_t addr);
+    void InsertSweepingLocalToShareRSetForCC(uintptr_t addr);
     template<RegionSpaceKind kind>
     Updater<kind> GetBatchRSetUpdater(uintptr_t addr);
     void AtomicInsertLocalToShareRSet(uintptr_t addr);
@@ -372,14 +372,14 @@ public:
     void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearSweepingLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     template <typename Visitor>
-    void IterateAllLocalToShareBits(Visitor visitor);
+    void IterateAllLocalToShareBits(Visitor &&visitor);
     void DeleteLocalToShareRSet();
     void DeleteSweepingLocalToShareRSet();
     // Cross region remembered set
     void InsertCrossRegionRSet(uintptr_t addr);
     void AtomicInsertCrossRegionRSet(uintptr_t addr);
     template <typename Visitor>
-    void IterateAllCrossRegionBits(Visitor visitor) const;
+    void IterateAllCrossRegionBits(Visitor &&visitor) const;
     void ClearCrossRegionRSet();
     void ClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearCrossRegionRSetInRange(uintptr_t start, uintptr_t end);
@@ -389,7 +389,7 @@ public:
     void ClearOldToNewRSet(uintptr_t addr);
 
     template <typename Visitor>
-    void IterateAllOldToNewBits(Visitor visitor);
+    void IterateAllOldToNewBits(Visitor &&visitor);
     void ClearOldToNewRSet();
     void ClearOldToNewRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteOldToNewRSet();
@@ -398,9 +398,9 @@ public:
     void ClearSweepingOldToNewRSetInRange(uintptr_t start, uintptr_t end);
     void DeleteSweepingOldToNewRSet();
     template <typename Visitor>
-    void AtomicIterateAllSweepingRSetBits(Visitor visitor);
+    void AtomicIterateAllSweepingRSetBits(Visitor &&visitor);
     template <typename Visitor>
-    void IterateAllSweepingRSetBits(Visitor visitor);
+    void IterateAllSweepingRSetBits(Visitor &&visitor);
 
     static Region *ObjectAddressToRange(BaseObject *obj)
     {
@@ -791,17 +791,6 @@ public:
         }
     }
 
-    void SetLocalHeap(uintptr_t localHeap)
-    {
-        ASSERT(localHeap != (uintptr_t)nullptr);
-        localHeap_ = localHeap;
-    }
-
-    uintptr_t GetLocalHeap(void)
-    {
-        return localHeap_;
-    }
-
     // should call in js-thread
     void MergeOldToNewRSetForCS();
     void MergeLocalToShareRSetForCS();
@@ -958,12 +947,12 @@ protected:
     // snapshotdata_ is used to encode the region for snapshot. Its upper 32 bits are used to store the size of
     // the huge object, and the lower 32 bits are used to store the region index
     uint64_t snapshotData_;
-    uintptr_t localHeap_ {0};
 
     friend class Snapshot;
     friend class SnapshotProcessor;
     friend class RuntimeStubs;
     friend class ToSpace;
+    friend class SlotSpace;
 };
 
 class BumpPointerFreeListWrapper {
@@ -1043,10 +1032,11 @@ class FreeListBasedRegion : public Region, public FreeListDispatcher<freeListTyp
 private:
     using DerivedRegion = FreeListBasedRegion<freeListType>;
 public:
-    static size_t GetRegionAvailableSize()
+    static constexpr size_t GetRegionAvailableSize()
     {
-        size_t regionHeaderSize = AlignUp(sizeof(DerivedRegion), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
-        size_t bitsetSize = GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE);
+        size_t alignSize = static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION);
+        size_t regionHeaderSize = AlignUp(sizeof(DerivedRegion), alignSize);
+        size_t bitsetSize = AlignUp(GCBitset::SizeOfGCBitset(DEFAULT_REGION_SIZE), alignSize);
         return DEFAULT_REGION_SIZE - regionHeaderSize - bitsetSize;
     }
 

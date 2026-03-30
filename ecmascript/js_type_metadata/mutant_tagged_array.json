@@ -1,5 +1,6 @@
 {
     "name": "MUTANT_TAGGED_ARRAY",
+    "node_name": "MutantTaggedArray",
     "offsets": [],
     "end_offset": 0,
     "parents": [

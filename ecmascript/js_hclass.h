@@ -92,6 +92,7 @@ struct Reference;
         V(COMPOSITE_BASE_CLASS),  /* //////////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         V(JS_OBJECT),        /* JS_OBJECT_FIRST /////////////////////////////////////////////////////////////////// */ \
+        V(JS_WRAPPED_NAPI_OBJECT), /* /////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_XREF_OBJECT),   /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_SHARED_OBJECT), /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(JS_REALM),         /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -249,11 +250,13 @@ struct Reference;
         V(MUTANT_TAGGED_ARRAY), /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(BYTE_ARRAY),   /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(LEXICAL_ENV),  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        V(WEAK_LINKED_HASH_MAP), /* ///////////////////////////////////////////////////////////////////////-PADDING */ \
         V(SFUNCTION_ENV), /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(SENDABLE_ENV),  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */\
         V(TAGGED_DICTIONARY), /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(CONSTANT_POOL), /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(PROFILE_TYPE_INFO), /* //////////////////////////////////////////////////////////////////////////-PADDING */ \
+        V(IC_INFO),          /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(COW_MUTANT_TAGGED_ARRAY), /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         V(COW_TAGGED_ARRAY), /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
         V(LINKED_NODE),  /* ///////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -437,6 +440,8 @@ public:
     static size_t GetCloneSize(JSHClass* jshclass);
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                     bool specificInlinedProps = false, uint32_t specificNumInlinedProps = 0);
+    static JSHandle<JSHClass> CloneWithNewSizeAndType(const JSThread *thread, const JSHandle<JSHClass> &jsHClass,
+                                                      uint32_t newHClassSize, JSType type);
     static JSHandle<JSHClass> CloneAndIncInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                            uint32_t expectedOfProperties);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
@@ -657,13 +662,20 @@ public:
 
     inline bool IsOnlyJSObject() const
     {
-        return GetObjectType() == JSType::JS_OBJECT;
+        JSType type = GetObjectType();
+        return type == JSType::JS_OBJECT || type == JSType::JS_WRAPPED_NAPI_OBJECT;
     }
 
     inline bool IsECMAObject() const
     {
         JSType jsType = GetObjectType();
         return (JSType::ECMA_OBJECT_FIRST <= jsType && jsType <= JSType::ECMA_OBJECT_LAST);
+    }
+
+    inline bool IsJSWrappedNapiObject() const
+    {
+        JSType jsType = GetObjectType();
+        return (jsType == JSType::JS_WRAPPED_NAPI_OBJECT || jsType == JSType::JS_XREF_OBJECT);
     }
 
     inline bool ShouldSetDefaultSupers() const
@@ -737,10 +749,12 @@ public:
             case JSType::TAGGED_ARRAY:
             case JSType::TAGGED_DICTIONARY:
             case JSType::LEXICAL_ENV:
+            case JSType::WEAK_LINKED_HASH_MAP:
             case JSType::SFUNCTION_ENV:
             case JSType::SENDABLE_ENV:
             case JSType::CONSTANT_POOL:
             case JSType::PROFILE_TYPE_INFO:
+            case JSType::IC_INFO:
             case JSType::AOT_LITERAL_INFO:
             case JSType::VTABLE:
             case JSType::COW_TAGGED_ARRAY:
@@ -760,6 +774,11 @@ public:
     inline bool IsLexicalEnv() const
     {
         return GetObjectType() == JSType::LEXICAL_ENV;
+    }
+
+    inline bool IsWeakLinkedHashMap() const
+    {
+        return GetObjectType() == JSType::WEAK_LINKED_HASH_MAP;
     }
 
     inline bool IsSFunctionEnv() const
@@ -1770,6 +1789,13 @@ public:
         return GetObjectType() == JSType::EXTRA_PROFILE_TYPE_INFO;
     }
 
+    // ICInfo is the base for both bare IC containers (IC_INFO) and ProfileTypeInfo (PROFILE_TYPE_INFO).
+    inline bool IsICInfo() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::IC_INFO || jsType == JSType::PROFILE_TYPE_INFO;
+    }
+
     inline bool IsProfileTypeInfoCell() const
     {
         JSType jsType = GetObjectType();
@@ -2000,6 +2026,13 @@ public:
             return numberOfProps - inlinedProperties;
         }
         return -1;
+    }
+
+    inline int32_t IsNonInlinedPropExist() const
+    {
+        uint32_t inlinedProperties = GetInlinedProperties();
+        uint32_t numberOfProps = NumberOfProps();
+        return numberOfProps > inlinedProperties;
     }
 
     inline uint32_t GetObjectSize() const

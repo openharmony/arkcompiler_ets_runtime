@@ -21,12 +21,12 @@
 namespace panda::ecmascript {
     void WorkManager::PushObjectToGlobal(TaggedObject *object)
     {
-        WorkNode *tempNode = AllocateWorkNode();
+        MarkWorkNode *tempNode = AllocateWorkNode<MarkWorkNode>();
         ASSERT(tempNode != nullptr);
-        tempNode->PushObject(ToUintPtr(object));
-        workStack_.Push(tempNode);
+        tempNode->Push(object);
+        markStack_.Push(tempNode);
         if (heap_->IsParallelGCEnabled() && heap_->CheckCanDistributeTask() && !heap_->IsMarking()) {
-            heap_->PostParallelGCTask(parallelGCTaskPhase_);
+            heap_->TryPostParallelGCTask(parallelGCTaskPhase_);
         }
     }
 }  // namespace panda::ecmascript

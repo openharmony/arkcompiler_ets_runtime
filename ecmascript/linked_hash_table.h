@@ -178,15 +178,30 @@ public:
         return JSTaggedValue(GetPrimitive(CAPACITY_INDEX)).GetInt();
     }
 
+    inline int GetKeyIndex(int entry) const
+    {
+        return static_cast<int>(EntryToIndex(entry));
+    }
+
+    inline int GetValueIndex(int entry) const
+    {
+        return static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_VALUE_INDEX;
+    }
+
+    inline int GetNextEntryIndex(int entry) const
+    {
+        return static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_SIZE;
+    }
+
     inline JSTaggedValue GetKey(const JSThread *thread, int entry) const
     {
-        int index = static_cast<int>(EntryToIndex(entry));
+        int index = GetKeyIndex(entry);
         return GetElement(thread, index);
     }
 
     inline JSTaggedValue GetValue(const JSThread *thread, int entry) const
     {
-        int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_VALUE_INDEX;
+        int index = GetValueIndex(entry);
         return GetElement(thread, index);
     }
 
@@ -286,25 +301,25 @@ protected:
 
     inline void SetKey(const JSThread *thread, int entry, JSTaggedValue key)
     {
-        int index = static_cast<int>(EntryToIndex(entry));
+        int index = GetKeyIndex(entry);
         SetElement(thread, index, key);
     }
 
     inline void SetValue(const JSThread *thread, int entry, JSTaggedValue value)
     {
-        int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_VALUE_INDEX;
+        int index = GetValueIndex(entry);
         SetElement(thread, index, value);
     }
 
     inline JSTaggedValue GetNextEntry(const JSThread *thread, int entry) const
     {
-        int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_SIZE;
+        int index = GetNextEntryIndex(entry);
         return GetElement(thread, index);
     }
 
     inline void SetNextEntry(const JSThread *thread, int entry, JSTaggedValue nextEntry)
     {
-        int index = static_cast<int>(EntryToIndex(entry)) + HashObject::ENTRY_SIZE;
+        int index = GetNextEntryIndex(entry);
         SetElement(thread, index, nextEntry);
     }
 
@@ -384,7 +399,6 @@ public:
 
     static JSHandle<LinkedHashMap> Clear(const JSThread *thread, const JSHandle<LinkedHashMap> &table);
 
-    void ClearAllDeadEntries(const JSThread *thread, std::function<bool(JSTaggedValue)> &visitor);
     DECL_DUMP()
 };
 
@@ -424,6 +438,51 @@ public:
     bool Has(const JSThread *thread, JSTaggedValue key) const;
 
     static JSHandle<LinkedHashSet> Clear(const JSThread *thread, const JSHandle<LinkedHashSet> &table);
+    DECL_DUMP()
+};
+
+class WeakLinkedHashMap : public LinkedHashTable<WeakLinkedHashMap, LinkedHashMapObject> {
+public:
+    static WeakLinkedHashMap *Cast(TaggedObject *obj)
+    {
+        ASSERT(JSTaggedValue(obj).IsWeakLinkedHashMap());
+        return static_cast<WeakLinkedHashMap *>(obj);
+    }
+
+    static size_t ComputeSize(uint32_t numSlots)
+    {
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), numSlots);
+    }
+    
+    static JSHandle<WeakLinkedHashMap> Create(const JSThread *thread, int numberOfElements = MIN_CAPACITY);
+
+    static JSHandle<WeakLinkedHashMap> GrowCapacity(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table,
+                                                    int numberOfAddedElements = 1);
+
+    static JSHandle<WeakLinkedHashMap> Delete(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table,
+                                              const JSHandle<JSTaggedValue> &key);
+
+    static JSHandle<WeakLinkedHashMap> SetWeakRef(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table,
+                                                  const JSHandle<JSTaggedValue> &key,
+                                                  const JSHandle<JSTaggedValue> &value);
+
+    static JSHandle<WeakLinkedHashMap> Shrink(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table,
+                                              int additionalCapacity = 0);
+
+    JSTaggedValue Get(const JSThread *thread, JSTaggedValue key) const;
+    
+    bool Has(const JSThread *thread, JSTaggedValue key) const;
+
+    static JSHandle<WeakLinkedHashMap> Clear(const JSThread *thread, const JSHandle<WeakLinkedHashMap> &table);
+
+    // use to verify whether layout of a WeakLinkedHashMap is expected, leading GC missing to visit any reference slot
+    bool VerifyLayout() const;
+
+    inline int NumberOfAllUsedElements() const
+    {
+        return NumberOfElements() + NumberOfDeletedElements();
+    }
+
     DECL_DUMP()
 };
 }  // namespace panda::ecmascript

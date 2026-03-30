@@ -333,4 +333,22 @@ AOTFileInfo::CallSiteInfo AnFileDataManager::SafeCalCallSiteInfo(uintptr_t retAd
     }
     return callsiteInfo;
 }
+
+uint64_t AnFileDataManager::GetStubFileStart()
+{
+    if (loadedStub_ == nullptr) {
+        LOG_COMPILER(ERROR) << "SafeInsideStub: The stub file is not loaded.";
+        return 0;
+    }
+    return loadedStub_->GetStubFileStart();
+}
+
+uint64_t AnFileDataManager::GetStubFileSize()
+{
+    if (loadedStub_ == nullptr) {
+        LOG_COMPILER(ERROR) << "SafeInsideStub: The stub file is not loaded.";
+        return 0;
+    }
+    return loadedStub_->GetStubFileSize();
+}
 }  // namespace panda::ecmascript

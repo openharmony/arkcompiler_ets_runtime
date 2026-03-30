@@ -1564,7 +1564,7 @@ void PandaFileTranslator::FixInstructionId32(const OldBytecodeInst &inst, uint32
             break;
         }
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
             UNREACHABLE();
     }
 }

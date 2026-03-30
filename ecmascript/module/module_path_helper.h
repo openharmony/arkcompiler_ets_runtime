@@ -77,6 +77,7 @@ public:
     static constexpr std::string_view PREFIX_BUNDLE = "@bundle:";
     static constexpr std::string_view PREFIX_MODULE = "@module:";
     static constexpr std::string_view PREFIX_PACKAGE = "@package:";
+    static constexpr std::string_view PREFIX_HMS = "hms:";
     static constexpr std::string_view PREFIX_ETS = "ets/";
     static constexpr std::string_view PREFIX_LIB = "lib";
     static constexpr std::string_view REQUIRE_NAITVE_MODULE_PREFIX = "@native:";
@@ -181,6 +182,10 @@ public:
     static CString TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    [[maybe_unused]] CString &baseFileName, const CString &recordName,
                                                    CString &requestPath);
+#if !ENABLE_LATEST_OPTIMIZATION
+    static CVector<CString> GetPkgContextInfoListElements(EcmaVM *vm, const CString &moduleName,
+                                                          const CString &packageName);
+#endif
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
                                                 const CString &requestName);
     static CVector<CString> SplitNormalizedOhmurl(const CString &ohmurl);
@@ -214,6 +219,10 @@ public:
     static std::pair<std::string, std::string> ResolveOhmUrl(std::string ohmUrl);
     static std::pair<std::string, std::string> ResolveOhmUrlStartWithBundle(const std::string &ohmUrl);
     static std::pair<std::string, std::string> ResolveOhmUrlStartWithNormalized(const std::string &ohmUrl);
+    static bool CheckExportsWithOhmurl(EcmaVM *vm, const CString &baseFileName, const CString &currentOhmurl,
+                                       const CString &importOhmurl);
+    static CString GetPkgNameWithNormalizedOhmurl(const CString &ohmurl);
+    static bool IsCrossBundleHsp(const EcmaVM *vm, const CString &ohmurl);
 
     inline static std::pair<CString, CString> ResolvePath(const char *path)
     {

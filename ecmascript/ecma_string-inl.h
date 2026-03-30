@@ -37,22 +37,6 @@ inline EcmaString *EcmaString::CreateEmptyString(const EcmaVM *vm)
     return string;
 }
 
-#if ENABLE_NEXT_OPTIMIZATION && defined(USE_CMC_GC)
-/* static */
-inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                              bool canBeCompress, MemSpaceType type)
-{
-    if (utf8Len == 0) {
-        return vm->GetFactory()->GetEmptyString().GetObject<EcmaString>();
-    }
-    auto allocator = [vm, type](size_t size, EcmaStringType stringType) -> BaseObject* {
-        ASSERT(stringType == EcmaStringType::LINE_STRING && "Can only allocate line string");
-        return EcmaString::AllocLineString(vm, size, type)->ToBaseString();
-    };
-    BaseString *str = LineString::CreateFromUtf8(std::move(allocator), utf8Data, utf8Len, canBeCompress);
-    return EcmaString::FromBaseString(str);
-}
-#else
 inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                               bool canBeCompress, MemSpaceType type)
 {
@@ -77,7 +61,6 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
     ASSERT_PRINT(canBeCompress == CanBeCompressed(string), "Bad input canBeCompress!");
     return string;
 }
-#endif
 
 /* static */
 inline EcmaString *EcmaString::CreateFromUtf8CompressedSubString(const EcmaVM *vm, const JSHandle<EcmaString> &string,

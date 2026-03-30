@@ -18,8 +18,7 @@
 #include "securec.h"
 
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 bool ZipFileReaderMem::init()
 {
     if (!ZipFileReader::init()) {
@@ -64,5 +63,4 @@ bool ZipFileReaderMem::ReadBuffer(uint8_t *dst, size_t startPos, size_t bufferSi
 
     return true;
 }
-}
-}
+}  // namespace panda::ecmascript

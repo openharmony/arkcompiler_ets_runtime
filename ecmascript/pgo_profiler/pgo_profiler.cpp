@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -564,6 +564,11 @@ void PGOProfiler::HandlePGOPreDump()
         if (func->IsSendableOrConcurrentFunction(thread)) {
             return;
         }
+        auto lexicalEnv = func->GetLexicalEnv(thread);
+        auto globalEnv = BaseEnv::Cast(lexicalEnv.GetTaggedObject())->GetGlobalEnv(thread);
+        if (globalEnv.IsHole()) {
+            return;
+        }
         JSTaggedValue methodValue = func->GetMethod(thread);
         if (!methodValue.IsMethod()) {
             return;
@@ -607,6 +612,12 @@ void PGOProfiler::HandlePGODump()
         }
         auto func = JSFunction::Cast(value);
         if (func->IsSendableOrConcurrentFunction(thread) || !IsProfileTypeInfoDumped(thread, func)) {
+            current = PopFromProfileQueue();
+            continue;
+        }
+        auto lexicalEnv = func->GetLexicalEnv(thread);
+        auto globalEnv = BaseEnv::Cast(lexicalEnv.GetTaggedObject())->GetGlobalEnv(thread);
+        if (globalEnv.IsHole()) {
             current = PopFromProfileQueue();
             continue;
         }
@@ -680,9 +691,6 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString& recordName, J
     JSThread *thread = vm_->GetAssociatedJSThread();
     JSTaggedValue funcEnv = function->GetLexicalEnv(thread);
     JSTaggedValue globalEnv = BaseEnv::Cast(funcEnv.GetTaggedObject())->GetGlobalEnv(thread);
-    if (globalEnv.IsHole()) {
-        return;
-    }
     SetCurrentGlobalEnv(globalEnv);
     if (function->IsSendableOrConcurrentFunction(thread)) {
         return;
@@ -819,6 +827,11 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString& recordName, J
             case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+            case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+            case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
             case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8: {
                 uint8_t slotId = READ_INST_8_0();
                 CHECK_SLOTID_BREAK(slotId);
@@ -832,7 +845,8 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString& recordName, J
                 break;
             }
             case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
+            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8: {
                 // no ic slot
                 break;
             }

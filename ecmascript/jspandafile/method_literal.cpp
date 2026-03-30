@@ -34,7 +34,7 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     EntityId methodId = GetMethodId();
     if (UNLIKELY(offset != 0 && methodId.GetOffset() != offset)) {
-        LOG_ECMA(FATAL) << "Invalid methodId, expected methodId: " << offset << ", actual methodId: " << methodId;
+        LOG_ECMA(FATAL) << "Invalid methodId, expected methodId: " << offset << ", actual methodId: " << methodId; // LCOV_EXCL_BR_LINE
     }
     panda_file::MethodDataAccessor mda(*pf, methodId);
     auto codeId = mda.GetCodeId().value();

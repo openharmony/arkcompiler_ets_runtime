@@ -29,13 +29,14 @@
 #include "ecmascript/ohos/aot_runtime_info.h"
 #include "libpandabase/macros.h"
 
-#ifdef AOT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
 #include "parameters.h"
 #endif
 namespace panda::ecmascript::ohos {
 class EnableAotJitListHelper {
 constexpr static const char *const AOT_BUILD_COUNT_DISABLE = "ark.aot.build.count.disable";
 constexpr static const char *const ARK_PROFILE = "ark.profile";
+constexpr static const char *const AOT_ESCAPE_DISABLE = "ark.aot.escape.disable";
 public:
     static std::shared_ptr<EnableAotJitListHelper> GetInstance()
     {
@@ -57,6 +58,13 @@ public:
         if (IsEnabledByArkProfiler()) {
             return true;
         }
+
+#ifdef ENABLE_OHOS_PARAMETER
+        if (!OHOS::system::GetBoolParameter(AOT_ESCAPE_DISABLE, false)) {
+            return false;
+        }
+#endif
+
         return (enableList_.find(candidate) != enableList_.end()) ||
                (enableList_.find(candidate + ":aot") != enableList_.end());
     }
@@ -79,7 +87,7 @@ public:
 
     virtual bool IsEnabledByArkProfiler() const
     {
-#ifdef AOT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter(ARK_PROFILE, false);
 #endif
         return false;
@@ -87,7 +95,7 @@ public:
 
     static bool GetAotBuildCountDisable()
     {
-#ifdef AOT_ESCAPE_ENABLE
+#ifdef ENABLE_OHOS_PARAMETER
         return OHOS::system::GetBoolParameter(AOT_BUILD_COUNT_DISABLE, false);
 #endif
         return false;

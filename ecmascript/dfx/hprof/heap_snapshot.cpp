@@ -15,6 +15,8 @@
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 
+#include <unordered_map>
+#include <string>
 
 #include "ecmascript/ecma_string-inl.h"
 
@@ -24,12 +26,13 @@ CString *HeapSnapshot::GetString(const CString &as)
     return stringTable_->GetString(as);
 }
 
-CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
+CString HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
 {
     CString arrayName = as;
+    arrayName.append("[");
     arrayName.append(ToCString(array->GetLength()));
     arrayName.append("]");
-    return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
+    return arrayName;  // String type was handled singly, see#GenerateStringNode
 }
 
 Node *Node::NewNode(Chunk &chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
@@ -224,452 +227,303 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
     }
 }
 
+CString HeapSnapshot::GetProxyClassNameSuffix(TaggedObject *entry)
+{
+    JSThread *thread = vm_->GetAssociatedJSThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> arkUiObservedObjName = thread->GlobalConstants()->GetHandledArkUiObservedName();
+    JSHandle<JSTaggedValue> globalThisHandle(thread, vm_->GetGlobalEnv()->GetGlobalObject());
+    if (!JSTaggedValue::HasProperty(thread, globalThisHandle, arkUiObservedObjName)) {
+        return "";
+    }
+    JSHandle<JSTaggedValue> arkUiObservedSymbolName =
+        JSTaggedValue::GetProperty(thread, globalThisHandle, arkUiObservedObjName).GetValue();
+
+    JSTaggedValue obj(entry);
+    auto proxy = JSProxy::Cast(obj);
+    JSTaggedValue proxyHandler = proxy->GetHandler(thread);
+    JSHandle<JSTaggedValue> proxyHandlerHandle(thread, proxyHandler);
+    if (JSTaggedValue::HasProperty(thread, proxyHandlerHandle, arkUiObservedSymbolName)) {
+        JSHandle<JSTaggedValue> finalName =
+            JSTaggedValue::GetProperty(thread, proxyHandlerHandle, arkUiObservedSymbolName).GetValue();
+        CString className = EcmaStringAccessor(JSTaggedValue::ToString(thread, finalName)).ToCString(thread);
+        return "-" + className;
+    }
+    return "";
+}
+
 // NOLINTNEXTLINE(readability-function-size)
 CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
 {
     auto *hCls = entry->GetClass();
     JSType type = hCls->GetObjectType();
+    CString nodeName = GetNodeName(type, IsInVmMode());
     switch (type) {
         case JSType::TAGGED_ARRAY:
         case JSType::JS_SHARED_TYPED_ARRAY:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalArray[");
         case JSType::FUNC_SLOT:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalFuncSlot[");
         case JSType::LEXICAL_ENV:
-            return GetArrayString(TaggedArray::Cast(entry), "LexicalEnv[");
+        case JSType::WEAK_LINKED_HASH_MAP:
         case JSType::SFUNCTION_ENV:
-            return GetArrayString(TaggedArray::Cast(entry), "SFunctionEnv[");
         case JSType::SENDABLE_ENV:
-            return GetArrayString(TaggedArray::Cast(entry), "SendableEnv[");
         case JSType::CONSTANT_POOL:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalConstantPool[");
         case JSType::PROFILE_TYPE_INFO:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalProfileTypeInfo[");
+        case JSType::IC_INFO:
         case JSType::TAGGED_DICTIONARY:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalDict[");
         case JSType::AOT_LITERAL_INFO:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalAOTLiteralInfo[");
         case JSType::VTABLE:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalVTable[");
         case JSType::COW_TAGGED_ARRAY:
-            return GetArrayString(TaggedArray::Cast(entry), "ArkInternalCOWArray[");
-        case JSType::HCLASS:
-            return GetString("HiddenClass(NonMovable)");
-        case JSType::LINKED_NODE:
-            return GetString("LinkedNode");
-        case JSType::TRACK_INFO:
-            return GetString("TrackInfo");
-        case JSType::LINE_STRING:
-        case JSType::TREE_STRING:
-        case JSType::SLICED_STRING:
-        case JSType::CACHED_EXTERNAL_STRING:
-            return GetString("BaseString");
-        case JSType::JS_OBJECT: {
-            CString objName = CString("JSObject");  // Ctor-name
-            return GetString(objName);
-        }
-        case JSType::JS_SHARED_OBJECT: {
-            return GetString("JSSharedObject");
-        }
-        case JSType::JS_SHARED_FUNCTION: {
-            return GetString("JSSharedFunction");
-        }
-        case JSType::FREE_OBJECT_WITH_ONE_FIELD:
-        case JSType::FREE_OBJECT_WITH_NONE_FIELD:
-        case JSType::FREE_OBJECT_WITH_TWO_FIELD:
-            return GetString("FreeObject");
-        case JSType::JS_NATIVE_POINTER:
-            return GetString("JSNativePointer");
-        case JSType::JS_FUNCTION_BASE:
-            return GetString("JSFunctionBase");
-        case JSType::JS_FUNCTION:
-            return GetString(CString("JSFunction"));
-        case JSType::JS_API_FUNCTION:
-            return GetString(CString("JSApiFunction"));
-        case JSType::FUNCTION_TEMPLATE:
-            return GetString(CString("ArkInternalFunctionTemplate"));
-        case JSType::JS_ERROR:
-            return GetString("Error");
-        case JSType::JS_EVAL_ERROR:
-            return GetString("Eval Error");
-        case JSType::JS_RANGE_ERROR:
-            return GetString("Range Error");
-        case JSType::JS_TYPE_ERROR:
-            return GetString("Type Error");
-        case JSType::JS_AGGREGATE_ERROR:
-            return GetString("Aggregate Error");
-        case JSType::JS_REFERENCE_ERROR:
-            return GetString("Reference Error");
-        case JSType::JS_URI_ERROR:
-            return GetString("Uri Error");
-        case JSType::JS_SYNTAX_ERROR:
-            return GetString("Syntax Error");
-        case JSType::JS_OOM_ERROR:
-            return GetString("OutOfMemory Error");
-        case JSType::JS_TERMINATION_ERROR:
-            return GetString("Termination Error");
-        case JSType::JS_REG_EXP:
-            return GetString("Regexp");
-        case JSType::JS_SET:
-            return GetString("Set");
-        case JSType::JS_SHARED_SET:
-            return GetString("SharedSet");
-        case JSType::JS_MAP:
-            return GetString("Map");
-        case JSType::JS_SHARED_MAP:
-            return GetString("SharedMap");
-        case JSType::JS_WEAK_SET:
-            return GetString("WeakSet");
-        case JSType::JS_WEAK_MAP:
-            return GetString("WeakMap");
-        case JSType::JS_DATE:
-            return GetString("Date");
-        case JSType::JS_BOUND_FUNCTION:
-            return GetString("Bound Function");
-        case JSType::JS_ARRAY:
-            return GetString("JSArray");
-        case JSType::JS_TYPED_ARRAY:
-            return GetString("Typed Array");
-        case JSType::JS_INT8_ARRAY:
-            return GetString("Int8 Array");
-        case JSType::JS_UINT8_ARRAY:
-            return GetString("Uint8 Array");
-        case JSType::JS_UINT8_CLAMPED_ARRAY:
-            return GetString("Uint8 Clamped Array");
-        case JSType::JS_INT16_ARRAY:
-            return GetString("Int16 Array");
-        case JSType::JS_UINT16_ARRAY:
-            return GetString("Uint16 Array");
-        case JSType::JS_INT32_ARRAY:
-            return GetString("Int32 Array");
-        case JSType::JS_UINT32_ARRAY:
-            return GetString("Uint32 Array");
-        case JSType::JS_FLOAT32_ARRAY:
-            return GetString("Float32 Array");
-        case JSType::JS_FLOAT64_ARRAY:
-            return GetString("Float64 Array");
-        case JSType::JS_BIGINT64_ARRAY:
-            return GetString("BigInt64 Array");
-        case JSType::JS_BIGUINT64_ARRAY:
-            return GetString("BigUint64 Array");
-        case JSType::JS_ARGUMENTS:
-            return GetString("Arguments");
-        case JSType::BIGINT:
-            return GetString("BigInt");
+            nodeName = GetArrayString(TaggedArray::Cast(entry), nodeName);
+            break;
         case JSType::JS_PROXY:
-            return GetString("Proxy");
-        case JSType::JS_PRIMITIVE_REF:
-            return GetString("Primitive");
-        case JSType::JS_DATA_VIEW:
-            return GetString("DataView");
-        case JSType::JS_ITERATOR:
-            return GetString("Iterator");
-        case JSType::JS_FORIN_ITERATOR:
-            return GetString("ForinInterator");
-        case JSType::JS_MAP_ITERATOR:
-            return GetString("MapIterator");
-        case JSType::JS_SHARED_MAP_ITERATOR:
-            return GetString("SharedMapIterator");
-        case JSType::JS_SET_ITERATOR:
-            return GetString("SetIterator");
-        case JSType::JS_SHARED_SET_ITERATOR:
-            return GetString("SharedSetIterator");
-        case JSType::JS_REG_EXP_ITERATOR:
-            return GetString("RegExpIterator");
-        case JSType::JS_ARRAY_ITERATOR:
-            return GetString("ArrayIterator");
-        case JSType::JS_STRING_ITERATOR:
-            return GetString("StringIterator");
-        case JSType::JS_ARRAY_BUFFER:
-            return GetString("ArrayBuffer");
-        case JSType::JS_SENDABLE_ARRAY_BUFFER:
-            return GetString("SendableArrayBuffer");
-        case JSType::JS_SHARED_ARRAY:
-            return GetString("SharedArray");
-        case JSType::JS_SHARED_ARRAY_BUFFER:
-            return GetString("SharedArrayBuffer");
-        case JSType::JS_PROXY_REVOC_FUNCTION:
-            return GetString("ProxyRevocFunction");
-        case JSType::PROMISE_REACTIONS:
-            return GetString("PromiseReaction");
-        case JSType::PROMISE_CAPABILITY:
-            return GetString("PromiseCapability");
-        case JSType::ASYNC_GENERATOR_REQUEST:
-            return GetString("AsyncGeneratorRequest");
-        case JSType::PROMISE_ITERATOR_RECORD:
-            return GetString("PromiseIteratorRecord");
-        case JSType::PROMISE_RECORD:
-            return GetString("PromiseRecord");
-        case JSType::RESOLVING_FUNCTIONS_RECORD:
-            return GetString("ResolvingFunctionsRecord");
-        case JSType::JS_PROMISE:
-            return GetString("Promise");
-        case JSType::JS_PROMISE_REACTIONS_FUNCTION:
-            return GetString("PromiseReactionsFunction");
-        case JSType::JS_PROMISE_EXECUTOR_FUNCTION:
-            return GetString("PromiseExecutorFunction");
-        case JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION:
-            return GetString("AsyncModuleFulfilledFunction");
-        case JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION:
-            return GetString("AsyncModuleRejectedFunction");
-        case JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION:
-            return GetString("AsyncFromSyncIterUnwarpFunction");
-        case JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION:
-            return GetString("PromiseAllResolveElementFunction");
-        case JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION:
-            return GetString("PromiseAnyRejectElementFunction");
-        case JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION:
-            return GetString("PromiseAllSettledElementFunction");
-        case JSType::JS_PROMISE_FINALLY_FUNCTION:
-            return GetString("PromiseFinallyFunction");
-        case JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION:
-            return GetString("PromiseValueThunkOrThrowerFunction");
-        case JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN:
-            return GetString("AsyncGeneratorResumeNextReturnProcessorRstFtn");
-        case JSType::JS_GENERATOR_FUNCTION:
-            return GetString("JSGeneratorFunction");
-        case JSType::JS_ASYNC_GENERATOR_FUNCTION:
-            return GetString("JSAsyncGeneratorFunction");
-        case JSType::SYMBOL:
-            return GetString("Symbol");
-        case JSType::JS_ASYNC_FUNCTION:
-            return GetString("AsyncFunction");
-        case JSType::JS_SHARED_ASYNC_FUNCTION:
-            return GetString("SharedAsyncFunction");
-        case JSType::JS_INTL_BOUND_FUNCTION:
-            return GetString("JSIntlBoundFunction");
-        case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION:
-            return GetString("AsyncAwaitStatusFunction");
-        case JSType::JS_ASYNC_FUNC_OBJECT:
-            return GetString("AsyncFunctionObject");
-        case JSType::JS_REALM:
-            return GetString("Realm");
-        case JSType::JS_GLOBAL_OBJECT:
-            return GetString("GlobalObject");
-        case JSType::JS_INTL:
-            return GetString("JSIntl");
-        case JSType::JS_LOCALE:
-            return GetString("JSLocale");
-        case JSType::JS_DATE_TIME_FORMAT:
-            return GetString("JSDateTimeFormat");
-        case JSType::JS_RELATIVE_TIME_FORMAT:
-            return GetString("JSRelativeTimeFormat");
-        case JSType::JS_NUMBER_FORMAT:
-            return GetString("JSNumberFormat");
-        case JSType::JS_COLLATOR:
-            return GetString("JSCollator");
-        case JSType::JS_PLURAL_RULES:
-            return GetString("JSPluralRules");
-        case JSType::JS_DISPLAYNAMES:
-            return GetString("JSDisplayNames");
-        case JSType::JS_SEGMENTER:
-            return GetString("JSSegmenter");
-        case JSType::JS_SEGMENTS:
-            return GetString("JSSegments");
-        case JSType::JS_SEGMENT_ITERATOR:
-            return GetString("JSSegmentIterator");
-        case JSType::JS_LIST_FORMAT:
-            return GetString("JSListFormat");
-        case JSType::JS_GENERATOR_OBJECT:
-            return GetString("JSGeneratorObject");
-        case JSType::JS_ASYNC_GENERATOR_OBJECT:
-            return GetString("JSAsyncGeneratorObject");
-        case JSType::JS_GENERATOR_CONTEXT:
-            return GetString("JSGeneratorContext");
-        case JSType::ACCESSOR_DATA:
-            return GetString("AccessorData");
-        case JSType::INTERNAL_ACCESSOR:
-            return GetString("InternalAccessor");
-        case JSType::MICRO_JOB_QUEUE:
-            return GetString("MicroJobQueue");
-        case JSType::PENDING_JOB:
-            return GetString("PendingJob");
-        case JSType::COMPLETION_RECORD:
-            return GetString("CompletionRecord");
-        case JSType::JS_API_ARRAY_LIST:
-            return GetString("ArrayList");
-        case JSType::JS_API_ARRAYLIST_ITERATOR:
-            return GetString("ArrayListIterator");
-        case JSType::JS_API_HASH_MAP:
-            return GetString("HashMap");
-        case JSType::JS_API_HASH_SET:
-            return GetString("HashSet");
-        case JSType::JS_API_HASHMAP_ITERATOR:
-            return GetString("HashMapIterator");
-        case JSType::JS_API_HASHSET_ITERATOR:
-            return GetString("HashSetIterator");
-        case JSType::JS_API_LIGHT_WEIGHT_MAP:
-            return GetString("LightWeightMap");
-        case JSType::JS_API_LIGHT_WEIGHT_MAP_ITERATOR:
-            return GetString("LightWeightMapIterator");
-        case JSType::JS_API_LIGHT_WEIGHT_SET:
-            return GetString("LightWeightSet");
-        case JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR:
-            return GetString("LightWeightSetIterator");
-        case JSType::JS_API_TREE_MAP:
-            return GetString("TreeMap");
-        case JSType::JS_API_TREE_SET:
-            return GetString("TreeSet");
-        case JSType::JS_API_TREEMAP_ITERATOR:
-            return GetString("TreeMapIterator");
-        case JSType::JS_API_TREESET_ITERATOR:
-            return GetString("TreeSetIterator");
-        case JSType::JS_API_VECTOR:
-            return GetString("Vector");
-        case JSType::JS_API_VECTOR_ITERATOR:
-            return GetString("VectorIterator");
-        case JSType::JS_API_BITVECTOR:
-            return GetString("BitVector");
-        case JSType::JS_API_BITVECTOR_ITERATOR:
-            return GetString("BitVectorIterator");
-        case JSType::JS_API_QUEUE:
-            return GetString("Queue");
-        case JSType::JS_API_QUEUE_ITERATOR:
-            return GetString("QueueIterator");
-        case JSType::JS_API_DEQUE:
-            return GetString("Deque");
-        case JSType::JS_API_DEQUE_ITERATOR:
-            return GetString("DequeIterator");
-        case JSType::JS_API_STACK:
-            return GetString("Stack");
-        case JSType::JS_API_STACK_ITERATOR:
-            return GetString("StackIterator");
-        case JSType::JS_API_LIST:
-            return GetString("List");
-        case JSType::JS_API_LINKED_LIST:
-            return GetString("LinkedList");
-        case JSType::SOURCE_TEXT_MODULE_RECORD:
-            return GetString("SourceTextModule");
-        case JSType::IMPORTENTRY_RECORD:
-            return GetString("ImportEntry");
-        case JSType::LOCAL_EXPORTENTRY_RECORD:
-            return GetString("LocalExportEntry");
-        case JSType::INDIRECT_EXPORTENTRY_RECORD:
-            return GetString("IndirectExportEntry");
-        case JSType::STAR_EXPORTENTRY_RECORD:
-            return GetString("StarExportEntry");
-        case JSType::RESOLVEDBINDING_RECORD:
-            return GetString("ResolvedBinding");
-        case JSType::RESOLVEDINDEXBINDING_RECORD:
-            return GetString("ResolvedIndexBinding");
-        case JSType::RESOLVEDRECORDINDEXBINDING_RECORD:
-            return GetString("ResolvedRecordIndexBinding");
-        case JSType::RESOLVEDRECORDBINDING_RECORD:
-            return GetString("ResolvedRecordBinding");
-        case JSType::JS_MODULE_NAMESPACE:
-            return GetString("ModuleNamespace");
-        case JSType::JS_API_PLAIN_ARRAY:
-            return GetString("PlainArray");
-        case JSType::JS_API_PLAIN_ARRAY_ITERATOR:
-            return GetString("PlainArrayIterator");
-        case JSType::JS_CJS_EXPORTS:
-            return GetString("CJS Exports");
-        case JSType::JS_CJS_MODULE:
-            return GetString("CJS Module");
-        case JSType::JS_CJS_REQUIRE:
-            return GetString("CJS Require");
-        case JSType::METHOD:
-            return GetString("Method");
-        case JSType::CELL_RECORD:
-            return GetString("CellRecord");
-        case JSType::JS_WEAK_REF:
-            return GetString("WeakRef");
-        case JSType::JS_FINALIZATION_REGISTRY:
-            return GetString("JSFinalizationRegistry");
-        case JSType::JS_ASYNCITERATOR:
-            return GetString("AsyncIterator");
-        case JSType::JS_ASYNC_FROM_SYNC_ITERATOR:
-            return GetString("AsyncFromSyncIterator");
-        case JSType::JS_API_LINKED_LIST_ITERATOR:
-            return GetString("LinkedListIterator");
-        case JSType::JS_API_LIST_ITERATOR:
-            return GetString("ListIterator");
-        case JSType::JS_SHARED_ARRAY_ITERATOR:
-            return GetString("SharedArrayIterator");
-        case JSType::JS_SHARED_INT8_ARRAY:
-            return GetString("Shared Int8 Array");
-        case JSType::JS_SHARED_UINT8_ARRAY:
-            return GetString("Shared Uint8 Array");
-        case JSType::JS_SHARED_UINT8_CLAMPED_ARRAY:
-            return GetString("Shared Uint8 Clamped Array");
-        case JSType::JS_SHARED_INT16_ARRAY:
-            return GetString("Shared Int16 Array");
-        case JSType::JS_SHARED_UINT16_ARRAY:
-            return GetString("Shared Uint16 Array");
-        case JSType::JS_SHARED_INT32_ARRAY:
-            return GetString("Shared Int32 Array");
-        case JSType::JS_SHARED_UINT32_ARRAY:
-            return GetString("Shared Uint32 Array");
-        case JSType::JS_SHARED_FLOAT32_ARRAY:
-            return GetString("Shared Float32 Array");
-        case JSType::JS_SHARED_FLOAT64_ARRAY:
-            return GetString("Shared Float64 Array");
-        case JSType::JS_SHARED_BIGINT64_ARRAY:
-            return GetString("Shared BigInt64 Array");
-        case JSType::JS_SHARED_BIGUINT64_ARRAY:
-            return GetString("Shared BigUint64 Array");
-        case JSType::NATIVE_MODULE_FAILURE_INFO:
-            return GetString("NativeModuleFailureInfo");
-        case JSType::MUTANT_TAGGED_ARRAY:
-            return GetString("MutantTaggedArray");
-        case JSType::BYTE_ARRAY:
-            return GetString("ByteArray");
-        case JSType::COW_MUTANT_TAGGED_ARRAY:
-            return GetString("COWMutantTaggedArray");
-        case JSType::RB_TREENODE:
-            return GetString("RBTreeNode");
-        case JSType::ENUM_CACHE:
-            return GetString("EnumCache");
-        case JSType::CLASS_LITERAL:
-            return GetString("ClassLiteral");
-        case JSType::ASYNC_ITERATOR_RECORD:
-            return GetString("AsyncIteratorRecord");
-        case JSType::MODULE_RECORD:
-            return GetString("ModuleRecord");
-        case JSType::PROFILE_TYPE_INFO_CELL_0:
-        case JSType::PROFILE_TYPE_INFO_CELL_1:
-        case JSType::PROFILE_TYPE_INFO_CELL_N:
-            return GetString("ProfileTypeInfoCell");
-        case JSType::EXTRA_PROFILE_TYPE_INFO:
-            return GetString("ExtraProfileTypeInfo");
+            nodeName += GetProxyClassNameSuffix(entry);
+            break;
         default:
             break;
     }
-    if (IsInVmMode()) {
-        switch (type) {
-            case JSType::PROPERTY_BOX:
-                return GetString("PropertyBox");
-            case JSType::GLOBAL_ENV:
-                return GetString("GlobalEnv");
-            case JSType::PROTOTYPE_HANDLER:
-                return GetString("PrototypeHandler");
-            case JSType::TRANSITION_HANDLER:
-                return GetString("TransitionHandler");
-            case JSType::TRANS_WITH_PROTO_HANDLER:
-                return GetString("TransWithProtoHandler");
-            case JSType::STORE_TS_HANDLER:
-                return GetString("StoreAOTHandler");
-            case JSType::PROTO_CHANGE_MARKER:
-                return GetString("ProtoChangeMarker");
-            case JSType::MARKER_CELL:
-                return GetString("MarkerCell");
-            case JSType::PROTOTYPE_INFO:
-                return GetString("ProtoChangeDetails");
-            case JSType::TEMPLATE_MAP:
-                return GetString("TemplateMap");
-            case JSType::PROGRAM:
-                return GetString("Program");
-            case JSType::MACHINE_CODE_OBJECT:
-                return GetString("MachineCode");
-            case JSType::CLASS_INFO_EXTRACTOR:
-                return GetString("ClassInfoExtractor");
-            default:
-                break;
+    return GetString(nodeName);
+}
+
+CString HeapSnapshot::GetNodeName(JSType type, bool isVmMode)
+{
+    static const std::unordered_map<JSType, std::string> baseNodeNameMap_ = {
+        {JSType::TAGGED_ARRAY, "ArkInternalArray"},
+        {JSType::JS_SHARED_TYPED_ARRAY, "ArkInternalArray"},
+        {JSType::FUNC_SLOT, "ArkInternalFuncSlot"},
+        {JSType::LEXICAL_ENV, "LexicalEnv"},
+        {JSType::WEAK_LINKED_HASH_MAP, "WeakLinkedHashMap"},
+        {JSType::SFUNCTION_ENV, "SFunctionEnv"},
+        {JSType::SENDABLE_ENV, "SendableEnv"},
+        {JSType::CONSTANT_POOL, "ArkInternalConstantPool"},
+        {JSType::PROFILE_TYPE_INFO, "ArkInternalProfileTypeInfo"},
+        {JSType::IC_INFO, "ArkInternalICInfo"},
+        {JSType::TAGGED_DICTIONARY, "ArkInternalDict"},
+        {JSType::AOT_LITERAL_INFO, "ArkInternalAOTLiteralInfo"},
+        {JSType::VTABLE, "ArkInternalVTable"},
+        {JSType::COW_TAGGED_ARRAY, "ArkInternalCOWArray"},
+        {JSType::HCLASS, "HiddenClass(NonMovable)"},
+        {JSType::LINKED_NODE, "LinkedNode"},
+        {JSType::TRACK_INFO, "TrackInfo"},
+        {JSType::LINE_STRING, "BaseString"},
+        {JSType::TREE_STRING, "BaseString"},
+        {JSType::SLICED_STRING, "BaseString"},
+        {JSType::CACHED_EXTERNAL_STRING, "BaseString"},
+        {JSType::JS_OBJECT, "JSObject"},
+        {JSType::JS_SHARED_OBJECT, "JSSharedObject"},
+        {JSType::JS_WRAPPED_NAPI_OBJECT, "JSWrappedNapiObject"},
+        {JSType::JS_XREF_OBJECT, "JSXRefObject"},
+        {JSType::JS_SHARED_FUNCTION, "JSSharedFunction"},
+        {JSType::FREE_OBJECT_WITH_ONE_FIELD, "FreeObject"},
+        {JSType::FREE_OBJECT_WITH_NONE_FIELD, "FreeObject"},
+        {JSType::FREE_OBJECT_WITH_TWO_FIELD, "FreeObject"},
+        {JSType::JS_NATIVE_POINTER, "JSNativePointer"},
+        {JSType::JS_FUNCTION_BASE, "JSFunctionBase"},
+        {JSType::JS_FUNCTION, "JSFunction"},
+        {JSType::JS_API_FUNCTION, "JSApiFunction"},
+        {JSType::FUNCTION_TEMPLATE, "ArkInternalFunctionTemplate"},
+        {JSType::JS_ERROR, "Error"},
+        {JSType::JS_EVAL_ERROR, "Eval Error"},
+        {JSType::JS_RANGE_ERROR, "Range Error"},
+        {JSType::JS_TYPE_ERROR, "Type Error"},
+        {JSType::JS_AGGREGATE_ERROR, "Aggregate Error"},
+        {JSType::JS_REFERENCE_ERROR, "Reference Error"},
+        {JSType::JS_URI_ERROR, "Uri Error"},
+        {JSType::JS_SYNTAX_ERROR, "Syntax Error"},
+        {JSType::JS_OOM_ERROR, "OutOfMemory Error"},
+        {JSType::JS_TERMINATION_ERROR, "Termination Error"},
+        {JSType::JS_REG_EXP, "Regexp"},
+        {JSType::JS_SET, "Set"},
+        {JSType::JS_SHARED_SET, "SharedSet"},
+        {JSType::JS_MAP, "Map"},
+        {JSType::JS_SHARED_MAP, "SharedMap"},
+        {JSType::JS_WEAK_SET, "WeakSet"},
+        {JSType::JS_WEAK_MAP, "WeakMap"},
+        {JSType::JS_DATE, "Date"},
+        {JSType::JS_BOUND_FUNCTION, "Bound Function"},
+        {JSType::JS_ARRAY, "JSArray"},
+        {JSType::JS_TYPED_ARRAY, "Typed Array"},
+        {JSType::JS_INT8_ARRAY, "Int8 Array"},
+        {JSType::JS_UINT8_ARRAY, "Uint8 Array"},
+        {JSType::JS_UINT8_CLAMPED_ARRAY, "Uint8 Clamped Array"},
+        {JSType::JS_INT16_ARRAY, "Int16 Array"},
+        {JSType::JS_UINT16_ARRAY, "Uint16 Array"},
+        {JSType::JS_INT32_ARRAY, "Int32 Array"},
+        {JSType::JS_UINT32_ARRAY, "Uint32 Array"},
+        {JSType::JS_FLOAT32_ARRAY, "Float32 Array"},
+        {JSType::JS_FLOAT64_ARRAY, "Float64 Array"},
+        {JSType::JS_BIGINT64_ARRAY, "BigInt64 Array"},
+        {JSType::JS_BIGUINT64_ARRAY, "BigUint64 Array"},
+        {JSType::JS_ARGUMENTS, "Arguments"},
+        {JSType::BIGINT, "BigInt"},
+        {JSType::JS_PROXY, "Proxy"},
+        {JSType::JS_PRIMITIVE_REF, "Primitive"},
+        {JSType::JS_DATA_VIEW, "DataView"},
+        {JSType::JS_ITERATOR, "Iterator"},
+        {JSType::JS_FORIN_ITERATOR, "ForinInterator"},
+        {JSType::JS_MAP_ITERATOR, "MapIterator"},
+        {JSType::JS_SHARED_MAP_ITERATOR, "SharedMapIterator"},
+        {JSType::JS_SET_ITERATOR, "SetIterator"},
+        {JSType::JS_SHARED_SET_ITERATOR, "SharedSetIterator"},
+        {JSType::JS_REG_EXP_ITERATOR, "RegExpIterator"},
+        {JSType::JS_ARRAY_ITERATOR, "ArrayIterator"},
+        {JSType::JS_STRING_ITERATOR, "StringIterator"},
+        {JSType::JS_ARRAY_BUFFER, "ArrayBuffer"},
+        {JSType::JS_SENDABLE_ARRAY_BUFFER, "SendableArrayBuffer"},
+        {JSType::JS_SHARED_ARRAY, "SharedArray"},
+        {JSType::JS_SHARED_ARRAY_BUFFER, "SharedArrayBuffer"},
+        {JSType::JS_PROXY_REVOC_FUNCTION, "ProxyRevocFunction"},
+        {JSType::PROMISE_REACTIONS, "PromiseReaction"},
+        {JSType::PROMISE_CAPABILITY, "PromiseCapability"},
+        {JSType::ASYNC_GENERATOR_REQUEST, "AsyncGeneratorRequest"},
+        {JSType::PROMISE_ITERATOR_RECORD, "PromiseIteratorRecord"},
+        {JSType::PROMISE_RECORD, "PromiseRecord"},
+        {JSType::RESOLVING_FUNCTIONS_RECORD, "ResolvingFunctionsRecord"},
+        {JSType::JS_PROMISE, "Promise"},
+        {JSType::JS_PROMISE_REACTIONS_FUNCTION, "PromiseReactionsFunction"},
+        {JSType::JS_PROMISE_EXECUTOR_FUNCTION, "PromiseExecutorFunction"},
+        {JSType::JS_ASYNC_MODULE_FULFILLED_FUNCTION, "AsyncModuleFulfilledFunction"},
+        {JSType::JS_ASYNC_MODULE_REJECTED_FUNCTION, "AsyncModuleRejectedFunction"},
+        {JSType::JS_ASYNC_FROM_SYNC_ITER_UNWARP_FUNCTION, "AsyncFromSyncIterUnwarpFunction"},
+        {JSType::JS_PROMISE_ALL_RESOLVE_ELEMENT_FUNCTION, "PromiseAllResolveElementFunction"},
+        {JSType::JS_PROMISE_ANY_REJECT_ELEMENT_FUNCTION, "PromiseAnyRejectElementFunction"},
+        {JSType::JS_PROMISE_ALL_SETTLED_ELEMENT_FUNCTION, "PromiseAllSettledElementFunction"},
+        {JSType::JS_PROMISE_FINALLY_FUNCTION, "PromiseFinallyFunction"},
+        {JSType::JS_PROMISE_VALUE_THUNK_OR_THROWER_FUNCTION, "PromiseValueThunkOrThrowerFunction"},
+        {JSType::JS_ASYNC_GENERATOR_RESUME_NEXT_RETURN_PROCESSOR_RST_FTN, "AsyncGeneratorResumeNextReturnProcessorRstFtn"},
+        {JSType::JS_GENERATOR_FUNCTION, "JSGeneratorFunction"},
+        {JSType::JS_ASYNC_GENERATOR_FUNCTION, "JSAsyncGeneratorFunction"},
+        {JSType::SYMBOL, "Symbol"},
+        {JSType::JS_ASYNC_FUNCTION, "AsyncFunction"},
+        {JSType::JS_SHARED_ASYNC_FUNCTION, "SharedAsyncFunction"},
+        {JSType::JS_INTL_BOUND_FUNCTION, "JSIntlBoundFunction"},
+        {JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION, "AsyncAwaitStatusFunction"},
+        {JSType::JS_ASYNC_FUNC_OBJECT, "AsyncFunctionObject"},
+        {JSType::JS_REALM, "Realm"},
+        {JSType::JS_GLOBAL_OBJECT, "GlobalObject"},
+        {JSType::JS_INTL, "JSIntl"},
+        {JSType::JS_LOCALE, "JSLocale"},
+        {JSType::JS_DATE_TIME_FORMAT, "JSDateTimeFormat"},
+        {JSType::JS_RELATIVE_TIME_FORMAT, "JSRelativeTimeFormat"},
+        {JSType::JS_NUMBER_FORMAT, "JSNumberFormat"},
+        {JSType::JS_COLLATOR, "JSCollator"},
+        {JSType::JS_PLURAL_RULES, "JSPluralRules"},
+        {JSType::JS_DISPLAYNAMES, "JSDisplayNames"},
+        {JSType::JS_SEGMENTER, "JSSegmenter"},
+        {JSType::JS_SEGMENTS, "JSSegments"},
+        {JSType::JS_SEGMENT_ITERATOR, "JSSegmentIterator"},
+        {JSType::JS_LIST_FORMAT, "JSListFormat"},
+        {JSType::JS_GENERATOR_OBJECT, "JSGeneratorObject"},
+        {JSType::JS_ASYNC_GENERATOR_OBJECT, "JSAsyncGeneratorObject"},
+        {JSType::JS_GENERATOR_CONTEXT, "JSGeneratorContext"},
+        {JSType::ACCESSOR_DATA, "AccessorData"},
+        {JSType::INTERNAL_ACCESSOR, "InternalAccessor"},
+        {JSType::MICRO_JOB_QUEUE, "MicroJobQueue"},
+        {JSType::PENDING_JOB, "PendingJob"},
+        {JSType::COMPLETION_RECORD, "CompletionRecord"},
+        {JSType::JS_API_ARRAY_LIST, "ArrayList"},
+        {JSType::JS_API_ARRAYLIST_ITERATOR, "ArrayListIterator"},
+        {JSType::JS_API_HASH_MAP, "HashMap"},
+        {JSType::JS_API_HASH_SET, "HashSet"},
+        {JSType::JS_API_HASHMAP_ITERATOR, "HashMapIterator"},
+        {JSType::JS_API_HASHSET_ITERATOR, "HashSetIterator"},
+        {JSType::JS_API_LIGHT_WEIGHT_MAP, "LightWeightMap"},
+        {JSType::JS_API_LIGHT_WEIGHT_MAP_ITERATOR, "LightWeightMapIterator"},
+        {JSType::JS_API_LIGHT_WEIGHT_SET, "LightWeightSet"},
+        {JSType::JS_API_LIGHT_WEIGHT_SET_ITERATOR, "LightWeightSetIterator"},
+        {JSType::JS_API_TREE_MAP, "TreeMap"},
+        {JSType::JS_API_TREE_SET, "TreeSet"},
+        {JSType::JS_API_TREEMAP_ITERATOR, "TreeMapIterator"},
+        {JSType::JS_API_TREESET_ITERATOR, "TreeSetIterator"},
+        {JSType::JS_API_VECTOR, "Vector"},
+        {JSType::JS_API_VECTOR_ITERATOR, "VectorIterator"},
+        {JSType::JS_API_BITVECTOR, "BitVector"},
+        {JSType::JS_API_BITVECTOR_ITERATOR, "BitVectorIterator"},
+        {JSType::JS_API_QUEUE, "Queue"},
+        {JSType::JS_API_QUEUE_ITERATOR, "QueueIterator"},
+        {JSType::JS_API_DEQUE, "Deque"},
+        {JSType::JS_API_DEQUE_ITERATOR, "DequeIterator"},
+        {JSType::JS_API_STACK, "Stack"},
+        {JSType::JS_API_STACK_ITERATOR, "StackIterator"},
+        {JSType::JS_API_LIST, "List"},
+        {JSType::JS_API_LINKED_LIST, "LinkedList"},
+        {JSType::SOURCE_TEXT_MODULE_RECORD, "SourceTextModule"},
+        {JSType::IMPORTENTRY_RECORD, "ImportEntry"},
+        {JSType::LOCAL_EXPORTENTRY_RECORD, "LocalExportEntry"},
+        {JSType::INDIRECT_EXPORTENTRY_RECORD, "IndirectExportEntry"},
+        {JSType::STAR_EXPORTENTRY_RECORD, "StarExportEntry"},
+        {JSType::RESOLVEDBINDING_RECORD, "ResolvedBinding"},
+        {JSType::RESOLVEDINDEXBINDING_RECORD, "ResolvedIndexBinding"},
+        {JSType::RESOLVEDRECORDINDEXBINDING_RECORD, "ResolvedRecordIndexBinding"},
+        {JSType::RESOLVEDRECORDBINDING_RECORD, "ResolvedRecordBinding"},
+        {JSType::JS_MODULE_NAMESPACE, "ModuleNamespace"},
+        {JSType::JS_API_PLAIN_ARRAY, "PlainArray"},
+        {JSType::JS_API_PLAIN_ARRAY_ITERATOR, "PlainArrayIterator"},
+        {JSType::JS_CJS_EXPORTS, "CJS Exports"},
+        {JSType::JS_CJS_MODULE, "CJS Module"},
+        {JSType::JS_CJS_REQUIRE, "CJS Require"},
+        {JSType::METHOD, "Method"},
+        {JSType::CELL_RECORD, "CellRecord"},
+        {JSType::JS_WEAK_REF, "WeakRef"},
+        {JSType::JS_FINALIZATION_REGISTRY, "JSFinalizationRegistry"},
+        {JSType::JS_ASYNCITERATOR, "AsyncIterator"},
+        {JSType::JS_ASYNC_FROM_SYNC_ITERATOR, "AsyncFromSyncIterator"},
+        {JSType::JS_API_LINKED_LIST_ITERATOR, "LinkedListIterator"},
+        {JSType::JS_API_LIST_ITERATOR, "ListIterator"},
+        {JSType::JS_SHARED_ARRAY_ITERATOR, "SharedArrayIterator"},
+        {JSType::JS_SHARED_INT8_ARRAY, "Shared Int8 Array"},
+        {JSType::JS_SHARED_UINT8_ARRAY, "Shared Uint8 Array"},
+        {JSType::JS_SHARED_UINT8_CLAMPED_ARRAY, "Shared Uint8 Clamped Array"},
+        {JSType::JS_SHARED_INT16_ARRAY, "Shared Int16 Array"},
+        {JSType::JS_SHARED_UINT16_ARRAY, "Shared Uint16 Array"},
+        {JSType::JS_SHARED_INT32_ARRAY, "Shared Int32 Array"},
+        {JSType::JS_SHARED_UINT32_ARRAY, "Shared Uint32 Array"},
+        {JSType::JS_SHARED_FLOAT32_ARRAY, "Shared Float32 Array"},
+        {JSType::JS_SHARED_FLOAT64_ARRAY, "Shared Float64 Array"},
+        {JSType::JS_SHARED_BIGINT64_ARRAY, "Shared BigInt64 Array"},
+        {JSType::JS_SHARED_BIGUINT64_ARRAY, "Shared BigUint64 Array"},
+        {JSType::NATIVE_MODULE_FAILURE_INFO, "NativeModuleFailureInfo"},
+        {JSType::MUTANT_TAGGED_ARRAY, "MutantTaggedArray"},
+        {JSType::BYTE_ARRAY, "ByteArray"},
+        {JSType::COW_MUTANT_TAGGED_ARRAY, "COWMutantTaggedArray"},
+        {JSType::RB_TREENODE, "RBTreeNode"},
+        {JSType::ENUM_CACHE, "EnumCache"},
+        {JSType::CLASS_LITERAL, "ClassLiteral"},
+        {JSType::ASYNC_ITERATOR_RECORD, "AsyncIteratorRecord"},
+        {JSType::MODULE_RECORD, "ModuleRecord"},
+        {JSType::PROFILE_TYPE_INFO_CELL_0, "ProfileTypeInfoCell"},
+        {JSType::PROFILE_TYPE_INFO_CELL_1, "ProfileTypeInfoCell"},
+        {JSType::PROFILE_TYPE_INFO_CELL_N, "ProfileTypeInfoCell"},
+        {JSType::EXTRA_PROFILE_TYPE_INFO, "ExtraProfileTypeInfo"},
+    };
+    static const std::unordered_map<JSType, std::string> vmModeNodeNameMap_ = {
+        {JSType::PROPERTY_BOX, "PropertyBox"},
+        {JSType::GLOBAL_ENV, "GlobalEnv"},
+        {JSType::PROTOTYPE_HANDLER, "PrototypeHandler"},
+        {JSType::TRANSITION_HANDLER, "TransitionHandler"},
+        {JSType::TRANS_WITH_PROTO_HANDLER, "TransWithProtoHandler"},
+        {JSType::STORE_TS_HANDLER, "StoreAOTHandler"},
+        {JSType::PROTO_CHANGE_MARKER, "ProtoChangeMarker"},
+        {JSType::MARKER_CELL, "MarkerCell"},
+        {JSType::PROTOTYPE_INFO, "ProtoChangeDetails"},
+        {JSType::TEMPLATE_MAP, "TemplateMap"},
+        {JSType::PROGRAM, "Program"},
+        {JSType::MACHINE_CODE_OBJECT, "MachineCode"},
+        {JSType::CLASS_INFO_EXTRACTOR, "ClassInfoExtractor"},
+    };
+    auto it = baseNodeNameMap_.find(type);
+    if (it != baseNodeNameMap_.end()) {
+        return CString(it->second);
+    }
+    if (isVmMode) {
+        auto vmIt = vmModeNodeNameMap_.find(type);
+        if (vmIt != vmModeNodeNameMap_.end()) {
+            return CString(vmIt->second);
         }
     } else {
-        return GetString("Hidden Object");
+        return CString("Hidden Object");
     }
-    return GetString(CString("UnKnownType").append(std::to_string(static_cast<int>(type))));
+    return CString("UnKnownType").append(std::to_string(static_cast<int>(type)));
 }
 
 NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
@@ -709,33 +563,43 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
     return nodeType;
 }
 
+void HeapSnapshot::GenerateNodeRootVisitor::VisitRoot(Root type, ObjectSlot slot)
+{
+    ProcessRoot(type, JSTaggedValue(slot.GetTaggedType()));
+}
+
+void HeapSnapshot::GenerateNodeRootVisitor::VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end)
+{
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        ProcessRoot(type, JSTaggedValue(slot.GetTaggedType()));
+    }
+}
+
+void HeapSnapshot::GenerateNodeRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type,
+    [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject)
+{
+}
+
+void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTaggedValue &value)
+{
+    Node *node = snapshot_.GenerateNode(value, 0, isInFinish_, isSimplify_);
+    if (node == nullptr || !value.IsHeapObject()) {
+        return;
+    }
+    switch (type) {
+        case Root::ROOT_LOCAL_HANDLE:
+            snapshot_.localHandleRoots_.emplace(node);
+            break;
+        case Root::ROOT_GLOBAL_HANDLE:
+            snapshot_.globalHandleRoots_.emplace(node);
+            break;
+        default:
+            break;
+    }
+}
+
 void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
 {
-    class GenerateNodeRootVisitor final : public RootVisitor {
-    public:
-        explicit GenerateNodeRootVisitor(HeapSnapshot &snapshot, bool isInFinish, bool isSimplify)
-            : snapshot_(snapshot), isInFinish_(isInFinish), isSimplify_(isSimplify) {}
-        ~GenerateNodeRootVisitor() = default;
-
-        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
-        {
-            snapshot_.GenerateNode(JSTaggedValue(slot.GetTaggedType()), 0, isInFinish_, isSimplify_);
-        }
-
-        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
-        {
-            for (ObjectSlot slot = start; slot < end; slot++) {
-                snapshot_.GenerateNode(JSTaggedValue(slot.GetTaggedType()), 0, isInFinish_, isSimplify_);
-            }
-        }
-
-        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
-    private:
-        HeapSnapshot &snapshot_;
-        bool isInFinish_;
-        bool isSimplify_;
-    };
     LOG_ECMA(INFO) << "HeapSnapshot::FillNodes";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "HeapSnapshot::FillNodes", "");
     // Iterate Heap Object
@@ -1294,118 +1158,150 @@ void HeapSnapshot::AddSyntheticRoot()
     Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                         NodeType::SYNTHETIC, 0, 0, 0);
     InsertNodeAt(0, syntheticRoot);
-    CUnorderedSet<JSTaggedType> values {};
+
+    // Temporary collection for edges whose target nodes are all roots (to be inserted at edges_.begin())
     CVector<Edge *> rootEdges;
 
-    HandleRoots(syntheticRoot, values, rootEdges);
+    // Process all heap roots and create edges from synthetic root to roots
+    CreateSyntheticRootToRootEdges(syntheticRoot, rootEdges);
 
-    // add root edges to edges begin
+    // Create specific synthetic root nodes
+    Node *localHandleSyntheticRoot = CreateSpecificSyntheticRoot(localHandleRoots_, "LocalHandleRoot", 1);
+    Node *globalHandleSyntheticRoot = CreateSpecificSyntheticRoot(globalHandleRoots_, "GlobalHandleRoot", 2);
+
+    // Create edges from synthetic root to specific synthetic roots
+    CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, localHandleSyntheticRoot, rootEdges);
+    CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, globalHandleSyntheticRoot, rootEdges);
+
+    // Create edges from specific synthetic roots to their roots
+    CreateSpecificSyntheticRootToRootEdges(localHandleSyntheticRoot, localHandleRoots_, rootEdges);
+    CreateSpecificSyntheticRootToRootEdges(globalHandleSyntheticRoot, globalHandleRoots_, rootEdges);
+
+    // Insert all root edges at the beginning of edges vector
     edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
     edgeCount_ += rootEdges.size();
-    int reindex = 0;
-    for (Node *node : nodes_) {
-        node->SetIndex(reindex);
-        reindex++;
+
+    // Reindex all nodes after insertion
+    ReindexAllNodes();
+}
+
+Node *HeapSnapshot::CreateSpecificSyntheticRoot(const CUnorderedSet<Node *> &specificRootSet,
+                                                const CString &rootNamePrefix, size_t insertPosition)
+{
+    CString handleRootName = CString(rootNamePrefix) + "[" + ToCString(specificRootSet.size()) + "]";
+    Node *handleSyntheticRoot = Node::NewNode(chunk_, 0, nodeCount_, GetString(handleRootName),
+                                              NodeType::HANDLE, 1, 0, 0);
+    InsertNodeAt(insertPosition, handleSyntheticRoot);
+    return handleSyntheticRoot;
+}
+
+void HeapSnapshot::CreateSyntheticRootToSpecificSyntheticRootEdge(Node *syntheticRoot, Node *specificSyntheticRoot,
+                                                                  CVector<Edge *> &rootEdges)
+{
+    Edge *edge = Edge::NewEdge(chunk_, EdgeType::SHORTCUT, syntheticRoot,
+                               specificSyntheticRoot, GetString("-subroot-"));
+    rootEdges.emplace_back(edge);
+    syntheticRoot->IncEdgeCount();
+}
+
+void HeapSnapshot::CreateSpecificSyntheticRootToRootEdges(Node *specificSyntheticRoot,
+                                                          const CUnorderedSet<Node *> &specificRootSet,
+                                                          CVector<Edge *> &rootEdges)
+{
+    for (const auto &root : specificRootSet) {
+        Edge *edge = Edge::NewEdge(chunk_, EdgeType::ELEMENT, specificSyntheticRoot,
+                                   root, specificSyntheticRoot->GetEdgeCount());
+        rootEdges.emplace_back(edge);
+        specificSyntheticRoot->IncEdgeCount();
     }
 }
 
-void HeapSnapshot::NewRootEdge(Node *syntheticRoot, JSTaggedValue value,
-                               CUnorderedSet<JSTaggedType> &values, CVector<Edge *> &rootEdges)
+void HeapSnapshot::ReindexAllNodes()
+{
+    uint32_t nodeIndex = 0;
+    for (Node *node : nodes_) {
+        node->SetIndex(nodeIndex++);
+    }
+}
+
+void HeapSnapshot::EdgeBuilderRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
+{
+    NewRootEdge(JSTaggedValue(slot.GetTaggedType()));
+}
+
+void HeapSnapshot::EdgeBuilderRootVisitor::VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end)
+{
+    for (ObjectSlot slot = start; slot < end; ++slot) {
+        NewRootEdge(JSTaggedValue(slot.GetTaggedType()));
+    }
+}
+
+void HeapSnapshot::EdgeBuilderRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type,
+    [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject)
+{
+}
+
+void HeapSnapshot::EdgeBuilderRootVisitor::NewRootEdge(const JSTaggedValue &value)
 {
     if (!value.IsHeapObject()) {
         return;
     }
-    Node *rootNode = entryMap_.FindEntry(value.GetRawData());
-    if (rootNode != nullptr) {
-        JSTaggedType valueTo = value.GetRawData();
-        if (values.insert(valueTo).second) {
-            Edge *edge = Edge::NewEdge(chunk_, EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-"));
-            rootEdges.emplace_back(edge);
-            syntheticRoot->IncEdgeCount();
-        }
+    Node *rootNode = snapshot_.entryMap_.FindEntry(value.GetRawData());
+    if (rootNode == nullptr) {
+        return;
+    }
+    JSTaggedType valueTo = value.GetRawData();
+    if (visitedRoots_.insert(valueTo).second) {
+        Edge *edge = Edge::NewEdge(snapshot_.chunk_, EdgeType::SHORTCUT, syntheticRoot_, rootNode,
+                                   snapshot_.GetString("-subroot-"));
+        rootEdges_.emplace_back(edge);
+        syntheticRoot_->IncEdgeCount();
     }
 }
 
-void HeapSnapshot::HandleRoots(Node *syntheticRoot, CUnorderedSet<JSTaggedType> &values, CVector<Edge *> &rootEdges)
-{
-    class EdgeBuilderRootVisitor final : public RootVisitor {
-    public:
-        explicit EdgeBuilderRootVisitor(HeapSnapshot &snapshot, Node *syntheticRoot,
-                                        CVector<Edge *> &rootEdges, CUnorderedSet<JSTaggedType> &values)
-            : snapshot_(snapshot), syntheticRoot_(syntheticRoot), rootEdges_(rootEdges), values_(values) {}
-        ~EdgeBuilderRootVisitor() = default;
-
-        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
-        {
-            snapshot_.NewRootEdge(syntheticRoot_, JSTaggedValue(slot.GetTaggedType()), values_, rootEdges_);
-        }
-
-        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
-        {
-            for (ObjectSlot slot = start; slot < end; ++slot) {
-                snapshot_.NewRootEdge(syntheticRoot_, JSTaggedValue(slot.GetTaggedType()), values_, rootEdges_);
-            }
-        }
-
-        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
-
-    private:
-        HeapSnapshot &snapshot_;
-        Node *syntheticRoot_;
-        CVector<Edge *> &rootEdges_;
-        CUnorderedSet<JSTaggedType> &values_;
-    };
-
 #if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
-    class EdgeBuilderWithLeakDetectRootVisitor final : public RootVisitor {
-    public:
-        explicit EdgeBuilderWithLeakDetectRootVisitor(HeapSnapshot &snapshot, Node *syntheticRoot,
-                                                      CVector<Edge *> &rootEdges, CUnorderedSet<JSTaggedType> &values)
-            : snapshot_(snapshot), syntheticRoot_(syntheticRoot), rootEdges_(rootEdges), values_(values) {}
-        ~EdgeBuilderWithLeakDetectRootVisitor() = default;
+void HeapSnapshot::EdgeBuilderWithLeakDetectRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
+{
+    snapshot_.LogLeakedLocalHandleBackTrace(slot);
+    NewRootEdge(JSTaggedValue(slot.GetTaggedType()));
+}
 
-        void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
-        {
-            snapshot_.LogLeakedLocalHandleBackTrace(slot);
-            snapshot_.NewRootEdge(syntheticRoot_, JSTaggedValue(slot.GetTaggedType()), values_, rootEdges_);
-        }
+void HeapSnapshot::EdgeBuilderWithLeakDetectRootVisitor::VisitRangeRoot([[maybe_unused]] Root type,
+                                                                        ObjectSlot start, ObjectSlot end)
+{
+    for (ObjectSlot slot = start; slot < end; slot++) {
+        snapshot_.LogLeakedLocalHandleBackTrace(slot);
+        NewRootEdge(JSTaggedValue(slot.GetTaggedType()));
+    }
+}
 
-        void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
-        {
-            for (ObjectSlot slot = start; slot < end; slot++) {
-                snapshot_.LogLeakedLocalHandleBackTrace(slot);
-                snapshot_.NewRootEdge(syntheticRoot_, JSTaggedValue(slot.GetTaggedType()), values_, rootEdges_);
-            }
-        }
+void HeapSnapshot::EdgeBuilderWithLeakDetectRootVisitor::VisitBaseAndDerivedRoot([[maybe_unused]] Root type,
+    [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject)
+{
+}
+#endif
 
-        void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-            [[maybe_unused]] ObjectSlot derived, [[maybe_unused]] uintptr_t baseOldObject) override {}
-    private:
-        HeapSnapshot &snapshot_;
-        Node *syntheticRoot_;
-        CVector<Edge *> &rootEdges_;
-        CUnorderedSet<JSTaggedType> &values_;
-    };
-
+void HeapSnapshot::CreateSyntheticRootToRootEdges(Node *syntheticRoot, CVector<Edge *> &rootEdges)
+{
+#if defined(ENABLE_LOCAL_HANDLE_LEAK_DETECT)
     auto heapProfiler = reinterpret_cast<HeapProfiler *>(HeapProfilerInterface::GetInstance(const_cast<EcmaVM *>(vm_)));
     bool needLeakDetect = !heapProfiler->IsStartLocalHandleLeakDetect() && heapProfiler->GetLeakStackTraceFd() > 0;
     if (needLeakDetect) {
         std::ostringstream buffer;
         buffer << "========================== Local Handle Leak Detection Result ==========================\n";
         heapProfiler->WriteToLeakStackTraceFd(buffer);
-        EdgeBuilderWithLeakDetectRootVisitor visitor(*this, syntheticRoot, rootEdges, values);
+        EdgeBuilderWithLeakDetectRootVisitor visitor(*this, syntheticRoot, rootEdges);
         rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
         buffer << "======================== End of Local Handle Leak Detection Result =======================";
         heapProfiler->WriteToLeakStackTraceFd(buffer);
         heapProfiler->CloseLeakStackTraceFd();
     } else {
-        EdgeBuilderRootVisitor visitor(*this, syntheticRoot, rootEdges, values);
+        EdgeBuilderRootVisitor visitor(*this, syntheticRoot, rootEdges);
         rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
     }
     heapProfiler->ClearHandleBackTrace();
 #else
-    EdgeBuilderRootVisitor visitor(*this, syntheticRoot, rootEdges, values);
+    EdgeBuilderRootVisitor visitor(*this, syntheticRoot, rootEdges);
     rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 }

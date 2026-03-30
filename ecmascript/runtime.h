@@ -35,6 +35,7 @@
 
 #include "libpandabase/macros.h"
 
+#include <atomic>
 #include <list>
 #include <memory>
 
@@ -43,7 +44,7 @@ class EcmaStringTable;
 using AppFreezeFilterCallback =
     std::function<bool(const int32_t pid, const bool needDecreaseQuota, std::string &eventConfig)>;
 using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
-using NotifyNextCompressGCCallback = std::function<void(bool isNeedNextGC, bool isNeedFreeze)>;
+using NotifyDeferFreezeCallback = std::function<void(bool needFreeze)>;
 
 class Runtime {
 public:
@@ -59,6 +60,8 @@ public:
 
     void SuspendAll(JSThread *current);
     void ResumeAll(JSThread *current);
+    // fixme: support call on js thread
+    void FlipAllThreads(DaemonThread *current, Closure *suspendCallback, Closure *flipCallback);
     void SuspendOther(JSThread *current, JSThread *target);
     void ResumeOther(JSThread *current, JSThread *target);
     void IterateSerializeRoot(RootVisitor &v);
@@ -68,21 +71,21 @@ public:
         return mainThread_;
     }
 
+    void SetMainThreadAliveForMemoryPressure(bool alive)
+    {
+        isMainThreadAliveForMemoryPressure_ = alive;
+    }
+
+    bool IsMainThreadAliveForMemoryPressure() const
+    {
+        return isMainThreadAliveForMemoryPressure_;
+    }
+
     template<class Callback>
     void GCIterateThreadList(const Callback &cb)
     {
         LockHolder lock(threadsLock_);
-        GCIterateThreadListWithoutLock(cb);
-    }
-
-    template<class Callback>
-    void GCIterateThreadListWithoutLock(const Callback &cb)
-    {
-        for (auto thread : threads_) {
-            if (thread->ReadyForGCIterating()) {
-                cb(thread);
-            }
-        }
+        GCIterateThreadListUnsafe(cb);
     }
 
     void SetEnableLargeHeap(bool value)
@@ -105,10 +108,10 @@ public:
         return postForked_;
     }
 
-    // Result may be inaccurate, just an approximate value.
-    size_t ApproximateThreadListSize()
+    size_t GetThreadListSize()
     {
-        return threads_.size();
+        LockHolder lock(threadsLock_);
+        return GetThreadListSizeUnsafe();
     }
 
     inline const GlobalEnvConstants *GetGlobalEnvConstants()
@@ -143,14 +146,14 @@ public:
         return *baseClassRoots_;
     }
 
-    void SetNotifyNextCompressGCCallback(NotifyNextCompressGCCallback callback)
+    void SetNotifyDeferFreezeCallback(const NotifyDeferFreezeCallback& callback)
     {
-        notifyNextCompressGCCallback_ = callback;
+        notifyDeferFreezeCallback_ = callback;
     }
 
-    NotifyNextCompressGCCallback GetNotifyNextCompressGCCallback()
+    NotifyDeferFreezeCallback GetNotifyDeferFreezeCallback()
     {
-        return notifyNextCompressGCCallback_;
+        return notifyDeferFreezeCallback_;
     }
 
     void IterateSharedRoot(RootVisitor &visitor);
@@ -351,14 +354,16 @@ public:
     void DisposeSendableGlobalHandle(uintptr_t nodeAddr);
     void IterateSendableGlobalStorage(RootVisitor &visitor);
 
-    void EnableProcDumpInSharedOOM(bool flag)
+    void SetProcDumpInSharedOOM(bool flag)
     {
-        enableProcDumpInSharedOOM_ = flag;
+        // Release semantics: ensure all prior writes are visible before this store
+        isProcDumpInSharedOOMEnabled_.store(flag, std::memory_order_release);
     }
 
     bool IsEnableProcDumpInSharedOOM()
     {
-        return enableProcDumpInSharedOOM_;
+        // Acquire semantics: ensure we see all writes that happened-before the store
+        return isProcDumpInSharedOOMEnabled_.load(std::memory_order_acquire);
     }
 
     bool IsInBackground() const
@@ -381,6 +386,23 @@ private:
     void ResumeAllThreadsImpl(JSThread *current);
     void SuspendOtherThreadImpl(JSThread *current, JSThread *target);
     void ResumeOtherThreadImpl(JSThread *current, JSThread *target);
+
+    // use this with holding `threadsLock_`
+    template<class Callback>
+    void GCIterateThreadListUnsafe(const Callback &cb)
+    {
+        for (auto thread : threads_) {
+            if (thread->ReadyForGCIterating()) {
+                cb(thread);
+            }
+        }
+    }
+
+    // use this with holding `threadsLock_`
+    size_t GetThreadListSizeUnsafe() const
+    {
+        return threads_.size();
+    }
 
     void PreInitialization(const EcmaVM *vm);
     void PostInitialization(const EcmaVM *vm);
@@ -413,7 +435,7 @@ private:
         return sharedNativePointerCallbacks_;
     }
 
-    Mutex threadsLock_;
+    RecursiveMutex threadsLock_;
     ConditionVariable threadSuspendCondVar_;
     Mutex serializeLock_;
     std::list<JSThread*> threads_;
@@ -424,7 +446,8 @@ private:
     GlobalEnvConstants globalConst_;
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSThread *mainThread_ {nullptr};
-    NotifyNextCompressGCCallback notifyNextCompressGCCallback_ {nullptr};
+    bool isMainThreadAliveForMemoryPressure_ {false};
+    NotifyDeferFreezeCallback notifyDeferFreezeCallback_ {nullptr};
     // for shared heap.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     std::unique_ptr<HeapRegionAllocator> heapRegionAllocator_;
@@ -475,6 +498,12 @@ private:
     ReleaseSecureMemCallback releaseSecureMemCallback_ {nullptr};
     Mutex releaseSecureMemCallbackLock_;
 
+    // Whether process dump is enabled when shared OOM occurs.
+    // Using atomic<bool> with release-acquire semantics ensures:
+    // - Release (store): all prior writes visible before flag becomes true
+    // - Acquire (load): subsequent reads see all writes that happened before flag was set
+    std::atomic<bool> isProcDumpInSharedOOMEnabled_ {false};
+
     // sendable global reference
     Mutex sendableGlobalStorageLock_;
     EcmaGlobalStorage<Node> *sendableGlobalStorage_ {nullptr};
@@ -484,9 +513,6 @@ private:
     std::function<void(uintptr_t nodeAddr)> disposeSendableGlobalHandle_;
     static constexpr int32_t MAX_SENDABLE_GLOBAL_HANDLE_COUNT = 51200;
     int32_t aliveSendableGlobalHandleCount_ {0};
-
-    // whether dump process when shared oom
-    bool enableProcDumpInSharedOOM_ {false};
 
     bool inBackground_ {false};
 

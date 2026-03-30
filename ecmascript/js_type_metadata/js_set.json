@@ -1,5 +1,6 @@
 {
     "name": "JS_SET",
+    "node_name": "Set",
     "offsets": [
         {
             "name": "LinkedSet",

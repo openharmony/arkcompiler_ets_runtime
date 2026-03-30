@@ -73,10 +73,8 @@ HWTEST_F_L0(ICRuntimeStubTest, LoadGlobalICByName)
     JSHandle<JSTaggedValue> propKey(factory->NewFromASCII("x"));
 
     uint32_t arrayLength = 2U;
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
-    handleTaggedArray->Set(thread, 0, handleBoxValue.GetTaggedValue());
-    handleTaggedArray->Set(thread, 1, JSTaggedValue::Undefined());
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
+    handleProfileTypeInfo->Set(thread, 0, handleBoxValue.GetTaggedValue());
     // ProfileTypeInfo get value is HeapObject and then call LoadGlobal function to load
     JSTaggedValue resultValue1 =
         ICRuntimeStub::LoadGlobalICByName(thread, *handleProfileTypeInfo,
@@ -104,10 +102,8 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreGlobalICByName)
     JSTaggedValue handleValue(2);
 
     uint32_t arrayLength = 2U; // 2 means ProfileTypeInfo length
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
-    handleTaggedArray->Set(thread, 0, handleBoxValue.GetTaggedValue());
-    handleTaggedArray->Set(thread, 1, JSTaggedValue::Undefined());
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
+    handleProfileTypeInfo->Set(thread, 0, handleBoxValue.GetTaggedValue());
     // ProfileTypeInfo get value is HeapObject and then call LoadGlobal function to load
     JSTaggedValue resultValue1 =
         ICRuntimeStub::StoreGlobalICByName(thread, *handleProfileTypeInfo, JSTaggedValue::Undefined(),
@@ -164,8 +160,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreICAndLoadIC_ByName)
     JSHandle<JSTaggedValue> handleStoreVal(thread, JSTaggedValue(2));
 
     uint32_t arrayLength = 2U;
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
 
     // test receiver is jsobject and ProfileTypeInfo get value is hole in slotId.
     ICRuntimeStub::StoreICByName(thread, *handleProfileTypeInfo, handleObj.GetTaggedValue(),
@@ -188,8 +183,7 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreICAndLoadIC_ByValue)
     JSHandle<JSTaggedValue> handleStoreVal(factory->NewFromASCII("1"));
 
     uint32_t arrayLength = 2U; // 2 means ProfileTypeInfo length
-    JSHandle<TaggedArray> handleTaggedArray = factory->NewTaggedArray(arrayLength);
-    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = JSHandle<ProfileTypeInfo>::Cast(handleTaggedArray);
+    JSHandle<ProfileTypeInfo> handleProfileTypeInfo = factory->NewProfileTypeInfo(arrayLength);
     // test receiver is typedArray
     ICRuntimeStub::StoreICByValue(thread, *handleProfileTypeInfo, handleTypeArrReceiver.GetTaggedValue(),
                                  handleKey.GetTaggedValue(), handleStoreVal.GetTaggedValue(), 0);

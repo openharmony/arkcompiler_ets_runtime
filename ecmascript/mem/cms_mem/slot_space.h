@@ -27,7 +27,7 @@ namespace panda::ecmascript {
 class SlotSpace final : public Space, public SweepableSpace {
 public:
     SlotSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
-    ~SlotSpace() override = default;
+    ~SlotSpace() override;
 
     NO_COPY_SEMANTIC(SlotSpace);
     NO_MOVE_SEMANTIC(SlotSpace);
@@ -35,6 +35,11 @@ public:
     static inline size_t GetSlotIdxBySize(size_t size);
 
     static inline size_t GetSlotSizeByIdx(size_t idx);
+
+    const void *GetAllocatorsAddress() const
+    {
+        return &allocators_;
+    }
 
     inline uint32_t GetRegionCount() const override;
 
@@ -53,13 +58,21 @@ public:
 
     inline void SetRecordRegion();
 
+    template <typename Callback>
+    inline void EnumerateFromRegions(Callback &&cb) const;
+
+    template <typename Callback>
+    inline void EnumerateToRegions(Callback &&cb) const;
+
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor);
 
     void PrepareSweeping() override;
 
     void Sweep() override;
 
-    void AsyncSweep(bool isMain) override;
+    void AsyncSweep(bool isMain, bool releaseMemory = false) override;
+
+    void AddSweptRegionChainManager(CMSRegionChainManager *sweptRegionChainManager);
 
     bool TryFillSweptRegion() override;
 
@@ -87,20 +100,74 @@ public:
         return allocateAfterLastGC_;
     }
 
-    void ReclaimFromRegions();
+    void ReclaimFromRegions(bool needCacheRegion);
 
     void AdjustCapacity(JSThread *thread);
+
+    void MergeToRegions();
 
 private:
     static constexpr int GROWING_FACTOR = 2;
 
     static constexpr std::array<size_t, SlotSpaceConfig::NUM_SLOTS> SLOT_SIZES = []() {
-        std::array<size_t, SlotSpaceConfig::NUM_SLOTS> res{};
-        size_t slotSize = 0;
-        for (size_t i = 0; i < SlotSpaceConfig::NUM_SLOTS; ++i, slotSize += SlotSpaceConfig::SLOT_STEP_SIZE) {
-            res[i] = slotSize;
+        std::array<size_t, SlotSpaceConfig::NUM_SLOTS> res {};
+        size_t idx = 0;
+        size_t curSize = 0;
+        // Size for small object
+        while (curSize < SlotSpaceConfig::MAX_SMALL_SLOT_INSTANCE_SIZE) {
+            curSize += SlotSpaceConfig::SMALL_SLOT_STEP_SIZE;
+            while (idx * SlotSpaceConfig::SLOT_STEP_SIZE <= curSize) {
+                res[idx] = curSize;
+                ++idx;
+            }
         }
-        ASSERT(slotSize > SlotSpaceConfig::MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE);
+
+        // Size for medial object
+        while (curSize < SlotSpaceConfig::MAX_MEDIAL_SLOT_INSTANCE_SIZE) {
+            curSize += SlotSpaceConfig::MEDIAL_SLOT_STEP_SIZE;
+            while (idx * SlotSpaceConfig::SLOT_STEP_SIZE <= curSize) {
+                res[idx] = curSize;
+                ++idx;
+            }
+        }
+
+        // Size for large object
+        while (curSize < SlotSpaceConfig::MAX_LARGE_SLOT_INSTANCE_SIZE) {
+            size_t maybeNewSize = static_cast<size_t>(curSize * SlotSpaceConfig::LARGE_SLOT_STEP_GROW_FACTOR);
+            maybeNewSize = AlignUp(maybeNewSize, SlotSpaceConfig::SLOT_STEP_SIZE);
+            maybeNewSize = std::min(maybeNewSize, SlotSpaceConfig::MAX_LARGE_SLOT_INSTANCE_SIZE);
+            ASSERT(maybeNewSize > 0);
+            size_t slotCountInRegion = CMSRegion::GetRegionAvailableSize() / maybeNewSize;
+            curSize = AlignDown(CMSRegion::GetRegionAvailableSize() / slotCountInRegion,
+                                SlotSpaceConfig::SLOT_STEP_SIZE);
+            if (curSize < maybeNewSize) {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+            }
+            while (idx * SlotSpaceConfig::SLOT_STEP_SIZE <= curSize) {
+                res[idx] = curSize;
+                ++idx;
+            }
+        }
+
+        if (idx != SlotSpaceConfig::NUM_SLOTS) {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+        }
+
+        size_t preSize = 0;
+        for (size_t &slotSize : res) {
+            if (slotSize < preSize) {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+            }
+            if (!IsAligned(slotSize, SlotSpaceConfig::SLOT_STEP_SIZE)) {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+            }
+            preSize = slotSize;
+        }
+        for (size_t i = 0; i < SlotSpaceConfig::NUM_SLOTS; ++i) {
+            if (res[i] < i * SlotSpaceConfig::SLOT_STEP_SIZE) {
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+            }
+        }
         return res;
     }();
 
@@ -123,19 +190,28 @@ private:
 
     bool TryExpandAllocator(SlotAllocator *allocator, MemoryCheckerKind checkerKind);
 
+    template<bool expandInGC = false>
     void ExpandAllocator(SlotAllocator *allocator);
     
     inline ARK_INLINE void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
     Region *AllocateRegion(size_t slotSize);
 
-    std::array<SlotAllocator, SlotSpaceConfig::NUM_SLOTS> allocators_ {};
-    std::array<CMSRegionChainManager, SlotSpaceConfig::NUM_SLOTS> regionChainManagers_ {};
+    std::array<SlotAllocator*, SlotSpaceConfig::NUM_SLOTS> allocators_ {};
+    std::vector<CMSRegionChainManager *> regionChainManagerInstances_ {};
+    std::vector<SlotAllocator *> allocatorInstances_ {};
+
+    std::array<SlotAllocator*, SlotSpaceConfig::NUM_SLOTS> gcAllocators_ {};
+    std::vector<CMSRegionChainManager *> gcRegionChainManagerInstances_ {};
+    std::vector<SlotAllocator *> gcAllocatorInstances_ {};
+
     std::vector<Region *> pendingReclaimFromRegions_ {};
+    size_t cacheRegionSize_ {0};
+
+    Mutex mutex_ {};
+    std::vector<CMSRegionChainManager *> sweptRegionChainManagers_ {};
 
     Heap *localHeap_ {nullptr};
-
-    Mutex lock_ {};
 
     size_t minimumCapacity_ {0};
 

@@ -1,5 +1,6 @@
 {
     "name": "JS_WEAK_REF",
+    "node_name": "WeakRef",
     "offsets": [
         {
             "name": "WeakObject",

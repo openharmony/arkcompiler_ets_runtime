@@ -29,6 +29,10 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/clock_scope.h"
 
+namespace panda::test {
+class MockHeapProfiler;
+class HeapDumpTestHelper;
+};  // panda::test
 namespace panda::ecmascript {
 class HeapSnapshot;
 class EcmaVM;
@@ -122,6 +126,8 @@ public:
     bool StartHeapSampling(uint64_t samplingInterval, int stackDepth = 128) override;
     void StopHeapSampling() override;
     const struct SamplingInfo *GetAllocationProfile() override;
+    static bool TryStartOOMDump();
+    static void ResetOOMDump();
     size_t GetIdCount() override
     {
         return entryIdMap_->GetIdCount();
@@ -129,6 +135,10 @@ public:
     EntryIdMap *GetEntryIdMap() const
     {
         return const_cast<EntryIdMap *>(entryIdMap_);
+    }
+    CUnorderedMap<uintptr_t, NodeId> GetNodeAddressIdMap()
+    {
+        return nodeAddressIdMap_;
     }
     Chunk *GetChunk() const
     {
@@ -154,12 +164,22 @@ public:
     void StorePotentiallyLeakHandles(uintptr_t handle);
 
 private:
+    static bool oomDumpActive_;  // don't dump again while OOM dump is in progress.
     /**
      * trigger full gc to make sure no unreachable objects in heap
      */
     bool ForceFullGC(const EcmaVM *vm);
     void ForceSharedGC();
-    void DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption);
+    bool DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapShotOption &dumpOption);
+    void DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const DumpSnapShotOption &dumpOption);
+
+    /**
+     * Helper used by DumpHeapSnapshot to fork a child process and execute the
+     * appropriate dump logic. Returns the pid of the child on success, or -1
+     * if fork failed.
+     */
+    pid_t ForkAndPerformDump(Stream *stream, const DumpSnapShotOption &dumpOption,
+                              Progress *progress);
 
     /**
      * make a new heap snapshot and put it into a container eg, vector
@@ -167,6 +187,7 @@ private:
     HeapSnapshot *MakeHeapSnapshot(SampleType sampleType, const DumpSnapShotOption &dumpOption,
                                    bool traceAllocation = false);
     bool DoDump(Stream *stream, Progress *progress, const DumpSnapShotOption &dumpOption);
+    void UpdateNodeAddressIdMap();
     std::string GenDumpFileName(DumpFormat dumpFormat);
     CString GetTimeStamp();
     void UpdateHeapObjects(HeapSnapshot *snapshot);
@@ -185,6 +206,7 @@ private:
     StringHashMap stringTable_;
     bool isProfiling_ {false};
     EntryIdMap *entryIdMap_;
+    CUnorderedMap<uintptr_t, NodeId> nodeAddressIdMap_ {};
     std::unique_ptr<HeapTracker> heapTracker_;
     Chunk chunk_;
     std::unique_ptr<HeapSampling> heapSampling_ {nullptr};
@@ -199,6 +221,30 @@ private:
     uint32_t moveEventCbId_ {0};
 
     friend class HeapProfilerFriendTest;
+    friend class panda::test::MockHeapProfiler;
+    friend class panda::test::HeapDumpTestHelper;
+};
+
+class NodeIdCacheClearScope {
+public:
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+    NodeIdCacheClearScope(const EcmaVM *vm, const DumpSnapShotOption &opt)
+        : vm_(vm), opt_(opt) {}
+    ~NodeIdCacheClearScope()
+    {
+        if (opt_.isClearNodeIdCache && vm_ != nullptr) {
+            LOG_ECMA(INFO) << "NodeIdCacheClearScope HeapProfile delete.";
+            const_cast<EcmaVM *>(vm_)->DeleteHeapProfile();
+        }
+    }
+
+private:
+    const EcmaVM *vm_ {nullptr};
+    const DumpSnapShotOption &opt_;
+#else
+    NodeIdCacheClearScope(const EcmaVM *, const DumpSnapShotOption &) {}
+    ~NodeIdCacheClearScope() = default;
+#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_HPROF_HEAP_PROFILER_H

@@ -27,6 +27,8 @@ test_js_files = [
   "heapdump1",
   "allocation",
   "heap_snapshot",
+  "property_name",
+  "proxy_class_name",
 ]
 
 foreach(file, test_js_files) {
@@ -266,7 +268,10 @@ host_unittest_action("RawHeapTranslateTest") {
   sources = [
     # test file
     "../rawheap_translate/metadata_parse.cpp",
+    "../rawheap_translate/rawheap_translate.cpp",
     "../rawheap_translate/utils.cpp",
+    "../rawheap_translate/serializer.cpp",
+    "../rawheap_translate/string_hashmap.cpp",
     "rawheap_translate_test.cpp",
   ]
 
@@ -386,12 +391,38 @@ host_unittest_action("GlobalHandleLeakDetectTest") {
   ]
 }
 
+host_unittest_action("HeapProfilerDumpTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "heap_profiler_dump_test.cpp",
+  ]
+
+  configs = [ "$js_root:ecma_test_config" ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  external_deps = [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+  ]
+  external_deps += hiviewdfx_ext_deps
+
+  cflags_cc = [
+    "-Wno-gnu-anonymous-struct",
+    "-Wno-nested-anon-types",
+    "-Wno-variadic-macros",
+  ]
+}
+
 group("unittest") {
   testonly = true
   deps = [
     ":GlobalHandleLeakDetectTest",
     ":HProfTest",
     ":HeapDumpTest",
+    ":HeapProfilerDumpTest",
     ":HeapSamplingTest",
     ":HeapSnapShotTest",
     ":HeapTrackerFirstTest",
@@ -420,6 +451,7 @@ group("host_unittest") {
     ":GlobalHandleLeakDetectTestAction",
     ":HProfTestAction",
     ":HeapDumpTestAction",
+    ":HeapProfilerDumpTestAction",
     ":HeapSamplingTestAction",
     ":HeapSnapShotTestAction",
     ":HeapTrackerFirstTestAction",
@@ -433,6 +465,7 @@ group("host_unittest") {
       ":GlobalHandleLeakDetectTestAction",
       ":HProfTestAction",
       ":HeapDumpTestAction",
+      ":HeapProfilerDumpTestAction",
       ":HeapSamplingTestAction",
       ":HeapSnapShotTestAction",
       ":HeapTrackerFirstTestAction",
@@ -446,6 +479,7 @@ group("host_unittest") {
     deps -= [
       ":HProfTestAction",
       ":HeapDumpTestAction",
+      ":HeapProfilerDumpTestAction",
       ":HeapSnapShotTestAction",
       ":HeapTrackerFirstTestAction",
       ":HeapTrackerSecondTestAction",

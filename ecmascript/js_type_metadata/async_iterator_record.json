@@ -1,5 +1,6 @@
 {
     "name": "ASYNC_ITERATOR_RECORD",
+    "node_name": "AsyncIteratorRecord",
     "offsets": [
         {
             "name": "Iterator",

@@ -250,14 +250,12 @@ private:
     };
 #undef BUILTIN_ARRAY_FUNCTION_ENTRY
 
-#if ENABLE_NEXT_OPTIMIZATION
     static JSTaggedValue IncludesStable(
         EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IncludesSlowPath(
         EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IncludesSlowPath(
         EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisObjVal, int64_t length, int64_t fromIndex);
-#endif
 
     static JSTaggedValue IndexOfStable(
         EcmaRuntimeCallInfo *argv, const JSHandle<JSTaggedValue> &thisHandle);

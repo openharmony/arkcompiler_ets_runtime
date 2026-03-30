@@ -66,7 +66,7 @@ void Barriers::UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *
     if (valueRegion->AtomicMark(heapValue)) {
         std::atomic_thread_fence(std::memory_order_seq_cst);
         Heap *heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
-        WorkNode *&localBuffer = heap->GetMarkingObjectLocalBuffer();
+        MarkWorkNode *&localBuffer = heap->GetMarkingObjectLocalBuffer();
         SharedHeap::GetInstance()->GetWorkManager()->PushToLocalMarkingBuffer(localBuffer, heapValue);
     }
 }
@@ -263,6 +263,21 @@ JSTaggedType ReadBarrierImpl(const JSThread *thread, uintptr_t slotAddress)
         return slot.GetTaggedType();
     }
     return slot.GetTaggedType();
+}
+
+JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value)
+{
+    if (value == reinterpret_cast<JSTaggedType>(nullptr)) {
+        return reinterpret_cast<JSTaggedType>(nullptr);
+    }
+    Region *objectRegion = Region::ObjectAddressToRange(value);
+    if (!objectRegion->InSharedSweepableSpace()) {
+        return value;
+    }
+    if (objectRegion->Test(value)) {
+        return value;
+    }
+    return reinterpret_cast<JSTaggedType>(nullptr);
 }
 #endif
 template bool BatchBitSet<Region::InYoung>(const JSThread*, Region*, JSTaggedValue*, size_t);

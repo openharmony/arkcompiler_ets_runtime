@@ -249,6 +249,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::CONSTANT_POOL));
     SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::PROFILE_TYPE_INFO));
+    SetConstant(ConstantIndex::IC_INFO_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::IC_INFO));
     SetConstant(ConstantIndex::AOT_LITERAL_INFO_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
     SetConstant(ConstantIndex::EXTRA_PROFILE_TYPE_INFO_CLASS_INDEX,
@@ -286,6 +288,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
     }
     SetConstant(ConstantIndex::LEXICAL_ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::LEXICAL_ENV));
+    SetConstant(ConstantIndex::WEAK_LINKED_HASH_MAP_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::WEAK_LINKED_HASH_MAP));
     SetConstant(ConstantIndex::SFUNCTION_ENV_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::SFUNCTION_ENV));
     SetConstant(ConstantIndex::SYMBOL_CLASS_INDEX,
@@ -553,7 +557,7 @@ void GlobalEnvConstants::InitRootsClassesPartTwo(JSHClass *hClass, ObjectFactory
                 factory->NewEcmaHClass(hClass, JSAPIBitVectorIterator::SIZE, JSType::JS_API_BITVECTOR_ITERATOR));
     if (Runtime::GetInstance()->IsHybridVm()) {
         SetConstant(ConstantIndex::XREF_OBJECT_HCLASS_INDEX,
-                    factory->NewEcmaHClass(hClass, JSObject::SIZE, JSType::JS_XREF_OBJECT));
+                    factory->NewEcmaHClass(hClass, JSWrappedNapiObject::SIZE, JSType::JS_XREF_OBJECT));
     }
 }
 
@@ -576,7 +580,8 @@ void GlobalEnvConstants::InitRootsClasses(ObjectFactory *factory)
 
 void GlobalEnvConstants::InitMiscellaneous(JSThread *thread, ObjectFactory *factory)
 {
-    SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0));
+    SetConstant(ConstantIndex::EMPTY_LAYOUT_INFO_OBJECT_INDEX, factory->CreateLayoutInfo(0,
+        MemSpaceType::READ_ONLY_SPACE, GrowMode::KEEP));
     SetConstant(ConstantIndex::EMPTY_TAGGED_QUEUE_OBJECT_INDEX, factory->NewTaggedQueue(0));
     SetConstant(ConstantIndex::DEFAULT_SUPERS_INDEX,
                 WeakVector::Create(thread, VTable::DEFAULT_SUPERS_CAPACITY, MemSpaceType::NON_MOVABLE));

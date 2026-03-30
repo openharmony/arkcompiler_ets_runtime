@@ -1732,7 +1732,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
     JSHandle<EcmaString> string = JSHandle<EcmaString>::Cast(jsString);
 
     if (size == 0) {
-        bool matchResult = RegExpExecInternal(thread, regexp, string, 0); // 0: lastIndex
+        bool matchResult = RegExpExecInternal(thread, regexp, string, 0, RegExpParser::FLAG_STICKY); // 0: lastIndex
         if (matchResult) {
             JSHandle<JSTaggedValue> res = JSArray::ArrayCreate(thread, JSTaggedNumber(0), ArrayMode::LITERAL);
             if (useCache) {
@@ -1752,8 +1752,6 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
     }
 
     bool isUnicode = GetOriginalFlag(thread, regexp, RegExpParser::FLAG_UTF16);
-    bool isSticky = GetOriginalFlag(thread, regexp, RegExpParser::FLAG_STICKY);
-
     uint32_t nextMatchFrom = 0;
     uint32_t lastMatchEnd = 0;
     uint32_t arrLen = 1; // at least one result string
@@ -1763,12 +1761,8 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
     JSMutableHandle<TaggedArray> elements(thread, srcElements);
     JSMutableHandle<JSTaggedValue> matchValue(thread, JSTaggedValue::Undefined());
     while (nextMatchFrom < size) {
-        bool matchResult = RegExpExecInternal(thread, regexp, string, nextMatchFrom);
+        bool matchResult = RegExpExecInternal(thread, regexp, string, nextMatchFrom, RegExpParser::FLAG_STICKY);
         if (!matchResult) {
-            if (!isSticky) {
-                // done match
-                break;
-            }
             nextMatchFrom = static_cast<uint32_t>(AdvanceStringIndex(thread, jsString, nextMatchFrom, isUnicode));
             continue;
         }
@@ -1848,7 +1842,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
 }
 
 bool BuiltinsRegExp::RegExpExecInternal(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
-                                        JSHandle<EcmaString> inputString, int32_t lastIndex)
+                                        JSHandle<EcmaString> inputString, int32_t lastIndex, uint32_t extraFlags)
 {
     size_t stringLength = EcmaStringAccessor(inputString).GetLength();
     bool isUtf16 = EcmaStringAccessor(inputString).IsUtf16();
@@ -1875,10 +1869,11 @@ bool BuiltinsRegExp::RegExpExecInternal(JSThread *thread, const JSHandle<JSTagge
             UNREACHABLE();
         }
         isSuccess = Matcher(thread, regexp, offHeapString, stringLength, lastIndex, isUtf16,
-            StringSource::OFFHEAP_STRING);
+                            StringSource::OFFHEAP_STRING, extraFlags);
         delete[] offHeapString;
     } else {
-        isSuccess = Matcher(thread, regexp, strBuffer, stringLength, lastIndex, isUtf16, StringSource::ONHEAP_STRING);
+        isSuccess = Matcher(thread, regexp, strBuffer, stringLength, lastIndex, isUtf16,
+                            StringSource::ONHEAP_STRING, extraFlags);
     }
     if (isSuccess) {
         JSHandle<RegExpGlobalResult> globalTable(thread->GetGlobalEnv()->GetRegExpGlobalResult());
@@ -1891,7 +1886,7 @@ bool BuiltinsRegExp::RegExpExecInternal(JSThread *thread, const JSHandle<JSTagge
 // NOLINTNEXTLINE(readability-non-const-parameter)
 bool BuiltinsRegExp::Matcher(JSThread *thread, const JSHandle<JSTaggedValue> regexp,
                              const uint8_t *buffer, size_t length, int32_t lastIndex,
-                             bool isUtf16, StringSource source)
+                             bool isUtf16, StringSource source, uint32_t extraFlags)
 {
     BUILTINS_API_TRACE(thread, RegExp, Matcher);
     // get bytecode
@@ -1912,9 +1907,9 @@ bool BuiltinsRegExp::Matcher(JSThread *thread, const JSHandle<JSTaggedValue> reg
         }
 #endif
         ThreadNativeScope scope(thread);
-        ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16);
+        ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16, extraFlags);
     } else {
-        ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16);
+        ret = executor.Execute(buffer, lastIndex, static_cast<uint32_t>(length), bytecodeBuffer, isUtf16, extraFlags);
     }
     if (ret) {
         executor.GetResult(thread);
@@ -2830,17 +2825,16 @@ JSTaggedValue RegExpExecResultCache::GetGlobalTable(JSThread *thread)
         return env->GetTaggedRegExpGlobalResult();
     }
 
-    JSTaggedValue lastMatchTable = cacheTable->Get(thread, lastMatchIndex + CAPTURE_SIZE);
+    JSHandle<TaggedArray> lastMatchTable(thread, cacheTable->Get(thread, lastMatchIndex + CAPTURE_SIZE));
     if (cacheTable->GetNeedUpdateGlobal()) {
-        JSHandle<TaggedArray> globalTable(thread, lastMatchTable);
         auto factory = thread->GetEcmaVM()->GetFactory();
-        uint32_t arrayLength = globalTable->GetLength();
-        JSHandle<TaggedArray> resTableArray = factory->NewAndCopyTaggedArray(globalTable, arrayLength, arrayLength);
+        uint32_t arrayLength = lastMatchTable->GetLength();
+        JSHandle<TaggedArray> resTableArray = factory->NewAndCopyTaggedArray(lastMatchTable, arrayLength, arrayLength);
         env->SetRegExpGlobalResult(thread, resTableArray.GetTaggedValue());
         cacheTable->SetNeedUpdateGlobal(thread, false);
     }
 
-    return cacheTable->GetUseLastMatch() ? lastMatchTable : env->GetTaggedRegExpGlobalResult();
+    return cacheTable->GetUseLastMatch() ? lastMatchTable.GetTaggedValue() : env->GetTaggedRegExpGlobalResult();
 }
 
 JSTaggedValue RegExpGlobalResult::CreateGlobalResultTable(JSThread *thread)

@@ -649,7 +649,6 @@ JSTaggedValue ContainersVector::CopyToArray(EcmaRuntimeCallInfo *argv)
     BUILTINS_API_TRACE(thread, Vector, CopyToArray);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> self = GetThis(argv);
-
     if (!self->IsJSAPIVector()) {
         if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget(thread).IsJSAPIVector()) {
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget(thread));
@@ -661,24 +660,21 @@ JSTaggedValue ContainersVector::CopyToArray(EcmaRuntimeCallInfo *argv)
     if (!arg0->IsJSArray()) {
         return JSTaggedValue::False();
     }
-
     JSHandle<JSAPIVector> vector = JSHandle<JSAPIVector>::Cast(self);
     JSHandle<TaggedArray> vectorElements(thread, vector->GetElements(thread));
     uint32_t vectorLength = static_cast<uint32_t>(vector->GetSize());
-
     JSHandle<JSArray> array = JSHandle<JSArray>::Cast(arg0);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> arrayElements(thread, array->GetElements(thread));
     uint32_t arrayLength = array->GetArrayLength();
     if (vectorLength <= arrayLength) {
-        JSHandle<TaggedArray> newArrayElement = factory->NewAndCopyTaggedArray(vectorElements,
-                                                                               arrayLength, vectorLength);
+        TaggedArray::CopyTaggedArrayElement(thread, vectorElements, arrayElements, vectorLength);
         for (uint32_t i = vectorLength; i < arrayLength; i++) {
-            newArrayElement->Set(thread, i, JSTaggedValue::Undefined());
+            arrayElements->Set(thread, i, JSTaggedValue::Undefined());
         }
-        array->SetElements(thread, newArrayElement);
     } else {
-        JSHandle<TaggedArray> newArrayElement = factory->NewAndCopyTaggedArray(vectorElements,
-                                                                               vectorLength, vectorLength);
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<TaggedArray> newArrayElement =
+            factory->NewAndCopyTaggedArray(vectorElements, vectorLength, vectorLength);
         array->SetElements(thread, newArrayElement);
         array->SetLength(vectorLength);
     }

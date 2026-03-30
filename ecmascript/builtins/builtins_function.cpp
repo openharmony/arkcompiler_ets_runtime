@@ -365,7 +365,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
         if (!sourceCode.empty()) {
             return GetTaggedString(thread, sourceCode.c_str());
         } else {
-            return GetTaggedString(thread, "Cannot get source code of funtion");
+            return GetTaggedString(thread, "Cannot get source code of function");
         }
     }
 

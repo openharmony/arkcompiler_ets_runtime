@@ -16,12 +16,13 @@
 #ifndef ECMASCRIPT_MEM_CMS_MEM_SLOT_FREE_LIST_META_INFO_H
 #define ECMASCRIPT_MEM_CMS_MEM_SLOT_FREE_LIST_META_INFO_H
 
+#include "ecmascript/mem/cms_mem/slot_free_segment-inl.h"
+
 namespace panda::ecmascript {
-class FreeObject;
 
 struct SlotFreeListMetaInfo {
 public:
-    FreeObject *const firstFreeObject_ {nullptr};
+    SlotFreeSegment *const firstFreeSegment_ {nullptr};
     const size_t totalUsableSize_ {0};
 };
 }  // namespace panda::ecmascript

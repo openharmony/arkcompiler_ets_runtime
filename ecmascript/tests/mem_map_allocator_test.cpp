@@ -36,7 +36,7 @@ HWTEST_F_L0(MemMapAllocatorTest, GetMemFromList)
     MemMap memMap = PageMap(HUGE_OBJECT_CAPACITY, PAGE_PROT_NONE, DEFAULT_REGION_SIZE);
     PageRelease(memMap.GetMem(), memMap.GetSize());
     MemMapFreeList memMapFreeList;
-    memMapFreeList.Initialize(memMap, memMap.GetSize() * 2);
+    memMapFreeList.Initialize(memMap);
 
     // From FreeList
     size_t size1 = 256 * 1024 * 1024;
@@ -64,7 +64,7 @@ HWTEST_F_L0(MemMapAllocatorTest, GetMemOverflow)
     MemMap mem = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), 2048_MB, DEFAULT_REGION_SIZE,
                                                          ToSpaceTypeName(space->GetSpaceType()),
                                                          false, false, true,
-                                                         Jit::GetInstance()->IsEnableJitFort(), true);
+                                                         Jit::GetInstance()->IsEnableJitFort(), true, false);
     EXPECT_EQ(mem.GetSize(), 0_MB);
 }
 
@@ -75,13 +75,13 @@ HWTEST_F_L0(MemMapAllocatorTest, AsyncFreeTest)
     constexpr size_t TEST_SIZE = 2_MB;
     MemMap mem = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), TEST_SIZE, DEFAULT_REGION_SIZE,
                                                          ToSpaceTypeName(space->GetSpaceType()),
-                                                         false, false, false, false, false);
+                                                         false, false, false, false, false, false);
     EXPECT_EQ(mem.GetSize(), TEST_SIZE);
     MemMapAllocator::GetInstance()->DecreaseMemUsage(TEST_SIZE, false);
     MemMapAllocator::GetInstance()->AsyncFree(mem.GetMem(), TEST_SIZE, false, false, false);
     MemMap mem2 = MemMapAllocator::GetInstance()->Allocate(thread->GetThreadId(), TEST_SIZE, DEFAULT_REGION_SIZE,
                                                          ToSpaceTypeName(space->GetSpaceType()),
-                                                         false, false, false, false, false);
+                                                         false, false, false, false, false, false);
     EXPECT_EQ(mem2.GetSize(), TEST_SIZE);
 }
 }  // namespace panda::test

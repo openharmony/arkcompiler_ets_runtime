@@ -1,5 +1,6 @@
 {
     "name": "JS_API_LIST",
+    "node_name": "List",
     "offsets": [
         {
             "name": "SingleList",

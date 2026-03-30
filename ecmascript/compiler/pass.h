@@ -845,13 +845,8 @@ public:
             env = data->GetPassContext()->GetCompilationEnv();
         }
         if (isStwCopyStub) {
-#if ENABLE_NEXT_OPTIMIZATION
             PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, env, true, isStwCopyStub)
                 .Run(data->GetCfg());
-#else
-            PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, env, false, isStwCopyStub)
-                .Run(data->GetCfg());
-#endif
         } else {
             PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, env, false, isStwCopyStub)
                 .Run(data->GetCfg());

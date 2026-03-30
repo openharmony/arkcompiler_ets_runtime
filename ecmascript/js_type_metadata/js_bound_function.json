@@ -1,5 +1,6 @@
 {
     "name": "JS_BOUND_FUNCTION",
+    "node_name": "Bound Function",
     "offsets": [
         {
             "name": "BoundTarget",

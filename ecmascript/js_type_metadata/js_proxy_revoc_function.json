@@ -1,5 +1,6 @@
 {
     "name": "JS_PROXY_REVOC_FUNCTION",
+    "node_name": "ProxyRevocFunction",
     "offsets": [
         {
             "name": "RevocableProxy",

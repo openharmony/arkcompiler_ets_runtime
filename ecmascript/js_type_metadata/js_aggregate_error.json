@@ -1,5 +1,6 @@
 {
     "name": "JS_AGGREGATE_ERROR",
+    "node_name": "Aggregate Error",
     "offsets": [
         {
             "name": "Properties",

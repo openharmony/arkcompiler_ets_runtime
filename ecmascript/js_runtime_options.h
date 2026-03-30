@@ -36,6 +36,9 @@
 namespace {
 constexpr size_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
 constexpr size_t DEFAULT_REL_MODE = 2;
+constexpr std::string_view LANGUAGE_DYNAMIC = "dynamic";
+constexpr std::string_view LANGUAGE_STATIC = "static";
+constexpr std::string_view LANGUAGE_HYBRID = "hybrid";
 }  // namespace
 
 // namespace panda {
@@ -43,40 +46,47 @@ namespace panda::ecmascript {
 using arg_list_t = std::vector<std::string>;
 enum ArkProperties {
     DEFAULT = -1, // default value 000'0000'0001'0000'0101'1100 -> 0x105c
-    OPTIONAL_LOG = 1,
-    GC_STATS_PRINT = 1 << 1,
-    PARALLEL_GC = 1 << 2, // default enable
-    CONCURRENT_MARK = 1 << 3, // default enable
-    CONCURRENT_SWEEP = 1 << 4, // default enable
-    THREAD_CHECK = 1 << 5,
-    ENABLE_ARKTOOLS = 1 << 6, // default enable, this option is deprecated, please replace it with new option
-    ENABLE_SNAPSHOT_SERIALIZE = 1 << 7,
-    ENABLE_SNAPSHOT_DESERIALIZE = 1 << 8,
-    EXCEPTION_BACKTRACE = 1 << 9,
-    GLOBAL_OBJECT_LEAK_CHECK = 1 << 10,
-    GLOBAL_PRIMITIVE_LEAK_CHECK = 1 << 11,
-    ENABLE_IDLE_GC = 1 << 12, // default enable
-    CPU_PROFILER_COLD_START_MAIN_THREAD = 1 << 13,
-    ENABLE_CPU_PROFILER_VM_TAG = 1 << 14,
-    ENABLE_GC_TRACER = 1 << 15,
-    CPU_PROFILER_COLD_START_WORKER_THREAD = 1 << 16,
-    CPU_PROFILER_ANY_TIME_MAIN_THREAD = 1 << 17,
-    CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
-    ENABLE_HEAP_VERIFY = 1 << 19,
-    ENABLE_MICROJOB_TRACE = 1 << 20,
-    ENABLE_MULTI_CONTEXT = 1 << 21,
+    OPTIONAL_LOG = 1ULL,
+    GC_STATS_PRINT = 1ULL << 1,
+    PARALLEL_GC = 1ULL << 2, // default enable
+    CONCURRENT_MARK = 1ULL << 3, // default enable
+    CONCURRENT_SWEEP = 1ULL << 4, // default enable
+    THREAD_CHECK = 1ULL << 5,
+    ENABLE_ARKTOOLS = 1ULL << 6, // default enable, this option is deprecated, please replace it with new option
+    ENABLE_SNAPSHOT_SERIALIZE = 1ULL << 7,
+    ENABLE_SNAPSHOT_DESERIALIZE = 1ULL << 8,
+    EXCEPTION_BACKTRACE = 1ULL << 9,
+    GLOBAL_OBJECT_LEAK_CHECK = 1ULL << 10,
+    GLOBAL_PRIMITIVE_LEAK_CHECK = 1ULL << 11,
+    ENABLE_IDLE_GC = 1ULL << 12, // default enable
+    CPU_PROFILER_COLD_START_MAIN_THREAD = 1ULL << 13,
+    ENABLE_CPU_PROFILER_VM_TAG = 1ULL << 14,
+    ENABLE_GC_TRACER = 1ULL << 15,
+    CPU_PROFILER_COLD_START_WORKER_THREAD = 1ULL << 16,
+    CPU_PROFILER_ANY_TIME_MAIN_THREAD = 1ULL << 17,
+    CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1ULL << 18,
+    ENABLE_HEAP_VERIFY = 1ULL << 19,
+    ENABLE_MICROJOB_TRACE = 1ULL << 20,
+    ENABLE_MULTI_CONTEXT = 1ULL << 21,
     // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
-    DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
-    ENABLE_RUNTIME_ASYNC_STACK = 1 << 23,
-    ENABLE_ESM_TRACE = 1 << 24,
-    ENABLE_MODULE_LOG = 1 << 25,
-    ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26,
-    ENABLE_PAGETAG_THREAD_ID = 1 << 27,
-    DISABLE_JSPANDAFILE_MODULE_SNAPSHOT = 1 << 28,
-    ENABLE_MODULE_EXCEPTION = 1 << 29,
-    ENABLE_PENDING_CHEAK = 1 << 30,
-    ENABLE_RAWHEAP_CROP = 1 << 31,
-    DISABLE_BOOT_SNAPSHOT_ESCAPE = 1 << 32,
+    DISABLE_SHARED_CONCURRENT_MARK = 1ULL << 22,
+    ENABLE_RUNTIME_ASYNC_STACK = 1ULL << 23,
+    ENABLE_ESM_TRACE = 1ULL << 24,
+    ENABLE_MODULE_LOG = 1ULL << 25,
+    ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1ULL << 26,
+    ENABLE_PAGETAG_THREAD_ID = 1ULL << 27,
+    DISABLE_JSPANDAFILE_MODULE_SNAPSHOT = 1ULL << 28,
+    ENABLE_MODULE_EXCEPTION = 1ULL << 29,
+    ENABLE_PENDING_CHEAK = 1ULL << 30,
+    ENABLE_RAWHEAP_CROP = 1ULL << 31,
+    DISABLE_BOOT_SNAPSHOT_ESCAPE = 1ULL << 32,
+    DISABLE_STRING_TABLE_CONCURRENT_SWEEP = 1ULL << 33,
+};
+
+enum ArkTSMode {
+    DYNAMIC = 0,
+    STATIC = 1,
+    HYBRID = 2,
 };
 
 // asm interpreter control parsed option
@@ -256,6 +266,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_MERGE_POLY,
     OPTION_MEM_CONFIG,
     OPTION_MULTI_CONTEXT,
+    OPTION_PGO_NAPI,
 
     // OPTION_LAST should at the last
     OPTION_LAST,
@@ -553,6 +564,16 @@ public:
         return arkBundleName_;
     }
 
+    bool IsPgoNapi() const
+    {
+        return pgoNapi_;
+    }
+
+    void SetPgoNapi(bool value)
+    {
+        pgoNapi_ = value;
+    }
+
     bool FindTraceBundleName(CString s) const
     {
         return traceBundleName_.find(s) != traceBundleName_.end();
@@ -736,6 +757,11 @@ public:
     bool IsBootSnapshotEscapeDisabled() const
     {
         return (static_cast<uint64_t>(arkProperties_) & ArkProperties::DISABLE_BOOT_SNAPSHOT_ESCAPE) != 0;
+    }
+
+    bool EnableStringTableConcurrentSweep() const
+    {
+        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::DISABLE_STRING_TABLE_CONCURRENT_SWEEP) == 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const
@@ -2362,6 +2388,22 @@ public:
         return enableGCTimeoutCheck_;
     }
 
+    void SetArkTSMode(const std::string& arkTSMode)
+    {
+        if (arkTSMode == LANGUAGE_DYNAMIC) {
+            arkTSMode_ = ArkTSMode::DYNAMIC;
+        } else if (arkTSMode == LANGUAGE_STATIC) {
+            arkTSMode_ = ArkTSMode::STATIC;
+        } else if (arkTSMode == LANGUAGE_HYBRID) {
+            arkTSMode_ = ArkTSMode::HYBRID;
+        }
+    }
+
+    ArkTSMode GetArkTSMode() const
+    {
+        return arkTSMode_;
+    }
+
     static bool ParseBool(const std::string &arg, bool* argBool);
     static bool ParseInt(const std::string &arg, int* argInt);
     static bool ParseUint32(const std::string &arg, uint32_t* argUInt32);
@@ -2523,6 +2565,7 @@ private:
     int32_t deviceThermalLevel_ {0};
     int64_t arkProperties_ = GetDefaultProperties();
     std::string arkBundleName_ = {""};
+    bool pgoNapi_ {false};
     std::set<CString> traceBundleName_ = {};
     uint32_t gcThreadNum_ {7}; // 7: default thread num
     uint32_t longPauseTime_ {40}; // 40: default pause time
@@ -2568,11 +2611,7 @@ private:
     bool enableValueNumbering_ {true};
     bool enableOptString_ {true};
     bool enableMutantArray_ {false};
-#if ENABLE_NEXT_OPTIMIZATION
     bool enableElementsKind_ {false};
-#else
-    bool enableElementsKind_ {false};
-#endif
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
@@ -2691,6 +2730,7 @@ private:
     bool enableWarmStartupSmartGC_ {false};
     bool disableModuleSnapshot_ { false };
     bool enableGCTimeoutCheck_ {true};
+    ArkTSMode arkTSMode_ {ArkTSMode::DYNAMIC};
 };
 } // namespace panda::ecmascript
 

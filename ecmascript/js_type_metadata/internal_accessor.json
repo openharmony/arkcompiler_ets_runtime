@@ -1,5 +1,6 @@
 {
     "name": "INTERNAL_ACCESSOR",
+    "node_name": "InternalAccessor",
     "offsets": [
         {
             "name": "Getter",

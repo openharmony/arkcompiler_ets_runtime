@@ -35,7 +35,7 @@ ARK_INLINE uintptr_t SlotAllocator::TryAllocate(FreeListSoldOutCallback &&freeLi
     freeListSoldOutCallback(allocatedSize);
 
     SlotFreeListMetaInfo slotFreeListMetaInfo = regionChainManager_->TryTakeSlotFreeList();
-    if (LIKELY(slotFreeListMetaInfo.firstFreeObject_ != nullptr)) {
+    if (LIKELY(slotFreeListMetaInfo.firstFreeSegment_ != nullptr)) {
         ResetFreeList(slotFreeListMetaInfo);
         result = freeList_.TryAllocate();
         ASSERT(result > 0);

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ecma_string.h"
@@ -21,6 +23,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
@@ -144,5 +147,223 @@ HWTEST_F_L0(JSFunctionTest, SetSymbolFunctionName)
         JSFunctionBase::GetFunctionName(thread, JSHandle<JSFunctionBase>(jsFunction));
     EXPECT_TRUE(functionName->IsString());
     EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *(JSHandle<EcmaString>(functionName)), *name));
+}
+
+HWTEST_F_L0(JSFunctionTest, ReplaceJSFunctionForHook)
+{
+    const char *source = R"(
+        .function void foo1() {}
+        .function void foo2() {}
+    )";
+    const CString fileName = "test.pa";
+    // create MethodLiteral
+    pandasm::Parser parser;
+    auto res = parser.Parse(source, "SRC.pa");
+    std::unique_ptr<const panda_file::File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    MethodLiteral *methodLiterals = pf->GetMethodLiterals();
+    MethodLiteral& foo1MethodLiteral = methodLiterals[0];
+    MethodLiteral& foo2MethodLiteral = methodLiterals[1];
+
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+    JSHandle<Method> foo1Method = factory->NewMethod(&foo1MethodLiteral);
+    JSHandle<Method> foo2Method = factory->NewMethod(&foo2MethodLiteral);
+
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("module");
+    JSHandle<JSFunction> foo1Function = factory->NewJSFunction(globalEnv, foo1Method);
+    foo1Function->SetLength(1);
+    foo1Function->SetCallNapi(true);
+    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(1);
+    foo1Function->SetLexicalEnv(thread, lexicalEnv);
+    JSHandle<JSFunction> foo2Function = factory->NewJSFunction(globalEnv, foo2Method);
+    foo2Function->SetLength(2);
+    foo2Function->SetCallNapi(false);
+    foo2Function->SetHomeObject(thread, module.GetTaggedValue());
+    foo2Function->SetModule(thread, module.GetTaggedValue());
+
+    JSFunction::ReplaceFunctionForHook(thread, foo1Function, foo2Function);
+    EXPECT_EQ(foo1Function->GetMethod(thread), foo2Function->GetMethod(thread));
+    EXPECT_EQ(foo1Function->GetCodeEntryOrNativePointer(), foo2Function->GetCodeEntryOrNativePointer());
+    EXPECT_EQ(foo1Function->GetLength(), foo2Function->GetLength());
+    EXPECT_EQ(foo1Function->GetBitField(), foo2Function->GetBitField());
+    EXPECT_EQ(foo1Function->GetProtoOrHClass(thread), foo2Function->GetProtoOrHClass(thread));
+    EXPECT_EQ(foo1Function->GetLexicalEnv(thread), foo2Function->GetLexicalEnv(thread));
+    EXPECT_EQ(foo1Function->GetHomeObject(thread), foo2Function->GetHomeObject(thread));
+    EXPECT_EQ(foo1Function->GetRawProfileTypeInfo(thread), foo2Function->GetRawProfileTypeInfo(thread));
+    EXPECT_EQ(foo1Function->GetMachineCode(thread), foo2Function->GetMachineCode(thread));
+    EXPECT_EQ(foo1Function->GetBaselineCode(thread), foo2Function->GetBaselineCode(thread));
+    EXPECT_EQ(foo1Function->GetModule(thread), foo2Function->GetModule(thread));
+#if !ENABLE_MEMORY_OPTIMIZATION
+    EXPECT_EQ(foo1Function->GetWorkNodePointer(), foo2Function->GetWorkNodePointer());
+#endif
+}
+
+HWTEST_F_L0(JSFunctionTest, ReplaceJSFunctionForHookMethodIsSame)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test.pa";
+    // create MethodLiteral
+    pandasm::Parser parser;
+    auto res = parser.Parse(source, "SRC.pa");
+    std::unique_ptr<const panda_file::File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    MethodLiteral *methodLiterals = pf->GetMethodLiterals();
+    MethodLiteral& fooMethodLiteral = methodLiterals[0];
+
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+    JSHandle<Method> fooMethod = factory->NewMethod(&fooMethodLiteral);
+
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("module");
+    JSHandle<JSFunction> foo1Function = factory->NewJSFunction(globalEnv, fooMethod);
+    foo1Function->SetLength(1);
+    foo1Function->SetCallNapi(true);
+    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(1);
+    foo1Function->SetLexicalEnv(thread, lexicalEnv);
+    JSHandle<JSFunction> foo2Function = factory->NewJSFunction(globalEnv, fooMethod);
+    foo2Function->SetLength(2);
+    foo2Function->SetCallNapi(false);
+    foo2Function->SetHomeObject(thread, module.GetTaggedValue());
+    foo2Function->SetModule(thread, module.GetTaggedValue());
+
+    JSFunction::ReplaceFunctionForHook(thread, foo1Function, foo2Function);
+    // not replace when method is the same
+    EXPECT_NE(foo1Function->GetLength(), foo2Function->GetLength());
+    EXPECT_NE(foo1Function->GetBitField(), foo2Function->GetBitField());
+    EXPECT_NE(foo1Function->GetLexicalEnv(thread), foo2Function->GetLexicalEnv(thread));
+    EXPECT_NE(foo1Function->GetHomeObject(thread), foo2Function->GetHomeObject(thread));
+    EXPECT_NE(foo1Function->GetModule(thread), foo2Function->GetModule(thread));
+}
+
+HWTEST_F_L0(JSFunctionTest, ReplaceJSFunctionForHookOldFuncMachineCodeIsNotUndefined)
+{
+    const char *source = R"(
+        .function void foo1() {}
+        .function void foo2() {}
+    )";
+    const CString fileName = "test.pa";
+    // create MethodLiteral
+    pandasm::Parser parser;
+    auto res = parser.Parse(source, "SRC.pa");
+    std::unique_ptr<const panda_file::File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    MethodLiteral *methodLiterals = pf->GetMethodLiterals();
+    MethodLiteral& foo1MethodLiteral = methodLiterals[0];
+    MethodLiteral& foo2MethodLiteral = methodLiterals[1];
+
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+    JSHandle<Method> foo1Method = factory->NewMethod(&foo1MethodLiteral);
+    JSHandle<Method> foo2Method = factory->NewMethod(&foo2MethodLiteral);
+
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("module");
+    JSHandle<JSFunction> foo1Function = factory->NewJSFunction(globalEnv, foo1Method);
+    foo1Function->SetLength(1);
+    foo1Function->SetCallNapi(true);
+    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(1);
+    foo1Function->SetLexicalEnv(thread, lexicalEnv);
+    MachineCodeDesc desc;
+    JSHandle<JSTaggedValue> machineCode(thread, factory->NewMachineCodeObject(16, desc));
+    foo1Function->SetMachineCode(thread, machineCode);
+    JSHandle<JSFunction> foo2Function = factory->NewJSFunction(globalEnv, foo2Method);
+    foo2Function->SetLength(2);
+    foo2Function->SetCallNapi(false);
+    foo2Function->SetHomeObject(thread, module.GetTaggedValue());
+    foo2Function->SetModule(thread, module.GetTaggedValue());
+
+    JSFunction::ReplaceFunctionForHook(thread, foo1Function, foo2Function);
+    // not replace when method is the same
+    EXPECT_NE(foo1Function->GetLength(), foo2Function->GetLength());
+    EXPECT_NE(foo1Function->GetBitField(), foo2Function->GetBitField());
+    EXPECT_NE(foo1Function->GetLexicalEnv(thread), foo2Function->GetLexicalEnv(thread));
+    EXPECT_NE(foo1Function->GetHomeObject(thread), foo2Function->GetHomeObject(thread));
+    EXPECT_NE(foo1Function->GetModule(thread), foo2Function->GetModule(thread));
+}
+
+HWTEST_F_L0(JSFunctionTest, ReplaceJSFunctionForHookNewFuncMachineCodeIsNotUndefined)
+{
+    const char *source = R"(
+        .function void foo1() {}
+        .function void foo2() {}
+    )";
+    const CString fileName = "test.pa";
+    // create MethodLiteral
+    pandasm::Parser parser;
+    auto res = parser.Parse(source, "SRC.pa");
+    std::unique_ptr<const panda_file::File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), fileName);
+    MethodLiteral *methodLiterals = pf->GetMethodLiterals();
+    MethodLiteral& foo1MethodLiteral = methodLiterals[0];
+    MethodLiteral& foo2MethodLiteral = methodLiterals[1];
+
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+    JSHandle<Method> foo1Method = factory->NewMethod(&foo1MethodLiteral);
+    JSHandle<Method> foo2Method = factory->NewMethod(&foo2MethodLiteral);
+
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("module");
+    JSHandle<JSFunction> foo1Function = factory->NewJSFunction(globalEnv, foo1Method);
+    foo1Function->SetLength(1);
+    foo1Function->SetCallNapi(true);
+    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(1);
+    foo1Function->SetLexicalEnv(thread, lexicalEnv);
+    JSHandle<JSFunction> foo2Function = factory->NewJSFunction(globalEnv, foo2Method);
+    foo2Function->SetLength(2);
+    foo2Function->SetCallNapi(false);
+    foo2Function->SetHomeObject(thread, module.GetTaggedValue());
+    foo2Function->SetModule(thread, module.GetTaggedValue());
+    MachineCodeDesc desc;
+    JSHandle<JSTaggedValue> machineCode(thread, factory->NewMachineCodeObject(16, desc));
+    foo2Function->SetMachineCode(thread, machineCode);
+
+    JSFunction::ReplaceFunctionForHook(thread, foo1Function, foo2Function);
+    // not replace when method is the same
+    EXPECT_NE(foo1Function->GetLength(), foo2Function->GetLength());
+    EXPECT_NE(foo1Function->GetBitField(), foo2Function->GetBitField());
+    EXPECT_NE(foo1Function->GetLexicalEnv(thread), foo2Function->GetLexicalEnv(thread));
+    EXPECT_NE(foo1Function->GetHomeObject(thread), foo2Function->GetHomeObject(thread));
+    EXPECT_NE(foo1Function->GetModule(thread), foo2Function->GetModule(thread));
+}
+
+HWTEST_F_L0(JSFunctionTest, ReplaceJSApiFunctionForHook)
+{
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> globalEnv = thread->GetGlobalEnv();
+
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("module");
+    JSHandle<JSFunction> foo1Function = factory->NewNormalJSApiFunction(globalEnv);
+    foo1Function->SetLength(1);
+    foo1Function->SetCallNapi(true);
+    JSHandle<LexicalEnv> lexicalEnv = factory->NewLexicalEnv(1);
+    foo1Function->SetLexicalEnv(thread, lexicalEnv);
+    JSHandle<JSFunction> foo2Function = factory->NewNormalJSApiFunction(globalEnv);
+    JSTaggedValue methodValue = thread->GlobalConstants()->GetGlobalConstantObject(
+        static_cast<size_t>(ConstantIndex::NONE_FUNCTION_METHOD_INDEX));
+    foo2Function->SetMethod(thread, methodValue);
+    foo2Function->SetLength(2);
+    foo2Function->SetCallNapi(false);
+    foo2Function->SetHomeObject(thread, module.GetTaggedValue());
+
+    JSFunction::ReplaceFunctionForHook(thread, foo1Function, foo2Function);
+
+    EXPECT_EQ(foo1Function->GetMethod(thread), foo2Function->GetMethod(thread));
+    EXPECT_EQ(foo1Function->GetCodeEntryOrNativePointer(), foo2Function->GetCodeEntryOrNativePointer());
+    EXPECT_EQ(foo1Function->GetLength(), foo2Function->GetLength());
+    EXPECT_EQ(foo1Function->GetBitField(), foo2Function->GetBitField());
+    EXPECT_EQ(foo1Function->GetProtoOrHClass(thread), foo2Function->GetProtoOrHClass(thread));
+    EXPECT_EQ(foo1Function->GetLexicalEnv(thread), foo2Function->GetLexicalEnv(thread));
+    EXPECT_EQ(foo1Function->GetHomeObject(thread), foo2Function->GetHomeObject(thread));
 }
 }  // namespace panda::test

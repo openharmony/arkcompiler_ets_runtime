@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_BASE_FILE_MAPPER_H
-#define OHOS_ABILITY_BASE_FILE_MAPPER_H
+#ifndef ECMASCRIPT_EXTRACTORTOOL_SRC_FILE_MAPPER_H
+#define ECMASCRIPT_EXTRACTORTOOL_SRC_FILE_MAPPER_H
 
 #include <memory>
 #include <string>
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 class ZipFileReader;
 enum class FileMapperType {
     NORMAL_MEM,
@@ -58,6 +57,5 @@ private:
     size_t baseLen_ = 0;
     FileMapperType type_ = FileMapperType::NORMAL_MEM;
 };
-}  // namespace AbilityBase
-}  // namespace OHOS
-#endif  // OHOS_ABILITY_BASE_FILE_MAPPER_H
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_EXTRACTORTOOL_SRC_FILE_MAPPER_H

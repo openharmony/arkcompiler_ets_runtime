@@ -204,6 +204,12 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
         globalConst->GetHandledStackString(), stackDesc);
     ASSERT_PRINT(status == true, "return result exception!");
 
+    // Uncaught exception parsing source code
+    PropertyDescriptor topStackDesc(thread, JSHandle<JSTaggedValue>::Cast(stackTraceStr), true, false, true);
+    [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
+        globalConst->GetHandledTopStackString(), topStackDesc);
+    ASSERT_PRINT(topStackstatus == true, "return result exception!");
+
     // Add async stack trace
     if (UNLIKELY(ecmaVm->IsEnableRuntimeAsyncStack())) {
         std::string asyncStackTrace;
@@ -273,7 +279,7 @@ CString ErrorHelper::GetJSErrorInfo(JSThread *thread, const JSHandle<JSTaggedVal
     JSHandle<EcmaString> errStr = JSTaggedValue::ToString(thread, value);
     // JSTaggedValue::ToString may cause exception. In this case, do not return, use "<error>" instead.
     if (thread->HasPendingException()) {
-        thread->ClearException();
+        thread->ClearExceptionAndExtraErrorMessage();
         errStr = thread->GetEcmaVM()->GetFactory()->NewFromStdString("<error>");
     }
     return ConvertToString(thread, *errStr);

@@ -1,5 +1,6 @@
 {
     "name": "STAR_EXPORTENTRY_RECORD",
+    "node_name": "StarExportEntry",
     "offsets": [
         {
             "name": "ModuleRequest",

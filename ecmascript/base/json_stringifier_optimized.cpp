@@ -218,9 +218,7 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
             // Let value be Call(toJSON, value, «key»).
             EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread_, toJsonFun, value, undefined, 1);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-            JSTaggedValue keyArg = key->IsNumber() ? JSTaggedValue::ToString(thread_, key).GetTaggedValue()
-                : key.GetTaggedValue();
-            info->SetCallArg(keyArg);
+            info->SetCallArg(key.GetTaggedValue());
             tagValue = JSFunction::Call(info);
             // ii. ReturnIfAbrupt(value).
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -237,9 +235,7 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
             EcmaRuntimeCallInfo *info =
                 EcmaInterpreter::NewRuntimeCallInfo(thread_, replacer_, holder, undefined, argsLength);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-            JSTaggedValue keyArg = key->IsNumber() ? JSTaggedValue::ToString(thread_, key).GetTaggedValue() :
-                key.GetTaggedValue();
-            info->SetCallArg(keyArg, handleValue_.GetTaggedValue());
+            info->SetCallArg(key.GetTaggedValue(), handleValue_.GetTaggedValue());
             tagValue = JSFunction::Call(info);
             // b. ReturnIfAbrupt(value).
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -1491,7 +1487,7 @@ bool JsonStringifier::AppendQuotedStringToFastStringBuilder(const JSThread *thre
 
     // Pre-allocate space (worst case: each char becomes 6 chars with escapes, +2 for quotes)
     // For safety and speed, we use (strLen << 3)
-    size_t maxAdditionalLength = strLen << 3;
+    size_t maxAdditionalLength = std::max(strLen << 3, static_cast<uint32_t>(8));
     builder.EnsureCapacity(maxAdditionalLength);
 
     if (EcmaStringAccessor(const_cast<EcmaString *>(str)).IsUtf8()) {

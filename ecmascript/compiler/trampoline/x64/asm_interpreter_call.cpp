@@ -155,7 +155,7 @@ void AsmInterpreterCall::AsmInterpEntryDispatch(ExtendedAssembler *assembler)
     __ Bind(&callJSFunctionEntry);
     {
         Register callFieldRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_FIELD);
-        __ Btq(MethodLiteral::IsNativeBit::START_BIT, callFieldRegister);
+        __ Btq(Method::IsNativeBit::START_BIT, callFieldRegister);
         __ Jb(&callNativeEntry);
 
         __ Leaq(Operand(argvRegister, NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()),
@@ -271,16 +271,16 @@ void AsmInterpreterCall::GetDeclaredNumArgsFromCallField(ExtendedAssembler *asse
     Register declaredNumArgsRegister)
 {
     __ Movq(callFieldRegister, declaredNumArgsRegister);
-    __ Shrq(MethodLiteral::NumArgsBits::START_BIT, declaredNumArgsRegister);
-    __ Andq(MethodLiteral::NumArgsBits::Mask() >> MethodLiteral::NumArgsBits::START_BIT, declaredNumArgsRegister);
+    __ Shrq(Method::NumArgsBits::START_BIT, declaredNumArgsRegister);
+    __ Andq(Method::NumArgsBits::Mask() >> Method::NumArgsBits::START_BIT, declaredNumArgsRegister);
 }
 
 void AsmInterpreterCall::GetNumVregsFromCallField(ExtendedAssembler *assembler, Register callFieldRegister,
     Register numVregsRegister)
 {
     __ Movq(callFieldRegister, numVregsRegister);
-    __ Shrq(MethodLiteral::NumVregsBits::START_BIT, numVregsRegister);
-    __ Andq(MethodLiteral::NumVregsBits::Mask() >> MethodLiteral::NumVregsBits::START_BIT, numVregsRegister);
+    __ Shrq(Method::NumVregsBits::START_BIT, numVregsRegister);
+    __ Andq(Method::NumVregsBits::Mask() >> Method::NumVregsBits::START_BIT, numVregsRegister);
 }
 
 void AsmInterpreterCall::JSCallCommonEntry(ExtendedAssembler *assembler,
@@ -483,7 +483,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
 
     auto argc = kungfu::AssemblerModule::GetArgcFromJSCallMode(mode);
     Register declaredNumArgsRegister = __ AvailableRegister2();
-    __ Testq(MethodLiteral::HaveExtraBit::Mask(), callFieldRegister);
+    __ Testq(Method::HaveExtraBit::Mask(), callFieldRegister);
     __ Jz(&noExtraEntry);
     // extra entry
     {
@@ -520,7 +520,7 @@ void AsmInterpreterCall::JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCa
         __ Jmp(fastPathEntry);
     }
     __ Bind(&pushArgsEntry);
-    __ Testq(MethodLiteral::HaveExtraBit::Mask(), callFieldRegister);
+    __ Testq(Method::HaveExtraBit::Mask(), callFieldRegister);
     __ Jnz(fastPathEntry);
     // arg1, declare must be 0
     if (argc == 1) {
@@ -586,7 +586,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    return rInvalid;
+    return invalidReg;
 }
 
 Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, JSCallMode mode,
@@ -610,7 +610,7 @@ Register AsmInterpreterCall::GetNewTargetRegsiter(ExtendedAssembler *assembler, 
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-    return rInvalid;
+    return invalidReg;
 }
 
 // Input: %r14 - callField
@@ -638,7 +638,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
     __ Testb(CALL_TYPE_MASK, callFieldRegister);
     __ Jz(&pushVregs);
     // fall through
-    __ Testq(MethodLiteral::HaveThisBit::Mask(), callFieldRegister);
+    __ Testq(Method::HaveThisBit::Mask(), callFieldRegister);
     __ Jz(&pushNewTarget);
     // push this
     if (!haveThis) {
@@ -649,7 +649,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
     // fall through
     __ Bind(&pushNewTarget);
     {
-        __ Testq(MethodLiteral::HaveNewTargetBit::Mask(), callFieldRegister);
+        __ Testq(Method::HaveNewTargetBit::Mask(), callFieldRegister);
         __ Jz(&pushCallTarget);
         if (!haveNewTarget) {
             __ Pushq(JSTaggedValue::Undefined().GetRawData());
@@ -663,7 +663,7 @@ void AsmInterpreterCall::PushCallThis(ExtendedAssembler *assembler,
     // fall through
     __ Bind(&pushCallTarget);
     {
-        __ Testq(MethodLiteral::HaveFuncBit::Mask(), callFieldRegister);
+        __ Testq(Method::HaveFuncBit::Mask(), callFieldRegister);
         __ Jz(&pushVregs);
         __ Pushq(callTargetRegister);
     }
@@ -792,7 +792,7 @@ void AsmInterpreterCall::DispatchCall(ExtendedAssembler *assembler, Register pcR
         __ Movzbq(Operand(pcRegister, 0), bcIndexRegister);
     }
     // acc: rsi
-    if (accRegister != rInvalid) {
+    if (accRegister.IsValid()) {
         ASSERT(accRegister == rsi);
     } else {
         __ Movq(JSTaggedValue::Hole().GetRawData(), rsi);
@@ -953,7 +953,7 @@ void AsmInterpreterCall::CallNativeEntry(ExtendedAssembler *assembler, bool isJS
 
         __ Movq(Operand(function, JSFunctionBase::CODE_ENTRY_OFFSET), nativeCode);
 
-        __ Btq(MethodLiteral::IsFastBuiltinBit::START_BIT, callFieldRegister);
+        __ Btq(Method::IsFastBuiltinBit::START_BIT, callFieldRegister);
         __ Jb(&callFastBuiltin);
     } else {
         // JSProxy or JSBoundFunction
@@ -1029,8 +1029,8 @@ void AsmInterpreterCall::CallFastBuiltin(ExtendedAssembler *assembler, Label *ca
     Register temp1 = r11;
     // Get builtinId
     __ Movq(Operand(method, Method::EXTRA_LITERAL_INFO_OFFSET), temp1);
-    __ Shr(MethodLiteral::BuiltinIdBits::START_BIT, temp1);
-    __ Andl((1LU << MethodLiteral::BuiltinIdBits::SIZE) - 1, temp1);
+    __ Shr(Method::BuiltinIdBits::START_BIT, temp1);
+    __ Andl((1LU << Method::BuiltinIdBits::SIZE) - 1, temp1);
     __ Cmpl(static_cast<int32_t>(BUILTINS_STUB_ID(BUILTINS_CONSTRUCTOR_STUB_FIRST)), temp1);
     __ Jge(callNativeBuiltin);
 
@@ -1276,8 +1276,8 @@ void AsmInterpreterCall::ResumeRspAndDispatch(ExtendedAssembler *assembler)
             __ Movq(Operand(frameStateBaseRegister, AsmInterpretedFrame::GetFunctionOffset(false)), temp);
             __ Movq(Operand(temp, JSFunctionBase::METHOD_OFFSET), temp);
             __ Movq(Operand(temp, Method::EXTRA_LITERAL_INFO_OFFSET), temp);
-            __ Shr(MethodLiteral::FunctionKindBits::START_BIT, temp);
-            __ Andl((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, temp);
+            __ Shr(Method::FunctionKindBits::START_BIT, temp);
+            __ Andl((1LU << Method::FunctionKindBits::SIZE) - 1, temp);
             __ Cmpl(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR), temp);
             __ Jbe(&getThis);  // constructor is base
             // fall through
@@ -1469,8 +1469,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
                 __ Movq(Operand(currentSp, static_cast<int32_t>(funcOffset)), temp);
                 __ Movq(Operand(temp, JSFunctionBase::METHOD_OFFSET), temp);
                 __ Movq(Operand(temp, Method::EXTRA_LITERAL_INFO_OFFSET), temp);
-                __ Shr(MethodLiteral::FunctionKindBits::START_BIT, temp);
-                __ Andl((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, temp);
+                __ Shr(Method::FunctionKindBits::START_BIT, temp);
+                __ Andl((1LU << Method::FunctionKindBits::SIZE) - 1, temp);
                 __ Cmpl(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR), temp);
                 __ Jbe(&getThis);  // constructor is base
                 // fall through
@@ -1899,11 +1899,11 @@ void AsmInterpreterCall::PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *a
     PushUndefinedWithArgc(assembler, argc);
 }
 
-void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue, Register fp,
-    Register op)
+void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler *assembler, Register glue,
+                                                              Register fpReg, Register op)
 {
-    if (fp != rsp) {
-        __ Movq(fp, rsp);
+    if (fpReg != rsp) {
+        __ Movq(fpReg, rsp);
     }
     __ Movq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException, op);
     __ Movq(Operand(glue, op, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), op);
@@ -1936,10 +1936,10 @@ void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(ExtendedAssembler 
 }
 
 void AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAsmInterpBridgeFrame(ExtendedAssembler *assembler,
-    Register glue, Register fp, Register op)
+    Register glue, Register fpReg, Register op)
 {
-    if (fp != rsp) {
-        __ Movq(fp, rsp);
+    if (fpReg != rsp) {
+        __ Movq(fpReg, rsp);
     }
     __ Movq(kungfu::RuntimeStubCSigns::ID_ThrowStackOverflowException, op);
     __ Movq(Operand(glue, op, Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), op);

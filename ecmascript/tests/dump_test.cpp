@@ -24,6 +24,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/ic/ic_info.h"
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/ic/proto_change_details.h"
@@ -515,8 +516,14 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(jsObj);
                 break;
             }
+            case JSType::JS_WRAPPED_NAPI_OBJECT: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSWrappedNapiObject::SIZE, 1U);
+                JSHandle<JSTaggedValue> jsWrappedNapiObj(factory->CreateNapiObject(true));
+                DUMP_FOR_HANDLE(jsWrappedNapiObj);
+                break;
+            }
             case JSType::JS_XREF_OBJECT: {
-                CHECK_DUMP_FIELDS(ECMAObject::SIZE, JSObject::SIZE, 2U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSWrappedNapiObject::SIZE, 1U);
                 JSHandle<JSTaggedValue> jsXRefObject(factory->NewJSXRefObject());
                 DUMP_FOR_HANDLE(jsXRefObject);
                 break;
@@ -697,8 +704,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(JSObject::SIZE, JSWeakMap::SIZE, 1U);
                 JSHandle<JSHClass> weakMapClass = factory->NewEcmaHClass(JSWeakMap::SIZE, JSType::JS_WEAK_MAP, proto);
                 JSHandle<JSWeakMap> jsWeakMap = JSHandle<JSWeakMap>::Cast(factory->NewJSObjectWithInit(weakMapClass));
-                JSHandle<LinkedHashMap> weakLinkedMap(LinkedHashMap::Create(thread));
-                jsWeakMap->SetLinkedMap(thread, weakLinkedMap);
+                JSHandle<WeakLinkedHashMap> weakLinkedMap(WeakLinkedHashMap::Create(thread));
+                jsWeakMap->SetWeakLinkedMap(thread, weakLinkedMap);
                 DUMP_FOR_HANDLE(jsWeakMap);
                 break;
             }
@@ -1006,6 +1013,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::TAGGED_ARRAY:
             case JSType::VTABLE:
             case JSType::LEXICAL_ENV:
+            case JSType::WEAK_LINKED_HASH_MAP:
             case JSType::SFUNCTION_ENV:
             case JSType::SENDABLE_ENV:
             case JSType::AOT_LITERAL_INFO: {
@@ -1021,6 +1029,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
             case JSType::PROFILE_TYPE_INFO: {
                 JSHandle<ProfileTypeInfo> info = factory->NewProfileTypeInfo(4);
                 DUMP_FOR_HANDLE(info);
+                break;
+            }
+            case JSType::IC_INFO: {
+                JSHandle<ICInfo> csInfo = factory->NewICInfo(3);
+                DUMP_FOR_HANDLE(csInfo);
                 break;
             }
             case JSType::EXTRA_PROFILE_TYPE_INFO: {

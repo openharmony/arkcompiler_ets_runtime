@@ -95,11 +95,7 @@ std::pair<JSTaggedValue, bool> ObjectFastOperator::HasOwnProperty(JSThread *thre
 
     if (!EcmaStringAccessor(key).IsInternString()) {
         JSHandle<EcmaString> keyHandle(thread, key);
-    #if ENABLE_NEXT_OPTIMIZATION
         EcmaString *str = thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(thread, keyHandle);
-#else
-        EcmaString *str = thread->GetEcmaVM()->GetEcmaStringTable()->TryGetInternString(thread, keyHandle);
-    #endif
         if (str == nullptr) {
             return std::make_pair(JSTaggedValue::Hole(), true);
         }
@@ -288,7 +284,6 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                     continue;
                 }
             } else if (!IsJSPrimitiveRef(jsType)) {  // not string prototype etc.
-#if ENABLE_NEXT_OPTIMIZATION
                 if (IsJSProxy(jsType)) {
                     JSTaggedValue res = JSProxy::GetProperty(thread, JSHandle<JSProxy>(thread, holder),
                                                              JSHandle<JSTaggedValue>(thread, key),
@@ -298,9 +293,6 @@ JSTaggedValue ObjectFastOperator::GetPropertyByName(JSThread *thread, JSTaggedVa
                     return res;
                 }
                 return JSTaggedValue::Hole();
-#else
-                return JSTaggedValue::Hole();
-#endif
             }
         }
 
@@ -453,7 +445,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
             } else if (IsSpecialContainer(jsType)) {
                 THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot set property on Container", JSTaggedValue::Exception());
             } else {
-#if ENABLE_NEXT_OPTIMIZATION
                 if (IsJSProxy(jsType)) {
                     if (DefineSemantics(status) && sCheckMode == SCheckMode::CHECK) {
                         return JSTaggedValue::Hole();
@@ -467,9 +458,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                 } else {
                     return JSTaggedValue::Hole();
                 }
-#else
-                return JSTaggedValue::Hole();
-#endif
             }
         }
         // UpdateRepresentation
@@ -805,9 +793,6 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                 if (UNLIKELY((!attr.IsWritable() || !attr.IsConfigurable()) && !hclass->IsJSShared())) {
                     return JSTaggedValue::Hole();
                 }
-                if (UNLIKELY(holder != receiver)) {
-                    break;
-                }
                 if (UNLIKELY(attr.IsAccessor())) {
                     if (DefineSemantics(status)) {
                         return JSTaggedValue::Hole();
@@ -816,6 +801,9 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                     if (ShouldCallSetter(receiver, holder, accessor, attr)) {
                         return CallSetter(thread, receiver, value, accessor);
                     }
+                }
+                if (UNLIKELY(holder != receiver)) {
+                    break;
                 }
                 dict->UpdateValue(thread, entry, value);
                 return JSTaggedValue::Undefined();
@@ -936,14 +924,15 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByName(JSThread *thread, JSTagg
 }
 
 JSTaggedValue ObjectFastOperator::FastGetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
-                                                         SCheckMode sCheckMode)
+                                                         SCheckMode sCheckMode, SCheckMode concurChk)
 {
     INTERPRETER_TRACE(thread, FastGetPropertyByValue);
     JSHandle<JSTaggedValue> receiverHandler(thread, receiver);
     JSHandle<JSTaggedValue> keyHandler(thread, key);
     JSTaggedValue result = ObjectFastOperator::GetPropertyByValue(thread, receiver, key);
     if (result.IsHole()) {
-        return JSTaggedValue::GetProperty(thread, receiverHandler, keyHandler, sCheckMode).GetValue().GetTaggedValue();
+        return JSTaggedValue::GetProperty(thread, receiverHandler, keyHandler, sCheckMode,
+                                          concurChk).GetValue().GetTaggedValue();
     }
     return result;
 }

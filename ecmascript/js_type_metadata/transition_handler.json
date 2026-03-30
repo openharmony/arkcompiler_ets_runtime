@@ -1,5 +1,6 @@
 {
     "name": "TRANSITION_HANDLER",
+    "node_name": "TransitionHandler",
     "offsets": [
         {
             "name": "HandlerInfo",

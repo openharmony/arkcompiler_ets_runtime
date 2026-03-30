@@ -15,7 +15,7 @@
 #ifndef ECMASCRIPT_AOT_TOOLS_H
 #define ECMASCRIPT_AOT_TOOLS_H
 
-#if defined(OHOS_GET_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER)
 #include "parameters.h"
 #endif
 
@@ -24,7 +24,7 @@ class AotTools {
 public:
     static bool GetPgoTraceEnable()
     {
-#if defined(OHOS_GET_PARAMETER)
+#if defined(ENABLE_OHOS_PARAMETER)
         return OHOS::system::GetBoolParameter("ark.pgo.trace.enable", false);
 #endif
         return false;

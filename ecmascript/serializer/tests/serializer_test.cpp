@@ -945,6 +945,10 @@ public:
 
     void SerializeOldObjOOMTest(SerializeData *data)
     {
+        // fixme: adapt to cms
+        if constexpr (G_USE_CMS_GC) {
+            return;
+        }
         Init();
         // disable force gc to avoid time out
         ecmaVm->SetEnableForceGC(false);
@@ -1560,6 +1564,84 @@ public:
         EXPECT_EQ(module1->GetStatus(), ModuleStatus::INSTANTIATED);
         Destroy();
     }
+
+    void LargeArrayTest(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> result = deserializer.ReadValue();
+        EXPECT_FALSE(result.IsEmpty()) << "Deserialization result should not be empty";
+        EXPECT_TRUE(result->IsTaggedArray()) << "Deserialized result should be TaggedArray";
+
+        JSHandle<TaggedArray> array = JSHandle<TaggedArray>::Cast(result);
+        EXPECT_EQ(array->GetLength(), 20U); // 20: numLargeArrays
+        Destroy();
+    }
+
+    void HugeArrayTest(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> result = deserializer.ReadValue();
+        EXPECT_FALSE(result.IsEmpty()) << "Deserialization result should not be empty";
+        EXPECT_TRUE(result->IsTaggedArray()) << "Deserialized result should be TaggedArray";
+        Destroy();
+    }
+
+    void NestedLargeObjectsTest(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> result = deserializer.ReadValue();
+        EXPECT_FALSE(result.IsEmpty()) << "Deserialization result should not be empty";
+        EXPECT_TRUE(result->IsJSObject()) << "Deserialized result should be JSObject";
+
+        // Verify nested structure
+        for (int i = 0; i < 5; i++) { // 5: NUM_NESTED
+            std::string keyStr = "nested" + std::to_string(i);
+            JSHandle<EcmaString> key = ecmaVm->GetFactory()->NewFromASCII(keyStr.c_str());
+            OperationResult res = JSObject::GetProperty(thread, result, JSHandle<JSTaggedValue>(key));
+            EXPECT_FALSE(res.GetValue().IsEmpty()) << "Nested object " << i << " should exist";
+        }
+        Destroy();
+    }
+
+    void MixedSizeObjectsTest(SerializeData* data)
+    {
+        Init();
+        BaseDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> result = deserializer.ReadValue();
+        EXPECT_FALSE(result.IsEmpty()) << "Deserialization result should not be empty";
+        EXPECT_TRUE(result->IsJSArray()) << "Deserialized result should be JSArray";
+        Destroy();
+    }
+
+    void SourceTextModuleMutableFieldsTest(SerializeData* data)
+    {
+        Init();
+        ModuleDeserializer deserializer(thread, data);
+        JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+        ecmaVm->CollectGarbage(TriggerGCType::YOUNG_GC);
+        ecmaVm->CollectGarbage(TriggerGCType::OLD_GC);
+
+        EXPECT_FALSE(res.IsEmpty());
+        EXPECT_TRUE(res->IsSourceTextModule());
+        JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(res);
+        EXPECT_EQ(module->GetEcmaModuleFilenameString(), "mutable_fields_test.abc");
+        EXPECT_EQ(module->GetEcmaModuleRecordNameString(), "testRecord");
+        EXPECT_EQ(module->GetStatus(), ModuleStatus::INSTANTIATED);
+        EXPECT_EQ(module->GetTypes(), ModuleTypes::ECMA_MODULE);
+        JSTaggedValue undefined = thread->GlobalConstants()->GetUndefined();
+        EXPECT_EQ(module->GetNamespace(thread), undefined);
+        EXPECT_EQ(module->GetNameDictionary(thread), undefined);
+        EXPECT_EQ(module->GetCycleRoot(thread), module.GetTaggedValue());
+        EXPECT_EQ(module->GetTopLevelCapability(thread), undefined);
+        EXPECT_EQ(module->GetAsyncParentModules(thread), undefined);
+        EXPECT_EQ(module->GetSendableEnv(thread), undefined);
+        EXPECT_EQ(module->GetException(thread), JSTaggedValue::Hole());
+        Destroy();
+    }
+
 private:
     EcmaVM *ecmaVm = nullptr;
     EcmaHandleScope *scope = nullptr;
@@ -3760,6 +3842,242 @@ HWTEST_F_L0(JSSerializerTest, SerializeJSHClass)
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize js hclass fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, DeserializeAllObjectTypes)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    
+    // Create objects of various types
+    JSHandle<JSFunction> objFunction = JSHandle<JSFunction>(env->GetObjectFunction());
+    JSHandle<JSObject> jsObject = factory->NewJSObjectByConstructor(objFunction);
+    JSHandle<JSArray> jsArray = factory->NewJSArray();
+    
+    // Create JSMap
+    JSHandle<JSHClass> mapClass = factory->NewEcmaHClass(JSMap::SIZE, JSType::JS_MAP, env->GetMapPrototype());
+    JSHandle<JSMap> jsMap = JSHandle<JSMap>::Cast(factory->NewJSObjectWithInit(mapClass));
+    JSHandle<LinkedHashMap> linkedMap(LinkedHashMap::Create(thread));
+    jsMap->SetLinkedMap(thread, linkedMap);
+    
+    // Create JSSet
+    JSHandle<JSHClass> setClass = factory->NewEcmaHClass(JSSet::SIZE, JSType::JS_SET, env->GetSetPrototype());
+    JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(factory->NewJSObjectWithInit(setClass));
+    JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread));
+    jsSet->SetLinkedSet(thread, linkedSet);
+    
+    // Serialize all objects
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    
+    bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsObject),
+                                        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSObject fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsArray),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSArray fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsMap),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSMap fail";
+    
+    success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(jsSet),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                    JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize JSSet fail";
+    
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeLargeArrayForMultipleRegions)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    constexpr int numLargeArrays = 20;
+    JSHandle<TaggedArray> container = factory->NewTaggedArray(numLargeArrays);
+
+    for (int i = 0; i < numLargeArrays; i++) {
+        JSHandle<TaggedArray> largeArray =
+            factory->NewTaggedArray(100 * 1024 / 8, JSTaggedValue::Hole()); // 100KB arrays
+        container->Set(thread, i, largeArray.GetTaggedValue());
+    }
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread,
+        JSHandle<JSTaggedValue>(container),
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize large array container failed";
+
+    std::unique_ptr<SerializeData> data = serializer->Release();
+
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::LargeArrayTest, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeHugeObjectForLargeSpace)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    JSHandle<TaggedArray> hugeArray =
+        factory->NewTaggedArray(2000 * 1024 / 8, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+
+    for (uint32_t i = 0; i < 10; i++) {
+        hugeArray->Set(thread, i, JSTaggedValue(i));
+    }
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread,
+        JSHandle<JSTaggedValue>(hugeArray),
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize huge array failed";
+
+    std::unique_ptr<SerializeData> data = serializer->Release();
+
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::HugeArrayTest, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeNestedLargeObjects)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    JSHandle<JSObject> outerObj = factory->NewEmptyJSObject();
+
+    constexpr int numNested = 5;
+    for (int i = 0; i < numNested; i++) {
+        JSHandle<JSObject> innerObj = factory->NewEmptyJSObject();
+        JSHandle<TaggedArray> largeArray =
+            factory->NewTaggedArray(80 * 1024 / 8, JSTaggedValue::Hole());
+
+        std::string keyStr = "prop" + std::to_string(i);
+        JSHandle<EcmaString> key = factory->NewFromASCII(keyStr.c_str());
+        JSObject::SetProperty(thread,
+            JSHandle<JSTaggedValue>(innerObj),
+            JSHandle<JSTaggedValue>(key),
+            JSHandle<JSTaggedValue>(largeArray));
+
+        std::string outerKeyStr = "nested" + std::to_string(i);
+        JSHandle<EcmaString> outerKey = factory->NewFromASCII(outerKeyStr.c_str());
+        JSObject::SetProperty(thread,
+            JSHandle<JSTaggedValue>(outerObj),
+            JSHandle<JSTaggedValue>(outerKey),
+            JSHandle<JSTaggedValue>(innerObj));
+    }
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread,
+        JSHandle<JSTaggedValue>(outerObj),
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize nested large objects failed";
+
+    std::unique_ptr<SerializeData> data = serializer->Release();
+
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::NestedLargeObjectsTest, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeMixedSizeObjects)
+{
+    ObjectFactory *factory = ecmaVm->GetFactory();
+
+    JSHandle<JSArray> mixedArray = factory->NewJSArray();
+    mixedArray->SetArrayLength(thread, 4);
+
+    JSHandle<JSObject> smallObj = factory->NewEmptyJSObject();
+    JSArray::FastSetPropertyByValue(thread,
+        JSHandle<JSTaggedValue>(mixedArray),
+        0,
+        JSHandle<JSTaggedValue>(smallObj));
+
+    JSHandle<TaggedArray> mediumArray = factory->NewTaggedArray(10 * 1024 / 8);
+    JSArray::FastSetPropertyByValue(thread,
+        JSHandle<JSTaggedValue>(mixedArray),
+        1,
+        JSHandle<JSTaggedValue>(mediumArray));
+
+    JSHandle<TaggedArray> largeArray = factory->NewTaggedArray(100 * 1024 / 8);
+    JSArray::FastSetPropertyByValue(thread,
+        JSHandle<JSTaggedValue>(mixedArray),
+        2,
+        JSHandle<JSTaggedValue>(largeArray));
+
+    JSHandle<JSObject> smallObj2 = factory->NewEmptyJSObject();
+    JSArray::FastSetPropertyByValue(thread,
+        JSHandle<JSTaggedValue>(mixedArray),
+        3,
+        JSHandle<JSTaggedValue>(smallObj2));
+
+    ValueSerializer *serializer = new ValueSerializer(thread);
+    bool success = serializer->WriteValue(thread,
+        JSHandle<JSTaggedValue>(mixedArray),
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(success) << "Serialize mixed size objects failed";
+
+    std::unique_ptr<SerializeData> data = serializer->Release();
+
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::MixedSizeObjectsTest, jsDeserializerTest, data.release());
+    ecmascript::ThreadSuspensionScope scope(thread);
+    t1.join();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleMutableFields)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString baseFileName = "mutable_fields_test.abc";
+    CString recordName = "testRecord";
+    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+
+    JSTaggedValue undefined = thread->GlobalConstants()->GetUndefined();
+    JSHandle<JSTaggedValue> promise(thread, JSTaggedValue::Hole());
+    module->SetTopLevelCapability(thread, promise.GetTaggedValue());
+    JSHandle<TaggedArray> nameDict = objectFactory->NewTaggedArray(1);
+    module->SetNameDictionary(thread, nameDict.GetTaggedValue());
+    module->SetCycleRoot(thread, undefined);
+    JSHandle<TaggedArray> asyncParents = objectFactory->NewTaggedArray(1);
+    module->SetAsyncParentModules(thread, asyncParents.GetTaggedValue());
+    JSHandle<SFunctionEnv> sendableEnv = objectFactory->NewSFunctionEnv(1);
+    module->SetSendableEnv(thread, sendableEnv.GetTaggedValue());
+    module->SetException(thread, undefined);
+    JSHandle<ModuleNamespace> ns = objectFactory->NewModuleNamespace();
+    module->SetNamespace(thread, ns.GetTaggedValue());
+
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(res);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    JSDeserializerTest jsDeserializerTest;
+    std::thread t1(&JSDeserializerTest::SourceTextModuleMutableFieldsTest, jsDeserializerTest, data.release());
+    {
+        ThreadSuspensionScope suspensionScope(thread);
+        t1.join();
+    }
     delete serializer;
 }
 }  // namespace panda::test

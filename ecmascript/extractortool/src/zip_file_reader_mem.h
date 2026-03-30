@@ -13,15 +13,14 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ABILITY_BASE_ZIP_FILE_READER_MEM_H
-#define OHOS_ABILITY_BASE_ZIP_FILE_READER_MEM_H
+#ifndef ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_MEM_H
+#define ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_MEM_H
 
 #include <string>
 
 #include "zip_file_reader.h"
 
-namespace panda {
-namespace ecmascript {
+namespace panda::ecmascript {
 class ZipFileReaderMem : public ZipFileReader {
 public:
     ZipFileReaderMem(const std::string &filePath) : ZipFileReader(filePath) {}
@@ -34,6 +33,5 @@ protected:
 private:
     std::string fileContent_;
 };
-}
-}
-#endif
+}  // namespace panda::ecmascript
+#endif  // ECMASCRIPT_EXTRACTORTOOL_SRC_ZIP_FILE_READER_MEM_H

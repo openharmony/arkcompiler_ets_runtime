@@ -89,6 +89,12 @@ public:
     static bool IsNativeMethod(const FrameHandler *frameHandler);
     static JSPandaFile *GetJSPandaFile(const EcmaVM *ecmaVm);
 
+    static const CString& GetJSPandaFileDesc(const JSPandaFile *jsPandaFile);
+    static uint32_t GetJSPandaFileMainMethodIndex(const JSPandaFile *jsPandaFile,
+        const CString &recordName = JSPandaFile::ENTRY_FUNCTION_NAME, bool isNewVersion = false);
+    static bool JSPandaFileIsBundlePack(const JSPandaFile *jsPandaFile);
+    static bool JSPandaFileIsNewVersion(const JSPandaFile *jsPandaFile);
+
     static JSTaggedValue GetEnv(const FrameHandler *frameHandler);
     static JSTaggedType *GetSp(const FrameHandler *frameHandler);
     static int32_t GetVregIndex(const FrameHandler *frameHandler, std::string_view name);

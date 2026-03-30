@@ -432,7 +432,16 @@ inline uint32_t JSObject::ComputeElementCapacityWithHint(uint32_t oldCapacity, u
 inline uint32_t JSObject::ComputeNonInlinedFastPropsCapacity(JSThread *thread, uint32_t oldCapacity,
                                                              uint32_t maxNonInlinedFastPropsCapacity)
 {
-    uint32_t newCapacity = oldCapacity + thread->GetPropertiesGrowStep();
+    // fixme: refactor?
+    uint32_t newCapacity = oldCapacity;
+    if constexpr (G_USE_CMS_GC) {
+        uint32_t temp = oldCapacity / (JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2);     // 2: double
+        temp = std::min(temp, static_cast<uint32_t>(1)) + 1;
+        uint32_t step = temp * JSObjectResizingStrategy::PROPERTIES_GROW_SIZE;
+        newCapacity += step;
+    } else {
+        newCapacity += thread->GetPropertiesGrowStep();
+    }
     return newCapacity > maxNonInlinedFastPropsCapacity ? maxNonInlinedFastPropsCapacity : newCapacity;
 }
 

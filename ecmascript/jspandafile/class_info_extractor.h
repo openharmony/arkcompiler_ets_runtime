@@ -18,7 +18,6 @@
 #include <vector>
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_tagged_value_internals.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/property_attributes.h"
 

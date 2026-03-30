@@ -27,7 +27,7 @@ namespace panda::ecmascript::base {
 class JsonPlatformHelper {
 public:
     static bool ReadJsonStringRangeForPlatformForUtf8(
-        bool &isFastString, const uint8_t *current, const uint8_t *range, const uint8_t *&end)
+        bool &isFastString, const uint8_t *&current, const uint8_t *range, const uint8_t *&end)
     {
         return JsonHelperInternal::ReadJsonStringRangeForUtf8(isFastString, current, range, end);
     }

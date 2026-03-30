@@ -160,6 +160,16 @@ void ByteToU64Array(char *data, uint64_t *array, uint32_t size)
     }
 }
 
+double BitCastToDouble(uint64_t value)
+{
+    union {
+        uint64_t u64;
+        double d;
+    } converter;
+    converter.u64 = value;
+    return converter.d;
+}
+
 bool FileReader::Initialize(const std::string &path)
 {
     std::string realPath;

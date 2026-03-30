@@ -25,24 +25,31 @@ namespace panda::ecmascript {
 void SharedGCMarkerBase::MarkRoots(RootVisitor &visitor, SharedMarkType markType)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkRoots", "");
+    MarkGlobalRoots(visitor);
+    MarkAllLocalRoots(visitor, markType);
+}
+
+void SharedGCMarkerBase::MarkGlobalRoots(RootVisitor &visitor)
+{
     MarkSendableGlobalStorage(visitor);
     MarkSerializeRoots(visitor);
     MarkSharedModule(visitor);
     MarkStringCache(visitor);
+}
+
+void SharedGCMarkerBase::MarkAllLocalRoots(RootVisitor &visitor, SharedMarkType markType)
+{
     Runtime *runtime = Runtime::GetInstance();
     if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
-        // The approximate size is enough, because even if some thread creates and registers after here, it will keep
-        // waiting in transition to RUNNING state before JSThread::SetReadyForGCIterating.
-        rSetHandlers_.reserve(runtime->ApproximateThreadListSize());
-        ASSERT(rSetHandlers_.empty());
+        PrepareCollectLocalVMRSet();
     }
     runtime->GCIterateThreadList([&](JSThread *thread) {
-        ASSERT(!thread->IsInRunningState());
+        ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         auto vm = thread->GetEcmaVM();
         ASSERT(!thread->IsConcurrentCopying());
         MarkLocalVMRoots(visitor, vm, markType);
         if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
-            CollectLocalVMRSet(vm);
+            CollectLocalVMRSet(vm, SourceOfMarkingLocalVMRoot::STW_FROM_DAEMON);
         }
     });
 }
@@ -58,14 +65,26 @@ void SharedGCMarkerBase::MarkLocalVMRoots(RootVisitor &visitor, EcmaVM *localVm,
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 
-void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm)
+void SharedGCMarkerBase::PrepareCollectLocalVMRSet()
+{
+    rSetHandlers_.reserve(Runtime::GetInstance()->GetThreadListSize());
+    ASSERT(rSetHandlers_.empty());
+}
+
+void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm, SourceOfMarkingLocalVMRoot markSource)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarkerBase::CollectLocalVMRSet", "");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     RSetWorkListHandler *handler = new RSetWorkListHandler(heap, localVm->GetJSThreadNoCheck());
     heap->SetRSetWorkListHandler(handler);
     NotifyThreadProcessRsetStart(handler->GetOwnerThreadUnsafe());
-    rSetHandlers_.emplace_back(handler);
+    if (markSource == SourceOfMarkingLocalVMRoot::FLIP_FROM_JS_THREAD) {
+        LockHolder holder(mutex_);
+        rSetHandlers_.emplace_back(handler);
+    } else {
+        ASSERT(markSource == SourceOfMarkingLocalVMRoot::STW_FROM_DAEMON);
+        rSetHandlers_.emplace_back(handler);
+    }
 }
 
 void SharedGCMarkerBase::MarkSerializeRoots(RootVisitor &visitor)
@@ -92,11 +111,36 @@ void SharedGCMarkerBase::MarkSharedModule(RootVisitor &visitor)
     SharedModuleManager::GetInstance()->Iterate(visitor);
 }
 
+void SharedGCMarkerBase::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet", "");
+    ASSERT(JSThread::GetCurrent() == handler->GetHeap()->GetEcmaVM()->GetJSThread());
+    ASSERT(JSThread::GetCurrent()->IsInRunningState());
+    MarkWorkNode *&localBuffer = handler->GetHeap()->GetMarkingObjectLocalBuffer();
+    auto visitor = [this, &localBuffer](void *mem) -> bool {
+        ObjectSlot slot(ToUintPtr(mem));
+        JSTaggedValue value(slot.GetTaggedType());
+
+        if (value.IsInSharedSweepableSpace()) {
+            // For now if record weak references from local to share in marking root, the slots
+            // may be invalid due to LocalGC, so just mark them as strong-reference.
+            MarkObjectFromJSThread(localBuffer, value.GetHeapObject());
+            return true;
+        }
+
+        // clear bit.
+        return false;
+    };
+    handler->ProcessAll(visitor);
+    handler->WaitFinishedThenMergeBack();
+}
+
 void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
 {
-    SharedGCMarkObjectVisitor sharedGCMarkObjectVisitor(sWorkManager_, threadId);
+    SharedGCWorkNodeHolder *sWorkNodeHolder = sWorkManager_->GetSharedGCWorkNodeHolder(threadId);
+    SharedGCMarkObjectVisitor sharedGCMarkObjectVisitor(sWorkNodeHolder);
     TaggedObject *obj = nullptr;
-    while (sWorkManager_->Pop(threadId, &obj)) {
+    while (sWorkNodeHolder->Pop(&obj)) {
         JSHClass *hclass = obj->SynchronizedGetClass();
         auto size = hclass->SizeFromJSHClass(obj);
         Region *region = Region::ObjectAddressToRange(obj);
@@ -110,13 +154,16 @@ void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
 
 void SharedGCMovableMarker::ProcessMarkStack(uint32_t threadId)
 {
-    SharedFullGCMarkObjectVisitor sharedFullGCMarkObjectVisitor(this, threadId);
+    SharedGCWorkNodeHolder *sWorkNodeHolder = sWorkManager_->GetSharedGCWorkNodeHolder(threadId);
+    SharedFullGCRunner sRunner(SharedHeap::GetInstance(), sWorkNodeHolder);
+    SharedFullGCMarkObjectVisitor &objectVisitor = sRunner.GetMarkObjectVisitor();
     TaggedObject *obj = nullptr;
-    while (sWorkManager_->Pop(threadId, &obj)) {
-        JSHClass *hclass = obj->SynchronizedGetClass();
-        ObjectSlot objectSlot(ToUintPtr(obj));
-        MarkObject(threadId, hclass, objectSlot);
-        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, sharedFullGCMarkObjectVisitor);
+    while (sWorkNodeHolder->Pop(&obj)) {
+        JSHClass *hclass = obj->GetClass();
+        ObjectSlot hClassSlot(ToUintPtr(obj));
+
+        objectVisitor.VisitHClassSlot(hClassSlot, hclass);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, objectVisitor);
     }
 }
 
@@ -134,10 +181,10 @@ void SharedGCMarkerBase::ResetWorkManager(SharedGCWorkManager *workManager)
     sWorkManager_ = workManager;
 }
 
-SharedGCMarker::SharedGCMarker(SharedGCWorkManager *workManger)
-    : SharedGCMarkerBase(workManger) {}
+SharedGCMarker::SharedGCMarker(SharedGCWorkManager *sWorkManger)
+    : SharedGCMarkerBase(sWorkManger) {}
 
-SharedGCMovableMarker::SharedGCMovableMarker(SharedGCWorkManager *workManger, SharedHeap *sHeap)
-    : SharedGCMarkerBase(workManger), sHeap_(sHeap) {}
+SharedGCMovableMarker::SharedGCMovableMarker(SharedGCWorkManager *sWorkManger)
+    : SharedGCMarkerBase(sWorkManger) {}
 
 }  // namespace panda::ecmascript

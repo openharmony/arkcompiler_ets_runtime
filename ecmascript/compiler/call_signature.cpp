@@ -1122,11 +1122,7 @@ DEF_CALL_SIGNATURE(Builtins)
         VariableType::JS_ANY(),            // arg1
         VariableType::JS_ANY(),            // arg2
     };
-#if ENABLE_NEXT_OPTIMIZATION
     callSign->SetVariadicArgs(false);
-#else
-    callSign->SetVariadicArgs(true);
-#endif
     callSign->SetParameters(params.data());
     callSign->SetTargetKind(CallSignature::TargetKind::BUILTINS_STUB);
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -2669,6 +2665,20 @@ DEF_CALL_SIGNATURE(SharedGCMarkingBarrier)
         VariableType::JS_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_POINTER(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(TryFillSweptRegion)
+{
+    // 1 : 1 input parameters
+    CallSignature index("TryFillSweptRegion", 0, 1, ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
+    *callSign = index;
+    // 1 : 1 input parameters
+    std::array<VariableType, 1> params = {
+        VariableType::NATIVE_POINTER(),
     };
     callSign->SetParameters(params.data());
     callSign->SetGCLeafFunction(true);

@@ -155,7 +155,6 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
     moduleRecord->SetTypes(moduleType);
     moduleRecord->SetIsNewBcVersion(true);
     moduleRecord->SetStatus(ModuleStatus::INSTANTIATED);
-    SourceTextModule::StoreModuleValue(thread, moduleRecord, 0, thread->GlobalConstants()->GetHandledUndefined());
 
     return JSHandle<JSTaggedValue>::Cast(moduleRecord);
 }

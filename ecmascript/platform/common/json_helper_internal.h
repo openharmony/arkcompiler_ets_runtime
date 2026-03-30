@@ -19,7 +19,7 @@ namespace panda::ecmascript::base {
 class JsonHelperInternal {
 friend class JsonPlatformHelper;
 private:
-    static bool ReadJsonStringRangeForUtf8(bool &isFastString, const uint8_t *current,
+    static bool ReadJsonStringRangeForUtf8(bool &isFastString, const uint8_t *&current,
             const uint8_t *range, const uint8_t *&end)
     {
         for (const uint8_t *cur = current; cur != range; ++cur) {
@@ -33,9 +33,11 @@ private:
                 return true;
             }
             if (c < ' ') {
+                current = cur;
                 return false;
             }
         }
+        current = range;
         return false;
     }
 };

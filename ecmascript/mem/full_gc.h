@@ -43,10 +43,11 @@ protected:
 
 private:
     void MarkRoots();
+    void MarkUntilFixPoint();
     void ProcessSharedGCRSetWorkList();
     bool HasEvacuated(Region *region);
     void UpdateRecordWeakReference(uint32_t threadId);
-    void UpdateRecordJSWeakMap(uint32_t threadId);
+    void UpdateRecordWeakLinkedHashMap(uint32_t threadId);
 
     Heap *heap_;
     bool forAppSpawn_ {false};
@@ -80,7 +81,7 @@ public:
     inline void VisitObjectRangeImpl(BaseObject *root, uintptr_t start, uintptr_t end,
                                      VisitObjectArea area) override;
 
-    inline void VisitJSWeakMapImpl(BaseObject *rootObject) override;
+    inline void VisitWeakLinkedHashMapImpl(BaseObject *rootObject) override;
 
     inline void VisitHClassSlot(ObjectSlot slot, TaggedObject *hclass);
 private:
@@ -113,12 +114,16 @@ protected:
 
     inline void HandleMarkingSlotObject(ObjectSlot slot, TaggedObject *object);
 
+    inline bool HandleWeakAggregate(WeakAggregate weakAggregate);
+
     inline void MarkJitCodeVec(JitCodeVector *vec);
 
     template <class Callback>
     void VisitBodyInObj(BaseObject *root, uintptr_t start, uintptr_t end, Callback &&cb);
 
 private:
+    inline bool IsAlive(TaggedObject *object);
+
     inline bool NeedEvacuate(Region *region);
 
     inline void EvacuateObject(ObjectSlot slot, TaggedObject *object, const MarkWord &markWord);
@@ -140,7 +145,11 @@ private:
 
     inline void RecordWeakReference(JSTaggedType *weak);
 
-    inline void RecordJSWeakMap(TaggedObject *object);
+    inline void RecordWeakLinkedHashMap(TaggedObject *object);
+
+    inline void RecordFreshWeakAggregate(WeakAggregate weakAggregate);
+
+    inline void RecordPendingWeakAggregate(WeakAggregate weakAggregate);
 
     Heap *heap_ {nullptr};
     WorkNodeHolder *workNodeHolder_ {nullptr};
@@ -149,6 +158,7 @@ private:
     FullGCMarkObjectVisitor markObjectVisitor_;
     FullGCUpdateLocalToShareRSetVisitor updateLocalToShareRSetVisitor_;
 
+    friend class FullGC;
     friend class FullGCMarkRootVisitor;
     friend class FullGCMarkObjectVisitor;
     friend class FullGCUpdateLocalToShareRSetVisitor;

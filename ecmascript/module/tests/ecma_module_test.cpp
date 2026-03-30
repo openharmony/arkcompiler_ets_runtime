@@ -1489,6 +1489,26 @@ HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl3)
     EXPECT_EQ(res, "&test");
 }
 
+HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl4)
+{
+    CString inputFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString outBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString entryPoint = "com.example.myapplication/entry/ets/pages/Index";
+    // No pkgContextInfoList element
+    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, entryPoint);
+
+    // entryPoint does not contain '/'
+    CString entryPoint2 = "com.example.myapplication";
+    CString res2 = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint2);
+    EXPECT_EQ(res2, entryPoint2);
+
+    // entryPoint does not contain a second '/'
+    CString entryPoint3 = "com.example.myapplication/entry";
+    CString res3 = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint3);
+    EXPECT_EQ(res3, entryPoint3);
+}
+
 HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized)
 {
     instance->SetBundleName("com.example.myapplication");
@@ -2032,14 +2052,14 @@ HWTEST_F_L0(EcmaModuleTest, ResolveExportObject)
     jsHclass->SetLayout(thread, layout);
     JSHandle<JSTaggedValue> res2 = SourceTextModule::ResolveExportObject(
         thread, module1, JSHandle<JSTaggedValue>::Cast(obj), exportName);
-    EXPECT_TRUE(res2->IsHole());
+    EXPECT_TRUE(res2->IsNull());
 
     JSHandle<JSObject> obj1(objectFactory->NewJSObjectByConstructor(ctor));
     JSHandle<NameDictionary> dict = NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(2));
     obj1->SetProperties(thread, JSHandle<JSTaggedValue>::Cast(dict));
     JSHandle<JSTaggedValue> res3 = SourceTextModule::ResolveExportObject(
         thread, module1, JSHandle<JSTaggedValue>::Cast(obj1), exportName);
-    EXPECT_TRUE(res3->IsHole());
+    EXPECT_TRUE(res3->IsNull());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ResolveNativeStarExport)
@@ -2590,47 +2610,24 @@ HWTEST_F_L0(EcmaModuleTest, ModuleLogger1) {
     moduleLogger = nullptr;
 }
 
-HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableModuleLoggerAndSnapshot) {
-    auto vm = thread->GetEcmaVM();
-    thread->SetModuleLogger(nullptr);
-    int arkProperties = vm->GetJSOptions().GetArkProperties();
-    vm->GetJSOptions().SetArkProperties((arkProperties |
-        ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) & (~ArkProperties::ENABLE_MODULE_LOG));
-    ModuleLogger::SetModuleLoggerTask(vm);
-    ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    EXPECT_EQ(moduleLogger, nullptr);
-}
-
-HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableSnapshot) {
-    auto vm = thread->GetEcmaVM();
-    int arkProperties = vm->GetJSOptions().GetArkProperties();
-    vm->GetJSOptions().SetArkProperties((arkProperties |
-        ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) | ArkProperties::ENABLE_MODULE_LOG);
-    ModuleLogger::SetModuleLoggerTask(vm);
-    ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    EXPECT_NE(moduleLogger, nullptr);
-    delete moduleLogger;
-    thread->SetModuleLogger(nullptr);
-}
-
 HWTEST_F_L0(EcmaModuleTest, ModuleLogger_DisableModuleLogger) {
     auto vm = thread->GetEcmaVM();
+    thread->SetModuleLogger(nullptr);
     int arkProperties = vm->GetJSOptions().GetArkProperties();
-    vm->GetJSOptions().SetArkProperties((arkProperties &
-        (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT)) & (~ArkProperties::ENABLE_MODULE_LOG));
+    vm->GetJSOptions().SetArkProperties(arkProperties & (~ArkProperties::ENABLE_MODULE_LOG));
     ModuleLogger::SetModuleLoggerTask(vm);
     ModuleLogger *moduleLogger = thread->GetModuleLogger();
     EXPECT_EQ(moduleLogger, nullptr);
 }
 
-HWTEST_F_L0(EcmaModuleTest, ModuleLogger_EnableModuleLoggerAndSnapshot) {
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_EnableModuleLogger) {
     auto vm = thread->GetEcmaVM();
     int arkProperties = vm->GetJSOptions().GetArkProperties();
-    vm->GetJSOptions().SetArkProperties((arkProperties &
-        (~ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT)) | ArkProperties::ENABLE_MODULE_LOG);
+    vm->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_MODULE_LOG);
     ModuleLogger::SetModuleLoggerTask(vm);
     ModuleLogger *moduleLogger = thread->GetModuleLogger();
-    EXPECT_EQ(moduleLogger, nullptr);
+    EXPECT_EQ(vm->GetJSOptions().DisableModuleSnapshot(), true);
+    EXPECT_NE(moduleLogger, nullptr);
 }
 
 HWTEST_F_L0(EcmaModuleTest, ModuleLogger_now) {
@@ -4308,42 +4305,6 @@ HWTEST_F_L0(EcmaModuleTest, AddNormalSerializeModule)
     EXPECT_EQ(serializerArray->Get(thread, 0), module.GetTaggedValue());
 }
 
-HWTEST_F_L0(EcmaModuleTest, RestoreMutableFields)
-{
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
-    JSTaggedValue undefinedValue = thread->GlobalConstants()->GetUndefined();
-    SourceTextModule::MutableFields fields;
-
-    fields.TopLevelCapability = JSTaggedValue(1);
-    fields.NameDictionary = JSTaggedValue(2);
-    fields.CycleRoot = JSTaggedValue(3);
-    fields.AsyncParentModules = JSTaggedValue(4);
-    fields.SendableEnv = JSTaggedValue(5);
-    fields.Exception = JSTaggedValue(6);
-    fields.Namespace = JSTaggedValue(7);
-
-    SourceTextModule::RestoreMutableFields(thread, module, fields);
-
-    EXPECT_EQ(module->GetTopLevelCapability(thread), fields.TopLevelCapability);
-    EXPECT_EQ(module->GetNameDictionary(thread), fields.NameDictionary);
-    EXPECT_EQ(module->GetCycleRoot(thread), fields.CycleRoot);
-    EXPECT_EQ(module->GetAsyncParentModules(thread), fields.AsyncParentModules);
-    EXPECT_EQ(module->GetSendableEnv(thread), fields.SendableEnv);
-    EXPECT_EQ(module->GetException(thread), fields.Exception);
-    EXPECT_EQ(module->GetNamespace(thread), fields.Namespace);
-
-    SourceTextModule::StoreAndResetMutableFields(thread, module, fields);
-
-    EXPECT_EQ(module->GetTopLevelCapability(thread), undefinedValue);
-    EXPECT_EQ(module->GetNameDictionary(thread), undefinedValue);
-    EXPECT_EQ(module->GetCycleRoot(thread), undefinedValue);
-    EXPECT_EQ(module->GetAsyncParentModules(thread), undefinedValue);
-    EXPECT_EQ(module->GetSendableEnv(thread), undefinedValue);
-    EXPECT_EQ(module->GetException(thread), undefinedValue);
-    EXPECT_EQ(module->GetNamespace(thread), undefinedValue);
-}
-
 HWTEST_F_L0(EcmaModuleTest, UpdateSharedModule)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
@@ -5666,4 +5627,204 @@ HWTEST_F_L0(EcmaModuleTest, ModuleStressTest_030)
     EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue);
 }
 
+HWTEST_F_L0(EcmaModuleTest, GetPkgNamesWithNormalizedOhmurl)
+{
+    CString ohmurl1 = "@normalized:N&&&har/Index&1.0.0";
+    CString res1 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl1);
+    EXPECT_EQ(res1, "har");
+
+    CString ohmurl2 = "@normalized:N&&&@ohos/har/Index&1.0.0";
+    CString res2 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl2);
+    EXPECT_EQ(res2, "@ohos/har");
+
+    CString ohmurl3 = "@normalized:N&&&@ohos&1.0.0";
+    CString res3 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl3);
+    EXPECT_EQ(res3, "");
+
+    CString ohmurl4 = "@normalized:N&&&&1.0.0";
+    CString res4 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl4);
+    EXPECT_EQ(res4, "");
+
+    CString ohmurl5 = "@normalized:N&&&@ohos/&1.0.0";
+    CString res5 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl5);
+    EXPECT_EQ(res5, "");
+
+    CString ohmurl6 = "@normalized:N&&&har/&1.0.0";
+    CString res6 = ModulePathHelper::GetPkgNameWithNormalizedOhmurl(ohmurl6);
+    EXPECT_EQ(res6, "har");
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl)
+{
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    pkgList["entry"] = {};
+    instance->SetpkgContextInfoList(pkgList);
+    CUnorderedMap<CString, CUnorderedMap<CString, CUnorderedSet<CString>>> ohExportsList;
+    CUnorderedMap<CString, CUnorderedSet<CString>> entryExportsList;
+    entryExportsList["har1"] = {};
+    entryExportsList["har2"] = {
+        "@normalized:N&&&har2/Index&1.0.0",
+        "@normalized:N&&&har2/src/main/ets/Test&1.0.0"
+    };
+    entryExportsList["@ohos/library1"] = {};
+    entryExportsList["@ohos/library2"] = {
+        "@normalized:N&&&@ohos/library2/src/main/ets/Util&1.0.0"
+    };
+    ohExportsList["entry"] = entryExportsList;
+    instance->SetOhExportsList(ohExportsList);
+
+    CString entryBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    bool res3 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har2/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res3, true);
+
+    bool res4 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har2/src/main/ets/Test1&1.0.0");
+    EXPECT_EQ(res4, false);
+
+    bool res5 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library1/Index&1.0.0", "@normalized:N&&&@ohos/library1/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res5, true);
+
+    bool res6 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library1/Index&1.0.0", "@normalized:N&&&@ohos/library2/src/main/ets/Util&1.0.0");
+    EXPECT_EQ(res6, true);
+
+    bool res7 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library1/Index&1.0.0", "@normalized:N&&&@ohos/library2/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res7, false);
+
+    bool res8 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library2/Index&1.0.0", "@normalized:N&&&@ohos/library1/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res8, false);
+
+    bool res9 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&@ohos/library2/Index&1.0.0", "@normalized:N&&&@ohos/library3/src/main/ets/Test&1.0.0");
+    EXPECT_EQ(res9, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl1)
+{
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    pkgList["entry"] = {};
+    instance->SetpkgContextInfoList(pkgList);
+
+    CString entryBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    bool res1 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har1/Index&1.0.0");
+    EXPECT_EQ(res1, true);
+
+    bool res2 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "&har1/Index&1.0.0");
+    EXPECT_EQ(res2, true);
+
+    bool res3 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&&1.0.0");
+    EXPECT_EQ(res3, true);
+
+    bool res4 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har3/Index&1.0.0");
+    EXPECT_EQ(res4, true);
+
+    CString baseFileName2 = "/data/storage/xxxxxx/bundle/moduleName/ets/xxx/xxx.abc";
+    instance->SetModuleName("entry");
+    bool res5 = ModulePathHelper::CheckExportsWithOhmurl(instance, baseFileName2,
+        "@normalized:N&&&har1/Index&1.0.0", "@normalized:N&&&har3/Index&1.0.0");
+    EXPECT_EQ(res5, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, CheckExportsWithOhmurl2)
+{
+    CString entryBaseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    bool res1 = ModulePathHelper::CheckExportsWithOhmurl(instance, entryBaseFileName,
+        "@bundle:com.bundleName.test/moduleName/requestModuleName1",
+        "@bundle:com.bundleName.test/moduleName1/requestModuleName10");
+    EXPECT_EQ(res1, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_CombinedTest)
+{
+    auto vm = thread->GetEcmaVM();
+    vm->SetModuleName("test_bundle");
+
+    // Test PrintModuleLoadInfoTask with nu2llptr
+    ModuleLogger::PrintModuleLoadInfoTask(nullptr);
+
+    // Create ModuleLogger
+    ModuleLogger *moduleLogger = new ModuleLogger(vm);
+
+    // Call SetDuration with ENTRY_FUNCTION_NAME to skip entry functions
+    CString entryFunctionName = "func_main_0";
+    size_t startTime = moduleLogger->now();
+    moduleLogger->SetDuration(entryFunctionName, static_cast<double>(startTime));
+
+    // Also test ENTRY_MAIN_FUNCTION
+    CString entryMainFunction = "_GLOBAL::func_main_0";
+    moduleLogger->SetDuration(entryMainFunction, static_cast<double>(startTime));
+
+    // Create a test module for testing
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    CString recordName1 = "test_module_1";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+
+    // Call SetDuration twice to verify duplicate call detection
+    size_t startTime1 = moduleLogger->now();
+    moduleLogger->SetDuration(recordName1, static_cast<double>(startTime1));
+    size_t startTime2 = moduleLogger->now();
+    moduleLogger->SetDuration(recordName1, static_cast<double>(startTime2));
+    double timeElapsed = (startTime2 - startTime1) / 1000.0;
+    EXPECT_NE(timeElapsed, 0.0);
+
+    // Set up VM as worker thread and test PrintModuleLoadInfo
+    vm->GetJSOptions().SetIsWorker(true);
+    moduleLogger->InsertEntryPointModule(module1);
+    moduleLogger->PrintModuleLoadInfo();
+
+    // Test PrintModuleLoadInfoTask with valid pointer
+    ModuleLogger::PrintModuleLoadInfoTask(moduleLogger);
+
+    // Clean up
+    delete moduleLogger;
+    moduleLogger = nullptr;
+
+    // Restore VM state
+    vm->GetJSOptions().SetIsWorker(false);
+}
+
+// Mock TimerTaskCallback for testing SetModuleLoggerTask
+void* MockTimerTaskCallback(EcmaVM *vm, void *data, TimerCallbackFunc func, uint64_t timeout, bool repeat)
+{
+    (void)vm;
+    (void)data;
+    (void)func;
+    (void)timeout;
+    (void)repeat;
+    return nullptr;
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleLogger_SetModuleLoggerTask)
+{
+    auto vm = thread->GetEcmaVM();
+    thread->SetModuleLogger(nullptr);
+
+    // Enable ModuleLog and DisableJSPandaFileAndModuleSnapshot
+    int arkProperties = vm->GetJSOptions().GetArkProperties();
+    vm->GetJSOptions().SetArkProperties((arkProperties |
+        ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT) | ArkProperties::ENABLE_MODULE_LOG);
+
+    // Set TimerTaskCallback
+    vm->SetTimerTaskCallback(MockTimerTaskCallback);
+
+    // Call SetModuleLoggerTask
+    ModuleLogger::SetModuleLoggerTask(vm);
+
+    ModuleLogger *moduleLogger = thread->GetModuleLogger();
+    EXPECT_NE(moduleLogger, nullptr);
+
+    // Clean up
+    delete moduleLogger;
+    thread->SetModuleLogger(nullptr);
+    vm->SetTimerTaskCallback(nullptr);
+}
 }  // namespace panda::test

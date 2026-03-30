@@ -1,8 +1,9 @@
 {
     "name": "PROFILE_TYPE_INFO",
+    "node_name": "ArkInternalProfileTypeInfo",
     "offsets": [],
     "end_offset": 0,
     "parents": [
-        "TAGGED_ARRAY"
+        "IC_INFO"
     ]
 }

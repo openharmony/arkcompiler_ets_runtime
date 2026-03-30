@@ -1,5 +1,6 @@
 {
     "name": "JS_CJS_REQUIRE",
+    "node_name": "CJS Require",
     "offsets": [
         {
             "name": "Cache",

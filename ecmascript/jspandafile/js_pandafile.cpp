@@ -16,8 +16,13 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 
 #include "common_components/taskpool/taskpool.h"
+#include "ecmascript/jspandafile/js_pandafile_snapshot.h"
+#include "ecmascript/jspandafile/js_pandafile_record_info_snapshot.h"
+#include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/runtime.h"
+#include "ecmascript/ohos/ohos_constants.h"
+#include "ecmascript/ohos/ohos_version_info_tools.h"
 
 namespace panda::ecmascript {
 namespace {
@@ -35,6 +40,71 @@ JSPandaFile::JSPandaFile(const panda_file::File *pf, const CString &descriptor, 
     }
     checksum_ = pf->GetHeader()->checksum;
     isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
+}
+
+JSPandaFile::JSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &descriptor,
+                         std::string_view entryPoint, CreateMode mode)
+    : pf_(pf), desc_(descriptor), mode_(mode)
+{
+    ASSERT(pf_ != nullptr);
+    CheckIsBundlePack();
+    checksum_ = pf->GetHeader()->checksum;
+    isNewVersion_ = pf_->GetHeader()->version > OLD_VERSION;
+
+    EcmaVM *vm = thread->GetEcmaVM();
+
+    if (!vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
+        if (JSPandaFileSnapshot::ReadData(thread, this, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR)) {
+            // Use snapshot to skip InitializeMergedPF and TranslateClasses
+            return;
+        }
+        ResetAfterSnapshotFail();
+    }
+
+    // If snapshot loading fails, fall back to normal initialization and translation
+    CString methodName = entryPoint.data();
+    if (isBundlePack_) {
+        InitializeUnMergedPF();
+        // entryPoint maybe is _GLOBAL::func_main_watch to execute func_main_watch
+        auto pos = entryPoint.find_last_of("::");
+        if (pos != std::string_view::npos) {
+            methodName = entryPoint.substr(pos + 1);
+        } else {
+            // default use func_main_0 as entryPoint
+            methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
+        }
+    } else {
+        InitializeMergedPF();
+    }
+
+    if (isNewVersion_ && vm->IsAsynTranslateClasses()) {
+        TranslateClasses(thread, methodName);
+    } else {
+        PandaFileTranslator::TranslateClasses(thread, this, methodName);
+    }
+}
+
+void JSPandaFile::ResetAfterSnapshotFail()
+{
+    for (const auto &recordInfoPair : jsRecordInfo_) {
+        delete recordInfoPair.second;
+    }
+    jsRecordInfo_.clear();
+    npmEntries_.clear();
+    ownedRecordNames_.clear();
+    ownedNpmEntries_.clear();
+
+    if (methodLiterals_ != nullptr) {
+        JSPandaFileManager::FreeBuffer(methodLiterals_, sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_);
+        methodLiterals_ = nullptr;
+    }
+#if ENABLE_LATEST_OPTIMIZATION
+    methodLiteralMap_.Clear();
+#else
+    methodLiteralMap_.clear();
+#endif
+    numMethods_ = 0;
+    numClasses_ = 0;
 }
 
 void JSPandaFile::CheckIsBundlePack()
@@ -97,7 +167,11 @@ JSPandaFile::~JSPandaFile()
     }
 
     constpoolMap_.clear();
+#if ENABLE_LATEST_OPTIMIZATION
+    methodLiteralMap_.Clear();
+#else
     methodLiteralMap_.clear();
+#endif
     ClearNameMap();
     if (methodLiterals_ != nullptr) {
         JSPandaFileManager::FreeBuffer(methodLiterals_, sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_);
@@ -131,6 +205,7 @@ void JSPandaFile::InitializeUnMergedPF()
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     numClasses_ = classIndexes.size();
     JSRecordInfo* info = new JSRecordInfo();
+    jsRecordInfo_.reserve(numClasses_);
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -165,7 +240,11 @@ void JSPandaFile::InitializeUnMergedPF()
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
     methodLiterals_ = static_cast<MethodLiteral *>(
         JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
+#if ENABLE_LATEST_OPTIMIZATION
+    methodLiteralMap_.Reserve(numMethods_);
+#else
     methodLiteralMap_.reserve(numMethods_);
+#endif
 }
 
 void JSPandaFile::InitializeMergedPF()
@@ -211,9 +290,17 @@ void JSPandaFile::InitializeMergedPF()
                        fieldName.substr(0, PACKAGE_NAME_LEN) == PACKAGE_NAME) {
                 std::string_view packageSuffix = fieldName.substr(PACKAGE_NAME_LEN);
                 info->npmPackageName = CString(packageSuffix);
+#if ENABLE_LATEST_OPTIMIZATION && ENABLE_MEMORY_OPTIMIZATION
+            // SCOPE_NAMES is used for AOP during compilation phase only,
+            // not involved in runtime execution, so skip it.
+            } else if (SCOPE_NAMES != fieldName) {
+                npmEntries_.emplace(recordName, fieldName);
+            }
+#else
             } else {
                 npmEntries_.emplace(recordName, fieldName);
             }
+#endif
         });
         if (hasCjsFiled || hasJsonFiled) {
             jsRecordInfo_.emplace(recordName, info);
@@ -223,7 +310,11 @@ void JSPandaFile::InitializeMergedPF()
     }
     methodLiterals_ = static_cast<MethodLiteral *>(
         JSPandaFileManager::AllocateBuffer(sizeof(MethodLiteral) * numMethods_, isBundlePack_, mode_));
+#if ENABLE_LATEST_OPTIMIZATION
+    methodLiteralMap_.Reserve(numMethods_);
+#else
     methodLiteralMap_.reserve(numMethods_);
+#endif
 }
 
 CString JSPandaFile::GetEntryPoint(const CString &recordName) const
@@ -285,7 +376,7 @@ FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
             kind = FunctionKind::CONCURRENT_FUNCTION;
             break;
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
             UNREACHABLE();
     }
     return kind;
@@ -317,7 +408,7 @@ FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
             kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
             break;
         default:
-            LOG_ECMA(FATAL) << "this branch is unreachable";
+            LOG_ECMA(FATAL) << "this branch is unreachable"; // LCOV_EXCL_BR_LINE
             UNREACHABLE();
     }
     return kind;
@@ -446,7 +537,12 @@ void JSPandaFile::GetClassAndMethodIndexes(ClassTranslateWork &indexes)
 
 bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    jsPandaFile_->TranslateClassInSubThread(thread_, *methodNamePtr_, curTranslateWorks_);
+    jsPandaFile_->IncreaseRunningTaskCount();
+    if (waitingFinish_->load(std::memory_order_acquire)) {
+        jsPandaFile_->ReduceTaskCount();
+        return true;
+    }
+    jsPandaFile_->TranslateClassInSubThread(thread_, *methodNamePtr_, curTranslateWorks_, needDoRemainingWork_);
     jsPandaFile_->ReduceTaskCount();
     return true;
 }
@@ -466,7 +562,8 @@ void JSPandaFile::TranslateClassInMainThread(JSThread *thread, const CString &me
 }
 
 void JSPandaFile::TranslateClassInSubThread(JSThread *thread, const CString &methodName,
-                                            CurClassTranslateWork &curTranslateWorks)
+                                            CurClassTranslateWork &curTranslateWorks,
+                                            std::atomic<bool> &needDoRemainingWork)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::TranslateClassInSubThread", "");
     ClassTranslateWork &indexes = curTranslateWorks.second;
@@ -476,8 +573,9 @@ void JSPandaFile::TranslateClassInSubThread(JSThread *thread, const CString &met
         uint32_t size = indexes.size();
         for (uint32_t i = 0; i < size; i++) {
             // Stop the ongoning translating work, and leave it to the main thead to avoid waiting too long.
-            if (waitingFinish_.load(std::memory_order_acquire)) {
+            if (waitingFinish_->load(std::memory_order_acquire)) {
                 curTranslateWorks.first = i;
+                needDoRemainingWork.store(true, std::memory_order_release);
                 return;
             }
             PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[i].first, indexes[i].second);
@@ -486,35 +584,26 @@ void JSPandaFile::TranslateClassInSubThread(JSThread *thread, const CString &met
 }
 
 void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr,
-                                           CurClassTranslateWork &curTranslateWorks)
+                                           CurClassTranslateWork &curTranslateWorks,
+                                           std::atomic<bool> &needDoRemainingWork,
+                                           const std::shared_ptr<std::atomic<bool>> &waitingFinish)
 {
-    IncreaseTaskCount();
-    common::Taskpool::GetCurrentTaskpool()->PostTask(
-        std::make_unique<TranslateClassesTask>(thread->GetThreadId(), thread, this, methodNamePtr, curTranslateWorks));
+    common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<TranslateClassesTask>(
+        thread->GetThreadId(), thread, this, methodNamePtr, curTranslateWorks, needDoRemainingWork, waitingFinish));
 }
 
-void JSPandaFile::IncreaseTaskCount()
+void JSPandaFile::IncreaseRunningTaskCount()
 {
     LockHolder holder(waitTranslateClassFinishedMutex_);
     runningTaskCount_++;
-}
-
-void JSPandaFile::WaitTranslateClassTaskFinished()
-{
-    LockHolder holder(waitTranslateClassFinishedMutex_);
-    while (runningTaskCount_ > 0) {
-        waitingFinish_.store(true, std::memory_order_release);
-        waitTranslateClassFinishedCV_.Wait(&waitTranslateClassFinishedMutex_);
-    }
 }
 
 void JSPandaFile::ReduceTaskCount()
 {
     LockHolder holder(waitTranslateClassFinishedMutex_);
     runningTaskCount_--;
-    if (runningTaskCount_ == 0) {
-        waitTranslateClassFinishedCV_.SignalAll();
-    }
+    // if runningTaskCount_ decrease, let main thread check remaining work.
+    waitTranslateClassFinishedCV_.SignalAll();
 }
 
 void JSPandaFile::SetAllMethodLiteralToMap()
@@ -530,32 +619,45 @@ void JSPandaFile::SetAllMethodLiteralToMap()
     }
 }
 
-void JSPandaFile::CheckOngoingClassTranslating(JSThread *thread, const CString &methodName,
-                                               const AllClassTranslateWork &remainingTranslateWorks)
+void JSPandaFile::CheckAndTranslateRemainingClasses(JSThread *thread, const CString &methodName,
+                                                    const AllClassTranslateWork &remainingTranslateWorks,
+                                                    CVector<std::atomic<bool>> &needDoRemainingWorks)
 {
-    WaitTranslateClassTaskFinished();
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "TranslateRemainingClasses", "");
-    for (const auto &[startIndex, indexes]: remainingTranslateWorks) {
-        auto size = indexes.size();
-        for (uint32_t i = startIndex; i < size; i++) {
-            PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[i].first, indexes[i].second);
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_MAX, HITRACE_TAG_ARK, "CheckAndTranslateRemainingClasses", "");
+    LockHolder holder(waitTranslateClassFinishedMutex_);
+    waitingFinish_->store(true, std::memory_order_release);
+    while (runningTaskCount_ > 0) {
+        waitTranslateClassFinishedCV_.Wait(&waitTranslateClassFinishedMutex_);
+        // run remaining work
+        for (uint8_t i = 0; i < needDoRemainingWorks.size(); ++i) {
+            if (needDoRemainingWorks[i].load(std::memory_order_acquire)) {
+                const auto &[startIndex, indexes] = remainingTranslateWorks[i];
+                auto size = indexes.size();
+                for (uint32_t j = startIndex; j < size; j++) {
+                    PandaFileTranslator::TranslateClass(thread, this, methodName, indexes[j].first, indexes[j].second);
+                }
+                needDoRemainingWorks[i] = false;
+            }
         }
     }
 }
 
 void JSPandaFile::TranslateClasses(JSThread *thread, const CString &methodName)
 {
-    auto numThreads = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-    AllClassTranslateWork remainingTranslateWorks(numThreads);
-    const std::shared_ptr<CString> methodNamePtr = std::make_shared<CString>(methodName);
     bool useTaskpool = numClasses_ >= USING_TASKPOOL_MIN_CLASS_COUNT;
     if LIKELY(useTaskpool) {
+        auto numThreads = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+        AllClassTranslateWork remainingTranslateWorks(numThreads);
+        const std::shared_ptr<CString> methodNamePtr = std::make_shared<CString>(methodName);
+        CVector<std::atomic<bool>> needDoRemainingWorks(numThreads);
         for (uint32_t i = 0; i < numThreads; i++) {
-            PostInitializeMethodTask(thread, methodNamePtr, remainingTranslateWorks[i]);
+            needDoRemainingWorks[i] = false;
+            PostInitializeMethodTask(thread, methodNamePtr, remainingTranslateWorks[i],
+                needDoRemainingWorks[i], waitingFinish_);
         }
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::STW);
         TranslateClassInMainThread(thread, methodName);
-        CheckOngoingClassTranslating(thread, methodName, remainingTranslateWorks);
+        CheckAndTranslateRemainingClasses(thread, methodName, remainingTranslateWorks, needDoRemainingWorks);
         common::Taskpool::GetCurrentTaskpool()->SetThreadPriority(common::PriorityMode::FOREGROUND);
     } else {
         TranslateClassInMainThread(thread, methodName);

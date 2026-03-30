@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_PLATFORM_FILE_H
 #define ECMASCRIPT_PLATFORM_FILE_H
 
+#include <system_error>
 #ifdef PANDA_TARGET_WINDOWS
 #include <windef.h>
 #include <winbase.h>
@@ -90,6 +91,8 @@ void *FindSymbol(void *handle, const char *symbol);
 int CloseLib(void *handle);
 char *LoadLibError();
 void PUBLIC_API DeleteFilesWithSuffix(const std::string &dirPath, const std::string &suffix);
+bool Chmod(const std::string_view &path, const std::string_view &mode);
+bool Chmod(const std::string_view &path, const std::string_view &mode, std::error_code &errorCode);
 
 class MemMapScope {
 public:

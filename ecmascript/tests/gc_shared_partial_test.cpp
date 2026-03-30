@@ -32,7 +32,6 @@ public:
         thread = instance->GetJSThread();
         thread->ManagedCodeBegin();
         scope = new EcmaHandleScope(thread);
-        auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     }
     JSHandle<TaggedObject> CreateSharedObjectsInOneRegion(std::shared_ptr<SharedTestSpace> space, double aliveRate);
     void InitTaggedArray(TaggedObject *obj, size_t arrayLen);
@@ -114,7 +113,7 @@ HWTEST_F_L0(SharedPartialGCTest, PartialGCTest)
     JSHandle<TaggedArray> localObj = factory->NewTaggedArray(ARRAY_SIZE, JSTaggedValue::Undefined(), false);
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
-    heap->GetHeapPrepare();
+    heap->GetHeapPrepare(thread);
     SharedOldSpace *sOldSpace = sHeap->GetOldSpace();
     std::shared_ptr<SharedTestSpace> space= std::make_shared<SharedTestSpace>(sHeap);
     std::vector<std::pair<Region*, JSHandle<TaggedObject>>> checkObjList;

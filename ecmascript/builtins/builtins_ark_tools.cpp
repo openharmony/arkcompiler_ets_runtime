@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -304,7 +304,7 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
     heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::TRIGGER_BY_JS);
     SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::TRIGGER_BY_JS>(
         thread);
-    heap->GetHeapPrepare();
+    heap->GetHeapPrepare(thread);
     return JSTaggedValue::True();
 }
 
@@ -415,6 +415,12 @@ JSTaggedValue BuiltinsArkTools::PrintMegaICStat(EcmaRuntimeCallInfo *info)
     thread->PrintMegaICStat();
 #endif
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::SupportStacklessCoroutine(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    return JSTaggedValue::False();
 }
 
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -598,8 +604,8 @@ JSTaggedValue BuiltinsArkTools::GetICState(EcmaRuntimeCallInfo *info)
         JSHandle<EcmaString> noProfileTypeInfo = factory->NewFromUtf8ReadOnly("No ProfileTypeInfo");
         return noProfileTypeInfo.GetTaggedValue();
     }
-    ProfileTypeAccessor profileTypeAccessor(thread, profileTypeInfo, slotId, static_cast<ICKind>(icKind));
-    auto state = profileTypeAccessor.ICStateToString(profileTypeAccessor.GetICState());
+    IcAccessor icAccessor(thread, profileTypeInfo, slotId, static_cast<ICKind>(icKind));
+    auto state = icAccessor.ICStateToString(icAccessor.GetICState());
     JSHandle<EcmaString> stateString = factory->NewFromUtf8ReadOnly(state);
     return stateString.GetTaggedValue();
 }
@@ -1738,7 +1744,7 @@ JSTaggedValue BuiltinsArkTools::EnableProcDumpInSharedOOM(EcmaRuntimeCallInfo *i
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> arg = GetCallArg(info, 0);
     bool flag = arg->IsTrue();
-    Runtime::GetInstance()->EnableProcDumpInSharedOOM(flag);
+    Runtime::GetInstance()->SetProcDumpInSharedOOM(flag);
     LOG_ECMA(INFO) << "enable process dump in shared oom: " << flag;
     return JSTaggedValue::Undefined();
 }

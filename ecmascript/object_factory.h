@@ -57,6 +57,7 @@ class GlobalEnvConstants;
 class AccessorData;
 class JSGlobalObject;
 class LexicalEnv;
+class WeakLinkedHashMap;
 class SFunctionEnv;
 class SendableEnv;
 class JSDate;
@@ -183,6 +184,7 @@ class ProtoChangeMarker;
 class ProtoChangeDetails;
 class MarkerCell;
 class ProfileTypeInfo;
+class ICInfo;
 class MachineCode;
 class ClassInfoExtractor;
 class AOTLiteralInfo;
@@ -217,6 +219,7 @@ public:
                                                 MemSpaceType methodSpaceType = SHARED_OLD_SPACE);
 
     JSHandle<ProfileTypeInfo> NewProfileTypeInfo(uint32_t length);
+    JSHandle<ICInfo> NewICInfo(uint32_t length);
     JSHandle<ConstantPool> NewConstantPool(uint32_t capacity);
     JSHandle<Program> NewProgram();
 
@@ -293,7 +296,7 @@ public:
 
     JSHandle<JSObject> OrdinaryNewJSObjectCreate(const JSHandle<JSTaggedValue> &proto);
 
-    JSHandle<JSObject> CreateNapiObject();
+    JSHandle<JSObject> CreateNapiObject(bool isWrapped = false);
     JSHandle<JSObject> CreateNullJSObject();
 
     JSHandle<JSFunction> NewAotFunction(uint32_t numArgs, uintptr_t codeEntry);
@@ -321,6 +324,8 @@ public:
 
     // get JSHClass for Ecma ClassLinker
     JSHandle<LexicalEnv> NewLexicalEnv(int numSlots);
+
+    JSHandle<WeakLinkedHashMap> NewWeakLinkedHashMap(int numSlots);
 
     inline LexicalEnv *InlineNewLexicalEnv(int numSlots);
 

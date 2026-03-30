@@ -21,6 +21,7 @@
 #include "ecmascript/common.h"
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/jspandafile/method_literal_id_map.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/platform/mutex.h"
@@ -32,6 +33,7 @@
 namespace panda {
 namespace ecmascript {
 class EcmaVM;
+class JSPandaFileRecordInfoSnapshot;
 using ReleaseSecureMemCallback = std::function<void(void* fileMapper)>;
 
 enum class CreateMode : uint8_t {
@@ -86,6 +88,7 @@ public:
     static constexpr std::string_view HAS_TOP_LEVEL_AWAIT = "hasTopLevelAwait";
     static constexpr std::string_view LAZY_IMPORT = "moduleRequestPhaseIdx";
     static constexpr std::string_view PACKAGE_NAME = "pkgName@";
+    static constexpr std::string_view SCOPE_NAMES = "scopeNames";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
     static constexpr char PACKAGE_PATH_SEGMENT[] = "pkg_modules";
@@ -102,6 +105,8 @@ public:
     static constexpr uint32_t DEFAULT_MAIN_METHOD_INDEX = 0;
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor, CreateMode state = CreateMode::RUNTIME);
+    JSPandaFile(JSThread *thread, const panda_file::File *pf, const CString &descriptor,
+                std::string_view entryPoint, CreateMode state = CreateMode::RUNTIME);
     ~JSPandaFile();
 
     using ClassTranslateWork = std::vector<std::pair<uint32_t, uint32_t>>;
@@ -111,9 +116,12 @@ public:
     class TranslateClassesTask : public common::Task {
     public:
         TranslateClassesTask(int32_t id, JSThread *thread, JSPandaFile *jsPandaFile,
-                             const std::shared_ptr<CString> &methodNamePtr, CurClassTranslateWork &curTranslateWorks)
-            : common::Task(id), thread_(thread), jsPandaFile_(jsPandaFile), methodNamePtr_(methodNamePtr),
-              curTranslateWorks_(curTranslateWorks){};
+                             std::shared_ptr<CString> methodNamePtr, CurClassTranslateWork &curTranslateWorks,
+                             std::atomic<bool> &needDoRemainingWork,
+                             std::shared_ptr<std::atomic<bool>> waitingFinish)
+            : common::Task(id), thread_(thread), jsPandaFile_(jsPandaFile),
+              methodNamePtr_(std::move(methodNamePtr)), curTranslateWorks_(curTranslateWorks),
+              needDoRemainingWork_(needDoRemainingWork), waitingFinish_(std::move(waitingFinish)) {};
         ~TranslateClassesTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -125,6 +133,8 @@ public:
         JSPandaFile *jsPandaFile_ {nullptr};
         std::shared_ptr<CString> methodNamePtr_;
         CurClassTranslateWork &curTranslateWorks_;
+        std::atomic<bool> &needDoRemainingWork_;
+        std::shared_ptr<std::atomic<bool>> waitingFinish_;
     };
 
     inline const CString &GetJSPandaFileDesc() const
@@ -168,14 +178,26 @@ public:
 
     inline void SetMethodLiteralToMap(MethodLiteral *methodLiteral)
     {
+#if ENABLE_LATEST_OPTIMIZATION
+        ASSERT(methodLiteral != nullptr);
+        methodLiteralMap_.Insert(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
+#else
         ASSERT(methodLiteral != nullptr);
         methodLiteralMap_.try_emplace(methodLiteral->GetMethodId().GetOffset(), methodLiteral);
+#endif
     }
 
-    inline const std::unordered_map<uint32_t, MethodLiteral *> &GetMethodLiteralMap() const
+#if ENABLE_LATEST_OPTIMIZATION
+    inline const MethodLiteralIDMap& GetMethodLiteralMap() const
     {
         return methodLiteralMap_;
     }
+#else
+    inline const std::unordered_map<uint32_t, MethodLiteral*>& GetMethodLiteralMap() const
+    {
+        return methodLiteralMap_;
+    }
+#endif
 
     uint32_t GetNumMethods() const
     {
@@ -242,11 +264,15 @@ public:
 
     inline PUBLIC_API MethodLiteral *FindMethodLiteral(uint32_t offset) const
     {
+#if ENABLE_LATEST_OPTIMIZATION
+        return methodLiteralMap_.Find(offset);
+#else
         auto iter = methodLiteralMap_.find(offset);
         if (iter == methodLiteralMap_.end()) {
             return nullptr;
         }
         return iter->second;
+#endif
     }
 
     inline int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
@@ -371,7 +397,7 @@ public:
     {
         return isBundlePack_;
     }
-    
+
     // note : it only uses in TDD
     void SetBundlePack(bool isBundlePack)
     {
@@ -510,25 +536,24 @@ public:
     static void CallReleaseSecureMemFunc(void* fileMapper);
 
 private:
+    void ResetAfterSnapshotFail();
     void InitializeUnMergedPF();
     void InitializeMergedPF();
 
-    void WaitTranslateClassTaskFinished();
-
-    void NotifyTranslateClassTaskCompleted();
-
-    void IncreaseTaskCount();
+    void IncreaseRunningTaskCount();
 
     void TranslateClassInMainThread(JSThread *thread, const CString &methodName);
 
     void TranslateClassInSubThread(JSThread *thread, const CString &methodName,
-                                   CurClassTranslateWork &curTranslateWorks);
+                                   CurClassTranslateWork &curTranslateWorks, std::atomic<bool> &needDoRemainingWork);
 
-    void CheckOngoingClassTranslating(JSThread *thread, const CString &methodName,
-                                      const AllClassTranslateWork &remainingTranslateWorks);
+    void CheckAndTranslateRemainingClasses(JSThread *thread, const CString &methodName,
+                                           const AllClassTranslateWork &remainingTranslateWorks,
+                                           CVector<std::atomic<bool>> &needDoRemainingWorks);
 
     void PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr,
-                                  CurClassTranslateWork &curTranslateWorks);
+                                  CurClassTranslateWork &curTranslateWorks, std::atomic<bool> &isTaskRunning,
+                                  const std::shared_ptr<std::atomic<bool>> &waitingFinish);
 
     void ReduceTaskCount();
 
@@ -546,7 +571,11 @@ private:
     CString hapPath_;
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
-    std::unordered_map<uint32_t, MethodLiteral *> methodLiteralMap_;
+#if ENABLE_LATEST_OPTIMIZATION
+    MethodLiteralIDMap methodLiteralMap_;
+#else
+    std::unordered_map<uint32_t, MethodLiteral*> methodLiteralMap_;
+#endif
     std::unordered_map<uint32_t, panda_file::File::StringData> methodNameMap_;
     CUnorderedMap<uint32_t, CString> recordNameMap_;
     Mutex methodNameMapMutex_;
@@ -573,9 +602,17 @@ private:
     CUnorderedMap<std::string_view, std::string_view> npmEntries_;
     bool isRecordWithBundleName_ {true};
     CreateMode mode_ {CreateMode::RUNTIME};
-    friend class JSPandaFileSnapshot;
     // This tag shows if main thread is waiting for the sub-threads to finish translate class tasks.
-    std::atomic<bool> waitingFinish_ {false};
+    std::shared_ptr<std::atomic<bool>> waitingFinish_ = std::make_shared<std::atomic<bool>>(false);
+
+    friend class JSPandaFileSnapshot;
+    friend class JSPandaFileRecordInfoSnapshot;
+
+    // Storage for owned strings when loading from recordInfo snapshot.
+    // These strings provide persistent memory for string_view keys in jsRecordInfo_ and npmEntries_.
+    // Without this storage, string_view keys would become dangling pointers.
+    std::vector<CString> ownedRecordNames_;
+    std::vector<std::pair<CString, CString>> ownedNpmEntries_;
 };
 }  // namespace ecmascript
 }  // namespace panda

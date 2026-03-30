@@ -2722,7 +2722,7 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeMultiSharedRegion2)
     delete serializer;
 };
 
-HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObject)
+HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObject1)
 {
     auto vm = thread->GetEcmaVM();
     JSNApi::InitHybridVMEnv(vm);
@@ -2749,7 +2749,61 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObject)
     ASSERT_TRUE(res->IsJSObject());
 }
 
-HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObjectWithEmptyAttachFunc)
+HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObject2)
+{
+    auto vm = thread->GetEcmaVM();
+    JSNApi::InitHybridVMEnv(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSObject> xrefObject = factory->NewJSXRefObject();
+    WrapXRefObject(JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>(xrefObject)),
+                   reinterpret_cast<void *>(NewObjectAttachHook), true);
+
+    JSHandle<JSHClass> hClassHandle(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> object = factory->NewJSObject(hClassHandle);
+
+    JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(object),
+                               JSHandle<JSTaggedValue>(thread->GlobalConstants()->GetHandledProxyNapiWrapperString()),
+                               JSHandle<JSTaggedValue>(xrefObject));
+
+    InterOpValueSerializer serializer(thread);
+    bool success = serializer.WriteValue(thread, JSHandle<JSTaggedValue>(object),
+                                         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    ASSERT_TRUE(success);
+    std::unique_ptr<SerializeData> data = serializer.Release();
+    InterOpValueDeserializer deserializer(thread, data.release());
+    JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+    ASSERT_TRUE(res->IsJSObject());
+}
+
+HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObjectWithEmptyAttachFunc1)
+{
+    auto vm = thread->GetEcmaVM();
+    JSNApi::InitHybridVMEnv(vm);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSObject> xrefObject = factory->NewJSXRefObject();
+    WrapXRefObject(JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>(xrefObject)),
+                   reinterpret_cast<void *>(EmptyAttachHook), true);
+
+    JSHandle<JSHClass> hClassHandle(thread->GlobalConstants()->GetHandledObjectClass());
+    JSHandle<JSObject> object = factory->NewJSObject(hClassHandle);
+
+    JSTaggedValue::SetProperty(thread, JSHandle<JSTaggedValue>(object),
+                               JSHandle<JSTaggedValue>(thread->GlobalConstants()->GetHandledProxyNapiWrapperString()),
+                               JSHandle<JSTaggedValue>(xrefObject));
+
+    InterOpValueSerializer serializer(thread);
+    bool success = serializer.WriteValue(thread, JSHandle<JSTaggedValue>(object),
+                                         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                         JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    ASSERT_TRUE(success);
+    std::unique_ptr<SerializeData> data = serializer.Release();
+    InterOpValueDeserializer deserializer(thread, data.release());
+    JSHandle<JSTaggedValue> res = deserializer.ReadValue();
+    ASSERT_TRUE(res->IsUndefined());
+}
+
+HWTEST_F_L0(InterOpSerializerTest, SerializeInterOpObjectWithEmptyAttachFunc2)
 {
     auto vm = thread->GetEcmaVM();
     JSNApi::InitHybridVMEnv(vm);

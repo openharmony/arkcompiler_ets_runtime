@@ -287,6 +287,11 @@ inline bool JSTaggedValue::IsLexicalEnv() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsLexicalEnv();
 }
 
+inline bool JSTaggedValue::IsWeakLinkedHashMap() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsWeakLinkedHashMap();
+}
+
 inline bool JSTaggedValue::IsSFunctionEnv() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsSFunctionEnv();
@@ -403,6 +408,11 @@ inline bool JSTaggedValue::IsOnlyJSObject() const
 inline bool JSTaggedValue::IsECMAObject() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsECMAObject();
+}
+
+inline bool JSTaggedValue::IsJSWrappedNapiObject() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSWrappedNapiObject();
 }
 
 inline bool JSTaggedValue::IsJSPromise() const

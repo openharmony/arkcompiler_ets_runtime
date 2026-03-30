@@ -22,6 +22,10 @@
 namespace panda::ecmascript {
 static constexpr int MS_PER_SECOND = 1000;
 static constexpr int MS_PER_MINUTE = 60000;
+static constexpr int HOUR_PER_DAY = 24;
+static constexpr int MINUTE_PER_DAY = 24 * 60;
+static constexpr int SECOND_PER_DAY = 24 * 60 * 60;
+static constexpr int MS_PER_DAY = SECOND_PER_DAY * MS_PER_SECOND;
 
 int64_t GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLocal)
 {
@@ -34,8 +38,29 @@ int64_t GetLocalOffsetFromOS([[maybe_unused]] int64_t timeMs, bool isLocal)
     return res * MS_PER_MINUTE;
 }
 
-int64_t GetUTCTimestamp(int year, int month, int day, int hour, int minute, int second, int millisecond)
+int64_t GetUTCTimestamp(int64_t year, int64_t month, int64_t day, int64_t hour, int64_t minute, int64_t second,
+                        int64_t millisecond)
 {
+    if (hour >= HOUR_PER_DAY) {
+        int64_t tmp = hour / HOUR_PER_DAY;
+        day += tmp;
+        hour -= tmp * HOUR_PER_DAY;
+    }
+    if (minute >= MINUTE_PER_DAY) {
+        int64_t tmp = minute / MINUTE_PER_DAY;
+        day += tmp;
+        minute -= tmp * MINUTE_PER_DAY;
+    }
+    if (second >= SECOND_PER_DAY) {
+        int64_t tmp = second / SECOND_PER_DAY;
+        day += tmp;
+        second -= tmp * SECOND_PER_DAY;
+    }
+    if (millisecond >= MS_PER_DAY) {
+        int64_t tmp = millisecond / MS_PER_DAY;
+        day += tmp;
+        millisecond -= tmp * MS_PER_DAY;
+    }
     tm localTime = {
         .tm_sec = second + (millisecond / MS_PER_SECOND),
         .tm_min = minute,
@@ -46,6 +71,11 @@ int64_t GetUTCTimestamp(int year, int month, int day, int hour, int minute, int 
         .tm_isdst = -1 // -1: let the system decide whether to use DST.
     };
     return (mktime(&localTime) * MS_PER_SECOND) + (millisecond % MS_PER_SECOND);
+}
+
+int64_t GetCurrentTimestamp()
+{
+    return 0;
 }
 
 bool IsDst(int64_t timeMs)

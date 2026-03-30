@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -67,6 +67,40 @@ bool ReadMemFunc([[maybe_unused]] void *ctx, uintptr_t addr, uintptr_t *value)
 {
     *value = *(reinterpret_cast<uintptr_t *>(addr));
     return true;
+}
+
+// Safe read function for tests that use step_ark_with_record_jit
+// It tracks valid memory regions and returns false for invalid reads
+struct SafeMemContext {
+    std::vector<std::pair<uintptr_t, uintptr_t>> validRanges;  // (start, end)
+    uintptr_t readValue = 0;  // Default value to return for invalid reads
+
+    void AddRange(uintptr_t start, uintptr_t end)
+    {
+        validRanges.push_back({start, end});
+    }
+
+    bool IsValid(uintptr_t addr) const
+    {
+        for (const auto& range : validRanges) {
+            if (addr >= range.first && addr < range.second) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
+bool SafeReadMemFuncForJit(void *ctx, uintptr_t addr, uintptr_t *value)
+{
+    SafeMemContext *safeCtx = static_cast<SafeMemContext*>(ctx);
+    if (safeCtx && safeCtx->IsValid(addr)) {
+        *value = *(reinterpret_cast<uintptr_t *>(addr));
+        return true;
+    }
+    // For invalid addresses (like Hole().GetRawData() + offset), return default value
+    *value = safeCtx ? safeCtx->readValue : 0;
+    return false;
 }
 
 /**
@@ -445,6 +479,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk__001)
     bool isJsFrame = true;
     uintptr_t frame[10][3];
     uintptr_t fp[10];
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     for (int i = 0; i < 10; i++) {
         frame[i][0] = 0;
         frame[i][1] = 0;
@@ -453,7 +489,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk__001)
     for (int i = 1; i < 10; i++) {
         fp[i] = fp[i-1] + 24;
     }
-    ArkStepParam arkStepParam{ &fp[0], &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp[0], &sp, &pc, &isJsFrame, &frameType, frameIndex };
     frame[0][2] = static_cast<uintptr_t>(FrameType::INTERPRETER_CONSTRUCTOR_FRAME);
     ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[1][2] = static_cast<uintptr_t>(FrameType::INTERPRETER_FAST_NEW_FRAME);
@@ -493,6 +529,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk__002)
     bool isJsFrame = true;
     uintptr_t frame[30][3];
     uintptr_t fp[30];
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     for (int i = 0; i < 30; i++) {
         frame[i][0] = 0;
         frame[i][1] = 0;
@@ -501,7 +539,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk__002)
     for (int i = 1; i < 30; i++) {
         fp[i] = fp[i-1] + 24;
     }
-    ArkStepParam arkStepParam{ &fp[0], &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp[0], &sp, &pc, &isJsFrame, &frameType, frameIndex };
     frame[0][2] = static_cast<uintptr_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME);
     ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &arkStepParam));
     frame[1][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_FRAME);
@@ -676,6 +714,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_001)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
 
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
@@ -684,7 +724,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_001)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -706,6 +746,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_002)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -713,7 +755,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_002)
     EXPECT_TRUE(pre_frame.fp == frame[2]);
     EXPECT_TRUE(pre_frame.pc == frame[3]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[2]);
     EXPECT_TRUE(*arkStepParam.pc == frame[3]);
@@ -735,6 +777,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_003)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -742,7 +786,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_003)
     EXPECT_TRUE(pre_frame.fp == frame[2]);
     EXPECT_TRUE(pre_frame.pc == frame[3]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[2]);
     EXPECT_TRUE(*arkStepParam.pc == frame[3]);
@@ -764,6 +808,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_004)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -771,7 +817,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_004)
     EXPECT_TRUE(pre_frame.fp == frame[2]);
     EXPECT_TRUE(pre_frame.pc == frame[3]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[2]);
     EXPECT_TRUE(*arkStepParam.pc == frame[3]);
@@ -801,6 +847,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_005)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -809,7 +857,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_005)
     EXPECT_TRUE(pre_frame.fp == frame1[2]);
     EXPECT_TRUE(pre_frame.pc == frame1[3]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame1[2]);
     EXPECT_TRUE(*arkStepParam.pc == frame1[3]);
@@ -839,6 +887,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_006)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -847,7 +897,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_006)
     EXPECT_TRUE(pre_frame.fp == frame1[2]);
     EXPECT_TRUE(pre_frame.pc == frame1[3]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame1[2]);
     EXPECT_TRUE(*arkStepParam.pc == frame1[3]);
@@ -868,6 +918,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_007)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -876,7 +928,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_007)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -899,6 +951,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_008)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -907,7 +961,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_008)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -930,6 +984,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_009)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -938,7 +994,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_009)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -962,6 +1018,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_010)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -970,7 +1028,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_010)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -997,6 +1055,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_011)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1005,7 +1065,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_011)
     EXPECT_TRUE(pre_frame.fp == frame[7]);
     EXPECT_TRUE(pre_frame.pc == frame[6]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[7]);
     EXPECT_TRUE(*arkStepParam.pc == frame[6]);
@@ -1032,6 +1092,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_012)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1040,7 +1102,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_012)
     EXPECT_TRUE(pre_frame.fp == frame[7]);
     EXPECT_TRUE(pre_frame.pc == frame[6]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[7]);
     EXPECT_TRUE(*arkStepParam.pc == frame[6]);
@@ -1067,6 +1129,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_013)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1075,7 +1139,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_013)
     EXPECT_TRUE(pre_frame.fp == frame[7]);
     EXPECT_TRUE(pre_frame.pc == frame[6]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[7]);
     EXPECT_TRUE(*arkStepParam.pc == frame[6]);
@@ -1100,6 +1164,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_014)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1108,7 +1174,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_014)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -1129,6 +1195,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_015)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1137,7 +1205,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_015)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -1158,6 +1226,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_016)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1166,7 +1236,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_016)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -1200,6 +1270,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_017)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1208,7 +1280,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_017)
     EXPECT_TRUE(pre_frame.fp == frame1[7]);
     EXPECT_TRUE(pre_frame.pc == frame1[6]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame1[7]);
     EXPECT_TRUE(*arkStepParam.pc == frame1[6]);
@@ -1235,6 +1307,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_018)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1243,7 +1317,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_018)
     EXPECT_TRUE(pre_frame.fp == frame[7]);
     EXPECT_TRUE(pre_frame.pc == frame[6]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[7]);
     EXPECT_TRUE(*arkStepParam.pc == frame[6]);
@@ -1276,6 +1350,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_019)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1284,7 +1360,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_019)
     EXPECT_TRUE(pre_frame.fp == frame1[7]);
     EXPECT_TRUE(pre_frame.pc == frame1[6]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame1[7]);
     EXPECT_TRUE(*arkStepParam.pc == frame1[6]);
@@ -1307,6 +1383,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_020)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1315,7 +1393,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_020)
     EXPECT_TRUE(pre_frame.fp == frame[3]);
     EXPECT_TRUE(pre_frame.pc == frame[4]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[3]);
     EXPECT_TRUE(*arkStepParam.pc == frame[4]);
@@ -1337,6 +1415,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_021)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1345,7 +1425,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_021)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[3]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[3]);
@@ -1367,6 +1447,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_022)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1375,7 +1457,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_022)
     EXPECT_TRUE(pre_frame.fp == frame[2]);
     EXPECT_TRUE(pre_frame.pc == frame[3]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[2]);
     EXPECT_TRUE(*arkStepParam.pc == frame[3]);
@@ -1397,6 +1479,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_023)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1405,7 +1489,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_023)
     EXPECT_TRUE(pre_frame.fp == frame[2]);
     EXPECT_TRUE(pre_frame.pc == frame[3]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[2]);
     EXPECT_TRUE(*arkStepParam.pc == frame[3]);
@@ -1426,6 +1510,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_024)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1434,7 +1520,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_024)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -1455,6 +1541,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_025)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1463,7 +1551,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_025)
     EXPECT_TRUE(pre_frame.fp == frame[1]);
     EXPECT_TRUE(pre_frame.pc == frame[2]);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(*arkStepParam.fp == frame[1]);
     EXPECT_TRUE(*arkStepParam.pc == frame[2]);
@@ -1480,6 +1568,8 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_026)
     uintptr_t sp  = 0;
     uintptr_t pc = 0;
     bool isJsFrame = true;
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
     unwind_user_context_s *ctx = (unwind_user_context_s*)malloc(sizeof(unwind_user_context_s));
     ctx->count = -1;
     unwind_stack_frame_s cur_frame = { fp, pc };
@@ -1488,7 +1578,7 @@ HWTEST_F_L0(JsStackInfoTest, TestStepArk_026)
     EXPECT_TRUE(pre_frame.fp == 0);
     EXPECT_TRUE(pre_frame.pc == 0);
 
-    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame };
+    ArkStepParam arkStepParam{ &fp, &sp, &pc, &isJsFrame, &frameType, frameIndex };
     int ret = step_ark(ctx, ReadMemFunc, &arkStepParam);
     EXPECT_TRUE(ret == -1);
 
@@ -1595,6 +1685,88 @@ HWTEST_F_L0(JsStackInfoTest, TestNextArkFrame)
 
     free(ctx);
 }
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArkWithRecordJit_001)
+{
+    size_t size1 = 4;
+    JSTaggedType frame1[size1];
+    frame1[0] = static_cast<JSTaggedType>(0);  // 0: preLeaveFrameFp
+    frame1[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_ENTRY_FRAME);  // 1: type
+    frame1[2] = static_cast<JSTaggedType>(62480);  // 2: prevFP
+    frame1[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    size_t size2 = 5;
+    JSTaggedType frame2[size2];
+    frame2[0] = static_cast<JSTaggedType>(1234);  // 0: pc
+    frame2[1] = JSTaggedValue::Hole().GetRawData();  // 1: JSFunction
+    frame2[2] = static_cast<JSTaggedType>(FrameType::FASTJIT_FUNCTION_FRAME);  // 2: type
+    frame2[3] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame1[2]));  // 3: prevFp
+    frame2[4] = static_cast<JSTaggedType>(0);  // 4: returnAddr
+
+    uintptr_t fp = reinterpret_cast<uintptr_t>(&frame2[2]) + 8;
+
+    SafeMemContext safeCtx;
+    safeCtx.AddRange(reinterpret_cast<uintptr_t>(&frame1[0]), reinterpret_cast<uintptr_t>(&frame1[size1]));
+    safeCtx.AddRange(reinterpret_cast<uintptr_t>(&frame2[0]), reinterpret_cast<uintptr_t>(&frame2[size2]));
+
+    uintptr_t sp = 0;
+    uintptr_t pc = 0;
+    uintptr_t methodId = 0;
+    bool isJsFrame = true;
+    std::vector<uintptr_t> jitCache;
+
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
+    ArkUnwindParam arkUnwindParam(&safeCtx, SafeReadMemFuncForJit, &fp, &sp, &pc,
+                                  &methodId, &isJsFrame, &frameType, frameIndex, jitCache);
+    int ret = step_ark_with_record_jit(&arkUnwindParam);
+
+    EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(*arkUnwindParam.fp == reinterpret_cast<uintptr_t>(&frame1[2]));
+    EXPECT_TRUE(*arkUnwindParam.pc == 1234);
+    EXPECT_TRUE(*arkUnwindParam.isJsFrame == true);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArkWithRecordJit_002)
+{
+    size_t size1 = 4;
+    JSTaggedType frame1[size1];
+    frame1[0] = static_cast<JSTaggedType>(0);  // 0: preLeaveFrameFp
+    frame1[1] = static_cast<JSTaggedType>(FrameType::OPTIMIZED_ENTRY_FRAME);  // 1: type
+    frame1[2] = static_cast<JSTaggedType>(62480);  // 2: prevFP
+    frame1[3] = static_cast<JSTaggedType>(123456);  // 3: returnAddr
+
+    size_t size2 = 5;
+    JSTaggedType frame2[size2];
+    frame2[0] = static_cast<JSTaggedType>(5678);  // 0: pc
+    frame2[1] = JSTaggedValue::Hole().GetRawData();  // 1: JSFunction
+    frame2[2] = static_cast<JSTaggedType>(FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME);  // 2: type
+    frame2[3] = static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(&frame1[2]));  // 3: prevFp
+    frame2[4] = static_cast<JSTaggedType>(0);  // 4: returnAddr
+
+    uintptr_t fp = reinterpret_cast<uintptr_t>(&frame2[2]) + 8;
+
+    SafeMemContext safeCtx;
+    safeCtx.AddRange(reinterpret_cast<uintptr_t>(&frame1[0]), reinterpret_cast<uintptr_t>(&frame1[size1]));
+    safeCtx.AddRange(reinterpret_cast<uintptr_t>(&frame2[0]), reinterpret_cast<uintptr_t>(&frame2[size2]));
+
+    uintptr_t sp = 0;
+    uintptr_t pc = 0;
+    uintptr_t methodId = 0;
+    bool isJsFrame = true;
+    std::vector<uintptr_t> jitCache;
+
+    StepFrameType frameType = StepFrameType::JS_FRAME;
+    uint64_t frameIndex = 0;
+    ArkUnwindParam arkUnwindParam(&safeCtx, SafeReadMemFuncForJit, &fp, &sp, &pc,
+                                  &methodId, &isJsFrame, &frameType, frameIndex, jitCache);
+    int ret = step_ark_with_record_jit(&arkUnwindParam);
+
+    EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(*arkUnwindParam.fp == reinterpret_cast<uintptr_t>(&frame1[2]));
+    EXPECT_TRUE(*arkUnwindParam.pc == 5678);
+    EXPECT_TRUE(*arkUnwindParam.isJsFrame == true);
+}
 #endif
 
 HWTEST_F_L0(JsStackInfoTest, MatchLineAndRevisedOffset) {
@@ -1642,11 +1814,11 @@ HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo1)
     EXPECT_TRUE(jsFrame.empty());
 }
 
-HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo4)
+HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo2)
 {
     JSHandle<JSObject> jsErrorObj;
     std::string stack1 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, true);
-#if defined(ENABLE_BACKTRACE_LOCAL)
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
     EXPECT_TRUE(!stack1.empty());
 #else
     EXPECT_TRUE(stack1.empty());
@@ -1654,5 +1826,45 @@ HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo4)
 
     std::string stack2 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, false);
     EXPECT_TRUE(stack2.empty());
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo3)
+{
+    thread_->SetCrossThreadExecution(true);
+    JSHandle<JSObject> jsErrorObj;
+    std::string stack1 = JsStackInfo::BuildJsStackTrace(thread_, false, jsErrorObj, true);
+    EXPECT_TRUE(stack1.empty());
+    thread_->SetCrossThreadExecution(false);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestArkWriteJitCode)
+{
+    std::vector<uint8_t> codeVec1 = {0x01, 0x02, 0x03, 0x04};
+    std::vector<uint8_t> codeVec2 = {0x05, 0x06, 0x07, 0x08};
+
+    EntityId id1(100);
+    EntityId id2(200);
+    JsStackInfo::machineCodeMap[id1] = codeVec1;
+    JsStackInfo::machineCodeMap[id2] = codeVec2;
+    JsStackInfo::nameMap[id1] = "jitFunction1";
+    JsStackInfo::nameMap[id2] = "jitFunction2";
+
+    uintptr_t jitCodeArray[2] = {100, 200};
+
+    char tempFile[] = "/tmp/test_ark_write_jit_code_XXXXXX";
+    int fd = mkstemp(tempFile);
+    if (fd < 0) {
+        GTEST_LOG_(INFO) << "Cannot create temp file, skip this test";
+        return;
+    }
+
+    int result = ark_write_jit_code(nullptr, ReadMemFunc, fd, jitCodeArray, 2);
+    EXPECT_EQ(result, 1);
+
+    close(fd);
+    unlink(tempFile);
+
+    JsStackInfo::machineCodeMap.clear();
+    JsStackInfo::nameMap.clear();
 }
 }  // namespace panda::test

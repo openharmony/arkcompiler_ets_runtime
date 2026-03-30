@@ -1,5 +1,6 @@
 {
     "name": "JS_PROMISE_FINALLY_FUNCTION",
+    "node_name": "PromiseFinallyFunction",
     "offsets": [
         {
             "name": "Constructor",

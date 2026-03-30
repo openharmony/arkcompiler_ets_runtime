@@ -97,6 +97,9 @@ static constexpr char CODE_TAG[] = "ArkTS Code";
 MemMap PUBLIC_API PageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0, void *addr = nullptr,
     int flags = 0);
 void PUBLIC_API PageUnmap(MemMap it);
+MemMap PUBLIC_API JitFortPageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0, void *addr = nullptr,
+    int flags = 0);
+void PUBLIC_API JitFortPageUnmap(MemMap it);
 MemMap PUBLIC_API MachineCodePageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0);
 void PUBLIC_API MachineCodePageUnmap(MemMap it);
 void PageRelease(void *mem, size_t size);

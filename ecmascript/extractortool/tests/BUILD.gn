@@ -1,4 +1,4 @@
-# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Copyright (c) 2024-2026 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -14,7 +14,7 @@
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-module_output_path = "ets_runtime"
+module_output_path = "ets_runtime/ets_runtime"
 
 host_unittest_action("ExtractorToolTest") {
   module_out_path = module_output_path
@@ -31,6 +31,28 @@ host_unittest_action("ExtractorToolTest") {
     "extractor_test.cpp",
     "source_map_test.cpp",
     "zip_file_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [ "$js_root:libark_jsruntime_test" ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  external_deps += [
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "zlib:libz",
+  ]
+  deps += hiviewdfx_deps
+}
+
+host_unittest_action("SourceMapUnitTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "source_map_unit_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]

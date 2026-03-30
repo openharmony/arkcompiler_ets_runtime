@@ -25,6 +25,7 @@ namespace panda::ecmascript {
 
 size_t SlotSpace::GetSlotIdxBySize(size_t size)
 {
+    ASSERT(size >= sizeof(SlotFreeSegment));
     ASSERT(size <= SlotSpaceConfig::MAX_REGULAR_HEAP_OBJECT_SLOT_SIZE);
     ASSERT(size % SlotSpaceConfig::SLOT_STEP_SIZE == 0);
     size_t idx = size / SlotSpaceConfig::SLOT_STEP_SIZE;
@@ -49,7 +50,7 @@ void SlotSpace::ReclaimRegions(size_t cachedSize)
 template <bool allowGC>
 ARK_INLINE uintptr_t SlotSpace::Allocate(size_t size)
 {
-    SlotAllocator *allocator = &allocators_[GetSlotIdxBySize(size)];
+    SlotAllocator *allocator = allocators_[GetSlotIdxBySize(size)];
 
     uintptr_t result = TryAllocateFromAllocator<allowGC>(allocator);
     if (LIKELY(result > 0)) {
@@ -136,12 +137,12 @@ std::pair<uintptr_t, size_t> SlotSpace::AllocateBufferSyncByIdx(size_t idx)
     size_t slotSize = GetSlotSizeByIdx(idx);
     ASSERT(slotSize > 0);
     size_t maxBufferSize = (SlotSpaceConfig::MAX_GC_TLAB_BUFFER_SIZE + slotSize - 1) / slotSize * slotSize;
-    SlotAllocator *allocator = &allocators_[idx];
+    SlotAllocator *allocator = gcAllocators_[idx];
 
     // fixme: optimize?
     {
         // fixme: lock could be slot-wised
-        LockHolder holder(lock_);
+        LockHolder holder(mutex_);
         {
             auto result = allocator->TryAllocateBuffer(maxBufferSize);
             if (LIKELY(result.first > 0)) {
@@ -149,7 +150,7 @@ std::pair<uintptr_t, size_t> SlotSpace::AllocateBufferSyncByIdx(size_t idx)
             }
         }
 
-        ExpandAllocator(allocator);
+        ExpandAllocator<true>(allocator);
     
         {
             auto result = allocator->TryAllocateBuffer(maxBufferSize);
@@ -163,8 +164,8 @@ uint32_t SlotSpace::GetRegionCount() const
 {
     // fixme: optimize, do not iterate
     uint32_t cnt = 0;
-    for (const CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        cnt += regionChainManager.GetRegionCount();
+    for (const CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        cnt += regionChainManager->GetRegionCount();
     }
     return cnt;
 }
@@ -172,23 +173,39 @@ uint32_t SlotSpace::GetRegionCount() const
 template <typename Callback>
 void SlotSpace::EnumerateRegions(Callback &&cb) const
 {
-    for (const CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        regionChainManager.EnumerateRegions(cb);
+    for (const CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        regionChainManager->EnumerateRegions(cb);
     }
 }
 
 template <typename Callback>
 void SlotSpace::EnumerateRegionsWithRecord(Callback &&cb) const
 {
-    for (const CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        regionChainManager.EnumerateRegionsWithRecord(cb);
+    for (const CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        regionChainManager->EnumerateRegionsWithRecord(cb);
     }
 }
 
 void SlotSpace::SetRecordRegion()
 {
-    for (CMSRegionChainManager &regionChainManager : regionChainManagers_) {
-        regionChainManager.SetRecordRegion();
+    for (CMSRegionChainManager *regionChainManager : regionChainManagerInstances_) {
+        regionChainManager->SetRecordRegion();
+    }
+}
+
+template <typename Callback>
+void SlotSpace::EnumerateFromRegions(Callback &&cb) const
+{
+    for (Region *region : pendingReclaimFromRegions_) {
+        cb(region);
+    }
+}
+
+template <typename Callback>
+void SlotSpace::EnumerateToRegions(Callback &&cb) const
+{
+    for (const CMSRegionChainManager *regionChainManager : gcRegionChainManagerInstances_) {
+        regionChainManager->EnumerateRegions(cb);
     }
 }
 }  // namespace panda::ecmascript

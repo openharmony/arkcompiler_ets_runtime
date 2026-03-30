@@ -48,7 +48,7 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     jitCompileMode_(mode),
     runState_(RunState::INIT)
 {
-    LOG_JIT(INFO) << "JitTask compilerThread addr: " << compilerThread_;
+    LOG_JIT(DEBUG) << "JitTask compilerThread addr: " << compilerThread_;
     jit->IncJitTaskCnt(hostThread);
     dependencies_ = new kungfu::LazyDeoptAllDependencies();
     sustainingJSHandle_ = std::make_unique<SustainingJSHandle>(hostThread->GetEcmaVM());
@@ -167,8 +167,8 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
             size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
                 static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             codeDesc.instructionsSize = codeDesc.codeSizeAlign;
-            LOG_JIT(DEBUG) << "InstallCode:: MachineCode Object size to allocate: "
-                << allocSize << " (instruction size): " << codeDesc.codeSizeAlign;
+            LOG_JIT(DEBUG) << "ComputePayLoadSize:: MachineCode Object size to allocate: " << allocSize
+                           << " (instruction size): " << codeDesc.codeSizeAlign;
             if (allocSize > g_maxRegularHeapObjectSize) {
                 return payLoadSize;
             } else {
@@ -190,28 +190,15 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
                              codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
         size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
             static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-        LOG_JIT(DEBUG) << "InstallCode:: MachineCode Object size to allocate: "
-            << allocSize << " (instruction size): " << instructionsSize;
+        LOG_JIT(DEBUG) << "ComputePayLoadSize:: MachineCode Object size to allocate: " << allocSize
+                       << " (instruction size): " << instructionsSize;
 
         codeDesc.instructionsSize = instructionsSize;
         if (allocSize > g_maxRegularHeapObjectSize) {
-            //
-            // A Huge machine code object is consisted of contiguous 256Kb aligned blocks.
-            // With JitFort, a huge machine code object starts with a page aligned mutable area
-            // (that holds Region and MachineCode object header, FuncEntryDesc and StackMap), followed
-            // by a page aligned nonmutable (JitFort space) area of JIT generated native instructions.
-            // i.e.
-            // mutableSize = align up to PageSize
-            //     (sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE +MachineCode::SIZE + payLoadSize - instructionsSize)
-            // immutableSize = instructionsSize (native page boundary aligned)
-            // See comments at HugeMachineCodeSpace::Allocate()
-            //
             codeDesc.isHugeObj = true;
-            return payLoadSize;
-        } else {
-            // regular sized machine code object instructions are installed in separate jit fort space
-            return payLoadSize - instructionsSize;
         }
+        // machine code object instructions are installed in separate jit fort space
+        return payLoadSize - instructionsSize;
     } else {
         return codeDesc.funcEntryDesSizeAlign + codeDesc.rodataSizeBeforeTextAlign + codeDesc.codeSizeAlign +
                codeDesc.rodataSizeAfterTextAlign + codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
@@ -308,7 +295,7 @@ void JitTask::InstallCode()
             LOG_JIT(DEBUG) << "InstallCode skipped. NewMachineCode NULL for size " << size;
             if (hostThread_->HasPendingException()) {
                 hostThread_->SetMachineCodeLowMemory(true);
-                hostThread_->ClearException();
+                hostThread_->ClearExceptionAndExtraErrorMessage();
             }
             return;
         }
@@ -331,7 +318,7 @@ void JitTask::InstallCode()
     if (hostThread_->HasPendingException()) {
         // check is oom exception
         hostThread_->SetMachineCodeLowMemory(true);
-        hostThread_->ClearException();
+        hostThread_->ClearExceptionAndExtraErrorMessage();
     }
 
     if (IsOsrTask()) {
@@ -350,10 +337,12 @@ void JitTask::InstallCode()
             common::BaseRuntime::GetInstance()->GetHeapManager().MarkJitFortMemInstalled(
                 codeDesc_.isHugeObj ? nullptr : hostThread_, machineCodeObj.GetObject<MachineCode>());
         } else {
-            if (!codeDesc_.isHugeObj) {
-                const Heap *heap = this->GetHostThread()->GetEcmaVM()->GetHeap();
-                heap->GetMachineCodeSpace()->MarkJitFortMemInstalled(machineCodeObj.GetObject<MachineCode>());
-            }
+            auto machineCode = machineCodeObj.GetObject<MachineCode>();
+            Heap *heap = this->GetHostThread()->GetEcmaVM()->GetHeap();
+            auto *jitfort = heap->GetOrCreateJitFort();
+            ASSERT(jitfort != nullptr);
+            ASSERT(codeDesc_.isHugeObj == jitfort->InHugeRange(machineCode->GetText()));
+            jitfort->MarkJitFortMemInstalled(machineCode, codeDesc_.isHugeObj);
         }
     }
 
@@ -376,8 +365,8 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
         jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
         LOG_JIT(DEBUG) << "Install fast jit machine code, method name: " << GetMethodName()
-		               << ", function addr: " << std::hex << jsFunction_.GetTaggedType()
-                       << ", machine code addr: " << machineCodeObj.GetTaggedType()
+                       << ", function addr: 0x" << std::hex << jsFunction_.GetTaggedType()
+                       << ", machine code addr: 0x" << machineCodeObj.GetTaggedType()
                        << ", code range: " << reinterpret_cast<void*>(codeAddr)
                        << "--" << reinterpret_cast<void*>(codeAddrEnd);
 #if ECMASCRIPT_ENABLE_JIT_WARMUP_PROFILER

@@ -1,5 +1,6 @@
 {
     "name": "JS_INT16_ARRAY",
+    "node_name": "Int16 Array",
     "offsets": [
         {
             "name": "ViewedArrayBufferOrByteArray",

@@ -74,6 +74,9 @@ public:
         anEnable_ = enable;
     }
 
+    uint64_t GetStubFileStart();
+    uint64_t GetStubFileSize();
+
 private:
     AnFileDataManager() = default;
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;

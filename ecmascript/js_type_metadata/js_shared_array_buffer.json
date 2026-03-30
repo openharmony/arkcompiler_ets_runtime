@@ -1,5 +1,6 @@
 {
     "name": "JS_SHARED_ARRAY_BUFFER",
+    "node_name": "SharedArrayBuffer",
     "offsets": [
         {
             "name": "ArrayBufferData",
