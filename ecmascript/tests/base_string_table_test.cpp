@@ -530,4 +530,269 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternStringFromCompressedSubString_EmptyS
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(internStr)).IsInternString());
 }
 
+/**
+ * @tc.name: TryGetInternString_NonInternedString
+ * @tc.desc: Test TryGetInternString with non-interned string
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, TryGetInternString_NonInternedString)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    JSHandle<EcmaString> nonInternedStr(
+        thread, EcmaStringAccessor::CreateFromUtf8(thread->GetEcmaVM(),
+        reinterpret_cast<const uint8_t*>("nonexistent"), 11, true));
+
+    ecmascript::BaseString* result = table.TryGetInternString(nonInternedStr);
+    EXPECT_EQ(result, nullptr);
+}
+
+/**
+ * @tc.name: TryGetInternString_InternedString
+ * @tc.desc: Test TryGetInternString with interned string
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, TryGetInternString_InternedString)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint8_t testData[] = {'t', 'e', 's', 't'};
+    ecmascript::BaseString* internedStr = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, testData, sizeof(testData), true);
+
+    JSHandle<EcmaString> lookupStr(
+        thread, EcmaStringAccessor::CreateFromUtf8(thread->GetEcmaVM(),
+        testData, sizeof(testData), true));
+
+    ecmascript::BaseString* result = table.TryGetInternString(lookupStr);
+    EXPECT_EQ(result, internedStr);
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf16SingleCharacter
+ * @tc.desc: Test interning UTF16 single character
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf16SingleCharacter)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint16_t singleChar[] = {0x0041}; // 'A'
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, singleChar, 1, false);
+    EXPECT_NE(result, nullptr);
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(result)).ToCString(thread).c_str(), "A");
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf16Repeated
+ * @tc.desc: Test interning same UTF16 string multiple times
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf16Repeated)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint16_t utf16Data[] = {0x0048, 0x0065, 0x006C, 0x006C, 0x006F}; // "Hello"
+
+    ecmascript::BaseString* result1 = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, utf16Data, 5, false);
+    ecmascript::BaseString* result2 = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, utf16Data, 5, false);
+
+    EXPECT_EQ(result1, result2);
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(result1)).ToCString(thread).c_str(), "Hello");
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result1)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf16UnicodeCharacters
+ * @tc.desc: Test interning UTF16 string with Unicode characters
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf16UnicodeCharacters)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint16_t unicodeData[] = {0x4F60, 0x597D, 0x4E16, 0x754C}; // "你好世界"
+
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, unicodeData, 4, false);
+    EXPECT_NE(result, nullptr);
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(result)).ToCString(thread).c_str(), "你好世界");
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf16MixedWithAscii
+ * @tc.desc: Test interning UTF16 string with mixed ASCII and Unicode
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf16MixedWithAscii)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint16_t mixedData[] = {0x0048, 0x0069, 0x4F60, 0x597D}; // "Hi你好"
+
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, mixedData, 4, false);
+    EXPECT_NE(result, nullptr);
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(result)).ToCString(thread).c_str(), "Hi你好");
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf16SurrogatePairs
+ * @tc.desc: Test interning UTF16 string with surrogate pairs (emoji)
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf16SurrogatePairs)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint16_t emojiData[] = {0xD83D, 0xDE00}; // 😀
+
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, emojiData, 2, false);
+    EXPECT_NE(result, nullptr);
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf16WithCompression
+ * @tc.desc: Test interning UTF16 data with compression enabled
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf16WithCompression)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint16_t compressibleData[] = {0x0061, 0x0062, 0x0063}; // "abc" (all ASCII)
+
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, compressibleData, 3, true);
+    EXPECT_NE(result, nullptr);
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(result)).ToCString(thread).c_str(), "abc");
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf8NullTerminator
+ * @tc.desc: Test interning UTF8 string with null terminator handling
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf8NullTerminator)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint8_t nullData[] = {'n', 'u', 'l', 'l', '\0'};
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, nullData, 5, true);
+    EXPECT_NE(result, nullptr);
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf8ControlCharacters
+ * @tc.desc: Test interning UTF8 string with control characters
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf8ControlCharacters)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    uint8_t controlData[] = {'\x01', '\x02', '\x03', '\x04'};
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_, controlData, sizeof(controlData), true);
+    EXPECT_NE(result, nullptr);
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf8MultibyteUnicode
+ * @tc.desc: Test interning UTF8 string with multibyte Unicode characters
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf8MultibyteUnicode)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    const char* multibyteStr = "🌟⭐✨";
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_,
+        reinterpret_cast<const uint8_t*>(multibyteStr),
+        strlen(multibyteStr), true);
+    EXPECT_NE(result, nullptr);
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
+/**
+ * @tc.name: GetOrInternString_Utf8MixedAsciiAndUnicode
+ * @tc.desc: Test interning UTF8 string with mixed ASCII and multibyte Unicode
+ * @tc.type: FUNC
+ * @tc.require: AR001
+ */
+HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf8MixedAsciiAndUnicode)
+{
+    if (!ecmascript::g_isEnableCMCGC) {
+        return;
+    }
+    auto& table = ecmascript::Runtime::GetInstance()->GetBaseStringTable();
+
+    const char* mixedStr = "Hello世界";
+    ecmascript::BaseString* result = table.GetOrInternString(
+        thread->GetThreadHolder(), handleCreator_,
+        reinterpret_cast<const uint8_t*>(mixedStr),
+        strlen(mixedStr), true);
+    EXPECT_NE(result, nullptr);
+    EXPECT_STREQ(EcmaStringAccessor(EcmaString::FromBaseString(result)).ToCString(thread).c_str(), "Hello世界");
+    EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
+}
+
 } // namespace panda::test
