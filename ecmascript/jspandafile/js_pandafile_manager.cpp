@@ -109,13 +109,12 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, nullptr);
         if (!getBuffer) {
             LoadJSPandaFileFailLog("[ArkRuntime Log] Importing shared package in the Previewer.");
-            CString msg = "resolveBufferCallback get hsp buffer failed, hsp path:" + filename +
-                ", errorMsg:" + errorMsg.c_str();
+            CString hspName = ModulePathHelper::GetBundleModuleName(filename);
+            CString msg = "load hsp failed, hsp name:"
+                + hspName + ", errorMsg:" + errorMsg.c_str();
             if (executeType == ExecuteTypes::NAPI) {
 #ifdef ENABLE_HILOG
-                HILOG_COMM_ERROR(
-                    "resolveBufferCallback get hsp buffer failed, "\
-                    "hsp path:%{public}s, errorMsg:%{public}s", filename.c_str(), msg.c_str());
+                HILOG_COMM_ERROR("%{public}s", msg.c_str());
 #else
                 LOG_FULL(ERROR) << msg;
 #endif

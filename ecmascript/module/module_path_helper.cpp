@@ -1243,4 +1243,30 @@ bool ModulePathHelper::IsCrossBundleHsp(const EcmaVM *vm, const CString &ohmurl)
     }
     return false;
 }
+
+/*
+* Before: /data/storage/el1/bundle/moduleName/ets/modules.abc
+* After:  moduleName
+*
+* Before: /data/storage/el1/bundle/bundleName/moduleName/moduleName/ets/modules.abc
+* After:  bundleName/moduleName
+*/
+CString ModulePathHelper::GetBundleModuleName(const CString &baseFileName)
+{
+    if (baseFileName.length() <= BUNDLE_INSTALL_PATH_LEN ||
+        baseFileName.compare(0, BUNDLE_INSTALL_PATH_LEN, BUNDLE_INSTALL_PATH) != 0) {
+        return baseFileName;
+    }
+    size_t pos = baseFileName.find(MERGE_ABC_ETS_MODULES);
+    if (pos == CString::npos) {
+        return baseFileName;
+    }
+    CString moduleName = baseFileName.substr(BUNDLE_INSTALL_PATH_LEN, pos - BUNDLE_INSTALL_PATH_LEN);
+    size_t slashPos = moduleName.find(PathHelper::SLASH_TAG);
+    if (slashPos == CString::npos) {
+        return moduleName; // moduleName
+    }
+    size_t lastSlash = moduleName.rfind(PathHelper::SLASH_TAG);
+    return moduleName.substr(0, lastSlash); // bundleName/moduleName
+}
 }  // namespace panda::ecmascript
