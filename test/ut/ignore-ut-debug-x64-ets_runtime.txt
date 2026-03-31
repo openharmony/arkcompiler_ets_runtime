@@ -37,9 +37,6 @@ obj/arkcompiler/ets_runtime/ecmascript/ohos/tests/OhosTest
 #267
 obj/arkcompiler/ets_runtime/ecmascript/napi/test/Jsnapi_004_Test
 
-#33882
-obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapProfilerDumpTest
-
 #33873
 obj/arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/HeapSnapShotTest
 
