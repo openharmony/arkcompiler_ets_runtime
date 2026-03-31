@@ -18,6 +18,7 @@
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/platform/log.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/dfx/stackinfo/async_stack_trace.h"
 
 namespace panda::ecmascript::base {
@@ -209,6 +210,20 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
     [[maybe_unused]] bool topStackstatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
         globalConst->GetHandledTopStackString(), topStackDesc);
     ASSERT_PRINT(topStackstatus == true, "return result exception!");
+
+    // Add module stack trace
+    if (UNLIKELY(ecmaVm->GetJSOptions().EnableModuleImportStack())) {
+        std::string_view moduleImportStackView = thread->GetModuleManager()->GetModuleImportStackData();
+        if (!moduleImportStackView.empty()) {
+            std::string moduleStack(moduleImportStackView);
+            JSHandle<EcmaString> moduleStackStr = factory->NewFromStdString(moduleStack);
+            PropertyDescriptor moduleStackDesc(thread,
+                JSHandle<JSTaggedValue>::Cast(moduleStackStr), true, false, true);
+            [[maybe_unused]] bool moduleStackstatus = JSObject::DefineOwnProperty(thread, nativeInstanceObj,
+                globalConst->GetHandledModuleImportStackString(), moduleStackDesc);
+            ASSERT_PRINT(moduleStackstatus == true, "Failed to define module Import stack property on object!");
+        }
+    }
 
     // Add async stack trace
     if (UNLIKELY(ecmaVm->IsEnableRuntimeAsyncStack())) {

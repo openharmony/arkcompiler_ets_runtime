@@ -152,6 +152,11 @@ public:
     void SetClassLiteralConstPoolMap(const CString &recordName, JSHandle<ConstantPool> constpool, uint32_t literalId);
     void ResetConstPoolLiterals(const CString &recordName);
 
+    std::string_view GetModuleImportStackData() const
+    {
+        return moduleImportData_;
+    }
+    
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
@@ -171,7 +176,7 @@ private:
     ModuleManagerMap<CString> resolvedModules_;
 #endif
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
-
+    std::string moduleImportData_ {"\nModuleImportStack:"};
     // for module deregister. <recordName <unsharedConstPoolIndex, value index>.
     CUnorderedMap<CString, CUnorderedMap<uint32_t, std::vector<uint32_t>>> classLiteralConstPoolMap_;
 
@@ -179,6 +184,7 @@ private:
     friend class PatchLoader;
     friend class ModuleDeregister;
     friend class SharedModuleManager;
+    friend class ModuleImportStackScope;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_JS_MODULE_MANAGER_H

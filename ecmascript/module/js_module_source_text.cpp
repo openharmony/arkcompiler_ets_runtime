@@ -1011,6 +1011,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, JSHandle<Sou
         return index;
     }
     ASSERT(status == ModuleStatus::INSTANTIATED);
+    ModuleImportStackScope scope(thread, module);
     module->SetStatus(ModuleStatus::EVALUATING);
     module->SetDFSIndex(index);
     module->SetDFSAncestorIndex(index);

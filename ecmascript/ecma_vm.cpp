@@ -217,7 +217,7 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
         JsStackInfo::loader = vm->GetAOTFileManager();
     }
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
-    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    int64_t arkProperties = OHOS::system::GetIntParameter<int64_t>("persist.ark.properties", -1);
     vm->GetJSOptions().SetArkProperties(arkProperties);
     bool pgoNapi = OHOS::system::GetBoolParameter("persist.ark.pgonapi", false);
     vm ->GetJSOptions().SetPgoNapi(pgoNapi);
@@ -297,7 +297,7 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
 
     Jit::GetInstance()->SetJitEnablePostFork(this, bundleName);
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
-    int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
+    int64_t arkProperties = OHOS::system::GetIntParameter<int64_t>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);
     bool pgoNapi = OHOS::system::GetBoolParameter("persist.ark.pgonapi", false);
     GetJSOptions().SetPgoNapi(pgoNapi);
