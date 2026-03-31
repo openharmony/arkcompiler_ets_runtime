@@ -1091,8 +1091,7 @@ void RawHeapTranslateV2::FillNodes()
         if ((*it)->strId >= StringHashMap::CUSTOM_STRID_START || metaParser_->IsString((*it)->jsType)) {
             continue;
         }
-        std::string name = metaParser_->GetTypeName((*it)->jsType);
-        std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+        std::string name = metaParser_->GetNodeName((*it)->jsType);
         (*it)->strId = InsertAndGetStringId(name);
     }
 }
