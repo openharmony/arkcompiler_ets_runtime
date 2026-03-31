@@ -140,6 +140,9 @@ void ICStubBuilder::TryPrimitiveLoadIC(Variable* cachedHandler, Label *tryICHand
         BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, slowPath_)
         Bind(&isHeapObject);
         {
+#if ENABLE_V70_OPTIMIZATION
+            GlobalEnvScope scope(this);
+#endif
             GateRef glueGlobalEnv = GetCurrentGlobalEnv();
 
             Label isNumber(env);
@@ -171,16 +174,42 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
         BRANCH_UNLIKELY(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
         Bind(&tryIC);
         {
-            Label isHeapObject(env);
             Label notHeapObject(env);
+            Label tryPoly(env);
             GateRef firstValue = GetValueFromTaggedArray(glue_, profileTypeInfo_, slotId_);
+#if ENABLE_V70_OPTIMIZATION
+            Label icHit(env);
+            Label icMiss(env);
+            GateRef hclass = LoadHClass(glue_, receiver_);
+            BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), &icHit, &icMiss);
+            Bind(&icHit);
+            {
+                GateRef secondValue =
+                    GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1))); // 1: second slot
+                cachedHandler->WriteVariable(secondValue);
+                Jump(tryICHandler);
+            }
+            Bind(&icMiss);
+            {
+                BRANCH(TaggedIsHeapObject(firstValue), &tryPoly, &notHeapObject);
+                Bind(&tryPoly);
+                {
+                    cachedHandler->WriteVariable(CheckPolyHClass(glue_, firstValue, hclass));
+                    BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
+                }
+                Bind(&notHeapObject);
+                {
+                    BRANCH(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
+                }
+            }
+#else
+            Label isHeapObject(env);
             BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
             {
                 GateRef secondValue =
                     GetValueFromTaggedArray(glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1))); // 1: second slot
                 cachedHandler->WriteVariable(secondValue);
-                Label tryPoly(env);
                 GateRef hclass = LoadHClass(glue_, receiver_);
                 BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                        tryICHandler,
@@ -195,6 +224,7 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
             {
                 BRANCH(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
             }
+#endif
         }
     }
     if constexpr (type == ICStubType::STORE) {
@@ -218,18 +248,57 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
         BRANCH_UNLIKELY(TaggedIsUndefined(profileTypeInfo_), tryFastPath_, &tryIC);
         Bind(&tryIC);
         {
-            Label isHeapObject(env);
             Label notHeapObject(env);
+            Label tryPoly(env);
+            Label tryWithElementPoly(env);
             GateRef firstValue = GetValueFromTaggedArray(
                 glue_, profileTypeInfo_, slotId_);
             GateRef secondValue = GetValueFromTaggedArray(
                 glue_, profileTypeInfo_, Int32Add(slotId_, Int32(1)));
             cachedHandler->WriteVariable(secondValue);
+#if ENABLE_V70_OPTIMIZATION
+            Label icMiss(env);
+            GateRef hclass = LoadHClass(glue_, receiver_);
+            BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass), tryElementIC, &icMiss);
+            Bind(&icMiss);
+            {
+                BRANCH(TaggedIsHeapObject(firstValue), &tryPoly, &notHeapObject);
+                Bind(&tryPoly);
+                {
+                    Label firstIsKey(env);
+                    BRANCH(Int64Equal(firstValue, propKey_), &firstIsKey, &tryWithElementPoly);
+                    Bind(&firstIsKey);
+                    {
+                        GateRef handler = CheckPolyHClass(glue_, secondValue, hclass);
+                        cachedHandler->WriteVariable(handler);
+                        BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryICHandler);
+                    }
+                    Bind(&tryWithElementPoly);
+                    {
+                        Label checkSecond(env);
+                        Label checkPoly(env);
+                        BRANCH(TaggedIsWeak(firstValue), slowPath_, &checkSecond);
+                        Bind(&checkSecond);
+                        {
+                            BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), &checkPoly, slowPath_);
+                        }
+                        Bind(&checkPoly);
+                        {
+                            cachedHandler->WriteVariable(CheckPolyHClass(glue_, firstValue, hclass));
+                            BRANCH(TaggedIsHole(cachedHandler->ReadVariable()), slowPath_, tryElementIC);
+                        }
+                    }
+                }
+                Bind(&notHeapObject);
+                {
+                    BRANCH(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
+                }
+            }
+#else
+            Label isHeapObject(env);
             BRANCH(TaggedIsHeapObject(firstValue), &isHeapObject, &notHeapObject);
             Bind(&isHeapObject);
             {
-                Label tryPoly(env);
-                Label tryWithElementPoly(env);
                 GateRef hclass = LoadHClass(glue_, receiver_);
                 BRANCH(Equal(LoadObjectFromWeakRef(firstValue), hclass),
                        tryElementIC,
@@ -265,6 +334,7 @@ void ICStubBuilder::ValuedICAccessor(Variable* cachedHandler, Label *tryICHandle
             {
                 BRANCH(TaggedIsUndefined(firstValue), slowPath_, tryFastPath_);
             }
+#endif
         }
     }
 }
@@ -386,6 +456,9 @@ void ICStubBuilder::LoadICByValue(
                 {
                     GateRef hclass = LoadHClass(glue_, receiver_);
                     GateRef jsType = GetObjectType(hclass);
+#if ENABLE_V70_OPTIMIZATION
+                    GlobalEnvScope scope(this);
+#endif
                     BuiltinsTypedArrayStubBuilder typedArrayBuilder(this, GetCurrentGlobalEnv());
                     ret = typedArrayBuilder.LoadTypedArrayElement(glue_, receiver_, propKey_, jsType);
                     Jump(&exit);

@@ -16,6 +16,7 @@
 #include "common_components/base/config.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
+#include "ecmascript/compiler/ic_stub_builder.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
@@ -1914,13 +1915,20 @@ DECLARE_ASM_HANDLER(HandleStobjbyvalueImm8V8V8)
     GateRef v1 = ReadInst8_2(pc);
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
-    GateRef value = acc;
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+#if ENABLE_V70_OPTIMIZATION
+    AccessObjectStubBuilder builder(this);
+    auto globalEnvGetter = [this, &glue, &sp]() -> GateRef {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+    builder.SetCallBackForLazyGetGlobalEnv(globalEnvGetter);
+#else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-
     AccessObjectStubBuilder builder(this, globalEnv);
-    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId, callback);
+#endif
+    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYVALUE_IMM8_V8_V8));
 }
 
@@ -1930,13 +1938,20 @@ DECLARE_ASM_HANDLER(HandleStobjbyvalueImm16V8V8)
     GateRef v1 = ReadInst8_3(pc);
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
     GateRef propKey = GetVregValue(glue, sp, ZExtInt8ToPtr(v1));
-    GateRef value = acc;
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+#if ENABLE_V70_OPTIMIZATION
+    AccessObjectStubBuilder builder(this);
+    auto globalEnvGetter = [this, &glue, &sp]() -> GateRef {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+    builder.SetCallBackForLazyGetGlobalEnv(globalEnvGetter);
+#else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-
     AccessObjectStubBuilder builder(this, globalEnv);
-    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, value, profileTypeInfo, slotId, callback);
+#endif
+    GateRef result = builder.StoreObjByValue(glue, receiver, propKey, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYVALUE_IMM16_V8_V8));
 }
 
@@ -2295,26 +2310,42 @@ DECLARE_ASM_HANDLER(HandleShl2Imm8V8)
 
 DECLARE_ASM_HANDLER(HandleStobjbynameImm8Id16V8)
 {
-    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_3(pc)));
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
+#if ENABLE_V70_OPTIMIZATION
+    AccessObjectStubBuilder builder(this);
+    auto globalEnvGetter = [this, &glue, &sp]() -> GateRef {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+    builder.SetCallBackForLazyGetGlobalEnv(globalEnvGetter);
+#else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-
     AccessObjectStubBuilder builder(this, globalEnv);
-    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
+#endif
     GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYNAME_IMM8_ID16_V8));
 }
 
 DECLARE_ASM_HANDLER(HandleStobjbynameImm16Id16V8)
 {
-    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+    GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(ReadInst8_4(pc)));
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
+#if ENABLE_V70_OPTIMIZATION
+    AccessObjectStubBuilder builder(this);
+    auto globalEnvGetter = [this, &glue, &sp]() -> GateRef {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+    builder.SetCallBackForLazyGetGlobalEnv(globalEnvGetter);
+#else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-
     AccessObjectStubBuilder builder(this, globalEnv);
-    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
+#endif
     GateRef result = builder.StoreObjByName(glue, receiver, 0, info, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION(result, INT_PTR(STOBJBYNAME_IMM16_ID16_V8));
 }
@@ -3906,13 +3937,20 @@ DECLARE_ASM_HANDLER(HandleLdobjbyvalueImm8V8)
 
     GateRef v0 = ReadInst8_1(pc);
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = acc;
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+#if ENABLE_V70_OPTIMIZATION
+    AccessObjectStubBuilder builder(this);
+    auto globalEnvGetter = [this, &glue, &sp]() -> GateRef {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+    builder.SetCallBackForLazyGetGlobalEnv(globalEnvGetter);
+#else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-
     AccessObjectStubBuilder builder(this, globalEnv);
-    GateRef result = builder.LoadObjByValue(glue, receiver, propKey, profileTypeInfo, slotId, callback);
+#endif
+    GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDOBJBYVALUE_IMM8_V8));
 }
 
@@ -3922,13 +3960,20 @@ DECLARE_ASM_HANDLER(HandleLdobjbyvalueImm16V8)
 
     GateRef v0 = ReadInst8_2(pc);
     GateRef receiver = GetVregValue(glue, sp, ZExtInt8ToPtr(v0));
-    GateRef propKey = acc;
     GateRef slotId = ZExtInt8ToInt32(ReadInst16_0(pc));
+#if ENABLE_V70_OPTIMIZATION
+    AccessObjectStubBuilder builder(this);
+    auto globalEnvGetter = [this, &glue, &sp]() -> GateRef {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+    builder.SetCallBackForLazyGetGlobalEnv(globalEnvGetter);
+#else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-
     AccessObjectStubBuilder builder(this, globalEnv);
-    GateRef result = builder.LoadObjByValue(glue, receiver, propKey, profileTypeInfo, slotId, callback);
+#endif
+    GateRef result = builder.LoadObjByValue(glue, receiver, acc, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDOBJBYVALUE_IMM16_V8));
 }
 
@@ -4226,12 +4271,11 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef indexInt32 = ZExtInt8ToInt32(index);
-    auto globalenvSetter = [this, &glue, &frame]() {
+    auto globalenvGetter = [this, &glue, &frame]() -> GateRef {
         GateRef currentEnv = GetEnvFromFrame(glue, frame);
-        GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-        SetCurrentGlobalEnv(globalEnv);
+        return GetCurrentGlobalEnv(glue, currentEnv);
     };
-    SetCallBackForLazySetGlobalEnv(globalenvSetter);
+    SetCallBackForLazyGetGlobalEnv(globalenvGetter);
     varAcc = FastLoadExternalmodulevar(glue, index, module);
 #else
     GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
@@ -4255,12 +4299,11 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     GateRef currentFunc = GetFunctionFromFrame(glue, frame);
     GateRef module = GetModuleFromFunction(glue, currentFunc);
     GateRef indexInt32 = ZExtInt16ToInt32(index);
-    auto globalenvSetter = [this, &glue, &frame]() {
+    auto globalenvGetter = [this, &glue, &frame]() -> GateRef {
         GateRef currentEnv = GetEnvFromFrame(glue, frame);
-        GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
-        SetCurrentGlobalEnv(globalEnv);
+        return GetCurrentGlobalEnv(glue, currentEnv);
     };
-    SetCallBackForLazySetGlobalEnv(globalenvSetter);
+    SetCallBackForLazyGetGlobalEnv(globalenvGetter);
     varAcc = FastLoadExternalmodulevar(glue, index, module);
 #else
     GateRef currentFunc = GetFunctionFromFrame(glue, GetFrame(sp));
@@ -4503,10 +4546,19 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm8Id16)
 
     GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     GateRef receiver = acc;
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
+#if ENABLE_V70_OPTIMIZATION
+    AccessObjectStubBuilder builder(this);
+    auto globalEnvGetter = [this, &glue, &sp]() -> GateRef {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+    builder.SetCallBackForLazyGetGlobalEnv(globalEnvGetter);
+#else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     AccessObjectStubBuilder builder(this, globalEnv);
-    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_1, StringIdInfo::Length::BITS_16);
+#endif
     GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDOBJBYNAME_IMM8_ID16));
 }
@@ -4517,10 +4569,19 @@ DECLARE_ASM_HANDLER(HandleLdobjbynameImm16Id16)
 
     GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
     GateRef receiver = acc;
+    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
+#if ENABLE_V70_OPTIMIZATION
+    AccessObjectStubBuilder builder(this);
+    auto globalEnvGetter = [this, &glue, &sp]() -> GateRef {
+        GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
+        return GetCurrentGlobalEnv(glue, currentEnv);
+    };
+    builder.SetCallBackForLazyGetGlobalEnv(globalEnvGetter);
+#else
     GateRef currentEnv = GetEnvFromFrame(glue, GetFrame(sp));
     GateRef globalEnv = GetCurrentGlobalEnv(glue, currentEnv);
     AccessObjectStubBuilder builder(this, globalEnv);
-    StringIdInfo info(constpool, pc, StringIdInfo::Offset::BYTE_2, StringIdInfo::Length::BITS_16);
+#endif
     GateRef result = builder.LoadObjByName(glue, receiver, 0, info, profileTypeInfo, slotId, callback);
     CHECK_EXCEPTION_WITH_VARACC(result, INT_PTR(LDOBJBYNAME_IMM16_ID16));
 }

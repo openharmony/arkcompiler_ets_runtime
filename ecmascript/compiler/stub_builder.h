@@ -134,6 +134,10 @@ public:
     {
         return callSignature_;
     }
+    inline GateRef HasGlobalEnv() const
+    {
+        return globalEnv_ != Gate::InvalidGateRef;
+    }
     inline GateRef GetCurrentGlobalEnv()
     {
         if (globalEnv_ == Gate::InvalidGateRef) {
@@ -1327,16 +1331,53 @@ public:
     void ArrayCopy(GateRef glue, GateRef srcObj, GateRef srcAddr, GateRef dstObj, GateRef dstAddr,
                    GateRef taggedValueCount, GateRef needBarrier, CopyKind copyKind);
 
-    void SetCallBackForLazySetGlobalEnv(std::function<void()> func)
+    void SetCallBackForLazyGetGlobalEnv(std::function<GateRef()> func)
     {
-        lazySetGlobalEnvCallBack_ = func;
+        lazyGetGlobalEnvCallBack_ = func;
     }
 
-    void LazySetGlobalEnv()
+    std::function<GateRef()> GetCallBackForLazyGetGlobalEnv()
     {
-        ASSERT(lazySetGlobalEnvCallBack_ != nullptr);
-        lazySetGlobalEnvCallBack_();
+        return lazyGetGlobalEnvCallBack_;
     }
+
+    GateRef LazyGetGlobalEnv()
+    {
+        ASSERT(lazyGetGlobalEnvCallBack_ != nullptr);
+        return lazyGetGlobalEnvCallBack_();
+    }
+
+#if ENABLE_V70_OPTIMIZATION
+    // RAII helper class for automatic GlobalEnv management
+    class GlobalEnvScope {
+    public:
+        explicit GlobalEnvScope(StubBuilder* builder)
+            : builder_(builder)
+        {
+            // Save current globalEnv for restoration (before any potential changes)
+            prevGlobalEnv_ = builder_->globalEnv_;
+            if (!builder_->HasGlobalEnv()) {
+                builder_->SetCurrentGlobalEnv(builder_->LazyGetGlobalEnv());
+            }
+        }
+
+        ~GlobalEnvScope()
+        {
+            // Restore previous globalEnv state
+            builder_->globalEnv_ = prevGlobalEnv_;
+        }
+
+        // Delete copy and move operations
+        GlobalEnvScope(const GlobalEnvScope&) = delete;
+        GlobalEnvScope& operator=(const GlobalEnvScope&) = delete;
+        GlobalEnvScope(GlobalEnvScope&&) = delete;
+        GlobalEnvScope& operator=(GlobalEnvScope&&) = delete;
+
+    private:
+        StubBuilder* builder_;
+        GateRef prevGlobalEnv_;
+    };
+#endif
 
 protected:
     static constexpr int LOOP_UNROLL_FACTOR = 2;
@@ -1377,7 +1418,7 @@ private:
     CallSignature *callSignature_ {nullptr};
     Environment *env_;
     GateRef globalEnv_ {Gate::InvalidGateRef};
-    std::function<void()> lazySetGlobalEnvCallBack_ = nullptr;
+    std::function<GateRef()> lazyGetGlobalEnvCallBack_ {nullptr};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_STUB_BUILDER_H

@@ -809,6 +809,16 @@ void InterpreterStubBuilder::CheckExceptionWithJump(GateRef glue, GateRef sp, Ga
     }
 }
 
+GateRef InterpreterStubBuilder::ResolvePropKey(GateRef glue, GateRef prop, const StringIdInfo &info)
+{
+    if (!info.IsValid()) {
+        return prop;
+    }
+    InterpreterToolsStubBuilder builder(GetCallSignature(), GetEnvironment());
+    GateRef stringId = builder.GetStringId(info);
+    return GetStringFromConstPool(glue, info.GetConstantPool(), stringId);
+}
+
 GateRef InterpreterToolsStubBuilder::GetStringId(const StringIdInfo &info)
 {
     if (info.GetStringIdType() == StringIdInfo::StringIdType::STRING_ID) {

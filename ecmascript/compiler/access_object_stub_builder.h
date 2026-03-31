@@ -23,6 +23,10 @@
 namespace panda::ecmascript::kungfu {
 class AccessObjectStubBuilder : public StubBuilder {
 public:
+    AccessObjectStubBuilder(StubBuilder *parent) : StubBuilder(parent)
+    {
+        jsFunc_ = Circuit::NullGate();
+    }
     AccessObjectStubBuilder(StubBuilder *parent, GateRef globalEnv) : StubBuilder(parent, globalEnv)
     {
         jsFunc_ = Circuit::NullGate();

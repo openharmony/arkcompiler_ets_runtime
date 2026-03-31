@@ -32,7 +32,16 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
+#if ENABLE_V70_OPTIMIZATION
+    ICStubBuilder builder(this);
+    if (HasGlobalEnv()) {
+        builder.SetCurrentGlobalEnv(GetCurrentGlobalEnv());
+    } else {
+        builder.SetCallBackForLazyGetGlobalEnv(GetCallBackForLazyGetGlobalEnv());
+    }
+#else
     ICStubBuilder builder(this, GetCurrentGlobalEnv());
+#endif
     StartTraceLoadDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId));
 #if ECMASCRIPT_ENABLE_NOT_FOUND_IC_CHECK
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, prop, info, jsFunc_);
@@ -47,7 +56,14 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
 #else
         GateRef propKey = ResolvePropKey(glue, prop, info);
 #endif
+#if ENABLE_V70_OPTIMIZATION
+        {
+            GlobalEnvScope scope(this);
+            result = GetPropertyByName(glue, receiver, propKey, Circuit::NullGate(), callback);
+        }
+#else
         result = GetPropertyByName(glue, receiver, propKey, Circuit::NullGate(), callback);
+#endif
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&tryPreDump);
@@ -213,7 +229,16 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+#if ENABLE_V70_OPTIMIZATION
+    ICStubBuilder builder(this);
+    if (HasGlobalEnv()) {
+        builder.SetCurrentGlobalEnv(GetCurrentGlobalEnv());
+    } else {
+        builder.SetCallBackForLazyGetGlobalEnv(GetCallBackForLazyGetGlobalEnv());
+    }
+#else
     ICStubBuilder builder(this, GetCurrentGlobalEnv());
+#endif
     StartTraceStoreDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId));
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
     builder.StoreICByName(&result, &tryFastPath, &tryPreDump, &exit);
@@ -226,7 +251,14 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
 #else
         GateRef propKey = ResolvePropKey(glue, prop, info);
 #endif
+#if ENABLE_V70_OPTIMIZATION
+        {
+            GlobalEnvScope scope(this);
+            result = SetPropertyByName(glue, receiver, propKey, value, false, True(), callback);
+        }
+#else
         result = SetPropertyByName(glue, receiver, propKey, value, false, True(), callback);
+#endif
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&tryPreDump);
@@ -377,13 +409,29 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
+#if ENABLE_V70_OPTIMIZATION
+    ICStubBuilder builder(this);
+    if (HasGlobalEnv()) {
+        builder.SetCurrentGlobalEnv(GetCurrentGlobalEnv());
+    } else {
+        builder.SetCallBackForLazyGetGlobalEnv(GetCallBackForLazyGetGlobalEnv());
+    }
+#else
     ICStubBuilder builder(this, GetCurrentGlobalEnv());
+#endif
     StartTraceLoadValueDetail(glue, receiver, profileTypeInfo, IntToTaggedInt(slotId), key);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key);
     builder.LoadICByValue(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
     {
+#if ENABLE_V70_OPTIMIZATION
+        {
+            GlobalEnvScope scope(this);
+            result = GetPropertyByValue(glue, receiver, key, Circuit::NullGate(), callback);
+        }
+#else
         result = GetPropertyByValue(glue, receiver, key, Circuit::NullGate(), callback);
+#endif
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&tryPreDump);
@@ -487,12 +535,28 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+#if ENABLE_V70_OPTIMIZATION
+    ICStubBuilder builder(this);
+    if (HasGlobalEnv()) {
+        builder.SetCurrentGlobalEnv(GetCurrentGlobalEnv());
+    } else {
+        builder.SetCallBackForLazyGetGlobalEnv(GetCallBackForLazyGetGlobalEnv());
+    }
+#else
     ICStubBuilder builder(this, GetCurrentGlobalEnv());
+#endif
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key, callback);
     builder.StoreICByValue(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
     {
+#if ENABLE_V70_OPTIMIZATION
+        {
+            GlobalEnvScope scope(this);
+            result = SetPropertyByValue(glue, receiver, key, value, false, callback);
+        }
+#else
         result = SetPropertyByValue(glue, receiver, key, value, false, callback);
+#endif
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
     Bind(&tryPreDump);

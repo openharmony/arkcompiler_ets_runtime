@@ -24,6 +24,8 @@
 namespace panda::ecmascript::kungfu {
 class BuiltinsStubBuilder : public StubBuilder {
 public:
+    BuiltinsStubBuilder(StubBuilder *parent)
+        : StubBuilder(parent) {}
     BuiltinsStubBuilder(StubBuilder *parent, GateRef globalEnv)
         : StubBuilder(parent, globalEnv) {}
     BuiltinsStubBuilder(CallSignature *callSignature, Environment *env, GateRef globalEnv)
