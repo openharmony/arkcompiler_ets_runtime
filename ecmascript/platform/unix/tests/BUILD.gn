@@ -40,20 +40,45 @@ host_unittest_action("ChmodTest") {
   ]
 }
 
+host_unittest_action("PlatformMapTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "platform_map_test.cpp",
+  ]
+
+  configs = [
+    "$js_root:ecma_test_config",
+  ]
+
+  if (ark_standalone_build || is_arkui_x) {
+    configs += [
+      "$ark_root/assembler:arkassembler_public_config",
+      "$ark_root/libpandafile:arkfile_public_config",
+    ]
+  }
+
+  deps = [
+    "$js_root:libark_jsruntime_test",
+  ]
+}
+
 group("unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":ChmodTest" ]
+  deps = [ ":ChmodTest", ":PlatformMapTest" ]
 }
 
 group("host_unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":ChmodTestAction" ]
+  deps = [ ":ChmodTestAction", ":PlatformMapTestAction" ]
 
   if (is_mac) {
     deps -= [ ":ChmodTestAction" ]
+    deps -= [ ":PlatformMapTestAction" ]
   }
 }
