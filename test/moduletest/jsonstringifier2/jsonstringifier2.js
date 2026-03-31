@@ -948,4 +948,20 @@
     let s = JSON.stringify(obj);
 }
 
+{
+    const target = {};
+    const high = 400;
+    const inner = {};
+    Object.defineProperty(inner, 'trigger', {
+        get() {
+            delete target[high];
+            return 1;
+        },
+        enumerable: true,
+    });
+    target[0] = inner;
+    target[high] = 1;
+    JSON.stringify(target);
+}
+
 test_end();
