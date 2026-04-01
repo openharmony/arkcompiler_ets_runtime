@@ -5827,4 +5827,44 @@ HWTEST_F_L0(EcmaModuleTest, ModuleLogger_SetModuleLoggerTask)
     thread->SetModuleLogger(nullptr);
     vm->SetTimerTaskCallback(nullptr);
 }
+
+HWTEST_F_L0(EcmaModuleTest, GetBundleModuleName_NormalPath)
+{
+    CString baseFileName = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
+    CString expectRes = "moduleName";
+    CString res = ModulePathHelper::GetBundleModuleName(baseFileName);
+    EXPECT_EQ(res, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetBundleModuleName_WithPackageName)
+{
+    CString baseFileName = "/data/storage/el1/bundle/com.bundleName.test1/moduleName1/moduleName1/ets/modules.abc";
+    CString expectRes = "com.bundleName.test1/moduleName1";
+    CString res = ModulePathHelper::GetBundleModuleName(baseFileName);
+    EXPECT_EQ(res, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetBundleModuleName_InvalidPath)
+{
+    CString baseFileName = "/invalid/path/moduleName/ets/modules.abc";
+    CString expectRes = "/invalid/path/moduleName/ets/modules.abc";
+    CString res = ModulePathHelper::GetBundleModuleName(baseFileName);
+    EXPECT_EQ(res, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetBundleModuleName_InvalidExtension)
+{
+    CString baseFileName = "/data/storage/el1/bundle/moduleName/ets/modules.invalid";
+    CString expectRes = "/data/storage/el1/bundle/moduleName/ets/modules.invalid";
+    CString res = ModulePathHelper::GetBundleModuleName(baseFileName);
+    EXPECT_EQ(res, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetBundleModuleName_EmptyPath)
+{
+    CString baseFileName = "";
+    CString expectRes = "";
+    CString res = ModulePathHelper::GetBundleModuleName(baseFileName);
+    EXPECT_EQ(res, expectRes);
+}
 }  // namespace panda::test
