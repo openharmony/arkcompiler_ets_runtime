@@ -1713,6 +1713,7 @@ JSTaggedValue BuiltinsRegExp::RegExpSplitFast(JSThread *thread, const JSHandle<J
     }
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    RegExpExecResultCache::CacheGuardScope cacheGuardScope(cacheTable);
     if (useCache) {
         JSTaggedValue cacheResult;
         if (UNLIKELY(thread->NeedReadBarrier())) {
@@ -2062,6 +2063,7 @@ JSTaggedValue BuiltinsRegExp::RegExpBuiltinExec(JSThread *thread, const JSHandle
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     JSHandle<RegExpExecResultCache> cacheTable(thread->GetGlobalEnv()->GetRegExpCache());
+    RegExpExecResultCache::CacheGuardScope cacheGuardScope(cacheTable);
     cacheTable->SetUseLastMatch(thread, false);
     if (useCache) {
         JSTaggedValue cacheResult;
