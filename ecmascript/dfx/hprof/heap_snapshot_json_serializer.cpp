@@ -106,7 +106,7 @@ void HeapSnapshotJSONSerializer::SerializeNodes(HeapSnapshot *snapshot, StreamWr
 {
     LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::SerializeNodes";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "HeapSnapshotJSONSerializer::SerializeNodes", "");
-    const CVector<Node *> *nodes = snapshot->GetNodes();
+    const CVector<HprofNode *> *nodes = snapshot->GetNodes();
     const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
     ASSERT(nodes != nullptr);
     writer->WriteString("\"nodes\":[");  // Section Header
@@ -160,10 +160,10 @@ void HeapSnapshotJSONSerializer::SerializeEdges(HeapSnapshot *snapshot, StreamWr
         writer->WriteChar(',');
 
         if (i == edges->size() - 1) {  // add comma at last the line
-            writer->WriteNumber(edge->GetTo()->GetIndex() * Node::NODE_FIELD_COUNT);  // 3.
+            writer->WriteNumber(edge->GetTo()->GetIndex() * HprofNode::NODE_FIELD_COUNT);  // 3.
             writer->WriteString("],\n");
         } else {
-            writer->WriteNumber(edge->GetTo()->GetIndex() * Node::NODE_FIELD_COUNT);    // 3.
+            writer->WriteNumber(edge->GetTo()->GetIndex() * HprofNode::NODE_FIELD_COUNT);    // 3.
             writer->WriteChar('\n');
         }
         i++;

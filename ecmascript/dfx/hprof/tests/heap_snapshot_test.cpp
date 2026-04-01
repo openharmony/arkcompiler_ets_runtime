@@ -26,7 +26,7 @@ public:
                                     bool traceAllocation, EntryIdMap* entryIdMap)
         : heapSnapshot(vm, stringTable, dumpOption, traceAllocation, entryIdMap) {}
 
-    Node *GeneratePrivateStringNodeTest(size_t size)
+    HprofNode *GeneratePrivateStringNodeTest(size_t size)
     {
         return heapSnapshot.GeneratePrivateStringNode(size);
     }
@@ -36,7 +36,7 @@ public:
         return heapSnapshot.MoveNode(address, forwardAddress, size);
     }
 
-    void InsertEntryTest(Node *node)
+    void InsertEntryTest(HprofNode *node)
     {
         heapSnapshot.entryMap_.InsertEntry(node);
     }
@@ -213,7 +213,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestGeneratePrivateStringNode)
     dumpOption.isPrivate = true;
     HeapSnapShotFriendTest heapSnapShotTest(ecmaVm_, tester.GetEcmaStringTableTest(),
                                             dumpOption, false, tester.GetEntryIdMapTest());
-    Node *node = heapSnapShotTest.GeneratePrivateStringNodeTest(0);
+    HprofNode *node = heapSnapShotTest.GeneratePrivateStringNodeTest(0);
 #if defined(ARK_HYBRID) || defined(USE_CMC_GC)
     // lineString: 32
     ASSERT_EQ(node->GetSelfSize(), 32);
@@ -235,14 +235,14 @@ HWTEST_F_L0(HeapSnapShotTest, TestMoveNode)
     JSHandle<EcmaString> strRight = factory->NewFromUtf8("rightString");
     EcmaString *treeString = EcmaStringAccessor::Concat(ecmaVm_, strLeft, strRight);
     uintptr_t address = 0;
-    Node *node = Node::NewNode(heapSnapShotTest.GetChunkTest(), 0, 0,
+    HprofNode *node = HprofNode::NewNode(heapSnapShotTest.GetChunkTest(), 0, 0,
         heapSnapShotTest.GenerateNodeNameTest(reinterpret_cast<TaggedObject *>(treeString)),
         heapSnapShotTest.GenerateNodeTypeTest(reinterpret_cast<TaggedObject *>(treeString)),
         0, 0, address);
     heapSnapShotTest.InsertEntryTest(node);
     heapSnapShotTest.MoveNodeTest(address, reinterpret_cast<TaggedObject *>(treeString), 0);
     HeapEntryMap &heapEntryMap = heapSnapShotTest.GetEntryMapTest();
-    Node *movedNode = heapEntryMap.FindEntry(reinterpret_cast<JSTaggedType>(treeString));
+    HprofNode *movedNode = heapEntryMap.FindEntry(reinterpret_cast<JSTaggedType>(treeString));
 #if defined(ARK_HYBRID) || defined(USE_CMC_GC)
     // treeString: 40
     ASSERT_EQ(movedNode->GetSelfSize(), 40);
@@ -303,36 +303,6 @@ HWTEST_F_L0(HeapSnapShotTest, TestNodeIdCacheClearScopeWithNullptr)
 #endif
 }
 
-HWTEST_F_L0(HeapSnapShotTest, TestHandleSyntheticRoots)
-{
-    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "heap_snapshot.abc";
-    std::string entryPoint = "heap_snapshot";
-    bool result = JSNApi::Execute(ecmaVm_, abcFileName, entryPoint);
-    ASSERT_TRUE(result);
-
-    DumpSnapShotOption dumpOption;
-    HeapProfilerFriendTest tester(ecmaVm_);
-    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
-
-    // LocalHandleSyntheticRoot and GlobalHandleSyntheticRoot are inserted at fixed positions 1 and 2
-    const auto &nodes = *snapshot->GetNodes();
-    ASSERT_GE(nodes.size(), 3U) << "Not enough nodes in snapshot";
-
-    // Verify LocalHandleSyntheticRoot at position 1
-    const Node *localHandleRoot = nodes[1];
-    ASSERT_NE(localHandleRoot->GetName(), nullptr) << "LocalHandleSyntheticRoot name should not be null";
-    ASSERT_EQ(localHandleRoot->GetType(), NodeType::HANDLE) << "LocalHandleSyntheticRoot type should be HANDLE";
-    CString localName = *localHandleRoot->GetName();
-    ASSERT_TRUE(localName.find("LocalHandleRoot[") == 0) << "Expected LocalHandleRoot, got: " << localName;
-
-    // Verify GlobalHandleSyntheticRoot at position 2
-    const Node *globalHandleRoot = nodes[2];
-    ASSERT_NE(globalHandleRoot->GetName(), nullptr) << "GlobalHandleSyntheticRoot name should not be null";
-    ASSERT_EQ(globalHandleRoot->GetType(), NodeType::HANDLE) << "GlobalHandleSyntheticRoot type should be HANDLE";
-    CString globalName = *globalHandleRoot->GetName();
-    ASSERT_TRUE(globalName.find("GlobalHandleRoot[") == 0) << "Expected GlobalHandleRoot, got: " << globalName;
-}
-
 HWTEST_F_L0(HeapSnapShotTest, TestNativeAddrToNodeIdMapOption)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
@@ -381,7 +351,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestUpdateNodeAddressIdMap)
     dumpOption.nativeAddrToNodeIdMap = 1;
     HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
     ASSERT_NE(snapshot, nullptr);
-    tester.GetEntryIdMapTest()->UpdateEntryIdMap(snapshot);
+
     tester.UpdateNodeAddressIdMapTest();
     CUnorderedMap<uintptr_t, NodeId> nodeAddressIdMap = tester.GetNodeAddressIdMapTest();
     ASSERT_TRUE(nodeAddressIdMap.size() > 0);
@@ -394,6 +364,13 @@ HWTEST_F_L0(HeapSnapShotTest, TestSerializeExtraInfo)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     HeapProfilerFriendTest tester(ecmaVm_);
+
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<JSTaggedValue> obj1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> obj2(factory->CreateNapiObject());
+    Global<ObjectRef> globalObj1(ecmaVm_, Local<JSTaggedValue>(obj1.GetAddress()));
+    Global<ObjectRef> globalObj2(ecmaVm_, Local<JSTaggedValue>(obj2.GetAddress()));
+
     DumpSnapShotOption dumpOption;
     dumpOption.nativeAddrToNodeIdMap = 1;
     HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
@@ -417,6 +394,36 @@ HWTEST_F_L0(HeapSnapShotTest, TestSerializeExtraInfo)
 #else
     ASSERT_TRUE(true);
 #endif
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestHandleSyntheticRoots)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "heap_snapshot.abc";
+    std::string entryPoint = "heap_snapshot";
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, entryPoint);
+    ASSERT_TRUE(result);
+
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+
+    // LocalHandleSyntheticRoot and GlobalHandleSyntheticRoot are inserted at fixed positions 1 and 2
+    const auto &nodes = *snapshot->GetNodes();
+    ASSERT_GE(nodes.size(), 3U) << "Not enough nodes in snapshot";
+
+    // Verify LocalHandleSyntheticRoot at position 1
+    const HprofNode *localHandleRoot = nodes[1];
+    ASSERT_NE(localHandleRoot->GetName(), nullptr) << "LocalHandleSyntheticRoot name should not be null";
+    ASSERT_EQ(localHandleRoot->GetType(), NodeType::HANDLE) << "LocalHandleSyntheticRoot type should be HANDLE";
+    CString localName = *localHandleRoot->GetName();
+    ASSERT_TRUE(localName.find("LocalHandleRoot[") == 0) << "Expected LocalHandleRoot, got: " << localName;
+
+    // Verify GlobalHandleSyntheticRoot at position 2
+    const HprofNode *globalHandleRoot = nodes[2];
+    ASSERT_NE(globalHandleRoot->GetName(), nullptr) << "GlobalHandleSyntheticRoot name should not be null";
+    ASSERT_EQ(globalHandleRoot->GetType(), NodeType::HANDLE) << "GlobalHandleSyntheticRoot type should be HANDLE";
+    CString globalName = *globalHandleRoot->GetName();
+    ASSERT_TRUE(globalName.find("GlobalHandleRoot[") == 0) << "Expected GlobalHandleRoot, got: " << globalName;
 }
 
 HWTEST_F_L0(HeapSnapShotTest, TestProxyClassName)
