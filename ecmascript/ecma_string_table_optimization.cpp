@@ -22,7 +22,6 @@
 #include "ecmascript/string/hashtriemap-inl.h"
 
 namespace panda::ecmascript {
-#if ENABLE_NEXT_OPTIMIZATION
 void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)
 {
     StartSweepWeakRefTask();
@@ -976,5 +975,4 @@ void EcmaStringTable::TransferToNativeAndWaitSweepWeakRefTaskFinished(JSThread *
     panda::ecmascript::ThreadNativeScope scope(thread);
     cleaner_->WaitSweepWeakRefTaskFinished();
 }
-#endif
 }  // namespace panda::ecmascript

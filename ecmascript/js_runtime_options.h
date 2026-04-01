@@ -2710,7 +2710,7 @@ private:
     bool forceDump_ {true};
     bool concurrentCompile {true};
     bool aotHasException_ {false};
-    bool enableInlinePropertyOptimization_ {NEXT_OPTIMIZATION_BOOL};
+    bool enableInlinePropertyOptimization_ {true};
     bool enableLdObjValueOpt_ {true};
 #ifdef USE_CMC_GC
     bool enableCMCGC_ {true};

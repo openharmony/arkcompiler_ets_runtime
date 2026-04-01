@@ -66,8 +66,7 @@ declare_args() {
     timeout = 2400
   }
 
-  # Turn off next optimization features if set to false
-  enable_next_optimization = true
+  # Turn off optimization features if set to false
   # For v61
   enable_latest_optimization = true
   # For v70
