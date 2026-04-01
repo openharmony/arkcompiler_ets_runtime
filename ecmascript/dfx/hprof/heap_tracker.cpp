@@ -37,7 +37,7 @@ void HeapTracker::AllocationEvent(TaggedObject *address, size_t size)
         return;
     }
     prevAllocation_ = address;
-    Node *node = snapshot_->AddNode(address, size);
+    HprofNode *node = snapshot_->AddNode(address, size);
     if (node != nullptr && snapshot_->trackAllocations()) {
         int selfSize = static_cast<int>(node->GetSelfSize());
         int sequenceId = static_cast<int>(node->GetId());

@@ -61,10 +61,10 @@ enum class NodeType {
 
 enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, DEFAULT = PROPERTY };
 
-class Node {
+class HprofNode {
 public:
-    Node(NodeId id, uint32_t index, const CString *name, NodeType type, size_t size, size_t nativeSize,
-         uint32_t traceId, JSTaggedType address, bool isLive = true)
+    HprofNode(NodeId id, uint32_t index, const CString *name, NodeType type, size_t size, size_t nativeSize,
+              uint32_t traceId, JSTaggedType address, bool isLive = true)
         : id_(id),
           index_(index),
           name_(name),
@@ -155,15 +155,15 @@ public:
     {
         traceId_ = traceId;
     }
-    static Node *NewNode(Chunk &chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
-                         size_t nativeSize, JSTaggedType entry, bool isLive = true);
+    static HprofNode *NewNode(Chunk &chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
+                              size_t nativeSize, JSTaggedType entry, bool isLive = true);
     template<typename T>
     static JSTaggedType NewAddress(T *addr)
     {
         return reinterpret_cast<JSTaggedType>(addr);
     }
     static constexpr int NODE_FIELD_COUNT = 8;
-    ~Node() = default;
+    ~HprofNode() = default;
 
 private:
     NodeId id_ {0};  // Range from 1
@@ -180,19 +180,19 @@ private:
 
 class Edge {
 public:
-    Edge(EdgeType type, Node *from, Node *to, CString *name)
+    Edge(EdgeType type, HprofNode *from, HprofNode *to, CString *name)
         : edgeType_(type), from_(from), to_(to), name_(name) {}
-    Edge(EdgeType type, Node *from, Node *to, uint32_t index)
+    Edge(EdgeType type, HprofNode *from, HprofNode *to, uint32_t index)
         : edgeType_(type), from_(from), to_(to), index_(index) {}
     EdgeType GetType() const
     {
         return edgeType_;
     }
-    const Node *GetFrom() const
+    const HprofNode *GetFrom() const
     {
         return from_;
     }
-    const Node *GetTo() const
+    const HprofNode *GetTo() const
     {
         return to_;
     }
@@ -211,23 +211,23 @@ public:
         ASSERT(GetType() != EdgeType::ELEMENT);
         name_ = name;
     }
-    void UpdateFrom(Node *node)
+    void UpdateFrom(HprofNode *node)
     {
         from_ = node;
     }
-    void UpdateTo(Node *node)
+    void UpdateTo(HprofNode *node)
     {
         to_ = node;
     }
-    static Edge *NewEdge(Chunk &chunk, EdgeType type, Node *from, Node *to, CString *name);
-    static Edge *NewEdge(Chunk &chunk, EdgeType type, Node *from, Node *to, uint32_t index);
+    static Edge *NewEdge(Chunk &chunk, EdgeType type, HprofNode *from, HprofNode *to, CString *name);
+    static Edge *NewEdge(Chunk &chunk, EdgeType type, HprofNode *from, HprofNode *to, uint32_t index);
     static constexpr int EDGE_FIELD_COUNT = 3;
     ~Edge() = default;
 
 private:
     EdgeType edgeType_ {EdgeType::DEFAULT};
-    Node *from_ {nullptr};
-    Node *to_ {nullptr};
+    HprofNode *from_ {nullptr};
+    HprofNode *to_ {nullptr};
     union {
         CString *name_;
         uint32_t index_;
@@ -293,13 +293,13 @@ public:
     ~HeapEntryMap() = default;
     NO_MOVE_SEMANTIC(HeapEntryMap);
     NO_COPY_SEMANTIC(HeapEntryMap);
-    Node *FindOrInsertNode(Node *node);
-    Node *FindAndEraseNode(JSTaggedType addr);
-    Node *FindEntry(JSTaggedType addr);
-    void InsertEntry(Node *node);
+    HprofNode *FindOrInsertNode(HprofNode *node);
+    HprofNode *FindAndEraseNode(JSTaggedType addr);
+    HprofNode *FindEntry(JSTaggedType addr);
+    void InsertEntry(HprofNode *node);
 
 private:
-    CUnorderedMap<JSTaggedType, Node *> nodesMap_ {};
+    CUnorderedMap<JSTaggedType, HprofNode *> nodesMap_ {};
 };
 
 struct FunctionInfo {
@@ -422,7 +422,7 @@ public:
 
     void PrepareSnapshot();
     void UpdateNodes(bool isInFinish = false);
-    Node *AddNode(TaggedObject *address, size_t size);
+    HprofNode *AddNode(TaggedObject *address, size_t size);
     void MoveNode(uintptr_t address, TaggedObject *forwardAddress, size_t size);
     void RecordSampleTime();
     bool FinishSnapshot();
@@ -461,7 +461,7 @@ public:
     static CString GetNodeName(JSType type, bool isVmMode);
     CString GetProxyClassNameSuffix(TaggedObject *entry);
     NodeType GenerateNodeType(TaggedObject *entry);
-    const CVector<Node *> *GetNodes() const
+    const CVector<HprofNode *> *GetNodes() const
     {
         return &nodes_;
     }
@@ -540,37 +540,37 @@ public:
 
 private:
     void FillNodes(bool isInFinish = false, bool isSimplify = false);
-    Node *GenerateNode(JSTaggedValue entry, size_t size = 0,
-                       bool isInFinish = false, bool isSimplify = false, bool isBinMod = false);
-    Node *HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod);
-    Node *HandleFunctionNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
-    Node *HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
-    Node *HandleBaseClassNode(size_t size, bool idExist, NodeId &sequenceId,
-                              TaggedObject* obj, JSTaggedType &addr);
+    HprofNode *GenerateNode(JSTaggedValue entry, size_t size = 0,
+                            bool isInFinish = false, bool isSimplify = false, bool isBinMod = false);
+    HprofNode *HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod);
+    HprofNode *HandleFunctionNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
+    HprofNode *HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
+    HprofNode *HandleBaseClassNode(size_t size, bool idExist, NodeId &sequenceId,
+                                   TaggedObject* obj, JSTaggedType &addr);
     CString GeneratePrimitiveNameString(JSTaggedValue &entry);
-    Node *GeneratePrivateStringNode(size_t size);
-    Node *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false, bool isBinMod = false);
-    Node *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
-    Node *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
+    HprofNode *GeneratePrivateStringNode(size_t size);
+    HprofNode *GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish = false, bool isBinMod = false);
+    HprofNode *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
+    HprofNode *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges(bool isSimplify = false);
-    void RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo);
+    void RenameFunction(const CString &edgeName, HprofNode *entryFrom, HprofNode *entryTo);
     CString ParseFunctionName(TaggedObject *obj, bool isRawHeap = false);
     const CString ParseObjectName(TaggedObject *obj);
 
-    Node *InsertNodeUnique(Node *node);
-    void EraseNodeUnique(Node *node);
+    HprofNode *InsertNodeUnique(HprofNode *node);
+    void EraseNodeUnique(HprofNode *node);
     Edge *InsertEdgeUnique(Edge *edge);
     void AddSyntheticRoot();
-    void CreateSyntheticRootToRootEdges(Node *syntheticRoot, CVector<Edge *> &rootEdges);
-    Node *InsertNodeAt(size_t pos, Node *node);
+    void CreateSyntheticRootToRootEdges(HprofNode *syntheticRoot, CVector<Edge *> &rootEdges);
+    HprofNode *InsertNodeAt(size_t pos, HprofNode *node);
     Edge *InsertEdgeAt(size_t pos, Edge *edge);
 
-    Node *CreateSpecificSyntheticRoot(const CUnorderedSet<Node *> &specificRootSet,
-                                      const CString &rootNamePrefix, size_t insertPosition);
-    void CreateSyntheticRootToSpecificSyntheticRootEdge(Node *syntheticRoot, Node *handleSyntheticRoot,
+    HprofNode *CreateSpecificSyntheticRoot(const CUnorderedSet<HprofNode *> &specificRootSet,
+                                           const CString &rootNamePrefix, size_t insertPosition);
+    void CreateSyntheticRootToSpecificSyntheticRootEdge(HprofNode *syntheticRoot, HprofNode *handleSyntheticRoot,
                                                         CVector<Edge *> &rootEdges);
-    void CreateSpecificSyntheticRootToRootEdges(Node *specificSyntheticRoot,
-                                                const CUnorderedSet<Node *> &specificRootSet,
+    void CreateSpecificSyntheticRootToRootEdges(HprofNode *specificSyntheticRoot,
+                                                const CUnorderedSet<HprofNode *> &specificRootSet,
                                                 CVector<Edge *> &rootEdges);
     void ReindexAllNodes();
 
@@ -597,7 +597,7 @@ private:
 
     class EdgeBuilderRootVisitor : public RootVisitor {
     public:
-        EdgeBuilderRootVisitor(HeapSnapshot &snapshot, Node *syntheticRoot, CVector<Edge *> &rootEdges)
+        EdgeBuilderRootVisitor(HeapSnapshot &snapshot, HprofNode *syntheticRoot, CVector<Edge *> &rootEdges)
             : snapshot_(snapshot), syntheticRoot_(syntheticRoot), rootEdges_(rootEdges) {}
         ~EdgeBuilderRootVisitor() override = default;
 
@@ -610,7 +610,7 @@ private:
         void NewRootEdge(const JSTaggedValue &value);
 
     private:
-        Node *syntheticRoot_;
+        HprofNode *syntheticRoot_;
         CVector<Edge *> &rootEdges_;
         CUnorderedSet<JSTaggedType> visitedRoots_;
     };
@@ -627,10 +627,10 @@ private:
     };
 #endif
 
-    CVector<Node *> nodes_ {};
+    CVector<HprofNode *> nodes_ {};
     CVector<Edge *> edges_ {};
-    CUnorderedSet<Node *> localHandleRoots_ {};
-    CUnorderedSet<Node *> globalHandleRoots_ {};
+    CUnorderedSet<HprofNode *> localHandleRoots_ {};
+    CUnorderedSet<HprofNode *> globalHandleRoots_ {};
     CVector<TimeStamp> timeStamps_ {};
     uint32_t nodeCount_ {0};
     uint32_t edgeCount_ {0};
@@ -642,7 +642,7 @@ private:
     bool isVmMode_ {true};
     bool isPrivate_ {false};
     bool captureNumericValue_ {false};
-    Node* privateStringNode_ {nullptr};
+    HprofNode* privateStringNode_ {nullptr};
     bool trackAllocations_ {false};
     CVector<FunctionInfo> traceInfoStack_ {};
     CMap<MethodLiteral *, FunctionInfo> stackInfo_;
