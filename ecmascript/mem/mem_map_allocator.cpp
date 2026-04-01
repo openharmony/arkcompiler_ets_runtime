@@ -55,8 +55,8 @@ void MemMapAllocator::InitializeRegularRegionMap([[maybe_unused]] size_t alignme
 
 void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 {
-    size_t initialHugeObjectCapacity = std::min(capacity_ / 3, INITIAL_HUGE_OBJECT_CAPACITY);
 #if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM && defined(NDEBUG)
+    size_t initialHugeObjectCapacity = std::min(capacity_ / 3, INITIAL_HUGE_OBJECT_CAPACITY);
     size_t i = 0;
     while (i <= MEM_MAP_RETRY_NUM) {
         void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) +
@@ -74,6 +74,7 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
         i++;
     }
 #else
+    size_t initialHugeObjectCapacity = INCREMENT_HUGE_OBJECT_CAPACITY;
     MemMap hugeMemMap = PageMap(initialHugeObjectCapacity, PAGE_PROT_NONE, alignment);
     PageTag(hugeMemMap.GetMem(), hugeMemMap.GetSize(), PageTagType::HEAP);
     PageRelease(hugeMemMap.GetMem(), hugeMemMap.GetSize());
@@ -81,8 +82,9 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 #endif
 }
 
-void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
+void MemMapAllocator::InitializeCompressRegionMap([[maybe_unused]] size_t alignment)
 {
+#if defined(PANDA_TARGET_64)
 #if WIN_OR_MAC_OR_IOS_PLATFORM
     size_t initialNonmovableObjectCapacity =
         AlignUp(std::min(capacity_ / 5, INITIAL_NONMOVALBE_OBJECT_CAPACITY), DEFAULT_REGION_SIZE);
@@ -90,13 +92,9 @@ void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
     size_t initialNonmovableObjectCapacity =
         AlignUp(std::min(capacity_ / 2, INITIAL_NONMOVALBE_OBJECT_CAPACITY), DEFAULT_REGION_SIZE);
 #endif
-
-#if defined(PANDA_TARGET_64)
     size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity * 2;
-#else
-    size_t alignNonmovableObjectCapacity = initialNonmovableObjectCapacity;
-#endif
-#if defined(PANDA_TARGET_64) && !WIN_OR_MAC_OR_IOS_PLATFORM && defined(NDEBUG)
+
+#if !WIN_OR_MAC_OR_IOS_PLATFORM && defined(NDEBUG)
     size_t i = 0;
     while (i <= MEM_MAP_RETRY_NUM) {
         void *addr = reinterpret_cast<void *>(ToUintPtr(RandomGenerateBigAddr(HUGE_OBJECT_MEM_MAP_BEGIN_ADDR)) +
@@ -118,6 +116,7 @@ void MemMapAllocator::InitializeCompressRegionMap(size_t alignment)
     memMap = AlignMemMapTo4G(memMap, initialNonmovableObjectCapacity);
     compressMemMapPool_.InsertMemMap(memMap);
     compressMemMapPool_.SplitMemMapToCache(memMap);
+#endif
 #endif
 }
 
