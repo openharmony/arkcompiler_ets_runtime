@@ -410,7 +410,7 @@ host_unittest_action("JSHelper_StringHelper_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("JSHelper_TypeArrayHelper_Test") {
+host_unittest_action("JSHelper_TypedArrayHelper_Test") {
   module_out_path = module_output_path
 
   sources = [
@@ -511,7 +511,7 @@ group("unittest") {
     ":JSHelper_MathHelper_Test",
     ":JSHelper_NumberHelper_Test",
     ":JSHelper_StringHelper_Test",
-    ":JSHelper_TypeArrayHelper_Test",
+    ":JSHelper_TypedArrayHelper_Test",
     ":JSHelper_UtfHelper_Test",
     ":JS_Ason_Test",
     ":JS_JsonParser_Test",
@@ -536,7 +536,7 @@ group("host_unittest") {
     ":JSHelper_MathHelper_TestAction",
     ":JSHelper_NumberHelper_TestAction",
     ":JSHelper_StringHelper_TestAction",
-    ":JSHelper_TypeArrayHelper_TestAction",
+    ":JSHelper_TypedArrayHelper_TestAction",
     ":JSHelper_UtfHelper_TestAction",
     ":JS_Ason_TestAction",
     ":JS_JsonParser_TestAction",
@@ -556,7 +556,7 @@ group("host_unittest") {
       ":JSHelper_MathHelper_TestAction",
       ":JSHelper_NumberHelper_TestAction",
       ":JSHelper_StringHelper_TestAction",
-      ":JSHelper_TypeArrayHelper_TestAction",
+      ":JSHelper_TypedArrayHelper_TestAction",
       ":JSHelper_UtfHelper_TestAction",
       ":JS_Ason_TestAction",
       ":JS_JsonParser_TestAction",

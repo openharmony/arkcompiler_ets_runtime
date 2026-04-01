@@ -1287,9 +1287,8 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
                                      JSTaggedValue::Exception());
     }
     uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
-    ContentType contentType = targetArray->GetContentType();
     uint32_t elemLen = ElementAccessor::GetElementsLength(thread, obj);
-    if (contentType == ContentType::BigInt) {
+    if (UNLIKELY(targetArray->ContentTypeIsBigInt())) {
         JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
         JSMutableHandle<JSTaggedValue> elem(thread, JSTaggedValue::Hole());
         for (uint32_t i = 0; i < srcLength; i++) {
@@ -1360,11 +1359,10 @@ JSTaggedValue JSStableArray::CopyArrayToTypedArrayForCtor(JSThread *thread, JSHa
                                      JSTaggedValue::Exception());
     }
     uint32_t targetByteIndex = static_cast<uint32_t>(targetOffset * targetElementSize + targetByteOffset);
-    ContentType contentType = targetArray->GetContentType();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> elements(thread, obj->GetElements(thread));
     uint32_t elemLen = elements->GetLength();
-    if (contentType == ContentType::BigInt) {
+    if (UNLIKELY(targetArray->ContentTypeIsBigInt())) {
         JSHandle<TaggedArray> copyElememts = factory->CopyArray(elements, elemLen, elemLen);
         JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
         JSMutableHandle<JSTaggedValue> elem(thread, JSTaggedValue::Hole());

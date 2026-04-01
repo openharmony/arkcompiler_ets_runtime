@@ -31,9 +31,7 @@ JSTaggedValue AtomicHelper::ValidateIntegerTypedArray(JSThread *thread, JSHandle
 
     // 3. Let typeName be typedArray.[[TypedArrayName]].
     // 4. Let type be the Element Type value in Table 60 for typeName.
-    JSHandle<JSTaggedValue> typeName(thread,
-        JSTypedArray::Cast(typedArray->GetTaggedObject())->GetTypedArrayName(thread));
-    DataViewType type = JSTypedArray::GetTypeFromName(thread, typeName);
+    DataViewType type = JSTypedArray::Cast(typedArray->GetTaggedObject())->GetContentType();
 
     // 5. If waitable is true, then
     // a. If typeName is not "Int32Array" or "BigInt64Array", throw a TypeError exception.
@@ -78,8 +76,7 @@ uint32_t AtomicHelper::ValidateAtomicAccess(JSThread *thread, const JSHandle<JST
     // 5. Let arrayTypeName be typedArray.[[TypedArrayName]].
     // 6. Let elementSize be the Element Size value specified in Table 60 for arrayTypeName.
     // 7. Let offset be typedArray.[[ByteOffset]].
-    JSHandle<JSTaggedValue> arrayTypeName(thread, JSTypedArray::Cast(*typedArrayObj)->GetTypedArrayName(thread));
-    DataViewType elementType = JSTypedArray::GetTypeFromName(thread, arrayTypeName);
+    DataViewType elementType = JSTypedArray::Cast(*typedArrayObj)->GetContentType();
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(elementType);
     uint32_t offset = srcObj->GetByteOffset();
     // 8. Return (accessIndex × elementSize) + offset.
@@ -96,11 +93,8 @@ JSTaggedValue AtomicHelper::AtomicStore(JSThread *thread, const JSHandle<JSTagge
     JSHandle<JSTaggedValue> buffer(thread, bufferValue);
     uint32_t indexedPosition = ValidateAtomicAccess(thread, typedArray, index);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> arrayTypeName(thread,
-        JSTypedArray::Cast(typedArray->GetTaggedObject())->GetTypedArrayName(thread));
-    DataViewType type = JSTypedArray::GetTypeFromName(thread, arrayTypeName);
     JSHandle<JSTaggedValue> bufferTag;
-    if (type == DataViewType::BIGUINT64 || type == DataViewType::BIGINT64) {
+    if (UNLIKELY(JSTypedArray::Cast(typedArray->GetTaggedObject())->ContentTypeIsBigInt())) {
         JSTaggedValue integerValue = JSTaggedValue::ToBigInt(thread, value);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         bufferTag = JSHandle<JSTaggedValue>(thread, integerValue);
@@ -111,6 +105,7 @@ JSTaggedValue AtomicHelper::AtomicStore(JSThread *thread, const JSHandle<JSTagge
     }
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(typedArray));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    DataViewType type = JSTypedArray::Cast(typedArray->GetTaggedObject())->GetContentType();
     BuiltinsArrayBuffer::SetValueInBuffer(thread, buffer.GetTaggedValue(), indexedPosition, type, bufferTag, true);
     return bufferTag.GetTaggedValue();
 }
@@ -125,9 +120,7 @@ JSTaggedValue AtomicHelper::AtomicLoad(JSThread *thread, const JSHandle<JSTagged
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(typedArray));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> arrayTypeName(thread,
-        JSTypedArray::Cast(typedArray->GetTaggedObject())->GetTypedArrayName(thread));
-    DataViewType elementType = JSTypedArray::GetTypeFromName(thread, arrayTypeName);
+    DataViewType elementType = JSTypedArray::Cast(typedArray->GetTaggedObject())->GetContentType();
     return BuiltinsArrayBuffer::GetValueFromBuffer(thread, buffer.GetTaggedValue(),
                                                    indexedPosition, elementType, true);
 }

@@ -97,10 +97,9 @@ void CreateArrayList(JSThread *thread, JSHandle<JSTaggedValue> &arrayVal)
     auto factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> array(factory->EmptyArray());
     EcmaRuntimeCallInfo *argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT32);
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint32ArrayString();
     auto prev = TestHelper::SetupFrame(thread, argv);
     JSHandle<JSTaggedValue> uint32Array(
-        thread, TypedArrayHelper::TypedArrayConstructor(argv, constructorName, DataViewType::UINT32));
+        thread, TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::UINT32));
     TestHelper::TearDownFrame(thread, prev);
     arrayVal = uint32Array;
 }
@@ -113,10 +112,8 @@ HWTEST_F_L0(TypedArrayHelperTest, TypedArrayConstructor)
     array->Set(thread, 1, JSTaggedValue(-128)); // Int8 min
     array->Set(thread, 2, JSTaggedValue(128)); // Int8 max plus 1
     EcmaRuntimeCallInfo* argv = CreateTypedArrayCallInfo(thread, array, DataViewType::INT8);
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledInt8ArrayString();
     auto prev = TestHelper::SetupFrame(thread, argv);
-    JSHandle<JSTaggedValue> int8Array(thread, TypedArrayHelper::TypedArrayConstructor(argv, constructorName,
-                                                                                      DataViewType::INT8));
+    JSHandle<JSTaggedValue> int8Array(thread, TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::INT8));
     TestHelper::TearDownFrame(thread, prev);
     OperationResult result0 = JSTypedArray::GetProperty(thread, int8Array, 0U);
     OperationResult result1 = JSTypedArray::GetProperty(thread, int8Array, 1U);
@@ -132,15 +129,13 @@ HWTEST_F_L0(TypedArrayHelperTest, AllocateTypedArray_001)
     auto factory = ecmaVm->GetFactory();
     JSHandle<TaggedArray> array(factory->EmptyArray());
     EcmaRuntimeCallInfo* argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT8);
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint8ArrayString();
     auto prev = TestHelper::SetupFrame(thread, argv);
     JSHandle<JSTaggedValue> newTarget = BuiltinsBase::GetNewTarget(argv);
     JSHandle<JSObject> arrayObj =
-        TypedArrayHelper::AllocateTypedArray(thread, constructorName, newTarget, DataViewType::UINT8);
+        TypedArrayHelper::AllocateTypedArray(thread, newTarget, DataViewType::UINT8);
     TestHelper::TearDownFrame(thread, prev);
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*arrayObj);
-    EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);
-    EXPECT_EQ(jsTypedArray->GetTypedArrayName(thread).GetRawData(), constructorName.GetTaggedValue().GetRawData());
+    EXPECT_EQ(jsTypedArray->GetContentType(), DataViewType::UINT8);
     EXPECT_EQ(jsTypedArray->GetByteLength(), 0U);
     EXPECT_EQ(jsTypedArray->GetByteOffset(), 0U);
     EXPECT_EQ(jsTypedArray->GetArrayLength(), 0U);
@@ -153,15 +148,13 @@ HWTEST_F_L0(TypedArrayHelperTest, AllocateTypedArray_002)
     int32_t length = 256;
     JSHandle<TaggedArray> array(factory->NewTaggedArray(3));
     EcmaRuntimeCallInfo* argv = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT8);
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint8ArrayString();
     auto prev = TestHelper::SetupFrame(thread, argv);
     JSHandle<JSTaggedValue> newTarget = BuiltinsBase::GetNewTarget(argv);
     JSHandle<JSObject> arrayObj =
-        TypedArrayHelper::AllocateTypedArray(thread, constructorName, newTarget, length, DataViewType::UINT8);
+        TypedArrayHelper::AllocateTypedArray(thread, newTarget, length, DataViewType::UINT8);
     TestHelper::TearDownFrame(thread, prev);
     JSTypedArray *jsTypedArray = JSTypedArray::Cast(*arrayObj);
-    EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);
-    EXPECT_EQ(jsTypedArray->GetTypedArrayName(thread).GetRawData(), constructorName.GetTaggedValue().GetRawData());
+    EXPECT_EQ(jsTypedArray->GetContentType(), DataViewType::UINT8);
     EXPECT_EQ(jsTypedArray->GetByteLength(), 256U);
     EXPECT_EQ(jsTypedArray->GetByteOffset(), 0U);
     EXPECT_EQ(jsTypedArray->GetArrayLength(), 256U);
@@ -173,10 +166,8 @@ HWTEST_F_L0(TypedArrayHelperTest, TypedArraySpeciesCreate)
     uint32_t lenVal = 3;
     JSHandle<TaggedArray> array(factory->NewTaggedArray(lenVal));
     EcmaRuntimeCallInfo* argv = CreateTypedArrayCallInfo(thread, array, DataViewType::INT16);
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledInt16ArrayString();
     auto prev = TestHelper::SetupFrame(thread, argv);
-    JSHandle<JSTaggedValue> int16Array(thread, TypedArrayHelper::TypedArrayConstructor(argv, constructorName,
-                                                                                      DataViewType::INT16));
+    JSHandle<JSTaggedValue> int16Array(thread, TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::INT16));
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<JSTypedArray> arrayObj(int16Array);
     uint32_t len = arrayObj->GetArrayLength();
@@ -194,16 +185,15 @@ HWTEST_F_L0(TypedArrayHelperTest, TypedArrayCreate)
     auto vm = thread->GetEcmaVM();
     auto env = vm->GetGlobalEnv();
     JSHandle<JSTaggedValue> constructor = env->GetUint16ArrayFunction();
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledUint16ArrayString();
     EXPECT_TRUE(constructor->IsConstructor());
 
     uint32_t lenVal = 256;
     JSTaggedType args[1] = {JSTaggedValue(lenVal).GetRawData()};
     JSHandle<JSObject> newArrObj = TypedArrayHelper::TypedArrayCreate(thread, constructor, 1, args); // 1 : one arg
     uint32_t len = JSHandle<JSTypedArray>::Cast(newArrObj)->GetArrayLength();
-    JSHandle<JSTaggedValue> type(thread, JSHandle<JSTypedArray>::Cast(newArrObj)->GetTypedArrayName(thread));
+    DataViewType type = JSHandle<JSTypedArray>::Cast(newArrObj)->GetContentType();
     EXPECT_EQ(len, 256U);
-    EXPECT_EQ(type.GetTaggedValue().GetRawData(), constructorName.GetTaggedValue().GetRawData());
+    EXPECT_EQ(type, DataViewType::UINT16);
 }
 
 HWTEST_F_L0(TypedArrayHelperTest, ValidateTypedArray)
@@ -222,20 +212,17 @@ HWTEST_F_L0(TypedArrayHelperTest, GetType_001)
     EcmaRuntimeCallInfo* argv1 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT8);
     EcmaRuntimeCallInfo* argv2 = CreateTypedArrayCallInfo(thread, array, DataViewType::BIGUINT64);
     EcmaRuntimeCallInfo* argv3 = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT8_CLAMPED);
-    JSHandle<JSTaggedValue> constructorName1 = thread->GlobalConstants()->GetHandledInt8ArrayString();
-    JSHandle<JSTaggedValue> constructorName2 = thread->GlobalConstants()->GetHandledBigUint64ArrayString();
-    JSHandle<JSTaggedValue> constructorName3 = thread->GlobalConstants()->GetHandledUint8ClampedArrayString();
     auto prev1 = TestHelper::SetupFrame(thread, argv1);
-    JSHandle<JSTaggedValue> int8ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv1, constructorName1,
-                                                                                      DataViewType::INT8));
+    JSHandle<JSTaggedValue> int8ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv1,
+        DataViewType::INT8));
     TestHelper::TearDownFrame(thread, prev1);
     auto prev2 = TestHelper::SetupFrame(thread, argv2);
-    JSHandle<JSTaggedValue> bigUint64ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv2, constructorName2,
-                                                                                      DataViewType::BIGUINT64));
+    JSHandle<JSTaggedValue> bigUint64ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv2,
+        DataViewType::BIGUINT64));
     TestHelper::TearDownFrame(thread, prev2);
     auto prev3 = TestHelper::SetupFrame(thread, argv3);
     JSHandle<JSTaggedValue> uint8ClampedArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv3,
-        constructorName3, DataViewType::UINT8_CLAMPED));
+        DataViewType::UINT8_CLAMPED));
     TestHelper::TearDownFrame(thread, prev3);
     JSHandle<JSTypedArray> int8Array(int8ArrayVal);
     JSHandle<JSTypedArray> bigUint64Array(bigUint64ArrayVal);
@@ -271,25 +258,21 @@ HWTEST_F_L0(TypedArrayHelperTest, GetElementSize_001)
     EcmaRuntimeCallInfo* argv2 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT16);
     EcmaRuntimeCallInfo* argv3 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT32);
     EcmaRuntimeCallInfo* argv4 = CreateTypedArrayCallInfo(thread, array, DataViewType::BIGUINT64);
-    JSHandle<JSTaggedValue> constructorName1 = thread->GlobalConstants()->GetHandledInt8ArrayString();
-    JSHandle<JSTaggedValue> constructorName2 = thread->GlobalConstants()->GetHandledInt16ArrayString();
-    JSHandle<JSTaggedValue> constructorName3 = thread->GlobalConstants()->GetHandledInt32ArrayString();
-    JSHandle<JSTaggedValue> constructorName4 = thread->GlobalConstants()->GetHandledBigUint64ArrayString();
     auto prev1 = TestHelper::SetupFrame(thread, argv1);
-    JSHandle<JSTaggedValue> int8ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv1, constructorName1,
-                                                                                      DataViewType::INT8));
+    JSHandle<JSTaggedValue> int8ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv1,
+        DataViewType::INT8));
     TestHelper::TearDownFrame(thread, prev1);
     auto prev2 = TestHelper::SetupFrame(thread, argv2);
-    JSHandle<JSTaggedValue> int16ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv2, constructorName2,
-                                                                                      DataViewType::INT16));
+    JSHandle<JSTaggedValue> int16ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv2,
+        DataViewType::INT16));
     TestHelper::TearDownFrame(thread, prev2);
     auto prev3 = TestHelper::SetupFrame(thread, argv3);
-    JSHandle<JSTaggedValue> int32ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv3, constructorName3,
-                                                                                      DataViewType::INT32));
+    JSHandle<JSTaggedValue> int32ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv3,
+        DataViewType::INT32));
     TestHelper::TearDownFrame(thread, prev3);
     auto prev4 = TestHelper::SetupFrame(thread, argv4);
-    JSHandle<JSTaggedValue> bigUint64ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv3, constructorName4,
-                                                                                      DataViewType::BIGUINT64));
+    JSHandle<JSTaggedValue> bigUint64ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv3,
+        DataViewType::BIGUINT64));
     TestHelper::TearDownFrame(thread, prev4);
     JSHandle<JSTypedArray> int8Array(int8ArrayVal);
     JSHandle<JSTypedArray> int16Array(int16ArrayVal);
@@ -328,20 +311,17 @@ HWTEST_F_L0(TypedArrayHelperTest, GetConstructor)
     EcmaRuntimeCallInfo* argv1 = CreateTypedArrayCallInfo(thread, array, DataViewType::INT8);
     EcmaRuntimeCallInfo* argv2 = CreateTypedArrayCallInfo(thread, array, DataViewType::BIGUINT64);
     EcmaRuntimeCallInfo* argv3 = CreateTypedArrayCallInfo(thread, array, DataViewType::UINT8_CLAMPED);
-    JSHandle<JSTaggedValue> constructorName1 = thread->GlobalConstants()->GetHandledInt8ArrayString();
-    JSHandle<JSTaggedValue> constructorName2 = thread->GlobalConstants()->GetHandledBigUint64ArrayString();
-    JSHandle<JSTaggedValue> constructorName3 = thread->GlobalConstants()->GetHandledUint8ClampedArrayString();
     auto prev1 = TestHelper::SetupFrame(thread, argv1);
-    JSHandle<JSTaggedValue> int8ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv1, constructorName1,
-                                                                                      DataViewType::INT8));
+    JSHandle<JSTaggedValue> int8ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv1,
+        DataViewType::INT8));
     TestHelper::TearDownFrame(thread, prev1);
     auto prev2 = TestHelper::SetupFrame(thread, argv2);
-    JSHandle<JSTaggedValue> bigUint64ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv2, constructorName2,
-                                                                                      DataViewType::BIGUINT64));
+    JSHandle<JSTaggedValue> bigUint64ArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv2,
+        DataViewType::BIGUINT64));
     TestHelper::TearDownFrame(thread, prev2);
     auto prev3 = TestHelper::SetupFrame(thread, argv3);
     JSHandle<JSTaggedValue> uint8ClampedArrayVal(thread, TypedArrayHelper::TypedArrayConstructor(argv3,
-        constructorName3, DataViewType::UINT8_CLAMPED));
+        DataViewType::UINT8_CLAMPED));
     TestHelper::TearDownFrame(thread, prev3);
     JSHandle<JSTaggedValue> constructor1 = TypedArrayHelper::GetConstructor(thread, int8ArrayVal);
     JSHandle<JSTaggedValue> constructor2 = TypedArrayHelper::GetConstructor(thread, bigUint64ArrayVal);
@@ -441,17 +421,15 @@ HWTEST_F_L0(TypedArrayHelperTest, FastCreateTypedArray) {
     uint8_t last = static_cast<uint8_t>(DataViewType::UINT8_CLAMPED);
     for (uint8_t type = first; type <= last; ++type) {
         DataViewType arrayType = static_cast<DataViewType>(type);
-        JSHandle<JSTaggedValue> constructorName = TypedArrayHelper::GetConstructorNameFromType(thread, arrayType);
-        JSHandle<JSObject> arrayObj =
-            TypedArrayHelper::FastCreateTypedArray(thread, constructorName, 0, arrayType);
+        JSHandle<JSObject> arrayObj = TypedArrayHelper::FastCreateTypedArray(thread, 0, arrayType);
         JSTypedArray *jsTypedArray = JSTypedArray::Cast(*arrayObj);
         if (arrayType == DataViewType::BIGINT64 ||
             arrayType == DataViewType::BIGUINT64) {
-            EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::BigInt);
+            EXPECT_TRUE(jsTypedArray->ContentTypeIsBigInt());
         } else {
-            EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);
+            EXPECT_FALSE(jsTypedArray->ContentTypeIsBigInt());
         }
-        EXPECT_EQ(jsTypedArray->GetTypedArrayName(thread).GetRawData(), constructorName.GetTaggedValue().GetRawData());
+        EXPECT_EQ(jsTypedArray->GetContentType(), arrayType);
         EXPECT_EQ(jsTypedArray->GetByteLength(), 0U);
         EXPECT_EQ(jsTypedArray->GetByteOffset(), 0U);
         EXPECT_EQ(jsTypedArray->GetArrayLength(), 0U);

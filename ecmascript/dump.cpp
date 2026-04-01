@@ -2747,7 +2747,6 @@ void JSTypedArray::Dump(const JSThread *thread, std::ostream &os) const
     os << " - viewed-array-buffer: ";
     GetViewedArrayBufferOrByteArray(thread).Dump(thread, os);
     os << " - typed-array-name: ";
-    GetTypedArrayName(thread).Dump(thread, os);
     os << " - byte-length: " << GetByteLength();
     os << " - byte-offset: " << GetByteOffset();
     os << " - array-length: " << GetArrayLength();
@@ -2758,8 +2757,6 @@ void JSSharedTypedArray::Dump(const JSThread *thread, std::ostream &os) const
 {
     os << " - viewed-array-buffer: ";
     GetViewedArrayBufferOrByteArray(thread).Dump(thread, os);
-    os << " - typed-array-name: ";
-    GetTypedArrayName(thread).Dump(thread, os);
     os << " - byte-length: " << GetByteLength();
     os << " - byte-offset: " << GetByteOffset();
     os << " - array-length: " << GetArrayLength();
@@ -5578,7 +5575,6 @@ void JSTypedArray::DumpForSnapshot(const JSThread *thread, std::vector<Reference
     constexpr int16_t NUM_OF_ITEMS = 5;
     vec.reserve(vec.size() + NUM_OF_ITEMS);
     vec.emplace_back(CString("viewed-array-buffer"), GetViewedArrayBufferOrByteArray(thread));
-    vec.emplace_back(CString("typed-array-name"), GetTypedArrayName(thread));
     vec.emplace_back(CString("byte-length"), JSTaggedValue(GetByteLength()));
     vec.emplace_back(CString("byte-offset"), JSTaggedValue(GetByteOffset()));
     vec.emplace_back(CString("array-length"), JSTaggedValue(GetArrayLength()));
@@ -5591,7 +5587,6 @@ void JSSharedTypedArray::DumpForSnapshot(const JSThread *thread, std::vector<Ref
     constexpr int16_t NUM_OF_ITEMS = 5;
     vec.reserve(vec.size() + NUM_OF_ITEMS);
     vec.emplace_back(CString("viewed-array-buffer"), GetViewedArrayBufferOrByteArray(thread));
-    vec.emplace_back(CString("typed-array-name"), GetTypedArrayName(thread));
     vec.emplace_back(CString("byte-length"), JSTaggedValue(GetByteLength()));
     vec.emplace_back(CString("byte-offset"), JSTaggedValue(GetByteOffset()));
     vec.emplace_back(CString("array-length"), JSTaggedValue(GetArrayLength()));

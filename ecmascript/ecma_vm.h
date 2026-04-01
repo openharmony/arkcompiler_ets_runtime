@@ -1515,13 +1515,19 @@ public:
     static void ClearKeptObjects(JSThread *thread);
     static void AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value);
     void AddModuleManager(ModuleManager *moduleManager);
-    int8_t GetDataViewType(JSTaggedType type) const
+    
+    JSTaggedValue GetTypedArrayName(uint8_t type) const
     {
-        auto result = dataViewTypeTable_.find(type);
-        if (result == dataViewTypeTable_.end()) {
-            return -1;
-        }
-        return result->second;
+        ASSERT(type >= 0);
+        ASSERT(type < typedArrayNameTable_.size());
+        return typedArrayNameTable_[type];
+    }
+    
+    JSTaggedValue GetSharedTypedArrayName(uint8_t type) const
+    {
+        ASSERT(type >= 0);
+        ASSERT(type < sharedTypedArrayNameTable_.size());
+        return sharedTypedArrayNameTable_[type];
     }
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
@@ -1603,7 +1609,7 @@ private:
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
         std::string_view entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType);
 
-    void InitDataViewTypeTable(const GlobalEnvConstants *constant);
+    void InitTypedArrayNameTable(const GlobalEnvConstants *globalConst);
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
@@ -1782,7 +1788,8 @@ private:
     JSTaggedValue microJobQueue_ {JSTaggedValue::Hole()};
     std::atomic<bool> isProcessingPendingJob_{false};
 
-    std::unordered_map<JSTaggedType, int8_t> dataViewTypeTable_;
+    std::vector<JSTaggedValue> typedArrayNameTable_;
+    std::vector<JSTaggedValue> sharedTypedArrayNameTable_;
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks
     bool isCollectingScopeLockStats_ = false;

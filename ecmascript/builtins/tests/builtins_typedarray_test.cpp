@@ -48,7 +48,7 @@ using TypedArrayHelper = ecmascript::base::TypedArrayHelper;
 constexpr uint32_t ECMA_RUNTIME_CALL_INFO_4 = 4;
 constexpr uint32_t ECMA_RUNTIME_CALL_INFO_6 = 6;
 
-enum class TypeArrayIndex {
+enum class TypedArrayIndex {
     TYPED_ARRAY_INDEX_0,
     TYPED_ARRAY_INDEX_1,
     TYPED_ARRAY_INDEX_2,
@@ -197,7 +197,7 @@ protected:
     };
 };
 
-JSTaggedValue CreateBuiltinsTypeArrayJSObject(JSThread *thread, const CString keyCStr)
+JSTaggedValue CreateBuiltinsTypedArrayJSObject(JSThread *thread, const CString keyCStr)
 {
     auto ecmaVM = thread->GetEcmaVM();
     JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
@@ -209,6 +209,89 @@ JSTaggedValue CreateBuiltinsTypeArrayJSObject(JSThread *thread, const CString ke
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(1));
     JSObject::SetProperty(thread, obj, key, value);
     return obj.GetTaggedValue();
+}
+
+JSHandle<JSFunction> GetTypedArrayFunctionByType(JSThread *thread, DataViewType type)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    switch (type) {
+        case DataViewType::INT8:
+            return JSHandle<JSFunction>(env->GetInt8ArrayFunction());
+        case DataViewType::UINT8:
+            return JSHandle<JSFunction>(env->GetUint8ArrayFunction());
+        case DataViewType::UINT8_CLAMPED:
+            return JSHandle<JSFunction>(env->GetUint8ClampedArrayFunction());
+        case DataViewType::INT16:
+            return JSHandle<JSFunction>(env->GetInt16ArrayFunction());
+        case DataViewType::UINT16:
+            return JSHandle<JSFunction>(env->GetUint16ArrayFunction());
+        case DataViewType::INT32:
+            return JSHandle<JSFunction>(env->GetInt32ArrayFunction());
+        case DataViewType::UINT32:
+            return JSHandle<JSFunction>(env->GetUint32ArrayFunction());
+        case DataViewType::FLOAT32:
+            return JSHandle<JSFunction>(env->GetFloat32ArrayFunction());
+        case DataViewType::FLOAT64:
+            return JSHandle<JSFunction>(env->GetFloat64ArrayFunction());
+        case DataViewType::BIGINT64:
+            return JSHandle<JSFunction>(env->GetBigInt64ArrayFunction());
+        case DataViewType::BIGUINT64:
+            return JSHandle<JSFunction>(env->GetBigUint64ArrayFunction());
+        default:
+            UNREACHABLE();
+    }
+}
+
+JSTaggedValue CreateTypedArrayWithLength(JSThread *thread, DataViewType type, uint32_t length)
+{
+    JSHandle<JSFunction> typedArrayFunc = GetTypedArrayFunctionByType(thread, type);
+    JSHandle<JSObject> globalObject(thread, thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalObject());
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, typedArrayFunc.GetTaggedValue(), 6);
+    ecmaRuntimeCallInfo->SetFunction(typedArrayFunc.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(globalObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(length));
+
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = JSTaggedValue::Undefined();
+    switch (type) {
+        case DataViewType::INT8:
+            result = TypedArray::Int8ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::UINT8:
+            result = TypedArray::Uint8ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::UINT8_CLAMPED:
+            result = TypedArray::Uint8ClampedArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::INT16:
+            result = TypedArray::Int16ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::UINT16:
+            result = TypedArray::Uint16ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::INT32:
+            result = TypedArray::Int32ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::UINT32:
+            result = TypedArray::Uint32ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::FLOAT32:
+            result = TypedArray::Float32ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::FLOAT64:
+            result = TypedArray::Float64ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::BIGINT64:
+            result = TypedArray::BigInt64ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::BIGUINT64:
+            result = TypedArray::BigUint64ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        default:
+            UNREACHABLE();
+    }
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
 }
 
 HWTEST_F_L0(BuiltinsTypedArrayTest, Species)
@@ -225,6 +308,33 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, Species)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result = TypedArray::Species(ecmaRuntimeCallInfo1);
     ASSERT_TRUE(result.IsECMAObject());
+}
+
+HWTEST_F_L0(BuiltinsTypedArrayTest, ToStringTagByContentType)
+{
+    std::array<DataViewType, 11> types = {
+        DataViewType::INT8, DataViewType::UINT8, DataViewType::UINT8_CLAMPED, DataViewType::INT16,
+        DataViewType::UINT16, DataViewType::INT32, DataViewType::UINT32, DataViewType::FLOAT32,
+        DataViewType::FLOAT64, DataViewType::BIGINT64, DataViewType::BIGUINT64
+    };
+
+    for (auto type : types) {
+        JSTaggedValue typedArray = CreateTypedArrayWithLength(thread, type, 2);
+        ASSERT_TRUE(typedArray.IsTypedArray());
+        EXPECT_EQ(JSTypedArray::Cast(typedArray.GetTaggedObject())->GetContentType(), type);
+
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+        ecmaRuntimeCallInfo->SetThis(typedArray);
+
+        auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = TypedArray::ToStringTag(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+
+        ASSERT_TRUE(result.IsString());
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, JSHandle<JSTaggedValue>(thread, result),
+            JSHandle<JSTaggedValue>(thread, thread->GetEcmaVM()->GetTypedArrayName(static_cast<uint8_t>(type)))));
+    }
 }
 
 HWTEST_F_L0(BuiltinsTypedArrayTest, Includes)
@@ -356,9 +466,9 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
     ASSERT_NE(thread, nullptr);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     [[maybe_unused]] JSHandle<TaggedArray> array(factory->NewTaggedArray(TYPED_ARRAY_LENGTH_3));
-    array->Set(thread, static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0), JSTaggedValue(INT_VALUE_0));
-    array->Set(thread, static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_1), JSTaggedValue(INT_VALUE_4));
-    array->Set(thread, static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_2), JSTaggedValue(INT_VALUE_9));
+    array->Set(thread, static_cast<uint32_t>(TypedArrayIndex::TYPED_ARRAY_INDEX_0), JSTaggedValue(INT_VALUE_0));
+    array->Set(thread, static_cast<uint32_t>(TypedArrayIndex::TYPED_ARRAY_INDEX_1), JSTaggedValue(INT_VALUE_4));
+    array->Set(thread, static_cast<uint32_t>(TypedArrayIndex::TYPED_ARRAY_INDEX_2), JSTaggedValue(INT_VALUE_9));
 
     [[maybe_unused]] JSHandle<JSTaggedValue> obj =
         JSHandle<JSTaggedValue>(thread, BuiltTestUtil::CreateTypedArray(thread, array));
@@ -376,7 +486,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
                                                                       ECMA_RUNTIME_CALL_INFO_6);
     ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo2->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo2->SetCallArg(static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0),
+    ecmaRuntimeCallInfo2->SetCallArg(static_cast<uint32_t>(TypedArrayIndex::TYPED_ARRAY_INDEX_0),
                                      JSTaggedValue(INT_VALUE_0));
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
     JSTaggedValue value = TypedArray::At(ecmaRuntimeCallInfo2);
@@ -388,7 +498,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
                                                                       ECMA_RUNTIME_CALL_INFO_6);
     ecmaRuntimeCallInfo3->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo3->SetThis(obj.GetTaggedValue());
-    ecmaRuntimeCallInfo3->SetCallArg(static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0),
+    ecmaRuntimeCallInfo3->SetCallArg(static_cast<uint32_t>(TypedArrayIndex::TYPED_ARRAY_INDEX_0),
                                      JSTaggedValue(INT_VALUE_2));
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo3);
     value = TypedArray::At(ecmaRuntimeCallInfo3);
@@ -400,7 +510,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
                                                                       ECMA_RUNTIME_CALL_INFO_6);
     ecmaRuntimeCallInfo4->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo4->SetThis(result);
-    ecmaRuntimeCallInfo4->SetCallArg(static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0),
+    ecmaRuntimeCallInfo4->SetCallArg(static_cast<uint32_t>(TypedArrayIndex::TYPED_ARRAY_INDEX_0),
                                      JSTaggedValue(INT_VALUE_0));
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo4);
     value = TypedArray::At(ecmaRuntimeCallInfo4);
@@ -411,7 +521,7 @@ HWTEST_F_L0(BuiltinsTypedArrayTest, ToReversed)
                                                                       ECMA_RUNTIME_CALL_INFO_6);
     ecmaRuntimeCallInfo5->SetFunction(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo5->SetThis(result);
-    ecmaRuntimeCallInfo5->SetCallArg(static_cast<uint32_t>(TypeArrayIndex::TYPED_ARRAY_INDEX_0),
+    ecmaRuntimeCallInfo5->SetCallArg(static_cast<uint32_t>(TypedArrayIndex::TYPED_ARRAY_INDEX_0),
                                      JSTaggedValue(INT_VALUE_2));
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo5);
     value = TypedArray::At(ecmaRuntimeCallInfo5);

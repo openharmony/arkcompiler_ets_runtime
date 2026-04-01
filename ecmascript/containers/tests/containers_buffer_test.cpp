@@ -118,12 +118,11 @@ protected:
         JSHandle<JSObject> obj =
             factory->NewJSObjectByConstructor(JSHandle<JSFunction>(handleTagValFunc), handleTagValFunc);
         DataViewType arrayType = DataViewType::UINT8;
-        JSTypedArray::Cast(*obj)->SetTypedArrayName(thread, thread->GlobalConstants()->GetUint8ArrayString());
         if (length > 0) {
             TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, length, arrayType);
         } else {
             auto jsTypedArray = JSTypedArray::Cast(*obj);
-            jsTypedArray->SetContentType(ContentType::Number);
+            jsTypedArray->SetContentType(arrayType);
             jsTypedArray->SetByteLength(0);
             jsTypedArray->SetByteOffset(0);
             jsTypedArray->SetArrayLength(0);

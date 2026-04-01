@@ -176,9 +176,9 @@ HWTEST_F_L0(ICRuntimeStubTest, StoreICAndLoadIC_ByValue)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
 
-    JSHandle<JSTaggedValue> typeArrayFun = env->GetInt8ArrayFunction();
+    JSHandle<JSTaggedValue> typedArrayFun = env->GetInt8ArrayFunction();
     JSHandle<JSTypedArray> handleTypeArrReceiver = JSHandle<JSTypedArray>::Cast(
-        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(typeArrayFun), typeArrayFun));
+        factory->NewJSObjectByConstructor(JSHandle<JSFunction>(typedArrayFun), typedArrayFun));
     JSHandle<JSTaggedValue> handleKey(factory->NewFromASCII("key"));
     JSHandle<JSTaggedValue> handleStoreVal(factory->NewFromASCII("1"));
 

@@ -40,29 +40,22 @@ struct BuiltinsArrayBufferType {};
 class TypedArrayHelper {
 public:
     static JSTaggedValue TypedArrayConstructor(EcmaRuntimeCallInfo *argv,
-                                               const JSHandle<JSTaggedValue> &constructorName,
                                                const DataViewType arrayType);
     static JSTaggedValue SharedTypedArrayConstructor(EcmaRuntimeCallInfo *argv,
-                                                     const JSHandle<JSTaggedValue> &constructorName,
                                                      const DataViewType arrayType);
     static JSHandle<JSObject> FastCreateTypedArray(JSThread *thread,
-                                                   const JSHandle<JSTaggedValue> &constructorName,
                                                    uint32_t length,
                                                    const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArray(JSThread *thread,
-                                                 const JSHandle<JSTaggedValue> &constructorName,
                                                  const JSHandle<JSTaggedValue> &newTarget,
                                                  const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArray(JSThread *thread,
-                                                 const JSHandle<JSTaggedValue> &constructorName,
                                                  const JSHandle<JSTaggedValue> &newTarget, uint32_t length,
                                                  const DataViewType arrayType);
     static JSHandle<JSObject> AllocateSharedTypedArray(JSThread *thread,
-                                                       const JSHandle<JSTaggedValue> &constructorName,
                                                        const JSHandle<JSTaggedValue> &newTarget,
                                                        const DataViewType arrayType);
     static JSHandle<JSObject> AllocateSharedTypedArray(JSThread *thread,
-                                                       const JSHandle<JSTaggedValue> &constructorName,
                                                        const JSHandle<JSTaggedValue> &newTarget, uint32_t length,
                                                        const DataViewType arrayType);
     template <TypedArrayKind typedArrayKind = TypedArrayKind::NON_SHARED>

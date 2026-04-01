@@ -78,7 +78,7 @@ GateRef BuiltinsTypedArrayStubBuilder::LoadTypedArrayElement(GateRef glue, GateR
         }
         Bind(&slowPath);
         {
-            result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(GetTypeArrayPropertyByIndex),
+            result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(GetTypedArrayPropertyByIndex),
                 { array, IntToTaggedInt(index), IntToTaggedInt(jsType) });
             Jump(&exit);
         }
@@ -106,7 +106,7 @@ GateRef BuiltinsTypedArrayStubBuilder::StoreTypedArrayElement(GateRef glue, Gate
         BRANCH(CheckTypedArrayIndexInRange(array, index), &indexIsvalid, &exit);
         Bind(&indexIsvalid);
         {
-            result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypeArrayPropertyByIndex),
+            result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypedArrayPropertyByIndex),
                 { array, IntToTaggedInt(index), value, IntToTaggedInt(jsType) });
             Jump(&exit);
         }
@@ -149,7 +149,7 @@ GateRef BuiltinsTypedArrayStubBuilder::FastGetPropertyByIndex(GateRef glue, Gate
     }
     Bind(&slowPath);
     {
-        result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(GetTypeArrayPropertyByIndex),
+        result = CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(GetTypedArrayPropertyByIndex),
             { array, IntToTaggedInt(index), IntToTaggedInt(jsType)});
         Jump(&exit);
     }
@@ -443,7 +443,7 @@ void BuiltinsTypedArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[m
     BRANCH(IsEcmaObject(glue, thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
     GateRef arrayType = GetObjectType(LoadHClass(glue, thisValue));
-    BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    BRANCH(IsFastTypedArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
     BRANCH(HasConstructor(glue, thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -846,7 +846,7 @@ void BuiltinsTypedArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, 
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
     GateRef jsType = GetObjectType(LoadHClass(glue, thisValue));
-    BRANCH(IsFastTypeArray(jsType), &typedArray, slowPath);
+    BRANCH(IsFastTypedArray(jsType), &typedArray, slowPath);
     Bind(&typedArray);
     BRANCH(HasConstructor(glue, thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -1373,7 +1373,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
     BRANCH(IsEcmaObject(glue, thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
     GateRef arrayType = GetObjectType(LoadHClass(glue, thisValue));
-    BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    BRANCH(IsFastTypedArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
     GateRef buffer = GetViewedArrayBuffer(glue, thisValue);
     BRANCH(IsDetachedBuffer(glue, buffer), slowPath, &notDetached);
@@ -1511,7 +1511,7 @@ void BuiltinsTypedArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateR
     BRANCH(IsEcmaObject(glue, thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
     GateRef arrayType = GetObjectType(LoadHClass(glue, thisValue));
-    BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    BRANCH(IsFastTypedArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
     BRANCH(HasConstructor(glue, thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -2087,7 +2087,7 @@ void BuiltinsTypedArrayStubBuilder::Sort(
     Label argUndefined(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(glue, thisValue))), &typedArray, slowPath);
+    BRANCH(IsFastTypedArray(GetObjectType(LoadHClass(glue, thisValue))), &typedArray, slowPath);
     Bind(&typedArray);
     BRANCH(HasConstructor(glue, thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -2141,7 +2141,7 @@ void BuiltinsTypedArrayStubBuilder::Set(GateRef glue, GateRef thisValue, GateRef
     Bind(&thisExists);
     BRANCH(IsEcmaObject(glue, thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
-    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(glue, thisValue))), &typedArrayIsFast, slowPath);
+    BRANCH(IsFastTypedArray(GetObjectType(LoadHClass(glue, thisValue))), &typedArrayIsFast, slowPath);
     Bind(&typedArrayIsFast);
     GateRef len = ZExtInt32ToInt64(GetArrayLength(thisValue));
     GateRef arrayType = GetObjectType(LoadHClass(glue, thisValue));
@@ -2181,9 +2181,9 @@ void BuiltinsTypedArrayStubBuilder::Set(GateRef glue, GateRef thisValue, GateRef
     Bind(&srcArrayIsTypedArray);
     {
         GateRef srcType = GetObjectType(LoadHClass(glue, srcArray));
-        Label isFastTypeArray(env);
-        BRANCH(IsFastTypeArray(srcType), &isFastTypeArray, slowPath);
-        Bind(&isFastTypeArray);
+        Label isFastTypedArray(env);
+        BRANCH(IsFastTypedArray(srcType), &isFastTypedArray, slowPath);
+        Bind(&isFastTypedArray);
         Label isNotSameValue(env);
         GateRef targetBuffer = GetViewedArrayBuffer(glue, thisValue);
         GateRef srcBuffer = GetViewedArrayBuffer(glue, srcArray);
@@ -2439,7 +2439,7 @@ void BuiltinsTypedArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
     Label accessorNotChanged(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(glue, thisValue))), &typedArray, slowPath);
+    BRANCH(IsFastTypedArray(GetObjectType(LoadHClass(glue, thisValue))), &typedArray, slowPath);
     Bind(&typedArray);
     BRANCH(HasConstructor(glue, thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -2502,7 +2502,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
 
     BRANCH(IsEcmaObject(glue, thisObj), &thisObjIsECmaObject, slowPath);
     Bind(&thisObjIsECmaObject);
-    BRANCH(IsFastTypeArray(arrayType), &thisObjIsFastTypedArray, slowPath);
+    BRANCH(IsFastTypedArray(arrayType), &thisObjIsFastTypedArray, slowPath);
     Bind(&thisObjIsFastTypedArray);
     BRANCH(HasConstructor(glue, thisObj), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -2598,7 +2598,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    BRANCH(IsFastTypeArray(GetObjectType(LoadHClass(glue, thisValue))), &typedArrayIsFast, slowPath);
+    BRANCH(IsFastTypedArray(GetObjectType(LoadHClass(glue, thisValue))), &typedArrayIsFast, slowPath);
     Bind(&typedArrayIsFast);
     BRANCH(HasConstructor(glue, thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -2696,7 +2696,7 @@ void BuiltinsTypedArrayStubBuilder::ToReversed(GateRef glue, GateRef thisValue, 
     BRANCH(IsEcmaObject(glue, thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
     GateRef arrayType = GetObjectType(LoadHClass(glue, thisValue));
-    BRANCH(IsFastTypeArray(arrayType), &isFastTypedArray, slowPath);
+    BRANCH(IsFastTypedArray(arrayType), &isFastTypedArray, slowPath);
     Bind(&isFastTypedArray);
     BRANCH(HasConstructor(glue, thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -2799,7 +2799,7 @@ void BuiltinsTypedArrayStubBuilder::FastSetPropertyByIndex(GateRef glue, GateRef
     }
     Bind(&slowPath);
     {
-        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypeArrayPropertyByIndexSlowPath),
+        CallRuntimeWithGlobalEnv(glue, GetCurrentGlobalEnv(), RTSTUB_ID(SetTypedArrayPropertyByIndexSlowPath),
             { array, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
         Jump(&exit);
     }
@@ -3115,7 +3115,7 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
 }
 
 void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateRef nativeCode, GateRef func,
-    GateRef newTarget, GateRef thisValue, GateRef numArgs, GateRef constructorName, const DataViewType arrayType)
+    GateRef newTarget, GateRef thisValue, GateRef numArgs, const DataViewType arrayType)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
@@ -3166,7 +3166,7 @@ void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateR
                 }
                 Bind(&isUndef);
                 {
-                    res = AllocateTypedArray(glue, constructorName, func, newTarget,
+                    res = AllocateTypedArray(glue, func, newTarget,
                         *elementLength, *elementLengthTagged, arrayType);
                     BRANCH(HasPendingException(glue), &hasException, &exit);
                 }
@@ -3179,7 +3179,7 @@ void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateR
                 Bind(&isArrayBuffer);
                 {
                     Label createFromArrayBuffer(env);
-                    res = AllocateTypedArray(glue, constructorName, func, newTarget, arrayType);
+                    res = AllocateTypedArray(glue, func, newTarget, arrayType);
                     BRANCH(HasPendingException(glue), &hasException, &createFromArrayBuffer);
                     Bind(&createFromArrayBuffer);
                     CreateFromArrayBuffer(&res, glue, numArgs, &exit, &slowPath, arrayType);
@@ -3190,7 +3190,7 @@ void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateR
                     BRANCH(IsStableArray(LoadHClass(glue, arg0)), &isStableJSArray, &slowPath);
                     Bind(&isStableJSArray);
                     Label createFromArray(env);
-                    res = AllocateTypedArray(glue, constructorName, func, newTarget, arrayType);
+                    res = AllocateTypedArray(glue, func, newTarget, arrayType);
                     BRANCH(HasPendingException(glue), &hasException, &createFromArray);
                     Bind(&createFromArray);
                     FastCopyElementFromArray(&res, glue, arg0, &exit, &slowPath, arrayType);
@@ -3220,8 +3220,8 @@ void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateR
     Return(*res);
 }
 
-GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef constructorName,
-    GateRef func, GateRef newTarget, GateRef length, GateRef lengthTagged, const DataViewType arrayType)
+GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef func, GateRef newTarget,
+    GateRef length, GateRef lengthTagged, const DataViewType arrayType)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -3237,7 +3237,6 @@ GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef 
     Bind(&notException);
     {
         SetViewedArrayBufferOrByteArray(glue, *res, Undefined(), MemoryAttribute::NoBarrier());
-        SetTypedArrayName(glue, *res, constructorName);
         AllocateTypedArrayBuffer(glue, *res, length, lengthTagged, arrayType);
         BRANCH(HasPendingException(glue), &hasException, &exit);
     }
@@ -3252,8 +3251,8 @@ GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef 
     return ret;
 }
 
-GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef constructorName,
-    GateRef func, GateRef newTarget, const DataViewType arrayType)
+GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef func, GateRef newTarget,
+                                                          const DataViewType arrayType)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -3269,13 +3268,7 @@ GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef 
     Bind(&notException);
     {
         SetViewedArrayBufferOrByteArray(glue, *res, Undefined(), MemoryAttribute::NoBarrier());
-        if (arrayType == DataViewType::BIGINT64 ||
-            arrayType == DataViewType::BIGUINT64) {
-            SetContentType(glue, *res, Int8(static_cast<uint8_t>(ContentType::BigInt)));
-        } else {
-            SetContentType(glue, *res, Int8(static_cast<uint8_t>(ContentType::Number)));
-        }
-        SetTypedArrayName(glue, *res, constructorName);
+        SetContentType(glue, *res, Int8(static_cast<uint8_t>(arrayType)));
         SetByteLength(glue, *res, Int32(0));
         SetByteOffset(glue, *res, Int32(0));
         SetTypedArrayLength(glue, *res, Int32(0));
@@ -3331,13 +3324,8 @@ GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArrayBuffer(GateRef glue, Ga
             GateRef newHclass = GetOnHeapHclassFromType(glue, objHclass, arrayType);
             NotifyHClassChanged(glue, objHclass, newHclass);
             TransitionHClass(glue, typedArray, newHclass, MemoryAttribute::NeedBarrierAndAtomic());
-            if (arrayType == DataViewType::BIGINT64 ||
-                arrayType == DataViewType::BIGUINT64) {
-                SetContentType(glue, typedArray, Int8(static_cast<uint8_t>(ContentType::BigInt)));
-            } else {
-                SetContentType(glue, typedArray, Int8(static_cast<uint8_t>(ContentType::Number)));
-            }
             SetViewedArrayBufferOrByteArray(glue, typedArray, *data);
+            SetContentType(glue, typedArray, Int8(static_cast<uint8_t>(arrayType)));
             SetByteLength(glue, typedArray, TruncInt64ToInt32(byteLength));
             SetByteOffset(glue, typedArray, Int32(0));
             SetTypedArrayLength(glue, typedArray, length);

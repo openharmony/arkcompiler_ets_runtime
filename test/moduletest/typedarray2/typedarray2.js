@@ -829,4 +829,835 @@
     });
 }
 
+// Test TypedArray tag lookup and derived result types
+{
+    const numericCases = [
+        [Int8Array, [1, 2, 3], 9],
+        [Uint8Array, [1, 2, 3], 9],
+        [Uint8ClampedArray, [1, 2, 3], 9],
+        [Int16Array, [1, 2, 3], 9],
+        [Uint16Array, [1, 2, 3], 9],
+        [Int32Array, [1, 2, 3], 9],
+        [Uint32Array, [1, 2, 3], 9],
+        [Float32Array, [1, 2, 3], 9.5],
+        [Float64Array, [1, 2, 3], 9.5],
+    ];
+    const bigintCases = [
+        [BigInt64Array, [1n, 2n, 3n], 9n],
+        [BigUint64Array, [1n, 2n, 3n], 9n],
+    ];
+
+    function assertTypedArrayDerivedType(ctor, input, replacement) {
+        const expectedTag = `[object ${ctor.name}]`;
+        const source = new ctor(input);
+        const sliced = source.slice(1);
+        const subarray = source.subarray(1);
+        const withResult = source.with(0, replacement);
+
+        assert_equal(Object.prototype.toString.call(source), expectedTag);
+        assert_equal(Object.prototype.toString.call(sliced), expectedTag);
+        assert_equal(Object.prototype.toString.call(subarray), expectedTag);
+        assert_equal(Object.prototype.toString.call(withResult), expectedTag);
+        assert_true(sliced instanceof ctor);
+        assert_true(subarray instanceof ctor);
+        assert_true(withResult instanceof ctor);
+    }
+
+    numericCases.forEach(([ctor, input, replacement]) => {
+        assertTypedArrayDerivedType(ctor, input, replacement);
+    });
+    bigintCases.forEach(([ctor, input, replacement]) => {
+        assertTypedArrayDerivedType(ctor, input, replacement);
+    });
+}
+
+function assertTypedArrayValues(arr, expected) {
+    assert_equal(arr.length, expected.length);
+    for (let i = 0; i < expected.length; i++) {
+        assert_equal(arr[i], expected[i]);
+    }
+}
+
+function assertBigIntTypedArrayValues(arr, expected) {
+    assert_equal(arr.length, expected.length);
+    for (let i = 0; i < expected.length; i++) {
+        assert_equal(arr[i], expected[i]);
+    }
+}
+
+// Test Int8Array detailed typedarray regression coverage
+{
+    const source = new Int8Array([1, -2, 3, -4, 5]);
+    assert_equal(source.BYTES_PER_ELEMENT, 1);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 5);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Int8Array]");
+
+    const sliced = source.slice(1, 4);
+    assert_true(sliced instanceof Int8Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Int8Array]");
+    assertTypedArrayValues(sliced, [-2, 3, -4]);
+
+    const sub = source.subarray(1, 4);
+    assert_true(sub instanceof Int8Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object Int8Array]");
+    assertTypedArrayValues(sub, [-2, 3, -4]);
+
+    sub[0] = 44;
+    assert_equal(source[1], 44);
+    assert_equal(sub[0], 44);
+    assert_equal(sliced[0], -2);
+
+    const withResult = source.with(2, 99);
+    assert_true(withResult instanceof Int8Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Int8Array]");
+    assertTypedArrayValues(withResult, [1, 44, 99, -4, 5]);
+    assertTypedArrayValues(source, [1, 44, 3, -4, 5]);
+
+    const copied = new Int8Array(7);
+    copied.set(source, 1);
+    assertTypedArrayValues(copied, [0, 1, 44, 3, -4, 5, 0]);
+
+    copied.fill(-8, 2, 5);
+    assertTypedArrayValues(copied, [0, 1, -8, -8, -8, 5, 0]);
+
+    const buffer = new ArrayBuffer(8);
+    const view = new Int8Array(buffer, 2, 4);
+    view.set([7, -7, 8, -8]);
+    assert_equal(view.byteOffset, 2);
+    assert_equal(view.byteLength, 4);
+    assertTypedArrayValues(view, [7, -7, 8, -8]);
+
+    const fromTypedArray = new Int8Array(withResult);
+    assert_true(fromTypedArray instanceof Int8Array);
+    assertTypedArrayValues(fromTypedArray, [1, 44, 99, -4, 5]);
+}
+
+// Test Uint8Array detailed typedarray regression coverage
+{
+    const source = new Uint8Array([1, 2, 3, 4, 255]);
+    assert_equal(source.BYTES_PER_ELEMENT, 1);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 5);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Uint8Array]");
+
+    const sliced = source.slice(1, 4);
+    assert_true(sliced instanceof Uint8Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Uint8Array]");
+    assertTypedArrayValues(sliced, [2, 3, 4]);
+
+    const sub = source.subarray(2, 5);
+    assert_true(sub instanceof Uint8Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object Uint8Array]");
+    assertTypedArrayValues(sub, [3, 4, 255]);
+
+    sub[1] = 200;
+    assert_equal(source[3], 200);
+    assert_equal(sliced[2], 4);
+
+    const withResult = source.with(0, 99);
+    assert_true(withResult instanceof Uint8Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Uint8Array]");
+    assertTypedArrayValues(withResult, [99, 2, 3, 200, 255]);
+    assertTypedArrayValues(source, [1, 2, 3, 200, 255]);
+
+    const copied = new Uint8Array(8);
+    copied.set(source, 2);
+    assertTypedArrayValues(copied, [0, 0, 1, 2, 3, 200, 255, 0]);
+
+    copied.fill(7, 1, 4);
+    assertTypedArrayValues(copied, [0, 7, 7, 7, 3, 200, 255, 0]);
+
+    const buffer = new ArrayBuffer(10);
+    const view = new Uint8Array(buffer, 1, 5);
+    view.set([10, 11, 12, 13, 14]);
+    assert_equal(view.byteOffset, 1);
+    assert_equal(view.byteLength, 5);
+    assertTypedArrayValues(view, [10, 11, 12, 13, 14]);
+
+    const fromTypedArray = new Uint8Array(withResult);
+    assert_true(fromTypedArray instanceof Uint8Array);
+    assertTypedArrayValues(fromTypedArray, [99, 2, 3, 200, 255]);
+}
+
+// Test Uint8ClampedArray detailed typedarray regression coverage
+{
+    const source = new Uint8ClampedArray([1, 2, 3, 4, 5]);
+    assert_equal(source.BYTES_PER_ELEMENT, 1);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 5);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Uint8ClampedArray]");
+
+    const sliced = source.slice(1, 5);
+    assert_true(sliced instanceof Uint8ClampedArray);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Uint8ClampedArray]");
+    assertTypedArrayValues(sliced, [2, 3, 4, 5]);
+
+    const sub = source.subarray(0, 3);
+    assert_true(sub instanceof Uint8ClampedArray);
+    assert_equal(Object.prototype.toString.call(sub), "[object Uint8ClampedArray]");
+    assertTypedArrayValues(sub, [1, 2, 3]);
+
+    sub[2] = 255;
+    assert_equal(source[2], 255);
+    assert_equal(sliced[1], 3);
+
+    const withResult = source.with(1, 300);
+    assert_true(withResult instanceof Uint8ClampedArray);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Uint8ClampedArray]");
+    assertTypedArrayValues(withResult, [1, 255, 255, 4, 5]);
+    assertTypedArrayValues(source, [1, 2, 255, 4, 5]);
+
+    const copied = new Uint8ClampedArray(7);
+    copied.set(source, 1);
+    assertTypedArrayValues(copied, [0, 1, 2, 255, 4, 5, 0]);
+
+    copied.fill(-10, 0, 2);
+    assertTypedArrayValues(copied, [0, 0, 2, 255, 4, 5, 0]);
+
+    const buffer = new ArrayBuffer(8);
+    const view = new Uint8ClampedArray(buffer, 2, 4);
+    view.set([0, 128, 300, -20]);
+    assert_equal(view.byteOffset, 2);
+    assert_equal(view.byteLength, 4);
+    assertTypedArrayValues(view, [0, 128, 255, 0]);
+
+    const fromTypedArray = new Uint8ClampedArray(withResult);
+    assert_true(fromTypedArray instanceof Uint8ClampedArray);
+    assertTypedArrayValues(fromTypedArray, [1, 255, 255, 4, 5]);
+}
+
+// Test Int16Array detailed typedarray regression coverage
+{
+    const source = new Int16Array([100, -200, 300, -400, 500]);
+    assert_equal(source.BYTES_PER_ELEMENT, 2);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 10);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Int16Array]");
+
+    const sliced = source.slice(1, 4);
+    assert_true(sliced instanceof Int16Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Int16Array]");
+    assertTypedArrayValues(sliced, [-200, 300, -400]);
+
+    const sub = source.subarray(2, 5);
+    assert_true(sub instanceof Int16Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object Int16Array]");
+    assertTypedArrayValues(sub, [300, -400, 500]);
+
+    sub[1] = 1234;
+    assert_equal(source[3], 1234);
+    assert_equal(sliced[2], -400);
+
+    const withResult = source.with(4, -1234);
+    assert_true(withResult instanceof Int16Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Int16Array]");
+    assertTypedArrayValues(withResult, [100, -200, 300, 1234, -1234]);
+    assertTypedArrayValues(source, [100, -200, 300, 1234, 500]);
+
+    const copied = new Int16Array(8);
+    copied.set(source, 2);
+    assertTypedArrayValues(copied, [0, 0, 100, -200, 300, 1234, 500, 0]);
+
+    copied.fill(-33, 1, 4);
+    assertTypedArrayValues(copied, [0, -33, -33, -33, 300, 1234, 500, 0]);
+
+    const buffer = new ArrayBuffer(16);
+    const view = new Int16Array(buffer, 4, 4);
+    view.set([7, -7, 8, -8]);
+    assert_equal(view.byteOffset, 4);
+    assert_equal(view.byteLength, 8);
+    assertTypedArrayValues(view, [7, -7, 8, -8]);
+
+    const fromTypedArray = new Int16Array(withResult);
+    assert_true(fromTypedArray instanceof Int16Array);
+    assertTypedArrayValues(fromTypedArray, [100, -200, 300, 1234, -1234]);
+}
+
+// Test Uint16Array detailed typedarray regression coverage
+{
+    const source = new Uint16Array([100, 200, 300, 400, 500]);
+    assert_equal(source.BYTES_PER_ELEMENT, 2);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 10);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Uint16Array]");
+
+    const sliced = source.slice(0, 3);
+    assert_true(sliced instanceof Uint16Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Uint16Array]");
+    assertTypedArrayValues(sliced, [100, 200, 300]);
+
+    const sub = source.subarray(1, 4);
+    assert_true(sub instanceof Uint16Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object Uint16Array]");
+    assertTypedArrayValues(sub, [200, 300, 400]);
+
+    sub[2] = 65535;
+    assert_equal(source[3], 65535);
+    assert_equal(sliced[2], 300);
+
+    const withResult = source.with(2, 12345);
+    assert_true(withResult instanceof Uint16Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Uint16Array]");
+    assertTypedArrayValues(withResult, [100, 200, 12345, 65535, 500]);
+    assertTypedArrayValues(source, [100, 200, 300, 65535, 500]);
+
+    const copied = new Uint16Array(8);
+    copied.set(source, 1);
+    assertTypedArrayValues(copied, [0, 100, 200, 300, 65535, 500, 0, 0]);
+
+    copied.fill(9, 5, 8);
+    assertTypedArrayValues(copied, [0, 100, 200, 300, 65535, 9, 9, 9]);
+
+    const buffer = new ArrayBuffer(18);
+    const view = new Uint16Array(buffer, 2, 4);
+    view.set([11, 22, 33, 44]);
+    assert_equal(view.byteOffset, 2);
+    assert_equal(view.byteLength, 8);
+    assertTypedArrayValues(view, [11, 22, 33, 44]);
+
+    const fromTypedArray = new Uint16Array(withResult);
+    assert_true(fromTypedArray instanceof Uint16Array);
+    assertTypedArrayValues(fromTypedArray, [100, 200, 12345, 65535, 500]);
+}
+
+// Test Int32Array detailed typedarray regression coverage
+{
+    const source = new Int32Array([1000, -2000, 3000, -4000, 5000]);
+    assert_equal(source.BYTES_PER_ELEMENT, 4);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 20);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Int32Array]");
+
+    const sliced = source.slice(2, 5);
+    assert_true(sliced instanceof Int32Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Int32Array]");
+    assertTypedArrayValues(sliced, [3000, -4000, 5000]);
+
+    const sub = source.subarray(0, 2);
+    assert_true(sub instanceof Int32Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object Int32Array]");
+    assertTypedArrayValues(sub, [1000, -2000]);
+
+    sub[1] = 7777;
+    assert_equal(source[1], 7777);
+    assert_equal(sliced[1], -4000);
+
+    const withResult = source.with(3, -8888);
+    assert_true(withResult instanceof Int32Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Int32Array]");
+    assertTypedArrayValues(withResult, [1000, 7777, 3000, -8888, 5000]);
+    assertTypedArrayValues(source, [1000, 7777, 3000, -4000, 5000]);
+
+    const copied = new Int32Array(7);
+    copied.set(source, 1);
+    assertTypedArrayValues(copied, [0, 1000, 7777, 3000, -4000, 5000, 0]);
+
+    copied.fill(-1, 0, 2);
+    assertTypedArrayValues(copied, [-1, -1, 7777, 3000, -4000, 5000, 0]);
+
+    const buffer = new ArrayBuffer(32);
+    const view = new Int32Array(buffer, 8, 4);
+    view.set([123, -123, 456, -456]);
+    assert_equal(view.byteOffset, 8);
+    assert_equal(view.byteLength, 16);
+    assertTypedArrayValues(view, [123, -123, 456, -456]);
+
+    const fromTypedArray = new Int32Array(withResult);
+    assert_true(fromTypedArray instanceof Int32Array);
+    assertTypedArrayValues(fromTypedArray, [1000, 7777, 3000, -8888, 5000]);
+}
+
+// Test Uint32Array detailed typedarray regression coverage
+{
+    const source = new Uint32Array([1000, 2000, 3000, 4000, 5000]);
+    assert_equal(source.BYTES_PER_ELEMENT, 4);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 20);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Uint32Array]");
+
+    const sliced = source.slice(1, 3);
+    assert_true(sliced instanceof Uint32Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Uint32Array]");
+    assertTypedArrayValues(sliced, [2000, 3000]);
+
+    const sub = source.subarray(2, 5);
+    assert_true(sub instanceof Uint32Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object Uint32Array]");
+    assertTypedArrayValues(sub, [3000, 4000, 5000]);
+
+    sub[0] = 999999;
+    assert_equal(source[2], 999999);
+    assert_equal(sliced[1], 3000);
+
+    const withResult = source.with(4, 1234567890);
+    assert_true(withResult instanceof Uint32Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Uint32Array]");
+    assertTypedArrayValues(withResult, [1000, 2000, 999999, 4000, 1234567890]);
+    assertTypedArrayValues(source, [1000, 2000, 999999, 4000, 5000]);
+
+    const copied = new Uint32Array(7);
+    copied.set(source, 2);
+    assertTypedArrayValues(copied, [0, 0, 1000, 2000, 999999, 4000, 5000]);
+
+    copied.fill(42, 0, 3);
+    assertTypedArrayValues(copied, [42, 42, 42, 2000, 999999, 4000, 5000]);
+
+    const buffer = new ArrayBuffer(40);
+    const view = new Uint32Array(buffer, 4, 4);
+    view.set([1, 2, 3, 4]);
+    assert_equal(view.byteOffset, 4);
+    assert_equal(view.byteLength, 16);
+    assertTypedArrayValues(view, [1, 2, 3, 4]);
+
+    const fromTypedArray = new Uint32Array(withResult);
+    assert_true(fromTypedArray instanceof Uint32Array);
+    assertTypedArrayValues(fromTypedArray, [1000, 2000, 999999, 4000, 1234567890]);
+}
+
+// Test Float32Array detailed typedarray regression coverage
+{
+    const source = new Float32Array([1.5, -2.5, 3.5, -4.5, 5.5]);
+    assert_equal(source.BYTES_PER_ELEMENT, 4);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 20);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Float32Array]");
+
+    const sliced = source.slice(1, 4);
+    assert_true(sliced instanceof Float32Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Float32Array]");
+    assert_true(Math.abs(sliced[0] - (-2.5)) < 0.001);
+    assert_true(Math.abs(sliced[1] - 3.5) < 0.001);
+    assert_true(Math.abs(sliced[2] - (-4.5)) < 0.001);
+
+    const sub = source.subarray(0, 3);
+    assert_true(sub instanceof Float32Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object Float32Array]");
+    assert_true(Math.abs(sub[0] - 1.5) < 0.001);
+    assert_true(Math.abs(sub[1] - (-2.5)) < 0.001);
+    assert_true(Math.abs(sub[2] - 3.5) < 0.001);
+
+    sub[1] = 9.25;
+    assert_true(Math.abs(source[1] - 9.25) < 0.001);
+    assert_true(Math.abs(sliced[0] - (-2.5)) < 0.001);
+
+    const withResult = source.with(3, -7.75);
+    assert_true(withResult instanceof Float32Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Float32Array]");
+    assert_true(Math.abs(withResult[0] - 1.5) < 0.001);
+    assert_true(Math.abs(withResult[1] - 9.25) < 0.001);
+    assert_true(Math.abs(withResult[2] - 3.5) < 0.001);
+    assert_true(Math.abs(withResult[3] - (-7.75)) < 0.001);
+    assert_true(Math.abs(withResult[4] - 5.5) < 0.001);
+
+    const copied = new Float32Array(7);
+    copied.set(source, 1);
+    assert_true(Math.abs(copied[1] - 1.5) < 0.001);
+    assert_true(Math.abs(copied[2] - 9.25) < 0.001);
+    assert_true(Math.abs(copied[5] - 5.5) < 0.001);
+
+    copied.fill(2.25, 0, 2);
+    assert_true(Math.abs(copied[0] - 2.25) < 0.001);
+    assert_true(Math.abs(copied[1] - 2.25) < 0.001);
+
+    const buffer = new ArrayBuffer(32);
+    const view = new Float32Array(buffer, 8, 4);
+    view.set([0.25, 0.5, 0.75, 1.25]);
+    assert_equal(view.byteOffset, 8);
+    assert_equal(view.byteLength, 16);
+    assert_true(Math.abs(view[0] - 0.25) < 0.001);
+    assert_true(Math.abs(view[1] - 0.5) < 0.001);
+    assert_true(Math.abs(view[2] - 0.75) < 0.001);
+    assert_true(Math.abs(view[3] - 1.25) < 0.001);
+
+    const fromTypedArray = new Float32Array(withResult);
+    assert_true(fromTypedArray instanceof Float32Array);
+    assert_true(Math.abs(fromTypedArray[3] - (-7.75)) < 0.001);
+}
+
+// Test Float64Array detailed typedarray regression coverage
+{
+    const source = new Float64Array([1.25, -2.5, 3.75, -4.125, 5.5]);
+    assert_equal(source.BYTES_PER_ELEMENT, 8);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 40);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object Float64Array]");
+
+    const sliced = source.slice(0, 4);
+    assert_true(sliced instanceof Float64Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object Float64Array]");
+    assert_equal(sliced[0], 1.25);
+    assert_equal(sliced[1], -2.5);
+    assert_equal(sliced[2], 3.75);
+    assert_equal(sliced[3], -4.125);
+
+    const sub = source.subarray(1, 5);
+    assert_true(sub instanceof Float64Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object Float64Array]");
+    assert_equal(sub[0], -2.5);
+    assert_equal(sub[1], 3.75);
+    assert_equal(sub[2], -4.125);
+    assert_equal(sub[3], 5.5);
+
+    sub[2] = 10.625;
+    assert_equal(source[3], 10.625);
+    assert_equal(sliced[3], -4.125);
+
+    const withResult = source.with(1, -99.5);
+    assert_true(withResult instanceof Float64Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object Float64Array]");
+    assert_equal(withResult[0], 1.25);
+    assert_equal(withResult[1], -99.5);
+    assert_equal(withResult[2], 3.75);
+    assert_equal(withResult[3], 10.625);
+    assert_equal(withResult[4], 5.5);
+
+    const copied = new Float64Array(7);
+    copied.set(source, 2);
+    assert_equal(copied[2], 1.25);
+    assert_equal(copied[3], -2.5);
+    assert_equal(copied[6], 5.5);
+
+    copied.fill(6.75, 0, 2);
+    assert_equal(copied[0], 6.75);
+    assert_equal(copied[1], 6.75);
+
+    const buffer = new ArrayBuffer(64);
+    const view = new Float64Array(buffer, 8, 4);
+    view.set([11.1, 22.2, 33.3, 44.4]);
+    assert_equal(view.byteOffset, 8);
+    assert_equal(view.byteLength, 32);
+    assert_equal(view[0], 11.1);
+    assert_equal(view[1], 22.2);
+    assert_equal(view[2], 33.3);
+    assert_equal(view[3], 44.4);
+
+    const fromTypedArray = new Float64Array(withResult);
+    assert_true(fromTypedArray instanceof Float64Array);
+    assert_equal(fromTypedArray[1], -99.5);
+}
+
+// Test BigInt64Array detailed typedarray regression coverage
+{
+    const source = new BigInt64Array([1n, -2n, 3n, -4n, 5n]);
+    assert_equal(source.BYTES_PER_ELEMENT, 8);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 40);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object BigInt64Array]");
+
+    const sliced = source.slice(1, 4);
+    assert_true(sliced instanceof BigInt64Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object BigInt64Array]");
+    assertBigIntTypedArrayValues(sliced, [-2n, 3n, -4n]);
+
+    const sub = source.subarray(0, 3);
+    assert_true(sub instanceof BigInt64Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object BigInt64Array]");
+    assertBigIntTypedArrayValues(sub, [1n, -2n, 3n]);
+
+    sub[1] = 77n;
+    assert_equal(source[1], 77n);
+    assert_equal(sliced[0], -2n);
+
+    const withResult = source.with(4, -99n);
+    assert_true(withResult instanceof BigInt64Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object BigInt64Array]");
+    assertBigIntTypedArrayValues(withResult, [1n, 77n, 3n, -4n, -99n]);
+    assertBigIntTypedArrayValues(source, [1n, 77n, 3n, -4n, 5n]);
+
+    const copied = new BigInt64Array(7);
+    copied.set(source, 1);
+    assertBigIntTypedArrayValues(copied, [0n, 1n, 77n, 3n, -4n, 5n, 0n]);
+
+    copied.fill(-8n, 2, 5);
+    assertBigIntTypedArrayValues(copied, [0n, 1n, -8n, -8n, -8n, 5n, 0n]);
+
+    const buffer = new ArrayBuffer(56);
+    const view = new BigInt64Array(buffer, 8, 4);
+    view.set([11n, -11n, 22n, -22n]);
+    assert_equal(view.byteOffset, 8);
+    assert_equal(view.byteLength, 32);
+    assertBigIntTypedArrayValues(view, [11n, -11n, 22n, -22n]);
+
+    const fromTypedArray = new BigInt64Array(withResult);
+    assert_true(fromTypedArray instanceof BigInt64Array);
+    assertBigIntTypedArrayValues(fromTypedArray, [1n, 77n, 3n, -4n, -99n]);
+}
+
+// Test BigUint64Array detailed typedarray regression coverage
+{
+    const source = new BigUint64Array([1n, 2n, 3n, 4n, 5n]);
+    assert_equal(source.BYTES_PER_ELEMENT, 8);
+    assert_equal(source.length, 5);
+    assert_equal(source.byteLength, 40);
+    assert_equal(source.byteOffset, 0);
+    assert_equal(Object.prototype.toString.call(source), "[object BigUint64Array]");
+
+    const sliced = source.slice(2, 5);
+    assert_true(sliced instanceof BigUint64Array);
+    assert_equal(Object.prototype.toString.call(sliced), "[object BigUint64Array]");
+    assertBigIntTypedArrayValues(sliced, [3n, 4n, 5n]);
+
+    const sub = source.subarray(1, 4);
+    assert_true(sub instanceof BigUint64Array);
+    assert_equal(Object.prototype.toString.call(sub), "[object BigUint64Array]");
+    assertBigIntTypedArrayValues(sub, [2n, 3n, 4n]);
+
+    sub[2] = 123n;
+    assert_equal(source[3], 123n);
+    assert_equal(sliced[1], 4n);
+
+    const withResult = source.with(0, 999n);
+    assert_true(withResult instanceof BigUint64Array);
+    assert_equal(Object.prototype.toString.call(withResult), "[object BigUint64Array]");
+    assertBigIntTypedArrayValues(withResult, [999n, 2n, 3n, 123n, 5n]);
+    assertBigIntTypedArrayValues(source, [1n, 2n, 3n, 123n, 5n]);
+
+    const copied = new BigUint64Array(7);
+    copied.set(source, 2);
+    assertBigIntTypedArrayValues(copied, [0n, 0n, 1n, 2n, 3n, 123n, 5n]);
+
+    copied.fill(8n, 0, 3);
+    assertBigIntTypedArrayValues(copied, [8n, 8n, 8n, 2n, 3n, 123n, 5n]);
+
+    const buffer = new ArrayBuffer(56);
+    const view = new BigUint64Array(buffer, 8, 4);
+    view.set([7n, 8n, 9n, 10n]);
+    assert_equal(view.byteOffset, 8);
+    assert_equal(view.byteLength, 32);
+    assertBigIntTypedArrayValues(view, [7n, 8n, 9n, 10n]);
+
+    const fromTypedArray = new BigUint64Array(withResult);
+    assert_true(fromTypedArray instanceof BigUint64Array);
+    assertBigIntTypedArrayValues(fromTypedArray, [999n, 2n, 3n, 123n, 5n]);
+}
+
+// Test cross-type constructor copy semantics for numeric typedarrays
+{
+    const int8Source = new Int8Array([1, -2, 3, -4]);
+    const uint16FromInt8 = new Uint16Array(int8Source);
+    assert_true(uint16FromInt8 instanceof Uint16Array);
+    assert_equal(Object.prototype.toString.call(uint16FromInt8), "[object Uint16Array]");
+    assert_equal(uint16FromInt8.length, 4);
+    assert_equal(uint16FromInt8[0], 1);
+    assert_equal(uint16FromInt8[2], 3);
+
+    const float32Source = new Float32Array([1.25, 2.5, 3.75, 4.5]);
+    const int32FromFloat32 = new Int32Array(float32Source);
+    assert_true(int32FromFloat32 instanceof Int32Array);
+    assert_equal(Object.prototype.toString.call(int32FromFloat32), "[object Int32Array]");
+    assert_equal(int32FromFloat32.length, 4);
+    assert_equal(int32FromFloat32[0], 1);
+    assert_equal(int32FromFloat32[1], 2);
+    assert_equal(int32FromFloat32[2], 3);
+    assert_equal(int32FromFloat32[3], 4);
+
+    const uint8Source = new Uint8Array([255, 128, 64, 32]);
+    const float64FromUint8 = new Float64Array(uint8Source);
+    assert_true(float64FromUint8 instanceof Float64Array);
+    assert_equal(Object.prototype.toString.call(float64FromUint8), "[object Float64Array]");
+    assert_equal(float64FromUint8.length, 4);
+    assert_equal(float64FromUint8[0], 255);
+    assert_equal(float64FromUint8[1], 128);
+    assert_equal(float64FromUint8[2], 64);
+    assert_equal(float64FromUint8[3], 32);
+}
+
+// Test cross-type constructor copy semantics for bigint typedarrays
+{
+    const bigIntSource = new BigInt64Array([1n, -2n, 3n, -4n]);
+    const bigUintFromBigInt = new BigUint64Array(bigIntSource);
+    assert_true(bigUintFromBigInt instanceof BigUint64Array);
+    assert_equal(Object.prototype.toString.call(bigUintFromBigInt), "[object BigUint64Array]");
+    assert_equal(bigUintFromBigInt.length, 4);
+    assert_equal(bigUintFromBigInt[0], 1n);
+    assert_equal(bigUintFromBigInt[2], 3n);
+
+    const bigUintSource = new BigUint64Array([10n, 20n, 30n, 40n]);
+    const bigIntFromBigUint = new BigInt64Array(bigUintSource);
+    assert_true(bigIntFromBigUint instanceof BigInt64Array);
+    assert_equal(Object.prototype.toString.call(bigIntFromBigUint), "[object BigInt64Array]");
+    assert_equal(bigIntFromBigUint.length, 4);
+    assert_equal(bigIntFromBigUint[0], 10n);
+    assert_equal(bigIntFromBigUint[1], 20n);
+    assert_equal(bigIntFromBigUint[2], 30n);
+    assert_equal(bigIntFromBigUint[3], 40n);
+}
+
+// Test typedarray result type stability after chained operations
+{
+    const a = new Int16Array([10, 20, 30, 40, 50]);
+    const chained = a.slice(1, 5).with(1, 99).subarray(1, 4);
+    assert_true(chained instanceof Int16Array);
+    assert_equal(Object.prototype.toString.call(chained), "[object Int16Array]");
+    assertTypedArrayValues(chained, [99, 40, 50]);
+
+    const b = new Float64Array([1.5, 2.5, 3.5, 4.5]);
+    const chainedFloat = b.subarray(1).with(2, 8.5).slice(0, 3);
+    assert_true(chainedFloat instanceof Float64Array);
+    assert_equal(Object.prototype.toString.call(chainedFloat), "[object Float64Array]");
+    assert_equal(chainedFloat[0], 2.5);
+    assert_equal(chainedFloat[1], 3.5);
+    assert_equal(chainedFloat[2], 8.5);
+
+    const c = new BigUint64Array([1n, 2n, 3n, 4n]);
+    const chainedBig = c.subarray(1).with(1, 99n).slice(0, 3);
+    assert_true(chainedBig instanceof BigUint64Array);
+    assert_equal(Object.prototype.toString.call(chainedBig), "[object BigUint64Array]");
+    assertBigIntTypedArrayValues(chainedBig, [2n, 99n, 4n]);
+}
+
+// Test ArrayBuffer-backed views preserve typedarray tags and offsets
+{
+    const buffer = new ArrayBuffer(64);
+
+    const int8View = new Int8Array(buffer, 0, 4);
+    int8View.set([1, 2, 3, 4]);
+    assert_equal(Object.prototype.toString.call(int8View), "[object Int8Array]");
+    assert_equal(int8View.byteOffset, 0);
+    assert_equal(int8View.byteLength, 4);
+
+    const uint16View = new Uint16Array(buffer, 8, 4);
+    uint16View.set([11, 22, 33, 44]);
+    assert_equal(Object.prototype.toString.call(uint16View), "[object Uint16Array]");
+    assert_equal(uint16View.byteOffset, 8);
+    assert_equal(uint16View.byteLength, 8);
+
+    const float32View = new Float32Array(buffer, 24, 2);
+    float32View.set([1.25, 2.5]);
+    assert_equal(Object.prototype.toString.call(float32View), "[object Float32Array]");
+    assert_equal(float32View.byteOffset, 24);
+    assert_equal(float32View.byteLength, 8);
+
+    const bigIntView = new BigInt64Array(buffer, 32, 2);
+    bigIntView.set([9n, -9n]);
+    assert_equal(Object.prototype.toString.call(bigIntView), "[object BigInt64Array]");
+    assert_equal(bigIntView.byteOffset, 32);
+    assert_equal(bigIntView.byteLength, 16);
+    assert_equal(bigIntView[0], 9n);
+    assert_equal(bigIntView[1], -9n);
+}
+
+// Test copyWithin and reverse preserve concrete typedarray identity
+{
+    const int8Arr = new Int8Array([1, 2, 3, 4, 5]);
+    const int8Result = int8Arr.copyWithin(1, 3);
+    assert_true(int8Result instanceof Int8Array);
+    assert_equal(Object.prototype.toString.call(int8Result), "[object Int8Array]");
+    assertTypedArrayValues(int8Arr, [1, 4, 5, 4, 5]);
+    int8Arr.reverse();
+    assertTypedArrayValues(int8Arr, [5, 4, 5, 4, 1]);
+
+    const uint32Arr = new Uint32Array([10, 20, 30, 40, 50]);
+    const uint32Result = uint32Arr.copyWithin(2, 0, 2);
+    assert_true(uint32Result instanceof Uint32Array);
+    assert_equal(Object.prototype.toString.call(uint32Result), "[object Uint32Array]");
+    assertTypedArrayValues(uint32Arr, [10, 20, 10, 20, 50]);
+    uint32Arr.reverse();
+    assertTypedArrayValues(uint32Arr, [50, 20, 10, 20, 10]);
+
+    const bigArr = new BigInt64Array([1n, 2n, 3n, 4n, 5n]);
+    const bigResult = bigArr.copyWithin(0, 2, 5);
+    assert_true(bigResult instanceof BigInt64Array);
+    assert_equal(Object.prototype.toString.call(bigResult), "[object BigInt64Array]");
+    assertBigIntTypedArrayValues(bigArr, [3n, 4n, 5n, 4n, 5n]);
+    bigArr.reverse();
+    assertBigIntTypedArrayValues(bigArr, [5n, 4n, 5n, 4n, 3n]);
+}
+
+// Test map and filter preserve concrete constructor results
+{
+    const int16Arr = new Int16Array([1, 2, 3, 4, 5]);
+    const int16Mapped = int16Arr.map(v => v * 2);
+    const int16Filtered = int16Arr.filter(v => v % 2 === 1);
+    assert_true(int16Mapped instanceof Int16Array);
+    assert_true(int16Filtered instanceof Int16Array);
+    assert_equal(Object.prototype.toString.call(int16Mapped), "[object Int16Array]");
+    assert_equal(Object.prototype.toString.call(int16Filtered), "[object Int16Array]");
+    assertTypedArrayValues(int16Mapped, [2, 4, 6, 8, 10]);
+    assertTypedArrayValues(int16Filtered, [1, 3, 5]);
+
+    const float32Arr = new Float32Array([1.5, 2.5, 3.5, 4.5]);
+    const float32Mapped = float32Arr.map(v => v + 0.5);
+    const float32Filtered = float32Arr.filter(v => v > 2.0);
+    assert_true(float32Mapped instanceof Float32Array);
+    assert_true(float32Filtered instanceof Float32Array);
+    assert_equal(Object.prototype.toString.call(float32Mapped), "[object Float32Array]");
+    assert_equal(Object.prototype.toString.call(float32Filtered), "[object Float32Array]");
+    assert_true(Math.abs(float32Mapped[0] - 2.0) < 0.001);
+    assert_true(Math.abs(float32Mapped[3] - 5.0) < 0.001);
+    assert_true(Math.abs(float32Filtered[0] - 2.5) < 0.001);
+    assert_true(Math.abs(float32Filtered[2] - 4.5) < 0.001);
+
+    const bigUintArr = new BigUint64Array([1n, 2n, 3n, 4n, 5n]);
+    const bigUintMapped = bigUintArr.map(v => v + 1n);
+    const bigUintFiltered = bigUintArr.filter(v => v % 2n === 1n);
+    assert_true(bigUintMapped instanceof BigUint64Array);
+    assert_true(bigUintFiltered instanceof BigUint64Array);
+    assert_equal(Object.prototype.toString.call(bigUintMapped), "[object BigUint64Array]");
+    assert_equal(Object.prototype.toString.call(bigUintFiltered), "[object BigUint64Array]");
+    assertBigIntTypedArrayValues(bigUintMapped, [2n, 3n, 4n, 5n, 6n]);
+    assertBigIntTypedArrayValues(bigUintFiltered, [1n, 3n, 5n]);
+}
+
+// Test reduce and join after typedarray memory-layout optimization
+{
+    const int8Arr = new Int8Array([1, 2, 3, 4]);
+    const int8Sum = int8Arr.reduce((acc, v) => acc + v, 0);
+    assert_equal(int8Sum, 10);
+    assert_equal(int8Arr.join("|"), "1|2|3|4");
+
+    const uint16Arr = new Uint16Array([10, 20, 30]);
+    const uint16Sum = uint16Arr.reduce((acc, v) => acc + v, 0);
+    assert_equal(uint16Sum, 60);
+    assert_equal(uint16Arr.join(","), "10,20,30");
+
+    const float64Arr = new Float64Array([1.5, 2.5, 3.5]);
+    const float64Sum = float64Arr.reduce((acc, v) => acc + v, 0);
+    assert_equal(float64Sum, 7.5);
+    assert_equal(float64Arr.join("/"), "1.5/2.5/3.5");
+
+    const bigIntArr = new BigInt64Array([1n, 2n, 3n]);
+    const bigIntSum = bigIntArr.reduce((acc, v) => acc + v, 0n);
+    assert_equal(bigIntSum, 6n);
+    assert_equal(bigIntArr.join(","), "1,2,3");
+}
+
+// Test typedarray iterator materialization remains type-correct after derived operations
+{
+    const int32Arr = new Int32Array([7, 8, 9]);
+    const int32Values = Array.from(int32Arr.values());
+    const int32Keys = Array.from(int32Arr.keys());
+    const int32Entries = Array.from(int32Arr.entries());
+    assert_equal(int32Values.length, 3);
+    assert_equal(int32Values[0], 7);
+    assert_equal(int32Values[2], 9);
+    assert_equal(int32Keys[0], 0);
+    assert_equal(int32Keys[2], 2);
+    assert_equal(int32Entries[1][0], 1);
+    assert_equal(int32Entries[1][1], 8);
+
+    const bigUintArr = new BigUint64Array([6n, 7n, 8n]);
+    const bigUintValues = Array.from(bigUintArr.values());
+    const bigUintKeys = Array.from(bigUintArr.keys());
+    const bigUintEntries = Array.from(bigUintArr.entries());
+    assert_equal(bigUintValues.length, 3);
+    assert_equal(bigUintValues[0], 6n);
+    assert_equal(bigUintValues[2], 8n);
+    assert_equal(bigUintKeys[0], 0);
+    assert_equal(bigUintKeys[2], 2);
+    assert_equal(bigUintEntries[2][0], 2);
+    assert_equal(bigUintEntries[2][1], 8n);
+}
+
 test_end();

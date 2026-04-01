@@ -1274,7 +1274,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBuiltin
             LowerTypedLdStringLength(tacc);
             return true;
         }
-        if (tacc.IsBuiltinsTypeArray()) {
+        if (tacc.IsBuiltinsTypedArray()) {
             LowerTypedLdTypedArrayLength(tacc);
             return true;
         }
@@ -1525,7 +1525,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByIndexForBuiltin(GateRef gate)
     GateRef result = Circuit::NullGate();
     // Just supported mono.
     if (tacc.IsMono()) {
-        if (tacc.IsBuiltinsTypeArray()) {  // pgo need dump profile type
+        if (tacc.IsBuiltinsTypedArray()) {  // pgo need dump profile type
             AddProfiling(gate);
             result = LoadTypedArrayByIndex(tacc);
             acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
@@ -1593,7 +1593,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByValueForBuiltin(GateRef gate)
             result = LoadJSArrayByIndex(tacc);
             acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
             return true;
-        } else if (tacc.IsBuiltinsTypeArray()) {
+        } else if (tacc.IsBuiltinsTypedArray()) {
             AddProfiling(gate);
             result = LoadTypedArrayByIndex(tacc);
             acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), result);
@@ -1852,7 +1852,7 @@ bool TypedBytecodeLowering::TryLowerTypedStObjByValueForBuiltin(GateRef gate)
             StoreJSArrayByIndex(tacc);
             acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());
             return true;
-        } else if (tacc.IsBuiltinsTypeArray()) {
+        } else if (tacc.IsBuiltinsTypedArray()) {
             AddProfiling(gate);
             StoreTypedArrayByIndex(tacc);
             acc_.ReplaceHirAndReplaceDeadIfException(gate, builder_.GetStateDepend(), Circuit::NullGate());

@@ -483,56 +483,6 @@ bool JSTypedArray::IsValidIntegerIndex(JSThread *thread, const JSHandle<JSTagged
     return true;
 }
 
-DataViewType JSTypedArray::GetTypeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName)
-{
-    auto type = thread->GetEcmaVM()->GetDataViewType(typeName.GetTaggedType());
-    if (type != -1) {
-        return DataViewType(type);
-    }
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledInt8ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedInt8ArrayString())) {
-        return DataViewType::INT8;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledUint8ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedUint8ArrayString())) {
-        return DataViewType::UINT8;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledUint8ClampedArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedUint8ClampedArrayString())) {
-        return DataViewType::UINT8_CLAMPED;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledInt16ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedInt16ArrayString())) {
-        return DataViewType::INT16;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledUint16ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedUint16ArrayString())) {
-        return DataViewType::UINT16;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledInt32ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedInt32ArrayString())) {
-        return DataViewType::INT32;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledUint32ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedUint32ArrayString())) {
-        return DataViewType::UINT32;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledFloat32ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedFloat32ArrayString())) {
-        return DataViewType::FLOAT32;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledFloat64ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedFloat64ArrayString())) {
-        return DataViewType::FLOAT64;
-    }
-    if (JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledBigInt64ArrayString()) ||
-        JSTaggedValue::SameValue(thread, typeName, globalConst->GetHandledSharedBigInt64ArrayString())) {
-        return DataViewType::BIGINT64;
-    }
-    return DataViewType::BIGUINT64;
-}
-
 // static
 bool JSTypedArray::FastCopyElementToArray(JSThread *thread, const JSHandle<JSTaggedValue> &typedArray,
                                           JSHandle<TaggedArray> &array)
@@ -616,8 +566,7 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
     ASSERT(typedarray->IsTypedArray() || typedarray->IsSharedTypedArray());
     // 3. If O.[[ContentType]] is BigInt, let numValue be ? ToBigInt(value).
     JSHandle<JSTaggedValue> numValueHandle;
-    ContentType contentType = JSHandle<JSTypedArray>::Cast(typedarray)->GetContentType();
-    if (UNLIKELY(contentType == ContentType::BigInt)) {
+    if (UNLIKELY(JSHandle<JSTypedArray>::Cast(typedarray)->ContentTypeIsBigInt())) {
         numValueHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     } else {
@@ -650,7 +599,7 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
     return true;
 }
 
-// only use in TypeArray fast set property
+// only use in TypedArray fast set property
 JSTaggedNumber JSTypedArray::NonEcmaObjectToNumber(JSThread *thread, const JSTaggedValue tagged)
 {
     ASSERT_PRINT(!tagged.IsECMAObject(), "tagged must not be EcmaObject");
@@ -724,7 +673,7 @@ JSTaggedValue JSTypedArray::FastSetPropertyByIndex(JSThread *thread, const JSTag
     ASSERT(typedarray.IsTypedArray() || typedarray.IsSharedTypedArray());
     // If O.[[ContentType]] is BigInt, let numValue be ? ToBigInt(value).
     JSTypedArray *typedarrayObj = JSTypedArray::Cast(typedarray.GetTaggedObject());
-    if (UNLIKELY(typedarrayObj->GetContentType() == ContentType::BigInt || value.IsECMAObject())) {
+    if (UNLIKELY(typedarrayObj->ContentTypeIsBigInt() || value.IsECMAObject())) {
         return JSTaggedValue::Hole();
     }
     JSTaggedNumber numValue = JSTypedArray::NonEcmaObjectToNumber(thread, value);
@@ -774,8 +723,7 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
         JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, 0, length);
     }
     typedArray->SetViewedArrayBufferOrByteArray(thread, arrayBuffer.GetTaggedValue());
-    JSHandle<JSTaggedValue> typeName(thread, typedArray->GetTypedArrayName(thread));
-    DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
+    DataViewType arrayType = typedArray->GetContentType();
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetNotOnHeapHclassFromType(
         thread, typedArray, arrayType);
 #if ECMASCRIPT_ENABLE_IC
@@ -806,8 +754,7 @@ JSTaggedValue JSSharedTypedArray::GetSharedOffHeapBuffer(JSThread *thread, JSHan
         JSSendableArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, 0, length);
     }
     typedArray->SetViewedArrayBufferOrByteArray(thread, arrayBuffer.GetTaggedValue());
-    JSHandle<JSTaggedValue> typeName(thread, typedArray->GetTypedArrayName(thread));
-    DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
+    DataViewType arrayType = typedArray->GetContentType();
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetSharedNotOnHeapHclassFromType(
         thread, typedArray, arrayType);
 #if ECMASCRIPT_ENABLE_IC
@@ -826,7 +773,7 @@ bool JSTypedArray::FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedV
     ASSERT(typedArray->IsTypedArray() || typedArray->IsSharedTypedArray());
     // If O.[[ContentType]] is BigInt, let numValue be ? ToBigInt(value).
     JSHandle<JSTypedArray> typedArrayObj = JSHandle<JSTypedArray>::Cast(typedArray);
-    if (UNLIKELY(typedArrayObj->GetContentType() == ContentType::BigInt || value->IsECMAObject())) {
+    if (UNLIKELY(typedArrayObj->ContentTypeIsBigInt() || value->IsECMAObject())) {
         return false;
     }
     JSTaggedNumber numValue = JSTypedArray::NonEcmaObjectToNumber(thread, value.GetTaggedValue());

@@ -289,15 +289,13 @@ JSTaggedValue BuiltinsAtomics::AtomicReadModifyWrite(JSThread *thread, const JSH
     uint32_t indexedPosition = base::AtomicHelper::ValidateAtomicAccess(thread, typedArray, index);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 3. Let arrayTypeName be typedArray.[[TypedArrayName]].
-    JSHandle<JSTaggedValue> arrayTypeName(thread,
-        JSTypedArray::Cast(typedArray->GetTaggedObject())->GetTypedArrayName(thread));
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(typedArray));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 7. NOTE: The above check is not redundant with the check in ValidateIntegerTypedArray because the call to
     // ToBigInt or ToIntegerOrInfinity on the preceding lines can have arbitrary side effects, which could cause the
     // buffer to become detached.
     // 8. Let elementType be the Element Type value in Table 60 for arrayTypeName.
-    DataViewType elementType = JSTypedArray::GetTypeFromName(thread, arrayTypeName);
+    DataViewType elementType = JSTypedArray::Cast(typedArray->GetTaggedObject())->GetContentType();
     // 9. Return GetModifySetValueInBuffer(buffer, indexedPosition, elementType, v, op).
     return AtomicReadModifyWriteCase(thread, buffer.GetTaggedValue(), elementType, indexedPosition, argv, op);
 }

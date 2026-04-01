@@ -870,13 +870,13 @@ print("================Test IC================");
   SendableUint8Array,
   SendableUint8ClampedArray,
 ].forEach((ctor: Function) => {
-  if (testTypeArrayIC(ctor)) {
+  if (testTypedArrayIC(ctor)) {
     print(ctor.name + ' test IC success');
   } else {
     print(ctor.name + ' test IC failed');
   }
 });
-function testTypeArrayIC(ctor: Function) {
+function testTypedArrayIC(ctor: Function) {
   let result = []
   let obj = new ctor(100);
   for (var i = 0; i < 100; i++) {

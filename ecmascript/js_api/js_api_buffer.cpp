@@ -199,7 +199,6 @@ JSHandle<JSTypedArray> JSAPIFastBuffer::NewUint8Array(JSThread *thread, uint32_t
     JSHandle<JSObject> obj =
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>(handleTagValFunc), handleTagValFunc);
     DataViewType arrayType = DataViewType::UINT8;
-    JSTypedArray::Cast(*obj)->SetTypedArrayName(thread, thread->GlobalConstants()->GetUint8ArrayString());
     TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, length, arrayType);
     return JSHandle<JSTypedArray>(obj);
 }

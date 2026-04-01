@@ -41,7 +41,7 @@ let typedArrayFindConstructorsFailList = [];
 
 typedArrayWithConstructors.forEach(function (ctor, i) {
     let arr = [1, 2, 3, 4, 5];
-    if (testTypeArrayWithInt(ctor, arr, false)) {
+    if (testTypedArrayWithInt(ctor, arr, false)) {
         typedArrayFindConstructorsSuccessList.push(ctor.name);
     } else {
         typedArrayFindConstructorsFailList.push(ctor.name);
@@ -64,7 +64,7 @@ let bigArrayFailList = [];
     BigUint64Array
 ].forEach(function (ctor, i) {
     let arr = [10n, 11n, 12n, 13n, 9017199254740995n];
-    if (testTypeArrayWithInt(ctor, arr, true)) {
+    if (testTypedArrayWithInt(ctor, arr, true)) {
         bigArraySuccessList.push(ctor.name);
     } else {
         bigArrayFailList.push(ctor.name);
@@ -74,7 +74,7 @@ let bigArrayFailList = [];
 assert_equal(bigArraySuccessList, bigArrayAssertSuccessList);
 assert_equal(bigArrayFailList, bigArrayAssertFailList);
 
-function testTypeArrayWithInt(ctor, arr, flagBig) {
+function testTypedArrayWithInt(ctor, arr, flagBig) {
     let obj = new ctor(arr);
     let result = [];
     let value1 = 40;
