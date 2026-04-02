@@ -16,7 +16,6 @@
 #include "ecmascript/module/module_logger.h"
 
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/platform/file.h"
 #include "ecmascript/platform/parameters.h"
 #include "ecmascript/runtime_lock.h"
 namespace panda::ecmascript {
@@ -51,8 +50,7 @@ bool ModuleLogger::CreateResultFile(std::string &path) const
         LOG_ECMA(ERROR) << "file create failed, errno = "<< errno;
         return false;
     }
-    FdsanExchangeOwnerTag(reinterpret_cast<fd_t>(fd));
-    Close(reinterpret_cast<fd_t>(fd));
+    close(fd);
     return true;
 }
 

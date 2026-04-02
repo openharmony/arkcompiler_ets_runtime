@@ -149,13 +149,13 @@ MemMap CreateFileMap([[maybe_unused]] const char *fileName, [[maybe_unused]] int
     
     if (ftruncate(fd, fileSize) == -1) {
         LOG_ECMA(ERROR) << fileName << " file ftruncate failed";
-        Close(fd);
+        close(fd);
         return MemMap();
     }
     struct stat st;
     if (fstat(fd, &st) == -1 || st.st_size == 0) {
         LOG_ECMA(ERROR) << fileName << " file fstat failed";
-        Close(fd);
+        close(fd);
         return MemMap();
     }
 
