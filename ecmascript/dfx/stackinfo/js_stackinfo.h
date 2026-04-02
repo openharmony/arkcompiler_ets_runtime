@@ -165,7 +165,7 @@ public:
     static JSSymbolExtractor* Create();
     static bool Destory(JSSymbolExtractor* extractor);
 
-    bool Initialize(uintptr_t offset, const char* filePath);
+    bool Initialize(uintptr_t offset, bool needTranslate, const char* filePath);
 
     panda_file::PandaFileType GetPandaFileType(const uint8_t *data);
     uintptr_t GetStaticSymbolExtractor();
@@ -186,7 +186,7 @@ private:
     void CreateSourceMap(const std::string &hapPath);
     void CreateDebugExtractor();
     bool InitializeAbcFileInfo(const char* filePath);
-    bool InitializeHapFileInfo(uintptr_t offset, const char* filePath);
+    bool InitializeHapFileInfo(uintptr_t offset, bool needTranslate, const char* filePath);
 
     MemMap fileMapMem_ {};
 #if defined(PANDA_TARGET_OHOS)
@@ -259,7 +259,7 @@ extern "C" int ark_create_js_symbol_extractor(uintptr_t *extractorptr);
 extern "C" int ark_destory_js_symbol_extractor(uintptr_t extractorptr);
 extern "C" int ark_parse_js_file_info(
     uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, const char* filePath,
-    uintptr_t extractorptr, panda::ecmascript::JsFunction *jsFunction);
+    uintptr_t extractorptr, bool needTranslate, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t mapBase,
     uintptr_t loadOffset, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int ark_create_local();
