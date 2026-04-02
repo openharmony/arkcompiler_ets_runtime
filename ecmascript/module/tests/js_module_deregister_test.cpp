@@ -191,4 +191,49 @@ HWTEST_F_L0(ModuleDeregisterTest, ModuleDeregister_TryToRemoveSO_WithCallback)
     EXPECT_TRUE(result);
     EXPECT_TRUE(callbackCalled);
 }
+
+HWTEST_F_L0(ModuleDeregisterTest, ModuleManager_RemoveModule_NormalModule)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    CString recordName = "test_module";
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString(recordName);
+    moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
+    bool isLoaded = moduleManager->IsModuleLoaded(recordName);
+    EXPECT_TRUE(isLoaded);
+    // Remove module from cache
+    ModuleDeregister::RemoveModule(thread, module);
+    isLoaded = moduleManager->IsModuleLoaded(recordName);
+    EXPECT_FALSE(isLoaded);
+}
+
+HWTEST_F_L0(ModuleDeregisterTest, ModuleManager_RemoveModule_BothModulesExist)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    CString recordName = "test_module_both";
+    // Create and add a normal module to the cache
+    JSHandle<SourceTextModule> normalModule = objectFactory->NewSourceTextModule();
+    normalModule->SetEcmaModuleRecordNameString(recordName);
+    moduleManager->AddResolveImportedModule(recordName, normalModule.GetTaggedValue());
+    // Create and add a sendable module to the cache
+    JSHandle<SourceTextModule> sendableModule = objectFactory->NewSourceTextModule();
+    sendableModule->SetEcmaModuleRecordNameString(recordName);
+    moduleManager->AddSendableModuleToCache(recordName, sendableModule.GetTaggedValue());
+
+    // Verify both modules are in cache
+    bool isLoaded = moduleManager->IsModuleLoaded(recordName);
+    EXPECT_TRUE(isLoaded);
+    JSHandle<JSTaggedValue> cached = moduleManager->TryGetSendableModule(recordName);
+    EXPECT_TRUE(cached->IsSourceTextModule());
+    
+    // Remove module from cache
+    ModuleDeregister::RemoveModule(thread, normalModule);
+    // Verify module is removed from cache
+    isLoaded = moduleManager->IsModuleLoaded(recordName);
+    EXPECT_FALSE(isLoaded);
+    cached = moduleManager->TryGetSendableModule(recordName);
+    EXPECT_TRUE(cached->IsUndefined());
+}
 }  // namespace panda::test

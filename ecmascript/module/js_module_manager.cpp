@@ -197,8 +197,12 @@ void ModuleManager::Iterate(RootVisitor &v)
 #if ENABLE_LATEST_OPTIMIZATION
     resolvedModules_.ForEachValue(
         [&v](GCRoot& root) { root.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
+    resolvedSendableModules_.ForEachValue(
+        [&v](GCRoot& root) { root.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
 #else
     resolvedModules_.ForEach(
+        [&v](auto iter) { iter->second.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
+    resolvedSendableModules_.ForEach(
         [&v](auto iter) { iter->second.VisitRoot([&v](ObjectSlot slot) { v.VisitRoot(Root::ROOT_VM, slot); }); });
 #endif
 }
@@ -362,6 +366,16 @@ JSHandle<JSTaggedValue> ModuleManager::TryGetImportedModule(const CString& refer
     return JSHandle<JSTaggedValue>(thread, entry.value());
 }
 
+JSHandle<JSTaggedValue> ModuleManager::TryGetSendableModule(const CString& referencing)
+{
+    JSThread *thread = vm_->GetJSThread();
+    auto entry = resolvedSendableModules_.Find(referencing);
+    if (!entry) {
+        return thread->GlobalConstants()->GetHandledUndefined();
+    }
+    return JSHandle<JSTaggedValue>(thread, entry.value());
+}
+
 void ModuleManager::RemoveModuleFromCache(const CString& recordName)
 {
     auto entry = resolvedModules_.Find(recordName);
@@ -369,13 +383,16 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
         LOG_ECMA(FATAL) << "Can not get module: " << recordName <<
             ", when try to remove the module"; // LCOV_EXCL_BR_LINE
     }
-    JSTaggedValue result = entry.value();
-    SourceTextModule* module = SourceTextModule::Cast(result);
-    module->DestoryLazyImportArray();
-    module->DestoryEcmaModuleFilenameString();
-    module->DestoryEcmaModuleRecordNameString();
+    SourceTextModule::Cast(entry.value())->DestroyModuleCNativeFields();
     ResetConstPoolLiterals(recordName);
     resolvedModules_.Erase(recordName);
+    // remove sendableModule
+    auto sendableModule = resolvedSendableModules_.Find(recordName);
+    if (!sendableModule) {
+        return;
+    }
+    SourceTextModule::Cast(sendableModule.value())->DestroyModuleCNativeFields();
+    resolvedSendableModules_.Erase(recordName);
 }
 
 // this function only remove module's name from resolvedModules List, it's content still needed by sharedmodule

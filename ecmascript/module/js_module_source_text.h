@@ -331,6 +331,13 @@ public:
         SetEcmaModuleRecordName(ToUintPtr(ptr));
     }
 
+    inline void DestroyModuleCNativeFields()
+    {
+        DestoryLazyImportArray();
+        DestoryEcmaModuleFilenameString();
+        DestoryEcmaModuleRecordNameString();
+    }
+
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
     ACCESSORS(Namespace, NAMESPACE_OFFSET, MODULE_REQUESTS_OFFSET);

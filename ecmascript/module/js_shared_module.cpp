@@ -14,6 +14,7 @@
  */
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
@@ -32,6 +33,13 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     if (SourceTextModule::IsModuleInSharedHeap(currentModule)) {
         return module;
     }
+    CString recordName = currentModule->GetEcmaModuleRecordNameString();
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    // try find cache in sendableModule
+    JSHandle<JSTaggedValue> cachedSendableModule = moduleManager->TryGetSendableModule(recordName);
+    if (cachedSendableModule->IsSourceTextModule()) {
+        return cachedSendableModule;
+    }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> sModule = factory->NewSSourceTextModule();
     JSHandle<JSTaggedValue> currentEnvironment(thread, currentModule->GetEnvironment(thread));
@@ -40,13 +48,14 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
     sModule->SetSharedType(SharedTypes::SENDABLE_FUNCTION_MODULE);
     sModule->SetEnvironment(thread, sendableEnvironment);
     sModule->SetEcmaModuleFilenameString(currentModule->GetEcmaModuleFilenameString());
-    sModule->SetEcmaModuleRecordNameString(currentModule->GetEcmaModuleRecordNameString());
+    sModule->SetEcmaModuleRecordNameString(recordName);
     sModule->SetSendableEnv(thread, JSTaggedValue::Undefined());
     if (thread->GetEcmaVM()->GetJsDebuggerManager()->IsDebugApp()) {
         sModule->SetImportEntries(thread, currentModule->GetImportEntries(thread));
         sModule->SetLocalExportEntries(thread, currentModule->GetLocalExportEntries(thread));
         sModule->SetIndirectExportEntries(thread, currentModule->GetIndirectExportEntries(thread));
     }
+    moduleManager->AddSendableModuleToCache(recordName, sModule.GetTaggedValue());
     return JSHandle<JSTaggedValue>(sModule);
 }
 

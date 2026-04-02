@@ -154,20 +154,14 @@ void SharedModuleManager::SharedNativeObjDestory()
 #if ENABLE_LATEST_OPTIMIZATION
     resolvedSharedModules_.ForEach([](const CString& key, GCRoot& root) {
         ASSERT(!key.empty());
-        JSTaggedValue module = root.Read();
-        SourceTextModule::Cast(module)->DestoryLazyImportArray();
-        SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
-        SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
+        SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
     });
 #else
     resolvedSharedModules_.ForEach([](auto it) {
         CString key = it->first;
         ASSERT(!key.empty());
         GCRoot &root = it->second;
-        JSTaggedValue module = root.Read();
-        SourceTextModule::Cast(module)->DestoryLazyImportArray();
-        SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
-        SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
+        SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
     });
 #endif
 }
