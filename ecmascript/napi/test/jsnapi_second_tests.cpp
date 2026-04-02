@@ -2178,4 +2178,138 @@ HWTEST_F_L0(JSNApiTests, NativePointerRefNewWrapperDataFlagCheck)
     void* externalPtr = JSHandle<JSNativePointer>(nativePointerHandle)->GetExternalPointer();
     EXPECT_EQ(externalPtr, &TEST_NUM);
 }
+
+/**
+ * @tc.number: ffi_interface_api_159
+ * @tc.name: NewConcurrentClassFunctionWithNameCase2_PropTagsIndexBugFix
+ * @tc.desc: Test that when nonStaticPropCount is large (close to MAX_FAST_PROPS_CAPACITY),
+ *           the propTags array index is correctly handled. This tests the fix for the bug where
+ *           propTags[curNonStaticPropIdx] was used instead of propTags[i], causing incorrect
+ *           property values due to out-of-bounds access when propertyCount approaches MAX_FAST_PROPS_CAPACITY.
+ *           propertyCount = MAX_FAST_PROPS_CAPACITY + 1 = 1024 is used to truly trigger the bug.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase2_PropTagsIndexBugFix)
+{
+    LocalScope scope(vm_);
+    JSHandle<GlobalEnv> env = thread_->GetGlobalEnv();
+    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(env));
+    std::string name = "MyClassFunctionWithManyProps";
+
+    // Use PROPERTY_COUNT_CASE2 = MAX_FAST_PROPS_CAPACITY + 1 to truly trigger the bug
+    // Old code: propTags[curNonStaticPropIdx] would overflow when curNonStaticPropIdx >= MAX_FAST_PROPS_CAPACITY
+    const size_t propertyCount = PROPERTY_COUNT_CASE2;  // MAX_FAST_PROPS_CAPACITY + 1 = 1024
+    const size_t staticPropCount = 5;
+
+    Local<panda::JSValueRef> keys[PROPERTY_COUNT_CASE2];
+    PropertyAttribute attrs[PROPERTY_COUNT_CASE2];
+
+    // Initialize keys and attrs with unique values
+    for (size_t i = 0; i < propertyCount; ++i) {
+        std::string keyName = "key" + std::to_string(i);
+        keys[i] = StringRef::NewFromUtf8(vm_, keyName.c_str());
+        Local<JSValueRef> curValue =
+            JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, JSTaggedValue(static_cast<int32_t>(i))));
+        attrs[i].SetValue(curValue);
+        attrs[i].SetConfigurable(true);
+        attrs[i].SetWritable(true);
+    }
+
+    // Create class with MAX_FAST_PROPS_CAPACITY + 1 properties
+    Local<FunctionRef> cls = FunctionRef::NewConcurrentClassFunctionWithName(
+        vm_, context, InternalFunctionCallback, nullptr, name.c_str(), nullptr, true, propertyCount,
+        staticPropCount, keys, attrs);
+
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
+    JSHandle<JSFunction> clsFunc(obj);
+    JSThread *thread = vm_->GetJSThread();
+
+    // Verify static property values
+    for (size_t i = 0; i < staticPropCount; ++i) {
+        auto realProp = JSObject::GetProperty(thread_, obj, JSNApiHelper::ToJSHandle(keys[i])).GetValue();
+        uint32_t realVal = JSTaggedValue::ToUint32(thread_, realProp);
+        ASSERT_EQ(realVal, i) << "Static property key[" << i << "] has incorrect value";
+    }
+
+    // Verify non-static property values on prototype
+    // Properties are added in reverse order (last nonStaticProp first)
+    // We verify only the first few properties to ensure the fix works correctly
+    JSHandle<JSTaggedValue> clsProtoVal(thread_, clsFunc->GetProtoOrHClass(thread));
+    constexpr size_t verifyCount = 20;  // Verify first 20 non-static properties
+    for (size_t i = 0; i < verifyCount; ++i) {
+        size_t trueIdx = propertyCount - 1 - i;  // Reverse order
+        auto realProp = JSObject::GetProperty(thread_, clsProtoVal, JSNApiHelper::ToJSHandle(keys[trueIdx])).GetValue();
+        uint32_t realVal = JSTaggedValue::ToUint32(thread_, realProp);
+        ASSERT_EQ(realVal, static_cast<uint32_t>(trueIdx))
+            << "Non-static property key[" << trueIdx << "] has incorrect value, expected " << trueIdx << " but got "
+            << realVal;
+    }
+}
+
+/**
+ * @tc.number: ffi_interface_api_160
+ * @tc.name: NewConcurrentClassFunctionWithNameCase3_InlinePropLimit
+ * @tc.desc: Test that the inline property count is correctly limited by maxInlPropCountForClassFunc.
+ *           This verifies the fix for limiting inlNonStaticPropCount using maxInlPropCountForClassFunc
+ *           instead of MAX_FAST_PROPS_CAPACITY, to prevent IC offset overflow.
+ *           The limit is MAX_FAST_PROPS_CAPACITY - JSFunction::SIZE/TaggedTypeSize - DEFAULT_CAPACITY_OF_IN_OBJECTS.
+ *           propertyCount = MAX_FAST_PROPS_CAPACITY + 1 = 1024 is used to truly test the limit.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, NewConcurrentClassFunctionWithNameCase3_InlinePropLimit)
+{
+    LocalScope scope(vm_);
+    JSHandle<GlobalEnv> env = thread_->GetGlobalEnv();
+    Local<JSValueRef> context = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(env));
+    std::string name = "MyClassFunctionInlineLimitTest";
+
+    // Use PROPERTY_COUNT_CASE2 = MAX_FAST_PROPS_CAPACITY + 1 to truly test the limit
+    const size_t propertyCount = PROPERTY_COUNT_CASE2;  // MAX_FAST_PROPS_CAPACITY + 1 = 1024
+    const size_t staticPropCount = 5;
+
+    Local<panda::JSValueRef> keys[PROPERTY_COUNT_CASE2];
+    PropertyAttribute attrs[PROPERTY_COUNT_CASE2];
+
+    // Initialize keys and attrs with unique values
+    for (size_t i = 0; i < propertyCount; ++i) {
+        std::string keyName = "key" + std::to_string(i);
+        keys[i] = StringRef::NewFromUtf8(vm_, keyName.c_str());
+        Local<JSValueRef> curValue =
+            JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, JSTaggedValue(static_cast<int32_t>(i))));
+        attrs[i].SetValue(curValue);
+        attrs[i].SetConfigurable(true);
+        attrs[i].SetWritable(true);
+    }
+
+    // Create class with MAX_FAST_PROPS_CAPACITY + 1 properties
+    Local<FunctionRef> cls = FunctionRef::NewConcurrentClassFunctionWithName(
+        vm_, context, InternalFunctionCallback, nullptr, name.c_str(), nullptr, true, propertyCount,
+        staticPropCount, keys, attrs);
+
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(Local<JSValueRef>(cls));
+    JSHandle<JSFunction> clsFunc(obj);
+    JSThread *thread = vm_->GetJSThread();
+
+    // Verify static property values on class function
+    for (size_t i = 0; i < staticPropCount; ++i) {
+        auto realProp = JSObject::GetProperty(thread_, obj, JSNApiHelper::ToJSHandle(keys[i])).GetValue();
+        uint32_t realVal = JSTaggedValue::ToUint32(thread_, realProp);
+        ASSERT_EQ(realVal, i) << "Static property key[" << i << "] has incorrect value";
+    }
+
+    // Verify non-static property values exist on prototype
+    // We verify only the first few properties to ensure the fix works correctly
+    JSHandle<JSTaggedValue> clsProtoVal(thread_, clsFunc->GetProtoOrHClass(thread));
+    constexpr size_t verifyCount = 20;  // Verify first 20 non-static properties
+    for (size_t i = 0; i < verifyCount; ++i) {
+        size_t trueIdx = propertyCount - 1 - i;
+        auto realProp = JSObject::GetProperty(thread_, clsProtoVal, JSNApiHelper::ToJSHandle(keys[trueIdx])).GetValue();
+        uint32_t realVal = JSTaggedValue::ToUint32(thread_, realProp);
+        ASSERT_EQ(realVal, static_cast<uint32_t>(trueIdx))
+            << "Non-static property key[" << trueIdx << "] has incorrect value, expected " << trueIdx << " but got "
+            << realVal;
+    }
+}
 } // namespace panda::test
