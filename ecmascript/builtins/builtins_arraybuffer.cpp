@@ -545,14 +545,17 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, ui
 template<typename T1, typename T2>
 JSTaggedValue BuiltinsArrayBuffer::CommonConvert(T1 &value, T2 &res, bool littleEndian)
 {
+    // value or res may be pure NaN, which can pass IsImpureNaN check. However, the returned
+    // pure NaN becomes impure NaN after compiler normalization. Converting this NaN to
+    // tagged double may cause type confusion, so we uniformly return NAN_VALUE.
     if (!littleEndian) {
         T1 d = base::bit_cast<T1>(res);
-        if (JSTaggedValue::IsImpureNaN(d)) {
+        if (std::isnan(d)) {
             return GetTaggedDouble(base::NAN_VALUE);
         }
         return GetTaggedDouble(d);
     } else {
-        if (JSTaggedValue::IsImpureNaN(value)) {
+        if (std::isnan(value)) {
             return GetTaggedDouble(base::NAN_VALUE);
         }
     }
@@ -639,6 +642,10 @@ template<typename T>
 void BuiltinsArrayBuffer::SetValueInBufferForFloat(double val, uint8_t *block, uint32_t byteIndex, bool littleEndian)
 {
     ASSERT_PRINT((std::is_same_v<T, float> || std::is_same_v<T, double>), "T must be float type");
+    // Unify NaN to quiet_NaN
+    if (std::isnan(val)) {
+        val = base::NAN_VALUE;
+    }
     auto data = static_cast<T>(val);
     if (!littleEndian) {
         if constexpr (std::is_same_v<T, float>) {

@@ -164,7 +164,7 @@ GateRef BuiltinsArrayBufferStubBuilder::GetValueFromBufferForFloat(GateRef glue,
             Label isNaN(env);
             Label notNaN(env);
 
-            BRANCH_UNLIKELY(env->GetBuilder()->DoubleIsImpureNaN(doubleValue), &isNaN, &notNaN);
+            BRANCH_UNLIKELY(env->GetBuilder()->DoubleIsNAN(doubleValue), &isNaN, &notNaN);
             Bind(&isNaN);
             {
                 result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
@@ -224,7 +224,7 @@ GateRef BuiltinsArrayBufferStubBuilder::GetValueFromBufferForFloat(GateRef glue,
             Label isNaN(env);
             Label notNaN(env);
 
-            BRANCH_UNLIKELY(env->GetBuilder()->DoubleIsImpureNaN(doubleValue), &isNaN, &notNaN);
+            BRANCH_UNLIKELY(env->GetBuilder()->DoubleIsNAN(doubleValue), &isNaN, &notNaN);
             Bind(&isNaN);
             {
                 result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
