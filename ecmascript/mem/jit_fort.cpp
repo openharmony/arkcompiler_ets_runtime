@@ -39,38 +39,16 @@ FreeListAllocator<MemDesc>::FreeListAllocator(BaseHeap *heap, MemDescPool *pool,
 
 JitFort::JitFort()
 {
-    jitFortMem_ = JitFortPageMap(JIT_FORT_REG_SPACE_MAX,
-                                 PageProtectProt(Jit::GetInstance()->IsDisableCodeSign() || !IsResourceAvailable()),
-                                 DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT);
+    jitFortMem_ = PageMap(JIT_FORT_REG_SPACE_MAX,
+                          PageProtectProt(Jit::GetInstance()->IsDisableCodeSign() || !IsResourceAvailable()),
+                          DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT);
     jitFortBegin_ = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem());
     jitFortSize_ = JIT_FORT_REG_SPACE_MAX;
     memDescPool_ = new MemDescPool(jitFortBegin_, jitFortSize_);
     allocator_ = new FreeListAllocator<MemDesc>(nullptr, memDescPool_, this);
     InitRegions();
     PrctlSetVMA(jitFortMem_.GetMem(), jitFortSize_, "ArkTS Code Jit");
-    LOG_JIT(DEBUG) << "Small JitFort Begin " << (void *)jitFortBegin_ << " end "
-                   << (void *)(jitFortBegin_ + jitFortSize_);
-}
-
-void JitFort::InitHugeRegion()
-{
-    if (hugeInUse_)
-        return;
-    hugeJitFortMem_ = JitFortPageMap(HUGE_JITFORT_REGION_SIZE,
-                                     PageProtectProt(Jit::GetInstance()->IsDisableCodeSign() || !IsResourceAvailable()),
-                                     HUGE_JITFORT_REGION_SIZE, nullptr, MAP_JITFORT);
-
-    hugeJitFortBegin_ = reinterpret_cast<uintptr_t>(hugeJitFortMem_.GetMem());
-    hugeJitFortSize_ = HUGE_JITFORT_REGION_SIZE;
-    hugeMemDescPool_ = new MemDescPool(hugeJitFortBegin_, hugeJitFortSize_);
-    hugeRegion_ = new JitFortRegion(nullptr, hugeJitFortBegin_, hugeJitFortBegin_ + HUGE_JITFORT_REGION_SIZE,
-                                    RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE, hugeMemDescPool_);
-    hugeAlloc_ = new FreeListAllocator<MemDesc>(nullptr, hugeMemDescPool_, this);
-    hugeAlloc_->AddFree(hugeRegion_);
-    hugeInUse_ = true;
-    PrctlSetVMA(hugeJitFortMem_.GetMem(), HUGE_JITFORT_REGION_SIZE, "ArkTS Code Jit-Huge");
-    LOG_JIT(DEBUG) << "Huge JitFort Begin " << (void *)hugeJitFortBegin_ << " end "
-                   << (void *)(hugeJitFortBegin_ + hugeJitFortSize_);
+    LOG_JIT(DEBUG) << "JitFort Begin " << (void *)JitFortBegin() << " end " << (void *)(JitFortBegin() + JitFortSize());
 }
 
 JitFort::~JitFort()
@@ -88,26 +66,18 @@ JitFort::~JitFort()
     if (memDescPool_ != nullptr) {
         delete memDescPool_;
     }
-    JitFortPageUnmap(jitFortMem_);
-    if (hugeInUse_) {
-        hugeRegion_->DestroyFreeObjectSets();
-        delete hugeRegion_;
-        delete hugeAlloc_;
-        delete hugeMemDescPool_;
-        JitFortPageUnmap(hugeJitFortMem_);
-    }
+    PageUnmap(jitFortMem_);
 }
 
 void JitFort::InitRegions()
 {
-    for (size_t i = 0; i < MAX_JIT_FORT_REGIONS; i++) {
+    constexpr size_t numRegions = JIT_FORT_REG_SPACE_MAX / DEFAULT_REGION_SIZE;
+    for (size_t i = 0; i < numRegions; i++) {
         uintptr_t mem = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem()) + i*DEFAULT_REGION_SIZE;
         uintptr_t end = mem + DEFAULT_REGION_SIZE;
         JitFortRegion *region = new JitFortRegion(nullptr, mem, end, RegionSpaceFlag::IN_MACHINE_CODE_SPACE,
             memDescPool_);
         regions_[i] = region;
-        LOG_JIT(DEBUG) << "Small JitFort Region " << i << std::hex << " init, 0x" << mem << " - 0x" << end
-                       << ", size: 0x" << DEFAULT_REGION_SIZE << ", bitsetSize: " << region->GetGCBitsetSize();
     }
     AddRegion();
 }
@@ -123,26 +93,6 @@ bool JitFort::AddRegion()
     return false;
 }
 
-uintptr_t JitFort::AllocateSmall(size_t size)
-{
-    uintptr_t ret = ToUintPtr(nullptr);
-    ret = allocator_->Allocate(size);
-    if (ret == ToUintPtr(nullptr)) {
-        if (AddRegion()) {
-            ret = allocator_->Allocate(size);
-        }
-    }
-    return ret;
-}
-
-uintptr_t JitFort::AllocateHuge(size_t size)
-{
-    if (UNLIKELY(!hugeInUse_)) {
-        InitHugeRegion();
-    }
-    return hugeAlloc_->Allocate(size);
-}
-
 // Fort buf allocation is in multiples of FORT_BUF_ALIGN
 size_t JitFort::FortAllocSize(size_t instrSize)
 {
@@ -154,24 +104,24 @@ uintptr_t JitFort::Allocate(MachineCodeDesc *desc)
     LockHolder lock(mutex_);
 
     size_t size = FortAllocSize(desc->instructionsSize);
-    uintptr_t ret = ToUintPtr(nullptr);
-    bool inHuge = desc->isHugeObj;
-    if (UNLIKELY(inHuge)) {
-        ret = AllocateHuge(size);
-    } else {
-        ret = AllocateSmall(size);
+    auto ret = allocator_->Allocate(size);
+    if (ret == ToUintPtr(nullptr)) {
+        if (AddRegion()) {
+            LOG_JIT(DEBUG) << "JitFort: Allocate - AddRegion";
+            ret = allocator_->Allocate(size);
+        }
     }
     if (ret == ToUintPtr(nullptr)) {
-        LOG_JIT(DEBUG) << (inHuge ? "Huge " : "Small ") << "JitFort:: Allocate return nullptr for size " << size;
+        LOG_JIT(DEBUG) << "JitFort:: Allocate return nullptr for size " << size;
         return ret;
     }
     // Record allocation to keep it from being collected by the next
     // JitFort::UpdateFreeSpace in case corresponding Machine code object is not
     // marked for sweep yet by then.
-    MarkJitFortMemAwaitInstall(ret, size, inHuge);
     ASSERT((ret & FORT_BUF_ADDR_MASK) == 0);
-    LOG_JIT(DEBUG) << (inHuge ? "Huge " : "Small ") << "JitFort:: Allocate " << (void *)ret << " - "
-                   << (void *)(ret + size - 1) << " size " << size << " instructionsSize " << desc->instructionsSize;
+    MarkJitFortMemAwaitInstall(ret, size);
+    LOG_JIT(DEBUG) << "JitFort:: Allocate " << (void *)ret << " - " << (void *)(ret+size-1) <<
+        " size " << size << " instructionsSize " << desc->instructionsSize;
     return ret;
 }
 
@@ -184,79 +134,52 @@ uintptr_t JitFort::Allocate(MachineCodeDesc *desc)
 //     - 01
 // This encoding requires 4 GCBitset bits to mark a live JitFort
 // buffer, which makes the minimum Fort buffer allocation size 32 bytes.
-void JitFort::MarkJitFortMemAlive(MachineCode *obj, bool inHuge)
+void JitFort::MarkJitFortMemAlive(MachineCode *obj)
 {
     LockHolder lock(mutex_);
     size_t size = FortAllocSize(obj->GetInstructionsSize());
     uintptr_t addr = obj->GetText();
     uintptr_t endAddr = addr + size - 1;
-    uint32_t regionIdx = -1;
-    JitFortRegion *region = nullptr;
-    if (LIKELY(!inHuge)) {
-        regionIdx = AddrToFortRegionIdx(addr);
-        region = regions_.at(regionIdx);
-    } else {
-        region = hugeRegion_;
-    }
-    region->AtomicMark(reinterpret_cast<void *>(addr));
-    region->AtomicMark(reinterpret_cast<void *>(endAddr));
-
-    LOG_JIT(DEBUG) << (inHuge ? "Huge " : "Small ") << "MarkFortMemAlive: addr: " << (void *)addr << " size: 0x"
-                   << std::hex << size << " regionIdx: " << regionIdx << " instructionsSize: 0x"
-                   << obj->GetInstructionsSize() << " mahine code addr: " << obj;
+    uint32_t regionIdx = AddrToFortRegionIdx(addr);
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr));
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(endAddr));
+    LOG_JIT(DEBUG) << "MarkFortMemAlive: addr " << (void *)addr << " size " << std::hex << size
+                   << " regionIdx " << regionIdx << " instructionsSize " << obj->GetInstructionsSize()
+                   << " mahine code addr: " << obj;
 }
 
 // Called by Jit Compile thread during JitFort Allocate to mark Fort buf
 // awaiting install. Need mutex (JitGCLockHolder) for region gcBitset access.
 // See JitFort::MarkJitFortMemAlive comments for mark bit encoding in GC bitset.
-void JitFort::MarkJitFortMemAwaitInstall(uintptr_t addr, size_t size, bool inHuge)
+void JitFort::MarkJitFortMemAwaitInstall(uintptr_t addr, size_t size)
 {
     uintptr_t endAddr = addr + size - 1;
-    uint32_t regionIdx = -1;
-    JitFortRegion *region = nullptr;
-    if (LIKELY(!inHuge)) {
-        regionIdx = AddrToFortRegionIdx(addr);
-        if (!InSmallRange(addr) || regionIdx >= MAX_JIT_FORT_REGIONS) {
-            LOG_JIT(FATAL) << "JitFort::AddrToFortRegionIdx error, addr: 0x" << std::hex << addr
-                           << ", jitFortBegin_: 0x" << jitFortBegin_ << ", regionIdx: " << regionIdx
-                           << ", regions_.len: " << regions_.size();
-        }
-        region = regions_.at(regionIdx);
-    } else {
-        region = hugeRegion_;
-    }
-    region->AtomicMark(reinterpret_cast<void *>(addr));
-    region->AtomicMark(reinterpret_cast<void *>(addr + sizeof(uint64_t))); // mark next bit
-    region->AtomicMark(reinterpret_cast<void *>(endAddr));
-    LOG_JIT(DEBUG) << (inHuge ? "Huge " : "Small ") << "MarkFortMemAwaitInstall: addr: " << (void *)addr << " size: 0x"
-                   << std::hex << size << " regionIdx: " << regionIdx;
+    uint32_t regionIdx = AddrToFortRegionIdx(addr);
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr));
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr + sizeof(uint64_t))); // mark next bit
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(endAddr));
+    LOG_JIT(INFO) << "MarkFortMemAwaitInstall: addr " << (void *)addr << " size " << std::hex << size
+                  << " regionIdx " << regionIdx;
 }
 
 // Called by JS/Main thread during SafePoint to clear Fort buf AwaitInstall bit
 // See JitFort::MarkJitFortMemAlive comments for mark bit encoding in GC bitset.
-void JitFort::MarkJitFortMemInstalled(MachineCode *obj, bool inHuge)
+void JitFort::MarkJitFortMemInstalled(MachineCode *obj)
 {
     LockHolder lock(mutex_);
     size_t size = FortAllocSize(obj->GetInstructionsSize());
     uintptr_t addr = obj->GetText();
-    uint32_t regionIdx = -1;
-    JitFortRegion *region = nullptr;
-    if (LIKELY(!inHuge)) {
-        regionIdx = AddrToFortRegionIdx(addr);
-        region = regions_.at(regionIdx);
-    } else {
-        region = hugeRegion_;
-    }
-    region->ClearMark(reinterpret_cast<void *>(addr + sizeof(uint64_t))); // clear next bit
-    LOG_JIT(DEBUG) << (inHuge ? "Huge " : "Small ") << "MarkFortMemInstalled: addr: " << (void *)addr << " size: 0x"
-                   << std::hex << size << " regionIdx: " << regionIdx << " instructionsSize: 0x"
-                   << obj->GetInstructionsSize() << " mahine code addr: " << obj;
+    uint32_t regionIdx = AddrToFortRegionIdx(addr);
+    regions_[regionIdx]->GetGCBitset()->ClearMark(addr + sizeof(uint64_t)); // clear next bit
+    LOG_JIT(INFO) << "MarkFortMemInstalled: addr " << (void *)addr << " size " << std::hex << size
+                  << " regionIdx " << regionIdx << " instructionsSize " << obj->GetInstructionsSize()
+                  << " mahine code addr: " << obj;
 }
 
 uint32_t JitFort::AddrToFortRegionIdx(uint64_t addr)
 {
-    ASSERT(InSmallRange(addr));
-    uint32_t regionIdx = ((addr - jitFortBegin_) & ~(DEFAULT_REGION_MASK)) >> REGION_SIZE_LOG2;
+    ASSERT(InRange(addr));
+    uint32_t regionIdx = ((addr - JitFortBegin()) & ~(DEFAULT_REGION_MASK)) >> REGION_SIZE_LOG2;
     ASSERT(regionIdx < MAX_JIT_FORT_REGIONS);
     return regionIdx;
 }
@@ -266,7 +189,7 @@ uint32_t JitFort::AddrToFortRegionIdx(uint64_t addr)
  * to ensure exclusive access to JitFort memory by GC thread when it frees JitFort mem
  * blocks, and by Jit compiled thread when it allocates Fort mem.
  */
-void JitFort::UpdateFreeSpace(bool inHuge)
+void JitFort::UpdateFreeSpace()
 {
     if (!Jit::GetInstance()->IsEnableJitFort()) {
         return;
@@ -274,81 +197,64 @@ void JitFort::UpdateFreeSpace(bool inHuge)
 
     LockHolder lock(mutex_);
 
-    // solve huge fort
-    if (UNLIKELY(inHuge)) {
-        if (LIKELY(!hugeInUse_)) {
-            return;
-        }
-        hugeAlloc_->RebuildFreeList();
-        FreeRegion(hugeRegion_, true);
-    } else {
-        if (!regionList_.GetLength()) {
-            return;
-        }
-        allocator_->RebuildFreeList();
-        JitFortRegion *region = regionList_.GetFirst();
-        while (region) {
-            FreeRegion(region);
-            region = region->GetNext();
-        }
+    if (!regionList_.GetLength()) { // LCOV_EXCL_BR_LINE
+        return;
     }
+    LOG_JIT(DEBUG) << "UpdateFreeSpace enter: " << "Fort space allocated: "
+        << allocator_->GetAllocatedSize()
+        << " available: " << allocator_->GetAvailableSize();
+    allocator_->RebuildFreeList();
+    JitFortRegion *region = regionList_.GetFirst();
+    while (region) {
+        FreeRegion(region);
+        region = region->GetNext();
+    }
+    LOG_JIT(DEBUG) << "UpdateFreeSpace exit: allocator_->GetAvailableSize  "
+        << allocator_->GetAvailableSize();
 }
 
 void JitFort::ClearMarkBits()
 {
     ASSERT(g_isEnableCMCGC);
-    LOG_JIT(INFO) << "JitFort::ClearMarkBits";
     JitFortRegion *region = regionList_.GetFirst();
     while (region) {
-        region->IterateMarkedBitsConst(
+        region->GetGCBitset()->IterateMarkedBitsConst(
+            region->GetBegin(), region->GetGCBitsetSize(),
             [](void *, size_t) {}); // Dummy vistor, only need to trigger bits clearing.
         region = region->GetNext();
     }
 }
 
-void JitFort::FreeRegion(JitFortRegion *region, bool inHuge)
+void JitFort::FreeRegion(JitFortRegion *region)
 {
-    LOG_JIT(DEBUG) << (inHuge ? "Huge " : "Small ") << "JitFort::FreeRegion " << (void *)(region->GetBegin());
+    LOG_JIT(DEBUG) << "JitFort FreeRegion " << (void*)(region->GetBegin());
 
     uintptr_t freeStart = region->GetBegin();
-    region->IterateMarkedBitsConst([this, &region, &freeStart, &inHuge](void *mem, size_t size) {
-        ASSERT(region->InRange(ToUintPtr(mem)));
-        (void)region;
-        uintptr_t freeEnd = ToUintPtr(mem);
-        if (freeStart != freeEnd) {
-            LOG_JIT(INFO) << (inHuge ? "Huge " : "Small ")
-                          << "JitFort::FreeRegion, freeStart: " << reinterpret_cast<void *>(freeStart)
-                          << ", size: " << std::hex << freeEnd - freeStart;
-            auto *allocator = inHuge ? hugeAlloc_ : allocator_;
-            allocator->Free(freeStart, freeEnd - freeStart, true);
-        }
-        freeStart = freeEnd + size;
-    });
+    region->GetGCBitset()->IterateMarkedBitsConst(
+        region->GetBegin(), region->GetGCBitsetSize(),
+        [this, &region, &freeStart](void *mem, size_t size) {
+            ASSERT(region->InRange(ToUintPtr(mem)));
+            (void) region;
+            uintptr_t freeEnd = ToUintPtr(mem);
+            if (freeStart != freeEnd) {
+                LOG_JIT(INFO) << "JitFort::FreeRegion, freeStart: " << reinterpret_cast<void*>(freeStart)
+                              << ", size: " << std::hex << freeEnd - freeStart;
+                allocator_->Free(freeStart, freeEnd - freeStart, true);
+            }
+            freeStart = freeEnd + size;
+        });
     uintptr_t freeEnd = region->GetEnd();
     if (freeStart != freeEnd) {
-        LOG_JIT(INFO) << (inHuge ? "Huge " : "Small ")
-                      << "JitFort::FreeRegion last, freeStart: " << reinterpret_cast<void *>(freeStart)
+        LOG_JIT(INFO) << "JitFort::FreeRegion last, freeStart: " << reinterpret_cast<void*>(freeStart)
                       << ", size: " << std::hex << freeEnd - freeStart;
-        auto *allocator = inHuge ? hugeAlloc_ : allocator_;
-        allocator->Free(freeStart, freeEnd - freeStart, true);
+        allocator_->Free(freeStart, freeEnd - freeStart, true);
     }
 }
 
-bool JitFort::InJitFortRange(uintptr_t address) const
-{
-    return InSmallRange(address) || InHugeRange(address);
-}
-
-bool JitFort::InSmallRange(uintptr_t address) const
+bool JitFort::InRange(uintptr_t address) const
 {
     return address >= jitFortBegin_ && (jitFortBegin_ + jitFortSize_) > 1 &&
         address <= (jitFortBegin_ + jitFortSize_ - 1);
-}
-
-bool JitFort::InHugeRange(uintptr_t address) const
-{
-    return address >= hugeJitFortBegin_ && (hugeJitFortBegin_ + hugeJitFortSize_) > 1 &&
-        address <= (hugeJitFortBegin_ + hugeJitFortSize_ - 1);
 }
 
 void JitFort::PrepareSweeping()
@@ -357,20 +263,20 @@ void JitFort::PrepareSweeping()
 }
 
 // concurrent sweep - only one of the AsyncSweep task will do JitFort sweep
-void JitFort::AsyncSweep(bool inHuge)
+void JitFort::AsyncSweep()
 {
     bool expect = false;
     if (isSweeping_.compare_exchange_strong(expect, true, std::memory_order_seq_cst)) {
-        LOG_JIT(DEBUG) << (inHuge ? "Huge " : "Small ") << "JitFort::AsyncSweep ";
-        UpdateFreeSpace(inHuge);
+        LOG_JIT(DEBUG) << "JitFort::AsyncSweep";
+        UpdateFreeSpace();
     }
 }
 
 // non-concurrent sweep
-void JitFort::Sweep(bool inHuge)
+void JitFort::Sweep()
 {
-    LOG_JIT(DEBUG) << (inHuge ? "Huge " : "Small ") << "JitFort::Sweep";
-    UpdateFreeSpace(inHuge);
+    LOG_JIT(DEBUG) << "JitFort::Sweep";
+    UpdateFreeSpace();
 }
 
 // Used by JitFort::UpdateFreeSpace call path to find corresponding
@@ -378,15 +284,10 @@ void JitFort::Sweep(bool inHuge)
 // the corresponding free set of the JitFortRegion the free block belongs.
 JitFortRegion *JitFort::ObjectAddressToRange(uintptr_t addr)
 {
-    ASSERT(InJitFortRange(addr));
-    if (InSmallRange(addr)) {
-        return regions_[AddrToFortRegionIdx(addr)];
-    }
-    return hugeRegion_;
+    return regions_[AddrToFortRegionIdx(addr)];
 }
 
-template <size_t RegionMask>
-void JitFortGCBitset<RegionMask>::MarkStartAddr(bool awaitInstall, uintptr_t startAddr, uint32_t index, uint32_t &word)
+void JitFortGCBitset::MarkStartAddr(bool awaitInstall, uintptr_t startAddr, uint32_t index, uint32_t &word)
 {
     if (!awaitInstall) {
         ClearMark(startAddr);
@@ -400,8 +301,7 @@ void JitFortGCBitset<RegionMask>::MarkStartAddr(bool awaitInstall, uintptr_t sta
     }
 }
 
-template <size_t RegionMask>
-void JitFortGCBitset<RegionMask>::MarkEndAddr(bool awaitInstall, uintptr_t endAddr, uint32_t index, uint32_t &word)
+void JitFortGCBitset::MarkEndAddr(bool awaitInstall, uintptr_t endAddr, uint32_t index, uint32_t &word)
 {
     if (!awaitInstall) {
         ClearMark(endAddr - 1);
@@ -410,9 +310,8 @@ void JitFortGCBitset<RegionMask>::MarkEndAddr(bool awaitInstall, uintptr_t endAd
 }
 
 // See JitFort::MarkJitFortMemAlive comments for mark bit encoding in JitFort GC bitset.
-template <size_t RegionMask>
 template <typename Visitor>
-void JitFortGCBitset<RegionMask>::IterateMarkedBitsConst(uintptr_t regionAddr, size_t bitsetSize, Visitor visitor)
+void JitFortGCBitset::IterateMarkedBitsConst(uintptr_t regionAddr, size_t bitsetSize, Visitor visitor)
 {
     bool awaitInstall = false;
     uintptr_t startAddr = 0;
@@ -425,11 +324,6 @@ void JitFortGCBitset<RegionMask>::IterateMarkedBitsConst(uintptr_t regionAddr, s
         uint32_t word = words[i];
         while (word != 0) {
             index = static_cast<uint32_t>(__builtin_ctz(word));
-            if (index >= BIT_PER_WORD) {
-                LOG_JIT(FATAL) << "Unexpected index from ctz: " << index << ", word: 0x" << std::hex << word;
-            }
-            LOG_JIT(DEBUG) << "i: " << i << ", index: " << index << ", word: 0x" << std::hex << word
-                           << ", startAddr: 0x" << startAddr << ", endAddr: 0x" << endAddr;
             ASSERT(index < BIT_PER_WORD);
             if (!startAddr) {
                 startAddr = regionAddr + (index << TAGGED_TYPE_SIZE_LOG);

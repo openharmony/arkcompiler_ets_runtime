@@ -54,7 +54,6 @@ struct MachineCodeDesc {
 #endif
     uintptr_t instructionsAddr {0};
     size_t instructionsSize {0};
-    // the unified field that indicates where this machinecode is located
     bool isHugeObj {false};
     uintptr_t hugeObjRegion {0};
 

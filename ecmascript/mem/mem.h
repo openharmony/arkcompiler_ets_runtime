@@ -71,9 +71,6 @@ static constexpr size_t MIN_HEAP_SIZE = 5_MB;
 static constexpr size_t DEFAULT_REGION_SIZE = 1U << REGION_SIZE_LOG2;
 static constexpr size_t DEFAULT_REGION_MASK = DEFAULT_REGION_SIZE - 1;
 
-static constexpr size_t HUGE_JITFORT_REGION_SIZE = 4_MB;
-static constexpr size_t HUGE_JITFORT_REGION_MASK = HUGE_JITFORT_REGION_SIZE - 1;
-
 static constexpr size_t DEFAULT_MARK_STACK_SIZE = 4_KB;
 
 static constexpr double MIN_OBJECT_SURVIVAL_RATE = 0.75;

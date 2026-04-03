@@ -321,6 +321,7 @@ struct MachineCodeDesc;
 class MachineCodeSpace : public SparseSpace {
 public:
     MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    ~MachineCodeSpace() override;
     NO_COPY_SEMANTIC(MachineCodeSpace);
     NO_MOVE_SEMANTIC(MachineCodeSpace);  // Note: Expand() left for define
     uintptr_t GetMachineCodeObject(uintptr_t pc);
@@ -362,7 +363,7 @@ public:
     bool InJitFortRange(uintptr_t address) const
     {
         if (jitFort_) {
-            return jitFort_->InJitFortRange(address);
+            return jitFort_->InRange(address);
         }
         return false;
     }

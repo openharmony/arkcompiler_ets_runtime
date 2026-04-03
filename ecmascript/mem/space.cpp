@@ -63,8 +63,7 @@ void Space::Destroy()
 void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
 {
     ASSERT(region != nullptr);
-    LOG_ECMA_MEM(DEBUG) << "Clear region from:" << region << " to " << ToSpaceTypeName(spaceType_)
-                        << ", region begin: " << reinterpret_cast<void *>(region->GetBegin());
+    LOG_ECMA_MEM(DEBUG) << "Clear region from:" << region << " to " << ToSpaceTypeName(spaceType_);
     region->DeleteCrossRegionRSet();
     region->DeleteOldToNewRSet();
     region->DeleteLocalToShareRSet();
@@ -110,12 +109,12 @@ HugeObjectSpace::HugeObjectSpace(Heap *heap, HeapRegionAllocator *heapRegionAllo
 {
 }
 
-HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator, size_t initialCapacity,
-                                           size_t maximumCapacity)
-    : HugeObjectSpace(heap, heapRegionAllocator, initialCapacity, maximumCapacity,
-                      MemSpaceType::HUGE_MACHINE_CODE_SPACE),
-      localHeap_(heap)
-{}
+HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heapRegionAllocator,
+                                           size_t initialCapacity, size_t maximumCapacity)
+    : HugeObjectSpace(heap, heapRegionAllocator, initialCapacity,
+        maximumCapacity, MemSpaceType::HUGE_MACHINE_CODE_SPACE)
+{
+}
 
 uintptr_t HugeMachineCodeSpace::GetMachineCodeObject(uintptr_t pc) const
 {
@@ -125,7 +124,7 @@ uintptr_t HugeMachineCodeSpace::GetMachineCodeObject(uintptr_t pc) const
         if (machineCode != 0) {
             return;
         }
-        if (!region->InRange(pc) && !InJitFortRange(pc)) {
+        if (!region->InRange(pc)) {
             return;
         }
         uintptr_t curPtr = region->GetBegin();
@@ -170,36 +169,38 @@ Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, 
 {
     // A Huge machine code object is consisted of contiguous 256Kb aligned blocks.
     // For JitFort, a huge machine code object starts with a page aligned mutable area
-    // (which holds Region and MachineCode object header, FuncEntryDesc and StackMap)
+    // (which holds Region and MachineCode object header, FuncEntryDesc and StackMap), followed
+    // by a page aligned immutable (JitFort space) area for JIT generated native instructions code.
     //
     // allocation sizes for Huge Machine Code:
     //     a: mutable area size (aligned up to PageSize()) =
-    //         sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE + MachineCode::SIZE + payLoadSize
-    //         (note: payLoadSize = funcDesc size + stackMap size)
-    //     b: size to mmap for huge machine code object = Alignup(a, 256 Kbyte)
+    //         sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE + MachineCode::SIZE + payLoadSize - instructionsSize
+    //         (note: payLoadSize = funcDesc size + stackMap size + instructionsSize)
+    //     b: immutable area (starts on native page boundary) size = instructionsSize
+    //     c: size to mmap for huge machine code object = Alignup(a + b, 256 Kbyte)
     //
+    // mmap to enable JIT_FORT rights control:
+    //     1. first mmap (without JIT_FORT option flag) region of size c above
+    //     2. then mmap immutable area with MAP_FIXED and JIT_FORT option flag (to be used by codesigner verify/copy)
     ASSERT(thread != nullptr);
     ASSERT(pDesc != nullptr);
     MachineCodeDesc *desc = reinterpret_cast<MachineCodeDesc *>(pDesc);
     size_t mutableSize = AlignUp(
-        objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE, PageSize());
-    size_t allocSize = AlignUp(mutableSize, DEFAULT_REGION_SIZE);
+        objectSize + sizeof(DefaultRegion) + HUGE_OBJECT_BITSET_SIZE - desc->instructionsSize, PageSize());
+    size_t allocSize = AlignUp(mutableSize + desc->instructionsSize, DEFAULT_REGION_SIZE);
     if (heap_->OldSpaceExceedCapacity(allocSize)) {
         LOG_ECMA_MEM(INFO) << "Committed size " << committedSize_ << " of huge object space is too big.";
         return 0;
     }
-    // try to alloc jitfort memory
-    if (jitFort_ == nullptr) {
-        jitFort_ = localHeap_->GetOrCreateJitFort();
-    }
-    uintptr_t mem = jitFort_->Allocate(desc);
-    if (mem == ToUintPtr(nullptr)) {
-        return nullptr;
-    }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, allocSize, thread, heap_);
-    desc->instructionsAddr = mem;
-    LOG_JIT(DEBUG) << "Allocate machine code obj in HugeMachineCodeSpace, addr: 0x" << std::hex << region->GetBegin()
-                   << ", text begin: 0x" << mem << ", allocSize: 0x" << allocSize;
+    desc->instructionsAddr = region->GetAllocateBase() + mutableSize;
+
+    // Enabe JitFort rights control
+    [[maybe_unused]] void *addr = PageMapExecFortSpace((void *)desc->instructionsAddr, allocSize - mutableSize,
+        PageProtectProt(reinterpret_cast<Heap *>(heap_)->GetEcmaVM()->GetJSOptions().GetDisableCodeSign() ||
+            !JitFort::IsResourceAvailable()));
+
+    ASSERT(addr == (void *)desc->instructionsAddr);
     return region;
 }
 
@@ -282,15 +283,6 @@ uintptr_t HugeObjectSpace::Allocate(size_t objectSize, JSThread *thread, Allocat
     return region->GetBegin();
 }
 
-void HugeMachineCodeSpace::Sweep()
-{
-    ASSERT(!g_isEnableCMCGC);
-    HugeObjectSpace::Sweep();
-    if (jitFort_) {
-        jitFort_->Sweep(true);
-    }
-}
-
 void HugeObjectSpace::Sweep()
 {
     Region *currentRegion = GetRegionList().GetFirst();
@@ -302,7 +294,6 @@ void HugeObjectSpace::Sweep()
             DecreaseCommitted(currentRegion->GetCapacity());
             DecreaseObjectSize(currentRegion->GetSize());
             heapRegionAllocator_->DecreaseMemMapUsage(currentRegion);
-            LOG_JIT(DEBUG) << "HugeObjectSpace::Sweep region: " << reinterpret_cast<void*>(currentRegion->GetBegin());
             GetRegionList().RemoveNode(currentRegion);
             hugeNeedFreeList_.AddNode(currentRegion);
         }
