@@ -525,3 +525,51 @@ try {
 } catch(e) {
     print(e);
 }
+
+{
+    const isUnpairedSurrogate = "\uDC00\uDC00";
+    const res = isUnpairedSurrogate.isWellFormed()
+    print(res);
+
+    const normalChar = "A";
+    print("普通字符 'A':", normalChar.isWellFormed());
+
+    const chineseChar = "中";
+    print("中文字符 '中':", chineseChar.isWellFormed());
+
+    const isolatedLow = "\uDC00";
+    print("孤立低代理项:", isolatedLow.isWellFormed());
+
+    const twoLowSurrogates = "\uDC00\uDC00";
+    print("两个低代理项:", twoLowSurrogates.isWellFormed());
+
+    const highAtEnd = "\uD800";
+    print("末尾高代理项:", highAtEnd.isWellFormed());
+
+    const charThenLow = "A\uDC00";
+    print("字符+低代理项:", charThenLow.isWellFormed());
+
+    const highThenNormal = "\uD800A";
+    print("高代理项+普通字符:", highThenNormal.isWellFormed());
+
+    const highThenHigh = "\uD800\uD801";
+    print("高代理项+高代理项:", highThenHigh.isWellFormed());
+
+    const validPair = "\uD83D\uDE00";
+    print("合法代理对(Emoji):", validPair.isWellFormed());
+
+    const cjkExtension = "\uD840\uDC00";
+    print("合法代理对(CJK扩展):", cjkExtension.isWellFormed());
+
+    const multiplePairs = "\uD83D\uDE00\uD83D\uDE01";
+    print("多个合法代理对:", multiplePairs.isWellFormed());
+
+    const mixed = "\uD83D\uDE00\uDC00";
+    print("合法对+孤立低代理项:", mixed.isWellFormed());
+
+    const invalidThenValid = "\uD800\uD83D\uDE00";
+    print("孤立高代理项+合法对:", invalidThenValid.isWellFormed());
+
+    const empty = "";
+    print("空字符串:", empty.isWellFormed());
+}
