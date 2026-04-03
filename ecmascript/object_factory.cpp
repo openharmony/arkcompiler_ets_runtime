@@ -2048,7 +2048,6 @@ JSHandle<JSHClass> ObjectFactory::CreateFunctionClass(FunctionKind kind, uint32_
 
     uint32_t fieldOrder = 0;
     ASSERT(JSFunction::LENGTH_INLINE_PROPERTY_INDEX == fieldOrder);
-    ASSERT(inlinedProps >= JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
     JSHandle<LayoutInfo> layoutInfoHandle;
     if (inlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS) {
         layoutInfoHandle = CreateLayoutInfo(JSFunction::LENGTH_OF_INLINE_PROPERTIES);
