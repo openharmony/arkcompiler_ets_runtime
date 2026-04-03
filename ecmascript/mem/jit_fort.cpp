@@ -39,9 +39,9 @@ FreeListAllocator<MemDesc>::FreeListAllocator(BaseHeap *heap, MemDescPool *pool,
 
 JitFort::JitFort()
 {
-    jitFortMem_ = JitFortPageMap(JIT_FORT_REG_SPACE_MAX,
-                                 PageProtectProt(Jit::GetInstance()->IsDisableCodeSign() || !IsResourceAvailable()),
-                                 DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT);
+    jitFortMem_ = PageMap(JIT_FORT_REG_SPACE_MAX,
+                          PageProtectProt(Jit::GetInstance()->IsDisableCodeSign() || !IsResourceAvailable()),
+                          DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT, true);
     jitFortBegin_ = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem());
     jitFortSize_ = JIT_FORT_REG_SPACE_MAX;
     memDescPool_ = new MemDescPool(jitFortBegin_, jitFortSize_);
@@ -56,9 +56,9 @@ void JitFort::InitHugeRegion()
 {
     if (hugeInUse_)
         return;
-    hugeJitFortMem_ = JitFortPageMap(HUGE_JITFORT_REGION_SIZE,
-                                     PageProtectProt(Jit::GetInstance()->IsDisableCodeSign() || !IsResourceAvailable()),
-                                     HUGE_JITFORT_REGION_SIZE, nullptr, MAP_JITFORT);
+    hugeJitFortMem_ = PageMap(HUGE_JITFORT_REGION_SIZE,
+                              PageProtectProt(Jit::GetInstance()->IsDisableCodeSign() || !IsResourceAvailable()),
+                              HUGE_JITFORT_REGION_SIZE, nullptr, MAP_JITFORT, true);
 
     hugeJitFortBegin_ = reinterpret_cast<uintptr_t>(hugeJitFortMem_.GetMem());
     hugeJitFortSize_ = HUGE_JITFORT_REGION_SIZE;
@@ -88,13 +88,13 @@ JitFort::~JitFort()
     if (memDescPool_ != nullptr) {
         delete memDescPool_;
     }
-    JitFortPageUnmap(jitFortMem_);
+    PageUnmap(jitFortMem_, true);
     if (hugeInUse_) {
         hugeRegion_->DestroyFreeObjectSets();
         delete hugeRegion_;
         delete hugeAlloc_;
         delete hugeMemDescPool_;
-        JitFortPageUnmap(hugeJitFortMem_);
+        PageUnmap(hugeJitFortMem_, true);
     }
 }
 
