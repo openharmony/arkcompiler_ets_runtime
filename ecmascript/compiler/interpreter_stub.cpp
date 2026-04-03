@@ -49,6 +49,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
                                      GateRef acc, GateRef hotnessCounter,            \
                                      [[maybe_unused]] ProfileOperation callback)
 
+#if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
 #define REGISTER_PROFILE_CALL_BACK(format)                                                                             \
     ProfileOperation callback(                                                                                         \
         [this, glue, sp, pc, profileTypeInfo](const std::initializer_list<GateRef> &values, OperationType type) {      \
@@ -71,7 +72,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
             profiler.PGOProfiler(glue, pc, GetFunctionFromFrame(glue, state),                                          \
                 profileTypeInfo, values, format, type);                                                                \
         });
-
+#endif
 #define REGISTER_NULL_CALL_BACK(format) ProfileOperation callback;
 
 #define DECLARE_ASM_HANDLER(name)                                                     \
@@ -6683,11 +6684,13 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeWideLdsendablelocalmodulevarPrefImm16)
     }
 }
 
+#if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
 ASM_INTERPRETER_BC_TYPE_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_COUNT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_PROFILE)
 ASM_INTERPRETER_BC_FUNC_HOT_JIT_PROFILER_STUB_LIST(DECLARE_ASM_HANDLER_JIT_PROFILE)
+#endif
 ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(DECLARE_ASM_HANDLER_STW_COPY)
 
 #undef DECLARE_ASM_HANDLER

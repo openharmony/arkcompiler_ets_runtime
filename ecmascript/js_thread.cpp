@@ -890,7 +890,9 @@ void JSThread::CheckOrSwitchPGOStubs()
         curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##fromName);                                     \
         SetBCStubEntry(BytecodeStubCSigns::ID_##fromName, GetBCStubEntry(BytecodeStubCSigns::ID_##toName)); \
         SetBCStubEntry(BytecodeStubCSigns::ID_##toName, curAddress);
+#if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(SWITCH_PGO_STUB_ENTRY)
+#endif
 #undef SWITCH_PGO_STUB_ENTRY
     }
     if (isSwitchToNormal && !g_isEnableCMCGC) {
@@ -921,7 +923,9 @@ void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
         curAddress = GetBCStubEntry(BytecodeStubCSigns::ID_##fromName);                                     \
         SetBCStubEntry(BytecodeStubCSigns::ID_##fromName, GetBCStubEntry(BytecodeStubCSigns::ID_##toName)); \
         SetBCStubEntry(BytecodeStubCSigns::ID_##toName, curAddress);
+#if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
         ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(SWITCH_PGO_STUB_ENTRY)
+#endif
 #undef SWITCH_PGO_STUB_ENTRY
     }
 }

@@ -35,6 +35,7 @@ void BytecodeStubCSigns::Initialize()
     });
 
     INTERPRETER_BC_STUB_LIST(INIT_SIGNATURES)
+#if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
 #define INIT_SIGNATURES_DYN(name, ...) \
     INIT_SIGNATURES(name)              \
     callSigns_[name].SetTargetKind(CallSignature::TargetKind::BYTECODE_PROFILE_HANDLER);
@@ -46,7 +47,7 @@ void BytecodeStubCSigns::Initialize()
     callSigns_[name].SetTargetKind(CallSignature::TargetKind::BYTECODE_JIT_PROFILE_HANDLER);
     ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(INIT_SIGNATURES_DYN)
 #undef INIT_SIGNATURES_DYN
-
+#endif
 #define INIT_SIGNATURES_DYN(name, ...)              \
     INIT_SIGNATURES(name##StwCopy)                  \
     callSigns_[name##StwCopy].SetStwCopyStub(true); \
