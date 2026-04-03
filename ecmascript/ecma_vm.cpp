@@ -471,8 +471,6 @@ bool EcmaVM::Initialize()
     pcVector_.reserve(MAX_HYBRID_STACK_SIZE);
     if (options_.GetEnableAsmInterpreter()) {
         LoadStubFile();
-        UpdateStubFileRange(aotFileManager_->GetStubFileStart(),
-            aotFileManager_->GetStubFileSize());
     }
     [[maybe_unused]] EcmaHandleScope scope(thread_);
     auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
