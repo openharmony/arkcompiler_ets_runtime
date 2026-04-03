@@ -2518,7 +2518,10 @@ void EcmaVM::CheckSharedHeapMemoryPressure()
         size_t sharedHugeHeapSize = hugeSpace->GetHeapObjectSize();
         size_t sharedHugeHeapLimit = hugeSpace->GetMaximumCapacity();
         double sharedHugeRatio = static_cast<double>(sharedHugeHeapSize) / static_cast<double>(sharedHugeHeapLimit);
-        if (sharedOldRatio >= sharedThreshold || sharedHugeRatio >= sharedThreshold) {
+        size_t sharedHeapSize = SharedHeap::GetInstance()->GetHeapObjectSize();
+        size_t sharedHeapLimit = SharedHeap::GetInstance()->GetEcmaParamConfiguration().GetMaxHeapSize();
+        double sharedRatio = static_cast<double>(sharedHeapSize) / static_cast<double>(sharedHeapLimit);
+        if (sharedOldRatio >= sharedThreshold || sharedHugeRatio >= sharedThreshold || sharedRatio >= sharedThreshold) {
             needSharedMemoryPressureCallback_ = true;
             return;
         }
