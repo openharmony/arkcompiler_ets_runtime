@@ -1778,7 +1778,7 @@ HWTEST_F_L0(HeapDumpTest, TestThreadBinaryDumpForSharedGCTriggeredOOM)
     CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
     std::string rawHeapPath("test_sharedgc_oom1.rawheap");
-    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT);
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT, 0644);
     ASSERT_TRUE(fd > 0);
 
     FileDescriptorStream stream(fd);
@@ -1802,7 +1802,7 @@ HWTEST_F_L0(HeapDumpTest, TestProcBinaryDumpForSharedGCTriggeredOOM)
     CreateObjectsForBinaryDump(thread_, factory, &tester, vec);
 
     std::string rawHeapPath("test_sharedgc_oom2.rawheap");
-    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT);
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT, 0644);
     ASSERT_TRUE(fd > 0);
 
     FileDescriptorStream stream(fd);
