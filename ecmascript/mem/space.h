@@ -21,7 +21,6 @@
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/ecma_list.h"
 #include "ecmascript/mem/heap_region_allocator.h"
-#include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/region.h"
 
@@ -316,7 +315,7 @@ public:
     // suspended and then do SharedGC, which will free some regions in SharedHeap that are allocated at the beginning
     // of deserializing for further object allocating, but no object has been allocated on at this moment.
     uintptr_t Allocate(size_t objectSize, JSThread *thread, AllocateEventType allocType = AllocateEventType::NORMAL);
-    virtual void Sweep();
+    void Sweep();
     size_t GetHeapObjectSize() const;
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
 
@@ -349,19 +348,6 @@ public:
     uintptr_t Allocate(size_t objectSize, JSThread *thread);
     void *PUBLIC_API AllocateFortForCMC(size_t objectSize, JSThread *thread, void *desc);
     Region *PUBLIC_API AllocateFort(size_t objectSize, JSThread *thread, void *desc);
-    void Sweep() override;
-
-    bool InJitFortRange(uintptr_t address) const
-    {
-        if (jitFort_) {
-            return jitFort_->InJitFortRange(address);
-        }
-        return false;
-    }
-protected:
-    Heap *localHeap_ {nullptr};
-private:
-    JitFort *jitFort_ {nullptr};
 };
 
 }  // namespace panda::ecmascript

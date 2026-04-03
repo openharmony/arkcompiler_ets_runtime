@@ -1307,10 +1307,6 @@ void Heap::Destroy()
         delete evacuator_;
         evacuator_ = nullptr;
     }
-    if (GetEcmaVM()->GetJSOptions().GetEnableJitFort() && jitFort_ != nullptr) {
-        delete jitFort_;
-        jitFort_ = nullptr;
-    }
 }
 
 void Heap::Prepare()

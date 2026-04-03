@@ -65,16 +65,6 @@ void PageUnmap(MemMap it)
     }
 }
 
-MemMap JitFortPageMap(size_t size, int prot, size_t alignment, void *addr, [[maybe_unused]] int flags)
-{
-    return PageMap(size, prot, alignment, addr, flags);
-}
-
-void JitFortPageUnmap(MemMap it)
-{
-    PageUnmap(it);
-}
-
 MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
 {
     MemMap memMap = PageMap(size, prot, alignment);
