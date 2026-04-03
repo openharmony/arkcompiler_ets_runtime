@@ -745,8 +745,10 @@ EcmaString *EcmaString::ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &sr
     auto factory = vm->GetFactory();
     if (srcFlat.IsUtf16()) {
         std::u16string u16str = base::StringHelper::Utf16ToU16String(srcFlat.GetDataUtf16(), srcLength);
-        std::string res = base::StringHelper::ToLower(u16str);
-        return *(factory->NewFromStdString(res));
+        std::u16string res = base::StringHelper::ToLower(u16str);
+        auto *utf16Data = reinterpret_cast<const uint16_t *>(res.data());
+        bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, res.length());
+        return EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, res.length(), canBeCompress);
     } else {
         return ConvertUtf8ToLowerOrUpper(vm, src, true);
     }
@@ -829,8 +831,10 @@ EcmaString *EcmaString::ToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &sr
     auto factory = vm->GetFactory();
     if (srcFlat.IsUtf16()) {
         std::u16string u16str = base::StringHelper::Utf16ToU16String(srcFlat.GetDataUtf16(), srcLength);
-        std::string res = base::StringHelper::ToUpper(u16str);
-        return *(factory->NewFromStdString(res));
+        std::u16string res = base::StringHelper::ToUpper(u16str);
+        auto *utf16Data = reinterpret_cast<const uint16_t *>(res.data());
+        bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, res.length());
+        return EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, res.length(), canBeCompress);
     } else {
         return ConvertUtf8ToLowerOrUpper(vm, src, false);
     }
@@ -839,21 +843,22 @@ EcmaString *EcmaString::ToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &sr
 /* static */
 EcmaString *EcmaString::ToLocaleLower(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale)
 {
-    auto factory = vm->GetFactory();
     FlatStringInfo srcFlat = FlattenAllString(vm, src);
     std::u16string utf16 = srcFlat.ToU16String();
-    std::string res = base::StringHelper::ToLocaleLower(utf16, locale);
-    return *(factory->NewFromStdString(res));
+    std::u16string res = base::StringHelper::ToLocaleLower(utf16, locale);
+    auto *utf16Data = reinterpret_cast<const uint16_t *>(res.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, res.length());
+    return EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, res.length(), canBeCompress);
 }
-
 /* static */
 EcmaString *EcmaString::ToLocaleUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src, const icu::Locale &locale)
 {
-    auto factory = vm->GetFactory();
     FlatStringInfo srcFlat = FlattenAllString(vm, src);
     std::u16string utf16 = srcFlat.ToU16String();
-    std::string res = base::StringHelper::ToLocaleUpper(utf16, locale);
-    return *(factory->NewFromStdString(res));
+    std::u16string res = base::StringHelper::ToLocaleUpper(utf16, locale);
+    auto *utf16Data = reinterpret_cast<const uint16_t *>(res.data());
+    bool canBeCompress = EcmaStringAccessor::CanBeCompressed(utf16Data, res.length());
+    return EcmaStringAccessor::CreateFromUtf16(vm, utf16Data, res.length(), canBeCompress);
 }
 
 EcmaString *EcmaString::Trim(const JSThread *thread, const JSHandle<EcmaString> &src, TrimMode mode)

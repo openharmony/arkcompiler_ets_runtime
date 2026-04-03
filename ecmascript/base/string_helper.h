@@ -177,46 +177,43 @@ public:
         return idx;
     }
 
-    static inline std::string ToUpper(const std::u16string &str)
+    static inline std::u16string ToUpper(const std::u16string &str)
     {
         std::u16string tmpStr = str;
         const char16_t *constChar16tData = tmpStr.data();
-        icu::UnicodeString uString(constChar16tData);
+        icu::UnicodeString uString(constChar16tData, str.length());
         icu::UnicodeString up = uString.toUpper();
-        std::string res;
-        up.toUTF8String(res);
-        return res;
+        std::u16string result(up.getBuffer(), up.length());
+        return result;
     }
 
-    static inline std::string ToLocaleUpper(const std::u16string &str, const icu::Locale &locale)
+    static inline std::u16string ToLocaleUpper(const std::u16string &str, const icu::Locale &locale)
     {
         std::u16string tmpStr = str;
         const char16_t *constChar16tData = tmpStr.data();
-        icu::UnicodeString uString(constChar16tData);
+        icu::UnicodeString uString(constChar16tData, str.length());
         icu::UnicodeString up = uString.toUpper(locale);
-        std::string res;
-        up.toUTF8String(res);
-        return res;
+        std::u16string result(up.getBuffer(), up.length());
+        return result;
     }
 
-    static inline std::string ToLower(const std::u16string &str)
+    static inline std::u16string ToLower(const std::u16string &str)
     {
         const char16_t *constChar16tData = str.data();
         icu::UnicodeString uString(constChar16tData, str.length());
-        std::string res;
-        uString.toLower().toUTF8String(res);
-        return res;
+        icu::UnicodeString up = uString.toLower();
+        std::u16string result(up.getBuffer(), up.length());
+        return result;
     }
 
-    static inline std::string ToLocaleLower(const std::u16string &str, const icu::Locale &locale)
+    static inline std::u16string ToLocaleLower(const std::u16string &str, const icu::Locale &locale)
     {
         std::u16string tmpStr = str;
         const char16_t *constChar16tData = tmpStr.data();
-        icu::UnicodeString uString(constChar16tData);
+        icu::UnicodeString uString(constChar16tData, str.length());
         icu::UnicodeString low = uString.toLower(locale);
-        std::string res;
-        low.toUTF8String(res);
-        return res;
+        std::u16string result(low.getBuffer(), low.length());
+        return result;
     }
 
     static inline size_t FindFromU16ToUpper(const std::u16string &thisStr, uint16_t *u16Data)

@@ -137,18 +137,22 @@ HWTEST_F_L0(StringHelperTest, Find_RFind)
 HWTEST_F_L0(StringHelperTest, ToUpper_ToLower_ToLocaleUpper_ToLocaleLower)
 {
     const std::u16string u16SourceStr1 = StringHelper::StringToU16string("AbCdEfGhIjKlMnOpQrStUvWxYz");
-    std::string upperStr = StringHelper::ToUpper(u16SourceStr1);
-    std::string lowerStr = StringHelper::ToLower(u16SourceStr1);
+    std::u16string upperU16Str = StringHelper::ToUpper(u16SourceStr1);
+    std::u16string lowerU16Str = StringHelper::ToLower(u16SourceStr1);
+    std::string upperStr = StringHelper::U16stringToString(upperU16Str);
+    std::string lowerStr = StringHelper::U16stringToString(lowerU16Str);
     EXPECT_STREQ(upperStr.c_str(), "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
     EXPECT_STREQ(lowerStr.c_str(), "abcdefghijklmnopqrstuvwxyz");
 
     icu::Locale locale("el", "Latn", "GR");
     const std::u16string u16SourceStr2 = StringHelper::StringToU16string("Greek : Αυτό είναι ένα δοκιμαστικό κείμενο.");
-    std::string localeUpperStr = StringHelper::ToLocaleUpper(u16SourceStr2, locale);
+    std::u16string localeUpperU16Str = StringHelper::ToLocaleUpper(u16SourceStr2, locale);
+    std::string localeUpperStr = StringHelper::U16stringToString(localeUpperU16Str);
     EXPECT_STREQ(localeUpperStr.c_str(), "GREEK : ΑΥΤΟ ΕΙΝΑΙ ΕΝΑ ΔΟΚΙΜΑΣΤΙΚΟ ΚΕΙΜΕΝΟ.");
 
     const std::u16string u16SourceStr3 = StringHelper::StringToU16string("GREEK : ΑΥΤΌ ΕΊΝΑΙ ΈΝΑ ΔΟΚΙΜΑΣΤΙΚΌ ΚΕΊΜΕΝΟ.");
-    std::string localeLowerStr = StringHelper::ToLocaleLower(u16SourceStr3, locale);
+    std::u16string localeLowerU16Str = StringHelper::ToLocaleLower(u16SourceStr3, locale);
+    std::string localeLowerStr = StringHelper::U16stringToString(localeLowerU16Str);
     EXPECT_STREQ(localeLowerStr.c_str(), "greek : αυτό είναι ένα δοκιμαστικό κείμενο.");
 }
 
