@@ -305,7 +305,10 @@ void ModulesSnapshotHelper::UpdateFromStateFile(const CString &path)
     }
     size_t sumLen = report.find("\n");
     auto summary = std::string_view(report.c_str(), sumLen != std::string::npos ? sumLen : report.size());
-    auto detail = std::string_view(summary.end() + 1, report.size() - sumLen - 1);
+    std::string_view detail;
+    if (sumLen != std::string::npos) {
+        detail = std::string_view(summary.end() + 1, report.size() - sumLen - 1);
+    }
 
     switch (stateWord) {
         case STATE_WORD_MODULE_SNAPSHOT_DISABLED:
