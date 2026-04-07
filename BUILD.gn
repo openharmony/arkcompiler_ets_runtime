@@ -476,6 +476,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "ECMASCRIPT_ENABLE_ARK_STEED_GN" ]
   }
 
+  if (ets_runtime_feature_enable_stub_function_reordering) {
+    defines += [ "STUB_FUNCTION_REORDERING" ]
+  }
+
   cflags_cc = [
     "-Wall",
     "-Wshadow",

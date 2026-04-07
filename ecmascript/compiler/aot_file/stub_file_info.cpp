@@ -118,6 +118,17 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
     LOG_COMPILER(INFO) << "loaded stub file successfully";
     return true;
 }
+#if defined(STUB_FUNCTION_REORDERING)
+uint32_t StubFileInfo::GetRuntimeStubIndex(uint32_t compileTimeIndex) const
+{
+    const auto& bcStubMap = GetBCStubIndexMap();
+    if (auto it = bcStubMap.find(compileTimeIndex); it != bcStubMap.end()) {
+        return it->second;
+    }
+    LOG_ECMA(WARN) << "No mapping found " << compileTimeIndex;
+    return compileTimeIndex;
+}
+#endif
 #ifndef PANDA_TARGET_OHOS
 bool StubFileInfo::Load()
 {

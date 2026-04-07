@@ -18,6 +18,7 @@
           "ets_runtime_feature_enable_pgo",
           "ets_runtime_feature_enable_codemerge",
           "ets_runtime_feature_enable_inst_prefetch",
+          "ets_runtime_feature_enable_stub_function_reordering",
           "ets_runtime_feature_pgo_path",
           "ets_runtime_feature_enable_list",
           "ets_runtime_feature_enable_static_backtrace",

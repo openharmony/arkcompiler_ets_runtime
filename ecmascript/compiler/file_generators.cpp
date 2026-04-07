@@ -494,8 +494,17 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
     return &modulePackage_.back();
 }
 
+#if defined(STUB_FUNCTION_REORDERING)
+Module *StubFileGenerator::AddModule(NativeAreaAllocator *allocator,
+                                     const std::string &name,
+                                     const std::string &triple, LOptions option,
+                                     bool logDebug, StubFileKind kind,
+                                     const std::string &stubOrder,
+                                     StubFileInfo *stubInfo)
+#else
 Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::string &name, const std::string &triple,
                                      LOptions option, bool logDebug, StubFileKind kind)
+#endif
 {
     LLVMModule* m = new LLVMModule(allocator, name, logDebug, triple);
     switch (kind) {
@@ -517,6 +526,11 @@ Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::
         case StubFileKind::BUILTIN_STW_COPY:
             m->SetUpForBuiltinsStwCopyStubs();
             break;
+#if defined(STUB_FUNCTION_REORDERING)
+        case StubFileKind::MERGED:
+            m->SetUpForMergedStubs(stubOrder, stubInfo);
+            break;
+#endif
         default:
             LOG_ECMA(FATAL) << "unsupported stub file kind";
             UNREACHABLE();

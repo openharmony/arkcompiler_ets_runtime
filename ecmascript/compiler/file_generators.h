@@ -276,7 +276,10 @@ enum class StubFileKind {
     BUILTIN,
     BASELINE,
     BC_STW_COPY,
-    BUILTIN_STW_COPY
+    BUILTIN_STW_COPY,
+#if defined(STUB_FUNCTION_REORDERING)
+    MERGED
+#endif
 };
 
 class StubFileGenerator : public FileGenerator {
@@ -290,8 +293,15 @@ public:
     }
     ~StubFileGenerator() override = default;
 
+#if defined(STUB_FUNCTION_REORDERING)
+    Module *AddModule(NativeAreaAllocator *allocator, const std::string &name,
+                      const std::string &triple, LOptions option, bool logDebug,
+                      StubFileKind k, const std::string &stub_ordering = "",
+                      StubFileInfo *stubInfo = 0);
+#else
     Module* AddModule(NativeAreaAllocator *allocator, const std::string &name, const std::string &triple,
                       LOptions option, bool logDebug, StubFileKind k);
+#endif
 
     void DisassembleEachFunc(std::map<uintptr_t, std::string> &addr2name)
     {
@@ -302,6 +312,9 @@ public:
     }
 
     void DisassembleAsmStubs(std::map<uintptr_t, std::string> &addr2name);
+#if defined(STUB_FUNCTION_REORDERING)
+    StubFileInfo *GetStubInfo() { return &stubInfo_; }
+#endif
     // save function funcs for aot files containing stubs
     void SaveStubFile(const std::string &filename);
 protected:
