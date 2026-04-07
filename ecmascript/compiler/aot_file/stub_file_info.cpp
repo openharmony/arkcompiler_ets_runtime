@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/aot_file/stub_file_info.h"
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 #include "ecmascript/compiler/aot_file/elf_reader.h"
+#include "ecmascript/platform/backtrace.h"
 
 #ifndef PANDA_TARGET_OHOS
 extern const uint8_t _binary_stub_an_start[];
@@ -79,6 +80,9 @@ bool StubFileInfo::MmapLoad(const std::string &fileName)
         LOG_ECMA(ERROR) << "File mmap failed";
         return false;
     }
+
+    UpdateStubFileRange(reinterpret_cast<uint64_t>(fileMapMem_.GetOriginAddr()),
+        static_cast<uint64_t>(fileMapMem_.GetSize()));
 
     ElfReader reader(fileMapMem_);
     std::vector<ElfSecName> secs = GetDumpSectionNames();
