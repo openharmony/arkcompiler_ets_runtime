@@ -15,6 +15,8 @@
 
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/full_gc.h"
+#include "ecmascript/mem/heap.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
@@ -184,5 +186,24 @@ HWTEST_F_L0(RuntimeTest, EnableProcDumpInSharedOOMConcurrent)
 
     Runtime::GetInstance()->SetProcDumpInSharedOOM(false);
     EXPECT_FALSE(Runtime::GetInstance()->IsEnableProcDumpInSharedOOM());
+}
+
+HWTEST_F_L0(RuntimeTest, FullGCInBackgroundMode)
+{
+    if constexpr (G_USE_CMS_GC) {
+        return;
+    }
+    auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    auto fullGc = heap->GetFullGC();
+
+    Runtime::GetInstance()->SetInBackground(true);
+    ASSERT_TRUE(Runtime::GetInstance()->IsInBackground());
+    fullGc->RunPhases();
+    ASSERT_TRUE(Runtime::GetInstance()->IsInBackground());
+
+    Runtime::GetInstance()->SetInBackground(false);
+    ASSERT_FALSE(Runtime::GetInstance()->IsInBackground());
+    fullGc->RunPhases();
+    ASSERT_FALSE(Runtime::GetInstance()->IsInBackground());
 }
 }
