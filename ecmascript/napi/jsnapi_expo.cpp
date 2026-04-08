@@ -6003,13 +6003,13 @@ bool JSNApi::ExecuteSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::s
 }
 
 bool JSNApi::ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t* data, int32_t size, const std::string &filename,
-                                       bool needUpdate)
+                                       bool needUpdate, void *fileMapper)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     LOG_ECMA(INFO) << "start to execute module buffer with secure memory: " << filename;
     ecmascript::ThreadManagedScope scope(thread);
     if (!ecmascript::JSPandaFileExecutor::ExecuteModuleBufferSecure(thread, data, size, filename.c_str(),
-                                                                    needUpdate)) {
+                                                                    needUpdate, fileMapper)) {
         if (thread->HasPendingException()) {
             ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->HandleUncaughtException();

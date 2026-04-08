@@ -67,7 +67,7 @@ public:
                                                                  void *fileMapper = nullptr);
     static Expected<JSTaggedValue, bool> ExecuteModuleBufferSecure(JSThread *thread, uint8_t *buffer, size_t size,
                                                                    const CString &filename = "",
-                                                                   bool needUpdate = false);
+                                                                   bool needUpdate = false, void *fileMapper = nullptr);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const JSPandaFile *jsPandaFile);
     static Expected<JSTaggedValue, bool> ExecuteSecureWithOhmUrl(JSThread *thread, uint8_t *buffer,

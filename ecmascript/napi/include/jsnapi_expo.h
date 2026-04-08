@@ -1886,7 +1886,7 @@ public:
      * is used to uniquely identify this memory internally.
      */
     static bool ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &filename = "",
-                                          bool needUpdate = false);
+                                          bool needUpdate = false, void *fileMapper = nullptr);
 
     static bool ExecuteSecureWithOhmUrl(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &srcFilename,
                                         const std::string &ohmUrl);

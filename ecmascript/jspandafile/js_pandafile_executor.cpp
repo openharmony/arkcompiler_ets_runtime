@@ -327,7 +327,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JSThread *thread, uint8_t *buffer,
-    size_t size, const CString &filename, bool needUpdate)
+    size_t size, const CString &filename, bool needUpdate, void *fileMapper)
 {
     LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteModuleBufferSecure with secure buffer filename " << filename;
     CString traceInfo = "JSPandaFileExecutor::ExecuteModuleBufferSecure " + filename;
@@ -339,7 +339,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     CString normalName = PathHelper::NormalizePath(filename);
     ModulePathHelper::ParseAbcPathAndOhmUrl(vm, normalName, name, entry);
     std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
-        LoadJSPandaFileSecure(thread, name, entry, buffer, size, needUpdate);
+        LoadJSPandaFileSecure(thread, name, entry, buffer, size, needUpdate, fileMapper);
     if (jsPandaFile == nullptr) {
 #ifdef FUZZ_TEST
         CString msg = "jsPandaFile is nullptr";
@@ -348,7 +348,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
 #endif
     }
-    AbcBufferCacheScope bufferScope(thread, name, buffer, size, AbcBufferType::SECURE_BUFFER);
+    AbcBufferCacheScope bufferScope(thread, name, buffer, size, jsPandaFile.get(), fileMapper);
     if (!vm->IsNormalizedOhmUrlPack() && !jsPandaFile->IsBundlePack()) {
         jsPandaFile->CheckIsRecordWithBundleName(entry);
         if (!jsPandaFile->IsRecordWithBundleName()) {
