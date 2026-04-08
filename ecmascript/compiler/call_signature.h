@@ -20,6 +20,7 @@
 #include <functional>
 #include <memory>
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/compiler/variable_type.h"
 
 #include "libpandabase/macros.h"
@@ -47,8 +48,10 @@ public:
         BYTECODE_HANDLER,
         BYTECODE_DEBUGGER_HANDLER,
         BYTECODE_HELPER_HANDLER,
+    #if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
         BYTECODE_PROFILE_HANDLER,
         BYTECODE_JIT_PROFILE_HANDLER,
+    #endif
         BYTECODE_STW_COPY_HANDLER,
         JSFUNCTION,
         BUILTINS_STUB,

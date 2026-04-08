@@ -411,6 +411,7 @@ namespace panda::ecmascript::kungfu {
     V(HandleDefinefuncImm8Id16Imm8ColdReload)           \
     V(HandleDefinefuncImm16Id16Imm8ColdReload)
 
+#if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
 #define APPEND_JIT_SUFFIX(name, V) \
     V(name##WithJitProf, name, SlotIDFormat::IMM8)
 
@@ -577,6 +578,7 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleStownbynamewithnamesetImm8Id16V8, V)                \
     APPEND_SUFFIX_IMM16(HandleStownbynameImm16Id16V8, V)                    \
     APPEND_SUFFIX(HandleStownbynameImm8Id16V8, V)
+#endif
 
 #define INTERPRETER_DISABLE_SINGLE_STEP_DEBUGGING_BC_STUB_LIST(V)             \
     ASM_INTERPRETER_BC_STUB_LIST(IGNORE_BC_STUB, IGNORE_BC_STUB, V)           \
@@ -614,12 +616,14 @@ public:
         INTERPRETER_BC_STUB_LIST(DEF_VALID_BC_STUB_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_VALID_BC_STUB_ID)
 #undef DEF_VALID_BC_STUB_ID
+#if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
 #define DEF_VALID_BC_STUB_ID(name, ...) name,
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_VALID_BC_STUB_ID)
 #undef DEF_VALID_BC_STUB_ID
 #define DEF_VALID_BC_STUB_ID(name, ...) name,
         ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(DEF_VALID_BC_STUB_ID)
 #undef DEF_VALID_BC_STUB_ID
+#endif
 #define DEF_VALID_BC_STUB_ID(name) name##StwCopy,
         ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(DEF_VALID_BC_STUB_ID)
 #undef DEF_VALID_BC_STUB_ID
@@ -657,12 +661,14 @@ public:
         ASM_INTERPRETER_SECOND_BC_STUB_ID_LIST(DEF_BC_STUB_ID)
         ASM_INTERPRETER_BC_HELPER_STUB_LIST(DEF_BC_STUB_ID)
 #undef DEF_BC_STUB_ID
+#if ECMASCRIPT_ENABLE_INTERPRETER_PGO_STUBS
 #define DEF_BC_STUB_ID(name, ...) ID_##name,
         ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DEF_BC_STUB_ID)
 #undef DEF_BC_STUB_ID
 #define DEF_BC_STUB_ID(name, ...) ID_##name,
         ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(DEF_BC_STUB_ID)
 #undef DEF_BC_STUB_ID
+#endif
 #define DEF_BC_STUB_ID(name) ID_##name##StwCopy,
         ASM_INTERPRETER_BC_STW_COPY_STUB_LIST(DEF_BC_STUB_ID)
         NUM_OF_STUBS,
