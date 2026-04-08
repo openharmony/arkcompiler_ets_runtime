@@ -81,6 +81,7 @@ enum ArkProperties {
     ENABLE_RAWHEAP_CROP = 1ULL << 31,
     DISABLE_BOOT_SNAPSHOT_ESCAPE = 1ULL << 32,
     DISABLE_STRING_TABLE_CONCURRENT_SWEEP = 1ULL << 33,
+    ENABLE_RUNTIME_MODULE_STACK = 1ULL << 34,
 };
 
 enum ArkTSMode {
@@ -527,7 +528,7 @@ public:
         return longPauseTime_;
     }
 
-    void SetArkProperties(int prop)
+    void SetArkProperties(int64_t prop)
     {
         if (prop != ArkProperties::DEFAULT) {
             arkProperties_ = prop;
@@ -613,6 +614,11 @@ public:
     bool EnableRuntimeAsyncStack() const
     {
         return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_RUNTIME_ASYNC_STACK) != 0;
+    }
+
+    bool EnableModuleImportStack() const
+    {
+        return (static_cast<uint64_t>(arkProperties_) & ArkProperties::ENABLE_RUNTIME_MODULE_STACK) != 0;
     }
 
     bool EnableExceptionBacktrace() const

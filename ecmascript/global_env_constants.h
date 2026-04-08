@@ -264,6 +264,7 @@ class ObjectFactory;
     V(StackString,                    STACK_STRING_INDEX,                    "stack")                       \
     V(TopStackString,                 TOP_STACK_STRING_INDEX,                "topstack")                    \
     V(AsyncStackString,               ASYNC_STACK_STRING_INDEX,              "asyncStack")                  \
+    V(ModuleImportStackString,        MODULE_STACK_IMPORT_STRING_INDEX,      "moduleImportStack")           \
     V(StackEmptyString,               STACK_EMPTY_STRING_INDEX,              "stackisempty")                \
     V(ObjNotCoercibleString,          OBJ_NOT_COERCIBLE_STRING_INDEX,        "objectnotcoercible")          \
     /* for Intl. */                                                                                         \
