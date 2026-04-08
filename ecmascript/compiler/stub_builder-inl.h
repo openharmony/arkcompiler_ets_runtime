@@ -2840,7 +2840,7 @@ inline GateRef StubBuilder::IsSharedArray(GateRef jsType)
     return Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_SHARED_ARRAY)));
 }
 
-inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
+inline GateRef StubBuilder::IsFastTypedArray(GateRef jsType)
 {
     return BitAnd(
         Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
@@ -3504,13 +3504,6 @@ inline GateRef StubBuilder::GetProtoOrHClass(GateRef glue, GateRef function)
 {
     GateRef offset = IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET);
     return Load(VariableType::JS_ANY(), glue, function, offset);
-}
-
-inline void StubBuilder::SetTypedArrayName(GateRef glue, GateRef typedArray, GateRef name,
-                                           MemoryAttribute mAttr)
-{
-    GateRef offset = IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET);
-    Store(VariableType::JS_ANY(), glue, typedArray, offset, name, mAttr);
 }
 
 inline void StubBuilder::SetContentType(GateRef glue, GateRef typedArray, GateRef type)

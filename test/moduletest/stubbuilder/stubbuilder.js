@@ -248,7 +248,7 @@
 }
 
 /*
-*  GetPropertyByIndex(); IntToTaggedInt(); TaggedFalse(); Undefined(); IsSpecialIndexedObj(); IsFastTypeArray();
+*  GetPropertyByIndex(); IntToTaggedInt(); TaggedFalse(); Undefined(); IsSpecialIndexedObj(); IsFastTypedArray();
 *  IsSpecialContainer(); GetContainerProperty(); GetElementsArray(); IsDictionaryElement(); GetLengthOfTaggedArray();
 *  Int32UnsignedLessThan(); GetValueFromTaggedArray(); TaggedIsNotHole(); FindElementFromNumberDictionary();
 *  CallGetterHelper(); GetPrototypeFromHClass(); SExtInt32ToInt64(); Int32GreaterThan(); IsAccessor(); JSAPIContainerGet();

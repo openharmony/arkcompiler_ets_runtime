@@ -979,8 +979,6 @@ public:
                                MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryAttribute mAttr = MemoryAttribute::Default());
-    void SetTypedArrayName(GateRef glue, GateRef typedArray, GateRef name,
-                           MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetContentType(GateRef glue, GateRef typedArray, GateRef type);
     void SetViewedArrayBufferOrByteArray(GateRef glue, GateRef typedArray, GateRef data,
                                          MemoryAttribute mAttr = MemoryAttribute::Default());
@@ -1160,11 +1158,11 @@ public:
     GateRef FastToBooleanBaseline(GateRef glue, GateRef value, bool flag = true);
     GateRef GetBaselineCodeAddr(GateRef baselineCode);
 
-    GateRef IsFastTypeArray(GateRef jsType);
+    GateRef IsFastTypedArray(GateRef jsType);
     GateRef IsJSProxy(GateRef jsType);
-    GateRef GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
-    GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
-                                       GateRef jsType);
+    GateRef GetTypedArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef jsType);
+    GateRef SetTypedArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
+                                        GateRef jsType);
     GateRef TryStringOrSymbolToElementIndex(GateRef glue, GateRef key);
     inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args,
                                     GateRef hir = Circuit::NullGate());

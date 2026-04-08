@@ -102,11 +102,11 @@ HWTEST_F_L0(ArrayHelperTest, GetLength)
     EXPECT_EQ(ArrayHelper::GetLength(thread, arrayHandle), 10U);
 
     JSHandle<JSTaggedValue> HandleInt8ArrayFunc(globalEnv->GetInt8ArrayFunction());
-    JSHandle<JSTypedArray> handleTypeArray = JSHandle<JSTypedArray>::Cast(
+    JSHandle<JSTypedArray> handleTypedArray = JSHandle<JSTypedArray>::Cast(
         factory->NewJSObjectByConstructor(JSHandle<JSFunction>(HandleInt8ArrayFunc), HandleInt8ArrayFunc));
-    handleTypeArray->SetArrayLength(11);
-    JSHandle<JSTaggedValue> typeArrayHandle(handleTypeArray);
-    EXPECT_EQ(ArrayHelper::GetLength(thread, typeArrayHandle), 11U);
+    handleTypedArray->SetArrayLength(11);
+    JSHandle<JSTaggedValue> typedArrayHandle(handleTypedArray);
+    EXPECT_EQ(ArrayHelper::GetLength(thread, typedArrayHandle), 11U);
 
     JSHandle<JSTaggedValue> objFunc(globalEnv->GetArrayFunction());
     JSHandle<JSObject> objectHandle = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFunc), objFunc);

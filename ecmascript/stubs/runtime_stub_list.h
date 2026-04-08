@@ -378,8 +378,8 @@ namespace panda::ecmascript {
     V(OptAsyncGeneratorResolve)                                \
     V(OptCreateObjectWithExcludedKeys)                         \
     V(OptNewObjRange)                                          \
-    V(SetTypeArrayPropertyByIndex)                             \
-    V(SetTypeArrayPropertyByIndexSlowPath)                     \
+    V(SetTypedArrayPropertyByIndex)                             \
+    V(SetTypedArrayPropertyByIndexSlowPath)                     \
     V(FastCopyElementToArray)                                  \
     V(GetPropertyByName)                                       \
     V(JSObjectGetMethod)                                       \
@@ -514,7 +514,7 @@ namespace panda::ecmascript {
     V(NotifyDebuggerStatement)                                 \
     V(MethodEntry)                                             \
     V(MethodExit)                                              \
-    V(GetTypeArrayPropertyByIndex)                             \
+    V(GetTypedArrayPropertyByIndex)                             \
     V(DebugAOTPrint)                                           \
     V(ProfileOptimizedCode)                                    \
     V(ProfileTypedOp)                                          \

@@ -795,20 +795,16 @@ public:
         EXPECT_TRUE(res->IsJSInt8Array()) << "[NotJSInt8Array] Deserialize TypedArray fail";
         JSHandle<JSTypedArray> resJSInt8Array = JSHandle<JSTypedArray>::Cast(res);
 
-        JSHandle<JSTaggedValue> typedArrayName(thread, resJSInt8Array->GetTypedArrayName(thread));
         uint32_t byteLength = resJSInt8Array->GetByteLength();
         uint32_t byteOffset = resJSInt8Array->GetByteOffset();
         uint32_t arrayLength = resJSInt8Array->GetArrayLength();
-        ContentType contentType = resJSInt8Array->GetContentType();
+        DataViewType contentType = resJSInt8Array->GetContentType();
         JSHandle<JSTaggedValue> viewedArrayBuffer(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray(thread));
 
-        EXPECT_TRUE(typedArrayName->IsString());
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *JSHandle<EcmaString>(typedArrayName),
-                                                        *JSHandle<EcmaString>(originTypedArrayName)));
         EXPECT_EQ(byteLength, 10) << "Not Same ByteLength"; // 10: bufferLength
         EXPECT_EQ(byteOffset, 0) << "Not Same ByteOffset";
         EXPECT_EQ(arrayLength, 10) << "Not Same ArrayLength"; // 10: arrayLength
-        EXPECT_TRUE(contentType == ContentType::Number) << "Not Same ContentType";
+        EXPECT_TRUE(contentType == DataViewType::INT8) << "Not Same ContentType";
 
         // check arrayBuffer
         EXPECT_TRUE(viewedArrayBuffer->IsArrayBuffer());
@@ -834,20 +830,16 @@ public:
         EXPECT_TRUE(res->IsJSInt8Array()) << "[NotJSInt8Array] Deserialize TypedArray fail";
         JSHandle<JSTypedArray> resJSInt8Array = JSHandle<JSTypedArray>::Cast(res);
 
-        JSHandle<JSTaggedValue> typedArrayName(thread, resJSInt8Array->GetTypedArrayName(thread));
         uint32_t byteLength = resJSInt8Array->GetByteLength();
         uint32_t byteOffset = resJSInt8Array->GetByteOffset();
         uint32_t arrayLength = resJSInt8Array->GetArrayLength();
-        ContentType contentType = resJSInt8Array->GetContentType();
+        DataViewType contentType = resJSInt8Array->GetContentType();
         JSHandle<JSTaggedValue> byteArray(thread, resJSInt8Array->GetViewedArrayBufferOrByteArray(thread));
 
-        EXPECT_TRUE(typedArrayName->IsString());
-        EXPECT_TRUE(EcmaStringAccessor::StringsAreEqual(thread, *JSHandle<EcmaString>(typedArrayName),
-                                                        *JSHandle<EcmaString>(originTypedArrayName)));
         EXPECT_EQ(byteLength, 10) << "Not Same ByteLength"; // 10: bufferLength
         EXPECT_EQ(byteOffset, 0) << "Not Same ByteOffset";
         EXPECT_EQ(arrayLength, 10) << "Not Same ArrayLength"; // 10: arrayLength
-        EXPECT_TRUE(contentType == ContentType::Number) << "Not Same ContentType";
+        EXPECT_TRUE(contentType == DataViewType::INT8) << "Not Same ContentType";
 
         // check byteArray
         EXPECT_TRUE(byteArray->IsByteArray());
@@ -2289,9 +2281,8 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeJSTypedArray1)
     int arrayLength = (byteLength - byteOffset) / (sizeof(int8_t));
     int8Array->SetByteLength(byteLength);
     int8Array->SetByteOffset(byteOffset);
-    int8Array->SetTypedArrayName(thread, thread->GlobalConstants()->GetInt8ArrayString());
+    int8Array->SetContentType(DataViewType::INT8);
     int8Array->SetArrayLength(arrayLength);
-    int8Array->SetContentType(ContentType::Number);
 
     InterOpValueSerializer *serializer = new InterOpValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(int8Array),
@@ -2326,9 +2317,8 @@ HWTEST_F_L0(InterOpSerializerTest, SerializeJSTypedArray2)
     int arrayLength = (byteLength - byteOffset) / (sizeof(int8_t));
     int8Array->SetByteLength(byteLength);
     int8Array->SetByteOffset(byteOffset);
-    int8Array->SetTypedArrayName(thread, thread->GlobalConstants()->GetInt8ArrayString());
+    int8Array->SetContentType(DataViewType::INT8);
     int8Array->SetArrayLength(arrayLength);
-    int8Array->SetContentType(ContentType::Number);
 
     InterOpValueSerializer *serializer = new InterOpValueSerializer(thread);
     bool success = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(int8Array),

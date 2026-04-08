@@ -46,7 +46,6 @@ HWTEST_F_L0(AtomicHelperTest, ValidateIntegerTypedArray)
 HWTEST_F_L0(AtomicHelperTest, ValidateAtomicAccess)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     uint32_t bufferSize = 256;
@@ -58,7 +57,7 @@ HWTEST_F_L0(AtomicHelperTest, ValidateAtomicAccess)
     JSHandle<JSArrayBuffer> buffer = factory->NewJSArrayBuffer(bufferSize);
     JSHandle<JSTaggedValue> bufferVal = JSHandle<JSTaggedValue>::Cast(buffer);
     array->SetViewedArrayBufferOrByteArray(thread, bufferVal);
-    array->SetTypedArrayName(thread, globalConst->GetHandledInt8ArrayString()); // test int8 array
+    array->SetContentType(DataViewType::INT8); // test int8 array
     array->SetByteOffset(byteOffset);
     array->SetArrayLength(arrayLength);
     JSHandle<JSTaggedValue> arrayVal = JSHandle<JSTaggedValue>::Cast(array);
@@ -76,7 +75,6 @@ HWTEST_F_L0(AtomicHelperTest, ValidateAtomicAccess)
 HWTEST_F_L0(AtomicHelperTest, Atomic_Store_Load)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     uint32_t bufferSize = 256;
@@ -88,7 +86,7 @@ HWTEST_F_L0(AtomicHelperTest, Atomic_Store_Load)
     JSHandle<JSArrayBuffer> buffer = factory->NewJSArrayBuffer(bufferSize);
     JSHandle<JSTaggedValue> bufferVal = JSHandle<JSTaggedValue>::Cast(buffer);
     array->SetViewedArrayBufferOrByteArray(thread, bufferVal);
-    array->SetTypedArrayName(thread, globalConst->GetHandledUint32ArrayString()); // test uint32_t array
+    array->SetContentType(DataViewType::UINT32); // test uint32_t array
     array->SetByteOffset(byteOffset);
     array->SetArrayLength(arrayLength);
     JSHandle<JSTaggedValue> arrayVal = JSHandle<JSTaggedValue>::Cast(array);

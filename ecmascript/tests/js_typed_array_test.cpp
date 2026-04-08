@@ -237,30 +237,6 @@ HWTEST_F_L0(JSTypedArrayTest, SetViewedArrayBufferOrByteArray)
 
 /*
  * Feature: JSTypedArray
- * Function: SetTypedArrayName
- * SubFunction: GetTypedArrayName
- * FunctionPoints: Set TypedArrayName
- * CaseDescription: Check whether the JSTaggedValue returned through calling GetTypedArrayName function from the
- *                  JSTypedArray changed through calling SetTypedArrayName function is within expectations.
- */
-HWTEST_F_L0(JSTypedArrayTest, SetTypedArrayName)
-{
-    CString cStrName = "cStrName";
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<EcmaString> handleEcmaStrNameFrom = factory->NewFromASCII(cStrName);
-    JSHandle<JSTaggedValue> handleTagValEcmaStrNameFrom = JSHandle<JSTaggedValue>::Cast(handleEcmaStrNameFrom);
-
-    for (size_t i = 0; i < cVecJSType.size(); i++) {
-        JSHandle<JSTypedArray> handleTypedArray = CreateNumberTypedArray(thread, cVecJSType.at(i));
-
-        EXPECT_EQ(handleTypedArray->GetTypedArrayName(thread), JSTaggedValue::Undefined());
-        handleTypedArray->SetTypedArrayName(thread, handleTagValEcmaStrNameFrom);
-        EXPECT_EQ(handleTypedArray->GetTypedArrayName(thread), handleTagValEcmaStrNameFrom.GetTaggedValue());
-    }
-}
-
-/*
- * Feature: JSTypedArray
  * Function: SetByteLength
  * SubFunction: GetByteLength
  * FunctionPoints: Set ByteLength
@@ -1407,10 +1383,9 @@ HWTEST_F_L0(JSTypedArrayTest, GetOffHeapBuffer)
     ecmaRuntimeCallInfo->SetThis(JSTaggedValue(*globalObject));
     ecmaRuntimeCallInfo->SetCallArg(0, jsarray.GetTaggedValue());
 
-    JSHandle<JSTaggedValue> constructorName = thread->GlobalConstants()->GetHandledInt8ArrayString();
     auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     JSHandle<JSTaggedValue> int8Array(
-        thread, TypedArrayHelper::TypedArrayConstructor(ecmaRuntimeCallInfo, constructorName, DataViewType::INT8));
+        thread, TypedArrayHelper::TypedArrayConstructor(ecmaRuntimeCallInfo, DataViewType::INT8));
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSTypedArray> typedArray(int8Array);

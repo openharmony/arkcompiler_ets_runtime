@@ -611,12 +611,10 @@ DECLARE_BUILTINS(SetConstructor)
 #define DECLARE_BUILTINS_TYPED_ARRAY_STUB_BUILDER(TYPE, type, index)                                \
 DECLARE_BUILTINS(type##ArrayConstructor)                                                            \
 {                                                                                                   \
-    GateRef ctorName = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,                     \
-                                              ConstantIndex::TYPE##_ARRAY_STRING_INDEX);            \
     GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);                                       \
     BuiltinsTypedArrayStubBuilder builtinsTypedArrayStubBuilder(this, globalEnv);                   \
     builtinsTypedArrayStubBuilder.GenTypedArrayConstructor(glue, nativeCode, func, newTarget,       \
-        thisValue, numArgs, ctorName, DataViewType::TYPE);                                          \
+        thisValue, numArgs, DataViewType::TYPE);                                                    \
 }
 BUILTIN_COMPILER_TYPED_ARRAY_TYPES(DECLARE_BUILTINS_TYPED_ARRAY_STUB_BUILDER)
 #undef DECLARE_BUILTINS_TYPED_ARRAY_STUB_BUILDER

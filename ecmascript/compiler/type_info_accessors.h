@@ -2060,9 +2060,9 @@ public:
         return types_[0].IsBuiltinsArray();
     }
 
-    bool IsBuiltinsTypeArray() const
+    bool IsBuiltinsTypedArray() const
     {
-        return types_[0].IsBuiltinsTypeArray();
+        return types_[0].IsBuiltinsTypedArray();
     }
 
     bool IsStoreOutOfBounds() const

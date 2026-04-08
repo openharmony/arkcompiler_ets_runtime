@@ -6,14 +6,9 @@
             "name": "ViewedArrayBufferOrByteArray",
             "offset": 0,
             "size": 8
-        },
-        {
-            "name": "TypedArrayName",
-            "offset": 8,
-            "size": 8
         }
     ],
-    "end_offset": 32,
+    "end_offset": 24,
     "parents": [
         "JS_OBJECT"
     ]

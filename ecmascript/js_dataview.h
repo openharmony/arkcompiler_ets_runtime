@@ -23,8 +23,22 @@
 #include "ecmascript/js_object.h"
 
 namespace panda::ecmascript {
+
+// BigInt types must stay at the front (BIGINT64=0, BIGUINT64=1)
+// so that ContentTypeIsBigInt() can use a simple <= check.
 enum class DataViewType : uint8_t {
-    BIGINT64 = 0, BIGUINT64, FLOAT32, FLOAT64, INT8, INT16, INT32, UINT8, UINT16, UINT32, UINT8_CLAMPED
+    BIGINT64 = 0,
+    BIGUINT64,
+    FLOAT32,
+    FLOAT64,
+    INT8,
+    INT16,
+    INT32,
+    UINT8,
+    UINT16,
+    UINT32,
+    UINT8_CLAMPED,
+    COUNT
 };
 
 class JSDataView : public JSObject {

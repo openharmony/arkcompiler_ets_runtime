@@ -2496,8 +2496,7 @@ Local<TypedArrayRef> StringRef::EncodeIntoUint8Array(const EcmaVM *vm)
     }
 
     JSHandle<JSObject> obj =
-        TypedArrayHelper::FastCreateTypedArray(thread, thread->GlobalConstants()->GetHandledUint8ArrayString(),
-                                               length - 1, DataViewType::UINT8);
+        TypedArrayHelper::FastCreateTypedArray(thread, length - 1, DataViewType::UINT8);
     if (JSNApi::HasPendingException(vm)) {
         LOG_ECMA(ERROR) << "JSNapi EncodeIntoUint8Array: Create TypedArray failed";
         return Undefined(vm);
@@ -3655,9 +3654,9 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
-    JSHandle<JSTypedArray> typeArray(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(typeArray, ERROR);
-    JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, typeArray));
+    JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typedArray, ERROR);
+    JSHandle<JSTaggedValue> arrayBuffer(thread, JSTypedArray::GetOffHeapBuffer(thread, typedArray));
     return JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer);
 }
 
@@ -3692,10 +3691,10 @@ Local<SendableArrayBufferRef> SendableTypedArrayRef::GetArrayBuffer(const EcmaVM
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
-    JSHandle<ecmascript::JSSharedTypedArray> typeArray(JSNApiHelper::ToJSHandle(this));
-    LOG_IF_SPECIAL(typeArray, ERROR);
+    JSHandle<ecmascript::JSSharedTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
+    LOG_IF_SPECIAL(typedArray, ERROR);
     JSHandle<JSTaggedValue> arrayBuffer(thread,
-        ecmascript::JSSharedTypedArray::GetSharedOffHeapBuffer(thread, typeArray));
+        ecmascript::JSSharedTypedArray::GetSharedOffHeapBuffer(thread, typedArray));
     return JSNApiHelper::ToLocal<SendableArrayBufferRef>(arrayBuffer);
 }
 

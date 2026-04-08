@@ -55,11 +55,10 @@ public:
     void SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer, GateRef index,
                           GateRef offset, GateRef jsType, Label *slowPath);
     void GenTypedArrayConstructor(GateRef glue, GateRef nativeCode, GateRef func,
-        GateRef newTarget, GateRef thisValue, GateRef numArgs, GateRef constructorName, const DataViewType arrayType);
-    GateRef AllocateTypedArray(GateRef glue, GateRef constructorName, GateRef func, GateRef newTarget,
+        GateRef newTarget, GateRef thisValue, GateRef numArgs, const DataViewType arrayType);
+    GateRef AllocateTypedArray(GateRef glue, GateRef func, GateRef newTarget,
                                GateRef length, GateRef lengthTagged, const DataViewType arrayType);
-    GateRef AllocateTypedArray(GateRef glue, GateRef constructorName,
-                               GateRef func, GateRef newTarget, const DataViewType arrayType);
+    GateRef AllocateTypedArray(GateRef glue, GateRef func, GateRef newTarget, const DataViewType arrayType);
     GateRef AllocateTypedArrayBuffer(GateRef glue, GateRef typedArray, GateRef length, GateRef lengthTagged,
                                      const DataViewType arrayType);
     void CreateFromArrayBuffer(Variable *result, GateRef glue, GateRef numArgs,

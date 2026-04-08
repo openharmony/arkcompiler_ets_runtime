@@ -40,8 +40,7 @@ JSTaggedValue BuiltinsTypedArray::Int8ArrayConstructor(EcmaRuntimeCallInfo *argv
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Int8ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt8ArrayString(),
-                                                   DataViewType::INT8);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::INT8);
 }
 
 JSTaggedValue BuiltinsTypedArray::Uint8ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -49,8 +48,7 @@ JSTaggedValue BuiltinsTypedArray::Uint8ArrayConstructor(EcmaRuntimeCallInfo *arg
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Uint8ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint8ArrayString(),
-                                                   DataViewType::UINT8);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::UINT8);
 }
 
 JSTaggedValue BuiltinsTypedArray::Uint8ClampedArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -58,9 +56,7 @@ JSTaggedValue BuiltinsTypedArray::Uint8ClampedArrayConstructor(EcmaRuntimeCallIn
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Uint8ClampedArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv,
-                                                   thread->GlobalConstants()->GetHandledUint8ClampedArrayString(),
-                                                   DataViewType::UINT8_CLAMPED);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::UINT8_CLAMPED);
 }
 
 JSTaggedValue BuiltinsTypedArray::Int16ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -68,8 +64,7 @@ JSTaggedValue BuiltinsTypedArray::Int16ArrayConstructor(EcmaRuntimeCallInfo *arg
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Int16ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt16ArrayString(),
-                                                   DataViewType::INT16);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::INT16);
 }
 
 JSTaggedValue BuiltinsTypedArray::Uint16ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -77,8 +72,7 @@ JSTaggedValue BuiltinsTypedArray::Uint16ArrayConstructor(EcmaRuntimeCallInfo *ar
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Uint16ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint16ArrayString(),
-                                                   DataViewType::UINT16);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::UINT16);
 }
 
 JSTaggedValue BuiltinsTypedArray::Int32ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -86,8 +80,7 @@ JSTaggedValue BuiltinsTypedArray::Int32ArrayConstructor(EcmaRuntimeCallInfo *arg
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Int32ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledInt32ArrayString(),
-                                                   DataViewType::INT32);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::INT32);
 }
 
 JSTaggedValue BuiltinsTypedArray::Uint32ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -95,8 +88,7 @@ JSTaggedValue BuiltinsTypedArray::Uint32ArrayConstructor(EcmaRuntimeCallInfo *ar
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Uint32ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledUint32ArrayString(),
-                                                   DataViewType::UINT32);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::UINT32);
 }
 
 JSTaggedValue BuiltinsTypedArray::Float32ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -104,8 +96,7 @@ JSTaggedValue BuiltinsTypedArray::Float32ArrayConstructor(EcmaRuntimeCallInfo *a
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Float32ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledFloat32ArrayString(),
-                                                   DataViewType::FLOAT32);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::FLOAT32);
 }
 
 JSTaggedValue BuiltinsTypedArray::Float64ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -113,8 +104,7 @@ JSTaggedValue BuiltinsTypedArray::Float64ArrayConstructor(EcmaRuntimeCallInfo *a
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Float64ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledFloat64ArrayString(),
-                                                   DataViewType::FLOAT64);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::FLOAT64);
 }
 
 JSTaggedValue BuiltinsTypedArray::BigInt64ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -122,8 +112,7 @@ JSTaggedValue BuiltinsTypedArray::BigInt64ArrayConstructor(EcmaRuntimeCallInfo *
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, BigInt64ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledBigInt64ArrayString(),
-                                                   DataViewType::BIGINT64);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::BIGINT64);
 }
 
 JSTaggedValue BuiltinsTypedArray::BigUint64ArrayConstructor(EcmaRuntimeCallInfo *argv)
@@ -131,8 +120,7 @@ JSTaggedValue BuiltinsTypedArray::BigUint64ArrayConstructor(EcmaRuntimeCallInfo 
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, BigUint64ArrayConstructor);
     JSThread *thread = argv->GetThread();
-    return TypedArrayHelper::TypedArrayConstructor(argv, thread->GlobalConstants()->GetHandledBigUint64ArrayString(),
-                                                   DataViewType::BIGUINT64);
+    return TypedArrayHelper::TypedArrayConstructor(argv, DataViewType::BIGUINT64);
 }
 
 JSTaggedValue FromUsingIteratorUndefinedValues(JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle,
@@ -412,15 +400,15 @@ JSTaggedValue BuiltinsTypedArray::GetByteLength(EcmaRuntimeCallInfo *argv)
                                     JSTaggedValue::Exception());
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSHandle<JSTypedArray> typeArrayObj = JSHandle<JSTypedArray>::Cast(thisHandle);
-    JSTaggedValue buffer = typeArrayObj->GetViewedArrayBufferOrByteArray(thread);
+    JSHandle<JSTypedArray> typedArrayObj = JSHandle<JSTypedArray>::Cast(thisHandle);
+    JSTaggedValue buffer = typedArrayObj->GetViewedArrayBufferOrByteArray(thread);
     // 5. If IsDetachedBuffer(buffer) is true, return 0.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         return JSTaggedValue(0);
     }
     // 6. Let size be the value of O’s [[ByteLength]] internal slot.
     // 7. Return size.
-    return JSTaggedValue(typeArrayObj->GetByteLength());
+    return JSTaggedValue(typedArrayObj->GetByteLength());
 }
 
 // 22.2.3.3
@@ -442,14 +430,14 @@ JSTaggedValue BuiltinsTypedArray::GetByteOffset(EcmaRuntimeCallInfo *argv)
                                     JSTaggedValue::Exception());
     }
     // 4. Let buffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
-    JSHandle<JSTypedArray> typeArrayObj = JSHandle<JSTypedArray>::Cast(thisHandle);
-    JSTaggedValue buffer = typeArrayObj->GetViewedArrayBufferOrByteArray(thread);
+    JSHandle<JSTypedArray> typedArrayObj = JSHandle<JSTypedArray>::Cast(thisHandle);
+    JSTaggedValue buffer = typedArrayObj->GetViewedArrayBufferOrByteArray(thread);
     // 5. If IsDetachedBuffer(buffer) is true, return 0.
     if (BuiltinsArrayBuffer::IsDetachedBuffer(thread, buffer)) {
         return JSTaggedValue(0);
     }
     // 6. Let offset be the value of O’s [[ByteOffset]] internal slot.
-    uint32_t offset = typeArrayObj->GetByteOffset();
+    uint32_t offset = typedArrayObj->GetByteOffset();
     // 7. Return offset.
     return JSTaggedValue(offset);
 }
@@ -574,8 +562,8 @@ JSTaggedValue BuiltinsTypedArray::Fill(EcmaRuntimeCallInfo *argv)
     // 5. Otherwise, set value to ? ToNumber(value).
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
-        ContentType contentType = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetContentType();
-        if (contentType == ContentType::BigInt) {
+        bool isBigInt = JSHandle<JSTypedArray>::Cast(thisObjVal)->ContentTypeIsBigInt();
+        if (UNLIKELY(isBigInt)) {
             value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
         } else {
             value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));
@@ -1262,7 +1250,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
         JSMutableHandle<JSTaggedValue> tKey(thread, JSTaggedValue::Hole());
         JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Hole());
         JSMutableHandle<JSTaggedValue> kNumberHandle(thread, JSTaggedValue::Hole());
-        ContentType contentType = JSHandle<JSTypedArray>::Cast(target)->GetContentType();
+        bool isBigInt = JSHandle<JSTypedArray>::Cast(target)->ContentTypeIsBigInt();
         while (targetByteIndex < limit) {
             tKey.Update(JSTaggedValue(k));
             JSHandle<JSTaggedValue> kKey(JSTaggedValue::ToString(thread, tKey));
@@ -1274,7 +1262,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
                 THROW_TYPE_ERROR_AND_RETURN(thread, "The targetBuffer of This value is detached buffer.",
                                             JSTaggedValue::Exception());
             }
-            if (contentType == ContentType::BigInt) {
+            if (UNLIKELY(isBigInt)) {
                 kNumberHandle.Update(JSTaggedValue::ToBigInt(thread, kValue));
             } else {
                 kNumberHandle.Update(JSTaggedValue::ToNumber(thread, kValue));
@@ -1301,9 +1289,9 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
                                     JSTaggedValue::Exception());
     }
 
-    ContentType objContentType = JSHandle<JSTypedArray>::Cast(target)->GetContentType();
-    ContentType argArrayContentType = JSHandle<JSTypedArray>::Cast(argArray)->GetContentType();
-    if (argArrayContentType != objContentType) {
+    bool objIsBigInt = JSHandle<JSTypedArray>::Cast(target)->ContentTypeIsBigInt();
+    bool argArrayIsBigInt = JSHandle<JSTypedArray>::Cast(argArray)->ContentTypeIsBigInt();
+    if (objIsBigInt != argArrayIsBigInt) {
         THROW_TYPE_ERROR_AND_RETURN(thread,
                                     "argArrayContentType is not equal objContentType.",
                                     JSTaggedValue::Exception());
@@ -1313,8 +1301,7 @@ JSTaggedValue BuiltinsTypedArray::Set(EcmaRuntimeCallInfo *argv)
     // 20. Let srcElementSize be the Number value of the Element Size value specified in Table 49 for srcName.
     // 21. Let srcLength be the value of typedArray’s [[ArrayLength]] internal slot.
     // 22. Let srcByteOffset be the value of typedArray’s [[ByteOffset]] internal slot.
-    JSHandle<JSTaggedValue> srcName(thread, typedArray->GetTypedArrayName(thread));
-    DataViewType srcType = JSTypedArray::GetTypeFromName(thread, srcName);
+    DataViewType srcType = typedArray->GetContentType();
     uint32_t srcElementSize = TypedArrayHelper::GetSizeFromType(srcType);
     uint32_t srcLength = typedArray->GetArrayLength();
     uint32_t srcByteOffset = typedArray->GetByteOffset();
@@ -1442,12 +1429,10 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 17. Let srcName be the String value of O’s [[TypedArrayName]] internal slot.
     // 18. Let srcType be the String value of the Element Type value in Table 49 for srcName.
-    JSHandle<JSTaggedValue> srcName(thread, thisObj->GetTypedArrayName(thread));
-    DataViewType srcType = JSTypedArray::GetTypeFromName(thread, srcName);
+    DataViewType srcType = thisObj->GetContentType();
     // 19. Let targetName be the String value of A’s [[TypedArrayName]] internal slot.
     // 20. Let targetType be the String value of the Element Type value in Table 49 for targetName.
-    JSHandle<JSTaggedValue> targetName(thread, JSTypedArray::Cast(*newArrObj)->GetTypedArrayName(thread));
-    DataViewType targetType = JSTypedArray::GetTypeFromName(thread, targetName);
+    DataViewType targetType = JSTypedArray::Cast(*newArrObj)->GetContentType();
     // 21. If SameValue(srcType, targetType) is false, then
     //   a. Let n be 0.
     //   b. Repeat, while k < final
@@ -1719,8 +1704,7 @@ JSTaggedValue BuiltinsTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
     // 15. Let elementSize be the Number value of the Element Size value specified in Table 49 for constructorName.
     // 16. Let srcByteOffset be the value of O’s [[ByteOffset]] internal slot.
     // 17. Let beginByteOffset be srcByteOffset + beginIndex × elementSize.
-    JSHandle<JSTaggedValue> constructorName(thread, thisObj->GetTypedArrayName(thread));
-    DataViewType elementType = JSTypedArray::GetTypeFromName(thread, constructorName);
+    DataViewType elementType = thisObj->GetContentType();
     uint32_t elementSize = TypedArrayHelper::GetSizeFromType(elementType);
     uint32_t srcByteOffset = thisObj->GetByteOffset();
     ASSERT((static_cast<uint64_t>(srcByteOffset) + static_cast<uint64_t>(beginIndex) *
@@ -1801,7 +1785,8 @@ JSTaggedValue BuiltinsTypedArray::ToStringTag(EcmaRuntimeCallInfo *argv)
         return JSTaggedValue::Undefined();
     }
     // 4. Let name be the value of O’s [[TypedArrayName]] internal slot.
-    JSTaggedValue name = JSHandle<JSTypedArray>::Cast(thisHandle)->GetTypedArrayName(thread);
+    DataViewType type = JSHandle<JSTypedArray>::Cast(thisHandle)->GetContentType();
+    JSTaggedValue name = thread->GetEcmaVM()->GetTypedArrayName(static_cast<uint8_t>(type));
     // 5. Assert: name is a String value.
     ASSERT(name.IsString());
     // 6. Return name.
@@ -1964,9 +1949,8 @@ JSTaggedValue BuiltinsTypedArray::With(EcmaRuntimeCallInfo* argv)
     // 7. If O.[[ContentType]] is BigInt, let numericValue be ? ToBigInt(value).
     // 8. Else, let numericValue be ? ToNumber(value).
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
-    ContentType contentType = thisObj->GetContentType();
     JSHandle<JSTaggedValue> numericValue;
-    if (contentType == ContentType::BigInt) {
+    if (UNLIKELY(thisObj->ContentTypeIsBigInt())) {
         numericValue = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
     } else {
         numericValue = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));

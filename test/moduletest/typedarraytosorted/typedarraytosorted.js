@@ -41,7 +41,7 @@ let typedArraySortedConstructorsFailList = [];
 
 typedArraySortedConstructors.forEach(function (ctor, i) {
     let arr = [10, 3, 8, 5, 30, 100, 6, 7, 100, 3];
-    if (testTypeArrayToSorted(ctor, arr)) {
+    if (testTypedArrayToSorted(ctor, arr)) {
         typedArraySortedConstructorsSuccessList.push(ctor.name);
     } else {
         typedArraySortedConstructorsFailList.push(ctor.name);
@@ -64,7 +64,7 @@ let bigArrayFailList = [];
     BigUint64Array
 ].forEach(function (ctor, i) {
     let arr = [10n, 3n, 8n, 5n, 30n, 100n, 6n, 7n, 100n, 3n];
-    if (testTypeArrayToSorted(ctor, arr)) {
+    if (testTypedArrayToSorted(ctor, arr)) {
         bigArraySuccessList.push(ctor.name);
     } else {
         bigArrayFailList.push(ctor.name);
@@ -74,7 +74,7 @@ let bigArrayFailList = [];
 assert_equal(bigArraySuccessList, bigArrayAssertSuccessList);
 assert_equal(bigArrayFailList, bigArrayAssertFailList);
 
-function testTypeArrayToSorted(ctor, arr) {
+function testTypedArrayToSorted(ctor, arr) {
     let obj = new ctor(arr);
     let arr2 = obj.toSorted();
     let result = [];

@@ -1496,11 +1496,10 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_BIGUINT64_ARRAY:
             JSTypedArray::Cast(*obj)->SetViewedArrayBufferOrByteArray<SKIP_BARRIER>(thread_,
                                                                                     JSTaggedValue::Undefined());
-            JSTypedArray::Cast(*obj)->SetTypedArrayName<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSTypedArray::Cast(*obj)->SetContentType(DataViewType::INT32);
             JSTypedArray::Cast(*obj)->SetByteLength(0);
             JSTypedArray::Cast(*obj)->SetByteOffset(0);
             JSTypedArray::Cast(*obj)->SetArrayLength(0);
-            JSTypedArray::Cast(*obj)->SetContentType(ContentType::None);
             break;
         case JSType::JS_SHARED_TYPED_ARRAY:
         case JSType::JS_SHARED_INT8_ARRAY:
@@ -1516,11 +1515,10 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_SHARED_BIGUINT64_ARRAY:
             JSSharedTypedArray::Cast(*obj)->SetViewedArrayBufferOrByteArray<SKIP_BARRIER>(thread_,
                                                                                           JSTaggedValue::Undefined());
-            JSSharedTypedArray::Cast(*obj)->SetTypedArrayName<SKIP_BARRIER>(thread_, JSTaggedValue::Undefined());
+            JSSharedTypedArray::Cast(*obj)->SetContentType(DataViewType::INT32);
             JSSharedTypedArray::Cast(*obj)->SetByteLength(0);
             JSSharedTypedArray::Cast(*obj)->SetByteOffset(0);
             JSSharedTypedArray::Cast(*obj)->SetArrayLength(0);
-            JSSharedTypedArray::Cast(*obj)->SetContentType(ContentType::None);
             JSSharedTypedArray::Cast(*obj)->SetModRecord(0);
             break;
         case JSType::JS_REG_EXP:
@@ -5159,7 +5157,7 @@ JSHandle<JSAPIFastBuffer> ObjectFactory::NewJSAPIBufferWithoutInit()
     handleUint8Array->SetByteLength(0);
     handleUint8Array->SetByteOffset(0);
     handleUint8Array->SetArrayLength(0);
-    handleUint8Array->SetContentType(ContentType::Number);
+    handleUint8Array->SetContentType(DataViewType::UINT8);
     JSHandle<JSFunction> builtinObj(thread_->GetEcmaVM()->GetGlobalEnv()->GetBufferFunction());
     JSHandle<JSAPIFastBuffer> buffer = JSHandle<JSAPIFastBuffer>(NewJSObjectByConstructor(builtinObj));
     buffer->SetFastBufferData(thread_, handleUint8Array);

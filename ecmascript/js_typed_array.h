@@ -21,7 +21,6 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
-enum class ContentType : uint8_t { None = 1, Number, BigInt };
 class JSTypedArray : public JSObject {
 public:
     static constexpr size_t MAX_ONHEAP_LENGTH = 512 * 8;
@@ -98,19 +97,23 @@ public:
                                                 JSType jsType);
     static JSTaggedValue PUBLIC_API FastSetPropertyByIndex(JSThread *thread, const JSTaggedValue typedarray,
                                                            uint32_t index, JSTaggedValue value, JSType jsType);
-    // only use in TypeArray fast set property
+    // only use in TypedArray fast set property
     static JSTaggedNumber NonEcmaObjectToNumber(JSThread *thread, const JSTaggedValue tagged);
     static JSTaggedValue GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedArray> &typedArray);
     static bool FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedValue> &typedArray,
                                    const JSHandle<JSTaggedValue> &value, uint32_t start, uint32_t end);
     static constexpr size_t VIEWED_ARRAY_BUFFER_OFFSET = JSObject::SIZE;
-    static DataViewType GetTypeFromName(JSThread *thread, const JSHandle<JSTaggedValue> &typeName);
-    ACCESSORS(ViewedArrayBufferOrByteArray, VIEWED_ARRAY_BUFFER_OFFSET, TYPED_ARRAY_NAME_OFFSET)
-    ACCESSORS(TypedArrayName, TYPED_ARRAY_NAME_OFFSET, BYTE_LENGTH_OFFSET)
+
+    bool ContentTypeIsBigInt() const
+    {
+        return GetContentType() <= DataViewType::BIGUINT64;
+    }
+
+    ACCESSORS(ViewedArrayBufferOrByteArray, VIEWED_ARRAY_BUFFER_OFFSET, BYTE_LENGTH_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ByteLength, uint32_t, BYTE_LENGTH_OFFSET, BYTE_OFFSET_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ByteOffset, uint32_t, BYTE_OFFSET_OFFSET, ARRAY_LENGTH_OFFSET)
     ACCESSORS_PRIMITIVE_FIELD(ArrayLength, uint32_t, ARRAY_LENGTH_OFFSET, CONTENT_TYPE_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(ContentType, ContentType, CONTENT_TYPE_OFFSET, LAST_OFFSET)
+    ACCESSORS_PRIMITIVE_FIELD(ContentType, DataViewType, CONTENT_TYPE_OFFSET, LAST_OFFSET)
 
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
     static const uint32_t MAX_TYPED_ARRAY_INDEX = MAX_ELEMENT_INDEX;

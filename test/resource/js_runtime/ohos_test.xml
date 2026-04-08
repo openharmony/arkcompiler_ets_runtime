@@ -88,7 +88,7 @@
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="JSHelper_TypeArrayHelper_Test">
+    <target name="JSHelper_TypedArrayHelper_Test">
         <preparer>
             <option name="push" value="arkcompiler/ets_runtime/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>

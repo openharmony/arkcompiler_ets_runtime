@@ -462,7 +462,7 @@ public:
         if (IsBuiltinsArray()) {
             auto arrayId = BuiltinsArrayId(GetId());
             strId = arrayId.GetIdToString();
-        } else if (IsBuiltinsTypeArray()) {
+        } else if (IsBuiltinsTypedArray()) {
             auto typedArrayId = BuiltinsTypedArrayId(GetId());
             strId = typedArrayId.GetIdToString();
         } else {
@@ -575,7 +575,7 @@ public:
         return false;
     }
 
-    bool IsBuiltinsTypeArray() const
+    bool IsBuiltinsTypedArray() const
     {
         if (IsBuiltinsType()) {
             JSType type = GetBuiltinsType();

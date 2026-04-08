@@ -57,6 +57,89 @@ class BuiltinsSharedTypedArrayTest : public BaseTestWithScope<false> {
     };
 };
 
+JSHandle<JSFunction> GetSharedTypedArrayFunctionByType(JSThread *thread, DataViewType type)
+{
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    switch (type) {
+        case DataViewType::INT8:
+            return JSHandle<JSFunction>(env->GetSharedInt8ArrayFunction());
+        case DataViewType::UINT8:
+            return JSHandle<JSFunction>(env->GetSharedUint8ArrayFunction());
+        case DataViewType::UINT8_CLAMPED:
+            return JSHandle<JSFunction>(env->GetSharedUint8ClampedArrayFunction());
+        case DataViewType::INT16:
+            return JSHandle<JSFunction>(env->GetSharedInt16ArrayFunction());
+        case DataViewType::UINT16:
+            return JSHandle<JSFunction>(env->GetSharedUint16ArrayFunction());
+        case DataViewType::INT32:
+            return JSHandle<JSFunction>(env->GetSharedInt32ArrayFunction());
+        case DataViewType::UINT32:
+            return JSHandle<JSFunction>(env->GetSharedUint32ArrayFunction());
+        case DataViewType::FLOAT32:
+            return JSHandle<JSFunction>(env->GetSharedFloat32ArrayFunction());
+        case DataViewType::FLOAT64:
+            return JSHandle<JSFunction>(env->GetSharedFloat64ArrayFunction());
+        case DataViewType::BIGINT64:
+            return JSHandle<JSFunction>(env->GetSharedBigInt64ArrayFunction());
+        case DataViewType::BIGUINT64:
+            return JSHandle<JSFunction>(env->GetSharedBigUint64ArrayFunction());
+        default:
+            UNREACHABLE();
+    }
+}
+
+JSTaggedValue CreateSharedTypedArrayWithLength(JSThread *thread, DataViewType type, uint32_t length)
+{
+    JSHandle<JSFunction> typedArrayFunc = GetSharedTypedArrayFunctionByType(thread, type);
+    JSHandle<JSObject> globalObject(thread, thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalObject());
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, typedArrayFunc.GetTaggedValue(), 6);
+    ecmaRuntimeCallInfo->SetFunction(typedArrayFunc.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetThis(globalObject.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(length));
+
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = JSTaggedValue::Undefined();
+    switch (type) {
+        case DataViewType::INT8:
+            result = BuiltinsSharedTypedArray::Int8ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::UINT8:
+            result = BuiltinsSharedTypedArray::Uint8ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::UINT8_CLAMPED:
+            result = BuiltinsSharedTypedArray::Uint8ClampedArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::INT16:
+            result = BuiltinsSharedTypedArray::Int16ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::UINT16:
+            result = BuiltinsSharedTypedArray::Uint16ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::INT32:
+            result = BuiltinsSharedTypedArray::Int32ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::UINT32:
+            result = BuiltinsSharedTypedArray::Uint32ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::FLOAT32:
+            result = BuiltinsSharedTypedArray::Float32ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::FLOAT64:
+            result = BuiltinsSharedTypedArray::Float64ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::BIGINT64:
+            result = BuiltinsSharedTypedArray::BigInt64ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        case DataViewType::BIGUINT64:
+            result = BuiltinsSharedTypedArray::BigUint64ArrayConstructor(ecmaRuntimeCallInfo);
+            break;
+        default:
+            UNREACHABLE();
+    }
+    TestHelper::TearDownFrame(thread, prev);
+    return result;
+}
+
 HWTEST_F_L0(BuiltinsSharedTypedArrayTest, TypedArrayBaseConstructor_Test1)
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
@@ -79,6 +162,33 @@ HWTEST_F_L0(BuiltinsSharedTypedArrayTest, TypedArrayBaseConstructor_Test1)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result = BuiltinsSharedTypedArray::TypedArrayBaseConstructor(ecmaRuntimeCallInfo1);
     ASSERT_TRUE(!result.IsECMAObject());
+}
+
+HWTEST_F_L0(BuiltinsSharedTypedArrayTest, ToStringTagByContentType_Test1)
+{
+    std::array<DataViewType, 11> types = {
+        DataViewType::INT8, DataViewType::UINT8, DataViewType::UINT8_CLAMPED, DataViewType::INT16,
+        DataViewType::UINT16, DataViewType::INT32, DataViewType::UINT32, DataViewType::FLOAT32,
+        DataViewType::FLOAT64, DataViewType::BIGINT64, DataViewType::BIGUINT64
+    };
+
+    for (auto type : types) {
+        JSTaggedValue typedArray = CreateSharedTypedArrayWithLength(thread, type, 2);
+        ASSERT_TRUE(typedArray.IsSharedTypedArray());
+        EXPECT_EQ(JSSharedTypedArray::Cast(typedArray.GetTaggedObject())->GetContentType(), type);
+
+        auto argv = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+        argv->SetFunction(JSTaggedValue::Undefined());
+        argv->SetThis(typedArray);
+
+        auto prev = TestHelper::SetupFrame(thread, argv);
+        JSTaggedValue result = BuiltinsSharedTypedArray::ToStringTag(argv);
+        TestHelper::TearDownFrame(thread, prev);
+
+        ASSERT_TRUE(result.IsString());
+        EXPECT_TRUE(JSTaggedValue::SameValue(thread, JSHandle<JSTaggedValue>(thread, result),
+            JSHandle<JSTaggedValue>(thread, thread->GetEcmaVM()->GetSharedTypedArrayName(static_cast<uint8_t>(type)))));
+    }
 }
 
 HWTEST_F_L0(BuiltinsSharedTypedArrayTest, Int8ArrayConstructor1_Test1)

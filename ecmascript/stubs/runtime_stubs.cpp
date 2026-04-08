@@ -3033,18 +3033,18 @@ DEF_RUNTIME_STUBS(OptNewObjRange)
     return RuntimeOptNewObjRange(thread, argv, argc).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(GetTypeArrayPropertyByIndex)
+DEF_RUNTIME_STUBS(GetTypedArrayPropertyByIndex)
 {
-    RUNTIME_STUBS_HEADER(GetTypeArrayPropertyByIndex);
+    RUNTIME_STUBS_HEADER(GetTypedArrayPropertyByIndex);
     JSTaggedValue obj = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue idx = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSTaggedValue jsType = GetArg(argv, argc, 2); // 2: means the second parameter
     return JSTypedArray::FastGetPropertyByIndex(thread, obj, idx.GetInt(), JSType(jsType.GetInt())).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
+DEF_RUNTIME_STUBS(SetTypedArrayPropertyByIndex)
 {
-    RUNTIME_STUBS_HEADER(SetTypeArrayPropertyByIndex);
+    RUNTIME_STUBS_HEADER(SetTypedArrayPropertyByIndex);
     JSTaggedValue obj = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     JSTaggedValue idx = GetArg(argv, argc, 1);  // 1: means the first parameter
     JSTaggedValue value = GetArg(argv, argc, 2);  // 2: means the second parameter
@@ -3052,9 +3052,9 @@ DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndex)
     return JSTypedArray::FastSetPropertyByIndex(thread, obj, idx.GetInt(), value, JSType(jsType.GetInt())).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(SetTypeArrayPropertyByIndexSlowPath)
+DEF_RUNTIME_STUBS(SetTypedArrayPropertyByIndexSlowPath)
 {
-    RUNTIME_STUBS_HEADER(SetTypeArrayPropertyByIndex);
+    RUNTIME_STUBS_HEADER(SetTypedArrayPropertyByIndex);
     JSHandle<JSTaggedValue> objHandle = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> keyHandle = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     JSHandle<JSTaggedValue> valueHandle = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter

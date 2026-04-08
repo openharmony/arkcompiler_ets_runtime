@@ -250,8 +250,8 @@ private:
     JSTaggedValue SetValueByIndex(JSThread *thread, uint32_t index, JSTaggedValue value, JSType jsType,
                                   bool littleEndian = true)
     {
-        auto typeArray = this->GetFastBufferData(thread);
-        return SetValueByIndex(thread, typeArray, index, value, jsType, littleEndian);
+        auto typedArray = this->GetFastBufferData(thread);
+        return SetValueByIndex(thread, typedArray, index, value, jsType, littleEndian);
     }
     static JSTaggedValue SetValueByIndex(JSThread *thread, const JSTaggedValue typedarray, uint32_t index,
                                          JSTaggedValue value, JSType jsType, bool littleEndian = true);

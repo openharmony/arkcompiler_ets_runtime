@@ -3848,20 +3848,20 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
         BRANCH(IsSpecialIndexedObj(jsType), &isSpecialIndexed, &notSpecialIndexed);
         Bind(&isSpecialIndexed);
         {
-            // TypeArray
-            Label isFastTypeArray(env);
-            Label notFastTypeArray(env);
+            // TypedArray
+            Label isFastTypedArray(env);
+            Label notFastTypedArray(env);
             Label notTypedArrayProto(env);
             BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY))), &exit, &notTypedArrayProto);
             Bind(&notTypedArrayProto);
-            BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
-            Bind(&isFastTypeArray);
+            BRANCH(IsFastTypedArray(jsType), &isFastTypedArray, &notFastTypedArray);
+            Bind(&isFastTypedArray);
             {
                 BuiltinsTypedArrayStubBuilder typedArrayStubBuilder(this, GetCurrentGlobalEnv());
                 result = typedArrayStubBuilder.FastGetPropertyByIndex(glue, *holder, index, jsType);
                 Jump(&exit);
             }
-            Bind(&notFastTypeArray);
+            Bind(&notFastTypedArray);
 
             Label isSpecialContainer(env);
             Label notSpecialContainer(env);
@@ -4097,13 +4097,13 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
         BRANCH(IsSpecialIndexedObj(jsType), &isSIndexObj, &notSIndexObj);
         Bind(&isSIndexObj);
         {
-            // TypeArray
-            Label isFastTypeArray(env);
-            Label notFastTypeArray(env);
-            BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
-            Bind(&isFastTypeArray);
+            // TypedArray
+            Label isFastTypedArray(env);
+            Label notFastTypedArray(env);
+            BRANCH(IsFastTypedArray(jsType), &isFastTypedArray, &notFastTypedArray);
+            Bind(&isFastTypedArray);
             {
-                result = GetTypeArrayPropertyByName(glue, target, *holder, propKey, jsType);
+                result = GetTypedArrayPropertyByName(glue, target, *holder, propKey, jsType);
                 Label isNull(env);
                 Label notNull(env);
                 BRANCH(TaggedIsNull(*result), &isNull, &notNull);
@@ -4115,7 +4115,7 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue,
                 Bind(&notNull);
                 BRANCH(TaggedIsHole(*result), &notSIndexObj, &exit);
             }
-            Bind(&notFastTypeArray);
+            Bind(&notFastTypedArray);
 
             Label isString(env);
             Label notString(env);
@@ -4928,25 +4928,25 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     BRANCH(IsSpecialIndexedObj(jsType), &isSpecialIndex, &notSpecialIndex);
     Bind(&isSpecialIndex);
     {
-        // TypeArray
-        Label isFastTypeArray(env);
-        Label notFastTypeArray(env);
+        // TypedArray
+        Label isFastTypedArray(env);
+        Label notFastTypedArray(env);
         Label checkIsOnPrototypeChain(env);
         Label notTypedArrayProto(env);
         BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY))), &exit, &notTypedArrayProto);
         Bind(&notTypedArrayProto);
-        BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
-        Bind(&isFastTypeArray);
+        BRANCH(IsFastTypedArray(jsType), &isFastTypedArray, &notFastTypedArray);
+        Bind(&isFastTypedArray);
         {
             BRANCH(Equal(*holder, receiver), &checkIsOnPrototypeChain, &exit);
             Bind(&checkIsOnPrototypeChain);
             {
-                returnValue = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
+                returnValue = CallRuntime(glue, RTSTUB_ID(SetTypedArrayPropertyByIndex),
                     { receiver, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
                 Jump(&exit);
             }
         }
-        Bind(&notFastTypeArray);
+        Bind(&notFastTypedArray);
         returnValue = Hole();
         Jump(&exit);
     }
@@ -5144,24 +5144,24 @@ GateRef StubBuilder::DefinePropertyByIndex(GateRef glue, GateRef receiver, GateR
     BRANCH(IsSpecialIndexedObj(jsType), &isSpecialIndex, &notSpecialIndex);
     Bind(&isSpecialIndex);
     {
-        Label isFastTypeArray(env);
-        Label notFastTypeArray(env);
+        Label isFastTypedArray(env);
+        Label notFastTypedArray(env);
         Label checkIsOnPrototypeChain(env);
         Label notTypedArrayProto(env);
         BRANCH(Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY))), &exit, &notTypedArrayProto);
         Bind(&notTypedArrayProto);
-        BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
-        Bind(&isFastTypeArray);
+        BRANCH(IsFastTypedArray(jsType), &isFastTypedArray, &notFastTypedArray);
+        Bind(&isFastTypedArray);
         {
             BRANCH(Equal(*holder, receiver), &checkIsOnPrototypeChain, &exit);
             Bind(&checkIsOnPrototypeChain);
             {
-                returnValue = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
+                returnValue = CallRuntime(glue, RTSTUB_ID(SetTypedArrayPropertyByIndex),
                     { receiver, IntToTaggedInt(index), value, IntToTaggedInt(jsType)});
                 Jump(&exit);
             }
         }
-        Bind(&notFastTypeArray);
+        Bind(&notFastTypedArray);
         returnValue = Hole();
         Jump(&exit);
     }
@@ -5352,12 +5352,12 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
     BRANCH(IsSpecialIndexedObj(jsType), &isSIndexObj, &notSIndexObj);
     Bind(&isSIndexObj);
     {
-        Label isFastTypeArray(env);
-        Label notFastTypeArray(env);
-        BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
-        Bind(&isFastTypeArray);
+        Label isFastTypedArray(env);
+        Label notFastTypedArray(env);
+        BRANCH(IsFastTypedArray(jsType), &isFastTypedArray, &notFastTypedArray);
+        Bind(&isFastTypedArray);
         {
-            result = SetTypeArrayPropertyByName(glue, receiver, *holder, key, value, jsType);
+            result = SetTypedArrayPropertyByName(glue, receiver, *holder, key, value, jsType);
             Label isNull(env);
             Label notNull(env);
             BRANCH(TaggedIsNull(*result), &isNull, &notNull);
@@ -5369,7 +5369,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue,
             Bind(&notNull);
             BRANCH(TaggedIsHole(*result), &notSIndexObj, &exit);
         }
-        Bind(&notFastTypeArray);
+        Bind(&notFastTypedArray);
 
         Label isSpecialContainer(env);
         Label notSpecialContainer(env);
@@ -5713,12 +5713,12 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
     BRANCH(IsSpecialIndexedObj(jsType), &isSIndexObj, &notSIndexObj);
     Bind(&isSIndexObj);
     {
-        Label isFastTypeArray(env);
-        Label notFastTypeArray(env);
-        BRANCH(IsFastTypeArray(jsType), &isFastTypeArray, &notFastTypeArray);
-        Bind(&isFastTypeArray);
+        Label isFastTypedArray(env);
+        Label notFastTypedArray(env);
+        BRANCH(IsFastTypedArray(jsType), &isFastTypedArray, &notFastTypedArray);
+        Bind(&isFastTypedArray);
         {
-            result = SetTypeArrayPropertyByName(glue, receiver, *holder, key, value, jsType);
+            result = SetTypedArrayPropertyByName(glue, receiver, *holder, key, value, jsType);
             Label isNull(env);
             Label notNull(env);
             BRANCH(TaggedIsNull(*result), &isNull, &notNull);
@@ -5730,7 +5730,7 @@ GateRef StubBuilder::DefinePropertyByName(GateRef glue, GateRef receiver, GateRe
             Bind(&notNull);
             BRANCH(TaggedIsHole(*result), &notSIndexObj, &exit);
         }
-        Bind(&notFastTypeArray);
+        Bind(&notFastTypedArray);
 
         Label isSpecialContainer(env);
         Label notSpecialContainer(env);
@@ -10597,7 +10597,7 @@ GateRef StubBuilder::TryStringOrSymbolToElementIndex(GateRef glue, GateRef key)
     return ret;
 }
 
-GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder,
+GateRef StubBuilder::GetTypedArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder,
                                                 GateRef key, GateRef jsType)
 {
     auto env = GetEnvironment();
@@ -10650,7 +10650,7 @@ GateRef StubBuilder::GetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
     return ret;
 }
 
-GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key,
+GateRef StubBuilder::SetTypedArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key,
                                                 GateRef value, GateRef jsType)
 {
     auto env = GetEnvironment();
@@ -10689,7 +10689,7 @@ GateRef StubBuilder::SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, 
         BRANCH(Int32GreaterThanOrEqual(index, Int32(0)), &validIndex, &notValidIndex);
         Bind(&validIndex);
         {
-            result = CallRuntime(glue, RTSTUB_ID(SetTypeArrayPropertyByIndex),
+            result = CallRuntime(glue, RTSTUB_ID(SetTypedArrayPropertyByIndex),
                 { receiver, IntToTaggedInt(index), value, IntToTaggedInt(jsType) });
             Jump(&exit);
         }
