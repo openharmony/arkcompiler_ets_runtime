@@ -1768,7 +1768,7 @@ GateRef CircuitBuilder::FloatArrayElementConvert(GateRef value, bool isFloat32)
     Label ResultIsNumber(env_);
 
     GateRef tmpResult = isFloat32 ? ExtFloat32ToDouble(value) : value;
-    BRANCH_UNLIKELY(DoubleIsImpureNaN(tmpResult), &ResultIsNan, &ResultIsNumber);
+    BRANCH_UNLIKELY(DoubleIsNAN(tmpResult), &ResultIsNan, &ResultIsNumber);
     Bind(&ResultIsNan);
     {
         result = Double(base::NAN_VALUE);

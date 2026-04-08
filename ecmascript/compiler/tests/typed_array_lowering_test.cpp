@@ -455,7 +455,17 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float64OnHeapArrayStoreElement)
     auto result = acc.GetDep(ret);
     EXPECT_EQ(acc.GetOpCode(result), OpCode::STORE_MEMORY);
     auto storeValue = acc.GetValueIn(result, 2);
-    EXPECT_EQ(value, storeValue);
+    EXPECT_EQ(acc.GetOpCode(storeValue), OpCode::VALUE_SELECTOR);
+    EXPECT_EQ(acc.GetMachineType(storeValue), MachineType::F64);
+    // phi node inputs: one is original value, the other is NaN
+    bool foundValue = false;
+    auto numIn = acc.GetNumValueIn(storeValue);
+    for (size_t i = 0; i < numIn; i++) {
+        if (acc.GetValueIn(storeValue, i) == value) {
+            foundValue = true;
+        }
+    }
+    EXPECT_TRUE(foundValue);
 }
 
 HWTEST_F_L0(TypedArrayLoweringTests, Int8OnHeapArrayStoreElement)
@@ -628,8 +638,19 @@ HWTEST_F_L0(TypedArrayLoweringTests, Float32OnHeapArrayStoreElement)
     auto result = acc.GetDep(ret);
     EXPECT_EQ(acc.GetOpCode(result), OpCode::STORE_MEMORY);
     auto storeValue = acc.GetValueIn(result, 2);
-    EXPECT_EQ(value, acc.GetValueIn(storeValue));
     EXPECT_EQ(acc.GetOpCode(storeValue), OpCode::FTRUNC);
     EXPECT_EQ(acc.GetMachineType(storeValue), MachineType::F32);
+    auto ftruncInput = acc.GetValueIn(storeValue);
+    EXPECT_EQ(acc.GetOpCode(ftruncInput), OpCode::VALUE_SELECTOR);
+    EXPECT_EQ(acc.GetMachineType(ftruncInput), MachineType::F64);
+    // phi node inputs: one is original value, the other is NaN
+    bool foundValue = false;
+    auto numIn = acc.GetNumValueIn(ftruncInput);
+    for (size_t i = 0; i < numIn; i++) {
+        if (acc.GetValueIn(ftruncInput, i) == value) {
+            foundValue = true;
+        }
+    }
+    EXPECT_TRUE(foundValue);
 }
 } // namespace panda::test

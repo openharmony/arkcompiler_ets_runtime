@@ -1546,18 +1546,24 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
         }
         case BuiltinsStubCSigns::ID::DataViewGetFloat32: {
             DEFVALUE(tempRes, (&builder_), VariableType::FLOAT64(), builder_.Double(base::NAN_VALUE));
-            Label notNaN(&builder_);
             GateRef int32Res =
                 builder_.LoadWithoutBarrier(VariableType::INT32(), dataPointer, builder_.ZExtInt32ToPtr(bufferIndex));
             BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
             builder_.Bind(&littleEndian);
             {
+                Label notNaN(&builder_);
                 GateRef float32Res = builder_.CastInt32ToFloat32(int32Res);
-                tempRes = builder_.ExtFloat32ToDouble(float32Res);
-                builder_.Jump(&passResult);
+                GateRef doubleRes = builder_.ExtFloat32ToDouble(float32Res);
+                BRANCH_CIR(builder_.DoubleIsNAN(doubleRes), &passResult, &notNaN);
+                builder_.Bind(&notNaN);
+                {
+                    tempRes = doubleRes;
+                    builder_.Jump(&passResult);
+                }
             }
             builder_.Bind(&bigEndian);
             {
+                Label notNaN(&builder_);
                 GateRef bigEndianInt32Res = builder_.Int32ToBigEndianInt32(int32Res);
                 GateRef float32Res = builder_.CastInt32ToFloat32(bigEndianInt32Res);
                 GateRef doubleRes = builder_.ExtFloat32ToDouble(float32Res);
@@ -1587,7 +1593,7 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
                 GateRef bigEndianInt64Res = builder_.Int64ToBigEndianInt64(int64Res);
                 GateRef bigEndianDoubleRes = builder_.CastInt64ToFloat64(bigEndianInt64Res);
                 Label bigEndianResNotImpure(&builder_);
-                BRANCH_CIR(builder_.DoubleIsImpureNaN(bigEndianDoubleRes), &passResult, &bigEndianResNotImpure);
+                BRANCH_CIR(builder_.DoubleIsNAN(bigEndianDoubleRes), &passResult, &bigEndianResNotImpure);
                 builder_.Bind(&bigEndianResNotImpure);
                 {
                     tempRes = bigEndianDoubleRes;
@@ -1597,7 +1603,7 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
             builder_.Bind(&littleEndian);
             {
                 Label resNotImpure(&builder_);
-                BRANCH_CIR(builder_.DoubleIsImpureNaN(float64Res), &passResult, &resNotImpure);
+                BRANCH_CIR(builder_.DoubleIsNAN(float64Res), &passResult, &resNotImpure);
                 builder_.Bind(&resNotImpure);
                 {
                     tempRes = float64Res;
@@ -1628,7 +1634,6 @@ GateRef TypedNativeInlineLowering::SetValueInBuffer(
 
     Label littleEndian(&builder_);
     Label bigEndian(&builder_);
-    Label passResult(&builder_);
     GateRef offset = builder_.ZExtInt32ToPtr(bufferIndex);
     Label startStore(&builder_);
     Label getInt64Value(&builder_);
@@ -1670,19 +1675,45 @@ GateRef TypedNativeInlineLowering::SetValueInBuffer(
         }
         case BuiltinsStubCSigns::ID::DataViewSetFloat32: {
             GateRef float32Value = builder_.TruncDoubleToFloat32(value);
+            GateRef float32NanValue = builder_.TruncDoubleToFloat32(builder_.Double(base::NAN_VALUE));
             BRANCH_CIR(isLittleEndian, &littleEndian, &bigEndian);
             builder_.Bind(&littleEndian);
             {
-                builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, float32Value);
-                builder_.Jump(&exit);
+                Label isNaN(&builder_);
+                Label notNaN(&builder_);
+                BRANCH_CIR(builder_.DoubleIsNAN(value), &isNaN, &notNaN);
+                builder_.Bind(&isNaN);
+                {
+                    builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, float32NanValue);
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&notNaN);
+                {
+                    builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, float32Value);
+                    builder_.Jump(&exit);
+                }
             }
             builder_.Bind(&bigEndian);
             {
+                Label isNaN(&builder_);
+                Label notNaN(&builder_);
                 GateRef int32Value = builder_.CastFloat32ToInt32(float32Value);
                 GateRef bigEndianInt32Value = builder_.Int32ToBigEndianInt32(int32Value);
                 GateRef bigEndianFloat32Value = builder_.CastInt32ToFloat32(bigEndianInt32Value);
-                builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, bigEndianFloat32Value);
-                builder_.Jump(&exit);
+                GateRef int32NanValue = builder_.CastFloat32ToInt32(float32NanValue);
+                GateRef bigEndianInt32NanValue = builder_.Int32ToBigEndianInt32(int32NanValue);
+                GateRef bigEndianFloat32NanValue = builder_.CastInt32ToFloat32(bigEndianInt32NanValue);
+                BRANCH_CIR(builder_.DoubleIsNAN(value), &isNaN, &notNaN);
+                builder_.Bind(&isNaN);
+                {
+                    builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, bigEndianFloat32NanValue);
+                    builder_.Jump(&exit);
+                }
+                builder_.Bind(&notNaN);
+                {
+                    builder_.Store(VariableType::FLOAT32(), glue, dataPointer, offset, bigEndianFloat32Value);
+                    builder_.Jump(&exit);
+                }
             }
             break;
         }
@@ -1705,10 +1736,20 @@ GateRef TypedNativeInlineLowering::SetValueInBuffer(
             break;
         }
         case BuiltinsStubCSigns::ID::DataViewSetFloat64: {
+            DEFVALUE(tempRes, (&builder_), VariableType::FLOAT64(), builder_.Double(base::NAN_VALUE));
             BRANCH_CIR(isLittleEndian, &littleEndian, &bigEndian);
             builder_.Bind(&littleEndian);
             {
-                builder_.Store(VariableType::FLOAT64(), glue, dataPointer, offset, value);
+                Label passResult(&builder_);
+                Label notNaN(&builder_);
+                BRANCH_CIR(builder_.DoubleIsNAN(value), &passResult, &notNaN);
+                builder_.Bind(&notNaN);
+                {
+                    tempRes = value;
+                    builder_.Jump(&passResult);
+                }
+                builder_.Bind(&passResult);
+                builder_.Store(VariableType::FLOAT64(), glue, dataPointer, offset, *tempRes);
                 builder_.Jump(&exit);
             }
             builder_.Bind(&bigEndian);
@@ -1716,7 +1757,25 @@ GateRef TypedNativeInlineLowering::SetValueInBuffer(
                 GateRef int64bitsValue = builder_.CastDoubleToInt64(value);
                 GateRef bigEndianInt64Value = builder_.Int64ToBigEndianInt64(int64bitsValue);
                 GateRef float64Value = builder_.CastInt64ToFloat64(bigEndianInt64Value);
-                builder_.Store(VariableType::INT64(), glue, dataPointer, offset, float64Value);
+                GateRef int64bitsNanValue = builder_.CastDoubleToInt64(builder_.Double(base::NAN_VALUE));
+                GateRef bigEndianInt64NanValue = builder_.Int64ToBigEndianInt64(int64bitsNanValue);
+                GateRef float64NanValue = builder_.CastInt64ToFloat64(bigEndianInt64NanValue);
+                Label passResult(&builder_);
+                Label isNaN(&builder_);
+                Label notNaN(&builder_);
+                BRANCH_CIR(builder_.DoubleIsNAN(value), &isNaN, &notNaN);
+                builder_.Bind(&isNaN);
+                {
+                    tempRes = float64NanValue;
+                    builder_.Jump(&passResult);
+                }
+                builder_.Bind(&notNaN);
+                {
+                    tempRes = float64Value;
+                    builder_.Jump(&passResult);
+                }
+                builder_.Bind(&passResult);
+                builder_.Store(VariableType::FLOAT64(), glue, dataPointer, offset, *tempRes);
                 builder_.Jump(&exit);
             }
             break;
