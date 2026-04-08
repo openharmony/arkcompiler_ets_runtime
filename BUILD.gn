@@ -1201,6 +1201,13 @@ ecma_source = [
   "ecmascript/require/js_require_manager.cpp",
 ]
 
+if (is_arkui_x && ark_compile_mode == "release") {
+    ecma_source -= [
+      "ecmascript/debugger/js_debugger_manager.cpp",
+      "ecmascript/patch/patch_loader.cpp",
+    ]
+}
+
 # ecmascript use implement from common_components
 ecma_source += [
   "common_components/base/utf_helper.cpp",
@@ -1600,6 +1607,9 @@ ohos_source_set("libark_jsruntime_test_set") {
   sources += ecma_debugger_source
   sources += hitrace_scope_source
   sources += ecma_platform_source
+  if (is_arkui_x && ark_compile_mode == "release") {
+    sources -= ecma_debugger_source
+  }
 
   defines = [ "OHOS_UNIT_TEST" ]
 

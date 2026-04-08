@@ -990,14 +990,24 @@ void DFXJSNApi::ClearExtraErrorMessage(const EcmaVM *vm)
 //The GetObjectHashCode function is added to rectify the fault.
 int32_t DFXJSNApi::GetObjectHash(const EcmaVM *vm, Local<JSValueRef> nativeObject)
 {
+#if defined(CROSS_PLATFORM) && !defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    LOG_ECMA(INFO) << "GetObjectHash is not supported in cross-platform mode without debugger";
+    return 0;
+#else
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(nativeObject);
     return ecmascript::tooling::DebuggerApi::GetObjectHash(vm, obj);
+#endif
 }
 
 int32_t DFXJSNApi::GetObjectHashCode(const EcmaVM *vm, Local<JSValueRef> nativeObject)
 {
+#if defined(CROSS_PLATFORM) && !defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    LOG_ECMA(INFO) << "GetObjectHashCode is not supported in cross-platform mode without debugger";
+    return 0;
+#else
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(nativeObject);
     return ecmascript::tooling::DebuggerApi::GetObjectHashCode(vm, obj);
+#endif
 }
 
 bool DFXJSNApi::StartSampling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] uint64_t samplingInterval)
