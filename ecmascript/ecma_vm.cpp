@@ -817,9 +817,9 @@ void EcmaVM::CheckThread() const
         UNREACHABLE();
     }
     DaemonThread *dThread = DaemonThread::GetInstance();
-    if (!common::Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
-        !(dThread != nullptr && dThread->GetThreadId() == JSThread::GetCurrentThreadId()) &&
-        thread_->CheckMultiThread()) {
+    if (thread_->CheckMultiThread() &&
+        !common::Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
+        !(dThread != nullptr && dThread->GetThreadId() == JSThread::GetCurrentThreadId())) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
                                 << " currentThread:" << JSThread::GetCurrentThreadId();
