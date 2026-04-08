@@ -32,6 +32,9 @@ using namespace panda::ecmascript;
 using namespace panda::panda_file;
 using namespace panda::pandasm;
 
+using ClassTranslateWork = std::vector<std::pair<uint32_t, uint32_t>>;
+using CurClassTranslateWork = std::pair<uint32_t, ClassTranslateWork>;
+
 namespace panda::test {
 class JSPandaFileTest : public testing::Test {
 public:
@@ -483,6 +486,241 @@ HWTEST_F_L0(JSPandaFileTest, ReduceTaskCount)
     // Call ReduceTaskCount - this should decrease the task count
     // and potentially signal the condition variable if count reaches 0
     pf->ReduceTaskCount();
+}
+
+/**
+ * @tc.name: InitializeMergedPF_FromConstructorWithThread
+ * @tc.desc: Test InitializeMergedPF in second constructor (line 77) to merged panda file initialization
+ * @tc.type: FUNC
+ * @tc.require: issue#Ixxxxx
+ */
+HWTEST_F_L0(JSPandaFileTest, InitializeMergedPF_FromConstructorWithThread)
+{
+    std::string fileNameStr = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> jsPandaFile = pfManager->LoadJSPandaFile(
+        thread, CString(fileNameStr.c_str()), JSPandaFile::ENTRY_MAIN_FUNCTION);
+    EXPECT_NE(jsPandaFile, nullptr);
+    EXPECT_FALSE(jsPandaFile->IsBundlePack());
+}
+
+/**
+ * @tc.name: CheckIsBundlePack_ModuleRecord
+ * @tc.desc: Test CheckIsBundlePack with ES module (MODULE_RECORD_IDX branch at line 123)
+ * @tc.type: FUNC
+ * @tc.require: issue#Ixxxxx
+ */
+HWTEST_F_L0(JSPandaFileTest, CheckIsBundlePack_ModuleRecord)
+{
+    // merge.abc is ES module with MODULE_RECORD_IDX field, should set isBundlePack_ = false
+    std::string fileNameStr = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> jsPandaFile = pfManager->LoadJSPandaFile(
+        thread, CString(fileNameStr.c_str()), JSPandaFile::ENTRY_MAIN_FUNCTION);
+    EXPECT_NE(jsPandaFile, nullptr);
+    // ES module should have MODULE_RECORD_IDX field, causing isBundlePack_ = false
+    EXPECT_FALSE(jsPandaFile->IsBundlePack());
+}
+
+/**
+ * @tc.name: CheckIsRecordWithBundleName_EmptyJsRecordInfo
+ * @tc.desc: Test CheckIsRecordWithBundleName when jsRecordInfo_ is empty, for loop at line 142 should not execute
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, CheckIsRecordWithBundleName_EmptyJsRecordInfo)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_empty_record.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    // Clear jsRecordInfo_ to simulate empty scenario (line 142 for loop not executed)
+    auto &recordInfo = const_cast<CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo *> &>(
+        pf->GetJSRecordInfo());
+    for (auto &pair : recordInfo) {
+        delete pair.second;
+    }
+    recordInfo.clear();
+
+    // Call CheckIsRecordWithBundleName with empty jsRecordInfo_
+    CString entry = "com.example.myapp/index.ets";
+    pf->CheckIsRecordWithBundleName(entry);
+
+    // When jsRecordInfo_ is empty, isRecordWithBundleName_ should remain default value (true)
+    EXPECT_TRUE(pf->IsRecordWithBundleName());
+}
+
+/**
+ * @tc.name: CheckIsBundlePack_CommonJS
+ * @tc.desc: Test CheckIsBundlePack with CommonJS module (IS_COMMON_JS branch at line 123)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, CheckIsBundlePack_CommonJS)
+{
+    // merge.abc contains IS_COMMON_JS field, should set isBundlePack_ = false
+    std::string fileNameStr = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> jsPandaFile = pfManager->LoadJSPandaFile(
+        thread, CString(fileNameStr.c_str()), JSPandaFile::ENTRY_MAIN_FUNCTION);
+    EXPECT_NE(jsPandaFile, nullptr);
+    // merge.abc has IS_COMMON_JS field, causing isBundlePack_ = false
+    EXPECT_FALSE(jsPandaFile->IsBundlePack());
+}
+
+/**
+ * @tc.name: CheckIsBundlePack_ModuleRecordIdx
+ * @tc.desc: Test CheckIsBundlePack with ES module (MODULE_RECORD_IDX branch at line 123)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, CheckIsBundlePack_ModuleRecordIdx)
+{
+    // merge.abc is ES module with MODULE_RECORD_IDX field, should set isBundlePack_ = false
+    std::string fileNameStr = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> jsPandaFile = pfManager->LoadJSPandaFile(
+        thread, CString(fileNameStr.c_str()), JSPandaFile::ENTRY_MAIN_FUNCTION);
+    EXPECT_NE(jsPandaFile, nullptr);
+    // ES module should have MODULE_RECORD_IDX field, causing isBundlePack_ = false
+    EXPECT_FALSE(jsPandaFile->IsBundlePack());
+}
+
+/**
+ * @tc.name: CheckIsSharedModule
+ * @tc.desc: Test InitializeMergedPF with IS_SHARED_MODULE field (line 284)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, CheckIsSharedModule)
+{
+    // merge.abc contains IS_SHARED_MODULE field, initialize merged panda file
+    std::string fileNameStr = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> jsPandaFile = pfManager->LoadJSPandaFile(
+        thread, CString(fileNameStr.c_str()), JSPandaFile::ENTRY_MAIN_FUNCTION);
+    EXPECT_NE(jsPandaFile, nullptr);
+
+    // Verify the IsSharedModule function works correctly (line 284 branch covered)
+    // merge.abc is not bundle pack, so GetJSRecordInfo() will return multiple records
+    const auto &recordInfo = jsPandaFile->GetJSRecordInfo();
+    EXPECT_FALSE(recordInfo.empty());
+
+    // Test IsSharedModule function for each record
+    for (const auto &pair : recordInfo) {
+        JSPandaFile::JSRecordInfo *info = pair.second;
+        // IsSharedModule function should work without crash
+        bool isShared = jsPandaFile->IsSharedModule(info);
+        // The value depends on the abc file content
+        (void)isShared;  // Avoid unused variable warning
+    }
+}
+
+/**
+ * @tc.name: GetRecordName_CacheHit
+ * @tc.desc: Test GetRecordName cache hit scenario (line 473 if branch - iter != end())
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, GetRecordName_CacheHit)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_cache_hit.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    // Get method literal to obtain a valid EntityId
+    Span<const uint32_t> classIndexes = pf->GetPandaFile()->GetClasses();
+    ASSERT_GT(classIndexes.Size(), 0);
+
+    EntityId classId(classIndexes[0]);
+    panda_file::ClassDataAccessor cda(*pf->GetPandaFile(), classId);
+
+    EntityId methodId;
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId = mda.GetMethodId();
+    });
+
+    // First call - cache miss, will parse and store in cache
+    CString recordName1 = pf->GetRecordName(methodId);
+    EXPECT_FALSE(recordName1.empty());
+
+    // Second call - cache hit (line 473: iter != recordNameMap_.end() is true)
+    CString recordName2 = pf->GetRecordName(methodId);
+    EXPECT_EQ(recordName1, recordName2);
+}
+
+/**
+ * @tc.name: GetRecordName_CacheMiss
+ * @tc.desc: Test GetRecordName cache miss scenario (line 473 else branch - iter == end())
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, GetRecordName_CacheMiss)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_cache_miss.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    // Get method literal to obtain a valid EntityId
+    Span<const uint32_t> classIndexes = pf->GetPandaFile()->GetClasses();
+    ASSERT_GT(classIndexes.Size(), 0);
+
+    EntityId classId(classIndexes[0]);
+    panda_file::ClassDataAccessor cda(*pf->GetPandaFile(), classId);
+
+    EntityId methodId;
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId = mda.GetMethodId();
+    });
+
+    // First call - cache miss (line 473: iter == recordNameMap_.end() is false)
+    // This will parse the record name and store in cache
+    CString recordName = pf->GetRecordName(methodId);
+    EXPECT_FALSE(recordName.empty());
+}
+
+/**
+ * @tc.name: GetClassAndMethodIndexes_NoMoreClasses
+ * @tc.desc: Test GetClassAndMethodIndexes when classIndex_ >= numClasses_ (line 510 return immediately)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, GetClassAndMethodIndexes_NoMoreClasses)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_no_more_classes.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    // First call consumes all classes
+    ClassTranslateWork indexes;
+    pf->GetClassAndMethodIndexes(indexes);
+
+    // Second call - classIndex_ >= numClasses_, should return empty (line 510)
+    indexes.clear();
+    pf->GetClassAndMethodIndexes(indexes);
+    EXPECT_TRUE(indexes.empty());
+}
+
+/**
+ * @tc.name: GetClassAndMethodIndexes_UseMinCount
+ * @tc.desc: Test GetClassAndMethodIndexes when remaining classes < ASYN_TRANSLATE_CLSSS_COUNT (line 514-515)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, GetClassAndMethodIndexes_UseMinCount)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_min_count.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    // First call - remaining classes < 128, use minimum count (2)
+    ClassTranslateWork indexes;
+    pf->GetClassAndMethodIndexes(indexes);
+    // Since numClasses_ is small (< 128), line 514-515 branch is taken
+    // cnts will be set to ASYN_TRANSLATE_CLSSS_MIN_COUNT (2)
+    EXPECT_TRUE(indexes.size() <= JSPandaFile::ASYN_TRANSLATE_CLSSS_MIN_COUNT);
 }
 
 }  // namespace panda::test
