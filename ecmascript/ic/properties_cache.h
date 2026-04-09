@@ -18,6 +18,7 @@
 
 #include <array>
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
@@ -34,7 +35,11 @@ public:
         if ((prop.hclass_ == jsHclass) && (prop.key_ == key)) {
             return keys_[hash].results_;
         }
+#if ENABLE_V70_OPTIMIZATION
+        return NOT_CACHED;
+#else
         return NOT_FOUND;
+#endif
     }
     inline void Set(const JSThread *thread, JSHClass *jsHclass, JSTaggedValue key, int index)
     {
@@ -61,6 +66,9 @@ public:
         return true;
     }
     static const int NOT_FOUND = -1;
+#if ENABLE_V70_OPTIMIZATION
+    static const int NOT_CACHED = -2;
+#endif
     static const uint32_t CACHE_LENGTH_BIT = 10;
     static const uint32_t CACHE_LENGTH = (1U << CACHE_LENGTH_BIT);
     static const uint32_t CACHE_LENGTH_MASK = CACHE_LENGTH - 1;
@@ -98,7 +106,11 @@ public:
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
         alignas(EAS) JSHClass *hclass_ {nullptr};
         alignas(EAS) JSTaggedValue key_ {JSTaggedValue::Hole()};
+#if ENABLE_V70_OPTIMIZATION
+        alignas(EAS) int results_ {NOT_CACHED};
+#else
         alignas(EAS) int results_ {NOT_FOUND};
+#endif
     };
 
 private:
@@ -107,7 +119,11 @@ private:
         for (uint32_t i = 0; i < CACHE_LENGTH; ++i) {
             keys_[i].hclass_ = nullptr;
             keys_[i].key_ = JSTaggedValue::Hole();
+#if ENABLE_V70_OPTIMIZATION
+            keys_[i].results_ = NOT_CACHED;
+#else
             keys_[i].results_ = NOT_FOUND;
+#endif
         }
     }
     ~PropertiesCache() = default;

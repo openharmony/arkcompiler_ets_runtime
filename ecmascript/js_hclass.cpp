@@ -1786,7 +1786,11 @@ void JSHClass::CreateSInlinedLayout(JSThread *thread,
         JSHandle<LayoutInfo> old(thread, parentHClass->GetLayout(thread));
         for (uint32_t i = 0; i < parentLength; i++) {
             key.Update(old->GetKey(thread, i));
+#if ENABLE_V70_OPTIMIZATION
+            auto entry = layout->FindElement(thread, *hclass, key.GetTaggedValue(), index);
+#else
             auto entry = layout->FindElementWithCache(thread, *hclass, key.GetTaggedValue(), index);
+#endif
             if (entry != -1) {
                 continue;
             }

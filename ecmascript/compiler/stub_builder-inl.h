@@ -2608,6 +2608,15 @@ inline GateRef StubBuilder::IsAOTHClass(GateRef hClass)
         Int32(0));
 }
 
+inline GateRef StubBuilder::IsSharedHClass(GateRef hClass)
+{
+    GateRef bitfield = LoadPrimitive(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    return Int32NotEqual(Int32And(Int32LSR(bitfield,
+        Int32(JSHClass::IsJSSharedBit::START_BIT)),
+        Int32((1LU << JSHClass::IsJSSharedBit::SIZE) - 1)),
+        Int32(0));
+}
+
 inline void StubBuilder::SetNumberOfPropsToHClass(GateRef glue, GateRef hClass, GateRef value)
 {
     GateRef bitfield1 = LoadPrimitive(VariableType::INT32(), hClass, IntPtr(JSHClass::BIT_FIELD1_OFFSET));

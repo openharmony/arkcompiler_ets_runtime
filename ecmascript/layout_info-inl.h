@@ -110,11 +110,78 @@ inline void LayoutInfo::SetSortedIndex(const JSThread *thread, int index, int so
     TaggedArray::Set(thread, fixedIdx, attr.GetTaggedValue());
 }
 
+#if ENABLE_V70_OPTIMIZATION
+template <bool withCache>
+inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key,
+                                            int propertiesNumber)
+{
+    [[maybe_unused]] PropertiesCache *cache = thread->GetPropertiesCache();
+
+    if constexpr (withCache) {
+        int index = cache->Get(thread, cls, key);
+        if (index != PropertiesCache::NOT_CACHED) {
+            return index;
+        }
+    }
+
+    const int MAX_ELEMENTS_LINER_SEARCH = 9; // 9: Builtins Object properties number is nine;
+
+    if (propertiesNumber <= MAX_ELEMENTS_LINER_SEARCH) {
+        void *properties = reinterpret_cast<void *>(GetProperties());
+        size_t keyOffset = 0;
+        if (thread->NeedReadBarrier()) {
+            for (int i = 0; i < propertiesNumber; i++) {
+                JSTaggedValue propKey(Barriers::GetTaggedValue<RBMode::FAST_CMC_RB>(thread,
+                    ToUintPtr(properties) + i * sizeof(Properties) + keyOffset));
+                if (propKey == key) {
+                    if constexpr (withCache) {
+                        cache->Set(thread, cls, key, i);
+                    }
+                    return i;
+                }
+            }
+        } else {
+            for (int i = 0; i < propertiesNumber; i++) {
+                JSTaggedValue propKey(Barriers::GetTaggedValue<RBMode::FAST_NO_RB>(thread,
+                    ToUintPtr(properties) + i * sizeof(Properties) + keyOffset));
+                if (propKey == key) {
+                    if constexpr (withCache) {
+                        cache->Set(thread, cls, key, i);
+                    }
+                    return i;
+                }
+            }
+        }
+        if constexpr (withCache) {
+            if LIKELY(!cls->IsJSShared()) {
+                cache->Set(thread, cls, key, PropertiesCache::NOT_FOUND);
+            }
+        }
+        return PropertiesCache::NOT_FOUND;
+    }
+
+    auto index = BinarySearch(thread, key, propertiesNumber);
+    if constexpr (withCache) {
+        if (LIKELY(!cls->IsJSShared())) {
+            cache->Set(thread, cls, key, index);
+        } else {
+            // shared hclass can add properties without creating a new one, so don't cache NOT_FOUND result
+            // for shared hclass, but can cache found result.
+            if (index != PropertiesCache::NOT_FOUND) {
+                cache->Set(thread, cls, key, index);
+            }
+        }
+    }
+    return index;
+}
+#else
 inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cls, JSTaggedValue key,
                                             int propertiesNumber)
 {
     ASSERT(NumberOfElements() >= propertiesNumber);
+
     const int MAX_ELEMENTS_LINER_SEARCH = 9; // 9: Builtins Object properties number is nine;
+
     if (propertiesNumber <= MAX_ELEMENTS_LINER_SEARCH) {
         void *properties = reinterpret_cast<void *>(GetProperties());
         size_t keyOffset = 0;
@@ -153,6 +220,7 @@ inline int LayoutInfo::FindElementWithCache(const JSThread *thread, JSHClass *cl
     }
     return index;
 }
+#endif
 
 inline int LayoutInfo::BinarySearch(const JSThread *thread, JSTaggedValue key, int propertiesNumber)
 {
@@ -207,6 +275,19 @@ inline int LayoutInfo::BinarySearch(const JSThread *thread, JSTaggedValue key, i
     }
     return -1;
 }
+
+#if ENABLE_V70_OPTIMIZATION
+inline int LayoutInfo::FindElement(const JSThread *thread, JSHClass *cls, JSTaggedValue key, int propertiesNumber)
+{
+    ASSERT(NumberOfElements() >= propertiesNumber);
+
+    if LIKELY(cls != nullptr && !thread->IsJitThread()) {
+        return FindElementWithCache<true>(thread, cls, key, propertiesNumber);
+    } else {
+        return FindElementWithCache<false>(thread, cls, key, propertiesNumber);
+    }
+}
+#endif
 
 inline void LayoutInfo::SetIsNotHole(const JSThread *thread, int index)
 {

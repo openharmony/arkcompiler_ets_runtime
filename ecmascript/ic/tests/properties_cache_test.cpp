@@ -72,8 +72,13 @@ HWTEST_F_L0(PropertiesCacheTest, SetAndGet)
         handleProCache->Set(thread, FuncHClass, handleStrKey.GetTaggedValue(), i);
         EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleStrKey.GetTaggedValue()), i);
     }
+#if ENABLE_V70_OPTIMIZATION
+    EXPECT_EQ(handleProCache->Get(thread, FuncHClass,
+        handleKey10.GetTaggedValue()), -2); // PropertiesCache::NOT_CACHED
+#else
     EXPECT_EQ(handleProCache->Get(thread, FuncHClass,
         handleKey10.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+#endif
     // key is symbol
     for (int i = 0; i < 10; i++) {
         handleSymbol->SetHashField(static_cast<uint32_t>(i));
@@ -81,8 +86,13 @@ HWTEST_F_L0(PropertiesCacheTest, SetAndGet)
         EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleSymbol.GetTaggedValue()), i);
     }
     handleSymbol->SetHashField(static_cast<uint32_t>(10));
+#if ENABLE_V70_OPTIMIZATION
+    EXPECT_EQ(handleProCache->Get(thread, FuncHClass,
+        handleSymbol.GetTaggedValue()), -2); // PropertiesCache::NOT_CACHED
+#else
     EXPECT_EQ(handleProCache->Get(thread, FuncHClass,
         handleSymbol.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+#endif
     handleProCache->Clear();
 }
 
@@ -106,6 +116,10 @@ HWTEST_F_L0(PropertiesCacheTest, Clear)
     handleProCache->Set(thread, FuncHClass, handleKey.GetTaggedValue(), 10);
     EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleKey.GetTaggedValue()), 10);
     handleProCache->Clear();
+#if ENABLE_V70_OPTIMIZATION
+    EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleKey.GetTaggedValue()), -2); // PropertiesCache::NOT_CACHED
+#else
     EXPECT_EQ(handleProCache->Get(thread, FuncHClass, handleKey.GetTaggedValue()), -1); // PropertiesCache::NOT_FOUND
+#endif
 }
 } // namespace panda::test
