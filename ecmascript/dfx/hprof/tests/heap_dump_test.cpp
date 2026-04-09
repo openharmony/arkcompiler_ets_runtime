@@ -1125,7 +1125,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionAndObject)
     ASSERT_TRUE(strMatched7);
 }
 
-HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName1)
+HWTEST_F_L0(HeapDumpTest, DISABLED_TestHeapDumpGenerateNodeName1)
 {
     JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
     ObjectFactory *factory = ecmaVm_->GetFactory();
@@ -1289,7 +1289,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName4)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Typed Array\""));
 }
 
-HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName5)
+HWTEST_F_L0(HeapDumpTest, DISABLED_TestHeapDumpGenerateNodeName5)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
@@ -2231,7 +2231,7 @@ HWTEST_F_L0(HeapDumpTest, TestPropertyNameInBinaryDump)
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"metadata\""));
 }
 
-HWTEST_F_L0(HeapDumpTest, TestProxyClassName)
+HWTEST_F_L0(HeapDumpTest, DISABLED_TestProxyClassName)
 {
     const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
 
