@@ -235,6 +235,8 @@ void HeapProfiler::DumpHeapSnapshotFromSharedGCForOOM(Stream *stream, const Dump
         const_cast<Heap*>(vm_->GetHeap())->Prepare();
     }
 
+    appPid_ = getpid();
+    appTid_ = syscall(SYS_gettid);
     pid_t pid = -1;
     // fork for oom
     if ((pid = fork()) < 0) {
@@ -402,6 +404,7 @@ bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOpti
     DumpSnapShotOption option;
     std::vector<std::string> filePaths;
     std::vector<uint64_t> fileSizes;
+    std::string filePath;
     auto stringTable = chunk_.New<StringHashMap>(vm_);
     auto snapshot = chunk_.New<HeapSnapshot>(vm_, stringTable, option, false, entryIdMap_);
 
@@ -425,7 +428,8 @@ bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOpti
     }
 
     rawHeapDump->BinaryDump();
-    filePaths.emplace_back(RAWHEAP_FILE_NAME);
+    filePath = RAWHEAP_FILE_NAME + "-" + std::to_string(appPid_) + "-" + std::to_string(appTid_) + ".rawheap";
+    filePaths.emplace_back(filePath);
     fileSizes.emplace_back(rawHeapDump->GetRawHeapFileOffset());
     delete rawHeapDump;
 
@@ -553,6 +557,8 @@ pid_t HeapProfiler::ForkAndPerformDump(Stream *stream,
                                        const DumpSnapShotOption &dumpOption,
                                        Progress *progress)
 {
+    appPid_ = getpid();
+    appTid_ = syscall(SYS_gettid);
     pid_t pid = fork();
     if (pid < 0) {
         LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed: " << strerror(errno);

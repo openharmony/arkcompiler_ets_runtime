@@ -198,7 +198,7 @@ private:
     uint32_t GetScopeCount() const;
     std::shared_ptr<ScopeWrapper> GetLastActiveScope() const;
     bool InsertHandleBackTrace(uintptr_t handle, const std::string &backTrace);
-    const std::string RAWHEAP_FILE_NAME = "/data/log/faultlog/temp/jsheap.rawheap";
+    const std::string RAWHEAP_FILE_NAME = "/data/log/reliability/resource_leak/memory_leak/memleak";
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;
@@ -219,6 +219,8 @@ private:
     std::map<uintptr_t, std::string> handleBackTrace_;
     int32_t leakStackTraceFd_ {-1};
     uint32_t moveEventCbId_ {0};
+    pid_t appPid_ {0};
+    long appTid_ {0};
 
     friend class HeapProfilerFriendTest;
     friend class panda::test::MockHeapProfiler;
