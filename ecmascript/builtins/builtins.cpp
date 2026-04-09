@@ -267,11 +267,21 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
     thread_->SetInitialBuiltinHClass(
         BuiltinTypeId::OBJECT, objectFunction->GetJSHClass(), *objFuncClass, objFuncPrototype->GetJSHClass());
 
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> functionClass = factory_->CreateFunctionClass(FunctionKind::BASE_CONSTRUCTOR, JSFunction::SIZE,
+        JSType::JS_FUNCTION, env->GetFunctionPrototype(), JSHClass::OPTIMIZED_FUNCTION_CAPACITY_OF_IN_OBJECTS);
+#else // !ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> functionClass = factory_->CreateFunctionClass(FunctionKind::BASE_CONSTRUCTOR, JSFunction::SIZE,
                                                                      JSType::JS_FUNCTION, env->GetFunctionPrototype());
+#endif // ENABLE_MEMORY_OPTIMIZATION
     env->SetFunctionClassWithProto(thread_, functionClass);
+#if ENABLE_MEMORY_OPTIMIZATION
+    functionClass = factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSFunction::SIZE, JSType::JS_FUNCTION,
+        env->GetFunctionPrototype(), JSHClass::OPTIMIZED_FUNCTION_CAPACITY_OF_IN_OBJECTS);
+#else // !ENABLE_MEMORY_OPTIMIZATION
     functionClass = factory_->CreateFunctionClass(FunctionKind::NORMAL_FUNCTION, JSFunction::SIZE, JSType::JS_FUNCTION,
                                                   env->GetFunctionPrototype());
+#endif // ENABLE_MEMORY_OPTIMIZATION
     env->SetFunctionClassWithoutProto(thread_, functionClass);
     functionClass = factory_->CreateFunctionClass(FunctionKind::CLASS_CONSTRUCTOR, JSFunction::SIZE,
                                                   JSType::JS_FUNCTION, env->GetFunctionPrototype());
@@ -725,8 +735,13 @@ void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTag
     env->SetFunctionFunction(thread_, funcFunc);
     env->SetFunctionPrototype(thread_, funcFuncPrototype);
 
+#if ENABLE_MEMORY_OPTIMIZATION
+    JSHandle<JSHClass> normalFuncClass = factory_->NewEcmaHClass(JSFunction::SIZE,
+        JSHClass::OPTIMIZED_FUNCTION_CAPACITY_OF_IN_OBJECTS, JSType::JS_FUNCTION, env->GetFunctionPrototype());
+#else // !ENABLE_MEMORY_OPTIMIZATION
     JSHandle<JSHClass> normalFuncClass =
         factory_->NewEcmaHClass(JSFunction::SIZE, JSType::JS_FUNCTION, env->GetFunctionPrototype());
+#endif // ENABLE_MEMORY_OPTIMIZATION
     env->SetNormalFunctionClass(thread_, normalFuncClass);
 
     JSHandle<JSHClass> normalApiFuncClass =

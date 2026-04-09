@@ -413,6 +413,7 @@ public:
         PropertyAttributes::MAX_FAST_PROPS_CAPACITY_LOG2 + OFFSET_MAX_OBJECT_SIZE_IN_WORDS_WITHOUT_INLINED;
     static constexpr int MAX_OBJECT_SIZE_IN_WORDS = (1U << OFFSET_MAX_OBJECT_SIZE_IN_WORDS) - 1;
     static constexpr uint8_t SLACK_TRACKING_COUNT = (1 << CONSTRUCTION_COUNTER_BITFIELD_NUM) - 1;
+    static constexpr int OPTIMIZED_FUNCTION_CAPACITY_OF_IN_OBJECTS = 3;
 
     using NumberOfPropsBits = BitField<uint32_t, 0, PropertyAttributes::MAX_FAST_PROPS_CAPACITY_LOG2>;         // 10
     using InlinedPropsStartBits = NumberOfPropsBits::NextField<uint32_t,

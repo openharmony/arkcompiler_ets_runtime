@@ -100,8 +100,8 @@ HWTEST_F_L0(ObjectFactoryTest, NewJSFunction)
 
     // check jshclass
     JSHClass *cls = *newFunCls;
-    EXPECT_TRUE(cls->GetObjectSize() ==
-                JSFunction::SIZE + JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS * JSTaggedValue::TaggedTypeSize());
+    EXPECT_TRUE(cls->GetObjectSize() == JSFunction::SIZE +
+        JSHClass::OPTIMIZED_FUNCTION_CAPACITY_OF_IN_OBJECTS * JSTaggedValue::TaggedTypeSize());
     EXPECT_TRUE(cls->GetPrototype(thread) == GetGlobal(thread)->GetFunctionPrototype().GetTaggedValue());
     EXPECT_TRUE(cls->GetObjectType() == JSType::JS_FUNCTION);
     EXPECT_TRUE(cls->IsCallable());

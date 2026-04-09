@@ -1143,3 +1143,1134 @@ let arr = new Array(10);
 print("arr:", ArkTools.getInlinedPropertiesCount(arr));
 let execResult = /123/.exec("123");
 print("execResult:", ArkTools.getInlinedPropertiesCount(execResult));
+
+// BASE_CONSTRUCTOR
+const js_function = function () {
+
+};
+let cnt = ArkTools.getInlinedPropertiesCount(js_function);
+print("js_function count: " + cnt);
+
+// ARROW_FUNCTION
+let arrow_function = () => {
+
+};
+cnt = ArkTools.getInlinedPropertiesCount(arrow_function);
+print("arrow_function count: " + cnt);
+
+// GETTER/SETTER_FUNCTION
+const obj = {
+    _value: 0,
+    get value() {
+        return this._value;
+    },
+    set value(newVal) {
+        this._value = newVal;
+    }
+};
+
+const descriptor = Object.getOwnPropertyDescriptor(obj, 'value');
+const getterFunction = descriptor.get;
+const setterFunction = descriptor.set;
+cnt = ArkTools.getInlinedPropertiesCount(getterFunction);
+print("getterFunction count: " + cnt);
+cnt = ArkTools.getInlinedPropertiesCount(setterFunction);
+print("setterFunction count: " + cnt);
+
+// ============================================================
+// Part 1: 普通函数声明 — BASE_CONSTRUCTOR — FunctionClassWithProto
+// 预期 inlinedProps: 4 (实际使用 3: length, name, prototype)
+// ============================================================
+
+// 1.1 基本函数声明
+function normalFunc1() {}
+function normalFunc2(a) { return a; }
+function normalFunc3(a, b) { return a + b; }
+function normalFunc4(a, b, c) { return a + b + c; }
+function normalFunc5() { return 42; }
+print(ArkTools.getInlinedPropertiesCount(normalFunc1));
+print(ArkTools.getInlinedPropertiesCount(normalFunc2));
+print(ArkTools.getInlinedPropertiesCount(normalFunc3));
+print(ArkTools.getInlinedPropertiesCount(normalFunc4));
+print(ArkTools.getInlinedPropertiesCount(normalFunc5));
+
+// 1.2 有默认参数的函数声明
+function defaultParam1(a = 1) { return a; }
+function defaultParam2(a = 1, b = 2) { return a + b; }
+function defaultParam3(a, b = 2, c = 3) { return a + b + c; }
+print(ArkTools.getInlinedPropertiesCount(defaultParam1));
+print(ArkTools.getInlinedPropertiesCount(defaultParam2));
+print(ArkTools.getInlinedPropertiesCount(defaultParam3));
+
+// 1.3 有剩余参数的函数声明
+function restParam1(...args) { return args; }
+function restParam2(a, ...args) { return [a, ...args]; }
+function restParam3(a, b, ...args) { return [a, b, ...args]; }
+print(ArkTools.getInlinedPropertiesCount(restParam1));
+print(ArkTools.getInlinedPropertiesCount(restParam2));
+print(ArkTools.getInlinedPropertiesCount(restParam3));
+
+// 1.4 有解构参数的函数声明
+function destructParam1({ a, b }) { return a + b; }
+function destructParam2([a, b]) { return a + b; }
+function destructParam3({ a = 1, b = 2 } = {}) { return a + b; }
+print(ArkTools.getInlinedPropertiesCount(destructParam1));
+print(ArkTools.getInlinedPropertiesCount(destructParam2));
+print(ArkTools.getInlinedPropertiesCount(destructParam3));
+
+// 1.5 嵌套函数声明
+function outerFunc1() {
+    function innerFunc1() { return 1; }
+    function innerFunc2() { return 2; }
+    return innerFunc1() + innerFunc2();
+}
+
+function outerFunc2() {
+    function middleFunc() {
+        function deepInner() { return 3; }
+        return deepInner();
+    }
+    return middleFunc();
+}
+print(ArkTools.getInlinedPropertiesCount(outerFunc1));
+print(ArkTools.getInlinedPropertiesCount(outerFunc2));
+
+// 1.6 递归函数
+function recursive1(n) { return n <= 0 ? 0 : n + recursive1(n - 1); }
+function recursive2(n) { return n <= 1 ? 1 : n * recursive2(n - 1); }
+function recursive3fib(n) { return n <= 1 ? n : recursive3fib(n - 1) + recursive3fib(n - 2); }
+print(ArkTools.getInlinedPropertiesCount(recursive1));
+print(ArkTools.getInlinedPropertiesCount(recursive2));
+print(ArkTools.getInlinedPropertiesCount(recursive3fib));
+
+// 1.7 闭包
+function closure1() { let x = 1; return function() { return x; }; }
+function closure2() { let x = 1; return function(y) { return x + y; }; }
+function closure3() {
+    let count = 0;
+    return {
+        inc: function() { count++; },
+        get: function() { return count; }
+    };
+}
+print(ArkTools.getInlinedPropertiesCount(closure1));
+print(ArkTools.getInlinedPropertiesCount(closure2));
+print(ArkTools.getInlinedPropertiesCount(closure3));
+
+// ============================================================
+// Part 2: 函数表达式 — 仍然是 BASE_CONSTRUCTOR / NORMAL_FUNCTION
+// 预期 inlinedProps: 4
+// ============================================================
+
+// 2.1 匿名函数表达式
+const exprFunc1 = function() {};
+const exprFunc2 = function(a) { return a; };
+const exprFunc3 = function(a, b) { return a + b; };
+const exprFunc4 = function() { return null; };
+const exprFunc5 = function() { return undefined; };
+print(ArkTools.getInlinedPropertiesCount(exprFunc1));
+print(ArkTools.getInlinedPropertiesCount(exprFunc2));
+print(ArkTools.getInlinedPropertiesCount(exprFunc3));
+print(ArkTools.getInlinedPropertiesCount(exprFunc4));
+print(ArkTools.getInlinedPropertiesCount(exprFunc5));
+
+// 2.2 命名函数表达式
+const namedExpr1 = function named1() { return 1; };
+const namedExpr2 = function named2(a) { return a; };
+const namedExpr3 = function named3() { return named3; };
+print(ArkTools.getInlinedPropertiesCount(namedExpr1));
+print(ArkTools.getInlinedPropertiesCount(namedExpr2));
+print(ArkTools.getInlinedPropertiesCount(namedExpr3));
+
+// 2.3 立即执行函数表达式 (IIFE)
+const iife1 = (function() { return 1; })();
+const iife2 = (function(a) { return a * 2; })(5);
+const iife3 = (function() { let x = 10; return x; })();
+// IIFE 返回值不是函数，无法测 getInlinedPropertiesCount
+
+// 2.4 作为对象方法的函数表达式
+const objWithMethod1 = {
+    method1: function() { return 1; },
+    method2: function(a) { return a; },
+    method3: function(a, b) { return a + b; }
+};
+print(ArkTools.getInlinedPropertiesCount(objWithMethod1.method1));
+print(ArkTools.getInlinedPropertiesCount(objWithMethod1.method2));
+print(ArkTools.getInlinedPropertiesCount(objWithMethod1.method3));
+
+// 2.5 作为回调的函数表达式
+const arr1 = [1, 2, 3].map(function(x) { return x * 2; });
+const arr2 = [1, 2, 3].filter(function(x) { return x > 1; });
+const arr3 = [1, 2, 3].reduce(function(acc, x) { return acc + x; }, 0);
+// arr1/arr2/arr3 是数组/数值，非函数
+
+// 2.6 作为参数的函数表达式
+function callWithCallback1(cb) { return cb(1); }
+callWithCallback1(function(x) { return x + 1; });
+
+function callWithCallback2(cb) { return cb(1, 2); }
+callWithCallback2(function(a, b) { return a + b; });
+print(ArkTools.getInlinedPropertiesCount(callWithCallback1));
+print(ArkTools.getInlinedPropertiesCount(callWithCallback2));
+
+// ============================================================
+// Part 3: 箭头函数 — ARROW_FUNCTION — FunctionClassWithoutProto
+// 预期 inlinedProps: 4 (实际使用 2: length, name，无 prototype)
+// ============================================================
+
+// 3.1 基本箭头函数
+const arrow1 = () => {};
+const arrow2 = () => 1;
+const arrow3 = () => 42;
+const arrow4 = () => { return 1; };
+const arrow5 = () => { return "hello"; };
+print(ArkTools.getInlinedPropertiesCount(arrow1));
+print(ArkTools.getInlinedPropertiesCount(arrow2));
+print(ArkTools.getInlinedPropertiesCount(arrow3));
+print(ArkTools.getInlinedPropertiesCount(arrow4));
+print(ArkTools.getInlinedPropertiesCount(arrow5));
+
+// 3.2 带参数的箭头函数
+const arrow6 = (a) => a;
+const arrow7 = (a) => { return a; };
+const arrow8 = (a, b) => a + b;
+const arrow9 = (a, b, c) => a + b + c;
+const arrow10 = (a, b, c, d) => a + b + c + d;
+print(ArkTools.getInlinedPropertiesCount(arrow6));
+print(ArkTools.getInlinedPropertiesCount(arrow7));
+print(ArkTools.getInlinedPropertiesCount(arrow8));
+print(ArkTools.getInlinedPropertiesCount(arrow9));
+print(ArkTools.getInlinedPropertiesCount(arrow10));
+
+// 3.3 带默认参数的箭头函数
+const arrowDefault1 = (a = 1) => a;
+const arrowDefault2 = (a = 1, b = 2) => a + b;
+const arrowDefault3 = (a, b = 2) => a + b;
+print(ArkTools.getInlinedPropertiesCount(arrowDefault1));
+print(ArkTools.getInlinedPropertiesCount(arrowDefault2));
+print(ArkTools.getInlinedPropertiesCount(arrowDefault3));
+
+// 3.4 带剩余参数的箭头函数
+const arrowRest1 = (...args) => args;
+const arrowRest2 = (a, ...args) => [a, ...args];
+const arrowRest3 = (a, b, ...args) => [a, b, ...args];
+print(ArkTools.getInlinedPropertiesCount(arrowRest1));
+print(ArkTools.getInlinedPropertiesCount(arrowRest2));
+print(ArkTools.getInlinedPropertiesCount(arrowRest3));
+
+// 3.5 返回对象的箭头函数
+const arrowObj1 = () => ({ a: 1 });
+const arrowObj2 = (a) => ({ value: a });
+const arrowObj3 = (a, b) => ({ x: a, y: b });
+print(ArkTools.getInlinedPropertiesCount(arrowObj1));
+print(ArkTools.getInlinedPropertiesCount(arrowObj2));
+print(ArkTools.getInlinedPropertiesCount(arrowObj3));
+
+// 3.6 返回数组的箭头函数
+const arrowArr1 = () => [1, 2, 3];
+const arrowArr2 = (a) => [a];
+const arrowArr3 = (a, b) => [a, b];
+print(ArkTools.getInlinedPropertiesCount(arrowArr1));
+print(ArkTools.getInlinedPropertiesCount(arrowArr2));
+print(ArkTools.getInlinedPropertiesCount(arrowArr3));
+
+// 3.7 箭头函数作为回调
+const arrowMap1 = [1, 2, 3].map(x => x * 2);
+const arrowFilter1 = [1, 2, 3].filter(x => x > 1);
+const arrowReduce1 = [1, 2, 3].reduce((acc, x) => acc + x, 0);
+const arrowSort1 = [3, 1, 2].sort((a, b) => a - b);
+const arrowFind1 = [1, 2, 3].find(x => x === 2);
+// arrowMap1/arrowFilter1/arrowSort1 是数组，arrowReduce1/arrowFind1 是数值，非函数
+
+// 3.8 箭头函数作为对象方法 (注意: 不绑定 this)
+const objWithArrow1 = {
+    value: 10,
+    getValue: () => 10,
+    double: () => 20
+};
+
+const objWithArrow2 = {
+    name: "test",
+    getName: () => "test",
+    greet: () => "hello"
+};
+print(ArkTools.getInlinedPropertiesCount(objWithArrow1.getValue));
+print(ArkTools.getInlinedPropertiesCount(objWithArrow1.double));
+print(ArkTools.getInlinedPropertiesCount(objWithArrow2.getName));
+print(ArkTools.getInlinedPropertiesCount(objWithArrow2.greet));
+
+// 3.9 嵌套箭头函数
+const nestedArrow1 = (a) => (b) => a + b;
+const nestedArrow2 = (a) => (b) => (c) => a + b + c;
+const nestedArrow3 = () => () => 42;
+print(ArkTools.getInlinedPropertiesCount(nestedArrow1));
+print(ArkTools.getInlinedPropertiesCount(nestedArrow2));
+print(ArkTools.getInlinedPropertiesCount(nestedArrow3));
+
+// 3.10 柯里化箭头函数
+const curry1 = (a) => (b) => (c) => a + b + c;
+const curry2 = (a) => (b) => (c) => a * b * c;
+const curryAdd1 = curry1(1);
+const curryAdd2 = curryAdd1(2);
+const curryAddResult = curryAdd2(3);
+print(ArkTools.getInlinedPropertiesCount(curry1));
+print(ArkTools.getInlinedPropertiesCount(curry2));
+print(ArkTools.getInlinedPropertiesCount(curryAdd1));
+print(ArkTools.getInlinedPropertiesCount(curryAdd2));
+
+// ============================================================
+// Part 4: Async 函数 — ASYNC_FUNCTION — AsyncFunctionClass
+// 预期 inlinedProps: 4 (实际使用 3: length, name, prototype)
+// ============================================================
+
+// 4.1 基本 async 函数声明
+async function asyncFunc1() {}
+async function asyncFunc2() { return 1; }
+async function asyncFunc3() { return await Promise.resolve(1); }
+async function asyncFunc4() { return await Promise.resolve("hello"); }
+print(ArkTools.getInlinedPropertiesCount(asyncFunc1));
+print(ArkTools.getInlinedPropertiesCount(asyncFunc2));
+print(ArkTools.getInlinedPropertiesCount(asyncFunc3));
+print(ArkTools.getInlinedPropertiesCount(asyncFunc4));
+
+// 4.2 带参数的 async 函数
+async function asyncWithParam1(a) { return a; }
+async function asyncWithParam2(a, b) { return a + b; }
+async function asyncWithParam3(a, b, c) { return a + b + c; }
+print(ArkTools.getInlinedPropertiesCount(asyncWithParam1));
+print(ArkTools.getInlinedPropertiesCount(asyncWithParam2));
+print(ArkTools.getInlinedPropertiesCount(asyncWithParam3));
+
+// 4.3 async 函数表达式
+const asyncExpr1 = async function() {};
+const asyncExpr2 = async function() { return 1; };
+const asyncExpr3 = async function(a) { return a; };
+const asyncExpr4 = async function namedAsync() { return 1; };
+print(ArkTools.getInlinedPropertiesCount(asyncExpr1));
+print(ArkTools.getInlinedPropertiesCount(asyncExpr2));
+print(ArkTools.getInlinedPropertiesCount(asyncExpr3));
+print(ArkTools.getInlinedPropertiesCount(asyncExpr4));
+
+// 4.4 async 函数中使用 try/catch
+async function asyncTry1() {
+    try { await Promise.resolve(1); } catch(e) { return e; }
+}
+
+async function asyncTry2() {
+    try { await Promise.reject("error"); } catch(e) { return e; }
+}
+
+async function asyncTry3() {
+    try {
+        const result = await Promise.resolve(1);
+        return result;
+    } catch(e) {
+        return -1;
+    } finally {
+        // cleanup
+    }
+}
+print(ArkTools.getInlinedPropertiesCount(asyncTry1));
+print(ArkTools.getInlinedPropertiesCount(asyncTry2));
+print(ArkTools.getInlinedPropertiesCount(asyncTry3));
+
+// 4.5 async 函数中使用 Promise.all
+async function asyncAll1() {
+    const [a, b] = await Promise.all([Promise.resolve(1), Promise.resolve(2)]);
+    return a + b;
+}
+
+async function asyncAll2() {
+    const results = await Promise.all([
+        Promise.resolve(1),
+        Promise.resolve(2),
+        Promise.resolve(3)
+    ]);
+    return results.reduce((acc, x) => acc + x, 0);
+}
+print(ArkTools.getInlinedPropertiesCount(asyncAll1));
+print(ArkTools.getInlinedPropertiesCount(asyncAll2));
+
+// 4.6 async 嵌套
+async function asyncOuter1() {
+    async function asyncInner1() { return 1; }
+    return await asyncInner1();
+}
+
+async function asyncOuter2() {
+    const asyncInner2 = async () => 2;
+    return await asyncInner2();
+}
+print(ArkTools.getInlinedPropertiesCount(asyncOuter1));
+print(ArkTools.getInlinedPropertiesCount(asyncOuter2));
+
+// ============================================================
+// Part 5: Async 箭头函数 — ASYNC_ARROW_FUNCTION — AsyncFunctionClass
+// 预期 inlinedProps: 4 (实际使用 2: length, name，无 prototype)
+// ============================================================
+
+// 5.1 基本 async 箭头函数
+const asyncArrow1 = async () => {};
+const asyncArrow2 = async () => 1;
+const asyncArrow3 = async () => { return 1; };
+const asyncArrow4 = async () => await Promise.resolve(1);
+const asyncArrow5 = async () => { return await Promise.resolve(1); };
+print(ArkTools.getInlinedPropertiesCount(asyncArrow1));
+print(ArkTools.getInlinedPropertiesCount(asyncArrow2));
+print(ArkTools.getInlinedPropertiesCount(asyncArrow3));
+print(ArkTools.getInlinedPropertiesCount(asyncArrow4));
+print(ArkTools.getInlinedPropertiesCount(asyncArrow5));
+
+// 5.2 带参数的 async 箭头函数
+const asyncArrow6 = async (a) => a;
+const asyncArrow7 = async (a) => { return a; };
+const asyncArrow8 = async (a, b) => a + b;
+const asyncArrow9 = async (a, b, c) => a + b + c;
+print(ArkTools.getInlinedPropertiesCount(asyncArrow6));
+print(ArkTools.getInlinedPropertiesCount(asyncArrow7));
+print(ArkTools.getInlinedPropertiesCount(asyncArrow8));
+print(ArkTools.getInlinedPropertiesCount(asyncArrow9));
+
+// 5.3 async 箭头函数作为回调
+const asyncArrowCb1 = async () => {
+    return await Promise.all([1, 2, 3].map(async (x) => x * 2));
+};
+
+const asyncArrowCb2 = async () => {
+    return await Promise.all([1, 2, 3].map(async (x) => {
+        return await Promise.resolve(x * 2);
+    }));
+};
+print(ArkTools.getInlinedPropertiesCount(asyncArrowCb1));
+print(ArkTools.getInlinedPropertiesCount(asyncArrowCb2));
+
+// 5.4 async 箭头函数返回对象
+const asyncArrowObj1 = async () => ({ value: 1 });
+const asyncArrowObj2 = async (a) => ({ value: a });
+const asyncArrowObj3 = async (a, b) => ({ x: a, y: b });
+print(ArkTools.getInlinedPropertiesCount(asyncArrowObj1));
+print(ArkTools.getInlinedPropertiesCount(asyncArrowObj2));
+print(ArkTools.getInlinedPropertiesCount(asyncArrowObj3));
+
+// 5.5 嵌套 async 箭头
+const nestedAsyncArrow1 = async (a) => async (b) => a + b;
+const nestedAsyncArrow2 = async () => async () => 42;
+print(ArkTools.getInlinedPropertiesCount(nestedAsyncArrow1));
+print(ArkTools.getInlinedPropertiesCount(nestedAsyncArrow2));
+
+// ============================================================
+// Part 6: Generator 函数 — GENERATOR_FUNCTION — GeneratorFunctionClass
+// 预期 inlinedProps: 4 (实际使用 3: length, name, prototype)
+// ============================================================
+
+// 6.1 基本 generator 函数
+function* gen1() { yield 1; }
+function* gen2() { yield 1; yield 2; }
+function* gen3() { yield 1; yield 2; yield 3; }
+function* gen4() { yield* [1, 2, 3]; }
+function* gen5() { return 42; }
+print(ArkTools.getInlinedPropertiesCount(gen1));
+print(ArkTools.getInlinedPropertiesCount(gen2));
+print(ArkTools.getInlinedPropertiesCount(gen3));
+print(ArkTools.getInlinedPropertiesCount(gen4));
+print(ArkTools.getInlinedPropertiesCount(gen5));
+
+// 6.2 带参数的 generator 函数
+function* genWithParam1(a) { yield a; }
+function* genWithParam2(a, b) { yield a; yield b; }
+function* genWithParam3(a, b, c) { yield a + b + c; }
+print(ArkTools.getInlinedPropertiesCount(genWithParam1));
+print(ArkTools.getInlinedPropertiesCount(genWithParam2));
+print(ArkTools.getInlinedPropertiesCount(genWithParam3));
+
+// 6.3 generator 函数表达式
+const genExpr1 = function*() { yield 1; };
+const genExpr2 = function*() { yield 1; yield 2; };
+const genExpr3 = function* namedGen() { yield 1; yield 2; yield 3; };
+print(ArkTools.getInlinedPropertiesCount(genExpr1));
+print(ArkTools.getInlinedPropertiesCount(genExpr2));
+print(ArkTools.getInlinedPropertiesCount(genExpr3));
+
+// 6.4 无限 generator
+function* infiniteGen1() { let i = 0; while (true) { yield i++; } }
+function* infiniteGen2(start) { let i = start; while (true) { yield i++; } }
+print(ArkTools.getInlinedPropertiesCount(infiniteGen1));
+print(ArkTools.getInlinedPropertiesCount(infiniteGen2));
+
+// 6.5 generator 作为对象方法
+const objWithGen1 = {
+    *[Symbol.iterator]() { yield 1; yield 2; yield 3; }
+};
+
+const objWithGen2 = {
+    *genMethod() { yield "a"; yield "b"; yield "c"; }
+};
+print(ArkTools.getInlinedPropertiesCount(objWithGen1[Symbol.iterator]));
+print(ArkTools.getInlinedPropertiesCount(objWithGen2.genMethod));
+
+// 6.6 yield* 委托
+function* delegatingGen1() { yield* gen1(); yield* gen2(); }
+function* delegatingGen2() { yield* [1, 2, 3]; yield* "abc"; }
+print(ArkTools.getInlinedPropertiesCount(delegatingGen1));
+print(ArkTools.getInlinedPropertiesCount(delegatingGen2));
+
+// 6.7 generator 与 for...of
+function* forOfGen1() { yield 1; yield 2; yield 3; }
+const forOfResult1 = [];
+for (const x of forOfGen1()) { forOfResult1.push(x); }
+print(ArkTools.getInlinedPropertiesCount(forOfGen1));
+
+// 6.8 generator 与 return
+function* genWithReturn1() { yield 1; return "done"; }
+function* genWithReturn2() { yield 1; yield 2; return 42; }
+print(ArkTools.getInlinedPropertiesCount(genWithReturn1));
+print(ArkTools.getInlinedPropertiesCount(genWithReturn2));
+
+// 6.9 generator 中的 try/finally
+function* genTryFinally1() {
+    try { yield 1; yield 2; } finally { yield "cleanup"; }
+}
+
+function* genTryFinally2() {
+    try { yield 1; } catch(e) { yield e; } finally { yield "done"; }
+}
+print(ArkTools.getInlinedPropertiesCount(genTryFinally1));
+print(ArkTools.getInlinedPropertiesCount(genTryFinally2));
+
+// ============================================================
+// Part 7: Async Generator 函数 — ASYNC_GENERATOR_FUNCTION — AsyncGeneratorFunctionClass
+// 预期 inlinedProps: 4 (实际使用 3: length, name, prototype)
+// ============================================================
+
+// 7.1 基本 async generator
+async function* asyncGen1() { yield 1; }
+async function* asyncGen2() { yield await Promise.resolve(1); }
+async function* asyncGen3() { yield 1; yield await Promise.resolve(2); yield 3; }
+print(ArkTools.getInlinedPropertiesCount(asyncGen1));
+print(ArkTools.getInlinedPropertiesCount(asyncGen2));
+print(ArkTools.getInlinedPropertiesCount(asyncGen3));
+
+// 7.2 带参数的 async generator
+async function* asyncGenWithParam1(a) { yield a; }
+async function* asyncGenWithParam2(a, b) { yield a; yield b; }
+print(ArkTools.getInlinedPropertiesCount(asyncGenWithParam1));
+print(ArkTools.getInlinedPropertiesCount(asyncGenWithParam2));
+
+// 7.3 async generator 函数表达式
+const asyncGenExpr1 = async function*() { yield 1; };
+const asyncGenExpr2 = async function*() { yield await Promise.resolve(1); yield 2; };
+const asyncGenExpr3 = async function* namedAsyncGen() { yield 1; yield 2; yield 3; };
+print(ArkTools.getInlinedPropertiesCount(asyncGenExpr1));
+print(ArkTools.getInlinedPropertiesCount(asyncGenExpr2));
+print(ArkTools.getInlinedPropertiesCount(asyncGenExpr3));
+
+// 7.4 yield* 委托 async generator
+async function* delegatingAsyncGen1() { yield* asyncGen1(); yield* asyncGen2(); }
+async function* delegatingAsyncGen2() { yield* gen1(); }
+print(ArkTools.getInlinedPropertiesCount(delegatingAsyncGen1));
+print(ArkTools.getInlinedPropertiesCount(delegatingAsyncGen2));
+
+// 7.5 async generator 作为对象方法
+const objWithAsyncGen1 = {
+    async *[Symbol.asyncIterator]() {
+        yield await Promise.resolve(1);
+        yield await Promise.resolve(2);
+        yield await Promise.resolve(3);
+    }
+};
+
+const objWithAsyncGen2 = {
+    *asyncGenMethod() { yield 1; yield 2; },
+    async *asyncGenMethod2() { yield await Promise.resolve(1); yield await Promise.resolve(2); }
+};
+print(ArkTools.getInlinedPropertiesCount(objWithAsyncGen1[Symbol.asyncIterator]));
+print(ArkTools.getInlinedPropertiesCount(objWithAsyncGen2.asyncGenMethod));
+print(ArkTools.getInlinedPropertiesCount(objWithAsyncGen2.asyncGenMethod2));
+
+// 7.6 async generator 与 for await...of
+async function consumeAsyncGen1() {
+    const result = [];
+    for await (const x of asyncGen1()) { result.push(x); }
+    return result;
+}
+
+async function consumeAsyncGen2() {
+    const result = [];
+    for await (const x of asyncGen3()) { result.push(x); }
+    return result;
+}
+print(ArkTools.getInlinedPropertiesCount(consumeAsyncGen1));
+print(ArkTools.getInlinedPropertiesCount(consumeAsyncGen2));
+
+// ============================================================
+// Part 8: Getter / Setter — GETTER_FUNCTION / SETTER_FUNCTION — FunctionClassWithoutProto
+// 预期 inlinedProps: 4 (实际使用 2: length, name)
+// ============================================================
+
+// 8.1 对象字面量中的 getter
+const objWithGetter1 = {
+    get value() { return 1; }
+};
+const objWithGetter2 = {
+    get name() { return "test"; },
+    get age() { return 25; }
+};
+const objWithGetter3 = {
+    _x: 10,
+    get x() { return this._x; },
+    get doubleX() { return this._x * 2; }
+};
+// getter/setter 函数无法直接获取引用来测 getInlinedPropertiesCount
+// 需通过 Object.getOwnPropertyDescriptor 获取
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithGetter1, "value").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithGetter2, "name").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithGetter2, "age").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithGetter3, "x").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithGetter3, "doubleX").get));
+
+// 8.2 对象字面量中的 setter
+const objWithSetter1 = {
+    _value: 0,
+    set value(v) { this._value = v; }
+};
+const objWithSetter2 = {
+    _name: "",
+    set name(n) { this._name = n; },
+    set age(a) { if (a > 0) { this._age = a; } }
+};
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithSetter1, "value").set));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithSetter2, "name").set));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithSetter2, "age").set));
+
+// 8.3 对象字面量中的 getter + setter
+const objWithAccessor1 = {
+    _val: 0,
+    get val() { return this._val; },
+    set val(v) { this._val = v; }
+};
+const objWithAccessor2 = {
+    _data: "",
+    get data() { return this._data; },
+    set data(d) { this._data = d; }
+};
+const objWithAccessor3 = {
+    _count: 0,
+    get count() { return this._count; },
+    set count(c) { this._count = Math.max(0, c); }
+};
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithAccessor1, "val").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithAccessor1, "val").set));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithAccessor2, "data").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithAccessor2, "data").set));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithAccessor3, "count").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithAccessor3, "count").set));
+
+// 8.4 多个 getter/setter
+const objWithMultiAccessor1 = {
+    _a: 1, _b: 2, _c: 3,
+    get a() { return this._a; }, set a(v) { this._a = v; },
+    get b() { return this._b; }, set b(v) { this._b = v; },
+    get c() { return this._c; }, set c(v) { this._c = v; }
+};
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithMultiAccessor1, "a").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithMultiAccessor1, "a").set));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithMultiAccessor1, "b").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithMultiAccessor1, "b").set));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithMultiAccessor1, "c").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithMultiAccessor1, "c").set));
+
+// 8.5 getter 返回计算值
+const objWithComputedGetter1 = {
+    x: 3, y: 4,
+    get hypotenuse() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+};
+const objWithComputedGetter2 = {
+    items: [1, 2, 3],
+    get length() { return this.items.length; },
+    get sum() { return this.items.reduce((a, b) => a + b, 0); }
+};
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithComputedGetter1, "hypotenuse").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithComputedGetter2, "length").get));
+print(ArkTools.getInlinedPropertiesCount(Object.getOwnPropertyDescriptor(objWithComputedGetter2, "sum").get));
+
+// ============================================================
+// Part 9: Class — CLASS_CONSTRUCTOR / DERIVED_CONSTRUCTOR — ClassConstructorClass / 动态创建
+// 预期 inlinedProps: 3 (length, name, prototype — 精确匹配)
+// ============================================================
+
+// 9.1 空 class
+class EmptyClass1 {}
+class EmptyClass2 { constructor() {} }
+print(ArkTools.getInlinedPropertiesCount(EmptyClass1));
+print(ArkTools.getInlinedPropertiesCount(EmptyClass2));
+
+// 9.2 class 带构造函数
+class ClassWithCtor1 {
+    constructor() { this.x = 1; }
+}
+class ClassWithCtor2 {
+    constructor(a) { this.a = a; }
+}
+class ClassWithCtor3 {
+    constructor(a, b) { this.a = a; this.b = b; }
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithCtor1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithCtor2));
+print(ArkTools.getInlinedPropertiesCount(ClassWithCtor3));
+
+// 9.3 class 带方法
+class ClassWithMethod1 {
+    method1() { return 1; }
+}
+class ClassWithMethod2 {
+    method1() { return 1; }
+    method2() { return 2; }
+    method3() { return 3; }
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithMethod1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithMethod2));
+
+// 9.4 class 带 getter/setter
+class ClassWithAccessor1 {
+    get value() { return 1; }
+}
+class ClassWithAccessor2 {
+    _val = 0;
+    get val() { return this._val; }
+    set val(v) { this._val = v; }
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithAccessor1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithAccessor2));
+
+// 9.5 class 带 static 方法
+class ClassWithStatic1 {
+    static create() { return new ClassWithStatic1(); }
+}
+class ClassWithStatic2 {
+    static method1() { return 1; }
+    static method2() { return 2; }
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithStatic1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithStatic1.create));
+print(ArkTools.getInlinedPropertiesCount(ClassWithStatic2));
+print(ArkTools.getInlinedPropertiesCount(ClassWithStatic2.method1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithStatic2.method2));
+
+// 9.6 class 带 static 数据字段
+class ClassWithStaticField1 {
+    static x = 1;
+}
+class ClassWithStaticField2 {
+    static x = 1;
+    static y = 2;
+}
+class ClassWithStaticField3 {
+    static x = 1;
+    static y = 2;
+    static z = 3;
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithStaticField1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithStaticField2));
+print(ArkTools.getInlinedPropertiesCount(ClassWithStaticField3));
+
+// 9.7 class 带实例字段
+class ClassWithField1 {
+    x = 1;
+}
+class ClassWithField2 {
+    x = 1;
+    y = 2;
+    z = 3;
+}
+class ClassWithField3 {
+    name = "test";
+    value = 42;
+    active = true;
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithField1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithField2));
+print(ArkTools.getInlinedPropertiesCount(ClassWithField3));
+
+// 9.8 class extends — DERIVED_CONSTRUCTOR
+class BaseClass1 {
+    greet() { return "hello"; }
+}
+class DerivedClass1 extends BaseClass1 {
+    greet() { return "hi"; }
+}
+class DerivedClass2 extends BaseClass1 {}
+
+class BaseClass2 {
+    constructor(x) { this.x = x; }
+    getValue() { return this.x; }
+}
+class DerivedClass3 extends BaseClass2 {
+    constructor(x, y) { super(x); this.y = y; }
+    getSum() { return this.x + this.y; }
+}
+print(ArkTools.getInlinedPropertiesCount(BaseClass1));
+print(ArkTools.getInlinedPropertiesCount(DerivedClass1));
+print(ArkTools.getInlinedPropertiesCount(DerivedClass2));
+print(ArkTools.getInlinedPropertiesCount(BaseClass2));
+print(ArkTools.getInlinedPropertiesCount(DerivedClass3));
+
+// 9.9 多层继承
+class Level1 { method1() { return 1; } }
+class Level2 extends Level1 { method2() { return 2; } }
+class Level3 extends Level2 { method3() { return 3; } }
+print(ArkTools.getInlinedPropertiesCount(Level1));
+print(ArkTools.getInlinedPropertiesCount(Level2));
+print(ArkTools.getInlinedPropertiesCount(Level3));
+
+// 9.10 class 带静态 getter/setter
+class ClassWithStaticAccessor1 {
+    static get version() { return "1.0"; }
+}
+class ClassWithStaticAccessor2 {
+    static _instance = null;
+    static get instance() { return ClassWithStaticAccessor2._instance; }
+    static set instance(v) { ClassWithStaticAccessor2._instance = v; }
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithStaticAccessor1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithStaticAccessor2));
+
+// 9.11 class 带 Symbol 方法
+class ClassWithSymbol1 {
+    [Symbol.iterator]() { let i = 0; return { next: () => ({ value: i++, done: i > 3 }) }; }
+}
+class ClassWithSymbol2 {
+    [Symbol.toStringTag]() { return "CustomClass"; }
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithSymbol1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithSymbol2));
+
+// 9.12 abstract-like class (构造函数保护)
+class AbstractLike1 {
+    constructor() {
+        if (new.target === AbstractLike1) { throw new Error("abstract"); }
+    }
+}
+class ConcreteLike1 extends AbstractLike1 {
+    constructor() { super(); }
+}
+print(ArkTools.getInlinedPropertiesCount(AbstractLike1));
+print(ArkTools.getInlinedPropertiesCount(ConcreteLike1));
+
+// 9.13 class 混合 (getter + setter + method + static + field)
+class ComplexClass1 {
+    static count = 0;
+    _name = "";
+    _value = 0;
+
+    constructor(name, value) {
+        this._name = name;
+        this._value = value;
+        ComplexClass1.count++;
+    }
+
+    get name() { return this._name; }
+    set name(n) { this._name = n; }
+    get value() { return this._value; }
+    set value(v) { this._value = v; }
+
+    double() { return this._value * 2; }
+    static create(name, value) { return new ComplexClass1(name, value); }
+}
+print(ArkTools.getInlinedPropertiesCount(ComplexClass1));
+print(ArkTools.getInlinedPropertiesCount(ComplexClass1.create));
+
+// ============================================================
+// Part 10: Bound Function — BoundFunctionClass
+// 预期 inlinedProps: 4 (实际使用 3: length, name, prototype)
+// ============================================================
+
+// 10.1 基本绑定
+const boundFunc1 = normalFunc1.bind(null);
+const boundFunc2 = normalFunc2.bind(null, 1);
+const boundFunc3 = normalFunc3.bind(null, 1, 2);
+print(ArkTools.getInlinedPropertiesCount(boundFunc1));
+print(ArkTools.getInlinedPropertiesCount(boundFunc2));
+print(ArkTools.getInlinedPropertiesCount(boundFunc3));
+
+// 10.2 绑定 this
+const boundThis1 = function() { return this.x; }.bind({ x: 1 });
+const boundThis2 = function() { return this.x + this.y; }.bind({ x: 1, y: 2 });
+print(ArkTools.getInlinedPropertiesCount(boundThis1));
+print(ArkTools.getInlinedPropertiesCount(boundThis2));
+
+// 10.3 多次绑定
+const multiBound1 = normalFunc1.bind(null).bind(null);
+const multiBound2 = normalFunc2.bind(null, 1).bind(null);
+print(ArkTools.getInlinedPropertiesCount(multiBound1));
+print(ArkTools.getInlinedPropertiesCount(multiBound2));
+
+// 10.4 绑定箭头函数 (箭头函数不能绑定 this，但可以绑定)
+const boundArrow1 = arrow1.bind(null);
+const boundArrow2 = arrow2.bind(null);
+print(ArkTools.getInlinedPropertiesCount(boundArrow1));
+print(ArkTools.getInlinedPropertiesCount(boundArrow2));
+
+// 10.5 绑定 class 方法
+class BindTestClass {
+    x = 10;
+    getX() { return this.x; }
+    setX(v) { this.x = v; }
+}
+const boundMethod1 = (new BindTestClass()).getX;
+const boundMethod2 = (new BindTestClass()).getX.bind(new BindTestClass());
+print(ArkTools.getInlinedPropertiesCount(BindTestClass));
+print(ArkTools.getInlinedPropertiesCount(boundMethod1));
+print(ArkTools.getInlinedPropertiesCount(boundMethod2));
+
+// ============================================================
+// Part 11: 方法 (普通对象方法) — NORMAL_FUNCTION — FunctionClassWithoutProto
+// 预期 inlinedProps: 4 (实际使用 2: length, name)
+// ============================================================
+
+// 11.1 对象方法简写
+const objShorthand1 = {
+    method1() { return 1; },
+    method2() { return 2; }
+};
+
+const objShorthand2 = {
+    add(a, b) { return a + b; },
+    mul(a, b) { return a * b; },
+    div(a, b) { return a / b; }
+};
+print(ArkTools.getInlinedPropertiesCount(objShorthand1.method1));
+print(ArkTools.getInlinedPropertiesCount(objShorthand1.method2));
+print(ArkTools.getInlinedPropertiesCount(objShorthand2.add));
+print(ArkTools.getInlinedPropertiesCount(objShorthand2.mul));
+print(ArkTools.getInlinedPropertiesCount(objShorthand2.div));
+
+// 11.2 对象计算属性方法
+const computedMethodKey = "dynamicMethod";
+const objComputed1 = {
+    [computedMethodKey]() { return "dynamic"; }
+};
+const objComputed2 = {
+    ["method_" + 1]() { return 1; },
+    ["method_" + 2]() { return 2; }
+};
+print(ArkTools.getInlinedPropertiesCount(objComputed1[computedMethodKey]));
+print(ArkTools.getInlinedPropertiesCount(objComputed2["method_1"]));
+print(ArkTools.getInlinedPropertiesCount(objComputed2["method_2"]));
+
+// 11.3 Generator 方法
+const objWithGenMethod1 = {
+    *genMethod() { yield 1; yield 2; yield 3; }
+};
+
+const objWithGenMethod2 = {
+    *numbers() { for (let i = 0; i < 5; i++) yield i; }
+};
+print(ArkTools.getInlinedPropertiesCount(objWithGenMethod1.genMethod));
+print(ArkTools.getInlinedPropertiesCount(objWithGenMethod2.numbers));
+
+// 11.4 Async 方法
+const objWithAsyncMethod1 = {
+    async fetchData() { return await Promise.resolve("data"); }
+};
+
+const objWithAsyncMethod2 = {
+    async processItem(item) { return await Promise.resolve(item); },
+    async processAll(items) {
+        return await Promise.all(items.map(i => this.processItem(i)));
+    }
+};
+print(ArkTools.getInlinedPropertiesCount(objWithAsyncMethod1.fetchData));
+print(ArkTools.getInlinedPropertiesCount(objWithAsyncMethod2.processItem));
+print(ArkTools.getInlinedPropertiesCount(objWithAsyncMethod2.processAll));
+
+// ============================================================
+// Part 12: 混合场景
+// ============================================================
+
+// 12.1 函数工厂
+function createAdder(x) {
+    return function(y) { return x + y; };
+}
+const add5 = createAdder(5);
+const add10 = createAdder(10);
+print(ArkTools.getInlinedPropertiesCount(createAdder));
+print(ArkTools.getInlinedPropertiesCount(add5));
+print(ArkTools.getInlinedPropertiesCount(add10));
+
+// 12.2 高阶函数
+function compose(f, g) {
+    return function(x) { return f(g(x)); };
+}
+const double = (x) => x * 2;
+const inc = (x) => x + 1;
+const doubleThenInc = compose(inc, double);
+print(ArkTools.getInlinedPropertiesCount(compose));
+print(ArkTools.getInlinedPropertiesCount(double));
+print(ArkTools.getInlinedPropertiesCount(inc));
+print(ArkTools.getInlinedPropertiesCount(doubleThenInc));
+
+// 12.3 函数作为 Map 值
+const funcMap = new Map();
+funcMap.set("add", (a, b) => a + b);
+funcMap.set("sub", (a, b) => a - b);
+funcMap.set("mul", (a, b) => a * b);
+print(ArkTools.getInlinedPropertiesCount(funcMap.get("add")));
+print(ArkTools.getInlinedPropertiesCount(funcMap.get("sub")));
+print(ArkTools.getInlinedPropertiesCount(funcMap.get("mul")));
+
+// 12.4 函数数组
+const funcArray = [
+    () => 1,
+    () => 2,
+    () => 3,
+    function() { return 4; },
+    function() { return 5; }
+];
+print(ArkTools.getInlinedPropertiesCount(funcArray[0]));
+print(ArkTools.getInlinedPropertiesCount(funcArray[1]));
+print(ArkTools.getInlinedPropertiesCount(funcArray[2]));
+print(ArkTools.getInlinedPropertiesCount(funcArray[3]));
+print(ArkTools.getInlinedPropertiesCount(funcArray[4]));
+
+// 12.5 递归箭头 (不能直接引用自身，需要变量)
+const recursiveArrow = (n) => n <= 0 ? 0 : n + recursiveArrow(n - 1);
+print(ArkTools.getInlinedPropertiesCount(recursiveArrow));
+
+// 12.6 async 函数组合
+async function asyncCompose(...fns) {
+    return async function(x) {
+        let result = x;
+        for (const fn of fns) {
+            result = await fn(result);
+        }
+        return result;
+    };
+}
+print(ArkTools.getInlinedPropertiesCount(asyncCompose));
+
+// 12.7 class 内箭头函数字段 (实例属性)
+class ClassWithArrowField1 {
+    handler = () => { return this; };
+    greeter = (name) => { return "hello " + name; };
+}
+
+class ClassWithArrowField2 {
+    x = 10;
+    getX = () => this.x;
+    setX = (v) => { this.x = v; };
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithArrowField1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithArrowField2));
+
+// 12.8 对象方法链
+const chainable1 = {
+    _value: 0,
+    add(n) { this._value += n; return this; },
+    mul(n) { this._value *= n; return this; },
+    value() { return this._value; }
+};
+print(ArkTools.getInlinedPropertiesCount(chainable1.add));
+print(ArkTools.getInlinedPropertiesCount(chainable1.mul));
+print(ArkTools.getInlinedPropertiesCount(chainable1.value));
+
+// 12.9 Proxy 包装的函数
+const proxiedFunc = new Proxy(function(a, b) { return a + b; }, {
+    apply(target, thisArg, args) { return target(...args); }
+});
+print(ArkTools.getInlinedPropertiesCount(proxiedFunc));
+
+// ============================================================
+// Part 13: 边界情况
+// ============================================================
+
+// 13.1 空 generator
+function* emptyGen() {}
+async function* emptyAsyncGen() {}
+print(ArkTools.getInlinedPropertiesCount(emptyGen));
+print(ArkTools.getInlinedPropertiesCount(emptyAsyncGen));
+
+// 13.2 无限循环 async generator
+async function* infiniteAsyncGen() {
+    let i = 0;
+    while (true) {
+        yield await Promise.resolve(i++);
+    }
+}
+print(ArkTools.getInlinedPropertiesCount(infiniteAsyncGen));
+
+// 13.3 throw in generator
+function* throwingGen() {
+    yield 1;
+    throw new Error("generator error");
+}
+print(ArkTools.getInlinedPropertiesCount(throwingGen));
+
+// 13.4 return in generator
+function* returningGen() {
+    yield 1;
+    return "done";
+}
+print(ArkTools.getInlinedPropertiesCount(returningGen));
+
+// 13.5 class with constructor returning object
+class ClassReturnObj1 {
+    constructor() { return { overridden: true }; }
+}
+print(ArkTools.getInlinedPropertiesCount(ClassReturnObj1));
+
+// 13.6 Proxy constructor
+const ProxiedClass = new Proxy(class {
+    constructor(x) { this.x = x; }
+}, {
+    construct(target, args) { return new target(...args); }
+});
+print(ArkTools.getInlinedPropertiesCount(ProxiedClass));
+
+// 13.7 Function.prototype.bind 多参数
+function multiParamFunc(a, b, c, d, e) { return a + b + c + d + e; }
+const boundPartial1 = multiParamFunc.bind(null, 1);
+const boundPartial2 = multiParamFunc.bind(null, 1, 2);
+const boundPartial3 = multiParamFunc.bind(null, 1, 2, 3);
+const boundPartial4 = multiParamFunc.bind(null, 1, 2, 3, 4);
+print(ArkTools.getInlinedPropertiesCount(multiParamFunc));
+print(ArkTools.getInlinedPropertiesCount(boundPartial1));
+print(ArkTools.getInlinedPropertiesCount(boundPartial2));
+print(ArkTools.getInlinedPropertiesCount(boundPartial3));
+print(ArkTools.getInlinedPropertiesCount(boundPartial4));
+
+// 13.8 嵌套 class
+class OuterClass {
+    static InnerClass1 = class { x = 1; };
+    static InnerClass2 = class { y = 2; };
+    getInnerClass() {
+        return class { z = 3; };
+    }
+}
+print(ArkTools.getInlinedPropertiesCount(OuterClass));
+print(ArkTools.getInlinedPropertiesCount(OuterClass.InnerClass1));
+print(ArkTools.getInlinedPropertiesCount(OuterClass.InnerClass2));
+
+// 13.9 class 表达式
+const ClassExpr1 = class { x = 1; };
+const ClassExpr2 = class NamedClassExpr { x = 1; };
+const ClassExpr3 = class extends BaseClass1 { y = 2; };
+print(ArkTools.getInlinedPropertiesCount(ClassExpr1));
+print(ArkTools.getInlinedPropertiesCount(ClassExpr2));
+print(ArkTools.getInlinedPropertiesCount(ClassExpr3));
+
+// 13.10 class 内部 static 代码块
+class ClassWithStaticBlock1 {
+    static x;
+    static { ClassWithStaticBlock1.x = 1; }
+}
+
+class ClassWithStaticBlock2 {
+    static items = [];
+    static {
+        ClassWithStaticBlock2.items.push(1);
+        ClassWithStaticBlock2.items.push(2);
+        ClassWithStaticBlock2.items.push(3);
+    }
+}
+print(ArkTools.getInlinedPropertiesCount(ClassWithStaticBlock1));
+print(ArkTools.getInlinedPropertiesCount(ClassWithStaticBlock2));
