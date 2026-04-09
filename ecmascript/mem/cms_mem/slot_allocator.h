@@ -49,6 +49,8 @@ public:
 
     void Expand(Region *region);
 
+    // for snapshot only
+    void Expand(Region *region, size_t allocSize);
     /**
      * @brief Discard the remain allocate buffer
      * @return allocated size from this allocate buffer

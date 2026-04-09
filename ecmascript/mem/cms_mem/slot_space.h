@@ -171,6 +171,8 @@ private:
         return res;
     }();
 
+    friend class SnapshotProcessor;
+
     enum class MemoryCheckerKind {
         SOFT,
         HARD,
@@ -193,6 +195,8 @@ private:
     template<bool expandInGC = false>
     void ExpandAllocator(SlotAllocator *allocator);
     
+    Region *ExpandRegionForSnapshot(size_t slotSize, size_t allocSize);
+
     inline ARK_INLINE void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
     Region *AllocateRegion(size_t slotSize);
