@@ -21,3 +21,13 @@ bigInt is sendable
 function is not sendable
 sendableFunc is sendable
 Arr is sendable
+=== Test Map with sendable objects ===
+Test 1: Empty Map
+Empty Map get returns undefined
+Test 2: Non-empty Map
+Set key2=100, key3=200
+Get key2 returns 100
+Get key3 returns 200
+Get non-existent key returns undefined
+Test 3: Multiple Map operations
+All 10 Map operations successful

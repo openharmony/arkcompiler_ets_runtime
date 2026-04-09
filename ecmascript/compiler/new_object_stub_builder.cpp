@@ -750,7 +750,8 @@ GateRef NewObjectStubBuilder::NewSObject(GateRef glue, GateRef hclass)
     return ret;
 }
 
-void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit)
+void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, Label *exit,
+                                                 RegionSpaceFlag spaceType)
 {
     auto env = GetEnvironment();
     Label overflow(env);
@@ -769,7 +770,14 @@ void NewObjectStubBuilder::NewTaggedArrayChecked(Variable *result, GateRef len, 
     Label noException(env);
     auto hclass = GetGlobalConstantValue(
         VariableType::JS_POINTER(), glue_, ConstantIndex::TAGGED_ARRAY_CLASS_INDEX);
-    AllocateInYoung(result, exit, &noException, hclass);
+
+    // Select allocation method based on spaceType
+    if (spaceType == RegionSpaceFlag::IN_SHARED_OLD_SPACE) {
+        AllocateInSOld(result, &noException, hclass);
+    } else {
+        AllocateInYoung(result, exit, &noException, hclass);
+    }
+
     Bind(&noException);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), hclass);
@@ -853,6 +861,46 @@ GateRef NewObjectStubBuilder::NewTaggedArray(GateRef glue, GateRef len)
         Bind(&slowPath);
         {
             result = CallRuntime(glue_, RTSTUB_ID(NewTaggedArray), { IntToTaggedInt(len) });
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef NewObjectStubBuilder::NewSTaggedArray(GateRef glue, GateRef len)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isEmpty(env);
+    Label notEmpty(env);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    SetGlue(glue);
+    BRANCH(Int32Equal(len, Int32(0)), &isEmpty, &notEmpty);
+    Bind(&isEmpty);
+    {
+        result = GetGlobalConstantValue(
+            VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
+        Jump(&exit);
+    }
+    Bind(&notEmpty);
+    {
+        Label next(env);
+        Label slowPath(env);
+        BRANCH(Int32LessThan(len, Int32(MAX_TAGGED_ARRAY_LENGTH)), &next, &slowPath);
+        Bind(&next);
+        {
+            NewTaggedArrayChecked(&result, len, &exit, RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+        }
+        Bind(&slowPath);
+        {
+            result = CallRuntime(glue_, RTSTUB_ID(NewSTaggedArray), { IntToTaggedInt(len) });
             Jump(&exit);
         }
     }
