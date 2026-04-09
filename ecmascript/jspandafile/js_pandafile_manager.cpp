@@ -13,6 +13,11 @@
  * limitations under the License.
  */
 
+
+#include <cstdint>
+#include <string_view>
+#include <zlib.h>
+
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -22,7 +27,9 @@
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/platform/dfx_crash_obj.h"
 #include "ecmascript/platform/pandafile.h"
+#include "ecmascript/platform/signal_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_snapshot.h"
 #include "ecmascript/ohos/ohos_constants.h"
 #include "ecmascript/ohos/ohos_version_info_tools.h"
@@ -30,6 +37,7 @@
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
 static const size_t MALLOC_SIZE_LIMIT = 2147483648; // Max internal memory used by the VM declared in options
+static constexpr const std::string_view DAMAGED_ABC_REPORT_HEADER = "Damaged abc";
 
 JSPandaFileManager *JSPandaFileManager::GetInstance()
 {
@@ -701,4 +709,71 @@ bool JSPandaFileManager::UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile)
     }
     return false;
 }
-}  // namespace panda::ecmascript
+
+std::string JSPandaFileManager::GenPandafileCheckReport()
+{
+    auto formatPath = [](const std::string_view& path) -> std::string_view {
+        // path starts with ModulePathHelper::BUNDLE_INSTALL_PATH
+        if (path.find(ModulePathHelper::BUNDLE_INSTALL_PATH) == 0) {
+            // [ in] "/data/storage/el1/bundle/entry/ets/modules.abc"
+            // [out] "entry/ets/modules.abc"
+            // [ in] "/data/storage/el1/bundle/com.example.myapplication/entry/entry/ets/modules.abc"
+            // [out] "com.example.myapplication/entry/entry/ets/modules.abc"
+            return path.substr(ModulePathHelper::BUNDLE_INSTALL_PATH.size(),
+                               path.size() - ModulePathHelper::BUNDLE_INSTALL_PATH.size());
+        } else {
+            // [ in] "/system/lib64/module/libmixed_napi_module.so/mix_napi_module.js"
+            // [out] "libmixed_napi_module.so/mix_napi_module.js"
+            // [ in] "/system/etc/abc/framework/my_ts_module.abc"
+            // [out] "framework/my_ts_module.abc"
+            // [ in] "C9840370DCD7DDE94E0D"
+            // [out] "C9840370DCD7DDE94E0D" (not contains path divider, return full string)
+            constexpr char pathDivider = '/';
+            auto pos1 = path.rfind(pathDivider);
+            if (pos1 == 0 || pos1 == std::string_view::npos) {
+                return path;
+            }
+            auto pos2 = path.rfind(pathDivider, pos1 - 1);
+            return (pos2 == std::string_view::npos) ? path : path.substr(pos2 + 1);
+        }
+    };
+    auto appendReport = [&formatPath](std::ostringstream& oss,
+                                     const std::string_view& name, uint32_t actual, uint32_t expect) {
+        // report would like "[entry/ets/modules.abc] checksum failed, expect: 0x12345678, actual: 0x9abcdef0"
+        oss << "    [" << formatPath(name) << "] ";
+        if (actual == 0 && expect == 0) {
+            oss << "invalid buffer pointer";
+        } else {
+            oss << "checksum check failed, expect: 0x" << std::hex << expect
+                << ", actual: 0x" << actual;
+        }
+    };
+    static constexpr uint32_t FILE_CONTENT_OFFSET = 8 + sizeof(uint32_t);  // 8: file header size
+    std::ostringstream oss;
+    LockHolder lock(jsPandaFileLock_);
+    for (auto& [name, pf] : loadedJSPandaFiles_) {
+        auto ptr = pf->GetBase();
+        if (ptr == nullptr) {
+            appendReport(oss, name, 0, 0);
+            continue;
+        }
+        uint32_t actual = adler32(1UL, static_cast<const uint8_t*>(ptr) + FILE_CONTENT_OFFSET,
+                                  pf->GetFileSize() - FILE_CONTENT_OFFSET);
+        uint32_t expect = pf->GetChecksum();
+        if (actual == expect) {
+            continue;
+        }
+        appendReport(oss, name, actual, expect);
+    }
+    return oss.str();
+}
+
+void JSPandaFileManager::RegisterPFCheckCallback(const EcmaVM* vm)
+{
+    const_cast<EcmaVM*>(vm)->RegisterExtraJSCrashMessageCallback(
+        DAMAGED_ABC_REPORT_HEADER, [&](const EcmaVM* vm) -> std::string {
+            return GetInstance()->GenPandafileCheckReport();
+        });
+}
+
+} // namespace panda::ecmascript
