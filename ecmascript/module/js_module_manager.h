@@ -34,6 +34,7 @@ public:
     ~ModuleManager()
     {
         resolvedModules_.Clear();
+        resolvedSendableModules_.Clear();
         classLiteralConstPoolMap_.clear();
     }
 
@@ -63,6 +64,7 @@ public:
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
 
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
+    JSHandle<JSTaggedValue> TryGetSendableModule(const CString& referencing);
     void Iterate(RootVisitor &v);
 
     ModuleExecuteMode GetExecuteMode() const
@@ -93,25 +95,34 @@ public:
         resolvedModules_.Insert(recordName, module);
     }
 
+    inline void AddSendableModuleToCache(const CString &recordName, JSTaggedValue module)
+    {
+        resolvedSendableModules_.Emplace(recordName, module);
+    }
+
     void NativeObjDestory()
     {
 #if ENABLE_LATEST_OPTIMIZATION
         resolvedModules_.ForEach([](const CString& key, GCRoot& root) {
             ASSERT(!key.empty());
-            JSTaggedValue module = root.Read();
-            SourceTextModule::Cast(module)->DestoryLazyImportArray();
-            SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
-            SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+        });
+        resolvedSendableModules_.ForEach([](const CString& key, GCRoot& root) {
+            ASSERT(!key.empty());
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
         });
 #else
         resolvedModules_.ForEach([](auto it) {
             CString key = it->first;
             ASSERT(!key.empty());
             GCRoot &root = it->second;
-            JSTaggedValue module = root.Read();
-            SourceTextModule::Cast(module)->DestoryLazyImportArray();
-            SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
-            SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
+        });
+        resolvedSendableModules_.ForEach([](auto it) {
+            CString key = it->first;
+            ASSERT(!key.empty());
+            GCRoot &root = it->second;
+            SourceTextModule::Cast(root.Read())->DestroyModuleCNativeFields();
         });
 #endif
     }
@@ -172,8 +183,10 @@ private:
     EcmaVM *vm_ {nullptr};
 #if ENABLE_LATEST_OPTIMIZATION
     ModuleManagerMap<CString, CStringHash> resolvedModules_;
+    ModuleManagerMap<CString, CStringHash> resolvedSendableModules_;
 #else
     ModuleManagerMap<CString> resolvedModules_;
+    ModuleManagerMap<CString> resolvedSendableModules_;
 #endif
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
     std::string moduleImportData_ {"\nModuleImportStack:"};

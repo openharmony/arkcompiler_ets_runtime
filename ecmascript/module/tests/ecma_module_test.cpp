@@ -3863,11 +3863,27 @@ HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule2)
 {
     ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
-    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    CString recordName = "a";
+    module->SetEcmaModuleRecordNameString(recordName);
     JSHandle<JSTaggedValue> moduleRecord = JSHandle<JSTaggedValue>::Cast(module);
     SendableClassModule::GenerateSendableFuncModule(thread, moduleRecord);
     JSHandle<SourceTextModule> currentModule = JSHandle<SourceTextModule>::Cast(moduleRecord);
     EXPECT_FALSE(SourceTextModule::IsModuleInSharedHeap(currentModule));
+}
+
+HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule3)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString recordName = "a";
+    module->SetEcmaModuleRecordNameString(recordName);
+    JSHandle<JSTaggedValue> moduleRecord = JSHandle<JSTaggedValue>::Cast(module);
+    JSHandle<JSTaggedValue> sModule = SendableClassModule::GenerateSendableFuncModule(thread, moduleRecord);
+    JSHandle<SourceTextModule> currentModule = JSHandle<SourceTextModule>::Cast(sModule);
+    EXPECT_TRUE(SourceTextModule::IsModuleInSharedHeap(currentModule));
+    JSHandle<JSTaggedValue> sModule2 = SendableClassModule::GenerateSendableFuncModule(thread, moduleRecord);
+    EXPECT_EQ(sModule, sModule2);
 }
 
 HWTEST_F_L0(EcmaModuleTest, CloneEnvForSModule1)
@@ -5866,5 +5882,71 @@ HWTEST_F_L0(EcmaModuleTest, GetBundleModuleName_EmptyPath)
     CString expectRes = "";
     CString res = ModulePathHelper::GetBundleModuleName(baseFileName);
     EXPECT_EQ(res, expectRes);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule_CacheIntegration)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> originalModule = objectFactory->NewSourceTextModule();
+    CString recordName = "test_sendable_func_module";
+    originalModule->SetEcmaModuleRecordNameString(recordName);
+    originalModule->SetSharedType(SharedTypes::SENDABLE_FUNCTION_MODULE);
+
+    JSHandle<JSTaggedValue> originalValue = JSHandle<JSTaggedValue>::Cast(originalModule);
+    thread->GetModuleManager()->AddSendableModuleToCache(recordName, originalValue.GetTaggedValue());
+
+    JSHandle<JSTaggedValue> cachedResult = thread->GetModuleManager()->TryGetSendableModule(recordName);
+    EXPECT_TRUE(cachedResult->IsSourceTextModule());
+    EXPECT_EQ(cachedResult.GetTaggedValue(), originalValue.GetTaggedValue());
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleManager_NativeObjDestory_SendableModules)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    ASSERT_NE(moduleManager, nullptr);
+    
+    CString recordName = "test_destroy_module";
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> testModule = objectFactory->NewSourceTextModule();
+    testModule->SetEcmaModuleRecordNameString(recordName);
+    
+    // Add to sendable cache
+    moduleManager->AddSendableModuleToCache(recordName, testModule.GetTaggedValue());
+    
+    // Verify module is in cache
+    JSHandle<JSTaggedValue> cached = moduleManager->TryGetSendableModule(recordName);
+    EXPECT_TRUE(cached->IsSourceTextModule());
+    
+    // Test native object destroy (this will clear the cache)
+    moduleManager->NativeObjDestory();
+    
+    // Verify module is no longer in cache after destruction
+    JSHandle<JSTaggedValue> afterDestroy = moduleManager->TryGetSendableModule(recordName);
+    JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(afterDestroy);
+    EXPECT_EQ(module->GetEcmaModuleFilenameString(), "");
+    EXPECT_EQ(module->GetEcmaModuleRecordNameString(), "");
+}
+
+HWTEST_F_L0(EcmaModuleTest, AddSendableModuleToCache_DuplicateName)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    ASSERT_NE(moduleManager, nullptr);
+    
+    CString recordName = "duplicate_module";
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    
+    // Create first module
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    module1->SetEcmaModuleRecordNameString(recordName);
+    moduleManager->AddSendableModuleToCache(recordName, module1.GetTaggedValue());
+    
+    // Create second module
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    module2->SetEcmaModuleRecordNameString(recordName);
+    moduleManager->AddSendableModuleToCache(recordName, module2.GetTaggedValue());
+    
+    JSHandle<JSTaggedValue> cached = moduleManager->TryGetSendableModule(recordName);
+    EXPECT_TRUE(cached->IsSourceTextModule());
+    EXPECT_EQ(cached.GetTaggedValue(), module1.GetTaggedValue());
 }
 }  // namespace panda::test
