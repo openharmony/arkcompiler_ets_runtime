@@ -129,6 +129,31 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     res.set("test entries return type", flag);
 
+    {
+        try {
+            let lws = new fastset();
+            let props = Object.getOwnPropertyNames(globalThis).sort();
+            for(let i = 0;i < 5;i++) {
+                lws.add(globalThis[props[i]]);
+            }
+            lws.addAll(lws);
+        } catch (e) {
+            res.set("test addAll corner", false);
+        }
+    }
+
+    {
+        var lws = new fastset();
+        lws.increaseCapacityTo(0x10010);
+        try {
+            for(let i = 0; i < 0x20; i++) {
+                lws.add(0x112200 + i);  // oob write
+            }
+        } catch (e) {
+            res.set("test add oob write", false);
+        }
+    }
+
     flag = false;
     try {
         proxy["aa"] = 3;
