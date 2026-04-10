@@ -461,4 +461,193 @@ HWTEST_F_L0(HeapSnapShotTest, TestProxyClassName)
     ASSERT_TRUE(foundProxyB) << "Proxy-ClassB not found";
     ASSERT_TRUE(foundProxyNoName) << "Proxy without class name not found";
 }
+
+// EntryIdMap: InsertId / FindId / EraseId basic correctness
+HWTEST_F_L0(HeapSnapShotTest, TestEntryIdMapInsertFindErase)
+{
+    EntryIdMap entryIdMap;
+
+    // Not found initially
+    ASSERT_FALSE(entryIdMap.FindId(0x1000).first);
+
+    // Insert then find
+    ASSERT_TRUE(entryIdMap.InsertId(0x1000, 42));
+    auto found = entryIdMap.FindId(0x1000);
+    ASSERT_TRUE(found.first);
+    ASSERT_EQ(found.second, 42U);
+
+    // A different address is not found
+    ASSERT_FALSE(entryIdMap.FindId(0x2000).first);
+
+    // Erase existing entry succeeds; second erase fails
+    ASSERT_TRUE(entryIdMap.EraseId(0x1000));
+    ASSERT_FALSE(entryIdMap.FindId(0x1000).first);
+    ASSERT_FALSE(entryIdMap.EraseId(0x1000));
+}
+
+// EntryIdMap: Move copies the ID to the new address and removes the old one
+HWTEST_F_L0(HeapSnapShotTest, TestEntryIdMapMoveAddress)
+{
+    EntryIdMap entryIdMap;
+    entryIdMap.InsertId(0x1000, 100);
+
+    ASSERT_TRUE(entryIdMap.Move(0x1000, 0x2000));
+
+    ASSERT_FALSE(entryIdMap.FindId(0x1000).first);
+    auto moved = entryIdMap.FindId(0x2000);
+    ASSERT_TRUE(moved.first);
+    ASSERT_EQ(moved.second, 100U);
+}
+
+// EntryIdMap: Move edge cases – same address (no-op) and not-found address
+HWTEST_F_L0(HeapSnapShotTest, TestEntryIdMapMoveEdgeCases)
+{
+    EntryIdMap entryIdMap;
+    entryIdMap.InsertId(0x1000, 100);
+
+    // Same source and destination: no-op, returns true, entry unchanged
+    ASSERT_TRUE(entryIdMap.Move(0x1000, 0x1000));
+    auto sameAddr = entryIdMap.FindId(0x1000);
+    ASSERT_TRUE(sameAddr.first);
+    ASSERT_EQ(sameAddr.second, 100U);
+
+    // Non-existing source address: returns false
+    ASSERT_FALSE(entryIdMap.Move(0x9000, 0xA000));
+}
+
+// EntryIdMap: FindOrInsertNodeId is idempotent for the same address
+HWTEST_F_L0(HeapSnapShotTest, TestEntryIdMapFindOrInsertNodeId)
+{
+    EntryIdMap entryIdMap;
+
+    NodeId id1 = entryIdMap.FindOrInsertNodeId(0x1000);
+    ASSERT_GT(id1, 0U);
+
+    // Same address returns the same ID
+    NodeId id2 = entryIdMap.FindOrInsertNodeId(0x1000);
+    ASSERT_EQ(id1, id2);
+
+    // Different address gets a distinct ID
+    NodeId id3 = entryIdMap.FindOrInsertNodeId(0x2000);
+    ASSERT_NE(id1, id3);
+}
+
+// HeapEntryMap: FindEntry / InsertEntry / FindAndEraseNode lifecycle
+HWTEST_F_L0(HeapSnapShotTest, TestHeapEntryMapFindInsertErase)
+{
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    HeapSnapShotFriendTest heapSnapShotTest(ecmaVm_, tester.GetEcmaStringTableTest(),
+                                            dumpOption, false, tester.GetEntryIdMapTest());
+    Chunk &chunk = heapSnapShotTest.GetChunkTest();
+    HeapEntryMap &entryMap = heapSnapShotTest.GetEntryMapTest();
+
+    const JSTaggedType testAddr = 0xABCD1234;
+    ASSERT_EQ(entryMap.FindEntry(testAddr), nullptr);
+
+    HprofNode *node = HprofNode::NewNode(chunk, 1, 0, nullptr, NodeType::OBJECT, 32, 0, testAddr);
+    entryMap.InsertEntry(node);
+    ASSERT_EQ(entryMap.FindEntry(testAddr), node);
+
+    // FindAndEraseNode removes the entry and returns it
+    HprofNode *erased = entryMap.FindAndEraseNode(testAddr);
+    ASSERT_EQ(erased, node);
+    ASSERT_EQ(entryMap.FindEntry(testAddr), nullptr);
+
+    // Erasing a missing address returns nullptr
+    ASSERT_EQ(entryMap.FindAndEraseNode(0x9999), nullptr);
+}
+
+// HeapEntryMap: FindOrInsertNode returns the pre-existing node when address is already present
+HWTEST_F_L0(HeapSnapShotTest, TestHeapEntryMapFindOrInsertNode)
+{
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    HeapSnapShotFriendTest heapSnapShotTest(ecmaVm_, tester.GetEcmaStringTableTest(),
+                                            dumpOption, false, tester.GetEntryIdMapTest());
+    Chunk &chunk = heapSnapShotTest.GetChunkTest();
+    HeapEntryMap &entryMap = heapSnapShotTest.GetEntryMapTest();
+
+    const JSTaggedType testAddr = 0xBEEF1000;
+
+    // Not in map yet: inserts node1 and returns it
+    HprofNode *node1 = HprofNode::NewNode(chunk, 1, 0, nullptr, NodeType::OBJECT, 32, 0, testAddr);
+    ASSERT_EQ(entryMap.FindOrInsertNode(node1), node1);
+
+    // Already in map: returns existing node1, ignores node2
+    HprofNode *node2 = HprofNode::NewNode(chunk, 2, 0, nullptr, NodeType::OBJECT, 64, 0, testAddr);
+    ASSERT_EQ(entryMap.FindOrInsertNode(node2), node1);
+}
+
+// MoveNode returns immediately (no-op) when source equals destination address
+HWTEST_F_L0(HeapSnapShotTest, TestMoveNodeSameAddressNoOp)
+{
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    HeapSnapShotFriendTest heapSnapShotTest(ecmaVm_, tester.GetEcmaStringTableTest(),
+                                            dumpOption, false, tester.GetEntryIdMapTest());
+    Chunk &chunk = heapSnapShotTest.GetChunkTest();
+
+    // Use a fake address: the early-return path never dereferences the forward pointer
+    const uintptr_t testAddr = 0x12340000;
+    TaggedObject *sameForward = reinterpret_cast<TaggedObject *>(testAddr);
+
+    HprofNode *node = HprofNode::NewNode(chunk, 1, 0, nullptr, NodeType::OBJECT, 32, 0,
+                                         static_cast<JSTaggedType>(testAddr));
+    heapSnapShotTest.InsertEntryTest(node);
+
+    heapSnapShotTest.MoveNodeTest(testAddr, sameForward, 32);
+
+    // Node is still at the original address, unmodified
+    ASSERT_EQ(heapSnapShotTest.GetEntryMapTest().FindEntry(static_cast<JSTaggedType>(testAddr)), node);
+}
+
+// GeneratePrivateStringNode returns a cached (identical) pointer on repeated calls
+HWTEST_F_L0(HeapSnapShotTest, TestGeneratePrivateStringNodeCached)
+{
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    dumpOption.isPrivate = true;
+    HeapSnapShotFriendTest heapSnapShotTest(ecmaVm_, tester.GetEcmaStringTableTest(),
+                                            dumpOption, false, tester.GetEntryIdMapTest());
+
+    HprofNode *node1 = heapSnapShotTest.GeneratePrivateStringNodeTest(0);
+    ASSERT_NE(node1, nullptr);
+
+    // Second call must return the identical cached pointer (privateStringNode_ field)
+    HprofNode *node2 = heapSnapShotTest.GeneratePrivateStringNodeTest(0);
+    ASSERT_EQ(node1, node2);
+}
+
+// After BuildUp, nodes[0] is SyntheticRoot with type SYNTHETIC
+HWTEST_F_L0(HeapSnapShotTest, TestSyntheticRootStructure)
+{
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    const auto &nodes = *snapshot->GetNodes();
+    ASSERT_GE(nodes.size(), 1U);
+
+    const HprofNode *synRoot = nodes[0];
+    ASSERT_NE(synRoot, nullptr);
+    ASSERT_EQ(synRoot->GetType(), NodeType::SYNTHETIC);
+    ASSERT_NE(synRoot->GetName(), nullptr);
+    ASSERT_EQ(*synRoot->GetName(), CString("SyntheticRoot"));
+}
+
+// After BuildUp, nodeCount, edgeCount and totalNodeSize are all positive
+HWTEST_F_L0(HeapSnapShotTest, TestHeapSnapshotNodeEdgeCountPositive)
+{
+    HeapProfilerFriendTest tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    ASSERT_GT(snapshot->GetNodeCount(), 0U);
+    ASSERT_GT(snapshot->GetEdgeCount(), 0U);
+    ASSERT_GT(snapshot->GetTotalNodeSize(), 0U);
+}
+
 }

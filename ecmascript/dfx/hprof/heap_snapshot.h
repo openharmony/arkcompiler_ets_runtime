@@ -59,7 +59,7 @@ enum class NodeType {
     DEFAULT = NATIVE,
 };
 
-enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, DEFAULT = PROPERTY };
+enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, NATIVE, DEFAULT = PROPERTY };
 
 class HprofNode {
 public:
@@ -514,7 +514,11 @@ public:
     {
         JSTaggedValue entry(obj);
         if (entry.IsOnlyJSObject()) {
-            return stringTable_->InsertStrAndGetStringId(ParseObjectName(obj));
+            CString objectName = ParseObjectName(obj);
+            if (objectName == "JSObject") {
+                return 1;
+            }
+            return stringTable_->InsertStrAndGetStringId(objectName);
         }
         if (entry.IsJSFunction()) {
             return stringTable_->InsertStrAndGetStringId(ParseFunctionName(obj, true));
@@ -553,6 +557,8 @@ private:
     HprofNode *GenerateFunctionNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     HprofNode *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges(bool isSimplify = false);
+    void ProcessNativeEdge(const Reference &it, HprofNode *entryFrom);
+    void ProcessRegularEdge(const Reference &it, HprofNode *entryFrom, bool isSimplify);
     void RenameFunction(const CString &edgeName, HprofNode *entryFrom, HprofNode *entryTo);
     CString ParseFunctionName(TaggedObject *obj, bool isRawHeap = false);
     const CString ParseObjectName(TaggedObject *obj);
@@ -631,6 +637,8 @@ private:
     CVector<Edge *> edges_ {};
     CUnorderedSet<HprofNode *> localHandleRoots_ {};
     CUnorderedSet<HprofNode *> globalHandleRoots_ {};
+    // The address of the native pointer storing the reference to the ArkTS object
+    CVector<HprofNode *> nativeAddressNodes_ {};
     CVector<TimeStamp> timeStamps_ {};
     uint32_t nodeCount_ {0};
     uint32_t edgeCount_ {0};

@@ -1005,7 +1005,7 @@ HprofNode *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bo
     }
     size_t selfsize = (size != 0) ? size : obj->GetSize();
     HprofNode *node = HprofNode::NewNode(chunk_, sequenceId, nodeCount_, GetString("Object"), NodeType::OBJECT,
-                                         selfsize, 0, addr);
+        selfsize, 0, addr);
     if (isInFinish) {
         CString *objectName = GetString(ParseObjectName(obj));
         node->SetName(objectName);
@@ -1019,6 +1019,56 @@ HprofNode *HeapSnapshot::GenerateObjectNode(JSTaggedValue entry, size_t size, bo
     entryMap_.InsertEntry(node);
     InsertNodeUnique(node);
     return node;
+}
+
+void HeapSnapshot::ProcessNativeEdge(const Reference &it, HprofNode *entryFrom)
+{
+    JSTaggedType addr = it.value_.GetRawData();
+    HprofNode *existNode = entryMap_.FindEntry(addr);
+    if (existNode == nullptr) {
+        auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
+        std::stringstream ss;
+        ss << "0x" << std::hex << addr;
+        existNode = HprofNode::NewNode(chunk_, sequenceId, nodeCount_, GetString(ss.str().c_str()),
+            NodeType::HEAPNUMBER, 0, 0, addr);
+        entryMap_.InsertEntry(existNode);
+        if (!idExist) {
+            entryIdMap_->InsertId(addr, sequenceId);
+        }
+        nativeAddressNodes_.push_back(existNode);
+    }
+    HprofNode *entryTo = existNode;
+    Edge *edge = Edge::NewEdge(chunk_, it.type_, entryFrom, entryTo, GetString(it.name_));
+    InsertEdgeUnique(edge);
+    entryFrom->IncEdgeCount();
+}
+
+void HeapSnapshot::ProcessRegularEdge(const Reference &it, HprofNode *entryFrom, bool isSimplify)
+{
+    JSTaggedValue toValue = it.value_;
+    if (toValue.IsNumber() && !captureNumericValue_) {
+        return;
+    }
+    HprofNode *entryTo = nullptr;
+    EdgeType type = toValue.IsWeak() ? EdgeType::WEAK : it.type_;
+    if (toValue.IsWeak()) {
+        toValue.RemoveWeakTag();
+    }
+    if (toValue.IsHeapObject()) {
+        auto *to = toValue.GetTaggedObject();
+        entryTo = entryMap_.FindEntry(HprofNode::NewAddress(to));
+    }
+    if (entryTo == nullptr) {
+        entryTo = GenerateNode(toValue, 0, true, isSimplify);
+    }
+    if (entryTo != nullptr) {
+        Edge *edge = (it.type_ == EdgeType::ELEMENT) ?
+            Edge::NewEdge(chunk_, type, entryFrom, entryTo, it.index_) :
+            Edge::NewEdge(chunk_, type, entryFrom, entryTo, GetString(it.name_));
+        RenameFunction(it.name_, entryFrom, entryTo);
+        InsertEdgeUnique(edge);
+        entryFrom->IncEdgeCount();  // Update Node's edgeCount_ here
+    }
 }
 
 void HeapSnapshot::FillEdges(bool isSimplify)
@@ -1035,29 +1085,10 @@ void HeapSnapshot::FillEdges(bool isSimplify)
         std::vector<Reference> referenceResources;
         value.DumpForSnapshot(vm_->GetJSThread(), referenceResources, isVmMode_);
         for (auto const &it : referenceResources) {
-            JSTaggedValue toValue = it.value_;
-            if (toValue.IsNumber() && !captureNumericValue_) {
-                continue;
-            }
-            HprofNode *entryTo = nullptr;
-            EdgeType type = toValue.IsWeak() ? EdgeType::WEAK : it.type_;
-            if (toValue.IsWeak()) {
-                toValue.RemoveWeakTag();
-            }
-            if (toValue.IsHeapObject()) {
-                auto *to = toValue.GetTaggedObject();
-                entryTo = entryMap_.FindEntry(HprofNode::NewAddress(to));
-            }
-            if (entryTo == nullptr) {
-                entryTo = GenerateNode(toValue, 0, true, isSimplify);
-            }
-            if (entryTo != nullptr) {
-                Edge *edge = (it.type_ == EdgeType::ELEMENT) ?
-                    Edge::NewEdge(chunk_, type, entryFrom, entryTo, it.index_) :
-                    Edge::NewEdge(chunk_, type, entryFrom, entryTo, GetString(it.name_));
-                RenameFunction(it.name_, entryFrom, entryTo);
-                InsertEdgeUnique(edge);
-                entryFrom->IncEdgeCount();  // Update Node's edgeCount_ here
+            if (it.type_ == EdgeType::NATIVE) {
+                ProcessNativeEdge(it, entryFrom);
+            } else {
+                ProcessRegularEdge(it, entryFrom, isSimplify);
             }
         }
     }
@@ -1119,6 +1150,9 @@ CString HeapSnapshot::ParseFunctionName(TaggedObject *obj, bool isRawHeap)
 
 const CString HeapSnapshot::ParseObjectName(TaggedObject *obj)
 {
+    if (JSTaggedValue(obj).IsJSWrappedNapiObject()) {
+        return "JSWrappedNapiObject";
+    }
     ASSERT(JSTaggedValue(obj).IsJSObject());
     JSThread *thread = vm_->GetAssociatedJSThread();
     bool isCallGetter = false;
@@ -1181,6 +1215,11 @@ void HeapSnapshot::AddSyntheticRoot()
     edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
     edgeCount_ += rootEdges.size();
 
+    //Insert Native Address
+    for (auto node : nativeAddressNodes_) {
+        InsertNodeUnique(node);
+    }
+    
     // Reindex all nodes after insertion
     ReindexAllNodes();
 }

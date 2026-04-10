@@ -82,7 +82,7 @@ void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot,
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"edge_types\":[[\"context\",\"element\",\"property\",\"internal\",\"hidden\",\"shortcut\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)
-    writer->WriteString("\"weak\"],\"string_or_number\",\"node\"],\n");  // 6.
+    writer->WriteString("\"weak\",\"native\"],\"string_or_number\",\"node\"],\n");  // 6.
     // NOLINTNEXTLINE(modernize-raw-string-literal)
     writer->WriteString("\"trace_function_info_fields\":[\"function_id\",\"name\",\"script_name\",\"script_id\",");
     // NOLINTNEXTLINE(modernize-raw-string-literal)

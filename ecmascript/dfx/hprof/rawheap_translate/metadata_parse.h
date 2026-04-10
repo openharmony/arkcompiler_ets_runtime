@@ -49,6 +49,7 @@ public:
     bool IsString(JSType type);
     bool IsDictionaryMode(JSType type);
     bool IsJSObject(JSType type);
+    bool IsJSWrappedNapiObject(JSType type);
     bool IsGlobalEnv(JSType type);
     bool IsArray(JSType type);
 

@@ -162,6 +162,11 @@ bool MetaParser::IsJSObject(JSType type)
     return typeRange_.objectFirst <= type && type <= typeRange_.objectLast;
 }
 
+bool MetaParser::IsJSWrappedNapiObject(JSType type)
+{
+    return type == GetJSTypeFromTypeName("JS_WRAPPED_NAPI_OBJECT");
+}
+
 bool MetaParser::IsGlobalEnv(JSType type)
 {
     return type == GetJSTypeFromTypeName("GLOBAL_ENV");

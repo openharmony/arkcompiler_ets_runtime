@@ -5032,9 +5032,37 @@ void JSObject::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &v
     }
 }
 
+static void ProcessNativePointerItem(const JSThread *thread, std::vector<Reference> &vec,
+                                     uint32_t index, JSTaggedValue itemValue)
+{
+    if (!itemValue.IsJSNativePointer()) {
+        return;
+    }
+    JSNativePointer *native = JSNativePointer::Cast(itemValue.GetTaggedObject());
+    void* externalPointer = native->GetExternalPointer();
+    auto cb = thread->GetEcmaVM()->GetNativeReferenceDataCallbackGetter();
+    if (cb == nullptr) {
+        return;
+    }
+    void* externalData = cb(externalPointer);
+    if (externalData != nullptr) {
+        vec.emplace_back(CString("NativeAddress") + CString(std::to_string(index)),
+                         JSTaggedValue(static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(externalData))),
+                         EdgeType::NATIVE);
+    }
+}
+
 void JSWrappedNapiObject::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("NativePointers"), GetNativePointers(thread));
+    JSTaggedValue nativePoint = GetNativePointers(thread);
+    vec.emplace_back(CString("NativePointers"), nativePoint);
+    if (nativePoint.IsTaggedArray()) {
+        TaggedArray* array = TaggedArray::Cast(nativePoint.GetTaggedObject());
+        for (uint32_t i = 0; i < array->GetExtraLength(); i++) {
+            JSTaggedValue itemValue = array->Get(thread, i);
+            ProcessNativePointerItem(thread, vec, i, itemValue);
+        }
+    }
     JSObject::DumpForSnapshot(thread, vec);
 }
 

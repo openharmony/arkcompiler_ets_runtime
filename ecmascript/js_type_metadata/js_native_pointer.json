@@ -3,6 +3,11 @@
     "node_name": "JSNativePointer",
     "offsets": [
         {
+            "name": "ExternalPointer",
+            "offset": 0,
+            "size": 8
+        },
+        {
             "name": "BindingSize",
             "offset": 24,
             "size": 4

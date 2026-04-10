@@ -61,6 +61,11 @@ public:
         return globalHandleRoots_;
     }
 
+    const CUnorderedSet<JSTaggedType>& GetNativePointerAddrs() const
+    {
+        return nativePointerAddrs_;
+    }
+
 private:
 
     const EcmaVM *vm_ {nullptr};
@@ -69,6 +74,7 @@ private:
     CSet<JSTaggedType> localHandleRoots_ {};
     CSet<JSTaggedType> globalHandleRoots_ {};
     CVector<JSTaggedType> markedObjects_ {};
+    CUnorderedSet<JSTaggedType> nativePointerAddrs_ {};
     uint32_t heapSize_ {0};
 };
 
@@ -105,6 +111,11 @@ public:
         return marker_.GetGlobalHandleRoots();
     }
 
+    const CUnorderedSet<JSTaggedType>& GetNativePointerAddrs() const
+    {
+        return marker_.GetNativePointerAddrs();
+    }
+
 protected:
     virtual void DumpRootTable() = 0;
     virtual void DumpStringTable() = 0;
@@ -138,13 +149,14 @@ protected:
         version_ = version;
     }
 
+    const EcmaVM *vm_ {nullptr};
+
 private:
     StringId GenerateStringIdForJSObject(TaggedObject *object, JSThread *thread);
     StringId GenerateStringIdForJSFunction(TaggedObject *object, JSThread *thread);
     StringId GenerateStringIdForJSProxy(TaggedObject *object);
     StringId GenerateStringIdForString(TaggedObject *object, JSThread *thread);
 
-    const EcmaVM *vm_ {nullptr};
     const DumpSnapShotOption *dumpOption_ {};
     HeapSnapshot *snapshot_ {nullptr};
     EntryIdMap *entryIdMap_ {nullptr};
@@ -180,6 +192,7 @@ private:
     void UpdateStringTable(JSTaggedType addr, StringId strId) override;
 
     void CollectRootAddrByType(const CSet<JSTaggedType>& rootSet) override;
+    void DumpNonCMGCObject(JSTaggedType addr, size_t size, const CUnorderedSet<JSTaggedType> &nativePointerAddrs);
 
     constexpr static const char *const RAWHEAP_VERSION = "1.0.0";
 

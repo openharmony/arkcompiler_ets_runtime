@@ -151,6 +151,7 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
 using ExtraJSCrashMessageCallback = std::function<std::string (const EcmaVM*)>;
+using NativeReferenceDataCallbackGetter = void* (*)(void* ref);
 
 using namespace panda;
 
@@ -566,6 +567,16 @@ public:
     void SetNativePtrGetter(NativePtrGetter cb)
     {
         nativePtrGetter_ = cb;
+    }
+
+    void SetNativeReferenceDataGetter(NativeReferenceDataCallbackGetter cb)
+    {
+        nativeReferenceDataGetter_ = cb;
+    }
+
+    NativeReferenceDataCallbackGetter GetNativeReferenceDataCallbackGetter() const
+    {
+        return nativeReferenceDataGetter_;
     }
 
     NativePtrGetter GetNativePtrGetter() const
@@ -1701,6 +1712,7 @@ private:
     NativePtrGetter nativePtrGetter_ {nullptr};
     SourceMapCallback sourceMapCallback_ {nullptr};
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
+    NativeReferenceDataCallbackGetter nativeReferenceDataGetter_ {nullptr};
     void *loop_ {nullptr};
 
     // resolve path to get abc's buffer
