@@ -23,7 +23,7 @@
 
 namespace panda::ecmascript {
 
-#ifdef PANDA_TARGET_ARM64
+#if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
 static long Syscall(unsigned long n, unsigned long a, unsigned long b, unsigned long c, unsigned long d,
                     unsigned long e, unsigned long f)
 {
@@ -41,7 +41,7 @@ static long Syscall(unsigned long n, unsigned long a, unsigned long b, unsigned 
 
 static inline void *InlineMmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 {
-#ifdef PANDA_TARGET_ARM64
+#if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
     long res = Syscall(SYS_mmap, (unsigned long)addr, len, prot, flags, fd, offset);
     if (res < 0) {
         errno = (int)res;
@@ -56,7 +56,7 @@ static inline void *InlineMmap(void *addr, size_t len, int prot, int flags, int 
 
 static inline int InlineMunmap(void *addr, size_t len)
 {
-#ifdef PANDA_TARGET_ARM64
+#if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
     long res = Syscall(SYS_munmap, (unsigned long)addr, len, 0, 0, 0, 0);
     if (res < 0) {
         errno = (int)res;
