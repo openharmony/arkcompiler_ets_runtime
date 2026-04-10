@@ -32,10 +32,12 @@
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
 static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
+static const std::string LIB_HWASAN_SO_NAME = "libclang_rt.hwasan.so";
 static const int MAX_STACK_SIZE = 32;
 static const int LOG_BUF_LEN = 1024;
 
 using UnwBackTraceFunc = int (*)(void**, int);
+using HwasanSetStubFileRangeFunc = void (*)(uintptr_t, uintptr_t);
 
 static std::map<void *, Dl_info> stackInfoCache;
 
@@ -174,5 +176,16 @@ void UpdateStubFileRange(uint64_t stubFileStartAddr, uint64_t stubFileSize)
 #if defined(ENABLE_BACKTRACE_LOCAL)
     OHOS::HiviewDFX::FpBacktrace::UpdateArkStackRange(stubFileStartAddr, stubFileStartAddr + stubFileSize);
 #endif
+    void *handle = dlopen(LIB_HWASAN_SO_NAME.c_str(), RTLD_LAZY | RTLD_NOLOAD);
+    if (handle == nullptr) {
+        LOG_ECMA(DEBUG) << "Failed to load library: " << dlerror();
+        return;
+    }
+    auto func = reinterpret_cast<HwasanSetStubFileRangeFunc>(dlsym(handle, "__hwasan_set_arkts_stub_range"));
+    if (func == nullptr) {
+        LOG_ECMA(ERROR) << "Dlsym failed: " << dlerror();
+        return;
+    }
+    func(stubFileStartAddr, stubFileStartAddr + stubFileSize);
 }
 } // namespace panda::ecmascript
