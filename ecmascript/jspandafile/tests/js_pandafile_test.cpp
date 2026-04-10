@@ -492,7 +492,7 @@ HWTEST_F_L0(JSPandaFileTest, ReduceTaskCount)
  * @tc.name: InitializeMergedPF_FromConstructorWithThread
  * @tc.desc: Test InitializeMergedPF in second constructor (line 77) to merged panda file initialization
  * @tc.type: FUNC
- * @tc.require: issue#Ixxxxx
+ * @tc.require: issue#12804
  */
 HWTEST_F_L0(JSPandaFileTest, InitializeMergedPF_FromConstructorWithThread)
 {
@@ -508,7 +508,6 @@ HWTEST_F_L0(JSPandaFileTest, InitializeMergedPF_FromConstructorWithThread)
  * @tc.name: CheckIsBundlePack_ModuleRecord
  * @tc.desc: Test CheckIsBundlePack with ES module (MODULE_RECORD_IDX branch at line 123)
  * @tc.type: FUNC
- * @tc.require: issue#Ixxxxx
  */
 HWTEST_F_L0(JSPandaFileTest, CheckIsBundlePack_ModuleRecord)
 {
