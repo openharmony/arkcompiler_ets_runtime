@@ -1259,9 +1259,13 @@ std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> EcmaVM::CalCa
 void EcmaVM::LoadStubFile()
 {
     std::string stubFile = "";
+#ifdef ANDROID_PLATFORM
+    stubFile = options_.GetStubFile();
+#else
     if (options_.WasStubFileSet()) {
         stubFile = options_.GetStubFile();
     }
+#endif
     aotFileManager_->LoadStubFile(stubFile);
 }
 

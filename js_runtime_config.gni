@@ -458,7 +458,7 @@ template("libark_jsruntime_static_template") {
     if (!is_ohos) {
       if ((current_cpu == "amd64" || current_cpu == "x64" ||
            current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-          !is_mac && target_os != "ios") {
+          !is_mac && target_os != "ios" && target_os != "android") {
         deps += [ "ecmascript/compiler:libark_stub_set" ]
       } else {
         deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
