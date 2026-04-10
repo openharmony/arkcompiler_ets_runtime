@@ -103,7 +103,7 @@ bool AnFileDataManager::UnsafeLoadFromStub(const std::string &fileName)
     if (!fileName.empty()) {
         return loadedStub_->MmapLoad(fileName);
     }
-#if defined(PANDA_TARGET_OHOS)
+#if defined(PANDA_TARGET_OHOS) || defined(ANDROID_PLATFORM)
     return loadedStub_->MmapLoad(fileName);
 #else
     return loadedStub_->Load();

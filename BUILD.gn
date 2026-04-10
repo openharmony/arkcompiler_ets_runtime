@@ -593,9 +593,6 @@ config("ark_jsruntime_common_config") {
       "PANDA_TARGET_UNIX",
       "PANDA_USE_FUTEX",
     ]
-    if (current_cpu == "arm64") {
-      defines += [ "EXCLUDE_C_INTERPRETER" ]
-    }
     if (!ark_standalone_build) {
       defines += [ "ENABLE_ANLOG" ]
     }
@@ -1639,7 +1636,7 @@ ohos_source_set("libark_jsruntime_test_set") {
 
   if ((current_cpu == "amd64" || current_cpu == "x64" ||
        current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios") {
+      !is_mac && target_os != "ios" && target_os != "android") {
     deps += [ "ecmascript/compiler:libark_stub_set" ]
   } else {
     deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
