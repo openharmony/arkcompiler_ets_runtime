@@ -449,4 +449,234 @@ HWTEST_F_L0(PandaFileTranslatorTest, UpdateConstpoolWhenDeserialAI_IsAOTLiteralI
     EXPECT_EQ(unsharedVal, aotLiteralInfo.GetTaggedValue());
 }
 
+// Test TranslateClass with new version
+HWTEST_F_L0(PandaFileTranslatorTest, TranslateClass_NewVersion)
+{
+    Parser parser;
+    const char *filename = "test_translate_class.pa";
+    const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+    const char *data = R"(
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    auto res = parser.Parse(data);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    const File *file = pf->GetPandaFile();
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
+    std::vector<File::EntityId> methodId {};
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId.push_back(mda.GetMethodId());
+    });
+    pf->UpdateMainMethodIndex(methodId[0].GetOffset());
+    MethodLiteral method1(methodId[0]);
+    pf->SetMethodLiteralToMap(&method1);
+    pfManager->AddJSPandaFile(pf);
+
+    // Test that translation works without errors
+    PandaFileTranslator::TranslateClasses(thread, pf.get(), CString("func_main_0"));
+
+    EXPECT_TRUE(pf->GetMethodLiterals() != nullptr);
+}
+
+// Test ParseConstPool through GenerateProgram
+HWTEST_F_L0(PandaFileTranslatorTest, ParseConstPool_ViaGenerateProgram)
+{
+    Parser parser;
+    auto vm = thread->GetEcmaVM();
+    const char *filename = "test_parse_via_gen.pa";
+    const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+    const char *data = R"(
+        .function any func_main_0(any a0, any a1, any a2) {}
+        .function void foo() {}
+    )";
+    auto res = parser.Parse(data);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    const File *file = pf->GetPandaFile();
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
+    std::vector<File::EntityId> methodId {};
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId.push_back(mda.GetMethodId());
+    });
+    pf->UpdateMainMethodIndex(methodId[0].GetOffset());
+    MethodLiteral method1(methodId[0]);
+    MethodLiteral method2(methodId[1]);
+    pf->SetMethodLiteralToMap(&method1);
+    pf->SetMethodLiteralToMap(&method2);
+    pfManager->AddJSPandaFile(pf);
+
+    // GenerateProgram internally calls ParseConstPool
+    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(
+        vm, pf.get(), std::string_view("foo"));
+
+    EXPECT_FALSE(program.GetTaggedValue().IsUndefined());
+}
+
+// Test ParseConstPool with multiple types via GenerateProgram
+HWTEST_F_L0(PandaFileTranslatorTest, ParseConstPool_MultipleTypes)
+{
+    Parser parser;
+    auto vm = thread->GetEcmaVM();
+    const char *filename = "test_parse_multiple.pa";
+    const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+    const char *data = R"(
+        .function any func_main_0(any a0, any a1, any a2) {}
+        .function void foo(any a0, any a1) {
+            ldai 1
+            return
+        }
+    )";
+    auto res = parser.Parse(data);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    const File *file = pf->GetPandaFile();
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
+    std::vector<File::EntityId> methodId {};
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId.push_back(mda.GetMethodId());
+    });
+    pf->UpdateMainMethodIndex(methodId[0].GetOffset());
+    MethodLiteral method1(methodId[0]);
+    MethodLiteral method2(methodId[1]);
+    pf->SetMethodLiteralToMap(&method1);
+    pf->SetMethodLiteralToMap(&method2);
+    pfManager->AddJSPandaFile(pf);
+
+    // GenerateProgram internally calls ParseConstPool
+    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(
+        vm, pf.get(), std::string_view("foo"));
+
+    EXPECT_FALSE(program.GetTaggedValue().IsUndefined());
+}
+
+// Test UpdateICOffset - tested through bytecode translation
+HWTEST_F_L0(PandaFileTranslatorTest, UpdateICOffset_BytecodeTranslation)
+{
+    Parser parser;
+    const char *filename = "test_ic_offset.pa";
+    const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+    const char *data = R"(
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    auto res = parser.Parse(data);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    const File *file = pf->GetPandaFile();
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
+    std::vector<File::EntityId> methodId {};
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId.push_back(mda.GetMethodId());
+    });
+    pf->UpdateMainMethodIndex(methodId[0].GetOffset());
+    MethodLiteral method1(methodId[0]);
+    pf->SetMethodLiteralToMap(&method1);
+    pfManager->AddJSPandaFile(pf);
+
+    // TranslateClasses will call UpdateICOffset internally when fixing opcodes
+    PandaFileTranslator::TranslateClasses(thread, pf.get(), CString("func_main_0"));
+
+    MethodLiteral *methodLiterals = pf->GetMethodLiterals();
+    EXPECT_TRUE(methodLiterals != nullptr);
+}
+
+// Test GenerateProgram with valid method through public API
+HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram_ValidMethod)
+{
+    Parser parser;
+    auto vm = thread->GetEcmaVM();
+    const char *filename = "test_valid_method.pa";
+    const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+    const char *data = R"(
+        .function any func_main_0(any a0, any a1, any a2) {}
+        .function void foo() {}
+    )";
+    auto res = parser.Parse(data);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    const File *file = pf->GetPandaFile();
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
+    std::vector<File::EntityId> methodId {};
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId.push_back(mda.GetMethodId());
+    });
+    pf->UpdateMainMethodIndex(methodId[1].GetOffset());
+    MethodLiteral method1(methodId[0]);
+    MethodLiteral method2(methodId[1]);
+    pf->SetMethodLiteralToMap(&method1);
+    pf->SetMethodLiteralToMap(&method2);
+    pfManager->AddJSPandaFile(pf);
+
+    // GenerateProgram is tested through public API
+    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(
+        vm, pf.get(), JSPandaFile::ENTRY_FUNCTION_NAME);
+
+    JSTaggedValue mainFunc = program->GetMainFunction(thread);
+    EXPECT_FALSE(mainFunc.IsUndefined());
+}
+
+// Test ParseConstPool empty constpool via GenerateProgram
+HWTEST_F_L0(PandaFileTranslatorTest, ParseConstPool_Empty)
+{
+    Parser parser;
+    auto vm = thread->GetEcmaVM();
+    const char *filename = "test_empty_parse.pa";
+    const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+    const char *data = R"(
+        .function any func_main_0(any a0, any a1, any a2) {}
+        .function void foo() {
+            return
+        }
+    )";
+    auto res = parser.Parse(data);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), CString(filename));
+    const File *file = pf->GetPandaFile();
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
+    std::vector<File::EntityId> methodId {};
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId.push_back(mda.GetMethodId());
+    });
+    pf->UpdateMainMethodIndex(methodId[1].GetOffset());
+    MethodLiteral method1(methodId[0]);
+    MethodLiteral method2(methodId[1]);
+    pf->SetMethodLiteralToMap(&method1);
+    pf->SetMethodLiteralToMap(&method2);
+    pfManager->AddJSPandaFile(pf);
+
+    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(
+        vm, pf.get(), JSPandaFile::ENTRY_FUNCTION_NAME);
+
+    EXPECT_FALSE(program.GetTaggedValue().IsUndefined());
+}
+
 }  // namespace panda::test
