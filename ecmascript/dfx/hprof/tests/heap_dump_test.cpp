@@ -2251,4 +2251,140 @@ HWTEST_F_L0(HeapDumpTest, TestProxyClassName)
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassB\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy\""));
 }
+
+// HeapMarker: Clear() resets all mark bits so IsMarked returns false afterwards
+HWTEST_F_L0(HeapDumpTest, TestHeapMarkerClear)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    JSHandle<JSMap> jsMap = tester.NewJSMap();
+    JSHandle<JSSet> jsSet = tester.NewJSSet();
+
+    HeapMarker marker {};
+    marker.Mark(jsMap.GetTaggedType());
+    marker.Mark(jsSet.GetTaggedType());
+    ASSERT_TRUE(marker.IsMarked(jsMap.GetTaggedType()));
+    ASSERT_TRUE(marker.IsMarked(jsSet.GetTaggedType()));
+
+    // After Clear() no address should be marked
+    marker.Clear();
+    ASSERT_FALSE(marker.IsMarked(jsMap.GetTaggedType()));
+    ASSERT_FALSE(marker.IsMarked(jsSet.GetTaggedType()));
+}
+
+// HeapMarker: Count() tracks the number of uniquely marked addresses
+HWTEST_F_L0(HeapDumpTest, TestHeapMarkerCount)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    JSHandle<JSMap>  jsMap  = tester.NewJSMap();
+    JSHandle<JSSet>  jsSet  = tester.NewJSSet();
+    JSHandle<JSAPIArrayList> jsList = tester.NewJSAPIArrayList();
+
+    HeapMarker marker {};
+    ASSERT_EQ(marker.Count(), 0U);
+
+    marker.Mark(jsMap.GetTaggedType());
+    ASSERT_EQ(marker.Count(), 1U);
+
+    marker.Mark(jsSet.GetTaggedType());
+    ASSERT_EQ(marker.Count(), 2U);
+
+    marker.Mark(jsList.GetTaggedType());
+    ASSERT_EQ(marker.Count(), 3U);
+}
+
+// HeapMarker: Marking an already-marked address returns false and keeps count stable
+HWTEST_F_L0(HeapDumpTest, TestHeapMarkerDoubleMark)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    JSHandle<JSMap> jsMap = tester.NewJSMap();
+
+    HeapMarker marker {};
+    // First mark should succeed
+    ASSERT_TRUE(marker.Mark(jsMap.GetTaggedType()));
+    ASSERT_EQ(marker.Count(), 1U);
+
+    // Second mark of the same address must return false; count must not increase
+    ASSERT_FALSE(marker.Mark(jsMap.GetTaggedType()));
+    ASSERT_EQ(marker.Count(), 1U);
+}
+
+// EntryIdMap: GetIdCount reflects insertions and erasures accurately
+HWTEST_F_L0(HeapDumpTest, TestEntryIdMapGetIdCount)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    JSHandle<JSMap>  jsMap  = tester.NewJSMap();
+    JSHandle<JSSet>  jsSet  = tester.NewJSSet();
+    JSHandle<JSAPIArrayList> jsList = tester.NewJSAPIArrayList();
+
+    EntryIdMap entryIdMap {};
+    ASSERT_EQ(entryIdMap.GetIdCount(), 0U);
+
+    entryIdMap.InsertId(jsMap.GetTaggedType(),  entryIdMap.GetNextId());
+    entryIdMap.InsertId(jsSet.GetTaggedType(),  entryIdMap.GetNextId());
+    entryIdMap.InsertId(jsList.GetTaggedType(), entryIdMap.GetNextId());
+    ASSERT_EQ(entryIdMap.GetIdCount(), 3U);
+
+    entryIdMap.EraseId(jsMap.GetTaggedType());
+    ASSERT_EQ(entryIdMap.GetIdCount(), 2U);
+}
+
+// EntryIdMap: GetNextId increments by SEQ_STEP=2; GetLastId returns the most-recently issued ID
+HWTEST_F_L0(HeapDumpTest, TestEntryIdMapGetNextIdAndLastId)
+{
+    EntryIdMap entryIdMap;
+    // nextId_ starts at 3 (per "1 Reserved for SyntheticRoot")
+    NodeId id1 = entryIdMap.GetNextId();   // returns 3, nextId_ becomes 5
+    NodeId id2 = entryIdMap.GetNextId();   // returns 5, nextId_ becomes 7
+    ASSERT_EQ(id1, 3U);
+    ASSERT_EQ(id2, 5U);
+    // GetLastId returns nextId_ - SEQ_STEP = 7 - 2 = 5
+    ASSERT_EQ(entryIdMap.GetLastId(), id2);
+    // Consecutive IDs must differ by exactly SEQ_STEP
+    ASSERT_EQ(id2 - id1, static_cast<NodeId>(EntryIdMap::SEQ_STEP));
+}
+
+// JSON snapshot contains "handle" type and both LocalHandleRoot / GlobalHandleRoot strings
+HWTEST_F_L0(HeapDumpTest, TestHandleSyntheticRootInJSONSnapshot)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    JSHandle<JSTaggedValue> obj1(factory->CreateNapiObject());
+    JSHandle<JSTaggedValue> obj2(factory->CreateNapiObject());
+    Local<JSTaggedValue> local1(obj1.GetAddress());
+    Local<JSTaggedValue> local2(obj2.GetAddress());
+    Global<ObjectRef> global1(ecmaVm_, local1);
+    Global<ObjectRef> global2(ecmaVm_, local2);
+
+    const std::string snapshotPath("test_handle_root_json.heapsnapshot");
+    size_t idCount = tester.GenerateSnapShot(snapshotPath);
+    ASSERT_GT(idCount, 0U) << "GenerateSnapShot failed or produced empty snapshot";
+    ASSERT_TRUE(std::ifstream(snapshotPath).good()) << "Snapshot file was not created: " << snapshotPath;
+
+    // "handle" appears in the node_types meta header of the JSON snapshot
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"handle\""));
+    // LocalHandleRoot and GlobalHandleRoot node names appear in the strings table
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "LocalHandleRoot["));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "GlobalHandleRoot["));
+}
+
+// JSON snapshot correctly names Proxy objects with their observed class suffix
+HWTEST_F_L0(HeapDumpTest, TestProxyClassNameInJSONSnapshot)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "proxy_class_name");
+    EXPECT_TRUE(result);
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    const std::string snapshotPath("test_proxy_class_name_json.heapsnapshot");
+    tester.GenerateSnapShot(snapshotPath);
+
+    // Match complete string values in the JSON strings table (bounded by comma or bracket)
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"Proxy-ClassA\",") ||
+                tester.MatchHeapDumpString(snapshotPath, "\"Proxy-ClassA\"]"));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"Proxy-ClassB\",") ||
+                tester.MatchHeapDumpString(snapshotPath, "\"Proxy-ClassB\"]"));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"Proxy\",") ||
+                tester.MatchHeapDumpString(snapshotPath, "\"Proxy\"]"));
+}
 }

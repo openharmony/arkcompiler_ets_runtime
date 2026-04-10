@@ -497,4 +497,53 @@ HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV1NullDataCheck)
     ASSERT_TRUE(result);
 }
 
+// Tests for: MetaParser::IsJSWrappedNapiObject (rawheap_translate/metadata_parse.cpp)
+HWTEST_F_L0(RawHeapTranslateTest, IsJSWrappedNapiObject)
+{
+    // ParseTypeEnums assigns meta->type sequentially (0, 1, 2, ...) based on insertion order,
+    // NOT based on the JSON value.  The JSON value is used as meta->nodeType.
+    // So the first entry gets JSType=0, the second gets JSType=1.
+    // Here: JS_OBJECT → JSType 0, JS_WRAPPED_NAPI_OBJECT → JSType 1.
+    std::string metadataJson =
+        "{\"type_enum\": {\"JS_OBJECT\": 0, \"JS_WRAPPED_NAPI_OBJECT\": 0},"
+        "\"type_list\": ["
+            "{\"name\": \"JS_OBJECT\","
+             "\"offsets\": [], \"end_offset\": 8, \"parents\": []},"
+            "{\"name\": \"JS_WRAPPED_NAPI_OBJECT\","
+             "\"offsets\": [], \"end_offset\": 8, \"parents\": []}"
+        "],"
+        "\"type_layout\": {"
+            "\"Dictionary_layout\": {"
+                "\"name\": \"Dictionary\","
+                "\"key_index\": 0, \"value_index\": 1,"
+                "\"detail_index\": 2, \"entry_size\": 3, \"header_size\": 4"
+            "},"
+            "\"Type_range\": {"
+                "\"string_first\": \"JS_OBJECT\","
+                "\"string_last\": \"JS_OBJECT\","
+                "\"js_object_first\": \"JS_OBJECT\","
+                "\"js_object_last\": \"JS_WRAPPED_NAPI_OBJECT\""
+            "}"
+        "},"
+        "\"version\": \"1.0.0\"}";
+
+    cJSON *metadataCJson = cJSON_ParseWithLength(metadataJson.c_str(), metadataJson.size());
+    ASSERT_TRUE(metadataCJson != nullptr);
+
+    bool result = metaParser->Parse(metadataCJson);
+    cJSON_Delete(metadataCJson);
+    ASSERT_TRUE(result);
+
+    // Sequential assignment: JS_OBJECT=0, JS_WRAPPED_NAPI_OBJECT=1
+    rawheap_translate::JSType wrappedType = static_cast<rawheap_translate::JSType>(1);
+    rawheap_translate::JSType jsObjectType = static_cast<rawheap_translate::JSType>(0);
+
+    ASSERT_TRUE(metaParser->IsJSWrappedNapiObject(wrappedType))
+        << "IsJSWrappedNapiObject should return true for JS_WRAPPED_NAPI_OBJECT type";
+    ASSERT_FALSE(metaParser->IsJSWrappedNapiObject(jsObjectType))
+        << "IsJSWrappedNapiObject should return false for JS_OBJECT type";
+    ASSERT_FALSE(metaParser->IsJSWrappedNapiObject(static_cast<rawheap_translate::JSType>(99)))
+        << "IsJSWrappedNapiObject should return false for unknown type";
+}
+
 }  // namespace panda::test

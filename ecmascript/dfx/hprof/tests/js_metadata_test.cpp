@@ -278,7 +278,7 @@ public:
             {JSType::JS_MAP, {"LinkedMap", "JS_MAP"}},
             {JSType::JS_MAP_ITERATOR, {"IteratorMap", "JS_MAP_ITERATOR"}},
             {JSType::JS_MODULE_NAMESPACE, {"Module", "Exports", "DeregisterProcession", "JS_MODULE_NAMESPACE"}},
-            {JSType::JS_NATIVE_POINTER, {"BindingSize", "JS_NATIVE_POINTER"}},
+            {JSType::JS_NATIVE_POINTER, {"ExternalPointer", "BindingSize", "JS_NATIVE_POINTER"}},
             {JSType::JS_NUMBER_FORMAT, {"Locale", "NumberingSystem", "Currency", "Unit", "MinimumIntegerDigits",
                                               "MinimumFractionDigits", "MaximumFractionDigits",
                                               "MinimumSignificantDigits", "MaximumSignificantDigits",
@@ -725,7 +725,8 @@ public:
                                            ModuleNamespace::EXPORTS_OFFSET,
                                            ModuleNamespace::DEREGISTER_PROCESSION_OFFSET,
                                            ModuleNamespace::SIZE - ModuleNamespace::MODULE_OFFSET}},
-            {JSType::JS_NATIVE_POINTER, {JSNativePointer::DATA_SIZE_OFFSET,
+            {JSType::JS_NATIVE_POINTER, {JSNativePointer::POINTER_OFFSET,
+                                         JSNativePointer::DATA_SIZE_OFFSET,
                                          JSNativePointer::LAST_OFFSET - JSNativePointer::POINTER_OFFSET}},
             {JSType::JS_NUMBER_FORMAT, {JSNumberFormat::LOCALE_OFFSET,
                                         JSNumberFormat::NUMBER_STRING_SYSTEM_OFFSET,
@@ -1497,6 +1498,7 @@ public:
                 ModuleNamespace::DEREGISTER_PROCESSION_OFFSET - ModuleNamespace::EXPORTS_OFFSET,
                 ModuleNamespace::SIZE - ModuleNamespace::DEREGISTER_PROCESSION_OFFSET}},
             {JSType::JS_NATIVE_POINTER, {
+                JSNativePointer::DELETER_OFFSET - JSNativePointer::POINTER_OFFSET,
                 JSNativePointer::FLAG_OFFSET- JSNativePointer::DATA_SIZE_OFFSET}},
             {JSType::JS_NUMBER_FORMAT, {
                 JSNumberFormat::NUMBER_STRING_SYSTEM_OFFSET - JSNumberFormat::LOCALE_OFFSET,

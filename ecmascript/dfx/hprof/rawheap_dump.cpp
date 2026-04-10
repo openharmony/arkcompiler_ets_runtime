@@ -66,6 +66,24 @@ void ObjectMarker::VisitObjectRangeImpl([[maybe_unused]]BaseObject *root, uintpt
     }
 }
 
+static void ProcessJSWrappedNapiObject(const EcmaVM *vm, JSTaggedValue value,
+    CUnorderedSet<JSTaggedType> &nativePointerAddrs)
+{
+    auto wrappedObj = JSWrappedNapiObject::Cast(value.GetTaggedObject());
+    JSTaggedValue nativePointers = wrappedObj->GetNativePointers(vm->GetAssociatedJSThread());
+    if (!nativePointers.IsTaggedArray()) {
+        return;
+    }
+    TaggedArray* array = TaggedArray::Cast(nativePointers.GetTaggedObject());
+    uint32_t length = array->GetExtraLength();
+    for (uint32_t i = 0; i < length; i++) {
+        JSTaggedValue itemValue = array->Get(vm->GetAssociatedJSThread(), i);
+        if (itemValue.IsJSNativePointer()) {
+            nativePointerAddrs.insert(itemValue.GetRawData());
+        }
+    }
+}
+
 void ObjectMarker::ProcessMarkObjectsFromRoot()
 {
     while (!bfsQueue_.empty()) {
@@ -78,6 +96,10 @@ void ObjectMarker::ProcessMarkObjectsFromRoot()
         MarkObject(reinterpret_cast<JSTaggedType>(hclass));
         if (hclass->IsString()) {
             continue;
+        }
+        // Handle JSWrappedNapiObject: collect JSNativePointer addresses from NativePointers
+        if (value.IsJSWrappedNapiObject()) {
+            ProcessJSWrappedNapiObject(vm_, value, nativePointerAddrs_);
         }
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, hclass, *this);
     }
@@ -510,7 +532,8 @@ void RawHeapDumpV1::DumpObjectTable()
 void RawHeapDumpV1::DumpObjectMemory()
 {
     uint32_t memSize = 0;
-    IterateMarkedObjects([this, &memSize](JSTaggedType addr) {
+    const CUnorderedSet<JSTaggedType> &nativePointerAddrs = GetNativePointerAddrs();
+    IterateMarkedObjects([this, &memSize, &nativePointerAddrs](JSTaggedType addr) {
         auto obj = reinterpret_cast<TaggedObject *>(addr);
         size_t size = obj->GetSize();
         memSize += size;
@@ -521,11 +544,33 @@ void RawHeapDumpV1::DumpObjectMemory()
             WriteU64(reinterpret_cast<JSTaggedType>(obj->GetClass()));
             WriteChunk(reinterpret_cast<char *>(addr + sizeof(JSTaggedType)), size - sizeof(JSTaggedType));
         } else {
-            WriteChunk(reinterpret_cast<char *>(addr), size);
+            DumpNonCMGCObject(addr, size, nativePointerAddrs);
         }
     });
     AddSectionBlockSize();
     LOG_ECMA(INFO) << "rawheap dump, objects memory size " << memSize;
+}
+
+void RawHeapDumpV1::DumpNonCMGCObject(JSTaggedType addr, size_t size,
+    const CUnorderedSet<JSTaggedType> &nativePointerAddrs)
+{
+    void* externalData = nullptr;
+    if (nativePointerAddrs.find(addr) != nativePointerAddrs.end()) {
+        JSNativePointer *native = JSNativePointer::Cast(reinterpret_cast<TaggedObject *>(addr));
+        void* externalPointer = native->GetExternalPointer();
+        if (externalPointer != nullptr) {
+            auto cb = vm_->GetNativeReferenceDataCallbackGetter();
+            if (cb != nullptr) {
+                externalData = cb(externalPointer);
+            }
+        }
+        WriteU64(reinterpret_cast<JSTaggedType>(reinterpret_cast<TaggedObject *>(addr)->GetClass()));
+        WriteU64(reinterpret_cast<JSTaggedType>(externalData));
+        WriteChunk(reinterpret_cast<char *>(addr + 2 * sizeof(JSTaggedType)),
+            size - 2 * sizeof(JSTaggedType));  // 2 : Skip the addresses of hclass and externalData
+    } else {
+        WriteChunk(reinterpret_cast<char *>(addr), size);
+    }
 }
 
 void RawHeapDumpV1::UpdateStringTable(JSTaggedType addr, StringId strId)

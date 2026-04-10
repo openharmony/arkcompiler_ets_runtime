@@ -573,6 +573,10 @@ void RawHeapTranslateV1::BuildEdges(Node *node, JSType type)
         if (metaParser_->IsJSObject(type)) {
             BuildJSObjectEdges(node, type);
         }
+
+        if (metaParser_->IsJSWrappedNapiObject(type)) {
+            BuildJSWrappedObjectEdges(node, type);
+        }
     }
 }
 
@@ -682,6 +686,96 @@ void RawHeapTranslateV1::BuildJSObjectEdges(Node *node, JSType type)
     } else {
         BuildDictionaryEdges(properties, type, false);
     }
+}
+
+static bool FindNativePointersFieldOffset(MetaParser *metaParser, JSType type, uint32_t &offset)
+{
+    MetaData *meta = metaParser->GetMetaData(type);
+    if (meta == nullptr) {
+        return false;
+    }
+
+    for (const auto &field : meta->fields) {
+        if (field.name == "NativePointers") {
+            offset = field.offset;
+            return true;
+        }
+    }
+    return false;
+}
+
+static bool GetExternalPointerFieldOffset(MetaParser *metaParser, uint32_t &externalPtrOffset)
+{
+    MetaData *nativePtrMeta = metaParser->GetMetaData("JS_NATIVE_POINTER");
+    if (nativePtrMeta == nullptr) {
+        return false;
+    }
+
+    for (const auto &field : nativePtrMeta->fields) {
+        if (field.name == "ExternalPointer") {
+            externalPtrOffset = field.offset;
+            return true;
+        }
+    }
+    return false;
+}
+
+void RawHeapTranslateV1::BuildNativePointerEdges(Node *node, Node *array, uint32_t dataOffset,
+    uint32_t externalPtrOffset, uint32_t length)
+{
+    std::stringstream ss;
+    for (uint32_t i = 0; i < length; i++) {
+        uint32_t elemOffset = dataOffset + i * sizeof(uint64_t);
+        uint64_t elemAddr = ByteToU64(array->data + elemOffset);
+        Node *nativePtr = FindNode(elemAddr);
+        if (nativePtr != nullptr && nativePtr->data != nullptr) {
+            uint64_t externalPtrAddr = ByteToU64(nativePtr->data + externalPtrOffset);
+            if (externalPtrAddr != 0) {
+                Node *to = FindOrCreateNode(externalPtrAddr);
+                to->nodeId = 0;
+                to->type = HEAP_NUMBER;
+                ss << "0x" << std::hex << externalPtrAddr;
+                to->strId = InsertAndGetStringId(ss.str());
+                StringId edgeStrId = InsertAndGetStringId("NativeAddress" + std::to_string(i));
+                InsertEdge(to, edgeStrId, EdgeType::PROPERTY);
+                node->edgeCount++;
+                ss.str("");
+            }
+        }
+    }
+}
+
+void RawHeapTranslateV1::BuildJSWrappedObjectEdges(Node *node, JSType type)
+{
+    uint32_t nativePointersOffset = 0;
+    if (!FindNativePointersFieldOffset(metaParser_, type, nativePointersOffset)) {
+        return;
+    }
+
+    uint64_t arrayAddr = ByteToU64(node->data + nativePointersOffset);
+    Node *array = FindNode(arrayAddr);
+    if (array == nullptr || array->data == nullptr) {
+        return;
+    }
+
+    BitField *bitField = metaParser_->GetBitField();
+    uint32_t lengthOffset = bitField->taggedArrayLengthField.offset;
+    uint32_t dataOffset = bitField->taggedArrayDataField.offset;
+    if (array->size < lengthOffset + sizeof(uint32_t)) {
+        return;
+    }
+    uint32_t length = ByteToU32(array->data + lengthOffset);
+    if (static_cast<uint64_t>(array->size) <
+        static_cast<uint64_t>(dataOffset) + static_cast<uint64_t>(length) * sizeof(uint64_t)) {
+        return;
+    }
+
+    uint32_t externalPtrOffset = 0;
+    if (!GetExternalPointerFieldOffset(metaParser_, externalPtrOffset)) {
+        return;
+    }
+
+    BuildNativePointerEdges(node, array, dataOffset, externalPtrOffset, length);
 }
 
 Node* RawHeapTranslateV1::CreatePrimitiveNode(uint64_t addr)

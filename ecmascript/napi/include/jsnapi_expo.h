@@ -1977,6 +1977,7 @@ public:
                                             uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
+    static void SetNativeReferenceDataGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
     static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb,

@@ -6646,6 +6646,11 @@ void JSNApi::SetNativePtrGetter(EcmaVM *vm, void* cb)
     vm->SetNativePtrGetter(reinterpret_cast<ecmascript::NativePtrGetter>(cb));
 }
 
+void JSNApi::SetNativeReferenceDataGetter(EcmaVM *vm, void* cb)
+{
+    vm->SetNativeReferenceDataGetter(reinterpret_cast<ecmascript::NativeReferenceDataCallbackGetter>(cb));
+}
+
 void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb, QueueType queueType)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
