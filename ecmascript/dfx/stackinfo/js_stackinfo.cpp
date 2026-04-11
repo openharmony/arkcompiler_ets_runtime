@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -40,6 +40,13 @@ std::unordered_map<EntityId, std::vector<uint8>> JsStackInfo::machineCodeMap;
 JSStackTrace *JSStackTrace::trace_ = nullptr;
 std::mutex JSStackTrace::mutex_;
 size_t JSStackTrace::count_ = 0;
+#if defined(ENABLE_STATIC_BACKTRACE)
+void *JSStackTrace::arkStaticHandle_ = nullptr;
+ParseStaticArkLocalFunc JSStackTrace::parseStaticArkLocalFunc_ = nullptr;
+CreateStaticArkLocalFunc JSStackTrace::createStaticArkLocalFunc_ = nullptr;
+DestroyStaticArkLocalFunc JSStackTrace::destroyStaticArkLocalFunc_ = nullptr;
+static_local_trace JSStackTrace::arkStaticLocalTracePtr_ = nullptr;
+#endif
 static std::mutex nameMapMutex;
 
 bool IsFastJitFunctionFrame(const FrameType frameType)
@@ -1286,6 +1293,20 @@ void JSStackTrace::AddReference()
     std::unique_lock<std::mutex> lock(mutex_);
     if (count_ == 0) {
         trace_ = new JSStackTrace();
+#if defined(ENABLE_STATIC_BACKTRACE)
+        arkStaticHandle_ = dlopen("libarkruntime.so", RTLD_LAZY | RTLD_NOLOAD | RTLD_NODELETE);
+        if (arkStaticHandle_) {
+            parseStaticArkLocalFunc_ = reinterpret_cast<ParseStaticArkLocalFunc>(dlsym(arkStaticHandle_,
+                "ArkParseArkFrameInfoLocal"));
+            createStaticArkLocalFunc_ = reinterpret_cast<CreateStaticArkLocalFunc>(dlsym(arkStaticHandle_,
+                "ArkCreateLocalStackTrace"));
+            destroyStaticArkLocalFunc_ = reinterpret_cast<DestroyStaticArkLocalFunc>(dlsym(arkStaticHandle_,
+                "ArkDestroyLocalStackTrace"));
+            if (parseStaticArkLocalFunc_ && createStaticArkLocalFunc_ && destroyStaticArkLocalFunc_) {
+                createStaticArkLocalFunc_(&arkStaticLocalTracePtr_);
+            }
+        }
+#endif
     }
     ++count_;
     LOG_ECMA(INFO) << "Add reference, count: " << count_;
@@ -1302,8 +1323,33 @@ void JSStackTrace::ReleaseReference()
     if (count_ == 0) {
         delete trace_;
         trace_ = nullptr;
+#if defined(ENABLE_STATIC_BACKTRACE)
+        if (arkStaticHandle_) {
+            if (parseStaticArkLocalFunc_ && createStaticArkLocalFunc_ && destroyStaticArkLocalFunc_) {
+                destroyStaticArkLocalFunc_(arkStaticLocalTracePtr_);
+                arkStaticLocalTracePtr_ = nullptr;
+            }
+            dlclose(arkStaticHandle_);
+            arkStaticHandle_ = nullptr;
+            parseStaticArkLocalFunc_ = nullptr;
+            createStaticArkLocalFunc_ = nullptr;
+            destroyStaticArkLocalFunc_ = nullptr;
+        }
+#endif
     }
 }
+
+#if defined(ENABLE_STATIC_BACKTRACE)
+bool JSStackTrace::GetArkStaticFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset,
+                                         JsFunction *jsFunction)
+{
+    if (!parseStaticArkLocalFunc_) {
+        LOG_ECMA(ERROR) << "Can not call ParseStaticArkLocalFunc";
+        return false;
+    }
+    return parseStaticArkLocalFunc_(arkStaticLocalTracePtr_, byteCodePc, mapBase, loadOffset, jsFunction);
+}
+#endif
 
 JSStackTrace::~JSStackTrace()
 {
@@ -1404,7 +1450,13 @@ bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t mapBase,
         LOG_ECMA(ERROR) << "singleton is null, need create first.";
         return false;
     }
-    return trace->GetJsFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction);
+    bool result = trace->GetJsFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction);
+#if defined(ENABLE_STATIC_BACKTRACE)
+    if (!result) {
+        result = trace->GetArkStaticFrameInfo(byteCodePc, mapBase, loadOffset, jsFunction);
+    }
+#endif
+    return result;
 }
 
 void ArkDestoryLocal()
