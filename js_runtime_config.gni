@@ -281,6 +281,9 @@ template("libark_jsruntime_common_set") {
     sources += invoker.ecma_debugger_source
     sources += invoker.hitrace_scope_source
     sources += invoker.ecma_platform_source
+    if (is_arkui_x && ark_compile_mode == "release") {
+      sources -= invoker.ecma_debugger_source
+    }
 
     if (is_ohos) {
       sources += invoker.ecma_stackinfo_source
