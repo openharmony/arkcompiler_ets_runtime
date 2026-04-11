@@ -42,6 +42,8 @@ public:
     void Detach();
 
     JSHandle<EcmaString> ToString(JSThread *thread);
+    void Dump(const JSThread *thread, std::ostream &os) const;
+    void DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const;
     
     static constexpr size_t POINTER_OFFSET = TaggedObjectSize();
     ACCESSORS_NATIVE_FIELD(ExternalPointer, void, POINTER_OFFSET, DELETER_OFFSET);

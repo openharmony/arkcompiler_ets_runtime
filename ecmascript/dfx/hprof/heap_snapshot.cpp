@@ -1092,6 +1092,7 @@ void HeapSnapshot::FillEdges(bool isSimplify)
             }
         }
     }
+    const_cast<EcmaVM *>(vm_)->ClearWrappedNativePointerAddrsMap();
     LOG_ECMA(INFO) << "HeapSnapshot::FillEdges exit, nodeCount: " << nodeCount_ << ", edgeCount: " << edgeCount_;
 }
 
