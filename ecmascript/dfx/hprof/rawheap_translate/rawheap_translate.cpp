@@ -219,13 +219,13 @@ void RawHeap::AddPrimitiveNodes()
     nodes_.insert(nodes_.end(), primitiveNodes_.begin(), primitiveNodes_.end());
 }
 
-void RawHeap::CreateHandleRootNode(Node *handleRoot, const std::string &name, size_t count)
+void RawHeap::CreateRootNode(Node *root, const std::string &name, size_t count)
 {
-    handleRoot->nodeId = 0;
-    handleRoot->type = HANDLE_ROOT;
-    handleRoot->strId = InsertAndGetStringId(name + "[" + std::to_string(count) + ']');
-    handleRoot->edgeCount = count;
-    handleRoot->size = VIRTUAL_NODE_SIZE;
+    root->nodeId = 0;
+    root->type = ROOT;
+    root->strId = InsertAndGetStringId(name + "[" + std::to_string(count) + ']');
+    root->edgeCount = count;
+    root->size = VIRTUAL_NODE_SIZE;
 }
 
 bool RawHeap::ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section)
@@ -274,7 +274,7 @@ bool RawHeapTranslateV1::Translate()
 {
     auto nodes = GetNodes();
     size_t cnt = nodes->size();
-    for (size_t i = 3; i < cnt; i++) {  // 3:normal node start from 3
+    for (size_t i = 5; i < cnt; i++) {  // 5:normal node start from 5 (synthetic + 4 root groups)
         Node *node = (*nodes)[i];
         if (!node->data) {
             continue;
@@ -308,7 +308,8 @@ bool RawHeapTranslateV1::ReadLocalHandleRoots(FileReader &file)
     }
 
     if (!file.CheckAndGetHeaderAt(sections_[0] + sections_[1], 0)) {
-        return true;
+        LOG_ERROR_ << "read localhandle count error!";
+        return false;
     }
 
     uint32_t handleCount = file.GetHeaderLeft();
@@ -337,7 +338,8 @@ bool RawHeapTranslateV1::ReadGlobalHandleRoots(FileReader &file)
     uint64_t offset = sections_[0] + sections_[1] + localHandleSize + HANDLE_COUNT_ADDR_SIZE;
 
     if (!file.CheckAndGetHeaderAt(offset, 0)) {
-        return true;
+        LOG_ERROR_ << "read globalhandle count error!";
+        return false;
     }
 
     uint32_t handleCount = file.GetHeaderLeft();
@@ -349,6 +351,74 @@ bool RawHeapTranslateV1::ReadGlobalHandleRoots(FileReader &file)
     file.Seek(offset + sizeof(uint32_t));
     if (!file.ReadArray(globalHandleRoots_, handleCount)) {
         LOG_ERROR_ << "read globalhandle addr error!";
+        return false;
+    }
+
+    return true;
+}
+
+bool RawHeapTranslateV1::ReadVmRoots(FileReader &file)
+{
+    // 2: string table start from sections_[2]
+    uint64_t remainingSpace = sections_[2] - sections_[0] - sections_[1];
+    uint64_t localHandleSize = localHandleRoots_.size() * ADDRESS_SIZE_V1;
+    uint64_t globalHandleSize = globalHandleRoots_.size() * ADDRESS_SIZE_V1;
+    uint64_t usedSpace = localHandleSize + globalHandleSize + 2 * HANDLE_COUNT_ADDR_SIZE;  // 2: two count fields
+    // Check if remaining space contains vmRoot data
+    if (remainingSpace <= usedSpace) {
+        return true;
+    }
+
+    uint64_t offset = sections_[0] + sections_[1] + usedSpace;
+    if (!file.CheckAndGetHeaderAt(offset, 0)) {
+        LOG_ERROR_ << "read vmroot count error!";
+        return false;
+    }
+
+    uint32_t rootCount = file.GetHeaderLeft();
+    if (rootCount == 0) {
+        return true;
+    }
+
+    vmRoots_.resize(rootCount);
+    file.Seek(offset + HANDLE_COUNT_ADDR_SIZE);
+    if (!file.ReadArray(vmRoots_, rootCount)) {
+        LOG_ERROR_ << "read vmroot addr error!";
+        return false;
+    }
+
+    return true;
+}
+
+bool RawHeapTranslateV1::ReadFrameRoots(FileReader &file)
+{
+    // 2: string table start from sections_[2]
+    uint64_t remainingSpace = sections_[2] - sections_[0] - sections_[1];
+    uint64_t localHandleSize = localHandleRoots_.size() * ADDRESS_SIZE_V1;
+    uint64_t globalHandleSize = globalHandleRoots_.size() * ADDRESS_SIZE_V1;
+    uint64_t vmRootsSize = vmRoots_.size() * ADDRESS_SIZE_V1;
+    uint64_t usedSpace = localHandleSize + globalHandleSize + vmRootsSize +
+                         3 * HANDLE_COUNT_ADDR_SIZE;  // 3: three count fields
+    // Check if remaining space contains frameRoot data
+    if (remainingSpace <= usedSpace) {
+        return true;
+    }
+
+    uint64_t offset = sections_[0] + sections_[1] + usedSpace;
+    if (!file.CheckAndGetHeaderAt(offset, 0)) {
+        LOG_ERROR_ << "read frameroot count error!";
+        return false;
+    }
+
+    uint32_t rootCount = file.GetHeaderLeft();
+    if (rootCount == 0) {
+        return true;
+    }
+
+    frameRoots_.resize(rootCount);
+    file.Seek(offset + HANDLE_COUNT_ADDR_SIZE);
+    if (!file.ReadArray(frameRoots_, rootCount)) {
+        LOG_ERROR_ << "read frameroot addr error!";
         return false;
     }
 
@@ -377,10 +447,20 @@ bool RawHeapTranslateV1::ReadRootTable(FileReader &file)
         return false;
     }
 
+    if (!ReadVmRoots(file)) {
+        return false;
+    }
+
+    if (!ReadFrameRoots(file)) {
+        return false;
+    }
+
     AddSyntheticRootNode(roots);
     LOG_INFO_ << "root node count " << roots.size()
               << ", local handle count " << localHandleRoots_.size()
-              << ", global handle count " << globalHandleRoots_.size();
+              << ", global handle count " << globalHandleRoots_.size()
+              << ", vm root count " << vmRoots_.size()
+              << ", frame root count " << frameRoots_.size();
     return true;
 }
 
@@ -492,14 +572,24 @@ void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
     EdgeType type = EdgeType::SHORTCUT;
 
     Node *localHandleRoot = CreateNode();
-    CreateHandleRootNode(localHandleRoot, "LocalHandleRoot", localHandleRoots_.size());
+    CreateRootNode(localHandleRoot, "LocalHandleRoot", localHandleRoots_.size());
     syntheticRoot->edgeCount++;
     InsertEdge(localHandleRoot, strId, type);
 
     Node *globalHandleRoot = CreateNode();
-    CreateHandleRootNode(globalHandleRoot, "GlobalHandleRoot", globalHandleRoots_.size());
+    CreateRootNode(globalHandleRoot, "GlobalHandleRoot", globalHandleRoots_.size());
     syntheticRoot->edgeCount++;
     InsertEdge(globalHandleRoot, strId, type);
+
+    Node *vmRoot = CreateNode();
+    CreateRootNode(vmRoot, "VMRoot", vmRoots_.size());
+    syntheticRoot->edgeCount++;
+    InsertEdge(vmRoot, strId, type);
+
+    Node *frameRoot = CreateNode();
+    CreateRootNode(frameRoot, "FrameRoot", frameRoots_.size());
+    syntheticRoot->edgeCount++;
+    InsertEdge(frameRoot, strId, type);
 
     for (auto addr : roots) {
         if (IsHeapObject(addr)) {
@@ -510,6 +600,8 @@ void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
 
     AddHandleRootEdges(localHandleRoots_);
     AddHandleRootEdges(globalHandleRoots_);
+    AddHandleRootEdges(vmRoots_);
+    AddHandleRootEdges(frameRoots_);
 }
 
 void RawHeapTranslateV1::SetNodeStringId(const std::vector<uint64_t> &objects, StringId strId)
@@ -550,7 +642,7 @@ void RawHeapTranslateV1::FillNodes(Node *node, JSType type)
         node->nativeSize = metaParser_->GetNativateSize(node, type);
     }
 
-    if (node->strId >= StringHashMap::CUSTOM_STRID_START && node->type != HANDLE_ROOT) {
+    if (node->strId >= StringHashMap::CUSTOM_STRID_START && node->type != ROOT) {
         StringKey stringKey = GetStringTable()->GetKeyByStringId(node->strId);
         std::string nodeName = GetStringTable()->GetStringByKey(stringKey);
         if (nodeName.find("_GLOBAL") != std::string::npos) {
@@ -924,7 +1016,7 @@ bool RawHeapTranslateV2::Translate()
     FillNodes();
     auto nodes = GetNodes();
     size_t size = nodes->size();
-    for (size_t i = 3; i < size; ++i) {  // 3:normal node start from 3
+    for (size_t i = 5; i < size; ++i) {  // 5:normal node start from 5 (synthetic + 4 root groups)
         Node *node = (*nodes)[i];
         Node *hclass = GetNextEdgeTo();
         if (hclass == nullptr) {
@@ -954,7 +1046,8 @@ bool RawHeapTranslateV2::ReadLocalHandleRoots(FileReader &file)
     }
 
     if (!file.CheckAndGetHeaderAt(sections_[0] + sections_[1], 0)) {
-        return true;
+        LOG_ERROR_ << "read localhandle count error!";
+        return false;
     }
 
     uint32_t handleCount = file.GetHeaderLeft();
@@ -982,7 +1075,8 @@ bool RawHeapTranslateV2::ReadGlobalHandleRoots(FileReader &file)
     uint64_t offset = sections_[0] + sections_[1] + localHandleSize + HANDLE_COUNT_ADDR_SIZE;
 
     if (!file.CheckAndGetHeaderAt(offset, 0)) {
-        return true;
+        LOG_ERROR_ << "read globalhandle count error!";
+        return false;
     }
 
     uint32_t handleCount = file.GetHeaderLeft();
@@ -994,6 +1088,74 @@ bool RawHeapTranslateV2::ReadGlobalHandleRoots(FileReader &file)
     file.Seek(offset + HANDLE_COUNT_ADDR_SIZE);
     if (!file.ReadArray(globalHandleRoots_, handleCount)) {
         LOG_ERROR_ << "read globalhandle addr error!";
+        return false;
+    }
+
+    return true;
+}
+
+bool RawHeapTranslateV2::ReadVmRoots(FileReader &file)
+{
+    // 2: string table start from sections_[2]
+    uint64_t remainingSpace = sections_[2] - sections_[0] - sections_[1];
+    uint64_t localHandleSize = localHandleRoots_.size() * ADDRESS_SIZE_V2;
+    uint64_t globalHandleSize = globalHandleRoots_.size() * ADDRESS_SIZE_V2;
+    uint64_t usedSpace = localHandleSize + globalHandleSize + 2 * HANDLE_COUNT_ADDR_SIZE;  // 2: two count fields
+    // Check if remaining space contains vmRoot data
+    if (remainingSpace <= usedSpace) {
+        return true;
+    }
+
+    uint64_t offset = sections_[0] + sections_[1] + usedSpace;
+    if (!file.CheckAndGetHeaderAt(offset, 0)) {
+        LOG_ERROR_ << "read vmroot count error!";
+        return false;
+    }
+
+    uint32_t rootCount = file.GetHeaderLeft();
+    if (rootCount == 0) {
+        return true;
+    }
+
+    vmRoots_.resize(rootCount);
+    file.Seek(offset + HANDLE_COUNT_ADDR_SIZE);
+    if (!file.ReadArray(vmRoots_, rootCount)) {
+        LOG_ERROR_ << "read vmroot addr error!";
+        return false;
+    }
+
+    return true;
+}
+
+bool RawHeapTranslateV2::ReadFrameRoots(FileReader &file)
+{
+    // 2: string table start from sections_[2]
+    uint64_t remainingSpace = sections_[2] - sections_[0] - sections_[1];
+    uint64_t localHandleSize = localHandleRoots_.size() * ADDRESS_SIZE_V2;
+    uint64_t globalHandleSize = globalHandleRoots_.size() * ADDRESS_SIZE_V2;
+    uint64_t vmRootsSize = vmRoots_.size() * ADDRESS_SIZE_V2;
+    uint64_t usedSpace = localHandleSize + globalHandleSize + vmRootsSize +
+                         3 * HANDLE_COUNT_ADDR_SIZE;  // 3: three count fields
+    // Check if remaining space contains frameRoot data
+    if (remainingSpace <= usedSpace) {
+        return true;
+    }
+
+    uint64_t offset = sections_[0] + sections_[1] + usedSpace;
+    if (!file.CheckAndGetHeaderAt(offset, 0)) {
+        LOG_ERROR_ << "read frameroot count error!";
+        return false;
+    }
+
+    uint32_t rootCount = file.GetHeaderLeft();
+    if (rootCount == 0) {
+        return true;
+    }
+
+    frameRoots_.resize(rootCount);
+    file.Seek(offset + HANDLE_COUNT_ADDR_SIZE);
+    if (!file.ReadArray(frameRoots_, rootCount)) {
+        LOG_ERROR_ << "read frameroot addr error!";
         return false;
     }
 
@@ -1021,10 +1183,20 @@ bool RawHeapTranslateV2::ReadRootTable(FileReader &file)
         return false;
     }
 
+    if (!ReadVmRoots(file)) {
+        return false;
+    }
+
+    if (!ReadFrameRoots(file)) {
+        return false;
+    }
+
     AddSyntheticRootNode(roots);
     LOG_INFO_ << "root node count " << roots.size()
               << ", local handle count " << localHandleRoots_.size()
-              << ", global handle count " << globalHandleRoots_.size();
+              << ", global handle count " << globalHandleRoots_.size()
+              << ", vm root count " << vmRoots_.size()
+              << ", frame root count " << frameRoots_.size();
     return true;
 }
 
@@ -1056,6 +1228,8 @@ bool RawHeapTranslateV2::ReadObjectTable(FileReader &file)
     syntheticRoot_ = CreateNode();
     localHandleRoot_ = CreateNode();
     globalHandleRoot_ = CreateNode();
+    vmRoot_ = CreateNode();
+    frameRoot_ = CreateNode();
     uint32_t tableSize = file.GetHeaderLeft() * file.GetHeaderRight();
     // 5: index in sections means the total size of object table
     memSize_ = sections_[5] - tableSize - sizeof(uint64_t);
@@ -1145,13 +1319,21 @@ void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
     StringId strId = InsertAndGetStringId("-subroot-");
     EdgeType type = EdgeType::SHORTCUT;
 
-    CreateHandleRootNode(localHandleRoot_, "LocalHandleRoot", localHandleRoots_.size());
+    CreateRootNode(localHandleRoot_, "LocalHandleRoot", localHandleRoots_.size());
     syntheticRoot_->edgeCount++;
     InsertEdge(localHandleRoot_, strId, type);
 
-    CreateHandleRootNode(globalHandleRoot_, "GlobalHandleRoot", globalHandleRoots_.size());
+    CreateRootNode(globalHandleRoot_, "GlobalHandleRoot", globalHandleRoots_.size());
     syntheticRoot_->edgeCount++;
     InsertEdge(globalHandleRoot_, strId, type);
+
+    CreateRootNode(vmRoot_, "VMRoot", vmRoots_.size());
+    syntheticRoot_->edgeCount++;
+    InsertEdge(vmRoot_, strId, type);
+
+    CreateRootNode(frameRoot_, "FrameRoot", frameRoots_.size());
+    syntheticRoot_->edgeCount++;
+    InsertEdge(frameRoot_, strId, type);
 
     for (auto addr : roots) {
         Node *root = FindNode(addr);
@@ -1163,6 +1345,8 @@ void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
 
     AddHandleRootEdges(localHandleRoots_);
     AddHandleRootEdges(globalHandleRoots_);
+    AddHandleRootEdges(vmRoots_);
+    AddHandleRootEdges(frameRoots_);
 }
 
 Node *RawHeapTranslateV2::FindNode(uint32_t addr)

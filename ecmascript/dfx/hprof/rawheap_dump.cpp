@@ -37,6 +37,12 @@ void ObjectMarker::VisitRoot([[maybe_unused]]Root type, ObjectSlot slot)
             case Root::ROOT_GLOBAL_HANDLE:
                 globalHandleRoots_.insert(slot.GetTaggedType());
                 break;
+            case Root::ROOT_VM:
+                vmRoots_.insert(slot.GetTaggedType());
+                break;
+            case Root::ROOT_FRAME:
+                frameRoots_.insert(slot.GetTaggedType());
+                break;
             default:
                 break;
         }
@@ -137,7 +143,9 @@ void ObjectMarker::MarkRootObjects()
     Runtime::GetInstance()->IterateSendableGlobalStorage(*this);
 
     LOG_ECMA(INFO) << "rawheap dump, local handle count " << localHandleRoots_.size()
-                   << ", global handle count " << globalHandleRoots_.size();
+                   << ", global handle count " << globalHandleRoots_.size()
+                   << ", vm root count " << vmRoots_.size()
+                   << ", frame root count " << frameRoots_.size();
 }
 
 RawHeapDump::RawHeapDump(const EcmaVM *vm, Stream *stream, HeapSnapshot *snapshot,
@@ -481,6 +489,8 @@ void RawHeapDumpV1::DumpRootTable()
     // dump address of various root nodes
     CollectRootAddrByType(GetLocalHandleRoots()); // ROOT_LOCAL_HANDLE
     CollectRootAddrByType(GetGlobalHandleRoots()); // ROOT_GLOBAL_HANDLE
+    CollectRootAddrByType(GetVmRoots()); // ROOT_VM
+    CollectRootAddrByType(GetFrameRoots()); // ROOT_FRAME
 
     LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
 }
@@ -613,6 +623,8 @@ void RawHeapDumpV2::DumpRootTable()
     // dump address of various root nodes
     CollectRootAddrByType(GetLocalHandleRoots()); // ROOT_LOCAL_HANDLE
     CollectRootAddrByType(GetGlobalHandleRoots()); // ROOT_GLOBAL_HANDLE
+    CollectRootAddrByType(GetVmRoots()); // ROOT_VM
+    CollectRootAddrByType(GetFrameRoots()); // ROOT_FRAME
 
     LOG_ECMA(INFO) << "rawheap dump, root count " << GetObjectCount();
 }

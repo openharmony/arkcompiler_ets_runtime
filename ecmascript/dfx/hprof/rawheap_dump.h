@@ -61,6 +61,16 @@ public:
         return globalHandleRoots_;
     }
 
+    const CSet<JSTaggedType>& GetVmRoots() const
+    {
+        return vmRoots_;
+    }
+
+    const CSet<JSTaggedType>& GetFrameRoots() const
+    {
+        return frameRoots_;
+    }
+
     const CUnorderedSet<JSTaggedType>& GetNativePointerAddrs() const
     {
         return nativePointerAddrs_;
@@ -73,6 +83,8 @@ private:
     CQueue<JSTaggedType> bfsQueue_ {};
     CSet<JSTaggedType> localHandleRoots_ {};
     CSet<JSTaggedType> globalHandleRoots_ {};
+    CSet<JSTaggedType> vmRoots_ {};
+    CSet<JSTaggedType> frameRoots_ {};
     CVector<JSTaggedType> markedObjects_ {};
     CUnorderedSet<JSTaggedType> nativePointerAddrs_ {};
     uint32_t heapSize_ {0};
@@ -109,6 +121,16 @@ public:
     const CSet<JSTaggedType>& GetGlobalHandleRoots() const
     {
         return marker_.GetGlobalHandleRoots();
+    }
+
+    const CSet<JSTaggedType>& GetVmRoots() const
+    {
+        return marker_.GetVmRoots();
+    }
+
+    const CSet<JSTaggedType>& GetFrameRoots() const
+    {
+        return marker_.GetFrameRoots();
     }
 
     const CUnorderedSet<JSTaggedType>& GetNativePointerAddrs() const
