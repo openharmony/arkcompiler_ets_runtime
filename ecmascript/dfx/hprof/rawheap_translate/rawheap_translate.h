@@ -51,6 +51,10 @@ public:
     StringHashMap* GetStringTable();
     std::string GetVersion();
 
+    std::string spaceType_;
+    std::string heapType_;
+    std::string vmType_;
+
 protected:
     Node *CreateNode();
     void InsertEdge(Node *toNode, uint32_t indexOrStrId, EdgeType type);
@@ -59,6 +63,9 @@ protected:
     void CreateHashEdge(Node *node);
     void AddPrimitiveNodes();
     void CreateRootNode(Node *root, const std::string &name, size_t count);
+    bool ReadHeapMetaData(FileReader &file, uint32_t section);
+    void CreateMetadataNode(Node *metadataNode);
+    void AddMetadataPropertyNode(Node *metadataNode, const std::string &value, const std::string &propertyName);
 
     static bool ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section);
 
@@ -207,6 +214,7 @@ private:
     Node *globalHandleRoot_ {nullptr};
     Node *vmRoot_ {nullptr};
     Node *frameRoot_ {nullptr};
+    Node *metadataNode_ {nullptr};
 
     std::vector<uint32_t> localHandleRoots_;
     std::vector<uint32_t> globalHandleRoots_;

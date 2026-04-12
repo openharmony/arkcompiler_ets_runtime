@@ -2231,6 +2231,33 @@ HWTEST_F_L0(HeapDumpTest, TestPropertyNameInBinaryDump)
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"metadata\""));
 }
 
+HWTEST_F_L0(HeapDumpTest, TestHeapMetadataFields)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "property_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_heap_metadata.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    dumpOption.spaceType = "LocalGC";
+    dumpOption.heapType = "local heap";
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_heap_metadata.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"HeapMetadata\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"spaceType\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"LocalGC\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"heapType\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"local heap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"vmType\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"dynamic\""));
+}
+
 HWTEST_F_L0(HeapDumpTest, DISABLED_TestProxyClassName)
 {
     const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";

@@ -904,6 +904,8 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] JSThread *thread,
     dumpOption.isDumpOOM = true;
     dumpOption.isForSharedOOM = true;
     dumpOption.isProcDump = Runtime::GetInstance()->IsEnableProcDumpInSharedOOM();
+    dumpOption.spaceType = spaceType;
+    dumpOption.heapType = heapType;
     if (source == SharedHeapOOMSource::SHARED_GC) {
         heapProfile->DumpHeapSnapshotForOOM(dumpOption, true);
         HeapProfilerInterface::DestroyInstance(heapProfile);
@@ -2032,6 +2034,8 @@ void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump, [[maybe_unused]] const std
     dumpOption.isBeforeFill = false;
     dumpOption.isDumpOOM = true;
     dumpOption.isProcDump = isProcDump;
+    dumpOption.spaceType = spaceType;
+    dumpOption.heapType = heapType;
     heapProfile->DumpHeapSnapshotForOOM(dumpOption);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
