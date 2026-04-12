@@ -55,7 +55,7 @@ enum class NodeType {
     SYMBOL,
     BIGINT,
     FRAMEWORK,
-    HANDLE,
+    ROOT,
     DEFAULT = NATIVE,
 };
 
@@ -637,6 +637,8 @@ private:
     CVector<Edge *> edges_ {};
     CUnorderedSet<HprofNode *> localHandleRoots_ {};
     CUnorderedSet<HprofNode *> globalHandleRoots_ {};
+    CUnorderedSet<HprofNode *> vmRoots_ {};
+    CUnorderedSet<HprofNode *> frameRoots_ {};
     // The address of the native pointer storing the reference to the ArkTS object
     CVector<HprofNode *> nativeAddressNodes_ {};
     CVector<TimeStamp> timeStamps_ {};

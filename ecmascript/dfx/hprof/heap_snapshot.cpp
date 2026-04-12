@@ -593,6 +593,12 @@ void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTagge
         case Root::ROOT_GLOBAL_HANDLE:
             snapshot_.globalHandleRoots_.emplace(node);
             break;
+        case Root::ROOT_VM:
+            snapshot_.vmRoots_.emplace(node);
+            break;
+        case Root::ROOT_FRAME:
+            snapshot_.frameRoots_.emplace(node);
+            break;
         default:
             break;
     }
@@ -1202,14 +1208,20 @@ void HeapSnapshot::AddSyntheticRoot()
     // Create specific synthetic root nodes
     HprofNode *localHandleSyntheticRoot = CreateSpecificSyntheticRoot(localHandleRoots_, "LocalHandleRoot", 1);
     HprofNode *globalHandleSyntheticRoot = CreateSpecificSyntheticRoot(globalHandleRoots_, "GlobalHandleRoot", 2);
+    HprofNode *vmSyntheticRoot = CreateSpecificSyntheticRoot(vmRoots_, "VMRoot", 3);
+    HprofNode *frameSyntheticRoot = CreateSpecificSyntheticRoot(frameRoots_, "FrameRoot", 4);
 
     // Create edges from synthetic root to specific synthetic roots
     CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, localHandleSyntheticRoot, rootEdges);
     CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, globalHandleSyntheticRoot, rootEdges);
+    CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, vmSyntheticRoot, rootEdges);
+    CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, frameSyntheticRoot, rootEdges);
 
     // Create edges from specific synthetic roots to their roots
     CreateSpecificSyntheticRootToRootEdges(localHandleSyntheticRoot, localHandleRoots_, rootEdges);
     CreateSpecificSyntheticRootToRootEdges(globalHandleSyntheticRoot, globalHandleRoots_, rootEdges);
+    CreateSpecificSyntheticRootToRootEdges(vmSyntheticRoot, vmRoots_, rootEdges);
+    CreateSpecificSyntheticRootToRootEdges(frameSyntheticRoot, frameRoots_, rootEdges);
 
     // Insert all root edges at the beginning of edges vector
     edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());
@@ -1227,11 +1239,11 @@ void HeapSnapshot::AddSyntheticRoot()
 HprofNode *HeapSnapshot::CreateSpecificSyntheticRoot(const CUnorderedSet<HprofNode *> &specificRootSet,
                                                      const CString &rootNamePrefix, size_t insertPosition)
 {
-    CString handleRootName = CString(rootNamePrefix) + "[" + ToCString(specificRootSet.size()) + "]";
-    HprofNode *handleSyntheticRoot = HprofNode::NewNode(chunk_, 0, nodeCount_, GetString(handleRootName),
-                                                        NodeType::HANDLE, 1, 0, 0);
-    InsertNodeAt(insertPosition, handleSyntheticRoot);
-    return handleSyntheticRoot;
+    CString specificRootName = CString(rootNamePrefix) + "[" + ToCString(specificRootSet.size()) + "]";
+    HprofNode *specificSyntheticRoot = HprofNode::NewNode(chunk_, 0, nodeCount_, GetString(specificRootName),
+        NodeType::ROOT, 1, 0, 0);
+    InsertNodeAt(insertPosition, specificSyntheticRoot);
+    return specificSyntheticRoot;
 }
 
 void HeapSnapshot::CreateSyntheticRootToSpecificSyntheticRootEdge(HprofNode *syntheticRoot,

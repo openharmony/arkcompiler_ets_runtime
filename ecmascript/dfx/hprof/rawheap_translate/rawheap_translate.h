@@ -58,7 +58,7 @@ protected:
     void SetVersion(const std::string &version);
     void CreateHashEdge(Node *node);
     void AddPrimitiveNodes();
-    void CreateHandleRootNode(Node *handleRoot, const std::string &name, size_t count);
+    void CreateRootNode(Node *root, const std::string &name, size_t count);
 
     static bool ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section);
 
@@ -99,6 +99,8 @@ private:
     bool ParseStringTable(FileReader &file);
     bool ReadLocalHandleRoots(FileReader &file);
     bool ReadGlobalHandleRoots(FileReader &file);
+    bool ReadVmRoots(FileReader &file);
+    bool ReadFrameRoots(FileReader &file);
     void AddSyntheticRootNode(std::vector<uint64_t> &roots);
     void SetNodeStringId(const std::vector<uint64_t> &objects, StringId strId);
     Node* FindOrCreateNode(uint64_t addr);
@@ -150,6 +152,8 @@ private:
     std::unordered_map<uint64_t, Node *> nodesMap_ {};
     std::vector<uint64_t> localHandleRoots_;
     std::vector<uint64_t> globalHandleRoots_;
+    std::vector<uint64_t> vmRoots_;
+    std::vector<uint64_t> frameRoots_;
     friend class panda::test::HeapDumpTestHelper;
     friend class panda::test::RawHeapTranslateV1TestHelper;
 };
@@ -177,6 +181,8 @@ private:
     bool ParseStringTable(FileReader &file);
     bool ReadLocalHandleRoots(FileReader &file);
     bool ReadGlobalHandleRoots(FileReader &file);
+    bool ReadVmRoots(FileReader &file);
+    bool ReadFrameRoots(FileReader &file);
     void AddSyntheticRootNode(std::vector<uint32_t> &roots);
     Node* FindNode(uint32_t addr);
     void AddHandleRootEdges(const std::vector<uint32_t> &handleRoots);
@@ -199,9 +205,13 @@ private:
     Node *syntheticRoot_ {nullptr};
     Node *localHandleRoot_ {nullptr};
     Node *globalHandleRoot_ {nullptr};
+    Node *vmRoot_ {nullptr};
+    Node *frameRoot_ {nullptr};
 
     std::vector<uint32_t> localHandleRoots_;
     std::vector<uint32_t> globalHandleRoots_;
+    std::vector<uint32_t> vmRoots_;
+    std::vector<uint32_t> frameRoots_;
     friend class panda::test::HeapDumpTestHelper;
     friend class panda::test::RawHeapTranslateV2TestHelper;
 };

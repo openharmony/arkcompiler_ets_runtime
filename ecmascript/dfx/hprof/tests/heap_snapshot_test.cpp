@@ -396,7 +396,7 @@ HWTEST_F_L0(HeapSnapShotTest, TestSerializeExtraInfo)
 #endif
 }
 
-HWTEST_F_L0(HeapSnapShotTest, TestHandleSyntheticRoots)
+HWTEST_F_L0(HeapSnapShotTest, TestSpecificSyntheticRoots)
 {
     const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "heap_snapshot.abc";
     std::string entryPoint = "heap_snapshot";
@@ -408,22 +408,37 @@ HWTEST_F_L0(HeapSnapShotTest, TestHandleSyntheticRoots)
     HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
 
     // LocalHandleSyntheticRoot and GlobalHandleSyntheticRoot are inserted at fixed positions 1 and 2
+    // VMRoot and FrameRoot are inserted at positions 3 and 4
     const auto &nodes = *snapshot->GetNodes();
-    ASSERT_GE(nodes.size(), 3U) << "Not enough nodes in snapshot";
+    ASSERT_GE(nodes.size(), 5U) << "Not enough nodes in snapshot";
 
     // Verify LocalHandleSyntheticRoot at position 1
     const HprofNode *localHandleRoot = nodes[1];
     ASSERT_NE(localHandleRoot->GetName(), nullptr) << "LocalHandleSyntheticRoot name should not be null";
-    ASSERT_EQ(localHandleRoot->GetType(), NodeType::HANDLE) << "LocalHandleSyntheticRoot type should be HANDLE";
+    ASSERT_EQ(localHandleRoot->GetType(), NodeType::ROOT) << "LocalHandleSyntheticRoot type should be ROOT";
     CString localName = *localHandleRoot->GetName();
     ASSERT_TRUE(localName.find("LocalHandleRoot[") == 0) << "Expected LocalHandleRoot, got: " << localName;
 
     // Verify GlobalHandleSyntheticRoot at position 2
     const HprofNode *globalHandleRoot = nodes[2];
     ASSERT_NE(globalHandleRoot->GetName(), nullptr) << "GlobalHandleSyntheticRoot name should not be null";
-    ASSERT_EQ(globalHandleRoot->GetType(), NodeType::HANDLE) << "GlobalHandleSyntheticRoot type should be HANDLE";
+    ASSERT_EQ(globalHandleRoot->GetType(), NodeType::ROOT) << "GlobalHandleSyntheticRoot type should be ROOT";
     CString globalName = *globalHandleRoot->GetName();
     ASSERT_TRUE(globalName.find("GlobalHandleRoot[") == 0) << "Expected GlobalHandleRoot, got: " << globalName;
+
+    // Verify VMRoot at position 3
+    const HprofNode *vmRoot = nodes[3];
+    ASSERT_NE(vmRoot->GetName(), nullptr) << "VMRoot name should not be null";
+    ASSERT_EQ(vmRoot->GetType(), NodeType::ROOT) << "VMRoot type should be ROOT";
+    CString vmName = *vmRoot->GetName();
+    ASSERT_TRUE(vmName.find("VMRoot[") == 0) << "Expected VMRoot, got: " << vmName;
+
+    // Verify FrameRoot at position 4
+    const HprofNode *frameRoot = nodes[4];
+    ASSERT_NE(frameRoot->GetName(), nullptr) << "FrameRoot name should not be null";
+    ASSERT_EQ(frameRoot->GetType(), NodeType::ROOT) << "FrameRoot type should be ROOT";
+    CString frameName = *frameRoot->GetName();
+    ASSERT_TRUE(frameName.find("FrameRoot[") == 0) << "Expected FrameRoot, got: " << frameName;
 }
 
 HWTEST_F_L0(HeapSnapShotTest, TestProxyClassName)
