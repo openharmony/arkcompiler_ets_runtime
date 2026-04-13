@@ -1218,6 +1218,11 @@ TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
             }
             object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, true));
         }
+        if (object == nullptr) {
+            // After GC, if allocation still fails, try to transfer memory from SharedHugeObjectSpace
+            TryTransferMemoryToOldSpace();
+            object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, true));
+        }
     }
     return object;
 }

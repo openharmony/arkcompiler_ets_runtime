@@ -288,6 +288,8 @@ private:
     size_t triggerLocalFullMarkLimit_ {0};
     EcmaList<Region> hugeNeedFreeList_ {};
     Mutex allocateLock_;
+
+    friend class SharedMemoryReallocator;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_SHARED_SPACE_H

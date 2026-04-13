@@ -28,6 +28,7 @@
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/mark_stack.h"
+#include "ecmascript/mem/shared_heap/shared_memory_reallocator.h"
 #include "ecmascript/mem/shared_heap/shared_space.h"
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/visitor.h"
@@ -706,6 +707,12 @@ public:
         }
     }
 
+    // Try to transfer memory capacity from HugeObjectSpace to OldSpace
+    void TryTransferMemoryToOldSpace()
+    {
+        memoryReallocator_.TryTransferMemoryToOldSpace(sOldSpace_, sCompressSpace_, sHugeObjectSpace_);
+    }
+
     inline void TryTriggerConcurrentMarking(JSThread *thread);
 
     template<TriggerGCType gcType, MarkReason markReason>
@@ -1000,6 +1007,9 @@ private:
     bool inHeapProfiler_ {false};
     NativePointerList sharedNativePointerList_;
     std::mutex sNativePointerListMutex_;
+    // Memory reallocation helper
+    SharedMemoryReallocator memoryReallocator_;
+
     SHAREDHEAP_PRIVATE_HYBRID_EXTENSION();
 };
 
