@@ -150,6 +150,8 @@ protected:
     void IterateMarkedObjects(const std::function<void(JSTaggedType)> &visitor);
     void DumpVersion(const std::string &version);
     void DumpSectionIndex();
+    void DumpMetadataFields();
+    void DumpStringField(const std::string &value, size_t bufSize, const char *fieldName);
     NodeId GenerateNodeId(JSTaggedType addr);
     void WriteChunk(char *data, size_t size);
     void WriteU64(uint64_t value);

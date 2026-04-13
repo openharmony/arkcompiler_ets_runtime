@@ -206,6 +206,7 @@ RawHeapDump::~RawHeapDump()
 void RawHeapDump::BinaryDump()
 {
     DumpVersion(GetRawheapVersion());
+    DumpMetadataFields();
 
     marker_.MarkRootObjects();
     DumpRootTable();
@@ -251,17 +252,34 @@ void RawHeapDump::UpdateStringTable()
 
 void RawHeapDump::DumpVersion(const std::string &version)
 {
-    char versionId[8];  // 8: means the size of rawheap version
+    char versionId[8] = { 0 };  // 8: size of rawheap version
     if (strcpy_s(versionId, sizeof(versionId), version.c_str()) != 0) {
         LOG_ECMA(ERROR) << "rawheap dump, version id strcpy_s failed!";
         return;
     }
     WriteChunk(versionId, sizeof(versionId));
 
-    char timeStamp[8];  // 8: means the size of current timestamp
+    char timeStamp[8] = { 0 };  // 8: size of current timestamp
     *reinterpret_cast<uint64_t *>(timeStamp) = std::chrono::system_clock::now().time_since_epoch().count();
     WriteChunk(timeStamp, sizeof(timeStamp));
     LOG_ECMA(INFO) << "rawheap dump, version " << version;
+}
+
+void RawHeapDump::DumpMetadataFields()
+{
+    DumpStringField(dumpOption_->spaceType, 32, "space type");  // 32: space type size
+    DumpStringField(dumpOption_->heapType, 16, "heap type");    // 16: heap type size
+    DumpStringField("dynamic", 8, "vm type");                   // 8: vm type size
+}
+
+void RawHeapDump::DumpStringField(const std::string &value, size_t bufSize, const char *fieldName)
+{
+    std::vector<char> buffer(bufSize);
+    std::fill(buffer.begin(), buffer.end(), '\0');
+    if (!value.empty() && strcpy_s(buffer.data(), bufSize, value.c_str()) != 0) {
+        LOG_ECMA(ERROR) << "rawheap dump, " << fieldName << " strcpy_s failed!" << value;
+    }
+    WriteChunk(buffer.data(), bufSize);
 }
 
 void RawHeapDump::DumpSectionIndex()

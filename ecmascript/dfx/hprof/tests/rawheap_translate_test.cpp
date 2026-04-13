@@ -454,7 +454,8 @@ HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2)
     ASSERT_TRUE(rawheapHelper.ReadStringTable(file));
 
     std::vector<rawheap_translate::Node *> nodes = *rawheapHelper.GetNodes();
-    int expectedSize = 15;    // 15: expected 10 root + 1 synthetic root + 4 root groups
+    // 16: expected 10 root + 1 synthetic root + 4 root groups + 1 metadata
+    int expectedSize = 16;
     ASSERT_EQ(nodes.size(), expectedSize);
 
     rawheap_translate::StringId strId = nodes[1]->strId;
@@ -478,8 +479,8 @@ HWTEST_F_L0(RawHeapTranslateTest, RawHeapTranslateV2)
     str = strTable->GetStringByKey(key);
     ASSERT_EQ(str, "FrameRoot[0]");
 
-    for (int i = 1; i < expectedSize - 4; i++) {
-        strId = nodes[i + 4]->strId;
+    for (int i = 1; i < expectedSize - 5; i++) {
+        strId = nodes[i + 5]->strId;
 
         key = strTable->GetKeyByStringId(strId);
         str = strTable->GetStringByKey(key);

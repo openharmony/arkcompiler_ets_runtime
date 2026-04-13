@@ -135,6 +135,37 @@ std::string RawHeap::ReadVersion(FileReader &file)
     return std::string(version.data());
 }
 
+bool RawHeap::ReadHeapMetaData(FileReader &file, uint32_t section)
+{
+    uint32_t spaceTypeStrSize = 32; // 32: space type size
+    uint32_t heapTypeStrSize = 16;  // 16: heap type size
+    uint32_t vmTypeStrSize = 8;     // 8: vm type size
+    uint32_t headSize = 16;         // 16: skip version(8) + timestamp(8)
+    std::vector<char> spaceTypeBuf(spaceTypeStrSize);
+    if (section <= headSize) {
+        return true;
+    }
+    if (!file.Seek(headSize) || !file.Read(spaceTypeBuf.data(), spaceTypeStrSize)) {
+        return false;
+    }
+    spaceType_ = std::string(spaceTypeBuf.data());
+
+    std::vector<char> heapTypeBuf(heapTypeStrSize);
+    if (!file.Read(heapTypeBuf.data(), heapTypeStrSize)) {
+        return false;
+    }
+    heapType_ = std::string(heapTypeBuf.data());
+
+    std::vector<char> vmTypeBuf(vmTypeStrSize);
+    if (!file.Read(vmTypeBuf.data(), vmTypeStrSize)) {
+        return false;
+    }
+    vmType_ = std::string(vmTypeBuf.data());
+
+    LOG_INFO_ << "space type: " << spaceType_ << ", heap type: " << heapType_ << ", vm type: " << vmType_;
+    return true;
+}
+
 std::vector<Node *>* RawHeap::GetNodes()
 {
     return &nodes_;
@@ -226,6 +257,31 @@ void RawHeap::CreateRootNode(Node *root, const std::string &name, size_t count)
     root->strId = InsertAndGetStringId(name + "[" + std::to_string(count) + ']');
     root->edgeCount = count;
     root->size = VIRTUAL_NODE_SIZE;
+}
+
+void RawHeap::CreateMetadataNode(Node *metadataNode)
+{
+    metadataNode->nodeId = 0;
+    metadataNode->type = 8;     // 8 is native nodetype
+    metadataNode->strId = InsertAndGetStringId("HeapMetadata");
+    metadataNode->edgeCount = 0;
+    metadataNode->size = VIRTUAL_NODE_SIZE;
+}
+
+void RawHeap::AddMetadataPropertyNode(Node *metadataNode, const std::string &value, const std::string &propertyName)
+{
+    Node *propertyNode = new Node(0);
+    propertyNode->nodeId = 0;
+    propertyNode->type = HEAP_NUMBER;
+    propertyNode->strId = InsertAndGetStringId(value);
+    propertyNode->size = VIRTUAL_NODE_SIZE;
+    primitiveNodes_.push_back(propertyNode);
+
+    StringId propertyStrId = InsertAndGetStringId(propertyName);
+    Edge *propertyEdge = new Edge(propertyNode, propertyStrId, EdgeType::PROPERTY);
+    edges_.push_back(propertyEdge);
+
+    metadataNode->edgeCount++;
 }
 
 bool RawHeap::ReadSectionInfo(FileReader &file, uint32_t offset, std::vector<uint32_t> &section)
@@ -438,6 +494,11 @@ bool RawHeapTranslateV1::ReadRootTable(FileReader &file)
         return false;
     }
 
+    if (!ReadHeapMetaData(file, sections_[0])) {
+        LOG_ERROR_ << "Read HeapMetaData failed!";
+        return false;
+    }
+
     // 2: string table start from sections_[2]
     if (!ReadLocalHandleRoots(file)) {
         return false;
@@ -591,6 +652,14 @@ void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
     syntheticRoot->edgeCount++;
     InsertEdge(frameRoot, strId, type);
 
+    Node *metadataNode = nullptr;
+    if (!spaceType_.empty() || !heapType_.empty() || !vmType_.empty()) {
+        metadataNode = CreateNode();
+        CreateMetadataNode(metadataNode);
+        syntheticRoot->edgeCount++;
+        InsertEdge(metadataNode, strId, type);
+    }
+
     for (auto addr : roots) {
         if (IsHeapObject(addr)) {
             Node *root = FindOrCreateNode(addr);
@@ -602,6 +671,11 @@ void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
     AddHandleRootEdges(globalHandleRoots_);
     AddHandleRootEdges(vmRoots_);
     AddHandleRootEdges(frameRoots_);
+    if (metadataNode != nullptr) {
+        AddMetadataPropertyNode(metadataNode, spaceType_, "spaceType");
+        AddMetadataPropertyNode(metadataNode, heapType_, "heapType");
+        AddMetadataPropertyNode(metadataNode, vmType_, "vmType");
+    }
 }
 
 void RawHeapTranslateV1::SetNodeStringId(const std::vector<uint64_t> &objects, StringId strId)
@@ -1016,7 +1090,7 @@ bool RawHeapTranslateV2::Translate()
     FillNodes();
     auto nodes = GetNodes();
     size_t size = nodes->size();
-    for (size_t i = 5; i < size; ++i) {  // 5:normal node start from 5 (synthetic + 4 root groups)
+    for (size_t i = 6; i < size; ++i) {  // 6:normal node start from 6 (synthetic + 4 root groups + 1 metadata)
         Node *node = (*nodes)[i];
         Node *hclass = GetNextEdgeTo();
         if (hclass == nullptr) {
@@ -1191,6 +1265,11 @@ bool RawHeapTranslateV2::ReadRootTable(FileReader &file)
         return false;
     }
 
+    if (!ReadHeapMetaData(file, sections_[0])) {
+        LOG_ERROR_ << "Read HeapMetaData failed!";
+        return false;
+    }
+
     AddSyntheticRootNode(roots);
     LOG_INFO_ << "root node count " << roots.size()
               << ", local handle count " << localHandleRoots_.size()
@@ -1230,6 +1309,7 @@ bool RawHeapTranslateV2::ReadObjectTable(FileReader &file)
     globalHandleRoot_ = CreateNode();
     vmRoot_ = CreateNode();
     frameRoot_ = CreateNode();
+    metadataNode_ = CreateNode();
     uint32_t tableSize = file.GetHeaderLeft() * file.GetHeaderRight();
     // 5: index in sections means the total size of object table
     memSize_ = sections_[5] - tableSize - sizeof(uint64_t);
@@ -1335,6 +1415,12 @@ void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
     syntheticRoot_->edgeCount++;
     InsertEdge(frameRoot_, strId, type);
 
+    if (!spaceType_.empty() || !heapType_.empty() || !vmType_.empty()) {
+        CreateMetadataNode(metadataNode_);
+        syntheticRoot_->edgeCount++;
+        InsertEdge(metadataNode_, strId, type);
+    }
+
     for (auto addr : roots) {
         Node *root = FindNode(addr);
         if (root == nullptr) {
@@ -1347,6 +1433,11 @@ void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
     AddHandleRootEdges(globalHandleRoots_);
     AddHandleRootEdges(vmRoots_);
     AddHandleRootEdges(frameRoots_);
+    if (!spaceType_.empty() || !heapType_.empty() || !vmType_.empty()) {
+        AddMetadataPropertyNode(metadataNode_, spaceType_, "spaceType");
+        AddMetadataPropertyNode(metadataNode_, heapType_, "heapType");
+        AddMetadataPropertyNode(metadataNode_, vmType_, "vmType");
+    }
 }
 
 Node *RawHeapTranslateV2::FindNode(uint32_t addr)

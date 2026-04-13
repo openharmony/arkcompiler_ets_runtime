@@ -42,6 +42,8 @@ struct DumpSnapShotOption {
     bool isForSharedOOM = false;   // for shared heap oom dump
     bool isProcDump = false;  // whether need process dump
     bool isClearNodeIdCache = false;  // whether clear node id map cache after dump
+    std::string spaceType = "";  // space type for raw heap dump
+    std::string heapType = "";  // heap type: local heap or shared heap
 };
 
 enum class RawHeapDumpCropLevel {
