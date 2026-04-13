@@ -1522,6 +1522,21 @@ public:
         return enableRuntimeAsyncStack_;
     }
 
+    void InsertWrappedNativePointerAddrsMap(const JSTaggedType addr, void* nativeAddress)
+    {
+        wrappedNativePointerAddrsMap_.emplace(addr, nativeAddress);
+    }
+
+    const CUnorderedMap<JSTaggedType, void*>& GetWrappedNativePointerAddrsMap() const
+    {
+        return wrappedNativePointerAddrsMap_;
+    }
+
+    void ClearWrappedNativePointerAddrsMap()
+    {
+        wrappedNativePointerAddrsMap_.clear();
+    }
+
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
 
@@ -1631,6 +1646,8 @@ private:
     NO_COPY_SEMANTIC(EcmaVM);
 
     uint64_t openHandleScopes_ {0};
+
+    CUnorderedMap<JSTaggedType, void*> wrappedNativePointerAddrsMap_ {};
 
     // VM startup states.
     JSRuntimeOptions options_;

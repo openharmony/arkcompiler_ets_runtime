@@ -755,6 +755,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::ostream &
             os << "\n";
             break;
         case JSType::JS_NATIVE_POINTER:
+            JSNativePointer::Cast(obj)->Dump(thread, os);
             break;
         case JSType::JS_OBJECT:
         case JSType::JS_SHARED_OBJECT:
@@ -4213,6 +4214,7 @@ static void DumpObject(const JSThread *thread, TaggedObject *obj, std::vector<Re
             DumpStringClass(EcmaString::Cast(obj), vec);
             break;
         case JSType::JS_NATIVE_POINTER:
+            JSNativePointer::Cast(obj)->DumpForSnapshot(thread, vec);
             break;
         case JSType::JS_OBJECT:
         case JSType::JS_ERROR:
@@ -5032,6 +5034,48 @@ void JSObject::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &v
     }
 }
 
+void JSNativePointer::Dump(const JSThread *thread, std::ostream &os) const
+{
+    void *externalPointer = GetExternalPointer();
+    if (externalPointer == nullptr) {
+        return;
+    }
+    JSTaggedType addr = reinterpret_cast<JSTaggedType>(this);
+    const auto& wrappedMap = thread->GetEcmaVM()->GetWrappedNativePointerAddrsMap();
+    auto it = wrappedMap.find(addr);
+    void *nativeAddr = nullptr;
+    if (it != wrappedMap.end()) {
+        nativeAddr = it->second;
+    } else {
+        nativeAddr = externalPointer;
+    }
+    if (nativeAddr != nullptr) {
+        os << " - ExternalPointer: " << std::hex << "0x" << reinterpret_cast<uintptr_t>(nativeAddr) << "\n";
+    }
+}
+
+void JSNativePointer::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
+{
+    void *externalPointer = GetExternalPointer();
+    if (externalPointer == nullptr) {
+        return;
+    }
+    JSTaggedType addr = reinterpret_cast<JSTaggedType>(this);
+    const auto& wrappedMap = thread->GetEcmaVM()->GetWrappedNativePointerAddrsMap();
+    auto it = wrappedMap.find(addr);
+    void *nativeAddr = nullptr;
+    if (it !=  wrappedMap.end()) {
+        nativeAddr = it->second;
+    } else {
+        nativeAddr = externalPointer;
+    }
+    if (nativeAddr != nullptr) {
+        vec.emplace_back(CString("ExternalPointer"),
+                         JSTaggedValue(static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(nativeAddr))),
+                         EdgeType::NATIVE);
+    }
+}
+
 static void ProcessNativePointerItem(const JSThread *thread, std::vector<Reference> &vec,
                                      uint32_t index, JSTaggedValue itemValue)
 {
@@ -5046,6 +5090,7 @@ static void ProcessNativePointerItem(const JSThread *thread, std::vector<Referen
     }
     void* externalData = cb(externalPointer);
     if (externalData != nullptr) {
+        thread->GetEcmaVM()->InsertWrappedNativePointerAddrsMap(itemValue.GetRawData(), externalData);
         vec.emplace_back(CString("NativeAddress") + CString(std::to_string(index)),
                          JSTaggedValue(static_cast<JSTaggedType>(reinterpret_cast<uintptr_t>(externalData))),
                          EdgeType::NATIVE);

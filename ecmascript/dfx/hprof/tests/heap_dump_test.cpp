@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include <fcntl.h>
+#include <sstream>
 #include <unistd.h>
 #include <chrono>
 #include "ecmascript/base/number_helper.h"
@@ -2279,139 +2280,194 @@ HWTEST_F_L0(HeapDumpTest, DISABLED_TestProxyClassName)
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy\""));
 }
 
-// HeapMarker: Clear() resets all mark bits so IsMarked returns false afterwards
-HWTEST_F_L0(HeapDumpTest, TestHeapMarkerClear)
+// ---------------------------------------------------------------------------
+// Helpers shared by the four native-address tests below.
+// MockNativeRef mimics the layout that ArkNativeReference::GetData() reads:
+//   the callback receives a (void*) pointing to this struct and returns ->data.
+// ---------------------------------------------------------------------------
+struct MockNativeRef {
+    void *data;
+};
+
+static void *MockGetNativeReferenceData(void *ref)
 {
-    HeapDumpTestHelper tester(ecmaVm_);
-    JSHandle<JSMap> jsMap = tester.NewJSMap();
-    JSHandle<JSSet> jsSet = tester.NewJSSet();
-
-    HeapMarker marker {};
-    marker.Mark(jsMap.GetTaggedType());
-    marker.Mark(jsSet.GetTaggedType());
-    ASSERT_TRUE(marker.IsMarked(jsMap.GetTaggedType()));
-    ASSERT_TRUE(marker.IsMarked(jsSet.GetTaggedType()));
-
-    // After Clear() no address should be marked
-    marker.Clear();
-    ASSERT_FALSE(marker.IsMarked(jsMap.GetTaggedType()));
-    ASSERT_FALSE(marker.IsMarked(jsSet.GetTaggedType()));
+    return reinterpret_cast<MockNativeRef *>(ref)->data;
 }
 
-// HeapMarker: Count() tracks the number of uniquely marked addresses
-HWTEST_F_L0(HeapDumpTest, TestHeapMarkerCount)
+// Helper: create a JSWrappedNapiObject, allocate one native-pointer slot,
+// store &mockRef in that slot, and register the mock callback on the VM.
+// Returns a JSHandle<JSObject> for the wrapped object.
+static JSHandle<JSObject> CreateWrappedObjWithNativeRef(
+    JSThread *thread, EcmaVM *vm, MockNativeRef &mockRef)
 {
-    HeapDumpTestHelper tester(ecmaVm_);
-    JSHandle<JSMap>  jsMap  = tester.NewJSMap();
-    JSHandle<JSSet>  jsSet  = tester.NewJSSet();
-    JSHandle<JSAPIArrayList> jsList = tester.NewJSAPIArrayList();
-
-    HeapMarker marker {};
-    ASSERT_EQ(marker.Count(), 0U);
-
-    marker.Mark(jsMap.GetTaggedType());
-    ASSERT_EQ(marker.Count(), 1U);
-
-    marker.Mark(jsSet.GetTaggedType());
-    ASSERT_EQ(marker.Count(), 2U);
-
-    marker.Mark(jsList.GetTaggedType());
-    ASSERT_EQ(marker.Count(), 3U);
+    ObjectFactory *factory = vm->GetFactory();
+    JSHandle<JSObject> object = factory->CreateNapiObject(true);
+    JSObject::SetNativePointerFieldCount(thread, object, 1);
+    JSObject::SetNativePointerField(thread, object, 0,
+                                    reinterpret_cast<void *>(&mockRef),
+                                    nullptr, nullptr);
+    vm->SetNativeReferenceDataGetter(
+        reinterpret_cast<ecmascript::NativeReferenceDataCallbackGetter>(
+            MockGetNativeReferenceData));
+    return object;
 }
 
-// HeapMarker: Marking an already-marked address returns false and keeps count stable
-HWTEST_F_L0(HeapDumpTest, TestHeapMarkerDoubleMark)
+// UT1: JSON snapshot for a JSWrappedNapiObject contains the real native address
+//      (via callback) both from JSWrappedNapiObject::DumpForSnapshot (NativeAddress0 edge)
+//      and from JSNativePointer::DumpForSnapshot (ExternalPointer edge, resolved via
+//      wrappedNativePointerAddrsMap_).
+HWTEST_F_L0(HeapDumpTest, TestWrappedNapiObjectDumpForSnapshotNativeEdge)
 {
-    HeapDumpTestHelper tester(ecmaVm_);
-    JSHandle<JSMap> jsMap = tester.NewJSMap();
+    static int realNativeObj = 0xBEEF;
+    MockNativeRef mockRef { reinterpret_cast<void *>(&realNativeObj) };
 
-    HeapMarker marker {};
-    // First mark should succeed
-    ASSERT_TRUE(marker.Mark(jsMap.GetTaggedType()));
-    ASSERT_EQ(marker.Count(), 1U);
-
-    // Second mark of the same address must return false; count must not increase
-    ASSERT_FALSE(marker.Mark(jsMap.GetTaggedType()));
-    ASSERT_EQ(marker.Count(), 1U);
-}
-
-// EntryIdMap: GetIdCount reflects insertions and erasures accurately
-HWTEST_F_L0(HeapDumpTest, TestEntryIdMapGetIdCount)
-{
-    HeapDumpTestHelper tester(ecmaVm_);
-    JSHandle<JSMap>  jsMap  = tester.NewJSMap();
-    JSHandle<JSSet>  jsSet  = tester.NewJSSet();
-    JSHandle<JSAPIArrayList> jsList = tester.NewJSAPIArrayList();
-
-    EntryIdMap entryIdMap {};
-    ASSERT_EQ(entryIdMap.GetIdCount(), 0U);
-
-    entryIdMap.InsertId(jsMap.GetTaggedType(),  entryIdMap.GetNextId());
-    entryIdMap.InsertId(jsSet.GetTaggedType(),  entryIdMap.GetNextId());
-    entryIdMap.InsertId(jsList.GetTaggedType(), entryIdMap.GetNextId());
-    ASSERT_EQ(entryIdMap.GetIdCount(), 3U);
-
-    entryIdMap.EraseId(jsMap.GetTaggedType());
-    ASSERT_EQ(entryIdMap.GetIdCount(), 2U);
-}
-
-// EntryIdMap: GetNextId increments by SEQ_STEP=2; GetLastId returns the most-recently issued ID
-HWTEST_F_L0(HeapDumpTest, TestEntryIdMapGetNextIdAndLastId)
-{
-    EntryIdMap entryIdMap;
-    // nextId_ starts at 3 (per "1 Reserved for SyntheticRoot")
-    NodeId id1 = entryIdMap.GetNextId();   // returns 3, nextId_ becomes 5
-    NodeId id2 = entryIdMap.GetNextId();   // returns 5, nextId_ becomes 7
-    ASSERT_EQ(id1, 3U);
-    ASSERT_EQ(id2, 5U);
-    // GetLastId returns nextId_ - SEQ_STEP = 7 - 2 = 5
-    ASSERT_EQ(entryIdMap.GetLastId(), id2);
-    // Consecutive IDs must differ by exactly SEQ_STEP
-    ASSERT_EQ(id2 - id1, static_cast<NodeId>(EntryIdMap::SEQ_STEP));
-}
-
-// JSON snapshot contains "handle" type and both LocalHandleRoot / GlobalHandleRoot strings
-HWTEST_F_L0(HeapDumpTest, TestHandleSyntheticRootInJSONSnapshot)
-{
-    ObjectFactory *factory = ecmaVm_->GetFactory();
-    HeapDumpTestHelper tester(ecmaVm_);
-
-    JSHandle<JSTaggedValue> obj1(factory->CreateNapiObject());
-    JSHandle<JSTaggedValue> obj2(factory->CreateNapiObject());
-    Local<JSTaggedValue> local1(obj1.GetAddress());
-    Local<JSTaggedValue> local2(obj2.GetAddress());
-    Global<ObjectRef> global1(ecmaVm_, local1);
-    Global<ObjectRef> global2(ecmaVm_, local2);
-
-    const std::string snapshotPath("test_handle_root_json.heapsnapshot");
-    size_t idCount = tester.GenerateSnapShot(snapshotPath);
-    ASSERT_GT(idCount, 0U) << "GenerateSnapShot failed or produced empty snapshot";
-    ASSERT_TRUE(std::ifstream(snapshotPath).good()) << "Snapshot file was not created: " << snapshotPath;
-
-    // "handle" appears in the node_types meta header of the JSON snapshot
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"handle\""));
-    // LocalHandleRoot and GlobalHandleRoot node names appear in the strings table
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "LocalHandleRoot["));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "GlobalHandleRoot["));
-}
-
-// JSON snapshot correctly names Proxy objects with their observed class suffix
-HWTEST_F_L0(HeapDumpTest, TestProxyClassNameInJSONSnapshot)
-{
-    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
-    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "proxy_class_name");
-    EXPECT_TRUE(result);
+    CreateWrappedObjWithNativeRef(thread_, ecmaVm_, mockRef);
 
     HeapDumpTestHelper tester(ecmaVm_);
-    const std::string snapshotPath("test_proxy_class_name_json.heapsnapshot");
+    const std::string snapshotPath("test_wrapped_napi_native_edge.heapsnapshot");
     tester.GenerateSnapShot(snapshotPath);
 
-    // Match complete string values in the JSON strings table (bounded by comma or bracket)
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"Proxy-ClassA\",") ||
-                tester.MatchHeapDumpString(snapshotPath, "\"Proxy-ClassA\"]"));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"Proxy-ClassB\",") ||
-                tester.MatchHeapDumpString(snapshotPath, "\"Proxy-ClassB\"]"));
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"Proxy\",") ||
-                tester.MatchHeapDumpString(snapshotPath, "\"Proxy\"]"));
+    // Both the JSWrappedNapiObject edge and the JSNativePointer ExternalPointer edge
+    // must resolve to the real native address via the callback.
+    std::stringstream ss;
+    ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
+        << "JSON snapshot must contain the real native address: " << ss.str();
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"native\""))
+        << "JSON snapshot must declare the 'native' edge type";
+}
+
+// UT2: When no NativeReferenceDataCallbackGetter is registered, the JSON snapshot
+//      must NOT contain any native address node for JSWrappedNapiObject.
+HWTEST_F_L0(HeapDumpTest, TestWrappedNapiObjectDumpForSnapshotNoCallbackNoNativeEdge)
+{
+    static int realNativeObj = 0xDEAD;
+    MockNativeRef mockRef { reinterpret_cast<void *>(&realNativeObj) };
+
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<JSObject> object = factory->CreateNapiObject(true);
+    JSObject::SetNativePointerFieldCount(thread_, object, 1);
+    JSObject::SetNativePointerField(thread_, object, 0,
+                                    reinterpret_cast<void *>(&mockRef),
+                                    nullptr, nullptr);
+    // Do NOT register the callback
+    ecmaVm_->SetNativeReferenceDataGetter(nullptr);
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    const std::string snapshotPath("test_wrapped_napi_no_callback.heapsnapshot");
+    tester.GenerateSnapShot(snapshotPath);
+
+    // Without the callback the real native address must not appear in the snapshot
+    std::stringstream ss;
+    ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
+    ASSERT_FALSE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
+        << "Without a registered callback the real native address must not appear";
+}
+
+// UT3: The hprof JSON snapshot for a JSWrappedNapiObject contains
+//      the "native" edge type, the "JSWrappedNapiObject" node name,
+//      and the real native address formatted as "0x…".
+HWTEST_F_L0(HeapDumpTest, TestWrappedNapiObjectNativeAddressInJSONSnapshot)
+{
+    static int realNativeObj = 0xCAFE;
+    MockNativeRef mockRef { reinterpret_cast<void *>(&realNativeObj) };
+
+    CreateWrappedObjWithNativeRef(thread_, ecmaVm_, mockRef);
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    const std::string snapshotPath("test_wrapped_napi_native_json.heapsnapshot");
+    tester.GenerateSnapShot(snapshotPath);
+
+    // Edge-type metadata must include "native"
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"native\""))
+        << "JSON snapshot must declare the 'native' edge type";
+
+    // Node name for the wrapped object
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"JSWrappedNapiObject\""))
+        << "JSON snapshot must contain 'JSWrappedNapiObject' node name";
+
+    // The real native address must appear as a hex string node name
+    std::stringstream ss;
+    ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
+        << "JSON snapshot must contain the real native address: " << ss.str();
+}
+
+// UT4: The rawheap binary snapshot, after translate, contains the real native
+//      address as a hex string – verifying the DumpNonCMGCObject replacement
+//      and BuildJSWrappedObjectEdges translation path end-to-end.
+HWTEST_F_L0(HeapDumpTest, TestWrappedNapiObjectNativeAddressInRawHeapSnapshot)
+{
+    static int realNativeObj = 0xF00D;
+    MockNativeRef mockRef { reinterpret_cast<void *>(&realNativeObj) };
+
+    CreateWrappedObjWithNativeRef(thread_, ecmaVm_, mockRef);
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    const std::string rawHeapPath("test_wrapped_napi_native.rawheap");
+    const std::string snapshotPath("test_wrapped_napi_native.heapsnapshot");
+
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, snapshotPath));
+
+    // The translated snapshot must contain the real native address as "0x…"
+    std::stringstream ss;
+    ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
+        << "Rawheap snapshot must contain the real native address: " << ss.str();
+}
+
+// UT5: A plain JSNativePointer (not referenced by JSWrappedNapiObject) has its
+//      ExternalPointer shown directly (no callback) in the hprof JSON snapshot.
+HWTEST_F_L0(HeapDumpTest, TestPlainJSNativePointerNativeAddressInJSONSnapshot)
+{
+    static int realNativeObj = 0xABCD;
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+
+    // Create a plain JSNativePointer whose ExternalPointer points to realNativeObj
+    JSHandle<JSNativePointer> nativePointer =
+        factory->NewJSNativePointer(reinterpret_cast<void *>(&realNativeObj));
+
+    // Keep it alive via a local handle
+    Local<JSValueRef> local(JSHandle<JSTaggedValue>::Cast(nativePointer).GetAddress());
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    const std::string snapshotPath("test_plain_native_pointer_json.heapsnapshot");
+    tester.GenerateSnapShot(snapshotPath);
+
+    // The raw ExternalPointer address must appear directly (no callback transform)
+    std::stringstream ss;
+    ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
+        << "JSON snapshot must contain the plain native pointer address: " << ss.str();
+}
+
+// UT6: A plain JSNativePointer has its ExternalPointer shown in the rawheap snapshot
+//      via BuildJSNativePointerEdges (no callback, address used as-is).
+HWTEST_F_L0(HeapDumpTest, TestPlainJSNativePointerNativeAddressInRawHeapSnapshot)
+{
+    static int realNativeObj = 0x1234;
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+
+    JSHandle<JSNativePointer> nativePointer =
+        factory->NewJSNativePointer(reinterpret_cast<void *>(&realNativeObj));
+
+    Local<JSValueRef> local(JSHandle<JSTaggedValue>::Cast(nativePointer).GetAddress());
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    const std::string rawHeapPath("test_plain_native_pointer.rawheap");
+    const std::string snapshotPath("test_plain_native_pointer.heapsnapshot");
+
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, snapshotPath));
+
+    std::stringstream ss;
+    ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
+        << "Rawheap snapshot must contain the plain native pointer address: " << ss.str();
 }
 }

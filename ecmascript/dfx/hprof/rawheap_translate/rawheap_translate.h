@@ -120,6 +120,7 @@ private:
     void BuildArrayEdges(Node *node, JSType type);
     void BuildFieldEdges(Node *node, JSType type);
     void BuildJSObjectEdges(Node *node, JSType type);
+    void BuildJSNativePointerEdges(Node *node);
     void BuildJSWrappedObjectEdges(Node *node, JSType type);
     void BuildNativePointerEdges(Node *node, Node *array, uint32_t dataOffset,
                                   uint32_t externalPtrOffset, uint32_t length);
