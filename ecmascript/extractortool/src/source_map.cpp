@@ -417,6 +417,9 @@ bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int
     }
 
     auto sourceMapData = sourceMapDatas_[urlView];
+    if (!sourceMapData) {
+        return false;
+    }
     packageName = sourceMapData->packageName_;
     if (url.rfind(".js") != std::string::npos) {
         url = sourceMapData->sources_;
