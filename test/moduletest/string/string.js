@@ -44,7 +44,7 @@ function foo(a) {
     return a;
 }
 try {
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 26; i++) {
         foo += foo;
     }
 } catch (e) {
