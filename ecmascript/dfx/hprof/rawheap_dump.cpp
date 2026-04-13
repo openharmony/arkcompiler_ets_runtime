@@ -549,6 +549,8 @@ void RawHeapDumpV1::DumpObjectTable()
         AddrTableItem table = { addr, GenerateNodeId(addr), obj->GetSize(), memOffset };
         if (obj->GetClass()->IsString()) {
             memOffset += sizeof(JSHClass *);
+            EcmaString *str = EcmaString::Cast(obj);
+            table.objSize = EcmaStringAccessor(str).GetLength();
         } else {
             memOffset += table.objSize;
         }

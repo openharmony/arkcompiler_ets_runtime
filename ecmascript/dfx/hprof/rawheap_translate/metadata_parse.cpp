@@ -36,13 +36,18 @@ bool MetaParser::Parse(const cJSON *object)
 
 JSType MetaParser::GetJSTypeFromHClass(Node *hclass)
 {
-    JSType type = static_cast<JSType>(ByteToU32(hclass->data + bitField_.objectTypeField.offset));
-    if (type < orderedMeta_.size()) {
-        // lower 8-bits of 32-bit value means JSType
-        return type;
+    if (!hclass || !hclass->data) {
+        return 0;
     }
-    LOG_ERROR_ << "js type error, " << (int)type;
-    return 0;
+
+    JSType type = static_cast<JSType>(ByteToU32(hclass->data + bitField_.objectTypeField.offset));
+    if (type >= orderedMeta_.size()) {
+        LOG_ERROR_ << "js type error, " << (int)type;
+        return 0;
+    }
+
+    // lower 8-bits of 32-bit value means JSType
+    return type;
 }
 
 JSType MetaParser::GetJSTypeFromTypeName(const std::string &name)
@@ -63,9 +68,9 @@ NodeType MetaParser::GetNodeType(JSType type)
     return meta->nodeType;
 }
 
-uint32_t MetaParser::GetNativateSize(Node *node, JSType type)
+uint32_t MetaParser::GetNativateSize(Node *node)
 {
-    if (!IsNativePointer(type)) {
+    if (!IsNativePointer(node->jsType)) {
         return 0;
     }
     return ByteToU32(node->data + bitField_.nativePointerBindingSizeField.offset);

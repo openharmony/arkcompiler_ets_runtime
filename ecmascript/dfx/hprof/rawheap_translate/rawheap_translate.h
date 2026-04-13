@@ -114,21 +114,22 @@ private:
     Node* FindNode(uint64_t addr);
     void AddHandleRootEdges(const std::vector<uint64_t> &handleRoots);
 
-    void FillNodes(Node *node, JSType type);
-    void BuildEdges(Node *node, JSType type);
-    void BuildGlobalEnvEdges(Node *node, JSType type);
-    void BuildArrayEdges(Node *node, JSType type);
-    void BuildFieldEdges(Node *node, JSType type);
-    void BuildJSObjectEdges(Node *node, JSType type);
+    void FillNodes();
+    void BuildEdges(Node *node);
+    void BuildGlobalEnvEdges(Node *node);
+    void BuildArrayEdges(Node *node);
+    void BuildFieldEdges(Node *node);
+    void BuildJSObjectEdges(Node *node);
+    void BuildDictionaryModeEdges(Node *node, Node *properties);
+    void BuildNonDictionaryModeEdges(Node *node, Node *properties);
     void BuildJSNativePointerEdges(Node *node);
-    void BuildJSWrappedObjectEdges(Node *node, JSType type);
+    void BuildJSWrappedObjectEdges(Node *node);
     void BuildNativePointerEdges(Node *node, Node *array, uint32_t dataOffset,
                                   uint32_t externalPtrOffset, uint32_t length);
-    void BuildDictionaryEdges(Node *node, JSType type, bool usePropertyBox);
     void CreateEdge(Node *node, uint64_t addr, uint32_t nameOrIndex, EdgeType type);
     Node* CreatePrimitiveNode(uint64_t addr);
-    void CreateHClassEdge(Node *node, Node *hclass);
-    EdgeType GenerateEdgeTypeAndRemoveWeak(Node *node, JSType type, uint64_t &addr);
+    void CreateHClassEdge(Node *node);
+    EdgeType GenerateEdgeTypeAndRemoveWeak(Node *node, uint64_t &addr);
 
     static bool IsHeapObject(uint64_t addr);
     static bool IsWeak(uint64_t addr);
