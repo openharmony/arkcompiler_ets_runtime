@@ -37,7 +37,7 @@ public:
     JSType GetJSTypeFromHClass(Node *hclass);
     JSType GetJSTypeFromTypeName(const std::string &name);
     NodeType GetNodeType(JSType type);
-    uint32_t GetNativateSize(Node *node, JSType type);
+    uint32_t GetNativateSize(Node *node);
     uint32_t GetPropsNumberOfJSObject(Node *hclass);
     uint32_t GetInlinedPropertiesCount(Node *hclass);
     bool IsPropertyInlinedProps(uint64_t attrValue);

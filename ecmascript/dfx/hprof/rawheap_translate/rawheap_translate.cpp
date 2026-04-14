@@ -328,25 +328,18 @@ bool RawHeapTranslateV1::Parse(FileReader &file, uint32_t rawheapFileSize)
 
 bool RawHeapTranslateV1::Translate()
 {
+    FillNodes();
     auto nodes = GetNodes();
     size_t cnt = nodes->size();
     for (size_t i = 5; i < cnt; i++) {  // 5:normal node start from 5 (synthetic + 4 root groups)
         Node *node = (*nodes)[i];
-        if (!node->data) {
+        if (!node->hclass || !node->data) {
             continue;
         }
-        Node *hclass = FindNode(ByteToU64(node->data));
-        if (hclass == nullptr) {
-            LOG_ERROR_ << "missed hclass, node_id=" << node->nodeId;
-            return false;
-        }
-        node->hclass = hclass;
-        JSType type = metaParser_->GetJSTypeFromHClass(hclass);
-        FillNodes(node, type);
-        CreateHClassEdge(node, hclass);
+        CreateHClassEdge(node);
         CreateHashEdge(node);
-        if (!metaParser_->IsString(type)) {
-            BuildEdges(node, type);
+        if (!metaParser_->IsString(node->jsType)) {
+            BuildEdges(node);
         }
     }
 
@@ -706,67 +699,68 @@ Node *RawHeapTranslateV1::FindNode(uint64_t addr)
     return nullptr;
 }
 
-void RawHeapTranslateV1::FillNodes(Node *node, JSType type)
+void RawHeapTranslateV1::FillNodes()
 {
-    if (node->type == DEFAULT_NODETYPE) {
-        node->type = metaParser_->GetNodeType(type);
-    }
-
-    if (node->data != nullptr) {
-        node->nativeSize = metaParser_->GetNativateSize(node, type);
-    }
-
-    if (node->strId >= StringHashMap::CUSTOM_STRID_START && node->type != ROOT) {
-        StringKey stringKey = GetStringTable()->GetKeyByStringId(node->strId);
-        std::string nodeName = GetStringTable()->GetStringByKey(stringKey);
-        if (nodeName.find("_GLOBAL") != std::string::npos) {
-            node->type = FRAMEWORK_NODETYPE;
+    auto nodes = GetNodes();
+    for (auto &node : *nodes) {
+        if (!node->data) {
+            continue;
         }
-    } else if (!metaParser_->IsString(type)) {
-        std::string name = metaParser_->GetNodeName(type);
-        node->strId = InsertAndGetStringId(name);
+        node->hclass = FindNode(ByteToU64(node->data));
+        node->jsType = metaParser_->GetJSTypeFromHClass(node->hclass);
+        node->type = node->jsType != 0 ? metaParser_->GetNodeType(node->jsType) : node->type;
+        node->nativeSize = metaParser_->GetNativateSize(node);
+        // For nodes with strId less than CUSTOM_STRID_START and non-string type, need to query NodeName from metadata
+        if (node->strId < StringHashMap::CUSTOM_STRID_START && !metaParser_->IsString(node->jsType)) {
+            std::string name = metaParser_->GetNodeName(node->jsType);
+            node->strId = InsertAndGetStringId(name);
+        }
+        // For nodes with NodeName containing "_GLOBAL" (except ROOT), set nodeType to FRAMEWORK_NODETYPE
+        // because these objects belong to the framework layer to avoid interference with business object analysis
+        if (node->strId >= StringHashMap::CUSTOM_STRID_START && node->type != ROOT) {
+            StringKey stringKey = GetStringTable()->GetKeyByStringId(node->strId);
+            std::string nodeName = GetStringTable()->GetStringByKey(stringKey);
+            if (nodeName.find("_GLOBAL") != std::string::npos) {
+                node->type = FRAMEWORK_NODETYPE;
+            }
+        }
     }
 }
 
-void RawHeapTranslateV1::BuildEdges(Node *node, JSType type)
+void RawHeapTranslateV1::BuildEdges(Node *node)
 {
-    if (metaParser_->IsGlobalEnv(type)) {
-        BuildGlobalEnvEdges(node, type);
-    } else if (metaParser_->IsArray(type)) {
-        BuildArrayEdges(node, type);
-    } else if (metaParser_->IsNativePointer(type)) {
+    if (metaParser_->IsGlobalEnv(node->jsType)) {
+        BuildGlobalEnvEdges(node);
+    } else if (metaParser_->IsArray(node->jsType)) {
+        BuildArrayEdges(node);
+    } else if (metaParser_->IsNativePointer(node->jsType)) {
         BuildJSNativePointerEdges(node);
     } else {
-        BuildFieldEdges(node, type);
-        if (metaParser_->IsJSObject(type)) {
-            BuildJSObjectEdges(node, type);
+        BuildFieldEdges(node);
+        if (metaParser_->IsJSObject(node->jsType)) {
+            BuildJSObjectEdges(node);
         }
 
-        if (metaParser_->IsJSWrappedNapiObject(type)) {
-            BuildJSWrappedObjectEdges(node, type);
+        if (metaParser_->IsJSWrappedNapiObject(node->jsType)) {
+            BuildJSWrappedObjectEdges(node);
         }
     }
 }
 
-void RawHeapTranslateV1::BuildGlobalEnvEdges(Node *node, JSType type)
+void RawHeapTranslateV1::BuildGlobalEnvEdges(Node *node)
 {
     uint32_t offset = sizeof(uint64_t);
     uint32_t index = 0;
     while ((offset + sizeof(uint64_t)) <= node->size) {
         uint64_t addr = ByteToU64(node->data + offset);
         offset += sizeof(uint64_t);
-        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, addr);
         CreateEdge(node, addr, index++, edgeType);
     }
 }
 
-void RawHeapTranslateV1::BuildArrayEdges(Node *node, JSType type)
+void RawHeapTranslateV1::BuildArrayEdges(Node *node)
 {
-    if (metaParser_->IsDictionaryMode(type)) {
-        BuildDictionaryEdges(node, type, false);
-        return;
-    }
-
     BitField *bitField = metaParser_->GetBitField();
     uint32_t lengthOffset = bitField->taggedArrayLengthField.offset;
     uint32_t dataOffset = bitField->taggedArrayDataField.offset;
@@ -782,14 +776,14 @@ void RawHeapTranslateV1::BuildArrayEdges(Node *node, JSType type)
     while (index < len && offset + step <= node->size) {
         uint64_t addr = ByteToU64(node->data + offset);
         offset += step;
-        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, addr);
         CreateEdge(node, addr, index++, edgeType);
     }
 }
 
-void RawHeapTranslateV1::BuildFieldEdges(Node *node, JSType type)
+void RawHeapTranslateV1::BuildFieldEdges(Node *node)
 {
-    MetaData *meta = metaParser_->GetMetaData(type);
+    MetaData *meta = metaParser_->GetMetaData(node->jsType);
     if (meta == nullptr) {
         return;
     }
@@ -799,60 +793,99 @@ void RawHeapTranslateV1::BuildFieldEdges(Node *node, JSType type)
             continue;
         }
         uint64_t addr = ByteToU64(node->data + field.offset);
-        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, addr);
         StringId strId = InsertAndGetStringId(field.name);
         CreateEdge(node, addr, strId, edgeType);
     }
 }
 
-void RawHeapTranslateV1::BuildJSObjectEdges(Node *node, JSType type)
+void RawHeapTranslateV1::BuildJSObjectEdges(Node *node)
 {
     BitField *bitField = metaParser_->GetBitField();
-
     Node *properties = FindNode(ByteToU64(node->data + bitField->jsObjectPropertiesField.offset));
-    if (!properties || !properties->data) {
+    if (properties == nullptr) {
         return;
     }
 
-    bool isDictionaryMode = metaParser_->IsDictionaryMode(properties->jsType);
-    if (!isDictionaryMode && node->hclass != nullptr) {
-        Node *layout = FindNode(ByteToU64(node->hclass->data + bitField->hclassLayoutField.offset));
-        if (!layout || !layout->data) {
-            return;
-        }
-
-        MetaData *meta = metaParser_->GetMetaData(type);
-        if (meta == nullptr) {
-            return;
-        }
-
-        StringId defaultStrId = InsertAndGetStringId("InlineProperty");
-        uint32_t propNumber = metaParser_->GetPropsNumberOfJSObject(node->hclass);
-        uint32_t inlinedPropsCount = metaParser_->GetInlinedPropertiesCount(node->hclass);
-        for (uint32_t i = 0; i < propNumber; i++) {
-            uint32_t entryOffset = bitField->taggedArrayDataField.offset + sizeof(uint64_t) * (i * 2);
-            Node *key = FindNode(ByteToU64(layout->data + entryOffset));
-            if (!key) {
-                continue;
-            }
-
-            uint64_t attrValue = ByteToU64(layout->data + entryOffset + sizeof(uint64_t));
-            bool isInlinedProps = metaParser_->IsPropertyInlinedProps(attrValue);
-
-            uint64_t valueAddr;
-            if (isInlinedProps) {
-                uint32_t inlinedPropsOffset = meta->endOffset + i * sizeof(uint64_t);
-                valueAddr = ByteToU64(node->data + inlinedPropsOffset);
-            } else {
-                uint32_t noInlinedPropsOffset = (i - inlinedPropsCount) * sizeof(uint64_t);
-                valueAddr = ByteToU64(properties->data + bitField->taggedArrayDataField.offset + noInlinedPropsOffset);
-            }
-
-            EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, valueAddr);
-            CreateEdge(node, valueAddr, key->strId == 1 ? defaultStrId : key->strId, edgeType);
-        }
+    if (metaParser_->IsDictionaryMode(properties->jsType)) {
+        BuildDictionaryModeEdges(node, properties);
     } else {
-        BuildDictionaryEdges(properties, type, false);
+        BuildNonDictionaryModeEdges(node, properties);
+    }
+}
+
+void RawHeapTranslateV1::BuildDictionaryModeEdges(Node *node, Node *properties)
+{
+    if (properties->data == nullptr) {
+        return;
+    }
+
+    BitField *bitField = metaParser_->GetBitField();
+    DictionaryLayout *dictLayout = metaParser_->GetDictLayout();
+    uint32_t size = ByteToU32(properties->data + bitField->taggedArrayDataField.offset + sizeof(uint64_t) * 2);
+    uint32_t entryStart = bitField->taggedArrayDataField.offset + dictLayout->headerSize * sizeof(uint64_t);
+    uint32_t entrySize = dictLayout->entrySize * sizeof(uint64_t);
+
+    for (uint32_t entry = 0; entry < size; ++entry) {
+        uint32_t entryOffset = entryStart + entry * entrySize;
+        if (entryOffset + entrySize > properties->size) {
+            break;
+        }
+
+        uint64_t keyAddr = ByteToU64(properties->data + entryOffset + dictLayout->keyIndex * sizeof(uint64_t));
+        uint64_t valueAddr = ByteToU64(properties->data + entryOffset + dictLayout->valueIndex * sizeof(uint64_t));
+
+        if (keyAddr == VALUE_HOLE || keyAddr == VALUE_UNDEFINED) {
+            continue;
+        }
+
+        Node *keyNode = FindNode(keyAddr);
+        if (keyNode == nullptr) {
+            continue;
+        }
+
+        CreateEdge(node, valueAddr, keyNode->strId, EdgeType::DEFAULT);
+    }
+}
+
+void RawHeapTranslateV1::BuildNonDictionaryModeEdges(Node *node, Node *properties)
+{
+    BitField *bitField = metaParser_->GetBitField();
+    Node *layout = FindNode(ByteToU64(node->hclass->data + bitField->hclassLayoutField.offset));
+    if (!layout || !layout->data) {
+        return;
+    }
+
+    MetaData *meta = metaParser_->GetMetaData(node->jsType);
+    if (meta == nullptr) {
+        return;
+    }
+
+    StringId defaultStrId = InsertAndGetStringId("InlineProperty");
+    uint32_t propNumber = metaParser_->GetPropsNumberOfJSObject(node->hclass);
+    uint32_t inlinedPropsCount = metaParser_->GetInlinedPropertiesCount(node->hclass);
+
+    for (uint32_t i = 0; i < propNumber; i++) {
+        uint32_t entryOffset = bitField->taggedArrayDataField.offset + sizeof(uint64_t) * (i * 2);
+        Node *key = FindNode(ByteToU64(layout->data + entryOffset));
+        if (!key) {
+            continue;
+        }
+
+        uint64_t attrValue = ByteToU64(layout->data + entryOffset + sizeof(uint64_t));
+        bool isInlinedProps = metaParser_->IsPropertyInlinedProps(attrValue);
+
+        uint64_t valueAddr;
+        if (isInlinedProps) {
+            uint32_t inlinedPropsOffset = meta->endOffset + i * sizeof(uint64_t);
+            valueAddr = ByteToU64(node->data + inlinedPropsOffset);
+        } else {
+            uint32_t noInlinedPropsOffset = (i - inlinedPropsCount) * sizeof(uint64_t);
+            valueAddr = ByteToU64(properties->data + bitField->taggedArrayDataField.offset + noInlinedPropsOffset);
+        }
+
+        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, valueAddr);
+        CreateEdge(node, valueAddr, key->strId == 1 ? defaultStrId : key->strId, edgeType);
     }
 }
 
@@ -917,7 +950,7 @@ void RawHeapTranslateV1::BuildJSNativePointerEdges(Node *node)
             InsertEdge(to, edgeStrId, EdgeType::PROPERTY);
             node->edgeCount++;
         } else {
-            EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, addr);
+            EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, addr);
             StringId strId = InsertAndGetStringId(field.name);
             CreateEdge(node, addr, strId, edgeType);
         }
@@ -949,10 +982,10 @@ void RawHeapTranslateV1::BuildNativePointerEdges(Node *node, Node *array, uint32
     }
 }
 
-void RawHeapTranslateV1::BuildJSWrappedObjectEdges(Node *node, JSType type)
+void RawHeapTranslateV1::BuildJSWrappedObjectEdges(Node *node)
 {
     uint32_t nativePointersOffset = 0;
-    if (!FindNativePointersFieldOffset(metaParser_, type, nativePointersOffset)) {
+    if (!FindNativePointersFieldOffset(metaParser_, node->jsType, nativePointersOffset)) {
         return;
     }
 
@@ -1023,64 +1056,20 @@ void RawHeapTranslateV1::CreateEdge(Node *node, uint64_t addr, uint32_t nameOrIn
     node->edgeCount++;
 }
 
-void RawHeapTranslateV1::CreateHClassEdge(Node *node, Node *hclass)
+void RawHeapTranslateV1::CreateHClassEdge(Node *node)
 {
-    if (node->nodeId == hclass->nodeId) {
+    if (node->nodeId == node->hclass->nodeId) {
         return;
     }
     static StringId hclassStrId = InsertAndGetStringId("hclass");
-    InsertEdge(hclass, hclassStrId, EdgeType::DEFAULT);
+    InsertEdge(node->hclass, hclassStrId, EdgeType::DEFAULT);
     node->edgeCount++;
 }
 
-void RawHeapTranslateV1::BuildDictionaryEdges(Node *node, JSType type, bool usePropertyBox)
-{
-    if (node->data == nullptr) {
-        return;
-    }
-
-    DictionaryLayout *dictLayout = metaParser_->GetDictLayout();
-    BitField *bitField = metaParser_->GetBitField();
-    uint32_t size = ByteToU32(node->data + bitField->taggedArrayDataField.offset + sizeof(uint64_t) * 2);
-    uint32_t entryStart = bitField->taggedArrayDataField.offset + dictLayout->headerSize * sizeof(uint64_t);
-    uint32_t entrySize = dictLayout->entrySize * sizeof(uint64_t);
-
-    for (uint32_t entry = 0; entry < size; ++entry) {
-        uint32_t entryOffset = entryStart + entry * entrySize;
-        if (entryOffset + entrySize > node->size) {
-            break;
-        }
-
-        uint64_t keyAddr = ByteToU64(node->data + entryOffset + dictLayout->keyIndex * sizeof(uint64_t));
-        uint64_t valueAddr = ByteToU64(node->data + entryOffset + dictLayout->valueIndex * sizeof(uint64_t));
-
-        if (keyAddr == VALUE_HOLE || keyAddr == VALUE_UNDEFINED) {
-            continue;
-        }
-
-        Node *keyNode = FindNode(keyAddr);
-        if (keyNode == nullptr) {
-            continue;
-        }
-
-        uint64_t actualValueAddr = valueAddr;
-        if (usePropertyBox && IsHeapObject(valueAddr)) {
-            Node *propertyBox = FindNode(valueAddr);
-            if (propertyBox != nullptr && propertyBox->data != nullptr &&
-                propertyBox->size > sizeof(uint64_t)) {
-                actualValueAddr = ByteToU64(propertyBox->data + sizeof(uint64_t));
-            }
-        }
-
-        EdgeType edgeType = GenerateEdgeTypeAndRemoveWeak(node, type, actualValueAddr);
-        CreateEdge(node, actualValueAddr, keyNode->strId, edgeType);
-    }
-}
-
-EdgeType RawHeapTranslateV1::GenerateEdgeTypeAndRemoveWeak(Node *node, JSType type, uint64_t &addr)
+EdgeType RawHeapTranslateV1::GenerateEdgeTypeAndRemoveWeak(Node *node, uint64_t &addr)
 {
     EdgeType edgeType = EdgeType::DEFAULT;
-    if (metaParser_->IsArray(type)) {
+    if (metaParser_->IsArray(node->jsType)) {
         edgeType = EdgeType::ELEMENT;
     }
 
