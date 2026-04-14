@@ -66,6 +66,11 @@ public:
     void ResumeOther(JSThread *current, JSThread *target);
     void IterateSerializeRoot(RootVisitor &v);
 
+    __attribute__((retain)) __attribute__((used)) static uintptr_t GetMainThreadGlueData(Runtime &runtime_)
+    {
+        return runtime_.GetMainThread()->GetGlueAddr();
+    }
+
     JSThread *GetMainThread() const
     {
         return mainThread_;
