@@ -1556,24 +1556,35 @@ Local<JSValueRef> DebuggerApi::GetHashSetValueWithRange(const EcmaVM *ecmaVm, Lo
     JSHandle<TaggedHashArray> table(thread, hashSet->GetTable(thread));
     uint32_t length = table->GetLength();
     uint32_t size = static_cast<uint32_t>(hashSet->GetSize());
- 
+    uint32_t startNodeCount = static_cast<uint32_t>(start);
+    uint32_t nodeCount = static_cast<uint32_t>(count);
+    uint32_t allocateSize = (startNodeCount >= size) ? 0 :
+        (startNodeCount + nodeCount) > size ? (size - startNodeCount) : nodeCount;
     originalSize = size;
-    int32_t startIndex = start;
-    int32_t end = static_cast<int32_t>(length);
-    CalculateStartAndEndIndex(startIndex, end, count);
- 
-    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, end - startIndex);
+
+    Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, allocateSize);
+    if (allocateSize == 0) {
+        // no need to traverse and copy anything
+        AddInternalProperties(ecmaVm, jsValueRef, ArkInternalValueType::Entry, internalObjects);
+        return jsValueRef;
+    }
+
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSMutableHandle<TaggedQueue> queue(thread, factory->NewTaggedQueue(0));
     JSMutableHandle<TaggedNode> node(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> currentKey(thread, JSTaggedValue::Undefined());
     Local<JSValueRef> jsValue = StringRef::NewFromUtf8(ecmaVm, "value");
     uint32_t pos = 0;
-    uint32_t index = static_cast<uint32_t>(startIndex);
-    uint32_t endIndex = static_cast<uint32_t>(end);
- 
-    while (index < endIndex) {
-        node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, index));
+    uint32_t nodeIndex = 0;
+    uint32_t skipNodeCount = 0;
+    // traverse first # of start nodes
+    while (skipNodeCount < startNodeCount && nodeIndex < length) {
+        node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, nodeIndex));
+        skipNodeCount++;
+    }
+
+    while (nodeIndex < length && pos < allocateSize) {
+        node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, nodeIndex));
         if (!node.GetTaggedValue().IsHole()) {
             currentKey.Update(node->GetKey(thread));
             if (currentKey->IsECMAObject()) {
