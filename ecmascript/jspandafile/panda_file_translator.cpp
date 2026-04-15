@@ -137,10 +137,10 @@ void PandaFileTranslator::TranslateClass(const JSThread *thread, JSPandaFile *js
 }
 
 JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                       std::string_view entryPoint)
+                                                       const CString &entryPoint)
 {
     bool isNewVersion = jsPandaFile->IsNewVersion();
-    uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data(), isNewVersion);
+    uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint, isNewVersion);
     JSHandle<ConstantPool> sconstpool;
     if (isNewVersion) {
         sconstpool = vm->FindOrCreateConstPool(jsPandaFile, EntityId(mainMethodIndex));
@@ -161,7 +161,7 @@ JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPanda
         }
 
         if (!jsPandaFile->IsBundlePack()) {
-            ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint.data(), sconstpool, unsharedConstpool);
+            ParseFuncAndLiteralConstPool(vm, jsPandaFile, entryPoint, sconstpool, unsharedConstpool);
         }
     }
 

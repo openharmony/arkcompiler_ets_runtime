@@ -259,7 +259,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadInsecureJSPandaFile(JSThrea
 }
 
 JSHandle<Program> JSPandaFileManager::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                      std::string_view entryPoint)
+                                                      const CString &entryPoint)
 {
     ASSERT(GetJSPandaFile(jsPandaFile->GetPandaFile()) != nullptr);
     return PandaFileTranslator::GenerateProgram(vm, jsPandaFile, entryPoint);

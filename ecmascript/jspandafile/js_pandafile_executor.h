@@ -51,7 +51,7 @@ public:
                                                              const CString &entry, const void *buffer, size_t size,
                                                              const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                 std::string_view entryPoint,
+                                                 const CString &entryPoint,
                                                  const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     static void BindPreloadedPandaFilesToAOT(EcmaVM *vm, const std::string &moduleName);
     static void BindPandaFileToAot(JSPandaFile *jsPandaFile);

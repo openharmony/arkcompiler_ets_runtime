@@ -228,7 +228,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     fileName = vm->GetQuickFixManager()->GetBaseFileNameForHotReload(thread, fileName);
     CString requestPath = ModulePathHelper::Utf8ConvertToString(thread, specifierString.GetTaggedValue());
     LOG_ECMA(DEBUG) << "Start importing dynamic module : " << requestPath;
-    ModuleTraceScope moduleTraceScope(thread, "BuiltinsPromiseJob::DynamicImport:" + requestPath);
+    ModuleTraceScope moduleTraceScope = ModuleTraceScope::Open(
+        thread, "BuiltinsPromiseJob::DynamicImport:", requestPath);
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     CString recordNameStr;
     if (!recordName->IsUndefined()) {

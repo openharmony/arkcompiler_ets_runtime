@@ -419,7 +419,8 @@ JSHandle<JSTaggedValue> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThr
     const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
     CString moduleRequestName = requiredModule->GetEcmaModuleRecordNameString();
-    ModuleTraceScope moduleTraceScope(thread, "SourceTextModule::LoadNativeModule:" + moduleRequestName);
+    ModuleTraceScope moduleTraceScope = ModuleTraceScope::Open(
+        thread, "SourceTextModule::LoadNativeModule:", moduleRequestName);
     auto undefined = vm->GetJSThread()->GlobalConstants()->GetHandledUndefined();
     ModuleLoggerTimeScope moduleLoggerTimeScope(thread, moduleRequestName);
     CString soName = PathHelper::GetStrippedModuleName(moduleRequestName);
@@ -790,8 +791,8 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
     // Add a safepoint here to check if a suspension is needed.
     thread->CheckSafepointIfSuspended();
 
-    ModuleTraceScope moduleTraceScope(thread,
-        "SourceTextModule::Instantiating:" + module->GetEcmaModuleRecordNameString());
+    ModuleTraceScope moduleTraceScope = ModuleTraceScope::Open(thread,
+        "SourceTextModule::Instantiating:", module->GetEcmaModuleRecordNameString());
     if (IsSharedModule(module) && SharedModuleManager::GetInstance()->IsInstantiatedSModule(thread, module)) {
         return;
     }
@@ -1262,7 +1263,7 @@ Expected<JSTaggedValue, bool> SourceTextModule::ModuleExecution(JSThread *thread
     } else {
         moduleFilenameStr = module->GetEcmaModuleFilenameString();
     }
-    std::string entryPoint;
+    CString entryPoint;
     CString moduleRecordName = module->GetEcmaModuleRecordNameString();
     if (moduleRecordName.empty()) {
         entryPoint = JSPandaFile::ENTRY_FUNCTION_NAME;
@@ -1813,12 +1814,9 @@ void SourceTextModule::ExecuteAsyncModule(JSThread *thread, const JSHandle<Sourc
     ASSERT(module->GetHasTLA());
     CString moduleFilenameStr = module->GetEcmaModuleFilenameString();
 
-    std::string entryPoint;
-    CString moduleRecordName = module->GetEcmaModuleRecordNameString();
-    if (moduleRecordName.empty()) {
+    CString entryPoint = module->GetEcmaModuleRecordNameString();
+    if (entryPoint.empty()) {
         entryPoint = JSPandaFile::ENTRY_FUNCTION_NAME;
-    } else {
-        entryPoint = moduleRecordName;
     }
 
     std::shared_ptr<JSPandaFile> jsPandaFile;
