@@ -23,7 +23,7 @@
 
 namespace panda::ecmascript {
 
-#ifdef PANDA_TARGET_ARM64
+#if defined(PANDA_TARGET_ARM64) && defined(PANDA_TARGET_OHOS)
 static long Syscall(unsigned long n, unsigned long a, unsigned long b, unsigned long c, unsigned long d,
                     unsigned long e, unsigned long f)
 {
@@ -41,7 +41,7 @@ static long Syscall(unsigned long n, unsigned long a, unsigned long b, unsigned 
 
 static inline void *InlineMmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset)
 {
-#ifdef PANDA_TARGET_ARM64
+#if defined(PANDA_TARGET_ARM64) && defined(PANDA_TARGET_OHOS)
     long res = Syscall(SYS_mmap, (unsigned long)addr, len, prot, flags, fd, offset);
     if (res < 0) {
         errno = (int)res;
@@ -56,7 +56,7 @@ static inline void *InlineMmap(void *addr, size_t len, int prot, int flags, int 
 
 static inline int InlineMunmap(void *addr, size_t len)
 {
-#ifdef PANDA_TARGET_ARM64
+#if defined(PANDA_TARGET_ARM64) && defined(PANDA_TARGET_OHOS)
     long res = Syscall(SYS_munmap, (unsigned long)addr, len, 0, 0, 0, 0);
     if (res < 0) {
         errno = (int)res;
@@ -67,13 +67,14 @@ static inline int InlineMunmap(void *addr, size_t len)
 #endif
 }
 
-MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, int flags)
+MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, int flags, bool jitfort)
 {
     ASSERT(size == AlignUp(size, PageSize()));
     ASSERT(alignment == AlignUp(alignment, PageSize()));
     size_t allocSize = size + alignment;
     int newFlags = static_cast<int>(MAP_PRIVATE | MAP_ANONYMOUS | static_cast<unsigned int>(flags));
-    void *result = mmap(addr, allocSize, prot, newFlags, -1, 0);
+    void *result =
+        jitfort ? InlineMmap(addr, allocSize, prot, newFlags, -1, 0) : mmap(addr, allocSize, prot, newFlags, -1, 0);
     if (reinterpret_cast<intptr_t>(result) == -1) {
         LOG_ECMA(FATAL) << "mmap failed with error code:" << strerror(errno);
     }
@@ -82,43 +83,20 @@ MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, int flags)
         size_t leftSize = alignResult - reinterpret_cast<uintptr_t>(result);
         size_t rightSize = alignment - leftSize;
         void *alignEndResult = reinterpret_cast<void *>(alignResult + size);
-        munmap(result, leftSize);
-        munmap(alignEndResult, rightSize);
+        jitfort ? InlineMunmap(result, leftSize) : munmap(result, leftSize);
+        jitfort ? InlineMunmap(alignEndResult, rightSize) : munmap(alignEndResult, rightSize);
         result = reinterpret_cast<void *>(alignResult);
     }
     return MemMap(result, size);
 }
 
-void PageUnmap(MemMap it)
+void PageUnmap(MemMap it, bool jitfort)
 {
-    munmap(it.GetMem(), it.GetSize());
-}
-
-MemMap JitFortPageMap(size_t size, int prot, size_t alignment, void *addr, int flags)
-{
-    ASSERT(size == AlignUp(size, PageSize()));
-    ASSERT(alignment == AlignUp(alignment, PageSize()));
-    size_t allocSize = size + alignment;
-    int newFlags = static_cast<int>(MAP_PRIVATE | MAP_ANONYMOUS | static_cast<unsigned int>(flags));
-    void *result = InlineMmap(addr, allocSize, prot, newFlags, -1, 0);
-    if (reinterpret_cast<intptr_t>(result) == -1) {
-        LOG_ECMA(FATAL) << "mmap failed with error code:" << strerror(errno);
+    if (jitfort) {
+        InlineMunmap(it.GetMem(), it.GetSize());
+    } else {
+        munmap(it.GetMem(), it.GetSize());
     }
-    if (alignment != 0) {
-        auto alignResult = AlignUp(reinterpret_cast<uintptr_t>(result), alignment);
-        size_t leftSize = alignResult - reinterpret_cast<uintptr_t>(result);
-        size_t rightSize = alignment - leftSize;
-        void *alignEndResult = reinterpret_cast<void *>(alignResult + size);
-        InlineMunmap(result, leftSize);
-        InlineMunmap(alignEndResult, rightSize);
-        result = reinterpret_cast<void *>(alignResult);
-    }
-    return MemMap(result, size);
-}
-
-void JitFortPageUnmap(MemMap it)
-{
-    InlineMunmap(it.GetMem(), it.GetSize());
 }
 
 MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
