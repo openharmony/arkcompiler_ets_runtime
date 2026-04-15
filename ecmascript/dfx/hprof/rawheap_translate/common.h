@@ -30,6 +30,7 @@ static constexpr NodeType DEFAULT_NODETYPE = 8;  // 8: means default node type
 static constexpr NodeType FRAMEWORK_NODETYPE = 14;
 static constexpr NodeType ROOT = 15;
 static constexpr NodeType HEAP_NUMBER = 7;
+static constexpr NodeType STRING = 2;
 enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, DEFAULT = PROPERTY };
 
 static constexpr int VIRTUAL_NODE_SIZE = 1; // The virtual node size is fixed at 1

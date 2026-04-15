@@ -59,7 +59,9 @@ enum class NodeType {
     DEFAULT = NATIVE,
 };
 
-enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, NATIVE, DEFAULT = PROPERTY };
+enum class EdgeType {
+    CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WEAK, NATIVE, NATIVE_STRING, DEFAULT = PROPERTY
+};
 
 class HprofNode {
 public:
@@ -558,6 +560,7 @@ private:
     HprofNode *GenerateObjectNode(JSTaggedValue entry, size_t size, bool isInFinish = false);
     void FillEdges(bool isSimplify = false);
     void ProcessNativeEdge(const Reference &it, HprofNode *entryFrom);
+    void ProcessNativeStringEdge(const Reference &it, HprofNode *entryFrom);
     void ProcessRegularEdge(const Reference &it, HprofNode *entryFrom, bool isSimplify);
     void RenameFunction(const CString &edgeName, HprofNode *entryFrom, HprofNode *entryTo);
     CString ParseFunctionName(TaggedObject *obj, bool isRawHeap = false);

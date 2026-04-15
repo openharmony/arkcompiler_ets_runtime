@@ -180,6 +180,8 @@ private:
     StringId GenerateStringIdForJSFunction(TaggedObject *object, JSThread *thread);
     StringId GenerateStringIdForJSProxy(TaggedObject *object);
     StringId GenerateStringIdForString(TaggedObject *object, JSThread *thread);
+    // Update string table for SourceTextModule's EcmaModuleRecordName and EcmaModuleFilename
+    void UpdateSourceTextModuleStringTable(JSTaggedType addr, int &strCnt);
 
     const DumpSnapShotOption *dumpOption_ {};
     HeapSnapshot *snapshot_ {nullptr};

@@ -71,6 +71,16 @@
             "name": "Exception",
             "offset": 104,
             "size": 8
+        },
+        {
+            "name": "EcmaModuleFileName",
+            "offset": 136,
+            "size": 8
+        },
+        {
+            "name": "EcmaModuleRecordName",
+            "offset": 144,
+            "size": 8
         }
     ],
     "end_offset": 160,

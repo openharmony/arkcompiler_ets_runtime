@@ -6263,7 +6263,7 @@ void ClassInfoExtractor::DumpForSnapshot(const JSThread *thread, std::vector<Ref
 void SourceTextModule::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const
 {
     // please update the NUM_OF_ITEMS if you change the items below
-    constexpr int16_t NUM_OF_ITEMS = 14;
+    constexpr int16_t NUM_OF_ITEMS = 22;
     vec.reserve(vec.size() + NUM_OF_ITEMS);
     vec.emplace_back(CString("Environment"), GetEnvironment(thread));
     vec.emplace_back(CString("Namespace"), GetNamespace(thread));
@@ -6285,6 +6285,14 @@ void SourceTextModule::DumpForSnapshot(const JSThread *thread, std::vector<Refer
     vec.emplace_back(CString("HasTLA"), JSTaggedValue(GetHasTLA()));
     vec.emplace_back(CString("AsyncEvaluatingOrdinal"), JSTaggedValue(GetAsyncEvaluatingOrdinal()));
     vec.emplace_back(CString("PendingAsyncDependencies"), JSTaggedValue(GetPendingAsyncDependencies()));
+
+    CString *recordNamePtr = reinterpret_cast<CString *>(GetEcmaModuleRecordName());
+    JSTaggedValue recordNameValue(reinterpret_cast<JSTaggedType>(recordNamePtr));
+    vec.emplace_back(CString("EcmaModuleRecordName"), recordNameValue, EdgeType::NATIVE_STRING);
+
+    CString *fileNamePtr = reinterpret_cast<CString *>(GetEcmaModuleFilename());
+    JSTaggedValue fileNameValue(reinterpret_cast<JSTaggedType>(fileNamePtr));
+    vec.emplace_back(CString("EcmaModuleFileName"), fileNameValue, EdgeType::NATIVE_STRING);
 }
 
 void ImportEntry::DumpForSnapshot(const JSThread *thread, std::vector<Reference> &vec) const

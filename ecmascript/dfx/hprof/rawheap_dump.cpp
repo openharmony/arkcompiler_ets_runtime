@@ -230,6 +230,28 @@ void RawHeapDump::IterateMarkedObjects(const std::function<void(JSTaggedType)> &
     marker_.IterateMarkedObjects(visitor);
 }
 
+void RawHeapDump::UpdateSourceTextModuleStringTable(JSTaggedType addr, int &strCnt)
+{
+    JSTaggedValue entry(addr);
+    if (!entry.IsSourceTextModule()) {
+        return;
+    }
+
+    SourceTextModule *module = SourceTextModule::Cast(entry.GetTaggedObject());
+    // Add EcmaModuleRecordName string to the snapshot
+    CString moduleRecordName = module->GetEcmaModuleRecordNameString();
+    StringId moduleRecordNameStrId = snapshot_->InsertString(moduleRecordName);
+    JSTaggedType moduleRecordNameAddr = static_cast<JSTaggedType>(module->GetEcmaModuleRecordName());
+    UpdateStringTable(moduleRecordNameAddr, moduleRecordNameStrId);
+    moduleRecordNameStrId != 1 ? strCnt++ : 0;
+    // Add EcmaModuleFilename string to the snapshot
+    CString moduleFileName = module->GetEcmaModuleFilenameString();
+    StringId moduleFileNameStrId = snapshot_->InsertString(moduleFileName);
+    JSTaggedType moduleFileNameAddr = static_cast<JSTaggedType>(module->GetEcmaModuleFilename());
+    UpdateStringTable(moduleFileNameAddr, moduleFileNameStrId);
+    moduleFileNameStrId != 1 ? strCnt++ : 0;
+}
+
 // Update string table for all marked objects and property name strings.
 // String objects are normally skipped due to content trimming, but property name strings are exempted.
 // For each object, generate a string ID and call the virtual UpdateStringTable(addr, strId).
@@ -241,6 +263,9 @@ void RawHeapDump::UpdateStringTable()
         StringId strId = GenerateStringId(reinterpret_cast<TaggedObject *>(addr));
         UpdateStringTable(addr, strId);
         strId != 1 ? strCnt++ : 0;
+
+        // Update string table for SourceTextModule's EcmaModuleRecordName and EcmaModuleFilename
+        UpdateSourceTextModuleStringTable(addr, strCnt);
     });
     IterateExemptedStringNode([&strCnt, this](JSTaggedType addr) {
         StringId strId = GenerateStringId(reinterpret_cast<TaggedObject *>(addr), true);
