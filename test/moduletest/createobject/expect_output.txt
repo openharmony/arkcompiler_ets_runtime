@@ -42,8 +42,8 @@ bolder
 900
 900
 func1
-Cannot get source code of function
+Cannot get source code
 func2
-Cannot get source code of function
+Cannot get source code
 wode
 wode5
