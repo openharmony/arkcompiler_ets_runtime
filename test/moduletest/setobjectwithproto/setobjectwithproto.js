@@ -133,4 +133,87 @@ function TestSetPrototypeOf4() {
 }
 TestSetPrototypeOf4();
 
+
+{
+    // Test Map - value -0.0 should be stored as-is (not canonicalized)
+    // Note: Only MAP KEYS are canonicalized (-0 → +0), values are stored as-is
+    const map = new Map();
+    map.set("key", -0.0);
+    const mapValue = map.get("key");
+    assert_equal(mapValue === 0, true);
+    assert_equal(Object.is(mapValue, 0), false);
+    assert_equal(Object.is(mapValue, -0), true);
+
+    // Test Set - SameValueZero for -0.0 (SameValueZero treats 0 and -0 as equal)
+    // Expected: Set([0, -0]) should have only 1 element because -0 is canonicalized to 0
+    const set = new Set([0, -0]);
+    const setVisited = [];
+    set.forEach(value => setVisited.push(value));
+    assert_equal(setVisited.length, 1);
+    assert_equal(Object.is(setVisited[0], 0), true);
+
+    // Test Map with regular elements
+    const map2 = new Map();
+    map2.set("a", 1);
+    map2.set("b", 2);
+    map2.set("c", 3);
+    assert_equal(map2.get("a"), 1);
+    assert_equal(map2.get("b"), 2);
+    assert_equal(map2.get("c"), 3);
+
+    // Test Map with NaN (SameValueZero treats NaN as equal to NaN)
+    const map3 = new Map();
+    map3.set("nan", NaN);
+    assert_equal(Object.is(map3.get("nan"), NaN), true);
+
+    // Test Map with Infinity
+    const map4 = new Map();
+    map4.set("inf", Infinity);
+    map4.set("negInf", -Infinity);
+    assert_equal(map4.get("inf"), Infinity);
+    assert_equal(map4.get("negInf"), -Infinity);
+
+    // Test Set with regular elements
+    const set2 = new Set();
+    set2.add(1);
+    set2.add(2);
+    set2.add(3);
+    assert_equal(set2.has(1), true);
+    assert_equal(set2.has(2), true);
+    assert_equal(set2.has(3), true);
+
+    // Test Set with NaN (SameValueZero treats NaN as equal to NaN)
+    // Expected: Set([NaN, NaN]) should have only 1 element
+    const set3 = new Set([NaN, NaN]);
+    let set3Count = 0;
+    set3.forEach(() => set3Count++);
+    assert_equal(set3Count, 1);
+
+    // Test Map with 0 and -0 as keys
+    // After CanonicalizeKeyedCollectionKey(-0) = +0, SameValueZero(0, 0) = true
+    // So map.set(0, "zero") then map.set(-0, "negZero") should UPDATE the same entry
+    const map5 = new Map();
+    map5.set(0, "zero");
+    map5.set(-0, "negZero");
+    assert_equal(map5.get(0), "negZero");
+    assert_equal(map5.get(-0), "negZero");
+    assert_equal(map5.size, 1);
+    assert_equal([...map5.keys()].length, 1);
+
+    // Test Set with 0 and -0
+    // SameValueZero treats 0 and -0 as same value
+    // Expected: Set([0, -0]) should have only 1 element
+    const set4 = new Set([0, -0]);
+    let set4Count = 0;
+    set4.forEach(() => set4Count++);
+    assert_equal(set4Count, 1);
+
+    // Additional verification
+    assert_equal(Object.is(-0, 0),false);
+    assert_equal(-0 === 0, true);
+    assert_equal(Object.is(NaN, NaN), true);
+    assert_equal(NaN === NaN, false);
+
+}
+
 test_end();

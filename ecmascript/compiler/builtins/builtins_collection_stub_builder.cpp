@@ -185,24 +185,88 @@ void BuiltinsCollectionStubBuilder<CollectionType>::MapSetOrSetAdd(
     Bind(&keyNotHole);
     GateRef value = isJsMapSet ? GetCallArg1(numArgs_) : key;
     GateRef linkedTable = GetLinked();
-    GateRef res = Circuit::NullGate();
-    if constexpr (std::is_same_v<CollectionType, JSMap>) {
-        LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
-            this,
-            glue_,
-            GetCurrentGlobalEnv()
-        );
-        res = linkedHashTableStubBuilder.Insert(linkedTable, key, value);
-    } else {
-        LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
-            this,
-            glue_,
-            GetCurrentGlobalEnv()
-        );
-        res = linkedHashTableStubBuilder.Insert(linkedTable, key, value);
+    DEFVARIABLE(res, VariableType::JS_ANY(), linkedTable);
+
+    // CanonicalizeKeyedCollectionKey for key
+    // -0.0 -> +0.0, NaN -> as-is (SameValueZero handles NaN equality)
+    // For double values: use 1.0 / key == -Infinity to detect -0.0
+    Label notDouble(env);
+    Label isDouble(env);
+    Label canonicalDone(env);
+    BRANCH(TaggedIsDouble(key), &isDouble, &notDouble);
+
+    Bind(&notDouble);
+    {
+        // key is not double, no canonicalization needed
+        if constexpr (std::is_same_v<CollectionType, JSMap>) {
+            LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+                this, glue_, GetCurrentGlobalEnv()
+            );
+            res = linkedHashTableStubBuilder.Insert(linkedTable, key, value);
+        } else {
+            LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+                this, glue_, GetCurrentGlobalEnv()
+            );
+            res = linkedHashTableStubBuilder.Insert(linkedTable, key, key);
+        }
+        Jump(&canonicalDone);
     }
 
-    SetLinked(res);
+    Bind(&isDouble);
+    {
+        // key is double, check if it's -0.0 using bitwise operations
+        // IEEE754 -0.0: 0x8000000000000000 (sign bit=1, exponent=0, mantissa=0)
+        // IEEE754 +0.0: 0x0000000000000000 (sign bit=0, exponent=0, mantissa=0)
+        // Detection: (bits & 0x8000000000000000) != 0 && value == 0.0
+        // Note: This matches js_map.cpp/js_set.cpp logic: d == 0.0 && signbit(d) != 0
+        GateRef keyDouble = GetDoubleOfTDouble(key);
+        GateRef keyBits = CastDoubleToInt64(keyDouble);
+        GateRef signBit = Int64And(keyBits, Int64(0x8000000000000000));
+        GateRef hasSignBit = Int64NotEqual(signBit, Int64(0));
+        GateRef isZero = DoubleEqual(keyDouble, Double(0.0));
+        GateRef negZeroCheck = LogicAndBuilder(env).And(isZero).And(hasSignBit).Done();
+        Label negZeroLabel(env);
+        Label notNegZeroLabel(env);
+        BRANCH(negZeroCheck, &negZeroLabel, &notNegZeroLabel);
+
+        Bind(&negZeroLabel);
+        {
+            // key is -0.0, canonicalize to +0.0 (as double 0.0)
+            GateRef canonicalZero = DoubleToTaggedDoublePtr(Double(0.0));
+            if constexpr (std::is_same_v<CollectionType, JSMap>) {
+                LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+                    this, glue_, GetCurrentGlobalEnv()
+                );
+                res = linkedHashTableStubBuilder.Insert(linkedTable, canonicalZero, value);
+            } else {
+                LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+                    this, glue_, GetCurrentGlobalEnv()
+                );
+                res = linkedHashTableStubBuilder.Insert(linkedTable, canonicalZero, canonicalZero);
+            }
+            Jump(&canonicalDone);
+        }
+
+        Bind(&notNegZeroLabel);
+        {
+            // key is +0.0 or NaN (both as-is per spec), no canonicalization needed
+            if constexpr (std::is_same_v<CollectionType, JSMap>) {
+                LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> linkedHashTableStubBuilder(
+                    this, glue_, GetCurrentGlobalEnv()
+                );
+                res = linkedHashTableStubBuilder.Insert(linkedTable, key, value);
+            } else {
+                LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> linkedHashTableStubBuilder(
+                    this, glue_, GetCurrentGlobalEnv()
+                );
+                res = linkedHashTableStubBuilder.Insert(linkedTable, key, key);
+            }
+            Jump(&canonicalDone);
+        }
+    }
+
+    Bind(&canonicalDone);
+    SetLinked(*res);
     *result = thisValue_;
     Jump(exit);
 }

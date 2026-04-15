@@ -16,24 +16,46 @@
 #include "ecmascript/js_map.h"
 
 #include "ecmascript/linked_hash_table.h"
+#include <cmath>
 
 namespace panda::ecmascript {
+// This operation canonicalizes -0 to +0 for keyed collection keys
+// NaN is returned as-is (SameValueZero treats NaN as equal to NaN)
+static inline JSTaggedValue CanonicalizeKeyedCollectionKey(JSTaggedValue key)
+{
+    if (!key.IsDouble()) {
+        return key;
+    }
+    double d = key.GetDouble();
+    // 3.a. If key is -0, return +0
+    // Only canonicalize -0, not all negative numbers like -Infinity
+    if (d == 0.0 && std::signbit(d) != 0) {
+        return JSTaggedValue(0.0);  // NOLINT(readability-magic-numbers)
+    }
+    // 3.b. If key is NaN, return key as-is (SameValueZero handles NaN equality)
+    return key;
+}
+
 void JSMap::Set(JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JSTaggedValue> &key,
                 const JSHandle<JSTaggedValue> &value)
 {
-    if (!LinkedHashMap::IsKey(key.GetTaggedValue())) {
+    // 3. Set key to CanonicalizeKeyedCollectionKey(key).
+    JSTaggedValue canonicalKey = CanonicalizeKeyedCollectionKey(key.GetTaggedValue());
+    if (!LinkedHashMap::IsKey(canonicalKey)) {
         THROW_TYPE_ERROR(thread, "the value must be Key of JSSet");
     }
     JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
+    JSHandle<JSTaggedValue> canonicalKeyHandle(thread, canonicalKey);
 
-    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Set(thread, mapHandle, key, value);
+    JSHandle<LinkedHashMap> newMap = LinkedHashMap::Set(thread, mapHandle, canonicalKeyHandle, value);
     map->SetLinkedMap(thread, newMap);
 }
 
 bool JSMap::Delete(const JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JSTaggedValue> &key)
 {
+    JSTaggedValue canonicalKey = CanonicalizeKeyedCollectionKey(key.GetTaggedValue());
     JSHandle<LinkedHashMap> mapHandle(thread, LinkedHashMap::Cast(map->GetLinkedMap(thread).GetTaggedObject()));
-    int entry = mapHandle->FindElement(thread, key.GetTaggedValue());
+    int entry = mapHandle->FindElement(thread, canonicalKey);
     if (entry == -1) {
         return false;
     }
@@ -51,12 +73,14 @@ void JSMap::Clear(const JSThread *thread, const JSHandle<JSMap> &map)
 
 bool JSMap::Has(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->Has(thread, key);
+    JSTaggedValue canonicalKey = CanonicalizeKeyedCollectionKey(key);
+    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->Has(thread, canonicalKey);
 }
 
 JSTaggedValue JSMap::Get(JSThread *thread, JSTaggedValue key) const
 {
-    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->Get(thread, key);
+    JSTaggedValue canonicalKey = CanonicalizeKeyedCollectionKey(key);
+    return LinkedHashMap::Cast(GetLinkedMap(thread).GetTaggedObject())->Get(thread, canonicalKey);
 }
 
 uint32_t JSMap::GetSize(JSThread *thread) const
