@@ -123,6 +123,16 @@ void SlotSpace::ExpandAllocator(SlotAllocator *allocator)
     }
 }
 
+Region *SlotSpace::ExpandRegionForSnapshot(size_t slotSize, size_t allocSize)
+{
+    auto allocator = allocators_[GetSlotIdxBySize(slotSize)];
+    allocateAfterLastGC_ += allocator->Discard();
+    allocateAfterLastGC_ += allocSize;
+    Region *region = AllocateRegion(slotSize);
+    allocator->Expand(region, allocSize);
+    return region;
+}
+
 Region *SlotSpace::AllocateRegion(size_t slotSize)
 {
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, localHeap_->GetJSThread(),

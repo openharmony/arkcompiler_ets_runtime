@@ -25,6 +25,9 @@
 #include "ecmascript/snapshot/mem/encode_bit.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/js_tagged_value.h"
+#if USE_CMS_GC
+#include "ecmascript/mem/cms_mem/slot_space_config.h"
+#endif
 #include "ecmascript/mem/object_xray.h"
 
 #include "libpandabase/macros.h"
@@ -43,6 +46,9 @@ enum class SnapshotType {
 struct SnapshotRegionHeadInfo {
     size_t regionIndex_ {0};
     size_t aliveObjectSize_ {0};
+#if USE_CMS_GC
+    size_t slotSize_ {0};
+#endif
 
     static constexpr size_t RegionHeadInfoSize()
     {
@@ -91,7 +97,10 @@ public:
     void DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, size_t oldSpaceObjSize, size_t nonMovableObjSize,
                                         size_t machineCodeObjSize, size_t snapshotObjSize, size_t hugeSpaceObjSize);
     void DeserializeString(uintptr_t stringBegin, uintptr_t stringEnd);
-
+#if USE_CMS_GC
+    void RelocateSlotSpaceObject(SnapshotType type, size_t rootObjSize);
+    void DeserializeSlotSpaceObject(uintptr_t beginAddr, size_t spaceObjSize);
+#endif
     // ONLY used in UT to get the deserialize value result
     JSTaggedValue GetDeserializeResultForUT() const
     {
@@ -183,7 +192,7 @@ private:
     class RegionProxy {
     public:
         RegionProxy() = default;
-        ~RegionProxy() = default;
+        virtual ~RegionProxy() = default;
 
         bool IsEmpty() const
         {
@@ -227,7 +236,7 @@ private:
         {
             return regionIndex_;
         }
-    private:
+    protected:
         uintptr_t begin_ {0};
         uintptr_t top_ {0};
         uintptr_t end_ {0};
@@ -266,6 +275,97 @@ private:
         size_t allocatedSize_ {0};
         size_t commonRegionSize_ {0};
     };
+
+#if USE_CMS_GC
+    class SlotRegionProxy : public RegionProxy {
+    public:
+        static constexpr size_t REGION_BEGIN_OFFSET = DEFAULT_REGION_SIZE - CMSRegion::GetRegionAvailableSize();
+
+        virtual ~SlotRegionProxy() = default;
+        AllocResult Allocate()
+        {
+            if (top_ + slotSize_ <= end_) {
+                uintptr_t addr = top_;
+                top_ += slotSize_;
+                return {addr, addr - begin_ + REGION_BEGIN_OFFSET, regionIndex_};
+            }
+            return {0, 0, -1};
+        }
+
+        void Setup(size_t slotSize)
+        {
+            slotSize_ = slotSize;
+        }
+
+        size_t GetSlotSize() const
+        {
+            return slotSize_;
+        }
+
+        void SetRootRegion()
+        {
+            isRootRegion_ = true;
+        }
+
+        bool IsRootRegion() const
+        {
+            return isRootRegion_;
+        }
+    private:
+        size_t slotSize_ {0};
+        bool isRootRegion_ {false};
+    };
+
+    class SlotRegionAllocateProxy {
+    public:
+        SlotRegionAllocateProxy()
+        {
+            for (size_t i = 0; i < SlotSpaceConfig::NUM_SLOTS; ++i) {
+                size_t slotSize = SlotSpace::GetSlotSizeByIdx(i);
+                tlabAllocators_[i].Setup(slotSize);
+            }
+        }
+
+        ~SlotRegionAllocateProxy()
+        {
+            for (SlotRegionProxy &info : regions_) {
+                if (!info.IsEmpty()) {
+                    void *ptr = reinterpret_cast<void*>(info.GetBegin());
+                    free(ptr);
+                }
+            }
+        }
+
+        AllocResult Allocate(size_t size, uintptr_t &regionIndex);
+
+        void StopAllocate();
+
+        void Initialize();
+
+        size_t GetAllocatedSize() const
+        {
+            return allocatedSize_;
+        }
+
+        void WriteToFile(std::fstream &writer);
+    private:
+        size_t GetRegionSize()
+        {
+            ASSERT(regionSize_ != 0);
+            return regionSize_;
+        }
+
+        void Expand(SlotRegionProxy &tlab, uintptr_t &regionIndex);
+
+        std::vector<SlotRegionProxy> regions_ {};
+        std::array<SlotRegionProxy, SlotSpaceConfig::NUM_SLOTS> tlabAllocators_ {};
+        size_t allocatedSize_ {0};
+        size_t regionSize_ {0};
+    };
+
+    SlotRegionAllocateProxy slotRegionAllocator_ ;
+    std::map<size_t, std::pair<Region*, size_t>> slotRegions_ {};
+#endif
     AllocateProxy regularObjAllocator_ {SerializedObjectSpace::REGULAR_SPACE};
     AllocateProxy pinnedObjAllocator_ {SerializedObjectSpace::PIN_SPACE};
     AllocateProxy largeObjAllocator_ {SerializedObjectSpace::LARGE_SPACE};

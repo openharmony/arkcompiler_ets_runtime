@@ -71,6 +71,9 @@
 #include "ecmascript/containers/containers_treeset.h"
 #include "ecmascript/containers/containers_vector.h"
 #include "ecmascript/containers/containers_bitvector.h"
+#if USE_CMS_GC
+#include "ecmascript/mem/cms_mem/slot_space-inl.h"
+#endif
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/ecma_string_table_optimization-inl.h"
 #ifdef ARK_SUPPORT_INTL
@@ -1008,8 +1011,13 @@ void SnapshotProcessor::Initialize()
         largeObjAllocator_.Initialize(commonRegionSize_);
     } else {
         auto heap = const_cast<Heap *>(vm_->GetHeap());
+#if USE_CMS_GC
+        slotRegionAllocator_.Initialize();
+        size_t oldSpaceCapacity = heap->GetSlotSpace()->GetInitialCapacity();
+#else
         size_t oldSpaceCapacity = heap->GetOldSpace()->GetInitialCapacity();
         oldLocalSpace_ = new LocalSpace(heap, oldSpaceCapacity, oldSpaceCapacity);
+#endif
         size_t nonMovableCapacity = heap->GetNonMovableSpace()->GetInitialCapacity();
         nonMovableLocalSpace_ = new LocalSpace(heap, nonMovableCapacity, nonMovableCapacity);
         size_t machineCodeCapacity = heap->GetMachineCodeSpace()->GetInitialCapacity();
@@ -1064,7 +1072,11 @@ void SnapshotProcessor::StopAllocate()
         pinnedObjAllocator_.StopAllocate(sHeap_);
         largeObjAllocator_.StopAllocate(sHeap_);
     } else {
+#if USE_CMS_GC
+        slotRegionAllocator_.StopAllocate();
+#else
         oldLocalSpace_->Stop();
+#endif
         nonMovableLocalSpace_->Stop();
         machineCodeLocalSpace_->Stop();
         snapshotLocalSpace_->Stop();
@@ -1078,7 +1090,11 @@ void SnapshotProcessor::WriteObjectToFile(std::fstream &writer)
         pinnedObjAllocator_.WriteToFile(writer);
         largeObjAllocator_.WriteToFile(writer);
     } else {
+#if USE_CMS_GC
+        slotRegionAllocator_.WriteToFile(writer);
+#else
         WriteSpaceObjectToFile(oldLocalSpace_, writer);
+#endif
         WriteSpaceObjectToFile(nonMovableLocalSpace_, writer);
         WriteSpaceObjectToFile(machineCodeLocalSpace_, writer);
         WriteSpaceObjectToFile(snapshotLocalSpace_, writer);
@@ -1138,7 +1154,11 @@ std::vector<size_t> SnapshotProcessor::StatisticsObjectSize()
         objSizeVector.emplace_back(pinnedObjAllocator_.GetAllocatedSize());
         objSizeVector.emplace_back(largeObjAllocator_.GetAllocatedSize());
     } else {
+#if USE_CMS_GC
+        objSizeVector.emplace_back(slotRegionAllocator_.GetAllocatedSize());
+#else
         objSizeVector.emplace_back(StatisticsSpaceObjectSize(oldLocalSpace_));
+#endif
         objSizeVector.emplace_back(StatisticsSpaceObjectSize(nonMovableLocalSpace_));
         objSizeVector.emplace_back(StatisticsSpaceObjectSize(machineCodeLocalSpace_));
         objSizeVector.emplace_back(StatisticsSpaceObjectSize(snapshotLocalSpace_));
@@ -1281,13 +1301,17 @@ void SnapshotProcessor::DeserializeObjectExcludeString(uintptr_t oldSpaceBegin, 
     uintptr_t snapshotBegin = machineCodeBegin + machineCodeObjSize;
     uintptr_t hugeObjBegin = snapshotBegin + snapshotObjSize;
     auto heap = vm_->GetHeap();
-    auto oldSpace = heap->GetOldSpace();
     auto nonMovableSpace = heap->GetNonMovableSpace();
     auto machineCodeSpace = heap->GetMachineCodeSpace();
     auto snapshotSpace = heap->GetSnapshotSpace();
     auto hugeObjectSpace = heap->GetHugeObjectSpace();
 
+#if USE_CMS_GC
+    DeserializeSlotSpaceObject(oldSpaceBegin, oldSpaceObjSize);
+#else
+    auto oldSpace = heap->GetOldSpace();
     DeserializeSpaceObject(oldSpaceBegin, oldSpace, oldSpaceObjSize);
+#endif
     DeserializeSpaceObject(nonMovableBegin, nonMovableSpace, nonMovableObjSize);
     DeserializeSpaceObject(machineCodeBegin, machineCodeSpace, machineCodeObjSize);
     DeserializeSpaceObject(snapshotBegin, snapshotSpace, snapshotObjSize);
@@ -1322,7 +1346,9 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
         }
 
         // Other information like aliveObject size, highWaterMark etc. in the region object to restore.
+#if !USE_CMS_GC
         region->aliveObject_ = liveObjectSize;
+#endif
         region->highWaterMark_ = region->packedData_.begin_ + liveObjectSize;
         region->SetGCFlag(RegionGCFlags::NEED_RELOCATE);
 
@@ -1371,7 +1397,9 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         }
 
         // Other information like aliveObject size, highWaterMark etc. in the region object to restore.
+#if !USE_CMS_GC
         region->aliveObject_ = objSize;
+#endif
         region->highWaterMark_ = region->packedData_.begin_ + objSize;
         region->SetGCFlag(RegionGCFlags::NEED_RELOCATE);
         space->AddRegion(region);
@@ -1596,13 +1624,17 @@ void SnapshotProcessor::Relocate(SnapshotType type, const JSPandaFile *jsPandaFi
         RelocateSpaceObject(largeRegions_, type, methods, methodNums, rootObjSize);
     } else {
         auto heap = vm_->GetHeap();
-        auto oldSpace = heap->GetOldSpace();
         auto nonMovableSpace = heap->GetNonMovableSpace();
         auto machineCodeSpace = heap->GetMachineCodeSpace();
         auto snapshotSpace = heap->GetSnapshotSpace();
         auto hugeObjectSpace = heap->GetHugeObjectSpace();
 
+#if USE_CMS_GC
+        RelocateSlotSpaceObject(type, rootObjSize);
+#else
+        auto oldSpace = heap->GetOldSpace();
         RelocateSpaceObject(oldSpace, type, methods, methodNums, rootObjSize);
+#endif
         RelocateSpaceObject(nonMovableSpace, type, methods, methodNums, rootObjSize);
         RelocateSpaceObject(machineCodeSpace, type, methods, methodNums, rootObjSize);
         RelocateSpaceObject(snapshotSpace, type, methods, methodNums, rootObjSize);
@@ -1969,6 +2001,12 @@ SnapshotProcessor::AllocResult SnapshotProcessor::GetNewObj(size_t objectSize, T
                 UNREACHABLE();
         }
     } else {
+#if USE_CMS_GC
+        auto region = Region::ObjectAddressToRange(objectHeader);
+        if (region->InSlotSpace() || region->InSharedOldSpace()) {
+            return slotRegionAllocator_.Allocate(objectSize, regionIndex_);
+        }
+#endif
         uintptr_t newObj = GetNewObjAddress(objectSize, objectHeader);
         auto currentRegion = Region::ObjectAddressToRange(newObj);
         // region snapshotData_ low 32 bits is used to record region index for snapshot
@@ -1985,9 +2023,11 @@ uintptr_t SnapshotProcessor::GetNewObjAddress(size_t objectSize, TaggedObject *o
         return AllocateObjectToLocalSpace(snapshotLocalSpace_, objectSize);
     }
     auto region = Region::ObjectAddressToRange(objectHeader);
+#if !USE_CMS_GC
     if (region->InYoungOrOldSpace() || region->InSharedOldSpace()) {
         return AllocateObjectToLocalSpace(oldLocalSpace_, objectSize);
     }
+#endif
     if (region->InMachineCodeSpace()) {
         return AllocateObjectToLocalSpace(machineCodeLocalSpace_, objectSize);
     }
@@ -2200,4 +2240,139 @@ void SnapshotProcessor::AllocateProxy::WriteToFile(std::fstream &writer)
         writer.flush();
     }
 }
+
+#if USE_CMS_GC
+void SnapshotProcessor::RelocateSlotSpaceObject(SnapshotType type, size_t rootObjSize)
+{
+    size_t others = 0;
+    size_t objIndex = 0;
+    size_t constSpecialIndex = 0;
+    EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
+    for (auto it = slotRegions_.begin(); it != slotRegions_.end(); it++) {
+        auto [region, slotSize] = it->second;
+        size_t allocated = region->GetAllocatedBytes();
+        uintptr_t begin = region->GetBegin();
+        uintptr_t end = begin + allocated;
+        while (begin < end) {
+            EncodeBit encodeBit(*reinterpret_cast<uint64_t *>(begin));
+            auto objType = encodeBit.GetObjectType();
+            ASSERT(objType != Constants::MASK_METHOD_SPACE_BEGIN);
+            TaggedObject *objectHeader = reinterpret_cast<TaggedObject *>(begin);
+            DeserializeClassWord(objectHeader);
+            DeserializeField(objectHeader);
+            if (builtinsDeserialize_ &&
+                (JSType(objType) >= JSType::STRING_FIRST && JSType(objType) <= JSType::STRING_LAST)) {
+                EcmaString *str = reinterpret_cast<EcmaString *>(begin);
+                EcmaStringAccessor(str).ClearInternString();
+                stringTable->GetOrInternFlattenString(vm_, str);
+            }
+            if (objIndex < rootObjSize) {
+                HandleRootObject(type, begin, objType, constSpecialIndex);
+            }
+            begin += slotSize;
+            objIndex++;
+        }
+    };
+}
+
+
+void SnapshotProcessor::DeserializeSlotSpaceObject(uintptr_t beginAddr, size_t spaceObjSize)
+{
+    auto *slotSpace = vm_->GetHeap()->GetSlotSpace();
+    size_t endAddr = beginAddr + spaceObjSize;
+    while (beginAddr < endAddr) {
+        auto info = ToNativePtr<SnapshotRegionHeadInfo>(beginAddr);
+        uintptr_t objectBeginAddr = ToUintPtr(info) + SnapshotRegionHeadInfo::RegionHeadInfoSize();
+        size_t regionIndex = info->regionIndex_;
+        size_t liveObjectSize = info->aliveObjectSize_;
+        beginAddr += (liveObjectSize + SnapshotRegionHeadInfo::RegionHeadInfoSize());
+        Region *region = slotSpace->ExpandRegionForSnapshot(info->slotSize_, liveObjectSize);
+        regionIndexMap_.emplace(regionIndex, ToUintPtr(region));
+        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->packedData_.begin_), liveObjectSize);
+        if (errno_t ret = memcpy_s(ToVoidPtr(region->packedData_.begin_),
+                                   liveObjectSize,
+                                   ToVoidPtr(objectBeginAddr),
+                                   liveObjectSize); ret != EOK) {
+            LOG_FULL(FATAL) << "memcpy_s failed: " << ret;
+            UNREACHABLE();
+        }
+        // Other information like highWaterMark etc. in the region object to restore.
+        region->highWaterMark_ = region->packedData_.begin_ + liveObjectSize;
+        slotRegions_.emplace(regionIndex, std::make_pair(region, info->slotSize_));
+    }
+    ASSERT(beginAddr == endAddr);
+}
+
+void SnapshotProcessor::SlotRegionAllocateProxy::Expand(SlotRegionProxy &tlab, uintptr_t &regionIndex)
+{
+    size_t regionSize = GetRegionSize();
+    void *ptr = malloc(regionSize);
+    if (ptr == nullptr) {
+        LOG_ECMA(FATAL) << "malloc failed, size = " << regionSize;
+        UNREACHABLE();
+    }
+    uintptr_t start = ToUintPtr(ptr);
+    uintptr_t end = start + regionSize;
+    tlab.Reset(start, end, regionIndex++);
+}
+
+SnapshotProcessor::AllocResult SnapshotProcessor::SlotRegionAllocateProxy::Allocate(size_t size, uintptr_t &regionIndex)
+{
+    size_t idx = SlotSpace::GetSlotIdxBySize(size);
+    SlotRegionProxy &tlab = tlabAllocators_[idx];
+    AllocResult result = tlab.Allocate();
+    if (result.address != 0) {
+        return result;
+    }
+    if (!tlab.IsEmpty()) {
+        regions_.push_back(tlab);
+    }
+    Expand(tlab, regionIndex);
+    ASSERT(!tlab.IsEmpty());
+    result = tlab.Allocate();
+    ASSERT(result.address != 0);
+    return result;
+}
+
+void SnapshotProcessor::SlotRegionAllocateProxy::StopAllocate()
+{
+    for (auto &currentTlab : tlabAllocators_) {
+        if (!currentTlab.IsEmpty()) {
+            regions_.push_back(currentTlab);
+            currentTlab.Reset(0, 0, -1);
+        }
+    }
+    for (SlotRegionProxy &region : regions_) {
+        ASSERT(!region.IsEmpty());
+        uintptr_t begin = region.GetBegin();
+        uintptr_t top = region.GetTop();
+        uintptr_t end = region.GetEnd();
+        allocatedSize_ += top - begin;
+    }
+    allocatedSize_ += regions_.size() * SnapshotRegionHeadInfo::RegionHeadInfoSize();
+}
+
+void SnapshotProcessor::SlotRegionAllocateProxy::Initialize()
+{
+    regionSize_ = CMSRegion::GetRegionAvailableSize();
+}
+
+void SnapshotProcessor::SlotRegionAllocateProxy::WriteToFile(std::fstream &writer)
+{
+    for (SlotRegionProxy &region : regions_) {
+        ASSERT(!region.IsEmpty());
+        uintptr_t begin = region.GetBegin();
+        uintptr_t top = region.GetTop();
+        size_t objSize = top - begin;
+        size_t regionIndex = region.GetRegionIndex();
+        size_t slotSize = region.GetSlotSize();
+        SnapshotRegionHeadInfo info {regionIndex, objSize, slotSize};
+        // Firstly, serialize the region head information into the file;
+        writer.write(reinterpret_cast<char *>(&info), SnapshotRegionHeadInfo::RegionHeadInfoSize());
+        // Secondly, write the valid region memory (exclude region head and GC bit set).
+        writer.write(reinterpret_cast<char *>(begin), objSize);
+        writer.flush();
+    }
+}
+#endif
 }  // namespace panda::ecmascript

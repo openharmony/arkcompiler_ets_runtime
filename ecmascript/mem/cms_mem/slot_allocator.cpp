@@ -52,4 +52,20 @@ void SlotAllocator::Expand(Region *region)
     SlotFreeSegment::FillFreeSegment(start, totalUsableSize);
     ResetFreeList({SlotFreeSegment::Cast(start), totalUsableSize});
 }
+
+// for snapshot only with specific allocSize.
+void SlotAllocator::Expand(Region *region, size_t allocSize)
+{
+    ASSERT(freeList_.IsSoldOut());
+    ASSERT((allocSize % GetSlotSize()) == 0);
+    regionChainManager_->AddNewRegion(region);
+
+    uintptr_t start = region->GetBegin() + allocSize;
+    uintptr_t end = region->GetEnd();
+    ASSERT(start <= end);
+    size_t totalUsableSize = (end - start) / freeList_.GetSlotSize() * freeList_.GetSlotSize();
+    ASSERT(totalUsableSize > 0 && totalUsableSize % freeList_.GetSlotSize() == 0);
+    SlotFreeSegment::FillFreeSegment(start, totalUsableSize);
+    ResetFreeList({SlotFreeSegment::Cast(start), totalUsableSize});
+}
 }  // namespace panda::ecmascript
