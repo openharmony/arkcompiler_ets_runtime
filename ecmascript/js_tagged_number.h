@@ -130,12 +130,7 @@ public:
             }
             return JSTaggedNumber(value + 1);
         }
-        ASSERT(IsDouble());
-        double doubleVal = GetDouble();
-        if (UNLIKELY(std::isnan(doubleVal) || !std::isfinite(doubleVal))) {
-            return JSTaggedNumber(doubleVal);
-        }
-        return JSTaggedNumber(doubleVal + 1.0);
+        return JSTaggedNumber(GetDouble() + 1.0);
     }
 
     JSTaggedNumber operator--() const
@@ -147,12 +142,7 @@ public:
             }
             return JSTaggedNumber(value - 1);
         }
-        ASSERT(IsDouble());
-        double doubleVal = GetDouble();
-        if (UNLIKELY(std::isnan(doubleVal) || !std::isfinite(doubleVal))) {
-            return JSTaggedNumber(doubleVal);
-        }
-        return JSTaggedNumber(doubleVal - 1.0);
+        return JSTaggedNumber(GetDouble() - 1.0);
     }
 
     inline bool operator!=(const JSTaggedNumber &number) const

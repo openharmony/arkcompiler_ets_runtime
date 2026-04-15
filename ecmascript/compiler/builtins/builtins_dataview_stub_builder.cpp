@@ -86,20 +86,30 @@ void BuiltinsDataViewStubBuilder::SetTypedValue(GateRef glue, GateRef thisValue,
                     BRANCH(Int64UnsignedGreaterThan(Int64Add(indexInt64, elementSize), size), slowPath, &setValue);
                     Bind(&setValue);
                     {
+                        Label isNaN(env);
+                        Label next(env);
                         GateRef offset = ZExtInt32ToInt64(GetByteOffset(thisValue));
                         GateRef bufferIndex = TruncInt64ToInt32(Int64Add(indexInt64, offset));
                         BuiltinsArrayBufferStubBuilder builder(this, GetCurrentGlobalEnv());
                         GateRef pointer = builder.GetDataPointFromBuffer(glue, buffer);
-                        GateRef doubleValue = TaggedGetNumber(value);
+                        DEFVARIABLE(doubleValue, VariableType::FLOAT64(), TaggedGetNumber(value));
+                        GateRef doubleNanValue = Double(base::NAN_VALUE);
+                        BRANCH(DoubleIsNAN(*doubleValue), &isNaN, &next);
+                        Bind(&isNaN);
+                        {
+                            doubleValue = doubleNanValue;
+                            Jump(&next);
+                        }
+                        Bind(&next);
                         if constexpr (type == DataViewType::INT32 || type == DataViewType::UINT32) {
                             SetValueInBufferForInt32(glue, pointer, bufferIndex,
-                                                     DoubleToInt(glue, doubleValue), *isLittleEndian);
+                                                     DoubleToInt(glue, *doubleValue), *isLittleEndian);
                         } else if constexpr (type == DataViewType::FLOAT32) {
-                            GateRef flaotValue = TruncDoubleToFloat32(doubleValue);
+                            GateRef flaotValue = TruncDoubleToFloat32(*doubleValue);
                             SetValueInBufferForInt32(glue, pointer, bufferIndex,
                                                      CastFloat32ToInt32(flaotValue), *isLittleEndian);
                         } else if constexpr (type == DataViewType::FLOAT64) {
-                            GateRef int64Value = CastDoubleToInt64(doubleValue);
+                            GateRef int64Value = CastDoubleToInt64(*doubleValue);
                             SetValueInBufferForInt64(glue, pointer, bufferIndex,
                                                      int64Value, *isLittleEndian);
                         }

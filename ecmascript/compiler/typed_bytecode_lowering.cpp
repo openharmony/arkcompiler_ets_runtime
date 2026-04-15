@@ -1715,7 +1715,7 @@ GateRef TypedBytecodeLowering::LoadElmentFromFloat64Array(const LoadBuiltinObjTy
     Variable result(builder_.GetCurrentEnvironment(),
         VariableType::JS_ANY(), builder_.NextVariableId(), builder_.Undefined());
 
-    builder_.Branch(builder_.DoubleIsImpureNaN(resTemp), &ifTrue, &ifFalse);
+    builder_.Branch(builder_.DoubleIsNAN(resTemp), &ifTrue, &ifFalse);
     builder_.Bind(&ifTrue);
     {
         result = builder_.Double(base::NAN_VALUE);
