@@ -23,6 +23,7 @@
 
 #include "ecmascript/platform/ffrt.h"
 #include "ecmascript/base/aligned_struct.h"
+#include "ecmascript/base/config.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/daemon/daemon_task.h"
 #include "ecmascript/global_index.h"
@@ -104,7 +105,9 @@ enum class PGOProfilerStatus : uint8_t {
 enum class BCStubStatus: uint8_t {
     NORMAL_BC_STUB,
     PROFILE_BC_STUB,
+#if ECMASCRIPT_ENABLE_INTERPRETER_JIT_STUBS
     JIT_PROFILE_BC_STUB,
+#endif
     STW_COPY_BC_STUB,
 };
 
@@ -563,7 +566,9 @@ public:
 
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
+#if ECMASCRIPT_ENABLE_INTERPRETER_JIT_STUBS
     void SwitchJitProfileStubs(bool isEnablePgo);
+#endif
     void SwitchStwCopyBCStubs(bool isStwCopy);
     void SwitchStwCopyCommonStubs(bool isStwCopy);
     void SwitchStwCopyBuiltinsStubs(bool isStwCopy);

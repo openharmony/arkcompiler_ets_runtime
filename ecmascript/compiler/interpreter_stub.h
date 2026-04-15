@@ -262,6 +262,7 @@ public:
     };
     ASM_INTERPRETER_BC_PROFILER_STUB_LIST(DECLARE_HANDLE_PROFILE_STUB_CLASS)
 #undef DECLARE_HANDLE_PROFILE_STUB_CLASS
+#if ECMASCRIPT_ENABLE_INTERPRETER_JIT_STUBS
 #define DECLARE_HANDLE_JIT_PROFILE_STUB_CLASS(name, base, ...)                     \
     class name##StubBuilder : public base##StubBuilder {                           \
     public:                                                                        \
@@ -276,6 +277,7 @@ public:
     };
     ASM_INTERPRETER_BC_JIT_PROFILER_STUB_LIST(DECLARE_HANDLE_JIT_PROFILE_STUB_CLASS)
 #undef DECLARE_HANDLE_JIT_PROFILE_STUB_CLASS
+#endif
 #endif
 #define DECLARE_HANDLE_STW_COPY_STUB_CLASS_SECOND(base)                            \
     DECLARE_HANDLE_STW_COPY_STUB_CLASS(base##StwCopy, base)
