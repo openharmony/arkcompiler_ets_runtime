@@ -35,6 +35,7 @@
 #include "ecmascript/mem/local_cmc/concurrent_copy_gc.h"
 #include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/mem_controller.h"
+#include "ecmascript/mem/shared_heap/global_gc.h"
 #include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/tagged_object.h"
@@ -350,6 +351,11 @@ TaggedObject *BaseHeap::AllocateOldForCMC(JSThread *thread, size_t size) const
 bool BaseHeap::CheckCanDistributeTask() const
 {
     return markTaskMonitor_->FastCheckCanDistributeTask();
+}
+
+bool SharedHeap::CheckCanDistributeGlobalGCTask() const
+{
+    return globalMarkTaskMonitor_->FastCheckCanDistributeTask();
 }
 
 uintptr_t Heap::AllocateYoungSync(size_t size)
@@ -1239,6 +1245,14 @@ TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
             TryTransferMemoryToOldSpace();
             object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, true));
         }
+        if (object == nullptr && allowGC) {
+            CollectGarbage<TriggerGCType::GLOBAL_GC, GCReason::ALLOCATION_FAILED>(thread);
+            if (GetGlobalGC()->GetFreedSize() < GLOBAL_GC_OOM_THRESHOLD) {
+                CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_,
+                                               "SharedHeap::AllocateInSOldSpace, shared heap oom");
+            }
+            object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, true));
+        }
     }
     return object;
 }
@@ -1250,6 +1264,20 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, JSHClass *hclass,
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
+    return object;
+}
+
+TaggedObject *SharedHeap::HandleSharedHeapOOM(JSThread *thread, size_t size)
+{
+    size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
+    sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
+    DumpHeapSnapshotBeforeOOM(thread, SharedHeapOOMSource::NORMAL_ALLOCATION,
+        ToSpaceTypeName(sHugeObjectSpace_->GetSpaceType()), size, SHARED_HEAP_STR);
+    ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject, shared heap oom");
+    auto *object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
+    if (UNLIKELY(object == nullptr)) {
+        FatalOutOfMemoryError(size, "SharedHeap::AllocateHugeObject, shared heap oom");
+    }
     return object;
 }
 
@@ -1267,15 +1295,10 @@ TaggedObject *SharedHeap::AllocateHugeObject(JSThread *thread, size_t size)
         CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
         object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
         if (UNLIKELY(object == nullptr)) {
-            // if allocate huge object OOM, temporarily increase space size to avoid vm crash
-            size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
-            sHugeObjectSpace_->IncreaseOutOfMemoryOvershootSize(oomOvershootSize);
-            DumpHeapSnapshotBeforeOOM(thread, SharedHeapOOMSource::NORMAL_ALLOCATION,
-                ToSpaceTypeName(sHugeObjectSpace_->GetSpaceType()), size, SHARED_HEAP_STR);
-            ThrowOutOfMemoryError(thread, size, "SharedHeap::AllocateHugeObject, shared heap oom");
+            CollectGarbage<TriggerGCType::GLOBAL_GC, GCReason::ALLOCATION_FAILED>(thread);
             object = reinterpret_cast<TaggedObject *>(sHugeObjectSpace_->Allocate(thread, size));
-            if (UNLIKELY(object == nullptr)) {
-                FatalOutOfMemoryError(size, "SharedHeap::AllocateHugeObject, shared heap oom");
+            if (GetGlobalGC()->GetFreedSize() < GLOBAL_GC_OOM_THRESHOLD || UNLIKELY(object == nullptr)) {
+                object = HandleSharedHeapOOM(thread, size);
             }
         }
     }
@@ -1378,7 +1401,7 @@ void SharedHeap::CollectGarbage(JSThread *thread)
         return;
     }
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
-        gcType == TriggerGCType::SHARED_FULL_GC);
+           gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::GLOBAL_GC);
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif

@@ -73,6 +73,8 @@ public:
     uintptr_t Allocate(size_t size, bool allowGC = true);
     bool Expand();
 
+    void RebuildFreeList();
+
     // For sweeping
     void PrepareSweeping() override;
     void Sweep() override;

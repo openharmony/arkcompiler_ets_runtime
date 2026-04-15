@@ -406,5 +406,59 @@ private:
     std::atomic<bool> initialized_ {false};
     ExtraTemporarySharedGCWorkNodeHolderPack extraTemporaryHolders_ {};
 };
+
+class GlobalGCWorkNodeHolder {
+public:
+    GlobalGCWorkNodeHolder() = default;
+    ~GlobalGCWorkNodeHolder() = default;
+    NO_COPY_SEMANTIC(GlobalGCWorkNodeHolder);
+    NO_MOVE_SEMANTIC(GlobalGCWorkNodeHolder);
+
+    inline void Setup(SharedHeap *sHeap, WorkManagerBase *workManager, GlobalMarkStack *markStack);
+    inline void Initialize();
+    inline void Finish();
+
+    inline void Push(TaggedObject *object);
+    inline bool Pop(TaggedObject **object);
+    inline void PushWorkNodeToGlobal();
+    inline bool PopWorkNodeFromGlobal();
+
+private:
+    SharedHeap *sHeap_ {nullptr};
+    WorkManagerBase *workManager_ {nullptr};
+    GlobalMarkStack *markStack_ {nullptr};
+    MarkWorkNode *inNode_ {nullptr};
+    MarkWorkNode *outNode_ {nullptr};
+    MarkWorkNode *cachedInNode_ {nullptr};
+};
+
+class GlobalGCWorkManager : public WorkManagerBase {
+public:
+    inline GlobalGCWorkManager(SharedHeap *sHeap, uint32_t threadNum);
+    inline ~GlobalGCWorkManager() override;
+
+    NO_COPY_SEMANTIC(GlobalGCWorkManager);
+    NO_MOVE_SEMANTIC(GlobalGCWorkManager);
+
+    inline void Initialize();
+    inline size_t Finish() override;
+
+    inline bool HasInitialized() const
+    {
+        return initialized_.load(std::memory_order_acquire);
+    }
+
+    inline GlobalGCWorkNodeHolder *GetHolder(uint32_t threadId)
+    {
+        return &works_.at(threadId);
+    }
+
+private:
+    SharedHeap *sHeap_ {nullptr};
+    uint32_t threadNum_ {0};
+    GlobalMarkStack markStack_ {};
+    std::array<GlobalGCWorkNodeHolder, common::MAX_TASKPOOL_THREAD_NUM + 1> works_;
+    std::atomic<bool> initialized_ {false};
+};
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_WORK_MANAGER_H

@@ -30,6 +30,8 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_evacuator.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
+#include "ecmascript/mem/shared_heap/global_gc.h"
+#include "ecmascript/mem/shared_heap/global_gc_marker.h"
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
@@ -126,6 +128,10 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
                 sharedFullGC_->RunPhases();
                 break;
             }
+            case TriggerGCType::GLOBAL_GC: {
+                globalGC_->RunPhases();
+                break;
+            }
             default: // LOCV_EXCL_BR_LINE
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -139,7 +145,8 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
         CollectGarbageFinish(false, gcType);
         InvokeSharedNativePointerCallbacks();
     }
-    if (gcType != TriggerGCType::SHARED_FULL_GC && sharedGC_->IsConcurrentProcessStringTable()) {
+    if (gcType != TriggerGCType::SHARED_FULL_GC && gcType != TriggerGCType::GLOBAL_GC &&
+        sharedGC_->IsConcurrentProcessStringTable()) {
         Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->WaitConcurrentSweepWeakRefTaskAndSuspend(thread);
         SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
     }
@@ -294,6 +301,18 @@ void SharedHeap::Destroy()
         delete sharedGC_;
         sharedGC_ = nullptr;
     }
+    if (globalGC_ != nullptr) {
+        delete globalGC_;
+        globalGC_ = nullptr;
+    }
+    if (globalGCMarker_ != nullptr) {
+        delete globalGCMarker_;
+        globalGCMarker_ = nullptr;
+    }
+    if (globalGCWorkManager_ != nullptr) {
+        delete globalGCWorkManager_;
+        globalGCWorkManager_ = nullptr;
+    }
     if (sharedFullGC_ != nullptr) {
         delete sharedFullGC_;
         sharedFullGC_ = nullptr;
@@ -342,6 +361,7 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
     uint32_t totalThreadNum = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = totalThreadNum - 1;
     markTaskMonitor_ = std::make_shared<EpochGuardedTaskMonitor>(maxMarkTaskCount_);
+    globalMarkTaskMonitor_ = std::make_shared<EpochGuardedTaskMonitor>(maxMarkTaskCount_);
     sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
     sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
     sharedGCMovableMarker_ = new SharedGCMovableMarker(sWorkManager_);
@@ -350,6 +370,9 @@ void SharedHeap::PostInitialization(const JSRuntimeOptions &option)
     sSweeper_ = new SharedConcurrentSweeper(this, option.EnableConcurrentSweep() ?
         EnableConcurrentSweepType::ENABLE : EnableConcurrentSweepType::CONFIG_DISABLE);
     sharedGC_ = new SharedGC(this);
+    globalGCWorkManager_ = new GlobalGCWorkManager(this, totalThreadNum + 1);
+    globalGCMarker_ = new GlobalGCMarker();
+    globalGC_ = new GlobalGC(this);
     sEvacuator_ = new SharedGCEvacuator(this);
     sharedFullGC_ = new SharedFullGC(this);
     if (Runtime::GetInstance()->IsHybridVm()) {
@@ -386,6 +409,34 @@ bool SharedHeap::ParallelMarkTask::RunInternal(uint32_t threadIndex)
         default: // LOCV_EXCL_BR_LINE
             break;
     }
+    monitor_->NotifyFinish();
+    return true;
+}
+
+void SharedHeap::TryPostGlobalGCMarkingTask()
+{
+    auto [succ, currentEpoch] = globalMarkTaskMonitor_->TryPostTask();
+    if (succ) {
+        common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<GlobalGCMarkTask>(
+            dThread_->GetThreadId(), this, globalMarkTaskMonitor_, currentEpoch));
+    }
+}
+
+void SharedHeap::WaitGlobalGCMarkTaskFinished()
+{
+    globalMarkTaskMonitor_->WaitRunningTaskFinished();
+}
+
+bool SharedHeap::GlobalGCMarkTask::Scheduable()
+{
+    return monitor_->TryRunTask(epoch_);
+}
+
+bool SharedHeap::GlobalGCMarkTask::RunInternal(uint32_t threadIndex)
+{
+    ASSERT(!monitor_->IsExpired(epoch_));
+    while (!sHeap_->GetGlobalGCWorkManager()->HasInitialized()) {}
+    sHeap_->GetGlobalGCMarker()->ProcessMarkStack(sHeap_->GetGlobalGCWorkManager(), threadIndex);
     monitor_->NotifyFinish();
     return true;
 }
@@ -430,7 +481,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
 {
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_PARTIAL_GC ||
-        gcType == TriggerGCType::SHARED_FULL_GC);
+        gcType == TriggerGCType::SHARED_FULL_GC || gcType == TriggerGCType::GLOBAL_GC);
     ASSERT(JSThread::GetCurrent() == dThread_);
     Mutex& suspensionRequestMutex = SharedHeap::GetInstance()->GetSuspensionRequestMutex();
     RuntimeLock(dThread_, suspensionRequestMutex);
@@ -457,6 +508,10 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
                 sharedFullGC_->RunPhases();
                 break;
             }
+            case TriggerGCType::GLOBAL_GC: {
+                globalGC_->RunPhases();
+                break;
+            }
             default: // LOCV_EXCL_BR_LINE
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
@@ -472,7 +527,8 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
     }
     InvokeSharedNativePointerCallbacks();
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
-    if (gcType != TriggerGCType::SHARED_FULL_GC && sharedGC_->IsConcurrentProcessStringTable()) {
+    if (gcType != TriggerGCType::SHARED_FULL_GC && gcType != TriggerGCType::GLOBAL_GC &&
+        sharedGC_->IsConcurrentProcessStringTable()) {
         Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner()->
             WaitConcurrentSweepWeakRefTaskAndSuspendByDaemonThread(dThread_);
         SetGCThreadQosPriority(common::PriorityMode::FOREGROUND);
@@ -640,6 +696,8 @@ void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
                             << "totalThreadNum(taskpool): " << (totalThreadNum + 1);
         delete sWorkManager_;
         sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
+        delete globalGCWorkManager_;
+        globalGCWorkManager_ = new GlobalGCWorkManager(this, totalThreadNum + 1);
         UpdateWorkManager(sWorkManager_);
     }
     sConcurrentMarker_->ConfigConcurrentMark(option.EnableSharedConcurrentMark());
@@ -653,6 +711,7 @@ void SharedHeap::UpdateWorkManager(SharedGCWorkManager *sWorkManager)
     sharedGCMovableMarker_->ResetWorkManager(sWorkManager);
     sharedGC_->ResetWorkManager(sWorkManager);
     sharedFullGC_->ResetWorkManager(sWorkManager);
+    globalGC_->ResetWorkManager(globalGCWorkManager_);
 }
 
 void SharedHeap::TryTriggerLocalConcurrentMarking()

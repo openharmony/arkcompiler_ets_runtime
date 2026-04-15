@@ -54,7 +54,11 @@ namespace ecmascript {
     V(UpdateWeekRef)                     \
     V(EvacuateRegion)                    \
     V(WaitFinish)                        \
-    V(InvokeNativeFinalizeCallbacks)
+    V(InvokeNativeFinalizeCallbacks)     \
+    V(GlobalGC)                          \
+    V(GlobalMark)                        \
+    V(GlobalClean)                       \
+    V(GlobalSharedGC)
 
 #define RECORD_DATA(V)                   \
     V(START_OBJ_SIZE)                    \
