@@ -210,7 +210,8 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     // SharedSet() = new Function()
     JSHandle<JSFunction> setFunction =
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedSet::Constructor),
-                                       setFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+                                       setFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR,
+                                       BUILTINS_STUB_ID(SharedSetConstructor));
 
     InitializeSCtor(setIHClass, setFunction, "SendableSet", FunctionLength::ZERO);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
@@ -277,7 +278,8 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     // SharedMap() = new Function()
     JSHandle<JSFunction> mapFunction =
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedMap::Constructor),
-                                       mapFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+                                       mapFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR,
+                                       BUILTINS_STUB_ID(SharedMapConstructor));
     InitializeSCtor(mapIHClass, mapFunction, "SendableMap", FunctionLength::ZERO);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableMap"));
@@ -954,7 +956,8 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
     // SharedArray() = new Function()
     JSHandle<JSFunction> arrayFunction =
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedArray::ArrayConstructor), arrayFuncHClass,
-                                       FunctionKind::BUILTIN_CONSTRUCTOR);
+                                       FunctionKind::BUILTIN_CONSTRUCTOR,
+                                       BUILTINS_STUB_ID(SharedArrayConstructor));
 
     InitializeSCtor(arrFuncInstanceHClass, arrayFunction, "SendableArray", FunctionLength::ZERO);
 

@@ -25,7 +25,7 @@
 #define BUILTIN_SHARED_ARRAY_FUNCTIONS(V)                      \
     /* SharedArray.from ( items [ , mapfn [ , thisArg ] ] ) */ \
     V("from", From, 1, INVALID)                                \
-    V("create", Create, 2, INVALID)                            \
+    V("create", Create, 2, SharedArrayCreate)                  \
     /* SendableArray.isArray ( arg ) */                        \
     V("isArray", IsArray, 1, INVALID)                          \
     V("of", Of, 1, INVALID)                                    \

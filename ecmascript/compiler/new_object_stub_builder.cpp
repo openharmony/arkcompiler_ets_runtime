@@ -2275,6 +2275,8 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     Label checkJSObject(env);
     Label newObject(env);
     Label isJSObject(env);
+    Label isNotJSObject(env);
+    Label isJSSharedObject(env);
 
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     auto protoOrHClass = Load(VariableType::JS_ANY(), glue, ctor,
@@ -2284,7 +2286,7 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     BRANCH(IsJSHClass(glue, protoOrHClass), &checkJSObject, &callRuntime);
     Bind(&checkJSObject);
     auto objectType = GetObjectType(protoOrHClass);
-    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))), &isJSObject, &callRuntime);
+    BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT))), &isJSObject, &isNotJSObject);
     Bind(&isJSObject);
     {
         auto funcProto = GetPrototypeFromHClass(glue, protoOrHClass);
@@ -2294,6 +2296,71 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
     {
         SetParameters(glue, 0);
         NewJSObject(&thisObj, &exit, protoOrHClass);
+    }
+    Bind(&isNotJSObject);
+    {
+        BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_SHARED_OBJECT))),
+            &isJSSharedObject, &callRuntime);
+    }
+    Bind(&isJSSharedObject);
+    {
+        Label checkClassConstructor(env);
+        Label checkElementsDict(env);
+        Label hasElementsDict(env);
+        Label fastPath(env);
+        Label newSObject(env);
+        BRANCH(IsDictionaryMode(glue, protoOrHClass), &callRuntime, &checkClassConstructor);
+        Bind(&checkClassConstructor);
+        {
+            BRANCH(IsClassConstructor(glue, ctor), &checkElementsDict, &fastPath);
+        }
+        Bind(&checkElementsDict);
+        {
+            GateRef ctorHClass = Load(VariableType::JS_ANY(), glue, ctor, IntPtr(JSObject::HCLASS_OFFSET));
+            GateRef elementsDic = GetPropertyInlinedProps(glue, ctor, ctorHClass,
+                Int32(ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX));
+            Label isHeapObj(env);
+            Label notHeapObj(env);
+            BRANCH(TaggedIsHeapObject(elementsDic), &isHeapObj, &fastPath);
+            Bind(&isHeapObj);
+            {
+                GateRef elementsDicObj = elementsDic;
+                GateRef elementsDicHClass = Load(VariableType::JS_ANY(), glue, elementsDicObj,
+                    IntPtr(JSObject::HCLASS_OFFSET));
+                GateRef elementsDicType = GetObjectType(elementsDicHClass);
+                BRANCH(Int32Equal(elementsDicType,
+                    Int32(static_cast<int32_t>(JSType::TAGGED_DICTIONARY))), &hasElementsDict, &fastPath);
+            }
+        }
+        Bind(&hasElementsDict);
+        {
+            // do not support element dictionary in ir
+            Jump(&callRuntime);
+        }
+        Bind(&fastPath);
+        {
+            auto funcProto = GetPrototypeFromHClass(glue, protoOrHClass);
+            BRANCH(IsEcmaObject(glue, funcProto), &newSObject, &callRuntime);
+        }
+        Bind(&newSObject);
+        {
+            Label hasException(env);
+            Label nonException(env);
+            SetParameters(glue, 0);
+            GateRef sObj = NewSObject(glue, protoOrHClass);
+            SetExtensibleToBitfield(glue, sObj, false);
+            BRANCH(HasPendingException(glue), &hasException, &nonException);
+            Bind(&hasException);
+            {
+                thisObj = Exception();
+                Jump(&exit);
+            }
+            Bind(&nonException);
+            {
+                thisObj = sObj;
+                Jump(&exit);
+            }
+        }
     }
     Bind(&callRuntime);
     {
