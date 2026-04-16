@@ -142,6 +142,7 @@ group("ark_aot_ts_test") {
     "enum_cache_sendable",
     "shr_overflow",
     "equal_nan",
+    "impure_nan",
     "exception_case1",
     "exception_case10",
     "exception_case11",

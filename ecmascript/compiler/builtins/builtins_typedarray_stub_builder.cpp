@@ -364,7 +364,7 @@ GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef glue, GateRef 
                     block, byteIndex)));
                 Label ResultIsNumber(env);
                 Label ResultIsNan(env);
-                BRANCH_UNLIKELY(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &ResultIsNan, &ResultIsNumber);
+                BRANCH_UNLIKELY(DoubleIsNAN(tmpResult), &ResultIsNan, &ResultIsNumber);
                 Bind(&ResultIsNan);
                 {
                     result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
@@ -385,7 +385,7 @@ GateRef BuiltinsTypedArrayStubBuilder::GetValueFromBuffer(GateRef glue, GateRef 
 
                 Label tmpResultIsNumber(env);
                 Label tmpResultIsNan(env);
-                BRANCH_UNLIKELY(env->GetBuilder()->DoubleIsImpureNaN(tmpResult), &tmpResultIsNan, &tmpResultIsNumber);
+                BRANCH_UNLIKELY(DoubleIsNAN(tmpResult), &tmpResultIsNan, &tmpResultIsNumber);
                 Bind(&tmpResultIsNan);
                 result = DoubleToTaggedDoublePtr(Double(base::NAN_VALUE));
                 Jump(&exit);
@@ -3096,8 +3096,19 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
                 }
                 Bind(&valueIsDouble);
                 {
-                    GateRef val = ChangeFloat64ToInt32(CastInt64ToFloat64(ChangeTaggedPointerToInt64(value)));
-                    Store(VariableType::INT32(), glue, block, byteIndex, val);
+                    Label isNaN(env);
+                    Label next(env);
+                    DEFVARIABLE(val, VariableType::INT32(), Int32(0));
+                    GateRef doubleVal = GetDoubleOfTDouble(value);
+                    val = ChangeFloat64ToInt32(doubleVal);
+                    BRANCH_UNLIKELY(DoubleIsNAN(doubleVal), &isNaN, &next);
+                    Bind(&isNaN);
+                    {
+                        val = ChangeFloat64ToInt32(Double(base::NAN_VALUE));
+                        Jump(&next);
+                    }
+                    Bind(&next);
+                    Store(VariableType::INT32(), glue, block, byteIndex, *val);
                     Jump(&exit);
                 }
             }
@@ -3117,8 +3128,18 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
                 }
                 Bind(&valueIsDouble);
                 {
-                    GateRef val = ChangeTaggedPointerToInt64(value);
-                    Store(VariableType::INT64(), glue, block, byteIndex, val);
+                    Label isNaN(env);
+                    Label next(env);
+                    DEFVARIABLE(val, VariableType::INT64(), ChangeTaggedPointerToInt64(value));
+                    GateRef doubleVal = GetDoubleOfTDouble(value);
+                    BRANCH_UNLIKELY(DoubleIsNAN(doubleVal), &isNaN, &next);
+                    Bind(&isNaN);
+                    {
+                        val = ChangeTaggedPointerToInt64(DoubleToTaggedDouble(Double(base::NAN_VALUE)));
+                        Jump(&next);
+                    }
+                    Bind(&next);
+                    Store(VariableType::INT64(), glue, block, byteIndex, *val);
                     Jump(&exit);
                 }
             }
@@ -3544,6 +3565,8 @@ void BuiltinsTypedArrayStubBuilder::CopyElementsToArrayBuffer(GateRef glue, Gate
     LoopBegin(&loopHead);
     {
         Label storeValue(env);
+        Label isNaN(env);
+        Label next(env);
         BRANCH(Int32UnsignedLessThan(*i, srcLength), &storeValue, &exit);
         Bind(&storeValue);
         {
@@ -3552,7 +3575,16 @@ void BuiltinsTypedArrayStubBuilder::CopyElementsToArrayBuffer(GateRef glue, Gate
             GateRef val = ToNumber(glue, value);
             BRANCH(HasPendingException(glue), &exit, &copyElement);
             Bind(&copyElement);
-            FastSetValueInBuffer(glue, buffer, *byteIndex, TaggedGetNumber(val), arrayType);
+            DEFVARIABLE(tempRes, VariableType::FLOAT64(), TaggedGetNumber(val));
+            GateRef doubleVal = GetDoubleOfTNumber(val);
+            BRANCH_UNLIKELY(DoubleIsNAN(doubleVal), &isNaN, &next);
+            Bind(&isNaN);
+            {
+                tempRes = Double(base::NAN_VALUE);
+                Jump(&next);
+            }
+            Bind(&next);
+            FastSetValueInBuffer(glue, buffer, *byteIndex, *tempRes, arrayType);
             i = Int32Add(*i, Int32(1));
             byteIndex = Int32Add(*byteIndex, elementSize);
             Jump(&loopEnd);

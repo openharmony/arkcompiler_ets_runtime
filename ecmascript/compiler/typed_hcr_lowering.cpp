@@ -1476,9 +1476,34 @@ void TypedHCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId i
         case BuiltinTypeId::UINT16_ARRAY:
             value = builder_.TruncInt32ToInt16(value);
             break;
-        case BuiltinTypeId::FLOAT32_ARRAY:
-            value = builder_.TruncDoubleToFloat32(value);
+        case BuiltinTypeId::FLOAT32_ARRAY: {
+            DEFVALUE(result, (&builder_), VariableType::FLOAT64(), value);
+            Label isNaN(&builder_);
+            Label passResult(&builder_);
+            BRANCH_CIR(builder_.DoubleIsNAN(value), &isNaN, &passResult);
+            builder_.Bind(&isNaN);
+            {
+                result = builder_.Double(base::NAN_VALUE);
+                builder_.Jump(&passResult);
+            }
+            builder_.Bind(&passResult);
+            value = builder_.TruncDoubleToFloat32(*result);
             break;
+        }
+        case BuiltinTypeId::FLOAT64_ARRAY: {
+            DEFVALUE(result, (&builder_), VariableType::FLOAT64(), value);
+            Label isNaN(&builder_);
+            Label passResult(&builder_);
+            BRANCH_CIR(builder_.DoubleIsNAN(value), &isNaN, &passResult);
+            builder_.Bind(&isNaN);
+            {
+                result = builder_.Double(base::NAN_VALUE);
+                builder_.Jump(&passResult);
+            }
+            builder_.Bind(&passResult);
+            value = *result;
+            break;
+        }
         default:
             break;
     }
