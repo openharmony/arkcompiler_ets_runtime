@@ -36,7 +36,8 @@
 namespace panda::ecmascript {
 static constexpr int INSUFFICIENT_CONTINUOUS_MEM = 1455;
 
-MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, [[maybe_unused]] int flags)
+MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, [[maybe_unused]] int flags,
+               [[maybe_unused]] bool jitfort)
 {
     ASSERT(size == AlignUp(size, PageSize()));
     ASSERT(alignment == AlignUp(alignment, PageSize()));
@@ -57,22 +58,12 @@ MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, [[maybe_unus
     return MemMap(result, result, size);
 }
 
-void PageUnmap(MemMap it)
+void PageUnmap(MemMap it, [[maybe_unused]] bool jitfort)
 {
     if (!VirtualFree(it.GetOriginAddr(), 0, MEM_RELEASE)) {
         int errCode = GetLastError();
         LOG_ECMA(ERROR) << "PageUnmap failed, error code is " << errCode;
     }
-}
-
-MemMap JitFortPageMap(size_t size, int prot, size_t alignment, void *addr, [[maybe_unused]] int flags)
-{
-    return PageMap(size, prot, alignment, addr, flags);
-}
-
-void JitFortPageUnmap(MemMap it)
-{
-    PageUnmap(it);
 }
 
 MemMap MachineCodePageMap(size_t size, int prot, size_t alignment)
