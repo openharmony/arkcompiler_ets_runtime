@@ -760,6 +760,46 @@ inline GateRef StubBuilder::TaggedIsSharedObj(GateRef glue, GateRef obj)
     return env_->GetBuilder()->TaggedIsSharedObj(glue, obj);
 }
 
+inline GateRef StubBuilder::TaggedIsSharedType(GateRef glue, GateRef value)
+{
+    // Check if value is a shared type (Number, Boolean, Undefined, Null, or JSShared object)
+    // IsSharedType = IsNumber() || IsBoolean() || IsUndefined() || IsNull() || IsJSShared()
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+
+    Label setTrue(env_);
+    Label checkIsBool(env_);
+    Label checkIsUndefinedOrNull(env_);
+    Label checkIsSharedObj(env_);
+    Label exit(env_);
+
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+
+    BRANCH(TaggedIsNumber(value), &setTrue, &checkIsBool);
+    Bind(&checkIsBool);
+    {
+        BRANCH(TaggedIsBoolean(value), &setTrue, &checkIsUndefinedOrNull);
+    }
+    Bind(&checkIsUndefinedOrNull);
+    {
+        BRANCH(TaggedIsUndefinedOrNull(value), &setTrue, &checkIsSharedObj);
+    }
+    Bind(&checkIsSharedObj);
+    {
+        BRANCH(TaggedIsSharedObj(glue, value), &setTrue, &exit);
+    }
+
+    Bind(&setTrue);
+    {
+        result = True();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
 inline GateRef StubBuilder::TaggedIsStringOrSymbol(GateRef glue, GateRef obj)
 {
     return env_->GetBuilder()->TaggedIsStringOrSymbol(glue, obj);

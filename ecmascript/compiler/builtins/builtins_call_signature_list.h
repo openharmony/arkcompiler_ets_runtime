@@ -42,6 +42,7 @@
     BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
     BUILTINS_WITH_OBJECT_STUB_BUILDER(T)            \
     BUILTINS_WITH_ARRAY_STUB_BUILDER(V)             \
+    BUILTINS_WITH_SHARED_ARRAY_STUB_BUILDER(V)      \
     BUILTINS_WITH_SET_STUB_BUILDER(D)               \
     BUILTINS_WITH_MAP_STUB_BUILDER(D)               \
     BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)          \
@@ -133,6 +134,9 @@
     V(Add,      Set,   Undefined(),    SET_ADD)                                                  \
     V(Delete,   Set,   Undefined(),    SET_DELETE)                                               \
     V(Has,      Set,   Undefined(),    SET_HAS)
+
+#define BUILTINS_WITH_SHARED_ARRAY_STUB_BUILDER(V)                                               \
+    V(Create,              SharedArray,   Undefined(),   SHARED_ARRAY_CREATE)
 
 #define BUILTINS_WITH_MAP_STUB_BUILDER(V)                                                        \
     V(Clear,    Map,   Undefined(),    MAP_CLEAR)                                                \
@@ -282,7 +286,10 @@
     V(Float32ArrayConstructor)                      \
     V(Float64ArrayConstructor)                      \
     V(BigInt64ArrayConstructor)                     \
-    V(BigUint64ArrayConstructor)
+    V(BigUint64ArrayConstructor)                    \
+    V(SharedArrayConstructor)                       \
+    V(SharedSetConstructor)                         \
+    V(SharedMapConstructor)
 
 // NEXT_AOT_AND_BUILTINS_STUB_LIST: List of functions that is optimized for Next
 #define NEXT_AOT_AND_BUILTINS_STUB_LIST(V)          \

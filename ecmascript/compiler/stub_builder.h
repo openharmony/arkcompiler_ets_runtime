@@ -331,6 +331,7 @@ public:
     GateRef TaggedIsString(GateRef glue, GateRef obj);
     GateRef TaggedIsStringIterator(GateRef glue, GateRef obj);
     GateRef TaggedIsSharedObj(GateRef glue, GateRef obj);
+    GateRef TaggedIsSharedType(GateRef glue, GateRef value);
     GateRef BothAreString(GateRef glue, GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef glue, GateRef obj);
     GateRef TaggedIsSymbol(GateRef glue, GateRef obj);

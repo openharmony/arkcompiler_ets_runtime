@@ -125,6 +125,9 @@ size_t BuiltinsStubCSigns::GetGlobalEnvIndex(ID builtinId)
         {ID::Float64ArrayConstructor, GlobalEnvField::FLOAT64_ARRAY_FUNCTION_INDEX},
         {ID::BigInt64ArrayConstructor, GlobalEnvField::BIGINT64_ARRAY_FUNCTION_INDEX},
         {ID::BigUint64ArrayConstructor, GlobalEnvField::BIGUINT64_ARRAY_FUNCTION_INDEX},
+        {ID::SharedArrayConstructor, GlobalEnvField::SHARED_ARRAY_FUNCTION_INDEX},
+        {ID::SharedSetConstructor, GlobalEnvField::SHARED_BUILTIN_SET_FUNCTION_INDEX},
+        {ID::SharedMapConstructor, GlobalEnvField::SHARED_BUILTIN_MAP_FUNCTION_INDEX},
     };
     if (globalEnvIndex.find(builtinId) != globalEnvIndex.end()) {
         return static_cast<size_t>(globalEnvIndex.at(builtinId));

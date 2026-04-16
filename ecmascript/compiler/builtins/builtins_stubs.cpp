@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_reflect_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_shared_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_arraylist_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_deque_stub_builder.h"
@@ -39,6 +40,7 @@
 #include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
+#include "ecmascript/compiler/builtins/shared_linked_hashtable_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/js_date.h"
@@ -592,6 +594,13 @@ DECLARE_BUILTINS(ArrayConstructor)
     builder.GenArrayConstructor(glue, nativeCode, func, newTarget, thisValue, numArgs);
 }
 
+DECLARE_BUILTINS(SharedArrayConstructor)
+{
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
+    BuiltinsSharedArrayStubBuilder builder(this, globalEnv);
+    builder.GenSharedArrayConstructor(glue, nativeCode, func, newTarget, thisValue, numArgs);
+}
+
 DECLARE_BUILTINS(MapConstructor)
 {
     GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
@@ -606,6 +615,22 @@ DECLARE_BUILTINS(SetConstructor)
     LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue, globalEnv);
     GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
     hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
+}
+
+DECLARE_BUILTINS(SharedMapConstructor)
+{
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
+    SharedLinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue, globalEnv);
+    GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
+    hashTableBuilder.GenSharedMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
+}
+
+DECLARE_BUILTINS(SharedSetConstructor)
+{
+    GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
+    SharedLinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue, globalEnv);
+    GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
+    hashTableBuilder.GenSharedMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
 
 #define DECLARE_BUILTINS_TYPED_ARRAY_STUB_BUILDER(TYPE, type, index)                                \
