@@ -74,7 +74,12 @@ JSTaggedValue ICRuntimeStub::CheckPolyHClass(const JSThread *thread, JSTaggedVal
         ASSERT(cachedValue.IsTaggedArray());
         TaggedArray *array = TaggedArray::Cast(cachedValue.GetTaggedObject());
         uint32_t length = array->GetLength();
+#if ENABLE_V70_OPTIMIZATION
+        ASSERT(length >= 2); // 2 means one ic, two slot, at least one ic exist
+        for (int i = length - 2; i >= 0; i -= 2) {  // 2 means one ic, two slot
+#else
         for (uint32_t i = 0; i < length; i += 2) {  // 2 means one ic, two slot
+#endif
             auto result = array->Get(thread, i);
             if (!result.IsUndefined() && result.GetWeakReferent() == hclass) {
                 return array->Get(thread, i + 1);
