@@ -1105,6 +1105,7 @@ ecma_source = [
   "ecmascript/module/napi_module_loader.cpp",
   "ecmascript/module/module_resolver.cpp",
   "ecmascript/module/module_snapshot.cpp",
+  "ecmascript/module/module_message_helper.cpp",
   "ecmascript/mutator_lock.cpp",
   "ecmascript/napi/jsnapi.cpp",
   "ecmascript/napi/jsnapi_expo.cpp",
