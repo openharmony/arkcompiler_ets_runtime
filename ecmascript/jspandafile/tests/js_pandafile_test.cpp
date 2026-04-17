@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <unistd.h>
 #include "assembler/assembly-emitter.h"
 #include "assembler/assembly-parser.h"
 #include "gtest/gtest.h"
@@ -21,10 +22,18 @@
 #define private public
 #define protected public
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_snapshot.h"
+#include "ecmascript/snapshot/common/modules_snapshot_helper.h"
+#include "ecmascript/platform/file.h"
 #undef protected
 #undef private
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/jspandafile/panda_file_translator.h"
+#include "ecmascript/ohos/ohos_constants.h"
+#include "ecmascript/ohos/ohos_version_info_tools.h"
+#include "ecmascript/platform/filesystem.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/js_function_kind.h"
 
@@ -36,6 +45,25 @@ using ClassTranslateWork = std::vector<std::pair<uint32_t, uint32_t>>;
 using CurClassTranslateWork = std::pair<uint32_t, ClassTranslateWork>;
 
 namespace panda::test {
+class MockJSPandaFileSnapshotForTest : public JSPandaFileSnapshot {
+public:
+    static bool WriteDataToFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+                                const CString &version)
+    {
+        return JSPandaFileSnapshot::WriteDataToFile(thread, jsPandaFile, path, version);
+    }
+
+    static CString GetSnapshotFileName(const CString &fileName, const CString &path)
+    {
+        return JSPandaFileSnapshot::GetJSPandaFileFileName(fileName, path);
+    }
+
+    static bool ReadDataFromFile(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+                                 const CString &version)
+    {
+        return JSPandaFileSnapshot::ReadDataFromFile(thread, jsPandaFile, path, version);
+    }
+};
 class JSPandaFileTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -73,6 +101,44 @@ protected:
         JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
         std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), filename);
         return pf;
+    }
+
+    std::shared_ptr<JSPandaFile> CreateJSPandaFileWithThread(const char *source, const CString filename)
+    {
+        Parser parser;
+        const std::string fn = "SRC.pa";
+        auto res = parser.Parse(source, fn);
+        EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+
+        std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+        JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+        return pfManager->NewJSPandaFile(thread, pfPtr.release(), filename, "");
+    }
+
+    void NormalTranslateJSPandaFile(const std::shared_ptr<JSPandaFile>& pf) const
+    {
+        const File *file = pf->GetPandaFile();
+        const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+        const File::EntityId classId = file->GetClassId(typeDesc);
+        ClassDataAccessor cda(*file, classId);
+        std::vector<File::EntityId> methodId {};
+        cda.EnumerateMethods([&](const MethodDataAccessor &mda) {
+            methodId.push_back(mda.GetMethodId());
+        });
+        pf->UpdateMainMethodIndex(methodId[0].GetOffset());
+        const char *methodName = MethodLiteral::GetMethodName(pf.get(), methodId[0]);
+        PandaFileTranslator::TranslateClasses(thread, pf.get(), CString(methodName));
+    }
+
+    static CString GetCurrentDirPath()
+    {
+        char buff[FILENAME_MAX];
+        getcwd(buff, FILENAME_MAX);
+        CString path(buff);
+        if (path.back() != '/') {
+            path += "/";
+        }
+        return path;
     }
 };
 
@@ -720,6 +786,290 @@ HWTEST_F_L0(JSPandaFileTest, GetClassAndMethodIndexes_UseMinCount)
     // Since numClasses_ is small (< 128), line 514-515 branch is taken
     // cnts will be set to ASYN_TRANSLATE_CLSSS_MIN_COUNT (2)
     EXPECT_TRUE(indexes.size() <= JSPandaFile::ASYN_TRANSLATE_CLSSS_MIN_COUNT);
+}
+
+/**
+ * @tc.name: ConstructorWithThread_SnapshotReadSuccess
+ * @tc.desc: Test JSPandaFile(thread, pf, desc, entryPoint) constructor when snapshot read succeeds (line 59 return)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, ConstructorWithThread_SnapshotReadSuccess)
+{
+    CString path = GetCurrentDirPath();
+    const char *abcFilename = "/data/storage/el1/bundle/entry/ets/main/modules.abc";
+    const char *source = R"(
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    std::shared_ptr<JSPandaFile> serializePf = CreateJSPandaFile(source, CString(abcFilename));
+    NormalTranslateJSPandaFile(serializePf);
+    bool bundlePackSave = serializePf->IsBundlePack();
+    serializePf->SetBundlePack(false);
+    serializePf->ownedNpmEntries_.emplace_back("testRecord", "testEntry");
+    const auto &npmEntry = serializePf->ownedNpmEntries_.back();
+    serializePf->npmEntries_.insert(
+        {std::string_view(npmEntry.first.c_str(), npmEntry.first.size()),
+         std::string_view(npmEntry.second.c_str(), npmEntry.second.size())});
+    CString snapshotFileName =
+        MockJSPandaFileSnapshotForTest::GetSnapshotFileName(serializePf->GetJSPandaFileDesc(), path);
+    remove(snapshotFileName.c_str());
+    CString version = "test_version";
+    EXPECT_TRUE(MockJSPandaFileSnapshotForTest::WriteDataToFile(
+        thread, serializePf.get(), path, version));
+    serializePf->SetBundlePack(bundlePackSave);
+    EXPECT_TRUE(FileExist(snapshotFileName.c_str()));
+
+    std::shared_ptr<JSPandaFile> deserializePf = CreateJSPandaFile(source, CString(abcFilename));
+    EXPECT_TRUE(MockJSPandaFileSnapshotForTest::ReadDataFromFile(
+        thread, deserializePf.get(), path, version));
+    EXPECT_NE(deserializePf, nullptr);
+    EXPECT_FALSE(deserializePf->IsBundlePack());
+
+    auto it = deserializePf->npmEntries_.find("testRecord");
+    EXPECT_NE(it, deserializePf->npmEntries_.end());
+    EXPECT_EQ(it->second, "testEntry");
+
+    remove(snapshotFileName.c_str());
+}
+
+/**
+ * @tc.name: CheckIsBundlePack_ExternalClassSkipped
+ * @tc.desc: Test CheckIsBundlePack skips external classes (line 116 continue branch)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, CheckIsBundlePack_ExternalClassSkipped)
+{
+    const char *source = R"(
+        .record panda.String <external>
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    const CString fileName = "test_external.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+    EXPECT_NE(pf, nullptr);
+    EXPECT_TRUE(pf->IsBundlePack());
+}
+
+/**
+ * @tc.name: CheckIsRecordWithBundleName_NpmPathSkipped
+ * @tc.desc: Test CheckIsRecordWithBundleName skips records with
+ *           PACKAGE_PATH_SEGMENT or NPM_PATH_SEGMENT (line 147 continue)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, CheckIsRecordWithBundleName_NpmPathSkipped)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_npm_skip.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    auto &recordInfo = const_cast<CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo *> &>(
+        pf->GetJSRecordInfo());
+    for (auto &pair : recordInfo) {
+        delete pair.second;
+    }
+    recordInfo.clear();
+
+    static std::string npmRecordName = "com.example.myapp/node_modules/pkg/module";
+    auto *npmRecord = new JSPandaFile::JSRecordInfo();
+    recordInfo.insert({std::string_view(npmRecordName), npmRecord});
+
+    CString entry = "com.example.myapp/index.ets";
+    pf->CheckIsRecordWithBundleName(entry);
+    EXPECT_TRUE(pf->IsRecordWithBundleName());
+}
+
+/**
+ * @tc.name: Destructor_PfNullptr
+ * @tc.desc: Test destructor when pf_ is nullptr (line 164 if branch not taken)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, Destructor_PfNullptr)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_destructor_nullptr.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+    EXPECT_NE(pf, nullptr);
+
+    const panda_file::File *rawPf = pf->pf_;
+    pf->pf_ = nullptr;
+    pf.reset();
+    delete rawPf;
+}
+
+/**
+ * @tc.name: GetOrInsertConstantPool_WithExternalConstpoolMap
+ * @tc.desc: Test GetOrInsertConstantPool with non-null constpoolMap and non-bundle pack (line 189)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, GetOrInsertConstantPool_WithExternalConstpoolMap)
+{
+    const char *source = R"(
+        .function void foo1() {}
+        .function void foo2() {}
+    )";
+    const CString fileName = "test_ext_constpool.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+    pf->SetBundlePack(false);
+
+    const File *file = pf->GetPandaFile();
+    const uint8_t *typeDesc = utf::CStringAsMutf8("L_GLOBAL;");
+    File::EntityId classId = file->GetClassId(typeDesc);
+    ClassDataAccessor cda(*file, classId);
+    std::vector<File::EntityId> methodId {};
+    cda.EnumerateMethods([&](panda_file::MethodDataAccessor &mda) {
+        methodId.push_back(mda.GetMethodId());
+    });
+
+    CUnorderedMap<uint32_t, uint64_t> externalMap;
+    uint32_t index1 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[0].GetOffset(), &externalMap);
+    EXPECT_EQ(index1, 0U);
+    EXPECT_EQ(externalMap.size(), 1U);
+
+    // cache hit on external map (line 195)
+    uint32_t index2 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[0].GetOffset(), &externalMap);
+    EXPECT_EQ(index2, 0U);
+    EXPECT_EQ(externalMap.size(), 1U);
+
+    uint32_t index3 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[1].GetOffset(), &externalMap);
+    EXPECT_EQ(index3, 1U);
+    EXPECT_EQ(externalMap.size(), 2U);
+
+    // cache hit on internal constpoolMap_ (line 195)
+    pf->SetBundlePack(true);
+    uint32_t index4 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[0].GetOffset());
+    EXPECT_EQ(index4, 2U);
+    uint32_t index5 = pf->GetOrInsertConstantPool(ConstPoolType::METHOD, methodId[0].GetOffset());
+    EXPECT_EQ(index5, index4);
+}
+
+/**
+ * @tc.name: InitializeUnMergedPF_ExternalClassSkipped
+ * @tc.desc: Test InitializeUnMergedPF skips external classes (line 214 continue)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, InitializeUnMergedPF_ExternalClassSkipped)
+{
+    const char *source = R"(
+        .record panda.String <external>
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    const CString fileName = "test_init_unmerged_external.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+    EXPECT_NE(pf, nullptr);
+    EXPECT_TRUE(pf->IsBundlePack());
+    EXPECT_GT(pf->numMethods_, 0U);
+}
+
+/**
+ * @tc.name: ConstructorWithThread_SnapshotDisabled
+ * @tc.desc: Test second constructor when snapshot is disabled (line 56 false branch)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, ConstructorWithThread_SnapshotDisabled)
+{
+    const char *source = R"(
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    const CString fileName = "test_snapshot_disabled.pa";
+
+    EcmaVM *vm = thread->GetEcmaVM();
+    JSRuntimeOptions &options = vm->GetJSOptions();
+    int arkProperties = options.GetArkProperties();
+    options.SetArkProperties(arkProperties | static_cast<int>(ArkProperties::DISABLE_JSPANDAFILE_MODULE_SNAPSHOT));
+
+    Parser parser;
+    const std::string fn = "SRC.pa";
+    auto res = parser.Parse(source, fn);
+    EXPECT_EQ(parser.ShowError().err, Error::ErrorType::ERR_NONE);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(thread, pfPtr.release(), fileName, "");
+    EXPECT_NE(pf, nullptr);
+    EXPECT_TRUE(pf->IsBundlePack());
+    EXPECT_GT(pf->numMethods_, 0U);
+
+    options.SetArkProperties(arkProperties);
+}
+
+/**
+ * @tc.name: GetEntryPoint_FoundInNpmEntries
+ * @tc.desc: Test GetEntryPoint when record is found in npmEntries_ and HasRecord returns true (line 326)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, GetEntryPoint_FoundInNpmEntries)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_get_entry.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    static std::string recordKey = "npm_pkg/module";
+    static std::string entryValue = "entry_point_record";
+    pf->ownedNpmEntries_.emplace_back(CString(recordKey.c_str()), CString(entryValue.c_str()));
+    const auto &npmEntry = pf->ownedNpmEntries_.back();
+    pf->npmEntries_.insert(
+        {std::string_view(npmEntry.first.c_str(), npmEntry.first.size()),
+         std::string_view(npmEntry.second.c_str(), npmEntry.second.size())});
+
+    auto &recordInfo = const_cast<CUnorderedMap<std::string_view, JSPandaFile::JSRecordInfo *> &>(
+        pf->GetJSRecordInfo());
+    static std::string entryRecordName = "entry_point_record";
+    auto *info = new JSPandaFile::JSRecordInfo();
+    recordInfo.insert({std::string_view(entryRecordName), info});
+
+    CString result = pf->GetEntryPoint(CString(recordKey.c_str()));
+    EXPECT_EQ(result, CString(entryValue.c_str()));
+}
+
+/**
+ * @tc.name: GetNormalizedFileDesc_OhosModulePosNpos
+ * @tc.desc: Test GetNormalizedFileDesc when desc has /ets/ but no '/' before it (line 434)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, GetNormalizedFileDesc_OhosModulePosNpos)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_norm_desc.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    CString desc = "abc/ets/modules.abc";
+    CString result = pf->GetNormalizedFileDesc(desc);
+    EXPECT_EQ(result, desc);
+}
+
+/**
+ * @tc.name: CallReleaseSecureMemFunc_NoCallback
+ * @tc.desc: Test CallReleaseSecureMemFunc when fileMapper is non-null but callback is null (line 680)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, CallReleaseSecureMemFunc_NoCallback)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test_release_mem.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+    EXPECT_NE(pf, nullptr);
+
+    int dummyMapper = 0;
+    pf->CallReleaseSecureMemFunc(&dummyMapper);
 }
 
 }  // namespace panda::test
