@@ -189,7 +189,7 @@ private:
     ContinuousStack<JSTaggedType> *continuousQueue_ {nullptr};
     ContinuousStack<TaggedObject> *continuousWeakLinkedHashMapQueue_ {nullptr};
     TlabAllocator *allocator_ {nullptr};
-    SlotGCAllocator slotGCAllocator_ {};
+    SlotGCAllocator *slotGCAllocator_ {nullptr};
     size_t aliveSize_ {0};
     size_t promotedSize_ {0};
 
