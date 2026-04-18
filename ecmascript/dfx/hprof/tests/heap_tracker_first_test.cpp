@@ -16,8 +16,10 @@
 #include <cstdio>
 #include <fstream>
 #include <fcntl.h>
+#include <sstream>
 
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
@@ -112,6 +114,18 @@ public:
     JSThread *thread {nullptr};
 };
 
+// ---------------------------------------------------------------------------
+// Helpers for JSWrappedNapiObject native-reference scenario
+struct MockNativeRef {
+    void *data;
+};
+
+static void *MockGetNativeReferenceData(void *ref)
+{
+    return reinterpret_cast<MockNativeRef *>(ref)->data;
+}
+// ---------------------------------------------------------------------------
+
 HWTEST_F_L0(HeapTrackerTest, HeapTracker)
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -135,6 +149,35 @@ HWTEST_F_L0(HeapTrackerTest, HeapTracker)
         instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
+    // Scenario: JSWrappedNapiObject is NOT referenced by any root, and the
+    // MockNativeRef it points to is deleted before the snapshot is taken.
+    // After FULL_GC the unreachable object is collected; the final snapshot
+    // must NOT contain the dangling native address.
+    static int wrappedNativeObj = 0xABCD;
+    MockNativeRef *mockRef = new MockNativeRef { reinterpret_cast<void *>(&wrappedNativeObj) };
+    {
+        // Nested scope: JSHandle<JSObject> expires when innerScope is destroyed,
+        // leaving the JSWrappedNapiObject unreachable from roots.
+        EcmaHandleScope innerScope(thread);
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSObject> wrappedObject = factory->CreateNapiObject(true);
+        JSObject::SetNativePointerFieldCount(thread, wrappedObject, 1);
+        JSObject::SetNativePointerField(thread, wrappedObject, 0,
+                                        reinterpret_cast<void *>(mockRef),
+                                        nullptr, nullptr);
+        instance->SetNativeReferenceDataGetter(
+            reinterpret_cast<ecmascript::NativeReferenceDataCallbackGetter>(
+                MockGetNativeReferenceData));
+    } // innerScope destroyed: wrappedObject handle gone, object now unreachable
+
+    // Safe to delete now: GC already collected the object that held this pointer.
+    delete mockRef;
+    mockRef = nullptr;
+
+    std::stringstream nativeAddrSS;
+    nativeAddrSS << "0x" << std::hex << reinterpret_cast<uintptr_t>(&wrappedNativeObj);
+    std::string nativeAddrStr = nativeAddrSS.str();
+
     // Create file test.heaptimeline
     std::string fileName = "test.heaptimeline";
     fstream outputString(fileName, std::ios::out);
@@ -152,13 +195,23 @@ HWTEST_F_L0(HeapTrackerTest, HeapTracker)
     std::string firstSample = "\"samples\":[0, ";
     uint32_t emptySize = emptySample.size();
     bool isFind = false;
+    bool isWrappedFind = false;
+    bool isNativeAddrFind = false;
     while (getline(inputStream, line)) {
         if (line.substr(0U, emptySize) == emptySample) {
             ASSERT_TRUE(line.substr(0, firstSample.size()) == firstSample);
             isFind = true;
         }
+        if (line.find("JSWrappedNapiObject") != std::string::npos) {
+            isWrappedFind = true;
+        }
+        if (line.find(nativeAddrStr) != std::string::npos) {
+            isNativeAddrFind = true;
+        }
     }
     ASSERT_TRUE(isFind);
+    ASSERT_FALSE(isWrappedFind) << "GC'd object must not appear in timeline snapshot";
+    ASSERT_FALSE(isNativeAddrFind) << "Deleted native ref address must not appear: " << nativeAddrStr;
 
     inputStream.close();
     inputStream.clear();
@@ -189,6 +242,35 @@ HWTEST_F_L0(HeapTrackerTest, HeapTrackerTraceAllocation)
         instance->GetFactory()->NewJSString(JSHandle<JSTaggedValue>(string), undefined);
     }
 
+    // Scenario: JSWrappedNapiObject is NOT referenced by any root, and the
+    // MockNativeRef it points to is deleted before the snapshot is taken.
+    // After FULL_GC the unreachable object is collected; the final snapshot
+    // must NOT contain the dangling native address.
+    static int wrappedNativeObj = 0xF00D;
+    MockNativeRef *mockRef = new MockNativeRef { reinterpret_cast<void *>(&wrappedNativeObj) };
+    {
+        // Nested scope: JSHandle<JSObject> expires when innerScope is destroyed,
+        // leaving the JSWrappedNapiObject unreachable from roots.
+        EcmaHandleScope innerScope(thread);
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSObject> wrappedObject = factory->CreateNapiObject(true);
+        JSObject::SetNativePointerFieldCount(thread, wrappedObject, 1);
+        JSObject::SetNativePointerField(thread, wrappedObject, 0,
+                                        reinterpret_cast<void *>(mockRef),
+                                        nullptr, nullptr);
+        instance->SetNativeReferenceDataGetter(
+            reinterpret_cast<ecmascript::NativeReferenceDataCallbackGetter>(
+                MockGetNativeReferenceData));
+    } // innerScope destroyed: wrappedObject handle gone, object now unreachable
+
+    // Safe to delete now: GC already collected the object that held this pointer.
+    delete mockRef;
+    mockRef = nullptr;
+
+    std::stringstream nativeAddrSS;
+    nativeAddrSS << "0x" << std::hex << reinterpret_cast<uintptr_t>(&wrappedNativeObj);
+    std::string nativeAddrStr = nativeAddrSS.str();
+
     // Create file test.heaptimeline
     std::string fileName = "test.heaptimeline";
     fstream outputString(fileName, std::ios::out);
@@ -207,14 +289,23 @@ HWTEST_F_L0(HeapTrackerTest, HeapTrackerTraceAllocation)
     std::string firstTraceFunctionInfo = "\"trace_function_infos\":[0,";
     uint32_t emptyTraceFunctionInfoSize = emptyTraceFunctionInfo.size();
     bool traceFunctionInfoIsFind = false;
+    bool isWrappedFind = false;
+    bool isNativeAddrFind = false;
     while (getline(inputStream, line)) {
         if (line.substr(0U, emptyTraceFunctionInfoSize) == emptyTraceFunctionInfo) {
             ASSERT_TRUE(line.substr(0, firstTraceFunctionInfo.size()) == firstTraceFunctionInfo);
             traceFunctionInfoIsFind = true;
-            break;
+        }
+        if (line.find("JSWrappedNapiObject") != std::string::npos) {
+            isWrappedFind = true;
+        }
+        if (line.find(nativeAddrStr) != std::string::npos) {
+            isNativeAddrFind = true;
         }
     }
     ASSERT_TRUE(traceFunctionInfoIsFind);
+    ASSERT_FALSE(isWrappedFind) << "GC'd object must not appear in timeline snapshot";
+    ASSERT_FALSE(isNativeAddrFind) << "Deleted native ref address must not appear: " << nativeAddrStr;
 
     inputStream.close();
     inputStream.clear();
