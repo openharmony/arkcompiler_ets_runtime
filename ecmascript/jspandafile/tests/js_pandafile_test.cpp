@@ -1072,4 +1072,57 @@ HWTEST_F_L0(JSPandaFileTest, CallReleaseSecureMemFunc_NoCallback)
     pf->CallReleaseSecureMemFunc(&dummyMapper);
 }
 
+/**
+ * @tc.name: IsHapOrHspPath_HapSuffix
+ * @tc.desc: Test IsHapOrHspPath returns true when hapPath_ ends with .hap
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, IsHapOrHspPath_HapSuffix)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    CString hapPath = "/data/app/el1/bundle/public/com.example.app/entry.hap";
+    pf->SetHapPath(hapPath);
+    EXPECT_TRUE(pf->IsHapOrHspPath());
+}
+
+/**
+ * @tc.name: IsHapOrHspPath_HspSuffix
+ * @tc.desc: Test IsHapOrHspPath returns true when hapPath_ ends with .hsp
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, IsHapOrHspPath_HspSuffix)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    CString hspPath = "/data/app/el1/bundle/public/com.example.app/shared.hsp";
+    pf->SetHapPath(hspPath);
+    EXPECT_TRUE(pf->IsHapOrHspPath());
+}
+
+/**
+ * @tc.name: IsHapOrHspPath_NoSuffix
+ * @tc.desc: Test IsHapOrHspPath returns false when hapPath_ has no .hap or .hsp suffix
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(JSPandaFileTest, IsHapOrHspPath_NoSuffix)
+{
+    const char *source = R"(
+        .function void foo() {}
+    )";
+    const CString fileName = "test.pa";
+    std::shared_ptr<JSPandaFile> pf = CreateJSPandaFile(source, fileName);
+
+    CString normalPath = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    pf->SetHapPath(normalPath);
+    EXPECT_FALSE(pf->IsHapOrHspPath());
+}
 }  // namespace panda::test
