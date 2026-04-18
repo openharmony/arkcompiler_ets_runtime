@@ -689,6 +689,10 @@ void RawHeapDumpV2::DumpObjectTable()
             obj->GetClass()->IsJSNativePointer() ? JSNativePointer::Cast(obj)->GetBindingSize() : 0,
             static_cast<uint32_t>(obj->GetClass()->GetObjectType())
         };
+        if (obj->GetClass()->IsString()) {
+            EcmaString *str = EcmaString::Cast(obj);
+            table.size = EcmaStringAccessor(str).GetLength();
+        }
         WriteChunk(reinterpret_cast<char *>(&table), sizeof(AddrTableItem));
     });
     LOG_ECMA(INFO) << "rawheap dump, objects total count " << GetObjectCount();
