@@ -2006,6 +2006,95 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDumpV2WithHandleClassification2)
     ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"LocalHandleRoot[3]\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("test_binary_dump_v2_with_handle.heapsnapshot", "\"GlobalHandleRoot[2]"));
 }
+
+HWTEST_F_L0(HeapDumpTest, TestPropertyNameInBinaryDump)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"property_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_property_name.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_property_name.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"id\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"name\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"score\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"isActive\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"tags\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"userSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"configMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"calculate\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"nested\""));
+    // Additional string properties
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty1\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty2\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty3\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty4\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty5\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"description\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"address\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"phoneNumber\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"creationDate\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"version\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"enabled\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"counter\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"metadata\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapMetadataFields)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "property_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_heap_metadata.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    dumpOption.spaceType = "LocalGC";
+    dumpOption.heapType = "local heap";
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_heap_metadata.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"HeapMetadata\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"spaceType\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"LocalGC\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"heapType\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"local heap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"vmType\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"dynamic\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, DISABLED_TestProxyClassName)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "proxy_class_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_proxy_class_name.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_proxy_class_name.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassA\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassB\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy\""));
+}
 #endif
 
 HWTEST_F_L0(HeapDumpTest, TestSharedFullGCInHeapDump)
@@ -2191,95 +2280,6 @@ HWTEST_F_L0(HeapDumpTest, TestPropertyNameInJSObject)
         << "Found " << foundKeys.size() << " keys, expected " << expectedKeys.size();
 }
 
-HWTEST_F_L0(HeapDumpTest, TestPropertyNameInBinaryDump)
-{
-    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"property_name.abc";
-
-    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
-    EXPECT_TRUE(result);
-
-    std::string rawHeapPath("test_property_name.rawheap");
-    HeapDumpTestHelper tester(ecmaVm_);
-    DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
-
-    std::string heapsnapshotPath("test_property_name.heapsnapshot");
-    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
-    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
-
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"id\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"name\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"score\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"isActive\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"tags\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"userSet\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"configMap\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"calculate\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"nested\""));
-    // Additional string properties
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty1\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty2\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty3\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty4\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"stringProperty5\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"description\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"address\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"phoneNumber\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"creationDate\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"version\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"enabled\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"counter\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"metadata\""));
-}
-
-HWTEST_F_L0(HeapDumpTest, TestHeapMetadataFields)
-{
-    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "property_name.abc";
-
-    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "property_name");
-    EXPECT_TRUE(result);
-
-    std::string rawHeapPath("test_heap_metadata.rawheap");
-    HeapDumpTestHelper tester(ecmaVm_);
-    DumpSnapShotOption dumpOption;
-    dumpOption.spaceType = "LocalGC";
-    dumpOption.heapType = "local heap";
-    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
-
-    std::string heapsnapshotPath("test_heap_metadata.heapsnapshot");
-    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
-    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
-
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"HeapMetadata\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"spaceType\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"LocalGC\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"heapType\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"local heap\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"vmType\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"dynamic\""));
-}
-
-HWTEST_F_L0(HeapDumpTest, DISABLED_TestProxyClassName)
-{
-    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "proxy_class_name.abc";
-
-    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "proxy_class_name");
-    EXPECT_TRUE(result);
-
-    std::string rawHeapPath("test_proxy_class_name.rawheap");
-    HeapDumpTestHelper tester(ecmaVm_);
-    DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
-
-    std::string heapsnapshotPath("test_proxy_class_name.heapsnapshot");
-    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
-    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
-
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassA\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassB\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy\""));
-}
-
 // ---------------------------------------------------------------------------
 // Helpers shared by the four native-address tests below.
 // MockNativeRef mimics the layout that ArkNativeReference::GetData() reads:
@@ -2393,7 +2393,33 @@ HWTEST_F_L0(HeapDumpTest, TestWrappedNapiObjectNativeAddressInJSONSnapshot)
         << "JSON snapshot must contain the real native address: " << ss.str();
 }
 
-// UT4: The rawheap binary snapshot, after translate, contains the real native
+// UT4: A plain JSNativePointer (not referenced by JSWrappedNapiObject) has its
+//      ExternalPointer shown directly (no callback) in the hprof JSON snapshot.
+HWTEST_F_L0(HeapDumpTest, TestPlainJSNativePointerNativeAddressInJSONSnapshot)
+{
+    static int realNativeObj = 0xABCD;
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+
+    // Create a plain JSNativePointer whose ExternalPointer points to realNativeObj
+    JSHandle<JSNativePointer> nativePointer =
+        factory->NewJSNativePointer(reinterpret_cast<void *>(&realNativeObj));
+
+    // Keep it alive via a local handle
+    Local<JSValueRef> local(JSHandle<JSTaggedValue>::Cast(nativePointer).GetAddress());
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    const std::string snapshotPath("test_plain_native_pointer_json.heapsnapshot");
+    tester.GenerateSnapShot(snapshotPath);
+
+    // The raw ExternalPointer address must appear directly (no callback transform)
+    std::stringstream ss;
+    ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
+        << "JSON snapshot must contain the plain native pointer address: " << ss.str();
+}
+
+#ifndef PANDA_TARGET_ARM32
+// UT5: The rawheap binary snapshot, after translate, contains the real native
 //      address as a hex string – verifying the DumpNonCMGCObject replacement
 //      and BuildJSWrappedObjectEdges translation path end-to-end.
 HWTEST_F_L0(HeapDumpTest, TestWrappedNapiObjectNativeAddressInRawHeapSnapshot)
@@ -2417,31 +2443,6 @@ HWTEST_F_L0(HeapDumpTest, TestWrappedNapiObjectNativeAddressInRawHeapSnapshot)
     ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
         << "Rawheap snapshot must contain the real native address: " << ss.str();
-}
-
-// UT5: A plain JSNativePointer (not referenced by JSWrappedNapiObject) has its
-//      ExternalPointer shown directly (no callback) in the hprof JSON snapshot.
-HWTEST_F_L0(HeapDumpTest, TestPlainJSNativePointerNativeAddressInJSONSnapshot)
-{
-    static int realNativeObj = 0xABCD;
-    ObjectFactory *factory = ecmaVm_->GetFactory();
-
-    // Create a plain JSNativePointer whose ExternalPointer points to realNativeObj
-    JSHandle<JSNativePointer> nativePointer =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(&realNativeObj));
-
-    // Keep it alive via a local handle
-    Local<JSValueRef> local(JSHandle<JSTaggedValue>::Cast(nativePointer).GetAddress());
-
-    HeapDumpTestHelper tester(ecmaVm_);
-    const std::string snapshotPath("test_plain_native_pointer_json.heapsnapshot");
-    tester.GenerateSnapShot(snapshotPath);
-
-    // The raw ExternalPointer address must appear directly (no callback transform)
-    std::stringstream ss;
-    ss << "0x" << std::hex << reinterpret_cast<uintptr_t>(&realNativeObj);
-    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
-        << "JSON snapshot must contain the plain native pointer address: " << ss.str();
 }
 
 // UT6: A plain JSNativePointer has its ExternalPointer shown in the rawheap snapshot
@@ -2470,4 +2471,69 @@ HWTEST_F_L0(HeapDumpTest, TestPlainJSNativePointerNativeAddressInRawHeapSnapshot
     ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, ss.str()))
         << "Rawheap snapshot must contain the plain native pointer address: " << ss.str();
 }
+#endif
+
+#ifdef PANDA_TARGET_ARM32
+HWTEST_F_L0(HeapDumpTest, TestBinaryDumpNotSupportedOnARM32)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::string rawHeapPath("test_arm32_binary_dump.rawheap");
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isFullGC = false;
+
+    fstream outputString(rawHeapPath, std::ios::out);
+    outputString.close();
+    outputString.clear();
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT);
+    ASSERT_TRUE(fd > 0);
+    FileDescriptorStream stream(fd);
+
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
+    bool result = heapProfile->DumpHeapSnapshot(&stream, dumpOption);
+    stream.EndOfStream();
+
+    ASSERT_FALSE(result) << "BinaryDump should return false on ARM32 platform";
+}
+
+HWTEST_F_L0(HeapDumpTest, TestJsonDumpSucceedsOnARM32)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::string jsonPath("test_arm32_json_dump.heapsnapshot");
+
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isFullGC = false;
+
+    tester.GenerateSnapShot(jsonPath);
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(jsonPath, "\"meta\""))
+        << "JSON snapshot should contain valid meta section";
+    ASSERT_TRUE(tester.MatchHeapDumpString(jsonPath, "\"nodes\""))
+        << "JSON snapshot should contain nodes section";
+    ASSERT_TRUE(tester.MatchHeapDumpString(jsonPath, "\"edges\""))
+        << "JSON snapshot should contain edges section";
+}
+
+HWTEST_F_L0(HeapDumpTest, TestSharedGCOOMDumpUsesJsonOnARM32)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+    std::string rawHeapPath("test_arm32_sharedgc_oom.rawheap");
+
+    int fd = open(rawHeapPath.c_str(), O_RDWR | O_CREAT, 0644);
+    ASSERT_TRUE(fd > 0);
+
+    FileDescriptorStream stream(fd);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isForSharedOOM = true;
+    dumpOption.isFullGC = false;
+
+    tester.DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+    stream.EndOfStream();
+
+    ASSERT_FALSE(tester.MatchHeapDumpString(rawHeapPath, "\"meta\""))
+        << "SharedGC OOM dump should use JSON format on ARM32 instead of binary";
+}
+#endif
 }

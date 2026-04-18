@@ -178,24 +178,14 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
                                           [[maybe_unused]] bool fromSharedGC)
 {
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
-    // Write in faultlog for heap leak.
-    int32_t fd;
+    DumpSnapShotOption doDumpOption = dumpOption;
 #if defined(PANDA_TARGET_ARM32)
-    DumpSnapShotOption doDumpOption;
     doDumpOption.dumpFormat = DumpFormat::JSON;
-    doDumpOption.isFullGC = dumpOption.isFullGC;
     doDumpOption.isSimplify = true;
     doDumpOption.isBeforeFill = false;
-    fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
-    if (fd < 0) {
-        LOG_ECMA(ERROR) << "OOM Dump Write FD failed, fd" << fd;
-        SEND_HISYSEVENT(ARKTS_RUNTIME, ARK_STATS_OOM, STATISTIC, "STATUS", 1,
-                        "MESSAGE", "request fd from dfx failed.",
-                        "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
-        return;
-    }
-#else
-    if (dumpOption.isDumpOOM && dumpOption.dumpFormat == DumpFormat::BINARY) {
+#endif
+    int32_t fd;
+    if (doDumpOption.isDumpOOM && doDumpOption.dumpFormat == DumpFormat::BINARY) {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
     } else {
         fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
@@ -207,12 +197,12 @@ void HeapProfiler::DumpHeapSnapshotForOOM([[maybe_unused]] const DumpSnapShotOpt
                         "OOM_TYPE", dumpOption.isForSharedOOM ? "SHARED_OOM" : "LOCAL_OOM");
         return;
     }
-#endif
+
     FileDescriptorStream stream(fd);
     if (fromSharedGC) {
-        DumpHeapSnapshotFromSharedGCForOOM(&stream, dumpOption);
+        DumpHeapSnapshotFromSharedGCForOOM(&stream, doDumpOption);
     } else {
-        DumpHeapSnapshot(&stream, dumpOption);
+        DumpHeapSnapshot(&stream, doDumpOption);
     }
 #else
     LOG_ECMA(ERROR) << "oom dump not supported.";
@@ -262,7 +252,11 @@ bool HeapProfiler::DumpHeapSnapshotFromSharedGC(Stream *stream, const DumpSnapSh
         ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
     });
-    BinaryDump(stream, dumpOption);
+    if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+        BinaryDump(stream, dumpOption);
+    } else {
+        DoDump(stream, nullptr, dumpOption);
+    }
     stream->EndOfStream();
     return true;
 }
@@ -400,6 +394,10 @@ void HeapProfiler::UpdateNodeAddressIdMap()
 
 bool HeapProfiler::BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOption)
 {
+#if defined(PANDA_TARGET_ARM32)
+    LOG_ECMA(ERROR) << "binary dump is not supported in ARM32.";
+    return false;
+#endif
     [[maybe_unused]] EcmaHandleScope ecmaHandleScope(vm_->GetAssociatedJSThread());
     DumpSnapShotOption option;
     std::vector<std::string> filePaths;
