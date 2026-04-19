@@ -76,8 +76,8 @@ private:
         constexpr size_t UINT8_LOOP_SIZE = 16; // neon 128bit / uint8_t 8bit = 16
         for (; p < vecEnd; p += UINT8_LOOP_SIZE) {
             uint8x16_t dataVec8 = vld1q_u8(p);
-            uint16x8_t dataVec16_1 = vmovl_u8(vget_low_u16(dataVec8));
-            uint16x8_t dataVec16_2 = vmovl_u8(vget_high_u16(dataVec8));
+            uint16x8_t dataVec16_1 = vmovl_u8(vget_low_u8(dataVec8));
+            uint16x8_t dataVec16_2 = vmovl_u8(vget_high_u8(dataVec8));
             uint32x4_t dataVec32_1 = vmovl_u16(vget_low_u16(dataVec16_1));
             uint32x4_t dataVec32_3 = vmovl_u16(vget_low_u16(dataVec16_2));
             uint32x4_t dataVec32_2 = vmovl_u16(vget_high_u16(dataVec16_1));
