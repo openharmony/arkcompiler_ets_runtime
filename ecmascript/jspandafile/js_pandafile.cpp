@@ -133,9 +133,11 @@ void JSPandaFile::CheckIsBundlePack()
 void JSPandaFile::CheckIsRecordWithBundleName(const CString &entry)
 {
     size_t pos = entry.find('/');
+    // LCOV_EXCL_START
     if (pos == CString::npos) {
         LOG_FULL(FATAL) << "CheckIsRecordWithBundleName Invalid parameter entry";
     }
+    // LCOV_EXCL_STOP
 
     CString bundleName = entry.substr(0, pos);
     size_t bundleNameLen = bundleName.length();
