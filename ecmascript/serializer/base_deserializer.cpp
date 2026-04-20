@@ -465,7 +465,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
                 moduleFileName_.resize(len);
                 data_->ReadRawData(ToUintPtr(moduleFileName_.data()), len, position_);
             } else {
-                LOG_ECMA(FATAL) << "ReadSingleEncodeData MODULE_FILE_NAME is empty.";
+                moduleFileName_ = "";
             }
             handledFieldSize = 0;
             break;
