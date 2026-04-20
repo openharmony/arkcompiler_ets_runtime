@@ -2061,6 +2061,7 @@ public:
     static void SetEnv(EcmaVM *vm, void *env);
     static void SetMultiThreadCheck(bool multiThreadCheck = true);
     static void SetErrorInfoEnhance(bool errorInfoEnhance = true);
+    static void SetIsMainProcess(bool isMainProcess);
 
     // Napi Heavy Logics fast path
     static Local<JSValueRef> NapiHasProperty(const EcmaVM *vm, uintptr_t nativeObj, uintptr_t key);

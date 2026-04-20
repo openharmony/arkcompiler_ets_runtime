@@ -33,9 +33,13 @@ void ModuleSnapshotInterfaces::Serialize(const EcmaVM *vm, const CString &path)
         }
         return;
     }
+    if (!ecmascript::Runtime::GetInstance()->IsMainProcess()) {
+        LOG_ECMA(DEBUG) << "ModuleSnapshotInterfaces::Serialize skiped in child process";
+        return;
+    }
     CString version = OhosVersionInfoTools::GetRomVersion();
     if (version.empty()) {
-        LOG_ECMA(ERROR) << "ModuleSnapshotInterface::Serialize rom version is empty";
+        LOG_ECMA(DEBUG) << "ModuleSnapshotInterface::Serialize rom version is empty";
         return;
     }
     ModulesSnapshotHelper::MarkModuleSnapshotLoaded();
@@ -52,7 +56,11 @@ void ModuleSnapshotInterfaces::Deserialize(const EcmaVM *vm, const CString &path
     }
     CString version = OhosVersionInfoTools::GetRomVersion();
     if (version.empty()) {
-        LOG_ECMA(ERROR) << "ModuleSnapshotInterface::Serialize rom version is empty";
+        LOG_ECMA(DEBUG) << "ModuleSnapshotInterface::Deserialize rom version is empty";
+        return;
+    }
+    if (!ecmascript::Runtime::GetInstance()->IsMainProcess()) {
+        LOG_ECMA(DEBUG) << "ModuleSnapshotInterfaces::Deserialize skiped in child process";
         return;
     }
     ModuleSnapshot::DeserializeData(vm, path, version);

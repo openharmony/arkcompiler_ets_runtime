@@ -146,7 +146,7 @@ MemMap CreateFileMap([[maybe_unused]] const char *fileName, [[maybe_unused]] int
         return MemMap();
     }
     FdsanExchangeOwnerTag(fd);
-    
+
     if (ftruncate(fd, fileSize) == -1) {
         LOG_ECMA(ERROR) << fileName << " file ftruncate failed";
         close(fd);
@@ -369,6 +369,17 @@ bool Chmod(const std::string_view &path, const std::string_view &mode, std::erro
     }
     errorCode.assign(errno, std::generic_category());
     return false;
+}
+
+std::error_code Rename(const char *oldPath, const char *newPath, bool existOk)
+{
+    if (!existOk && FileExist(newPath)) {
+        return std::error_code(EEXIST, std::generic_category());
+    }
+    if (rename(oldPath, newPath) == 0) {
+        return std::error_code();
+    }
+    return std::error_code(errno, std::generic_category());
 }
 
 PosixFile::PosixFile(

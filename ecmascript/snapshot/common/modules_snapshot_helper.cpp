@@ -43,6 +43,32 @@ int ModulesSnapshotHelper::g_featureLoaded_ = static_cast<int>(SnapshotFeatureSt
 char ModulesSnapshotHelper::g_stateFilePathBuffer_[PATH_MAX] = {};
 volatile bool ModulesSnapshotHelper::g_escaperTriggered_ {false};
 
+ModulesSnapshotHelper::FileGuard::FileGuard(const CString &path, uint32_t tid)
+    : target_(path), temp_(path + "." + CString(std::to_string(tid)))
+{
+}
+
+ModulesSnapshotHelper::FileGuard::~FileGuard()
+{
+    if (!done_) {
+        Unlink(temp_.c_str());
+    }
+}
+
+bool ModulesSnapshotHelper::FileGuard::Done()
+{
+    if (done_) {
+        return true;
+    }
+    auto err = Rename(temp_.c_str(), target_.c_str(), false);
+    if (err) {
+        LOG_ECMA(ERROR) << "Failed to rename to: '" << target_ << "', error: (" << err.value() << ")" << err.message();
+        return false;
+    }
+    done_ = true;
+    return true;
+}
+
 void ModulesSnapshotHelper::InitEscaper(EcmaVM *vm)
 {
     static std::once_flag flag{};

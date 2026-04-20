@@ -86,6 +86,16 @@ public:
         return isMainThreadAliveForMemoryPressure_;
     }
 
+    void SetIsMainProcess(bool isMainProcess)
+    {
+        isMainProcess_ = isMainProcess;
+    }
+
+    bool IsMainProcess() const
+    {
+        return isMainProcess_;
+    }
+
     template<class Callback>
     void GCIterateThreadList(const Callback &cb)
     {
@@ -520,6 +530,7 @@ private:
     int32_t aliveSendableGlobalHandleCount_ {0};
 
     bool inBackground_ {false};
+    bool isMainProcess_ {false};
 
     friend class EcmaVM;
     friend class JSThread;

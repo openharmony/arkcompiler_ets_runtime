@@ -349,8 +349,13 @@ bool ModuleSnapshot::WriteDataToFile(
     totalSize += data->bufferSize_;
     uint32_t checksumSize = sizeof(uint32_t);
     totalSize += checksumSize;
+    if (FileExist(filePath.c_str())) {
+        LOG_ECMA(WARN) << "ModuleSnapshot::WriteDataToFile snapshot file already exist: " << filePath;
+        return false;
+    }
+    ModulesSnapshotHelper::FileGuard guard(filePath, thread->GetCurrentThreadId());
     MemMap fileMapMem =
-        CreateFileMap(filePath.c_str(), totalSize, FILE_RDWR | FILE_CREAT | FILE_TRUNC, PAGE_PROT_READWRITE);
+        CreateFileMap(guard.GetTempPath().c_str(), totalSize, FILE_RDWR | FILE_CREAT | FILE_TRUNC, PAGE_PROT_READWRITE);
     if (fileMapMem.GetOriginAddr() == nullptr) {
         LOG_ECMA(ERROR) << "ModuleSnapshot::WriteDataToFile File mmap failed";
         return false;
@@ -470,7 +475,10 @@ bool ModuleSnapshot::WriteDataToFile(
         return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);
-    ModulesSnapshotHelper::SetReadOnly(filePath);
+    FileUnMap(fileMapMem);
+    if (guard.Done()) {
+        ModulesSnapshotHelper::SetReadOnly(filePath);
+    }
     LOG_ECMA(INFO) << "ModuleSnapshot::WriteDataToFile success";
     return true;
 }

@@ -93,6 +93,9 @@ char *LoadLibError();
 void PUBLIC_API DeleteFilesWithSuffix(const std::string &dirPath, const std::string &suffix);
 bool Chmod(const std::string_view &path, const std::string_view &mode);
 bool Chmod(const std::string_view &path, const std::string_view &mode, std::error_code &errorCode);
+// `existOk` default to true for compatibility, when `existOk` is false.
+// if `newPath` already exist, rename will fail with `EEXIST` error.
+std::error_code Rename(const char *oldPath, const char *newPath, bool existOk = true);
 
 class MemMapScope {
 public:
