@@ -43,6 +43,7 @@
     BUILTINS_WITH_OBJECT_STUB_BUILDER(T)            \
     BUILTINS_WITH_ARRAY_STUB_BUILDER(V)             \
     BUILTINS_WITH_SHARED_ARRAY_STUB_BUILDER(V)      \
+    BUILTINS_WITH_SHARED_MAP_STUB_BUILDER(V)        \
     BUILTINS_WITH_SET_STUB_BUILDER(D)               \
     BUILTINS_WITH_MAP_STUB_BUILDER(D)               \
     BUILTINS_WITH_FUNCTION_STUB_BUILDER(V)          \
@@ -136,7 +137,22 @@
     V(Has,      Set,   Undefined(),    SET_HAS)
 
 #define BUILTINS_WITH_SHARED_ARRAY_STUB_BUILDER(V)                                               \
-    V(Create,              SharedArray,   Undefined(),   SHARED_ARRAY_CREATE)
+    V(Create,              SharedArray,   Undefined(),   SHARED_ARRAY_CREATE)                    \
+    V(IsArray,             SharedArray,   Undefined(),   SHARED_ARRAY_IS_ARRAY)                  \
+    V(Push,                SharedArray,   Undefined(),   SHARED_ARRAY_PUSH)                      \
+    V(Pop,                 SharedArray,   Undefined(),   SHARED_ARRAY_POP)                       \
+    V(Find,                SharedArray,   Undefined(),   SHARED_ARRAY_FIND)                      \
+    V(LastIndexOf,         SharedArray,   Undefined(),   SHARED_ARRAY_LAST_INDEX_OF)             \
+    V(IndexOf,             SharedArray,   Undefined(),   SHARED_ARRAY_INDEX_OF)
+
+// SharedMap builtin stubs - separate from regular Map stubs per design requirement
+#define BUILTINS_WITH_SHARED_MAP_STUB_BUILDER(V)                                                \
+    V(Keys,                SharedMap,    Undefined(),   SHARED_MAP_KEYS)                        \
+    V(Values,              SharedMap,    Undefined(),   SHARED_MAP_VALUES)                      \
+    V(Set,                 SharedMap,    Undefined(),   SHARED_MAP_SET)                         \
+    V(Get,                 SharedMap,    Undefined(),   SHARED_MAP_GET)                         \
+    V(Has,                 SharedMap,    Undefined(),   SHARED_MAP_HAS)                         \
+    V(Delete,              SharedMap,    Undefined(),   SHARED_MAP_DELETE)
 
 #define BUILTINS_WITH_MAP_STUB_BUILDER(V)                                                        \
     V(Clear,    Map,   Undefined(),    MAP_CLEAR)                                                \

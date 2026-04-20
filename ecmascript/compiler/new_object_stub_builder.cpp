@@ -29,6 +29,7 @@
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_map.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 void NewObjectStubBuilder::NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent)
@@ -2316,7 +2317,7 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
         }
         Bind(&checkElementsDict);
         {
-            GateRef ctorHClass = Load(VariableType::JS_ANY(), glue, ctor, IntPtr(JSObject::HCLASS_OFFSET));
+            GateRef ctorHClass = LoadHClass(glue, ctor);
             GateRef elementsDic = GetPropertyInlinedProps(glue, ctor, ctorHClass,
                 Int32(ClassInfoExtractor::SENDABLE_ELEMENTS_INDEX));
             Label isHeapObj(env);
@@ -2324,9 +2325,7 @@ GateRef NewObjectStubBuilder::FastNewThisObject(GateRef glue, GateRef ctor)
             BRANCH(TaggedIsHeapObject(elementsDic), &isHeapObj, &fastPath);
             Bind(&isHeapObj);
             {
-                GateRef elementsDicObj = elementsDic;
-                GateRef elementsDicHClass = Load(VariableType::JS_ANY(), glue, elementsDicObj,
-                    IntPtr(JSObject::HCLASS_OFFSET));
+                GateRef elementsDicHClass = LoadHClass(glue, elementsDic);
                 GateRef elementsDicType = GetObjectType(elementsDicHClass);
                 BRANCH(Int32Equal(elementsDicType,
                     Int32(static_cast<int32_t>(JSType::TAGGED_DICTIONARY))), &hasElementsDict, &fastPath);
@@ -2721,6 +2720,37 @@ template void NewObjectStubBuilder::CreateJSCollectionIterator<JSSetIterator, JS
     Variable *result, Label *exit, GateRef set, GateRef kind);
 template void NewObjectStubBuilder::CreateJSCollectionIterator<JSMapIterator, JSMap>(
     Variable *result, Label *exit, GateRef set, GateRef kind);
+
+void NewObjectStubBuilder::CreateJSSharedMapIterator(
+    Variable *result, Label *exit, GateRef thisValue, GateRef kind)
+{
+    auto env = GetEnvironment();
+    GateRef iteratorHClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+        ConstantIndex::JS_SHARED_MAP_ITERATOR_CLASS_INDEX);
+    Label noException(env);
+    // Be careful. NO GC is allowed when initization is not complete.
+    // @ref panda::ecmascript::ObjectFactory::NewJSMapIterator : NewJSObject(hclassHandle);
+    AllocateInYoung(result, exit, &noException, iteratorHClass);
+    Bind(&noException);
+    {
+        StoreBuiltinHClass(glue_, result->ReadVariable(), iteratorHClass);
+        InitializeObject(result);
+
+        // SetIterated
+        GateRef iteratedMapOffset = IntPtr(JSSharedMapIterator::ITERATED_MAP_OFFSET);
+        Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratedMapOffset,
+            thisValue, MemoryAttribute::UnknownBarrier());
+
+        // SetIteratorNextIndex
+        GateRef nextIndexOffset = IntPtr(JSSharedMapIterator::NEXT_INDEX_OFFSET);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), nextIndexOffset, Int32(0));
+
+        // SetIterationKind
+        GateRef kindBitfieldOffset = IntPtr(JSSharedMapIterator::BIT_FIELD_OFFSET);
+        Store(VariableType::INT32(), glue_, result->ReadVariable(), kindBitfieldOffset, kind);
+        Jump(exit);
+    }
+}
 
 void NewObjectStubBuilder::CreateJSTypedArrayIterator(Variable *result, Label *exit, GateRef thisValue, GateRef kind)
 {

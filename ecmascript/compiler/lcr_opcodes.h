@@ -70,7 +70,9 @@ namespace panda::ecmascript::kungfu {
     V(ReadSp, READSP, GateFlags::NONE_FLAG, 0, 0, 0)                                            \
     V(ReservedReg, RESERVED_REG, GateFlags::NONE_FLAG, 0, 0, 0)                                 \
     LCR_BINARY_GATE_META_DATA_CACHE_LIST(V)                                                     \
-    LCR_UNARY_GATE_META_DATA_CACHE_LIST(V)
+    LCR_UNARY_GATE_META_DATA_CACHE_LIST(V)                                                      \
+    V(AtomicLoadAcquire, ATOMIC_LOAD_ACQUIRE, GateFlags::NO_WRITE, 0, 1, 1)                     \
+    V(AtomicCmpXchg, ATOMIC_CMPXCHG, GateFlags::NONE_FLAG, 0, 1, 3)
 
 #define LCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                           \
     V(Icmp, ICMP, GateFlags::NONE_FLAG, 0, 0, 2)                                        \

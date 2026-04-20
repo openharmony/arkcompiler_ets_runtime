@@ -663,6 +663,7 @@ public:
     GateRef GetInlinedPropsStartFromHClass(GateRef hClass);
     GateRef GetInlinedPropertiesFromHClass(GateRef hClass);
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
+    void ThrowContainerBusinessError(GateRef glue, int errorCode, int message);
     GateRef GetValueFromTaggedArray(GateRef glue, GateRef elements, GateRef index);
     GateRef GetDataPtrInTaggedArray(GateRef array);
     GateRef GetDataPtrInTaggedArray(GateRef array, GateRef index);
@@ -736,6 +737,8 @@ public:
     GateRef IsInternalString(GateRef string);
     GateRef IsDigit(GateRef ch);
     GateRef ComputeElementCapacity(GateRef oldLength);
+    GateRef ComputeElementCapacityWithHint(GateRef oldCapacity, GateRef hint);
+    GateRef ComputeElementCapacityHighGrowth(GateRef oldCapacity);
     GateRef ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef oldLength,
                                                GateRef maxNonInlinedFastPropsCapacity);
     GateRef FindTransitions(GateRef glue, GateRef hClass, GateRef key, GateRef attr, GateRef value);
@@ -1320,6 +1323,13 @@ public:
     GateRef OrdinaryToPrimitive(GateRef glue, GateRef value,
                                 PreferredPrimitiveType type, GateRef hir = Circuit::NullGate());
     GateRef CallFunction(GateRef glue, GateRef func);
+
+    GateRef AtomicCmpXchgI32(GateRef obj, GateRef offset, GateRef expected, GateRef desired);
+    GateRef AtomicLoadAcquireI32(GateRef base, GateRef offset);
+
+    GateRef GetSharedArrayLength(GateRef object);
+    void SetSharedArrayLength(GateRef glue, GateRef object, GateRef len);
+    GateRef GetSharedArrayHintLength(GateRef glue, GateRef object);
 
     enum CopyKind {
         SameArray,

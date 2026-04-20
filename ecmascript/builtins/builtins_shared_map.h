@@ -27,21 +27,21 @@
     /* Map.prototype.clear ( ) */                               \
     V("clear",   Clear,   0, MapClear)                          \
     /* Map.prototype.delete ( key ) */                          \
-    V("delete",  Delete,  1, MapDelete)                         \
+    V("delete",  Delete,  1, SharedMapDelete)                   \
     /* Map.prototype.entries ( ) */                             \
     V("entries", Entries, 0, MapEntries)                        \
     /* Map.prototype.forEach ( callbackfn [ , thisArg ] ) */    \
     V("forEach", ForEach, 1, MapForEach)                        \
     /* Map.prototype.get ( key ) */                             \
-    V("get",     Get,     1, INVALID)                           \
+    V("get",     Get,     1, SharedMapGet)                      \
     /* Map.prototype.has ( key ) */                             \
-    V("has",     Has,     1, MapHas)                            \
+    V("has",     Has,     1, SharedMapHas)                      \
     /* Map.prototype.keys ( ) */                                \
-    V("keys",    Keys,    0, MapKeys)                           \
+    V("keys",    Keys,    0, SharedMapKeys)                     \
     /* Map.prototype.set ( key, value ) */                      \
-    V("set",     Set,     2, MapSet)                            \
+    V("set",     Set,     2, SharedMapSet)                      \
     /* Map.prototype.values ( ) */                              \
-    V("values",  Values,  0, MapValues)
+    V("values",  Values,  0, SharedMapValues)
 
 namespace panda::ecmascript::builtins {
 class BuiltinsSharedMap : public base::BuiltinsBase {

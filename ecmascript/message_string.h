@@ -43,6 +43,10 @@ namespace panda::ecmascript {
     V(INT32_VALUE, "value: %ld")                                                                               \
     V(TargetTypeNotObject, "Type of target is not Object")                                                     \
     V(TargetTypeNotTypedArray, "The O is not a TypedArray.")                                                   \
+    V(ConcurrentApiScopeError, "Concurrent modification exception")                                            \
+    V(OnlyAcceptSendableValue1, "Parameter error.Only accept sendable value.")                                 \
+    V(OnlyAcceptSendableValue2, "Parameter error. Only accept sendable value.")                                \
+    V(PredicateNotCallable, "the predicate is not callable.")                                                  \
     V(CanNotGetNotEcmaObject, "Can not get Prototype on non ECMA Object")                                      \
     V(SendableArrayForJson, "Array not supported for SENDABLE_JSON")                                           \
     V(InstanceOfErrorTargetNotCallable, "InstanceOf error when target is not Callable")                        \

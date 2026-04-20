@@ -18,9 +18,11 @@
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_map.h"
+#include "ecmascript/linked_hash_table.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
 
 namespace panda::ecmascript::kungfu {
 template <typename LinkedHashTableType, typename LinkedHashTableObject>
@@ -353,7 +355,12 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     // new LinkedHashTable
     GateRef length = CalNewTaggedArrayLength(numberOfElements);
     NewObjectStubBuilder newBuilder(this);
-    GateRef array = newBuilder.NewTaggedArray(glue_, length);
+    GateRef array;
+    if (!isShared_) {
+        array = newBuilder.NewTaggedArray(glue_, length);
+    } else {
+        array = newBuilder.NewSTaggedArray(glue_, length);
+    }
 
     Label noException(env);
     BRANCH(TaggedIsException(array), &exit, &noException);
@@ -626,15 +633,28 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Sto
     GateRef newTargetHClass, Variable& returnValue)
 {
     NewObjectStubBuilder newBuilder(this);
-    GateRef res = newBuilder.NewJSObject(glue_, newTargetHClass);
+    GateRef res;
+    if (!isShared_) {
+        res = newBuilder.NewJSObject(glue_, newTargetHClass);
+    } else {
+        res = newBuilder.NewSObject(glue_, newTargetHClass);
+    }
     returnValue.WriteVariable(res);
     GateRef table;
     if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
         table = Create(Int32(LinkedHashMap::MIN_CAPACITY));
         Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSMap::LINKED_MAP_OFFSET), table);
+        if (isShared_) {
+            GateRef modRecordOffset = IntPtr(JSSharedMap::MOD_RECORD_OFFSET);
+            Store(VariableType::INT32(), glue_, *returnValue, modRecordOffset, Int32(0));
+        }
     } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
         table = Create(Int32(LinkedHashSet::MIN_CAPACITY));
         Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSSet::LINKED_SET_OFFSET), table);
+        if (isShared_) {
+            GateRef modRecordOffset = IntPtr(JSSharedSet::MOD_RECORD_OFFSET);
+            Store(VariableType::INT32(), glue_, *returnValue, modRecordOffset, Int32(0));
+        }
     }
 }
 
@@ -705,6 +725,66 @@ template void LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::Ge
     GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs,
     GateRef arg0, GateRef argv);
 template void LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::GenMapSetConstructor(
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs,
+    GateRef arg0, GateRef argv);
+
+// @ref panda::ecmascript::builtins::BuiltinsSharedMap::Constructor()
+// @ref panda::ecmascript::builtins::BuiltinsSharedSet::Constructor()
+template <typename LinkedHashTableType, typename LinkedHashTableObject>
+void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::GenSharedMapSetConstructor(
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs, GateRef arg0, GateRef argv)
+{
+    // When using GenSharedMapSetConstructor, isShared_ must be true.
+    auto env = GetEnvironment();
+    DEFVARIABLE(returnValue, VariableType::JS_ANY(), Undefined());
+
+    Label newTargetObject(env);
+    Label newTargetFunction(env);
+    Label slowPath(env);
+    Label exit(env);
+
+    Label isUndefinedOrNull(env);
+    BRANCH(TaggedIsUndefinedOrNull(arg0), &isUndefinedOrNull, &slowPath);
+
+    // 1. If NewTarget is undefined, throw exception in slowPath
+    Bind(&isUndefinedOrNull);
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetObject, &slowPath);
+
+    Bind(&newTargetObject);
+    BRANCH(IsJSFunction(glue_, newTarget), &newTargetFunction, &slowPath);
+
+    Bind(&newTargetFunction);
+    Label fastGetHClass(env);
+    GateRef mapOrSetFunc;
+    if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, GetCurrentGlobalEnv(),
+                                         GlobalEnv::SHARED_BUILTIN_MAP_FUNCTION_INDEX);
+    } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
+        mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue_, GetCurrentGlobalEnv(),
+                                         GlobalEnv::SHARED_BUILTIN_SET_FUNCTION_INDEX);
+    }
+
+    GateRef newTargetHClass =
+        Load(VariableType::JS_ANY(), glue_, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    BRANCH(LogicAndBuilder(env).And(Equal(mapOrSetFunc, newTarget)).And(IsJSHClass(glue_, newTargetHClass)).Done(),
+        &fastGetHClass, &slowPath);
+
+    Bind(&fastGetHClass);
+    StoreHashTableToNewObject(newTargetHClass, returnValue);
+    Jump(&exit);
+
+    Bind(&slowPath);
+    returnValue = CallBuiltinRuntime(glue_, { glue_, nativeCode, func, thisValue, numArgs, argv }, true);
+    Jump(&exit);
+
+    Bind(&exit);
+    Return(*returnValue);
+}
+
+template void LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject>::GenSharedMapSetConstructor(
+    GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs,
+    GateRef arg0, GateRef argv);
+template void LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject>::GenSharedMapSetConstructor(
     GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs,
     GateRef arg0, GateRef argv);
 

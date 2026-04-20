@@ -57,38 +57,31 @@ JSTaggedValue BuiltinsSharedArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
     // In NewJSObjectByConstructor(), will get prototype.
     // 5. ReturnIfAbrupt(proto).
 
-    // 22.1.1.3 Array(...items )
-    JSTaggedValue newArray = JSSharedArray::ArrayCreate(thread, JSTaggedNumber(argc), newTarget).GetTaggedValue();
+    JSHandle<JSTaggedValue> newArray = JSSharedArray::ArrayCreate(thread, JSTaggedNumber(argc), newTarget);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (!newArray.IsJSSharedArray()) {
+    if (!newArray->IsJSSharedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Failed to create array.", JSTaggedValue::Exception());
     }
 
     // 22.1.1.1 Array ( )
     if (argc == 0) {
         // 6. Return ArrayCreate(0, proto).
-        return newArray;
+        return newArray.GetTaggedValue();
     }
 
-    JSHandle<JSObject> newArrayHandle(thread, newArray);
-    // 8. Let k be 0.
-    // 9. Let items be a zero-origined List containing the argument items in order.
-    // 10. Repeat, while k < numberOfArgs
-    //   a. Let Pk be ToString(k).
-    //   b. Let itemK be items[k].
-    //   c. Let defineStatus be CreateDataProperty(array, Pk, itemK).
-    //   d. Assert: defineStatus is true.
-    //   e. Increase k by 1.
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    // Array(...items)
+    // SendableArray don't support dictionary mode. No need to check argc < JSObject::MAX_GAP like normal Array.
+    // Fill the elements array (already allocated by ArrayCreate) directly.
+    JSHandle<JSObject> newArrayHandle(thread, newArray.GetTaggedValue());
+    JSHandle<TaggedArray> elements(thread, newArrayHandle->GetElements(thread));
     JSMutableHandle<JSTaggedValue> itemK(thread, JSTaggedValue::Undefined());
     for (uint32_t k = 0; k < argc; k++) {
-        key.Update(JSTaggedValue(k));
         itemK.Update(GetCallArg(argv, k));
         if (!itemK->IsSharedType()) {
             auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
-        JSObject::CreateDataProperty(thread, newArrayHandle, key, itemK);
+        elements->Set(thread, k, itemK);
     }
     // 11. Assert: the value of array’s length property is numberOfArgs.
     // 12. Return array.

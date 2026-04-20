@@ -30,6 +30,7 @@
 #include "ecmascript/lexical_env.h"
 #include "ecmascript/marker_cell.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/transitions_dictionary.h"
 #include "common_components/heap/allocator/region_desc.h"
 #include "objects/base_state_word.h"
@@ -1341,6 +1342,64 @@ GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
     return ret;
 }
 
+GateRef StubBuilder::ComputeElementCapacityWithHint(GateRef oldCapacity, GateRef hint)
+{
+    // Reference: JSObject::ComputeElementCapacityWithHint
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(newCapacity, VariableType::INT32(), Int32(0));
+
+    Label check1(env);
+    Label check2(env);
+    Label checkFactor(env);
+    Label updateCapa(env);
+
+    // Check if (oldCapacity >= hint) || (hint < MIN_ELEMENTS_HINT_LENGTH) || (hint >= MAX_ELEMENTS_HINT_LENGTH)
+    BRANCH(Int32GreaterThanOrEqual(oldCapacity, hint), &exit, &check1);
+    Bind(&check1);
+    BRANCH(Int32LessThan(hint, Int32(JSObject::MIN_ELEMENTS_HINT_LENGTH)), &exit, &check2);
+    Bind(&check2);
+    BRANCH(Int32GreaterThanOrEqual(hint, Int32(JSObject::MAX_ELEMENTS_HINT_LENGTH)), &exit, &checkFactor);
+
+    // Check if (hint / oldCapacity) <= ELEMENTS_HINT_FACTOR
+    Bind(&checkFactor);
+    GateRef factorLimit = Int32Mul(oldCapacity, Int32(JSObject::ELEMENTS_HINT_FACTOR));
+    BRANCH(Int32LessThanOrEqual(hint, factorLimit), &updateCapa, &exit);
+    Bind(&updateCapa);
+    newCapacity = hint;
+    Jump(&exit);
+
+    Bind(&exit);
+    auto ret = *newCapacity;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ComputeElementCapacityHighGrowth(GateRef oldCapacity)
+{
+    // Reference: JSObject::ComputeElementCapacityHighGrowth
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(newCapacity, VariableType::INT32(), Int32(0));
+
+    // 2 means double factor
+    newCapacity = Int32Mul(oldCapacity, Int32(2));
+    Label miniLength(env);
+    BRANCH(Int32GreaterThan(*newCapacity, Int32(JSObject::MIN_ELEMENTS_LENGTH)), &exit, &miniLength);
+    Bind(&miniLength);
+    newCapacity = Int32(JSObject::MIN_ELEMENTS_LENGTH);
+    Jump(&exit);
+
+    Bind(&exit);
+    auto ret = *newCapacity;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::CallGetterHelper(
     GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback, GateRef hir)
 {
@@ -1758,6 +1817,13 @@ void StubBuilder::ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val)
     GateRef msgIntId = Int32(messageId);
     CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(msgIntId) });
     Return(val);
+}
+
+void StubBuilder::ThrowContainerBusinessError(GateRef glue, int errorCode, int messageId)
+{
+    GateRef code = Int32(errorCode);
+    GateRef msgIntId = Int32(messageId);
+    CallRuntime(glue, RTSTUB_ID(ThrowContainerBusinessError), { IntToTaggedInt(code), IntToTaggedInt(msgIntId) });
 }
 
 GateRef StubBuilder::TaggedToRepresentation(GateRef value)
@@ -3490,6 +3556,49 @@ void StubBuilder::SetArrayLength(GateRef glue, GateRef object, GateRef len)
 {
     GateRef lengthOffset = IntPtr(panda::ecmascript::JSArray::LENGTH_OFFSET);
     Store(VariableType::INT32(), glue, object, lengthOffset, len);
+}
+
+GateRef StubBuilder::GetSharedArrayLength(GateRef object)
+{
+    GateRef lengthOffset = IntPtr(panda::ecmascript::JSSharedArray::LENGTH_OFFSET);
+    GateRef result = LoadPrimitive(VariableType::INT32(), object, lengthOffset);
+    return result;
+}
+
+void StubBuilder::SetSharedArrayLength(GateRef glue, GateRef object, GateRef len)
+{
+    GateRef lengthOffset = IntPtr(panda::ecmascript::JSSharedArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, object, lengthOffset, len);
+}
+
+GateRef StubBuilder::GetSharedArrayHintLength(GateRef glue, GateRef object)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    // Reference: JSSharedArray::GetHintLength
+    GateRef trackInfoOffset = IntPtr(panda::ecmascript::JSSharedArray::TRACK_INFO_OFFSET);
+    GateRef trackInfo = Load(VariableType::JS_ANY(), glue, object, trackInfoOffset);
+
+    Label isInt(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+
+    BRANCH(TaggedIsInt(trackInfo), &isInt, &exit);
+    Bind(&isInt);
+    {
+        GateRef hint = GetInt32OfTInt(trackInfo);
+        Label hintPositive(env);
+        BRANCH(Int32GreaterThan(hint, Int32(0)), &hintPositive, &exit);
+        Bind(&hintPositive);
+        result = hint;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 
 GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef argHolder,
