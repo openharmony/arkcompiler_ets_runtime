@@ -18,7 +18,6 @@
 #include <unordered_map>
 #include <string>
 
-#include "ecmascript/dfx/hprof/heap_marker.h"
 #include "ecmascript/ecma_string-inl.h"
 
 namespace panda::ecmascript {
@@ -107,74 +106,6 @@ void HeapSnapshot::PrepareSnapshot()
         PrepareTraceInfo();
     }
 }
-
-// ReachableVisitor: RootVisitor + BaseObjectVisitor for BFS reachability marking.
-// Defined at file scope (anonymous namespace) so it can be reused cleanly.
-// The onMark_ callback is a lambda captured inside UpdateNodes, granting it
-// access to HeapSnapshot's private GenerateNode() without exposing that method.
-namespace {
-template <typename Fn>
-class ReachableVisitor final : public RootVisitor,
-                               public BaseObjectVisitor<ReachableVisitor<Fn>> {
-public:
-    ReachableVisitor(HeapMarker &marker, CQueue<TaggedObject *> &worklist, Fn onMark)
-        : marker_(marker), worklist_(worklist), onMark_(onMark) {}
-    ~ReachableVisitor() override = default;
-
-    // RootVisitor interface
-    void VisitRoot([[maybe_unused]] Root type, ObjectSlot slot) override
-    {
-        TryMark(JSTaggedValue(slot.GetTaggedType()));
-    }
-    void VisitRangeRoot([[maybe_unused]] Root type, ObjectSlot start, ObjectSlot end) override
-    {
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            TryMark(JSTaggedValue(slot.GetTaggedType()));
-        }
-    }
-    void VisitBaseAndDerivedRoot([[maybe_unused]] Root type, ObjectSlot base,
-                                  [[maybe_unused]] ObjectSlot derived,
-                                  [[maybe_unused]] uintptr_t baseOldObject) override
-    {
-    }
-
-    // BaseObjectVisitor interface – called by ObjectXRay::VisitObjectBody for
-    // each contiguous slot range in an object.
-    void VisitObjectRangeImpl([[maybe_unused]] BaseObject *rootObject,
-                               uintptr_t startAddr, uintptr_t endAddr,
-                               VisitObjectArea area) override
-    {
-        // NATIVE_POINTER: raw C++ pointers, not tagged heap refs
-        // RAW_DATA: primitive data (e.g. numeric array elements), not heap refs
-        if (area == VisitObjectArea::NATIVE_POINTER || area == VisitObjectArea::RAW_DATA) {
-            return;
-        }
-        ObjectSlot end(endAddr);
-        for (ObjectSlot slot(startAddr); slot < end; slot++) {
-            JSTaggedValue value(slot.GetTaggedType());
-            TryMark(value);
-        }
-    }
-
-private:
-    void TryMark(JSTaggedValue value)
-    {
-        if (value.GetRawData() == 0 || !value.IsHeapObject() || value.IsWeak()) {
-            return;
-        }
-        // Mark() returns true only on first visit, preventing cycles
-        if (!marker_.Mark(value.GetRawData())) {
-            return;
-        }
-        onMark_(value);
-        worklist_.push(value.GetTaggedObject());
-    }
-
-    HeapMarker &marker_;
-    CQueue<TaggedObject *> &worklist_;
-    Fn onMark_;
-};
-}  // namespace
 
 void HeapSnapshot::UpdateNodes(bool isInFinish)
 {
