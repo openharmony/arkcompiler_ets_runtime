@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_MODULE_TOOLS_H
 #define ECMASCRIPT_MODULE_TOOLS_H
 
+#include "ecmascript/base/string_helper.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/js_module_manager.h"
@@ -25,26 +26,39 @@ namespace panda::ecmascript {
 
 class ModuleTraceScope {
 public:
-    ModuleTraceScope(JSThread *thread, [[maybe_unused]]const CString traceInfo)
-        : enableESMTrace_(thread->GetEcmaVM()->GetJSOptions().EnableESMTrace())
+    template<typename... Args>
+    static ModuleTraceScope Open(JSThread *thread, const Args&... args)
     {
-        if (enableESMTrace_) {
-            ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str());
+        if (!thread->GetEcmaVM()->GetJSOptions().EnableESMTrace()) {
+            return ModuleTraceScope();
         }
+        return ModuleTraceScope(base::ConcatToCString(args...));
     }
-
     ~ModuleTraceScope()
     {
         if (enableESMTrace_) {
             ECMA_BYTRACE_FINISH_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK);
         }
     }
+
 private:
+    ModuleTraceScope(const CString &info) : enableESMTrace_(true)
+    {
+        ECMA_BYTRACE_START_TRACE(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, info.c_str());
+    }
+    ModuleTraceScope() : enableESMTrace_(false) {}
+
     bool enableESMTrace_ {false};
 };
 
 class ModuleLoggerTimeScope {
 public:
+    void* operator new[](size_t size) = delete;
+    void operator delete[](void* ptr) = delete;
+    void* operator new(size_t size) = delete;
+    void operator delete(void* ptr) = delete;
+    // disable construct from temporary CString
+    ModuleLoggerTimeScope(JSThread *thread, CString &&moduleRequestName) = delete;
     ModuleLoggerTimeScope(JSThread *thread, const CString &moduleRequestName)
         : moduleRequestName_(moduleRequestName), moduleLogger_(thread->GetModuleLogger())
     {
@@ -61,7 +75,8 @@ public:
     }
 private:
     double startTime_ {};
-    CString moduleRequestName_;
+    // this should be replace to value type, if template constructor is supported in the future.
+    const CString& moduleRequestName_;
     ModuleLogger *moduleLogger_ {nullptr};
 };
 

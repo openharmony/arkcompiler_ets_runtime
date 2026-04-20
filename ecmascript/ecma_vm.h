@@ -1633,12 +1633,12 @@ private:
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
                                           const JSPandaFile *jsPandaFile, std::string_view entryPoint,
                                           CJSInfo *cjsInfo = nullptr);
-    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, std::string_view entryPoint,
+    Expected<JSTaggedValue, bool> InvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile, const CString& entryPoint,
                                                        const ExecuteTypes &executeType = ExecuteTypes::STATIC);
     Expected<JSTaggedValue, bool> InvokeEcmaEntrypointForHotReload(
-        const JSPandaFile *jsPandaFile, std::string_view entryPoint, const ExecuteTypes &executeType);
+        const JSPandaFile *jsPandaFile, const CString& entryPoint, const ExecuteTypes &executeType);
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
-        std::string_view entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType);
+        const CString& entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType);
 
     void InitTypedArrayNameTable(const GlobalEnvConstants *globalConst);
 

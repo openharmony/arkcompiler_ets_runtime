@@ -31,7 +31,7 @@ public:
 
     ~JSPandaFileManager();
 
-    JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile, std::string_view entryPoint);
+    JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile, const CString &entryPoint);
 
     template<ForHybridApp isHybrid = ForHybridApp::Normal>
     std::shared_ptr<JSPandaFile> LoadJSPandaFile(JSThread *thread, const CString &filename, std::string_view entryPoint,

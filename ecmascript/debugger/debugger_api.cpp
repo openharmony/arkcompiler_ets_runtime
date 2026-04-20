@@ -887,7 +887,8 @@ Local<FunctionRef> DebuggerApi::GenerateFuncFromBuffer(const EcmaVM *ecmaVm, con
         return JSValueRef::Undefined(ecmaVm);
     }
 
-    JSHandle<Program> program = mgr->GenerateProgram(const_cast<EcmaVM *>(ecmaVm), jsPandaFile.get(), entryPoint);
+    JSHandle<Program> program = mgr->GenerateProgram(
+        const_cast<EcmaVM *>(ecmaVm), jsPandaFile.get(), CString(entryPoint));
     JSTaggedValue func = program->GetMainFunction(ecmaVm->GetJSThread());
     return JSNApiHelper::ToLocal<FunctionRef>(JSHandle<JSTaggedValue>(ecmaVm->GetJSThread(), func));
 }

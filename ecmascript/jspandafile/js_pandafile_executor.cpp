@@ -86,9 +86,8 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFil
                     ", entryPoint:" + entryPoint.data() + ",";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, traceInfo.c_str(), "");
     CString entry = entryPoint.data();
-    CString name = filename;
 
-    return ExecuteFromFile(thread, name, entry, needUpdate, executeType);
+    return ExecuteFromFile(thread, filename, entry, needUpdate, executeType);
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromAbcFile(JSThread *thread, const CString &filename,
@@ -216,10 +215,10 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::CommonExecuteBuffer(JSThread 
 }
 
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                           std::string_view entryPoint, const ExecuteTypes &executeType)
+                                                           const CString &entryPoint, const ExecuteTypes &executeType)
 {
     ThreadManagedScope managedScope(thread);
-    ModuleTraceScope moduleTraceScope(thread, "JSPandaFileExecutor::Execute:" + CString(entryPoint));
+    ModuleTraceScope moduleTraceScope = ModuleTraceScope::Open(thread, "JSPandaFileExecutor::Execute:", entryPoint);
     // For Ark application startup
     EcmaVM *vm = thread->GetEcmaVM();
 

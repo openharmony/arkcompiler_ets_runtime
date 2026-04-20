@@ -105,7 +105,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, GenerateProgram)
     pf->SetMethodLiteralToMap(method2);
     pfManager->AddJSPandaFile(pf);
 
-    JSHandle<ecmascript::Program> program1 = pfManager->GenerateProgram(vm, pf.get(), std::string_view("func"));
+    JSHandle<ecmascript::Program> program1 = pfManager->GenerateProgram(vm, pf.get(), "func");
     JSHandle<JSFunction> mainFunc1(thread, program1->GetMainFunction(thread));
     JSHandle<JSTaggedValue> funcName1 = JSFunction::GetFunctionName(thread, JSHandle<JSFunctionBase>(mainFunc1));
     EXPECT_STREQ(EcmaStringAccessor(JSHandle<EcmaString>::Cast(funcName1)).ToCString(thread).c_str(), "func");
@@ -517,8 +517,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, ParseConstPool_ViaGenerateProgram)
     pfManager->AddJSPandaFile(pf);
 
     // GenerateProgram internally calls ParseConstPool
-    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(
-        vm, pf.get(), std::string_view("foo"));
+    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(vm, pf.get(), "foo");
 
     EXPECT_FALSE(program.GetTaggedValue().IsUndefined());
 }
@@ -558,8 +557,7 @@ HWTEST_F_L0(PandaFileTranslatorTest, ParseConstPool_MultipleTypes)
     pfManager->AddJSPandaFile(pf);
 
     // GenerateProgram internally calls ParseConstPool
-    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(
-        vm, pf.get(), std::string_view("foo"));
+    JSHandle<ecmascript::Program> program = pfManager->GenerateProgram(vm, pf.get(), "foo");
 
     EXPECT_FALSE(program.GetTaggedValue().IsUndefined());
 }
