@@ -1127,30 +1127,6 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
     GateRef callTarget = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
-    Label exit(&builder_);
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-
-    if (isWithName) {
-        // Callable pre-check for WITHNAME variant
-        size_t stringIdIndex = numIns - 2;  // 2: second to last
-        GateRef funcName = GetStringFromConstPool(gate, acc_.GetValueIn(gate, stringIdIndex), stringIdIndex);
-
-        Label isHeapObj(&builder_);
-        Label funcIsCallable(&builder_);
-        Label funcNotCallable(&builder_);
-        BRANCH_CIR_LIKELY(builder_.TaggedIsHeapObject(callTarget), &isHeapObj, &funcNotCallable);
-        builder_.Bind(&isHeapObj);
-        BRANCH_CIR_LIKELY(builder_.IsCallable(glue_, callTarget), &funcIsCallable, &funcNotCallable);
-
-        builder_.Bind(&funcNotCallable);
-        {
-            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
-            result = builder_.ExceptionConstant();
-            builder_.Jump(&exit);
-        }
-
-        builder_.Bind(&funcIsCallable);
-    }
 
     std::vector<GateRef> vec { glue_, actualArgc, actualArgv, callTarget, newTarget, thisObj };
     // add common args
@@ -1162,7 +1138,33 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
     for (size_t i = fixedInputsNum; i < numIns - callTargetIndex - stringIdExtra; i++) {
         vec1.emplace_back(acc_.GetValueIn(gate, i));
     }
+
+    if (!isWithName) {
+        LowerToJSCall(gate, vec, vec1);
+        return;
+    }
+
+    size_t stringIdIndex = numIns - 2;  // 2: second to last
+    GateRef funcName = GetStringFromConstPool(gate, acc_.GetValueIn(gate, stringIdIndex), stringIdIndex);
+    Label exit(&builder_);
     Label jsCallExit(&builder_);
+    Label isHeapObj(&builder_);
+    Label funcIsCallable(&builder_);
+    Label funcNotCallable(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    BRANCH_CIR_LIKELY(builder_.TaggedIsHeapObject(callTarget), &isHeapObj, &funcNotCallable);
+    builder_.Bind(&isHeapObj);
+    BRANCH_CIR_LIKELY(builder_.IsCallable(glue_, callTarget), &funcIsCallable, &funcNotCallable);
+
+    builder_.Bind(&funcNotCallable);
+    {
+        LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
+        result = builder_.ExceptionConstant();
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&funcIsCallable);
     CallCoStubBuilder::LowerFastCall(gate, glue_, builder_, callTarget, actualArgc, vec, vec1, &result,
                                      &jsCallExit, false, g_isEnableCMCGC);
     builder_.Bind(&jsCallExit);
@@ -1186,30 +1188,6 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate)
     GateRef callTarget = acc_.GetValueIn(gate, numIns - callTargetIndex);
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     GateRef newTarget = builder_.Undefined();
-    Label exit(&builder_);
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-
-    if (isWithName) {
-        // Callable pre-check for WITHNAME variant
-        size_t stringIdIndex = numIns - 2;  // 2: second to last
-        GateRef funcName = GetStringFromConstPool(gate, acc_.GetValueIn(gate, stringIdIndex), stringIdIndex);
-
-        Label isHeapObj(&builder_);
-        Label funcIsCallable(&builder_);
-        Label funcNotCallable(&builder_);
-        BRANCH_CIR_LIKELY(builder_.TaggedIsHeapObject(callTarget), &isHeapObj, &funcNotCallable);
-        builder_.Bind(&isHeapObj);
-        BRANCH_CIR_LIKELY(builder_.IsCallable(glue_, callTarget), &funcIsCallable, &funcNotCallable);
-
-        builder_.Bind(&funcNotCallable);
-        {
-            LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
-            result = builder_.ExceptionConstant();
-            builder_.Jump(&exit);
-        }
-
-        builder_.Bind(&funcIsCallable);
-    }
 
     std::vector<GateRef> vec {glue_, actualArgc, actualArgv, callTarget, newTarget, thisObj};
     // add common args
@@ -1221,7 +1199,33 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate)
     for (size_t i = fixedInputsNum; i < numIns - callTargetIndex - stringIdExtra; i++) {
         vec1.emplace_back(acc_.GetValueIn(gate, i));
     }
+
+    if (!isWithName) {
+        LowerToJSCall(gate, vec, vec1);
+        return;
+    }
+
+    size_t stringIdIndex = numIns - 2;  // 2: second to last
+    GateRef funcName = GetStringFromConstPool(gate, acc_.GetValueIn(gate, stringIdIndex), stringIdIndex);
+    Label exit(&builder_);
     Label jsCallExit(&builder_);
+    Label isHeapObj(&builder_);
+    Label funcIsCallable(&builder_);
+    Label funcNotCallable(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+
+    BRANCH_CIR_LIKELY(builder_.TaggedIsHeapObject(callTarget), &isHeapObj, &funcNotCallable);
+    builder_.Bind(&isHeapObj);
+    BRANCH_CIR_LIKELY(builder_.IsCallable(glue_, callTarget), &funcIsCallable, &funcNotCallable);
+
+    builder_.Bind(&funcNotCallable);
+    {
+        LowerCallRuntime(gate, RTSTUB_ID(ThrowNotCallableException), {funcName}, true);
+        result = builder_.ExceptionConstant();
+        builder_.Jump(&exit);
+    }
+
+    builder_.Bind(&funcIsCallable);
     CallCoStubBuilder::LowerFastCall(gate, glue_, builder_, callTarget, actualArgc, vec, vec1, &result,
                                      &jsCallExit, false, g_isEnableCMCGC);
     builder_.Bind(&jsCallExit);
