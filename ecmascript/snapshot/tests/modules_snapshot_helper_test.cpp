@@ -15,8 +15,6 @@
 
 #include "ecmascript/tests/test_helper.h"
 #include "jsnapi_expo.h"
-#include <string>
-#include <string_view>
 
 #define private public
 #define protected public
@@ -25,7 +23,10 @@
 #undef protected
 
 #include "gtest/gtest.h"
+
 #include <cstdio>
+#include <fstream>
+#include <string>
 #include <system_error>
 
 namespace panda::test {
@@ -71,18 +72,18 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ModulesSnapshotHelper_UpdateStateFromFile
 {
     auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
     auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
     // init cached snapshot state file path
-    ModulesSnapshotHelper::UpdateFromStateFile(MODULES_SNAPSHOT_FILE_DIR.data());
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
     ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
     ModulesSnapshotHelper::g_featureLoaded_ =
         static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
     ModulesSnapshotHelper::TryDisableSnapshot(0);
-    ModulesSnapshotHelper::UpdateFromStateFile(MODULES_SNAPSHOT_FILE_DIR.data());
-    ASSERT_TRUE(ModulesSnapshotHelper::IsPandafileSnapshotDisabled(MODULES_SNAPSHOT_FILE_DIR.data()));
-    ASSERT_TRUE(ModulesSnapshotHelper::IsModuleSnapshotDisabled(MODULES_SNAPSHOT_FILE_DIR.data()));
-    std::remove(
-        (std::string(MODULES_SNAPSHOT_FILE_DIR) + std::string(ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME))
-            .c_str());
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    EXPECT_TRUE(ModulesSnapshotHelper::IsPandafileSnapshotDisabled(snapshotDir));
+    EXPECT_TRUE(ModulesSnapshotHelper::IsModuleSnapshotDisabled(snapshotDir));
+    std::remove((snapshotDir + CString(ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME)).c_str());
     ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
     ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
 }
@@ -97,6 +98,33 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ModulesSnapshotHelper_UpdateStateFromFile
     ASSERT_EQ(std::string_view(ModulesSnapshotHelper::g_stateFilePathBuffer_), pathA);
     ModulesSnapshotHelper::GetDisabledFeature(testFileDirB.data());
     ASSERT_EQ(std::string_view(ModulesSnapshotHelper::g_stateFilePathBuffer_), pathB);
+}
+
+HWTEST_F_L0(ModulesSnapshotHelperTest, ModulesSnapshotHelper_TryDisableSnapshot_OnANR)
+{
+    auto originalFeatureState = ModulesSnapshotHelper::g_featureState_;
+    auto originalFeatureLoaded = ModulesSnapshotHelper::g_featureLoaded_;
+    ModulesSnapshotHelper::g_escaperTriggered_ = false;
+    auto snapshotDir = CString(MODULES_SNAPSHOT_FILE_DIR);
+    // init cached snapshot state file path
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::PANDAFILE);
+    ModulesSnapshotHelper::g_featureLoaded_ =
+        static_cast<int>(SnapshotFeatureState::PANDAFILE) | static_cast<int>(SnapshotFeatureState::MODULE);
+    ModulesSnapshotHelper::TryDisableSnapshotOnANR();
+    ModulesSnapshotHelper::UpdateFromStateFile(snapshotDir);
+    EXPECT_TRUE(ModulesSnapshotHelper::IsPandafileSnapshotDisabled(snapshotDir));
+    EXPECT_TRUE(ModulesSnapshotHelper::IsModuleSnapshotDisabled(snapshotDir));
+    auto stateFilePath = base::ConcatToCString(snapshotDir, ModulesSnapshotHelper::MODULE_SNAPSHOT_STATE_FILE_NAME);
+    std::ifstream ifs(stateFilePath.c_str());
+    EXPECT_TRUE(ifs.is_open());
+    std::string content;
+    std::getline(ifs, content);
+    EXPECT_TRUE(content.find(ModulesSnapshotHelper::DISABLE_APPLICATION_NOT_RESPONDING) != std::string::npos);
+    ifs.close();
+    std::remove(stateFilePath.c_str());
+    ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
+    ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
 }
 
 } // namespace panda::test

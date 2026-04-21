@@ -2103,6 +2103,7 @@ public:
 
     static uintptr_t CreateStrongRef(const EcmaVM *vm, Local<JSValueRef> local);
     static void DeleteStrongRef(const EcmaVM *vm, uintptr_t strongRef);
+    static void NotifyOnANR();
 
     JSNAPI_PUBLIC_HYBRID_EXTENSION();
 private:

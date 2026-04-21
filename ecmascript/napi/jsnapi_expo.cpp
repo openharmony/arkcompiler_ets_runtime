@@ -3028,6 +3028,11 @@ void JSNApi::DeleteStrongRef(const EcmaVM *vm, uintptr_t strongRef)
     DisposeGlobalHandleAddr(vm, strongRef);
 }
 
+void JSNApi::NotifyOnANR()
+{
+    EcmaVM::NotifyANR();
+}
+
 bool ObjectRef::Set(const EcmaVM *vm, uint32_t key, Local<JSValueRef> value)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);

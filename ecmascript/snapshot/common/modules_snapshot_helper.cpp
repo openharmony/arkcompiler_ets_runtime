@@ -27,8 +27,10 @@
 #include "ecmascript/platform/time.h"
 
 #include <csignal>
+#include <cstddef>
 #include <mutex>
 #include <securec.h>
+#include <string>
 #include <string_view>
 #include <system_error>
 #include <unistd.h>
@@ -39,17 +41,24 @@ bool ModulesSnapshotHelper::g_escaperDisabled_ = false;
 int ModulesSnapshotHelper::g_featureState_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
 int ModulesSnapshotHelper::g_featureLoaded_ = static_cast<int>(SnapshotFeatureState::DEFAULT);
 char ModulesSnapshotHelper::g_stateFilePathBuffer_[PATH_MAX] = {};
-volatile bool g_escaperTriggered {false};
+volatile bool ModulesSnapshotHelper::g_escaperTriggered_ {false};
 
-void ModulesSnapshotHelper::RegisterSignalHandler()
+void ModulesSnapshotHelper::InitEscaper(EcmaVM *vm)
 {
     static std::once_flag flag{};
-    std::call_once(flag, []() {
+    std::call_once(flag, [vm]() {
         // feature is not enabled, do not need to watch
         if ((g_featureState_ & static_cast<int>(SnapshotFeatureState::MODULE)) != 0 &&
             (g_featureState_ & static_cast<int>(SnapshotFeatureState::PANDAFILE)) != 0) {
             return;
         }
+
+        vm->RegisterExtraJSCrashMessageCallback("modules snapshot escaper", []([[maybe_unused]] const EcmaVM* vm) {
+            if (DoNeedEscape()) {
+                TryDisableSnapshot(vm->GetJSThread());
+            }
+            return "";
+        });
 
         constexpr const int SIGDUMP = 35;
         std::vector registeredSignos{
@@ -87,14 +96,13 @@ void ModulesSnapshotHelper::RegisterSignalHandler()
     });
 }
 
+// escaper entry of signal handler, it would be called when cpp crash occurs
 bool ModulesSnapshotHelper::SigchainHandler(int signo, void *info, void *ucontext)
 {
-    // snapshot feature is not loaded
-    if (g_featureLoaded_ == static_cast<int>(SnapshotFeatureState::DEFAULT) || g_escaperTriggered) {
+    // snapshot feature is not loaded, already escaped or escaper is disabled, do not need to escape
+    if (!DoNeedEscape()) {
         return false;
     }
-    g_escaperTriggered = true;
-
     TryDisableSnapshot(signo);
     return false;
 }
@@ -117,9 +125,23 @@ void ModulesSnapshotHelper::MarkSnapshotDisabledByOption()
 
 bool ModulesSnapshotHelper::TryDisableSnapshot(int reason)
 {
+    if (reason <= 0) {
+        return TryDisableSnapshot(DISABLE_REASON_UNKNOWN);
+    }
+    constexpr size_t SIG_MAX_DIGITS = 2;
+    char sigBuf[SIG_MAX_DIGITS]{};
+    auto written = IntToString(reason, sigBuf, SIG_MAX_DIGITS);
+    return TryDisableSnapshot(DISABLE_REASON_SIGNAL, std::string_view(sigBuf, written));
+}
+
+bool ModulesSnapshotHelper::TryDisableSnapshot(const std::string_view& reason, const std::string_view& extraInfo)
+{
     // get crrent timestamp att first
     int64_t timestamp = GetCurrentTimestamp();
     PosixFile stateFile(g_stateFilePathBuffer_, "w");
+    if (!stateFile.IsValid()) {
+        return false;
+    }
     std::string_view disableWord = "";
     // it means both snapshot feature is enabled at least during the process running,
     // disable module at first
@@ -131,20 +153,16 @@ bool ModulesSnapshotHelper::TryDisableSnapshot(int reason)
         disableWord = &STATE_WORD_ALL_SNAPSHOT_DISABLED;
     }
 
-    stateFile.Write(disableWord);
-    stateFile.Write(":", 1);
-    if (reason == 0) {
-        LOG_ECMA(WARN) << "js crash occurred, try to disable snapshot";
-        stateFile.Write(DISABLE_REASON_UNCAUGHT_EXCEPTION);
-    } else if (reason > 0) {
-        stateFile.Write(DISABLE_REASON_SIGNAL);
-        constexpr size_t SIG_MAX_DIGITS = 2;
-        char sigBuf[SIG_MAX_DIGITS]{};
-        auto written = IntToString(reason, sigBuf, SIG_MAX_DIGITS);
-        stateFile.Write(sigBuf, written);
-    } else {
-        stateFile.Write(DISABLE_REASON_UNKNOWN);
+    // core file content write failed.
+    // probably the file system is broken, disk is full, don't have permission or other unknown reason.
+    // return false and do not try to write anymore
+    if (auto written = stateFile.Write(disableWord);
+        written > 0 && static_cast<size_t>(written) < disableWord.size()) {
+        return false;
     }
+    stateFile.Write(":", 1);
+    stateFile.Write(reason);
+    stateFile.Write(extraInfo);
     constexpr size_t TIMESTAMP_MAX_DIGITS = 20;
     char timestampBuf[TIMESTAMP_MAX_DIGITS]{};
     stateFile.Write(std::string_view(", timestamp: "));
@@ -155,17 +173,18 @@ bool ModulesSnapshotHelper::TryDisableSnapshot(int reason)
     return true;
 }
 
+// escaper entry of uncaught exception, it would be called when uncaught exception occurs
 void ModulesSnapshotHelper::TryDisableSnapshot(JSThread* thread)
 {
-    // snapshot feature is not loaded
-    if (g_featureLoaded_ == static_cast<int>(SnapshotFeatureState::DEFAULT) || g_escaperTriggered) {
+    if (!DoNeedEscape()) {
         return;
     }
-    g_escaperTriggered = true;
 
-    if (!TryDisableSnapshot(0)) {
+    if (!TryDisableSnapshot(DISABLE_REASON_UNCAUGHT_EXCEPTION)) {
         return;
     }
+    LOG_ECMA(WARN) << "js crash occurred, try to disable snapshot";
+
     // Print exception info if there is a pending exception
     if (thread == nullptr || !thread->HasPendingException()) {
         return;
@@ -193,6 +212,15 @@ void ModulesSnapshotHelper::TryDisableSnapshot(JSThread* thread)
     thread->SetException(exceptionHandle.GetTaggedValue());
 }
 
+// escaper entry of freeze, it would be called when APP_FREEZE, SYS_FREEZE etc. event occurs
+void ModulesSnapshotHelper::TryDisableSnapshotOnANR()
+{
+    if (!DoNeedEscape()) {
+        return;
+    }
+    TryDisableSnapshot(DISABLE_APPLICATION_NOT_RESPONDING);
+}
+
 void ModulesSnapshotHelper::DisableSnapshotEscaper() { g_escaperDisabled_ = true; }
 
 void ModulesSnapshotHelper::RemoveSnapshotFiles(const CString &path)
@@ -214,6 +242,23 @@ bool ModulesSnapshotHelper::SetReadOnly(const std::string_view &path, std::strin
         LOG_ECMA(WARN) << "Failed to chmod file '" << path << "' to read-only, error: " << ec.message();
     }
     return false;
+}
+
+bool ModulesSnapshotHelper::DoNeedEscape()
+{
+    // snapshot feature is not loaded
+    if (g_featureLoaded_ == static_cast<int>(SnapshotFeatureState::DEFAULT)) {
+        return false;
+    }
+    // escaper is disabled, do not need to escape
+    if (g_escaperDisabled_) {
+        return false;
+    }
+    if (g_escaperTriggered_) {
+        return false;
+    }
+    g_escaperTriggered_ = true;
+    return true;
 }
 
 size_t ModulesSnapshotHelper::IntToString(int64_t value, char *buf, size_t bufSize)
