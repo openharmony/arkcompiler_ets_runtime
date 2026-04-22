@@ -29,6 +29,8 @@ test_js_files = [
   "heap_snapshot",
   "property_name",
   "proxy_class_name",
+  "module_record_name",
+  "module_record_name_export",
 ]
 
 foreach(file, test_js_files) {

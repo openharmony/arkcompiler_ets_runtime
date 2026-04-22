@@ -568,4 +568,63 @@ HWTEST_F_L0(RawHeapTranslateTest, IsJSWrappedNapiObject)
         << "IsJSWrappedNapiObject should return false for unknown type";
 }
 
+HWTEST_F_L0(RawHeapTranslateTest, SourceTextModuleMetaDataParse)
+{
+    std::string metadataJson =
+        "{\"type_enum\": {\"SOURCE_TEXT_MODULE\": 100, \"JS_OBJECT\": 0},"
+        "\"type_list\": ["
+            "{\"name\": \"JS_OBJECT\","
+             "\"offsets\": [], \"end_offset\": 8, \"parents\": []},"
+            "{\"name\": \"SOURCE_TEXT_MODULE\","
+             "\"offsets\": ["
+                 "{\"name\": \"Environment\", \"offset\": 0, \"size\": 8},"
+                 "{\"name\": \"Namespace\", \"offset\": 8, \"size\": 8},"
+                 "{\"name\": \"EcmaModuleFileName\", \"offset\": 136, \"size\": 8},"
+                 "{\"name\": \"EcmaModuleRecordName\", \"offset\": 144, \"size\": 8}"
+             "], \"end_offset\": 160, \"parents\": []}"
+        "],"
+        "\"type_layout\": {"
+            "\"Dictionary_layout\": {"
+                "\"name\": \"Dictionary\","
+                "\"key_index\": 0, \"value_index\": 1,"
+                "\"detail_index\": 2, \"entry_size\": 3, \"header_size\": 4"
+            "},"
+            "\"Type_range\": {"
+                "\"string_first\": \"JS_OBJECT\","
+                "\"string_last\": \"JS_OBJECT\","
+                "\"js_object_first\": \"JS_OBJECT\","
+                "\"js_object_last\": \"JS_OBJECT\""
+            "}"
+        "},"
+        "\"version\": \"1.0.0\"}";
+
+    cJSON *metadataCJson = cJSON_ParseWithLength(metadataJson.c_str(), metadataJson.size());
+    ASSERT_TRUE(metadataCJson != nullptr);
+
+    bool result = metaParser->Parse(metadataCJson);
+    cJSON_Delete(metadataCJson);
+    ASSERT_TRUE(result);
+
+    rawheap_translate::MetaData *meta = metaParser->GetMetaData("SOURCE_TEXT_MODULE");
+    ASSERT_TRUE(meta != nullptr);
+    ASSERT_EQ(meta->endOffset, 160);
+
+    bool foundEcmaModuleFileName = false;
+    bool foundEcmaModuleRecordName = false;
+    for (const auto &field : meta->fields) {
+        if (field.name == "EcmaModuleFileName") {
+            foundEcmaModuleFileName = true;
+            ASSERT_EQ(field.offset, 136);
+            ASSERT_EQ(field.size, 8);
+        }
+        if (field.name == "EcmaModuleRecordName") {
+            foundEcmaModuleRecordName = true;
+            ASSERT_EQ(field.offset, 144);
+            ASSERT_EQ(field.size, 8);
+        }
+    }
+    ASSERT_TRUE(foundEcmaModuleFileName) << "EcmaModuleFileName field not found in SOURCE_TEXT_MODULE metadata";
+    ASSERT_TRUE(foundEcmaModuleRecordName) << "EcmaModuleRecordName field not found in SOURCE_TEXT_MODULE metadata";
+}
+
 }  // namespace panda::test

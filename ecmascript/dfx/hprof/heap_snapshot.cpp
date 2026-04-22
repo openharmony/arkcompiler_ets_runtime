@@ -1062,6 +1062,28 @@ void HeapSnapshot::ProcessNativeEdge(const Reference &it, HprofNode *entryFrom)
     entryFrom->IncEdgeCount();
 }
 
+void HeapSnapshot::ProcessNativeStringEdge(const Reference &it, HprofNode *entryFrom)
+{
+    JSTaggedType addr = it.value_.GetRawData();
+    CString *nativeAddr = reinterpret_cast<CString *>(addr);
+    CString nodeName = nativeAddr != nullptr ? *nativeAddr : CString();
+    HprofNode *existNode = entryMap_.FindEntry(addr);
+    if (existNode == nullptr) {
+        auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
+        existNode = HprofNode::NewNode(chunk_, sequenceId, nodeCount_, GetString(nodeName),
+            NodeType::STRING, 0, 0, addr);
+        entryMap_.InsertEntry(existNode);
+        if (!idExist) {
+            entryIdMap_->InsertId(addr, sequenceId);
+        }
+        nativeAddressNodes_.push_back(existNode);
+    }
+    HprofNode *entryTo = existNode;
+    Edge *edge = Edge::NewEdge(chunk_, EdgeType::DEFAULT, entryFrom, entryTo, GetString(it.name_));
+    InsertEdgeUnique(edge);
+    entryFrom->IncEdgeCount();
+}
+
 void HeapSnapshot::ProcessRegularEdge(const Reference &it, HprofNode *entryFrom, bool isSimplify)
 {
     JSTaggedValue toValue = it.value_;
@@ -1106,6 +1128,8 @@ void HeapSnapshot::FillEdges(bool isSimplify)
         for (auto const &it : referenceResources) {
             if (it.type_ == EdgeType::NATIVE) {
                 ProcessNativeEdge(it, entryFrom);
+            } else if (it.type_ == EdgeType::NATIVE_STRING) {
+                ProcessNativeStringEdge(it, entryFrom);
             } else {
                 ProcessRegularEdge(it, entryFrom, isSimplify);
             }
@@ -1245,7 +1269,7 @@ void HeapSnapshot::AddSyntheticRoot()
     for (auto node : nativeAddressNodes_) {
         InsertNodeUnique(node);
     }
-    
+
     // Reindex all nodes after insertion
     ReindexAllNodes();
 }

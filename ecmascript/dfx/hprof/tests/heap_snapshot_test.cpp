@@ -16,6 +16,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/stream.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -663,6 +664,133 @@ HWTEST_F_L0(HeapSnapShotTest, TestHeapSnapshotNodeEdgeCountPositive)
     ASSERT_GT(snapshot->GetNodeCount(), 0U);
     ASSERT_GT(snapshot->GetEdgeCount(), 0U);
     ASSERT_GT(snapshot->GetTotalNodeSize(), 0U);
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestSourceTextModuleDumpForSnapshotWithRecordName)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+
+    CString testRecordName = "test_module_record_name";
+    module->SetEcmaModuleRecordNameString(testRecordName);
+
+    std::vector<Reference> snapshotVector;
+    module->DumpForSnapshot(thread_, snapshotVector);
+
+    bool foundRecordName = false;
+    for (const auto &ref : snapshotVector) {
+        if (ref.name_ == "EcmaModuleRecordName") {
+            foundRecordName = true;
+            ASSERT_EQ(ref.type_, EdgeType::NATIVE_STRING);
+            CString *recordNamePtr = reinterpret_cast<CString *>(ref.value_.GetRawData());
+            ASSERT_TRUE(recordNamePtr != nullptr);
+            ASSERT_EQ(*recordNamePtr, testRecordName);
+            break;
+        }
+    }
+    ASSERT_TRUE(foundRecordName) << "EcmaModuleRecordName field not found in snapshot";
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestSourceTextModuleDumpForSnapshotWithEmptyRecordName)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+
+    std::vector<Reference> snapshotVector;
+    module->DumpForSnapshot(thread_, snapshotVector);
+
+    bool foundRecordName = false;
+    for (const auto &ref : snapshotVector) {
+        if (ref.name_ == "EcmaModuleRecordName") {
+            foundRecordName = true;
+            ASSERT_EQ(ref.type_, EdgeType::NATIVE_STRING);
+            CString *recordNamePtr = reinterpret_cast<CString *>(ref.value_.GetRawData());
+            ASSERT_TRUE(recordNamePtr == nullptr);
+            break;
+        }
+    }
+    ASSERT_TRUE(foundRecordName) << "EcmaModuleRecordName field not found in snapshot";
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestSourceTextModuleDumpForSnapshotWithFileName)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+
+    CString testFileName = "test_module_filename.abc";
+    module->SetEcmaModuleFilenameString(testFileName);
+
+    std::vector<Reference> snapshotVector;
+    module->DumpForSnapshot(thread_, snapshotVector);
+
+    bool foundFileName = false;
+    for (const auto &ref : snapshotVector) {
+        if (ref.name_ == "EcmaModuleFileName") {
+            foundFileName = true;
+            ASSERT_EQ(ref.type_, EdgeType::NATIVE_STRING);
+            CString *fileNamePtr = reinterpret_cast<CString *>(ref.value_.GetRawData());
+            ASSERT_TRUE(fileNamePtr != nullptr);
+            ASSERT_EQ(*fileNamePtr, testFileName);
+            break;
+        }
+    }
+    ASSERT_TRUE(foundFileName) << "EcmaModuleFileName field not found in snapshot";
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestSourceTextModuleDumpForSnapshotWithEmptyFileName)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+
+    std::vector<Reference> snapshotVector;
+    module->DumpForSnapshot(thread_, snapshotVector);
+
+    bool foundFileName = false;
+    for (const auto &ref : snapshotVector) {
+        if (ref.name_ == "EcmaModuleFileName") {
+            foundFileName = true;
+            ASSERT_EQ(ref.type_, EdgeType::NATIVE_STRING);
+            CString *fileNamePtr = reinterpret_cast<CString *>(ref.value_.GetRawData());
+            ASSERT_TRUE(fileNamePtr == nullptr);
+            break;
+        }
+    }
+    ASSERT_TRUE(foundFileName) << "EcmaModuleFileName field not found in snapshot";
+}
+
+HWTEST_F_L0(HeapSnapShotTest, TestSourceTextModuleNodeInHeapSnapshot)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "module_record_name.abc";
+    std::string entryPoint = "module_record_name";
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, entryPoint);
+    ASSERT_TRUE(result);
+
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    bool foundFileNameProperty = false;
+    bool foundRecordNameProperty = false;
+    for (auto node : *snapshot->GetNodes()) {
+        CString name = *node->GetName();
+        if (name == "SourceTextModule") {
+            for (auto edge : *snapshot->GetEdges()) {
+                if (edge->GetFrom() == node && edge->GetName() != nullptr) {
+                    CString edgeName = *edge->GetName();
+                    if (edgeName == "EcmaModuleFileName") {
+                        foundFileNameProperty = true;
+                    }
+                    if (edgeName == "EcmaModuleRecordName") {
+                        foundRecordNameProperty = true;
+                    }
+                }
+            }
+        }
+    }
+
+    ASSERT_TRUE(foundFileNameProperty) << "EcmaModuleFileName property not found in SourceTextModule node";
+    ASSERT_TRUE(foundRecordNameProperty) << "EcmaModuleRecordName property not found in SourceTextModule node";
 }
 
 }

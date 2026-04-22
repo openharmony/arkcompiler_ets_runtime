@@ -676,6 +676,7 @@ void RawHeapTranslateV1::SetNodeStringId(const std::vector<uint64_t> &objects, S
     for (auto addr : objects) {
         Node *node = FindOrCreateNode(addr);
         node->strId = strId;
+        node->type = STRING;
     }
 }
 
