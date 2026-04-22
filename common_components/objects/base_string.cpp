@@ -23,6 +23,13 @@
 #include <codecvt>
 #include <locale>
 
+#if !ENABLE_V70_OPTIMIZATION
+#undef ENABLE_LINXKIT
+#endif
+#ifdef ENABLE_LINXKIT
+#include "ecmascript/platform/arm64/linxkit_string.h"
+#endif
+
 namespace common {
 size_t UtfUtils::DebuggerConvertRegionUtf16ToUtf8(const uint16_t* utf16In, uint8_t* utf8Out, size_t utf16Len,
                                                   size_t utf8Len, size_t start, bool modify, bool isWriteBuffer)
@@ -58,6 +65,7 @@ template <typename T>
 uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
                                         uint32_t hashSeed)
 {
+#ifndef ENABLE_LINXKIT
 #ifndef CMC_LCOV_EXCL
     if (size <= static_cast<size_t>(StringHash::MIN_SIZE_FOR_UNROLLING)) {
         uint32_t hash = hashSeed;
@@ -68,6 +76,9 @@ uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
     }
 #endif
     return StringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
+#else
+    return LinxkitComputeHashForData(data, size, hashSeed);
+#endif
 }
 
 template
