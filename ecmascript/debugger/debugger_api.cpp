@@ -1528,7 +1528,9 @@ Local<JSValueRef> DebuggerApi::GetHashMapValueWithRange(const EcmaVM *ecmaVm, Lo
     // traverse first # of start nodes
     while (skipNodeCount < startNodeCount && nodeIndex < length) {
         node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, nodeIndex));
-        skipNodeCount++;
+        if (!node.GetTaggedValue().IsHole()) {
+            skipNodeCount++;
+        }
     }
 
     while (nodeIndex < length && pos < allocateSize) {
@@ -1580,7 +1582,9 @@ Local<JSValueRef> DebuggerApi::GetHashSetValueWithRange(const EcmaVM *ecmaVm, Lo
     // traverse first # of start nodes
     while (skipNodeCount < startNodeCount && nodeIndex < length) {
         node.Update(TaggedHashArray::GetCurrentNode(thread, queue, table, nodeIndex));
-        skipNodeCount++;
+        if (!node.GetTaggedValue().IsHole()) {
+            skipNodeCount++;
+        }
     }
 
     while (nodeIndex < length && pos < allocateSize) {
