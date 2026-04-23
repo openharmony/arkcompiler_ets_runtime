@@ -2894,10 +2894,16 @@ GateRef StubBuilder::CheckPolyHClass(GateRef glue, GateRef cachedValue, GateRef 
     Label exit(env);
     Label loopHead(env);
     Label loopEnd(env);
+#if ENABLE_V70_OPTIMIZATION
+    Label iGreaterZero(env);
+#else
     Label iLessLength(env);
+#endif
     Label hasHclass(env);
     Label cachedValueNotWeak(env);
+#if !ENABLE_V70_OPTIMIZATION
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+#endif
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     BRANCH(TaggedIsWeak(cachedValue), &exit, &cachedValueNotWeak);
     Bind(&cachedValueNotWeak);
@@ -2907,11 +2913,19 @@ GateRef StubBuilder::CheckPolyHClass(GateRef glue, GateRef cachedValue, GateRef 
         Bind(&isTaggedArray);
         {
             GateRef length = GetLengthOfTaggedArray(cachedValue);
+#if ENABLE_V70_OPTIMIZATION
+            DEFVARIABLE(i, VariableType::INT32(), Int32Sub(length, Int32(2)));  // 2 means one ic, two slot
+#endif
             Jump(&loopHead);
             LoopBegin(&loopHead);
             {
+#if ENABLE_V70_OPTIMIZATION
+                BRANCH(Int32GreaterThanOrEqual(*i, Int32(0)), &iGreaterZero, &exit);
+                Bind(&iGreaterZero);
+#else
                 BRANCH(Int32UnsignedLessThan(*i, length), &iLessLength, &exit);
                 Bind(&iLessLength);
+#endif
                 {
                     GateRef element = GetValueFromTaggedArray(glue, cachedValue, *i);
                     BRANCH(Equal(LoadObjectFromWeakRef(element), hclass), &hasHclass, &loopEnd);
@@ -2920,7 +2934,11 @@ GateRef StubBuilder::CheckPolyHClass(GateRef glue, GateRef cachedValue, GateRef 
                     Jump(&exit);
                 }
                 Bind(&loopEnd);
+#if ENABLE_V70_OPTIMIZATION
+                i = Int32Sub(*i, Int32(2)); // 2 means one ic, two slot
+#else
                 i = Int32Add(*i, Int32(2)); // 2 means one ic, two slot
+#endif
                 LoopEnd(&loopHead);
             }
         }

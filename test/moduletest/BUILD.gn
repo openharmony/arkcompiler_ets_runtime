@@ -217,6 +217,10 @@ if (enable_latest_optimization) {
   ]
 }
 
+if (enable_v70_optimization) {
+  module_test_list += ["loadpolyic"]
+}
+
 # TODO: CMC-GC UT FIX LATER
 if (ets_runtime_enable_cmc_gc) {
   module_test_list -= [

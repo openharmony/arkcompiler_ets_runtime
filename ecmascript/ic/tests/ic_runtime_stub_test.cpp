@@ -127,7 +127,7 @@ HWTEST_F_L0(ICRuntimeStubTest, CheckPolyHClass)
     JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue::Undefined());
     JSHandle<PropertyBox> handlePropertyBox = factory->NewPropertyBox(handleValue);
     JSHandle<EcmaString> handleEmptyStr = factory->GetEmptyString();
-    JSHandle<TaggedArray> handleCacheArray = factory->NewTaggedArray(5); // 5 : 5 array length
+    JSHandle<TaggedArray> handleCacheArray = factory->NewTaggedArray(6); // 5 : 5 array length
 
     JSHandle<JSTaggedValue> objFun = env->GetArrayFunction();
     JSHandle<JSTaggedValue> handleObj(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun));
@@ -141,7 +141,8 @@ HWTEST_F_L0(ICRuntimeStubTest, CheckPolyHClass)
     handleCacheArray->Set(thread, 1, JSTaggedValue::Undefined()); // 1 : 1 set value in one
     handleCacheArray->Set(thread, 2, handleTaggedObjVal); // 2 : 2 set weakvalue in two
     handleCacheArray->Set(thread, 3, handlePropertyBox.GetTaggedValue()); // 3 : 3 set value in three
-    handleCacheArray->Set(thread, 4, handleEmptyStr.GetTaggedValue()); // 4 : 4 set value in four
+    handleCacheArray->Set(thread, 4, JSTaggedValue::Undefined()); // 4 : 4 set value in four
+    handleCacheArray->Set(thread, 5, handleEmptyStr.GetTaggedValue()); // 5 : 5 set value in four
     JSTaggedValue handleWeakCacheValue(handleCacheArray.GetTaggedValue());
 
     JSTaggedValue resultValue = ICRuntimeStub::CheckPolyHClass(thread, handleWeakCacheValue, handleObjClass);
@@ -207,7 +208,7 @@ HWTEST_F_L0(ICRuntimeStubTest, TryStoreICAndLoadIC_ByName)
     JSHClass *handleNewObjClass = static_cast<JSHClass *>(handleTaggedObject);
     JSHandle<JSObject> handleNewObj = factory->NewJSObject(JSHandle<JSHClass>(thread, handleNewObjClass));
 
-    JSHandle<TaggedArray> handleArr = factory->NewTaggedArray(1);
+    JSHandle<TaggedArray> handleArr = factory->NewTaggedArray(2);
     handleArr->Set(thread, 0, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handleBoxValue(thread, JSTaggedValue::Undefined());
     JSHandle<JSTaggedValue> handlerPropertyBoxVal(factory->NewPropertyBox(handleBoxValue));
