@@ -158,14 +158,14 @@ HWTEST_F_L0(LayoutInfoTest, FindElementNonSharedCache)
     hclass->SetLayout(thread, layoutInfo.GetTaggedValue());
     hclass->SetNumberOfProps(propsLen);
     int propertiesNumber = layoutInfo->NumberOfElements();
-    JSHClass *rawHClass = *hclass;
 
     // Clear properties cache before test
     PropertiesCache *cache = thread->GetPropertiesCache();
     cache->Clear();
-    constexpr int kNotFound = PropertiesCache::NOT_FOUND;
 
 #if ENABLE_V70_OPTIMIZATION
+    JSHClass *rawHClass = *hclass;
+    constexpr int kNotFound = PropertiesCache::NOT_FOUND;
     constexpr int kKeyAbsent = PropertiesCache::NOT_CACHED;
 
     // 1. First lookup: cache miss -> populates cache with found result
@@ -235,13 +235,13 @@ HWTEST_F_L0(LayoutInfoTest, FindElementSharedCache)
     hclass->SetLayout(thread, layoutInfo.GetTaggedValue());
     hclass->SetNumberOfProps(propsLen);
     int propertiesNumber = layoutInfo->NumberOfElements();
-    JSHClass *rawHClass = *hclass;
 
     PropertiesCache *cache = thread->GetPropertiesCache();
     cache->Clear();
-    constexpr int kNotFound = PropertiesCache::NOT_FOUND;
 
 #if ENABLE_V70_OPTIMIZATION
+    JSHClass *rawHClass = *hclass;
+    constexpr int kNotFound = PropertiesCache::NOT_FOUND;
     constexpr int kKeyAbsent = PropertiesCache::NOT_CACHED;
 
     // 1. Found result on shared HClass: should be cached
