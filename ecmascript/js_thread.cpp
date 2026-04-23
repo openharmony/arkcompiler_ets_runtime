@@ -900,6 +900,7 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
+#if ECMASCRIPT_ENABLE_INTERPRETER_JIT_STUBS
 void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
 {
     if (isEnablePgo) {
@@ -929,6 +930,7 @@ void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
 #undef SWITCH_PGO_STUB_ENTRY
     }
 }
+#endif
 
 void JSThread::SwitchStwCopyBCStubs(bool isStwCopy)
 {

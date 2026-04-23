@@ -79,6 +79,7 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
 
 void Jit::SwitchProfileStubs(EcmaVM *vm)
 {
+#if ECMASCRIPT_ENABLE_INTERPRETER_JIT_STUBS
     JSThread *thread = vm->GetAssociatedJSThread();
     JSRuntimeOptions &options = vm->GetJSOptions();
     std::shared_ptr<PGOProfiler> pgoProfiler = vm->GetPGOProfiler();
@@ -98,6 +99,9 @@ void Jit::SwitchProfileStubs(EcmaVM *vm)
         }
         pgoProfiler->InitJITProfiler();
     }
+#else
+    (void)vm;
+#endif
 }
 
 void Jit::ConfigOptions(EcmaVM *vm) const
