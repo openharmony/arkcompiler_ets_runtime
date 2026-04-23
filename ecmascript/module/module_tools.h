@@ -19,6 +19,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_logger.h"
+#include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/platform/dfx_crash_obj.h"
 
@@ -97,6 +98,15 @@ public:
             moduleManager_ = thread->GetModuleManager();
             if (!moduleName_.empty()) {
                 PushModuleImportStack(moduleName_);
+                // Check for circular dependency
+                auto &moduleImportSet = moduleManager_->GetModuleImportSet();
+                if (moduleImportSet.find(moduleName_) != moduleImportSet.end()) {
+                    LOG_ECMA(WARN) << "Circular Module: circular dependency detected for module: " << moduleName_;
+                    ModuleMessageHelper::PrintCircularImportModuleStack(thread, moduleName_,
+                        moduleManager_->GetModuleImportStackData());
+                } else {
+                    moduleImportSet.insert(moduleName_);
+                }
                 std::string truncatedStack = TruncateModuleImportStack(
                     moduleManager_->GetModuleImportStackData(), 64 * 1024); // 64KB
                 handle_ = SetCrashObject(DFXObjectType::STRING,
@@ -110,6 +120,8 @@ public:
         if (enableModuleStack_) {
             ResetCrashObject(handle_);
             PopModuleImportStack(moduleName_);
+            // Remove from module import set
+            moduleManager_->GetModuleImportSet().erase(moduleName_);
         }
     }
     NO_COPY_SEMANTIC(ModuleImportStackScope);

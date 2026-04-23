@@ -56,14 +56,11 @@ private:
     static constexpr uint8_t TWO = 2;
     static constexpr uint8_t THREE = 3;
     static constexpr uint64_t TWO_SECONDS = TWO * MILLISECONDS_PER_SEC;
-    static constexpr std::string_view FILEDIR = "/data/storage/el2/base/files/";
     static constexpr std::string_view SUFFIX = "_redundant_file.txt";
 
     NO_COPY_SEMANTIC(ModuleLogger);
     NO_MOVE_SEMANTIC(ModuleLogger);
 
-    bool CreateResultFile(std::string &path) const; // first time
-    bool OpenResultFile(std::string &path) const;
     ModuleLoadInfo *GetModuleLoadInfo(const CString &recordName);
 
     void PrintSummary() const;

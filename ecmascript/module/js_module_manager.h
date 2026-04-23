@@ -163,6 +163,11 @@ public:
     void SetClassLiteralConstPoolMap(const CString &recordName, JSHandle<ConstantPool> constpool, uint32_t literalId);
     void ResetConstPoolLiterals(const CString &recordName);
 
+    CUnorderedSet<CString, CStringHash>& GetModuleImportSet()
+    {
+        return moduleImportSet_;
+    }
+
     std::string_view GetModuleImportStackData() const
     {
         return moduleImportData_;
@@ -190,6 +195,7 @@ private:
 #endif
     std::atomic<ModuleExecuteMode> isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
     std::string moduleImportData_ {"\nModuleImportStack:"};
+    CUnorderedSet<CString, CStringHash> moduleImportSet_;
     // for module deregister. <recordName <unsharedConstPoolIndex, value index>.
     CUnorderedMap<CString, CUnorderedMap<uint32_t, std::vector<uint32_t>>> classLiteralConstPoolMap_;
 

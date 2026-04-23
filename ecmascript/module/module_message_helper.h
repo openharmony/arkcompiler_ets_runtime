@@ -22,6 +22,12 @@ namespace panda::ecmascript {
 
 class ModuleMessageHelper {
 public:
+    static constexpr std::string_view FILEDIR = "/data/storage/el2/base/files/";
+    static constexpr std::string_view CIRCULAR_IMPORT_FILE = "_circularImport.txt";
+    static bool EnsureResultFile(const EcmaVM *vm, const uint32_t tid,
+                               const std::string_view fileSuffix, std::string &path);
+    static void PrintCircularImportModuleStack(JSThread *thread, const CString &moduleName,
+                                                    std::string_view stack);
     static inline CString VmModuleInfoMessage(JSThread *thread)
     {
         EcmaVM *vm = thread->GetEcmaVM();
