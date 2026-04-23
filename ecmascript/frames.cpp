@@ -14,11 +14,15 @@
  */
 
 #include "ecmascript/frames.h"
-
+#include <mutex>
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 
 namespace panda::ecmascript {
+
+__attribute__((retain)) uintptr_t FrameIterator::rdoAddrMapBegin_ = 0;
+__attribute__((retain)) uintptr_t FrameIterator::rdoAddrMapEnd_ = 0;
+
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
 {
     if (thread != nullptr) {
@@ -173,6 +177,33 @@ std::pair<AOTFileInfo::CallSiteInfo, bool> FrameIterator::CalCallSiteInfo(uintpt
     // try get jit code
     callSiteInfo = TryCalCallSiteInfoFromMachineCode(retAddr, isDeopt);
     return std::make_pair(callSiteInfo, true);
+}
+
+uintptr_t FrameIterator::RDORetAddrConvert(uintptr_t retAddr)
+{
+    if (retAddr == 0 || rdoAddrMapBegin_ == 0 || rdoAddrMapEnd_ == 0) {
+        return retAddr;
+    }
+
+    static std::once_flag rdoInitFlag;
+    static std::unordered_map<uintptr_t, uintptr_t> retAddrMap;
+
+    std::call_once(rdoInitFlag, [&]() {
+        for (uintptr_t curAddr = rdoAddrMapBegin_;
+            curAddr < rdoAddrMapEnd_;
+            curAddr += sizeof(RdoAddrConvertPair)) {
+            RdoAddrConvertPair* curPtr =
+                reinterpret_cast<RdoAddrConvertPair*>(curAddr);
+            retAddrMap[curPtr->ccRetAddr] = curPtr->originRetAddr;
+        }
+    });
+
+    auto it = retAddrMap.find(retAddr);
+    if (it != retAddrMap.end()) {
+        return it->second;
+    }
+
+    return retAddr;
 }
 
 template <GCVisitedFlag GCVisit>
@@ -424,6 +455,8 @@ void FrameIterator::Advance()
         optimizedReturnAddr_ = const_cast<JSThread *>(thread_)->GetCallSiteReturnAddr(optimizedCallSiteSp_);
     }
     
+    optimizedReturnAddr_ = RDORetAddrConvert(optimizedReturnAddr_);
+
     if constexpr (GCVisitFlag) {
         if (!needCalCallSiteInfo) {
             return;

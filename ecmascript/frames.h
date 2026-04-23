@@ -2221,6 +2221,16 @@ private:
     JSTaggedType machineCode_ {JSTaggedValue::VALUE_UNDEFINED};
 
     uint32_t deoptType_{0};
+
+    struct RdoAddrConvertPair {
+        uintptr_t originRetAddr;
+        uintptr_t ccRetAddr;
+    };
+    // address map begin and end in rdo
+    static uintptr_t rdoAddrMapBegin_;
+    static uintptr_t rdoAddrMapEnd_;
+    // restore ret addr in codeCache
+    uintptr_t RDORetAddrConvert(uintptr_t retAddr);
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_FRAMES_H
