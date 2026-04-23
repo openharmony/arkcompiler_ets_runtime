@@ -1076,6 +1076,7 @@ ecma_source = [
   "ecmascript/mem/shared_heap/shared_gc_evacuator.cpp",
   "ecmascript/mem/shared_heap/shared_full_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_marker.cpp",
+  "ecmascript/mem/shared_heap/shared_memory_reallocator.cpp",
   "ecmascript/mem/shared_heap/shared_space.cpp",
   "ecmascript/mem/space.cpp",
   "ecmascript/mem/sparse_space.cpp",
