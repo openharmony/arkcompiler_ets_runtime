@@ -84,11 +84,6 @@ enum class PageTagType : uint8_t {
 // Jit Fort space protection control
 inline int PageProtectProt([[maybe_unused]] bool disable_codesign)
 {
-#if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
-    if (!disable_codesign) {
-        return PAGE_PROT_EXEC_READ;
-    }
-#endif
     return PAGE_PROT_EXEC_READWRITE;
 }
 
