@@ -318,6 +318,15 @@ public:
         return enableWarmStartupSmartGC_;
     }
 
+    void SetStubFile(const std::string &stubFile)
+    {
+        stubFile_ = stubFile;
+    }
+
+    std::string GetStubFile() const
+    {
+        return stubFile_;
+    }
 private:
     std::string GetGcType() const
     {
@@ -483,6 +492,7 @@ private:
     bool enableWarmStartupSmartGC_ {false};
     std::string arkTSMode_ {""};
     friend JSNApi;
+    std::string stubFile_ {""};
 };
 }  // namespace panda
 
