@@ -2095,6 +2095,31 @@ HWTEST_F_L0(HeapDumpTest, DISABLED_TestProxyClassName)
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy-ClassB\""));
     ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"Proxy\""));
 }
+
+HWTEST_F_L0(HeapDumpTest, TestSourceTextModuleRecordAndFileName)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "module_record_name.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "module_record_name");
+    EXPECT_TRUE(result);
+
+    std::string rawHeapPath("test_module_record_name.rawheap");
+    HeapDumpTestHelper tester(ecmaVm_);
+    DumpSnapShotOption dumpOption;
+    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
+
+    std::string heapsnapshotPath("test_module_record_name.heapsnapshot");
+    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
+    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
+
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"SourceTextModule\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"EcmaModuleRecordName\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"EcmaModuleFileName\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"module_record_name\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "module_record_name.abc"));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"module_record_name_export\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "module_record_name_export.abc"));
+}
 #endif
 
 HWTEST_F_L0(HeapDumpTest, TestSharedFullGCInHeapDump)
@@ -2536,29 +2561,4 @@ HWTEST_F_L0(HeapDumpTest, TestSharedGCOOMDumpUsesJsonOnARM32)
         << "SharedGC OOM dump should use JSON format on ARM32 instead of binary";
 }
 #endif
-
-HWTEST_F_L0(HeapDumpTest, TestSourceTextModuleRecordAndFileName)
-{
-    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR "module_record_name.abc";
-
-    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "module_record_name");
-    EXPECT_TRUE(result);
-
-    std::string rawHeapPath("test_module_record_name.rawheap");
-    HeapDumpTestHelper tester(ecmaVm_);
-    DumpSnapShotOption dumpOption;
-    ASSERT_TRUE(tester.GenerateRawHeapSnapshot(rawHeapPath, dumpOption));
-
-    std::string heapsnapshotPath("test_module_record_name.heapsnapshot");
-    ASSERT_TRUE(tester.AddMetaDataJsonToRawheap(rawHeapPath));
-    ASSERT_TRUE(tester.DecodeRawheap(rawHeapPath, heapsnapshotPath));
-
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"SourceTextModule\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"EcmaModuleRecordName\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"EcmaModuleFileName\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"module_record_name\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "module_record_name.abc"));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "\"module_record_name_export\""));
-    ASSERT_TRUE(tester.MatchHeapDumpString(heapsnapshotPath, "module_record_name_export.abc"));
-}
 }
