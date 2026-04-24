@@ -578,8 +578,7 @@ bool ValueSerializer::SerializeModuleCNativeObjects(TaggedObject *object)
         data_->WriteUint32(moduleFileName.size());
         data_->WriteRawData(reinterpret_cast<uint8_t *>(moduleFileName.data()), moduleFileName.size());
     } else {
-        LOG_ECMA(ERROR) << "ValueSerialize::SerializeModuleCNativeObjects moduleFileName is empty";
-        return false;
+        data_->WriteUint32(0);
     }
 
     CString moduleRecordName = module->GetEcmaModuleRecordNameString();
@@ -589,6 +588,12 @@ bool ValueSerializer::SerializeModuleCNativeObjects(TaggedObject *object)
         data_->WriteRawData(reinterpret_cast<uint8_t *>(moduleRecordName.data()), moduleRecordName.size());
     } else {
         data_->WriteUint32(0);
+    }
+
+    if (moduleFileName.empty() && moduleRecordName.empty()) {
+        LOG_ECMA(ERROR) << "ValueSerialize::SerializeModuleCNativeObjects moduleFileName and " <<
+             "moduleRecordName are both empty";
+        return false;
     }
 
     bool *lazyArray = module->GetLazyImportStatusArray();

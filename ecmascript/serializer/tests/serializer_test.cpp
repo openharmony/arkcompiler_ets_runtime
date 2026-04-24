@@ -4070,4 +4070,75 @@ HWTEST_F_L0(JSSerializerTest, SerializeSourceTextModuleMutableFields)
     }
     delete serializer;
 }
+
+HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsBothNotEmpty)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString baseFileName = "test_module.abc";
+    CString recordName = "testRecord";
+    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(res);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsFileNameEmptyRecordNotEmpty)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString recordName = "testRecord";
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(res);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsFileNameNotEmptyRecordEmpty)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString baseFileName = "test_module.abc";
+    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_TRUE(res);
+    std::unique_ptr<SerializeData> data = serializer->Release();
+    delete serializer;
+}
+
+HWTEST_F_L0(JSSerializerTest, SerializeModuleCNativeObjectsBothEmpty)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+
+    ValueSerializer *serializer = new ModuleSerializer(thread);
+    bool res = serializer->WriteValue(thread, JSHandle<JSTaggedValue>(module),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()),
+                                      JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_FALSE(res);
+    delete serializer;
+}
 }  // namespace panda::test
