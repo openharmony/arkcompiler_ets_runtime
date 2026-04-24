@@ -142,6 +142,10 @@ std::string SymbolicAddress(const void* const *pc,
     std::vector<OHOS::HiviewDFX::DfxFrame> frames;
     int index = 0;
     static auto fpBacktrace = FpBacktrace();
+    if (fpBacktrace == nullptr) {
+        LOG_ECMA(ERROR) << "FpBacktrace create instance failed";
+        return stack;
+    }
     for (int i = 0; i < size; i++) {
         auto dfx_frame = fpBacktrace->SymbolicAddress(const_cast<void *>(pc[i]));
         if (dfx_frame == nullptr) {
@@ -166,6 +170,10 @@ __attribute__((optnone)) int BacktraceHybrid(void** pcArray, uint32_t maxSize)
     uint32_t size = 0;
 #if defined(ENABLE_BACKTRACE_LOCAL)
     static auto fpBacktrace = FpBacktrace();
+    if (fpBacktrace == nullptr) {
+        LOG_ECMA(ERROR) << "FpBacktrace create instance failed";
+        return 0;
+    }
     size = fpBacktrace->BacktraceFromFp(__builtin_frame_address(0), pcArray, maxSize);
 #endif
     return static_cast<int>(size);
