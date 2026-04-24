@@ -962,6 +962,19 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Jnb(&slowCall);
         __ Bind(&aotCall);
         {
+#if ECMASCRIPT_ENABLE_ARK_STEED
+            // Bound calls to ArkSteed code need the ArkSteed argv bridge, not the common AOT call stub.
+            __ Movq(jsfunc, rdx);
+            __ Movq(r10, rsi);
+            __ Subq(NUM_MANDATORY_JSFUNC_ARGS, rsi);
+            auto funcSlotOffSet = kungfu::ArgumentAccessor::GetFixArgsNum() +
+                                  kungfu::ArgumentAccessor::GetExtraArgsNum();
+            __ Leaq(Operand(rsp, funcSlotOffSet * FRAME_SLOT_SIZE), r9);
+            __ Movq(JSTaggedValue::VALUE_UNDEFINED, rcx);
+            __ Movq(RTSTUB_ID(SteedCallWithArgVAndPushArgv), r11);
+            __ Movq(Operand(rdi, r11, Scale::Times8, JSThread::GlueData::GetRTStubEntriesOffset(false)), r11);
+            __ Callq(r11);
+#else
             // output: glue:rdi argc:rsi calltarget:rdx argv:rcx this:r8 newtarget:r9
             __ Movq(jsfunc, rdx);
             __ Movq(r10, rsi);
@@ -972,6 +985,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
             __ Movq(kungfu::CommonStubCSigns::JsBoundCallInternal, r10);
             __ Movq(Operand(rdi, r10, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), rax);
             __ Callq(rax); // call JSCall
+#endif
             __ Jmp(&popArgs);
         }
     }

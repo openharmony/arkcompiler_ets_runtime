@@ -144,6 +144,9 @@ bool MachineCode::SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandl
     if (desc.codeType == MachineCodeType::BASELINE_CODE) {
         return SetBaselineCodeData(thread, desc, method, dataSize);
     }
+    if (desc.codeType == MachineCodeType::ARKSTEED_CODE) {
+        return SetArkSteedData(thread, desc, method, dataSize);
+    }
 
     SetLocalHeapAddress(reinterpret_cast<uint64_t>(thread->GetEcmaVM()->GetHeap()));
 
@@ -244,6 +247,74 @@ bool MachineCode::SetBaselineCodeData(JSThread *thread, const MachineCodeDesc &d
 
     if (!SetPageProtect(textStart, dataSize)) {
         LOG_BASELINEJIT(ERROR) << "MachineCode::SetBaseLineCodeData SetPageProtect failed";
+        return false;
+    }
+    return true;
+}
+
+bool MachineCode::SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
+                                  JSHandle<Method> &method, size_t dataSize)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+
+    SetLocalHeapAddress(reinterpret_cast<uint64_t>(thread->GetEcmaVM()->GetHeap()));
+
+    SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
+    SetOsrDeoptFlag(false);
+    SetOsrExecuteCnt(0);
+
+    size_t instrSizeAlign = desc.codeSizeAlign;
+    SetInstructionsSize(instrSizeAlign);
+    SetStackMapOrOffsetTableSize(desc.stackMapSizeAlign);
+    SetHeapConstantTableSize(desc.heapConstantTableSizeAlign);
+    SetHeapConstantTableAddr(reinterpret_cast<uint64_t>(GetHeapConstantTableAddress()));
+    SetPayLoadSizeInBytes(dataSize);
+
+    if (Jit::GetInstance()->IsEnableJitFort()) {
+        SetInstructionsAddr(desc.instructionsAddr);
+    }
+
+    uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
+    uint8_t *pText = textStart;
+
+    // Copy code to text area (skipped if async copy to JitFort already done)
+    if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort() ||
+        !desc.isAsyncCompileMode) {
+        if (MachineCodeCopyToCache(desc, pText) == false) {
+            return false;
+        }
+    }
+    pText += instrSizeAlign;
+
+    // Copy safepoint table
+    if (desc.stackMapOrOffsetTableSize > 0) {
+        uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
+        if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize,
+                     reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
+                     desc.stackMapOrOffsetTableSize) != EOK) {
+            LOG_JIT(ERROR) << "memcpy fail in copy ArkSteed safepoint table";
+            return false;
+        }
+    }
+
+    // Set frame info from FuncEntryDes at funcEntryDesAddr
+    FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(desc.funcEntryDesAddr);
+    SetFuncAddr(reinterpret_cast<uintptr_t>(textStart));
+    SetIsFastCall(funcEntryDes->isFastCall_);
+    SetFpDeltaPrevFrameSp(funcEntryDes->fpDeltaPrevFrameSp_);
+    SetFuncSize(funcEntryDes->funcSize_);
+    SetCalleeRegisterNum(funcEntryDes->calleeRegisterNum_);
+    SetCalleeReg2OffsetArray(const_cast<int32_t*>(funcEntryDes->CalleeReg2Offset_));
+
+    CString methodName = method->GetRecordNameStr(thread) + "." + CString(method->GetMethodName(thread));
+    LOG_JIT(DEBUG) << "ArkSteed MachineCode:" << methodName
+                   << ", text addr:" << reinterpret_cast<void*>(GetText())
+                   << ", size:" << instrSizeAlign
+                   << ", stackMap addr:" << reinterpret_cast<void*>(GetStackMapOrOffsetTableAddress())
+                   << ", size:" << desc.stackMapSizeAlign;
+
+    if (!SetPageProtect(textStart, dataSize)) {
+        LOG_JIT(ERROR) << "MachineCode::SetArkSteedData SetPageProtect failed";
         return false;
     }
     return true;

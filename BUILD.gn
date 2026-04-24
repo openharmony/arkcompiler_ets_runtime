@@ -463,6 +463,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "ENABLE_API_FUNCTION_OPTIMIZATION" ]
   }
 
+  if (ets_runtime_enable_ark_steed) {
+    defines += [ "ECMASCRIPT_ENABLE_ARK_STEED_GN" ]
+  }
+
   cflags_cc = [
     "-Wall",
     "-Wshadow",
@@ -1197,6 +1201,13 @@ ecma_source += [
   "ecmascript/mem/cmc_gc/hooks.cpp",
   "ecmascript/mem/dynamic_object_operator.cpp",
 ]
+
+if (ets_runtime_enable_ark_steed) {
+  ecma_source += [
+    "ecmascript/arksteed/arksteed_safepoint_table.cpp",
+    "ecmascript/arksteed/arksteed_task.cpp",
+  ]
+}
 
 if (ark_js_hybrid) {
   ecma_source += [ "ecmascript/cross_vm/cross_vm_operator.cpp" ]

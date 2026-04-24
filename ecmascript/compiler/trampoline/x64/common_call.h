@@ -107,6 +107,7 @@ private:
     static void RemoveArgv(ExtendedAssembler *assembler, Register temp);
 
     friend class OptimizedFastCall;
+    friend class ArkSteedCall;
 };
 
 class OptimizedFastCall : public CommonCall {
@@ -228,6 +229,7 @@ private:
     static void ASMFastSharedWriteBarrier(ExtendedAssembler *assembler, Label &needcall);
     friend class OptimizedCall;
     friend class BaselineCall;
+    friend class ArkSteedCall;
 };
 
 class BaselineCall : public CommonCall {
@@ -273,6 +275,13 @@ public:
     static void CallThisRangeAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
     /* get baselineBuiltinFp when baselineBuiltin call the others */
     static void GetBaselineBuiltinFp(ExtendedAssembler *assembler);
+};
+
+class ArkSteedCall : public CommonCall {
+public:
+    static void ArkSteedCallEntry(ExtendedAssembler *assembler);
+    static void SteedCallAndPushArgv(ExtendedAssembler *assembler);
+    static void SteedCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 };
 
 class JsFunctionArgsConfigFrameScope {

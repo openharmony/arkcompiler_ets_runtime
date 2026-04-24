@@ -226,6 +226,10 @@ private:
     GateRef CallConstructorBridge(const int idxForAot, const std::vector<GateRef> &argsForAot);
     void CallBridge(GateRef code, GateRef expectedNum, Label *exit);
     void JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNotAot, Label *exit, Label *noNeedCheckException);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    void JSCallArkSteed(Label *exit);
+    GateRef CallArkSteedConstructorBridge(const int idxForSteed, const std::vector<GateRef> &argsForSteed);
+#endif
 
     int PrepareIdxForNative();
     std::vector<GateRef> PrepareArgsForNative();
@@ -246,6 +250,10 @@ private:
     std::vector<GateRef> PrepareArgsForAsmInterpreter();
     std::vector<GateRef> PrepareBasicArgsForAsmInterpreter();
     std::vector<GateRef> PrepareAppendArgsForAsmInterpreter();
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    std::vector<GateRef> PrepareArgsForArkSteedPushArgv();
+    std::vector<GateRef> PrepareArgsForArkSteedWithArgV();
+#endif
 
     void CallFastBuiltin(Label* notFastBuiltins, Label *exit, GateRef hir = Circuit::NullGate());
     std::vector<GateRef> PrepareArgsForFastBuiltin();

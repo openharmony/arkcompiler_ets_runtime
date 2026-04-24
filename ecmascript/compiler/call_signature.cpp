@@ -1599,6 +1599,49 @@ DEF_CALL_SIGNATURE(OptimizedFastCallEntry)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(ArkSteedCallEntry)
+{
+    /* 4 : 4 input parameters */
+    CallSignature steedCallEntry("ArkSteedCallEntry", 0, 4,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = steedCallEntry;
+    std::array<VariableType, 4> params = {      // 4 : 4 input parameters
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::INT64(),              // argc
+        VariableType::NATIVE_POINTER(),     // argV
+        VariableType::NATIVE_POINTER(),     // prevFp
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(SteedCallAndPushArgv)
+{
+    AOT_CALL_SIGNATURE(SteedCallAndPushArgv)
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
+DEF_CALL_SIGNATURE(SteedCallWithArgVAndPushArgv)
+{
+    /* 5 : 5 input parameters */
+    CallSignature steedCallWithArgV("SteedCallWithArgVAndPushArgv", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = steedCallWithArgV;
+    /* 5 : 5 input parameters */
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::INT64(),            // actualNumArgs
+        VariableType::JS_ANY(),           // jsfunc
+        VariableType::JS_ANY(),           // newTarget
+        VariableType::JS_ANY(),           // this
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(ResumeRspAndDispatch)
 {
     // 8 : 8 input parameters
@@ -2718,6 +2761,39 @@ DEF_CALL_SIGNATURE(GetValueWithBarrier)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(LdLexVar)
+{
+    // 4 : 4 input parameters
+    CallSignature signature("LdLexVar", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::INT32(),           // level
+        VariableType::INT32(),           // slot
+        VariableType::JS_ANY()           // currentEnv
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(StLexVar)
+{
+    // 5 : 5 input parameters
+    CallSignature signature("StLexVar", 0, 5, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = signature;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),  // glue
+        VariableType::INT32(),           // level
+        VariableType::INT32(),           // slot
+        VariableType::JS_ANY(),          // currentEnv
+        VariableType::JS_ANY()           // value
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(ReadBarrier)
 {
     // 2 : 2 input parameters
@@ -2852,6 +2928,21 @@ DEF_CALL_SIGNATURE(GetStringFromConstPool)
         VariableType::NATIVE_POINTER(),     // glue
         VariableType::JS_ANY(),             // constpool
         VariableType::INT32(),              // index
+    };
+    callSign->SetParameters(params.data());
+}
+
+DEF_CALL_SIGNATURE(GetObjectFromConstPool)
+{
+    // 4 : 4 input parameters
+    CallSignature temp("GetObjectFromConstPool", 0, 4, ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = temp;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::JS_ANY(),             // constpool
+        VariableType::INT32(),              // index
+        VariableType::JS_ANY(),             // module
     };
     callSign->SetParameters(params.data());
 }

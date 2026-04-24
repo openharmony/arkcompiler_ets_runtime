@@ -488,6 +488,9 @@ private:
     V(CallNewAndCheckToBaseline)                \
     V(SuperCallAndCheckToBaseline)              \
     V(CallThisRangeAndCheckToBaseline)          \
+    V(ArkSteedCallEntry)                        \
+    V(SteedCallAndPushArgv)                     \
+    V(SteedCallWithArgVAndPushArgv)             \
     V(GeneratorReEnterAsmInterp)                \
     V(CallRuntimeWithArgv)                      \
     V(OptimizedCallAndPushArgv)                 \
@@ -685,6 +688,7 @@ private:
     V(NewFloat32Array)                               \
     V(StringLoadElement)                             \
     V(GetStringFromConstPool)                        \
+    V(GetObjectFromConstPool)                        \
     V(GetPrototype)                                  \
     V(FastCallSelector)                              \
     V(CheckSuperAndNew)                              \
@@ -718,6 +722,8 @@ private:
     V(LoadNativeModuleFailed)                        \
     V(GetExternalModuleVar)                          \
     V(GetValueWithBarrier)                           \
+    V(LdLexVar)                                      \
+    V(StLexVar)                                      \
     V(ReadBarrier)                                   \
     V(ComputeStringHashcode)                         \
     V(CopyCallTarget)                                \

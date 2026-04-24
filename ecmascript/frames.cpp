@@ -15,6 +15,10 @@
 
 #include "ecmascript/frames.h"
 #include <mutex>
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+#include "ecmascript/arksteed/arksteed_safepoint_table.h"
+#endif
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 
@@ -89,6 +93,10 @@ JSTaggedValue FrameIterator::GetFunction() const
             auto frame = FASTJITFunctionFrame::GetFrameFromSp(GetSp());
             return frame->GetFunction();
         }
+        case FrameType::STEED_FUNCTION_FRAME: {
+            auto frame = SteedFunctionFrame::GetFrameFromSp(GetSp());
+            return frame->GetFunction();
+        }
         case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::OPTIMIZED_ENTRY_FRAME:
@@ -129,7 +137,8 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
 {
     FrameType type = GetFrameType();
     if (type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME || type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
-        type == FrameType::FASTJIT_FUNCTION_FRAME || type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME) {
+        type == FrameType::FASTJIT_FUNCTION_FRAME || type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME ||
+        type == FrameType::STEED_FUNCTION_FRAME) {
         MachineCode* machineCode = thread_->GetEcmaVM()->GetHeap()->GetMachineCodeObject(retAddr);
         if (machineCode == nullptr) {
             std::ostringstream oss;
@@ -440,6 +449,16 @@ void FrameIterator::Advance()
             current_ = frame->GetPrevFrameFp();
             break;
         }
+        case FrameType::STEED_FUNCTION_FRAME: {
+            auto frame = GetFrame<SteedFunctionFrame>();
+            if constexpr (GCVisitFlag) {
+                optimizedCallSiteSp_ = GetPrevFrameCallSiteSp();
+                optimizedReturnAddr_ = frame->GetReturnAddr();
+                needCalCallSiteInfo = true;
+            }
+            current_ = frame->GetPrevFrameFp();
+            break;
+        }
         default: {
             if constexpr (GCVisit == GCVisitedFlag::HYBRID_STACK) {
                 current_ = nullptr;
@@ -574,7 +593,8 @@ uintptr_t FrameIterator::GetPrevFrameCallSiteSp() const
         case FrameType::OPTIMIZED_FRAME:
         case FrameType::BASELINE_BUILTIN_FRAME:  // maybe we can store fpDelta somewhere else for these 2 cases
         case FrameType::FASTJIT_FUNCTION_FRAME:
-        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME:
+        case FrameType::STEED_FUNCTION_FRAME: {
             ASSERT(thread_ != nullptr);
             auto callSiteSp = reinterpret_cast<uintptr_t>(current_) + fpDeltaPrevFrameSp_;
             return callSiteSp;
@@ -641,7 +661,8 @@ uint32_t FrameIterator::GetBytecodeOffset() const
             [[fallthrough]];
         }
         case FrameType::FASTJIT_FUNCTION_FRAME:
-        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME:
+        case FrameType::STEED_FUNCTION_FRAME: {
             [[fallthrough]];
         }
         default: {
@@ -682,6 +703,12 @@ void FrameIterator::GetStackTraceInfos(std::vector<std::pair<JSTaggedType, uint3
         case FrameType::FASTJIT_FUNCTION_FRAME:
         case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
             CollectStackTraceInfos(stackTraceInfos);
+            break;
+        }
+        case FrameType::STEED_FUNCTION_FRAME: {
+            auto *frame = this->GetFrame<SteedFunctionFrame>();
+            // to do: Fix offset
+            stackTraceInfos.push_back(std::make_pair(frame->GetFunction().GetRawData(), 0));
             break;
         }
         default: {
@@ -736,7 +763,10 @@ bool FrameIterator::IteratorStackMapAndDeopt(RootVisitor &visitor) const
     if (!stackMapAddr_) {  // enter by assembler, no stack map
         return true;
     }
-
+    // ark steed reuse StackMap addr to store safe point table
+    if (IsSteedFunctionFrame()) {
+        return true;
+    }
     return arkStackMapParser_->IteratorStackMapAndDeopt(visitor, optimizedReturnAddr_,
         reinterpret_cast<uintptr_t>(current_), optimizedCallSiteSp_, stackMapAddr_);
 }
@@ -882,6 +912,131 @@ void FASTJITFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it, std::vect
 }
 
 void FASTJITFunctionFrame::GetFuncCalleeRegAndOffset(
+    const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const
+{
+    it.GetCalleeRegAndOffsetVec(ret);
+}
+
+ARK_INLINE uintptr_t* SteedFunctionFrame::ComputePrevFrameSp(const FrameIterator &it) const
+{
+    const JSTaggedType *sp = it.GetSp();
+    int delta = it.ComputeDelta();
+    ASSERT((delta > 0) && (delta % sizeof(uintptr_t) == 0));
+    uintptr_t *preFrameSp = reinterpret_cast<uintptr_t *>(const_cast<JSTaggedType *>(sp)) +
+        delta / sizeof(uintptr_t);
+    return preFrameSp;
+}
+
+ARK_INLINE JSTaggedType* SteedFunctionFrame::GetArgv(const FrameIterator &it) const
+{
+    uintptr_t *preFrameSp = ComputePrevFrameSp(it);
+    return GetArgv(preFrameSp);
+}
+
+ARK_INLINE void SteedFunctionFrame::GCIterate(const FrameIterator &it,
+    RootVisitor &visitor, [[maybe_unused]] FrameType frameType) const
+{
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    SteedFunctionFrame *frame = GetFrameFromSp(it.GetSp());
+
+    // 1. Visit fixed frame tagged roots: jsFunc, lexicalEnv
+    uintptr_t jsFuncSlot = GetFuncAddrFromSp(it.GetSp());
+    visitor.VisitRoot(Root::ROOT_FRAME, ObjectSlot(jsFuncSlot));
+    uintptr_t lexEnvSlot = reinterpret_cast<uintptr_t>(&frame->lexicalEnv);
+    visitor.VisitRoot(Root::ROOT_FRAME, ObjectSlot(lexEnvSlot));
+
+    // 2. Visit caller arguments (always tagged)
+    uintptr_t *preFrameSp = frame->ComputePrevFrameSp(it);
+    auto argc = frame->GetArgc(preFrameSp);
+    JSTaggedType *argv = frame->GetArgv(reinterpret_cast<uintptr_t *>(preFrameSp));
+    if (argc > 0) {
+        uintptr_t start = ToUintPtr(argv);
+        uintptr_t end = ToUintPtr(argv + argc);
+        visitor.VisitRangeRoot(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
+    }
+
+    // 3. Visit MachineCode object reference
+    auto machineCodeSlot = ObjectSlot(ToUintPtr(it.GetMachineCodeSlot()));
+    if (machineCodeSlot.GetTaggedType() != JSTaggedValue::VALUE_UNDEFINED) {
+        visitor.VisitRoot(Root::ROOT_FRAME, machineCodeSlot);
+    }
+
+    // 4. Visit tagged stack slots using safepoint table
+    // The safepoint table header stores num_tagged_slots/num_untagged_slots.
+    // Tagged slots are located below the fixed frame header (FP - header_size - slot_offset).
+    // For now, use the stackmap/safepoint path from FrameIterator (same as FASTJIT).
+    bool ret = it.IteratorStackMapAndDeopt(visitor);
+    if (!ret) {
+#ifndef NDEBUG
+        LOG_ECMA(DEBUG) << " stackmap don't found returnAddr " << it.GetOptimizedReturnAddr();
+#endif
+    }
+    // 5. Visit SafePointTable
+    IterateSafePointTable(it, visitor);
+#else
+    LOG_ECMA(FATAL) << "ark steed disabled, this branch is unreachable!";
+#endif
+}
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+void SteedFunctionFrame::IterateSafePointTable(const FrameIterator& it, RootVisitor& visitor) const
+{
+    auto machineCodeSlot = ObjectSlot(ToUintPtr(it.GetMachineCodeSlot()));
+    MachineCode *machineCode = MachineCode::Cast(JSTaggedValue(machineCodeSlot.GetTaggedType()).GetTaggedObject());
+    uint8_t *safepointTableAddr = machineCode->GetStackMapOrOffsetTableAddress();
+    if (safepointTableAddr == nullptr) {
+        LOG_ECMA(ERROR) << "safepointTableAddr is nullptr";
+        return;
+    }
+    uint32_t safepointTableSize = machineCode->GetStackMapOrOffsetTableSize();
+    if (safepointTableSize == 0) {
+        LOG_ECMA(ERROR) << "safepointTableSize is 0";
+    }
+    arksteed::ArkSteedSafepointTable safepointTable(safepointTableAddr, safepointTableSize);
+    if (!safepointTable.IsValid()) {
+        LOG_ECMA(ERROR) << "ArkSteedSafepointTable is InValid";
+        return;
+    }
+    // to do: refactor
+    uintptr_t fp = reinterpret_cast<uintptr_t>(&GetFrameFromSp(it.GetSp())->prevFp);
+    constexpr int32_t kTaggedSlot0OffsetFromFp = -4 * static_cast<int32_t>(sizeof(uintptr_t));
+    uint32_t numTaggedSlots = safepointTable.GetNumTaggedSlots();
+    for (uint32_t i = 0; i < numTaggedSlots; ++i) {
+        intptr_t slotAddr = static_cast<intptr_t>(fp) + kTaggedSlot0OffsetFromFp -
+                            static_cast<intptr_t>(i * sizeof(uintptr_t));
+        ObjectSlot slot(static_cast<uintptr_t>(slotAddr));
+        visitor.VisitRoot(Root::ROOT_FRAME, slot);
+    }
+
+    uintptr_t returnAddr = it.GetOptimizedReturnAddr();
+    uintptr_t textStart = machineCode->GetText();
+    if (returnAddr < textStart) {
+        return;
+    }
+    uint32_t pcOffset = static_cast<uint32_t>(returnAddr - textStart);
+    const auto *entry = safepointTable.FindEntry(pcOffset);
+    if (entry == nullptr || entry->pcOffset != pcOffset) {
+        return;
+    }
+    uintptr_t start = it.GetCallSiteSp();
+    intptr_t end = static_cast<intptr_t>(fp) + kTaggedSlot0OffsetFromFp -
+                   static_cast<intptr_t>(safepointTable.GetNumTaggedSlots() + safepointTable.GetNumUntaggedSlots() +
+                                         entry->numExtraSpillSlots) *
+                   static_cast<intptr_t>(sizeof(uintptr_t));
+    if (start >= static_cast<uintptr_t>(end)) {
+        return;
+    }
+    visitor.VisitRangeRoot(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(static_cast<uintptr_t>(end)));
+}
+#endif
+
+void SteedFunctionFrame::GetDeoptBundleInfo(const FrameIterator &it,
+    std::vector<kungfu::ARKDeopt>& deopts) const
+{
+    it.CollectArkDeopt(deopts);
+}
+
+void SteedFunctionFrame::GetFuncCalleeRegAndOffset(
     const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const
 {
     it.GetCalleeRegAndOffsetVec(ret);

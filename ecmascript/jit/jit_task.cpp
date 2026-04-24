@@ -135,7 +135,8 @@ static void ComputeAlignedSizes(MachineCodeDesc &desc)
     desc.heapConstantTableSizeAlign = AlignUp(desc.heapConstantTableSize, MachineCode::DATA_ALIGN);
     desc.rodataSizeBeforeTextAlign = AlignUp(desc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
 
-    if (desc.codeType == MachineCodeType::BASELINE_CODE) {
+    if (desc.codeType == MachineCodeType::BASELINE_CODE ||
+        desc.codeType == MachineCodeType::ARKSTEED_CODE) {
         desc.codeSizeAlign = Jit::GetInstance()->IsEnableJitFort() ?
             AlignUp(desc.codeSize, MachineCode::TEXT_ALIGN) :
             AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
@@ -177,6 +178,28 @@ size_t JitTask::ComputePayLoadSize(MachineCodeDesc &codeDesc)
             }
         } else {
             return codeDesc.stackMapSizeAlign + codeDesc.codeSizeAlign;
+        }
+    }
+
+    if (codeDesc.codeType == MachineCodeType::ARKSTEED_CODE) {
+        // ArkSteed payload: [code] [stackmap] [heapConstants]
+        if (Jit::GetInstance()->IsEnableJitFort()) {
+            size_t payLoadSize = codeDesc.codeSizeAlign + codeDesc.stackMapSizeAlign +
+                                 codeDesc.heapConstantTableSizeAlign;
+            size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
+                static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+            codeDesc.instructionsSize = codeDesc.codeSizeAlign;
+            LOG_JIT(DEBUG) << "InstallCode:: ArkSteed MachineCode Object size to allocate: "
+                << allocSize << " (instruction size): " << codeDesc.codeSizeAlign;
+            if (allocSize > g_maxRegularHeapObjectSize) {
+                codeDesc.isHugeObj = true;
+                return payLoadSize;
+            } else {
+                // regular sized: instructions in separate JitFort space
+                return payLoadSize - codeDesc.codeSizeAlign;
+            }
+        } else {
+            return codeDesc.codeSizeAlign + codeDesc.stackMapSizeAlign + codeDesc.heapConstantTableSizeAlign;
         }
     }
 
@@ -346,7 +369,7 @@ void JitTask::InstallCode()
         }
     }
 
-    if (compilerTier_.IsFast()) {
+    if (compilerTier_.IsFastJit()) {
         jsFunction_->SetJitCompilingFlag(false);
     } else {
         ASSERT(compilerTier_.IsBaseLine());
@@ -358,13 +381,13 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
     JSHandle<Method> &methodHandle)
 {
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
-    if (compilerTier_.IsFast()) {
+    if (compilerTier_.IsFastJit()) {
         jsFunction_->SetCompiledFuncEntry(codeAddr, machineCodeObj->GetIsFastCall());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
         jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
-        LOG_JIT(DEBUG) << "Install fast jit machine code, method name: " << GetMethodName()
+        LOG_JIT(INFO) << "Install fast jit machine code, method name: " << GetMethodName()
                        << ", function addr: 0x" << std::hex << jsFunction_.GetTaggedType()
                        << ", machine code addr: 0x" << machineCodeObj.GetTaggedType()
                        << ", code range: " << reinterpret_cast<void*>(codeAddr)
@@ -450,7 +473,7 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ConvertToStdString("JIT::Compile:" + info).c_str(), "");
 
-    AsyncTaskRunScope asyncTaskRunScope(jitTask_.get());
+    JitAsyncTaskRunScope asyncTaskRunScope(jitTask_.get());
 
     if (jitTask_->GetJsFunction().GetAddress() == 0) {
         // for unit test
@@ -483,24 +506,25 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     return true;
 }
 
-JitTask::AsyncTask::AsyncTaskRunScope::AsyncTaskRunScope(JitTask *jitTask)
+JitAsyncTaskRunScope::JitAsyncTaskRunScope(JitTask *task)
+    : task_(task),
+      jitvm_(nullptr)
 {
-    jitTask_ = jitTask;
-    jitTask_->SetRunState(RunState::RUNNING);
-    JSThread *compilerThread = jitTask_->GetCompilerThread();
+    task_->SetRunState(RunState::RUNNING);
+    JSThread *compilerThread = task_->GetCompilerThread();
     ASSERT(compilerThread->IsJitThread());
     JitThread *jitThread = static_cast<JitThread*>(compilerThread);
     jitvm_ = jitThread->GetJitVM();
-    jitvm_->SetHostVM(jitTask_->GetHostThread());
-    jitThread->SetCurrentTask(jitTask);
+    jitvm_->SetHostVM(task_->GetHostThread());
+    jitThread->SetCurrentTask(task_);
 }
 
-JitTask::AsyncTask::AsyncTaskRunScope::~AsyncTaskRunScope()
+JitAsyncTaskRunScope::~JitAsyncTaskRunScope()
 {
-    JSThread *compilerThread = jitTask_->GetCompilerThread();
+    JSThread *compilerThread = task_->GetCompilerThread();
     JitThread *jitThread = static_cast<JitThread*>(compilerThread);
     jitThread->SetCurrentTask(nullptr);
     jitvm_->ReSetHostVM();
-    jitTask_->SetRunStateFinish();
+    task_->SetRunStateFinish();
 }
 }  // namespace panda::ecmascript

@@ -44,7 +44,7 @@ public:
     }
     ~ChunkVector() = default;
     NO_COPY_SEMANTIC(ChunkVector);
-    NO_MOVE_SEMANTIC(ChunkVector);
+    DEFAULT_MOVE_SEMANTIC(ChunkVector);
 };
 
 template<typename T>
@@ -103,7 +103,7 @@ public:
     }
     ~ChunkUnorderedMap() = default;
     NO_COPY_SEMANTIC(ChunkUnorderedMap);
-    NO_MOVE_SEMANTIC(ChunkUnorderedMap);
+    DEFAULT_MOVE_SEMANTIC(ChunkUnorderedMap);
 };
 
 template<typename K, typename V, typename Compare = std::less<K>>
@@ -117,7 +117,7 @@ public:
     }
     ~ChunkMultimap() = default;
     NO_COPY_SEMANTIC(ChunkMultimap);
-    NO_MOVE_SEMANTIC(ChunkMultimap);
+    DEFAULT_MOVE_SEMANTIC(ChunkMultimap);
 };
 }  // namespace panda::ecmascript
 

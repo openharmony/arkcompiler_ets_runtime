@@ -206,6 +206,12 @@ bool CompileDecision::IsJsFunctionSupportCompile() const
         LOG_JIT(DEBUG) << "skip jit task, as osr does not support catch blocks: " << GetMethodInfo();
         return false;
     }
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    if (method->HasCatchBlock(vm_->GetJSThread())) {
+        LOG_JIT(DEBUG) << "skip jit task, as ArkSteed does not support catch blocks: " << GetMethodInfo();
+        return false;
+    }
+#endif
     methodNameCollector.Collect(std::string(GetMethodName()));
     if (!methodNameFilter.NeedCompiledByJit(std::string(GetMethodName()))) {
         LOG_JIT(DEBUG) << "skip jit task, as not the compilation target:" << GetMethodInfo();
@@ -242,7 +248,7 @@ bool CompileDecision::IsSupportFunctionKind() const
 
 bool CompileDecision::CheckJsFunctionStatus() const
 {
-    if (tier_.IsFast() && jsFunction_->IsJitCompiling()) {
+    if (tier_.IsFastJit() && jsFunction_->IsJitCompiling()) {
         return false;
     }
 
@@ -250,7 +256,7 @@ bool CompileDecision::CheckJsFunctionStatus() const
         return false;
     }
 
-    if (tier_.IsFast() && jsFunction_->IsCompiledCode()) {
+    if (tier_.IsFastJit() && jsFunction_->IsCompiledCode()) {
         JSTaggedValue machineCode = jsFunction_->GetMachineCode(vm_->GetJSThread());
         if (machineCode.IsMachineCodeObject() &&
             MachineCode::Cast(machineCode.GetTaggedObject())->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {

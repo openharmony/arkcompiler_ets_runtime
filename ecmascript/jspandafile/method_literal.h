@@ -121,9 +121,19 @@ public:
             HaveNewTargetWithCallField() + HaveThisWithCallField();
     }
 
+    uint32_t GetNumArgsForArkSteed() const
+    {
+        return GetNumArgsWithCallField() + 3;  // 3 : CallTarget, NewTarget, This
+    }
+
     uint32_t GetNumberVRegs() const
     {
         return GetNumVregsWithCallField() + GetNumArgs();
+    }
+
+    uint32_t GetNumberVRegsForArkSteed() const
+    {
+        return GetNumVregsWithCallField() + GetNumArgsForArkSteed();
     }
 
     uint32_t GetNewTargetVregIndex() const

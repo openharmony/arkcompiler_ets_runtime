@@ -131,6 +131,10 @@ enum CommandValues {
     OPTION_STARTUP_TIME,
     OPTION_COMPILER_LOG_OPT,
     OPTION_COMPILER_LOG_METHODS,
+    OPTION_COMPILER_ARKSTEED_PRINT_GRAPH,
+    OPTION_COMPILER_ARKSTEED_PRINT_METHOD_NAME,
+    OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT,
+    OPTION_COMPILER_ARKSTEED_PRINT_CODE,
     OPTION_COMPILER_TYPE_THRESHOLD,
     OPTION_ENABLE_RUNTIME_STAT,
     OPTION_COMPILER_LOG_SNAPSHOT,
@@ -886,6 +890,46 @@ public:
     {
         return WasOptionSet(OPTION_COMPILER_LOG_METHODS) && GetCompilerLogOption().find("none") == std::string::npos &&
                GetCompilerLogOption().find("all") == std::string::npos;
+    }
+
+    void SetCompilerArkSteedPrintGraph(bool value)
+    {
+        compilerArkSteedPrintGraph_ = value;
+    }
+
+    bool GetCompilerArkSteedPrintGraph() const
+    {
+        return compilerArkSteedPrintGraph_;
+    }
+
+    void SetCompilerArkSteedPrintMethodName(bool value)
+    {
+        compilerArkSteedPrintMethodName_ = value;
+    }
+
+    bool GetCompilerArkSteedPrintMethodName() const
+    {
+        return compilerArkSteedPrintMethodName_;
+    }
+
+    void SetCompilerArkSteedEnableCodeComment(bool value)
+    {
+        compilerArkSteedEnableCodeComment_ = value;
+    }
+
+    bool GetCompilerArkSteedEnableCodeComment() const
+    {
+        return compilerArkSteedEnableCodeComment_;
+    }
+
+    void SetCompilerArkSteedPrintCode(bool value)
+    {
+        compilerArkSteedPrintCode_ = value;
+    }
+
+    bool GetCompilerArkSteedPrintCode() const
+    {
+        return compilerArkSteedPrintCode_;
     }
 
     void SetCompilerLogSnapshot(bool value)
@@ -2590,6 +2634,10 @@ private:
     bool startupTime_ {false};
     std::string compilerLogOpt_ {"none"};
     std::string compilerLogMethods_ {"none"};
+    bool compilerArkSteedPrintGraph_ {false};
+    bool compilerArkSteedPrintMethodName_ {true};
+    bool compilerArkSteedEnableCodeComment_ {false};
+    bool compilerArkSteedPrintCode_ {false};
     bool compilerLogSnapshot_ {false};
     bool compilerLogTime_ {false};
     bool enableCompilerLogAllMethodsTime_ {false};

@@ -234,14 +234,20 @@ private:
 // -----------------------------------------------------------------------------
 class VRegister : public CPURegister {
 public:
+    static constexpr int DEFAULT_LANE_COUNT = 1;
     static constexpr VRegister Invalid()
     {
         return VRegister(CPURegister::Invalid(), 1);
     }
 
-    static constexpr VRegister Create(int code, int size, int laneCount = 1)
+    static constexpr VRegister Create(int code, int size, int laneCount = DEFAULT_LANE_COUNT)
     {
         return VRegister(CPURegister::Create(code, size, V_REGISTER), laneCount);
+    }
+
+    static constexpr VRegister FromCode(int8_t code)
+    {
+        return VRegister(CPURegister::Create(code, V_REG_SIZE, V_REGISTER), DEFAULT_LANE_COUNT);
     }
 
     int GetLaneCount() const

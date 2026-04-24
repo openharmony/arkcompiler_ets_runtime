@@ -16,15 +16,25 @@
 #ifndef ECMASCRIPT_RUNTIME_STUB_LIST_H
 #define ECMASCRIPT_RUNTIME_STUB_LIST_H
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/stubs/test_runtime_stubs.h"
 
 namespace panda::ecmascript {
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+#define RUNTIME_ASM_STUB_LIST(V)             \
+    JS_CALL_TRAMPOLINE_LIST(V)               \
+    FAST_CALL_TRAMPOLINE_LIST(V)             \
+    ASM_INTERPRETER_TRAMPOLINE_LIST(V)       \
+    BASELINE_TRAMPOLINE_LIST(V)              \
+    ARKSTEED_TRAMPOLINE_LIST(V)
+#else
 #define RUNTIME_ASM_STUB_LIST(V)             \
     JS_CALL_TRAMPOLINE_LIST(V)               \
     FAST_CALL_TRAMPOLINE_LIST(V)             \
     ASM_INTERPRETER_TRAMPOLINE_LIST(V)       \
     BASELINE_TRAMPOLINE_LIST(V)
+#endif
 
 #define ASM_INTERPRETER_TRAMPOLINE_LIST(V)   \
     V(AsmInterpreterEntry)                   \
@@ -97,6 +107,11 @@ namespace panda::ecmascript {
     V(SuperCallAndCheckToBaselineFromBaseline)        \
     V(CallThisRangeAndCheckToBaselineFromBaseline)    \
     V(GetBaselineBuiltinFp)
+
+#define ARKSTEED_TRAMPOLINE_LIST(V)                      \
+    V(ArkSteedCallEntry)                                 \
+    V(SteedCallAndPushArgv)                              \
+    V(SteedCallWithArgVAndPushArgv)
 
 #define JS_CALL_TRAMPOLINE_LIST(V)           \
     V(CallRuntime)                           \
@@ -363,6 +378,8 @@ namespace panda::ecmascript {
     V(DefineGetterSetterByValue)                               \
     V(SuperCall)                                               \
     V(OptSuperCall)                                            \
+    V(CallRange)                                               \
+    V(CallThisRange)                                           \
     V(LdBigInt)                                                \
     V(ToNumeric)                                               \
     V(ToNumericConvertBigInt)                                  \
@@ -433,6 +450,13 @@ namespace panda::ecmascript {
     V(ReportHiEvents)                                          \
     V(CallNumTrace)
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+#define ARKSTEED_RUNTIME_STUB_LIST(V)                          \
+    V(ArkSteedCompile)
+#else
+#define ARKSTEED_RUNTIME_STUB_LIST(V)
+#endif
+
 // When ASM enters C++ via CallRuntime, if the C++ process requires GetGlobalEnv(),
 // the current globalenv in ASM must be set to glue before CallRuntime!
 // Use CallRuntimeWithGlobalEnv or CallRuntimeWithCurrentEnv.
@@ -460,6 +484,7 @@ namespace panda::ecmascript {
     V(UpdateLayOutAndAddTransition)                            \
     V(CopyAndUpdateObjLayout)                                  \
     V(RuntimeDump)                                             \
+    V(DumpJSCallFunctionInfo)                                  \
     V(ForceGC)                                                 \
     V(NoticeThroughChainAndRefreshUser)                        \
     V(JumpToCInterpreter)                                      \
@@ -553,8 +578,9 @@ namespace panda::ecmascript {
     V(AotCallBuiltinTrace)                                     \
     V(NumberBigIntNativePointerToString)                       \
     V(ComputeHashcode)                                         \
-    V(UpdateSharedModule)
-
+    V(UpdateSharedModule)                                      \
+    V(PrintMethodName)                                           \
+    ARKSTEED_RUNTIME_STUB_LIST(V)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)               \
     RUNTIME_STUB_WITH_GC_WITH_GLOBALENV_LIST(V)    \

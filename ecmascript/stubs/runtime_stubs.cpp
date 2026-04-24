@@ -701,6 +701,35 @@ DEF_RUNTIME_STUBS(RuntimeDump)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DumpJSCallFunctionInfo)
+{
+    RUNTIME_STUBS_HEADER(DumpJSCallFunctionInfo);
+    JSHandle<JSTaggedValue> funcValue = GetHArg<JSTaggedValue>(argv, argc, 0);
+    if (!funcValue->IsJSFunction()) {
+        std::ostringstream oss;
+        funcValue->Dump(thread, oss);
+        LOG_ECMA(ERROR) << "DumpJSCallFunctionInfo: target is not JSFunction, value=" << oss.str();
+        return JSTaggedValue::Hole().GetRawData();
+    }
+
+    JSFunction *func = JSFunction::Cast(funcValue->GetTaggedObject());
+    Method *method = Method::Cast(func->GetMethod(thread).GetTaggedObject());
+    CString recordName = method->GetRecordNameStr(thread);
+    const char *methodName = method->GetMethodName(thread);
+    LOG_ECMA(ERROR) << "DumpJSCallFunctionInfo:"
+                    << " func=0x" << std::hex << funcValue.GetTaggedType()
+                    << " method=0x" << method
+                    << " codeEntry=0x" << func->GetCodeEntry()
+                    << std::dec
+                    << " compiled=" << func->IsCompiledCode()
+                    << " fastCall=" << func->IsCompiledFastCall()
+                    << " jitCompiling=" << func->IsJitCompiling()
+                    << " baselineCompiling=" << func->IsBaselinejitCompiling()
+                    << " aotWithCallField=" << method->IsAotWithCallField()
+                    << " method=" << recordName << "." << methodName;
+    return JSTaggedValue::Hole().GetRawData();
+}
+
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -1708,6 +1737,19 @@ DEF_RUNTIME_STUBS(BaselineJitCompile)
                  MachineCode::INVALID_OSR_OFFSET, JitCompileMode::Mode::ASYNC);
     return JSTaggedValue::Undefined().GetRawData();
 }
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+DEF_RUNTIME_STUBS(ArkSteedCompile)
+{
+    RUNTIME_STUBS_HEADER(ArkSteedCompile);
+    JSHandle<JSFunction> thisFunc = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue offset = GetArg(argv, argc, 1);  // 1: means the first parameter
+    Jit::CompileArkSteed(thread->GetEcmaVM(), thisFunc, CompilerTier::Tier::ARKSTEED,
+                         offset.GetInt(), JitCompileMode::Mode::ASYNC);
+
+    return JSTaggedValue::Undefined().GetRawData();
+}
+#endif
 
 DEF_RUNTIME_STUBS(CountInterpExecFuncs)
 {
@@ -2858,6 +2900,27 @@ DEF_RUNTIME_STUBS(OptSuperCall)
                                static_cast<uint16_t>(length.GetInt())).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(CallRange)
+{
+    RUNTIME_STUBS_HEADER(CallRange);
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: func
+    JSHandle<TaggedArray> taggedArray(thread, GetArg(argv, argc, 1));  // 1: taggedArray
+    JSTaggedValue length = GetArg(argv, argc, 2);  // 2: taggedLength
+    return RuntimeCallRange(thread, func, taggedArray,
+                            static_cast<uint16_t>(length.GetInt())).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CallThisRange)
+{
+    RUNTIME_STUBS_HEADER(CallThisRange);
+    JSHandle<JSTaggedValue> thisObj = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: thisObj
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: func
+    JSHandle<TaggedArray> taggedArray(thread, GetArg(argv, argc, 2));  // 2: taggedArray
+    JSTaggedValue length = GetArg(argv, argc, 3);  // 3: taggedLength
+    return RuntimeCallThisRange(thread, func, thisObj, taggedArray,
+                                static_cast<uint16_t>(length.GetInt())).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(ThrowNotCallableException)
 {
     RUNTIME_STUBS_HEADER(ThrowNotCallableException);
@@ -3420,6 +3483,9 @@ JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
     if (it.IsFastJitFunctionFrame()) {
         auto fastJitFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
         return reinterpret_cast<uintptr_t>(fastJitFunctionFrame->GetArgv(it));
+    } else if (it.IsSteedFunctionFrame()) {
+        auto steedFunctionFrame = it.GetFrame<SteedFunctionFrame>();
+        return reinterpret_cast<uintptr_t>(steedFunctionFrame->GetArgv(it));
     } else {
         auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
         return reinterpret_cast<uintptr_t>(optimizedJSFunctionFrame->GetArgv(it));
@@ -5178,6 +5244,18 @@ void RuntimeStubs::BatchMarkInBuffer(uintptr_t argGlue, void* src, size_t count)
         ref = reinterpret_cast<BaseObject*>(reinterpret_cast<uintptr_t>(ref) & ~(common::Barrier::TAG_WEAK));
         mutator->RememberObjectInSatbBuffer(ref);
     }
+}
+
+DEF_RUNTIME_STUBS(PrintMethodName)
+{
+    RUNTIME_STUBS_HEADER(PrintMethodName);
+    JSHandle<JSTaggedValue> funcValue = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSFunction *func = JSFunction::Cast(funcValue->GetTaggedObject());
+    Method *method = Method::Cast(func->GetMethod(thread).GetTaggedObject());
+    CString recordName = method->GetRecordNameStr(thread);
+    const char *methodName = method->GetMethodName(thread);
+    LOG_ECMA(INFO) << ">>> Running method: " << recordName << "." << methodName;
+    return JSTaggedValue::Hole().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ComputeHashcode)

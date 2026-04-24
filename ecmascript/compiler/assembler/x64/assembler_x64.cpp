@@ -1411,4 +1411,48 @@ void AssemblerX64::Jnb(Label *target, Distance distance)
         EmitI32(emitPos);
     }
 }
+
+void AssemblerX64::Movsd(XMMRegister dst, XMMRegister src)
+{
+    // movsd xmm_dst, xmm_src
+    // Encoding: F2 0F 10 /r
+    EmitU8(0xF2);  // mandatory prefix
+    // REX prefix (only if using xmm8-xmm15)
+    if (dst.HighBit() || src.HighBit()) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.HighBit());  // 2: REX.W bit position
+    }
+    EmitU8(0x0F);
+    EmitU8(0x10);
+    // ModR/M: Mod=11 (register), Reg=dst.LowBits(), RM=src.LowBits()
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());  // 3: Reg field position in ModR/M
+}
+
+void AssemblerX64::Movsd(XMMRegister dst, const Operand &src)
+{
+    // movsd xmm_dst, m64_src
+    // Load scalar double-precision floating-point value from memory to XMM register
+    // Encoding: F2 0F 10 /r (with memory operand)
+    EmitU8(0xF2);  // mandatory prefix
+    // REX prefix (only if using xmm8-xmm15 or extended addressing)
+    if (dst.HighBit() || src.rex_) {
+        EmitU8(0x40 | (dst.HighBit() << 2) | src.rex_);  // 2: REX.W bit position
+    }
+    EmitU8(0x0F);
+    EmitU8(0x10);
+    // Emit ModR/M with memory operand
+    EmitOperand(dst.LowBits(), src);
+}
+
+void AssemblerX64::Movq(XMMRegister dst, Register src)
+{
+    // movq xmm_dst, r64_src
+    // Encoding: 66 REX.W 0F 6E /r
+    EmitU8(0x66);  // mandatory prefix
+    // REX.W prefix (REX.W is required for 64-bit operand size)
+    EmitU8(0x48 | (dst.HighBit() << 2) | src.HighBit());  // 2: REX.W bit position
+    EmitU8(0x0F);
+    EmitU8(0x6E);
+    // ModR/M: Mod=11 (register), Reg=dst.LowBits(), RM=src.LowBits()
+    EmitU8(0xC0 | (dst.LowBits() << 3) | src.LowBits());  // 3: Reg field position in ModR/M
+}
 }  // panda::ecmascript::x64

@@ -231,6 +231,10 @@ JSTaggedValue FrameHandler::GetFunction() const
                 auto *frame = FASTJITFunctionFrame::GetFrameFromSp(sp_);
                 return frame->GetFunction();
             }
+            case FrameType::STEED_FUNCTION_FRAME: {
+                auto *frame = SteedFunctionFrame::GetFrameFromSp(sp_);
+                return frame->GetFunction();
+            }
             case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
             case FrameType::INTERPRETER_FRAME:
             case FrameType::INTERPRETER_FAST_NEW_FRAME:
@@ -441,6 +445,11 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, RootVisitor &visitor) 
             case FrameType::FASTJIT_FUNCTION_FRAME:
             case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
                 auto frame = it.GetFrame<FASTJITFunctionFrame>();
+                frame->GCIterate(it, visitor, type);
+                break;
+            }
+            case FrameType::STEED_FUNCTION_FRAME: {
+                auto frame = it.GetFrame<SteedFunctionFrame>();
                 frame->GCIterate(it, visitor, type);
                 break;
             }

@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_JIT_H
 #define ECMASCRIPT_JIT_H
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
 #include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/platform/mutex.h"
@@ -55,7 +56,7 @@ public:
     bool PUBLIC_API IsEnableBaselineJit() const;
     bool PUBLIC_API IsEnableJitFort() const;
     void SetEnableJitFort(bool isEnableJitFort);
-    bool IsDisableCodeSign() const;
+    bool PUBLIC_API IsDisableCodeSign() const;
     void SetDisableCodeSign(bool isEnableCodeSign);
     bool PUBLIC_API IsEnableAsyncCopyToFort() const;
     void SetEnableAsyncCopyToFort(bool isEnableiAsyncCopyToFort);
@@ -240,11 +241,20 @@ public:
         NO_COPY_SEMANTIC(JitGCLockHolder);
         NO_MOVE_SEMANTIC(JitGCLockHolder);
     };
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    static void CompileArkSteed(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
+                               CompilerTier tier = CompilerTier::Tier::FAST,
+                               int32_t offset = MachineCode::INVALID_OSR_OFFSET,
+                               JitCompileMode mode = JitCompileMode::Mode::ASYNC);
+#endif
 
 private:
     void Compile(EcmaVM *vm, const CompileDecision &decision);
     static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
                         int32_t offset, JitCompileMode mode);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    static bool IsArkSteedBytecodeSupported(EcmaVM *vm, JSHandle<JSFunction> &jsFunction);
+#endif
     void CreateJitResources();
     bool IsLibResourcesResolved() const;
     bool initialized_ { false };

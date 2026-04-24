@@ -193,6 +193,44 @@ libark_jsoptimizer_sources = [
   "verifier.cpp",
 ]
 
+if (ets_runtime_enable_ark_steed) {
+  libark_jsoptimizer_sources += [
+    "trampoline/aarch64/arksteed_call.cpp",
+    "trampoline/x64/arksteed_call.cpp",
+    "${ARK_STEED_ROOT}/arksteed_assembler.cpp",
+    "${ARK_STEED_ROOT}/arksteed_bb.cpp",
+    "${ARK_STEED_ROOT}/arksteed_bytecode_analysis.cpp",
+    "${ARK_STEED_ROOT}/arksteed_bytecode_analysis_new.cpp",
+    "${ARK_STEED_ROOT}/arksteed_bytecode_context.cpp",
+    "${ARK_STEED_ROOT}/arksteed_bytecode_liveness.cpp",
+    "${ARK_STEED_ROOT}/arksteed_bytecode_preprocessor.cpp",
+    "${ARK_STEED_ROOT}/arksteed_bytecode_preprocessor_new.cpp",
+    "${ARK_STEED_ROOT}/arksteed_comment.cpp",
+    "${ARK_STEED_ROOT}/arksteed_codegen.cpp",
+    "${ARK_STEED_ROOT}/arksteed_compiler.cpp",
+    "${ARK_STEED_ROOT}/arksteed_disassembler.cpp",
+    "${ARK_STEED_ROOT}/arksteed_graph_builder.cpp",
+    "${ARK_STEED_ROOT}/arksteed_graph_printer.cpp",
+    "${ARK_STEED_ROOT}/arksteed_graph_labeller.cpp",
+    "${ARK_STEED_ROOT}/arksteed_opcode.cpp",
+    "${ARK_STEED_ROOT}/arksteed_vertex.cpp",
+    "${ARK_STEED_ROOT}/arksteed_framestate.cpp",
+    "${ARK_STEED_ROOT}/arksteed_regalloc.cpp",
+    "${ARK_STEED_ROOT}/arksteed_regalloc_types.cpp",
+  ]
+
+  # Platform-specific ArkSteed assembler implementations
+  if (current_cpu == "amd64" || current_cpu == "x64" || current_cpu == "x86_64") {
+    libark_jsoptimizer_sources += [
+      "${ARK_STEED_ROOT}/arch/x64/arksteed_assembler_x64.cpp",
+    ]
+  } else if (current_cpu == "arm64") {
+    libark_jsoptimizer_sources += [
+      "${ARK_STEED_ROOT}/arch/arm64/arksteed_assembler_arm64.cpp",
+    ]
+  }
+}
+
 config("libark_jsoptimizer_set_config") {
   # Setting up IS_RELEASE_VERSION if compiling as release version
   if (build_variant == "user") {
@@ -243,6 +281,10 @@ ohos_source_set("libark_jsoptimizer_set") {
   external_deps += hiviewdfx_ext_deps
   deps += hiviewdfx_deps
   defines = []
+
+  if (ets_runtime_enable_ark_steed) {
+    defines += [ "ECMASCRIPT_ENABLE_ARK_STEED_GN" ]
+  }
 
   # init library for parameters.h
   if (!ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) &&
@@ -302,6 +344,10 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   ]
 
   defines = []
+
+  if (ets_runtime_enable_ark_steed) {
+    defines += [ "ECMASCRIPT_ENABLE_ARK_STEED_GN" ]
+  }
   external_deps = [ "zlib:libz" ]
 
   if (enable_jit_code_sign) {
