@@ -23,6 +23,7 @@
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_dictionary-inl.h"
@@ -2794,6 +2795,14 @@ JSTaggedValue RuntimeStubs::RuntimeThrowTypeError(JSThread *thread, const char *
 {
     ASSERT_NO_ABRUPT_COMPLETION(thread);
     THROW_TYPE_ERROR_AND_RETURN(thread, message, JSTaggedValue::Exception());
+}
+
+JSTaggedValue RuntimeStubs::RuntimeThrowContainerBusinessError(JSThread *thread,
+    int32_t errorCode, const char *message)
+{
+    // no ASSERT_NO_ABRUPT_COMPLETION since concurrentScope would throw error both in construction and destruction.
+    JSTaggedValue error = containers::ContainerError::BusinessError(thread, errorCode, message);
+    THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
 }
 
 JSTaggedValue RuntimeStubs::RuntimeGetCallSpreadArgs(JSThread *thread, const JSHandle<JSTaggedValue> &jsArray)

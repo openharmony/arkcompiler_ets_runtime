@@ -472,6 +472,8 @@ private:
                                                     const JSHandle<TaggedArray> &argv,
                                                     uint16_t length);
     static inline JSTaggedValue RuntimeThrowTypeError(JSThread *thread, const char *message);
+    static inline JSTaggedValue RuntimeThrowContainerBusinessError(JSThread *thread,
+        int32_t errorCode, const char *message);
     static inline JSTaggedValue RuntimeGetCallSpreadArgs(JSThread *thread, const JSHandle<JSTaggedValue> &array);
     static inline JSTaggedValue RuntimeThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);
     static inline JSTaggedValue RuntimeThrowSyntaxError(JSThread *thread, const char *message);

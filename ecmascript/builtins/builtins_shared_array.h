@@ -27,7 +27,7 @@
     V("from", From, 1, INVALID)                                \
     V("create", Create, 2, SharedArrayCreate)                  \
     /* SendableArray.isArray ( arg ) */                        \
-    V("isArray", IsArray, 1, INVALID)                          \
+    V("isArray", IsArray, 1, SharedArrayIsArray)               \
     V("of", Of, 1, INVALID)                                    \
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.of ( ...items ) */                          \
@@ -48,7 +48,7 @@
     /* SharedArray.prototype.filter ( callbackfn [ , thisArg ] ) */              \
     V("filter", Filter, 1, INVALID)                                              \
     /* SharedArray.prototype.find ( predicate [ , thisArg ] ) */                 \
-    V("find", Find, 1, INVALID)                                                  \
+    V("find", Find, 1, SharedArrayFind)                                          \
     /* SharedArray.prototype.findIndex ( predicate [ , thisArg ] ) */            \
     V("findIndex", FindIndex, 1, INVALID)                                        \
     /* SharedArray.prototype.forEach ( callbackfn [ , thisArg ] ) */             \
@@ -56,7 +56,7 @@
     /* SharedArray.prototype.includes ( searchElement [ , fromIndex ] ) */       \
     V("includes", Includes, 1, INVALID)                                          \
     /* SharedArray.prototype.indexOf ( searchElement [ , fromIndex ] ) */        \
-    V("indexOf", IndexOf, 1, INVALID)                                            \
+    V("indexOf", IndexOf, 1, SharedArrayIndexOf)                                 \
     /* SharedArray.prototype.join ( separator ) */                               \
     V("join", Join, 1, INVALID)                                                  \
     /* SharedArray.prototype.keys ( ) */                                         \
@@ -64,9 +64,9 @@
     /* SharedArray.prototype.map ( callbackfn [ , thisArg ] ) */                 \
     V("map", Map, 1, INVALID)                                                    \
     /* SharedArray.prototype.pop ( ) */                                          \
-    V("pop", Pop, 0, INVALID)                                                    \
+    V("pop", Pop, 0, SharedArrayPop)                                              \
     /* SharedArray.prototype.push ( ...items ) */                                \
-    V("push", Push, 1, INVALID)                                                  \
+    V("push", Push, 1, SharedArrayPush)                                          \
     /* SharedArray.prototype.reduce ( callbackfn [ , initialValue ] ) */         \
     V("reduce", Reduce, 1, INVALID)                                              \
     /* SharedArray.prototype.shift ( ) */                                        \
@@ -92,7 +92,7 @@
     /* SharedArray.prototype.some ( callbackfn [ , thisArg ] ) */                \
     V("some", Some, 1, INVALID)                                                  \
     /* SendableArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */  \
-    V("lastIndexOf", LastIndexOf, 1, INVALID)                                    \
+    V("lastIndexOf", LastIndexOf, 1, SharedArrayLastIndexOf)                     \
 	/* SharedArray.prototype.copyWithin ( target, start [ , end ] ) */           \
     V("copyWithin", CopyWithin, 2, INVALID)                                      \
 	/* SharedArray.prototype.reduceRight ( callbackfn [ , initialValue ] ) */    \

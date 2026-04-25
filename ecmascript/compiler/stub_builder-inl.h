@@ -24,6 +24,7 @@
 #include "ecmascript/compiler/assembler_module.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/baseline/baseline_call_signature.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/enum_cache.h"
 #include "ecmascript/global_dictionary.h"
 #include "ecmascript/global_env.h"
@@ -4767,5 +4768,19 @@ inline GateRef StubBuilder::GetStringWrapperToPrimitiveDetector(GateRef env)
 {
     return env_->GetBuilder()->GetStringWrapperToPrimitiveDetector(env);
 }
+
+// ConcurrentApiScope implementation
+inline GateRef StubBuilder::AtomicCmpXchgI32(GateRef obj, GateRef offset, GateRef expected, GateRef desired)
+{
+    GateRef address = PtrAdd(obj, offset);
+    return env_->GetBuilder()->AtomicCmpXchg(VariableType::INT32(), address, expected, desired);
+}
+
+inline GateRef StubBuilder::AtomicLoadAcquireI32(GateRef base, GateRef offset)
+{
+    GateRef address = PtrAdd(base, offset);
+    return env_->GetBuilder()->AtomicLoadAcquire(VariableType::INT32(), address);
+}
+
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

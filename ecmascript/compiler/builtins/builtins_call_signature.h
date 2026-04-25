@@ -143,6 +143,12 @@ public:
             case BuiltinsStubCSigns::ID::MapHas:
             case BuiltinsStubCSigns::ID::MapKeys:
             case BuiltinsStubCSigns::ID::MapValues:
+            case BuiltinsStubCSigns::ID::SharedMapKeys:
+            case BuiltinsStubCSigns::ID::SharedMapValues:
+            case BuiltinsStubCSigns::ID::SharedMapSet:
+            case BuiltinsStubCSigns::ID::SharedMapGet:
+            case BuiltinsStubCSigns::ID::SharedMapHas:
+            case BuiltinsStubCSigns::ID::SharedMapDelete:
             case BuiltinsStubCSigns::ID::MapEntries:
             case BuiltinsStubCSigns::ID::SetHas:
             case BuiltinsStubCSigns::ID::MapDelete:
@@ -318,6 +324,16 @@ public:
             {MapHas, "Map.has"},
             {MapKeys, "Map.keys"},
             {MapValues, "Map.values"},
+            {SharedMapKeys, "SharedMap.keys"},
+            {SharedMapValues, "SharedMap.values"},
+            {SharedMapSet, "SharedMap.set"},
+            {SharedMapGet, "SharedMap.get"},
+            {SharedMapHas, "SharedMap.has"},
+            {SharedMapDelete, "SharedMap.delete"},
+            {SharedArrayPop, "SharedArray.prototype.pop"},
+            {SharedArrayFind, "SharedArray.prototype.find"},
+            {SharedArrayLastIndexOf, "SharedArray.prototype.lastIndexOf"},
+            {SharedArrayIndexOf, "SharedArray.prototype.indexOf"},
             {MapEntries, "Map.entries"},
             {SetValues, "Set.values"},
             {SetEntries, "Set.entries"},

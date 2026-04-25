@@ -29,6 +29,7 @@
 #include "ecmascript/builtins/builtins_reflect.h"
 #include "ecmascript/builtins/builtins_string_iterator.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
+#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
@@ -2335,6 +2336,18 @@ DEF_RUNTIME_STUBS(ThrowTypeErrorWithParam)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
+}
+
+DEF_RUNTIME_STUBS(ThrowContainerBusinessError)
+{
+    RUNTIME_STUBS_HEADER(ThrowContainerBusinessError);
+    JSTaggedValue argErrorCode = GetArg(argv, argc, 0); // 0: means the zeroth parameter (error code)
+    int32_t errorCode = argErrorCode.GetInt();
+
+    JSTaggedValue argMessageStringId = GetArg(argv, argc, 1); // 1: means the first parameter (error message)
+    std::string message = MessageString::GetMessageString(argMessageStringId.GetInt());
+
+    return RuntimeThrowContainerBusinessError(thread, errorCode, message.c_str()).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(MismatchError)

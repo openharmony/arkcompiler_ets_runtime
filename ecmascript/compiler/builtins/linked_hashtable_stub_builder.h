@@ -22,8 +22,8 @@ namespace panda::ecmascript::kungfu {
 template<typename LinkedHashTableType, typename LinkedHashTableObject>
 class LinkedHashTableStubBuilder : public StubBuilder {
 public:
-    explicit LinkedHashTableStubBuilder(StubBuilder *parent, GateRef glue, GateRef globalEnv)
-        : StubBuilder(parent, globalEnv), glue_(glue) {}
+    explicit LinkedHashTableStubBuilder(StubBuilder *parent, GateRef glue, GateRef globalEnv, bool isShared = false)
+        : StubBuilder(parent, globalEnv), glue_(glue), isShared_(isShared) {}
     ~LinkedHashTableStubBuilder() override = default;
     NO_MOVE_SEMANTIC(LinkedHashTableStubBuilder);
     NO_COPY_SEMANTIC(LinkedHashTableStubBuilder);
@@ -39,6 +39,8 @@ public:
 
     void GenMapSetConstructor(GateRef nativeCode, GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs,
         GateRef arg0, GateRef argv);
+    void GenSharedMapSetConstructor(GateRef nativeCode, GateRef func, GateRef newTarget,
+        GateRef thisValue, GateRef numArgs, GateRef arg0, GateRef argv);
 
     GateRef GetLinked(GateRef jsThis);
 
@@ -212,6 +214,9 @@ private:
     GateRef GetLinkedOffset();
 
     GateRef glue_;
+
+    // isShared_ for SharedMap and SharedSet
+    bool isShared_ = false;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_LINKED_HASHTABLE_STUB_BUILDER_H

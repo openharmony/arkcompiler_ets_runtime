@@ -181,6 +181,13 @@ bool LazyDeoptAllDependencies::DependOnStableProtoChain(JSThread *thread, JSHCla
     bool success = true;
     while (current.IsHeapObject()) {
         auto currentHC = current.GetTaggedObject()->GetClass();
+        // Sendable objects can only inherit from Sendable objects, so once we encounter
+        // a shared hclass, all remaining prototypes in the chain are also shared.
+        // Shared prototypes are frozen/immutable (always stable), and registering deopt
+        // dependencies on them is prohibited (ShareToLocal). Safe to stop here.
+        if (currentHC->IsJSShared()) {
+            break;
+        }
         success &= DependOnStableHClass(currentHC);
         // We only need to ensure Stable of the prototype chain
         // from the receiver's prototype to the holder.

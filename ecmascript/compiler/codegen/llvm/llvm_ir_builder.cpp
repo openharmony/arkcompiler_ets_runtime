@@ -193,12 +193,14 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::AND, &LLVMIRBuilder::HandleIntAnd},
         {OpCode::OR, &LLVMIRBuilder::HandleIntOr},
         {OpCode::FETCH_OR, &LLVMIRBuilder::HandleFetchOr},
+        {OpCode::ATOMIC_CMPXCHG, &LLVMIRBuilder::HandleAtomicCmpXchg},
         {OpCode::XOR, &LLVMIRBuilder::HandleIntXor},
         {OpCode::LSR, &LLVMIRBuilder::HandleIntLsr},
         {OpCode::ASR, &LLVMIRBuilder::HandleIntAsr},
         {OpCode::ICMP, &LLVMIRBuilder::HandleCmp},
         {OpCode::FCMP, &LLVMIRBuilder::HandleCmp},
         {OpCode::LOAD_WITHOUT_BARRIER, &LLVMIRBuilder::HandleLoad},
+        {OpCode::ATOMIC_LOAD_ACQUIRE, &LLVMIRBuilder::HandleAtomicLoadAcquire},
         {OpCode::STORE_WITHOUT_BARRIER, &LLVMIRBuilder::HandleStore},
         {OpCode::SIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeInt32ToDouble},
         {OpCode::UNSIGNED_INT_TO_FLOAT, &LLVMIRBuilder::HandleChangeUInt32ToDouble},
@@ -1736,6 +1738,25 @@ void LLVMIRBuilder::VisitLoad(GateRef gate, GateRef base)
     }
 }
 
+void LLVMIRBuilder::VisitAtomicLoadAcquire(GateRef gate, GateRef base)
+{
+    LLVMValueRef baseAddr = GetLValue(base);
+
+    LLVMTypeRef returnType = ConvertLLVMTypeFromGate(gate);
+    LLVMTypeRef memType = LLVMPointerType(returnType, GetPtrAddressSpace(baseAddr));
+    baseAddr = CanonicalizeToPtr(baseAddr, memType);
+
+    LLVMValueRef result = LLVMBuildLoad2(builder_, returnType, baseAddr, "");
+    LLVMSetOrdering(result, LLVMAtomicOrderingAcquire);
+    LLVMSetVolatile(result, 1);
+
+    Bind(gate, result);
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, result);
+    }
+}
+
 void LLVMIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef value)
 {
     LLVMValueRef baseAddr = GetLValue(base);
@@ -2072,6 +2093,14 @@ void LLVMIRBuilder::HandleFetchOr(GateRef gate)
     auto g0 = acc_.GetValueIn(gate, 0);
     auto g1 = acc_.GetValueIn(gate, 1);
     VisitFetchOr(gate, g0, g1);
+}
+
+void LLVMIRBuilder::HandleAtomicCmpXchg(GateRef gate)
+{
+    auto g0 = acc_.GetValueIn(gate, 0);
+    auto g1 = acc_.GetValueIn(gate, 1);
+    auto g2 = acc_.GetValueIn(gate, 2);
+    VisitAtomicCmpXchg(gate, g0, g1, g2);
 }
 
 void LLVMIRBuilder::HandleIntXor(GateRef gate)
@@ -2488,6 +2517,11 @@ void LLVMIRBuilder::HandleLoad(GateRef gate)
     VisitLoad(gate, acc_.GetIn(gate, 1));
 }
 
+void LLVMIRBuilder::HandleAtomicLoadAcquire(GateRef gate)
+{
+    VisitAtomicLoadAcquire(gate, acc_.GetIn(gate, 1));
+}
+
 void LLVMIRBuilder::HandleStore(GateRef gate)
 {
     GateRef addr = acc_.GetValueIn(gate, 0);
@@ -2612,6 +2646,32 @@ void LLVMIRBuilder::VisitFetchOr(GateRef gate, GateRef e1, GateRef e2)
         SetDebugInfo(gate, result);
     }
 }
+
+void LLVMIRBuilder::VisitAtomicCmpXchg(GateRef gate, GateRef e1, GateRef e2, GateRef e3)
+{
+    LLVMValueRef e1Value = GetLValue(e1);
+    LLVMValueRef e2Value = GetLValue(e2);  // expected value
+    LLVMValueRef e3Value = GetLValue(e3);  // desired value
+    e1Value = CanonicalizeToPtr(e1Value, LLVMPointerType(LLVMTypeOf(e2Value), 0));
+
+    // Use fixed memory ordering: AcquireRelease for success, Monotonic for failure
+    // This matches C++ Barriers::AtomicSetPrimitive semantics
+    LLVMAtomicOrdering successOrder = LLVMAtomicOrderingAcquireRelease;
+    LLVMAtomicOrdering failureOrder = LLVMAtomicOrderingMonotonic;
+
+    // LLVMBuildAtomicCmpXchg returns struct {old_value, success}
+    // Extract old_value (index 0) to match C++ AtomicSetPrimitive semantics
+    LLVMValueRef cmpxchgResult = LLVMBuildAtomicCmpXchg(builder_, e1Value, e2Value, e3Value,
+                                                        successOrder, failureOrder, false);
+    LLVMValueRef oldValue = LLVMBuildExtractValue(builder_, cmpxchgResult, 0, "oldValue");
+
+    Bind(gate, oldValue);  // Bind only old_value, matching C++ AtomicSetPrimitive
+
+    if (IsLogEnabled()) {
+        SetDebugInfo(gate, oldValue);
+    }
+}
+
 
 void LLVMIRBuilder::HandleIntAnd(GateRef gate)
 {

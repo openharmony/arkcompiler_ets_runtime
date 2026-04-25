@@ -125,7 +125,9 @@ enum class CallInfoKind : bool {
     V(HasPendingExceptionIntrinsic, (GateRef gate))                                       \
     V(CheckObjectIsStringIntrinsic, (GateRef gate, GateRef e1, GateRef e2))               \
     V(IsJsCOWArrayIntrinsic, (GateRef gate, GateRef e1, GateRef e2))                      \
-    V(FetchOr, (GateRef gate, GateRef e1, GateRef e2))
+    V(FetchOr, (GateRef gate, GateRef e1, GateRef e2))                                    \
+    V(AtomicCmpXchg, (GateRef gate, GateRef e1, GateRef e2, GateRef e3))                  \
+    V(AtomicLoadAcquire, (GateRef gate, GateRef base))
 
 bool IsAddIntergerType(MachineType machineType);
 bool IsMulIntergerType(MachineType machineType);

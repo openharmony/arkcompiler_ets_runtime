@@ -245,6 +245,7 @@ namespace panda::ecmascript {
     V(ToPropertyKey)                                           \
     V(ThrowTypeError)                                          \
     V(ThrowTypeErrorWithParam)                                 \
+    V(ThrowContainerBusinessError)                             \
     V(MismatchError)                                           \
     V(NotifyArrayPrototypeChanged)                             \
     V(NumberToString)                                          \

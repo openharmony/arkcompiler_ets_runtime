@@ -131,6 +131,29 @@ GateRef CircuitBuilder::FetchOr(GateRef ptr, GateRef value, MemoryAttribute mAtt
     return result;
 }
 
+GateRef CircuitBuilder::AtomicCmpXchg(VariableType type, GateRef address,
+                                      GateRef expected, GateRef desired)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    // AtomicCmpXchg uses fixed memory ordering (acquire_release on success, monotonic on failure)
+    // This matches C++ Barriers::AtomicSetPrimitive semantics
+    GateRef result = GetCircuit()->NewGate(circuit_->AtomicCmpXchg(),
+        type.GetMachineType(), { depend, address, expected, desired }, type.GetGateType());
+    label->SetDepend(result);
+    return result;
+}
+
+GateRef CircuitBuilder::AtomicLoadAcquire(VariableType type, GateRef address)
+{
+    auto label = GetCurrentLabel();
+    auto depend = label->GetDepend();
+    GateRef result = GetCircuit()->NewGate(circuit_->AtomicLoadAcquire(),
+        type.GetMachineType(), { depend, address }, type.GetGateType());
+    label->SetDepend(result);
+    return result;
+}
+
 void CircuitBuilder::StoreHClass(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
                                  GateRef compValue, MemoryAttribute mAttr)
 {

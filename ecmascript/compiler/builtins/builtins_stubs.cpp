@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_reflect_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_shared_array_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_shared_map_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_arraylist_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_deque_stub_builder.h"
@@ -620,7 +621,8 @@ DECLARE_BUILTINS(SetConstructor)
 DECLARE_BUILTINS(SharedMapConstructor)
 {
     GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
-    SharedLinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue, globalEnv);
+    bool isShared = true;
+    LinkedHashTableStubBuilder<LinkedHashMap, LinkedHashMapObject> hashTableBuilder(this, glue, globalEnv, isShared);
     GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
     hashTableBuilder.GenSharedMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
@@ -628,7 +630,8 @@ DECLARE_BUILTINS(SharedMapConstructor)
 DECLARE_BUILTINS(SharedSetConstructor)
 {
     GateRef globalEnv = GetGlobalEnvFromFunction(glue, func);
-    SharedLinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue, globalEnv);
+    bool isShared = true;
+    LinkedHashTableStubBuilder<LinkedHashSet, LinkedHashSetObject> hashTableBuilder(this, glue, globalEnv, isShared);
     GateRef arg0 = GetArgFromArgv(glue, IntPtr(0), numArgs, true);
     hashTableBuilder.GenSharedMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
