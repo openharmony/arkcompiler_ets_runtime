@@ -235,6 +235,26 @@ public:
         return gcType_;
     }
 
+    void SetDisableCmsGC(bool disableCmsGC)
+    {
+        disableCmsGC_ = disableCmsGC;
+    }
+
+    bool GetDisableCmsGC() const
+    {
+        return disableCmsGC_;
+    }
+
+    void SetCmsGC(bool cmsGC)
+    {
+        cmsGC_ = cmsGC;
+    }
+
+    bool GetCmsGC() const
+    {
+        return cmsGC_;
+    }
+
     bool PUBLIC_API IsAlive(TaggedObject *object) const;
 
     bool ContainObject(TaggedObject *object) const;
@@ -433,6 +453,8 @@ protected:
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
     TriggerGCType gcType_ {TriggerGCType::YOUNG_GC};
+    bool disableCmsGC_ {false};
+    bool cmsGC_ {false};
     Mutex gcCollectGarbageMutex_;
     // Region allocators.
     NativeAreaAllocator *nativeAreaAllocator_ {nullptr};
@@ -1028,7 +1050,7 @@ public:
     void GetHeapPrepare(JSThread *thread);
     void PrepareForIteration() const;
     void ResetLargeCapacity(size_t heapSize);
-    void Resume(TriggerGCType gcType);
+    void Resume(TriggerGCType gcType, bool cmsGC = false);
     void ResumeForAppSpawn();
     void ResumeCC();
     void CompactHeapBeforeFork();
@@ -1117,6 +1139,8 @@ public:
         switch (type) {
             case MemSpaceType::SLOT_SPACE:
                 return slotSpace_;
+            case MemSpaceType::SEMI_SPACE:
+                return activeSemiSpace_;
             case MemSpaceType::OLD_SPACE:
                 return oldSpace_;
             case MemSpaceType::NON_MOVABLE:
@@ -1783,7 +1807,7 @@ private:
     // record lastRegion for each space, which will be used in ReclaimRegions()
     void PrepareRecordRegionsForReclaim();
     void PrepareRecordNonmovableRegions();
-    inline void ReclaimRegions(TriggerGCType gcType);
+    inline void ReclaimRegions(TriggerGCType gcType, bool cmsGC);
     inline size_t CalculateCommittedCacheSize();
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
     uint64_t GetCurrentTickMillseconds();
@@ -1821,8 +1845,8 @@ private:
 
     class AsyncClearTask : public common::Task {
     public:
-        AsyncClearTask(int32_t id, Heap *heap, TriggerGCType type)
-            : common::Task(id), heap_(heap), gcType_(type) {}
+        AsyncClearTask(int32_t id, Heap *heap, TriggerGCType type, bool cmsGC)
+            : common::Task(id), heap_(heap), gcType_(type), cmsGC_(cmsGC) {}
         ~AsyncClearTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -1831,6 +1855,7 @@ private:
     private:
         Heap *heap_;
         TriggerGCType gcType_;
+        bool cmsGC_ {false};
     };
 
     class FinishColdStartTask : public common::Task {

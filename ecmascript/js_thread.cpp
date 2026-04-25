@@ -1084,8 +1084,9 @@ bool JSThread::ShouldHandleMarkOrCopyFinishedInSafepoint()
     auto heap = const_cast<Heap *>(vm_->GetHeap());
     bool isMarkOrCopyFinished = IsCopyFinished() ||
         (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark());
-    return isMarkOrCopyFinished && !heap->GetOnSerializeEvent() &&
-        !heap->InSensitiveStatus() && !heap->CheckIfNeedStopCollectionByStartup();
+    return isMarkOrCopyFinished && !heap->GetOnSerializeEvent()
+        && (!heap->InSensitiveStatus() || heap->GetCmsGC() || heap->IsNearGCInSensitive())
+        && !heap->CheckIfNeedStopCollectionByStartup();
 }
 
 bool JSThread::CheckSafepoint()

@@ -887,20 +887,27 @@ void SharedHeap::SwapOldSpace()
 #endif
 }
 
-void Heap::ReclaimRegions(TriggerGCType gcType)
+void Heap::ReclaimRegions(TriggerGCType gcType, bool cmsGC)
 {
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        slotSpace_->ReclaimFromRegions(gcType != TriggerGCType::FULL_GC);
-    } else {
-        size_t cachedSize = 0;
-        activeSemiSpace_->EnumerateRegionsWithRecord([] (Region *region) {
+    auto clearActiveSemiSpace = [this](bool cmsGC) {
+        activeSemiSpace_->EnumerateRegionsWithRecord([cmsGC] (Region *region) {
             region->ResetRegionTypeFlag();
             region->ClearMarkGCBitset();
             region->ClearCrossRegionRSet();
             region->ResetAliveObject();
-            region->ClearGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
+            if (!cmsGC) {
+                region->ClearGCFlag(RegionGCFlags::IN_NEW_TO_NEW_SET);
+            }
         });
+    };
+    // fixme: refactor?
+    if constexpr (G_USE_CMS_GC) {
+        slotSpace_->ReclaimFromRegions(gcType != TriggerGCType::FULL_GC);
+    } else {
+        if (!cmsGC) {
+            clearActiveSemiSpace(false);
+        }
+        size_t cachedSize = 0;
         cachedSize = inactiveSemiSpace_->GetInitialCapacity();
         if (gcType == TriggerGCType::FULL_GC || gcType == TriggerGCType::LOCAL_CC) {
             compressSpace_->Reset();
@@ -914,6 +921,9 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
     hugeObjectSpace_->ReclaimHugeRegion();
     hugeMachineCodeSpace_->ReclaimHugeRegion();
     sweeper_->WaitAllTaskFinished();
+    if (cmsGC) {
+        clearActiveSemiSpace(true);
+    }
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
         region->ClearCrossRegionRSet();

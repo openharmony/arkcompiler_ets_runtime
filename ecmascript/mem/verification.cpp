@@ -229,9 +229,9 @@ void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot s
 
     if (objectRegion->InGeneralOldSpace()) { // LCOV_EXCL_START
         if (objectRegion->TestOldToNew(slot.SlotAddress())) {
-            if (!valueRegion->InActiveSemiSpace()) {
+            if (valueRegion->InInactiveSemiSpace()) {
                 LogErrorForObjSlot(heap_, "Verify EvacuateYoung: Old object, slot old_to_new bit = 1, "
-                    "but NOT ActiveSpace(ToSpace) object.", object, slot, value);
+                    "but NOT InactiveSpace(FromSpace) object.", object, slot, value);
             }
         } else {
             if (valueRegion->InYoungSpace()) {

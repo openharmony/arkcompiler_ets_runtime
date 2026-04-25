@@ -43,7 +43,9 @@ void Barriers::Update(const JSThread *thread, uintptr_t slotAddr, Region *object
     // This conflict is solved by keeping alive weak reference. A small amount of floating garbage may be added.
     TaggedObject *heapValue = JSTaggedValue(value).GetHeapObject();
     if (valueRegion->IsFreshRegion()) {
-        valueRegion->NonAtomicMark(heapValue);
+        if (valueRegion->NonAtomicMark(heapValue)) {
+            valueRegion->IncreaseAliveObject(heapValue->GetSize());
+        }
     } else if (writeType == WriteBarrierType::NORMAL && valueRegion->AtomicMark(heapValue)) {
         std::atomic_thread_fence(std::memory_order_seq_cst);
         heap->GetWorkManager()->GetWorkNodeHolder(MAIN_THREAD_INDEX)->Push(heapValue);

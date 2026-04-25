@@ -19,7 +19,7 @@
 #include "ecmascript/mem/space-inl.h"
 
 namespace panda::ecmascript {
-class LinearSpace : public MonoSpace {
+class LinearSpace : public MonoSpace, public SweepableSpace {
 public:
     LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity);
     NO_COPY_SEMANTIC(LinearSpace);
@@ -29,6 +29,8 @@ public:
     void Stop();
     void ResetAllocator();
     void IterateOverObjects(const std::function<void(TaggedObject *object)> &objectVisitor) const;
+    void PrepareSweeping(LinearSpace *fromSpace);
+    void Sweep(LinearSpace *fromSpace);
 
     const uintptr_t *GetAllocationTopAddress()
     {
@@ -46,12 +48,13 @@ public:
 
     void RecordCurrentRegionAsHalfFresh()
     {
-        Region *region = GetCurrentRegion();
-        ASSERT(region != nullptr);
-        ASSERT(!region->IsFreshRegion() && !region->IsHalfFreshRegion());
-        region->SetRegionTypeFlag(RegionTypeFlag::HALF_FRESH);
-        freshObjectWaterLine_ = allocator_.GetTop();
-        ASSERT(region->InRange(freshObjectWaterLine_));
+        Region *region = GetCurrentAllocatorRegion();
+        if (region != nullptr) {
+            ASSERT(!region->IsFreshRegion() && !region->IsHalfFreshRegion());
+            region->SetRegionTypeFlag(RegionTypeFlag::HALF_FRESH);
+            freshObjectWaterLine_ = allocator_.GetTop();
+            ASSERT(region->InRange(freshObjectWaterLine_));
+        }
     }
 
     bool IsFreshObjectInHalfFreshRegion(TaggedObject *object)
@@ -61,6 +64,62 @@ public:
         ASSERT(Region::ObjectAddressToRange(object)->InRange(addr));
         return addr >= freshObjectWaterLine_;
     }
+
+    Region *GetCurrentAllocatorRegion() const
+    {
+        return currentAllocatorRegion_;
+    }
+
+    void PrepareSweeping() override
+    {
+        LOG_GC(FATAL) << "can not call this method";
+    }
+
+    void Sweep() override
+    {
+        LOG_GC(FATAL) << "can not call this method";
+    }
+
+    void AsyncSweep(bool isMain, bool releaseMemory = false) override;
+
+    bool TryFillSweptRegion() override;
+    
+    bool FinishFillSweptRegion() override;
+
+private:
+    struct FreeMemory {
+        size_t length;
+        uintptr_t start;
+
+        FreeMemory(size_t memoryLength, uintptr_t memoryStart) : length(memoryLength), start(memoryStart)
+        {
+        }
+    };
+    enum class SweepingState {
+        NO_SWEEP,
+        SWEEPING,
+        SWEPT,
+    };
+
+    Region *GetSweepingRegionSafe();
+    void AddSweptRegionSafe(Region *region);
+    Region *GetSweptRegionSafe();
+    void SweepRegion(Region *region, std::vector<FreeMemory> &freeList);
+    void FreeLiveRange(Region *region, uintptr_t freeStart, uintptr_t freeEnd, std::vector<FreeMemory> &freeList);
+    void BuildFreeList();
+
+    void DiscardCurrentAllocator(bool isPromoted);
+    bool TryGetUsableFreeList(size_t size);
+    bool TryUseFreeList(size_t size);
+
+    Mutex mutex_ {};
+    std::atomic<SweepingState> sweeping_ {SweepingState::NO_SWEEP};
+    std::atomic<size_t> numPendingSweepingRegions_ {0};
+    std::vector<Region *> pendingSweepingRegions_ {};
+    std::vector<Region *> sweptRegions_ {};
+    std::vector<FreeMemory> sweptFreeList_ {};
+    std::vector<FreeMemory> freeList_ {};
+    std::vector<Region *> freeListRegions_ {};
 
 protected:
     Heap *localHeap_;
@@ -73,6 +132,8 @@ protected:
     uintptr_t waterLine_ {0};
     // This value is set in ConcurrentMark::InitializeMarking before post GC task, so do not need atomic store/load.
     uintptr_t freshObjectWaterLine_ {0};
+    size_t currentFreeListLength_ {0};
+    Region *currentAllocatorRegion_ {nullptr};
 };
 
 class SemiSpace : public LinearSpace {
@@ -92,7 +153,7 @@ public:
     void SetOverShootSize(size_t size);
     void AddOverShootSize(size_t size);
     bool AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread);
-    void SetWaterLine();
+    void SetWaterLine(bool cmsGC);
 
     uintptr_t GetWaterLine() const
     {

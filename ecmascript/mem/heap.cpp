@@ -995,7 +995,7 @@ void Heap::InitializeSpaces()
         size_t maxSemiSpaceCapacity = config_.GetMaxSemiSpaceSize();
         activeSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
         activeSemiSpace_->Restart();
-        activeSemiSpace_->SetWaterLine();
+        activeSemiSpace_->SetWaterLine(false);
         inactiveSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
 
         auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
@@ -1337,9 +1337,9 @@ void Heap::GetHeapPrepare(JSThread *thread)
     sHeap->PrepareByJSThread(thread, false);
 }
 
-void Heap::Resume(TriggerGCType gcType)
+void Heap::Resume(TriggerGCType gcType, bool cmsGC)
 {
-    activeSemiSpace_->SetWaterLine();
+    activeSemiSpace_->SetWaterLine(cmsGC);
 
     if (mode_ != HeapMode::SPAWN) {
         // fixme: refactor?
@@ -1361,21 +1361,22 @@ void Heap::Resume(TriggerGCType gcType)
         }
         clearTaskFinished_ = false;
         common::Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, gcType));
+            std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, gcType, cmsGC));
     } else {
-        ReclaimRegions(gcType);
+        ReclaimRegions(gcType, cmsGC);
     }
 }
 
 void Heap::ResumeCC()
 {
+    ASSERT(!GetCmsGC());
     PrepareRecordRegionsForReclaim();
     if (parallelGC_) {
         clearTaskFinished_ = false;
         common::Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, TriggerGCType::LOCAL_CC));
+            std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, TriggerGCType::LOCAL_CC, GetCmsGC()));
     } else {
-        ReclaimRegions(TriggerGCType::LOCAL_CC);
+        ReclaimRegions(TriggerGCType::LOCAL_CC, GetCmsGC());
     }
 }
 
@@ -2858,13 +2859,18 @@ bool Heap::CheckIfNeedStopCollectionByHighSensitive()
         SetRecordHeapObjectSizeBeforeSensitive(recordSizeBeforeSensitive);
     }
 
-    if (objSize < recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive()
-        && !ObjectExceedMaxHeapSize()) {
-        if (!IsNearGCInSensitive() &&
-            objSize > (recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive())
+    if (!IsNearGCInSensitive()) {
+        if (objSize > (recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive())
             * MIN_SENSITIVE_OBJECT_SURVIVAL_RATE) {
             SetNearGCInSensitive(true);
         }
+        if (activeSemiSpace_->GetCommittedSize() > config_.GetSemiSpaceCommittedSizeThresholdForCmsInSensitive()) {
+            SetDisableCmsGC(true);
+        }
+    }
+
+    if (objSize < recordSizeBeforeSensitive + config_.GetIncObjSizeThresholdInSensitive()
+        && !ObjectExceedMaxHeapSize()) {
         return true;
     }
 
@@ -2928,7 +2934,7 @@ bool Heap::ParallelGCTask::RunInternal(uint32_t threadIndex)
 bool Heap::AsyncClearTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "AsyncClearTask::Run", "");
-    heap_->ReclaimRegions(gcType_);
+    heap_->ReclaimRegions(gcType_, cmsGC_);
     return true;
 }
 

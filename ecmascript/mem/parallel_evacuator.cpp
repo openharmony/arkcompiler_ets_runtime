@@ -45,11 +45,62 @@ void ParallelEvacuator::Finalize()
 
 void ParallelEvacuator::Evacuate()
 {
-    Initialize();
-    EvacuateSpace();
-    UpdateReference();
-    SweepNewToOldRegions();
-    Finalize();
+    if (heap_->GetCmsGC()) {
+        UpdateWeakReferenceInCmsGC();
+        UpdateOldToNewRSetInCmsGC();
+    } else {
+        Initialize();
+        EvacuateSpace();
+        UpdateReference();
+        SweepNewToOldRegions();
+        Finalize();
+    }
+}
+
+void ParallelEvacuator::UpdateWeakReferenceInCmsGC()
+{
+    TRACE_GC(GCStats::Scope::ScopeId::EvacuateSpace, heap_->GetEcmaVM()->GetEcmaGCStats());
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::UpdateWeakReferenceInCmsGC", "");
+    MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuator);
+    {
+        // Process WeakLinkedHashMap before evacuate
+        // fixme: process in parallel
+        // fixme: remove this for cms?
+        uint32_t totalThreadCount = common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+        for (uint32_t i = 0; i < totalThreadCount; ++i) {
+            if (heap_->IsYoungMark()) {
+                UpdateRecordWeakLinkedHashMap<TriggerGCType::YOUNG_GC>(i);
+            } else {
+                UpdateRecordWeakLinkedHashMap<TriggerGCType::OLD_GC>(i);
+            }
+        }
+    }
+    {
+        GCStats::Scope sp2(GCStats::Scope::ScopeId::UpdateWeekRef, heap_->GetEcmaVM()->GetEcmaGCStats());
+        if (heap_->IsYoungMark()) {
+            UpdateWeakReferenceOpt<TriggerGCType::YOUNG_GC, true>();
+        } else {
+            UpdateWeakReferenceOpt<TriggerGCType::OLD_GC, true>();
+        }
+    }
+}
+
+void ParallelEvacuator::UpdateOldToNewRSetInCmsGC()
+{
+    TRACE_GC(GCStats::Scope::ScopeId::UpdateReference, heap_->GetEcmaVM()->GetEcmaGCStats());
+    MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelUpdateReference);
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::UpdateOldToNewRSetInCmsGC", "");
+    if (heap_->IsYoungMark()) {
+        return;
+    }
+    // Update reference pointers
+    uint32_t oldRegionCount = 0;
+    heap_->GetAppSpawnSpace()->EnumerateRegions([this, &oldRegionCount](Region *region) {
+        UpdateRSet<true>(region);
+        ++oldRegionCount;
+    });
+    LOG_GC(DEBUG) << "UpdatePointers statistic: younge space region compact moving count:"
+                  << "old space region count:" << oldRegionCount;
 }
 
 void ParallelEvacuator::SweepNewToOldRegions()
@@ -339,12 +390,12 @@ void ParallelEvacuator::UpdateReference()
             promotedSize_.fetch_add(current->AliveObject(), std::memory_order_relaxed);
             workloadSet.Add(std::make_unique<UpdateNewToOldEvacuationWorkload>(this, current, heap_->IsYoungMark()));
         } else {
-            workloadSet.Add(std::make_unique<UpdateRSetWorkload>(this, current));
+            workloadSet.Add(std::make_unique<UpdateRSetWorkload<false>>(this, current));
         }
         oldRegionCount++;
     });
     heap_->EnumerateSnapshotSpaceRegions([this, &workloadSet](Region *current) {
-        workloadSet.Add(std::make_unique<UpdateRSetWorkload>(this, current));
+        workloadSet.Add(std::make_unique<UpdateRSetWorkload<false>>(this, current));
     });
     workloadSet.PrepareWorkloads();
     LOG_GC(DEBUG) << "UpdatePointers statistic: younge space region compact moving count:"
@@ -368,9 +419,9 @@ void ParallelEvacuator::UpdateReference()
     {
         GCStats::Scope sp2(GCStats::Scope::ScopeId::UpdateWeekRef, heap_->GetEcmaVM()->GetEcmaGCStats());
         if (heap_->IsYoungMark()) {
-            UpdateWeakReferenceOpt<TriggerGCType::YOUNG_GC>();
+            UpdateWeakReferenceOpt<TriggerGCType::YOUNG_GC, false>();
         } else {
-            UpdateWeakReferenceOpt<TriggerGCType::OLD_GC>();
+            UpdateWeakReferenceOpt<TriggerGCType::OLD_GC, false>();
         }
     }
     {
@@ -394,45 +445,80 @@ void ParallelEvacuator::UpdateRoot()
     ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), updateRootVisitor_);
 }
 
-template<TriggerGCType gcType>
+template <TriggerGCType gcType, bool cmsGC>
+auto ParallelEvacuator::GetUpdateWeakReferenceOptVisitor()
+{
+    if constexpr (cmsGC) {
+        auto gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
+            Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
+            ASSERT(objectRegion != nullptr);
+            if constexpr (gcType == TriggerGCType::YOUNG_GC) {
+                if (!objectRegion->InYoungSpace()) {
+                    return header;
+                }
+            } else if constexpr (gcType == TriggerGCType::OLD_GC) {
+                if (!objectRegion->InYoungSpaceOrCSet()) {
+                    if (!objectRegion->InSharedHeap() &&
+                        (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(header))) {
+                        return nullptr;
+                    }
+                    return header;
+                }
+            } else { // LOCV_EXCL_BR_LINE
+                LOG_GC(FATAL) << "WeakRootVisitor: not support gcType yet";
+                UNREACHABLE();
+            }
+            if (objectRegion->Test(header)) {
+                return header;
+            }
+            return nullptr;
+        };
+        return gcUpdateWeak;
+    } else {
+        auto gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
+            Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
+            ASSERT(objectRegion != nullptr);
+            if constexpr (gcType == TriggerGCType::YOUNG_GC) {
+                if (!objectRegion->InYoungSpace()) {
+                    if (objectRegion->InNewToOldSet() && !objectRegion->Test(header)) {
+                        return nullptr;
+                    }
+                    return header;
+                }
+            } else if constexpr (gcType == TriggerGCType::OLD_GC) {
+                if (!objectRegion->InYoungSpaceOrCSet()) {
+                    if (!objectRegion->InSharedHeap() &&
+                        (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(header))) {
+                        return nullptr;
+                    }
+                    return header;
+                }
+            } else { // LOCV_EXCL_BR_LINE
+                LOG_GC(FATAL) << "WeakRootVisitor: not support gcType yet";
+                UNREACHABLE();
+            }
+            if (objectRegion->InNewToNewSet()) {
+                if (objectRegion->Test(header)) {
+                    return header;
+                }
+            } else {
+                MarkWord markWord(header, RELAXED_LOAD);
+                if (markWord.IsForwardingAddress()) {
+                    return markWord.ToForwardingAddress();
+                }
+            }
+            return nullptr;
+        };
+        return gcUpdateWeak;
+    }
+}
+
+template<TriggerGCType gcType, bool cmsGC>
 void ParallelEvacuator::UpdateWeakReferenceOpt()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReferenceOpt);
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "GC::UpdateWeakReferenceOpt", "");
-    WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
-        Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
-        ASSERT(objectRegion != nullptr);
-        if constexpr (gcType == TriggerGCType::YOUNG_GC) {
-            if (!objectRegion->InYoungSpace()) {
-                if (objectRegion->InNewToOldSet() && !objectRegion->Test(header)) {
-                    return nullptr;
-                }
-                return header;
-            }
-        } else if constexpr (gcType == TriggerGCType::OLD_GC) {
-            if (!objectRegion->InYoungSpaceOrCSet()) {
-                if (!objectRegion->InSharedHeap() && (objectRegion->GetMarkGCBitset() == nullptr ||
-                                              !objectRegion->Test(header))) {
-                    return nullptr;
-                }
-                return header;
-            }
-        } else { // LOCV_EXCL_BR_LINE
-            LOG_GC(FATAL) << "WeakRootVisitor: not support gcType yet";
-            UNREACHABLE();
-        }
-        if (objectRegion->InNewToNewSet()) {
-            if (objectRegion->Test(header)) {
-                return header;
-            }
-        } else {
-            MarkWord markWord(header, RELAXED_LOAD);
-            if (markWord.IsForwardingAddress()) {
-                return markWord.ToForwardingAddress();
-            }
-        }
-        return nullptr;
-    };
+    WeakRootVisitor gcUpdateWeak = GetUpdateWeakReferenceOptVisitor<gcType, cmsGC>();
 
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->IterateWeakGlobalEnvList(gcUpdateWeak);
@@ -441,11 +527,12 @@ void ParallelEvacuator::UpdateWeakReferenceOpt()
     heap_->GetEcmaVM()->GetJSThread()->UpdateJitCodeMapReference(gcUpdateWeak);
 }
 
+template <bool cmsGC>
 void ParallelEvacuator::UpdateRSet(Region *region)
 {
     auto cb = [this](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
-        return UpdateOldToNewObjectSlot(slot);
+        return UpdateOldToNewObjectSlot<cmsGC>(slot);
     };
 
     if (heap_->GetSweeper()->IsSweeping()) {
@@ -472,7 +559,7 @@ template<TriggerGCType gcType, bool needUpdateLocalToShare>
 void ParallelEvacuator::UpdateNewRegionReference(Region *region)
 {
     UpdateNewObjectFieldVisitor<gcType, needUpdateLocalToShare> updateFieldVisitor(this);
-    Region *current = heap_->GetNewSpace()->GetCurrentRegion();
+    Region *current = heap_->GetNewSpace()->GetCurrentAllocatorRegion();
     auto curPtr = region->GetBegin();
     uintptr_t endPtr = 0;
     if (region == current) {
@@ -713,10 +800,11 @@ bool ParallelEvacuator::EvacuateWorkload::Process([[maybe_unused]] bool isMain, 
     return true;
 }
 
-bool ParallelEvacuator::UpdateRSetWorkload::Process([[maybe_unused]] bool isMain,
-                                                    [[maybe_unused]] uint32_t threadIndex)
+template <bool cmsGC>
+bool ParallelEvacuator::UpdateRSetWorkload<cmsGC>::Process([[maybe_unused]] bool isMain,
+                                                           [[maybe_unused]] uint32_t threadIndex)
 {
-    GetEvacuator()->UpdateRSet(GetRegion());
+    GetEvacuator()->template UpdateRSet<cmsGC>(GetRegion());
     return true;
 }
 

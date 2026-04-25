@@ -17,6 +17,7 @@
 
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/allocator-inl.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mem_controller.h"
 
 namespace panda::ecmascript {
@@ -26,6 +27,53 @@ LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, 
       thread_(heap->GetJSThread()),
       waterLine_(0)
 {
+}
+
+bool LinearSpace::TryGetUsableFreeList(size_t size)
+{
+    if (!freeList_.empty()) {
+        FreeMemory freeMemory = freeList_.back();
+        if (freeMemory.length >= size) {
+            freeList_.pop_back();
+            allocator_.Reset(freeMemory.start, freeMemory.start + freeMemory.length);
+            currentFreeListLength_ = freeMemory.length;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LinearSpace::TryUseFreeList(size_t size)
+{
+    if (TryGetUsableFreeList(size)) {
+        return true;
+    }
+    switch (sweeping_.load(std::memory_order_relaxed)) {
+        case SweepingState::NO_SWEEP:
+            return false;
+        case SweepingState::SWEEPING:
+            break;
+        case SweepingState::SWEPT:
+            FinishFillSweptRegion();
+            return TryGetUsableFreeList(size);
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable, "
+                            << static_cast<int>(sweeping_.load(std::memory_order_relaxed));
+            UNREACHABLE();
+    }
+    {
+        LockHolder lock(mutex_);
+        if (!sweptFreeList_.empty()) {
+            FreeMemory freeMemory = sweptFreeList_.back();
+            if (freeMemory.length >= size) {
+                sweptFreeList_.pop_back();
+                allocator_.Reset(freeMemory.start, freeMemory.start + freeMemory.length);
+                currentFreeListLength_ = freeMemory.length;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
@@ -46,6 +94,11 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 #endif
         return object;
     }
+    DiscardCurrentAllocator(isPromoted);
+    if (TryUseFreeList(size)) {
+        object = allocator_.Allocate(size);
+        return object;
+    }
     if (Expand(isPromoted)) {
         if (!isPromoted) {
             if (!localHeap_->NeedStopCollection() || localHeap_->IsNearGCInSensitive() ||
@@ -60,8 +113,15 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
     } else if (localHeap_->IsMarking()) {
 #endif
         // Temporary adjust semi space capacity
-        if (localHeap_->IsConcurrentFullMark()) {
-            overShootSize_ = localHeap_->CalculateLinearSpaceOverShoot();
+        if (localHeap_->IsConcurrentFullMark() || localHeap_->InSensitiveStatus()) {
+            size_t prev = overShootSize_;
+            size_t maxOverShootSize = localHeap_->CalculateLinearSpaceOverShoot();
+            size_t stepSize = localHeap_->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
+            size_t currentCapacity = initialCapacity_ + overShootSize_ + outOfMemoryOvershootSize_;
+            size_t increaseOverShoot = std::max(committedSize_, currentCapacity) - currentCapacity + stepSize;
+            ASSERT(stepSize > 0);
+            size_t alignedIncreaseOverShoot = (increaseOverShoot + stepSize - 1) / stepSize * stepSize;
+            overShootSize_ = std::min(overShootSize_ + alignedIncreaseOverShoot, maxOverShootSize);
         } else {
             size_t stepOverShootSize = localHeap_->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
             size_t maxOverShootSize = std::max(initialCapacity_ / 2, stepOverShootSize); // 2: half
@@ -90,9 +150,20 @@ bool LinearSpace::Expand(bool isPromoted)
         return false;
     }
 
-    uintptr_t top = allocator_.GetTop();
-    auto currentRegion = GetCurrentRegion();
-    if (currentRegion != nullptr) {
+    JSThread *thread = localHeap_->GetJSThread();
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    allocator_.Reset(region->GetBegin(), region->GetEnd());
+    AddRegion(region);
+    currentAllocatorRegion_ = region;
+    return true;
+}
+
+void LinearSpace::DiscardCurrentAllocator(bool isPromoted)
+{
+    if (currentAllocatorRegion_ != nullptr) {
+        ASSERT(currentFreeListLength_ == 0);
+        uintptr_t top = allocator_.GetTop();
+        Region *currentRegion = currentAllocatorRegion_;
         if (!isPromoted) {
             if (currentRegion->HasAgeMark()) {
                 allocateAfterLastGC_ +=
@@ -105,25 +176,35 @@ bool LinearSpace::Expand(bool isPromoted)
             survivalObjectSize_ += currentRegion->GetAllocatedBytes(top);
         }
         currentRegion->SetHighWaterMark(top);
+        currentAllocatorRegion_ = nullptr;
+    } else if (currentFreeListLength_ != 0) {
+        ASSERT(currentAllocatorRegion_ == nullptr);
+        ASSERT(!isPromoted);
+        size_t left = allocator_.Available();
+        if (left != 0) {
+            FreeObject::FillFreeObject(localHeap_, allocator_.GetTop(), left);
+        }
+        allocateAfterLastGC_ += currentFreeListLength_ - left;
+        currentFreeListLength_ = 0;
     }
-    JSThread *thread = localHeap_->GetJSThread();
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_,
-                                                                 thread_->IsConcurrentMarkingOrFinished());
-    allocator_.Reset(region->GetBegin(), region->GetEnd());
-    AddRegion(region);
-    return true;
+    ASSERT(currentAllocatorRegion_ == nullptr);
+    ASSERT(currentFreeListLength_ == 0);
+    allocator_.Reset();
 }
 
 void LinearSpace::Stop()
 {
-    if (GetCurrentRegion() != nullptr) {
-        GetCurrentRegion()->SetHighWaterMark(allocator_.GetTop());
+    DiscardCurrentAllocator(false);
+    for (Region *region : freeListRegions_) {
+        region->ClearGCFlag(RegionGCFlags::FREE_LIST_IN_YOUNG);
     }
+    freeListRegions_.clear();
+    freeList_.clear();
 }
 
 void LinearSpace::ResetAllocator()
 {
-    auto currentRegion = GetCurrentRegion();
+    auto currentRegion = GetCurrentAllocatorRegion();
     if (currentRegion != nullptr) {
         allocator_.Reset(currentRegion->GetBegin(), currentRegion->GetEnd(), currentRegion->GetHighWaterMark());
     }
@@ -131,7 +212,12 @@ void LinearSpace::ResetAllocator()
 
 void LinearSpace::IterateOverObjects(const std::function<void(TaggedObject *object)> &visitor) const
 {
-    auto current = GetCurrentRegion();
+    if (currentFreeListLength_ != 0) {
+        if (allocator_.Available() != 0) {
+            FreeObject::FillFreeObject(localHeap_, allocator_.GetTop(), allocator_.Available());
+        }
+    }
+    auto current = GetCurrentAllocatorRegion();
     EnumerateRegions([&](Region *region) {
         auto curPtr = region->GetBegin();
         uintptr_t endPtr = 0;
@@ -175,6 +261,200 @@ void LinearSpace::InvokeAllocationInspector(Address object, size_t size, size_t 
     allocationCounter_.AdvanceAllocationInspector(alignedSize);
 }
 
+Region *LinearSpace::GetSweepingRegionSafe()
+{
+    LockHolder lock(mutex_);
+    if (!pendingSweepingRegions_.empty()) {
+        Region *region = pendingSweepingRegions_.back();
+        pendingSweepingRegions_.pop_back();
+        return region;
+    }
+    return nullptr;
+}
+
+void LinearSpace::AddSweptRegionSafe(Region *region)
+{
+    LockHolder lock(mutex_);
+    sweptRegions_.emplace_back(region);
+    region->SetSwept();
+}
+
+Region *LinearSpace::GetSweptRegionSafe()
+{
+    LockHolder lock(mutex_);
+    if (!sweptRegions_.empty()) {
+        Region *region = sweptRegions_.back();
+        sweptRegions_.pop_back();
+        return region;
+    }
+    return nullptr;
+}
+
+void LinearSpace::PrepareSweeping(LinearSpace *fromSpace)
+{
+    ASSERT(GetSweepingRegionSafe() == nullptr);
+    ASSERT(GetSweptRegionSafe() == nullptr);
+    fromSpace->EnumerateRegions([this, fromSpace](Region *region) {
+        fromSpace->RemoveRegion(region);
+        region->ClearGCFlag(RegionGCFlags::HAS_AGE_MARK);
+
+        if (UNLIKELY(localHeap_->ShouldVerifyHeap())) {
+            region->ResetInactiveSemiSpace();
+        }
+
+        regionList_.AddNodeToFront(region);
+        IncreaseCommitted(region->GetCapacity());
+        // fixme: if region is already freelist?
+        IncreaseObjectSize(region->GetSize());
+        survivalObjectSize_ += region->AliveObject();
+
+        ASSERT(!region->IsToRegion());
+        ASSERT(!region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
+        if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
+            region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) {
+            LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << region;
+        }
+
+        region->SwapLocalToShareRSetForCS();
+        pendingSweepingRegions_.emplace_back(region);
+    });
+
+    // Sweep low alive object size at first
+    std::sort(pendingSweepingRegions_.begin(), pendingSweepingRegions_.end(), [](Region *first, Region *second) {
+        return first->AliveObject() > second->AliveObject();
+    });
+    size_t num = pendingSweepingRegions_.size();
+    if (num > 0) {
+        sweeping_.store(SweepingState::SWEEPING, std::memory_order_relaxed);
+        numPendingSweepingRegions_.store(num, std::memory_order_relaxed);
+    }
+}
+
+void LinearSpace::Sweep(LinearSpace *fromSpace)
+{
+    ASSERT(GetSweepingRegionSafe() == nullptr);
+    ASSERT(GetSweptRegionSafe() == nullptr);
+    fromSpace->EnumerateRegions([this, fromSpace](Region *region) {
+        fromSpace->RemoveRegion(region);
+        region->ClearGCFlag(RegionGCFlags::HAS_AGE_MARK);
+
+        if (UNLIKELY(localHeap_->ShouldVerifyHeap())) {
+            region->ResetInactiveSemiSpace();
+        }
+
+        regionList_.AddNodeToFront(region);
+        IncreaseCommitted(region->GetCapacity());
+        // fixme: if region is already freelist?
+        IncreaseObjectSize(region->GetSize());
+        survivalObjectSize_ += region->AliveObject();
+
+        ASSERT(!region->IsToRegion());
+        ASSERT(!region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT));
+        if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
+            region->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) {
+            LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << region;
+        }
+
+        SweepRegion(region, freeList_);
+    });
+    BuildFreeList();
+}
+
+bool LinearSpace::TryFillSweptRegion()
+{
+    std::vector<Region *> regions;
+    {
+        LockHolder lock(mutex_);
+        freeList_.reserve(freeList_.size() + sweptFreeList_.size());
+        freeList_.insert(freeList_.end(), sweptFreeList_.begin(), sweptFreeList_.end());
+        sweptFreeList_.clear();
+        std::swap(regions, sweptRegions_);
+    }
+    for (Region *region : regions) {
+        region->ResetSwept();
+        region->MergeLocalToShareRSetForCS();
+        freeListRegions_.emplace_back(region);
+    }
+    BuildFreeList();
+    return true;
+}
+
+bool LinearSpace::FinishFillSweptRegion()
+{
+    bool ret = TryFillSweptRegion();
+    sweeping_.store(SweepingState::NO_SWEEP, std::memory_order_relaxed);
+    return ret;
+}
+
+void LinearSpace::AsyncSweep([[maybe_unused]] bool isMain, [[maybe_unused]] bool releaseMemory)
+{
+    std::vector<FreeMemory> list;
+    size_t cnt = 0;
+    while (true) {
+        Region *region = GetSweepingRegionSafe();
+        if (region == nullptr) {
+            break;
+        }
+
+        ++cnt;
+        SweepRegion(region, list);
+        AddSweptRegionSafe(region);
+        {
+            LockHolder lock(mutex_);
+            sweptFreeList_.insert(sweptFreeList_.end(), list.begin(), list.end());
+        }
+        list.clear();
+    }
+    if (cnt > 0 && numPendingSweepingRegions_.fetch_sub(cnt, std::memory_order_relaxed) == cnt) {
+        sweeping_.store(SweepingState::SWEPT, std::memory_order_relaxed);
+        std::atomic_thread_fence(std::memory_order_seq_cst);
+    }
+}
+
+void LinearSpace::SweepRegion(Region *region, std::vector<FreeMemory> &list)
+{
+    uintptr_t freeStart = region->GetBegin();
+    uintptr_t freeEnd = freeStart + region->GetAllocatedBytes();
+    region->IterateAllMarkedBits([this, region, &freeStart, &list](void *mem) {
+        ASSERT(region->InRange(ToUintPtr(mem)));
+        TaggedObject *header = reinterpret_cast<TaggedObject *>(mem);
+        size_t size = header->GetSize();
+
+        uintptr_t freeEnd = ToUintPtr(mem);
+        if (freeStart != freeEnd) {
+            FreeLiveRange(region, freeStart, freeEnd, list);
+        }
+        freeStart = freeEnd + size;
+    });
+    if (freeStart != freeEnd) {
+        FreeLiveRange(region, freeStart, freeEnd, list);
+    }
+    region->SetGCFlag(RegionGCFlags::FREE_LIST_IN_YOUNG);
+}
+
+void LinearSpace::FreeLiveRange(Region *region, uintptr_t freeStart, uintptr_t freeEnd, std::vector<FreeMemory> &list)
+{
+    localHeap_->GetSweeper()->ClearRSetInRange(region, freeStart, freeEnd);
+    size_t size = freeEnd - freeStart;
+    FreeObject::FillFreeObject(localHeap_, freeStart, size);
+    constexpr size_t FREE_MEMORY_MIN_SIZE = 4 * 1024;
+    if (size >= FREE_MEMORY_MIN_SIZE) {
+        list.emplace_back(size, freeStart);
+    }
+    MEMORY_TRACE_FREEREGION(freeStart, size);
+}
+
+void LinearSpace::BuildFreeList()
+{
+    std::sort(freeList_.begin(), freeList_.end(),
+        [](const FreeMemory &a, const FreeMemory &b) {
+            if (a.length != b.length) {
+                return a.length < b.length;
+            }
+            return a.start > b.start;
+        });
+}
+
 SemiSpace::SemiSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : LinearSpace(heap, MemSpaceType::SEMI_SPACE, initialCapacity, maximumCapacity),
       minimumCapacity_(initialCapacity) {}
@@ -185,6 +465,7 @@ void SemiSpace::Initialize()
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     AddRegion(region);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
+    currentAllocatorRegion_ = region;
 }
 
 void SemiSpace::Restart(size_t overShootSize)
@@ -234,19 +515,25 @@ bool SemiSpace::SwapRegion(Region *region, SemiSpace *fromSpace)
     return true;
 }
 
-void SemiSpace::SetWaterLine()
+void SemiSpace::SetWaterLine(bool cmsGC)
 {
-    waterLine_ = allocator_.GetTop();
+    waterLine_ = 0;
     allocateAfterLastGC_ = 0;
-    Region *last = GetCurrentRegion();
-    if (last != nullptr) {
-        last->SetGCFlag(RegionGCFlags::HAS_AGE_MARK);
-
-        EnumerateRegions([&last](Region *current) {
+    Region *last = GetCurrentAllocatorRegion();
+    EnumerateRegions([&last, cmsGC](Region *current) {
+        if (cmsGC) {
+            current->ClearGCFlag(RegionGCFlags::BELOW_AGE_MARK);
+            current->ClearGCFlag(RegionGCFlags::HAS_AGE_MARK);
+        } else {
             if (current != last) {
                 current->SetGCFlag(RegionGCFlags::BELOW_AGE_MARK);
             }
-        });
+        }
+    });
+    if (last != nullptr) {
+        last->SetGCFlag(RegionGCFlags::HAS_AGE_MARK);
+
+        waterLine_ = allocator_.GetTop();
         survivalObjectSize_ += last->GetAllocatedBytes(waterLine_);
     } else {
         LOG_GC(INFO) << "SetWaterLine: No region survival in current gc, current region available size: "
@@ -328,7 +615,7 @@ bool SemiSpace::AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread)
 size_t SemiSpace::GetAllocatedSizeSinceGC(uintptr_t top) const
 {
     size_t currentRegionSize = 0;
-    auto currentRegion = GetCurrentRegion();
+    auto currentRegion = GetCurrentAllocatorRegion();
     if (currentRegion != nullptr) {
         currentRegionSize = currentRegion->GetAllocatedBytes(top);
         if (currentRegion->HasAgeMark()) {

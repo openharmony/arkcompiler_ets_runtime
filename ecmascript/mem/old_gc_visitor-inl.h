@@ -69,10 +69,13 @@ void OldGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
     }
 }
 
-OldGCMarkObjectVisitor::OldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder) : workNodeHolder_(workNodeHolder) {}
+template <bool cmsGC>
+OldGCMarkObjectVisitor<cmsGC>::OldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder)
+    : workNodeHolder_(workNodeHolder) {}
 
-void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
-                                                  VisitObjectArea area)
+template <bool cmsGC>
+void OldGCMarkObjectVisitor<cmsGC>::VisitObjectRangeImpl(BaseObject *rootObject, uintptr_t start, uintptr_t end,
+                                                         VisitObjectArea area)
 {
     ObjectSlot startSlot(start);
     ObjectSlot endSlot(end);
@@ -100,7 +103,8 @@ void OldGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *rootObject, uintpt
     }
 }
 
-void OldGCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
+template <bool cmsGC>
+void OldGCMarkObjectVisitor<cmsGC>::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
 {
     TaggedObject *obj = TaggedObject::Cast(rootObject);
     ASSERT(JSTaggedValue(obj).IsWeakLinkedHashMap());
@@ -108,7 +112,8 @@ void OldGCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
     workNodeHolder_->PushWeakLinkedHashMap(obj);
 }
 
-void OldGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclassObject)
+template <bool cmsGC>
+void OldGCMarkObjectVisitor<cmsGC>::VisitObjectHClassImpl(BaseObject *hclassObject)
 {
     auto hclass = reinterpret_cast<TaggedObject *>(hclassObject);
     ASSERT(hclass->GetClass()->IsHClass());
@@ -119,49 +124,67 @@ void OldGCMarkObjectVisitor::VisitObjectHClassImpl(BaseObject *hclassObject)
     }
 }
 
-void OldGCMarkObjectVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion, bool rootNeedEvacuate)
+template <bool cmsGC>
+void OldGCMarkObjectVisitor<cmsGC>::HandleSlot(ObjectSlot slot, Region *rootRegion, bool rootNeedEvacuate)
 {
-    JSTaggedValue value(slot.GetTaggedType());
-    if (!value.IsHeapObject()) {
-        return;
-    }
+    if constexpr (cmsGC) {
+        JSTaggedValue value(slot.GetTaggedType());
+        if (!value.IsHeapObject()) {
+            return;
+        }
 
-    // Region is correct no matter value is weak or not.
-    Region *objectRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
+        // Region is correct no matter value is weak or not.
+        Region *objectRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
 
-    if (!value.IsWeakForHeapObject()) {
-        TaggedObject *object = value.GetTaggedObject();
+        TaggedObject *object = value.GetHeapObject();
         HandleObject(object, objectRegion);
     } else {
-        bool objectNeedEvacuate = objectRegion->InYoungSpaceOrCSet();
-        if (!rootNeedEvacuate && !objectNeedEvacuate) {
-            // If `rootNeedEvacuate`, every slot will be updated when/after it has been evacuated.
-            // Otherwise if `objectNeedEvacuate`, weak reference will be updated in UpdateReference by visiting RSet.
-            RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
+        JSTaggedValue value(slot.GetTaggedType());
+        if (!value.IsHeapObject()) {
+            return;
         }
-    }
 
-    bool objectInCSet = objectRegion->InCollectSet();
-    if (!rootNeedEvacuate && objectInCSet) {
-        rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
+        // Region is correct no matter value is weak or not.
+        Region *objectRegion = Region::ObjectAddressToRange(value.GetRawHeapObject());
+
+        if (!value.IsWeakForHeapObject()) {
+            TaggedObject *object = value.GetTaggedObject();
+            HandleObject(object, objectRegion);
+        } else {
+            bool objectNeedEvacuate = objectRegion->InYoungSpaceOrCSet();
+            if (!rootNeedEvacuate && !objectNeedEvacuate) {
+                // If `rootNeedEvacuate`, every slot will be updated when/after it has been evacuated.
+                // Otherwise if `objectNeedEvacuate`, weak reference will be updated in UpdateReference
+                // by visiting RSet.
+                RecordWeakReference(reinterpret_cast<JSTaggedType*>(slot.SlotAddress()));
+            }
+        }
+
+        bool objectInCSet = objectRegion->InCollectSet();
+        if (!rootNeedEvacuate && objectInCSet) {
+            rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
+        }
     }
 }
 
-void OldGCMarkObjectVisitor::HandleObject(TaggedObject *object, Region *objectRegion)
+template <bool cmsGC>
+void OldGCMarkObjectVisitor<cmsGC>::HandleObject(TaggedObject *object, Region *objectRegion)
 {
     if (!objectRegion->InSharedHeap() && !objectRegion->IsFreshRegion()) {
         MarkAndPush(object, objectRegion);
     }
 }
 
-void OldGCMarkObjectVisitor::MarkAndPush(TaggedObject *object, Region *objectRegion)
+template <bool cmsGC>
+void OldGCMarkObjectVisitor<cmsGC>::MarkAndPush(TaggedObject *object, Region *objectRegion)
 {
     if (objectRegion->AtomicMark(object)) {
         workNodeHolder_->Push(object);
     }
 }
 
-void OldGCMarkObjectVisitor::RecordWeakReference(JSTaggedType *weak)
+template <bool cmsGC>
+void OldGCMarkObjectVisitor<cmsGC>::RecordWeakReference(JSTaggedType *weak)
 {
     workNodeHolder_->PushWeakReference(weak);
 }
