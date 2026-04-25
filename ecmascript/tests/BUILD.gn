@@ -4067,6 +4067,7 @@ group("unittest") {
     ":Sendable_JsSendableArrayBuffer_Test",
     ":Sendable_JsSharedArray_Test",
     ":Sendable_SharedObjectFactory_Test",
+    ":Shared_Memory_Reallocator_Test",
     ":Runtime_Test",
     ":ECMA_VM_Heap_Test",
     ":ECMA_VM_Heap_Memory_Pressure_Test",
@@ -4104,6 +4105,7 @@ group("unittest") {
       ":JS_TaggedArray_Test",
       ":JS_ThreadState_Test",
       ":Sendable_JsSharedArray_Test",
+      ":Shared_Memory_Reallocator_Test",
       ":Runtime_Test",
     ]
 
@@ -4261,6 +4263,7 @@ group("host_unittest") {
     ":Sendable_JsSendableArrayBuffer_TestAction",
     ":Sendable_JsSharedArray_TestAction",
     ":Sendable_SharedObjectFactory_TestAction",
+    ":Shared_Memory_Reallocator_TestAction",
     ":Runtime_TestAction",
     ":ECMA_VM_Heap_TestAction",
     ":ECMA_VM_Heap_Memory_Pressure_TestAction",
@@ -4406,6 +4409,7 @@ group("host_unittest") {
       ":Sendable_JsSendableArrayBuffer_TestAction",
       ":Sendable_JsSharedArray_TestAction",
       ":Sendable_SharedObjectFactory_TestAction",
+      ":Shared_Memory_Reallocator_TestAction",
       ":Runtime_TestAction",
     ]
   } else if (ets_runtime_enable_cmc_gc) {
@@ -4438,6 +4442,7 @@ group("host_unittest") {
       ":JS_TaggedArray_TestAction",
       ":JS_ThreadState_TestAction",
       ":Sendable_JsSharedArray_TestAction",
+      ":Shared_Memory_Reallocator_TestAction",
       ":Runtime_TestAction",
     ]
 
