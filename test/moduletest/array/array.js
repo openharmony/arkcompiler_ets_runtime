@@ -2296,6 +2296,71 @@ assert_equal(arr2.reduce(fn, 44166), undefined);
     const arr = Array.from(str);
     assert_equal(arr.length, 11);
     assert_equal(arr, ['👨', '‍', '👩', '‍', '👧', '‍', '👦', '❤', '️', '🇨', '🇳']);
+    // Unicode ArrayFrom
+    const arrayFromStr = '\ud83d\udc0e\ud83d\udc71\u2764'
+    assert_equal(Array.from(arrayFromStr), ['🐎','👱','❤'])
+
+    // UTF-8 ASCII String ArrayFrom
+    const asciiStr = "Hello";
+    assert_equal(Array.from(asciiStr), ['H','e','l','l','o']);
+
+    // UTF-8 Latin-1 String ArrayFrom
+    const latinStr = "\u00e9\u00f1\u00fc";
+    assert_equal(Array.from(latinStr), ['é','ñ','ü']);
+
+    // UTF-16 BMP String ArrayFrom (CJK)
+    const cjkStr = "\u4f60\u597d\u4e16\u754c";
+    assert_equal(Array.from(cjkStr), ['你','好','世','界']);
+
+    // UTF-16 Surrogate Pair ArrayFrom (Emoji)
+    const emojiStr = "\ud83d\ude00\ud83c\udf89";
+    assert_equal(Array.from(emojiStr), ['😀','🎉']);
+
+    // Mixed ASCII and Surrogate Pairs
+    const mixedAsciiEmoji = "A\ud83d\ude00Z";
+    assert_equal(Array.from(mixedAsciiEmoji), ['A','😀','Z']);
+
+    // Mixed CJK and Surrogate Pairs
+    const mixedCjkEmoji = "\u4f60\ud83d\ude00\u597d";
+    assert_equal(Array.from(mixedCjkEmoji), ['你','😀','好']);
+
+    // Consecutive Surrogate Pairs
+    const multiEmoji = "\ud83d\udc68\ud83d\udc69\ud83d\udc67\ud83d\udc66";
+    assert_equal(Array.from(multiEmoji), ['👨','👩','👧','👦']);
+
+    // Surrogate Pair at Start
+    const startEmoji = "\ud83c\udf89party";
+    assert_equal(Array.from(startEmoji), ['🎉','p','a','r','t','y']);
+
+    // Surrogate Pair at End
+    const endEmoji = "party\ud83c\udf89";
+    assert_equal(Array.from(endEmoji), ['p','a','r','t','y','🎉']);
+
+    // Single Surrogate Pair
+    const singleEmoji = "\ud83d\udc0e";
+    assert_equal(Array.from(singleEmoji), ['🐎']);
+
+    // Single BMP CJK Character
+    const singleCjk = "\u4e2d";
+    assert_equal(Array.from(singleCjk), ['中']);
+
+    // Various Unicode Blocks ArrayFrom
+    const greekStr = "\u03b1\u03b2\u03b3";
+    assert_equal(Array.from(greekStr), ['α','β','γ']);
+    const cyrillicStr = "\u0430\u0431\u0432";
+    assert_equal(Array.from(cyrillicStr), ['а','б','в']);
+    const arabicStr = "\u0627\u0628\u062a";
+    assert_equal(Array.from(arabicStr), ['ا','ب','ت']);
+    const mathStr = "\u2200\u2203\u2205";
+    assert_equal(Array.from(mathStr), ['∀','∃','∅']);
+
+    // Combining Characters ArrayFrom
+    const combining = "e\u0301";
+    assert_equal(Array.from(combining), ['e','́']);
+
+    // Supplementary Plane Characters ArrayFrom
+    const musicStr = "\ud834\udd1e";
+    assert_equal(Array.from(musicStr), ['𝄞']);
 }
 
 test_end();

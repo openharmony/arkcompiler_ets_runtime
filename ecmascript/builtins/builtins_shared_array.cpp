@@ -235,7 +235,7 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
     if (items->IsNull()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "The items is null.", JSTaggedValue::Exception());
     }
-    if (!mapping && items->IsString() && EcmaStringAccessor(items.GetTaggedValue()).IsUtf8()) {
+    if (!mapping && items->IsString()) {
         JSHandle<EcmaString> strItems(items);
         return BuiltinsString::StringToSList(thread, strItems);
     }
