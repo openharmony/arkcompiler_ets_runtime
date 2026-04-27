@@ -316,4 +316,291 @@ HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_016, TestSize.Level0)
     thermalMgrListener_->OnReceiveEvent(data);
     EXPECT_TRUE(viewData);
 }
+
+/**
+ * @tc.name: AotCompilerServiceTest_017
+ * @tc.desc: AotCompilerService initial state: all listener pointers are nullptr
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_017, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    EXPECT_EQ(aotService.powerDisconnectedListener_, nullptr);
+    EXPECT_EQ(aotService.screenStatusSubscriber_, nullptr);
+    EXPECT_EQ(aotService.thermalMgrListener_, nullptr);
+    EXPECT_EQ(aotService.unLoadHandler_, nullptr);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_018
+ * @tc.desc: AotCompilerService initial state: all subscription flags are false
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_018, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    EXPECT_FALSE(aotService.isPowerEventSubscribered_);
+    EXPECT_FALSE(aotService.isScreenStatusSubscribered_);
+    EXPECT_FALSE(aotService.isThermalLevelEventSubscribered_);
+    EXPECT_FALSE(aotService.IsPowerEventSubscribered());
+    EXPECT_FALSE(aotService.IsScreenStatusSubscribered());
+    EXPECT_FALSE(aotService.IsThermalLevelEventSubscribered());
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_019
+ * @tc.desc: AotCompilerService::AotCompiler with non-empty argsMap returns error
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_019, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    std::unordered_map<std::string, std::string> argsMap;
+    argsMap["bundleName"] = "com.example.test";
+    argsMap["moduleName"] = "entry";
+    argsMap["aot-file"] = "/data/test/entry.an";
+    std::vector<int16_t> fileData;
+    int32_t ret = aotService.AotCompiler(argsMap, fileData);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_020
+ * @tc.desc: AotCompilerService::NeedReCompile with empty version string
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_020, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    std::string oldVersion = "";
+    bool sigData = false;
+    int32_t ret = aotService.NeedReCompile(oldVersion, sigData);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_021
+ * @tc.desc: AotCompilerService::GetAOTVersion returns non-empty version string
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_021, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    std::string sigData;
+    int32_t ret = aotService.GetAOTVersion(sigData);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_FALSE(sigData.empty());
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_022
+ * @tc.desc: OnStart idempotency: calling OnStart when already STATE_RUNNING keeps state RUNNING
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_022, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    OnStart(aotService);
+    EXPECT_EQ(aotService.state_, ServiceRunningState::STATE_RUNNING);
+    OnStart(aotService);
+    EXPECT_EQ(aotService.state_, ServiceRunningState::STATE_RUNNING);
+    aotService.OnStop();
+    EXPECT_EQ(aotService.state_, ServiceRunningState::STATE_NOT_START);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_023
+ * @tc.desc: OnStop when service is not started: state stays STATE_NOT_START, no crash
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_023, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    EXPECT_EQ(aotService.state_, ServiceRunningState::STATE_NOT_START);
+    aotService.OnStop();
+    EXPECT_EQ(aotService.state_, ServiceRunningState::STATE_NOT_START);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_024
+ * @tc.desc: Init() called twice: unLoadHandler_ is not replaced on second call
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_024, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    EXPECT_TRUE(aotService.Init());
+    EXPECT_NE(aotService.unLoadHandler_, nullptr);
+    auto firstHandler = aotService.unLoadHandler_;
+    EXPECT_TRUE(aotService.Init());
+    EXPECT_NE(aotService.unLoadHandler_, nullptr);
+    EXPECT_EQ(aotService.unLoadHandler_, firstHandler);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_025
+ * @tc.desc: DelayUnloadTask with nullptr unLoadHandler_: no crash
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_025, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    EXPECT_EQ(aotService.unLoadHandler_, nullptr);
+    aotService.DelayUnloadTask(TASK_ID, NO_DELAY_TIME);
+    EXPECT_EQ(aotService.unLoadHandler_, nullptr);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_026
+ * @tc.desc: Multiple register/unregister cycles for PowerDisconnectedListener
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_026, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    for (int i = 0; i < 3; i++) {
+        aotService.RegisterPowerDisconnectedListener();
+        EXPECT_TRUE(aotService.IsPowerEventSubscribered());
+        aotService.UnRegisterPowerDisconnectedListener();
+        EXPECT_FALSE(aotService.IsPowerEventSubscribered());
+        EXPECT_EQ(aotService.powerDisconnectedListener_, nullptr);
+    }
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_027
+ * @tc.desc: Multiple register/unregister cycles for ScreenStatusSubscriber
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_027, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    for (int i = 0; i < 3; i++) {
+        aotService.RegisterScreenStatusSubscriber();
+        EXPECT_TRUE(aotService.IsScreenStatusSubscribered());
+        aotService.UnRegisterScreenStatusSubscriber();
+        EXPECT_FALSE(aotService.IsScreenStatusSubscribered());
+        EXPECT_EQ(aotService.screenStatusSubscriber_, nullptr);
+    }
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_028
+ * @tc.desc: Multiple register/unregister cycles for ThermalMgrListener
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_028, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    for (int i = 0; i < 3; i++) {
+        aotService.RegisterThermalMgrListener();
+        EXPECT_TRUE(aotService.IsThermalLevelEventSubscribered());
+        aotService.UnRegisterThermalMgrListener();
+        EXPECT_FALSE(aotService.IsThermalLevelEventSubscribered());
+        EXPECT_EQ(aotService.thermalMgrListener_, nullptr);
+    }
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_029
+ * @tc.desc: AotCompilerLoadCallback::OnLoadSystemAbilitySuccess with mismatched SA ID
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_029, TestSize.Level0)
+{
+    bool viewData = true;
+    AotCompilerLoadCallback callback;
+    sptr<IRemoteObject> remoteObject = nullptr;
+    callback.OnLoadSystemAbilitySuccess(0, remoteObject);
+    EXPECT_TRUE(viewData);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_030
+ * @tc.desc: AotCompilerLoadCallback::OnLoadSystemAbilitySuccess with nullptr remoteObject
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_030, TestSize.Level0)
+{
+    bool viewData = true;
+    AotCompilerLoadCallback callback;
+    callback.OnLoadSystemAbilitySuccess(AOT_COMPILER_SERVICE_ID, nullptr);
+    EXPECT_TRUE(viewData);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_031
+ * @tc.desc: AotCompilerLoadCallback::OnLoadSystemAbilityFail with mismatched SA ID
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_031, TestSize.Level0)
+{
+    bool viewData = true;
+    AotCompilerLoadCallback callback;
+    callback.OnLoadSystemAbilityFail(0);
+    EXPECT_TRUE(viewData);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_032
+ * @tc.desc: AotCompilerLoadCallback::OnLoadSystemAbilityFail with correct SA ID
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_032, TestSize.Level0)
+{
+    bool viewData = true;
+    AotCompilerLoadCallback callback;
+    callback.OnLoadSystemAbilityFail(AOT_COMPILER_SERVICE_ID);
+    EXPECT_TRUE(viewData);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_033
+ * @tc.desc: AotCompilerService::AotCompiler with pre-populated fileData still returns error
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_033, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    std::unordered_map<std::string, std::string> argsMap;
+    std::vector<int16_t> fileData = {1, 2, 3, 4, 5};
+    int32_t ret = aotService.AotCompiler(argsMap, fileData);
+    EXPECT_NE(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_034
+ * @tc.desc: AotCompilerService::NeedReCompile with various version strings returns ERR_OK
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_034, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    std::vector<std::string> versions = {"1.0.0.0", "3.0.0.0", "5.0.0.0", "99.99.99.99"};
+    for (const auto &version : versions) {
+        bool sigData = false;
+        int32_t ret = aotService.NeedReCompile(version, sigData);
+        EXPECT_EQ(ret, ERR_OK);
+    }
+}
+
+/**
+ * @tc.name: AotCompilerServiceTest_035
+ * @tc.desc: OnStart followed by OnStop restores all listener subscriptions to initial state
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerServiceTest, AotCompilerServiceTest_035, TestSize.Level0)
+{
+    AotCompilerService aotService;
+    OnStart(aotService);
+    EXPECT_EQ(aotService.state_, ServiceRunningState::STATE_RUNNING);
+    aotService.OnStop();
+    EXPECT_EQ(aotService.state_, ServiceRunningState::STATE_NOT_START);
+    EXPECT_FALSE(aotService.IsPowerEventSubscribered());
+    EXPECT_FALSE(aotService.IsScreenStatusSubscribered());
+    EXPECT_FALSE(aotService.IsThermalLevelEventSubscribered());
+    EXPECT_EQ(aotService.powerDisconnectedListener_, nullptr);
+    EXPECT_EQ(aotService.screenStatusSubscriber_, nullptr);
+    EXPECT_EQ(aotService.thermalMgrListener_, nullptr);
+}
 } // namespace OHOS::ArkCompiler
