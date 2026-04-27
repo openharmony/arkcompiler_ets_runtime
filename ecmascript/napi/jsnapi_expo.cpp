@@ -5073,6 +5073,12 @@ EcmaVM *JSNApi::CreateJSVM(const RuntimeOption &option)
 #endif
     runtimeOptions.SetEnableBuiltinsLazy(option.GetEnableBuiltinsLazy());
     runtimeOptions.SetAsmOpcodeDisableRange(option.GetAsmOpcodeDisableRange());
+#ifdef ANDROID_PLATFORM
+    // stub.an
+    if (!option.GetStubFile().empty()) {
+        runtimeOptions.SetStubFile(option.GetStubFile());
+    }
+#endif
     // aot
     runtimeOptions.SetEnableAOT(option.GetEnableAOT());
     runtimeOptions.SetEnablePGOProfiler(option.GetEnableProfile());
