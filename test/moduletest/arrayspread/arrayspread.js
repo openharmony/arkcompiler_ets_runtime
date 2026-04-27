@@ -598,3 +598,86 @@ try {
 } catch (e) {
     print("Error:", e);
 }
+
+print("\n=== Spread String ===");
+// Unicode spread
+const spreadStr = '\ud83d\udc0e\ud83d\udc71\u2764'
+print([...spreadStr].map(cp => cp.codePointAt(0).toString(16)) + "")
+
+// UTF-8 ASCII String Spread
+const asciiStr = "Hello";
+print([...asciiStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// UTF-8 Latin-1 String Spread
+const latinStr = "\u00e9\u00f1\u00fc";
+print([...latinStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// UTF-16 BMP String Spread (CJK)
+const cjkStr = "\u4f60\u597d\u4e16\u754c";
+print([...cjkStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// UTF-16 Surrogate Pair Spread (Emoji)
+const emojiStr = "\ud83d\ude00\ud83c\udf89";
+print([...emojiStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Mixed ASCII and Surrogate Pairs
+const mixedAsciiEmoji = "A\ud83d\ude00Z";
+print([...mixedAsciiEmoji].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Mixed CJK and Surrogate Pairs
+const mixedCjkEmoji = "\u4f60\ud83d\ude00\u597d";
+print([...mixedCjkEmoji].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Consecutive Surrogate Pairs
+const multiEmoji = "\ud83d\udc68\ud83d\udc69\ud83d\udc67\ud83d\udc66";
+print([...multiEmoji].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Surrogate Pair at Start
+const startEmoji = "\ud83c\udf89party";
+print([...startEmoji].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Surrogate Pair at End
+const endEmoji = "party\ud83c\udf89";
+print([...endEmoji].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Single Surrogate Pair
+const singleEmoji = "\ud83d\udc0e";
+print([...singleEmoji].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Single BMP CJK Character
+const singleCjk = "\u4e2d";
+print([...singleCjk].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Various Unicode Blocks Spread
+const greekStr = "\u03b1\u03b2\u03b3";
+print([...greekStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+const cyrillicStr = "\u0430\u0431\u0432";
+print([...cyrillicStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+const arabicStr = "\u0627\u0628\u062a";
+print([...arabicStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+const mathStr = "\u2200\u2203\u2205";
+print([...mathStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Combining Characters Spread
+const combining = "e\u0301";
+print([...combining].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Supplementary Plane Characters Spread
+const musicStr = "\ud834\udd1e";
+print([...musicStr].map(cp => cp.codePointAt(0).toString(16)) + "");
+const cjkExt = "\ud840\udc00";
+print([...cjkExt].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Isolated Surrogate Spread
+const loneHigh = "\ud800";
+print([...loneHigh].map(cp => cp.codePointAt(0).toString(16)) + "");
+const loneLow = "\udc00";
+print([...loneLow].map(cp => cp.codePointAt(0).toString(16)) + "");
+const brokenPair = "\ud800a";
+print([...brokenPair].map(cp => cp.codePointAt(0).toString(16)) + "");
+
+// Spread String to Array then Spread
+const str11 = "\ud83d\ude00\ud83d\ude01";
+const arr11 = [...str11];
+const arr22 = [...arr11, ...str11];
+print([...arr22].map(cp => cp.codePointAt(0).toString(16)) + "");
