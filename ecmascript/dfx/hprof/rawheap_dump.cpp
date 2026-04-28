@@ -331,7 +331,7 @@ NodeId RawHeapDump::GenerateNodeId(JSTaggedType addr)
     }
 
     JSTaggedValue value {addr};
-    int32_t hash = value.IsJSObject() ? JSObject::Cast(value)->GetHash(vm_->GetJSThread()) : 0;
+    int32_t hash = value.IsJSObject() ? JSObject::Cast(value)->GetHash(vm_->GetJSThreadNoCheck()) : 0;
     return (static_cast<uint64_t>(hash) << 32) | (nodeId & 0xFFFFFFFF);  // 32: 32-bits means a half of uint64_t
 }
 
@@ -426,7 +426,7 @@ StringId RawHeapDump::GenerateStringIdForString(TaggedObject *object, JSThread *
 {
     EcmaString *str = EcmaString::Cast(object);
     if (EcmaStringAccessor(str).GetLength() > 0) {
-        CString string = ConvertToString(vm_->GetJSThread(), str);
+        CString string = ConvertToString(vm_->GetJSThreadNoCheck(), str);
         return snapshot_->InsertString(string);
     }
     return 1;  // 1 : invalid id
@@ -485,7 +485,7 @@ void RawHeapDump::AddExemptedStringNode()
         }
 
         std::vector<Reference> refs {};
-        value.DumpForSnapshot(vm_->GetJSThread(), refs, true);
+        value.DumpForSnapshot(vm_->GetJSThreadNoCheck(), refs, true);
         for (auto &ref : refs) {
             if (ref.key_.IsHole()) {
                 continue;

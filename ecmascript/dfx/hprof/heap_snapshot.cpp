@@ -123,7 +123,7 @@ void HeapSnapshot::UpdateNodes(bool isInFinish)
         GenerateNode(value, 0, isInFinish);
     };
     ReachableVisitor visitor(marker, worklist, onMark);
-    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
+    rootVisitor_.VisitHeapRoots(vm_->GetJSThreadNoCheck(), visitor);
 
     while (!worklist.empty()) {
         TaggedObject *obj = worklist.front();
@@ -623,7 +623,7 @@ void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "HeapSnapshot::FillNodes", "");
     // Iterate Heap Object
     GenerateNodeRootVisitor visitor(*this, isInFinish, isSimplify);
-    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
+    rootVisitor_.VisitHeapRoots(vm_->GetJSThreadNoCheck(), visitor);
 }
 
 HprofNode *HeapSnapshot::HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod)
@@ -834,7 +834,7 @@ void HeapSnapshot::AddTraceNodeId(MethodLiteral *methodLiteral)
 int HeapSnapshot::AddTraceNode(int sequenceId, int size)
 {
     traceNodeIndex_.clear();
-    auto thread = vm_->GetJSThread();
+    auto thread = vm_->GetJSThreadNoCheck();
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);
     for (; !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
@@ -921,7 +921,7 @@ HprofNode *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bo
     static const CString EMPTY_STRING;
     JSTaggedType addr = entry.GetRawData();
     HprofNode *existNode = entryMap_.FindEntry(addr);  // Fast Index
-    JSThread *thread = vm_->GetJSThread();
+    JSThread *thread = vm_->GetJSThreadNoCheck();
     if (existNode != nullptr) {
         if (isInFinish || isBinMod) {
             existNode->SetName(GetString(EntryVisitor::ConvertKey(thread, entry)));
@@ -952,10 +952,10 @@ HprofNode *HeapSnapshot::GeneratePrivateStringNode(size_t size)
     if (privateStringNode_ != nullptr) {
         return privateStringNode_;
     }
-    JSTaggedValue stringValue = vm_->GetJSThread()->GlobalConstants()->GetStringString();
+    JSTaggedValue stringValue = vm_->GetJSThreadNoCheck()->GlobalConstants()->GetStringString();
     size_t selfsize = (size != 0) ? size : stringValue.GetTaggedObject()->GetSize();
     CString strContent;
-    strContent.append(EntryVisitor::ConvertKey(vm_->GetJSThread(), stringValue));
+    strContent.append(EntryVisitor::ConvertKey(vm_->GetJSThreadNoCheck(), stringValue));
     JSTaggedType addr = stringValue.GetRawData();
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
     HprofNode *node = HprofNode::NewNode(chunk_, sequenceId, nodeCount_, GetString(strContent), NodeType::STRING,
@@ -1124,7 +1124,7 @@ void HeapSnapshot::FillEdges(bool isSimplify)
             continue;
         }
         std::vector<Reference> referenceResources;
-        value.DumpForSnapshot(vm_->GetJSThread(), referenceResources, isVmMode_);
+        value.DumpForSnapshot(vm_->GetJSThreadNoCheck(), referenceResources, isVmMode_);
         for (auto const &it : referenceResources) {
             if (it.type_ == EdgeType::NATIVE) {
                 ProcessNativeEdge(it, entryFrom);
@@ -1381,18 +1381,18 @@ void HeapSnapshot::CreateSyntheticRootToRootEdges(HprofNode *syntheticRoot, CVec
         buffer << "========================== Local Handle Leak Detection Result ==========================\n";
         heapProfiler->WriteToLeakStackTraceFd(buffer);
         EdgeBuilderWithLeakDetectRootVisitor visitor(*this, syntheticRoot, rootEdges);
-        rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
+        rootVisitor_.VisitHeapRoots(vm_->GetJSThreadNoCheck(), visitor);
         buffer << "======================== End of Local Handle Leak Detection Result =======================";
         heapProfiler->WriteToLeakStackTraceFd(buffer);
         heapProfiler->CloseLeakStackTraceFd();
     } else {
         EdgeBuilderRootVisitor visitor(*this, syntheticRoot, rootEdges);
-        rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
+        rootVisitor_.VisitHeapRoots(vm_->GetJSThreadNoCheck(), visitor);
     }
     heapProfiler->ClearHandleBackTrace();
 #else
     EdgeBuilderRootVisitor visitor(*this, syntheticRoot, rootEdges);
-    rootVisitor_.VisitHeapRoots(vm_->GetJSThread(), visitor);
+    rootVisitor_.VisitHeapRoots(vm_->GetJSThreadNoCheck(), visitor);
 #endif  // ENABLE_LOCAL_HANDLE_LEAK_DETECT
 }
 
