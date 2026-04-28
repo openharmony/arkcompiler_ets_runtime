@@ -189,7 +189,7 @@ void ArkCrashHolder::SetCrashObj(const char* tag, const char* info)
 {
     std::string data = "[";
     data += tag,
-    data += "] Crash occured on ";
+    data += "] Crash occurred on ";
     data += info;
     data += ", callback: ";
 
