@@ -242,11 +242,25 @@ void HeapSnapshotJSONSerializer::SerializeString(const char *str, StreamWriter *
         } else if (*s > ASCII_US && *s < ASCII_DEL) {
             writer->WriteChar(*s);
             s++;
+        } else if (*s <= ASCII_US || *s == ASCII_DEL) {
+            // special char convert to \u unicode
+            SerializeUnicodeChar(static_cast<uint32_t>(*s), writer);
+            s++;
         } else {
             writer->WriteChar(*s);
             s++;
         }
     }
+}
+
+void HeapSnapshotJSONSerializer::SerializeUnicodeChar(uint32_t unicodeChar, StreamWriter *writer)
+{
+    static const char hexChars[] = "0123456789ABCDEF";
+    writer->WriteString("\\u");
+    writer->WriteChar(hexChars[(unicodeChar >> 0xC) & 0xF]);
+    writer->WriteChar(hexChars[(unicodeChar >> 0x8) & 0xF]);
+    writer->WriteChar(hexChars[(unicodeChar >> 0x4) & 0xF]);
+    writer->WriteChar(hexChars[unicodeChar & 0xF]);
 }
 
 void HeapSnapshotJSONSerializer::SerializerSnapshotClosure(StreamWriter *writer)

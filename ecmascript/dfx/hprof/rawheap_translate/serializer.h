@@ -86,6 +86,7 @@ private:
     static void SerializeEdges(RawHeap *rawheap, StreamWriter *writer);
     static void SerializeStringTable(RawHeap *rawheap, StreamWriter *writer);
     static void SerializeString(const char *str, StreamWriter *writer);
+    static void SerializeUnicodeChar(uint32_t unicodeChar, StreamWriter *writer);
     static void SerializerSnapshotClosure(StreamWriter *writer);
 };
 }  // namespace rawheap_translate
