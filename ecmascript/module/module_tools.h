@@ -107,10 +107,10 @@ public:
                 } else {
                     moduleImportSet.insert(moduleName_);
                 }
-                std::string truncatedStack = TruncateModuleImportStack(
-                    moduleManager_->GetModuleImportStackData(), 64 * 1024); // 64KB
+                truncatedStack_ = TruncateModuleImportStack(
+                    moduleManager_->GetModuleImportStackData(), 64 * 1024); // 64 * 1024 = 64KB
                 handle_ = SetCrashObject(DFXObjectType::STRING,
-                    reinterpret_cast<uintptr_t>(truncatedStack.data()));
+                    reinterpret_cast<uintptr_t>(truncatedStack_.data()));
             }
         }
     }
@@ -259,6 +259,7 @@ private:
     ModuleManager* moduleManager_;
     CString moduleName_;
     uintptr_t handle_ {0};
+    std::string truncatedStack_;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_MODULE_MODULE_TOOLS_H
