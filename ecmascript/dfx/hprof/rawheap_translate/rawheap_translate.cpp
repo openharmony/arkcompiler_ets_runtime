@@ -646,7 +646,7 @@ void RawHeapTranslateV1::AddSyntheticRootNode(std::vector<uint64_t> &roots)
     InsertEdge(frameRoot, strId, type);
 
     Node *metadataNode = nullptr;
-    if (!spaceType_.empty() || !heapType_.empty() || !vmType_.empty()) {
+    if (!spaceType_.empty() || !heapType_.empty()) {
         metadataNode = CreateNode();
         CreateMetadataNode(metadataNode);
         syntheticRoot->edgeCount++;
@@ -1443,7 +1443,7 @@ void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
     syntheticRoot_->edgeCount++;
     InsertEdge(frameRoot_, strId, type);
 
-    if (!spaceType_.empty() || !heapType_.empty() || !vmType_.empty()) {
+    if (!spaceType_.empty() || !heapType_.empty()) {
         CreateMetadataNode(metadataNode_);
         syntheticRoot_->edgeCount++;
         InsertEdge(metadataNode_, strId, type);
@@ -1461,7 +1461,7 @@ void RawHeapTranslateV2::AddSyntheticRootNode(std::vector<uint32_t> &roots)
     AddHandleRootEdges(globalHandleRoots_);
     AddHandleRootEdges(vmRoots_);
     AddHandleRootEdges(frameRoots_);
-    if (!spaceType_.empty() || !heapType_.empty() || !vmType_.empty()) {
+    if (!spaceType_.empty() || !heapType_.empty()) {
         AddMetadataPropertyNode(metadataNode_, spaceType_, "spaceType");
         AddMetadataPropertyNode(metadataNode_, heapType_, "heapType");
         AddMetadataPropertyNode(metadataNode_, vmType_, "vmType");
