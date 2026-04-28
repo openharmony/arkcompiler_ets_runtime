@@ -181,7 +181,7 @@ public:
     {
         std::u16string tmpStr = str;
         const char16_t *constChar16tData = tmpStr.data();
-        icu::UnicodeString uString(constChar16tData, str.length());
+        icu::UnicodeString uString(constChar16tData);
         icu::UnicodeString up = uString.toUpper();
         std::u16string result(up.getBuffer(), up.length());
         return result;
@@ -191,7 +191,7 @@ public:
     {
         std::u16string tmpStr = str;
         const char16_t *constChar16tData = tmpStr.data();
-        icu::UnicodeString uString(constChar16tData, str.length());
+        icu::UnicodeString uString(constChar16tData);
         icu::UnicodeString up = uString.toUpper(locale);
         std::u16string result(up.getBuffer(), up.length());
         return result;
@@ -210,7 +210,7 @@ public:
     {
         std::u16string tmpStr = str;
         const char16_t *constChar16tData = tmpStr.data();
-        icu::UnicodeString uString(constChar16tData, str.length());
+        icu::UnicodeString uString(constChar16tData);
         icu::UnicodeString low = uString.toLower(locale);
         std::u16string result(low.getBuffer(), low.length());
         return result;
