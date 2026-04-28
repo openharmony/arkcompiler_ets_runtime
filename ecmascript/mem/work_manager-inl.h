@@ -29,10 +29,6 @@ void WorkNodeHolder::Setup(Heap *heap, WorkManager *workManager, GlobalWorkStack
     workStack_ = workStack;
     continuousQueue_ = new ProcessQueue();
     continuousJSWeakMapQueue_ = new JSWeakMapProcessQueue();
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        slotGCAllocator_.Setup(heap->GetSlotSpace());
-    }
 }
 
 void WorkNodeHolder::Destroy()
@@ -61,7 +57,8 @@ void WorkNodeHolder::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPh
     if (gcType == TriggerGCType::FULL_GC) {
         // fixme: refactor?
         if constexpr (G_USE_CMS_GC) {
-            slotGCAllocator_.Initialize();
+            slotGCAllocator_ = new SlotGCAllocator();
+            slotGCAllocator_->Setup(heap_->GetSlotSpace());
         } else {
             allocator_ = new TlabAllocator(heap_);
         }
@@ -85,9 +82,10 @@ void WorkNodeHolder::Finish()
         delete allocator_;
         allocator_ = nullptr;
     }
-    // fixme: refactor?
-    if constexpr (G_USE_CMS_GC) {
-        slotGCAllocator_.Finalize(heap_);
+    if (slotGCAllocator_ != nullptr) {
+        slotGCAllocator_->Finalize(heap_);
+        delete slotGCAllocator_;
+        slotGCAllocator_ = nullptr;
     }
     parallelGCTaskPhase_ = ParallelGCTaskPhase::UNDEFINED_TASK;
 }
@@ -179,7 +177,7 @@ TlabAllocator *WorkNodeHolder::GetTlabAllocator() const
 
 SlotGCAllocator *WorkNodeHolder::GetSlotGCAllocator()
 {
-    return &slotGCAllocator_;
+    return slotGCAllocator_;
 }
 
 WorkManagerBase::WorkManagerBase(NativeAreaAllocator *allocator)
@@ -255,11 +253,8 @@ void WorkManager::Finish(size_t &aliveSize, size_t &promotedSize)
     for (uint32_t i = 0; i < threadNum_; i++) {
         WorkNodeHolder &holder = works_.at(i);
         promotedSize += holder.promotedSize_;
-        if (holder.allocator_ != nullptr) {
-            holder.allocator_->Finalize();
-            delete holder.allocator_;
-            holder.allocator_ = nullptr;
-        }
+        ASSERT(holder.allocator_ == nullptr);
+        ASSERT(holder.slotGCAllocator_ == nullptr);
     }
     initialized_.store(false, std::memory_order_release);
 }
