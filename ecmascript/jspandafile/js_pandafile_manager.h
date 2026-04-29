@@ -115,7 +115,7 @@ public:
         }
         LockHolder lock(jsPandaFileLock_);
         for (const auto &item : loadedJSPandaFiles_) {
-            if (!item.second->IsBundlePack() && item.second->IsHapPath() && item.second->IsNewVersion()) {
+            if (!item.second->IsBundlePack() && item.second->IsHapOrHspPath() && item.second->IsNewVersion()) {
                 hapJSPandaFiles.emplace(item.second);
             }
         }

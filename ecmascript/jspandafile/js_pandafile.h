@@ -95,6 +95,7 @@ public:
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
 
     static constexpr std::string_view HAP_SUFFIX = ".hap";
+    static constexpr std::string_view HSP_SUFFIX = ".hsp";
     static constexpr int PACKAGE_NAME_LEN = 8;
     static constexpr int TYPE_SUMMARY_OFFSET_NOT_FOUND = 0;
     static constexpr int CLASSID_OFFSET_NOT_FOUND = 0;
@@ -518,9 +519,14 @@ public:
 
     void TranslateClasses(JSThread *thread, const CString &methodName);
 
-    bool IsHapPath() const
+    /*
+     * hapPath_: 1. /data/app/el1/bundle/public/bundleName/moduleName.hap
+     *           2. /data/app/el1/bundle/public/bundleName/moduleName.hsp
+    */
+    bool IsHapOrHspPath() const
     {
-        return base::StringHelper::StringEndWith(hapPath_, HAP_SUFFIX);
+        return base::StringHelper::StringEndWith(hapPath_, HAP_SUFFIX) ||
+               base::StringHelper::StringEndWith(hapPath_, HSP_SUFFIX);
     }
 
     void SetFileMapper(void *fileMapper)
@@ -568,6 +574,7 @@ private:
     // please add member after *pf_. static constexpr int32_t PF_OFFSET = 0.
     const panda_file::File *pf_ {nullptr};
     void *fileMapper_ {nullptr};
+    // hapPath_ only supports hap and inner-hsp packages, for other package types, hapPath_ is empty.
     CString hapPath_;
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
