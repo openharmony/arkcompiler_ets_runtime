@@ -499,13 +499,38 @@ JSTaggedValue RuntimeStubs::RuntimeStArraySpread(JSThread *thread, const JSHandl
             EcmaStringAccessor::Flatten(thread->GetEcmaVM(), srcString));
         uint32_t dstLen = static_cast<uint32_t>(index.GetInt());
         uint32_t strLen = EcmaStringAccessor(srcFlat).GetLength();
-        for (uint32_t i = 0; i < strLen; i++) {
-            uint16_t res = EcmaStringAccessor(srcFlat).Get<false>(thread, i);
-            JSHandle<JSTaggedValue> strValue(factory->NewFromUtf16Literal(&res, 1));
-            JSTaggedValue::SetProperty(thread, dst, dstLen + i, strValue, true);
-            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        uint32_t dstIndex = 0;
+        if (EcmaStringAccessor(srcFlat).IsUtf8()) {
+            for (uint32_t i = 0; i < strLen; i++) {
+                uint16_t res = EcmaStringAccessor(srcFlat).Get<false>(thread, i);
+                JSHandle<JSTaggedValue> strValue(factory->NewFromUtf16Literal(&res, 1));
+                JSTaggedValue::SetProperty(thread, dst, dstLen + i, strValue, true);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            }
+            dstIndex = strLen;
+        } else {
+            static constexpr uint32_t SINGLE_UTF16_UNIT_LEN = 1;
+            static constexpr uint32_t SURROGATE_PAIR_LEN = 2;
+            static constexpr uint32_t UTF16_CODE_UNIT_BUF_SIZE = 2;
+            for (uint32_t i = 0; i < strLen; i++) {
+                uint16_t lead = EcmaStringAccessor(srcFlat).Get<false>(thread, i);
+                uint16_t utf16Buf[UTF16_CODE_UNIT_BUF_SIZE] = {lead, 0};
+                uint32_t utf16Len = SINGLE_UTF16_UNIT_LEN;
+                if (common::utf_helper::IsUTF16HighSurrogate(lead) && i + 1 < strLen) {
+                    uint16_t trail = EcmaStringAccessor(srcFlat).Get<false>(thread, i + 1);
+                    if (common::utf_helper::IsUTF16LowSurrogate(trail)) {
+                        utf16Buf[SINGLE_UTF16_UNIT_LEN] = trail;
+                        utf16Len = SURROGATE_PAIR_LEN;
+                        i++;
+                    }
+                }
+                JSHandle<JSTaggedValue> strValue(factory->NewFromUtf16Literal(utf16Buf, utf16Len));
+                JSTaggedValue::SetProperty(thread, dst, dstLen + dstIndex, strValue, true);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                dstIndex++;
+            }
         }
-        JSHandle<JSTaggedValue> length(thread, JSTaggedValue(dstLen + strLen));
+        JSHandle<JSTaggedValue> length(thread, JSTaggedValue(dstLen + dstIndex));
         if (strLen == 0U) {
             JSHandle<JSTaggedValue> lengthKey = thread->GlobalConstants()->GetHandledLengthString();
             JSTaggedValue::SetProperty(thread, dst, lengthKey, length);
