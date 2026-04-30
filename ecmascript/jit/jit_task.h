@@ -100,6 +100,15 @@ private:
     int32_t threadId_ { -1 };
 };
 
+class JitAsyncTaskRunScope {
+public:
+    JitAsyncTaskRunScope(JitTask *task);
+    ~JitAsyncTaskRunScope();
+private:
+    JitTask *task_;
+    JitVM *jitvm_;
+};
+
 class JitTask {
 public:
     JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit,
@@ -107,13 +116,13 @@ public:
         JitCompileMode mode);
     // for ut
     JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, JitCompileMode mode);
-    ~JitTask();
+    virtual ~JitTask();
     
     void Optimize();
     void Finalize();
     void PrepareCompile();
 
-    void InstallCode();
+    virtual void InstallCode();
     void InstallOsrCode(JSHandle<MachineCode> &codeObj);
     void InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCode,
         JSHandle<Method> &methodHandle);
@@ -166,6 +175,11 @@ public:
     Jit *GetJit()
     {
         return jit_;
+    }
+
+    void *GetCompilerTask()
+    {
+        return compilerTask_;
     }
 
     JSThread *GetHostThread()
@@ -250,35 +264,12 @@ public:
         {
             return jitTask_->GetHostThread()->GetEcmaVM();
         }
-        bool IsRunning() const
-        {
-            return jitTask_->IsRunning();
-        }
-        void WaitFinish() const
-        {
-            jitTask_->WaitFinish();
-        }
-
         void Terminated()
         {
             common::Task::Terminated();
         }
-
-        void ReleaseSustainingJSHandle()
-        {
-            jitTask_->ReleaseSustainingJSHandle();
-        }
     private:
         std::shared_ptr<JitTask> jitTask_ { nullptr };
-
-        class AsyncTaskRunScope {
-        public:
-            AsyncTaskRunScope(JitTask *jitTask);
-            ~AsyncTaskRunScope();
-        private:
-            JitTask *jitTask_ { nullptr };
-            JitVM *jitvm_ { nullptr };
-        };
     };
 private:
     void SustainingJSHandles();

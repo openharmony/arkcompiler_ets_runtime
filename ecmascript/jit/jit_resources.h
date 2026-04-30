@@ -70,6 +70,7 @@ public:
         }
         deleteJitCompilerTask_(compilerTask);
     }
+
     bool ResolveLib();
     bool InitJitEnv(const JSRuntimeOptions &options);
 

@@ -25,6 +25,7 @@
 #include "ecmascript/method.h"
 #include "ecmascript/mem/jit_fort_memdesc.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
+#include "ecmascript/compiler/aot_file/func_entry_des.h"
 
 #include "libpandabase/macros.h"
 
@@ -32,6 +33,7 @@ namespace panda::ecmascript {
 enum class MachineCodeType : uint8_t {
     BASELINE_CODE,
     FAST_JIT_CODE,
+    ARKSTEED_CODE,
 };
 
 struct MachineCodeDesc {
@@ -48,6 +50,8 @@ struct MachineCodeDesc {
     size_t stackMapOrOffsetTableSize {0};
     uintptr_t heapConstantTableAddr {0};
     size_t heapConstantTableSize {0};
+    uintptr_t codeCommentsAddr { 0 };
+    size_t codeCommentsSize { 0 };
     MachineCodeType codeType {MachineCodeType::FAST_JIT_CODE};
 #ifdef JIT_ENABLE_CODE_SIGN
     uintptr_t codeSigner {0};
@@ -260,6 +264,8 @@ public:
     bool SetData(JSThread *thread, const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
     bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
+    bool SetArkSteedData(JSThread *thread, const MachineCodeDesc &desc,
+                         JSHandle<Method> &method, size_t dataSize);
 
     template <VisitType visitType, class DerivedVisitor>
     void VisitRangeSlot(BaseObjectVisitor<DerivedVisitor> &visitor)

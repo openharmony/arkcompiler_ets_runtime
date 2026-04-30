@@ -42,6 +42,8 @@ struct EcmaRuntimeCallInfo;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
                                               uintptr_t prevFp, bool needPushArgv);
+using ArkSteedCallEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
+                                                uintptr_t prevFp);
 using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
                                               uintptr_t prevFp);
 
@@ -471,6 +473,13 @@ private:
                                                     const JSHandle<JSTaggedValue> &newTarget,
                                                     const JSHandle<TaggedArray> &argv,
                                                     uint16_t length);
+    static inline JSTaggedValue RuntimeCallRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+                                                 const JSHandle<TaggedArray> &argv,
+                                                 uint16_t length);
+    static inline JSTaggedValue RuntimeCallThisRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+                                                     const JSHandle<JSTaggedValue> &thisObj,
+                                                     const JSHandle<TaggedArray> &argv,
+                                                     uint16_t length);
     static inline JSTaggedValue RuntimeThrowTypeError(JSThread *thread, const char *message);
     static inline JSTaggedValue RuntimeThrowContainerBusinessError(JSThread *thread,
         int32_t errorCode, const char *message);

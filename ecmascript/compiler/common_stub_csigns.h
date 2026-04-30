@@ -134,6 +134,7 @@ namespace panda::ecmascript::kungfu {
     V(NewFloat32Array)                \
     V(StringLoadElement)              \
     V(GetStringFromConstPool)         \
+    V(GetObjectFromConstPool)         \
     V(GetPrototype)                   \
     V(FastCallSelector)               \
     V(CheckSuperAndNew)               \
@@ -159,6 +160,8 @@ namespace panda::ecmascript::kungfu {
     V(DefineArrowFuncForJit)          \
     V(DefineBaseConstructorForJit)    \
     V(GetValueWithBarrier)            \
+    V(LdLexVar)                       \
+    V(StLexVar)                       \
     V(CMCSetValueWithBarrier)
 
 #define COMMON_STUB_ID_LIST(V)          \

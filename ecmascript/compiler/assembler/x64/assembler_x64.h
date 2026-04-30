@@ -81,6 +81,10 @@ public:
     void Movq(Immediate src, Register dst);
     void Mov(const Operand &src, Register dst);
     void Mov(Register src, Register dst);
+    // Floating-point operations
+    void Movsd(XMMRegister dst, XMMRegister src);
+    void Movsd(XMMRegister dst, const Operand &src);  // Load double from memory to XMM
+    void Movq(XMMRegister dst, Register src);  // Move from GP register to XMM register
     void Addq(Immediate src, Register dst);
     void Addq(Register src, Register dst);
     void Addl(Immediate src, Register dst);

@@ -40,10 +40,6 @@ public:
 
     [[nodiscard]] void *Allocate(size_t size)
     {
-        if (size == 0) {
-            LOG_ECMA_MEM(FATAL) << "size must have a size bigger than 0";
-            UNREACHABLE();
-        }
         uintptr_t result = ptr_;
         size = AlignUp(size, MEM_ALIGN);
         if (UNLIKELY(size > end_ - ptr_)) {

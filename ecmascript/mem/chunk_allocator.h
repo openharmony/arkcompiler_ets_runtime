@@ -48,19 +48,8 @@ public:
     template<typename U>
     friend class ChunkAllocator;
 
-    ChunkAllocator(const ChunkAllocator &) = default;
-    ChunkAllocator &operator=(const ChunkAllocator &) = default;
-    ChunkAllocator(ChunkAllocator &&other) noexcept
-    {
-        chunk_ = other.chunk_;
-        other.chunk_ = nullptr;
-    }
-    ChunkAllocator &operator=(ChunkAllocator &&other) noexcept
-    {
-        chunk_ = other.chunk_;
-        other.chunk_ = nullptr;
-        return *this;
-    }
+    DEFAULT_COPY_SEMANTIC(ChunkAllocator);
+    DEFAULT_MOVE_SEMANTIC(ChunkAllocator);
     ~ChunkAllocator() = default;
 
     // NOLINTNEXTLINE(readability-identifier-naming)

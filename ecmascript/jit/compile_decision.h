@@ -49,9 +49,16 @@ public:
     enum class Tier : uint8_t {
         BASELINE,
         FAST,
+        ARKSTEED,
     };
 
     CompilerTier(Tier tier) : tier_(tier) {}
+    
+    bool IsFastJit() const
+    {
+        return tier_ == Tier::FAST || tier_ == Tier::ARKSTEED;
+    }
+
     bool IsFast() const
     {
         return tier_ == Tier::FAST;
@@ -62,9 +69,20 @@ public:
         return tier_ == Tier::BASELINE;
     }
 
+    bool IsArkSteed() const
+    {
+        return tier_ == Tier::ARKSTEED;
+    }
+
     friend std::ostream &operator<<(std::ostream &os, const CompilerTier &tier)
     {
-        os << (tier.IsFast() ? "[fastjit] " : " [baselinejit] ");
+        if (tier.IsFast()) {
+            os << "[fastjit] ";
+        } else if (tier.IsArkSteed()) {
+            os << "[arksteed] ";
+        } else {
+            os << " [baselinejit] ";
+        }
         return os;
     }
 

@@ -1098,7 +1098,11 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
         BRANCH(Int32Equal(jitCallCnt, Int32(0)), &callCntEqualZero, &exit);
         Bind(&callCntEqualZero);
         DEFVARIABLE(varOffset, VariableType::INT32(), Int32(MachineCode::INVALID_OSR_OFFSET));
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        CallRuntime(glue, RTSTUB_ID(ArkSteedCompile), { func, IntToTaggedInt(*varOffset) });
+#else
         CallRuntime(glue, RTSTUB_ID(JitCompile), { func, IntToTaggedInt(*varOffset) });
+#endif
         Jump(&incJitHotnessCntAndExit);
     }
     Bind(&notEqualJitThreshold);
@@ -1148,7 +1152,11 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef offset = offsetInfo.isPc ? TaggedPtrToTaggedIntPtr(PtrSub(offsetInfo.pc, firstPC))
                                          : offsetInfo.offset;
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        CallRuntime(glue, RTSTUB_ID(ArkSteedCompile), { func, offset });
+#else
         CallRuntime(glue, RTSTUB_ID(JitCompile), { func, offset });
+#endif
         GateRef osrHotnessCntOffset = GetOsrHotnessCntOffset(profileTypeInfo);
         Store(VariableType::INT16(), glue, profileTypeInfo, osrHotnessCntOffset, Int16(0));
         Jump(&exit);

@@ -47,6 +47,9 @@ declare_args() {
   # Control whether to compile libark_jsruntime_dfx.so, only enabled for phone and PC
   ets_runtime_feature_enable_dfx = false
 
+  # Enable ark_steed (ArkSteed JIT compiler)
+  ets_runtime_enable_ark_steed = false && !is_arkui_x
+
 
   # Defaults for fort
   ets_runtime_support_jit_code_sign = false
@@ -97,6 +100,7 @@ if (target_cpu == "arm64") {
 MAPLEALL_ROOT = "//arkcompiler/ets_runtime/ecmascript/compiler/codegen/maple"
 MAPLEALL_THIRD_PARTY_ROOT = "//third_party"
 LLVM_LIB_ROOT = "//arkcompiler/ets_runtime/ecmascript/compiler/codegen/llvm/lib"
+ARK_STEED_ROOT = "//arkcompiler/ets_runtime/ecmascript/arksteed"
 
 if (!ark_standalone_build) {
   build_root = "//build"
@@ -270,6 +274,10 @@ template("libark_jsruntime_common_set") {
           rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")
     }
     defines = [ "STUB_AN_FILE=\"${stub_an_file_path}\"" ]
+
+    if (ets_runtime_enable_ark_steed) {
+      defines += [ "ECMASCRIPT_ENABLE_ARK_STEED_GN" ]
+    }
 
     if (current_cpu == "arm64") {
       defines += [ "ENABLE_POSTFORK_FORCEEXPAND" ]

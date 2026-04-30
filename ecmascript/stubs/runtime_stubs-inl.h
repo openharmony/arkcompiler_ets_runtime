@@ -2816,6 +2816,30 @@ JSTaggedValue RuntimeStubs::RuntimeOptSuperCall(JSThread *thread, const JSHandle
     return result;
 }
 
+JSTaggedValue RuntimeStubs::RuntimeCallRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+                                             const JSHandle<TaggedArray> &argv, uint16_t length)
+{
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, undefined, undefined, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    info->SetCallArg(length, argv);
+    JSTaggedValue result = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return result;
+}
+
+JSTaggedValue RuntimeStubs::RuntimeCallThisRange(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+                                                 const JSHandle<JSTaggedValue> &thisObj,
+                                                 const JSHandle<TaggedArray> &argv, uint16_t length)
+{
+    EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisObj, thisObj, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    info->SetCallArg(length, argv);
+    JSTaggedValue result = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return result;
+}
+
 JSTaggedValue RuntimeStubs::RuntimeThrowTypeError(JSThread *thread, const char *message)
 {
     ASSERT_NO_ABRUPT_COMPLETION(thread);
@@ -3189,6 +3213,10 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
                 size = numArgs;
             }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        } else if (isAotMethod) {
+            resultValue = thread->GetEcmaVM()->ExecuteArkSteed(size, values.data(), prevFp);
+#endif
         } else {
             resultValue = thread->GetEcmaVM()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
         }
@@ -3333,6 +3361,9 @@ JSTaggedType *RuntimeStubs::GetActualArgv(JSThread *thread)
     if (it.IsFastJitFunctionFrame()) {
         auto optimizedJSJITFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
         return optimizedJSJITFunctionFrame->GetArgv(it);
+    } else if (it.IsSteedFunctionFrame()) {
+        auto steedFunctionFrame = it.GetFrame<SteedFunctionFrame>();
+        return steedFunctionFrame->GetArgv(it);
     } else {
         auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
         return optimizedJSFunctionFrame->GetArgv(it);
@@ -3351,9 +3382,13 @@ JSTaggedType *RuntimeStubs::GetActualArgvFromStub(JSThread *thread)
     if (it.IsFastJitFunctionFrame()) {
         auto optimizedJSJITFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
         return optimizedJSJITFunctionFrame->GetArgv(it);
+    } else if (it.IsSteedFunctionFrame()) {
+        auto steedFunctionFrame = it.GetFrame<SteedFunctionFrame>();
+        return steedFunctionFrame->GetArgv(it);
+    } else {
+        auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+        return optimizedJSFunctionFrame->GetArgv(it);
     }
-    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
-    return optimizedJSFunctionFrame->GetArgv(it);
 }
 
 OptimizedJSFunctionFrame *RuntimeStubs::GetOptimizedJSFunctionFrame(JSThread *thread)

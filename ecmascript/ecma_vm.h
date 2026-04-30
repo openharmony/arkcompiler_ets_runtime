@@ -1539,6 +1539,9 @@ public:
 
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
                              bool needPushArgv);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    JSTaggedValue ExecuteArkSteed(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp);
+#endif
 
     static void ClearKeptObjects(JSThread *thread);
     static void AddToKeptObjects(JSThread *thread, JSHandle<JSTaggedValue> value);

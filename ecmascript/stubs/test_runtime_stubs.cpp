@@ -18,6 +18,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/method.h"
 
 namespace panda::ecmascript {
 #if defined(__clang__)

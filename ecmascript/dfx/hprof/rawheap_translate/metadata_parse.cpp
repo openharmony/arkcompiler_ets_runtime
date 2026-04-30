@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/dfx/hprof/rawheap_translate/metadata_parse.h"
+#include <algorithm>
 
 namespace rawheap_translate {
 bool MetaParser::Parse(const cJSON *object)

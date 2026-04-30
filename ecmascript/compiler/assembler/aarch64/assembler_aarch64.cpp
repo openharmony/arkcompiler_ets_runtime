@@ -1245,4 +1245,52 @@ uint32_t AssemblerAarch64::GetShiftOfLdr(const MemoryOperand &operand, Scale sca
     }
     return shift;
 }
+
+void AssemblerAarch64::Mov(const VRegister &vd, const VRegister &vn)
+{
+    // Use ORR Vd.16B, Vn.16B, Vn.16B (alias for MOV Vd.16B, Vn.16B)
+    // Encoding: 0100 1110 001 0 mmmm 0000 11 nnnnn ddddd
+    // ORR Vd.16B, Vn.16B, Vm.16B
+    uint32_t encoding = 0x0E201C00;
+    encoding |= static_cast<uint32_t>(vn.Code()) << 16;  // 16: Vm field position
+    encoding |= static_cast<uint32_t>(vn.Code()) << 5;   // 5: Vn field position
+    encoding |= static_cast<uint32_t>(vd.Code());        // d (Vd)
+    EmitU32(encoding);
+}
+
+void AssemblerAarch64::Fmov(const VRegister &vd, const Register &rn)
+{
+    // FMOV Dd, Xn - Move from general-purpose register to floating-point register
+    // Encoding: 1001 1110 011 0000 00011 nnnnn ddddd
+    // Bits 31-30: 10 (sf=1 for 64-bit)
+    // Bits 29-21: 0111 1001 1 (fixed)
+    // Bits 20-16: 00000 (opcode for FMOV from general)
+    // Bits 15-10: 000011 (fixed)
+    // Bits 9-5: nnnnn (source register Xn)
+    // Bits 4-0: ddddd (destination register Dd)
+    uint32_t encoding = 0x9E670000;
+    encoding |= static_cast<uint32_t>(rn.Code()) << 5;  // 5: Xn field position
+    encoding |= static_cast<uint32_t>(vd.Code());       // d (Dd)
+    EmitU32(encoding);
+}
+
+void AssemblerAarch64::Ldr(const VRegister &vt, const MemoryOperand &operand)
+{
+    // LDR Dt, [Xn, #imm] - Load SIMD&FP Register (64-bit)
+    // Encoding: opc 11 11 00 01 1 imm12 Rn Rt
+    // opc = 11 for 64-bit D register
+    // imm12 = offset / 8 (must be aligned)
+    ASSERT(operand.IsImmediateOffset());
+    ASSERT(operand.GetRegBase().IsX());
+
+    int64_t offset = operand.GetImmediate().Value();
+    ASSERT((offset % 8) == 0 && offset >= 0 && offset <= 32760);  // 8, 32760: max offset for 12-bit imm scaled by 8
+    uint32_t imm12 = static_cast<uint32_t>(offset / 8);  // 8: bytes per 64-bit register
+
+    uint32_t encoding = 0x3FC40000;  // opc=11, fixed bits
+    encoding |= (imm12 << 10);                          // 10: imm12 field position
+    encoding |= static_cast<uint32_t>(operand.GetRegBase().Code()) << 5;  // 5: Rn field position
+    encoding |= static_cast<uint32_t>(vt.Code());       // Rt (Dt)
+    EmitU32(encoding);
+}
 }   // namespace panda::ecmascript::aarch64

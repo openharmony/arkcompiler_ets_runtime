@@ -63,6 +63,10 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Default: 'none'\n"
     "--compiler-log-methods:               Specific method list for compiler log, only used when compiler-log. "
     "                                      Default: 'none'\n"
+    "--compiler-arksteed-print-graph:      Enable printing ArkSteed IR graph. Default: 'false'\n"
+    "--compiler-arksteed-print-method-name: Enable printing method name via ArkSteed runtime stub. "
+    "Default: 'true'\n"
+    "--compiler-arksteed-print-code:       Enable printing ArkSteed generated code. Default: 'false'\n"
     "--compiler-type-threshold:            enable to skip methods whose type is no more than threshold. Default: -1\n"
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
@@ -246,6 +250,11 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"builtins-lazy", required_argument, nullptr, OPTION_ENABLE_BUILTINS_LAZY},
         {"compiler-log", required_argument, nullptr, OPTION_COMPILER_LOG_OPT},
         {"compiler-log-methods", required_argument, nullptr, OPTION_COMPILER_LOG_METHODS},
+        {"compiler-arksteed-print-graph", required_argument, nullptr, OPTION_COMPILER_ARKSTEED_PRINT_GRAPH},
+        {"compiler-arksteed-print-method-name", required_argument, nullptr, OPTION_COMPILER_ARKSTEED_PRINT_METHOD_NAME},
+        {"compiler-arksteed-enable-code-comment", required_argument, nullptr,
+         OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT},
+        {"compiler-arksteed-print-code", required_argument, nullptr, OPTION_COMPILER_ARKSTEED_PRINT_CODE},
         {"compiler-log-snapshot", required_argument, nullptr, OPTION_COMPILER_LOG_SNAPSHOT},
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
         {"compiler-log-all-methods-time", required_argument, nullptr, OPTION_COMPILER_LOG_ALL_METHODS_TIME},
@@ -845,6 +854,38 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 break;
             case OPTION_COMPILER_LOG_METHODS:
                 SetMethodsListForLog(optarg);
+                break;
+            case OPTION_COMPILER_ARKSTEED_PRINT_GRAPH:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedPrintGraph(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ARKSTEED_PRINT_METHOD_NAME:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedPrintMethodName(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ARKSTEED_ENABLE_CODE_COMMENT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedEnableCodeComment(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ARKSTEED_PRINT_CODE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetCompilerArkSteedPrintCode(argBool);
+                } else {
+                    return false;
+                }
                 break;
             case OPTION_ASM_OPT_LEVEL:
                 ret = ParseUint32Param("compiler-opt-level", &argUint32);

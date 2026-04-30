@@ -634,6 +634,10 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), mainFunc.GetTaggedType(), true);
 #endif
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    res = thread->GetEcmaVM()->ExecuteArkSteed(actualNumArgs, args.data(), prevFp);
+#else
     if (mainFunc->IsCompiledFastCall()) {
         // entry of aot
         args = JSFunction::GetArgsData(thread, true, thisArg, mainFunc, cjsInfo);
@@ -643,6 +647,8 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         // entry of aot
         res = thread->GetEcmaVM()->ExecuteAot(actualNumArgs, args.data(), prevFp, false);
     }
+#endif
+
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), mainFunc.GetTaggedType());
 #endif
@@ -695,6 +701,11 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    size_t actualNumArgs = info->GetArgsNumber();
+    // Steed entry: call runtime stub ArkSteedCallEntry
+    resultValue = thread->GetEcmaVM()->ExecuteArkSteed(actualNumArgs, info->GetArgs(), prevFp);
+#else
     if (func->IsCompiledFastCall()) {
         if (needPushArgv) {
             info = EcmaInterpreter::ReBuildRuntimeCallInfo(thread, info, numArgs);
@@ -707,6 +718,8 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
         resultValue = thread->GetEcmaVM()->ExecuteAot(info->GetArgsNumber(),
             info->GetArgs(), prevFp, needPushArgv);
     }
+#endif
+
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), func.GetTaggedType());
 #endif

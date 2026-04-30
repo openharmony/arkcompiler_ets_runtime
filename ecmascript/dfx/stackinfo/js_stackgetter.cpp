@@ -207,7 +207,7 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
             return function->GetNativeFunctionExtraInfo(thread).CheckIsJSNativePointer() ? RunningState::ARKUI_ENGINE :
                 RunningState::BUILTIN;
         }
-        if (it.IsFastJitFunctionFrame()) {
+        if (it.IsFastJitFunctionFrame() || it.IsSteedFunctionFrame()) {
             return RunningState::JIT;
         }
         if (it.IsOptimizedJSFunctionFrame()) {

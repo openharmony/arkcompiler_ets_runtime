@@ -136,6 +136,7 @@ private:
     static void CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
                                            Register glue, Register temp);
     friend class OptimizedFastCall;
+    friend class ArkSteedCall;
 };
 
 class OptimizedFastCall : public CommonCall {
@@ -278,6 +279,7 @@ private:
     static void PreserveMostCall(ExtendedAssembler* assembler);
     friend class OptimizedCall;
     friend class BaselineCall;
+    friend class ArkSteedCall;
 };
 
 class BaselineCall : public CommonCall {
@@ -325,5 +327,12 @@ public:
     static void GetBaselineBuiltinFp(ExtendedAssembler *assembler);
 };
 
-}  // namespace panda::ecmascript::x64
+class ArkSteedCall : public CommonCall {
+public:
+    static void ArkSteedCallEntry(ExtendedAssembler *assembler);
+    static void SteedCallAndPushArgv(ExtendedAssembler *assembler);
+    static void SteedCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
+};
+
+}  // namespace panda::ecmascript::aarch64
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_MODULE_X64_H

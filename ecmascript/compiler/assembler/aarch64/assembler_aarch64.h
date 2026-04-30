@@ -211,6 +211,7 @@ public:
     void Ldp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand);
     void Stp(const VRegister &vt, const VRegister &vt2, const MemoryOperand &operand);
     void Ldr(const Register &rt, const MemoryOperand &operand);
+    void Ldr(const VRegister &vt, const MemoryOperand &operand);  // Load SIMD&FP from memory
     void Ldrh(const Register &rt, const MemoryOperand &operand);
     void Ldrb(const Register &rt, const MemoryOperand &operand);
     void Str(const Register &rt, const MemoryOperand &operand);
@@ -221,6 +222,9 @@ public:
     void Movz(const Register &rd, uint64_t imm, int shift);
     void Movk(const Register &rd, uint64_t imm, int shift);
     void Movn(const Register &rd, uint64_t imm, int shift);
+    // Floating-point/Vector register operations
+    void Mov(const VRegister &vd, const VRegister &vn);
+    void Fmov(const VRegister &vd, const Register &rn);  // FMOV Dd, Xn - move from GP to V register
     void Orr(const Register &rd, const Register &rn, const LogicalImmediate &imm);
     void Orr(const Register &rd, const Register &rn, const Operand &operand);
     void And(const Register &rd, const Register &rn, const Operand &operand);

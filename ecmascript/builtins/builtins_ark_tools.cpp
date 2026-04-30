@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_ark_tools.h"
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/dependent_infos.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
@@ -1571,6 +1572,40 @@ JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::True();
 }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+JSTaggedValue BuiltinsArkTools::ArkSteedCompileSync(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::CompileArkSteed(thread->GetEcmaVM(), jsFunction, CompilerTier::Tier::ARKSTEED,
+                         MachineCode::INVALID_OSR_OFFSET, JitCompileMode::Mode::SYNC);
+    return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsArkTools::ArkSteedCompileAsync(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
+    if (!thisValue->IsJSFunction()) {
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSFunction> jsFunction(thisValue);
+    Jit::CompileArkSteed(thread->GetEcmaVM(), jsFunction, CompilerTier::Tier::ARKSTEED,
+                         MachineCode::INVALID_OSR_OFFSET, JitCompileMode::Mode::ASYNC);
+    return JSTaggedValue::True();
+}
+#endif
+
 JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
@@ -1629,7 +1664,7 @@ JSTaggedValue BuiltinsArkTools::IsInFastJit(EcmaRuntimeCallInfo *info)
         if (!it.IsJSFrame()) {
             continue;
         }
-        return (it.IsOptimizedJSFunctionFrame() || it.IsFastJitFunctionFrame() ?
+        return (it.IsOptimizedJSFunctionFrame() || it.IsFastJitFunctionFrame() || it.IsSteedFunctionFrame() ?
             JSTaggedValue::True() : JSTaggedValue::False());
     }
     return JSTaggedValue::False();

@@ -2154,6 +2154,20 @@ JSTaggedValue EcmaVM::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
     return res;
 }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+JSTaggedValue EcmaVM::ExecuteArkSteed(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
+{
+    ASSERT(thread_->IsInManagedState());
+    SaveEnv envScope(thread_);
+    auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_ArkSteedCallEntry);
+    auto res = reinterpret_cast<ArkSteedCallEntryType>(entry)(thread_->GetGlueAddr(),
+                                                              actualNumArgs,
+                                                              args,
+                                                              reinterpret_cast<uintptr_t>(prevFp));
+    return res;
+}
+#endif
+
 Expected<JSTaggedValue, bool> EcmaVM::CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
     const CString& entryPoint, JSHandle<JSFunction> &func, const ExecuteTypes &executeType)
 {

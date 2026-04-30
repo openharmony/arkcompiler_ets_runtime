@@ -16,6 +16,10 @@
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/jit/jit_task.h"
+#if ECMASCRIPT_ENABLE_ARK_STEED
+#include "ecmascript/arksteed/arksteed_task.h"
+#endif
+#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/platform/os.h"
@@ -268,7 +272,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 {
     auto jit = Jit::GetInstance();
     if ((!jit->IsEnableBaselineJit() && tier.IsBaseLine()) ||
-        (!jit->IsEnableFastJit() && tier.IsFast())) {
+        (!jit->IsEnableFastJit() && tier.IsFastJit())) {
         return;
     }
 
@@ -299,7 +303,7 @@ void Jit::Compile(EcmaVM *vm, const CompileDecision &decision)
 
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
         ConvertToStdString("JIT::Compile:" + methodInfo).c_str(), "");
-    if (tier.IsFast()) {
+    if (tier.IsFastJit()) {
         jsFunction->SetJitCompilingFlag(true);
     } else {
         ASSERT(tier.IsBaseLine());
@@ -494,4 +498,95 @@ Jit::TimeScope::~TimeScope()
         LOG_JIT(INFO) << tier_ << message_ << ", compile time: " << TotalSpentTime() << "ms";
     }
 }
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+bool Jit::IsArkSteedBytecodeSupported(EcmaVM *vm, JSHandle<JSFunction> &jsFunction)
+{
+    JSThread *hostThread = vm->GetJSThread();
+    Method *method = Method::Cast(jsFunction->GetMethod(hostThread).GetTaggedObject());
+    uint32_t bytecodeSize = method->GetCodeSize(hostThread);
+    const uint8_t *bytecodeArray = method->GetBytecodeArray();
+    const uint8_t *pc = bytecodeArray;
+    const uint8_t *end = bytecodeArray + bytecodeSize;
+    while (pc < end) {
+        kungfu::EcmaOpcode opcode = kungfu::Bytecodes::GetOpcode(pc);
+        if (!kungfu::IsArkSteedSupportedOpcode(opcode)) {
+            LOG_JIT(INFO) << "ArkSteed: skip compilation due to unsupported bytecode";
+            return false;
+        }
+        pc += BytecodeInstruction::Size(opcode);
+    }
+    return true;
+}
+
+// ArkSteed compilation entry point
+void Jit::CompileArkSteed(EcmaVM *vm, JSHandle<JSFunction> &jsFunction,
+                          CompilerTier tier, int32_t osrOffset, JitCompileMode mode)
+{
+    auto jit = Jit::GetInstance();
+
+    if (!vm->IsEnableOsr() && osrOffset != MachineCode::INVALID_OSR_OFFSET) {
+        return;
+    }
+
+    CompileDecision compileDecision(vm, jsFunction, tier, osrOffset, mode);
+    if (!compileDecision.Decision()) {
+        return;
+    }
+
+    // Check if bytecode is supported by ArkSteed
+    if (!IsArkSteedBytecodeSupported(vm, jsFunction)) {
+        return;
+    }
+
+    [[maybe_unused]] EcmaHandleScope handleScope(vm->GetJSThread());
+    CString methodInfo = "ArkSteed compile method";
+    TimeScope scope(vm, "ArkSteed compile method:" + methodInfo, tier, true, true);
+
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK,
+        ConvertToStdString("ArkSteed::Compile:" + methodInfo).c_str(), "");
+
+    if (tier.IsArkSteed()) {
+        jsFunction->SetJitCompilingFlag(true);
+    } else {
+        // to do: fit baseline
+        UNREACHABLE();
+        ASSERT(tier.IsBaseLine());
+        jsFunction->SetBaselinejitCompilingFlag(true);
+    }
+    jit->GetJitDfx()->SetTriggerCount(tier);
+
+    {
+        {
+            ThreadNativeScope scope(vm->GetJSThread());
+            JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
+        }
+
+        EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
+        JSThread *hostThread = vm->GetJSThread();
+        JSThread *compilerThread = compilerVm->GetJSThreadNoCheck();
+
+        Method *method = Method::Cast(jsFunction->GetMethod(hostThread).GetTaggedObject());
+        CString methodName = method->GetMethodName(hostThread);
+
+        auto arkSteedTask = std::make_shared<arksteed::ArkSteedTask>(
+            hostThread, compilerThread, jit, jsFunction, tier, methodName, osrOffset, mode);
+
+        arkSteedTask->PrepareCompile();
+
+        JitTaskpool::GetCurrentTaskpool()->PostTask(
+            std::make_unique<arksteed::ArkSteedTask::AsyncTask>(
+                arkSteedTask, vm->GetJSThread()->GetThreadId()));
+
+        if (mode.IsSync()) {
+            arkSteedTask->WaitFinish();
+            arkSteedTask->InstallCode();
+        }
+
+        int spendTime = scope.TotalSpentTimeInMicroseconds();
+        arkSteedTask->SetMainThreadCompilerTime(spendTime);
+        jit->GetJitDfx()->RecordSpentTimeAndPrintStatsLogInJsThread(spendTime);
+    }
+}
+#endif
 }  // namespace panda::ecmascript

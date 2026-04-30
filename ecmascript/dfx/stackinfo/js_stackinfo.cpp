@@ -60,6 +60,16 @@ bool IsFastJitFunctionFrame(uintptr_t frameType)
            static_cast<FrameType>(frameType) == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
 }
 
+bool IsSteedFunctionFrame(const FrameType frameType)
+{
+    return frameType == FrameType::STEED_FUNCTION_FRAME;
+}
+
+bool IsSteedFunctionFrame(uintptr_t frameType)
+{
+    return static_cast<FrameType>(frameType) == FrameType::STEED_FUNCTION_FRAME;
+}
+
 void JsStackInfo::AppendMethodTrace(std::string &data, const JSThread *thread, Method *method, uint32_t pcOffset,
                                     LastBuilderCache &lastCache, bool enableStackSourceFile)
 {
@@ -241,7 +251,7 @@ void JsStackInfo::AppendJsStackTraceInfo(std::string &data, JSThread *thread, Me
                                          bool needBaselineSpecialHandling, uint32_t pcOffset)
 {
     FrameType frameType = it.GetFrameType();
-    if (IsFastJitFunctionFrame(frameType)) {
+    if (IsFastJitFunctionFrame(frameType) || IsSteedFunctionFrame(frameType)) {
         JSFunction *func = static_cast<JSFunction*>(it.GetFunction().GetTaggedObject());
         if (!jsErrorObj.GetTaggedValue().IsUndefined()) {
             AssembleJitCodeMap(thread, jsErrorObj, func, method, it.GetOptimizedReturnAddr());
@@ -882,7 +892,7 @@ bool ArkGetNextFrameWithJit(ArkUnwindParam *arkUnwindParam, uintptr_t &currentPt
         IsNativeFunctionFrame(frameType)) {
         *arkUnwindParam->pc = GetBytecodeOffset(arkUnwindParam->ctx, arkUnwindParam->readMem, frameType, currentPtr);
         ret = true;
-    } else if (IsFastJitFunctionFrame(frameType)) {
+    } else if (IsFastJitFunctionFrame(frameType) || IsSteedFunctionFrame(frameType)) {
         *arkUnwindParam->pc = GetBytecodeOffset(arkUnwindParam->ctx, arkUnwindParam->readMem, frameType, currentPtr);
         ret = ArkGetMethodIdWithJit(arkUnwindParam, currentPtr);
     }
@@ -968,7 +978,8 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
             *arkUnwindParam->sp = currentPtr;
             // js && jit -> true, native -> false
             *arkUnwindParam->isJsFrame = IsJsFunctionFrame(frameType) ||
-                IsFastJitFunctionFrame(frameType);
+                IsFastJitFunctionFrame(frameType) ||
+                IsSteedFunctionFrame(frameType);
             if (*arkUnwindParam->isJsFrame) {
                 *arkUnwindParam->frameType = StepFrameType::JS_FRAME;
             } else {

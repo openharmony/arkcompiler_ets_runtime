@@ -52,6 +52,12 @@ bool JitResources::ResolveLib()
     static const std::string DELETEJITCOMPILERTASK = "DeleteJitCompilerTask";
     static const std::string LIBARK_JSOPTIMIZER = "libark_jsoptimizer.so";
 
+    static const std::string INITARKSTEEDCOMPILER = "InitArkSteedCompiler";
+    static const std::string ARKSTEEDCOMPILE = "ArkSteedCompile";
+    static const std::string ARKSTEEDFINALIZE = "ArkSteedFinalize";
+    static const std::string CREATEARKSTEEDCOMPILERTASK = "CreateArkSteedCompilerTask";
+    static const std::string DELETEARKSTEEDCOMPILERTASK = "DeleteArkSteedCompilerTask";
+
     libHandle_ = LoadLib(LIBARK_JSOPTIMIZER);
     if (libHandle_ == nullptr) {
         char *error = LoadLibError();
@@ -60,11 +66,47 @@ bool JitResources::ResolveLib()
         return false;
     }
 
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    // Use ArkSteed compiler functions
+    initJitCompiler_ = reinterpret_cast<InitJitCompilerFuncType>(FindSymbol(libHandle_, INITARKSTEEDCOMPILER.c_str()));
+    if (initJitCompiler_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol " << INITARKSTEEDCOMPILER;
+        return false;
+    }
+
+    jitCompile_ = reinterpret_cast<JitCompileFuncType>(FindSymbol(libHandle_, ARKSTEEDCOMPILE.c_str()));
+    if (jitCompile_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol " << ARKSTEEDCOMPILE;
+        return false;
+    }
+
+    jitFinalize_ = reinterpret_cast<JitFinalizeFuncType>(FindSymbol(libHandle_, ARKSTEEDFINALIZE.c_str()));
+    if (jitFinalize_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol " << ARKSTEEDFINALIZE;
+        return false;
+    }
+
+    createJitCompilerTask_ = reinterpret_cast<CreateJitCompilerTaskFuncType>(FindSymbol(libHandle_,
+        CREATEARKSTEEDCOMPILERTASK.c_str()));
+    if (createJitCompilerTask_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol " << CREATEARKSTEEDCOMPILERTASK;
+        return false;
+    }
+
+    deleteJitCompilerTask_ = reinterpret_cast<DeleteJitCompilerTaskFuncType>(FindSymbol(libHandle_,
+        DELETEARKSTEEDCOMPILERTASK.c_str()));
+    if (deleteJitCompilerTask_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol " << DELETEARKSTEEDCOMPILERTASK;
+        return false;
+    }
+#else
+    // Use original JIT compiler functions
     initJitCompiler_ = reinterpret_cast<InitJitCompilerFuncType>(FindSymbol(libHandle_, JITCOMPILEINIT.c_str()));
     if (initJitCompiler_ == nullptr) {
         LOG_JIT(ERROR) << "jit can't find symbol initJitCompiler";
         return false;
     }
+
     jitCompile_ = reinterpret_cast<JitCompileFuncType>(FindSymbol(libHandle_, JITCOMPILE.c_str()));
     if (jitCompile_ == nullptr) {
         LOG_JIT(ERROR) << "jit can't find symbol jitCompile";
@@ -90,6 +132,7 @@ bool JitResources::ResolveLib()
         LOG_JIT(ERROR) << "jit can't find symbol deleteJitCompile";
         return false;
     }
+#endif
 #endif
     libResolved_ = true;
     return true;

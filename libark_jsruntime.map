@@ -294,6 +294,7 @@
       panda::ecmascript::Jit::IsEnableAsyncCopyToFort*;
       panda::ecmascript::Jit::IsEnableFastJit*;
       panda::ecmascript::Jit::IsEnableBaselineJit*;
+      panda::ecmascript::Jit::IsDisableCodeSign*;
       panda::ecmascript::JitTask::ComputePayLoadSize*;
       panda::ecmascript::JitThread::NewHandle*;
       panda::ecmascript::HugeMachineCodeSpace::AllocateFort*;
@@ -427,6 +428,10 @@
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnStableHClass*;
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnStableProtoChain*;
       panda::ecmascript::kungfu::LazyDeoptAllDependencies::DependOnNotHotReloadPatchMain*;
+      panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::DefineSafepoint*;
+      panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::SetFrameSlots*;
+      panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::GetTableSize*;
+      panda::ecmascript::arksteed::ArkSteedSafepointTableBuilder::EmitToNewBuffer*;
       panda::ecmascript::ohos::DecrypRemoveKey*;
       panda::ecmascript::ohos::DecryptAssociateKey*;
       panda::ecmascript::ohos::DecryptSetKey*;

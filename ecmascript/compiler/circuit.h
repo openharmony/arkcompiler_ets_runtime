@@ -243,7 +243,7 @@ public:
 
     bool IsOptimizedOrFastJit() const
     {
-        return  IsOptimizedJSFunctionFrame() || IsFastJitFunctionFrame();
+        return  IsOptimizedJSFunctionFrame() || IsFastJitFunctionFrame() || IsSteedFunctionFrame();
     }
 
     bool IsOptimizedJSFunctionFrame() const
@@ -256,6 +256,11 @@ public:
     {
         return frameType_ == FrameType::FASTJIT_FUNCTION_FRAME
             || frameType_ == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+    }
+
+    bool IsSteedFunctionFrame() const
+    {
+        return frameType_ == FrameType::STEED_FUNCTION_FRAME;
     }
 
     bool GetDebugInfo(GateRef g, size_t &index) const;

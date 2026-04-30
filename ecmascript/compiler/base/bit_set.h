@@ -129,6 +129,17 @@ public:
         }
     }
 
+    void Exclude(const BitSet &bitset)
+    {
+        if (!UseWords()) {
+            data_.inlineWord_ &= ~bitset.data_.inlineWord_;
+        } else {
+            for (size_t i = 0; i < wordCount_; i++) {
+                data_.words_[i] &= ~bitset.data_.words_[i];
+            }
+        }
+    }
+
     void CopyFrom(const BitSet &other)
     {
         ASSERT(wordCount_ == other.wordCount_);
@@ -165,6 +176,35 @@ public:
         }
         return true;
     }
+
+    size_t Count() const
+    {
+        if (!UseWords()) {
+            return __builtin_popcountll(data_.inlineWord_);
+        }
+        size_t count = 0;
+        for (size_t i = 0; i < wordCount_; i++) {
+            count += __builtin_popcountll(data_.words_[i]);
+        }
+        return count;
+    }
+
+    bool Equals(const BitSet &bitset) const
+    {
+        if (UNLIKELY(wordCount_ != bitset.wordCount_)) {
+            return false;
+        }
+        if (!UseWords()) {
+            return data_.inlineWord_ == bitset.data_.inlineWord_;
+        }
+        for (size_t i = 0; i < wordCount_; i++) {
+            if (data_.words_[i] != bitset.data_.words_[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
 private:
     union Data {
         uint64_t inlineWord_;

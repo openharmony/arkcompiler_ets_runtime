@@ -904,7 +904,11 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterAot(JSThread *thread, JSHandle<Ge
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    auto res = thread->GetEcmaVM()->ExecuteArkSteed(method->GetNumArgs(), args.data(), prevFp);
+#else
     auto res = thread->GetEcmaVM()->ExecuteAot(method->GetNumArgs(), args.data(), prevFp, false);
+#endif
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::EndCallTimer(thread->GetGlueAddr(), func.GetTaggedType());
 #endif

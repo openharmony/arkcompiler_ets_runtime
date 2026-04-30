@@ -298,15 +298,21 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
     Label isHeapObject(&builder);
     Label isJsFcuntion(&builder);
     Label fastCall(&builder);
+#if !ECMASCRIPT_ENABLE_ARK_STEED
     Label notFastCall(&builder);
+    Label slowCall(&builder);
     Label call(&builder);
     Label call1(&builder);
-    Label slowCall(&builder);
     Label callBridge(&builder);
     Label callBridge1(&builder);
+#endif
     Label slowPath(&builder);
     Label notCallConstructor(&builder);
     Label isCallConstructor(&builder);
+#if ECMASCRIPT_ENABLE_ARK_STEED
+    (void)argc;  // Unused
+    (void)argsFastCall;  // Unused
+#endif
     // use builder_ to make BRANCH_CIR work.
     auto &builder_ = builder;
     Label skipReadBarrier(&builder);
@@ -331,6 +337,20 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
                 BRANCH_CIR(builder.IsClassConstructor(glue, func), &slowPath, &notCallConstructor);
                 builder.Bind(&notCallConstructor);
             }
+#if ECMASCRIPT_ENABLE_ARK_STEED
+            BRANCH_CIR(builder.JudgeAotAndFastCall(func,
+                CircuitBuilder::JudgeMethodType::HAS_AOT), &fastCall, &slowPath);
+            builder.Bind(&fastCall);
+            {
+                builder.StartCallTimer(glue, gate, {glue, func, builder.True()}, true);
+                const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(SteedCallAndPushArgv));
+                GateRef target = builder.IntPtr(RTSTUB_ID(SteedCallAndPushArgv));
+                auto depend = builder.GetDepend();
+                result->WriteVariable(builder.Call(cs, glue, target, depend, args, gate, "callArkSteed"));
+                builder.EndCallTimer(glue, gate, {glue, func}, true);
+                builder.Jump(exit);
+            }
+#else
             GateRef method = builder.GetMethodFromFunction(glue, func);
             BRANCH_CIR(builder.JudgeAotAndFastCall(func,
                 CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &fastCall, &notFastCall);
@@ -389,6 +409,7 @@ void CallCoStubBuilder::LowerFastCall(GateRef gate, GateRef glue, CircuitBuilder
                     builder.Jump(exit);
                 }
             }
+#endif
         }
     }
     builder.Bind(&slowPath);
@@ -689,12 +710,27 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
     Label checkIsBaselineCompiling(env);
     Label methodIsFastCall(env);
     Label methodNotFastCall(env);
+    Label methodIsSteed(env);
+    Label checkSteed(env);
     Label checkAot(env);
     {
         newTarget_ = Undefined();
         thisValue_ = Undefined();
         realNumArgs_ = Int64Add(ZExtInt32ToInt64(actualNumArgs_), Int64(NUM_MANDATORY_JSFUNC_ARGS));
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        BRANCH(BitOr(NotSwitchToStwStub(glue_), IsJsProxy(glue_, func_)), &methodNotAot, &checkSteed);
+#else
         BRANCH(BitOr(NotSwitchToStwStub(glue_), IsJsProxy(glue_, func_)), &methodNotAot, &checkAot);
+#endif
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+        Bind(&checkSteed);
+        BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT), &methodIsSteed, &methodNotAot);
+        Bind(&methodIsSteed);
+        {
+            JSCallArkSteed(exit);
+        }
+#else
         Bind(&checkAot);
         BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &methodIsFastCall,
             &methodNotFastCall);
@@ -729,6 +765,7 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
             }
             (void) res;
         }
+#endif
 
         Bind(&methodNotAot);
         {
@@ -929,6 +966,199 @@ void CallStubBuilder::JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNo
         }
     }
 }
+
+#if ECMASCRIPT_ENABLE_ARK_STEED
+std::vector<GateRef> CallStubBuilder::PrepareArgsForArkSteedPushArgv()
+{
+    std::vector<GateRef> args;
+    args = { glue_, realNumArgs_, IntPtr(0), func_, newTarget_ };
+
+    switch (callArgs_.mode) {
+        case JSCallMode::CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+            args.push_back(thisValue_);
+            break;
+        case JSCallMode::CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+            args.push_back(thisValue_);
+            args.push_back(callArgs_.callArgs.arg0);
+            break;
+        case JSCallMode::CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+            args.push_back(thisValue_);
+            args.push_back(callArgs_.callArgs.arg0);
+            args.push_back(callArgs_.callArgs.arg1);
+            break;
+        case JSCallMode::CALL_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
+            args.push_back(thisValue_);
+            args.push_back(callArgs_.callArgs.arg0);
+            args.push_back(callArgs_.callArgs.arg1);
+            args.push_back(callArgs_.callArgs.arg2);
+            break;
+        case JSCallMode::CALL_THIS_ARG0:
+            args.push_back(callArgs_.callArgsWithThis.thisValue);
+            break;
+        case JSCallMode::CALL_THIS_ARG1:
+            args.push_back(callArgs_.callArgsWithThis.thisValue);
+            args.push_back(callArgs_.callArgsWithThis.arg0);
+            break;
+        case JSCallMode::CALL_THIS_ARG2:
+            args.push_back(callArgs_.callArgsWithThis.thisValue);
+            args.push_back(callArgs_.callArgsWithThis.arg0);
+            args.push_back(callArgs_.callArgsWithThis.arg1);
+            break;
+        case JSCallMode::CALL_THIS_ARG3:
+            args.push_back(callArgs_.callArgsWithThis.thisValue);
+            args.push_back(callArgs_.callArgsWithThis.arg0);
+            args.push_back(callArgs_.callArgsWithThis.arg1);
+            args.push_back(callArgs_.callArgsWithThis.arg2);
+            break;
+        case JSCallMode::CALL_GETTER:
+            args.push_back(callArgs_.callGetterArgs.receiver);
+            break;
+        case JSCallMode::CALL_SETTER:
+            args.push_back(callArgs_.callSetterArgs.receiver);
+            args.push_back(callArgs_.callSetterArgs.value);
+            break;
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+            args.push_back(callArgs_.callThisArg2WithReturnArgs.thisValue);
+            args.push_back(callArgs_.callThisArg2WithReturnArgs.arg0);
+            args.push_back(callArgs_.callThisArg2WithReturnArgs.arg1);
+            break;
+        case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+            args.push_back(callArgs_.callThisArg3WithReturnArgs.argHandle);
+            args.push_back(callArgs_.callThisArg3WithReturnArgs.value);
+            args.push_back(callArgs_.callThisArg3WithReturnArgs.key);
+            args.push_back(callArgs_.callThisArg3WithReturnArgs.thisValue);
+            break;
+        default:
+            UNREACHABLE();
+            break;
+    }
+
+    return args;
+}
+
+// Prepare args for SteedCallWithArgVAndPushArgv (ARGV modes).
+// Signature: (glue, actualNumArgs, calltarget, newtarget, thisobj, argv)
+std::vector<GateRef> CallStubBuilder::PrepareArgsForArkSteedWithArgV()
+{
+    std::vector<GateRef> args;
+    GateRef steedNewTarget = newTarget_;
+    switch (callArgs_.mode) {
+        case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+            args = { glue_, ZExtInt32ToInt64(actualNumArgs_), func_, steedNewTarget, thisValue_,
+                     callArgs_.callArgv.argv };
+            break;
+        case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+            args = { glue_, ZExtInt32ToInt64(actualNumArgs_), func_, steedNewTarget,
+                     callArgs_.callArgvWithThis.thisValue,
+                     callArgs_.callArgvWithThis.argv };
+            break;
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+            args = { glue_, ZExtInt32ToInt64(actualNumArgs_), func_, steedNewTarget,
+                     callArgs_.callThisArgvWithReturnArgs.thisValue,
+                     callArgs_.callThisArgvWithReturnArgs.argv };
+            break;
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            steedNewTarget = func_;
+            args = { glue_, ZExtInt32ToInt64(actualNumArgs_), func_, steedNewTarget,
+                     callArgs_.callConstructorArgs.thisObj,
+                     callArgs_.callConstructorArgs.argv };
+            break;
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+            steedNewTarget = callArgs_.superCallArgs.newTarget;
+            args = { glue_, ZExtInt32ToInt64(actualNumArgs_), func_, steedNewTarget,
+                     callArgs_.superCallArgs.thisObj,
+                     callArgs_.superCallArgs.argv };
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return args;
+}
+
+void CallStubBuilder::JSCallArkSteed(Label *exit)
+{
+    GateRef ret;
+    switch (callArgs_.mode) {
+        case JSCallMode::CALL_ARG0:
+        case JSCallMode::CALL_ARG1:
+        case JSCallMode::CALL_ARG2:
+        case JSCallMode::CALL_ARG3:
+        case JSCallMode::CALL_THIS_ARG0:
+        case JSCallMode::CALL_THIS_ARG1:
+        case JSCallMode::CALL_THIS_ARG2:
+        case JSCallMode::CALL_THIS_ARG3:
+        case JSCallMode::DEPRECATED_CALL_ARG0:
+        case JSCallMode::DEPRECATED_CALL_ARG1:
+        case JSCallMode::DEPRECATED_CALL_ARG2:
+        case JSCallMode::DEPRECATED_CALL_ARG3:
+        case JSCallMode::CALL_GETTER:
+        case JSCallMode::CALL_SETTER:
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
+        case JSCallMode::CALL_THIS_ARG3_WITH_RETURN: {
+            const int idxForSteed = RTSTUB_ID(SteedCallAndPushArgv);
+            std::vector<GateRef> argsForSteed = PrepareArgsForArkSteedPushArgv();
+            ret = CallNGCRuntime(glue_, idxForSteed, argsForSteed, hir_);
+            break;
+        }
+        case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::CALL_THIS_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
+        case JSCallMode::CALL_THIS_ARGV_WITH_RETURN: {
+            const int idxForSteed = RTSTUB_ID(SteedCallWithArgVAndPushArgv);
+            std::vector<GateRef> argsForSteed = PrepareArgsForArkSteedWithArgV();
+            ret = CallNGCRuntime(glue_, idxForSteed, argsForSteed, hir_);
+            break;
+        }
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV: {
+            const int idxForSteed = RTSTUB_ID(SteedCallWithArgVAndPushArgv);
+            std::vector<GateRef> argsForSteed = PrepareArgsForArkSteedWithArgV();
+            ret = CallArkSteedConstructorBridge(idxForSteed, argsForSteed);
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+
+    result_->WriteVariable(ret);
+    Jump(exit);
+}
+
+
+GateRef CallStubBuilder::CallArkSteedConstructorBridge(const int idxForSteed, const std::vector<GateRef> &argsForSteed)
+{
+    GateRef ret;
+    switch (callArgs_.mode) {
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            ret = CallNGCRuntime(glue_, idxForSteed, argsForSteed, hir_);
+            ret = ConstructorCheck(glue_, func_, ret, callArgs_.callConstructorArgs.thisObj);
+            break;
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+            ret = CallNGCRuntime(glue_, idxForSteed, argsForSteed, hir_);
+            ret = ConstructorCheck(glue_, func_, ret, callArgs_.superCallArgs.thisObj);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return ret;
+}
+#endif
 
 int CallStubBuilder::PrepareIdxForNative()
 {
