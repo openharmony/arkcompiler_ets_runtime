@@ -795,4 +795,304 @@ HWTEST_F_L0(BaseStringTableTest, GetOrInternString_Utf8MixedAsciiAndUnicode)
     EXPECT_TRUE(EcmaStringAccessor(EcmaString::FromBaseString(result)).IsInternString());
 }
 
+/*
+* @tc.name: Compare_EmptyStrings
+* @tc.desc: Test comparing two empty strings.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, Compare_EmptyStrings)
+{
+    JSHandle<EcmaString> emptyStr1(thread, EcmaStringAccessor::CreateFromUtf8(instance, nullptr, 0, true));
+    JSHandle<EcmaString> emptyStr2(thread, EcmaStringAccessor::CreateFromUtf8(instance, nullptr, 0, true));
+    EXPECT_EQ(EcmaStringAccessor::Compare(instance, emptyStr1, emptyStr2), 0);
+}
+
+/*
+* @tc.name: Compare_NonEmptyWithEmpty
+* @tc.desc: Test comparing non-empty string with empty string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, Compare_NonEmptyWithEmpty)
+{
+    uint8_t data[] = {'h', 'e', 'l', 'l', 'o'};
+    JSHandle<EcmaString> nonEmptyStr(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> emptyStr(thread, EcmaStringAccessor::CreateFromUtf8(instance, nullptr, 0, true));
+    EXPECT_GT(EcmaStringAccessor::Compare(instance, nonEmptyStr, emptyStr), 0);
+    EXPECT_LT(EcmaStringAccessor::Compare(instance, emptyStr, nonEmptyStr), 0);
+}
+
+/*
+* @tc.name: Compare_UnicodeUtf8Strings
+* @tc.desc: Test comparing UTF-8 strings with Unicode characters.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, Compare_UnicodeUtf8Strings)
+{
+    uint8_t data1[] = {'a', 0xc3, 0xa9, 'b'}; // "aéb" in UTF-8
+    uint8_t data2[] = {'a', 0xc3, 0xa9, 'c'}; // "aéc" in UTF-8
+    JSHandle<EcmaString> str1(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data1, sizeof(data1), false));
+    JSHandle<EcmaString> str2(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data2, sizeof(data2), false));
+    EXPECT_LT(EcmaStringAccessor::Compare(instance, str1, str2), 0);
+    EXPECT_GT(EcmaStringAccessor::Compare(instance, str2, str1), 0);
+}
+
+/*
+* @tc.name: Compare_CaseSensitive
+* @tc.desc: Test that string comparison is case-sensitive.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, Compare_CaseSensitive)
+{
+    uint8_t data1[] = {'A', 'B', 'C'};
+    uint8_t data2[] = {'a', 'b', 'c'};
+    JSHandle<EcmaString> upperStr(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data1, sizeof(data1), true));
+    JSHandle<EcmaString> lowerStr(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data2, sizeof(data2), true));
+    EXPECT_NE(EcmaStringAccessor::Compare(instance, upperStr, lowerStr), 0);
+}
+
+/*
+* @tc.name: IndexOf_EmptyPattern
+* @tc.desc: Test IndexOf with empty pattern string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, IndexOf_EmptyPattern)
+{
+    uint8_t data[] = {'h', 'e', 'l', 'l', 'o'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> emptyPattern(thread, EcmaStringAccessor::CreateFromUtf8(instance, nullptr, 0, true));
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, emptyPattern, 0), 0);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, emptyPattern, 1), 1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, emptyPattern, 5), 5);
+}
+
+/*
+* @tc.name: IndexOf_InEmptyString
+* @tc.desc: Test IndexOf in an empty source string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, IndexOf_InEmptyString)
+{
+    JSHandle<EcmaString> emptyStr(thread, EcmaStringAccessor::CreateFromUtf8(instance, nullptr, 0, true));
+    uint8_t patternData[] = {'a'};
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, emptyStr, pattern, 0), -1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, emptyStr, emptyStr, 0), 0);
+}
+
+/*
+* @tc.name: IndexOf_UnicodePattern
+* @tc.desc: Test IndexOf with Unicode pattern in UTF-8 string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, IndexOf_UnicodePattern)
+{
+    uint8_t strData[] = {'a', 0xc3, 0xa9, 'b', 0xc3, 0xa9, 'c'}; // "aébéc" in UTF-8
+    uint8_t patternData[] = {0xc3, 0xa9, 'b'}; // "éb" in UTF-8
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, strData, sizeof(strData), false));
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), false));
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 0), 1);
+}
+
+/*
+* @tc.name: IndexOf_AtBoundaryPositions
+* @tc.desc: Test IndexOf at boundary positions of the string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, IndexOf_AtBoundaryPositions)
+{
+    uint8_t data[] = {'a', 'b', 'c', 'd', 'e'};
+    uint8_t patternData[] = {'c'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 0), 2);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 2), 2);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 3), -1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 5), -1);
+}
+
+/*
+* @tc.name: IndexOf_NonExistentPattern
+* @tc.desc: Test IndexOf when pattern does not exist in source string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, IndexOf_NonExistentPattern)
+{
+    uint8_t data[] = {'a', 'b', 'c', 'd', 'e'};
+    uint8_t patternData[] = {'x', 'y', 'z'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 0), -1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 2), -1);
+}
+
+/*
+* @tc.name: IndexOf_NegativeStartPosition
+* @tc.desc: Test IndexOf with negative start position.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, IndexOf_NegativeStartPosition)
+{
+    uint8_t data[] = {'a', 'b', 'c', 'b', 'a'};
+    uint8_t patternData[] = {'b', 'c'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, -1), 1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, -5), 1);
+}
+
+/*
+* @tc.name: LastIndexOf_InEmptyString
+* @tc.desc: Test LastIndexOf in an empty source string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, LastIndexOf_InEmptyString)
+{
+    JSHandle<EcmaString> emptyStr(thread, EcmaStringAccessor::CreateFromUtf8(instance, nullptr, 0, true));
+    uint8_t patternData[] = {'a'};
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, emptyStr, pattern, 0), -1);
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, emptyStr, emptyStr, 0), 0);
+}
+
+/*
+* @tc.name: LastIndexOf_AtBoundaryPositions
+* @tc.desc: Test LastIndexOf at boundary positions of the string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, LastIndexOf_AtBoundaryPositions)
+{
+    uint8_t data[] = {'a', 'b', 'c', 'b', 'a'};
+    uint8_t patternData[] = {'b'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pattern, 5), 3);
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pattern, 4), 3);
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pattern, 2), 1);
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pattern, 0), -1);
+}
+
+/*
+* @tc.name: LastIndexOf_NonExistentPattern
+* @tc.desc: Test LastIndexOf when pattern does not exist in source string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, LastIndexOf_NonExistentPattern)
+{
+    uint8_t data[] = {'a', 'b', 'c', 'd', 'e'};
+    uint8_t patternData[] = {'x', 'y', 'z'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pattern, 5), -1);
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pattern, 0), -1);
+}
+
+/*
+* @tc.name: LastIndexOf_FromIndexLargerThanLength
+* @tc.desc: Test LastIndexOf when fromIndex is larger than string length.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, LastIndexOf_FromIndexLargerThanLength)
+{
+    uint8_t data[] = {'a', 'b', 'c', 'd'};
+    uint8_t patternData[] = {'c'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pattern, 100), 2);
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pattern, 10), 2);
+}
+
+/*
+* @tc.name: IndexOf_RepeatedPattern
+* @tc.desc: Test IndexOf with repeated character pattern.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, IndexOf_RepeatedPattern)
+{
+    uint8_t data[] = {'a', 'a', 'a', 'a', 'a'};
+    uint8_t patternData[] = {'a', 'a', 'a'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, data, sizeof(data), true));
+    JSHandle<EcmaString> pattern(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, patternData, sizeof(patternData), true));
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 0), 0);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 1), 1);
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pattern, 2), 2);
+}
+
+/*
+* @tc.name: Compare_LongStrings
+* @tc.desc: Test comparing long strings.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, Compare_LongStrings)
+{
+    std::vector<uint8_t> longStr1(100, 'a');
+    std::vector<uint8_t> longStr2(100, 'a');
+    longStr2[99] = 'b';
+    JSHandle<EcmaString> str1(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, longStr1.data(), longStr1.size(), true));
+    JSHandle<EcmaString> str2(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, longStr2.data(), longStr2.size(), true));
+    EXPECT_LT(EcmaStringAccessor::Compare(instance, str1, str2), 0);
+    EXPECT_GT(EcmaStringAccessor::Compare(instance, str2, str1), 0);
+}
+
+/*
+* @tc.name: IndexOf_LongString
+* @tc.desc: Test IndexOf in a long string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, IndexOf_LongString)
+{
+    std::vector<uint8_t> longStr(1000, 'a');
+    longStr.insert(longStr.end(), {'p', 'a', 't', 't', 'e', 'r', 'n'});
+    longStr.insert(longStr.end(), 1000, 'a');
+    std::vector<uint8_t> pattern = {'p', 'a', 't', 't', 'e', 'r', 'n'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, longStr.data(), longStr.size(), true));
+    JSHandle<EcmaString> pat(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, pattern.data(), pattern.size(), true));
+    EXPECT_EQ(EcmaStringAccessor::IndexOf(instance, str, pat, 0), 1000);
+}
+
+/*
+* @tc.name: LastIndexOf_LongString
+* @tc.desc: Test LastIndexOf in a long string.
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(BaseStringTableTest, LastIndexOf_LongString)
+{
+    std::vector<uint8_t> longStr(1000, 'a');
+    longStr.insert(longStr.end(), {'p', 'a', 't', 't', 'e', 'r', 'n'});
+    longStr.insert(longStr.end(), 1000, 'a');
+    std::vector<uint8_t> pattern = {'p', 'a', 't', 't', 'e', 'r', 'n'};
+    JSHandle<EcmaString> str(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, longStr.data(), longStr.size(), true));
+    JSHandle<EcmaString> pat(thread,
+    EcmaStringAccessor::CreateFromUtf8(instance, pattern.data(), pattern.size(), true));
+    EXPECT_EQ(EcmaStringAccessor::LastIndexOf(instance, str, pat, longStr.size()), 1000);
+}
+
 } // namespace panda::test
