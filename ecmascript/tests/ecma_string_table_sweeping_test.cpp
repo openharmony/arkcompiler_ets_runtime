@@ -252,7 +252,6 @@ protected:
 
         hashTrieMap.FinishSweeping();
         hashTrieMap.ClearToSpaceTagForFreshEntries();
-        hashTrieMap.CleanUp();
     }
 
     void DoSweepingWithClearNodeKeepAll(HashTrieMapType &hashTrieMap)
@@ -305,13 +304,13 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_EnableDisableConcurrentSwee
 }
 
 /**
- * @tc.name: StringTable_ParallelGCEnabledConcurrentSweepTest
- * @tc.desc: Test string table concurrent sweep with parallel GC enabled. Verify that
- *           strings can be interned correctly when parallel GC and concurrent sweep are both active.
+ * @tc.name: SharedHeap_CollectGarbageWithStringsTest
+ * @tc.desc: Test shared heap garbage collection with strings. Verify that strings
+           interned before and after GC cycles are correctly handled.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_ParallelGCEnabledConcurrentSweepTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, SharedHeap_CollectGarbageWithStringsTest)
 {
     SharedHeap *sharedHeap = SharedHeap::GetInstance();
     ASSERT_NE(sharedHeap, nullptr);
@@ -319,17 +318,13 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_ParallelGCEnabledConcurrent
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
-    EcmaStringTableCleaner *cleaner = stringTable->GetCleaner();
-    ASSERT_NE(cleaner, nullptr);
+    for (int round = 0; round < 10; ++round) {
+        InternMultipleUtf8Strings(stringTable, 100, "collect_gc", round);
 
-    InternMultipleUtf8Strings(stringTable, 100, "parallel_gc");
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
-    cleaner->SetEnableConcurrentSweep(true);
-    sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
-
-    InternMultipleUtf8Strings(stringTable, 100, "parallel_concurrent");
-
-    cleaner->SetEnableConcurrentSweep(false);
+        InternMultipleUtf8Strings(stringTable, 100, "collect_after", round);
+    }
 }
 
 /**
@@ -349,7 +344,9 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, SharedHeap_SharedPartialGCWithManyStrin
 
     for (int gcCycle = 0; gcCycle < 10; ++gcCycle) {
         InternMultipleUtf8Strings(stringTable, 100, "partial_gc_str", gcCycle);
+
         sharedHeap->CollectGarbage<TriggerGCType::SHARED_PARTIAL_GC, GCReason::OTHER>(thread);
+
         InternMultipleUtf8Strings(stringTable, 100, "partial_concurrent", gcCycle);
     }
 }
@@ -371,11 +368,13 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, SharedHeap_AlternatingGCtypesWithString
 
     for (int round = 0; round < 10; ++round) {
         InternMultipleUtf8Strings(stringTable, 100, "alt_gc", round);
+
         if (round % 2 == 0) {
             sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
         } else {
             sharedHeap->CollectGarbage<TriggerGCType::SHARED_PARTIAL_GC, GCReason::OTHER>(thread);
         }
+
         InternMultipleUtf8Strings(stringTable, 100, "alt_concurrent", round);
     }
 }
@@ -435,30 +434,6 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMapInUseScope_StackUnwindingTes
     }
 
     ASSERT_EQ(hashTrieMap.GetInuseCount(), 0U);
-}
-
-/**
- * @tc.name: SharedHeap_CollectGarbageWithStringsTest
- * @tc.desc: Test shared heap garbage collection with strings. Verify that strings
-           interned before and after GC cycles are correctly handled.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(EcmaStringTableSweepingTest, SharedHeap_CollectGarbageWithStringsTest)
-{
-    SharedHeap *sharedHeap = SharedHeap::GetInstance();
-    ASSERT_NE(sharedHeap, nullptr);
-
-    EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
-    ASSERT_NE(stringTable, nullptr);
-
-    for (int round = 0; round < 10; ++round) {
-        InternMultipleUtf8Strings(stringTable, 100, "collect_gc", round);
-
-        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
-
-        InternMultipleUtf8Strings(stringTable, 100, "collect_after", round);
-    }
 }
 
 /**
@@ -525,14 +500,17 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, HashTrieMapEntry_ToSpaceTagBasicTest)
 }
 
 /**
- * @tc.name: StringTableConcurrentSweep_InternUtf8Test
- * @tc.desc: Test interning UTF8 strings during concurrent sweep. Verify that
-           strings can be interned correctly while sweeping is in progress.
+ * @tc.name: StringTableConcurrentSweep_InternUtf8WithSharedGCTest
+ * @tc.desc: Test interning UTF8 strings with concurrent sweep triggered by SharedGC. Verify that
+ *           strings can be interned correctly after SharedGC triggers concurrent sweep.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, StringTableConcurrentSweep_InternUtf8Test)
+HWTEST_F_L0(EcmaStringTableSweepingTest, StringTableConcurrentSweep_InternUtf8WithSharedGCTest)
 {
+    SharedHeap *sharedHeap = SharedHeap::GetInstance();
+    ASSERT_NE(sharedHeap, nullptr);
+
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
@@ -540,96 +518,45 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTableConcurrentSweep_InternUtf8Te
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
 
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
-
     for (int round = 0; round < 10; ++round) {
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
         InternMultipleUtf8Strings(stringTable, 100, "utf8_sweep", round);
-
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
 }
 
 /**
- * @tc.name: StringTableConcurrentSweep_CheckValidityTest
- * @tc.desc: Test string table validity check during concurrent sweep. Verify that
-           string table remains valid while strings are interned during sweeping.
+ * @tc.name: StringTableConcurrentSweep_CheckValidityWithSharedGCTest
+ * @tc.desc: Test string table validity check with concurrent sweep triggered by SharedGC. Verify that
+ *           string table remains valid while strings are interned after SharedGC.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, StringTableConcurrentSweep_CheckValidityTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, StringTableConcurrentSweep_CheckValidityWithSharedGCTest)
 {
+    SharedHeap *sharedHeap = SharedHeap::GetInstance();
+    ASSERT_NE(sharedHeap, nullptr);
+
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
     EcmaStringTableCleaner *cleaner = stringTable->GetCleaner();
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
-
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
 
     for (int round = 0; round < 10; ++round) {
         InternMultipleUtf8Strings(stringTable, 100, "validity", round);
 
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
         InternMultipleUtf8Strings(stringTable, 100, "validity_sweep", round);
 
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
         ASSERT_TRUE(stringTable->CheckStringTableValidity(thread));
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
-}
-
-/**
- * @tc.name: StringTable_HasStringTest
- * @tc.desc: Test StringTable HasString functionality. Verify that interned strings
-           can be correctly found in the string table.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_HasStringTest)
-{
-    EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
-    ASSERT_NE(stringTable, nullptr);
-
-    char nameBuf[64];
-
-    for (int round = 0; round < 100; ++round) {
-        int ret = snprintf_s(nameBuf, sizeof(nameBuf), sizeof(nameBuf) - 1, "has_string_%d", round);
-        if (ret < 0) {
-            LOG_ECMA(ERROR) << "snprintf_s failed in HasStringTest";
-            continue;
-        }
-        EcmaString *str = CreateUtf8String(nameBuf);
-        stringTable->GetOrInternString(thread->GetEcmaVM(), str);
-
-        EcmaString *found = stringTable->GetOrInternString(thread->GetEcmaVM(),
-            reinterpret_cast<const uint8_t*>(nameBuf), strlen(nameBuf), true);
-        ASSERT_NE(found, nullptr);
-    }
 }
 
 /**
@@ -809,14 +736,17 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_InternThenLookupConcatWithG
 }
 
 /**
- * @tc.name: ConcurrentSweep_InternUtf8StringDuringSweepingTest
- * @tc.desc: Test interning UTF8 strings during concurrent sweep. Verify that
- *           UTF8 strings can be correctly interned while sweeping is active.
+ * @tc.name: ConcurrentSweep_InternUtf8StringWithSharedGCTest
+ * @tc.desc: Test interning UTF8 strings with concurrent sweep triggered by SharedGC. Verify that
+ *           UTF8 strings can be correctly interned after SharedGC triggers concurrent sweep.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternUtf8StringDuringSweepingTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternUtf8StringWithSharedGCTest)
 {
+    SharedHeap *sharedHeap = SharedHeap::GetInstance();
+    ASSERT_NE(sharedHeap, nullptr);
+
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
@@ -824,15 +754,10 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternUtf8StringDuringS
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
 
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
-
     const char *utf8Data = "utf8_sweep_test";
 
     for (int round = 0; round < 10; ++round) {
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
         EcmaString *firstIntern = nullptr;
         for (int i = 0; i < 100; ++i) {
@@ -843,28 +768,23 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternUtf8StringDuringS
             }
             ASSERT_EQ(str, firstIntern);
         }
-
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
 }
 
 /**
- * @tc.name: ConcurrentSweep_InternUtf16StringDuringSweepingTest
- * @tc.desc: Test interning UTF16 strings during concurrent sweep. Verify that
-           UTF16 strings can be correctly interned while sweeping is active.
+ * @tc.name: ConcurrentSweep_InternUtf16StringWithSharedGCTest
+ * @tc.desc: Test interning UTF16 strings with concurrent sweep triggered by SharedGC. Verify that
+ *           UTF16 strings can be correctly interned after SharedGC triggers concurrent sweep.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternUtf16StringDuringSweepingTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternUtf16StringWithSharedGCTest)
 {
+    SharedHeap *sharedHeap = SharedHeap::GetInstance();
+    ASSERT_NE(sharedHeap, nullptr);
+
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
@@ -872,15 +792,10 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternUtf16StringDuring
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
 
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
-
     uint16_t utf16Data[] = {0x4E2D, 0x6587, 0x6D4B, 0x8BD5, 0x5B57, 0x7B26};
 
     for (int round = 0; round < 10; ++round) {
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
         EcmaString *firstIntern = nullptr;
         for (int i = 0; i < 100; ++i) {
@@ -891,28 +806,23 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternUtf16StringDuring
             }
             ASSERT_EQ(str, firstIntern);
         }
-
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
 }
 
 /**
- * @tc.name: ConcurrentSweep_InternFlattenStringDuringSweepingTest
- * @tc.desc: Test interning flatten strings during concurrent sweep. Verify that
-           flattened strings can be correctly interned while sweeping is in progress.
+ * @tc.name: ConcurrentSweep_InternFlattenStringWithSharedGCTest
+ * @tc.desc: Test interning flatten strings with concurrent sweep triggered by SharedGC. Verify that
+ *           flattened strings can be correctly interned after SharedGC triggers concurrent sweep.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternFlattenStringDuringSweepingTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternFlattenStringWithSharedGCTest)
 {
+    SharedHeap *sharedHeap = SharedHeap::GetInstance();
+    ASSERT_NE(sharedHeap, nullptr);
+
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
@@ -920,21 +830,16 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternFlattenStringDuri
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
 
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
-
     char nameBuf[64];
 
     for (int round = 0; round < 10; ++round) {
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
         for (int i = 0; i < 100; ++i) {
             int ret = snprintf_s(nameBuf, sizeof(nameBuf), sizeof(nameBuf) - 1,
                                  "flatten_sweep_%d_%d", round, i);
             if (ret < 0) {
-                LOG_ECMA(ERROR) << "snprintf_s failed in FlattenStringDuringSweepingTest";
+                LOG_ECMA(ERROR) << "snprintf_s failed in InternFlattenStringWithSharedGCTest";
                 continue;
             }
             EcmaString *str = CreateUtf8String(nameBuf);
@@ -943,147 +848,75 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternFlattenStringDuri
             EcmaString *interned = stringTable->GetOrInternFlattenString(thread->GetEcmaVM(), flattened);
             ASSERT_NE(interned, nullptr);
         }
-
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
 }
 
 /**
- * @tc.name: ConcurrentSweep_InternConcatStringDuringSweepingTest
- * @tc.desc: Test interning concat strings during concurrent sweep. Verify that
-           concatenated strings can be correctly interned while sweeping is active.
+ * @tc.name: ConcurrentSweep_InternConcatStringWithSharedGCTest
+ * @tc.desc: Test interning concat strings with concurrent sweep triggered by SharedGC. Verify that
+ *           concatenated strings can be correctly interned after SharedGC triggers concurrent sweep.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternConcatStringDuringSweepingTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternConcatStringWithSharedGCTest)
 {
+    SharedHeap *sharedHeap = SharedHeap::GetInstance();
+    ASSERT_NE(sharedHeap, nullptr);
+
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
     EcmaStringTableCleaner *cleaner = stringTable->GetCleaner();
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
-
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
 
     char nameBuf[64];
 
     for (int round = 0; round < 10; ++round) {
         int ret = snprintf_s(nameBuf, sizeof(nameBuf), sizeof(nameBuf) - 1, "concat_base_%d_", round);
         if (ret < 0) {
-            LOG_ECMA(ERROR) << "snprintf_s failed in ConcatStringDuringSweepingTest";
+            LOG_ECMA(ERROR) << "snprintf_s failed in InternConcatStringWithSharedGCTest";
             continue;
         }
         JSHandle<EcmaString> baseFirst = thread->GetEcmaVM()->GetFactory()->NewFromASCII(nameBuf);
         JSHandle<EcmaString> baseSecond = thread->GetEcmaVM()->GetFactory()->NewFromASCII(nameBuf);
 
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
         for (int i = 0; i < 100; ++i) {
             EcmaString *concatenated = stringTable->GetOrInternString(thread->GetEcmaVM(), baseFirst, baseSecond);
             ASSERT_NE(concatenated, nullptr);
         }
-
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
 }
 
 /**
- * @tc.name: ConcurrentSweep_InternAfterMultipleSweepRoundsTest
- * @tc.desc: Test interning strings after multiple sweep rounds. Verify that
-           strings can be interned correctly across multiple concurrent sweep cycles.
+ * @tc.name: ConcurrentSweep_ReadBarrierWithSharedGCTest
+ * @tc.desc: Test read barrier with concurrent sweep triggered by SharedGC. Verify that
+ *           read barrier correctly handles string access after SharedGC triggers concurrent sweep.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternAfterMultipleSweepRoundsTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_ReadBarrierWithSharedGCTest)
 {
+    SharedHeap *sharedHeap = SharedHeap::GetInstance();
+    ASSERT_NE(sharedHeap, nullptr);
+
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
     EcmaStringTableCleaner *cleaner = stringTable->GetCleaner();
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
-
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
-
-    std::vector<EcmaString *> existingStrings;
-
-    for (int i = 0; i < 100; ++i) {
-        char nameBuf[64];
-        int ret = snprintf_s(nameBuf, sizeof(nameBuf), sizeof(nameBuf) - 1, "sweep_existing_%d", i);
-        if (ret < 0) {
-            LOG_ECMA(ERROR) << "snprintf_s failed in InternAfterMultipleSweepRoundsTest";
-            continue;
-        }
-        EcmaString *str = EcmaStringAccessor::CreateFromUtf8(thread->GetEcmaVM(),
-            reinterpret_cast<const uint8_t*>(nameBuf), strlen(nameBuf), true);
-        existingStrings.push_back(stringTable->GetOrInternString(thread->GetEcmaVM(), str));
-    }
-
-    for (int sweepRound = 0; sweepRound < 10; ++sweepRound) {
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
-
-        InternMultipleUtf8Strings(stringTable, 100, "sweep_after", sweepRound);
-
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
-    }
-
-    cleaner->SetEnableConcurrentSweep(false);
-}
-
-/**
- * @tc.name: ConcurrentSweep_ReadBarrierDuringSweepingTest
- * @tc.desc: Test read barrier during sweeping operations. Verify that
-           read barrier correctly handles string access during concurrent sweep.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_ReadBarrierDuringSweepingTest)
-{
-    EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
-    ASSERT_NE(stringTable, nullptr);
-
-    EcmaStringTableCleaner *cleaner = stringTable->GetCleaner();
-    ASSERT_NE(cleaner, nullptr);
-    cleaner->SetEnableConcurrentSweep(true);
-
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     for (int round = 0; round < 10; ++round) {
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
         for (int i = 0; i < 100; ++i) {
             JSHandle<EcmaString> strHandle = factory->NewFromASCIISkippingStringTable("rb_sweep_test");
@@ -1095,28 +928,23 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_ReadBarrierDuringSweepi
                 ASSERT_TRUE(result == value || result == reinterpret_cast<JSTaggedType>(nullptr));
             }
         }
-
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
 }
 
 /**
- * @tc.name: ConcurrentSweep_InternEmptyStringTest
- * @tc.desc: Test interning empty strings during concurrent sweep. Verify that
-           empty strings are correctly handled during sweeping operations.
+ * @tc.name: ConcurrentSweep_InternEmptyStringWithSharedGCTest
+ * @tc.desc: Test interning empty strings with concurrent sweep triggered by SharedGC. Verify that
+ *           empty strings are correctly handled after SharedGC triggers concurrent sweep.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternEmptyStringTest)
+HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternEmptyStringWithSharedGCTest)
 {
+    SharedHeap *sharedHeap = SharedHeap::GetInstance();
+    ASSERT_NE(sharedHeap, nullptr);
+
     EcmaStringTable *stringTable = thread->GetEcmaVM()->GetEcmaStringTable();
     ASSERT_NE(stringTable, nullptr);
 
@@ -1124,13 +952,8 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternEmptyStringTest)
     ASSERT_NE(cleaner, nullptr);
     cleaner->SetEnableConcurrentSweep(true);
 
-    HashTrieMapType *hashTrieMap = reinterpret_cast<HashTrieMapType *>(stringTable->GetHashTrieMap());
-
     for (int round = 0; round < 10; ++round) {
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->StartSweeping();
-        }
+        sharedHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
 
         EcmaString *emptyStr = EcmaStringAccessor::CreateEmptyString(thread->GetEcmaVM());
         EcmaString *firstIntern = stringTable->GetOrInternString(thread->GetEcmaVM(), emptyStr);
@@ -1141,14 +964,6 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, ConcurrentSweep_InternEmptyStringTest)
             EcmaString *interned = stringTable->GetOrInternString(thread->GetEcmaVM(), emptyStr2);
             ASSERT_EQ(interned, firstIntern);
         }
-
-        {
-            RuntimeLockHolder locker(thread, SharedHeap::GetInstance()->GetSuspensionRequestMutex());
-            hashTrieMap->FinishSweeping();
-        }
-
-        hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
@@ -1232,7 +1047,6 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_IsSweepingTest)
         ASSERT_FALSE(stringTable->IsSweeping());
 
         hashTrieMap->ClearToSpaceTagForFreshEntries();
-        hashTrieMap->CleanUp();
     }
 
     cleaner->SetEnableConcurrentSweep(false);
