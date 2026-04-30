@@ -670,9 +670,13 @@ bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjO
     Text last = inObjOrArrOrMap ? range_ : end_;
     for (Text current = current_; current < last; ++current) {
         T c = *current;
-        if (inObjOrArrOrMap && c == '"') {
-            end_ = current;
-            return true;
+        if (c == '"') {
+            if (inObjOrArrOrMap) {
+                end_ = current;
+                return true;
+            }
+            current_ = current;
+            return false;
         } else if (c == '\\') {
             if (UNLIKELY(!CheckBackslash(current, last, isAscii))) {
                 current_ = current;
@@ -1307,7 +1311,7 @@ bool Utf8JsonParser::IsFastParseJsonString(bool &isFastString)
     Advance();
     // chars are within Ascii
     for (Text current = current_; current != end_; ++current) {
-        if (*current < CODE_SPACE) {
+        if (*current < CODE_SPACE || *current == '"') {
             current_ = current;
             return false;
         } else if (*current == '\\') {
@@ -1420,7 +1424,7 @@ bool Utf16JsonParser::IsFastParseJsonString(bool &isFastString, bool &isAscii)
 {
     Advance();
     for (Text current = current_; current != end_; ++current) {
-        if (!IsLegalAsciiCharacter(*current, isAscii)) {
+        if (!IsLegalAsciiCharacter(*current, isAscii) || *current == '"') {
             current_ = current;
             return false;
         }
