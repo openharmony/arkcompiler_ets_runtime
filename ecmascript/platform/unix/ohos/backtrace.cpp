@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,10 +28,11 @@
 #include "dfx_frame_formatter.h"
 #include "fp_backtrace.h"
 #endif
+#if defined(ENABLE_UNWINDER)
+#include "unwinder.h"
+#endif
 
 namespace panda::ecmascript {
-static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
-static const std::string LIB_UNWIND_Z_SO_NAME = "libunwind.z.so";
 static const std::string LIB_HWASAN_SO_NAME = "libclang_rt.hwasan.so";
 static const int MAX_STACK_SIZE = 32;
 static const int LOG_BUF_LEN = 1024;
@@ -42,29 +43,12 @@ using HwasanSetStubFileRangeFunc = void (*)(uintptr_t, uintptr_t);
 static std::map<void *, Dl_info> stackInfoCache;
 
 RWLock rwMutex;
+Mutex unwinderMutex;
 
 bool GetPcs(size_t &size, void** pcs)
 {
 #if defined(ENABLE_BACKTRACE_LOCAL)
     size = BacktraceHybrid(pcs, MAX_STACK_SIZE);
-#else
-    static UnwBackTraceFunc unwBackTrace = nullptr;
-    if (!unwBackTrace) {
-        void *handle = dlopen(LIB_UNWIND_SO_NAME.c_str(), RTLD_NOW);
-        if (handle == nullptr) {
-            handle = dlopen(LIB_UNWIND_Z_SO_NAME.c_str(), RTLD_NOW);
-            if (handle == nullptr) {
-                LOG_ECMA(INFO) << "dlopen libunwind.so failed";
-                return false;
-            }
-        }
-        unwBackTrace = reinterpret_cast<UnwBackTraceFunc>(dlsym(handle, "unw_backtrace"));
-        if (unwBackTrace == nullptr) {
-            LOG_ECMA(INFO) << "dlsym unw_backtrace failed";
-            return false;
-        }
-    }
-    size = unwBackTrace(pcs, MAX_STACK_SIZE);
 #endif
     return true;
 }
@@ -91,16 +75,12 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
 {
     void *pcs[MAX_STACK_SIZE] = { nullptr };
     size_t stackSize = 0;
+#if defined(ENABLE_BACKTRACE_LOCAL)
     if (!GetPcs(stackSize, pcs)) {
         return;
     }
     stack << "=====================Backtrace========================";
-#if defined(ENABLE_BACKTRACE_LOCAL)
-    size_t i = 0;
-#else
-    size_t i = 1;
-#endif
-    for (; i < stackSize; i++) {
+    for (size_t i = 0; i < stackSize; i++) {
         Dl_info info;
         if (!FindStackInfoCache(pcs[i], info)) {
             if (!dladdr(pcs[i], &info)) {
@@ -124,6 +104,20 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
         stack << std::endl;
         stack << buf;
     }
+#elif defined(ENABLE_UNWINDER)
+    LockHolder lock(unwinderMutex);
+    static auto unwinder = std::make_shared<OHOS::HiviewDFX::Unwinder>();
+    unwinder->EnableFillFrames(false);
+    if (!unwinder->UnwindLocal(false, false, MAX_STACK_SIZE)) {
+        return;
+    }
+    auto frames = unwinder->GetFrames();
+    for (auto frame: frames) {
+        unwinder->FillFrame(frame, false);
+    }
+    stack << "=====================Backtrace========================";
+    stack << OHOS::HiviewDFX::Unwinder::GetFramesStr(frames);
+#endif
 }
 
 #if defined(ENABLE_BACKTRACE_LOCAL)
