@@ -1563,6 +1563,7 @@ public:
 
     std::string GetExtraJSCrashMessage() const;
     size_t RegisterExtraJSCrashMessageCallback(const std::string_view &name, ExtraJSCrashMessageCallback cb);
+    static void NotifyANR();
 
 #ifdef PANDA_JS_ETS_HYBRID_MODE
     ECMAVM_PUBLIC_HYBRID_MODE_EXTENSION()

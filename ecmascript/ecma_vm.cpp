@@ -315,7 +315,7 @@ void EcmaVM::PostFork(const JSRuntimeOptions &option)
         LOG_ECMA(INFO) << "Modules snapshot disabled: runtime option";
         ModulesSnapshotHelper::MarkSnapshotDisabledByOption();
     } else {
-        ModulesSnapshotHelper::RegisterSignalHandler();
+        ModulesSnapshotHelper::InitEscaper(this);
     }
     if (option.IsBootSnapshotEscapeDisabled()) {
         ModulesSnapshotHelper::DisableSnapshotEscaper();
@@ -2399,6 +2399,11 @@ size_t EcmaVM::RegisterExtraJSCrashMessageCallback(const std::string_view &name,
     }
     extraJSCrashMessageCallbacks_.emplace_back(std::pair{std::string(name), cb});
     return extraJSCrashMessageCallbacks_.size();
+}
+
+void EcmaVM::NotifyANR()
+{
+    ModulesSnapshotHelper::TryDisableSnapshotOnANR();
 }
 
 void EcmaVM::ModuleManagers::Iterate(RootVisitor &v)

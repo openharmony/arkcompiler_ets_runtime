@@ -612,9 +612,7 @@ bool SourceTextModule::PreModuleInstantiation(JSThread *thread,
     }
     bool isShared = SourceTextModule::IsSharedModule(module);
     if (status == ModuleStatus::EVALUATING) {
-        LOG_FULL(DEBUG) << "ModuleSnapshot is disabled: circular dependency" <<
-            ", current module: " << *SourceTextModule::GetModuleName(module);
-        thread->GetEcmaVM()->GetJSOptions().SetDisableModuleSnapshot(true);
+        LOG_ECMA(DEBUG) << "circular dependency detected, current module: " << *SourceTextModule::GetModuleName(module);
         if (isShared) {
             LOG_FULL(INFO) << "circular dependency occurred of shared-module";
             return true;
