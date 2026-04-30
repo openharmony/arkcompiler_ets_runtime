@@ -16,6 +16,7 @@
 #include "ecmascript/cross_vm/unified_gc/unified_gc.h"
 #include "ecmascript/cross_vm/unified_gc/unified_gc_marker.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/verification.h"
@@ -34,11 +35,18 @@ void SharedHeap::StartUnifiedGCMark([[maybe_unused]]TriggerGCType gcType, [[mayb
         // waiting in transition to RUNNING state before JSThread::SetReadyForGCIterating.
         recurScopes.reserve(runtime->GetThreadListSize());
         runtime->GCIterateThreadList([&recurScopes](JSThread *thread) {
-            Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-            recurScopes.emplace_back(heap, HeapType::LOCAL_HEAP);
+            recurScopes.emplace_back(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap()), HeapType::LOCAL_HEAP);
         });
 #ifdef PANDA_JS_ETS_HYBRID_MODE
+        // Allow cross-thread execution before XGC barrier, because ETS GC thread may call
+        // JS VM marking interfaces (e.g. napi_mark_from_object) from another thread during XGC.
+        runtime->GCIterateThreadList([](JSThread *thread) {
+            thread->SetCrossThreadExecution(true);
+        });
         if (!unifiedGC_->StartXGCBarrier()) {
+            runtime->GCIterateThreadList([](JSThread *thread) {
+                thread->SetCrossThreadExecution(false);
+            });
             unifiedGC_->SetInterruptUnifiedGC(false);
             dThread_->FinishRunningTask();
             return;
@@ -65,6 +73,10 @@ void SharedHeap::StartUnifiedGCMark([[maybe_unused]]TriggerGCType gcType, [[mayb
         });
 #ifdef PANDA_JS_ETS_HYBRID_MODE
         unifiedGC_->FinishXGCBarrier();
+        // Restore cross-thread execution restriction after XGC is finished
+        runtime->GCIterateThreadList([](JSThread *thread) {
+            thread->SetCrossThreadExecution(false);
+        });
 #endif // PANDA_JS_ETS_HYBRID_MODE
     }
 }
