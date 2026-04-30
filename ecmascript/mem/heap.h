@@ -566,7 +566,17 @@ public:
             return false;
         }
         smartGCStats_.startupStatus_ = StartupStatus::FINISH_STARTUP;
+        tryCompressHeapAfterStartup_ = true;
         return true;
+    }
+
+    bool TryCompressHeap()
+    {
+        if (tryCompressHeapAfterStartup_) {
+            tryCompressHeapAfterStartup_ = false;
+            return true;
+        }
+        return false;
     }
 
     bool FinishStartupEvent() override
@@ -1005,6 +1015,7 @@ private:
     std::atomic<size_t> spaceOvershoot_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
     bool inHeapProfiler_ {false};
+    bool tryCompressHeapAfterStartup_ {false};
     NativePointerList sharedNativePointerList_;
     std::mutex sNativePointerListMutex_;
     // Memory reallocation helper

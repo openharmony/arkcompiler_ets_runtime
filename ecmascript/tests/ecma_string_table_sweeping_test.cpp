@@ -460,7 +460,8 @@ HWTEST_F_L0(EcmaStringTableSweepingTest, StringTable_ReadBarrierMultipleObjectsT
 
         region->ClearMark(reinterpret_cast<void *>(value));
         JSTaggedType result2 = Barriers::ReadBarrierForStringTableSlot(value);
-        ASSERT_EQ(result2, reinterpret_cast<JSTaggedType>(nullptr));
+        bool isNullOrToObj = (result2 == 0) || Region::ObjectAddressToRange(result2)->IsToRegion();
+        ASSERT_TRUE(isNullOrToObj);
 
         region->AtomicMark(reinterpret_cast<void *>(value));
         JSTaggedType result3 = Barriers::ReadBarrierForStringTableSlot(value);

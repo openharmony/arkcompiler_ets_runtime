@@ -57,7 +57,7 @@ void Barriers::UpdateShared(const JSThread *thread, uintptr_t slotAddr, Region *
 
     ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
     ASSERT(valueRegion->InSharedSweepableSpace());
-    if (valueRegion->InSCollectSet() && objectRegion->InSharedHeap()) {
+    if (valueRegion->InSCollectSet() && objectRegion->InSharedHeap() && (valueRegion != objectRegion)) {
         objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
     }
     // Weak ref record and concurrent mark record maybe conflict.
@@ -271,10 +271,15 @@ JSTaggedType ReadBarrierForStringTableSlotImpl(JSTaggedType value)
         return reinterpret_cast<JSTaggedType>(nullptr);
     }
     Region *objectRegion = Region::ObjectAddressToRange(value);
-    if (!objectRegion->InSharedSweepableSpace()) {
+    if (!objectRegion->InSharedSweepableSpace() || objectRegion->IsToRegion()) {
         return value;
     }
     if (objectRegion->Test(value)) {
+        if (objectRegion->InSCollectSet()) {
+            MarkWord markWord(reinterpret_cast<TaggedObject *>(value), RELAXED_LOAD);
+            ASSERT(markWord.IsForwardingAddress());
+            return reinterpret_cast<JSTaggedType>(markWord.ToForwardingAddress());
+        }
         return value;
     }
     return reinterpret_cast<JSTaggedType>(nullptr);

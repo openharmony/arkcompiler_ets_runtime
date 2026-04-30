@@ -56,7 +56,6 @@ private:
     SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
     bool markingInProgress_ {false};
-    bool evacuated_ {false};
     bool concurrentProcessStringTable_ {false};
 };
 }  // namespace panda::ecmascript
