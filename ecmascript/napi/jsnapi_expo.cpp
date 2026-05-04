@@ -2806,6 +2806,9 @@ Local<ObjectRef> ObjectRef::NewWithProperties(const EcmaVM *vm, size_t propertyC
         obj = CreateObjImpl(reinterpret_cast<uintptr_t>(desc));
     } else {
         void *desc = malloc(sizeof(PropertyDescriptor) * propertyCount);
+        if (desc == nullptr) {
+            LOG_FULL(FATAL) << "malloc failed in NewWithProperties";
+        }
         obj = CreateObjImpl(reinterpret_cast<uintptr_t>(desc));
         free(desc);
     }
@@ -3952,7 +3955,7 @@ Local<FunctionRef> FunctionRef::NewConcurrentClassFunctionWithName(
                 thread, name, nativeFunc, callNapi, propertyCount, staticPropCount, keys, attrs, descs);
             free(descs);
         } else {
-            THROW_RANGE_ERROR_AND_RETURN(thread, "Malloc descriptors failed!", JSValueRef::Undefined(vm));
+            LOG_FULL(FATAL) << "malloc failed in NewConcurrentClassFunctionWithName";
         }
     }
     classFunc->SetLexicalEnv(thread, JSHandle<GlobalEnv>(JSNApiHelper::ToJSHandle(context)));
