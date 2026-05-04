@@ -1289,6 +1289,7 @@ private:
     void *prevPrimitiveNext_ = nullptr;
     void *prevPrimitiveEnd_ = nullptr;
     void *thread_ = nullptr;
+    [[maybe_unused]] uint64_t scopeLevel_ {-1};
 };
 
 class PUBLIC_API EscapeLocalScope final : public LocalScope {

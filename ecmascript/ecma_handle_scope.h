@@ -51,6 +51,7 @@ private:
     JSTaggedType *prevPrimitiveNext_;
     JSTaggedType *prevPrimitiveEnd_;
     int prevPrimitiveStorageIndex_ {-1};
+    [[maybe_unused]] uint64_t scopeLevel_ {-1};
 
     NO_COPY_SEMANTIC(EcmaHandleScope);
     NO_MOVE_SEMANTIC(EcmaHandleScope);
