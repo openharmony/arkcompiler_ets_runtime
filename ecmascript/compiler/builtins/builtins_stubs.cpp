@@ -41,7 +41,6 @@
 #include "ecmascript/compiler/builtins/builtins_collection_iterator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
-#include "ecmascript/compiler/builtins/shared_linked_hashtable_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/js_date.h"

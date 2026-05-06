@@ -234,6 +234,7 @@ void BuiltinsSharedArrayStubBuilder::GenSharedArrayConstructor(GateRef glue, Gat
     Label newTargetIsHeapObject(env);
     Label newTargetIsJSFunction(env);
     Label slowPath(env);
+    Label slowPath1(env);
     Label exit(env);
 
     // Check whether newTarget is undefined
@@ -247,12 +248,12 @@ void BuiltinsSharedArrayStubBuilder::GenSharedArrayConstructor(GateRef glue, Gat
         GateRef globalEnv = GetCurrentGlobalEnv();
         auto sharedArrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glue, globalEnv,
             GlobalEnv::SHARED_ARRAY_FUNCTION_INDEX);
-        BRANCH(Equal(sharedArrayFunc, newTarget), &fastGetHclass, &slowPath);
+        BRANCH(Equal(sharedArrayFunc, newTarget), &fastGetHclass, &slowPath1);
         Bind(&fastGetHclass);
         GateRef intialHClass =
             Load(VariableType::JS_ANY(), glue, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
         DEFVARIABLE(arrayLength, VariableType::INT64(), Int64(0));
-        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath);
+        BRANCH(IsJSHClass(glue, intialHClass), &intialHClassIsHClass, &slowPath1);
         Bind(&intialHClassIsHClass);
         {
             Label hasArg(env);
@@ -274,6 +275,13 @@ void BuiltinsSharedArrayStubBuilder::GenSharedArrayConstructor(GateRef glue, Gat
                 }
             }
         }
+    }
+    Bind(&slowPath1);
+    {
+        GateRef argv = GetArgv();
+        res = CallBuiltinRuntimeWithNewTarget(glue,
+            { glue, nativeCode, func, thisValue, numArgs, argv, newTarget });
+        Jump(&exit);
     }
     Bind(&slowPath);
     {
@@ -711,9 +719,14 @@ GateRef BuiltinsSharedArrayStubBuilder::FindImpl(GateRef glue, GateRef thisValue
     Label localExit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
 
+    Label canReadExit(env);
+    Label readDoneExit(env);
+    DEFVARIABLE(expectModRecord, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(desiredModRecord, VariableType::INT32(), Int32(0));
+
     // @ref BuiltinsSharedArray::Find: ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle)
-    // default ModType::READ
-    ConcurrentApiScopeStubBuilder<JSSharedArray> scope(this, glue, GetCurrentGlobalEnv(), thisValue);
+    ConcurrentApiScopeCanRead<JSSharedArray>(glue, thisValue, expectModRecord, desiredModRecord, &canReadExit);
+    Bind(&canReadExit);
     BRANCH(HasPendingException(glue), &hasScopeException, &notScopeException);
     Bind(&hasScopeException);
     {
@@ -823,6 +836,8 @@ GateRef BuiltinsSharedArrayStubBuilder::FindImpl(GateRef glue, GateRef thisValue
         Jump(&localExit);
     }
     Bind(&localExit);
+    ConcurrentApiScopeReadDone<JSSharedArray>(glue, thisValue, expectModRecord, desiredModRecord, &readDoneExit);
+    Bind(&readDoneExit);
     auto ret = *res;
     env->SubCfgExit();
     return ret;
@@ -904,10 +919,16 @@ GateRef BuiltinsSharedArrayStubBuilder::IndexOfImpl(GateRef glue, GateRef thisVa
     Label notFound(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
 
+    Label canReadExit(env);
+    Label readDoneExit(env);
+    DEFVARIABLE(expectModRecord, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(desiredModRecord, VariableType::INT32(), Int32(0));
+
     // @ref BuiltinsSharedArray::IndexOf: ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle)
     // @ref BuiltinsSharedArray::LastIndexOf: ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle)
     // Acquires READ lock on the shared array for thread-safe concurrent access.
-    ConcurrentApiScopeStubBuilder<JSSharedArray> scope(this, glue, GetCurrentGlobalEnv(), thisValue);
+    ConcurrentApiScopeCanRead<JSSharedArray>(glue, thisValue, expectModRecord, desiredModRecord, &canReadExit);
+    Bind(&canReadExit);
     BRANCH(HasPendingException(glue), &hasScopeException, &notScopeExceptionOrNoCheck);
     Bind(&hasScopeException);
     {
@@ -1041,6 +1062,8 @@ GateRef BuiltinsSharedArrayStubBuilder::IndexOfImpl(GateRef glue, GateRef thisVa
     Jump(&exit);
 
     Bind(&exit);
+    ConcurrentApiScopeReadDone<JSSharedArray>(glue, thisValue, expectModRecord, desiredModRecord, &readDoneExit);
+    Bind(&readDoneExit);
     auto ret = *res;
     env->SubCfgExit();
     return ret;
