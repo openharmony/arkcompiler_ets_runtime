@@ -18,6 +18,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/jit/jit_task.h"
+#include "ecmascript/mem/clock_scope.h"
 
 namespace panda::ecmascript::arksteed {
 
@@ -39,6 +40,31 @@ public:
     private:
         std::shared_ptr<ArkSteedTask> task_;
     };
+};
+
+class ArkSteedCompileTimeScope : public ClockScope {
+public:
+    explicit ArkSteedCompileTimeScope(ArkSteedTask *task)
+        : task_(task), isAppJit_(false)
+    {
+        if (task_ != nullptr) {
+            auto *jit = task_->GetJit();
+            isAppJit_ = (jit != nullptr) && jit->IsAppJit();
+        }
+    }
+
+    ~ArkSteedCompileTimeScope()
+    {
+        if (!isAppJit_) {
+            return;
+        }
+        LOG_JIT(INFO) << "[ArkSteed App] total compile time: " << TotalSpentTime() << "ms";
+    }
+
+private:
+    ArkSteedTask *task_;
+    CString phase_;
+    bool isAppJit_;
 };
 
 }  // namespace panda::ecmascript::arksteed

@@ -1,0 +1,41 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+function if_elseif_nested_return(x, y, a, b, c, d)
+{
+    let result = a * 10;
+    if (x > 0) {
+        result = result + 5;
+        if (y > 0) {
+            return result + a;
+        } else {
+            result = result - b;
+            return result;
+        }
+    } else if (x < 0) {
+        return result + c;
+    }
+    result = result * 2 + d;
+    return result;
+}
+
+ArkTools.arkSteedCompileAsync(if_elseif_nested_return);
+
+let time = Date.now();
+for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+
+print(if_elseif_nested_return(10, 5, 100, 20, 30, 40));
+print(if_elseif_nested_return(10, -1, 100, 20, 30, 40));
+print(if_elseif_nested_return(-5, 5, 100, 20, 30, 40));
+print(if_elseif_nested_return(0, 5, 100, 20, 30, 40));

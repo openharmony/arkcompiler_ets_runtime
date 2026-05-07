@@ -1,0 +1,19 @@
+Bytecodes:
+[  0] opcode = LDLEXVAR_IMM4_IMM4, offset = 0, blockIndex = 0
+[  1] opcode = THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16, offset = 2, blockIndex = 0
+[  2] opcode = LDA_V8, offset = 6, blockIndex = 0
+[  3] opcode = STLEXVAR_IMM4_IMM4, offset = 8, blockIndex = 0
+[  4] opcode = LDLEXVAR_IMM4_IMM4, offset = 10, blockIndex = 0
+[  5] opcode = STA_V8, offset = 12, blockIndex = 0
+[  6] opcode = THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16, offset = 14, blockIndex = 0
+[  7] opcode = LDA_V8, offset = 18, blockIndex = 0
+[  8] opcode = RETURN, offset = 20, blockIndex = 0
+Basic blocks:
+[ 0] rpoIndex = 0, startBcIndex = 0, endBcIndex = 8
+     fallthroughBlock = NULL
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = []
+     catchBlocks = []
+Catch blocks:

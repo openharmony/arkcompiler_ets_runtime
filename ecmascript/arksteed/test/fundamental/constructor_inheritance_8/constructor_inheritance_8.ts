@@ -1,0 +1,69 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+class Base {
+    x: number;
+    y: number;
+
+    constructor(x: number, y: number) {
+        this.x = x;
+        this.y = y;
+    }
+
+    sumXY(): number {
+        return this.x + this.y;
+    }
+}
+
+class Middle extends Base {
+    z: number;
+
+    constructor(x: number, y: number, z: number) {
+        super(x, y);
+        this.z = z;
+    }
+
+    sumXYZ(): number {
+        return this.x + this.y + this.z;
+    }
+}
+
+class Leaf extends Middle {
+    rest: number[];
+
+    constructor(x: number, y: number, z: number, ...rest: number[]) {
+        super(x, y, z);
+        this.rest = rest;
+    }
+
+    total(): number {
+        let s = this.x + this.y + this.z;
+        for (let i = 0; i < this.rest.length; i++) {
+            s += this.rest[i];
+        }
+        return s;
+    }
+}
+
+ArkTools.arkSteedCompileAsync(Base);
+ArkTools.arkSteedCompileAsync(Middle);
+ArkTools.arkSteedCompileAsync(Leaf);
+
+let time = Date.now();
+for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+
+let obj = new Leaf(1, 2, 3, 4, 5, 6);
+print(obj.sumXY());
+print(obj.sumXYZ());
+print(obj.total());

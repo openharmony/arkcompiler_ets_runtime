@@ -1,0 +1,16 @@
+30
+1554
+3
+2
+[default callback] x = 5
+[default callback] x = 25
+0
+[default callback] x = 6
+[default callback] x = 36
+[default callback] x = 216
+[default callback] x = 1296
+0
+[default callback] x = 3
+0
+[default callback] x = 2
+0

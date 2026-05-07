@@ -1,0 +1,9 @@
+array for of:
+ 0
+ undefined
+ 0
+true
+array for of:
+ 0
+ undefined
+ 0

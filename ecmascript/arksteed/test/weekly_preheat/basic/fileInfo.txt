@@ -1,0 +1,4 @@
+./basic/lexer.ts;lexer;esm;xxx;yyy
+./basic/random.ts;random;esm;xxx;yyy
+./basic/statement.ts;statement;esm;xxx;yyy
+./basic/basic.ts;basic;esm;xxx;yyy
