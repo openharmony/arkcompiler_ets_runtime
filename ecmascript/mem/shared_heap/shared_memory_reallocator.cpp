@@ -21,7 +21,7 @@
 
 namespace panda::ecmascript {
 
-void SharedMemoryReallocator::TryTransferMemoryToOldSpace(SharedOldSpace *oldSpace, SharedOldSpace *compressSpace,
+bool SharedMemoryReallocator::TryTransferMemoryToOldSpace(SharedOldSpace *oldSpace, SharedOldSpace *compressSpace,
                                                           SharedHugeObjectSpace *hugeSpace)
 {
     ASSERT(oldSpace != nullptr);
@@ -33,18 +33,19 @@ void SharedMemoryReallocator::TryTransferMemoryToOldSpace(SharedOldSpace *oldSpa
     if (oldSpace->GetMaximumCapacity() > oldSpace->GetCommittedSize() &&
         oldSpace->GetMaximumCapacity() - oldSpace->GetCommittedSize() >= DEFAULT_REGION_SIZE) {
         LOG_ECMA_MEM(INFO) << "Shared old space has enough memory to expand;";
-        return;
+        return false;
     }
 
     // Calculate how much to transfer
     size_t transferSize = CalculateTransferSize(hugeSpace);
     if (transferSize == 0) {
         LOG_ECMA_MEM(INFO) << "SharedMemoryReallocator: No memory to transfer";
-        return;
+        return false;
     }
 
     // Transfer capacity limits
     TransferCapacityLimits(oldSpace, compressSpace, hugeSpace, transferSize);
+    return true;
 }
 
 size_t SharedMemoryReallocator::CalculateTransferSize(SharedHugeObjectSpace *hugeSpace)
