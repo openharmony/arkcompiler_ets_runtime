@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -159,7 +159,8 @@ public:
     explicit CallStubBuilder(StubBuilder *parent, GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                              Variable *result, GateRef hotnessCounter, JSCallArgs callArgs,
                              ProfileOperation callback = ProfileOperation(),
-                             bool checkIsCallable = true, GateRef hir = Circuit::NullGate())
+                             bool checkIsCallable = true, GateRef hir = Circuit::NullGate(),
+                             GateRef stringId = Circuit::NullGate(), GateRef constPool = Circuit::NullGate())
         : StubBuilder(parent)
     {
         this->glue_ = glue;
@@ -172,6 +173,8 @@ public:
         this->callback_ = callback;
         this->checkIsCallable_ = checkIsCallable;
         this->hir_ = hir;
+        this->stringId_ = stringId;
+        this->constPool_ = constPool;
     }
     explicit CallStubBuilder(Environment *env)
         : StubBuilder(env) {}
@@ -196,6 +199,8 @@ private:
     ProfileOperation callback_;
     bool checkIsCallable_ {true};
     GateRef hir_ {0};
+    GateRef stringId_ {0};
+    GateRef constPool_ {0};
 
     bool isFast_ {true};
     bool isBridge_ {false};

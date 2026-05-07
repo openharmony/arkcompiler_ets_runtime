@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -6477,8 +6477,7 @@ GateRef StubBuilder::GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef p
         BRANCH(IsCallable(glue, value), &valueIsCallable, &valueNotCallable);
         Bind(&valueNotCallable);
         {
-            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(NonCallable));
-            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+            CallRuntime(glue, RTSTUB_ID(ThrowNotCallableException), { value });
             result = Exception();
             Jump(&exit);
         }

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -216,6 +216,11 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
             case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+            case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+            case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+            case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
             case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8: {
                 Jit::JitLockHolder lock(thread);
                 uint8_t slotId = READ_INST_8_0();
@@ -232,7 +237,8 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                 break;
             }
             case EcmaOpcode::WIDE_CALLRANGE_PREF_IMM16_V8:
-            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8: {
+            case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8: {
                 // no ic slot
                 break;
             }

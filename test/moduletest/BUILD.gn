@@ -50,6 +50,7 @@ module_test_list = [
   "builtins",
   "call",
   "callframe",
+  "callthisrangewithname",
   "calltype",
   "changelistener",
   "changelistener2",
@@ -176,6 +177,10 @@ module_test_list = [
   "sharedobjectstorebarrier_treestring",
 ]
 
+callable_test_list = [
+  "callthisrangewithname",
+]
+
 if (enable_latest_optimization) {
   module_test_list += [
     "string_wrapper_class_extends_toprimitive",
@@ -228,6 +233,12 @@ group("ark_js_moduletest") {
     deps += [ "${test}:${test}Action" ]
     if (!is_debug) {
       deps += [ "${test}:${test}ContextAction" ]
+    }
+  }
+  foreach(test, callable_test_list) {
+    deps += [ "${test}:${test}ActionCallable" ]
+    if (!is_debug) {
+      deps += [ "${test}:${test}ContextActionCallable" ]
     }
   }
 

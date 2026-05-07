@@ -2,7 +2,7 @@
 #coding: utf-8
 
 """
-Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+Copyright (c) 2021-2026 Huawei Device Co., Ltd.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -23,6 +23,7 @@ Description: run script
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -102,8 +103,21 @@ def parse_args() -> object:
     parser.add_argument('--arkjsvmpath', help='ark_js_vm_path')
     parser.add_argument('--test-abc-path', help='abc path')
     parser.add_argument('--skip', type=bool, default=False, help='skip execute')
+    parser.add_argument('--clean-path', action='append', default=[],
+                        help='remove file/dir before execute, can be specified multiple times')
     args = parser.parse_args()
     return args
+
+
+def clean_paths(paths: list):
+    """Remove stale files/dirs before command execution."""
+    for path in paths:
+        if not path:
+            continue
+        if os.path.islink(path) or os.path.isfile(path):
+            os.remove(path)
+        elif os.path.isdir(path):
+            shutil.rmtree(path)
 
 
 def process_open(args: object) -> [str, object]:
@@ -208,6 +222,8 @@ def judge_output(args: object):
 
     if args.skip:
         return
+
+    clean_paths(args.clean_path)
 
     start_time = time.time()
     [cmd, subp] = process_open(args)
