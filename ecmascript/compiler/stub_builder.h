@@ -1326,6 +1326,12 @@ public:
 
     GateRef AtomicCmpXchgI32(GateRef obj, GateRef offset, GateRef expected, GateRef desired);
     GateRef AtomicLoadAcquireI32(GateRef base, GateRef offset);
+    template<typename Container>
+    void ConcurrentApiScopeCanRead(GateRef glue, GateRef sharedObj,
+        Variable &expectModRecord, Variable &desiredModRecord, Label *exit);
+    template<typename Container>
+    void ConcurrentApiScopeReadDone(GateRef glue, GateRef sharedObj,
+        Variable &expectModRecord, Variable &desiredModRecord, Label *exit);
 
     GateRef GetSharedArrayLength(GateRef object);
     void SetSharedArrayLength(GateRef glue, GateRef object, GateRef len);

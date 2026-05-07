@@ -161,7 +161,13 @@ GateRef BuiltinsSharedMapStubBuilder::GetImpl(GateRef glue, GateRef thisValue, G
     Label hasException(env);
     Label notException(env);
 
-    ConcurrentApiScopeStubBuilder<JSSharedMap> scope(this, glue, GetCurrentGlobalEnv(), thisValue);
+    Label canReadExit(env);
+    Label readDoneExit(env);
+    DEFVARIABLE(expectModRecord, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(desiredModRecord, VariableType::INT32(), Int32(0));
+
+    ConcurrentApiScopeCanRead<JSSharedMap>(glue, thisValue, expectModRecord, desiredModRecord, &canReadExit);
+    Bind(&canReadExit);
     BRANCH(HasPendingException(glue), &hasException, &notException);
     Bind(&hasException);
     {
@@ -178,6 +184,8 @@ GateRef BuiltinsSharedMapStubBuilder::GetImpl(GateRef glue, GateRef thisValue, G
         Jump(&exit);
     }
     Bind(&exit);
+    ConcurrentApiScopeReadDone<JSSharedMap>(glue, thisValue, expectModRecord, desiredModRecord, &readDoneExit);
+    Bind(&readDoneExit);
     auto res = *result;
     env->SubCfgExit();
     return res;
@@ -214,7 +222,13 @@ GateRef BuiltinsSharedMapStubBuilder::HasImpl(GateRef glue, GateRef thisValue, G
     Label hasException(env);
     Label notException(env);
 
-    ConcurrentApiScopeStubBuilder<JSSharedMap> scope(this, glue, GetCurrentGlobalEnv(), thisValue);
+    Label canReadExit(env);
+    Label readDoneExit(env);
+    DEFVARIABLE(expectModRecord, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(desiredModRecord, VariableType::INT32(), Int32(0));
+
+    ConcurrentApiScopeCanRead<JSSharedMap>(glue, thisValue, expectModRecord, desiredModRecord, &canReadExit);
+    Bind(&canReadExit);
     BRANCH(HasPendingException(glue), &hasException, &notException);
     Bind(&hasException);
     {
@@ -231,6 +245,8 @@ GateRef BuiltinsSharedMapStubBuilder::HasImpl(GateRef glue, GateRef thisValue, G
         Jump(&exit);
     }
     Bind(&exit);
+    ConcurrentApiScopeReadDone<JSSharedMap>(glue, thisValue, expectModRecord, desiredModRecord, &readDoneExit);
+    Bind(&readDoneExit);
     auto res = *result;
     env->SubCfgExit();
     return res;

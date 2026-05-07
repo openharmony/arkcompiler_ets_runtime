@@ -24,9 +24,10 @@
 #include "ecmascript/js_tagged_value.h"
 
 namespace panda::ecmascript::kungfu {
-template<typename Container, ModType modType = ModType::READ>
+template<typename Container, ModType modType>
 class ConcurrentApiScopeStubBuilder : public StubBuilder {
 public:
+    static_assert(modType == ModType::WRITE, "ConcurrentApiScopeStubBuilder do not support READ mode");
     explicit ConcurrentApiScopeStubBuilder(StubBuilder *parent, GateRef glue, GateRef globalEnv,
         GateRef objHandle, SCheckMode mode = SCheckMode::CHECK)
         : StubBuilder(parent, globalEnv), glue_(glue), sharedObj_(objHandle), checkMode_(mode)
@@ -34,9 +35,9 @@ public:
         if (checkMode_ == SCheckMode::SKIP) {
             return;
         }
-        if constexpr (modType == ModType::READ) {
-            CanRead();
-        } else {
+
+        // ConcurrentApiScopeStubBuilder do not support READ mode
+        if constexpr (modType == ModType::WRITE) {
             CanWrite();
         }
     }
@@ -45,9 +46,9 @@ public:
         if (checkMode_ == SCheckMode::SKIP) {
             return;
         }
-        if constexpr (modType == ModType::READ) {
-            ReadDone();
-        } else {
+
+        // ConcurrentApiScopeStubBuilder do not support READ mode
+        if constexpr (modType == ModType::WRITE) {
             WriteDone();
         }
     }
@@ -62,11 +63,6 @@ private:
         int errorCode = containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR;
         int errorMsg = GET_MESSAGE_STRING_ID(ConcurrentApiScopeError);
         ThrowContainerBusinessError(glue_, errorCode, errorMsg);
-    }
-
-    inline GateRef GetModRecord()
-    {
-        return AtomicLoadAcquireI32(sharedObj_, Int32(Container::MOD_RECORD_OFFSET));
     }
 
     inline void CanWrite()
@@ -111,97 +107,9 @@ private:
         env->SubCfgExit();
     }
 
-    inline void CanRead()
-    {
-        auto env = GetEnvironment();
-        Label subentry(env);
-        Label exit(env);
-        env->SubCfgEntry(&subentry);
-        Label loopHead(env);
-        Label loopEnd(env);
-        Label tryCAS(env);
-        Label throwError(env);
-
-        Jump(&loopHead);
-        LoopBegin(&loopHead);
-        {
-            expectModRecord_ = GetModRecord();
-            GateRef hasWriter = Int32And(expectModRecord_, Int32(WRITE_MOD_MASK));
-            BRANCH(Int32Equal(hasWriter, Int32(0)), &tryCAS, &throwError);
-        }
-        Bind(&tryCAS);
-        {
-            desiredModRecord_ = Int32Add(expectModRecord_, Int32(1));
-            GateRef oldValue = AtomicCmpXchgI32(sharedObj_, Int32(Container::MOD_RECORD_OFFSET),
-                expectModRecord_, desiredModRecord_);
-            BRANCH(Int32Equal(oldValue, expectModRecord_), &exit, &loopEnd);
-        }
-        Bind(&loopEnd);
-        {
-            LoopEnd(&loopHead);
-        }
-        Bind(&throwError);
-        {
-            ThrowScopeError();
-            Jump(&exit);
-        }
-        Bind(&exit);
-        env->SubCfgExit();
-    }
-
-    inline void ReadDone()
-    {
-        auto env = GetEnvironment();
-        Label subentry(env);
-        Label exit(env);
-        env->SubCfgEntry(&subentry);
-        Label loopHead(env);
-        Label loopEnd(env);
-        Label updateDesired(env);
-        Label checkState(env);
-        Label throwError(env);
-
-        GateRef temp = expectModRecord_;
-        expectModRecord_ = desiredModRecord_;
-        desiredModRecord_ = temp;
-
-        Jump(&loopHead);
-        LoopBegin(&loopHead);
-        {
-            GateRef oldValue = AtomicCmpXchgI32(sharedObj_, Int32(Container::MOD_RECORD_OFFSET),
-                expectModRecord_, desiredModRecord_);
-            BRANCH(Int32Equal(oldValue, expectModRecord_), &exit, &checkState);
-        }
-        Bind(&checkState);
-        {
-            expectModRecord_ = GetModRecord();
-            GateRef hasWriter = Int32NotEqual(Int32And(expectModRecord_, Int32(WRITE_MOD_MASK)), Int32(0));
-            GateRef isZero = Int32Equal(expectModRecord_, Int32(0));
-            BRANCH(BitOr(hasWriter, isZero), &throwError, &updateDesired);
-        }
-        Bind(&updateDesired);
-        {
-            desiredModRecord_ = Int32Sub(expectModRecord_, Int32(1));
-            Jump(&loopEnd);
-        }
-        Bind(&loopEnd);
-        {
-            LoopEnd(&loopHead);
-        }
-        Bind(&throwError);
-        {
-            ThrowScopeError();
-            Jump(&exit);
-        }
-        Bind(&exit);
-        env->SubCfgExit();
-    }
-
     GateRef glue_;
     GateRef sharedObj_;
     SCheckMode checkMode_ = SCheckMode::CHECK;
-    GateRef expectModRecord_ = Int32(0);
-    GateRef desiredModRecord_ = Int32(0);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_CONCURRENT_API_SCOPE_STUB_BUILDER_H

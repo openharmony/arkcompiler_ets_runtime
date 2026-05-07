@@ -643,17 +643,21 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Sto
     GateRef table;
     if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
         table = Create(Int32(LinkedHashMap::MIN_CAPACITY));
-        Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSMap::LINKED_MAP_OFFSET), table);
         if (isShared_) {
+            Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSSharedMap::LINKED_MAP_OFFSET), table);
             GateRef modRecordOffset = IntPtr(JSSharedMap::MOD_RECORD_OFFSET);
             Store(VariableType::INT32(), glue_, *returnValue, modRecordOffset, Int32(0));
+        } else {
+            Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSMap::LINKED_MAP_OFFSET), table);
         }
     } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
         table = Create(Int32(LinkedHashSet::MIN_CAPACITY));
-        Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSSet::LINKED_SET_OFFSET), table);
         if (isShared_) {
+            Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSSharedSet::LINKED_SET_OFFSET), table);
             GateRef modRecordOffset = IntPtr(JSSharedSet::MOD_RECORD_OFFSET);
             Store(VariableType::INT32(), glue_, *returnValue, modRecordOffset, Int32(0));
+        } else {
+            Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSSet::LINKED_SET_OFFSET), table);
         }
     }
 }
@@ -741,10 +745,11 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Label newTargetObject(env);
     Label newTargetFunction(env);
     Label slowPath(env);
+    Label slowPath1(env);
     Label exit(env);
 
     Label isUndefinedOrNull(env);
-    BRANCH(TaggedIsUndefinedOrNull(arg0), &isUndefinedOrNull, &slowPath);
+    BRANCH(TaggedIsUndefinedOrNull(arg0), &isUndefinedOrNull, &slowPath1);
 
     // 1. If NewTarget is undefined, throw exception in slowPath
     Bind(&isUndefinedOrNull);
@@ -767,15 +772,24 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     GateRef newTargetHClass =
         Load(VariableType::JS_ANY(), glue_, newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     BRANCH(LogicAndBuilder(env).And(Equal(mapOrSetFunc, newTarget)).And(IsJSHClass(glue_, newTargetHClass)).Done(),
-        &fastGetHClass, &slowPath);
+        &fastGetHClass, &slowPath1);
 
     Bind(&fastGetHClass);
     StoreHashTableToNewObject(newTargetHClass, returnValue);
     Jump(&exit);
 
+    Bind(&slowPath1);
+    {
+        returnValue = CallBuiltinRuntimeWithNewTarget(glue_,
+            { glue_, nativeCode, func, thisValue, numArgs, argv, newTarget });
+        Jump(&exit);
+    }
     Bind(&slowPath);
-    returnValue = CallBuiltinRuntime(glue_, { glue_, nativeCode, func, thisValue, numArgs, argv }, true);
-    Jump(&exit);
+    {
+        returnValue = CallBuiltinRuntime(glue_,
+            { glue_, nativeCode, func, thisValue, numArgs, argv }, true);
+        Jump(&exit);
+    }
 
     Bind(&exit);
     Return(*returnValue);
@@ -857,10 +871,10 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
 {
     int32_t linkedTableOffset = 0;
     if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
-        linkedTableOffset = JSMap::LINKED_MAP_OFFSET;
+        linkedTableOffset = isShared_ ? JSSharedMap::LINKED_MAP_OFFSET : JSMap::LINKED_MAP_OFFSET;
     } else {
         static_assert(std::is_same_v<LinkedHashTableType, LinkedHashSet>);
-        linkedTableOffset = JSSet::LINKED_SET_OFFSET;
+        linkedTableOffset = isShared_ ? JSSharedSet::LINKED_SET_OFFSET : JSSet::LINKED_SET_OFFSET;
     }
     return IntPtr(linkedTableOffset);
 }

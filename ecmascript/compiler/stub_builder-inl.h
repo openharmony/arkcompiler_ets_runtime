@@ -4782,5 +4782,93 @@ inline GateRef StubBuilder::AtomicLoadAcquireI32(GateRef base, GateRef offset)
     return env_->GetBuilder()->AtomicLoadAcquire(VariableType::INT32(), address);
 }
 
+// Reference: ConcurrentApiScope::CanRead()
+template<typename Container>
+inline void StubBuilder::ConcurrentApiScopeCanRead(GateRef glue, GateRef sharedObj,
+    Variable &expectModRecord, Variable &desiredModRecord, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label tryCAS(env);
+    Label throwError(env);
+    static constexpr uint32_t WRITE_MOD_MASK = 1 << 31;
+
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        expectModRecord = AtomicLoadAcquireI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET));
+        GateRef hasWriter = Int32And(*expectModRecord, Int32(WRITE_MOD_MASK));
+        BRANCH(Int32Equal(hasWriter, Int32(0)), &tryCAS, &throwError);
+    }
+    Bind(&tryCAS);
+    {
+        desiredModRecord = Int32Add(*expectModRecord, Int32(1));
+        GateRef oldValue = AtomicCmpXchgI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET),
+            *expectModRecord, *desiredModRecord);
+        BRANCH(Int32Equal(oldValue, *expectModRecord), exit, &loopEnd);
+    }
+    Bind(&loopEnd);
+    {
+        LoopEnd(&loopHead);
+    }
+    Bind(&throwError);
+    {
+        int errorCode = containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR;
+        int errorMsg = GET_MESSAGE_STRING_ID(ConcurrentApiScopeError);
+        ThrowContainerBusinessError(glue, errorCode, errorMsg);
+        Jump(exit);
+    }
+}
+
+// Reference: ConcurrentApiScope::ReadDone()
+template<typename Container>
+inline void StubBuilder::ConcurrentApiScopeReadDone(GateRef glue, GateRef sharedObj,
+    Variable &expectModRecord, Variable &desiredModRecord, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label updateDesired(env);
+    Label checkState(env);
+    Label throwError(env);
+    static constexpr uint32_t WRITE_MOD_MASK = 1 << 31;
+
+    GateRef temp = *expectModRecord;
+    expectModRecord = *desiredModRecord;
+    desiredModRecord = temp;
+
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        GateRef oldValue = AtomicCmpXchgI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET),
+            *expectModRecord, *desiredModRecord);
+        BRANCH(Int32Equal(oldValue, *expectModRecord), exit, &checkState);
+    }
+    Bind(&checkState);
+    {
+        expectModRecord = AtomicLoadAcquireI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET));
+        GateRef hasWriter = Int32NotEqual(Int32And(*expectModRecord, Int32(WRITE_MOD_MASK)), Int32(0));
+        GateRef isZero = Int32Equal(*expectModRecord, Int32(0));
+        BRANCH(BitOr(hasWriter, isZero), &throwError, &updateDesired);
+    }
+    Bind(&updateDesired);
+    {
+        desiredModRecord = Int32Sub(*expectModRecord, Int32(1));
+        Jump(&loopEnd);
+    }
+    Bind(&loopEnd);
+    {
+        LoopEnd(&loopHead);
+    }
+    Bind(&throwError);
+    {
+        int errorCode = containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR;
+        int errorMsg = GET_MESSAGE_STRING_ID(ConcurrentApiScopeError);
+        ThrowContainerBusinessError(glue, errorCode, errorMsg);
+        Jump(exit);
+    }
+}
+
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H
