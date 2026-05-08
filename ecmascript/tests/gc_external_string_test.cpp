@@ -29,32 +29,6 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace panda::test {
-class GCTest : public BaseTestWithScope<false> {
-public:
-    static constexpr uint32_t TYPE_INFO_SIZE = 4;
-    static constexpr uint32_t UTF8_CACHED_DATA_SIZE = 4;
-    static constexpr uint32_t UTF16_CACHED_DATA_SIZE = 8;
-    static constexpr uint32_t UTF16_STRING_LENGTH = UTF16_CACHED_DATA_SIZE / sizeof(uint16_t);
-
-    static inline void CallBackFn([[maybe_unused]] void *data, void *hint)
-    {
-        free(data);
-    }
-
-    void SetUp() override
-    {
-        JSRuntimeOptions options;
-        instance = JSNApi::CreateEcmaVM(options);
-        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
-        thread = instance->GetJSThread();
-        thread->ManagedCodeBegin();
-        scope = new EcmaHandleScope(thread);
-        auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-        heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
-        heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
-    }
-};
-
 class TestData {
 public:
     uint32_t GetCount()
@@ -95,6 +69,33 @@ public:
 private:
     std::string name_;
     std::string context_;
+};
+
+class GCTest : public BaseTestWithScope<false> {
+public:
+    static constexpr uint32_t TYPE_INFO_SIZE = 4;
+    static constexpr uint32_t UTF8_CACHED_DATA_SIZE = 4;
+    static constexpr uint32_t UTF16_CACHED_DATA_SIZE = 8;
+    static constexpr uint32_t UTF16_STRING_LENGTH = UTF16_CACHED_DATA_SIZE / sizeof(uint16_t);
+
+    static inline void CallBackFn(void *data, void *hint)
+    {
+        delete static_cast<ExternalData *>(data);
+        delete static_cast<TestData *>(hint);
+    }
+
+    void SetUp() override
+    {
+        JSRuntimeOptions options;
+        instance = JSNApi::CreateEcmaVM(options);
+        ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
+        thread = instance->GetJSThread();
+        thread->ManagedCodeBegin();
+        scope = new EcmaHandleScope(thread);
+        auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+        heap->GetConcurrentMarker()->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
+        heap->GetSweeper()->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
+    }
 };
 
 HWTEST_F_L0(GCTest, ExternalStringGCAddStringTest)
@@ -146,7 +147,7 @@ HWTEST_F_L0(GCTest, ExternalStringSharedFullGCCallBackSaveTest)
     TestData *hint = new TestData();
     auto callback = [] (void* data, void* hint) -> void {
         reinterpret_cast<TestData *>(hint)->AddCount();
-        free(data);
+        delete static_cast<ExternalData *>(data);
     };
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     size_t oldCount = sHeap->GetExternalStringTable()->GetListSize();
@@ -176,6 +177,7 @@ HWTEST_F_L0(GCTest, ExternalStringSharedFullGCCallBackSaveTest)
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     EXPECT_EQ(hint->GetCount(), 32);
     EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
+    delete hint;
 };
 
 HWTEST_F_L0(GCTest, ExternalStringSharedGCCallBackSaveTest)
@@ -184,7 +186,7 @@ HWTEST_F_L0(GCTest, ExternalStringSharedGCCallBackSaveTest)
     TestData *hint = new TestData();
     auto callback = [] (void* data, void* hint) -> void {
         reinterpret_cast<TestData *>(hint)->AddCount();
-        free(data);
+        delete static_cast<ExternalData *>(data);
     };
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     size_t oldCount = sHeap->GetExternalStringTable()->GetListSize();
@@ -214,6 +216,7 @@ HWTEST_F_L0(GCTest, ExternalStringSharedGCCallBackSaveTest)
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     EXPECT_EQ(hint->GetCount(), 32);
     EXPECT_EQ(sHeap->GetExternalStringTable()->GetListSize(), 0);
+    delete hint;
 };
 
 }
