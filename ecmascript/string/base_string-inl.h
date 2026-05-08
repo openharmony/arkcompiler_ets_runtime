@@ -34,6 +34,13 @@
 #include "objects/utils/span.h"
 #include "securec.h"
 
+#if !ENABLE_V70_OPTIMIZATION
+#undef ENABLE_LINXKIT
+#endif
+#ifdef ENABLE_LINXKIT
+#include "ecmascript/platform/arm64/linxkit_string.h"
+#endif
+
 namespace panda::ecmascript {
 std::u16string Utf16ToU16String(const uint16_t *utf16Data, uint32_t dataLen);
 std::u16string Utf8ToU16String(const uint8_t *utf8Data, uint32_t dataLen);
@@ -49,6 +56,7 @@ template <typename T>
 uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
                                         uint32_t hashSeed)
 {
+#ifndef ENABLE_LINXKIT
     if (size <= static_cast<size_t>(StringHash::MIN_SIZE_FOR_UNROLLING)) {
         uint32_t hash = hashSeed;
         for (uint32_t i = 0; i < size; i++) {
@@ -57,6 +65,9 @@ uint32_t BaseString::ComputeHashForData(const T* data, size_t size,
         return hash;
     }
     return StringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
+#else
+    return LinxkitComputeHashForData(data, size, hashSeed);
+#endif
 }
 
 template

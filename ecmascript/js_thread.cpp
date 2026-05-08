@@ -52,9 +52,17 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/jit/jit.h"
-#include "thread/thread_holder_manager.h"
+#include "common_interfaces/thread/thread_holder_manager.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/platform/asm_stack.h"
+#include "ecmascript/base/config.h"
+
+#if !ENABLE_V70_OPTIMIZATION
+#undef ENABLE_LINXKIT
+#endif
+#ifdef ENABLE_LINXKIT
+#include "ecmascript/platform/arm64/linxkit_atomic.h"
+#endif
 
 namespace panda::ecmascript {
 uintptr_t TaggedStateWord::BASE_ADDRESS = 0;
@@ -1496,6 +1504,7 @@ void JSThread::StoreState(ThreadState newState)
 {
     ASSERT(!g_isEnableCMCGC);
     while (true) {
+#ifndef ENABLE_LINXKIT
         ThreadStateAndFlags oldStateAndFlags;
         oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
 
@@ -1506,6 +1515,12 @@ void JSThread::StoreState(ThreadState newState)
         bool done = glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
                                                                                newStateAndFlags.asNonvolatileInt,
                                                                                std::memory_order_release);
+#else
+        // atomic update 16bit
+        bool done = LinxkitAtomicUpdateHalfword(
+            reinterpret_cast<uint16_t*>(&glueData_.stateAndFlags_.asNonvolatileStruct.state),
+            static_cast<uint16_t>(newState));
+#endif
         if (LIKELY(done)) {
             break;
         }
@@ -1522,6 +1537,7 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
         ASSERT(oldStateAndFlags.asNonvolatileStruct.state != ThreadState::RUNNING);
 
         if (LIKELY(oldStateAndFlags.asNonvolatileStruct.flags == ThreadFlag::NO_FLAGS)) {
+#ifndef ENABLE_LINXKIT
             ThreadStateAndFlags newStateAndFlags;
             newStateAndFlags.asNonvolatileStruct.flags = oldStateAndFlags.asNonvolatileStruct.flags;
             newStateAndFlags.asNonvolatileStruct.state = newState;
@@ -1531,6 +1547,14 @@ void JSThread::StoreRunningState([[maybe_unused]] ThreadState newState)
                                                                            std::memory_order_release)) {
                 break;
             }
+#else
+            // atomic read val compare to old val, if same, update high 16bit and return true else return false
+            bool success = LinxkitAtomicCmpUpdateState(
+                reinterpret_cast<uint32_t*>(&glueData_.stateAndFlags_.asNonvolatileInt),
+                static_cast<uint32_t>(oldStateAndFlags.asNonvolatileInt),
+                static_cast<uint16_t>(newState));
+            if (success) { break; }
+#endif
         } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
             PassSuspendBarrier();
         } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {

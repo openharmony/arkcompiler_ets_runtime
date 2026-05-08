@@ -20,6 +20,13 @@
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/platform/json_platform_helper.h"
 
+#if !ENABLE_V70_OPTIMIZATION
+#undef ENABLE_LINXKIT
+#endif
+#ifdef ENABLE_LINXKIT
+#include "ecmascript/platform/arm64/linxkit_parse.h"
+#endif
+
 namespace panda::ecmascript::base {
 
 template<typename T>
@@ -667,6 +674,7 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
 template<typename T>
 bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjOrArrOrMap)
 {
+#ifndef ENABLE_LINXKIT
     Text last = inObjOrArrOrMap ? range_ : end_;
     for (Text current = current_; current < last; ++current) {
         T c = *current;
@@ -692,6 +700,9 @@ bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjO
         ++length;
     }
     return !inObjOrArrOrMap;
+#else
+    return LinxkitParseStringLength(length, isAscii, inObjOrArrOrMap, end_, current_, range_);
+#endif
 }
 
 template<typename T>
@@ -856,7 +867,13 @@ JSHandle<JSTaggedValue> JsonParser<T>::ParseStringWithBackslash(bool inObjOrArrO
         EcmaString *str = EcmaStringAccessor::CreateLineString(thread_->GetEcmaVM(), length, true);
         uint8_t *data = const_cast<uint8_t *>(EcmaStringAccessor(str).GetDataUtf8());
         uint8_t *p = data;
+#ifndef ENABLE_LINXKIT
         CopyCharWithBackslash(p);
+#else
+        static_assert(sizeof(T) == sizeof(uint16_t) || sizeof(T) == sizeof(uint8_t),
+                      "T must be 1 or 2 bytes in size");
+        LinxkitCopyCharWithBackslashTo8(p, end_, current_);
+#endif
         ASSERT(p - data == length);
         Advance();
         return JSHandle<JSTaggedValue>(thread_, str);
@@ -864,7 +881,11 @@ JSHandle<JSTaggedValue> JsonParser<T>::ParseStringWithBackslash(bool inObjOrArrO
         EcmaString *str = EcmaStringAccessor::CreateLineString(thread_->GetEcmaVM(), length, false);
         uint16_t *data = const_cast<uint16_t *>(EcmaStringAccessor(str).GetDataUtf16());
         uint16_t *p = data;
+#ifndef ENABLE_LINXKIT
         CopyCharWithBackslash(p);
+#else
+        LinxkitCopyCharWithBackslashTo16(p, end_, current_);
+#endif
         ASSERT(p - data == length);
         Advance();
         return JSHandle<JSTaggedValue>(thread_, str);

@@ -358,4 +358,192 @@ HWTEST_F_L0(JsonParserTest, Parser_012)
     result->D(thread);
     EXPECT_TRUE(CheckSendableConstraint(thread, result.GetTaggedValue()));
 }
+
+/**
+* @tc.name: Parser_013
+* @tc.desc: Test ParseStringWithBackslash - basic escape sequences with content verification
+* @tc.type: FUNC
+* @tc.require:
+*/
+HWTEST_F_L0(JsonParserTest, Parser_013)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    
+    // ===== Test: \n (newline) =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "hello\nworld"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        EXPECT_FALSE(result->IsException());
+        
+        // Get the "key" property and verify content
+        JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("key"));
+        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+        JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+        
+        // Verify string length: "hello\nworld" = 11 chars (hello + 1 newline + world)
+        EXPECT_EQ(EcmaStringAccessor(valueStr).GetLength(), 11U);
+    }
+    
+    // ===== Test: \t (tab) =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "hello\tworld"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        EXPECT_FALSE(result->IsException());
+        
+        JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("key"));
+        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+        JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+        
+        // Verify: "hello\tworld" = 11 chars
+        EXPECT_EQ(EcmaStringAccessor(valueStr).GetLength(), 11U);
+    }
+    
+    // ===== Test: \\ (escaped backslash) =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "hello\\world"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        EXPECT_FALSE(result->IsException());
+        
+        JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("key"));
+        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+        JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+        
+        // Verify: "hello\\world" = 11 chars (one backslash)
+        EXPECT_EQ(EcmaStringAccessor(valueStr).GetLength(), 11U);
+    }
+    
+    // ===== Test: \" (escaped quote) =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "hello\"world123456"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        EXPECT_FALSE(result->IsException());
+        
+        JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("key"));
+        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+        JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+        
+        // Verify: "hello\"world123456" = 17 chars
+        EXPECT_EQ(EcmaStringAccessor(valueStr).GetLength(), 17U);
+    }
+}
+ 
+/**
+* @tc.name: Parser_014
+* @tc.desc: Unicode escape sequences with content verification
+* @tc.type: FUNC
+* @tc.require:
+*/
+HWTEST_F_L0(JsonParserTest, Parser_014)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    
+    // ===== Test: \u0041 = 'A' =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "\u0041"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        EXPECT_FALSE(result->IsException());
+        
+        JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("key"));
+        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+        JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+        
+        // Verify: "\u0041" = "A" = 1 char
+        EXPECT_EQ(EcmaStringAccessor(valueStr).GetLength(), 1U);
+        
+        // Verify content is 'A'
+        EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString(thread).c_str(), "A");
+    }
+    
+    // ===== Test: \u4e2d\u6587 = "中文" =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "\u4e2d\u6587"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        EXPECT_FALSE(result->IsException());
+        
+        JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("key"));
+        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+        JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+        
+        // Verify: "\u4e2d\u6587" = "中文" = 2 chars
+        EXPECT_EQ(EcmaStringAccessor(valueStr).GetLength(), 2U);
+        
+        // Verify content
+        std::string expectStr = "中文";
+        EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString(thread).c_str(), expectStr.c_str());
+    }
+    
+    // ===== Test: Mixed ASCII and Unicode =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "hello\u0041world"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        EXPECT_FALSE(result->IsException());
+        
+        JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("key"));
+        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+        JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+        
+        // Verify: "hello\u0041world" = "helloAworld" = 11 chars
+        EXPECT_EQ(EcmaStringAccessor(valueStr).GetLength(), 11U);
+    }
+    
+    // ===== Test: Mixed ASCII and Unicode =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "hello\u0000"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        EXPECT_FALSE(result->IsException());
+        
+        JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("key"));
+        JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+        JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+        
+        EXPECT_EQ(EcmaStringAccessor(valueStr).GetLength(), 6U);
+    }
+}
+
+/**
+* @tc.name: Parser_015
+* @tc.desc: invalid escape sequences should fail
+* @tc.type: FUNC
+* @tc.require:
+*/
+HWTEST_F_L0(JsonParserTest, Parser_015)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    
+    // ===== Test: invalid escape sequence \x (not valid JSON escape) =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "hello\xworld"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        // Should fail: \x is not a valid JSON escape sequence
+        EXPECT_TRUE(result->IsException());
+    }
+    
+    // ===== Test: incomplete Unicode escape (\u without 4 digits) =====
+    {
+        Utf8JsonParser parser(thread, TransformType::NORMAL);
+        JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(R"({"key": "\u004"})"));
+        JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+        JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+        // Should fail: incomplete Unicode sequence
+        EXPECT_TRUE(result->IsException());
+    }
+}
 } // namespace panda::test

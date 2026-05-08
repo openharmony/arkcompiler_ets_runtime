@@ -343,6 +343,10 @@ template("libark_jsruntime_common_set") {
       defines += [ "ENABLE_OHOS_PARAMETER" ]
     }
 
+    if (is_ohos && current_cpu == "arm64") {
+      defines += [ "ENABLE_LINXKIT" ]
+    }
+
     if (ark_standalone_build) {
       defines += [ "STANDALONE_MODE" ]
     }
