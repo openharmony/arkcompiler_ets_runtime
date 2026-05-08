@@ -134,7 +134,8 @@ HWTEST_F_L0(TimerTest, Timer_BasicUsage_LogsTime)
 {
     {
         Timer t("TestScope");
-        for (volatile int i = 0; i < SECOND_TIME; ++i);
+        for (volatile int i = 0; i < SECOND_TIME; ++i)
+        {}
     }
 
 #ifndef ENABLE_HILOG
@@ -153,7 +154,8 @@ HWTEST_F_L0(TimerTest, Timer_LevelNotDebug_NoLogging)
 
     {
         Timer t("SilentScope");
-        for (volatile int i = 0; i < SECOND_TIME; ++i);
+        for (volatile int i = 0; i < SECOND_TIME; ++i)
+        {}
     }
 
     std::string output = redirect.GetOutput();
@@ -164,7 +166,8 @@ HWTEST_F_L0(TimerTest, Timer_LongName_CorrectFormat)
 {
     {
         Timer t("VeryLongTimerNameForTesting");
-        for (volatile int i = 0; i < SECOND_TIME; ++i);
+        for (volatile int i = 0; i < SECOND_TIME; ++i)
+        {}
     }
 
 #ifndef ENABLE_HILOG
@@ -177,12 +180,14 @@ HWTEST_F_L0(TimerTest, Timer_MultipleInstances_DistinctOutput)
 {
     {
         Timer t1("First");
-        for (volatile int i = 0; i < SECOND_TIME; ++i);
+        for (volatile int i = 0; i < SECOND_TIME; ++i)
+        {}
     }
 
     {
         Timer t2("Second");
-        for (volatile int i = 0; i < SECOND_TIME; ++i);
+        for (volatile int i = 0; i < SECOND_TIME; ++i)
+        {}
     }
 
 #ifndef ENABLE_HILOG
