@@ -4814,6 +4814,7 @@ JSHandle<EcmaString> ObjectFactory::NewFromUtf8LiteralCompressSubString(const JS
                                                                         uint32_t offset, uint32_t utf8Len)
 {
     NewObjectHook();
+    ASSERT(EcmaStringAccessor(string).IsLineString());
     ASSERT(EcmaStringAccessor::CanBeCompressed(EcmaStringAccessor(string).GetDataUtf8() + offset, utf8Len));
     return JSHandle<EcmaString>(thread_, EcmaStringAccessor::CreateFromUtf8CompressedSubString(vm_, string,
         offset, utf8Len));
@@ -4830,6 +4831,7 @@ JSHandle<EcmaString> ObjectFactory::NewCompressedUtf8SubString(const JSHandle<Ec
                                                                uint32_t offset, uint32_t utf8Len)
 {
     NewObjectHook();
+    ASSERT(EcmaStringAccessor(string).IsLineString());
     ASSERT(EcmaStringAccessor::CanBeCompressed(EcmaStringAccessor(string).GetDataUtf8() + offset, utf8Len));
     return GetCompressedSubStringFromStringTable(string, offset, utf8Len);
 }
