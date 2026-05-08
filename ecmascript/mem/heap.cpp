@@ -865,6 +865,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] JSThread *thread,
     if (!thread->IsThrowingOOMError()) {
         vm->GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetEcmaParamConfiguration().GetMaxHeapSize(),
             GetHeapObjectSize(), eventConfig, spaceType, lastAllocObjSize, heapType);
+        return;
     }
     if (!shouldDump) {
         LOG_ECMA(INFO) << "SharedHeap::DumpHeapSnapshotBeforeOOM, no dump quota.";
@@ -2003,6 +2004,7 @@ void Heap::DumpHeapSnapshotBeforeOOM(bool isProcDump, [[maybe_unused]] const std
     if (!thread_->IsThrowingOOMError()) {
         GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize(), eventConfig,
                                                     spaceType, lastAllocObjSize, heapType);
+        return;
     }
     if (!shouldDump) {
         LOG_ECMA(INFO) << "Heap::DumpHeapSnapshotBeforeOOM, no dump quota.";
