@@ -1102,6 +1102,7 @@ ecma_source = [
   "ecmascript/module/js_shared_module_manager.cpp",
   "ecmascript/module/module_data_extractor.cpp",
   "ecmascript/module/module_logger.cpp",
+  "ecmascript/module/module_tools.cpp",
   "ecmascript/module/module_value_accessor.cpp",
   "ecmascript/module/module_path_helper.cpp",
   "ecmascript/module/napi_module_loader.cpp",
