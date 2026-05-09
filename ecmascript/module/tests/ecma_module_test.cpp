@@ -5949,4 +5949,91 @@ HWTEST_F_L0(EcmaModuleTest, AddSendableModuleToCache_DuplicateName)
     EXPECT_TRUE(cached->IsSourceTextModule());
     EXPECT_EQ(cached.GetTaggedValue(), module1.GetTaggedValue());
 }
+
+/**
+ * @tc.name: GetSendableModuleValueInner_NotSendableFunctionModule
+ * @tc.desc: Test GetSendableModuleValueInner when module is not sendable function module (line 61)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueInner_NotSendableFunctionModule)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    ctor->SetModule(thread, module);
+    JSTaggedValue jsFunc = ctor.GetTaggedValue();
+
+    JSTaggedValue result = ModuleValueAccessor::GetSendableModuleValueInner(thread, 0, jsFunc);
+    EXPECT_EQ(result, JSTaggedValue::Hole());
+}
+
+/**
+ * @tc.name: GetSendableModuleValueInner_LoadedModuleEvaluated
+ * @tc.desc: Test GetSendableModuleValueInner when module is loaded and evaluated (line 64+66 true)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueInner_LoadedModuleEvaluated)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    CString recordName = "test_sendable_inner_evaluated";
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetSharedType(SharedTypes::SENDABLE_FUNCTION_MODULE);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetStatus(ModuleStatus::EVALUATED);
+
+    ModuleManager *moduleManager = thread->GetModuleManager();
+    moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
+
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    ctor->SetModule(thread, module);
+    JSTaggedValue jsFunc = ctor.GetTaggedValue();
+
+    JSTaggedValue result = ModuleValueAccessor::GetSendableModuleValueInner(thread, 0, jsFunc);
+    EXPECT_EQ(result, JSTaggedValue::Hole());
+}
+
+/**
+ * @tc.name: GetSendableModuleValueOuterInternal_ResolvedIndexBinding
+ * @tc.desc: Test GetSendableModuleValueOuterInternal with ResolvedIndexBinding (line 237)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueOuterInternal_ResolvedIndexBinding)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<SourceTextModule> resolvedModule = objectFactory->NewSSourceTextModule();
+    resolvedModule->SetStatus(ModuleStatus::EVALUATED);
+
+    JSHandle<TaggedArray> envRec = objectFactory->NewTaggedArray(1);
+    JSHandle<JSTaggedValue> resolvedBinding = JSHandle<JSTaggedValue>::Cast(
+        objectFactory->NewResolvedIndexBindingRecord(resolvedModule, 0));
+    envRec->Set(thread, 0, resolvedBinding);
+    module->SetEnvironment(thread, envRec);
+
+    JSTaggedValue result = MockModuleValueAccessor::GetSendableModuleValueOuterInternal<false>(
+        thread, 0, module.GetTaggedValue());
+    EXPECT_TRUE(result.IsHole());
+}
+
+/**
+ * @tc.name: GetModuleNamespaceInternal_NativeModule
+ * @tc.desc: Test GetModuleNamespaceInternal with Native module (line 267)
+ * @tc.type: FUNC
+ */
+HWTEST_F_L0(EcmaModuleTest, GetModuleNamespaceInternal_NativeModule)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<SourceTextModule> nativeModule = objectFactory->NewSourceTextModule();
+    nativeModule->SetTypes(ModuleTypes::NATIVE_MODULE);
+
+    JSHandle<TaggedArray> requestedModules = objectFactory->NewTaggedArray(1);
+    requestedModules->Set(thread, 0, nativeModule);
+    module->SetRequestedModules(thread, requestedModules);
+
+    JSTaggedValue result = MockModuleValueAccessor::GetModuleNamespaceInternal(
+        thread, 0, module.GetTaggedValue());
+    EXPECT_TRUE(result.IsHole());
+}
 }  // namespace panda::test
