@@ -25,7 +25,7 @@ struct StringInfoGateRef;
 
 class BuiltinsStringStubBuilder : public BuiltinsStubBuilder {
 public:
-    BuiltinsStringStubBuilder(StubBuilder *parent)
+    explicit BuiltinsStringStubBuilder(StubBuilder *parent)
         : BuiltinsStubBuilder(parent) {}
     explicit BuiltinsStringStubBuilder(StubBuilder *parent, GateRef globalEnv)
         : BuiltinsStubBuilder(parent, globalEnv) {}
