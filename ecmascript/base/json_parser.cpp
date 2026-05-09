@@ -1232,8 +1232,11 @@ JSHandle<JSTaggedValue> Utf8JsonParser::Parse(const JSHandle<EcmaString> &strHan
     uint32_t len = stringAccessor.GetLength();
     ASSERT(len != UINT32_MAX);
     rawString_ = strHandle;
-    if (LIKELY(stringAccessor.IsLineOrCachedExternalString())) {
+    if (LIKELY(stringAccessor.IsLineString())) {
         sourceString_ = strHandle;
+    } else if (stringAccessor.IsCachedExternalString()) {
+        sourceString_ = thread_->GetEcmaVM()->GetFactory()->NewFromUtf8LiteralCompress(
+            stringAccessor.GetDataUtf8(), len);
     } else if (stringAccessor.IsSlicedString()) {
         auto *sliced = static_cast<SlicedEcmaString *>(*strHandle);
         slicedOffset_ = sliced->GetStartIndex();

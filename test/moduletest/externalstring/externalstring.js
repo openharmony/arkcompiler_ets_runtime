@@ -136,6 +136,22 @@ function testJSONStringifyExternalString(isCompressed) {
 testJSONStringifyExternalString(true);
 testJSONStringifyExternalString(false);
 
+// Testing case of JSON.parse with external strings.
+function testJSONParseExternalString(isCompressed) {
+    let extJsonString = ArkTools.createCachedExternalString('"external json string"', isCompressed);
+    assert_equal(JSON.parse(extJsonString), "external json string");
+
+    let extJsonObject = ArkTools.createCachedExternalString('{"kind":"external","value":1,"items":["a","b"]}', isCompressed);
+    let obj = JSON.parse(extJsonObject);
+    assert_equal(obj.kind, "external");
+    assert_equal(obj.value, 1);
+    assert_equal(obj.items.length, 2);
+    assert_equal(obj.items[0], "a");
+    assert_equal(obj.items[1], "b");
+}
+testJSONParseExternalString(true);
+testJSONParseExternalString(false);
+
 // Testing cases of external strings in objects and arrays.
 function testExternalStringInObjectsAndArrays(isCompressed) {
     let extStr1 = ArkTools.createCachedExternalString("ObjKey1", isCompressed);

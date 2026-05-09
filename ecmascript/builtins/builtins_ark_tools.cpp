@@ -1861,7 +1861,9 @@ JSTaggedValue BuiltinsArkTools::CreateCachedExternalString(EcmaRuntimeCallInfo *
     EcmaString *strArg = EcmaString::Cast(info->GetCallArgValue(0));
     EcmaStringAccessor strArgAcc(strArg);
     uint32_t strLength = strArgAcc.GetLength();
-    if (strArgAcc.IsUtf8() && info->GetCallArg(1)->IsTrue()) {
+    bool useUtf8ExternalString = info->GetArgsNumber() == 2 &&
+        info->GetCallArg(1)->IsTrue(); // 2: length of arguments
+    if (strArgAcc.IsUtf8() && useUtf8ExternalString) {
         uint8_t *hint = (uint8_t *)std::malloc(strLength + TYPE_INFO_SIZE);
         if (hint == nullptr) {
             LOG_FULL(FATAL) << "malloc failed";
