@@ -398,14 +398,14 @@ bool SourceMap::ParseSourceMapData(std::string_view url)
     modularMap->sources_ = sources;
     modularMap->packageName_ = packageName;
     if (url.rfind(".js") != std::string_view::npos) {
-        sourceMapDatas_.emplace(url, modularMap);
+        sourceMapDatas_.emplace(iter->first, modularMap);
         return true;
     }
 
     auto mappings = GetMappings(iter->second);
 
     ExtractSourceMapData(mappings, modularMap.get());
-    sourceMapDatas_.emplace(url, modularMap);
+    sourceMapDatas_.emplace(iter->first, modularMap);
     return true;
 }
 
