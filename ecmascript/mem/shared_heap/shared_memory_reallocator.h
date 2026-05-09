@@ -41,7 +41,7 @@ public:
     NO_MOVE_SEMANTIC(SharedMemoryReallocator);
 
     // Try to transfer memory from HugeObjectSpace to OldSpace
-    void TryTransferMemoryToOldSpace(SharedOldSpace *oldSpace, SharedOldSpace *compressSpace,
+    bool TryTransferMemoryToOldSpace(SharedOldSpace *oldSpace, SharedOldSpace *compressSpace,
                                      SharedHugeObjectSpace *hugeSpace);
 
 private:

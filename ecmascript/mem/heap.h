@@ -710,7 +710,10 @@ public:
     // Try to transfer memory capacity from HugeObjectSpace to OldSpace
     void TryTransferMemoryToOldSpace()
     {
-        memoryReallocator_.TryTransferMemoryToOldSpace(sOldSpace_, sCompressSpace_, sHugeObjectSpace_);
+        if (memoryReallocator_.TryTransferMemoryToOldSpace(sOldSpace_, sCompressSpace_, sHugeObjectSpace_)) {
+            // If transfer success, reset shouldThrowOOMError_ flag to avoid OOM in advance
+            shouldThrowOOMError_ = false;
+        }
     }
 
     inline void TryTriggerConcurrentMarking(JSThread *thread);
