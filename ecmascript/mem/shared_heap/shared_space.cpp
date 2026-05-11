@@ -435,8 +435,13 @@ SharedOldSpace::SharedOldSpace(SharedHeap *heap, size_t initialCapacity, size_t 
 void SharedOldSpace::SelectCSets()
 {
     EnumerateRegions([this](Region *region) {
-        if (!region->MostObjectAlive()) {
+        if (!region->InSCollectSet()) {
+            return;
+        }
+        if (region->AliveObject() < CSET_REGION_ALIVE_RATIO * region->GetSize()) {
             collectRegionSet_.emplace_back(region);
+        } else {
+            region->ClearGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
         }
     });
 #ifdef NDEBUG
@@ -454,31 +459,20 @@ void SharedOldSpace::SelectCSets()
     // Limit cset size
     int64_t leftEvacuateSize = MAX_EVACUATION_SIZE;
     size_t selectedNumber = 0;
-    for (; selectedNumber < collectRegionSet_.size(); selectedNumber++) {
-        Region *region = collectRegionSet_[selectedNumber];
+    for (size_t i = 0; i < collectRegionSet_.size(); i++) {
+        Region *region = collectRegionSet_[i];
         leftEvacuateSize -= static_cast<int64_t>(region->AliveObject());
         if (leftEvacuateSize > 0) {
-            RemoveCSetRegion(region);
-            allocator_->DetachFreeObjectSet(region);
-            region->SetGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
-            region->ResetAliveObject();
+            RemoveRegion(region);
+            DecreaseLiveObjectSize(region->AliveObject());
+            selectedNumber++;
         } else {
-            break;
+            region->ClearGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
         }
     }
     if (collectRegionSet_.size() > selectedNumber) {
         collectRegionSet_.resize(selectedNumber);
     }
-}
-
-void SharedOldSpace::RevertCSets()
-{
-    EnumerateCollectRegionSet([this](Region *region) {
-        region->ClearGCFlag(RegionGCFlags::IN_SHARED_COLLECT_SET);
-        AddCSetRegion(region);
-        allocator_->CollectFreeObjectSet(region);
-    });
-    collectRegionSet_.clear();
 }
 
 void SharedOldSpace::ReclaimCSets()
@@ -491,18 +485,6 @@ void SharedOldSpace::ReclaimCSets()
     collectRegionSet_.clear();
 }
 
-void SharedOldSpace::AddCSetRegion(Region *region)
-{
-    ASSERT(region != nullptr);
-    regionList_.AddNode(region);
-}
-
-void SharedOldSpace::RemoveCSetRegion(Region *region)
-{
-    ASSERT(region != nullptr);
-    regionList_.RemoveNode(region);
-}
-
 void SharedOldSpace::Merge(SharedLocalSpace *localSpace)
 {
     localSpace->FreeBumpPoint();
@@ -511,7 +493,7 @@ void SharedOldSpace::Merge(SharedLocalSpace *localSpace)
     localSpace->EnumerateRegions([&](Region *region) {
         localSpace->DetachFreeObjectSet(region);
         localSpace->RemoveRegion(region);
-        localSpace->DecreaseLiveObjectSize(region->AliveObject());
+        region->SetRegionTypeFlag(RegionTypeFlag::TO);
         AddRegion(region);
         IncreaseLiveObjectSize(region->AliveObject());
         allocator_->CollectFreeObjectSet(region);

@@ -1049,6 +1049,12 @@ void SharedHeap::TryTriggerConcurrentMarking(JSThread *thread)
     if (!CheckCanTriggerConcurrentMarking(thread)) {
         return;
     }
+#if ENABLE_MEMORY_OPTIMIZATION
+    if (TryCompressHeap()) {
+        TriggerConcurrentMarking<TriggerGCType::SHARED_PARTIAL_GC, MarkReason::ALLOCATION_LIMIT>(thread);
+        return;
+    }
+#endif
     bool triggerConcurrentMark = (GetHeapObjectSize() >= globalSpaceConcurrentMarkLimit_);
     if (triggerConcurrentMark && (OnStartupEvent() || IsJustFinishStartup())) {
         triggerConcurrentMark = ObjectExceedJustFinishStartupThresholdForCM();

@@ -146,8 +146,9 @@ public:
     NO_COPY_SEMANTIC(SharedOldSpace);
     NO_MOVE_SEMANTIC(SharedOldSpace);
 
-    static constexpr int64_t MAX_EVACUATION_SIZE = 2_MB;
-    static constexpr size_t MIN_COLLECT_REGION_SIZE = 5;
+    static constexpr int64_t MAX_EVACUATION_SIZE = 10_MB;
+    static constexpr size_t MIN_COLLECT_REGION_SIZE = 60;
+    static constexpr float CSET_REGION_ALIVE_RATIO = 0.35;
 
     size_t GetMergeSize() const
     {
@@ -166,10 +167,7 @@ public:
 
     void Merge(SharedLocalSpace *localSpace);
     void SelectCSets();
-    void RevertCSets();
     void ReclaimCSets();
-    void AddCSetRegion(Region *region);
-    void RemoveCSetRegion(Region *region);
 
     template<class Callback>
     void EnumerateCollectRegionSet(Callback &&cb) const

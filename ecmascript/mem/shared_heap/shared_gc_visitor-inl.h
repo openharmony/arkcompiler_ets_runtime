@@ -124,7 +124,7 @@ void SharedGCMarkObjectVisitor::HandleSlot(ObjectSlot slot, Region *rootRegion)
     if (!value.IsWeakForHeapObject()) {
         TaggedObject *object = value.GetTaggedObject();
         MarkAndPush(object, objectRegion);
-        if (objectRegion->InSCollectSet()) {
+        if (objectRegion->InSharedOldSpace() && (rootRegion != objectRegion)) {
             rootRegion->AtomicInsertCrossRegionRSet(slot.SlotAddress());
         }
     } else {

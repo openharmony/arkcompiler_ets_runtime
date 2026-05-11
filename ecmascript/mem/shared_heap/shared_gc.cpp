@@ -108,6 +108,9 @@ void SharedGC::Mark()
 }
 void SharedGC::PreSweep()
 {
+    if (markingInProgress_ && sHeap_->GetGCType() == TriggerGCType::SHARED_PARTIAL_GC) {
+        sHeap_->GetOldSpace()->SelectCSets();
+    }
     sHeap_->GetSweeper()->Sweep(false);
     UpdateRecordWeakReference();
 }
@@ -116,9 +119,6 @@ void SharedGC::Evacuate()
 {
     if (sHeap_->HasCSetRegions()) {
         sHeap_->GetSharedGCEvacuator()->Evacuate();
-        evacuated_ = true;
-    } else {
-        evacuated_ = false;
     }
 }
 
@@ -150,7 +150,7 @@ void SharedGC::Sweep()
     };
     auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
     if (stringTableCleaner->IsEnableConcurrentSweep()) {
-        concurrentProcessStringTable_ = !evacuated_ && sHeap_->IsParallelGCEnabled() &&
+        concurrentProcessStringTable_ = sHeap_->IsParallelGCEnabled() &&
                                         !Runtime::GetInstance()->GetEcmaStringTable()->IsInUse();
     } else {
         concurrentProcessStringTable_ = false;

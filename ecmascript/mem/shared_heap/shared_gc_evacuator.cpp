@@ -26,35 +26,46 @@ void SharedGCEvacuator::Evacuate()
     UpdateReference();
 }
 
+void SharedGCEvacuator::EvacuateRegionWorkload::Process(uint32_t threadIndex)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCEvacuator::EvacuateRegionWorkload", "");
+    auto sTlabAllocator = evacuator_->GetOrCreateTlab(threadIndex);
+    region_->IterateAllMarkedBits([this, sTlabAllocator](void *mem) {
+        auto header = reinterpret_cast<TaggedObject *>(mem);
+        JSHClass *klass = header->GetClass();
+        size_t size = header->GetSize();
+        uintptr_t address = sTlabAllocator->Allocate(size, SHARED_COMPRESS_SPACE);
+        ASSERT(address != 0);
+        if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
+            LOG_ECMA_MEM(FATAL) << "memcpy_s failed";
+            UNREACHABLE();
+        }
+        if (UNLIKELY(inHeapProfiler_)) {
+            sHeap_->OnMoveEvent(reinterpret_cast<intptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
+        }
+        Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
+    });
+}
+
 void SharedGCEvacuator::EvacuateRegions()
 {
     TRACE_GC(GCStats::Scope::ScopeId::Evacuate,  sHeap_->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, ("SharedGCEvacuator::EvacuateRegions;cset count: "
         + std::to_string(sHeap_->GetOldSpace()->GetCollectSetRegionCount())).c_str(), "");
-    auto sTlabAllocator = new SharedTlabAllocator(sHeap_);
-    auto inHeapProfiler = sHeap_->InHeapProfiler();
-    sHeap_->GetOldSpace()->EnumerateCollectRegionSet([this, inHeapProfiler, sTlabAllocator](Region *region) {
-        region->IterateAllMarkedBits([this, inHeapProfiler, sTlabAllocator](void *mem) {
-            auto header = reinterpret_cast<TaggedObject *>(mem);
-            JSHClass *klass = header->GetClass();
-            size_t size = header->GetSize();
-            uintptr_t address = sTlabAllocator->Allocate(size, SHARED_COMPRESS_SPACE);
-            ASSERT(address != 0);
-            if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
-                LOG_ECMA_MEM(FATAL) << "memcpy_s failed";
-                UNREACHABLE();
-            }
-            if (UNLIKELY(inHeapProfiler)) {
-                sHeap_->OnMoveEvent(reinterpret_cast<intptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
-            }
-            Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
-            ProcessObjectField(reinterpret_cast<TaggedObject *>(address), klass);
-        });
-        sHeap_->GetOldSpace()->DecreaseCommitted(region->GetCapacity());
-        sHeap_->GetOldSpace()->DecreaseObjectSize(region->GetSize());
+    bool inHeapProfiler = sHeap_->InHeapProfiler();
+    sHeap_->GetOldSpace()->EnumerateCollectRegionSet([this, inHeapProfiler](Region *region) {
+        ASSERT(region->InSCollectSet());
+        AddWorkload(std::make_unique<EvacuateRegionWorkload>(this, region, sHeap_, inHeapProfiler));
     });
-    sTlabAllocator->Finalize();
-    delete sTlabAllocator;
+    PostParallelTasks();
+    ProcessWorkloads(MAIN_THREAD_INDEX);
+    for (auto sTlabAllocator : sTlabs_) {
+        if (sTlabAllocator) {
+            sTlabAllocator->Finalize();
+            delete sTlabAllocator;
+        }
+    }
+    sTlabs_.fill(nullptr);
 }
 
 void SharedGCEvacuator::UpdateReference()
@@ -71,27 +82,24 @@ void SharedGCEvacuator::UpdateReference()
         });
     });
     sHeap_->EnumerateOldSpaceRegions([this](Region *region) {
-        AddWorkload(std::make_unique<UpdateSharedReferenceWorkload>(this, region));
-    });
-    if (sHeap_->IsParallelGCEnabled()) {
-        LockHolder holder(lock_);
-        parallel_ = CalculateUpdateThreadNum();
-        auto dTid = DaemonThread::GetInstance()->GetThreadId();
-        for (int i = 0; i < parallel_; i++) {
-            common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<UpdateReferenceTask>(dTid, this));
+        ASSERT(!region->InSCollectSet());
+        if (region->IsToRegion()) {
+            AddWorkload(std::make_unique<UpdateToRegionReferenceWorkload>(this, region));
+        } else {
+            AddWorkload(std::make_unique<UpdateSharedReferenceWorkload>(this, region));
         }
-    }
+    });
+    PostParallelTasks();
     runtime->IterateSharedRoot(rootVisitor_);
     runtime->GCIterateThreadList([this](JSThread *thread) {
         ASSERT(thread->IsSuspended() || thread->HasLaunchedSuspendAll());
         auto vm = thread->GetEcmaVM();
         ObjectXRay::VisitVMRoots(vm, rootVisitor_);
     });
-    ProcessWorkloads(true);
-    WaitFinished();
+    ProcessWorkloads(MAIN_THREAD_INDEX);
 }
 
-void SharedGCEvacuator::UpdateLocalReferenceWorkload::Process([[maybe_unused]]bool isMain)
+void SharedGCEvacuator::UpdateLocalReferenceWorkload::Process([[maybe_unused]]uint32_t threadIndex)
 {
     region_->IterateAllLocalToShareBits([this](void *mem) {
         ObjectSlot slot(ToUintPtr(mem));
@@ -99,7 +107,7 @@ void SharedGCEvacuator::UpdateLocalReferenceWorkload::Process([[maybe_unused]]bo
     });
 }
 
-void SharedGCEvacuator::UpdateSharedReferenceWorkload::Process([[maybe_unused]]bool isMain)
+void SharedGCEvacuator::UpdateSharedReferenceWorkload::Process([[maybe_unused]]uint32_t threadIndex)
 {
     region_->IterateAllCrossRegionBits([this](void *mem) {
         ObjectSlot slot(ToUintPtr(mem));
@@ -107,10 +115,30 @@ void SharedGCEvacuator::UpdateSharedReferenceWorkload::Process([[maybe_unused]]b
     });
 }
 
-bool SharedGCEvacuator::UpdateReferenceTask::Run([[maybe_unused]] uint32_t threadIndex)
+void SharedGCEvacuator::UpdateToRegionReferenceWorkload::Process([[maybe_unused]]uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCEvacuator::UpdateReferenceTask", "");
-    evacuator_->ProcessWorkloads(false);
+    uintptr_t curPtr = region_->GetBegin();
+    uintptr_t endPtr = region_->GetEnd();
+    size_t objSize = 0;
+    while (curPtr < endPtr) {
+        auto freeObject = FreeObject::Cast(curPtr);
+        if (!freeObject->IsFreeObject()) {
+            auto obj = reinterpret_cast<TaggedObject *>(curPtr);
+            evacuator_->ProcessObjectField(obj, obj->GetClass());
+            objSize = obj->GetSize();
+        } else {
+            objSize = freeObject->Available();
+        }
+        curPtr += objSize;
+        CHECK_OBJECT_SIZE(objSize);
+    }
+    CHECK_REGION_END(curPtr, endPtr);
+}
+
+bool SharedGCEvacuator::ParallelTask::Run([[maybe_unused]]uint32_t threadIndex)
+{
+    ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "SharedGCEvacuator::ParallelTask", "");
+    evacuator_->ProcessWorkloads(threadIndex);
     return true;
 }
 
@@ -124,11 +152,10 @@ void SharedGCEvacuator::WaitFinished()
     }
 }
 
-int SharedGCEvacuator::CalculateUpdateThreadNum()
+int SharedGCEvacuator::CalculateParallelThreadNum()
 {
-    uint32_t count = workloads_.size();
-    constexpr double RATIO = 1.0 / 4;
-    count = std::pow(count, RATIO);
+    constexpr uint32_t regionPerThread = 8;
+    uint32_t count = workloads_.size() / regionPerThread;
     return static_cast<int>(std::min(std::max(1U, count), common::Taskpool::GetCurrentTaskpool()->GetTotalThreadNum()));
 }
 
@@ -146,23 +173,18 @@ bool SharedGCEvacuator::UpdateObjectSlot(ObjectSlot slot)
     bool isWeak = value.IsWeakForHeapObject();
     TaggedObject *object = value.GetHeapObject();
     MarkWord markWord(object, RELAXED_LOAD);
-    if (markWord.IsForwardingAddress()) {
-        TaggedObject *dst = markWord.ToForwardingAddress();
-        if (isWeak) {
-            dst = JSTaggedValue(dst).CreateAndGetWeakRef().GetRawTaggedObject();
-        }
-        slot.Update(dst);
-        return true;
-    } else {
-        slot.Clear();
-        return false;
+    ASSERT(markWord.IsForwardingAddress());
+    TaggedObject *dst = markWord.ToForwardingAddress();
+    if (isWeak) {
+        dst = JSTaggedValue(dst).CreateAndGetWeakRef().GetRawTaggedObject();
     }
+    slot.Update(dst);
+    return true;
 }
 
 void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr,
     uintptr_t endAddr, VisitObjectArea area)
 {
-    Region *rootRegion = Region::ObjectAddressToRange(root);
     ObjectSlot start(startAddr);
     ObjectSlot end(endAddr);
     if (UNLIKELY(area == VisitObjectArea::IN_OBJECT)) {
@@ -177,31 +199,19 @@ void SharedGCEvacuator::ObjectFieldCSetVisitor::VisitObjectRangeImpl(BaseObject 
         for (ObjectSlot slot = start; slot < end; slot++) {
             auto attr = layout->GetAttr(THREAD_ARG_PLACEHOLDER, index++);
             if (attr.IsTaggedRep()) {
-                evacuator_->UpdateCrossRegionRSet(slot, rootRegion);
+                evacuator_->UpdateObjectSlot(slot);
             }
         }
         return;
     }
     for (ObjectSlot slot = start; slot < end; slot++) {
-        evacuator_->UpdateCrossRegionRSet(slot, rootRegion);
+        evacuator_->UpdateObjectSlot(slot);
     }
 }
 
 void SharedGCEvacuator::ProcessObjectField(TaggedObject *object, JSHClass *hclass)
 {
     ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, hclass, objectFieldCSetVisitor_);
-}
-
-void SharedGCEvacuator::UpdateCrossRegionRSet(ObjectSlot slot, Region *objectRegion)
-{
-    JSTaggedType value = slot.GetTaggedType();
-    if (!JSTaggedValue(value).IsHeapObject()) {
-        return;
-    }
-    Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (valueRegion->InSCollectSet()) {
-        objectRegion->InsertCrossRegionRSet(slot.SlotAddress());
-    }
 }
 
 void SharedGCEvacuator::UpdateRootVisitor::VisitRoot([[maybe_unused]] Root type, ObjectSlot slot)
@@ -240,6 +250,18 @@ void SharedGCEvacuator::UpdateRootVisitor::UpdateObjectSlotRoot(ObjectSlot slot)
             } else {
                 slot.Clear();
             }
+        }
+    }
+}
+
+void SharedGCEvacuator::PostParallelTasks()
+{
+    if (sHeap_->IsParallelGCEnabled()) {
+        LockHolder holder(lock_);
+        parallel_ = CalculateParallelThreadNum();
+        auto dTid = DaemonThread::GetInstance()->GetThreadId();
+        for (int i = 0; i < parallel_; i++) {
+            common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelTask>(dTid, this));
         }
     }
 }

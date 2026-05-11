@@ -670,6 +670,11 @@ public:
         ClearGCFlag(RegionGCFlags::IN_INACTIVE_SEMI_SPACE);
     }
 
+    RememberedSet *GetCrossRegionRememberedSet()
+    {
+        return crossRegionSet_;
+    }
+
     void SetSwept()
     {
         SetGCFlag(RegionGCFlags::HAS_BEEN_SWEPT);

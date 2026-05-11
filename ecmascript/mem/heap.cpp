@@ -609,7 +609,8 @@ void SharedHeap::ReclaimRegions(TriggerGCType gcType, bool gcThread)
     sSweeper_->WaitAllTaskFinished();
     EnumerateOldSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
-        region->ClearCrossRegionRSet();
+        region->DeleteCrossRegionRSet();
+        region->ResetRegionTypeFlag();
     });
     if (!clearTaskFinished_) {
         LockHolder holder(waitClearTaskFinishedMutex_);

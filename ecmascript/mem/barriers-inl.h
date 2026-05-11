@@ -83,7 +83,7 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
             // SharedGC::MarkRoots, so just mark all the new object is enough, do not need to push them to
             // workmanager and recursively visit slots of that.
             ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
-            if (valueRegion->InSCollectSet() && objectRegion->InSharedHeap()) {
+            if (valueRegion->InSCollectSet() && objectRegion->InSharedHeap() && (valueRegion != objectRegion)) {
                 objectRegion->AtomicInsertCrossRegionRSet(slotAddr);
             }
             valueRegion->AtomicMark(JSTaggedValue(value).GetHeapObject());
