@@ -422,7 +422,14 @@ public:
     using HasDeletePropertyBit = ObjectSizeInWordsBits::NextFlag;                                              //
     using IsAllTaggedPropBit = HasDeletePropertyBit::NextFlag;                                                 // 32
     using BitField1LastBit = IsAllTaggedPropBit;
+
+    // BitField2 for JSON serialization optimization flags (stored in separate uint32_t field)
+    using MayHaveInterestingPropertiesBit = BitField<uint32_t, 0, 1>;  // bit 0 of BitField2
+    using HasSymbolPropertiesBit = MayHaveInterestingPropertiesBit::NextFlag;  // bit 1 of BitField2
+    using BitField2LastBit = HasSymbolPropertiesBit;
+
     static_assert(BitField1LastBit::START_BIT + BitField1LastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
+    static_assert(BitField2LastBit::START_BIT + BitField2LastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static JSHClass *Cast(const TaggedObject *object)
     {
@@ -566,6 +573,8 @@ public:
     {
         SetBitField(0UL);
         SetBitField1(0UL);
+        SetBitField2(0UL);
+        SetPadding(0UL);
         SetProfileType(0ULL);
     }
 
@@ -1159,6 +1168,30 @@ public:
     inline void SetIsJSShared(bool flag) const
     {
         IsJSSharedBit::Set<uint32_t>(flag, GetBitFieldAddr());
+    }
+
+    // JSON serialization optimization flags - stored in BitField2
+    inline void SetMayHaveInterestingProperties(bool flag)
+    {
+        MayHaveInterestingPropertiesBit::Set<uint32_t>(flag, GetBitField2Addr());
+    }
+
+    inline bool MayHaveInterestingProperties() const
+    {
+        return MayHaveInterestingPropertiesBit::Decode(GetBitField2());
+    }
+
+    inline void SetHasSymbolProperties(bool flag)
+    {
+        HasSymbolPropertiesBit::Set<uint32_t>(flag, GetBitField2Addr());
+        if (flag) {
+            SetMayHaveInterestingProperties(true);
+        }
+    }
+
+    inline bool HasSymbolProperties() const
+    {
+        return HasSymbolPropertiesBit::Decode(GetBitField2());
     }
 
     inline bool IsJSError() const
@@ -2146,7 +2179,9 @@ public:
 
     static constexpr size_t BIT_FIELD_OFFSET = TaggedObjectSize();
     ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, BIT_FIELD1_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, PROTOTYPE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, BIT_FIELD2_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(BitField2, uint32_t, BIT_FIELD2_OFFSET, PADDING_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Padding, uint32_t, PADDING_OFFSET, PROTOTYPE_OFFSET);  // Padding for 8-byte alignment
     ACCESSORS_DCHECK(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET, IsString);
     ACCESSORS_SYNCHRONIZED_DCHECK_WITH_RB_MODE(Layout, LAYOUT_OFFSET, TRANSTIONS_OFFSET, IsString);
     ACCESSORS_DCHECK(Transitions, TRANSTIONS_OFFSET, PARENT_OFFSET, IsString);
@@ -2268,6 +2303,11 @@ private:
     uint32_t *GetBitField1Addr() const
     {
         return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD1_OFFSET);
+    }
+
+    uint32_t *GetBitField2Addr() const
+    {
+        return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD2_OFFSET);
     }
     friend class RuntimeStubs;
 };

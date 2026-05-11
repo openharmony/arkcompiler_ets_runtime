@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_primitive_ref.h"
@@ -148,7 +149,7 @@ JSHandle<JSTaggedValue> JsonStringifier::StringifyInternal(const JSHandle<JSTagg
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
     if (!result.IsUndefined()) {
         if (encoding_ == Encoding::ONE_BYTE_ENCODING) {
-            return JSHandle<JSTaggedValue>(factory_->NewFromUtf8Literal(
+            return JSHandle<JSTaggedValue>(factory_->NewFromUtf8LiteralCompress(
                 reinterpret_cast<const uint8_t *>(oneByteResult_.GetBuffer()), oneByteResult_.GetLength()));
         } else {
             return JSHandle<JSTaggedValue>(factory_->NewFromUtf16Literal(
@@ -197,6 +198,105 @@ bool JsonStringifier::CalculateStringGap(const JSHandle<EcmaString> &primString)
     return true;
 }
 
+bool JsonStringifier::HasOwnToJsonProperty(const JSHandle<JSObject> &obj) const
+{
+    JSTaggedValue toJsonValue = thread_->GlobalConstants()->GetHandledToJsonString().GetTaggedValue();
+    JSHandle<TaggedArray> propertiesArr(thread_, obj->GetProperties(thread_));
+    if (!propertiesArr->IsDictionaryMode()) {
+        JSHandle<JSHClass> jsHClass(thread_, obj->GetJSHClass());
+        int entry = JSHClass::FindPropertyEntry(thread_, *jsHClass, toJsonValue);
+        if (entry < 0) {
+            return false;
+        }
+
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
+        PropertyAttributes attr(layoutInfo->GetAttr(thread_, entry));
+        JSTaggedValue value = attr.IsInlinedProps()
+            ? obj->GetPropertyInlinedPropsWithRep(thread_, static_cast<uint32_t>(entry), attr)
+            : propertiesArr->Get(thread_, static_cast<uint32_t>(entry) - jsHClass->GetInlinedProperties());
+        return !value.IsHole();
+    }
+
+    if (obj->IsJSGlobalObject()) {
+        JSHandle<GlobalDictionary> globalDic(propertiesArr);
+        int index = globalDic->FindEntry(thread_, toJsonValue);
+        if (index < 0) {
+            return false;
+        }
+        return !globalDic->GetValue(thread_, index).IsHole();
+    }
+
+    JSHandle<NameDictionary> nameDic(propertiesArr);
+    int index = nameDic->FindEntry(thread_, toJsonValue);
+    if (index < 0) {
+        return false;
+    }
+    return !nameDic->GetValue(thread_, index).IsHole();
+}
+
+bool JsonStringifier::CheckProtoChainForInterestingProperties(const JSHandle<JSHClass> &receiverHClass,
+                                                              JSTaggedValue current)
+{
+    while (current.IsECMAObject()) {
+        JSHClass *hclass = current.GetTaggedObject()->GetClass();
+        if (hclass->IsJSProxy()) {
+            receiverHClass->SetMayHaveInterestingProperties(true);
+            return true;
+        }
+
+        JSHandle<JSObject> currentObj(thread_, current);
+        if (HasOwnToJsonProperty(currentObj)) {
+            receiverHClass->SetMayHaveInterestingProperties(true);
+            return true;
+        }
+
+        JSTaggedValue proto = hclass->GetPrototype(thread_);
+        if (proto.IsNull() || !proto.IsECMAObject()) {
+            receiverHClass->SetMayHaveInterestingProperties(false);
+            JSHClass::EnableProtoChangeMarker(thread_, receiverHClass);
+            return false;
+        }
+        current = proto;
+    }
+    return false;
+}
+
+bool JsonStringifier::MayHaveInterestingProperties(const JSHandle<JSTaggedValue> &value)
+{
+    if (!value->IsECMAObject()) {
+        return false;
+    }
+
+    if (UNLIKELY(replacer_->IsCallable()) || value->IsJSPrimitiveRef()) {
+        return true;
+    }
+
+    JSHandle<JSObject> object(value);
+    JSHandle<JSHClass> receiverHClass(thread_, object->GetJSHClass());
+    if (!receiverHClass->MayHaveInterestingProperties()) {
+        JSTaggedValue receiverProto = receiverHClass->GetPrototype(thread_);
+        if (!receiverProto.IsECMAObject()) {
+            return false;
+        }
+        JSHClass *protoHClass = receiverProto.GetTaggedObject()->GetClass();
+        JSTaggedValue markerValue = protoHClass->GetProtoChangeMarker(thread_);
+        if (!markerValue.IsProtoChangeMarker() ||
+            !ProtoChangeMarker::Cast(markerValue.GetTaggedObject())->GetHasChanged()) {
+            return false;
+        }
+        receiverHClass->SetMayHaveInterestingProperties(true);
+    }
+
+    JSTaggedValue current = value.GetTaggedValue();
+    if (CheckProtoChainForInterestingProperties(receiverHClass, current)) {
+        return true;
+    }
+
+    receiverHClass->SetMayHaveInterestingProperties(false);
+    JSHClass::EnableProtoChangeMarker(thread_, receiverHClass);
+    return false;
+}
+
 template <bool ReplacerAndGapUndefined>
 JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &object,
                                                  const JSHandle<JSTaggedValue> &key,
@@ -205,7 +305,20 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
     JSTaggedValue tagValue = value.GetTaggedValue();
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     // If Type(value) is Object, then
-    if (value->IsECMAObject() || value->IsBigInt()) {
+    bool isBigInt = value->IsBigInt();
+    bool isJSPrimitiveRef = value->IsJSPrimitiveRef();
+    bool isECMAObject = value->IsECMAObject();
+    bool hasInterestingProps = false;
+    if (isECMAObject) {
+        hasInterestingProps = MayHaveInterestingProperties(value);
+        // MayHaveInterestingProperties may trigger GC, must refresh tagValue after
+        tagValue = value.GetTaggedValue();
+        isECMAObject = tagValue.IsECMAObject();
+    } else {
+        tagValue = value.GetTaggedValue();
+    }
+
+    if (isBigInt || isJSPrimitiveRef || (isECMAObject && hasInterestingProps)) {
         // a. Let toJSON be Get(value, "toJSON").
         JSHandle<JSTaggedValue> toJson = thread_->GlobalConstants()->GetHandledToJsonString();
         JSHandle<JSTaggedValue> toJsonFun(
@@ -255,6 +368,48 @@ JSHandle<JSTaggedValue> JsonStringifier::SerializeHolder(const JSHandle<JSTagged
         return JSHandle<JSTaggedValue>(holder);
     }
     return object;
+}
+
+template <bool ReplacerAndGapUndefined>
+bool JsonStringifier::SerializeFastArrayPrimitive(JSTaggedValue tagVal)
+{
+    JSTaggedType rawType = tagVal.GetRawData();
+    if (rawType == JSTaggedValue::VALUE_NULL || tagVal.IsUndefined() || tagVal.IsHole()) {
+        AppendLiteral("null");
+        return true;
+    }
+    if (rawType == JSTaggedValue::VALUE_TRUE) {
+        AppendLiteral("true");
+        return true;
+    }
+    if (rawType == JSTaggedValue::VALUE_FALSE) {
+        AppendLiteral("false");
+        return true;
+    }
+    if (tagVal.IsInt()) {
+        EnsureCapacityFor(INT_MAX_LENGTH);
+        if (encoding_ == Encoding::ONE_BYTE_ENCODING) {
+            AppendIntToFastStringBuilder(oneByteResult_, tagVal.GetInt());
+        } else {
+            AppendIntToFastStringBuilder(twoBytesResult_, tagVal.GetInt());
+        }
+        return true;
+    }
+    if (tagVal.IsDouble()) {
+        double d = tagVal.GetDouble();
+        if (std::isfinite(d)) {
+            EnsureCapacityFor(DOUBLE_MAX_LENGTH);
+            if (encoding_ == Encoding::ONE_BYTE_ENCODING) {
+                AppendDoubleToFastStringBuilder(oneByteResult_, d);
+            } else {
+                AppendDoubleToFastStringBuilder(twoBytesResult_, d);
+            }
+        } else {
+            AppendLiteral("null");
+        }
+        return true;
+    }
+    return false;
 }
 
 template <bool ReplacerAndGapUndefined>
@@ -847,17 +1002,15 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
         Indent();
         JSMutableHandle<JSTaggedValue> tagValHandle(thread_, JSTaggedValue::Undefined());
         for (uint32_t i = 0; i < len; i++) {
+            // Fast path: when no replacer, no gap, and ReplacerAndGapUndefined is true,
+            bool useFastArrayPath = ReplacerAndGapUndefined && gap_.empty();
             JSTaggedValue tagVal = ObjectFastOperator::FastGetPropertyByIndex(thread_, value.GetTaggedValue(), i);
-            tagValHandle.Update(tagVal);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             if (UNLIKELY(tagVal.IsAccessor())) {
-                JSTaggedValue getterResult = JSObject::CallGetter(
-                    thread_, AccessorData::Cast(tagVal.GetTaggedObject()), value);
-                tagValHandle.Update(getterResult);
+                tagVal = JSObject::CallGetter(thread_, AccessorData::Cast(tagVal.GetTaggedObject()), value);
+                tagValHandle.Update(tagVal);
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
-            handleKey_.Update(JSTaggedValue(i));
-            handleValue_.Update(tagValHandle.GetTaggedValue());
 
             if (i > 0) {
                 AppendChar(',');
@@ -865,6 +1018,13 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
             if (!gap_.empty()) {
                 NewLine();
             }
+            if (useFastArrayPath && !tagVal.IsHeapObject() &&
+                SerializeFastArrayPrimitive<ReplacerAndGapUndefined>(tagVal)) {
+                    continue;
+            }
+            tagValHandle.Update(tagVal);
+            handleKey_.Update(JSTaggedValue(i));
+            handleValue_.Update(tagVal);
             JSTaggedValue serializeValue = GetSerializeValue<ReplacerAndGapUndefined>(value, handleKey_, handleValue_);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             handleValue_.Update(serializeValue);
@@ -989,6 +1149,11 @@ bool JsonStringifier::SerializeElements(const JSHandle<JSObject> &obj, bool hasC
     return hasContent;
 }
 
+bool JsonStringifier::ShouldSerializeKey(bool hasSymbol, JSTaggedValue key)
+{
+    return !hasSymbol || key.IsString();
+}
+
 template <bool ReplacerAndGapUndefined>
 bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasContent)
 {
@@ -996,18 +1161,20 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
     if (!propertiesArr->IsDictionaryMode()) {
         bool hasChangedToDictionaryMode = false;
         JSHandle<JSHClass> jsHClass(thread_, obj->GetJSHClass());
+        bool hasSymbol = jsHClass->HasSymbolProperties();
         if (jsHClass->GetEnumCache(thread_).IsEnumCacheOwnValid(thread_)) {
             auto cache = JSHClass::GetEnumCacheOwnWithOutCheck(thread_, jsHClass);
             uint32_t length = cache->GetLength();
             uint32_t dictStart = length;
+            LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
+            uint32_t inlinedProps = jsHClass->GetInlinedProperties();
             for (uint32_t i = 0; i < length; i++) {
                 JSTaggedValue key = cache->Get(thread_, i);
-                if (!key.IsString()) {
+                if (!ShouldSerializeKey(hasSymbol, key)) {
                     continue;
                 }
                 handleKey_.Update(key);
                 JSTaggedValue value;
-                LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
                 int index = JSHClass::FindPropertyEntry(thread_, *jsHClass, key);
                 PropertyAttributes attr(layoutInfo->GetAttr(thread_, index));
                 ASSERT(static_cast<int>(attr.GetOffset()) == index);
@@ -1061,13 +1228,13 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
         if (end <= 0) {
             return hasContent;
         }
+        LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
         for (int i = 0; i < end; i++) {
-            LayoutInfo *layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
             JSTaggedValue key = layoutInfo->GetKey(thread_, i);
             if (!hasChangedToDictionaryMode) {
                 PropertyAttributes attr(layoutInfo->GetAttr(thread_, i));
                 ASSERT(static_cast<int>(attr.GetOffset()) == i);
-                if (key.IsString() && attr.IsEnumerable()) {
+                if (ShouldSerializeKey(hasSymbol, key) && attr.IsEnumerable()) {
                     handleKey_.Update(key);
                     JSTaggedValue value = attr.IsInlinedProps()
                         ? obj->GetPropertyInlinedPropsWithRep(thread_, static_cast<uint32_t>(i), attr)
@@ -1082,11 +1249,19 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, bool hasConte
                     }
                     handleValue_.Update(value);
                     hasContent = JsonStringifier::AppendJsonString<ReplacerAndGapUndefined>(obj, hasContent);
+                    layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
                     if (obj->GetProperties(thread_).IsDictionary()) {
                         hasChangedToDictionaryMode = true;
                         propertiesArr = JSHandle<TaggedArray>(thread_, obj->GetProperties(thread_));
                     }
-                    jsHClass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
+                    if (!hasChangedToDictionaryMode) {
+                        JSHClass *currentHClass = obj->GetJSHClass();
+                        if (UNLIKELY(currentHClass != jsHClass.GetTaggedValue().GetTaggedObject())) {
+                            jsHClass = JSHandle<JSHClass>(thread_, currentHClass);
+                            layoutInfo = LayoutInfo::Cast(jsHClass->GetLayout(thread_).GetTaggedObject());
+                            hasSymbol = jsHClass->HasSymbolProperties();
+                        }
+                    }
                     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 }
             } else {

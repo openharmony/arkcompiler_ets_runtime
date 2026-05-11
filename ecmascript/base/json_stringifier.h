@@ -309,6 +309,9 @@ private:
     bool SerializeJSArray(const JSHandle<JSTaggedValue> &value);
 
     template <bool ReplacerAndGapUndefined>
+    bool SerializeFastArrayPrimitive(JSTaggedValue tagVal);
+
+    template <bool ReplacerAndGapUndefined>
     bool SerializeJSProxy(const JSHandle<JSTaggedValue> &object);
 
     template <bool ReplacerAndGapUndefined>
@@ -331,10 +334,18 @@ private:
     template <bool ReplacerAndGapUndefined>
     bool SerializeKeys(const JSHandle<JSObject> &obj, bool hasContent);
 
+    bool ShouldSerializeKey(bool hasSymbol, JSTaggedValue key);
+
     JSHandle<JSTaggedValue> SerializeHolder(const JSHandle<JSTaggedValue> &object,
                                             const JSHandle<JSTaggedValue> &value);
 
     bool CheckStackPushSameValue(JSHandle<JSTaggedValue> value);
+
+    bool HasOwnToJsonProperty(const JSHandle<JSObject> &obj) const;
+
+    bool MayHaveInterestingProperties(const JSHandle<JSTaggedValue> &value);
+
+    bool CheckProtoChainForInterestingProperties(const JSHandle<JSHClass> &receiverHClass, JSTaggedValue current);
 
     inline void Indent()
     {

@@ -159,8 +159,8 @@ public:
         fieldNameTable_ = {
             {JSType::INVALID, {"INVALID"}},
             {JSType::HCLASS, {
-                "BitField", "BitField1", "Proto", "Layout", "Transitions", "Parent", "ProtoChangeMarker",
-                "ProtoChangeDetails", "EnumCache", "DependentInfos",
+                "BitField", "BitField1", "BitField2", "Padding", "Proto", "Layout", "Transitions",
+                "Parent", "ProtoChangeMarker", "ProtoChangeDetails", "EnumCache", "DependentInfos",
                 "ProfilerType", "HCLASS"}},
             {JSType::ACCESSOR_DATA, {"Getter", "Setter", "ACCESSOR_DATA"}},
             {JSType::AOT_LITERAL_INFO, {"AOT_LITERAL_INFO"}},
@@ -422,7 +422,8 @@ public:
         // endOffset: LAST_OFFSET - (start offset of the first field of this type)
         fieldOffsetTable_ = {
             {JSType::HCLASS, {
-                JSHClass::BIT_FIELD_OFFSET, JSHClass::BIT_FIELD1_OFFSET, JSHClass::PROTOTYPE_OFFSET,
+                JSHClass::BIT_FIELD_OFFSET, JSHClass::BIT_FIELD1_OFFSET, JSHClass::BIT_FIELD2_OFFSET,
+                JSHClass::PADDING_OFFSET, JSHClass::PROTOTYPE_OFFSET,
                 JSHClass::LAYOUT_OFFSET, JSHClass::TRANSTIONS_OFFSET, JSHClass::PARENT_OFFSET,
                 JSHClass::PROTO_CHANGE_MARKER_OFFSET, JSHClass::PROTO_CHANGE_DETAILS_OFFSET,
                 JSHClass::ENUM_CACHE_OFFSET,
@@ -1263,7 +1264,9 @@ public:
         // { typeName: [size of all fields' in the same order as declared in .h files]}
         fieldSizeTable_ = {
             {JSType::HCLASS, {JSHClass::BIT_FIELD1_OFFSET - JSHClass::BIT_FIELD_OFFSET,
-                              JSHClass::PROTOTYPE_OFFSET - JSHClass::BIT_FIELD1_OFFSET,
+                              JSHClass::BIT_FIELD2_OFFSET - JSHClass::BIT_FIELD1_OFFSET,
+                              JSHClass::PADDING_OFFSET - JSHClass::BIT_FIELD2_OFFSET,
+                              JSHClass::PROTOTYPE_OFFSET - JSHClass::PADDING_OFFSET,
                               JSHClass::LAYOUT_OFFSET - JSHClass::PROTOTYPE_OFFSET,
                               JSHClass::TRANSTIONS_OFFSET - JSHClass::LAYOUT_OFFSET,
                               JSHClass::PARENT_OFFSET - JSHClass::TRANSTIONS_OFFSET,
