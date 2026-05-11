@@ -20,6 +20,7 @@
           "ets_runtime_feature_enable_inst_prefetch",
           "ets_runtime_feature_pgo_path",
           "ets_runtime_feature_enable_list",
+          "ets_runtime_feature_enable_static_backtrace",
           "ets_runtime_support_jit_code_sign",
           "ets_runtime_feature_enable_bsymbolic",
           "ets_runtime_feature_enable_dfx"
