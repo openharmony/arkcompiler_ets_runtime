@@ -15,7 +15,7 @@
 #include "ecmascript/compiler/compilation_env.h"
 
 namespace panda::ecmascript {
-CompilationEnv::CompilationEnv(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThread()),
+CompilationEnv::CompilationEnv(EcmaVM *vm) : vm_(vm), thread_(vm_->GetJSThreadNoCheck()),
     ptManager_(nullptr) { }
 
 NativeAreaAllocator *CompilationEnv::GetNativeAreaAllocator() const

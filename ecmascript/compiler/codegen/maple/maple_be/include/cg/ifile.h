@@ -284,23 +284,9 @@ public:
         return value;
     }
 
-    uint64 GetDataElem64(size_t index)
-    {
-        uint64 value = 0;
-        errno_t res = memcpy_s(&value, sizeof(uint64), data.data() + index, sizeof(uint64));
-        CHECK_FATAL(res == EOK, "call memcpy_s failed");
-        return value;
-    }
-
     const MapleVector<uint8> &GetData() const
     {
         return data;
-    }
-
-    void Swap(const void *value, size_t index, size_t size)
-    {
-        errno_t res = memcpy_s(data.data() + index, size, value, size);
-        CHECK_FATAL(res == EOK, "call memcpy_s failed");
     }
 
     static void AddLabel2Offset(Label2OffsetMap &label2Offsets, const std::string &name, ObjLabel &objLabel)
