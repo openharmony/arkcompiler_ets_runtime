@@ -19,6 +19,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/module_tools.h"
 #include "ecmascript/napi/jsnapi_helper.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/module/module_manager_map.h"
@@ -172,7 +173,31 @@ public:
     {
         return moduleImportData_;
     }
-    
+
+    std::string GetImportStackDataForJSCrash(size_t maxSize) const
+    {
+        return ModuleTools::TruncateImportStackForJSCrash(moduleImportData_, maxSize);
+    }
+ 
+    std::string GetImportStackDataForCPPCrash(const CString &moduleName, size_t maxSize) const
+    {
+        return ModuleTools::TruncateImportStackForCPPCrash(moduleName, moduleImportData_, maxSize);
+    }
+
+    std::string GetModuleImportStackContent(size_t headLength) const
+    {
+        return moduleImportData_.substr(headLength);
+    }
+
+    void SetModuleImportStackContent(const std::string &content, std::string_view head)
+    {
+        moduleImportData_ = std::string(head) + content;
+    }
+
+    void InsertModuleImportStackEntry(const std::string &entry, size_t headLength)
+    {
+        moduleImportData_.insert(headLength, entry);
+    }
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);

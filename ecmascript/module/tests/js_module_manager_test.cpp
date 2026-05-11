@@ -672,4 +672,559 @@ HWTEST_F_L0(ModuleManagerTest, ModuleImportStackScope_FormatStackNumber)
     // Reset options
     instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
 }
+
+/**
+  * @tc.name: ModuleManager_TruncateModuleImportStack_NoTruncate
+  * @tc.desc: Test TruncateModuleImportStack when no truncation is needed
+  * @tc.type: FUNC
+  */
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateModuleImportStack_NoTruncate)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("test.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get stack data that is smaller than maxSize
+        std::string result = moduleManager->GetImportStackDataForJSCrash(64 * 1024);
+
+        // Should return the full stack without truncation
+        EXPECT_NE(result.find("test.ets"), std::string::npos);
+        EXPECT_EQ(result.find("...."), std::string::npos); // No ellipsis
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_TruncateModuleImportStack_NoNewlines
+* @tc.desc: Test TruncateModuleImportStack when no newlines are found (headEnd == 0, tailStart >= size)
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateModuleImportStack_NoNewlines)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    // Create a module with a very long name to test truncation without newlines in the truncation area
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("very_long_module_name_without_any_newlines_in_the_truncation_area");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Use a small maxSize that will force truncation
+        // The truncation point may not align with newlines, testing the fallback to halfSize
+        std::string result = moduleManager->GetImportStackDataForJSCrash(40);
+
+        // Should contain ellipsis indicating truncation occurred
+        EXPECT_NE(result.find("...."), std::string::npos);
+
+        // Result should be within the size limit (or close to it due to newline alignment)
+        EXPECT_TRUE(result.size() <= 45); // Allow some margin for newline alignment
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_GetModuleImportStackDataForJS
+* @tc.desc: Test GetImportStackDataForJSCrash method
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_GetModuleImportStackDataForJS)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("test_for_js.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get stack data for JS with 64KB limit
+        std::string result = moduleManager->GetImportStackDataForJSCrash(64 * 1024);
+
+        // Should contain the module name
+        EXPECT_NE(result.find("test_for_js.ets"), std::string::npos);
+
+        // Should start with the correct header
+        EXPECT_NE(result.find("\nModuleImportStack:"), std::string::npos);
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_GetImportStackDataForCPPCrash
+* @tc.desc: Test GetImportStackDataForCPPCrash method
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_GetImportStackDataForCPPCrash)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("test_for_cpp.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get stack data for CPP with 64KB limit
+        std::string result = moduleManager->GetImportStackDataForCPPCrash("test_for_cpp.ets", 64 * 1024);
+
+        // Should contain the module name
+        EXPECT_NE(result.find("test_for_cpp.ets"), std::string::npos);
+
+        // Should contain the error message prefix
+        EXPECT_NE(result.find("Failed to load"), std::string::npos);
+        EXPECT_NE(result.find("dependency import call stack"), std::string::npos);
+    }
+
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_RenumberModuleImportStack
+* @tc.desc: Test RenumberModuleImportStack method
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_RenumberModuleImportStack)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module1 = instance->GetFactory()->NewSourceTextModule();
+    module1->SetEcmaModuleRecordNameString("renumber_module1.ets");
+
+    JSHandle<SourceTextModule> module2 = instance->GetFactory()->NewSourceTextModule();
+    module2->SetEcmaModuleRecordNameString("renumber_module2.ets");
+
+    {
+        ModuleImportStackScope scope1(thread, module1);
+        {
+            ModuleImportStackScope scope2(thread, module2);
+
+            std::string_view stack = moduleManager->GetModuleImportStackData();
+            // Should have #0 and #1
+            EXPECT_NE(stack.find("#1 renumber_module1.ets"), std::string::npos);
+            EXPECT_NE(stack.find("#0 renumber_module2.ets"), std::string::npos);
+        }
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+/**
+* @tc.name: ModuleManager_TruncateModuleImportStack_WithNewlines
+* @tc.desc: Test TruncateModuleImportStack when newlines are found for head and tail
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateModuleImportStack_WithNewlines)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    // Create multiple modules to build a larger stack
+    JSHandle<SourceTextModule> module1 = instance->GetFactory()->NewSourceTextModule();
+    module1->SetEcmaModuleRecordNameString("module1.ets");
+
+    JSHandle<SourceTextModule> module2 = instance->GetFactory()->NewSourceTextModule();
+    module2->SetEcmaModuleRecordNameString("module2.ets");
+
+    JSHandle<SourceTextModule> module3 = instance->GetFactory()->NewSourceTextModule();
+    module3->SetEcmaModuleRecordNameString("module3.ets");
+
+    {
+        ModuleImportStackScope scope1(thread, module1);
+        {
+            ModuleImportStackScope scope2(thread, module2);
+            {
+                ModuleImportStackScope scope3(thread, module3);
+                // Use a maxSize that forces truncation but keeps head and tail
+                std::string result = moduleManager->GetImportStackDataForJSCrash(62);
+                // Should contain ellipsis
+                EXPECT_NE(result.find("...."), std::string::npos);
+
+                // Should contain head (module1 at the bottom of stack)
+                EXPECT_NE(result.find("module1.ets"), std::string::npos);
+
+                // Should contain tail (module3 at the top of stack)
+                EXPECT_NE(result.find("module3.ets"), std::string::npos);
+
+                // module2 should be truncated (in the middle)
+                EXPECT_EQ(result.find("module2.ets"), std::string::npos);
+            }
+        }
+    }
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+    * @tc.name: ModuleManager_TruncateModuleImportStack_BoundarySize
+    * @tc.desc: Test TruncateModuleImportStack with boundary maxSize values
+    * @tc.type: FUNC
+    */
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateModuleImportStack_BoundarySize)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("boundary_test.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // maxSize = 24 (head + ellipsis = 19 + 5 = 24)
+        // halfSize = (24 - 5 - 19) / 2 = 0
+        std::string result = moduleManager->GetImportStackDataForJSCrash(24);
+
+        // Should contain head and ellipsis
+        EXPECT_NE(result.find("ModuleImportStack:"), std::string::npos);
+        EXPECT_NE(result.find("...."), std::string::npos);
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+    * @tc.name: ModuleManager_TruncateModuleImportStack_SingleModule
+    * @tc.desc: Test TruncateModuleImportStack with a single module
+    * @tc.type: FUNC
+    */
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateModuleImportStack_SingleModule)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("single_module.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get full stack first
+        std::string fullStack = std::string(moduleManager->GetModuleImportStackData());
+
+        // Use maxSize slightly smaller than full stack
+        std::string result = moduleManager->GetImportStackDataForJSCrash(fullStack.size() - 5);
+
+        // Should contain the module name
+        EXPECT_NE(result.find("....e.ets"), std::string::npos);
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+    * @tc.name: ModuleManager_TruncateModuleImportStack_ExactSize
+    * @tc.desc: Test TruncateModuleImportStack when maxSize equals stack size
+    * @tc.type: FUNC
+    */
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateModuleImportStack_ExactSize)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("exact_size.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get full stack
+        std::string fullStack = std::string(moduleManager->GetModuleImportStackData());
+
+        // Use maxSize exactly equal to stack size
+        std::string result = moduleManager->GetImportStackDataForJSCrash(fullStack.size());
+        // Should return the full stack without truncation
+        EXPECT_EQ(result, fullStack);
+        EXPECT_EQ(result.find("...."), std::string::npos); // No ellipsis
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_TruncateImportStackForCPPCrash_Normal
+* @tc.desc: Test TruncateImportStackForCPPCrash with normal stack
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateImportStackForCPPCrash_Normal)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("cpp_test.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get stack data for CPP with 64KB limit
+        std::string result = moduleManager->GetImportStackDataForCPPCrash("cpp_test.ets", 64 * 1024);
+
+        // Should contain the error message prefix
+        EXPECT_NE(result.find("Failed to load"), std::string::npos);
+        EXPECT_NE(result.find("cpp_test.ets"), std::string::npos);
+        EXPECT_NE(result.find("dependency import call stack"), std::string::npos);
+
+        // Should contain the module name in the stack
+        EXPECT_NE(result.find("cpp_test.ets"), std::string::npos);
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_TruncateImportStackForCPPCrash_Truncated
+* @tc.desc: Test TruncateImportStackForCPPCrash with truncation
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateImportStackForCPPCrash_Truncated)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module1 = instance->GetFactory()->NewSourceTextModule();
+    module1->SetEcmaModuleRecordNameString("cpp_module1.ets");
+
+    JSHandle<SourceTextModule> module2 = instance->GetFactory()->NewSourceTextModule();
+    module2->SetEcmaModuleRecordNameString("cpp_module2.ets");
+
+    JSHandle<SourceTextModule> module3 = instance->GetFactory()->NewSourceTextModule();
+    module3->SetEcmaModuleRecordNameString("cpp_module3.ets");
+
+    {
+        ModuleImportStackScope scope1(thread, module1);
+        {
+            ModuleImportStackScope scope2(thread, module2);
+            {
+                ModuleImportStackScope scope3(thread, module3);
+
+                // Use a small maxSize to force truncation
+                std::string result = moduleManager->GetImportStackDataForCPPCrash("cpp_test.ets", 100);
+                // Should contain the error message prefix
+                EXPECT_NE(result.find("Failed to load"), std::string::npos);
+                EXPECT_NE(result.find("dependency import call stack"), std::string::npos);
+
+                // Should contain ellipsis indicating truncation
+                EXPECT_NE(result.find("...."), std::string::npos);
+            }
+        }
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_TruncateImportStackForCPPCrash_EmptyModuleName
+* @tc.desc: Test TruncateImportStackForCPPCrash with empty module name
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateImportStackForCPPCrash_EmptyModuleName)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("empty_name_test.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get stack data for CPP with empty module name
+        std::string result = moduleManager->GetImportStackDataForCPPCrash("", 64 * 1024);
+
+        // Should still contain the error message prefix
+        EXPECT_NE(result.find("Failed to load"), std::string::npos);
+        EXPECT_NE(result.find("dependency import call stack"), std::string::npos);
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_TruncateImportStackForCPPCrash_SingleModule
+* @tc.desc: Test TruncateImportStackForCPPCrash with a single module
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateImportStackForCPPCrash_SingleModule)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("single_cpp_test.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get stack data for CPP
+        std::string result = moduleManager->GetImportStackDataForCPPCrash("single_cpp_test.ets", 64 * 1024);
+
+        // Should contain the error message and module name
+        EXPECT_NE(result.find("Failed to load single_cpp_test.ets"), std::string::npos);
+        EXPECT_NE(result.find("dependency import call stack"), std::string::npos);
+
+        // Should contain the module in the stack
+        EXPECT_NE(result.find("single_cpp_test.ets"), std::string::npos);
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_TruncateImportStackForJSCrash_Normal
+* @tc.desc: Test TruncateImportStackForJSCrash with normal stack
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateImportStackForJSCrash_Normal)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("js_crash_test.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get stack data for JS with 64KB limit
+        std::string result = moduleManager->GetImportStackDataForJSCrash(64 * 1024);
+
+        // Should contain the module name
+        EXPECT_NE(result.find("js_crash_test.ets"), std::string::npos);
+
+        // Should start with the correct header
+        EXPECT_NE(result.find("\nModuleImportStack:"), std::string::npos);
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_TruncateImportStackForJSCrash_Truncated
+* @tc.desc: Test TruncateImportStackForJSCrash with truncation
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateImportStackForJSCrash_Truncated)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module1 = instance->GetFactory()->NewSourceTextModule();
+    module1->SetEcmaModuleRecordNameString("js_crash_module1.ets");
+
+    JSHandle<SourceTextModule> module2 = instance->GetFactory()->NewSourceTextModule();
+    module2->SetEcmaModuleRecordNameString("js_crash_module2.ets");
+
+    JSHandle<SourceTextModule> module3 = instance->GetFactory()->NewSourceTextModule();
+    module3->SetEcmaModuleRecordNameString("js_crash_module3.ets");
+
+    {
+        ModuleImportStackScope scope1(thread, module1);
+        {
+            ModuleImportStackScope scope2(thread, module2);
+            {
+                ModuleImportStackScope scope3(thread, module3);
+
+                // Use a small maxSize to force truncation
+                std::string result = moduleManager->GetImportStackDataForJSCrash(40);
+
+                // Should contain ellipsis indicating truncation
+                EXPECT_NE(result.find("...."), std::string::npos);
+
+                // Should start with the correct header
+                EXPECT_NE(result.find("\nModuleImportStack:"), std::string::npos);
+            }
+        }
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
+
+/**
+* @tc.name: ModuleManager_TruncateImportStackForJSCrash_SingleModule
+* @tc.desc: Test TruncateImportStackForJSCrash with a single module
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(ModuleManagerTest, ModuleManager_TruncateImportStackForJSCrash_SingleModule)
+{
+    ModuleManager *moduleManager = thread->GetModuleManager();
+
+    // Enable module import stack
+    instance->GetJSOptions().SetArkProperties(ArkProperties::ENABLE_RUNTIME_MODULE_STACK);
+
+    JSHandle<SourceTextModule> module = instance->GetFactory()->NewSourceTextModule();
+    module->SetEcmaModuleRecordNameString("js_crash_single_test.ets");
+
+    {
+        ModuleImportStackScope scope(thread, module);
+
+        // Get stack data for JS
+        std::string result = moduleManager->GetImportStackDataForJSCrash(64 * 1024);
+
+        // Should contain the module name
+        EXPECT_NE(result.find("js_crash_single_test.ets"), std::string::npos);
+
+        // Should start with the correct header
+        EXPECT_NE(result.find("\nModuleImportStack:"), std::string::npos);
+    }
+
+    // Reset options
+    instance->GetJSOptions().SetArkProperties(ArkProperties::DEFAULT);
+}
 }  // namespace panda::test

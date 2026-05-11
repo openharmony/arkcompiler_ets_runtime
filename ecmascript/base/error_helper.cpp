@@ -213,9 +213,9 @@ JSTaggedValue ErrorHelper::ErrorCommonConstructor(EcmaRuntimeCallInfo *argv,
 
     // Add module stack trace
     if (UNLIKELY(ecmaVm->GetJSOptions().EnableModuleImportStack())) {
-        std::string_view moduleImportStackView = thread->GetModuleManager()->GetModuleImportStackData();
-        if (!moduleImportStackView.empty()) {
-            std::string moduleStack(moduleImportStackView);
+        std::string moduleStack = thread->GetModuleManager()
+            ->GetImportStackDataForJSCrash(64 * 1024); // 64 * 1024 = 64KB
+        if (!moduleStack.empty()) {
             JSHandle<EcmaString> moduleStackStr = factory->NewFromStdString(moduleStack);
             PropertyDescriptor moduleStackDesc(thread,
                 JSHandle<JSTaggedValue>::Cast(moduleStackStr), true, false, true);
