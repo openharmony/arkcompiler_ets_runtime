@@ -2152,6 +2152,12 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
             oldSpace_->IncreaseOvershootSize(config_.GetOldSpaceStepOvershootSize());
             return false;
         }
+#if ENABLE_V70_OPTIMIZATION
+        if (IsProcessingLocalToSharedRSet() && oldSpace_->GetOvershootSize() < config_.GetOldSpaceMaxOvershootSize()) {
+            oldSpace_->IncreaseOvershootSize(config_.GetOldSpaceStepOvershootSize());
+            return false;
+        }
+#endif
         CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
         if (!oldGCRequested_) {
             return true;
