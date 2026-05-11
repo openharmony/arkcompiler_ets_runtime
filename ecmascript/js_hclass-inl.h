@@ -291,6 +291,7 @@ inline void JSHClass::Copy(const JSThread *thread, const JSHClass *jshclass)
     SetBitField(jshclass->GetBitField());
     SetIsAllTaggedProp(jshclass->IsAllTaggedProp());
     SetNumberOfProps(jshclass->NumberOfProps());
+    SetBitField2(jshclass->GetBitField2());
 }
 
 inline JSHClass *JSHClass::FindRootHClass(const JSThread *thread, JSHClass *hclass)
@@ -456,6 +457,15 @@ void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass>
     if UNLIKELY(key.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()
         && (jshclass->IsJSArray() || jshclass->IsTypedArray())) {
         newJsHClass->SetHasConstructor(true);
+    }
+    // Inherit HasSymbolProperties from parent HClass, or set if current key is Symbol
+    if (jshclass->HasSymbolProperties() || key.GetTaggedValue().IsSymbol()) {
+        newJsHClass->SetHasSymbolProperties(true);
+    }
+    // When adding toJSON property, set MayHaveInterestingProperties to true
+    // because toJSON affects JSON.stringify behavior
+    if UNLIKELY(key.GetTaggedValue() == thread->GlobalConstants()->GetHandledToJsonString().GetTaggedValue()) {
+        newJsHClass->SetMayHaveInterestingProperties(true);
     }
 }
 

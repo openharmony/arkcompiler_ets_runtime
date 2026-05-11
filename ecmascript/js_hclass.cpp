@@ -145,6 +145,7 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetIsPrototype(false);
     SetHasDeleteProperty(false);
     SetIsAllTaggedProp(true);
+    SetMayHaveInterestingProperties(true);
     SetIsStable(true);
     SetElementsKind(ElementsKind::GENERIC);
     SetTransitions(thread, JSTaggedValue::Undefined());
@@ -389,6 +390,13 @@ void JSHClass::AddPropertyToNewHClassWithoutTransition(const JSThread *thread, J
     // Duplicate key has Already been Checked in CreateClassFuncWithProperties.
     ASSERT(!layoutInfoHandle->CheckIsDuplicateKey(thread, offset, key->GetKeyHashCode(thread), key.GetTaggedValue()));
     layoutInfoHandle->AddKey<false>(thread, offset, key.GetTaggedValue(), attr);
+    if (key.GetTaggedValue().IsSymbol()) {
+        newJsHClass->SetHasSymbolProperties(true);
+    }
+    // When adding toJSON property, set MayHaveInterestingProperties to true
+    if UNLIKELY(key.GetTaggedValue() == thread->GlobalConstants()->GetHandledToJsonString().GetTaggedValue()) {
+        newJsHClass->SetMayHaveInterestingProperties(true);
+    }
 }
 
 JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -709,6 +717,9 @@ void JSHClass::OptimizeAsFastProperties(const JSThread *thread, const JSHandle<J
             }
             attributes.SetOffset(i);
             layoutInfoHandle->AddKey(thread, i, key, attributes);
+            if (key.IsSymbol()) {
+                newJsHClass->SetHasSymbolProperties(true);
+            }
         }
 
         {
@@ -1554,6 +1565,9 @@ JSHandle<JSHClass> JSHClass::CreateChildHClassFromPGO(const JSThread* thread,
         }
         layoutInfoHandle->AddKey(thread, offset, key.GetTaggedValue(), attributes);
         newJsHClass->IncNumberOfProps();
+        if (key.GetTaggedValue().IsSymbol()) {
+            newJsHClass->SetHasSymbolProperties(true);
+        }
         AddTransitions(thread, parent, newJsHClass, key, attributes);
         JSHClass::NotifyHclassChanged(thread, parent, newJsHClass);
     }
