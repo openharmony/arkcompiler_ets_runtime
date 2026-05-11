@@ -16,12 +16,150 @@
 #include <string>
 
 #include "ecmascript/base/json_helper.h"
+#include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/json_stringifier.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "common_components/base/utf_helper.h"
 #include "libpandabase/utils/span.h"
 
 namespace panda::ecmascript::base {
+
+#if ENABLE_V70_OPTIMIZATION
+namespace {
+constexpr uint64_t K_OBJECT_KEY_CACHE_HASH_MUL = 11400714819323198485ULL;
+constexpr size_t K_OBJECT_KEY_CACHE_PROBE_COUNT = 2;
+constexpr uint32_t K_BYTE_BIT_WIDTH = 8U;
+constexpr uint32_t K_UTF16_CODE_UNIT_BIT_WIDTH = 16U;
+constexpr uint32_t K_PACKED_KEY_UTF8_HALF_BYTES = sizeof(uint64_t) / sizeof(uint8_t);
+constexpr uint32_t K_PACKED_KEY_UTF16_HALF_CODE_UNITS = sizeof(uint64_t) / sizeof(uint16_t);
+constexpr uint32_t K_PACKED_KEY_UTF8_MAX_BYTES = K_PACKED_KEY_UTF8_HALF_BYTES * 2U;
+constexpr uint32_t K_PACKED_KEY_UTF16_MAX_CODE_UNITS = K_PACKED_KEY_UTF16_HALF_CODE_UNITS * 2U;
+}
+
+PackedKey128 PackUtf8ObjectKeyBytes(const uint8_t *utf8Data, uint32_t utf8Len)
+{
+    ASSERT(utf8Len <= K_PACKED_KEY_UTF8_MAX_BYTES);
+    PackedKey128 packed;
+    for (uint32_t i = 0; i < utf8Len; i++) {
+        uint64_t value = static_cast<uint64_t>(utf8Data[i]);
+        if (i < K_PACKED_KEY_UTF8_HALF_BYTES) {
+            packed.lo |= value << (i * K_BYTE_BIT_WIDTH);
+        } else {
+            packed.hi |= value << ((i - K_PACKED_KEY_UTF8_HALF_BYTES) * K_BYTE_BIT_WIDTH);
+        }
+    }
+    return packed;
+}
+
+PackedKey128 PackUtf16ObjectKeyBytes(const uint8_t *utf8Data, uint32_t utf16Len)
+{
+    ASSERT(utf16Len <= K_PACKED_KEY_UTF16_MAX_CODE_UNITS);
+    PackedKey128 packed;
+    for (uint32_t i = 0; i < utf16Len; i++) {
+        uint64_t value = static_cast<uint64_t>(utf8Data[i]);
+        if (i < K_PACKED_KEY_UTF16_HALF_CODE_UNITS) {
+            packed.lo |= value << (i * K_UTF16_CODE_UNIT_BIT_WIDTH);
+        } else {
+            packed.hi |= value << ((i - K_PACKED_KEY_UTF16_HALF_CODE_UNITS) * K_UTF16_CODE_UNIT_BIT_WIDTH);
+        }
+    }
+    return packed;
+}
+
+size_t Utf8ObjectKeyCacheIndex(const PackedKey128 &packed, uint32_t utf8Len)
+{
+    static_assert((OBJECT_KEY_CACHE_SIZE & (OBJECT_KEY_CACHE_SIZE - 1)) == 0);
+    uint64_t hash = packed.lo ^ (packed.hi * K_OBJECT_KEY_CACHE_HASH_MUL) ^
+        (static_cast<uint64_t>(utf8Len) * K_OBJECT_KEY_CACHE_HASH_MUL);
+    return static_cast<size_t>(hash) & (OBJECT_KEY_CACHE_SIZE - 1);
+}
+
+PackedKey128 PackUtf16ObjectKeyCodeUnits(const uint16_t *utf16Data, uint32_t utf16Len)
+{
+    ASSERT(utf16Len <= K_PACKED_KEY_UTF16_MAX_CODE_UNITS);
+    PackedKey128 packed;
+    for (uint32_t i = 0; i < utf16Len; i++) {
+        uint64_t value = static_cast<uint64_t>(utf16Data[i]);
+        if (i < K_PACKED_KEY_UTF16_HALF_CODE_UNITS) {
+            packed.lo |= value << (i * K_UTF16_CODE_UNIT_BIT_WIDTH);
+        } else {
+            packed.hi |= value << ((i - K_PACKED_KEY_UTF16_HALF_CODE_UNITS) * K_UTF16_CODE_UNIT_BIT_WIDTH);
+        }
+    }
+    return packed;
+}
+
+PackedKey128 PackUtf16ObjectKeyFromAccessor(EcmaStringAccessor &accessor, uint32_t utf16Len)
+{
+    if (accessor.IsUtf8()) {
+        return PackUtf16ObjectKeyBytes(accessor.GetDataUtf8(), utf16Len);
+    }
+    return PackUtf16ObjectKeyCodeUnits(accessor.GetDataUtf16(), utf16Len);
+}
+
+size_t Utf16ObjectKeyCacheIndex(const PackedKey128 &packed, uint32_t utf16Len)
+{
+    static_assert((OBJECT_KEY_CACHE_SIZE & (OBJECT_KEY_CACHE_SIZE - 1)) == 0);
+    uint64_t hash = packed.lo ^ (packed.hi * K_OBJECT_KEY_CACHE_HASH_MUL) ^
+        (static_cast<uint64_t>(utf16Len) * K_OBJECT_KEY_CACHE_HASH_MUL);
+    return static_cast<size_t>(hash) & (OBJECT_KEY_CACHE_SIZE - 1);
+}
+
+void ResetObjectKeyCacheEntries(std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> &objectKeyCache)
+{
+    for (auto &entry : objectKeyCache) {
+        entry.key_ = JSHandle<EcmaString>();
+        entry.packedLo_ = 0;
+        entry.packedHi_ = 0;
+        entry.length_ = 0;
+        entry.valid_ = false;
+    }
+}
+
+JSHandle<EcmaString> LookupObjectKeyCacheEntry(
+    const std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> &objectKeyCache, size_t index,
+    const PackedKey128 &packed, uint32_t keyLength)
+{
+    for (size_t probe = 0; probe < K_OBJECT_KEY_CACHE_PROBE_COUNT; probe++) {
+        const auto &entry = objectKeyCache[index ^ probe];
+        if (entry.valid_ && entry.length_ == keyLength &&
+            entry.packedLo_ == packed.lo && entry.packedHi_ == packed.hi) {
+            return entry.key_;
+        }
+    }
+    return JSHandle<EcmaString>();
+}
+
+void UpdateObjectKeyCacheEntry(std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> &objectKeyCache,
+                               size_t index, const PackedKey128 &packed, uint32_t keyLength,
+                               const JSHandle<EcmaString> &key)
+{
+    for (size_t probe = 0; probe < K_OBJECT_KEY_CACHE_PROBE_COUNT; probe++) {
+        auto &entry = objectKeyCache[index ^ probe];
+        if (entry.valid_ && entry.length_ == keyLength &&
+            entry.packedLo_ == packed.lo && entry.packedHi_ == packed.hi) {
+            entry.key_ = key;
+            return;
+        }
+        if (!entry.valid_) {
+            entry.key_ = key;
+            entry.packedLo_ = packed.lo;
+            entry.packedHi_ = packed.hi;
+            entry.length_ = static_cast<uint8_t>(keyLength);
+            entry.valid_ = true;
+            return;
+        }
+    }
+
+    auto &entry = objectKeyCache[index];
+    entry.key_ = key;
+    entry.packedLo_ = packed.lo;
+    entry.packedHi_ = packed.hi;
+    entry.length_ = static_cast<uint8_t>(keyLength);
+    entry.valid_ = true;
+}
+#endif
 
 std::pair<std::string, std::uint32_t> JsonHelper::AnonymizeJsonString(JSThread *thread, JSHandle<JSTaggedValue> str,
                                                                       uint32_t position, uint32_t width)

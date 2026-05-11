@@ -16,7 +16,11 @@
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/tests/test_helper.h"
+
+#include <algorithm>
+#include <string>
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
@@ -25,6 +29,90 @@ namespace panda::test {
 class JsonParserTest : public BaseTestWithScope<false> {
 public:
     using TransformType = base::JsonHelper::TransformType;
+
+    static inline void FreeExternalStringData([[maybe_unused]] void *data, void *hint)
+    {
+        delete[] reinterpret_cast<uint8_t *>(hint);
+    }
+
+    JSHandle<EcmaString> NewExternalUtf8String(const std::string &text)
+    {
+        auto *data = new uint8_t[text.size()];
+        std::copy(text.begin(), text.end(), data);
+        EcmaString *str = EcmaStringAccessor::CreateFromExternalResource(thread->GetEcmaVM(), data, text.size(),
+            true, FreeExternalStringData, data);
+        return JSHandle<EcmaString>(thread, str);
+    }
+
+    JSHandle<EcmaString> NewExternalUtf16String(const std::u16string &text)
+    {
+        size_t byteLength = text.size() * sizeof(uint16_t);
+        auto *storage = new uint8_t[byteLength];
+        auto *data = reinterpret_cast<uint16_t *>(storage);
+        std::copy(text.begin(), text.end(), data);
+        EcmaString *str = EcmaStringAccessor::CreateFromExternalResource(thread->GetEcmaVM(), data, text.size(),
+            false, FreeExternalStringData, storage);
+        return JSHandle<EcmaString>(thread, str);
+    }
+
+    JSHandle<EcmaString> NewSlicedString(const JSHandle<EcmaString> &parent, uint32_t start, uint32_t length)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<EcmaString> slicedString(thread,
+            factory->AllocSlicedStringObject(MemSpaceType::SHARED_OLD_SPACE));
+        auto *sliced = reinterpret_cast<SlicedEcmaString *>(*slicedString);
+        sliced->ToSlicedString()->InitLengthAndFlags(length, EcmaStringAccessor(parent).IsUtf8());
+        sliced->SetParent(thread, parent);
+        sliced->SetStartIndex(start);
+        return slicedString;
+    }
+
+    JSHandle<JSTaggedValue> ParseJsonString(const JSHandle<EcmaString> &str)
+    {
+        if (EcmaStringAccessor(str).IsUtf8()) {
+            Utf8JsonParser parser(thread, TransformType::NORMAL);
+            return parser.Parse(str);
+        }
+        Utf16JsonParser parser(thread, TransformType::NORMAL);
+        return parser.Parse(*str);
+    }
+
+    void ExpectJsonPropertyNumber(const JSHandle<JSTaggedValue> &object, const char *key, int32_t expected)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSTaggedValue> keyHandle(factory->NewFromASCII(key));
+        JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, object, keyHandle).GetValue();
+        ASSERT_TRUE(value->IsNumber());
+        EXPECT_EQ(value->GetNumber(), expected);
+    }
+
+    void ExpectJsonPropertyNumber(const JSHandle<JSTaggedValue> &object, const JSHandle<EcmaString> &key,
+                                  int32_t expected)
+    {
+        JSHandle<JSTaggedValue> keyHandle = JSHandle<JSTaggedValue>::Cast(key);
+        JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, object, keyHandle).GetValue();
+        ASSERT_TRUE(value->IsNumber());
+        EXPECT_EQ(value->GetNumber(), expected);
+    }
+
+    void ExpectJsonPropertyString(const JSHandle<JSTaggedValue> &object, const char *key, const char *expected)
+    {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSTaggedValue> keyHandle(factory->NewFromASCII(key));
+        JSHandle<JSTaggedValue> value = JSTaggedValue::GetProperty(thread, object, keyHandle).GetValue();
+        ASSERT_TRUE(value->IsString());
+        JSHandle<EcmaString> stringValue(value);
+        EXPECT_STREQ(expected, EcmaStringAccessor(stringValue).ToCString(thread).c_str());
+    }
+
+    void ExpectParsedJsonObject(const JSHandle<EcmaString> &str, const char *kind, int32_t value)
+    {
+        JSHandle<JSTaggedValue> result = ParseJsonString(str);
+        ASSERT_FALSE(result->IsException());
+        ASSERT_TRUE(result->IsECMAObject());
+        ExpectJsonPropertyString(result, "kind", kind);
+        ExpectJsonPropertyNumber(result, "value", value);
+    }
 
     void CheckUnsupportedSendableJson(JSThread *thread, JSHandle<JSTaggedValue> &result) const
     {

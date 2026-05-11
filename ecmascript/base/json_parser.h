@@ -16,8 +16,10 @@
 #ifndef ECMASCRIPT_BASE_JSON_PARSE_INL_H
 #define ECMASCRIPT_BASE_JSON_PARSE_INL_H
 
+#include <array>
 #include <cerrno>
 
+#include "ecmascript/base/config.h"
 #include "ecmascript/base/json_helper.h"
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/number_helper.h"
@@ -67,6 +69,43 @@ struct JsonContinuation {
     ContinuationType type_ {ContinuationType::RETURN};
     size_t index_ {0};
 };
+
+#if ENABLE_V70_OPTIMIZATION
+constexpr size_t OBJECT_KEY_CACHE_SIZE = 64;
+
+struct ObjectKeyCacheEntry {
+    JSHandle<EcmaString> key_;
+    uint64_t packedLo_ {0};
+    uint64_t packedHi_ {0};
+    uint8_t length_ {0};
+    bool valid_ {false};
+};
+
+struct PackedKey128 {
+    uint64_t lo {0};
+    uint64_t hi {0};
+};
+
+PackedKey128 PackUtf8ObjectKeyBytes(const uint8_t *utf8Data, uint32_t utf8Len);
+
+size_t Utf8ObjectKeyCacheIndex(const PackedKey128 &packed, uint32_t utf8Len);
+
+PackedKey128 PackUtf16ObjectKeyCodeUnits(const uint16_t *utf16Data, uint32_t utf16Len);
+
+PackedKey128 PackUtf16ObjectKeyFromAccessor(EcmaStringAccessor &accessor, uint32_t utf16Len);
+
+size_t Utf16ObjectKeyCacheIndex(const PackedKey128 &packed, uint32_t utf16Len);
+
+void ResetObjectKeyCacheEntries(std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> &objectKeyCache);
+
+JSHandle<EcmaString> LookupObjectKeyCacheEntry(
+    const std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> &objectKeyCache, size_t index,
+    const PackedKey128 &packed, uint32_t keyLength);
+
+void UpdateObjectKeyCacheEntry(std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> &objectKeyCache,
+                               size_t index, const PackedKey128 &packed, uint32_t keyLength,
+                               const JSHandle<EcmaString> &key);
+#endif
 
 template<typename T>
 class JsonParser {
@@ -169,6 +208,11 @@ protected:
     JSHandle<JSTaggedValue> ParseStringWithBackslash(bool inObjorArr);
     virtual void ParticalParseString(std::string& str, Text current, Text nextCurrent) = 0;
 
+    virtual JSHandle<JSTaggedValue> ParseObjectKey()
+    {
+        return ParseString(true);
+    }
+
     virtual JSHandle<JSTaggedValue> ParseString(bool inObjorArr = false) = 0;
 
     void SkipEndWhiteSpace();
@@ -187,7 +231,19 @@ protected:
 
     bool MatchText(const char *str, uint32_t matchLen);
 
+#if ENABLE_V70_OPTIMIZATION
+    bool ReadNumberRange(bool &isFast, JSTaggedValue &fastNumber);
+
+    bool HasValidNumberTerminator(Text numberEnd);
+
+    bool TryReadFastZeroNumber(Text &current, bool negative, JSTaggedValue &fastNumber);
+
+    bool TryReadFastNonZeroNumber(Text current, bool negative, JSTaggedValue &fastNumber);
+
+    bool FinishReadNumberRange(Text current, bool &isFast);
+#else
     bool ReadNumberRange(bool &isFast, int32_t &fastInteger);
+#endif
 
     Text AdvanceLastNumberCharacter(Text current);
 
@@ -250,6 +306,23 @@ private:
 
     static void UpdatePointersListener(void *utf8Parser);
 
+#if ENABLE_V70_OPTIMIZATION
+    JSHandle<JSTaggedValue> ParseObjectKey() override;
+
+    void ResetObjectKeyCache();
+
+    JSHandle<JSTaggedValue> ParseCachedObjectKey(uint32_t offset, uint32_t strLength);
+
+    JSHandle<JSTaggedValue> ParseEscapedObjectKey();
+
+    JSHandle<JSTaggedValue> ParseFastStringValue(uint32_t offset, uint32_t strLength, bool inObjOrArrOrMap);
+
+    void UpdateObjectKeyCache(const uint8_t *utf8Data, uint32_t utf8Len, const JSHandle<EcmaString> &key);
+
+    void UpdateObjectKeyCacheFromDecodedKey(const JSHandle<EcmaString> &decodedKey,
+                                            const JSHandle<EcmaString> &internKey);
+#endif
+
     JSHandle<JSTaggedValue> ParseString(bool inObjOrArrOrMap  = false) override;
 
     bool ReadJsonStringRange(bool &isFastString);
@@ -257,6 +330,10 @@ private:
     bool IsFastParseJsonString(bool &isFastString);
 
     JSHandle<EcmaString> sourceString_;
+
+#if ENABLE_V70_OPTIMIZATION
+    std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> objectKeyCache_ {};
+#endif
 };
 
 class Utf16JsonParser final : public JsonParser<uint16_t> {
@@ -273,6 +350,22 @@ public:
 
 private:
     void ParticalParseString(std::string& str, Text current, Text nextCurrent) override;
+
+#if ENABLE_V70_OPTIMIZATION
+    JSHandle<JSTaggedValue> ParseObjectKey() override;
+
+    void ResetObjectKeyCache();
+
+    JSHandle<JSTaggedValue> ParseCachedObjectKey(const uint16_t *utf16Data, uint32_t strLength, bool isAscii);
+
+    JSHandle<JSTaggedValue> ParseEscapedObjectKey();
+
+    void UpdateObjectKeyCache(const uint16_t *utf16Data, uint32_t utf16Len, const JSHandle<EcmaString> &key);
+
+    void UpdateObjectKeyCacheFromDecodedKey(const JSHandle<EcmaString> &decodedKey,
+                                            const JSHandle<EcmaString> &internKey);
+#endif
+
     JSHandle<JSTaggedValue> ParseString(bool inObjOrArrOrMap = false) override;
 
     bool ReadJsonStringRange(bool &isFastString, bool &isAscii);
@@ -280,6 +373,10 @@ private:
     bool IsFastParseJsonString(bool &isFastString, bool &isAscii);
 
     bool IsLegalAsciiCharacter(uint16_t c, bool &isAscii);
+
+#if ENABLE_V70_OPTIMIZATION
+    std::array<ObjectKeyCacheEntry, OBJECT_KEY_CACHE_SIZE> objectKeyCache_ {};
+#endif
 };
 
 class Internalize {
