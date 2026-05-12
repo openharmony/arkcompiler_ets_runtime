@@ -70,9 +70,16 @@ JSTaggedValue ModuleValueAccessor::GetSendableModuleValueInner(JSThread* thread,
     JSHandle<SourceTextModule> currentModuleHdl(thread, currentModule);
     auto isMergedAbc = !currentModuleHdl->GetEcmaModuleRecordNameString().empty();
     CString fileName = currentModuleHdl->GetEcmaModuleFilenameString();
-    if (!JSPandaFileExecutor::LazyExecuteModule(thread, referenceName, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "GetSendableModuleValueInner LazyExecuteModule failed"; // LCOV_EXCL_BR_LINE
-    }
+    if (!JSPandaFileExecutor::LazyExecuteModule(thread, referenceName, fileName,
+        isMergedAbc)) { // LCOV_EXCL_START
+        if (thread->HasPendingException()) {
+            LOG_ECMA(ERROR) << thread->GetException();
+        }
+        std::ostringstream oss;
+        jsFunc.Dump(thread, oss);
+        LOG_ECMA(FATAL) << "GetSendableModuleValueInner LazyExecuteModule failed, fileName: "
+            << fileName << ", referenceName: " << referenceName << ", jsFunc info: " << oss.str();
+    } // LCOV_EXCL_STOP
     ASSERT(moduleManager->IsModuleLoaded(referenceName));
     return moduleManager->GetImportedModule(referenceName)->GetModuleValue(thread, index, false);
 }
@@ -240,7 +247,9 @@ JSTaggedValue ModuleValueAccessor::GetSendableModuleValueOuterInternal(JSThread 
     if (resolvedBinding.IsResolvedRecordBinding()) {
         return GetModuleValueFromRecordBinding<isLazy>(info);
     }
-    LOG_ECMA(FATAL) << "Unexpect binding"; // LCOV_EXCL_BR_LINE
+    std::ostringstream oss; // LCOV_EXCL_START
+    module.GetTaggedValue().Dump(thread, oss);
+    LOG_ECMA(FATAL) << "Unexpect binding, index: " << index << ", module: " << oss.str(); // LCOV_EXCL_STOP
     UNREACHABLE();
 }
 
@@ -498,9 +507,15 @@ JSHandle<SourceTextModule> ModuleValueAccessor::GetResolvedModule(JSThread* thre
     }
     bool isMergedAbc = !module->GetEcmaModuleFilenameString().empty();
     if (!JSPandaFileExecutor::LazyExecuteModule(thread, requestModuleRecordName, fileName,
-        isMergedAbc)) { // LCOV_EXCL_BR_LINE
-        LOG_ECMA(FATAL) << "LazyExecuteModule failed"; // LCOV_EXCL_BR_LINE
-    }
+        isMergedAbc)) { // LCOV_EXCL_START
+        if (thread->HasPendingException()) {
+            LOG_ECMA(ERROR) << thread->GetException();
+        }
+        std::ostringstream oss;
+        module.GetTaggedValue().Dump(thread, oss);
+        LOG_ECMA(FATAL) << "LazyExecuteModule failed, fileName: " << fileName << ", requestModuleRecordName: "
+            << requestModuleRecordName << ", module info: " << oss.str();
+    } // LCOV_EXCL_STOP
     return moduleManager->HostGetImportedModule(requestModuleRecordName);
 }
 

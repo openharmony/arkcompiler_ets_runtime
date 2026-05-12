@@ -2197,9 +2197,15 @@ DEF_RUNTIME_STUBS(GetResolvedRecordIndexBindingModule)
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = ModulePathHelper::Utf8ConvertToString(thread, (binding->GetAbcFileName(thread)));
         if (!JSPandaFileExecutor::LazyExecuteModule(thread,
-            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
-            LOG_ECMA(FATAL) << "LazyExecuteModule failed";
-        }
+            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_START
+            if (thread->HasPendingException()) {
+                LOG_ECMA(ERROR) << thread->GetException();
+            }
+            std::ostringstream oss;
+            module.GetTaggedValue().Dump(thread, oss);
+            LOG_ECMA(FATAL) << "LazyExecuteModule failed, fileName: " << fileName << ", recordNameStr: "
+                << recordNameStr << ", module info: " << oss.str();
+        } // LCOV_EXCL_STOP
     }
     return moduleManager->HostGetImportedModule(recordNameStr).GetTaggedValue().GetRawData();
 }
@@ -2228,9 +2234,15 @@ DEF_RUNTIME_STUBS(GetResolvedRecordBindingModule)
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = module->GetEcmaModuleFilenameString();
         if (!JSPandaFileExecutor::LazyExecuteModule(thread,
-            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
-            LOG_ECMA(FATAL) << "LazyExecuteModule failed";
-        }
+            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_START
+            if (thread->HasPendingException()) {
+                LOG_ECMA(ERROR) << thread->GetException();
+            }
+            std::ostringstream oss;
+            module.GetTaggedValue().Dump(thread, oss);
+            LOG_ECMA(FATAL) << "LazyExecuteModule failed, fileName: " << fileName << ", recordNameStr: "
+                << recordNameStr << ", module info: " << oss.str();
+        } // LCOV_EXCL_STOP
     }
     return moduleManager->HostGetImportedModule(recordNameStr).GetTaggedValue().GetRawData();
 }
