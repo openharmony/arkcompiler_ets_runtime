@@ -1,0 +1,81 @@
+
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+class Modifier {
+}
+class A extends Modifier {
+    y = 1;
+    z = 2;
+    x = 0;
+
+}
+class B extends Modifier {
+    y = 1;
+    z = 2;
+    x = 0;
+}
+class C extends Modifier {
+    y = 1;
+    z = 2;
+    x = 0;
+}
+class D extends Modifier {
+    y = 1;
+    z = 2;
+    x = 0;
+}
+class E extends Modifier {
+    y = 1;
+    z = 2;
+    x = 5;
+}
+function visit(tag) {
+    tag.x
+    tag.x
+    tag.x
+    tag.x
+    tag.x
+    tag.x
+    tag.x
+    tag.x
+    tag.x
+    tag.x
+    return tag.x;
+}
+
+let total = 0;
+let a = new A();
+let b = new B();
+let c = new C();
+let d = new D();
+let e = new E();
+
+function main(){
+    let result = 0;
+    for (let i = 0; i < 1000; i++) {
+        visit(a);
+        visit(b);
+        visit(c);
+        visit(d);
+        result = visit(e);
+    }
+    print(result)
+}
+main()
+main()
+main()
+main()
+main()

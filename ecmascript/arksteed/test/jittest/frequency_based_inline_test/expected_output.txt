@@ -1,0 +1,95 @@
+=== Frequency-based Inline Testing ===
+Phase 1: Gathering frequency data
+Gathering frequency data...
+Frequency data gathering complete
+true
+true
+true
+true
+true
+true
+Phase 2: Testing high frequency inlining
+Phase 3: Testing low frequency inlining
+Phase 4: Testing medium frequency inlining
+=== Medium Frequency Inlining Test ===
+MediumFreq1(5): 9
+MediumFreq2(5, 6): -10
+MediumFreq3("test"): 1
+Phase 5: Testing frequency-based decisions
+=== Frequency-based Decision Test ===
+FrequencyTestBasic(10): 54
+FrequencyTestComplex(10): 159
+FrequencyTestPattern(10): 467
+Phase 6: Testing mixed frequency patterns
+=== Mixed Frequency Patterns Test ===
+FrequencyTestMixed(5, true): 56532
+FrequencyTestMixed(6, false): 5515
+FrequencyTestArray([1, 2, 3, 4, 5]): [0, 18, 92, 5, 6, 27, 236]
+FrequencyTestString("string_test"): äìūâŊÚń¼ūÈŨæ
+Phase 7: Testing frequency thresholds
+=== Frequency Threshold Test ===
+Frequency threshold test completed - check inline decisions in JIT output
+true
+=== Frequency Threshold Test ===
+Frequency threshold test completed - check inline decisions in JIT output
+Phase 8: Dynamic frequency pattern tests
+=== Dynamic Frequency Pattern Tests ===
+DynamicFrequencyOrchestrator(100, "high-heavy"): 7.311070942714794e+79
+DynamicFrequencyOrchestrator(100, "balanced"): 1.4523625080651914e+62
+true
+=== Dynamic Frequency Pattern Tests ===
+DynamicFrequencyOrchestrator(100, "high-heavy"): 7.311070942714794e+79
+DynamicFrequencyOrchestrator(100, "balanced"): 1.4523625080651914e+62
+Phase 9: Size frequency pattern tests
+=== Size Frequency Pattern Tests ===
+SizeFrequencyOrchestrator(50, "small-high"): 53
+SizeFrequencyOrchestrator(50, "medium-high"): 126
+SizeFrequencyOrchestrator(50, "mixed"): 88
+true
+=== Size Frequency Pattern Tests ===
+SizeFrequencyOrchestrator(50, "small-high"): 53
+SizeFrequencyOrchestrator(50, "medium-high"): 126
+SizeFrequencyOrchestrator(50, "mixed"): 88
+Phase 10: Type-based frequency tests
+=== Type-based Frequency Tests ===
+TypeBasedFrequencyOrchestrator(42, "number-heavy"): 9825993825174.846
+TypeBasedFrequencyOrchestrator("hello", "string-heavy"): "HELLO"
+TypeBasedFrequencyOrchestrator(25, "mixed-types"): "630"
+true
+=== Type-based Frequency Tests ===
+TypeBasedFrequencyOrchestrator(42, "number-heavy"): 9825993825174.846
+TypeBasedFrequencyOrchestrator("hello", "string-heavy"): "HELLO"
+TypeBasedFrequencyOrchestrator(25, "mixed-types"): "630"
+Phase 11: Conditional frequency pattern tests
+=== Conditional Frequency Pattern Tests ===
+ConditionalFrequencyOrchestrator(25, "simple-if"): 1000
+ConditionalFrequencyOrchestrator(100, "nested-if"): 500
+true
+=== Conditional Frequency Pattern Tests ===
+ConditionalFrequencyOrchestrator(25, "simple-if"): 1000
+ConditionalFrequencyOrchestrator(100, "nested-if"): 500
+Phase 12: Loop frequency pattern tests
+=== Loop Frequency Pattern Tests ===
+LoopFrequencyOrchestrator([1, 2, 3, 4, 5], "array-processing"): 60
+LoopFrequencyOrchestrator(15, "numeric-iteration"): 87
+true
+=== Loop Frequency Pattern Tests ===
+LoopFrequencyOrchestrator([1, 2, 3, 4, 5], "array-processing"): 60
+LoopFrequencyOrchestrator(15, "numeric-iteration"): 87
+Phase 13: Recursive frequency pattern tests
+=== Recursive Frequency Pattern Tests ===
+RecursiveFrequencyOrchestrator(5, "direct-recursion"): 15
+RecursiveFrequencyOrchestrator(5, "wrapper-recursion"): 30
+true
+=== Recursive Frequency Pattern Tests ===
+RecursiveFrequencyOrchestrator(5, "direct-recursion"): 15
+RecursiveFrequencyOrchestrator(5, "wrapper-recursion"): 30
+Phase 14: Allocation frequency pattern tests
+=== Allocation Frequency Pattern Tests ===
+AllocationFrequencyOrchestrator(8, "array-allocation"): []
+AllocationFrequencyOrchestrator(6, "mixed-allocation"): 2
+true
+=== Allocation Frequency Pattern Tests ===
+AllocationFrequencyOrchestrator(8, "array-allocation"): []
+AllocationFrequencyOrchestrator(6, "mixed-allocation"): 2
+Frequency-based inline testing completed

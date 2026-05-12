@@ -1,0 +1,12 @@
+./cdjs/call_sign.ts;call_sign;asm;xxx;yyy
+./cdjs/util.ts;util;asm;xxx;yyy
+./cdjs/vector_2d.ts;vector_2d;asm;xxx;yyy
+./cdjs/vector_3d.ts;vector_3d;asm;xxx;yyy
+./cdjs/collision_detector.ts;collision_detector;asm;xxx;yyy
+./cdjs/simulator.ts;simulator;asm;xxx;yyy
+./cdjs/red_black_tree.ts;red_black_tree;asm;xxx;yyy
+./cdjs/motion.ts;motion;asm;xxx;yyy
+./cdjs/collision.ts;collision;asm;xxx;yyy
+./cdjs/constants.ts;constants;asm;xxx;yyy
+./cdjs/reduce_collision_set.ts;reduce_collision_set;asm;xxx;yyy
+./cdjs/cdjs.ts;cdjs;asm;xxx;yyy

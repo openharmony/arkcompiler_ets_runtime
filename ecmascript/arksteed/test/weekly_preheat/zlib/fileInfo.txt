@@ -1,0 +1,6 @@
+./zlib/bitstream.ts;bitstream;esm;xxx;yyy
+./zlib/heap.ts;heap;esm;xxx;yyy
+./zlib/huffman.ts;huffman;esm;xxx;yyy
+./zlib/rawdeflate.ts;rawdeflate;esm;xxx;yyy
+./zlib/rawinflate.ts;rawinflate;esm;xxx;yyy
+./zlib/zlib.ts;zlib;esm;xxx;yyy

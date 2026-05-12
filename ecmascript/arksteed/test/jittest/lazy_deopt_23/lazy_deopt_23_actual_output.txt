@@ -1,0 +1,6 @@
+function concat() { [native code] }
+true
+------------------------------------------------------
+function concat() { [native code] }
+function concat() { [native code] }
+function concat() { [native code] }

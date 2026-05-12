@@ -1,0 +1,56 @@
+=== Inline Count Testing ===
+Basic Inline Count Test:
+=== Basic Inline Count Test (6 call limit) ===
+1024
+true
+=== Basic Inline Count Test (6 call limit) ===
+1024
+Mixed Inline Count Test:
+=== Mixed Inline Count Test ===
+81920
+true
+=== Mixed Inline Count Test ===
+81920
+Conditional Inline Count Test:
+=== Conditional Inline Count Test ===
+800
+9600
+153600
+true
+=== Conditional Inline Count Test ===
+800
+9600
+153600
+Composition Inline Count Test:
+=== Composition Inline Count Test ===
+1.4142135623730951
+true
+=== Composition Inline Count Test ===
+1.4142135623730951
+Nested Inline Count Test:
+=== Nested Inline Count Test ===
+80
+-40
+true
+=== Nested Inline Count Test ===
+80
+-40
+Array Inline Count Test:
+=== Array Inline Count Test ===
+271
+true
+=== Array Inline Count Test ===
+271
+String Inline Count Test:
+=== String Inline Count Test ===
+uffix
+true
+=== String Inline Count Test ===
+uffix
+Math Inline Count Test:
+=== Math Inline Count Test ===
+0
+true
+=== Math Inline Count Test ===
+0
+Inline count testing completed

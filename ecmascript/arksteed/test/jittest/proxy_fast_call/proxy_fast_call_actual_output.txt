@@ -1,0 +1,4 @@
+compilerResult: true
+a2: function () { [native code] }
+a2: undefined
+a2: undefined

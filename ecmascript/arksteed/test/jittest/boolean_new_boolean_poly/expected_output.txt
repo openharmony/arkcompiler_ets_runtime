@@ -1,0 +1,5 @@
+true
+Boolean.ValueOf
+function valueOf() { [native code] }
+boolean.valueOf
+1234

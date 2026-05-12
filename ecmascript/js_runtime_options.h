@@ -2635,7 +2635,7 @@ private:
     std::string compilerLogOpt_ {"none"};
     std::string compilerLogMethods_ {"none"};
     bool compilerArkSteedPrintGraph_ {false};
-    bool compilerArkSteedPrintMethodName_ {true};
+    bool compilerArkSteedPrintMethodName_ {false};
     bool compilerArkSteedEnableCodeComment_ {false};
     bool compilerArkSteedPrintCode_ {false};
     bool compilerLogSnapshot_ {false};

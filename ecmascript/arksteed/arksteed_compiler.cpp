@@ -134,6 +134,7 @@ void ArkSteedCompilerTask::RunPreRegallocProcessors()
 
 bool ArkSteedCompilerTask::Compile()
 {
+    ArkSteedCompileTimeScope totalScope(arkSteedTask_);
     NativeAreaAllocator *allocator = arkSteedTask_->GetCompilerVM()->GetNativeAreaAllocator();
     chunk_ = std::make_unique<Chunk>(allocator);
     graph_ = Graph::New(chunk_.get());

@@ -1,0 +1,28 @@
+compile testParseBasic: true
+compile testParseArray: true
+compile testParseNested: true
+compile testParseReviver: true
+compile testParsePrimitives: true
+compile testStringifyBasic: true
+compile testStringifyArray: true
+compile testStringifyNested: true
+compile testStringifyReplacer: true
+compile testStringifyReplacerFn: true
+compile testStringifySpace: true
+compile testStringifySpecial: true
+compile testRoundtrip: true
+compile testToJSON: true
+testParseBasic: 1,2
+testParseArray: 1,2,3,4,5
+testParseNested: 42
+testParseReviver: 2,4,6
+testParsePrimitives: 42,hello,true,null
+testStringifyBasic: {"a":1,"b":2,"c":"hello"}
+testStringifyArray: [1,2,3,"a","b"]
+testStringifyNested: {"outer":{"inner":{"value":42}}}
+testStringifyReplacer: {"a":1,"c":3}
+testStringifyReplacerFn: {"a":2,"b":4,"c":6}
+testStringifySpace: true
+testStringifySpecial: {"num":42}
+testRoundtrip: test,1-2-3,10
+testToJSON: {"customValue":84}

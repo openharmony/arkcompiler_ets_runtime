@@ -1,0 +1,5 @@
+Liveness of Basic Block:
+[ 0] UESet:   [env]
+     KillSet: [v0, v1, acc]
+     LiveIn:  [env]
+     LiveOut: []

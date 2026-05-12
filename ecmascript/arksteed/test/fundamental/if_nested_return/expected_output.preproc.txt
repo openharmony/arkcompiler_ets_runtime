@@ -1,0 +1,61 @@
+Bytecodes:
+[  0] opcode = LDAI_IMM32, offset = 0, blockIndex = 0
+[  1] opcode = STA_V8, offset = 5, blockIndex = 0
+[  2] opcode = LDAI_IMM32, offset = 7, blockIndex = 0
+[  3] opcode = STA_V8, offset = 12, blockIndex = 0
+[  4] opcode = LDA_V8, offset = 14, blockIndex = 0
+[  5] opcode = GREATER_IMM8_V8, offset = 16, blockIndex = 0
+[  6] opcode = JEQZ_IMM8, offset = 19, blockIndex = 0
+[  7] opcode = LDAI_IMM32, offset = 21, blockIndex = 1
+[  8] opcode = LESS_IMM8_V8, offset = 26, blockIndex = 1
+[  9] opcode = JEQZ_IMM8, offset = 29, blockIndex = 1
+[ 10] opcode = LDAI_IMM32, offset = 31, blockIndex = 2
+[ 11] opcode = RETURN, offset = 36, blockIndex = 2
+[ 12] opcode = MOV_V4_V4, offset = 37, blockIndex = 3
+[ 13] opcode = LDA_V8, offset = 39, blockIndex = 4
+[ 14] opcode = RETURN, offset = 41, blockIndex = 4
+[ 15] opcode = JMP_IMM8, offset = NULL, blockIndex = 5
+Basic blocks:
+[ 0] rpoIndex = 0, startBcIndex = 0, endBcIndex = 6
+     fallthroughBlock = BB[1]
+     jumpBlock = BB[3]
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = []
+     catchBlocks = []
+[ 1] rpoIndex = 2, startBcIndex = 7, endBcIndex = 9
+     fallthroughBlock = BB[2]
+     jumpBlock = BB[5]
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[0]]
+     catchBlocks = []
+[ 2] rpoIndex = 5, startBcIndex = 10, endBcIndex = 11
+     fallthroughBlock = NULL
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[1]]
+     catchBlocks = []
+[ 3] rpoIndex = 1, startBcIndex = 12, endBcIndex = 12
+     fallthroughBlock = BB[4]
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[0]]
+     catchBlocks = []
+[ 4] rpoIndex = 4, startBcIndex = 13, endBcIndex = 14
+     fallthroughBlock = NULL
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[3], BB[5]]
+     catchBlocks = []
+[ 5] rpoIndex = 3, startBcIndex = 15, endBcIndex = 15
+     fallthroughBlock = NULL
+     jumpBlock = BB[4]
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[1]]
+     catchBlocks = []
+Catch blocks:

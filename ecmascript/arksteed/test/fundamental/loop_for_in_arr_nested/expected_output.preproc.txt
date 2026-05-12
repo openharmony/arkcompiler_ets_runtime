@@ -1,0 +1,138 @@
+Bytecodes:
+[  0] opcode = NOP, offset = 0, blockIndex = 0
+[  1] opcode = LDA_V8, offset = 1, blockIndex = 1
+[  2] opcode = GETPROPITERATOR, offset = 3, blockIndex = 1
+[  3] opcode = STA_V8, offset = 4, blockIndex = 1
+[  4] opcode = LDAI_IMM32, offset = 6, blockIndex = 2
+[  5] opcode = STA_V8, offset = 11, blockIndex = 2
+[  6] opcode = JMP_IMM8, offset = 13, blockIndex = 2
+[  7] opcode = STA_V8, offset = 15, blockIndex = 3
+[  8] opcode = LDA_V8, offset = 17, blockIndex = 3
+[  9] opcode = THROW_PREF_NONE, offset = 19, blockIndex = 3
+[ 10] opcode = GETNEXTPROPNAME_V8, offset = 21, blockIndex = 4
+[ 11] opcode = STA_V8, offset = 23, blockIndex = 4
+[ 12] opcode = LDUNDEFINED, offset = 25, blockIndex = 4
+[ 13] opcode = EQ_IMM8_V8, offset = 26, blockIndex = 4
+[ 14] opcode = JNEZ_IMM8, offset = 29, blockIndex = 4
+[ 15] opcode = LDA_V8, offset = 31, blockIndex = 5
+[ 16] opcode = LDOBJBYVALUE_IMM8_V8, offset = 33, blockIndex = 5
+[ 17] opcode = STA_V8, offset = 36, blockIndex = 5
+[ 18] opcode = LDA_V8, offset = 38, blockIndex = 6
+[ 19] opcode = GETPROPITERATOR, offset = 40, blockIndex = 6
+[ 20] opcode = STA_V8, offset = 41, blockIndex = 6
+[ 21] opcode = JMP_IMM8, offset = 43, blockIndex = 7
+[ 22] opcode = STA_V8, offset = 45, blockIndex = 8
+[ 23] opcode = LDA_V8, offset = 47, blockIndex = 8
+[ 24] opcode = THROW_PREF_NONE, offset = 49, blockIndex = 8
+[ 25] opcode = GETNEXTPROPNAME_V8, offset = 51, blockIndex = 9
+[ 26] opcode = STA_V8, offset = 53, blockIndex = 9
+[ 27] opcode = LDUNDEFINED, offset = 55, blockIndex = 9
+[ 28] opcode = EQ_IMM8_V8, offset = 56, blockIndex = 9
+[ 29] opcode = JNEZ_IMM8, offset = 59, blockIndex = 9
+[ 30] opcode = LDA_V8, offset = 61, blockIndex = 10
+[ 31] opcode = LDOBJBYVALUE_IMM8_V8, offset = 63, blockIndex = 10
+[ 32] opcode = ADD2_IMM8_V8, offset = 66, blockIndex = 10
+[ 33] opcode = STA_V8, offset = 69, blockIndex = 10
+[ 34] opcode = JMP_IMM8, offset = 71, blockIndex = 10
+[ 35] opcode = LDA_V8, offset = 73, blockIndex = 11
+[ 36] opcode = RETURN, offset = 75, blockIndex = 11
+[ 37] opcode = JMP_IMM8, offset = NULL, blockIndex = 12
+Basic blocks:
+[ 0] rpoIndex = 0, startBcIndex = 0, endBcIndex = 0
+     fallthroughBlock = BB[1]
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = []
+     catchBlocks = []
+[ 1] rpoIndex = 1, startBcIndex = 1, endBcIndex = 3
+     fallthroughBlock = BB[2]
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[0]]
+     catchBlocks = [BB[3]]
+[ 2] rpoIndex = 2, startBcIndex = 4, endBcIndex = 6
+     fallthroughBlock = NULL
+     jumpBlock = BB[4]
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[1]]
+     catchBlocks = []
+[ 3] rpoIndex = 12, startBcIndex = 7, endBcIndex = 9
+     fallthroughBlock = NULL
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = []
+     catchBlocks = []
+[ 4] rpoIndex = 3, startBcIndex = 10, endBcIndex = 14
+     fallthroughBlock = BB[5]
+     jumpBlock = BB[11]
+     loopHeaderBlock = NULL
+     loopBackBlock = BB[12]
+     jumpPredecessors = [BB[2], BB[12]]
+     catchBlocks = []
+[ 5] rpoIndex = 4, startBcIndex = 15, endBcIndex = 17
+     fallthroughBlock = BB[6]
+     jumpBlock = NULL
+     loopHeaderBlock = BB[4]
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[4]]
+     catchBlocks = []
+[ 6] rpoIndex = 5, startBcIndex = 18, endBcIndex = 20
+     fallthroughBlock = BB[7]
+     jumpBlock = NULL
+     loopHeaderBlock = BB[4]
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[5]]
+     catchBlocks = [BB[8]]
+[ 7] rpoIndex = 6, startBcIndex = 21, endBcIndex = 21
+     fallthroughBlock = NULL
+     jumpBlock = BB[9]
+     loopHeaderBlock = BB[4]
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[6]]
+     catchBlocks = []
+[ 8] rpoIndex = 10, startBcIndex = 22, endBcIndex = 24
+     fallthroughBlock = NULL
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = []
+     catchBlocks = []
+[ 9] rpoIndex = 7, startBcIndex = 25, endBcIndex = 29
+     fallthroughBlock = BB[10]
+     jumpBlock = BB[12]
+     loopHeaderBlock = BB[4]
+     loopBackBlock = BB[10]
+     jumpPredecessors = [BB[7], BB[10]]
+     catchBlocks = []
+[10] rpoIndex = 8, startBcIndex = 30, endBcIndex = 34
+     fallthroughBlock = NULL
+     jumpBlock = BB[9]
+     loopHeaderBlock = BB[9]
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[9]]
+     catchBlocks = []
+[11] rpoIndex = 11, startBcIndex = 35, endBcIndex = 36
+     fallthroughBlock = NULL
+     jumpBlock = NULL
+     loopHeaderBlock = NULL
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[4]]
+     catchBlocks = []
+[12] rpoIndex = 9, startBcIndex = 37, endBcIndex = 37
+     fallthroughBlock = NULL
+     jumpBlock = BB[4]
+     loopHeaderBlock = BB[4]
+     loopBackBlock = NULL
+     jumpPredecessors = [BB[9]]
+     catchBlocks = []
+Catch blocks:
+[ 0] startBcIndex = 1
+     endBcIndex = 3
+     catchBcIndices = [7]
+[ 1] startBcIndex = 18
+     endBcIndex = 20
+     catchBcIndices = [22]
