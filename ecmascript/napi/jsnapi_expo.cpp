@@ -5026,6 +5026,22 @@ void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
     vm->SetResolveBufferCallbackForHybridApp(hostVM->GetResolveBufferCallbackForHybridApp());
 }
 
+bool JSNApi::GetEnableAsmInterpreter(const EcmaVM *vm)
+{
+    if (vm == nullptr) {
+        return false;
+    }
+    return const_cast<EcmaVM *>(vm)->GetJSOptions().GetEnableAsmInterpreter();
+}
+
+std::string JSNApi::GetStubFile(const EcmaVM *vm)
+{
+    if (vm == nullptr) {
+        return "";
+    }
+    return const_cast<EcmaVM *>(vm)->GetJSOptions().GetStubFile();
+}
+
 bool JSNApi::IsProfiling(EcmaVM *vm)
 {
     return vm->GetProfilerState();
