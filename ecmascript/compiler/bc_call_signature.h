@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,11 +22,6 @@
 namespace panda::ecmascript::kungfu {
 #define IGNORE_BC_STUB(...)
 #define ASM_UNUSED_BC_STUB_LIST(T)                      \
-    T(HandleOverflowDD)                                 \
-    T(HandleOverflowDE)                                 \
-    T(HandleOverflowDF)                                 \
-    T(HandleOverflowE0)                                 \
-    T(HandleOverflowE1)                                 \
     T(HandleOverflowE2)                                 \
     T(HandleOverflowE3)                                 \
     T(HandleOverflowE4)                                 \
@@ -277,6 +272,11 @@ namespace panda::ecmascript::kungfu {
     T(HandleTestInImm8Imm16Imm16)                                         \
     T(HandleDefineFieldByNameImm8Id16V8)                                  \
     T(HandleDefinePropertyByNameImm8Id16V8)                               \
+    D(HandleCallthis0withnameImm8Id16V8)                                  \
+    D(HandleCallthis1withnameImm8Id16V8V8)                                \
+    D(HandleCallthis2withnameImm8Id16V8V8V8)                              \
+    D(HandleCallthis3withnameImm8Id16V8V8V8V8)                            \
+    D(HandleCallthisrangewithnameImm8Imm8Id16V8)                          \
     ASM_UNUSED_BC_STUB_LIST(T)                                            \
     T(HandleCallRuntime)                                                  \
     T(HandleDeprecated)                                                   \
@@ -355,7 +355,8 @@ namespace panda::ecmascript::kungfu {
     T(HandleWideLdlocalmodulevarPrefImm16)                                \
     T(HandleWideLdexternalmodulevarPrefImm16)                             \
     T(HandleWideLdpatchvarPrefImm16)                                      \
-    T(HandleWideStpatchvarPrefImm16)
+    T(HandleWideStpatchvarPrefImm16)                                      \
+    D(HandleWideCallthisrangewithnamePrefImm16Id16V8)
 
 // V: Not Enabled, T: Enabled, D: Always Disable SingleStepDebugging
 #define ASM_INTERPRETER_THROW_STUB_LIST(V, T, D)                          \
@@ -518,7 +519,13 @@ namespace panda::ecmascript::kungfu {
     APPEND_SUFFIX(HandleTrystglobalbynameImm8Id16, V)          \
     APPEND_SUFFIX_IMM16(HandleTrystglobalbynameImm16Id16, V)   \
     APPEND_SUFFIX_IMM16(HandleLdglobalvarImm16Id16, V)         \
-    APPEND_SUFFIX(HandleSupercallthisrangeImm8Imm8V8, V)
+    APPEND_SUFFIX(HandleSupercallthisrangeImm8Imm8V8, V)       \
+    APPEND_SUFFIX(HandleCallthis0withnameImm8Id16V8, V)        \
+    APPEND_SUFFIX(HandleCallthis1withnameImm8Id16V8V8, V)      \
+    APPEND_SUFFIX(HandleCallthis2withnameImm8Id16V8V8V8, V)    \
+    APPEND_SUFFIX(HandleCallthis3withnameImm8Id16V8V8V8V8, V)  \
+    APPEND_SUFFIX(HandleCallthisrangewithnameImm8Imm8Id16V8, V)\
+    APPEND_SUFFIX_IMM16(HandleWideCallthisrangewithnamePrefImm16Id16V8, V)
 
 #define ASM_INTERPRETER_BC_LAYOUT_PROFILER_STUB_LIST(V)                     \
     APPEND_SUFFIX(HandleDefineclasswithbufferImm8Id16Id16Imm16V8, V)        \

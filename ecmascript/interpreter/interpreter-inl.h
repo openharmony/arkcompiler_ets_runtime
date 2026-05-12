@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -290,6 +290,33 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
                 JSHandle<JSTaggedValue>func(thread, funcValue);                 \
                 std::string message = JSTaggedValue::ExceptionToString(         \
                     thread, func);                                              \
+                message.append(" is not callable");                             \
+                JSHandle<JSObject> error = factory->GetJSError(                 \
+                    ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \
+                thread->SetException(error.GetTaggedValue());                   \
+            }                                                                   \
+            INTERPRETER_GOTO_EXCEPTION_HANDLER();                               \
+        }                                                                       \
+        funcObject = ECMAObject::Cast(funcValue.GetTaggedObject());             \
+        methodHandle.Update(JSTaggedValue(funcObject->GetCallTarget(thread)));  \
+        newSp = sp - InterpretedFrame::NumOfMembers();                          \
+    } while (false)
+
+#define CALL_INITIALIZE_WITH_NAME()                                             \
+    do {                                                                        \
+        SAVE_PC();                                                              \
+        SAVE_ACC();                                                             \
+        thread->CheckSafepoint();                                               \
+        RESTORE_ACC();                                                          \
+        funcTagged = acc.GetRawData();                                          \
+        JSTaggedValue funcValue = acc;                                          \
+        if (!funcValue.IsCallable()) {                                          \
+            {                                                                   \
+                [[maybe_unused]] EcmaHandleScope handleScope(thread);           \
+                JSHandle<JSTaggedValue> funcName(                               \
+                    thread, GET_STR_FROM_CACHE(stringId));                      \
+                std::string message = JSTaggedValue::ExceptionToString(         \
+                    thread, funcName);                                          \
                 message.append(" is not callable");                             \
                 JSHandle<JSObject> error = factory->GetJSError(                 \
                     ErrorType::TYPE_ERROR, message.c_str(), StackCheck::NO);    \

@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -215,6 +215,12 @@ void BytecodeMetaData::InitReadFuncFlag(EcmaOpcode &opcode, uint32_t &flags)
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+        case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+        case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+        case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+        case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8:
         case EcmaOpcode::LDA_STR_ID16:
         case EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM8_ID16_V8:
         case EcmaOpcode::STOWNBYNAMEWITHNAMESET_IMM16_ID16_V8:
@@ -274,6 +280,12 @@ void BytecodeMetaData::InitReadACCFlag(EcmaOpcode &opcode, uint32_t &flags)
     switch (opcode) {
         case EcmaOpcode::RETURN:
         case EcmaOpcode::ASYNCGENERATORRESOLVE_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+        case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+        case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+        case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8:
             flags |= BytecodeFlags::READ_ACC;
             break;
         default:
@@ -352,6 +364,12 @@ void BytecodeMetaData::InitSupportDeoptFlag(EcmaOpcode &opcode, uint32_t &flags)
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+        case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+        case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+        case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8:
         case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
@@ -761,6 +779,12 @@ bool BytecodeMetaData::InitCallBCKind(EcmaOpcode &opcode, BytecodeKind &kind)
         case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
         case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
         case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
+        case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+        case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+        case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+        case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+        case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+        case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8:
         case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8:
         case EcmaOpcode::NEWOBJRANGE_IMM16_IMM8_V8:
@@ -965,6 +989,76 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             for (size_t i = 1; i <= actualNumArgs; i++) {
                 info.inputs.emplace_back(VirtualRegister(startReg + i));
             }
+            break;
+        }
+        case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8: {
+            uint16_t slotId = READ_INST_8_0();
+            uint32_t actualNumArgs = READ_INST_8_1();
+            uint16_t stringId = READ_INST_16_2();
+            uint32_t startReg = READ_INST_8_4();
+            info.slotId = ICSlotId(slotId);
+            for (size_t i = 0; i <= actualNumArgs; i++) {
+                info.inputs.emplace_back(VirtualRegister(startReg + i));
+            }
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
+            break;
+        }
+        case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8: {
+            uint32_t actualNumArgs = READ_INST_16_1();
+            uint16_t stringId = READ_INST_16_3();
+            uint32_t startReg = READ_INST_8_5();
+            for (size_t i = 0; i <= actualNumArgs; i++) {
+                info.inputs.emplace_back(VirtualRegister(startReg + i));
+            }
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
+            break;
+        }
+        case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8: {
+            uint16_t slotId = READ_INST_8_0();
+            uint16_t stringId = READ_INST_16_1();
+            int32_t startReg = READ_INST_8_3();
+            info.slotId = ICSlotId(slotId);
+            info.inputs.emplace_back(VirtualRegister(startReg));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
+            break;
+        }
+        case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
+            uint16_t stringId = READ_INST_16_1();
+            uint32_t startReg = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_4();
+            info.slotId = ICSlotId(slotId);
+            info.inputs.emplace_back(VirtualRegister(startReg));
+            info.inputs.emplace_back(VirtualRegister(a0));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
+            break;
+        }
+        case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
+            uint16_t stringId = READ_INST_16_1();
+            int32_t startReg = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_4();
+            uint32_t a1 = READ_INST_8_5();
+            info.slotId = ICSlotId(slotId);
+            info.inputs.emplace_back(VirtualRegister(startReg));
+            info.inputs.emplace_back(VirtualRegister(a0));
+            info.inputs.emplace_back(VirtualRegister(a1));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
+            break;
+        }
+        case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8: {
+            uint16_t slotId = READ_INST_8_0();
+            uint16_t stringId = READ_INST_16_1();
+            int32_t startReg = READ_INST_8_3();
+            uint32_t a0 = READ_INST_8_4();
+            uint32_t a1 = READ_INST_8_5();
+            uint32_t a2 = READ_INST_8_6();
+            info.slotId = ICSlotId(slotId);
+            info.inputs.emplace_back(VirtualRegister(startReg));
+            info.inputs.emplace_back(VirtualRegister(a0));
+            info.inputs.emplace_back(VirtualRegister(a1));
+            info.inputs.emplace_back(VirtualRegister(a2));
+            info.inputs.emplace_back(ConstDataId(ConstDataIDType::StringIDType, stringId));
             break;
         }
         case EcmaOpcode::CALLTHIS0_IMM8_V8: {

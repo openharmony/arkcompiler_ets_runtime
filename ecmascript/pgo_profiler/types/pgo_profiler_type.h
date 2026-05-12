@@ -1325,11 +1325,11 @@ public:
 
     const PGORWOpType* GetPGORWOpType()
     {
-        if (type_ == nullptr) {
-            static PGORWOpType noneType;
+        static PGORWOpType noneType;
+        if (type_ == nullptr || !type_->IsRwOpType()) {
+            // Profile kind mismatch should degrade optimization, not crash AOT/JIT pipeline.
             return &noneType;
         }
-        ASSERT(type_->IsRwOpType());
         return static_cast<const PGORWOpType*>(type_);
     }
 

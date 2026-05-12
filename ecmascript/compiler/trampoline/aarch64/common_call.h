@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -116,7 +116,7 @@ private:
     static void DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,
                             Label *nonCallable, Label *notJSFunction);
-    static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp);
+    static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp, Register jsfunc);
     static void JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Register glue,
                                             Register actualArgC, Register jsfunc, int stubId);
     static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);

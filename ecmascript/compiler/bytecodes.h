@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2022-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -312,11 +312,11 @@ public:
     static constexpr uint32_t MIN_PREFIX_OPCODE_INDEX = CALLRUNTIME_PREFIX_OPCODE_INDEX;
 
     static constexpr uint32_t LAST_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8);
+        static_cast<uint32_t>(EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8);
     static constexpr uint32_t LAST_DEPRECATED_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::DEPRECATED_DYNAMICIMPORT_PREF_V8);
     static constexpr uint32_t LAST_WIDE_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::WIDE_STPATCHVAR_PREF_IMM16);
+        static_cast<uint32_t>(EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8);
     static constexpr uint32_t LAST_THROW_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
     static constexpr uint32_t LAST_CALLRUNTIME_OPCODE =
@@ -379,6 +379,12 @@ public:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+            case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+            case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8:
             case EcmaOpcode::CALLRUNTIME_CALLINIT_PREF_IMM8_V8:
                 return true;
             default:
@@ -469,6 +475,12 @@ public:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
             case EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8:
             case EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+            case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+            case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8:
             case EcmaOpcode::LDOBJBYNAME_IMM8_ID16:
             case EcmaOpcode::LDOBJBYNAME_IMM16_ID16:
             case EcmaOpcode::LDTHISBYNAME_IMM8_ID16:
@@ -956,6 +968,14 @@ public:
     static int ComputeCallArgc(int gateNumIn, EcmaOpcode op)
     {
         switch (op) {
+            case EcmaOpcode::CALLTHIS0WITHNAME_IMM8_ID16_V8:
+            case EcmaOpcode::CALLTHIS1WITHNAME_IMM8_ID16_V8_V8:
+            case EcmaOpcode::CALLTHIS2WITHNAME_IMM8_ID16_V8_V8_V8:
+            case EcmaOpcode::CALLTHIS3WITHNAME_IMM8_ID16_V8_V8_V8_V8:
+            case EcmaOpcode::CALLTHISRANGEWITHNAME_IMM8_IMM8_ID16_V8:
+            case EcmaOpcode::WIDE_CALLTHISRANGEWITHNAME_PREF_IMM16_ID16_V8: {
+                return gateNumIn + NUM_MANDATORY_JSFUNC_ARGS - 3; // 3: calltarget, this, stringId
+            }
             case EcmaOpcode::CALLTHIS1_IMM8_V8_V8:
             case EcmaOpcode::CALLTHIS2_IMM8_V8_V8_V8:
             case EcmaOpcode::CALLTHIS3_IMM8_V8_V8_V8_V8:
