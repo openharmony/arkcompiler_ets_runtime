@@ -222,6 +222,13 @@ bool JSPandaFileSnapshot::ReadDataFromFile(JSThread *thread, JSPandaFile *jsPand
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot::ReadDataFromFile open file failed:" << filename;
         return false;
     }
+#if defined(PANDA_TARGET_OHOS) && ENABLE_V70_OPTIMIZATION
+    if (madvise(fileMapMem.GetOriginAddr(), fileMapMem.GetSize(), MADV_WILLNEED) != 0) {
+        LOG_ECMA(INFO) << "JSPandaFileSnapshot::ReadDataFromFile madvise failed:" << filename
+                       << ", errno: " << errno
+                       << ", " << strerror(errno);
+    }
+#endif
     ModulesSnapshotHelper::MarkJSPandaFileSnapshotLoaded();
     LOG_ECMA(DEBUG) << "JSPandaFileSnapshot::ReadDataFromFile: " << filename;
     MemMapScope memMapScope(fileMapMem);
