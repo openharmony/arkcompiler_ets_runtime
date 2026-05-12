@@ -96,6 +96,7 @@ void ConcurrentMarker::Mark()
         ("ConcurrentMarker::Mark" + std::to_string(heap_->IsFullMarkRequested())
         + ";MarkReason" + std::to_string(static_cast<int>(gcStats->GetMarkReason()))
         + ";Sensitive" + std::to_string(static_cast<int>(heap_->GetSensitiveStatus()))
+        + ";Cms" + std::to_string(static_cast<int>(heap_->GetCmsGC()))
         + ";IsInBackground" + std::to_string(Runtime::GetInstance()->IsInBackground())
         + ";Startup" + std::to_string(static_cast<int>(heap_->GetStartupStatus()))
         + ";ConMark" + std::to_string(static_cast<int>(heap_->GetJSThread()->GetMarkStatus()))
@@ -120,6 +121,8 @@ void ConcurrentMarker::Mark()
 void ConcurrentMarker::Finish()
 {
     workManager_->Finish();
+    heap_->SetCmsGC(false);
+    heap_->SetDisableCmsGC(false);
 }
 
 void ConcurrentMarker::ReMark()
@@ -190,6 +193,14 @@ void ConcurrentMarker::InitializeMarking()
 {
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarkingInitialize);
     heap_->Prepare();
+#if ENABLE_MEMORY_OPTIMIZATION
+    if (!heap_->IsCCMark()) {
+        bool useCms = heap_->GetEcmaParamConfiguration().GetMaxHeapSize() >= DEFAULT_HEAP_SIZE
+            && heap_->InSensitiveStatus()
+            && !heap_->GetDisableCmsGC();
+        heap_->SetCmsGC(useCms);
+    }
+#endif
     ASSERT(VerifyAllRegionsNonFresh());
     // fixme: refactor?
     if constexpr (!G_USE_CMS_GC) {

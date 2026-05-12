@@ -16,7 +16,7 @@
 #include "ecmascript/mem/concurrent_sweeper.h"
 
 #include "common_components/taskpool/taskpool.h"
-#include "ecmascript/mem/heap.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/runtime_call_id.h"
 
@@ -35,6 +35,10 @@ void ConcurrentSweeper::PostTask(TriggerGCType gcType)
         switch (gcType) {
             case TriggerGCType::YOUNG_GC:
             case TriggerGCType::OLD_GC:
+                if (heap_->GetCmsGC()) {
+                    common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweeperTask>(
+                        tid, this, MemSpaceType::SEMI_SPACE, startSpaceType_, endSpaceType_, isFullGC));
+                }
                 common::Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweeperTask>(
                     tid, this, MemSpaceType::OLD_SPACE, startSpaceType_, endSpaceType_, isFullGC));
                 break;
@@ -58,13 +62,27 @@ void ConcurrentSweeper::PostTask(TriggerGCType gcType)
 
 void ConcurrentSweeper::Sweep(TriggerGCType gcType)
 {
+    // If not cms, young space will be swaped in `Evacuate`.
+    // In cms, in fact do not need to swap young space, but the following process, like `Resume`
+    // based on young space swapped, so swap young space here.
+    if (heap_->GetCmsGC()) {
+        heap_->SwapNewSpace();
+    }
     if (ConcurrentSweepEnabled()) {
         // Add all region to region list. Ensure all task finish
         switch (gcType) {
+            case TriggerGCType::YOUNG_GC:
             case TriggerGCType::OLD_GC:
-                startSpaceType_ = MemSpaceType::OLD_SPACE;
+                if (heap_->GetCmsGC()) {
+                    startSpaceType_ = MemSpaceType::SEMI_SPACE;
+                    heap_->GetNewSpace()->PrepareSweeping(heap_->GetFromSpaceDuringEvacuation());
+                } else {
+                    startSpaceType_ = MemSpaceType::OLD_SPACE;
+                }
                 endSpaceType_ = MemSpaceType::MACHINE_CODE_SPACE;
-                heap_->GetOldSpace()->PrepareSweeping();
+                if (gcType != TriggerGCType::YOUNG_GC) {
+                    heap_->GetOldSpace()->PrepareSweeping();
+                }
                 break;
             case TriggerGCType::CMS_GC:
                 startSpaceType_ = MemSpaceType::NON_MOVABLE;
@@ -80,8 +98,10 @@ void ConcurrentSweeper::Sweep(TriggerGCType gcType)
                 LOG_ECMA(FATAL) << "this branch is unreachable, " << static_cast<int>(gcType);
                 UNREACHABLE();
         }
-        heap_->GetNonMovableSpace()->PrepareSweeping();
-        heap_->GetMachineCodeSpace()->PrepareSweeping();
+        if (gcType != TriggerGCType::YOUNG_GC) {
+            heap_->GetNonMovableSpace()->PrepareSweeping();
+            heap_->GetMachineCodeSpace()->PrepareSweeping();
+        }
         // Prepare
         isSweeping_ = true;
         for (int type = startSpaceType_; type <= endSpaceType_; type++) {
@@ -89,29 +109,34 @@ void ConcurrentSweeper::Sweep(TriggerGCType gcType)
         }
     } else {
         switch (gcType) {
+            case TriggerGCType::YOUNG_GC:
+                ASSERT(heap_->GetCmsGC());
+                heap_->GetNewSpace()->Sweep(heap_->GetFromSpaceDuringEvacuation());
+                break;
             case TriggerGCType::OLD_GC:
-                startSpaceType_ = MemSpaceType::OLD_SPACE;
-                endSpaceType_ = MemSpaceType::MACHINE_CODE_SPACE;
+                if (heap_->GetCmsGC()) {
+                    heap_->GetNewSpace()->Sweep(heap_->GetFromSpaceDuringEvacuation());
+                }
                 heap_->GetOldSpace()->Sweep();
                 break;
             case TriggerGCType::CMS_GC:
-                startSpaceType_ = MemSpaceType::NON_MOVABLE;
-                endSpaceType_ = MemSpaceType::SLOT_SPACE;
                 heap_->GetSlotSpace()->Sweep();
                 break;
             case TriggerGCType::FULL_GC:
-                startSpaceType_ = MemSpaceType::NON_MOVABLE;
-                endSpaceType_ = MemSpaceType::MACHINE_CODE_SPACE;
                 break;
             default:
                 LOG_ECMA(FATAL) << "this branch is unreachable, " << static_cast<int>(gcType);
                 UNREACHABLE();
         }
-        heap_->GetNonMovableSpace()->Sweep();
-        heap_->GetMachineCodeSpace()->Sweep();
+        if (gcType != TriggerGCType::YOUNG_GC) {
+            heap_->GetNonMovableSpace()->Sweep();
+            heap_->GetMachineCodeSpace()->Sweep();
+        }
     }
-    heap_->GetHugeObjectSpace()->Sweep();
-    heap_->GetHugeMachineCodeSpace()->Sweep();
+    if (gcType != TriggerGCType::YOUNG_GC) {
+        heap_->GetHugeObjectSpace()->Sweep();
+        heap_->GetHugeMachineCodeSpace()->Sweep();
+    }
 }
 
 void ConcurrentSweeper::SweepNewToOldRegions()

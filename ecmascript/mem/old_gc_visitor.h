@@ -38,7 +38,8 @@ private:
     WorkNodeHolder *workNodeHolder_ {nullptr};
 };
 
-class OldGCMarkObjectVisitor final : public BaseObjectVisitor<OldGCMarkObjectVisitor> {
+template <bool cmsGC>
+class OldGCMarkObjectVisitor final : public BaseObjectVisitor<OldGCMarkObjectVisitor<cmsGC>> {
 public:
     inline explicit OldGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder);
     ~OldGCMarkObjectVisitor() override = default;

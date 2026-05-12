@@ -88,6 +88,7 @@ bool ParallelEvacuator::UpdateForwardedOldToNewObjectSlot(TaggedObject *object, 
     return false;
 }
 
+template <bool cmsGC>
 bool ParallelEvacuator::UpdateOldToNewObjectSlot(ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
@@ -96,24 +97,31 @@ bool ParallelEvacuator::UpdateOldToNewObjectSlot(ObjectSlot &slot)
     }
     TaggedObject *object = value.GetHeapObject();
     Region *valueRegion = Region::ObjectAddressToRange(object);
-    // It is only update old to new object when iterate OldToNewRSet
-    if (valueRegion->InYoungSpace()) {
-        if (!valueRegion->InNewToNewSet()) {
-            return UpdateForwardedOldToNewObjectSlot(object, slot, value.IsWeakForHeapObject());
+    if constexpr (cmsGC) {
+        if (valueRegion->InYoungSpace()) {
+            return valueRegion->Test(object);
         }
-        // move region from fromspace to tospace
-        if (valueRegion->Test(object)) {
-            return true;
+        return false;
+    } else {
+        // It is only update old to new object when iterate OldToNewRSet
+        if (valueRegion->InYoungSpace()) {
+            if (!valueRegion->InNewToNewSet()) {
+                return UpdateForwardedOldToNewObjectSlot(object, slot, value.IsWeakForHeapObject());
+            }
+            // move region from fromspace to tospace
+            if (valueRegion->Test(object)) {
+                return true;
+            }
+            if (value.IsWeakForHeapObject()) {
+                slot.Clear();
+            }
+        } else if (valueRegion->InNewToOldSet()) {
+            if (value.IsWeakForHeapObject() && !valueRegion->Test(object)) {
+                slot.Clear();
+            }
         }
-        if (value.IsWeakForHeapObject()) {
-            slot.Clear();
-        }
-    } else if (valueRegion->InNewToOldSet()) {
-        if (value.IsWeakForHeapObject() && !valueRegion->Test(object)) {
-            slot.Clear();
-        }
+        return false;
     }
-    return false;
 }
 
 ParallelEvacuator::UpdateRootVisitor::UpdateRootVisitor(ParallelEvacuator *evacuator) : evacuator_(evacuator) {}

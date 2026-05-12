@@ -69,10 +69,13 @@ void YoungGCMarkRootVisitor::HandleSlot(ObjectSlot slot)
     }
 }
 
-YoungGCMarkObjectVisitor::YoungGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder) : workNodeHolder_(workNodeHolder) {}
+template <bool cmsGC>
+YoungGCMarkObjectVisitor<cmsGC>::YoungGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder)
+    : workNodeHolder_(workNodeHolder) {}
 
-void YoungGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
-                                                    VisitObjectArea area)
+template <bool cmsGC>
+void YoungGCMarkObjectVisitor<cmsGC>::VisitObjectRangeImpl(BaseObject *root, uintptr_t startAddr, uintptr_t endAddr,
+                                                           VisitObjectArea area)
 {
     ObjectSlot start(startAddr);
     ObjectSlot end(endAddr);
@@ -97,7 +100,8 @@ void YoungGCMarkObjectVisitor::VisitObjectRangeImpl(BaseObject *root, uintptr_t 
     }
 }
 
-void YoungGCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
+template <bool cmsGC>
+void YoungGCMarkObjectVisitor<cmsGC>::VisitWeakLinkedHashMapImpl(BaseObject *rootObject)
 {
     TaggedObject *obj = TaggedObject::Cast(rootObject);
     ASSERT(JSTaggedValue(obj).IsWeakLinkedHashMap());
@@ -105,14 +109,25 @@ void YoungGCMarkObjectVisitor::VisitWeakLinkedHashMapImpl(BaseObject *rootObject
     workNodeHolder_->PushWeakLinkedHashMap(obj);
 }
 
-void YoungGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
+template <bool cmsGC>
+void YoungGCMarkObjectVisitor<cmsGC>::HandleSlot(ObjectSlot slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
-    if (!value.IsHeapObject() || value.IsWeakForHeapObject()) {
+    if (!value.IsHeapObject()) {
         return;
     }
+    if constexpr (!cmsGC) {
+        if (value.IsWeakForHeapObject()) {
+            return;
+        }
+    }
 
-    TaggedObject *object = value.GetTaggedObject();
+    TaggedObject *object;
+    if constexpr (cmsGC) {
+        object = value.GetHeapObject();
+    } else {
+        object = value.GetTaggedObject();
+    }
     Region *objectRegion = Region::ObjectAddressToRange(object);
     if (!objectRegion->InYoungSpace() || objectRegion->IsFreshRegion()) {
         return;
@@ -123,10 +138,12 @@ void YoungGCMarkObjectVisitor::HandleSlot(ObjectSlot slot)
     }
 }
 
-YoungGCMarkOldToNewRSetVisitor::YoungGCMarkOldToNewRSetVisitor(WorkNodeHolder *workNodeHolder)
+template <bool cmsGC>
+YoungGCMarkOldToNewRSetVisitor<cmsGC>::YoungGCMarkOldToNewRSetVisitor(WorkNodeHolder *workNodeHolder)
     : workNodeHolder_(workNodeHolder) {}
 
-void YoungGCMarkOldToNewRSetVisitor::operator()(Region *region) const
+template <bool cmsGC>
+void YoungGCMarkOldToNewRSetVisitor<cmsGC>::operator()(Region *region) const
 {
     region->IterateAllOldToNewBits([this](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
@@ -134,7 +151,8 @@ void YoungGCMarkOldToNewRSetVisitor::operator()(Region *region) const
     });
 }
 
-bool YoungGCMarkOldToNewRSetVisitor::HandleSlot(ObjectSlot slot) const
+template <bool cmsGC>
+bool YoungGCMarkOldToNewRSetVisitor<cmsGC>::HandleSlot(ObjectSlot slot) const
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (!value.IsHeapObject()) {
@@ -149,12 +167,19 @@ bool YoungGCMarkOldToNewRSetVisitor::HandleSlot(ObjectSlot slot) const
     // In initial mark, all regions are non-fresh.
     ASSERT(!region->IsFreshRegion());
 
-    if (value.IsWeakForHeapObject()) {
-        // Keep OldToNew to update weak reference.
-        return true;
+    if constexpr (!cmsGC) {
+        if (value.IsWeakForHeapObject()) {
+            // Keep OldToNew to update weak reference.
+            return true;
+        }
     }
 
-    TaggedObject *object = value.GetTaggedObject();
+    TaggedObject *object;
+    if constexpr (cmsGC) {
+        object = value.GetHeapObject();
+    } else {
+        object = value.GetTaggedObject();
+    }
     if (region->AtomicMark(object)) {
         workNodeHolder_->Push(object);
     }

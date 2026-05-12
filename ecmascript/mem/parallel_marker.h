@@ -72,7 +72,9 @@ protected:
     void ProcessMarkStack(uint32_t threadId) override;
     void MarkJitCodeMap(uint32_t threadId) override;
 private:
+    template <bool cmsGC>
     void ProcessYoungGCMarkStack(uint32_t threadId);
+    template <bool cmsGC>
     void ProcessOldGCMarkStack(uint32_t threadId);
     void ProcessCMSGCMarkStack(uint32_t threadId);
     void ProcessCCGCMarkStack(uint32_t threadId);

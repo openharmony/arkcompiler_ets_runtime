@@ -168,6 +168,7 @@ private:
         bool Process(bool isMain, uint32_t threadIndex) override;
     };
 
+    template <bool cmsGC>
     class UpdateRSetWorkload : public Workload {
     public:
         UpdateRSetWorkload(ParallelEvacuator *evacuator, Region *region)
@@ -220,6 +221,9 @@ private:
 
     bool ProcessWorkloads(bool isMain = false, uint32_t threadIndex = 0);
 
+    void UpdateWeakReferenceInCmsGC();
+    void UpdateOldToNewRSetInCmsGC();
+
     void EvacuateSpace();
     bool EvacuateSpace(TlabAllocator *allocation, uint32_t threadIndex, uint32_t idOrder, bool isMain = false);
     void UpdateRecordWeakReferenceInParallel(uint32_t idOrder);
@@ -239,8 +243,11 @@ private:
 
     void UpdateReference();
     void UpdateRoot();
-    template<TriggerGCType gcType>
+    template<TriggerGCType gcType, bool cmsGC>
+    auto GetUpdateWeakReferenceOptVisitor();
+    template<TriggerGCType gcType, bool cmsgC>
     void UpdateWeakReferenceOpt();
+    template <bool cmsGC>
     void UpdateRSet(Region *region);
     template<TriggerGCType gcType, bool needUpdateLocalToShare>
     void UpdateNewRegionReference(Region *region);
@@ -253,6 +260,7 @@ private:
     void UpdateNewToOldEvacuationReference(Region *region, uint32_t threadIndex);
 
     inline bool UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlot &slot, bool isWeak);
+    template <bool cmsGC>
     inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
     inline void UpdateObjectSlot(ObjectSlot &slot);
     inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);

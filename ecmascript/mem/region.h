@@ -75,7 +75,7 @@ enum RegionGCFlags {
     // If ZAP_MEM is enabled, the value of the lower 3 bits conflicts with the INVALID_VALUE.
 
     // Below flags are used for GC, and each flag has a dedicated bit starting from the 3rd bit.
-    NEVER_EVACUATE = 1 << 3,
+    FREE_LIST_IN_YOUNG = 1 << 3,
     HAS_AGE_MARK = 1 << 4,
     BELOW_AGE_MARK = 1 << 5,
     IN_COLLECT_SET = 1 << 6,
@@ -564,6 +564,11 @@ public:
     {
         uint8_t space = packedData_.flags_.spaceFlag_;
         return space >= RegionSpaceFlag::HEAP_SPACE_BEGIN && space <= RegionSpaceFlag::HEAP_SPACE_END;
+    }
+
+    bool IsFreeListInYoung() const
+    {
+        return IsGCFlagSet(RegionGCFlags::FREE_LIST_IN_YOUNG);
     }
 
     bool InCollectSet() const

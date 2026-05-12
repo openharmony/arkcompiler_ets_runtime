@@ -531,6 +531,9 @@ void OldSpace::SelectCSet()
     if (localHeap_->InSensitiveStatus() && gcStats->GetGCReason() != GCReason::ALLOCATION_FAILED) {
         return;
     }
+    if (localHeap_->GetCmsGC()) {
+        return;
+    }
     CheckRegionSize();
     // 1、Select region which alive object larger than limit
     int64_t evacuateSizeLimit = 0;

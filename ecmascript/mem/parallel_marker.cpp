@@ -37,31 +37,55 @@ void Marker::MarkRoots(RootVisitor &rootVisitor, GlobalVisitType visitType)
 void NonMovableMarker::ProcessOldToNew(uint32_t threadId)
 {
     ASSERT(heap_->IsYoungMark());
-    YoungGCMarkOldToNewRSetVisitor youngGCMarkOldToNewRSetVisitor(workManager_->GetWorkNodeHolder(threadId));
-    heap_->EnumerateOldSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(threadId);
+    if (heap_->GetCmsGC()) {
+        YoungGCMarkOldToNewRSetVisitor<true> youngGCMarkOldToNewRSetVisitor(holder);
+        heap_->EnumerateOldSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    } else {
+        YoungGCMarkOldToNewRSetVisitor<false> youngGCMarkOldToNewRSetVisitor(holder);
+        heap_->EnumerateOldSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    }
     ProcessMarkStack(threadId);
 }
 
 void NonMovableMarker::ProcessOldToNewNoMarkStack(uint32_t threadId)
 {
     ASSERT(heap_->IsYoungMark());
-    YoungGCMarkOldToNewRSetVisitor youngGCMarkOldToNewRSetVisitor(workManager_->GetWorkNodeHolder(threadId));
-    heap_->EnumerateOldSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(threadId);
+    if (heap_->GetCmsGC()) {
+        YoungGCMarkOldToNewRSetVisitor<true> youngGCMarkOldToNewRSetVisitor(holder);
+        heap_->EnumerateOldSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    } else {
+        YoungGCMarkOldToNewRSetVisitor<false> youngGCMarkOldToNewRSetVisitor(holder);
+        heap_->EnumerateOldSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    }
 }
 
 void NonMovableMarker::ProcessSnapshotRSet(uint32_t threadId)
 {
     ASSERT(heap_->IsYoungMark());
-    YoungGCMarkOldToNewRSetVisitor youngGCMarkOldToNewRSetVisitor(workManager_->GetWorkNodeHolder(threadId));
-    heap_->EnumerateSnapshotSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(threadId);
+    if (heap_->GetCmsGC()) {
+        YoungGCMarkOldToNewRSetVisitor<true> youngGCMarkOldToNewRSetVisitor(holder);
+        heap_->EnumerateSnapshotSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    } else {
+        YoungGCMarkOldToNewRSetVisitor<false> youngGCMarkOldToNewRSetVisitor(holder);
+        heap_->EnumerateSnapshotSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    }
     ProcessMarkStack(threadId);
 }
 
 void NonMovableMarker::ProcessSnapshotRSetNoMarkStack(uint32_t threadId)
 {
     ASSERT(heap_->IsYoungMark());
-    YoungGCMarkOldToNewRSetVisitor youngGCMarkOldToNewRSetVisitor(workManager_->GetWorkNodeHolder(threadId));
-    heap_->EnumerateSnapshotSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    WorkNodeHolder *holder = workManager_->GetWorkNodeHolder(threadId);
+    if (heap_->GetCmsGC()) {
+        YoungGCMarkOldToNewRSetVisitor<true> youngGCMarkOldToNewRSetVisitor(holder);
+        heap_->EnumerateSnapshotSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    } else {
+        YoungGCMarkOldToNewRSetVisitor<false> youngGCMarkOldToNewRSetVisitor(holder);
+        heap_->EnumerateSnapshotSpaceRegions(youngGCMarkOldToNewRSetVisitor);
+    }
 }
 
 void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
@@ -72,23 +96,44 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
     if (heap_->IsYoungMark()) {
         return;
     }
-    OldGCMarkObjectVisitor objectVisitor(workManager_->GetWorkNodeHolder(threadId));
-    JitCodeMapVisitor visitor = [&objectVisitor](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
-        auto it = jitCodeMaps.begin();
-        while (it != jitCodeMaps.end()) {
-            JSTaggedType jsError = it->first;
-            Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
-            if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
+    JitCodeMapVisitor visitor;
+    if (heap_->GetCmsGC()) {
+        OldGCMarkObjectVisitor<true> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
+        visitor = [&objectVisitor](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
+            auto it = jitCodeMaps.begin();
+            while (it != jitCodeMaps.end()) {
+                JSTaggedType jsError = it->first;
+                Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
+                if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
+                    ++it;
+                    continue;
+                }
+                for (auto &jitCodeMap : *(it->second)) {
+                    auto &jitCode = std::get<0>(jitCodeMap);
+                    objectVisitor.HandleObject(jitCode, Region::ObjectAddressToRange(jitCode));
+                }
                 ++it;
-                continue;
             }
-            for (auto &jitCodeMap : *(it->second)) {
-                auto &jitCode = std::get<0>(jitCodeMap);
-                objectVisitor.HandleObject(jitCode, Region::ObjectAddressToRange(jitCode));
+        };
+    } else {
+        OldGCMarkObjectVisitor<false> objectVisitor(workManager_->GetWorkNodeHolder(threadId));
+        visitor = [&objectVisitor](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
+            auto it = jitCodeMaps.begin();
+            while (it != jitCodeMaps.end()) {
+                JSTaggedType jsError = it->first;
+                Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
+                if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
+                    ++it;
+                    continue;
+                }
+                for (auto &jitCodeMap : *(it->second)) {
+                    auto &jitCode = std::get<0>(jitCodeMap);
+                    objectVisitor.HandleObject(jitCode, Region::ObjectAddressToRange(jitCode));
+                }
+                ++it;
             }
-            ++it;
-        }
-    };
+        };
+    }
     ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
     ProcessMarkStack(threadId);
     heap_->WaitRunningMarkTaskFinished();
@@ -102,23 +147,37 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
         return;
     }
     if (heap_->IsYoungMark()) {
-        ProcessYoungGCMarkStack(threadId);
+        if (heap_->GetCmsGC()) {
+            ProcessYoungGCMarkStack<true>(threadId);
+        } else {
+            ProcessYoungGCMarkStack<false>(threadId);
+        }
     } else if (heap_->IsFullMark()) {
-        ProcessOldGCMarkStack(threadId);
+        if (heap_->GetCmsGC()) {
+            ProcessOldGCMarkStack<true>(threadId);
+        } else {
+            ProcessOldGCMarkStack<false>(threadId);
+        }
     } else {
         ASSERT(heap_->IsCCMark());
         ProcessCCGCMarkStack(threadId);
     }
 }
 
+template <bool cmsGC>
 void NonMovableMarker::ProcessYoungGCMarkStack(uint32_t threadId)
 {
     WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
-    YoungGCMarkObjectVisitor youngGCMarkObjectVisitor(workNodeHolder);
+    YoungGCMarkObjectVisitor<cmsGC> youngGCMarkObjectVisitor(workNodeHolder);
     SemiSpace *newSpace = heap_->GetNewSpace();
     TaggedObject *obj = nullptr;
     while (workNodeHolder->Pop(&obj)) {
         Region *region = Region::ObjectAddressToRange(obj);
+        JSHClass *jsHclass = obj->SynchronizedGetClass();
+        ASSERT(!region->IsFreshRegion());
+        auto size = jsHclass->SizeFromJSHClass(obj);
+        region->IncreaseAliveObject(size);
+
         if (region->IsHalfFreshRegion()) {
             ASSERT(region->InYoungSpace());
             if (newSpace->IsFreshObjectInHalfFreshRegion(obj)) {
@@ -126,24 +185,25 @@ void NonMovableMarker::ProcessYoungGCMarkStack(uint32_t threadId)
                 continue;
             }
         }
-
-        JSHClass *jsHclass = obj->SynchronizedGetClass();
-        ASSERT(!region->IsFreshRegion());
-        auto size = jsHclass->SizeFromJSHClass(obj);
-        region->IncreaseAliveObject(size);
 
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, youngGCMarkObjectVisitor);
     }
 }
 
+template <bool cmsGC>
 void NonMovableMarker::ProcessOldGCMarkStack(uint32_t threadId)
 {
     WorkNodeHolder *workNodeHolder = workManager_->GetWorkNodeHolder(threadId);
-    OldGCMarkObjectVisitor oldGCMarkObjectVisitor(workNodeHolder);
+    OldGCMarkObjectVisitor<cmsGC> oldGCMarkObjectVisitor(workNodeHolder);
     SemiSpace *newSpace = heap_->GetNewSpace();
     TaggedObject *obj = nullptr;
     while (workNodeHolder->Pop(&obj)) {
         Region *region = Region::ObjectAddressToRange(obj);
+        JSHClass *jsHclass = obj->SynchronizedGetClass();
+        ASSERT(!region->IsFreshRegion());
+        auto size = jsHclass->SizeFromJSHClass(obj);
+        region->IncreaseAliveObject(size);
+
         if (region->IsHalfFreshRegion()) {
             ASSERT(region->InYoungSpace());
             if (newSpace->IsFreshObjectInHalfFreshRegion(obj)) {
@@ -151,11 +211,6 @@ void NonMovableMarker::ProcessOldGCMarkStack(uint32_t threadId)
                 continue;
             }
         }
-
-        JSHClass *jsHclass = obj->SynchronizedGetClass();
-        ASSERT(!region->IsFreshRegion());
-        auto size = jsHclass->SizeFromJSHClass(obj);
-        region->IncreaseAliveObject(size);
 
         oldGCMarkObjectVisitor.VisitHClass(jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, oldGCMarkObjectVisitor);

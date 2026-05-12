@@ -38,7 +38,8 @@ private:
     WorkNodeHolder *workNodeHolder_ {nullptr};
 };
 
-class YoungGCMarkObjectVisitor final : public BaseObjectVisitor<YoungGCMarkObjectVisitor> {
+template <bool cmsGC>
+class YoungGCMarkObjectVisitor final : public BaseObjectVisitor<YoungGCMarkObjectVisitor<cmsGC>> {
 public:
     inline explicit YoungGCMarkObjectVisitor(WorkNodeHolder *workNodeHolder);
     ~YoungGCMarkObjectVisitor() override = default;
@@ -53,6 +54,7 @@ private:
     WorkNodeHolder *workNodeHolder_ {nullptr};
 };
 
+template <bool cmsGC>
 class YoungGCMarkOldToNewRSetVisitor {
 public:
     inline explicit YoungGCMarkOldToNewRSetVisitor(WorkNodeHolder *workNodeHolder);
