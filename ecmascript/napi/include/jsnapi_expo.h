@@ -1089,7 +1089,7 @@ public:
     JSValueRef* CallForNapi(const EcmaVM *vm, JSValueRef *thisObj, JSValueRef *const argv[],
         int32_t length);
     Local<JSValueRef> Call(const EcmaVM *vm, Local<JSValueRef> thisObj, const Local<JSValueRef> argv[],
-        int32_t length);
+        int32_t length, bool clearSingleStepper = true);
     Local<JSValueRef> Constructor(const EcmaVM *vm, const Local<JSValueRef> argv[], int32_t length);
     JSValueRef* ConstructorOptimize(const EcmaVM *vm, JSValueRef* argv[], int32_t length);
 

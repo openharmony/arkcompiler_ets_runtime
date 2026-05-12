@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2023-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,6 +25,7 @@
 #include "ecmascript/builtins/builtins_locale.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
@@ -3186,5 +3187,130 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo12_exception_test)
         ClearAndPrintException4TryCatch1(vm_, "ThrowTerminationErrorFuncTest");
     }
     GTEST_LOG_(INFO) << "sample_demo12_exception_test =======================================";
+}
+
+HWTEST_F_L0(JSNApiSampleTest, FunctionRef_Call_ClearSingleStepper_Default)
+{
+    LocalScope scope(vm_);
+    int stepperCallCount = 0;
+    tooling::JsDebuggerManager::SingleStepperFunc stepperFunc = [&stepperCallCount]() { stepperCallCount++; };
+    auto *dm = vm_->GetJsDebuggerManager();
+    dm->SetStepperFunc(&stepperFunc);
+
+    Local<FunctionRef> func = FunctionRef::New(vm_, [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+        EcmaVM *vm = runtimeInfo->GetVM();
+        LocalScope scope(vm);
+        return NumberRef::New(vm, 42);
+    });
+
+    // Default: clearSingleStepper=true, should invoke the stepper callback
+    Local<JSValueRef> result = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
+    ASSERT_EQ(stepperCallCount, 1);
+    ASSERT_EQ(result->Int32Value(vm_), 42);
+
+    dm->SetStepperFunc(nullptr);
+}
+
+HWTEST_F_L0(JSNApiSampleTest, FunctionRef_Call_ClearSingleStepper_False)
+{
+    LocalScope scope(vm_);
+    int stepperCallCount = 0;
+    tooling::JsDebuggerManager::SingleStepperFunc stepperFunc = [&stepperCallCount]() { stepperCallCount++; };
+    auto *dm = vm_->GetJsDebuggerManager();
+    dm->SetStepperFunc(&stepperFunc);
+
+    Local<FunctionRef> func = FunctionRef::New(vm_, [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+        EcmaVM *vm = runtimeInfo->GetVM();
+        LocalScope scope(vm);
+        return NumberRef::New(vm, 99);
+    });
+
+    // clearSingleStepper=false: stepper should NOT be invoked
+    Local<JSValueRef> result = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0, false);
+    ASSERT_EQ(stepperCallCount, 0);
+    ASSERT_EQ(result->Int32Value(vm_), 99);
+
+    dm->SetStepperFunc(nullptr);
+}
+
+HWTEST_F_L0(JSNApiSampleTest, FunctionRef_Call_ClearSingleStepper_True)
+{
+    LocalScope scope(vm_);
+    int stepperCallCount = 0;
+    tooling::JsDebuggerManager::SingleStepperFunc stepperFunc = [&stepperCallCount]() { stepperCallCount++; };
+    auto *dm = vm_->GetJsDebuggerManager();
+    dm->SetStepperFunc(&stepperFunc);
+
+    Local<FunctionRef> func = FunctionRef::New(vm_, [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+        EcmaVM *vm = runtimeInfo->GetVM();
+        LocalScope scope(vm);
+        return NumberRef::New(vm, 7);
+    });
+
+    // Explicit clearSingleStepper=true: stepper should be invoked
+    Local<JSValueRef> result = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0, true);
+    ASSERT_EQ(stepperCallCount, 1);
+    ASSERT_EQ(result->Int32Value(vm_), 7);
+
+    dm->SetStepperFunc(nullptr);
+}
+
+HWTEST_F_L0(JSNApiSampleTest, FunctionRef_Call_ClearSingleStepper_NoStepperRegistered)
+{
+    LocalScope scope(vm_);
+    auto *dm = vm_->GetJsDebuggerManager();
+    // No stepper registered (nullptr)
+    dm->SetStepperFunc(nullptr);
+
+    Local<FunctionRef> func = FunctionRef::New(vm_, [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+        EcmaVM *vm = runtimeInfo->GetVM();
+        LocalScope scope(vm);
+        return NumberRef::New(vm, 10);
+    });
+
+    // Should not crash when no stepper is registered
+    Local<JSValueRef> result = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0);
+    ASSERT_EQ(result->Int32Value(vm_), 10);
+
+    // Also with clearSingleStepper=false
+    result = func->Call(vm_, JSValueRef::Undefined(vm_), nullptr, 0, false);
+    ASSERT_EQ(result->Int32Value(vm_), 10);
+}
+
+HWTEST_F_L0(JSNApiSampleTest, FunctionRef_Call_ClearSingleStepper_WithArgs)
+{
+    LocalScope scope(vm_);
+    int stepperCallCount = 0;
+    tooling::JsDebuggerManager::SingleStepperFunc stepperFunc = [&stepperCallCount]() { stepperCallCount++; };
+    auto *dm = vm_->GetJsDebuggerManager();
+    dm->SetStepperFunc(&stepperFunc);
+
+    Local<FunctionRef> addFunc = FunctionRef::New(vm_, [](JsiRuntimeCallInfo *runtimeInfo) -> Local<JSValueRef> {
+        EcmaVM *vm = runtimeInfo->GetVM();
+        LocalScope scope(vm);
+        uint32_t argsCount = runtimeInfo->GetArgsNumber();
+        if (argsCount < 2) {
+            return NumberRef::New(vm, 0);
+        }
+        double a = runtimeInfo->GetCallArgRef(0)->ToNumber(vm)->Value();
+        double b = runtimeInfo->GetCallArgRef(1)->ToNumber(vm)->Value();
+        return NumberRef::New(vm, a + b);
+    });
+
+    Local<JSValueRef> argv[2];
+    argv[0] = NumberRef::New(vm_, 3);
+    argv[1] = NumberRef::New(vm_, 4);
+
+    // Call with clearSingleStepper=false, stepper should NOT be invoked
+    Local<JSValueRef> result = addFunc->Call(vm_, JSValueRef::Undefined(vm_), argv, 2, false);
+    ASSERT_EQ(stepperCallCount, 0);
+    ASSERT_EQ(result->Int32Value(vm_), 7);
+
+    // Call with default (clearSingleStepper=true), stepper should be invoked
+    result = addFunc->Call(vm_, JSValueRef::Undefined(vm_), argv, 2);
+    ASSERT_EQ(stepperCallCount, 1);
+    ASSERT_EQ(result->Int32Value(vm_), 7);
+
+    dm->SetStepperFunc(nullptr);
 }
 }
