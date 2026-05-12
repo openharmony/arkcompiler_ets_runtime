@@ -3986,4 +3986,166 @@ HWTEST_F_L0(JSNApiTests, ArrayBufferRef_GetBufferAndLength)
     EXPECT_EQ(length, TEST_ARRAYBUFFER_LENGTH);
 }
 
+/**
+ * @tc.number: ffi_interface_api_108
+ * @tc.name: LocalScope_NestingLevels
+ * @tc.desc: Verify LocalScope nesting levels work correctly with LIFO order and ref creation.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, LocalScope_NestingLevels)
+{
+    auto initialLevel = vm_->GetOpenHandleScopes();
+    EXPECT_GE(initialLevel, 0);
+
+    // Test single scope with ref creation
+    {
+        LocalScope scope1(vm_);
+        [[maybe_unused]] Local<IntegerRef> v1 = IntegerRef::New(vm_, 1);
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+    }
+
+    // Test double nested scopes
+    {
+        LocalScope outerScope(vm_);
+        [[maybe_unused]] Local<IntegerRef> outerValue = IntegerRef::New(vm_, 42);
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+
+        {
+            LocalScope innerScope(vm_);
+            [[maybe_unused]] Local<IntegerRef> innerValue = IntegerRef::New(vm_, 100);
+            EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 2);
+        }
+
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+    }
+
+    // Test triple nested scopes
+    {
+        LocalScope level1(vm_);
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+
+        {
+            LocalScope level2(vm_);
+            EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 2);
+
+            {
+                LocalScope level3(vm_);
+                [[maybe_unused]] Local<IntegerRef> v3 = IntegerRef::New(vm_, 3);
+                EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 3);
+            }
+
+            EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 2);
+        }
+
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+    }
+
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel);
+}
+
+/**
+ * @tc.number: ffi_interface_api_109
+ * @tc.name: LocalScope_ManualHeapAllocation
+ * @tc.desc: Verify manual heap allocation breaks LIFO order detection.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, LocalScope_ManualHeapAllocation)
+{
+    auto initialLevel = vm_->GetOpenHandleScopes();
+    EXPECT_GE(initialLevel, 0);
+
+    // Create heap-allocated scopes and delete in wrong order (LIFO violation)
+    LocalScope *scope1 = new LocalScope(vm_);
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+
+    LocalScope *scope2 = new LocalScope(vm_);
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 2);
+
+    // Delete scope1 first (breaking LIFO order)
+    delete scope1;
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+
+    // Delete scope2 second - this triggers scopeLevel_ != GetOpenHandleScopes() detection
+    // scope2->scopeLevel_ (initialLevel + 2) != GetOpenHandleScopes() (initialLevel + 1)
+    delete scope2;
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel);
+}
+
+/**
+ * @tc.number: ffi_interface_api_110
+ * @tc.name: LocalScope_CreateRefs
+ * @tc.desc: Verify creating LocalRefs doesn't change scope level.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, LocalScope_CreateRefs)
+{
+    auto initialLevel = vm_->GetOpenHandleScopes();
+    EXPECT_GE(initialLevel, 0);
+
+    // Create refs without explicit scope - uses existing scope from SetUp
+    [[maybe_unused]] Local<IntegerRef> v1 = IntegerRef::New(vm_, 1);
+    [[maybe_unused]] Local<IntegerRef> v2 = IntegerRef::New(vm_, 2);
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel);
+
+    // Create multiple refs in a loop
+    constexpr int refCount = 10;
+    for (int i = 0; i < refCount; i++) {
+        [[maybe_unused]] Local<IntegerRef> value = IntegerRef::New(vm_, i);
+    }
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel);
+
+    // Create various ref types
+    [[maybe_unused]] Local<IntegerRef> intRef = IntegerRef::New(vm_, 42);
+    [[maybe_unused]] Local<IntegerRef> uintRef = IntegerRef::NewFromUnsigned(vm_, 100U);
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel);
+
+    // Create refs in nested scopes
+    {
+        LocalScope s1(vm_);
+        [[maybe_unused]] Local<IntegerRef> v3 = IntegerRef::New(vm_, 3);
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+
+        {
+            LocalScope s2(vm_);
+            [[maybe_unused]] Local<IntegerRef> v4 = IntegerRef::New(vm_, 4);
+            EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 2);
+        }
+
+        // Ref created after inner scope closes
+        [[maybe_unused]] Local<IntegerRef> v5 = IntegerRef::New(vm_, 5);
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+    }
+
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel);
+}
+
+/**
+ * @tc.number: ffi_interface_api_111
+ * @tc.name: LocalScope_EscapeLocalScope
+ * @tc.desc: Verify EscapeLocalScope works correctly.
+ * @tc.type: FUNC
+ * @tc.require: parameter
+ */
+HWTEST_F_L0(JSNApiTests, LocalScope_EscapeLocalScope)
+{
+    auto initialLevel = vm_->GetOpenHandleScopes();
+    EXPECT_GE(initialLevel, 0);
+
+    {
+        LocalScope outerScope(vm_);
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+
+        {
+            EscapeLocalScope escapeScope(vm_);
+            EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 2);
+        }
+
+        EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel + 1);
+    }
+
+    EXPECT_EQ(vm_->GetOpenHandleScopes(), initialLevel);
+}
 }  // namespace panda::test

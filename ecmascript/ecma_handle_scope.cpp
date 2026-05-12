@@ -41,6 +41,7 @@ EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)
 
 #if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
     const_cast<EcmaVM *>(vm)->IncreaseOpenHandleScopes();
+    scopeLevel_ = vm->GetOpenHandleScopes();
 #endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 }
 
@@ -70,6 +71,11 @@ EcmaHandleScope::~EcmaHandleScope()
 #endif
 
 #if defined(ENABLE_HITRACE_LOCAL_HANDLE_DETECT)
+    if (scopeLevel_ != vm->GetOpenHandleScopes()) {
+#ifdef HOOK_ENABLE
+        restraceExt(RES_ARK_LOCAL_HANDLE, (void *)this, sizeof(JSTaggedType), TAG_RES_ARK_LOCAL_HANDLE, true, false);
+#endif // HOOK_ENABLE
+    }
     const_cast<EcmaVM *>(vm)->DecreaseOpenHandleScopes();
 #endif // ENABLE_HITRACE_LOCAL_HANDLE_DETECT
 }
