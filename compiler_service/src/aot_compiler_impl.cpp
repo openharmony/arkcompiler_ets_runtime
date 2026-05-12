@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -102,15 +102,29 @@ int32_t AotCompilerImpl::PrintAOTCompilerResult(const int compilerStatus) const
 
 void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
 {
+    int32_t stopRet = ERR_OK;
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         InitState(childPid);
+        if (stopRequested_.load() || !allowAotCompiler_.load()) {
+            LOG_SA(INFO) << "aot compiler is not allowed after fork, stop child process: " << childPid;
+            auto result = kill(childPid, SIGKILL);
+            stopRet = RemoveAotFiles();
+            if (result != 0) {
+                LOG_SA(ERROR) << "cancel after fork failed to kill child process: " << result;
+                stopRet = ERR_AOT_COMPILER_STOP_FAILED;
+            } else {
+                if (stopRet != ERR_OK) {
+                    LOG_SA(ERROR) << "remove aot files failed: " << stopRet;
+                }
+                LOG_SA(INFO) << "cancel after fork killed child process";
+            }
+        }
     }
+    ret = ERR_AOT_COMPILER_CALL_FAILED;
     int status;
-    int waitRet = waitpid(childPid, &status, 0);
-    if (waitRet == -1) {
+    if (waitpid(childPid, &status, 0) == -1) {
         LOG_SA(ERROR) << "waitpid failed";
-        ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else if (WIFEXITED(status)) {
         int exitStatus = WEXITSTATUS(status);
         LOG_SA(INFO) << "child process exited with status: " << exitStatus;
@@ -120,16 +134,13 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
         LOG_SA(WARN) << "child process terminated by signal: " << signalNumber;
         ret = signalNumber == SIGKILL ? ERR_AOT_COMPILER_CALL_CANCELLED : ERR_AOT_COMPILER_CALL_CRASH;
     } else if (WIFSTOPPED(status)) {
-        int signalNumber = WSTOPSIG(status);
-        LOG_SA(WARN) << "child process was stopped by signal: " << signalNumber;
-        ret = ERR_AOT_COMPILER_CALL_FAILED;
+        LOG_SA(WARN) << "child process was stopped by signal: " << WSTOPSIG(status);
     } else if (WIFCONTINUED(status)) {
         LOG_SA(WARN) << "child process was resumed";
-        ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else {
         LOG_SA(WARN) << "unknown";
-        ret = ERR_AOT_COMPILER_CALL_FAILED;
     }
+    ret = stopRet != ERR_OK ? stopRet : ret;
     {
         std::lock_guard<std::mutex> lock(stateMutex_);
         ResetState();
@@ -163,6 +174,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
                                                std::vector<int16_t> &sigData)
 {
 #ifdef CODE_SIGN_ENABLE
+    stopRequested_.store(false);
     if (!allowAotCompiler_) {
         LOG_SA(ERROR) << "aot compiler is not allowed now";
         return ERR_AOT_COMPILER_CALL_CANCELLED;
@@ -174,6 +186,10 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     argsHandler_ = std::make_unique<AOTArgsHandler>(argsMap);
     if (argsHandler_->Handle(thermalLevel_) != ERR_OK) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
+    if (stopRequested_.load() || !allowAotCompiler_.load()) {
+        LOG_SA(ERROR) << "aot compiler is not allowed before fork";
+        return ERR_AOT_COMPILER_CALL_CANCELLED;
     }
 
     int32_t ret = ERR_OK;
@@ -270,6 +286,7 @@ int32_t AotCompilerImpl::AOTLocalCodeSign(std::vector<int16_t> &sigData) const
 int32_t AotCompilerImpl::StopAotCompiler()
 {
     LOG_SA(INFO) << "begin to stop AOT";
+    stopRequested_.store(true);
     std::lock_guard<std::mutex> lock(stateMutex_);
     if (!state_.running) {
         LOG_SA(INFO) << "AOT not running, return directly";

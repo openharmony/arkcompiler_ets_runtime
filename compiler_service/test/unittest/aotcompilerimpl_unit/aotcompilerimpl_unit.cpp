@@ -1,5 +1,5 @@
-/*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+/**
+ * Copyright (c) 2024-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -144,6 +144,57 @@ public:
     void AllowAotCompilerMock()
     {
         AllowAotCompiler();
+    }
+
+    bool IsStopRequestedMock() const
+    {
+        return stopRequested_.load();
+    }
+
+    void SetStopRequestedMock(bool stopRequested)
+    {
+        stopRequested_.store(stopRequested);
+    }
+
+    int32_t CheckStopBeforeForkMock(const std::unordered_map<std::string, std::string> &argsMap)
+    {
+    #ifdef CODE_SIGN_ENABLE
+        argsHandler_ = std::make_unique<AOTArgsHandler>(argsMap);
+        if (argsHandler_->Handle(thermalLevel_) != ERR_OK) {
+            return ERR_AOT_COMPILER_PARAM_FAILED;
+        }
+        if (stopRequested_.load() || !allowAotCompiler_.load()) {
+            return ERR_AOT_COMPILER_CALL_CANCELLED;
+        }
+        return ERR_OK;
+    #else
+        return ERR_AOT_COMPILER_SIGNATURE_DISABLE;
+    #endif
+    }
+
+    int32_t ExecuteInParentProcessWithStopRequestedMock()
+    {
+    #ifdef CODE_SIGN_ENABLE
+        argsHandler_ = std::make_unique<AOTArgsHandler>(argsMapForTest);
+        if (argsHandler_->Handle(thermalLevel_) != ERR_OK) {
+            return ERR_AOT_COMPILER_PARAM_FAILED;
+        }
+        stopRequested_.store(true);
+        int32_t ret = ERR_OK;
+        pid_t pid = fork();
+        if (pid == -1) {
+            return ERR_AOT_COMPILER_CALL_FAILED;
+        }
+        if (pid == 0) {
+            sleep(10); // 10: keep child alive until parent consumes the pending stop request.
+            _exit(0);
+        }
+        mockChildPid_ = pid;
+        ExecuteInParentProcess(pid, ret);
+        return ret;
+    #else
+        return ERR_AOT_COMPILER_SIGNATURE_DISABLE;
+    #endif
     }
 
     pid_t GetChildPidMock()
@@ -757,6 +808,55 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_039, TestSize.Level0)
     AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     std::string arkCachePath = aotImpl.ParseArkCacheFromArgs(argsMap);
     EXPECT_EQ(arkCachePath, "");
+}
+
+/**
+* @tc.name: AotCompilerImplTest_040
+* @tc.desc: AotCompilerImpl::StopAotCompiler() keeps stop request when child state is not initialized
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_040, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    aotImplMock.SetStopRequestedMock(false);
+    int32_t ret = aotImplMock.StopAotCompiler();
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_STOP_FAILED);
+    EXPECT_TRUE(aotImplMock.IsStopRequestedMock());
+}
+
+/**
+* @tc.name: AotCompilerImplTest_041
+* @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() cancels pending stop before fork
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_041, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    aotImplMock.AllowAotCompilerMock();
+    aotImplMock.SetStopRequestedMock(true);
+    int32_t ret = aotImplMock.CheckStopBeforeForkMock(argsMapForTest);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
+}
+
+/**
+* @tc.name: AotCompilerImplTest_042
+* @tc.desc: AotCompilerImpl::ExecuteInParentProcess() kills child when stop request arrives before state init
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_042, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    aotImplMock.AllowAotCompilerMock();
+    int32_t ret = aotImplMock.ExecuteInParentProcessWithStopRequestedMock();
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
 }
 
 } // namespace OHOS::ArkCompiler
