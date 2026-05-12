@@ -28,6 +28,42 @@
 #endif
 
 namespace panda::ecmascript::base {
+namespace {
+#if ENABLE_V70_OPTIMIZATION
+constexpr uint32_t K_UTF8_OBJECT_KEY_CACHE_MAX_LEN = 16;
+constexpr uint32_t K_UTF16_OBJECT_KEY_CACHE_MAX_LEN = 8;
+static_assert(K_UTF8_OBJECT_KEY_CACHE_MAX_LEN <= sizeof(uint64_t) * 2,
+              "UTF-8 object key cache length must fit PackedKey128");
+static_assert(K_UTF16_OBJECT_KEY_CACHE_MAX_LEN <= sizeof(uint64_t) * 2 / sizeof(uint16_t),
+              "UTF-16 object key cache length must fit PackedKey128");
+
+template<typename T>
+bool TryAccumulateFastInteger(const T *current, const T *advance, uint64_t &value)
+{
+    constexpr uint64_t K_MAX_FAST_INTEGER = static_cast<uint64_t>(base::MAX_SAFE_INTEGER);
+    value = 0;
+    for (const T *digit = current; digit != advance; digit++) {
+        uint32_t nextDigit = static_cast<uint32_t>(*digit - '0');
+        if (value > ((K_MAX_FAST_INTEGER - nextDigit) / 10U)) {
+            return false;
+        }
+        value = value * 10U + nextDigit;
+    }
+    return true;
+}
+
+JSTaggedValue CreateFastNumberValue(JSThread *thread, const JsonHelper::ParseOptions &parseOptions,
+                                    bool negative, uint64_t value)
+{
+    if (parseOptions.bigIntMode == JsonHelper::BigIntMode::ALWAYS_PARSE_AS_BIGINT) {
+        return negative ? BigInt::Int64ToBigInt(thread, -static_cast<int64_t>(value)).GetTaggedValue() :
+            BigInt::Uint64ToBigInt(thread, value).GetTaggedValue();
+    }
+    double number = negative ? -static_cast<double>(value) : static_cast<double>(value);
+    return JSTaggedValue::TryCastDoubleToInt32(number);
+}
+#endif
+}  // namespace
 
 template<typename T>
 JSHandle<JSTaggedValue> JsonParser<T>::Launch(Text begin, Text end)
@@ -115,7 +151,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                                                            rawString_,
                                                            current_ - begin_ - slicedOffset_);
                     }
+#if ENABLE_V70_OPTIMIZATION
+                    propertyList.emplace_back(this->ParseObjectKey());
+#else
                     propertyList.emplace_back(ParseString(true));
+#endif
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     SkipStartWhiteSpace();
                     if (UNLIKELY(*current_ != ':')) {
@@ -147,7 +187,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                                                            rawString_,
                                                            current_ - begin_ - slicedOffset_);
                     }
+#if ENABLE_V70_OPTIMIZATION
+                    propertyList.emplace_back(this->ParseObjectKey());
+#else
                     propertyList.emplace_back(ParseString(true));
+#endif
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     SkipStartWhiteSpace();
                     if (UNLIKELY(*current_ != ':')) {
@@ -254,7 +298,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                                                                rawString_,
                                                                current_ - begin_ - slicedOffset_);
                         }
+#if ENABLE_V70_OPTIMIZATION
+                        propertyList.emplace_back(this->ParseObjectKey());
+#else
                         propertyList.emplace_back(ParseString(true));
+#endif
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         SkipStartWhiteSpace();
                         if (UNLIKELY(*current_ != ':')) {
@@ -297,7 +345,11 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                                                                rawString_,
                                                                current_ - begin_ - slicedOffset_);
                         }
+#if ENABLE_V70_OPTIMIZATION
+                        propertyList.emplace_back(this->ParseObjectKey());
+#else
                         propertyList.emplace_back(ParseString(true));
+#endif
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         SkipStartWhiteSpace();
                         if (UNLIKELY(*current_ != ':')) {
@@ -551,7 +603,7 @@ JSTaggedValue JsonParser<T>::SetPropertyByValue(const JSHandle<JSTaggedValue> &r
     ASSERT(key->IsString());
     auto newKey = key.GetTaggedValue();
     auto stringAccessor = EcmaStringAccessor(newKey);
-    if (!stringAccessor.IsLineString() || (stringAccessor.IsUtf8() &&
+    if (!stringAccessor.IsLineString() || (stringAccessor.GetLength() > 0 && stringAccessor.IsUtf8() &&
         IsNumberCharacter(*stringAccessor.GetDataUtf8()))) {
         uint32_t index = 0;
         if (stringAccessor.ToElementIndex(thread_, &index)) {
@@ -571,8 +623,13 @@ JSTaggedValue JsonParser<T>::ParseNumber(bool inObjorArr)
 {
     if (inObjorArr) {
         bool isFast = true;
+#if ENABLE_V70_OPTIMIZATION
+        JSTaggedValue fastNumber = JSTaggedValue::Undefined();
+        bool isNumber = ReadNumberRange(isFast, fastNumber);
+#else
         int32_t fastInteger = 0;
         bool isNumber = ReadNumberRange(isFast, fastInteger);
+#endif
         if (!isNumber) {
             THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
                                                "Unexpected Number in JSON Array Or Object",
@@ -581,8 +638,12 @@ JSTaggedValue JsonParser<T>::ParseNumber(bool inObjorArr)
                                                current_ - begin_ - slicedOffset_);
         }
         if (isFast) {
+#if ENABLE_V70_OPTIMIZATION
+            return fastNumber;
+#else
             return parseOptions_.bigIntMode == BigIntMode::ALWAYS_PARSE_AS_BIGINT ?
                 BigInt::Int32ToBigInt(thread_, fastInteger).GetTaggedValue() : JSTaggedValue(fastInteger);
+#endif
         }
     }
 
@@ -675,6 +736,27 @@ template<typename T>
 bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjOrArrOrMap)
 {
 #ifndef ENABLE_LINXKIT
+#if ENABLE_V70_OPTIMIZATION
+    auto checkBackslash = [this](Text &text, Text last, bool &asciiFlag) {
+        return CheckBackslash(text, last, asciiFlag);
+    };
+    Text current = current_;
+    if constexpr (sizeof(T) == sizeof(uint8_t)) {
+        bool result = JsonPlatformHelper::ParseStringLengthForPlatformForUtf8(
+            length, isAscii, inObjOrArrOrMap, current, range_, end_, checkBackslash);
+        if (!result) {
+            current_ = current;
+        }
+        return result;
+    } else {
+        bool result = JsonPlatformHelper::ParseStringLengthForPlatformForUtf16(
+            length, isAscii, inObjOrArrOrMap, current, range_, end_, checkBackslash);
+        if (!result) {
+            current_ = current;
+        }
+        return result;
+    }
+#else
     Text last = inObjOrArrOrMap ? range_ : end_;
     for (Text current = current_; current < last; ++current) {
         T c = *current;
@@ -700,6 +782,7 @@ bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjO
         ++length;
     }
     return !inObjOrArrOrMap;
+#endif
 #else
     return LinxkitParseStringLength(length, isAscii, inObjOrArrOrMap, end_, current_, range_);
 #endif
@@ -837,6 +920,16 @@ template<typename T>
 template<typename Char>
 void JsonParser<T>::CopyCharWithBackslash(Char *&p)
 {
+#if ENABLE_V70_OPTIMIZATION
+    auto parseBackslash = [this](Char *&output) {
+        ParseBackslash(output);
+    };
+    if constexpr (sizeof(T) == sizeof(uint8_t)) {
+        JsonPlatformHelper::CopyCharWithBackslashForPlatformForUtf8(p, current_, end_, parseBackslash);
+    } else {
+        JsonPlatformHelper::CopyCharWithBackslashForPlatformForUtf16(p, current_, end_, parseBackslash);
+    }
+#else
     while (current_ <= end_) {
         T c = *current_;
         ASSERT(c >= CODE_SPACE);
@@ -848,6 +941,7 @@ void JsonParser<T>::CopyCharWithBackslash(Char *&p)
         }
         Advance();
     }
+#endif
 }
 
 template<typename T>
@@ -874,7 +968,7 @@ JSHandle<JSTaggedValue> JsonParser<T>::ParseStringWithBackslash(bool inObjOrArrO
                       "T must be 1 or 2 bytes in size");
         LinxkitCopyCharWithBackslashTo8(p, end_, current_);
 #endif
-        ASSERT(p - data == length);
+        ASSERT(static_cast<size_t>(p - data) == length);
         Advance();
         return JSHandle<JSTaggedValue>(thread_, str);
     } else {
@@ -886,7 +980,7 @@ JSHandle<JSTaggedValue> JsonParser<T>::ParseStringWithBackslash(bool inObjOrArrO
 #else
         LinxkitCopyCharWithBackslashTo16(p, end_, current_);
 #endif
-        ASSERT(p - data == length);
+        ASSERT(static_cast<size_t>(p - data) == length);
         Advance();
         return JSHandle<JSTaggedValue>(thread_, str);
     }
@@ -1038,6 +1132,135 @@ bool JsonParser<T>::MatchText(const char *str, uint32_t matchLen)
     return true;
 }
 
+#if ENABLE_V70_OPTIMIZATION
+template<typename T>
+bool JsonParser<T>::ReadNumberRange(bool &isFast, JSTaggedValue &fastNumber)
+{
+    Text current = current_;
+    bool negative = false;
+    if (*current == '-') {
+        current++;
+        negative = true;
+    }
+    if (UNLIKELY(current > range_)) {
+        return false;
+    }
+
+    if (*current == '0') {
+        if (TryReadFastZeroNumber(current, negative, fastNumber)) {
+            return true;
+        }
+    } else if (*current >= '1' && *current <= '9') {
+        if (TryReadFastNonZeroNumber(current, negative, fastNumber)) {
+            return true;
+        }
+    } else {
+        return false;
+    }
+
+    if (UNLIKELY(current > range_)) {
+        current_ = range_;
+        return false;
+    }
+
+    isFast = false;
+    return FinishReadNumberRange(current, isFast);
+}
+
+template<typename T>
+bool JsonParser<T>::HasValidNumberTerminator(Text numberEnd)
+{
+    Text cursor = numberEnd;
+    while (cursor != range_) {
+        if (*cursor == ' ' || *cursor == '\r' || *cursor == '\n' || *cursor == '\t') {
+            cursor++;
+            continue;
+        }
+        return *cursor == ',' || *cursor == ']' || *cursor == '}';
+    }
+    return *cursor == ',' || *cursor == ']' || *cursor == '}';
+}
+
+template<typename T>
+bool JsonParser<T>::TryReadFastZeroNumber(Text &current, bool negative, JSTaggedValue &fastNumber)
+{
+    Text numberEnd = current + 1;
+    if (numberEnd > range_) {
+        return false;
+    }
+    if (numberEnd <= range_ && !IsNumberCharacter(*numberEnd) && !IsNumberSignalCharacter(*numberEnd) &&
+        HasValidNumberTerminator(numberEnd)) {
+        current_ = numberEnd;
+        if (negative) {
+            fastNumber = JSTaggedValue(-0.0);
+        } else if (parseOptions_.bigIntMode == BigIntMode::ALWAYS_PARSE_AS_BIGINT) {
+            fastNumber = BigInt::Int32ToBigInt(thread_, 0).GetTaggedValue();
+        } else {
+            fastNumber = JSTaggedValue(0);
+        }
+        return true;
+    }
+    current = numberEnd;
+    return false;
+}
+
+template<typename T>
+bool JsonParser<T>::TryReadFastNonZeroNumber(Text current, bool negative, JSTaggedValue &fastNumber)
+{
+    Text advance = AdvanceLastNumberCharacter(current);
+    if (UNLIKELY(current == advance)) {
+        return false;
+    }
+    if (advance > range_ || IsNumberSignalCharacter(*advance) || !HasValidNumberTerminator(advance)) {
+        return false;
+    }
+    uint64_t value = 0;
+    if (!TryAccumulateFastInteger(current, advance, value)) {
+        return false;
+    }
+    current_ = advance;
+    fastNumber = CreateFastNumberValue(thread_, parseOptions_, negative, value);
+    return true;
+}
+
+template<typename T>
+bool JsonParser<T>::FinishReadNumberRange(Text current, bool &isFast)
+{
+    while (current != range_) {
+        if (IsNumberCharacter(*current)) {
+            current++;
+            continue;
+        }
+        if (IsNumberSignalCharacter(*current)) {
+            isFast = false;
+            current++;
+            continue;
+        }
+        Text end = current;
+        while (current != range_) {
+            if (*current == ' ' || *current == '\r' || *current == '\n' || *current == '\t') {
+                current++;
+            } else if (*current == ',' || *current == ']' || *current == '}') {
+                end_ = end - 1;
+                return true;
+            } else {
+                return false;
+            }
+        }
+        if (*current == ']' || *current == '}') {
+            end_ = end - 1;
+            return true;
+        }
+        return false;
+    }
+    if (*current == ',' || *current == ']' || *current == '}') {
+        end_ = range_ - 1;
+        return true;
+    }
+    current_ = current;
+    return false;
+}
+#else
 template<typename T>
 bool JsonParser<T>::ReadNumberRange(bool &isFast, int32_t &fastInteger)
 {
@@ -1095,9 +1318,14 @@ bool JsonParser<T>::ReadNumberRange(bool &isFast, int32_t &fastInteger)
         }
         return false;
     }
-    end_ = range_ - 1;
-    return true;
+    if (*current == ',' || *current == ']' || *current == '}') {
+        end_ = range_ - 1;
+        return true;
+    }
+    current_ = current;
+    return false;
 }
+#endif
 
 template<typename T>
 typename JsonParser<T>::Text JsonParser<T>::AdvanceLastNumberCharacter(Text current)
@@ -1228,6 +1456,9 @@ bool JsonParser<T>::CheckNonZeroBeginNumber(bool &hasExponent, bool &hasDecimal)
 JSHandle<JSTaggedValue> Utf8JsonParser::Parse(const JSHandle<EcmaString> &strHandle)
 {
     ASSERT(*strHandle != nullptr);
+#if ENABLE_V70_OPTIMIZATION
+    ResetObjectKeyCache();
+#endif
     auto stringAccessor = EcmaStringAccessor(strHandle);
     uint32_t len = stringAccessor.GetLength();
     ASSERT(len != UINT32_MAX);
@@ -1273,6 +1504,173 @@ void Utf8JsonParser::UpdatePointersListener(void *utf8Parser)
     }
 }
 
+#if ENABLE_V70_OPTIMIZATION
+JSHandle<JSTaggedValue> Utf8JsonParser::ParseObjectKey()
+{
+    if (UNLIKELY(!EcmaStringAccessor(sourceString_).IsLineOrCachedExternalString())) {
+        return ParseString(true);
+    }
+    bool isFastString = true;
+    Text stringStart = current_ + 1;
+    if (UNLIKELY(!ReadJsonStringRange(isFastString))) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected end Text in JSON",
+                                           JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                           rawString_,
+                                           current_ - begin_ - slicedOffset_);
+    }
+    if (LIKELY(isFastString)) {
+        uint32_t offset = stringStart - begin_;
+        uint32_t strLength = end_ - stringStart;
+        ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
+        return ParseCachedObjectKey(offset, strLength);
+    }
+
+    return ParseEscapedObjectKey();
+}
+
+JSHandle<JSTaggedValue> Utf8JsonParser::ParseCachedObjectKey(uint32_t offset, uint32_t strLength)
+{
+    auto *vm = thread_->GetEcmaVM();
+    auto *stringTable = vm->GetEcmaStringTable();
+    EcmaStringAccessor sourceAccessor(sourceString_);
+    const uint8_t *utf8Data = sourceAccessor.GetDataUtf8() + offset;
+    current_ = end_ + 1;
+    if (strLength == 0) {
+        return JSHandle<JSTaggedValue>::Cast(factory_->GetEmptyString());
+    }
+    if (strLength == 1 && EcmaStringAccessor::IsASCIICharacter(utf8Data[0])) {
+        int32_t ch = static_cast<int32_t>(utf8Data[0]);
+        JSHandle<SingleCharTable> singleCharTable(thread_, thread_->GetSingleCharTable());
+        return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(thread_, ch));
+    }
+    bool shouldCache = strLength <= K_UTF8_OBJECT_KEY_CACHE_MAX_LEN;
+    PackedKey128 packed;
+    size_t cacheIndex = 0;
+    if (shouldCache) {
+        packed = PackUtf8ObjectKeyBytes(utf8Data, strLength);
+        cacheIndex = Utf8ObjectKeyCacheIndex(packed, strLength);
+        auto cachedKey = LookupObjectKeyCacheEntry(objectKeyCache_, cacheIndex, packed, strLength);
+        if (!cachedKey.IsEmpty()) {
+            return JSHandle<JSTaggedValue>::Cast(cachedKey);
+        }
+    }
+    JSHandle<EcmaString> key(thread_, sourceAccessor.IsLineString() ?
+        stringTable->GetOrInternStringFromCompressedSubString(vm, sourceString_, offset, strLength) :
+        stringTable->GetOrInternString(vm, utf8Data, strLength, true));
+    if (shouldCache) {
+        UpdateObjectKeyCacheEntry(objectKeyCache_, cacheIndex, packed, strLength, key);
+    }
+    return JSHandle<JSTaggedValue>::Cast(key);
+}
+
+JSHandle<JSTaggedValue> Utf8JsonParser::ParseEscapedObjectKey()
+{
+    auto *stringTable = thread_->GetEcmaVM()->GetEcmaStringTable();
+    auto keyValue = ParseStringWithBackslash(true);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
+    auto decodedKey = JSHandle<EcmaString>::Cast(keyValue);
+    auto key = decodedKey;
+    EcmaStringAccessor keyAccessor(decodedKey);
+    if (!keyAccessor.IsInternString()) {
+        EcmaString *internKey = stringTable->TryGetInternString(thread_, decodedKey);
+        if (internKey == nullptr) {
+            internKey = factory_->InternString(JSHandle<JSTaggedValue>::Cast(decodedKey));
+        }
+        key = JSHandle<EcmaString>(thread_, internKey);
+    }
+    UpdateObjectKeyCacheFromDecodedKey(decodedKey, key);
+    return JSHandle<JSTaggedValue>::Cast(key);
+}
+
+void Utf8JsonParser::ResetObjectKeyCache()
+{
+    ResetObjectKeyCacheEntries(objectKeyCache_);
+}
+
+void Utf8JsonParser::UpdateObjectKeyCache(const uint8_t *utf8Data, uint32_t utf8Len,
+                                          const JSHandle<EcmaString> &key)
+{
+    if (utf8Len <= 1 || utf8Len > K_UTF8_OBJECT_KEY_CACHE_MAX_LEN) {
+        return;
+    }
+    PackedKey128 packed = PackUtf8ObjectKeyBytes(utf8Data, utf8Len);
+    size_t index = Utf8ObjectKeyCacheIndex(packed, utf8Len);
+    UpdateObjectKeyCacheEntry(objectKeyCache_, index, packed, utf8Len, key);
+}
+
+void Utf8JsonParser::UpdateObjectKeyCacheFromDecodedKey(const JSHandle<EcmaString> &decodedKey,
+                                                        const JSHandle<EcmaString> &internKey)
+{
+    EcmaStringAccessor decodedAccessor(decodedKey);
+    if (!decodedAccessor.IsUtf8()) {
+        return;
+    }
+    uint32_t utf8Len = decodedAccessor.GetLength();
+    if (utf8Len <= 1 || utf8Len > K_UTF8_OBJECT_KEY_CACHE_MAX_LEN) {
+        return;
+    }
+    if (UNLIKELY(!decodedAccessor.IsLineOrCachedExternalString())) {
+        return;
+    }
+    UpdateObjectKeyCache(decodedAccessor.GetDataUtf8(), utf8Len, internKey);
+}
+#endif
+
+
+#if ENABLE_V70_OPTIMIZATION
+JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
+{
+    bool isFastString = true;
+    Text stringStart = current_ + 1;
+    if (inObjOrArrOrMap) {
+        if (UNLIKELY(!ReadJsonStringRange(isFastString))) {
+            THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                               "Unexpected end Text in JSON",
+                                               JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                               rawString_,
+                                               current_ - begin_ - slicedOffset_);
+        }
+    } else if (UNLIKELY(*end_ != '"' || current_ == end_)) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected end Text in JSON",
+                                           JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                           rawString_,
+                                           end_ - begin_ - slicedOffset_);
+    } else if (UNLIKELY(!IsFastParseJsonString(isFastString))) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected end Text in JSON",
+                                           JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                           rawString_,
+                                           current_ - begin_ - slicedOffset_);
+    }
+    if (LIKELY(isFastString && EcmaStringAccessor(sourceString_).IsLineString())) {
+        uint32_t offset = stringStart - begin_;
+        uint32_t strLength = end_ - stringStart;
+        ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
+        return ParseFastStringValue(offset, strLength, inObjOrArrOrMap);
+    }
+    return ParseStringWithBackslash(inObjOrArrOrMap);
+}
+
+JSHandle<JSTaggedValue> Utf8JsonParser::ParseFastStringValue(uint32_t offset, uint32_t strLength,
+                                                             bool inObjOrArrOrMap)
+{
+    current_ = end_ + 1;
+    auto *utf8Data = EcmaStringAccessor(sourceString_).GetDataUtf8() + offset;
+    if (strLength == 1 && EcmaStringAccessor::IsASCIICharacter(utf8Data[0])) {
+        int32_t ch = static_cast<int32_t>(utf8Data[0]);
+        JSHandle<SingleCharTable> singleCharTable(thread_, thread_->GetSingleCharTable());
+        return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(thread_, ch));
+    }
+    if (inObjOrArrOrMap) {
+        return JSHandle<JSTaggedValue>::Cast(factory_->NewCompressedUtf8SubString(
+            sourceString_, offset, strLength));
+    }
+    return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8LiteralCompressSubString(
+        sourceString_, offset, strLength));
+}
+#else
 JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
 {
     bool isFastString = true;
@@ -1289,12 +1687,6 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
             uint32_t strLength = end_ - current_;
             ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
             current_ = end_ + 1;
-            auto *utf8Data = EcmaStringAccessor(sourceString_).GetDataUtf8() + offset;
-            if (strLength == 1 && EcmaStringAccessor::IsASCIICharacter(utf8Data[0])) {
-                int32_t ch = static_cast<int32_t>(utf8Data[0]);
-                JSHandle<SingleCharTable> singleCharTable(thread_, thread_->GetSingleCharTable());
-                return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(thread_, ch));
-            }
             return JSHandle<JSTaggedValue>::Cast(factory_->NewCompressedUtf8SubString(
                 sourceString_, offset, strLength));
         }
@@ -1317,17 +1709,29 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
             uint32_t strLength = end_ - current_;
             ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
             current_ = end_ + 1;
+            auto *utf8Data = EcmaStringAccessor(sourceString_).GetDataUtf8() + offset;
+            if (strLength == 1 && EcmaStringAccessor::IsASCIICharacter(utf8Data[0])) {
+                int32_t ch = static_cast<int32_t>(utf8Data[0]);
+                JSHandle<SingleCharTable> singleCharTable(thread_, thread_->GetSingleCharTable());
+                return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(thread_, ch));
+            }
             return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8LiteralCompressSubString(
                 sourceString_, offset, strLength));
         }
     }
     return ParseStringWithBackslash(inObjOrArrOrMap);
 }
+#endif
 
 bool Utf8JsonParser::ReadJsonStringRange(bool &isFastString)
 {
     Advance();
-    return JsonPlatformHelper::ReadJsonStringRangeForPlatformForUtf8(isFastString, current_, range_, end_);
+    Text current = current_;
+    bool result = JsonPlatformHelper::ReadJsonStringRangeForPlatformForUtf8(isFastString, current, range_, end_);
+    if (!result) {
+        current_ = current;
+    }
+    return result;
 }
 
 bool Utf8JsonParser::IsFastParseJsonString(bool &isFastString)
@@ -1350,12 +1754,18 @@ bool Utf8JsonParser::IsFastParseJsonString(bool &isFastString)
 JSHandle<JSTaggedValue> Utf16JsonParser::Parse(EcmaString *str)
 {
     ASSERT(str != nullptr);
+#if ENABLE_V70_OPTIMIZATION
+    ResetObjectKeyCache();
+#else
+    // Key caching is disabled; ParseObjectKey still uses the regular key path.
+#endif
     uint32_t len = EcmaStringAccessor(str).GetLength();
     CVector<uint16_t> buf(len + 1, 0);
     EcmaStringAccessor(str).WriteToFlatUtf16(thread_, buf.data(), len);
     Text begin = buf.data();
     begin_ = begin;
     rawString_ = JSHandle<EcmaString>(thread_, str);
+    slicedOffset_ = 0;
     return Launch(begin, begin + len);
 }
 
@@ -1364,11 +1774,118 @@ void Utf16JsonParser::ParticalParseString(std::string& str, Text current, Text n
     str += StringHelper::U16stringToString(std::u16string(current, nextCurrent));
 }
 
+#if ENABLE_V70_OPTIMIZATION
+JSHandle<JSTaggedValue> Utf16JsonParser::ParseObjectKey()
+{
+    bool isFastString = true;
+    bool isAscii = true;
+    Text stringStart = current_ + 1;
+    if (UNLIKELY(!ReadJsonStringRange(isFastString, isAscii))) {
+        THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
+                                           "Unexpected end Text in JSON",
+                                           JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()),
+                                           rawString_,
+                                           current_ - begin_ - slicedOffset_);
+    }
+    if (LIKELY(isFastString)) {
+        const uint16_t *utf16Data = stringStart;
+        uint32_t strLength = end_ - stringStart;
+        ASSERT(strLength <= static_cast<size_t>(UINT32_MAX));
+        return ParseCachedObjectKey(utf16Data, strLength, isAscii);
+    }
+    return ParseEscapedObjectKey();
+}
+
+JSHandle<JSTaggedValue> Utf16JsonParser::ParseCachedObjectKey(const uint16_t *utf16Data, uint32_t strLength,
+                                                              bool isAscii)
+{
+    auto *vm = thread_->GetEcmaVM();
+    auto *stringTable = vm->GetEcmaStringTable();
+    current_ = end_ + 1;
+    if (strLength == 0) {
+        return JSHandle<JSTaggedValue>::Cast(factory_->GetEmptyString());
+    }
+    if (strLength == 1 && isAscii && utf16Data[0] <= ASCII_END) {
+        int32_t ch = static_cast<int32_t>(utf16Data[0]);
+        JSHandle<SingleCharTable> singleCharTable(thread_, thread_->GetSingleCharTable());
+        return JSHandle<JSTaggedValue>(thread_, singleCharTable->GetStringFromSingleCharTable(thread_, ch));
+    }
+    bool shouldCache = strLength <= K_UTF16_OBJECT_KEY_CACHE_MAX_LEN;
+    PackedKey128 packed;
+    size_t cacheIndex = 0;
+    if (shouldCache) {
+        packed = PackUtf16ObjectKeyCodeUnits(utf16Data, strLength);
+        cacheIndex = Utf16ObjectKeyCacheIndex(packed, strLength);
+        auto cachedKey = LookupObjectKeyCacheEntry(objectKeyCache_, cacheIndex, packed, strLength);
+        if (!cachedKey.IsEmpty()) {
+            return JSHandle<JSTaggedValue>::Cast(cachedKey);
+        }
+    }
+    JSHandle<EcmaString> key(thread_, stringTable->GetOrInternString(vm, utf16Data, strLength, isAscii));
+    if (shouldCache) {
+        UpdateObjectKeyCacheEntry(objectKeyCache_, cacheIndex, packed, strLength, key);
+    }
+    return JSHandle<JSTaggedValue>::Cast(key);
+}
+
+JSHandle<JSTaggedValue> Utf16JsonParser::ParseEscapedObjectKey()
+{
+    auto *stringTable = thread_->GetEcmaVM()->GetEcmaStringTable();
+    auto keyValue = ParseStringWithBackslash(true);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
+    auto decodedKey = JSHandle<EcmaString>::Cast(keyValue);
+    auto key = decodedKey;
+    EcmaStringAccessor keyAccessor(decodedKey);
+    if (!keyAccessor.IsInternString()) {
+        EcmaString *internKey = stringTable->TryGetInternString(thread_, decodedKey);
+        if (internKey == nullptr) {
+            internKey = factory_->InternString(JSHandle<JSTaggedValue>::Cast(decodedKey));
+        }
+        key = JSHandle<EcmaString>(thread_, internKey);
+    }
+    UpdateObjectKeyCacheFromDecodedKey(decodedKey, key);
+    return JSHandle<JSTaggedValue>::Cast(key);
+}
+
+void Utf16JsonParser::ResetObjectKeyCache()
+{
+    ResetObjectKeyCacheEntries(objectKeyCache_);
+}
+
+void Utf16JsonParser::UpdateObjectKeyCache(const uint16_t *utf16Data, uint32_t utf16Len,
+                                           const JSHandle<EcmaString> &key)
+{
+    if (utf16Len <= 1 || utf16Len > K_UTF16_OBJECT_KEY_CACHE_MAX_LEN) {
+        return;
+    }
+    PackedKey128 packed = PackUtf16ObjectKeyCodeUnits(utf16Data, utf16Len);
+    size_t index = Utf16ObjectKeyCacheIndex(packed, utf16Len);
+    UpdateObjectKeyCacheEntry(objectKeyCache_, index, packed, utf16Len, key);
+}
+
+void Utf16JsonParser::UpdateObjectKeyCacheFromDecodedKey(const JSHandle<EcmaString> &decodedKey,
+                                                         const JSHandle<EcmaString> &internKey)
+{
+    EcmaStringAccessor decodedAccessor(decodedKey);
+    uint32_t utf16Len = decodedAccessor.GetLength();
+    if (utf16Len <= 1 || utf16Len > K_UTF16_OBJECT_KEY_CACHE_MAX_LEN) {
+        return;
+    }
+    if (UNLIKELY(!decodedAccessor.IsLineOrCachedExternalString())) {
+        return;
+    }
+    PackedKey128 packed = PackUtf16ObjectKeyFromAccessor(decodedAccessor, utf16Len);
+    size_t index = Utf16ObjectKeyCacheIndex(packed, utf16Len);
+    UpdateObjectKeyCacheEntry(objectKeyCache_, index, packed, utf16Len, internKey);
+}
+#endif
+
 JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjOrArrOrMap)
 {
     bool isFastString = true;
     bool isAscii = true;
     if (inObjOrArrOrMap) {
+        Text stringStart = current_ + 1;
         if (UNLIKELY(!ReadJsonStringRange(isFastString, isAscii))) {
             THROW_JSON_SYNTAX_ERROR_AND_RETURN(thread_,
                                                "Unexpected end Text in JSON",
@@ -1378,13 +1895,13 @@ JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjOrArrOrMap)
         }
         if (isFastString) {
             if (isAscii) {
-                std::string value(current_, end_); // from uint16_t* to std::string, can't use std::string_view
+                std::string value(stringStart, end_); // from uint16_t* to std::string, can't use std::string_view
                 current_ = end_ + 1;
                 ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
                 return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8LiteralCompress(
                     reinterpret_cast<const uint8_t *>(value.c_str()), value.size()));
             }
-            std::u16string_view value(reinterpret_cast<const char16_t *>(current_), end_ - current_);
+            std::u16string_view value(reinterpret_cast<const char16_t *>(stringStart), end_ - stringStart);
             current_ = end_ + 1;
             ASSERT(value.size() <= static_cast<size_t>(UINT32_MAX));
             return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf16LiteralNotCompress(
@@ -1425,6 +1942,15 @@ JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjOrArrOrMap)
 bool Utf16JsonParser::ReadJsonStringRange(bool &isFastString, bool &isAscii)
 {
     Advance();
+#if ENABLE_V70_OPTIMIZATION
+    Text current = current_;
+    bool result = JsonPlatformHelper::ReadJsonStringRangeForPlatformForUtf16(
+        isFastString, isAscii, current, range_, end_);
+    if (!result) {
+        current_ = current;
+    }
+    return result;
+#else
     for (Text current = current_; current != range_; ++current) {
         uint16_t c = *current;
         if (c == '"') {
@@ -1442,6 +1968,7 @@ bool Utf16JsonParser::ReadJsonStringRange(bool &isFastString, bool &isAscii)
     }
     current_ = range_;
     return false;
+#endif
 }
 
 bool Utf16JsonParser::IsFastParseJsonString(bool &isFastString, bool &isAscii)
