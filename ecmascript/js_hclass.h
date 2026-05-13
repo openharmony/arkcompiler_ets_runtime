@@ -28,6 +28,7 @@
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/string/composite_base_class.h"
 
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "libpandabase/utils/bit_field.h"
 
 /*
@@ -423,13 +424,7 @@ public:
     using IsAllTaggedPropBit = HasDeletePropertyBit::NextFlag;                                                 // 32
     using BitField1LastBit = IsAllTaggedPropBit;
 
-    // BitField2 for JSON serialization optimization flags (stored in separate uint32_t field)
-    using MayHaveInterestingPropertiesBit = BitField<uint32_t, 0, 1>;  // bit 0 of BitField2
-    using HasSymbolPropertiesBit = MayHaveInterestingPropertiesBit::NextFlag;  // bit 1 of BitField2
-    using BitField2LastBit = HasSymbolPropertiesBit;
-
     static_assert(BitField1LastBit::START_BIT + BitField1LastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
-    static_assert(BitField2LastBit::START_BIT + BitField2LastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     static JSHClass *Cast(const TaggedObject *object)
     {
@@ -573,9 +568,7 @@ public:
     {
         SetBitField(0UL);
         SetBitField1(0UL);
-        SetBitField2(0UL);
-        SetPadding(0UL);
-        SetProfileType(0ULL);
+        SetBitField2(0ULL);
     }
 
     inline JSType GetObjectType() const
@@ -1170,10 +1163,44 @@ public:
         IsJSSharedBit::Set<uint32_t>(flag, GetBitFieldAddr());
     }
 
-    // JSON serialization optimization flags - stored in BitField2
+    // Reserved bits - Newly added bits can be stored in BitField2 high bits
+    // PGO_PROFILE_TYPE_USED_BITS is defined in pgo_utils.h and stays in sync via static_assert in pgo_profile_type.h
+    static constexpr uint64_t PGO_PROFILE_TYPE_MASK = ((1ULL << pgo::PGO_PROFILE_TYPE_USED_BITS) - 1);
+    static constexpr uint64_t BIT_FIELD2_RESERVED_MASK = (~PGO_PROFILE_TYPE_MASK);
+
+    using HasSymbolPropertiesBit = BitField<uint64_t, pgo::PGO_PROFILE_TYPE_USED_BITS, 1>;
+    using MayHaveInterestingPropertiesBit = HasSymbolPropertiesBit::NextFlag;
+    static_assert(MayHaveInterestingPropertiesBit::END_BIT <= sizeof(uint64_t) * BITS_PER_BYTE,
+                  "Optimized flags overflow into uint64_t");
+
+    // Methods for PGO ProfileType - preserves optimized flags in high bits
+    inline uint64_t GetPGOProfileType() const
+    {
+        return GetBitField2() & PGO_PROFILE_TYPE_MASK;
+    }
+
+    inline void SetPGOProfileType(uint64_t pgoType)
+    {
+        uint64_t optimizationBits = GetBitField2() & BIT_FIELD2_RESERVED_MASK;
+        SetBitField2((pgoType & PGO_PROFILE_TYPE_MASK) | optimizationBits);
+    }
+
+    inline void ClearPGOProfileType()
+    {
+        uint64_t optimizationBits = GetBitField2() & BIT_FIELD2_RESERVED_MASK;
+        SetBitField2(optimizationBits);
+    }
+
+    inline bool PGOProfileTypeIsNone() const
+    {
+        return (GetBitField2() & PGO_PROFILE_TYPE_MASK) == 0;
+    }
+
     inline void SetMayHaveInterestingProperties(bool flag)
     {
-        MayHaveInterestingPropertiesBit::Set<uint32_t>(flag, GetBitField2Addr());
+        uint64_t type = GetBitField2();
+        type = MayHaveInterestingPropertiesBit::Update(type, flag);
+        SetBitField2(type);
     }
 
     inline bool MayHaveInterestingProperties() const
@@ -1183,7 +1210,9 @@ public:
 
     inline void SetHasSymbolProperties(bool flag)
     {
-        HasSymbolPropertiesBit::Set<uint32_t>(flag, GetBitField2Addr());
+        uint64_t type = GetBitField2();
+        type = HasSymbolPropertiesBit::Update(type, flag);
+        SetBitField2(type);
         if (flag) {
             SetMayHaveInterestingProperties(true);
         }
@@ -2179,9 +2208,7 @@ public:
 
     static constexpr size_t BIT_FIELD_OFFSET = TaggedObjectSize();
     ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, BIT_FIELD1_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, BIT_FIELD2_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(BitField2, uint32_t, BIT_FIELD2_OFFSET, PADDING_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(Padding, uint32_t, PADDING_OFFSET, PROTOTYPE_OFFSET);  // Padding for 8-byte alignment
+    ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, PROTOTYPE_OFFSET);
     ACCESSORS_DCHECK(Proto, PROTOTYPE_OFFSET, LAYOUT_OFFSET, IsString);
     ACCESSORS_SYNCHRONIZED_DCHECK_WITH_RB_MODE(Layout, LAYOUT_OFFSET, TRANSTIONS_OFFSET, IsString);
     ACCESSORS_DCHECK(Transitions, TRANSTIONS_OFFSET, PARENT_OFFSET, IsString);
@@ -2189,8 +2216,8 @@ public:
     ACCESSORS_DCHECK(ProtoChangeMarker, PROTO_CHANGE_MARKER_OFFSET, PROTO_CHANGE_DETAILS_OFFSET, IsString);
     ACCESSORS_DCHECK(ProtoChangeDetails, PROTO_CHANGE_DETAILS_OFFSET, ENUM_CACHE_OFFSET, IsString);
     ACCESSORS_DCHECK(EnumCache, ENUM_CACHE_OFFSET, DEPENDENT_INFOS_OFFSET, IsString);
-    ACCESSORS_DCHECK(DependentInfos, DEPENDENT_INFOS_OFFSET, PROFILE_TYPE_OFFSET, IsString);
-    ACCESSORS_PRIMITIVE_FIELD_DCHECK(ProfileType, uint64_t, PROFILE_TYPE_OFFSET, LAST_OFFSET, IsString);
+    ACCESSORS_DCHECK(DependentInfos, DEPENDENT_INFOS_OFFSET, BIT_FIELD2_OFFSET, IsString);
+    ACCESSORS_PRIMITIVE_FIELD_DCHECK(BitField2, uint64_t, BIT_FIELD2_OFFSET, LAST_OFFSET, IsString);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
     static_assert(CompositeBaseClass::SIZE >= SIZE,
                   "CompositeBaseClass::SIZE should be larger than JSHClass::SIZE");
@@ -2242,7 +2269,7 @@ public:
     static bool UpdateChildLayoutDescByPGO(const JSThread* thread, const JSHClass* hclass, HClassLayoutDesc* childDesc);
     static std::pair<bool, CString> DumpToString(const JSThread *thread, JSTaggedType hclassVal);
 
-    DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, PROFILE_TYPE_OFFSET);
+    DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD2_OFFSET);
     inline JSHClass *FindProtoTransitions(const JSThread *thread, const JSTaggedValue &key,
         const JSTaggedValue &proto);
     inline bool HasTransitions(const JSThread *thread) const
@@ -2303,11 +2330,6 @@ private:
     uint32_t *GetBitField1Addr() const
     {
         return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD1_OFFSET);
-    }
-
-    uint32_t *GetBitField2Addr() const
-    {
-        return reinterpret_cast<uint32_t *>(ToUintPtr(this) + BIT_FIELD2_OFFSET);
     }
     friend class RuntimeStubs;
 };

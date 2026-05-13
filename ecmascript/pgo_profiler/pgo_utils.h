@@ -34,6 +34,8 @@ static constexpr Alignment ALIGN_SIZE = Alignment::LOG_ALIGN_4;
 using PGOMethodId = panda_file::File::EntityId;
 using ApEntityId = uint32_t;
 
+constexpr uint32_t PGO_PROFILE_TYPE_USED_BITS = 52;
+
 // Text formatter with pure chain API for aligned output
 class TextFormatter {
 public:

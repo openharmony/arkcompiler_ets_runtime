@@ -286,18 +286,17 @@ inline void JSHClass::Copy(const JSThread *thread, const JSHClass *jshclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
 
-    // copy jshclass
     SetPrototype(thread, jshclass->GetPrototype(thread));
     SetBitField(jshclass->GetBitField());
     SetIsAllTaggedProp(jshclass->IsAllTaggedProp());
     SetNumberOfProps(jshclass->NumberOfProps());
-    SetBitField2(jshclass->GetBitField2());
+    SetBitField2(jshclass->GetBitField2() & BIT_FIELD2_RESERVED_MASK);
 }
 
 inline JSHClass *JSHClass::FindRootHClass(const JSThread *thread, JSHClass *hclass)
 {
     auto root = hclass;
-    while (!ProfileType(root->GetProfileType()).IsRootType()) {
+    while (!ProfileType(root->GetPGOProfileType()).IsRootType()) {
         auto parent = root->GetParent(thread);
         if (!parent.IsJSHClass()) {
             break;

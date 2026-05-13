@@ -13,62 +13,52 @@
       "size": 4
     },
     {
-      "name": "BitField2",
-      "offset": 8,
-      "size": 4
-    },
-    {
-      "name": "Padding",
-      "offset": 12,
-      "size": 4
-    },
-    {
       "name": "Proto",
-      "offset": 16,
+      "offset": 8,
       "size": 8
     },
     {
       "name": "Layout",
-      "offset": 24,
+      "offset": 16,
       "size": 8
     },
     {
       "name": "Transitions",
-      "offset": 32,
+      "offset": 24,
       "size": 8
     },
     {
       "name": "Parent",
-      "offset": 40,
+      "offset": 32,
       "size": 8
     },
     {
       "name": "ProtoChangeMarker",
-      "offset": 48,
+      "offset": 40,
       "size": 8
     },
     {
       "name": "ProtoChangeDetails",
-      "offset": 56,
+      "offset": 48,
       "size": 8
     },
     {
       "name": "EnumCache",
-      "offset": 64,
+      "offset": 56,
       "size": 8
     },
     {
       "name": "DependentInfos",
-      "offset": 72,
+      "offset": 64,
       "size": 8
     },
     {
-      "name": "ProfilerType",
-      "offset": 80,
+      "name": "BitField2",
+      "offset": 72,
       "size": 8
     }
   ],
-  "end_offset": 88,
+  "end_offset": 80,
   "parents": [
     "TAGGED_OBJECT"
   ]
