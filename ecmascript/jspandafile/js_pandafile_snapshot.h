@@ -25,7 +25,7 @@ public:
     static constexpr std::string_view JSPANDAFILE_FILE_NAME = "_Pandafile.ams";
 
     static void PostWriteDataToFileJob(const EcmaVM *vm, const CString &path, const CString &version);
-    static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path);
+    static bool ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path, const CString &version);
 
 protected:
     static bool IsJSPandaFileSnapshotFileExist(const CString &fileName, const CString &path);

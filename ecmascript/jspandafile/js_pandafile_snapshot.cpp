@@ -26,10 +26,10 @@
 #include "zlib.h"
 
 namespace panda::ecmascript {
-bool JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path)
+bool JSPandaFileSnapshot::ReadData(JSThread *thread, JSPandaFile *jsPandaFile, const CString &path,
+                                   const CString &version)
 {
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "JSPandaFile::ReadData", "");
-    CString version = ohos::OhosVersionInfoTools::GetRomVersion();
     // check application white list & specific file
     if (IsJSPandaFileSnapshotFileExist(jsPandaFile->GetJSPandaFileDesc(), path)) {
         return ReadDataFromFile(thread, jsPandaFile, path, version);
@@ -114,8 +114,13 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         }
     }
 
+    if (FileExist(filename.c_str())) {
+        LOG_ECMA(WARN) << "JSPandaFileSnapshot::WriteDataToFile snapshot file already exist: " << filename;
+        return false;
+    }
+    ModulesSnapshotHelper::FileGuard guard(filename, thread->GetCurrentThreadId());
     MemMap fileMapMem =
-        CreateFileMap(filename.c_str(), bufSize, FILE_RDWR | FILE_CREAT | FILE_TRUNC, PAGE_PROT_READWRITE);
+        CreateFileMap(guard.GetTempPath().c_str(), bufSize, FILE_RDWR | FILE_CREAT | FILE_TRUNC, PAGE_PROT_READWRITE);
     if (fileMapMem.GetOriginAddr() == nullptr) {
         LOG_ECMA(ERROR) << "JSPandaFileSnapshot::WriteDataToFile open file failed:" << filename;
         return false;
@@ -202,8 +207,11 @@ bool JSPandaFileSnapshot::WriteDataToFile(JSThread *thread, JSPandaFile *jsPanda
         return false;
     }
     FileSync(fileMapMem, FILE_MS_SYNC);
-    ModulesSnapshotHelper::SetReadOnly(filename);
-    LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile success with: " << filename;
+    FileUnMap(fileMapMem);
+    if (guard.Done()) {
+        ModulesSnapshotHelper::SetReadOnly(filename);
+        LOG_ECMA(INFO) << "JSPandaFileSnapshot::WriteDataToFile success with: " << filename;
+    }
     return true;
 }
 

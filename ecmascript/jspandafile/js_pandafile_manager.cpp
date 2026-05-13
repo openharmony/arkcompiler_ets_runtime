@@ -701,11 +701,15 @@ bool JSPandaFileManager::UseSnapshot(JSThread *thread, JSPandaFile *jsPandaFile)
     if (!jsPandaFile->IsBundlePack() && !thread->GetEcmaVM()->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
         CString version = ohos::OhosVersionInfoTools::GetRomVersion();
         if (version.empty()) {
-            LOG_ECMA(ERROR) << "JSPandaFileManager::UseSnapshot rom version is empty";
+            LOG_ECMA(DEBUG) << "JSPandaFileManager::UseSnapshot rom version is empty";
+            return false;
+        }
+        if (!ecmascript::Runtime::GetInstance()->IsMainProcess()) {
+            LOG_ECMA(DEBUG) << "JSPandaFileManager::UseSnapshot skiped in child process";
             return false;
         }
         return JSPandaFileSnapshot::ReadData(
-            thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR);
+            thread, jsPandaFile, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR, version);
     }
     return false;
 }

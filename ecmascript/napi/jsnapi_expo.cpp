@@ -6651,6 +6651,11 @@ void JSNApi::SetErrorInfoEnhance(bool errorInfoEnhance)
     EcmaVM::SetErrorInfoEnhance(errorInfoEnhance);
 }
 
+void JSNApi::SetIsMainProcess(bool isMainProcess)
+{
+    ecmascript::Runtime::GetInstance()->SetIsMainProcess(isMainProcess);
+}
+
 void JSNApi::SetRequestAotCallback([[maybe_unused]] EcmaVM *vm, const std::function<int32_t
     (const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)> &cb)
 {

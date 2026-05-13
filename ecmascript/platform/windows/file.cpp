@@ -21,6 +21,7 @@
 #include <winbase.h>
 #include <winnt.h>
 #include <climits>
+#include <system_error>
 #include <fileapi.h>
 
 #ifdef ERROR
@@ -248,6 +249,11 @@ bool Chmod([[maybe_unused]] const std::string_view &path,
     [[maybe_unused]] std::error_code &errorCode)
 {
     return LogUnsupportedPlatform(__func__, false);
+}
+
+std::error_code Rename(const char *oldPath, const char *newPath, bool existOk)
+{
+    return LogUnsupportedPlatform(__func__, std::error_code(ENOSYS, std::generic_category()));
 }
 
 constexpr const std::string_view POSIX_FILE_CLASS_NAME = "PosixFile";

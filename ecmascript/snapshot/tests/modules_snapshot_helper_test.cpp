@@ -14,7 +14,11 @@
  */
 
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/platform/file.h"
 #include "jsnapi_expo.h"
+#include <string>
+#include <string_view>
+#include <fstream>
 
 #define private public
 #define protected public
@@ -125,6 +129,159 @@ HWTEST_F_L0(ModulesSnapshotHelperTest, ModulesSnapshotHelper_TryDisableSnapshot_
     std::remove(stateFilePath.c_str());
     ModulesSnapshotHelper::g_featureState_ = originalFeatureState;
     ModulesSnapshotHelper::g_featureLoaded_ = originalFeatureLoaded;
+}
+
+// FileGuard Tests
+HWTEST_F_L0(ModulesSnapshotHelperTest, FileGuard_Constructor_GeneratesDifferentTempPath)
+{
+    const CString targetPath = "./test_fileguard_target.txt";
+    uint32_t tid = 12345;
+    ModulesSnapshotHelper::FileGuard fileGuard(targetPath, tid);
+
+    // Temp path should be different from target path
+    ASSERT_NE(fileGuard.GetTempPath(), targetPath);
+    ASSERT_FALSE(fileGuard.GetTempPath().empty());
+}
+
+HWTEST_F_L0(ModulesSnapshotHelperTest, FileGuard_Done_SuccessWithExistingTempFile)
+{
+    const CString targetPath = "./test_fileguard_done_success.txt";
+
+    // Ensure target file doesn't exist
+    std::remove(targetPath.c_str());
+
+    ModulesSnapshotHelper::FileGuard fileGuard(targetPath, 12345);
+    CString tempPath = fileGuard.GetTempPath();
+
+    // Temp path should be different from target path
+    ASSERT_NE(tempPath, targetPath);
+    ASSERT_FALSE(tempPath.empty());
+
+    // Create temp file using ofstream
+    std::ofstream ofs(tempPath.c_str());
+    ASSERT_TRUE(ofs.is_open());
+    ofs << "test content";
+    ofs.close();
+
+    bool result = fileGuard.Done();
+    ASSERT_TRUE(result);
+
+    // Verify target file exists and temp file is gone using FileExist
+    ASSERT_TRUE(FileExist(targetPath.c_str()));
+    ASSERT_FALSE(FileExist(tempPath.c_str()));
+
+    // Cleanup
+    std::remove(targetPath.c_str());
+}
+
+HWTEST_F_L0(ModulesSnapshotHelperTest, FileGuard_Done_FailsWhenTempFileNotExists)
+{
+    const CString targetPath = "./test_fileguard_done_fail.txt";
+
+    // Ensure target file doesn't exist
+    std::remove(targetPath.c_str());
+
+    ModulesSnapshotHelper::FileGuard fileGuard(targetPath, 12345);
+    CString tempPath = fileGuard.GetTempPath();
+
+    // Ensure temp file doesn't exist
+    std::remove(tempPath.c_str());
+
+    bool result = fileGuard.Done();
+    ASSERT_FALSE(result);
+
+    // Verify target file doesn't exist using FileExist
+    ASSERT_FALSE(FileExist(targetPath.c_str()));
+}
+
+HWTEST_F_L0(ModulesSnapshotHelperTest, FileGuard_Destructor_RemovesTempFileWhenNotDone)
+{
+    const CString targetPath = "./test_fileguard_destructor.txt";
+
+    // Ensure target file doesn't exist
+    std::remove(targetPath.c_str());
+
+    CString tempPath;
+    {
+        ModulesSnapshotHelper::FileGuard fileGuard(targetPath, 12345);
+        tempPath = fileGuard.GetTempPath();
+
+        // Create temp file using ofstream
+        std::ofstream ofs(tempPath.c_str());
+        ASSERT_TRUE(ofs.is_open());
+        ofs << "test content";
+        ofs.close();
+        // Don't call Done(), destructor should remove temp file
+    }
+
+    // Verify temp file is removed by destructor using FileExist
+    ASSERT_FALSE(FileExist(tempPath.c_str()));
+
+    // Verify target file doesn't exist using FileExist
+    ASSERT_FALSE(FileExist(targetPath.c_str()));
+}
+
+HWTEST_F_L0(ModulesSnapshotHelperTest, FileGuard_Destructor_NotRemoveTargetFileWhenDone)
+{
+    const CString targetPath = "./test_fileguard_destructor_done.txt";
+
+    // Ensure target file doesn't exist
+    std::remove(targetPath.c_str());
+
+    CString tempPath;
+    {
+        ModulesSnapshotHelper::FileGuard fileGuard(targetPath, 12345);
+        tempPath = fileGuard.GetTempPath();
+
+        // Create temp file using ofstream
+        std::ofstream ofs(tempPath.c_str());
+        ASSERT_TRUE(ofs.is_open());
+        ofs << "test content";
+        ofs.close();
+
+        bool result = fileGuard.Done();
+        ASSERT_TRUE(result);
+        // After Done(), destructor should not remove target file
+    }
+
+    // Verify target file exists using FileExist
+    ASSERT_TRUE(FileExist(targetPath.c_str()));
+
+    // Cleanup
+    std::remove(targetPath.c_str());
+}
+
+HWTEST_F_L0(ModulesSnapshotHelperTest, FileGuard_Done_Idempotent)
+{
+    const CString targetPath = "./test_fileguard_done_idempotent.txt";
+
+    // Ensure target file doesn't exist
+    std::remove(targetPath.c_str());
+
+    ModulesSnapshotHelper::FileGuard fileGuard(targetPath, 12345);
+    CString tempPath = fileGuard.GetTempPath();
+
+    // Create temp file using ofstream
+    std::ofstream ofs(tempPath.c_str());
+    ASSERT_TRUE(ofs.is_open());
+    ofs << "test content";
+    ofs.close();
+
+    // Call Done() multiple times
+    bool result1 = fileGuard.Done();
+    ASSERT_TRUE(result1);
+
+    bool result2 = fileGuard.Done();
+    ASSERT_TRUE(result2);
+
+    bool result3 = fileGuard.Done();
+    ASSERT_TRUE(result3);
+
+    // Verify target file exists using FileExist
+    ASSERT_TRUE(FileExist(targetPath.c_str()));
+
+    // Cleanup
+    std::remove(targetPath.c_str());
 }
 
 } // namespace panda::test

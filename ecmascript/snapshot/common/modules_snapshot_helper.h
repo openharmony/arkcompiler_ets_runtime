@@ -32,6 +32,20 @@ enum class SnapshotFeatureState : int8_t {
 
 class ModulesSnapshotHelper {
 public:
+    class FileGuard {
+    public:
+        FileGuard(const CString &path, uint32_t tid);
+        ~FileGuard();
+        bool Done();
+        const CString &GetTempPath() const
+        {
+            return temp_;
+        }
+    private:
+        CString target_ {};
+        CString temp_ {};
+        bool done_ {false};
+    };
 
     static void InitEscaper(EcmaVM *vm);
     static int GetDisabledFeature(const CString &path);

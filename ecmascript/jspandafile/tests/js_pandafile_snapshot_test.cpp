@@ -310,10 +310,11 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ShouldNotDeSerializeWhenFileIsNotExists)
     // construct JSPandaFile
     CString path = GetSnapshotPath();
     CString fileName = path + "entry" + JSPandaFileSnapshot::JSPANDAFILE_FILE_NAME.data();
+    CString version = "version 205.0.1.120(SP20)";
     const std::shared_ptr<JSPandaFile> deserializePf = NewMockJSPandaFile();
     // return false when file is not exists
     ASSERT_FALSE(FileExist(fileName.c_str()));
-    ASSERT_FALSE(JSPandaFileSnapshot::ReadData(thread, deserializePf.get(), path));
+    ASSERT_FALSE(JSPandaFileSnapshot::ReadData(thread, deserializePf.get(), path, version));
 }
 
 HWTEST_F_L0(JSPandaFileSnapshotTest, ShouldDeSerializeFailedWhenFileIsEmpty)
@@ -321,12 +322,13 @@ HWTEST_F_L0(JSPandaFileSnapshotTest, ShouldDeSerializeFailedWhenFileIsEmpty)
     // construct JSPandaFile
     CString path = GetSnapshotPath();
     CString fileName = path + "entry" + JSPandaFileSnapshot::JSPANDAFILE_FILE_NAME.data();
+    CString version = "version 205.0.1.120(SP20)";
     const std::shared_ptr<JSPandaFile> deserializePf = NewMockJSPandaFile();
     std::ofstream ofStream(fileName.c_str());
     ofStream.close();
     // return false when file is empty
     ASSERT_TRUE(FileExist(fileName.c_str()));
-    ASSERT_FALSE(JSPandaFileSnapshot::ReadData(thread, deserializePf.get(), path));
+    ASSERT_FALSE(JSPandaFileSnapshot::ReadData(thread, deserializePf.get(), path, version));
     // check file is deleted
     ASSERT_FALSE(FileExist(fileName.c_str()));
 }

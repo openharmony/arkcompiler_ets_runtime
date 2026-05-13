@@ -53,13 +53,11 @@ JSPandaFile::JSPandaFile(JSThread *thread, const panda_file::File *pf, const CSt
 
     EcmaVM *vm = thread->GetEcmaVM();
 
-    if (!vm->GetJSOptions().DisableJSPandaFileAndModuleSnapshot()) {
-        if (JSPandaFileSnapshot::ReadData(thread, this, ohos::OhosConstants::PANDAFILE_AND_MODULE_SNAPSHOT_DIR)) {
-            // Use snapshot to skip InitializeMergedPF and TranslateClasses
-            return;
-        }
-        ResetAfterSnapshotFail();
+    if (JSPandaFileManager::UseSnapshot(thread, this)) {
+        // Use snapshot to skip InitializeMergedPF and TranslateClasses
+        return;
     }
+    ResetAfterSnapshotFail();
 
     // If snapshot loading fails, fall back to normal initialization and translation
     CString methodName = entryPoint.data();
