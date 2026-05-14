@@ -256,6 +256,9 @@ CString HeapSnapshot::GetProxyClassNameSuffix(TaggedObject *entry)
     JSTaggedValue obj(entry);
     auto proxy = JSProxy::Cast(obj);
     JSTaggedValue proxyHandler = proxy->GetHandler(thread);
+    if (proxyHandler.IsNull() || !proxyHandler.IsECMAObject()) {
+        return "";  // Proxy has been revoked
+    }
     JSHandle<JSTaggedValue> proxyHandlerHandle(thread, proxyHandler);
     if (JSTaggedValue::HasProperty(thread, proxyHandlerHandle, arkUiObservedSymbolName)) {
         JSHandle<JSTaggedValue> finalName =
