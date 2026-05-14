@@ -154,6 +154,12 @@ bool ModuleSnapshot::ReadDataFromFile(JSThread *thread, std::unique_ptr<Serializ
         LOG_ECMA(ERROR) << "ModuleSnapshot::ReadDataFromFile File mmap failed";
         return false;
     }
+#if defined(PANDA_TARGET_OHOS) && ENABLE_V70_OPTIMIZATION
+    if (madvise(fileMapMem.GetOriginAddr(), fileMapMem.GetSize(), MADV_WILLNEED) != 0) {
+        LOG_ECMA(INFO) << "ModuleSnapshot::ReadDataFromFile madvise failed, errno: " << errno
+                       << ", " << strerror(errno);
+    }
+#endif
     LOG_ECMA(DEBUG) << "ModuleSnapshot::ReadDataFromFile";
     MemMapScope memMapScope(fileMapMem);
     FileMemMapReader reader(fileMapMem, std::bind(ModulesSnapshotHelper::RemoveSnapshotFiles, path),
