@@ -2049,6 +2049,8 @@ public:
     static void AllowCrossThreadExecution(EcmaVM *vm);
     static bool CheckAndSetAllowCrossThreadExecution(EcmaVM *vm);
     static void DisallowCrossThreadExecution(EcmaVM *vm);
+    static bool GetEnableAsmInterpreter(const EcmaVM *vm);
+    static std::string GetStubFile(const EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
     static bool IsProfiling(EcmaVM *vm);
     static void SetProfilerState(const EcmaVM *vm, bool value);
