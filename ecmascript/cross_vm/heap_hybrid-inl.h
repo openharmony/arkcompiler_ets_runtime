@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2025 Huawei Device Co., Ltd.
+* Copyright (c) 2025-2026 Huawei Device Co., Ltd.
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -22,11 +22,16 @@
 
 namespace panda::ecmascript {
     template<TriggerGCType gcType, GCReason gcReason>
-    bool SharedHeap::TriggerUnifiedGCMark(JSThread *thread) const
+    bool SharedHeap::TriggerUnifiedGCMark(JSThread *thread)
     {
         ASSERT(gcType == TriggerGCType::UNIFIED_GC && gcReason == GCReason::CROSSREF_CAUSE);
+        LockHolder lock(waitGCFinishedMutex_);
         DaemonThread::PostTaskResult res = DaemonThread::GetInstance()
             ->CheckAndPostTask(TriggerUnifiedGCMarkTask<gcType, gcReason>(thread));
+        if (res == DaemonThread::PostTaskResult::SUCCESS) {
+            ASSERT(gcFinished_);
+            gcFinished_ = false;
+        }
         return res == DaemonThread::PostTaskResult::SUCCESS;
     }
 }  // namespace panda::ecmascript

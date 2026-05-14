@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,6 +24,7 @@
 
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/cross_vm/daemon_task_hybrid-inl.h"
+#include "ecmascript/cross_vm/heap_hybrid-inl.h"
 #include "ecmascript/daemon/daemon_task-inl.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 #include "ecmascript/ecma_vm.h"
@@ -588,6 +589,57 @@ TaggedObject *SharedHeap::AllocateClassClass(JSThread *thread, JSHClass *hclass,
     return object;
 }
 
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+inline bool Heap::GetStsTriggerXGC([[maybe_unused]] const char *callerName)
+{
+    auto *runtime = Runtime::GetInstance();
+    if (runtime != nullptr) {
+        auto *stsIface = runtime->GetSTSVMInterface();
+        if (stsIface != nullptr) {
+            LOG_GC(INFO) << callerName << " trigger XGC from dynamic side";
+            return true;
+        }
+    }
+    LOG_GC(INFO) << callerName << " XGC skipped: STSVMInterface is null";
+    return false;
+}
+
+inline bool Heap::TryTriggerUnifiedGCMark([[maybe_unused]] const char *callerName)
+{
+    auto *sharedHeap = SharedHeap::GetInstance();
+    bool unifiedGcTriggered =
+        sharedHeap->TriggerUnifiedGCMark<TriggerGCType::UNIFIED_GC, GCReason::CROSSREF_CAUSE>(thread_);
+    LOG_GC(INFO) << callerName << " XGC trigger result: unified=" << unifiedGcTriggered;
+    return unifiedGcTriggered;
+}
+
+inline bool Heap::TryTriggerXGC([[maybe_unused]] const char *callerName)
+{
+    if (TryTriggerUnifiedGCMark(callerName)) {
+        bool etsGcTriggered = Runtime::GetInstance()->GetSTSVMInterface()->TriggerXGC();
+        if (!etsGcTriggered) {
+            SharedHeap::GetInstance()->NotifyUnifiedGCInterrupt();
+        }
+        SharedHeap::GetInstance()->WaitGCFinished(thread_);
+        return etsGcTriggered;
+    }
+    return false;
+}
+
+inline bool Heap::TryTriggerXGCAndReclaim(const char *callerName)
+{
+    if (GetStsTriggerXGC(callerName)) {
+        bool xgcTriggered = TryTriggerXGC(callerName);
+        LOG_GC(INFO) << callerName << " XGC trigger result: " << xgcTriggered;
+        if (xgcTriggered) {
+            CollectGarbage(TriggerGCType::FULL_GC, GCReason::ALLOCATION_FAILED);
+        }
+        return xgcTriggered;
+    }
+    return false;
+}
+#endif
+
 TaggedObject *Heap::AllocateHugeObject(size_t size)
 {
     if (UNLIKELY(g_isEnableCMCGC)) {
@@ -611,6 +663,14 @@ TaggedObject *Heap::AllocateHugeObject(size_t size)
             if (usableSize > MIN_USABLE_MEMORY_THRESHOLD_TO_OOM_AFTER_FULL_GC) {
                 object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
             }
+#ifdef PANDA_JS_ETS_HYBRID_MODE
+            if (UNLIKELY(object == nullptr)) {
+                TryTriggerXGCAndReclaim("Heap::AllocateHugeObject");
+                object = reinterpret_cast<TaggedObject *>(hugeObjectSpace_->Allocate(size, thread_));
+            }
+#else
+            LOG_GC(INFO) << "Heap::AllocateHugeObject XGC skipped: PANDA_JS_ETS_HYBRID_MODE not defined";
+#endif
             if (UNLIKELY(object == nullptr)) {
                 // if allocate huge object OOM, temporarily increase space size to avoid vm crash
                 size_t oomOvershootSize = config_.GetOutOfMemoryOvershootSize();
