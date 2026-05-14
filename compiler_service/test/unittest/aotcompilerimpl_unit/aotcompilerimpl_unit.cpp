@@ -71,6 +71,20 @@ const std::unordered_map<std::string, std::string> argsMapForTest {
     {"anFileName", "/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an"},
     {"appIdentifier", "5765880207853624761"}
 };
+
+const std::string COMPILER_PKG_INFO_FOR_STOP_TEST =
+    "{\"abcName\":\"ets/modules.abc\","
+    "\"abcOffset\":\"0x0\","
+    "\"abcSize\":\"0x0\","
+    "\"appIdentifier\":\"5765880207853624761\","
+    "\"bundleName\":\"com.ohos.contacts\","
+    "\"BundleUid\":\"0x1317b6f\","
+    "\"isEncryptedBundle\":\"0x0\","
+    "\"isScreenOff\":\"0x1\","
+    "\"moduleName\":\"entry\","
+    "\"pgoDir\":\"/data/app/el1/100/aot_compiler/ark_profile/com.ohos.contacts\","
+    "\"pkgPath\":\"/data/app/el1/public/aot_compiler/ark_cache/com.ohos.contacts/arm64/entry.an\","
+    "\"processUid\":\"0xbf4\"}";
 } // namespace ark_aot_compiler arguments
 
 class AotCompilerImplMock : public AotCompilerImpl {
@@ -172,10 +186,10 @@ public:
     #endif
     }
 
-    int32_t ExecuteInParentProcessWithStopRequestedMock()
+    int32_t ExecuteInParentProcessWithStopRequestedMock(const std::unordered_map<std::string, std::string> &argsMap)
     {
     #ifdef CODE_SIGN_ENABLE
-        argsHandler_ = std::make_unique<AOTArgsHandler>(argsMapForTest);
+        argsHandler_ = std::make_unique<AOTArgsHandler>(argsMap);
         if (argsHandler_->Handle(thermalLevel_) != ERR_OK) {
             return ERR_AOT_COMPILER_PARAM_FAILED;
         }
@@ -187,6 +201,48 @@ public:
         }
         if (pid == 0) {
             sleep(10); // 10: keep child alive until parent consumes the pending stop request.
+            _exit(0);
+        }
+        mockChildPid_ = pid;
+        ExecuteInParentProcess(pid, ret);
+        return ret;
+    #else
+        return ERR_AOT_COMPILER_SIGNATURE_DISABLE;
+    #endif
+    }
+
+    int32_t ExecuteInParentProcessAfterScreenOnStopMock(const std::unordered_map<std::string, std::string> &argsMap,
+                                                        bool restoreAllowBeforeParent)
+    {
+    #ifdef CODE_SIGN_ENABLE
+        argsHandler_ = std::make_unique<AOTArgsHandler>(argsMap);
+        if (argsHandler_->Handle(thermalLevel_) != ERR_OK) {
+            return ERR_AOT_COMPILER_PARAM_FAILED;
+        }
+        AllowAotCompiler();
+        stopRequested_.store(false);
+        PauseAotCompiler();
+        int32_t stopRet = StopAotCompiler();
+        if (stopRet != ERR_AOT_COMPILER_STOP_FAILED || !stopRequested_.load()) {
+            return ERR_AOT_COMPILER_CALL_FAILED;
+        }
+        if (IsAllowAotCompiler()) {
+            return ERR_AOT_COMPILER_CALL_FAILED;
+        }
+        if (restoreAllowBeforeParent) {
+            AllowAotCompiler();
+        }
+        if (restoreAllowBeforeParent != IsAllowAotCompiler()) {
+            return ERR_AOT_COMPILER_CALL_FAILED;
+        }
+
+        int32_t ret = ERR_OK;
+        pid_t pid = fork();
+        if (pid == -1) {
+            return ERR_AOT_COMPILER_CALL_FAILED;
+        }
+        if (pid == 0) {
+            sleep(2); // 2: keep child alive unless the pending stop request kills it.
             _exit(0);
         }
         mockChildPid_ = pid;
@@ -832,9 +888,11 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_040, TestSize.Level0)
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_041, TestSize.Level0)
 {
     AotCompilerImplMock aotImplMock;
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = COMPILER_PKG_INFO_FOR_STOP_TEST;
     aotImplMock.AllowAotCompilerMock();
     aotImplMock.SetStopRequestedMock(true);
-    int32_t ret = aotImplMock.CheckStopBeforeForkMock(argsMapForTest);
+    int32_t ret = aotImplMock.CheckStopBeforeForkMock(argsMap);
 #ifdef CODE_SIGN_ENABLE
     EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
 #else
@@ -850,10 +908,50 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_041, TestSize.Level0)
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_042, TestSize.Level0)
 {
     AotCompilerImplMock aotImplMock;
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = COMPILER_PKG_INFO_FOR_STOP_TEST;
     aotImplMock.AllowAotCompilerMock();
-    int32_t ret = aotImplMock.ExecuteInParentProcessWithStopRequestedMock();
+    int32_t ret = aotImplMock.ExecuteInParentProcessWithStopRequestedMock(argsMap);
 #ifdef CODE_SIGN_ENABLE
     EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
+}
+
+/**
+* @tc.name: AotCompilerImplTest_043
+* @tc.desc: AotCompilerImpl cancels and cleans child when screen-on stop fails before state init
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_043, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = COMPILER_PKG_INFO_FOR_STOP_TEST;
+    int32_t ret = aotImplMock.ExecuteInParentProcessAfterScreenOnStopMock(argsMap, false);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
+    EXPECT_NE(access(argsMap.at(ArgsIdx::AN_FILE_NAME).c_str(), F_OK), 0);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
+}
+
+/**
+* @tc.name: AotCompilerImplTest_044
+* @tc.desc: AotCompilerImpl cancels child by pending stop request after allow state is restored
+* @tc.type: Func
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_044, TestSize.Level0)
+{
+    AotCompilerImplMock aotImplMock;
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    argsMap[ArgsIdx::COMPILER_PKG_INFO] = COMPILER_PKG_INFO_FOR_STOP_TEST;
+    int32_t ret = aotImplMock.ExecuteInParentProcessAfterScreenOnStopMock(argsMap, true);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_CALL_CANCELLED);
+    EXPECT_NE(access(argsMap.at(ArgsIdx::AN_FILE_NAME).c_str(), F_OK), 0);
 #else
     EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
 #endif
