@@ -286,6 +286,10 @@ void AsyncStackTraceManager::CollectOldPromiseNodeIfNeeded()
     size_t half = promiseMap_.size() / 2;
     for (size_t i = 0; i < half; ++i) {
         uint32_t promiseId = promiseQueue_.front();
+#if defined(ENABLE_ASYNC_STACK)
+        uint64_t stackId = GetStackId(promiseId);
+        ReleaseAsyncContext(stackId);
+#endif
         promiseQueue_.pop_front();
         promiseMap_.erase(promiseId);
     }
