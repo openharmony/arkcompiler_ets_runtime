@@ -1357,6 +1357,19 @@ public:
         return lazyGetGlobalEnvCallBack_;
     }
 
+    void PropagateGlobalEnvTo(StubBuilder *builder)
+    {
+#if ENABLE_V70_OPTIMIZATION
+        if (HasGlobalEnv()) {
+            builder->SetCurrentGlobalEnv(GetCurrentGlobalEnv());
+        } else {
+            builder->SetCallBackForLazyGetGlobalEnv(GetCallBackForLazyGetGlobalEnv());
+        }
+#else
+        builder->SetCurrentGlobalEnv(GetCurrentGlobalEnv());
+#endif
+    }
+
     GateRef LazyGetGlobalEnv()
     {
         ASSERT(lazyGetGlobalEnvCallBack_ != nullptr);
@@ -1370,7 +1383,11 @@ public:
         explicit GlobalEnvScope(StubBuilder* builder)
             : builder_(builder)
         {
-            // Save current globalEnv for restoration (before any potential changes)
+            // Save and restore the previous GlobalEnv to prevent a lazy gate created in one branch
+            // from leaking into sibling blocks:
+            //   Bind(&pathA) { GlobalEnvScope scope(this); Use(GetCurrentGlobalEnv()); }
+            //   Bind(&pathB) { GlobalEnvScope scope(this); Use(GetCurrentGlobalEnv()); }
+            // Without restoration, pathB may reuse the GateRef created only in pathA.
             prevGlobalEnv_ = builder_->globalEnv_;
             if (!builder_->HasGlobalEnv()) {
                 builder_->SetCurrentGlobalEnv(builder_->LazyGetGlobalEnv());
