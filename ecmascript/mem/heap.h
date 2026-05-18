@@ -69,6 +69,9 @@ class SweepGC;
 class RSetWorkListHandler;
 class SharedConcurrentMarker;
 class SharedConcurrentSweeper;
+class GlobalGC;
+class GlobalGCMarker;
+class GlobalGCWorkManager;
 class SharedGC;
 class SharedGCEvacuator;
 class SharedGCMarkerBase;
@@ -468,6 +471,7 @@ protected:
     // parallel marker task count.
     uint32_t maxMarkTaskCount_ {0};
     std::shared_ptr<EpochGuardedTaskMonitor> markTaskMonitor_;
+    std::shared_ptr<EpochGuardedTaskMonitor> globalMarkTaskMonitor_;
     Mutex waitClearTaskFinishedMutex_;
     ConditionVariable waitClearTaskFinishedCV_;
     bool clearTaskFinished_ {true};
@@ -529,6 +533,24 @@ public:
     private:
         SharedHeap *sHeap_ {nullptr};
         SharedParallelMarkPhase taskPhase_;
+        std::shared_ptr<EpochGuardedTaskMonitor> monitor_;
+        uint32_t epoch_ {0};
+    };
+
+    class GlobalGCMarkTask : public GuardedTask {
+    public:
+        GlobalGCMarkTask(int32_t id, SharedHeap *heap,
+            std::shared_ptr<EpochGuardedTaskMonitor> monitor, uint32_t epoch)
+            : GuardedTask(id), sHeap_(heap), monitor_(monitor), epoch_(epoch) {}
+        ~GlobalGCMarkTask() override = default;
+        bool RunInternal(uint32_t threadIndex) override;
+        bool Scheduable() override;
+
+        NO_COPY_SEMANTIC(GlobalGCMarkTask);
+        NO_MOVE_SEMANTIC(GlobalGCMarkTask);
+
+    private:
+        SharedHeap *sHeap_ {nullptr};
         std::shared_ptr<EpochGuardedTaskMonitor> monitor_;
         uint32_t epoch_ {0};
     };
@@ -865,12 +887,35 @@ public:
     void PrepareByJSThread(JSThread *thread, bool inTriggerGCThread);
     void Reclaim(TriggerGCType gcType);
     void TryPostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase);
+    void TryPostGlobalGCMarkingTask();
+    inline bool CheckCanDistributeGlobalGCTask() const;
+    void WaitGlobalGCMarkTaskFinished();
     void CompactHeapBeforeFork(JSThread *thread);
     void ReclaimForAppSpawn();
 
     SharedGCWorkManager *GetWorkManager() const
     {
         return sWorkManager_;
+    }
+
+    GlobalGC *GetGlobalGC() const
+    {
+        return globalGC_;
+    }
+
+    SharedFullGC *GetSharedFullGC() const
+    {
+        return sharedFullGC_;
+    }
+
+    GlobalGCMarker *GetGlobalGCMarker() const
+    {
+        return globalGCMarker_;
+    }
+
+    GlobalGCWorkManager *GetGlobalGCWorkManager() const
+    {
+        return globalGCWorkManager_;
     }
 
     SharedGCMarker *GetSharedGCMarker() const
@@ -924,6 +969,8 @@ public:
     inline TaggedObject *AllocateHugeObject(JSThread *thread, JSHClass *hclass, size_t size);
 
     inline TaggedObject *AllocateHugeObject(JSThread *thread, size_t size);
+
+    inline TaggedObject *HandleSharedHeapOOM(JSThread *thread, size_t size);
 
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSThread *thread, JSHClass *hclass);
 
@@ -1026,6 +1073,9 @@ private:
     SharedConcurrentMarker *sConcurrentMarker_ {nullptr};
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};
+    GlobalGC *globalGC_ {nullptr};
+    GlobalGCMarker *globalGCMarker_ {nullptr};
+    GlobalGCWorkManager *globalGCWorkManager_ {nullptr};
     SharedFullGC *sharedFullGC_ {nullptr};
     SharedGCEvacuator *sEvacuator_ {nullptr};
     SharedGCMarker *sharedGCMarker_ {nullptr};

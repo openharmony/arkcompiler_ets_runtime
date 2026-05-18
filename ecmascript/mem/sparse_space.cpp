@@ -20,6 +20,12 @@
 #include "ecmascript/mem/heap-inl.h"
 
 namespace panda::ecmascript {
+
+void SparseSpace::RebuildFreeList()
+{
+    allocator_->RebuildFreeList();
+}
+
 SparseSpace::SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
     : MonoSpace(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       SweepableSpace(),

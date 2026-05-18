@@ -807,6 +807,8 @@ GCType GCStats::GetGCType(TriggerGCType gcType)
             return GCType::SHARED_PARTIAL_GC;
         case TriggerGCType::SHARED_FULL_GC:
             return GCType::SHARED_FULL_GC;
+        case TriggerGCType::GLOBAL_GC:
+            return GCType::GLOBAL_GC;
         case TriggerGCType::CMS_GC:
             return GCType::CMS_GC;
         default:
