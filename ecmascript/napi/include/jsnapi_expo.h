@@ -530,6 +530,11 @@ public:
         return vm_;
     }
 
+    uintptr_t GetSlotAddress() const
+    {
+        return address_;
+    }
+
     // This method must be called before Global is released.
     GLOBAL_PUBLIC_HYBRID_EXTENSION();
 private:
@@ -2108,6 +2113,12 @@ public:
     static uintptr_t CreateStrongRef(const EcmaVM *vm, Local<JSValueRef> local);
     static void DeleteStrongRef(const EcmaVM *vm, uintptr_t strongRef);
     static void NotifyOnANR();
+
+    static void SetTrackGlobalRef(EcmaVM *vm, bool enable);
+    static bool IsTrackGlobalRefEnabled(const EcmaVM *vm);
+    static void StoreGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr, void *ref);
+    static void EraseGlobalRefMapping(EcmaVM *vm, uintptr_t slotAddr);
+    static void *FindGlobalRefMapping(const EcmaVM *vm, uintptr_t slotAddr);
 
     JSNAPI_PUBLIC_HYBRID_EXTENSION();
 private:

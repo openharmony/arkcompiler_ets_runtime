@@ -2561,4 +2561,49 @@ HWTEST_F_L0(HeapDumpTest, TestSharedGCOOMDumpUsesJsonOnARM32)
         << "SharedGC OOM dump should use JSON format on ARM32 instead of binary";
 }
 #endif
+
+HWTEST_F_L0(HeapDumpTest, TestGlobalRefInHeapSnapshot)
+{
+    thread_->SetTrackGlobalRef(true);
+
+    // First snapshot to trigger GC and stabilize slots
+    HeapDumpTestHelper tester(ecmaVm_);
+    tester.GenerateSnapShot("test_global_ref_stabilize.heapsnapshot");
+
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    int fakeRef1 = 0;
+    int fakeRef2 = 0;
+    int fakeRef3 = 0;
+
+    // Create multiple global handles with different JS types
+    JSHandle<JSTaggedValue> napiObj(factory->CreateNapiObject());
+    Global<ObjectRef> globalObj1(ecmaVm_, Local<JSTaggedValue>(napiObj.GetAddress()));
+    thread_->StoreGlobalRefMapping(globalObj1.GetSlotAddress(), &fakeRef1);
+
+    JSHandle<JSTaggedValue> jsArray(thread_, factory->NewJSArray().GetTaggedValue());
+    Global<ObjectRef> globalObj2(ecmaVm_, Local<JSTaggedValue>(jsArray.GetAddress()));
+    thread_->StoreGlobalRefMapping(globalObj2.GetSlotAddress(), &fakeRef2);
+
+    JSHandle<EcmaString> str = factory->NewFromUtf16(u"globalRefTest");
+    Global<ObjectRef> globalObj3(ecmaVm_, Local<JSTaggedValue>(str.GetAddress()));
+    thread_->StoreGlobalRefMapping(globalObj3.GetSlotAddress(), &fakeRef3);
+
+    // Generate snapshot with global ref tracking
+    std::string snapshotPath = "test_global_ref_dump.heapsnapshot";
+    tester.GenerateSnapShot(snapshotPath);
+
+    // Verify GlobalHandleObject node in snapshot
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"GlobalHandleObject"))
+        << "GlobalHandleObject node not found in snapshot";
+
+    // Verify NATIVE nodes with ReferenceAddress in snapshot
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"ReferenceAddress:0x"))
+        << "ReferenceAddress node not found in snapshot";
+
+    // Verify target JS objects reachable via global ref edges
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"JSObject"))
+        << "JSObject not found in snapshot";
+
+    thread_->SetTrackGlobalRef(false);
+}
 }

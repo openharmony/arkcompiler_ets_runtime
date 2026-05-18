@@ -793,4 +793,118 @@ HWTEST_F_L0(HeapSnapShotTest, TestSourceTextModuleNodeInHeapSnapshot)
     ASSERT_TRUE(foundRecordNameProperty) << "EcmaModuleRecordName property not found in SourceTextModule node";
 }
 
+// ---------- GlobalRef tracking snapshot tests ----------
+
+// Enable tracking → trigger GC first to stabilize slots → then create global handle + store mapping →
+// snapshot should contain GlobalHandleObject subtree
+HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesWithTrackingEnabled)
+{
+    thread_->SetTrackGlobalRef(true);
+
+    // First snapshot to trigger GC and stabilize global handle slots
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+
+    // Now create a global handle AFTER GC — its slot address will be stable
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+
+    Global<ObjectRef> globalObj(ecmaVm_, Local<JSTaggedValue>(obj.GetAddress()));
+    uintptr_t slotAddr = globalObj.GetSlotAddress();
+    ASSERT_NE(slotAddr, 0U);
+
+    // Store mapping for the real global handle slot
+    int fakeRef = 0;
+    thread_->StoreGlobalRefMapping(slotAddr, &fakeRef);
+
+    // Second snapshot — should find the mapping
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+    ASSERT_GT(snapshot->GetNodeCount(), 0U);
+
+    // Verify GlobalHandleObject node exists and has children
+    HprofNode *globalObjRoot = nullptr;
+    HprofNode *refAddrNode = nullptr;
+    for (auto node : *snapshot->GetNodes()) {
+        CString name = *node->GetName();
+        if (name.find("GlobalHandleObject") != CString::npos) {
+            globalObjRoot = node;
+        }
+        if (name.find("ReferenceAddress:") != CString::npos) {
+            refAddrNode = node;
+        }
+    }
+    ASSERT_NE(globalObjRoot, nullptr) << "GlobalHandleObject node not found";
+    ASSERT_GT(globalObjRoot->GetEdgeCount(), 0U) << "GlobalHandleObject has no children";
+    ASSERT_NE(refAddrNode, nullptr) << "ReferenceAddress node not found";
+    ASSERT_EQ(refAddrNode->GetEdgeCount(), 1U) << "ReferenceAddress node should have 1 outgoing edge";
+
+    // Verify edge path: GlobalHandleObject → ReferenceAddress → JSObject
+    bool foundEdgeToRefAddr = false;
+    bool foundEdgeToJSObj = false;
+    for (auto edge : *snapshot->GetEdges()) {
+        if (edge->GetFrom() == globalObjRoot && edge->GetTo() == refAddrNode) {
+            foundEdgeToRefAddr = true;
+        }
+        if (edge->GetFrom() == refAddrNode && edge->GetTo()->GetType() == NodeType::OBJECT) {
+            foundEdgeToJSObj = true;
+        }
+    }
+    ASSERT_TRUE(foundEdgeToRefAddr) << "Edge GlobalHandleObject → ReferenceAddress not found";
+    ASSERT_TRUE(foundEdgeToJSObj) << "Edge ReferenceAddress → JSObject not found";
+
+    thread_->SetTrackGlobalRef(false);
+}
+
+// Tracking enabled but no ref mapping stored → GlobalHandleObject exists but no NATIVE children
+HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesNoMatchRef)
+{
+    thread_->SetTrackGlobalRef(true);
+
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    JSHandle<JSTaggedValue> obj(factory->CreateNapiObject());
+    Global<ObjectRef> globalObj(ecmaVm_, Local<JSTaggedValue>(obj.GetAddress()));
+
+    // Do NOT store a ref mapping
+
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+
+    bool foundGlobalHandleObject = false;
+    bool foundNativeNode = false;
+    for (auto node : *snapshot->GetNodes()) {
+        CString name = *node->GetName();
+        if (name.find("GlobalHandleObject") != CString::npos) {
+            foundGlobalHandleObject = true;
+        }
+        if (name.find("ReferenceAddress:") != CString::npos) {
+            foundNativeNode = true;
+        }
+    }
+    ASSERT_TRUE(foundGlobalHandleObject) << "GlobalHandleObject should exist when tracking is enabled";
+    ASSERT_FALSE(foundNativeNode) << "ReferenceAddress node should not exist without ref mapping";
+
+    thread_->SetTrackGlobalRef(false);
+}
+
+// Tracking disabled → no GlobalHandleObject subtree
+HWTEST_F_L0(HeapSnapShotTest, TestFillGlobalEdgesWithTrackingDisabled)
+{
+    ASSERT_FALSE(thread_->IsTrackGlobalRefEnabled());
+
+    DumpSnapShotOption dumpOption;
+    HeapProfilerFriendTest tester(ecmaVm_);
+    HeapSnapshot *snapshot = tester.MakeHeapSnapshotTest(HeapProfiler::SampleType::ONE_SHOT, dumpOption);
+    ASSERT_NE(snapshot, nullptr);
+    ASSERT_GT(snapshot->GetNodeCount(), 0U);
+
+    for (auto node : *snapshot->GetNodes()) {
+        CString name = *node->GetName();
+        ASSERT_NE(name, "GlobalHandleObject") << "GlobalHandleObject should not exist when tracking is off";
+    }
+}
+
 }

@@ -89,6 +89,7 @@ bool HeapSnapshot::BuildUp(bool isSimplify)
 {
     FillNodes(true, isSimplify);
     FillEdges(isSimplify);
+    FillGlobalEdges();
     AddSyntheticRoot();
     return Verify();
 }
@@ -581,13 +582,13 @@ NodeType HeapSnapshot::GenerateNodeType(TaggedObject *entry)
 
 void HeapSnapshot::GenerateNodeRootVisitor::VisitRoot(Root type, ObjectSlot slot)
 {
-    ProcessRoot(type, JSTaggedValue(slot.GetTaggedType()));
+    ProcessRoot(type, JSTaggedValue(slot.GetTaggedType()), slot);
 }
 
 void HeapSnapshot::GenerateNodeRootVisitor::VisitRangeRoot(Root type, ObjectSlot start, ObjectSlot end)
 {
     for (ObjectSlot slot = start; slot < end; slot++) {
-        ProcessRoot(type, JSTaggedValue(slot.GetTaggedType()));
+        ProcessRoot(type, JSTaggedValue(slot.GetTaggedType()), slot);
     }
 }
 
@@ -596,7 +597,7 @@ void HeapSnapshot::GenerateNodeRootVisitor::VisitBaseAndDerivedRoot([[maybe_unus
 {
 }
 
-void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTaggedValue &value)
+void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTaggedValue &value, ObjectSlot slot)
 {
     HprofNode *node = snapshot_.GenerateNode(value, 0, isInFinish_, isSimplify_);
     if (node == nullptr || !value.IsHeapObject()) {
@@ -608,6 +609,9 @@ void HeapSnapshot::GenerateNodeRootVisitor::ProcessRoot(Root type, const JSTagge
             break;
         case Root::ROOT_GLOBAL_HANDLE:
             snapshot_.globalHandleRoots_.emplace(node);
+            if (snapshot_.vm_->GetJSThread()->IsTrackGlobalRefEnabled()) {
+                snapshot_.globalHandleAddrMap_[slot.SlotAddress()] = slot.GetTaggedType();
+            }
             break;
         case Root::ROOT_VM:
             snapshot_.vmRoots_.emplace(node);
@@ -1142,6 +1146,54 @@ void HeapSnapshot::FillEdges(bool isSimplify)
     LOG_ECMA(INFO) << "HeapSnapshot::FillEdges exit, nodeCount: " << nodeCount_ << ", edgeCount: " << edgeCount_;
 }
 
+void HeapSnapshot::FillGlobalEdges()
+{
+    JSThread *thread = vm_->GetJSThread();
+    if (!thread->IsTrackGlobalRefEnabled()) {
+        return;
+    }
+
+    thread->IterateGlobalRefMappings([this](uintptr_t slotAddr, void *ref) {
+        auto it = globalHandleAddrMap_.find(slotAddr);
+        if (it == globalHandleAddrMap_.end()) {
+            return;
+        }
+
+        JSTaggedValue value(it->second);
+        if (!value.IsHeapObject()) {
+            return;
+        }
+        if (value.IsWeak()) {
+            value.RemoveWeakTag();
+        }
+
+        HprofNode *entryTo = entryMap_.FindEntry(HprofNode::NewAddress(value.GetTaggedObject()));
+        if (entryTo == nullptr) {
+            return;
+        }
+
+        if (ref == nullptr) {
+            return;
+        }
+        JSTaggedType addr = static_cast<JSTaggedType>(slotAddr);
+        std::ostringstream oss;
+        oss << "ReferenceAddress:0x" << reinterpret_cast<uintptr_t>(ref);
+        CString nodeName = CString(oss.str().c_str());
+        HprofNode *entryFrom = HprofNode::NewNode(chunk_, 0, nodeCount_,
+            GetString(nodeName), NodeType::NATIVE, 0, 0, addr);
+        if (entryFrom == nullptr) {
+            return;
+        }
+        InsertNodeUnique(entryFrom);
+        CString edgeName = GetNodeName(JSType::JS_OBJECT, IsInVmMode());
+        Edge *edge = Edge::NewEdge(chunk_, EdgeType::PROPERTY, entryFrom, entryTo,
+            GetString(edgeName));
+        InsertEdgeUnique(edge);
+        entryFrom->IncEdgeCount();
+        globalObjectRoots_.emplace(entryFrom);
+    });
+}
+
 void HeapSnapshot::RenameFunction(const CString &edgeName, HprofNode *entryFrom, HprofNode *entryTo)
 {
     if (edgeName != "name") {
@@ -1236,9 +1288,16 @@ void HeapSnapshot::AddSyntheticRoot()
 {
     LOG_ECMA(INFO) << "HeapSnapshot::AddSyntheticRoot";
     ECMA_BYTRACE_NAME(HITRACE_LEVEL_COMMERCIAL, HITRACE_TAG_ARK, "HeapSnapshot::AddSyntheticRoot", "");
+    static constexpr size_t SYNTHETIC_ROOT_POS = 0;
+    static constexpr size_t LOCAL_HANDLE_ROOT_POS = 1;
+    static constexpr size_t GLOBAL_HANDLE_ROOT_POS = 2;
+    static constexpr size_t VM_ROOT_POS = 3;
+    static constexpr size_t FRAME_ROOT_POS = 4;
+    static constexpr size_t GLOBAL_HANDLE_OBJECT_POS = 5;
+
     HprofNode *syntheticRoot = HprofNode::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                                   NodeType::SYNTHETIC, 0, 0, 0);
-    InsertNodeAt(0, syntheticRoot);
+    InsertNodeAt(SYNTHETIC_ROOT_POS, syntheticRoot);
 
     // Temporary collection for edges whose target nodes are all roots (to be inserted at edges_.begin())
     CVector<Edge *> rootEdges;
@@ -1247,10 +1306,12 @@ void HeapSnapshot::AddSyntheticRoot()
     CreateSyntheticRootToRootEdges(syntheticRoot, rootEdges);
 
     // Create specific synthetic root nodes
-    HprofNode *localHandleSyntheticRoot = CreateSpecificSyntheticRoot(localHandleRoots_, "LocalHandleRoot", 1);
-    HprofNode *globalHandleSyntheticRoot = CreateSpecificSyntheticRoot(globalHandleRoots_, "GlobalHandleRoot", 2);
-    HprofNode *vmSyntheticRoot = CreateSpecificSyntheticRoot(vmRoots_, "VMRoot", 3);
-    HprofNode *frameSyntheticRoot = CreateSpecificSyntheticRoot(frameRoots_, "FrameRoot", 4);
+    HprofNode *localHandleSyntheticRoot =
+        CreateSpecificSyntheticRoot(localHandleRoots_, "LocalHandleRoot", LOCAL_HANDLE_ROOT_POS);
+    HprofNode *globalHandleSyntheticRoot =
+        CreateSpecificSyntheticRoot(globalHandleRoots_, "GlobalHandleRoot", GLOBAL_HANDLE_ROOT_POS);
+    HprofNode *vmSyntheticRoot = CreateSpecificSyntheticRoot(vmRoots_, "VMRoot", VM_ROOT_POS);
+    HprofNode *frameSyntheticRoot = CreateSpecificSyntheticRoot(frameRoots_, "FrameRoot", FRAME_ROOT_POS);
 
     // Create edges from synthetic root to specific synthetic roots
     CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, localHandleSyntheticRoot, rootEdges);
@@ -1258,11 +1319,21 @@ void HeapSnapshot::AddSyntheticRoot()
     CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, vmSyntheticRoot, rootEdges);
     CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, frameSyntheticRoot, rootEdges);
 
+    HprofNode *globalObjRoot = nullptr;
+    if (vm_->GetJSThread()->IsTrackGlobalRefEnabled()) {
+        globalObjRoot = CreateSpecificSyntheticRoot(globalObjectRoots_, "GlobalHandleObject", GLOBAL_HANDLE_OBJECT_POS);
+        CreateSyntheticRootToSpecificSyntheticRootEdge(syntheticRoot, globalObjRoot, rootEdges);
+    }
+
     // Create edges from specific synthetic roots to their roots
     CreateSpecificSyntheticRootToRootEdges(localHandleSyntheticRoot, localHandleRoots_, rootEdges);
     CreateSpecificSyntheticRootToRootEdges(globalHandleSyntheticRoot, globalHandleRoots_, rootEdges);
     CreateSpecificSyntheticRootToRootEdges(vmSyntheticRoot, vmRoots_, rootEdges);
     CreateSpecificSyntheticRootToRootEdges(frameSyntheticRoot, frameRoots_, rootEdges);
+
+    if (globalObjRoot != nullptr) {
+        CreateSpecificSyntheticRootToRootEdges(globalObjRoot, globalObjectRoots_, rootEdges);
+    }
 
     // Insert all root edges at the beginning of edges vector
     edges_.insert(edges_.begin(), rootEdges.begin(), rootEdges.end());

@@ -274,6 +274,7 @@ JSThread::~JSThread()
         vm_->GetChunk()->Delete(globalDebugStorage_);
         globalDebugStorage_ = nullptr;
     }
+    globalRefMap_.clear();
 
     ClearMegaIC();
 

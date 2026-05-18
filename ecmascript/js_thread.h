@@ -20,6 +20,7 @@
 #include <sstream>
 #include <string>
 #include <cstdint>
+#include <unordered_map>
 
 #include "ecmascript/platform/ffrt.h"
 #include "ecmascript/base/aligned_struct.h"
@@ -1052,6 +1053,46 @@ public:
     inline bool IsWeak(uintptr_t addr) const
     {
         return isWeak_(addr);
+    }
+
+    // Global ref tracking
+    void SetTrackGlobalRef(bool enable)
+    {
+        trackGlobalRefEnabled_ = enable;
+        if (!enable) {
+            globalRefMap_.clear();
+        }
+    }
+
+    bool IsTrackGlobalRefEnabled() const
+    {
+        return trackGlobalRefEnabled_;
+    }
+
+    void StoreGlobalRefMapping(uintptr_t slotAddr, void *ref)
+    {
+        if (!trackGlobalRefEnabled_) {
+            return;
+        }
+        globalRefMap_[slotAddr] = ref;
+    }
+
+    void EraseGlobalRefMapping(uintptr_t slotAddr)
+    {
+        globalRefMap_.erase(slotAddr);
+    }
+
+    void *FindGlobalRefMapping(uintptr_t slotAddr) const
+    {
+        auto it = globalRefMap_.find(slotAddr);
+        return it != globalRefMap_.end() ? it->second : nullptr;
+    }
+
+    void IterateGlobalRefMappings(const std::function<void(uintptr_t slotAddr, void *ref)> &visitor) const
+    {
+        for (const auto &[slot, ref] : globalRefMap_) {
+            visitor(slot, ref);
+        }
     }
 
     void SetCrossThreadExecution(bool enable)
@@ -2299,6 +2340,8 @@ private:
 
     EcmaGlobalStorage<Node> *globalStorage_ {nullptr};
     EcmaGlobalStorage<DebugNode> *globalDebugStorage_ {nullptr};
+    bool trackGlobalRefEnabled_ {false};
+    std::unordered_map<uintptr_t, void*> globalRefMap_;
     int32_t stackTraceFd_ {-1};
     std::function<uintptr_t(JSTaggedType value)> newGlobalHandle_;
     std::function<void(uintptr_t nodeAddr)> disposeGlobalHandle_;
