@@ -16,7 +16,6 @@
 #include "ecmascript/compiler/builtins/builtins_shared_array_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
-#include "ecmascript/compiler/builtins/concurrent_api_scope_stub_builder.h"
 #include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
@@ -438,6 +437,8 @@ GateRef BuiltinsSharedArrayStubBuilder::PushImpl(GateRef glue, GateRef thisValue
     Label entry(env);
     env->SubCfgEntry(&entry);
 
+    Label canWriteExit(env);
+    Label writeDoneExit(env);
     Label exit(env);
     Label hasScopeException(env);
     Label notScopeException(env);
@@ -445,8 +446,10 @@ GateRef BuiltinsSharedArrayStubBuilder::PushImpl(GateRef glue, GateRef thisValue
     Label smallArgs(env);
     Label throwParamError(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(scopeEntered, VariableType::BOOL(), False());
 
-    ConcurrentApiScopeStubBuilder<JSSharedArray, ModType::WRITE> scope(this, glue, GetCurrentGlobalEnv(), thisValue);
+    ConcurrentApiScopeCanWrite<JSSharedArray>(glue, thisValue, scopeEntered, &canWriteExit);
+    Bind(&canWriteExit);
     BRANCH(HasPendingException(glue), &hasScopeException, &notScopeException);
     Bind(&hasScopeException);
     {
@@ -533,6 +536,8 @@ GateRef BuiltinsSharedArrayStubBuilder::PushImpl(GateRef glue, GateRef thisValue
         Jump(&exit);
     }
     Bind(&exit);
+    ConcurrentApiScopeWriteDone<JSSharedArray>(glue, thisValue, scopeEntered, &writeDoneExit);
+    Bind(&writeDoneExit);
     auto ret = *res;
     env->SubCfgExit();
     return ret;
@@ -612,15 +617,19 @@ GateRef BuiltinsSharedArrayStubBuilder::PopImpl(GateRef glue, GateRef thisValue)
     Label entry(env);
     env->SubCfgEntry(&entry);
 
+    Label canWriteExit(env);
+    Label writeDoneExit(env);
     Label hasScopeException(env);
     Label notScopeException(env);
     Label lenIsZero(env);
     Label lenNotZero(env);
     Label localExit(env);
     DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(scopeEntered, VariableType::BOOL(), False());
 
     // @ref BuiltinsSharedArray::Pop: ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle)
-    ConcurrentApiScopeStubBuilder<JSSharedArray, ModType::WRITE> scope(this, glue, GetCurrentGlobalEnv(), thisValue);
+    ConcurrentApiScopeCanWrite<JSSharedArray>(glue, thisValue, scopeEntered, &canWriteExit);
+    Bind(&canWriteExit);
     BRANCH(HasPendingException(glue), &hasScopeException, &notScopeException);
     Bind(&hasScopeException);
     {
@@ -678,6 +687,8 @@ GateRef BuiltinsSharedArrayStubBuilder::PopImpl(GateRef glue, GateRef thisValue)
         }
     }
     Bind(&localExit);
+    ConcurrentApiScopeWriteDone<JSSharedArray>(glue, thisValue, scopeEntered, &writeDoneExit);
+    Bind(&writeDoneExit);
     auto ret = *res;
     env->SubCfgExit();
     return ret;
@@ -723,9 +734,11 @@ GateRef BuiltinsSharedArrayStubBuilder::FindImpl(GateRef glue, GateRef thisValue
     Label readDoneExit(env);
     DEFVARIABLE(expectModRecord, VariableType::INT32(), Int32(0));
     DEFVARIABLE(desiredModRecord, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(scopeEntered, VariableType::BOOL(), False());
 
     // @ref BuiltinsSharedArray::Find: ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle)
-    ConcurrentApiScopeCanRead<JSSharedArray>(glue, thisValue, expectModRecord, desiredModRecord, &canReadExit);
+    ConcurrentApiScopeCanRead<JSSharedArray>(glue, thisValue, expectModRecord,
+        desiredModRecord, scopeEntered, &canReadExit);
     Bind(&canReadExit);
     BRANCH(HasPendingException(glue), &hasScopeException, &notScopeException);
     Bind(&hasScopeException);
@@ -836,7 +849,8 @@ GateRef BuiltinsSharedArrayStubBuilder::FindImpl(GateRef glue, GateRef thisValue
         Jump(&localExit);
     }
     Bind(&localExit);
-    ConcurrentApiScopeReadDone<JSSharedArray>(glue, thisValue, expectModRecord, desiredModRecord, &readDoneExit);
+    ConcurrentApiScopeReadDone<JSSharedArray>(glue, thisValue, expectModRecord,
+        desiredModRecord, scopeEntered, &readDoneExit);
     Bind(&readDoneExit);
     auto ret = *res;
     env->SubCfgExit();
@@ -923,11 +937,13 @@ GateRef BuiltinsSharedArrayStubBuilder::IndexOfImpl(GateRef glue, GateRef thisVa
     Label readDoneExit(env);
     DEFVARIABLE(expectModRecord, VariableType::INT32(), Int32(0));
     DEFVARIABLE(desiredModRecord, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(scopeEntered, VariableType::BOOL(), False());
 
     // @ref BuiltinsSharedArray::IndexOf: ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle)
     // @ref BuiltinsSharedArray::LastIndexOf: ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle)
     // Acquires READ lock on the shared array for thread-safe concurrent access.
-    ConcurrentApiScopeCanRead<JSSharedArray>(glue, thisValue, expectModRecord, desiredModRecord, &canReadExit);
+    ConcurrentApiScopeCanRead<JSSharedArray>(glue, thisValue, expectModRecord,
+        desiredModRecord, scopeEntered, &canReadExit);
     Bind(&canReadExit);
     BRANCH(HasPendingException(glue), &hasScopeException, &notScopeExceptionOrNoCheck);
     Bind(&hasScopeException);
@@ -1062,7 +1078,8 @@ GateRef BuiltinsSharedArrayStubBuilder::IndexOfImpl(GateRef glue, GateRef thisVa
     Jump(&exit);
 
     Bind(&exit);
-    ConcurrentApiScopeReadDone<JSSharedArray>(glue, thisValue, expectModRecord, desiredModRecord, &readDoneExit);
+    ConcurrentApiScopeReadDone<JSSharedArray>(glue, thisValue, expectModRecord,
+        desiredModRecord, scopeEntered, &readDoneExit);
     Bind(&readDoneExit);
     auto ret = *res;
     env->SubCfgExit();

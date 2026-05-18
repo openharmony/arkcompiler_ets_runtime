@@ -46,7 +46,7 @@ public:
 
     ~ConcurrentApiScope()
     {
-        if (checkMode_ == SCheckMode::SKIP) {
+        if (checkMode_ == SCheckMode::SKIP || !scopeEntered_) {
             return;
         }
         if constexpr (modType == ModType::READ) {
@@ -80,6 +80,7 @@ private:
                 thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
             THROW_NEW_ERROR_AND_RETURN(thread_, error);
         }
+        scopeEntered_ = true;
     }
 
     inline void WriteDone()
@@ -110,6 +111,7 @@ private:
             auto ret = Barriers::AtomicSetPrimitive(objHandle_->GetTaggedObject(),
                 Container::MOD_RECORD_OFFSET, expectModRecord_, desiredModRecord_);
             if (ret == expectModRecord_) {
+                scopeEntered_ = true;
                 break;
             }
         }
@@ -142,6 +144,7 @@ private:
     // For readers
     uint32_t expectModRecord_ {0};
     uint32_t desiredModRecord_ {0};
+    bool scopeEntered_ {false};
 
     static_assert(std::is_same_v<Container, JSSharedSet> || std::is_same_v<Container, JSSharedMap> ||
                   std::is_same_v<Container, JSSharedArray> || std::is_same_v<Container, JSSharedTypedArray> ||

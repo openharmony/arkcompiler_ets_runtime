@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/builtins/builtins_shared_map_stub_builder.h"
 
-#include "ecmascript/compiler/builtins/concurrent_api_scope_stub_builder.h"
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/js_iterator.h"
@@ -95,15 +94,19 @@ void BuiltinsSharedMapStubBuilder::SetImpl(GateRef glue, GateRef thisValue, Gate
     Label entry(env);
     env->SubCfgEntry(&entry);
 
+    Label canWriteExit(env);
+    Label writeDoneExit(env);
     Label exit(env);
     Label hasScopeException(env);
     Label notScopeException(env);
+    DEFVARIABLE(scopeEntered, VariableType::BOOL(), False());
 
     ASM_ASSERT(GET_MESSAGE_STRING_ID(SharedMapSet), TaggedIsSharedType(glue, key));
     ASM_ASSERT(GET_MESSAGE_STRING_ID(SharedMapSet), TaggedIsSharedType(glue, value));
 
     // Step 3.3: Create concurrentApiScope
-    ConcurrentApiScopeStubBuilder<JSSharedMap, ModType::WRITE> scope(this, glue, GetCurrentGlobalEnv(), thisValue);
+    ConcurrentApiScopeCanWrite<JSSharedMap>(glue, thisValue, scopeEntered, &canWriteExit);
+    Bind(&canWriteExit);
 
     // Step 3.4: Check hasPendingException
     BRANCH(HasPendingException(glue), &hasScopeException, &notScopeException);
@@ -127,6 +130,8 @@ void BuiltinsSharedMapStubBuilder::SetImpl(GateRef glue, GateRef thisValue, Gate
         Jump(&exit);
     }
     Bind(&exit);
+    ConcurrentApiScopeWriteDone<JSSharedMap>(glue, thisValue, scopeEntered, &writeDoneExit);
+    Bind(&writeDoneExit);
     env->SubCfgExit();
 }
 
@@ -165,8 +170,10 @@ GateRef BuiltinsSharedMapStubBuilder::GetImpl(GateRef glue, GateRef thisValue, G
     Label readDoneExit(env);
     DEFVARIABLE(expectModRecord, VariableType::INT32(), Int32(0));
     DEFVARIABLE(desiredModRecord, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(scopeEntered, VariableType::BOOL(), False());
 
-    ConcurrentApiScopeCanRead<JSSharedMap>(glue, thisValue, expectModRecord, desiredModRecord, &canReadExit);
+    ConcurrentApiScopeCanRead<JSSharedMap>(glue, thisValue, expectModRecord,
+        desiredModRecord, scopeEntered, &canReadExit);
     Bind(&canReadExit);
     BRANCH(HasPendingException(glue), &hasException, &notException);
     Bind(&hasException);
@@ -184,7 +191,8 @@ GateRef BuiltinsSharedMapStubBuilder::GetImpl(GateRef glue, GateRef thisValue, G
         Jump(&exit);
     }
     Bind(&exit);
-    ConcurrentApiScopeReadDone<JSSharedMap>(glue, thisValue, expectModRecord, desiredModRecord, &readDoneExit);
+    ConcurrentApiScopeReadDone<JSSharedMap>(glue, thisValue, expectModRecord,
+        desiredModRecord, scopeEntered, &readDoneExit);
     Bind(&readDoneExit);
     auto res = *result;
     env->SubCfgExit();
@@ -226,8 +234,10 @@ GateRef BuiltinsSharedMapStubBuilder::HasImpl(GateRef glue, GateRef thisValue, G
     Label readDoneExit(env);
     DEFVARIABLE(expectModRecord, VariableType::INT32(), Int32(0));
     DEFVARIABLE(desiredModRecord, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(scopeEntered, VariableType::BOOL(), False());
 
-    ConcurrentApiScopeCanRead<JSSharedMap>(glue, thisValue, expectModRecord, desiredModRecord, &canReadExit);
+    ConcurrentApiScopeCanRead<JSSharedMap>(glue, thisValue, expectModRecord,
+        desiredModRecord, scopeEntered, &canReadExit);
     Bind(&canReadExit);
     BRANCH(HasPendingException(glue), &hasException, &notException);
     Bind(&hasException);
@@ -245,7 +255,8 @@ GateRef BuiltinsSharedMapStubBuilder::HasImpl(GateRef glue, GateRef thisValue, G
         Jump(&exit);
     }
     Bind(&exit);
-    ConcurrentApiScopeReadDone<JSSharedMap>(glue, thisValue, expectModRecord, desiredModRecord, &readDoneExit);
+    ConcurrentApiScopeReadDone<JSSharedMap>(glue, thisValue, expectModRecord,
+        desiredModRecord, scopeEntered, &readDoneExit);
     Bind(&readDoneExit);
     auto res = *result;
     env->SubCfgExit();
@@ -279,11 +290,15 @@ GateRef BuiltinsSharedMapStubBuilder::DeleteImpl(GateRef glue, GateRef thisValue
     Label entry(env);
     env->SubCfgEntry(&entry);
     DEFVARIABLE(result, VariableType::JS_ANY(), TaggedFalse());
+    Label canWriteExit(env);
+    Label writeDoneExit(env);
     Label exit(env);
     Label hasException(env);
     Label notException(env);
+    DEFVARIABLE(scopeEntered, VariableType::BOOL(), False());
 
-    ConcurrentApiScopeStubBuilder<JSSharedMap, ModType::WRITE> scope(this, glue, GetCurrentGlobalEnv(), thisValue);
+    ConcurrentApiScopeCanWrite<JSSharedMap>(glue, thisValue, scopeEntered, &canWriteExit);
+    Bind(&canWriteExit);
     BRANCH(HasPendingException(glue), &hasException, &notException);
     Bind(&hasException);
     {
@@ -299,6 +314,8 @@ GateRef BuiltinsSharedMapStubBuilder::DeleteImpl(GateRef glue, GateRef thisValue
         Jump(&exit);
     }
     Bind(&exit);
+    ConcurrentApiScopeWriteDone<JSSharedMap>(glue, thisValue, scopeEntered, &writeDoneExit);
+    Bind(&writeDoneExit);
     auto res = *result;
     env->SubCfgExit();
     return res;

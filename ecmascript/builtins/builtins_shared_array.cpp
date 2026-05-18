@@ -1834,7 +1834,7 @@ JSTaggedValue BuiltinsSharedArray::Splice(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<TaggedArray> DelArrEle = factory->NewTaggedArray(actualDeleteCount, JSTaggedValue::Undefined(),
                                                               MemSpaceType::SHARED_OLD_SPACE);
-    TaggedArray *oldElement = TaggedArray::Cast(thisObjHandle->GetElements(thread).GetTaggedObject());
+    JSHandle<TaggedArray> oldElement(thread, thisObjHandle->GetElements(thread));
     // 14. Let k be 0.
     // 15. Repeat, while k < actualDeleteCount
     //   a. Let from be ToString(actualStart+k).
@@ -1843,7 +1843,7 @@ JSTaggedValue BuiltinsSharedArray::Splice(EcmaRuntimeCallInfo *argv)
     //     i. Let fromValue be Get(O, from).
     //     iii. Let status be CreateDataPropertyOrThrow(A, ToString(k), fromValue).
     //   e. Increase k by 1.
-    DelArrEle->Copy(thread, 0, start, oldElement, actualDeleteCount);
+    DelArrEle->Copy(thread, 0, start, *oldElement, actualDeleteCount);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     newArrayHandle->SetElements(thread, DelArrEle);
@@ -1856,11 +1856,11 @@ JSTaggedValue BuiltinsSharedArray::Splice(EcmaRuntimeCallInfo *argv)
     JSHandle<TaggedArray> eleArray = factory->NewTaggedArray(newLen, JSTaggedValue::Undefined(),
                                                              MemSpaceType::SHARED_OLD_SPACE);
     if (start > 0) {
-        eleArray->Copy(thread, 0, 0, oldElement, start);
+        eleArray->Copy(thread, 0, 0, *oldElement, start);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
 
-    eleArray->Copy(thread, start + insertCount, start + actualDeleteCount, oldElement,
+    eleArray->Copy(thread, start + insertCount, start + actualDeleteCount, *oldElement,
                    len - actualDeleteCount - start);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 

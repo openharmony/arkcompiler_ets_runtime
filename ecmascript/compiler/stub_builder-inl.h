@@ -4783,14 +4783,16 @@ inline GateRef StubBuilder::AtomicLoadAcquireI32(GateRef base, GateRef offset)
 }
 
 // Reference: ConcurrentApiScope::CanRead()
+// scopeEntered: initialized to False(), set to True() when CAS succeeds
 template<typename Container>
 inline void StubBuilder::ConcurrentApiScopeCanRead(GateRef glue, GateRef sharedObj,
-    Variable &expectModRecord, Variable &desiredModRecord, Label *exit)
+    Variable &expectModRecord, Variable &desiredModRecord, Variable &scopeEntered, Label *exit)
 {
     auto env = GetEnvironment();
     Label loopHead(env);
     Label loopEnd(env);
     Label tryCAS(env);
+    Label casSuccess(env);
     Label throwError(env);
     static constexpr uint32_t WRITE_MOD_MASK = 1 << 31;
 
@@ -4806,7 +4808,12 @@ inline void StubBuilder::ConcurrentApiScopeCanRead(GateRef glue, GateRef sharedO
         desiredModRecord = Int32Add(*expectModRecord, Int32(1));
         GateRef oldValue = AtomicCmpXchgI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET),
             *expectModRecord, *desiredModRecord);
-        BRANCH(Int32Equal(oldValue, *expectModRecord), exit, &loopEnd);
+        BRANCH(Int32Equal(oldValue, *expectModRecord), &casSuccess, &loopEnd);
+    }
+    Bind(&casSuccess);
+    {
+        scopeEntered = True();
+        Jump(exit);
     }
     Bind(&loopEnd);
     {
@@ -4822,11 +4829,13 @@ inline void StubBuilder::ConcurrentApiScopeCanRead(GateRef glue, GateRef sharedO
 }
 
 // Reference: ConcurrentApiScope::ReadDone()
+// scopeEntered logic: check scopeEntered variable, only execute ReadDone if scopeEntered == true
 template<typename Container>
 inline void StubBuilder::ConcurrentApiScopeReadDone(GateRef glue, GateRef sharedObj,
-    Variable &expectModRecord, Variable &desiredModRecord, Label *exit)
+    Variable &expectModRecord, Variable &desiredModRecord, Variable &scopeEntered, Label *exit)
 {
     auto env = GetEnvironment();
+    Label doReadDone(env);
     Label loopHead(env);
     Label loopEnd(env);
     Label updateDesired(env);
@@ -4834,32 +4843,95 @@ inline void StubBuilder::ConcurrentApiScopeReadDone(GateRef glue, GateRef shared
     Label throwError(env);
     static constexpr uint32_t WRITE_MOD_MASK = 1 << 31;
 
-    GateRef temp = *expectModRecord;
-    expectModRecord = *desiredModRecord;
-    desiredModRecord = temp;
+    // Check scopeEntered first - if CanRead failed, skip ReadDone
+    BRANCH(*scopeEntered, &doReadDone, exit);
+    Bind(&doReadDone);
+    {
+        GateRef temp = *expectModRecord;
+        expectModRecord = *desiredModRecord;
+        desiredModRecord = temp;
 
-    Jump(&loopHead);
-    LoopBegin(&loopHead);
+        Jump(&loopHead);
+        LoopBegin(&loopHead);
+        {
+            GateRef oldValue = AtomicCmpXchgI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET),
+                *expectModRecord, *desiredModRecord);
+            BRANCH(Int32Equal(oldValue, *expectModRecord), exit, &checkState);
+        }
+        Bind(&checkState);
+        {
+            expectModRecord = AtomicLoadAcquireI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET));
+            GateRef hasWriter = Int32NotEqual(Int32And(*expectModRecord, Int32(WRITE_MOD_MASK)), Int32(0));
+            GateRef isZero = Int32Equal(*expectModRecord, Int32(0));
+            BRANCH(BitOr(hasWriter, isZero), &throwError, &updateDesired);
+        }
+        Bind(&updateDesired);
+        {
+            desiredModRecord = Int32Sub(*expectModRecord, Int32(1));
+            Jump(&loopEnd);
+        }
+        Bind(&loopEnd);
+        {
+            LoopEnd(&loopHead);
+        }
+        Bind(&throwError);
+        {
+            int errorCode = containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR;
+            int errorMsg = GET_MESSAGE_STRING_ID(ConcurrentApiScopeError);
+            ThrowContainerBusinessError(glue, errorCode, errorMsg);
+            Jump(exit);
+        }
+    }
+}
+
+// Reference: ConcurrentApiScope::CanWrite()
+// scopeEntered: initialized to False(), set to True() when CAS succeeds
+template<typename Container>
+inline void StubBuilder::ConcurrentApiScopeCanWrite(GateRef glue, GateRef sharedObj,
+    Variable &scopeEntered, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label success(env);
+    Label throwError(env);
+    static constexpr uint32_t WRITE_MOD_MASK = 1 << 31;
+
+    constexpr uint32_t expectedModRecord = 0;
+    constexpr uint32_t desiredModRecord = WRITE_MOD_MASK;
+    GateRef oldValue = AtomicCmpXchgI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET),
+        Int32(expectedModRecord), Int32(desiredModRecord));
+    BRANCH(Int32Equal(oldValue, Int32(expectedModRecord)), &success, &throwError);
+    Bind(&success);
+    {
+        scopeEntered = True();
+        Jump(exit);
+    }
+    Bind(&throwError);
+    {
+        int errorCode = containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR;
+        int errorMsg = GET_MESSAGE_STRING_ID(ConcurrentApiScopeError);
+        ThrowContainerBusinessError(glue, errorCode, errorMsg);
+        Jump(exit);
+    }
+}
+
+// Reference: ConcurrentApiScope::WriteDone()
+// scopeEntered logic: check scopeEntered variable, only execute WriteDone if scopeEntered == true
+template<typename Container>
+inline void StubBuilder::ConcurrentApiScopeWriteDone(GateRef glue, GateRef sharedObj,
+    Variable &scopeEntered, Label *exit)
+{
+    auto env = GetEnvironment();
+    Label doWriteDone(env);
+    Label throwError(env);
+    static constexpr uint32_t WRITE_MOD_MASK = 1 << 31;
+
+    // Check scopeEntered first - if CanWrite failed, skip WriteDone
+    BRANCH(*scopeEntered, &doWriteDone, exit);
+    Bind(&doWriteDone);
     {
         GateRef oldValue = AtomicCmpXchgI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET),
-            *expectModRecord, *desiredModRecord);
-        BRANCH(Int32Equal(oldValue, *expectModRecord), exit, &checkState);
-    }
-    Bind(&checkState);
-    {
-        expectModRecord = AtomicLoadAcquireI32(sharedObj, Int32(Container::MOD_RECORD_OFFSET));
-        GateRef hasWriter = Int32NotEqual(Int32And(*expectModRecord, Int32(WRITE_MOD_MASK)), Int32(0));
-        GateRef isZero = Int32Equal(*expectModRecord, Int32(0));
-        BRANCH(BitOr(hasWriter, isZero), &throwError, &updateDesired);
-    }
-    Bind(&updateDesired);
-    {
-        desiredModRecord = Int32Sub(*expectModRecord, Int32(1));
-        Jump(&loopEnd);
-    }
-    Bind(&loopEnd);
-    {
-        LoopEnd(&loopHead);
+            Int32(WRITE_MOD_MASK), Int32(0));
+        BRANCH(Int32Equal(oldValue, Int32(WRITE_MOD_MASK)), exit, &throwError);
     }
     Bind(&throwError);
     {
