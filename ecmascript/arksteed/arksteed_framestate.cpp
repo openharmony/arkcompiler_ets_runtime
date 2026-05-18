@@ -20,6 +20,15 @@
 
 namespace panda::ecmascript::arksteed {
 
+void InterpreterFrameState::CopyFrom(const MergePointFrameState &mergeState)
+{
+    ASSERT(NumLocalVRegs() == mergeState.NumLocalVRegs());
+    ASSERT(NumParamVRegs() == mergeState.NumParamVRegs());
+    mergeState.FrameState().ForEach([this](const ValueVertex *vertex, VirtualRegister reg) {
+        Set(reg, const_cast<ValueVertex *>(vertex));
+    });
+}
+
 MergePointFrameState::MergePointFrameState(uint32_t bcIndex, uint32_t predecessorCount, BasicBlockType type,
                                            const LivenessBitSet *liveness, Chunk *chunk)
     : bcIndex_(bcIndex),
@@ -112,17 +121,33 @@ void MergePointFrameState::MergeFrom(InterpreterFrameState &srcState, BB *srcPre
     predecessorsSoFar_++;
 }
 
+void MergePointFrameState::ReducePredecessorCount(uint32_t num)
+{
+    ASSERT(num <= PredecessorCount());
+    ASSERT(predecessorsSoFar_ <= PredecessorCount() - num);
+
+    if (num == 0) {
+        return;
+    }
+
+    predecessors_.resize(predecessors_.size() - num);
+    for (PhiVertex *phi : phis_) {
+        phi->ReduceInputCount(num);
+    }
+}
+
 // destValue is one of this->FrameState()
 ValueVertex *MergePointFrameState::MergeValue(VirtualRegister reg, ValueVertex *destValue, ValueVertex *srcValue)
 {
-    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();  // For debug log only
-    ASSERT(labeller != nullptr);  // For debug log only. Can be removed safely after debugging done.
+    ArkSteedGraphLabeller *labeller = GetCurrentGraphLabeller();
 
     // Input from the first predecessor
     if (destValue == nullptr) {
 #ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "\tMergeValue() for virtual register " << VRegDisplayString(reg)
-                            << ": Gets the first input vertex " << labeller->GetVertexInputLabel(srcValue);
+        if (labeller != nullptr) {
+            LOG_COMPILER(DEBUG) << "\tMergeValue() for virtual register " << VRegDisplayString(reg)
+                                << ": Gets the first input vertex " << labeller->GetVertexInputLabel(srcValue);
+        }
 #endif
         return srcValue;
     }
@@ -130,34 +155,49 @@ ValueVertex *MergePointFrameState::MergeValue(VirtualRegister reg, ValueVertex *
     // Check if destValue is already a phi belonging to this merge point
     PhiVertex *phi = destValue->TryCast<PhiVertex>();
     if (phi != nullptr && phi->GetMergePointState() == this) {
-        ASSERT(phi->GetOwner() == reg);
-        // Add input to existing phi
-        if (IsExceptionHandler()) {
-            LOG_COMPILER(WARN) << "to do: For exception handler: dynamic-input vertex is not implemented. "
-                               << "(bytecode #" << bcIndex_ << ", vreg #" << reg.GetId() << ')';
-        } else {
-#ifndef NDEBUG
-            LOG_COMPILER(DEBUG) << "\tMergeValue() for virtual register " << VRegDisplayString(reg)
-                                << ": Write input vertex " << labeller->GetVertexInputLabel(srcValue) << " as input #"
-                                << predecessorsSoFar_ << " of PHI vertex " << labeller->GetVertexInputLabel(phi);
-#endif
-            phi->SetInput(predecessorsSoFar_, srcValue);
-        }
-        return phi;
+        return MergeExistingPhiInput(reg, phi, srcValue, labeller);
     }
 
     // If values are the same, nothing to merge
     if (destValue == srcValue) {
 #ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "\tMergeValue() for virtual register " << VRegDisplayString(reg)
-                            << ": Meets the same input vertex " << labeller->GetVertexInputLabel(srcValue)
-                            << ". No need to merge.";
+        if (labeller != nullptr) {
+            LOG_COMPILER(DEBUG) << "\tMergeValue() for virtual register " << VRegDisplayString(reg)
+                                << ": Meets the same input vertex " << labeller->GetVertexInputLabel(srcValue)
+                                << ". No need to merge.";
+        }
 #endif
         return destValue;
     }
 
-    // Create a new phi
-    phi = Vertex::New<PhiVertex>(chunk_, PredecessorCount(), this, reg);
+    return CreateMergePhi(reg, destValue, srcValue, labeller);
+}
+
+ValueVertex *MergePointFrameState::MergeExistingPhiInput(VirtualRegister reg, PhiVertex *phi, ValueVertex *srcValue,
+                                                         ArkSteedGraphLabeller *labeller)
+{
+    ASSERT(phi->GetOwner() == reg);
+    // Add input to existing phi
+    if (IsExceptionHandler()) {
+        LOG_COMPILER(WARN) << "to do: For exception handler: dynamic-input vertex is not implemented. " << "(bytecode #"
+                           << bcIndex_ << ", vreg #" << reg.GetId() << ')';
+    } else {
+#ifndef NDEBUG
+        if (labeller != nullptr) {
+            LOG_COMPILER(DEBUG) << "\tMergeValue() for virtual register " << VRegDisplayString(reg)
+                                << ": Write input vertex " << labeller->GetVertexInputLabel(srcValue) << " as input #"
+                                << predecessorsSoFar_ << " of PHI vertex " << labeller->GetVertexInputLabel(phi);
+        }
+#endif
+        phi->SetInput(predecessorsSoFar_, srcValue);
+    }
+    return phi;
+}
+
+PhiVertex *MergePointFrameState::CreateMergePhi(VirtualRegister reg, ValueVertex *destValue, ValueVertex *srcValue,
+                                                ArkSteedGraphLabeller *labeller)
+{
+    PhiVertex *phi = Vertex::New<PhiVertex>(chunk_, PredecessorCount(), this, reg);
     // Initialize all inputs to the current value for predecessors seen so far
     for (uint32_t i = 0; i < predecessorsSoFar_; i++) {
         phi->SetInput(i, destValue);
@@ -171,10 +211,12 @@ ValueVertex *MergePointFrameState::MergeValue(VirtualRegister reg, ValueVertex *
         labeller->RegisterVertex(phi);
     }
 #ifndef NDEBUG
-    LOG_COMPILER(DEBUG) << "\tMergeValue() for virtual register " << VRegDisplayString(reg)
-                        << ": Creates PHI input vertex " << labeller->GetVertexInputLabel(phi)
-                        << " for previous input(s) " << labeller->GetVertexInputLabel(destValue) << " and new input "
-                        << labeller->GetVertexInputLabel(srcValue);
+    if (labeller != nullptr) {
+        LOG_COMPILER(DEBUG) << "\tMergeValue() for virtual register " << VRegDisplayString(reg)
+                            << ": Creates PHI input vertex " << labeller->GetVertexInputLabel(phi)
+                            << " for previous input(s) " << labeller->GetVertexInputLabel(destValue)
+                            << " and new input " << labeller->GetVertexInputLabel(srcValue);
+    }
 #endif
 
     return phi;

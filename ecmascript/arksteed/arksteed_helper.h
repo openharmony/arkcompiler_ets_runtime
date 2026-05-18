@@ -16,6 +16,10 @@
 #ifndef ECMASCRIPT_ARKSTEED_HELPER_H
 #define ECMASCRIPT_ARKSTEED_HELPER_H
 
+#include <memory>
+#include <type_traits>
+#include <utility>
+
 #include "ecmascript/arksteed/arksteed_bb.h"
 #include "ecmascript/arksteed/arksteed_framestate.h"
 #include "ecmascript/arksteed/arksteed_graph.h"
@@ -25,6 +29,38 @@
 #include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::arksteed {
+
+template <typename Signature>
+class CallbackRef;
+
+template <typename R, typename... Args>
+class CallbackRef<R(Args...)> {
+public:
+    CallbackRef() = delete;
+
+    template <typename Callable, typename RawCallable = std::remove_reference_t<Callable>>
+    CallbackRef(Callable &&callable)
+        : context_(std::addressof(callable)), trampoline_(&Trampoline<RawCallable>)
+    {
+        static_assert(std::is_invocable_r_v<R, RawCallable &, Args...>,
+                      "CallbackRef callable does not match the required signature");
+    }
+
+    R operator()(Args... args) const
+    {
+        return trampoline_(context_, std::forward<Args>(args)...);
+    }
+
+private:
+    template <typename Callable>
+    static R Trampoline(void *context, Args... args)
+    {
+        return (*static_cast<Callable *>(context))(std::forward<Args>(args)...);
+    }
+
+    void *context_;
+    R (*trampoline_)(void *, Args...);
+};
 
 /**
  * ArkSteedHelper - Centralized utility class for ArkSteed graph building

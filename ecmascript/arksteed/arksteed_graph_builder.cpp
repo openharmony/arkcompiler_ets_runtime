@@ -28,6 +28,12 @@ namespace panda::ecmascript::arksteed {
 namespace kungfu = panda::ecmascript::kungfu;
 
 namespace {
+VRegIDType CheckedSubGraphVariableCount(int variableCount)
+{
+    ASSERT(variableCount >= 0);
+    return static_cast<VRegIDType>(variableCount);
+}
+
 const char *ValueRepresentationName(ValueRepresentation repr)
 {
     switch (repr) {
@@ -261,6 +267,7 @@ void ArkSteedGraphBuilder::BuildMergeStates()
     size_t n = bytecodeContext_.GetBytecodeCount();
 
     mergeStates_.assign(n, nullptr);
+    predecessorCountReductions_.assign(n, 0);
     for (iterator_.GotoStart(); !iterator_.Done(); ++iterator_) {
         auto curIndex = iterator_.Index();
         if (!jumpLoop[curIndex]) {
@@ -285,14 +292,26 @@ void ArkSteedGraphBuilder::BuildBody()
         auto bytecodeInfo = iterator_.GetCurrentBytecodeInfo();
 
         if (mergeStates_[index] != nullptr) {
+            if (mergeStates_[index]->PredecessorCount() == 0) {
+                ASSERT(CurrentBlock() == nullptr);
+                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
+                continue;
+            }
             if (CurrentBlock() != nullptr) {
                 // Previous basic block was NOT finished (fallthrough).
                 MergeCurrentFrameStateTo(FinishBlock<JumpVertex>({}, &jumpTargets_[index]), index);
             }
+            if (mergeStates_[index]->IsUnmergedUnreachableLoop()) {
+                ASSERT(CurrentBlock() == nullptr);
+                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
+                continue;
+            }
             StartNewBlockWithMergeState(index);
         } else {
-            // If CurrentBlock() == nullptr, then a merge state is expected to be created here.
-            ASSERT(CurrentBlock() != nullptr);
+            if (CurrentBlock() == nullptr) {
+                MarkDeadPredecessorsForSuccessors(index, bytecodeInfo);
+                continue;
+            }
         }
         ProcessBytecode();
         if (bytecodeInfo.needFallThrough()) {
@@ -317,20 +336,69 @@ void ArkSteedGraphBuilder::ValidateAfterBuilding()
     for (iterator_.GotoStart(); !iterator_.Done(); ++iterator_) {
         uint32_t index = iterator_.Index();
         MergePointFrameState *mergeState = mergeStates_[index];
-        if (mergeState != nullptr) {
-            if (mergeState->PredecessorsSoFar() != mergeState->PredecessorCount()) {
-                LOG_COMPILER(FATAL) << "INVALID merge state for bytecode #" << index
-                                    << ": PredecessorsSoFar() which is " << mergeState->PredecessorsSoFar()
-                                    << " does not match PredecessorCount() which is " << mergeState->PredecessorCount();
-            }
-            LOG_COMPILER(DEBUG) << "OK: merge state for bytecode #" << index;
+        if (mergeState == nullptr) {
+            continue;
         }
+        ValidateMergeStateAfterBuilding(index, mergeState);
     }
 }
 
-void ArkSteedGraphBuilder::BuildBranchIfTrue(BranchBuilder &builder, ValueVertex *vertex)
+void ArkSteedGraphBuilder::ValidateMergeStateAfterBuilding(uint32_t index, MergePointFrameState *mergeState)
 {
-    return builder.Build<BranchIfTrueVertex>({vertex});
+    if (mergeState->PredecessorCount() == 0) {
+        if (mergeState->PredecessorsSoFar() != 0) {
+            LOG_COMPILER(FATAL) << "INVALID merge state for bytecode #" << index << ": unreachable merge point has "
+                                << mergeState->PredecessorsSoFar() << " predecessors merged.";
+        }
+        return;
+    }
+    if (mergeState->PredecessorsSoFar() != mergeState->PredecessorCount()) {
+        LOG_COMPILER(FATAL) << "INVALID merge state for bytecode #" << index << ": PredecessorsSoFar() which is "
+                            << mergeState->PredecessorsSoFar() << " does not match PredecessorCount() which is "
+                            << mergeState->PredecessorCount();
+    }
+    LOG_COMPILER(DEBUG) << "OK: merge state for bytecode #" << index;
+}
+
+ArkSteedGraphBuilder::BranchResult ArkSteedGraphBuilder::BuildBranchIfTrue(BranchBuilder &builder, ValueVertex *vertex)
+{
+    auto emitUnconditionalBytecodeBranch = [this, &builder](bool conditionTrue) {
+        bool takeJumpTarget =
+            builder.GetCurrentBranchType() == BranchType::TRUE_BRANCH ? conditionTrue : !conditionTrue;
+        ASSERT(builder.GetMode() == BranchBuilder::JUMP_BYTECODE_TARGET);
+
+        uint32_t destIndex = takeJumpTarget ? builder.JumpTargetBcIndex() : builder.FallthroughBcIndex();
+        uint32_t trimmedIndex = takeJumpTarget ? builder.FallthroughBcIndex() : builder.JumpTargetBcIndex();
+        if (trimmedIndex != destIndex) {
+            ReduceBytecodePredecessorCount(trimmedIndex);
+        }
+        BB *block = FinishBlock<JumpVertex>({}, &jumpTargets_[destIndex]);
+        MergeCurrentFrameStateTo(block, destIndex);
+    };
+
+    if (RootConstantVertex *root = vertex->TryCast<RootConstantVertex>()) {
+        switch (root->GetIndex()) {
+            case RootConstantVertex::RootIndex::TRUE_VALUE:
+                if (builder.GetMode() == BranchBuilder::JUMP_LABEL_TARGET) {
+                    return BranchResult::ALWAYS_TRUE;
+                }
+                emitUnconditionalBytecodeBranch(true);
+                return BranchResult::ALWAYS_TRUE;
+            case RootConstantVertex::RootIndex::FALSE_VALUE:
+            case RootConstantVertex::RootIndex::NULL_VALUE:
+            case RootConstantVertex::RootIndex::UNDEFINED:
+                if (builder.GetMode() == BranchBuilder::JUMP_LABEL_TARGET) {
+                    return BranchResult::ALWAYS_FALSE;
+                }
+                emitUnconditionalBytecodeBranch(false);
+                return BranchResult::ALWAYS_FALSE;
+            default:
+                break;
+        }
+    }
+
+    builder.Build<BranchIfTrueVertex>({vertex});
+    return BranchResult::DEFAULT;
 }
 
 void ArkSteedGraphBuilder::ProcessBytecode()
@@ -2129,15 +2197,341 @@ void ArkSteedGraphBuilder::MergeCurrentFrameStateTo(BB *predecessor, uint32_t de
     if (mergeStates_[destIndex] == nullptr) {
         const LivenessBitSet *liveness = GetInLivenessFor(destIndex);
         uint32_t predCount = PredecessorCount(destIndex);
+        ASSERT(predCount > 0);
         mergeStates_[destIndex] = MergePointFrameState::New(destIndex, predCount, liveness, GetChunk());
     }
     mergeStates_[destIndex]->MergeFrom(*currentFrameState_, predecessor);
 }
 
+BB *ArkSteedGraphBuilder::StartNewBlockWithMergeState(MergePointFrameState *mergeState, BBRef *ref, BB **blockSlot)
+{
+    ASSERT(mergeState != nullptr);
+    ASSERT(ref != nullptr);
+    ASSERT(blockSlot != nullptr);
+
+    BB *block = *blockSlot;
+    if (block == nullptr) {
+        block = BB::NewForMergePoint(GetChunk(), mergeState);
+        *blockSlot = block;
+        ref->Bind(block);
+    } else {
+        ASSERT(block->HasState());
+        ASSERT(block->GetState() == mergeState);
+    }
+
+    SetCurrentBlock(block);
+    for (PhiVertex *phi : mergeState->Phis()) {
+        if (phi->Vertex::GetOwner() == nullptr) {
+            phi->SetOwner(block);
+            RegisterVertexWithLabeller(phi);
+        }
+    }
+    return block;
+}
+
+ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Label::Label(ArkSteedSubGraphBuilder *subBuilder,
+                                                            uint32_t predecessorCount)
+    : subBuilder_(subBuilder),
+      predecessorCount_(predecessorCount),
+      mergeLiveSet_(subBuilder->builder_->GetChunk()->New<LivenessBitSet>(
+          subBuilder->builder_->GetChunk(), subBuilder->numLocal_, subBuilder->numParams_))
+{
+}
+
+ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Label::Label(ArkSteedSubGraphBuilder *subBuilder,
+                                                            uint32_t predecessorCount,
+                                                            std::initializer_list<SubGraphVariable *> liveVariables)
+    : Label(subBuilder, predecessorCount)
+{
+    for (SubGraphVariable *var : liveVariables) {
+        ASSERT(var != nullptr);
+        mergeLiveSet_->Set(var->pseudoRegister_);
+    }
+}
+
+ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::ArkSteedSubGraphBuilder(ArkSteedGraphBuilder *builder, int variableCount)
+    : builder_(builder),
+      numLocal_(CheckedSubGraphVariableCount(variableCount)),
+      numParams_(0),
+      subGraphFrame_(builder->GetChunk()->New<InterpreterFrameState>(numLocal_, numParams_, builder->GetChunk()))
+{
+    InterpreterFrameState *parentFrame = builder_->CurrentFrameState();
+    ASSERT(parentFrame != nullptr);
+    subGraphFrame_->SetEnv(parentFrame->GetEnv());
+    subGraphFrame_->SetAcc(parentFrame->GetAcc());
+}
+
+void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::MergeIntoLabel(Label *label, BB *predecessor)
+{
+    ASSERT(label != nullptr);
+    ASSERT(label->subBuilder_ == this);
+    ASSERT(predecessor != nullptr);
+
+    if (label->variableMergeState_ == nullptr) {
+        label->variableMergeState_ = MergePointFrameState::New(
+            BytecodeContext::INVALID_BC_INDEX, label->predecessorCount_, label->mergeLiveSet_, builder_->GetChunk());
+    }
+    label->variableMergeState_->MergeFrom(*subGraphFrame_, predecessor);
+}
+
+void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::TrimUnmergedPredecessors(Label *label, uint32_t num)
+{
+    ASSERT(label != nullptr);
+    ASSERT(label->subBuilder_ == this);
+    ASSERT(num <= label->predecessorCount_);
+
+    if (num == 0) {
+        return;
+    }
+
+    label->predecessorCount_ -= num;
+    if (label->variableMergeState_ != nullptr) {
+        label->variableMergeState_->ReducePredecessorCount(num);
+    }
+}
+
+void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Goto(Label *label)
+{
+    ASSERT(builder_->CurrentBlock() != nullptr);
+    BB *predecessor = builder_->FinishBlock<JumpVertex>({}, &label->ref_);
+    MergeIntoLabel(label, predecessor);
+}
+
+void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::GotoOrTrim(Label *label)
+{
+    if (builder_->CurrentBlock() == nullptr) {
+        TrimUnmergedPredecessors(label);
+        return;
+    }
+    Goto(label);
+}
+
+void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Bind(Label *label)
+{
+    ASSERT(label != nullptr);
+    ASSERT(label->subBuilder_ == this);
+    ASSERT(builder_->CurrentBlock() == nullptr);
+    ASSERT(label->variableMergeState_ != nullptr);
+    ASSERT(label->variableMergeState_->PredecessorsSoFar() == label->predecessorCount_);
+
+    subGraphFrame_->CopyFrom(*label->variableMergeState_);
+
+    builder_->StartNewBlockWithMergeState(label->variableMergeState_, &label->ref_, &label->block_);
+    builder_->ProcessMergePointPredecessors(label->variableMergeState_, &label->ref_, label->block_);
+}
+
+ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::TrimPredecessorsAndBind(Label *label)
+{
+    ASSERT(label != nullptr);
+
+    uint32_t predecessorsSoFar =
+        label->variableMergeState_ == nullptr ? 0 : label->variableMergeState_->PredecessorsSoFar();
+    if (predecessorsSoFar == 0) {
+        builder_->SetCurrentBlock(nullptr);
+        return ReduceResult::DoneWithAbort();
+    }
+
+    ASSERT(predecessorsSoFar <= label->predecessorCount_);
+    builder_->SetCurrentBlock(nullptr);
+    TrimUnmergedPredecessors(label, label->predecessorCount_ - predecessorsSoFar);
+    Bind(label);
+    return ReduceResult::Done();
+}
+
+ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::LoopLabel ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::BeginLoop(
+    std::initializer_list<SubGraphVariable *> loopVars)
+{
+    constexpr uint32_t kLoopHeaderPredecessorCount = 2;
+    Chunk *chunk = builder_->GetChunk();
+    auto *loopHeaderRef = chunk->New<BBRef>();
+    auto *loopInfo = chunk->New<LoopInfo>(chunk, BytecodeContext::INVALID_BC_INDEX, BytecodeContext::INVALID_BC_INDEX,
+                                          numLocal_, numParams_);
+    auto *loopHeaderLiveness = chunk->New<LivenessBitSet>(chunk, numLocal_, numParams_);
+    for (SubGraphVariable *var : loopVars) {
+        ASSERT(var != nullptr);
+        loopHeaderLiveness->Set(var->pseudoRegister_);
+        loopInfo->AddDef(var->pseudoRegister_);
+    }
+
+    BB *loopPredecessor = builder_->FinishBlock<JumpVertex>({}, loopHeaderRef);
+    MergePointFrameState *loopState = MergePointFrameState::NewForLoop(
+        BytecodeContext::INVALID_BC_INDEX, kLoopHeaderPredecessorCount, loopHeaderLiveness, loopInfo, chunk);
+    loopState->MergeFrom(*subGraphFrame_, loopPredecessor);
+    BB *loopHeaderBlock = nullptr;
+    builder_->StartNewBlockWithMergeState(loopState, loopHeaderRef, &loopHeaderBlock);
+    builder_->ProcessMergePointPredecessors(loopState, loopHeaderRef, loopHeaderBlock);
+    subGraphFrame_->CopyFrom(*loopState);
+    return LoopLabel(this, loopState, loopHeaderRef, loopHeaderBlock);
+}
+
+void ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::EndLoop(LoopLabel *loopLabel)
+{
+    ASSERT(loopLabel != nullptr);
+    ASSERT(loopLabel->subBuilder_ == this);
+    ASSERT(loopLabel->loopHeaderBlock_ != nullptr);
+
+    if (builder_->CurrentBlock() == nullptr) {
+        loopLabel->mergeState_->ReducePredecessorCount();
+        loopLabel->mergeState_->ClearIsLoop();
+        loopLabel->mergeState_->ClearLoopInfo();
+        return;
+    }
+
+    BB *loopBackedge = builder_->FinishBlock<JumpLoopVertex>({}, loopLabel->loopHeaderRef_);
+    loopLabel->mergeState_->MergeFrom(*subGraphFrame_, loopBackedge);
+    ASSERT(loopLabel->mergeState_->PredecessorsSoFar() == loopLabel->mergeState_->PredecessorCount());
+    loopBackedge->SetPredecessorId(loopLabel->mergeState_->PredecessorCount() - 1);
+}
+
+ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::ArkSteedSubGraphBuilder::Branch(
+    std::initializer_list<SubGraphVariable *> vars, CallbackRef<BranchResult(BranchBuilder &)> cond,
+    CallbackRef<ReduceResult()> ifTrue, CallbackRef<ReduceResult()> ifFalse)
+{
+    constexpr uint32_t kBinaryBranchPredecessorCount = 2;
+
+    Label elseBranch(this, 1);
+    BranchBuilder branchBuilder(builder_, this, BranchType::FALSE_BRANCH, &elseBranch);
+    BranchResult branchResult = cond(branchBuilder);
+    switch (branchResult) {
+        case BranchResult::ALWAYS_TRUE:
+            return ifTrue();
+        case BranchResult::ALWAYS_FALSE:
+            return ifFalse();
+        case BranchResult::ABORT:
+            return ReduceResult::DoneWithAbort();
+        case BranchResult::DEFAULT:
+            break;
+    }
+
+    Label done(this, kBinaryBranchPredecessorCount, vars);
+    ReduceResult trueResult = ifTrue();
+    GotoOrTrim(&done);
+
+    Bind(&elseBranch);
+    ReduceResult falseResult = ifFalse();
+    if (trueResult.IsDoneWithAbort() && falseResult.IsDoneWithAbort()) {
+        return ReduceResult::DoneWithAbort();
+    }
+
+    GotoOrTrim(&done);
+    ReduceResult bindResult = TrimPredecessorsAndBind(&done);
+    if (bindResult.IsDoneWithAbort()) {
+        return bindResult;
+    }
+    return ReduceResult::Done();
+}
+
+ArkSteedGraphBuilder::ReduceResult ArkSteedGraphBuilder::Select(CallbackRef<BranchResult(BranchBuilder &)> cond,
+                                                                CallbackRef<ReduceResult()> ifTrue,
+                                                                CallbackRef<ReduceResult()> ifFalse)
+{
+    constexpr uint32_t kBinaryBranchPredecessorCount = 2;
+
+    ArkSteedSubGraphBuilder subGraph(this, 1);
+    ArkSteedSubGraphBuilder::SubGraphVariable resultVar(0);
+    ArkSteedSubGraphBuilder::Label elseBranch(&subGraph, 1);
+    BranchBuilder branchBuilder(this, &subGraph, BranchType::FALSE_BRANCH, &elseBranch);
+    BranchResult branchResult = cond(branchBuilder);
+    switch (branchResult) {
+        case BranchResult::ALWAYS_TRUE:
+            return ifTrue();
+        case BranchResult::ALWAYS_FALSE:
+            return ifFalse();
+        case BranchResult::ABORT:
+            return ReduceResult::DoneWithAbort();
+        case BranchResult::DEFAULT:
+            break;
+    }
+
+    ArkSteedSubGraphBuilder::Label done(&subGraph, kBinaryBranchPredecessorCount, {&resultVar});
+    auto completeArm = [&subGraph, &resultVar, &done](const ReduceResult &result) {
+        if (result.IsDoneWithValue()) {
+            subGraph.Set(resultVar, result.Value());
+        }
+        subGraph.GotoOrTrim(&done);
+        return result.IsDoneWithAbort();
+    };
+
+    bool truePathAborted = completeArm(ifTrue());
+    subGraph.Bind(&elseBranch);
+    bool falsePathAborted = completeArm(ifFalse());
+    if (truePathAborted && falsePathAborted) {
+        return ReduceResult::DoneWithAbort();
+    }
+    subGraph.Bind(&done);
+    return ReduceResult::Done(subGraph.Get(resultVar));
+}
+
 uint32_t ArkSteedGraphBuilder::PredecessorCount(uint32_t index) const
 {
     ASSERT(index < static_cast<uint32_t>(bytecodeContext_.GetPredecessorCount().size()));
-    return bytecodeContext_.GetPredecessorCount()[index];
+    ASSERT(index < static_cast<uint32_t>(predecessorCountReductions_.size()));
+    uint32_t staticPredecessorCount = bytecodeContext_.GetPredecessorCount()[index];
+    ASSERT(predecessorCountReductions_[index] <= staticPredecessorCount);
+    return staticPredecessorCount - predecessorCountReductions_[index];
+}
+
+void ArkSteedGraphBuilder::ReduceBytecodePredecessorCount(uint32_t index, uint32_t num)
+{
+    if (num == 0) {
+        return;
+    }
+
+    ASSERT(index < static_cast<uint32_t>(predecessorCountReductions_.size()));
+    ASSERT(num <= PredecessorCount(index));
+
+    predecessorCountReductions_[index] += num;
+    if (mergeStates_[index] != nullptr) {
+        mergeStates_[index]->ReducePredecessorCount(num);
+    }
+}
+
+void ArkSteedGraphBuilder::MarkDeadLoopBackedge(uint32_t index)
+{
+    if (mergeStates_[index] == nullptr && PredecessorCount(index) == 0) {
+        return;
+    }
+
+    ASSERT(PredecessorCount(index) > 0);
+    if (mergeStates_[index] != nullptr) {
+        ASSERT(mergeStates_[index]->IsLoopHeader());
+        ASSERT(mergeStates_[index]->PredecessorCount() == PredecessorCount(index));
+        ASSERT(mergeStates_[index]->PredecessorsSoFar() + 1 == mergeStates_[index]->PredecessorCount());
+        mergeStates_[index]->ReducePredecessorCount();
+        mergeStates_[index]->ClearIsLoop();
+        mergeStates_[index]->ClearLoopInfo();
+    }
+    predecessorCountReductions_[index]++;
+}
+
+void ArkSteedGraphBuilder::MarkDeadPredecessorsForSuccessors(uint32_t index, const BytecodeInfo &bytecodeInfo)
+{
+    if (bytecodeInfo.IsCondJump()) {
+        uint32_t jumpTarget = bytecodeContext_.GetJumpTargetBcIndex(index);
+        uint32_t fallthrough = index + 1;
+        ReduceBytecodePredecessorCount(jumpTarget);
+        if (fallthrough < bytecodeContext_.GetBytecodeCount() && fallthrough != jumpTarget) {
+            ReduceBytecodePredecessorCount(fallthrough);
+        }
+        return;
+    }
+
+    if (bytecodeInfo.IsJump()) {
+        uint32_t jumpTarget = bytecodeContext_.GetJumpTargetBcIndex(index);
+        if (bytecodeContext_.GetJumpLoop()[index]) {
+            MarkDeadLoopBackedge(jumpTarget);
+        } else {
+            ReduceBytecodePredecessorCount(jumpTarget);
+        }
+        return;
+    }
+
+    if (bytecodeInfo.needFallThrough()) {
+        uint32_t nextIndex = index + 1;
+        if (nextIndex < bytecodeContext_.GetBytecodeCount()) {
+            ReduceBytecodePredecessorCount(nextIndex);
+        }
+    }
 }
 
 void ArkSteedGraphBuilder::StartNewBlockWithMergeState(uint32_t index)
@@ -2147,13 +2541,8 @@ void ArkSteedGraphBuilder::StartNewBlockWithMergeState(uint32_t index)
 #endif
     ASSERT(mergeStates_[index] != nullptr);
 
-    BB *current = BB::NewForMergePoint(GetChunk(), mergeStates_[index]);
-    SetCurrentBlock(current);
-    for (PhiVertex *phi : mergeStates_[index]->Phis()) {
-        phi->SetOwner(current);
-        RegisterVertexWithLabeller(phi);
-    }
-    jumpTargets_[index].Bind(current);
+    BB *current = nullptr;
+    StartNewBlockWithMergeState(mergeStates_[index], &jumpTargets_[index], &current);
 
     // For all virtual registers not in LiveIn(B) where B is current basic block,
     // it is either defined in B (which will be updated to currentFrameState_ during bytecode visiting) or
@@ -2166,29 +2555,43 @@ void ArkSteedGraphBuilder::StartNewBlockWithMergeState(uint32_t index)
         currentFrameState_->Set(reg, vertex);
     });
 
-    uint32_t numPreds = mergeStates_[index]->PredecessorCount();
+    ProcessMergePointPredecessors(mergeStates_[index], &jumpTargets_[index], current);
+}
+
+void ArkSteedGraphBuilder::ProcessMergePointPredecessors(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock)
+{
+    ASSERT(mergeState != nullptr);
+    ASSERT(ref != nullptr);
+    ASSERT(mergeBlock != nullptr);
+
+    uint32_t numPreds = mergeState->PredecessorCount();
     if (numPreds <= 1) {
         return;
     }
-    if (mergeStates_[index]->IsExceptionHandler()) {
+    if (mergeState->IsExceptionHandler()) {
         LOG_COMPILER(WARN) << "to do: Exception handlers are not supported now.";
-    } else if (mergeStates_[index]->IsLoopHeader()) {
+    } else if (mergeState->IsLoopHeader()) {
         // 1 : The loop edge shall be guaranteed to be an unconditional jump.
-        ASSERT(mergeStates_[index]->PredecessorsSoFar() == numPreds - 1);
+        ASSERT(mergeState->PredecessorsSoFar() == numPreds - 1);
         for (uint32_t i = 0; i + 1 < numPreds; i++) {
-            TrySplitCriticalEdge(index, i);
+            TrySplitCriticalEdge(mergeState, ref, mergeBlock, i);
         }
     } else {
-        ASSERT(mergeStates_[index]->PredecessorsSoFar() == numPreds);
+        ASSERT(mergeState->PredecessorsSoFar() == numPreds);
         for (uint32_t i = 0; i < numPreds; i++) {
-            TrySplitCriticalEdge(index, i);
+            TrySplitCriticalEdge(mergeState, ref, mergeBlock, i);
         }
     }
 }
 
-void ArkSteedGraphBuilder::TrySplitCriticalEdge(uint32_t index, uint32_t predIndex)
+void ArkSteedGraphBuilder::TrySplitCriticalEdge(MergePointFrameState *mergeState, BBRef *ref, BB *mergeBlock,
+                                                uint32_t predIndex)
 {
-    BB *predecessor = mergeStates_[index]->PredecessorAt(predIndex);
+    ASSERT(mergeState != nullptr);
+    ASSERT(ref != nullptr);
+    ASSERT(mergeBlock != nullptr);
+
+    BB *predecessor = mergeState->PredecessorAt(predIndex);
     BranchIfTrueVertex *branchIf = predecessor->GetControlVertex()->TryCast<BranchIfTrueVertex>();
     if (branchIf == nullptr) {
         predecessor->SetPredecessorId(predIndex);
@@ -2200,26 +2603,25 @@ void ArkSteedGraphBuilder::TrySplitCriticalEdge(uint32_t index, uint32_t predInd
     BB *splitBlock = BB::NewForEdgeSplit(GetChunk(), state);
     GetGraph()->Add(splitBlock);
 
-    JumpVertex *splitJump = Vertex::New<JumpVertex>(GetChunk(), {}, jumpTargets_[index].BlockRef());
+    JumpVertex *splitJump = Vertex::New<JumpVertex>(GetChunk(), {}, ref->BlockRef());
     splitJump->SetOwner(splitBlock);
     splitBlock->SetControlVertex(splitJump);
     RegisterVertexWithLabeller(splitJump);
 
     splitBlock->SetPredecessor(predecessor);
     splitBlock->SetPredecessorId(predIndex);
-    mergeStates_[index]->SetPredecessorAt(predIndex, splitBlock);
-
-    ASSERT(!!(branchIf->IfTrue() == CurrentBlock()) + !!(branchIf->IfFalse() == CurrentBlock()) == 1);
-    if (branchIf->IfTrue() == CurrentBlock()) {
+    mergeState->SetPredecessorAt(predIndex, splitBlock);
+    ASSERT(!!(branchIf->IfTrue() == mergeBlock) + !!(branchIf->IfFalse() == mergeBlock) == 1);
+    if (branchIf->IfTrue() == mergeBlock) {
 #ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "Creates edge-split block at predecessor #" << predIndex << " of bytecode #" << index
-                            << " (splitting true-branch)";
+        LOG_COMPILER(DEBUG) << "Creates edge-split block at predecessor #" << predIndex << " of merge block #"
+                            << mergeBlock->GetId() << " (splitting true-branch)";
 #endif
         branchIf->SetIfTrue(splitBlock);
-    } else if (branchIf->IfFalse() == CurrentBlock()) {
+    } else if (branchIf->IfFalse() == mergeBlock) {
 #ifndef NDEBUG
-        LOG_COMPILER(DEBUG) << "Creates edge-split block at predecessor #" << predIndex << " of bytecode #" << index
-                            << " (splitting false-branch)";
+        LOG_COMPILER(DEBUG) << "Creates edge-split block at predecessor #" << predIndex << " of merge block #"
+                            << mergeBlock->GetId() << " (splitting false-branch)";
 #endif
         branchIf->SetIfFalse(splitBlock);
     }
@@ -2235,7 +2637,14 @@ void ArkSteedGraphBuilder::BranchBuilder::StartFallthroughBlock(BB *predecessor)
             break;
         }
         case Mode::JUMP_LABEL_TARGET: {
-            // Fallthrough for label target is handled differently
+            auto &data = data_.labelTarget;
+            subBuilder_->MergeIntoLabel(data.jumpLabel, predecessor);
+            if (data.fallthroughBlock == nullptr) {
+                data.fallthroughBlock = BB::New(builder_->GetChunk());
+                data.fallthroughBlock->SetPredecessor(predecessor);
+                data.fallthroughTarget.Bind(data.fallthroughBlock);
+            }
+            builder_->SetCurrentBlock(data.fallthroughBlock);
             break;
         }
     }
@@ -2271,14 +2680,6 @@ BBRef *ArkSteedGraphBuilder::BranchBuilder::TrueTarget()
 BBRef *ArkSteedGraphBuilder::BranchBuilder::FalseTarget()
 {
     return GetCurrentBranchType() == BranchType::FALSE_BRANCH ? JumpTarget() : FallThrough();
-}
-
-template <typename ControlVertexT, typename... Args>
-void ArkSteedGraphBuilder::BranchBuilder::Build(std::initializer_list<ValueVertex *> controlInputs, Args &&...args)
-{
-    auto result =
-        builder_->FinishBlock<ControlVertexT>(controlInputs, std::forward<Args>(args)..., TrueTarget(), FalseTarget());
-    StartFallthroughBlock(result);
 }
 
 void ArkSteedGraphBuilder::BuildThrow(kungfu::RuntimeStubCSigns::ID id, ValueVertex *input)
