@@ -1018,6 +1018,7 @@ public:
 private:
     void ProcessAllGCListeners();
     void CollectGarbageFinish(bool inDaemon, TriggerGCType gcType);
+    void NotifyDeferFreezeFinish(TriggerGCType gcType);
 
     void MoveOldSpaceToAppspawn();
 
