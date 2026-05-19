@@ -21,10 +21,8 @@ function array_conditional_access(arr: number[], flag: boolean): number
     }
 }
 
-ArkTools.arkSteedCompileAsync(array_conditional_access);
+ArkTools.arkSteedCompileSync(array_conditional_access);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [10, 20, 30, 40, 50];
 print(array_conditional_access(arr, true));

@@ -40,10 +40,8 @@ function nested_break_chain(n, p, q, r)
     return sum * 100 + outerBreaks * 10 + innerBreaks;
 }
 
-ArkTools.arkSteedCompileAsync(nested_break_chain);
+ArkTools.arkSteedCompileSync(nested_break_chain);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_break_chain(0, 2, 3, 4));
 print(nested_break_chain(3, 2, 3, 4));

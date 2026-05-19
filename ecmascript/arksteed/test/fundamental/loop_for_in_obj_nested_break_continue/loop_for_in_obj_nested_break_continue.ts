@@ -38,10 +38,8 @@ function loop_for_in_obj_nested_break_continue(outer: Record<string, Record<stri
     return sum * 10 + outerCount;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_nested_break_continue);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_nested_break_continue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_nested_break_continue({a: {x: 1, y: 2}, b: {x: 3, y: 4}}));
 print(loop_for_in_obj_nested_break_continue({a: {x: -1, y: -2}, b: {x: 3, y: 4}}));

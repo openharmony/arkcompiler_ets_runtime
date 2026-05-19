@@ -31,10 +31,8 @@ function switch_fallthrough_return_basic(x, a, b, c, d)
     }
 }
 
-ArkTools.arkSteedCompileAsync(switch_fallthrough_return_basic);
+ArkTools.arkSteedCompileSync(switch_fallthrough_return_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_fallthrough_return_basic(1, 10, 5, 3, 7));
 print(switch_fallthrough_return_basic(2, 10, 5, 3, 7));

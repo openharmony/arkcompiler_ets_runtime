@@ -28,10 +28,8 @@ function spread_args_basic_3(): number {
     return r;
 }
 
-ArkTools.arkSteedCompileAsync(spread_args_helper);
-ArkTools.arkSteedCompileAsync(spread_args_basic_3);
+ArkTools.arkSteedCompileSync(spread_args_helper);
+ArkTools.arkSteedCompileSync(spread_args_basic_3);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_args_basic_3());

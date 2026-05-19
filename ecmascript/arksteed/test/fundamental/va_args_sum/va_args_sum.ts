@@ -20,10 +20,8 @@ function va_args_sum(...args: number[]) {
     print(sum);
 }
 
-ArkTools.arkSteedCompileAsync(va_args_sum);
+ArkTools.arkSteedCompileSync(va_args_sum);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 va_args_sum();
 va_args_sum(4);

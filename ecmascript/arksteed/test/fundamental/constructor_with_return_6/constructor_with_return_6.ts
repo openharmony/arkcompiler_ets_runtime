@@ -32,11 +32,9 @@ function constructor_with_return_6() {
     return p(100, 10);
 }
 
-ArkTools.arkSteedCompileAsync(Point);
-ArkTools.arkSteedCompileAsync(Point.prototype.innerProduct);
-ArkTools.arkSteedCompileAsync(constructor_with_return_6);
+ArkTools.arkSteedCompileSync(Point);
+ArkTools.arkSteedCompileSync(Point.prototype.innerProduct);
+ArkTools.arkSteedCompileSync(constructor_with_return_6);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(constructor_with_return_6());

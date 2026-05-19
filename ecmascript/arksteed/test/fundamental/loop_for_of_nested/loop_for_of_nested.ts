@@ -25,10 +25,8 @@ function loop_for_of_nested(matrix: number[][]): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_nested);
+ArkTools.arkSteedCompileSync(loop_for_of_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_nested([[1, 2], [3, 4]]));
 print(loop_for_of_nested([[10], [20], [30]]));

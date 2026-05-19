@@ -23,10 +23,8 @@ function string_capitalize(str: string): string {
     return first.concat(rest);
 }
 
-ArkTools.arkSteedCompileAsync(string_capitalize);
+ArkTools.arkSteedCompileSync(string_capitalize);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_capitalize("hello"));
 print(string_capitalize("WORLD"));

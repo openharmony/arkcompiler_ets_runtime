@@ -26,10 +26,8 @@ class DefaultParamUndefinedMethod {
     }
 }
 
-ArkTools.arkSteedCompileAsync(DefaultParamUndefinedMethod);
+ArkTools.arkSteedCompileSync(DefaultParamUndefinedMethod);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let worker = new DefaultParamUndefinedMethod(3);
 print(worker.compute());

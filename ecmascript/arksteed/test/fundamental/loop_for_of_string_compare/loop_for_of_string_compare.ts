@@ -29,10 +29,8 @@ function loop_for_of_string_compare(s1: string, s2: string): boolean {
     return i == s2.length;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_compare);
+ArkTools.arkSteedCompileSync(loop_for_of_string_compare);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_compare("abc", "abcdef") ? 1 : 0);
 print(loop_for_of_string_compare("abc", "abc") ? 1 : 0);

@@ -24,8 +24,8 @@ for (let i = 0; i < 20; i++) {
     zero(uint16array);
 }
 
-ArkTools.arkSteedCompileAsync(zero);
-let res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(zero);
+let res = true;
 print(res)
 uint16array = new Uint16Array(10000);
 zero(uint16array)

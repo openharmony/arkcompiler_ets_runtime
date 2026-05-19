@@ -26,8 +26,8 @@ function foo(obj, key) {
 for (let i = 0; i < 1000; i++) {
     foo(a, "x");
 }
-ArkTools.arkSteedCompileAsync(foo);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(foo);
+print(true);
 print(foo(a, "x"));
 //test isjscowarray intrinsics
 let b = [1, 2, 3 , 4];
@@ -39,6 +39,6 @@ function foo2(obj, key, value) {
 for (let i = 0; i < 1000; i++) {
     foo2(b, 2, 5);
 }
-ArkTools.arkSteedCompileAsync(foo2);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(foo2);
+print(true);
 print(foo2(b, 2, 5));

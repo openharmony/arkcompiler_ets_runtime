@@ -21,9 +21,7 @@ function exception_catch() {
     }
 }
 
-ArkTools.arkSteedCompileAsync(exception_catch);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(exception_catch);
 
 for (let i = 0; i < 20; i++) {
     exception_catch();

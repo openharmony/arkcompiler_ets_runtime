@@ -28,10 +28,8 @@ function loop_return_multiple(n, offset)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_return_multiple);
+ArkTools.arkSteedCompileSync(loop_return_multiple);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_return_multiple(8, 10));
 print(loop_return_multiple(0, 5));

@@ -49,8 +49,7 @@ function Test(array) {
 }
 
 Test(stringArray);
-ArkTools.arkSteedCompileAsync(GetFormat);
-(() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(GetFormat);
 Test([0]);
 Test([GetFormat]);
 var tmp = new String('123');

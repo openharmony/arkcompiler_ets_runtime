@@ -41,12 +41,10 @@ function call_compiled_bind_expression_with_args_4(run: (x: number) => number): 
     return run(3);
 }
 
-ArkTools.arkSteedCompileAsync(BaseClass.prototype.compute);
-ArkTools.arkSteedCompileAsync(DerivedClass.prototype.multiply);
-ArkTools.arkSteedCompileAsync(call_compiled_bind_expression_with_args_4);
+ArkTools.arkSteedCompileSync(BaseClass.prototype.compute);
+ArkTools.arkSteedCompileSync(DerivedClass.prototype.multiply);
+ArkTools.arkSteedCompileSync(call_compiled_bind_expression_with_args_4);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let obj = new DerivedClass(10, 5);
 let boundFn = obj.multiply.bind(obj, 10);

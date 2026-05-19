@@ -28,10 +28,8 @@ class DefaultParamMethodPartialArgs {
     }
 }
 
-ArkTools.arkSteedCompileAsync(DefaultParamMethodPartialArgs.prototype.buildLabel);
+ArkTools.arkSteedCompileSync(DefaultParamMethodPartialArgs.prototype.buildLabel);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let builder = new DefaultParamMethodPartialArgs("CAR");
 print(builder.buildLabel("Toyota"));

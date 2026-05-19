@@ -19,10 +19,8 @@ function nullish_simple(a: number | null | undefined, b: number | null | undefin
     return (a ?? 0) + (b ?? 0);
 }
 
-ArkTools.arkSteedCompileAsync(nullish_simple);
+ArkTools.arkSteedCompileSync(nullish_simple);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nullish_simple(5, 3));
 print(nullish_simple(null, 3));

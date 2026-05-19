@@ -30,10 +30,8 @@ function switch_return_some_variant(x, a, b, c, d)
     return result + c - d;
 }
 
-ArkTools.arkSteedCompileAsync(switch_return_some_variant);
+ArkTools.arkSteedCompileSync(switch_return_some_variant);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_return_some_variant(1, 10, 20, 30, 5));
 print(switch_return_some_variant(2, 10, 20, 30, 5));

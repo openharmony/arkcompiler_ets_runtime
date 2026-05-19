@@ -19,9 +19,7 @@ function typeof_boolean() {
     print(typeof b === "boolean" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_boolean);
+ArkTools.arkSteedCompileSync(typeof_boolean);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_boolean();

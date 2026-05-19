@@ -22,10 +22,8 @@ function loop_for_of_string_concat(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_concat);
+ArkTools.arkSteedCompileSync(loop_for_of_string_concat);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_concat("hello"));
 print(loop_for_of_string_concat("world"));

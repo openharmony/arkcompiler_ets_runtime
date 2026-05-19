@@ -21,10 +21,8 @@ function array_iterate_first(arr: number[]): number
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(array_iterate_first);
+ArkTools.arkSteedCompileSync(array_iterate_first);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [10, 20, 30, 40, 50];
 print(array_iterate_first(arr));

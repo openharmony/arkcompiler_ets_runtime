@@ -18,9 +18,7 @@ function instanceof_array() {
     print(arr instanceof Object ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(instanceof_array);
+ArkTools.arkSteedCompileSync(instanceof_array);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 instanceof_array();

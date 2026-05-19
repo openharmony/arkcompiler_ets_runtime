@@ -22,10 +22,8 @@ function string_ends_with_pos(str: string, suffix: string): boolean {
     return str.substring(start) == suffix;
 }
 
-ArkTools.arkSteedCompileAsync(string_ends_with_pos);
+ArkTools.arkSteedCompileSync(string_ends_with_pos);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_ends_with_pos("hello world", "world") ? 1 : 0);
 print(string_ends_with_pos("hello world", "hello") ? 1 : 0);

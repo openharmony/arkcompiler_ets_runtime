@@ -24,10 +24,8 @@ function loop_for_in_arr_break(arr: number[], target: number): number {
     return -1;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_arr_break);
+ArkTools.arkSteedCompileSync(loop_for_in_arr_break);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_arr_break([10, 20, 30, 40], 30));
 print(loop_for_in_arr_break([10, 20, 30, 40], 25));

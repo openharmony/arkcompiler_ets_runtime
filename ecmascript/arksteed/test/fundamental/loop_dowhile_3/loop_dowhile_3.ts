@@ -22,12 +22,10 @@ function loop_dowhile_3(m: number, n: number, p: number, q: number): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_dowhile_3);
+ArkTools.arkSteedCompileSync(loop_dowhile_3);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_dowhile_3);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_dowhile_3(2, 3, 4, 5));
 print(loop_dowhile_3(3, 4, 5, 6));

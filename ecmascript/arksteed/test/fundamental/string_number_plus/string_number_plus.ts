@@ -18,10 +18,8 @@ function string_number_plus(num: number, str: string): string {
     return num + str;
 }
 
-ArkTools.arkSteedCompileAsync(string_number_plus);
+ArkTools.arkSteedCompileSync(string_number_plus);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_number_plus(100, " apples"));
 print(string_number_plus(5, " cats"));

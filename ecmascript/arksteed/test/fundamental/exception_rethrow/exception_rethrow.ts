@@ -22,9 +22,7 @@ function exception_rethrow() {
     }
 }
 
-ArkTools.arkSteedCompileAsync(exception_rethrow);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(exception_rethrow);
 
 exception_rethrow();
 print(i);

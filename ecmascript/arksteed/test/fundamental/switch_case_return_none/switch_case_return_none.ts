@@ -32,10 +32,8 @@ function switch_case_return_none(x, a, b, c)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_case_return_none);
+ArkTools.arkSteedCompileSync(switch_case_return_none);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_case_return_none(1, 10, 3, 2));
 print(switch_case_return_none(2, 10, 3, 2));

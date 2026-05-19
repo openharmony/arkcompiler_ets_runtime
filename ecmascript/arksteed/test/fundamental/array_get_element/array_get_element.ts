@@ -17,10 +17,8 @@ function array_get_element(arr: number[], index: number): number
     return arr[index];
 }
 
-ArkTools.arkSteedCompileAsync(array_get_element);
+ArkTools.arkSteedCompileSync(array_get_element);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [10, 20, 30, 40, 50];
 print(array_get_element(arr, 0));

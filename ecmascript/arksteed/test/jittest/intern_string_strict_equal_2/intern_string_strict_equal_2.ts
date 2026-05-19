@@ -31,10 +31,8 @@ StringComparison('a', 'a');
 StringComparison('a', 'b');
 ConstStringComparison()
 
-ArkTools.arkSteedCompileAsync(StringComparison);
-(() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
-ArkTools.arkSteedCompileAsync(ConstStringComparison);
-(() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(StringComparison);
+ArkTools.arkSteedCompileSync(ConstStringComparison);
 
 var tmp = new String('123');
 print(StringComparison(tmp.concat('456'), 'a'));

@@ -18,10 +18,8 @@ function default_param_return_expr(a: number = 1, b: number = 2, c: number = 3):
     return left * right;
 }
 
-ArkTools.arkSteedCompileAsync(default_param_return_expr);
+ArkTools.arkSteedCompileSync(default_param_return_expr);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(default_param_return_expr());
 print(default_param_return_expr(4));

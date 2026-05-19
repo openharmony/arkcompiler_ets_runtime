@@ -27,12 +27,10 @@ function loop_for_10(m: number,
     }
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_10);
+ArkTools.arkSteedCompileSync(loop_for_10);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_for_10);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let sum = 0;
 sum = 0; print((loop_for_10(2, 3, 4, 5, (x) => { sum += x; }), sum));

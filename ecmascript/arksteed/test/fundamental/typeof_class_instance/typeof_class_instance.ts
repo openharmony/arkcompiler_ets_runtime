@@ -26,9 +26,7 @@ function typeof_class_instance() {
     print(typeof point.x === "number" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_class_instance);
+ArkTools.arkSteedCompileSync(typeof_class_instance);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_class_instance();

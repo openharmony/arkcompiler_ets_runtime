@@ -28,10 +28,8 @@ function loop_for_in_obj_continue(obj: Record<string, number>): number {
     return sum * 100 + count;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_continue);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_continue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_continue({a: 1, b: 2, c: 3}));
 print(loop_for_in_obj_continue({a: -1, b: 2, c: -3}));

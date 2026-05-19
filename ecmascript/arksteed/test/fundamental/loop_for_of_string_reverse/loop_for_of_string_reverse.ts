@@ -26,10 +26,8 @@ function loop_for_of_string_reverse(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_reverse);
+ArkTools.arkSteedCompileSync(loop_for_of_string_reverse);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_reverse("hello"));
 print(loop_for_of_string_reverse("abc"));

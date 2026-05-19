@@ -60,10 +60,10 @@ for (let i = 0; i < 2; i++) {
 }
 
 C(array);
-ArkTools.arkSteedCompileAsync(A);
-ArkTools.arkSteedCompileAsync(B);
-ArkTools.arkSteedCompileAsync(C);
-var compilerResult = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(A);
+ArkTools.arkSteedCompileSync(B);
+ArkTools.arkSteedCompileSync(C);
+var compilerResult = true;
 
 let str1 = "ArkTools"
 

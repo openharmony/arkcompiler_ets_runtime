@@ -30,10 +30,8 @@ class CallSuperDefaultNoargsDerived extends CallSuperDefaultNoargsBase {
     }
 }
 
-ArkTools.arkSteedCompileAsync(CallSuperDefaultNoargsBase);
+ArkTools.arkSteedCompileSync(CallSuperDefaultNoargsBase);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let car = new CallSuperDefaultNoargsDerived();
 print(car.make);

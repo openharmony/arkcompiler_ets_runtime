@@ -24,10 +24,8 @@ class DefaultParamConstructorNoargs {
     }
 }
 
-ArkTools.arkSteedCompileAsync(DefaultParamConstructorNoargs);
+ArkTools.arkSteedCompileSync(DefaultParamConstructorNoargs);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let car = new DefaultParamConstructorNoargs();
 print(car.make);

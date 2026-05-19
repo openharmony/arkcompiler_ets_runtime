@@ -33,10 +33,8 @@ function nested_for_dependent(rows, cols)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(nested_for_dependent);
+ArkTools.arkSteedCompileSync(nested_for_dependent);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_for_dependent(0, 3))
 print(nested_for_dependent(4, 0))

@@ -28,10 +28,8 @@ class VaArgsMethod {
     }
 }
 
-ArkTools.arkSteedCompileAsync(VaArgsMethod);
+ArkTools.arkSteedCompileSync(VaArgsMethod);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let worker = new VaArgsMethod(2);
 print(worker.compute());

@@ -31,10 +31,8 @@ function nested_continue_with_action(n, p)
     return sum * 1000 + skipCount;
 }
 
-ArkTools.arkSteedCompileAsync(nested_continue_with_action);
+ArkTools.arkSteedCompileSync(nested_continue_with_action);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_continue_with_action(0, 3));
 print(nested_continue_with_action(3, 3));

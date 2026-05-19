@@ -17,10 +17,8 @@ function array_set_element(arr: number[], index: number, value: number): void
     arr[index] = value;
 }
 
-ArkTools.arkSteedCompileAsync(array_set_element);
+ArkTools.arkSteedCompileSync(array_set_element);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [10, 20, 30, 40, 50];
 array_set_element(arr, 1, 200);

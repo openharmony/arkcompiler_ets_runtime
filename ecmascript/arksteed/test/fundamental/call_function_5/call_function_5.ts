@@ -20,10 +20,8 @@ function call_function_5(x: number): string {
     return foo(x);
 }
 
-ArkTools.arkSteedCompileAsync(call_function_5);
+ArkTools.arkSteedCompileSync(call_function_5);
 // TODO: Remove this spin-loop
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(call_function_5(-2.5));
 print(call_function_5(15));

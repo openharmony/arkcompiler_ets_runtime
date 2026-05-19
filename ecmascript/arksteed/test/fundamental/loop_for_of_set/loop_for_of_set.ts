@@ -26,9 +26,7 @@ function loop_for_of_set(n: number): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_set);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(loop_for_of_set);
 
 let ret = loop_for_of_set(2000);
 print(ret);

@@ -22,10 +22,8 @@ class DefaultParamUndefinedConstructor {
     }
 }
 
-ArkTools.arkSteedCompileAsync(DefaultParamUndefinedConstructor);
+ArkTools.arkSteedCompileSync(DefaultParamUndefinedConstructor);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let a = new DefaultParamUndefinedConstructor();
 print(a.firstIsMissing);

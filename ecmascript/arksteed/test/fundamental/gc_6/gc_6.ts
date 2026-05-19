@@ -52,13 +52,11 @@ function gc_6(): Point {
     return dest;
 }
 
-ArkTools.arkSteedCompileAsync(myRandom);
-ArkTools.arkSteedCompileAsync(Point);
-ArkTools.arkSteedCompileAsync(consumePoint);
-ArkTools.arkSteedCompileAsync(gc_6);
+ArkTools.arkSteedCompileSync(myRandom);
+ArkTools.arkSteedCompileSync(Point);
+ArkTools.arkSteedCompileSync(consumePoint);
+ArkTools.arkSteedCompileSync(gc_6);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const result: Point = gc_6();
 print(result.x);

@@ -66,13 +66,11 @@ class Combined extends Left {
     }
 }
 
-ArkTools.arkSteedCompileAsync(Base);
-ArkTools.arkSteedCompileAsync(Left);
-ArkTools.arkSteedCompileAsync(Right);
-ArkTools.arkSteedCompileAsync(Combined);
+ArkTools.arkSteedCompileSync(Base);
+ArkTools.arkSteedCompileSync(Left);
+ArkTools.arkSteedCompileSync(Right);
+ArkTools.arkSteedCompileSync(Combined);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let obj = new Combined(1, 2, 3, 4);
 print(obj.getValue());

@@ -24,8 +24,8 @@ for (let i = 0; i < 20; i++) {
     f(ss)
 }
 
-ArkTools.arkSteedCompileAsync(f);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })())
+ArkTools.arkSteedCompileSync(f);
+print(true)
 
 print(f(ss))
 
@@ -38,7 +38,7 @@ function f2() {
 }
 
 f2();
-ArkTools.arkSteedCompileAsync(f2);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })())
+ArkTools.arkSteedCompileSync(f2);
+print(true)
 
 print(f2())

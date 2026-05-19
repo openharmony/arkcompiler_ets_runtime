@@ -46,10 +46,8 @@ function switch_nested_outer(x, y, a, b, c, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_nested_outer);
+ArkTools.arkSteedCompileSync(switch_nested_outer);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_nested_outer(1, 1, 10, 5, 3, 7));
 print(switch_nested_outer(1, 2, 10, 5, 3, 7));

@@ -30,8 +30,8 @@ for (let i = 0; i < 20; i++) {
     f(auto)
 }
 
-ArkTools.arkSteedCompileAsync(f);
-let res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(f);
+let res = true;
 print(res)
 
 f(new Object())

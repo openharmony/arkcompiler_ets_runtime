@@ -29,8 +29,8 @@ for (let i = 0; i < 1000; i++) {
     visit(b);
     visit(c);
 }
-ArkTools.arkSteedCompileAsync(visit);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(visit);
+print(true);
 print(visit(a));
 print(visit(b));
 print(visit(c));

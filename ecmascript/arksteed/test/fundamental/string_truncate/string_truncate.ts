@@ -21,10 +21,8 @@ function string_truncate(str: string, maxLen: number): string {
     return str.substring(0, maxLen).concat("...");
 }
 
-ArkTools.arkSteedCompileAsync(string_truncate);
+ArkTools.arkSteedCompileSync(string_truncate);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_truncate("hello world", 5));
 print(string_truncate("short", 10));

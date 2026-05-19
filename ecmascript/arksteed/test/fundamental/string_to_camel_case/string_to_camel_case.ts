@@ -31,10 +31,8 @@ function string_to_camel_case(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(string_to_camel_case);
+ArkTools.arkSteedCompileSync(string_to_camel_case);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_to_camel_case("hello_world"));
 print(string_to_camel_case("foo-bar"));

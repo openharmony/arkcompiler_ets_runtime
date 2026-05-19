@@ -17,9 +17,7 @@ function spread_string_5(): number {
     return arr.length;
 }
 
-ArkTools.arkSteedCompileAsync(spread_string_5);
+ArkTools.arkSteedCompileSync(spread_string_5);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_string_5());

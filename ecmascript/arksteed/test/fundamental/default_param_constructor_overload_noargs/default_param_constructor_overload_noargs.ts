@@ -25,10 +25,8 @@ class DefaultParamConstructorOverloadNoargs {
     }
 }
 
-ArkTools.arkSteedCompileAsync(DefaultParamConstructorOverloadNoargs);
+ArkTools.arkSteedCompileSync(DefaultParamConstructorOverloadNoargs);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let rect = new DefaultParamConstructorOverloadNoargs();
 print(rect.width);

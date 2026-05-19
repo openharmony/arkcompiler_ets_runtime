@@ -25,11 +25,9 @@ function call_compiled_constructor_arguments_length_2(
     return new CallCompiledConstructorArgumentsLengthBox(...args);
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorArgumentsLengthBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_arguments_length_2);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorArgumentsLengthBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_arguments_length_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(call_compiled_constructor_arguments_length_2().len);
 print(call_compiled_constructor_arguments_length_2(4).len);

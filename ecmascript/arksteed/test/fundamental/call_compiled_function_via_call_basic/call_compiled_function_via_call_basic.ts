@@ -21,10 +21,8 @@ function call_compiled_function_via_call_basic() {
     print(call_compiled_function_via_call_basic_impl.call({}, 5, 7));
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_basic_impl);
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_basic);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_basic_impl);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_function_via_call_basic();

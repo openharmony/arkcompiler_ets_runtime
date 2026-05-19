@@ -26,8 +26,8 @@ function test3() {
 print(test3());
 Object.defineProperty(Array.prototype, "1", { get: function () { print("get"); return 4; }, set: function () { leak = this; print("set"); } });
 print(test3());
-ArkTools.arkSteedCompileAsync(test3);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(test3);
+print(true);
 print(test3());
 print(leak[0]);
 print(leak[1]);
@@ -49,6 +49,6 @@ function main() {
     print("done")
 }
 main()
-ArkTools.arkSteedCompileAsync(main);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(main);
+print(true);
 main()

@@ -25,10 +25,8 @@ function string_pad_left(str: string, targetLen: number): string {
     return padding.concat(str);
 }
 
-ArkTools.arkSteedCompileAsync(string_pad_left);
+ArkTools.arkSteedCompileSync(string_pad_left);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_pad_left("abc", 5));
 print(string_pad_left("hello", 10));

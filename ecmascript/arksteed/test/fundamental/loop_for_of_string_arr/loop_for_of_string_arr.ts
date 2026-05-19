@@ -23,10 +23,8 @@ function loop_for_of_string_arr(arr: string[]): number {
     return totalLen;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_arr);
+ArkTools.arkSteedCompileSync(loop_for_of_string_arr);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_arr(["hello", "world"]));
 print(loop_for_of_string_arr(["a", "bb", "ccc"]));

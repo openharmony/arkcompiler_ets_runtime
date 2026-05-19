@@ -24,10 +24,8 @@ function loop_for_of_string_unique(str: string): number {
     return unique.length;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_unique);
+ArkTools.arkSteedCompileSync(loop_for_of_string_unique);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_unique("hello"));
 print(loop_for_of_string_unique("aaaa"));

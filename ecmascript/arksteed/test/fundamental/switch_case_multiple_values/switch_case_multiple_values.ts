@@ -32,10 +32,8 @@ function switch_case_multiple_values(x, a, b, c, d)
     return result * 10;
 }
 
-ArkTools.arkSteedCompileAsync(switch_case_multiple_values);
+ArkTools.arkSteedCompileSync(switch_case_multiple_values);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_case_multiple_values(1, 10, 5, 3, 7));
 print(switch_case_multiple_values(2, 10, 5, 3, 7));

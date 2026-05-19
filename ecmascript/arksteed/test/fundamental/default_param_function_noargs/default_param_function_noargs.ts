@@ -22,9 +22,7 @@ function default_param_function_noargs(
     print(year);
 }
 
-ArkTools.arkSteedCompileAsync(default_param_function_noargs);
+ArkTools.arkSteedCompileSync(default_param_function_noargs);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 default_param_function_noargs();

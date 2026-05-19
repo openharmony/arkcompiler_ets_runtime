@@ -22,10 +22,8 @@ function increment(): number {
     return counter;
 }
 
-ArkTools.arkSteedCompileAsync(increment);
+ArkTools.arkSteedCompileSync(increment);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(increment());
 print(increment());

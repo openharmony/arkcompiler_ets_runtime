@@ -33,8 +33,8 @@ const person = new Person("tzr");
 for (let i = 0; i < 1000; i++) {
     test(person, "Name");
 }
-ArkTools.arkSteedCompileAsync(test);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(test);
+print(true);
 print(test(person, "Name"));
 ArkTools.printTypedOpProfiler("INTERN_STRING_KEY_CHECK");
 ArkTools.clearTypedOpProfiler();

@@ -21,10 +21,8 @@ function call_compiled_function_via_call_this_object() {
     print(call_compiled_function_via_call_this_object_impl.call({ base: -3 }, 8));
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_this_object_impl);
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_this_object);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_this_object_impl);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_this_object);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_function_via_call_this_object();

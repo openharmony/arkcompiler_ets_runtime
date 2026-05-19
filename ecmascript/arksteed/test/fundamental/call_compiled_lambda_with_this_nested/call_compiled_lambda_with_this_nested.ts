@@ -26,17 +26,13 @@ class CallCompiledLambdaWithThisNestedBox {
         const outer = () => {
             const inner = () => this.base * factor;
             if (!call_compiled_lambda_with_this_nested_inner_compiled) {
-                ArkTools.arkSteedCompileAsync(inner);
-                let time = Date.now();
-                for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+                ArkTools.arkSteedCompileSync(inner);
                 call_compiled_lambda_with_this_nested_inner_compiled = true;
             }
             return inner();
         };
         if (!call_compiled_lambda_with_this_nested_outer_compiled) {
-            ArkTools.arkSteedCompileAsync(outer);
-            let time = Date.now();
-            for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+            ArkTools.arkSteedCompileSync(outer);
             call_compiled_lambda_with_this_nested_outer_compiled = true;
         }
         return outer;
@@ -50,9 +46,7 @@ function call_compiled_lambda_with_this_nested(): void {
     print(box2.buildNested(5)());
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_lambda_with_this_nested);
-ArkTools.arkSteedCompileAsync(CallCompiledLambdaWithThisNestedBox.prototype.buildNested);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(call_compiled_lambda_with_this_nested);
+ArkTools.arkSteedCompileSync(CallCompiledLambdaWithThisNestedBox.prototype.buildNested);
 
 call_compiled_lambda_with_this_nested();

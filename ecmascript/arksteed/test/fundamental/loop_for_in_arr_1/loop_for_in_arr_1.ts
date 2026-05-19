@@ -25,10 +25,8 @@ function loop_for_in_arr_1(arr: number[]): number {
     return count * 100 + sumIndex;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_arr_1);
+ArkTools.arkSteedCompileSync(loop_for_in_arr_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_arr_1([]));
 print(loop_for_in_arr_1([10, 20]));

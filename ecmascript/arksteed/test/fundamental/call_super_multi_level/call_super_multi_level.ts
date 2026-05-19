@@ -36,10 +36,8 @@ class CallSuperMultiLevelLeaf extends CallSuperMultiLevelMiddle {
     }
 }
 
-ArkTools.arkSteedCompileAsync(CallSuperMultiLevelBase);
+ArkTools.arkSteedCompileSync(CallSuperMultiLevelBase);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let car1 = new CallSuperMultiLevelLeaf();
 print(car1.make);

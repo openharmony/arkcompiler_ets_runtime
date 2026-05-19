@@ -16,10 +16,8 @@ function default_param_undefined_basic(value?: number) {
     print(value === undefined ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(default_param_undefined_basic);
+ArkTools.arkSteedCompileSync(default_param_undefined_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 default_param_undefined_basic();
 default_param_undefined_basic(5);

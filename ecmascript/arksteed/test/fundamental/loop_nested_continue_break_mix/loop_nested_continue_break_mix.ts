@@ -45,10 +45,8 @@ function nested_continue_break_mix(n, p, q, r)
     return sum * 1000 + outerBreaks * 100 + innerBreaks * 10 + continues;
 }
 
-ArkTools.arkSteedCompileAsync(nested_continue_break_mix);
+ArkTools.arkSteedCompileSync(nested_continue_break_mix);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_continue_break_mix(0, 2, 3, 4));
 print(nested_continue_break_mix(3, 2, 3, 4));

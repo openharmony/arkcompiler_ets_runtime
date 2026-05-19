@@ -25,13 +25,11 @@ function loop_for_2(limit, p, q, r)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_2);
+ArkTools.arkSteedCompileSync(loop_for_2);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_for_2);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_2(0, 3, 1, 5));
 print(loop_for_2(5, 7, 2, 3));

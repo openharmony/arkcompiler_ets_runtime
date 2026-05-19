@@ -34,13 +34,11 @@ function switch_simple(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_simple);
+ArkTools.arkSteedCompileSync(switch_simple);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(switch_simple);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = switch_simple(1);
 print(output);

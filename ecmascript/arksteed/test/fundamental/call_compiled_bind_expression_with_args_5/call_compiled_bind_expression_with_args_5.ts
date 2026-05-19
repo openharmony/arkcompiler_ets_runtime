@@ -38,12 +38,10 @@ function call_compiled_bind_expression_with_args_5(
     return fn1(10, n) + fn2(10, n);
 }
 
-ArkTools.arkSteedCompileAsync(MultiBoundTarget.prototype.add);
-ArkTools.arkSteedCompileAsync(MultiBoundTarget.prototype.multiply);
-ArkTools.arkSteedCompileAsync(call_compiled_bind_expression_with_args_5);
+ArkTools.arkSteedCompileSync(MultiBoundTarget.prototype.add);
+ArkTools.arkSteedCompileSync(MultiBoundTarget.prototype.multiply);
+ArkTools.arkSteedCompileSync(call_compiled_bind_expression_with_args_5);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let target = new MultiBoundTarget(5, 3);
 print(call_compiled_bind_expression_with_args_5(target.fn1, target.fn2, 4));

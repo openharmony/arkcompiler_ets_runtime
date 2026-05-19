@@ -32,12 +32,10 @@ function exception_throw() {
 for (let i = 0; i < 10; i++) {
     exception_throw();
 }
-ArkTools.arkSteedCompileAsync(exception_throw_catch);
-ArkTools.arkSteedCompileAsync(exception_throw_call);
-ArkTools.arkSteedCompileAsync(exception_throw);
+ArkTools.arkSteedCompileSync(exception_throw_catch);
+ArkTools.arkSteedCompileSync(exception_throw_call);
+ArkTools.arkSteedCompileSync(exception_throw);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 for (let i = 0; i < 20; i++) {
     exception_throw();

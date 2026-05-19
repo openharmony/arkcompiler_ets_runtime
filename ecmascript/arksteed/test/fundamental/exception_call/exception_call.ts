@@ -36,11 +36,9 @@ function exception_call() {
 for (let i = 0; i < 10; i++) {
     exception_call();
 }
-ArkTools.arkSteedCompileAsync(exception_call_catch);
-ArkTools.arkSteedCompileAsync(exception_call);
+ArkTools.arkSteedCompileSync(exception_call_catch);
+ArkTools.arkSteedCompileSync(exception_call);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 for (let i = 0; i < 20; i++) {
     exception_call();
     ArkTools.gc(0);

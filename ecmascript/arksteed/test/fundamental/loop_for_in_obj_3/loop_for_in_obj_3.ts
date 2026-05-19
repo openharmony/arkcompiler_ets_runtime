@@ -31,10 +31,8 @@ function loop_for_in_obj_3(obj: Record<string, number>): number {
     return a * 100 + b * 10 + c;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_3);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_3);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_3({}));
 print(loop_for_in_obj_3({"first": 1, "second": 2}));

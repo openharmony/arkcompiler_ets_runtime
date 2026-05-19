@@ -32,10 +32,8 @@ function call_compiled_function_via_call_prototype_method() {
     print(CallFunctionViaCallPrototypeMethodPoint.prototype.sum.call({ x: 10, y: 20 }));
 }
 
-ArkTools.arkSteedCompileAsync(CallFunctionViaCallPrototypeMethodPoint.prototype.sum);
-ArkTools.arkSteedCompileAsync(call_compiled_function_via_call_prototype_method);
+ArkTools.arkSteedCompileSync(CallFunctionViaCallPrototypeMethodPoint.prototype.sum);
+ArkTools.arkSteedCompileSync(call_compiled_function_via_call_prototype_method);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_function_via_call_prototype_method();

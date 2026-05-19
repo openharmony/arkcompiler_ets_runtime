@@ -23,10 +23,8 @@ function ternary_multiple(a: number, b: number, c: number): number {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(ternary_multiple);
+ArkTools.arkSteedCompileSync(ternary_multiple);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(ternary_multiple(1, 2, 3));
 print(ternary_multiple(-1, 2, 3));

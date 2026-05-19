@@ -18,10 +18,8 @@ function string_index_plus(str: string, idx: number): string {
     return str[idx] + str[idx + 1];
 }
 
-ArkTools.arkSteedCompileAsync(string_index_plus);
+ArkTools.arkSteedCompileSync(string_index_plus);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_index_plus("hello", 1));
 print(string_index_plus("world", 0));

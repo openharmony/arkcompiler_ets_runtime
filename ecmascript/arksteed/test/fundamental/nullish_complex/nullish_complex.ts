@@ -29,10 +29,8 @@ function processConfig(base: number | null | undefined, offset: number | null | 
     return (b + (offset ?? 0)) * (multiplier ?? 1);
 }
 
-ArkTools.arkSteedCompileAsync(processConfig);
+ArkTools.arkSteedCompileSync(processConfig);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(processConfig(5, 3, 2));
 print(processConfig(null, 3, 2));

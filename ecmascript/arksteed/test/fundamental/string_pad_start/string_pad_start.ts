@@ -18,10 +18,8 @@ function string_pad_start(str: string, length: number, char: string): string {
     return str.padStart(length, char);
 }
 
-ArkTools.arkSteedCompileAsync(string_pad_start);
+ArkTools.arkSteedCompileSync(string_pad_start);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_pad_start("5", 3, "0"));
 print(string_pad_start("abc", 5, "x"));

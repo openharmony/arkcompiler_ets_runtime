@@ -26,10 +26,8 @@ function switch_true_return_all(x, a, b, c, d)
     }
 }
 
-ArkTools.arkSteedCompileAsync(switch_true_return_all);
+ArkTools.arkSteedCompileSync(switch_true_return_all);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_true_return_all(5, 10, 20, 30, 40));
 print(switch_true_return_all(15, 10, 20, 30, 40));

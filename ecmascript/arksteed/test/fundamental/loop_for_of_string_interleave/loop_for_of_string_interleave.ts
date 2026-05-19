@@ -27,10 +27,8 @@ function loop_for_of_string_interleave(s1: string, s2: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_interleave);
+ArkTools.arkSteedCompileSync(loop_for_of_string_interleave);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_interleave("abc", "xyz"));
 print(loop_for_of_string_interleave("ace", "bd"));

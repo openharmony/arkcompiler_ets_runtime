@@ -38,10 +38,8 @@ function loop_for_in_nested_with_return(obj1: Record<string, number>, obj2: Reco
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_nested_with_return);
+ArkTools.arkSteedCompileSync(loop_for_in_nested_with_return);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_nested_with_return({a: -1, b: 2}, {c: -3, d: 4}));
 print(loop_for_in_nested_with_return({x: 5}, {y: -1}));

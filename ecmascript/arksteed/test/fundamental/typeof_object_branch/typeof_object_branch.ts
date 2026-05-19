@@ -26,10 +26,8 @@ function typeof_object_branch(value: Object | (() => number) | null) {
     }
 }
 
-ArkTools.arkSteedCompileAsync(typeof_object_branch);
+ArkTools.arkSteedCompileSync(typeof_object_branch);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_object_branch({ a: 1 });
 typeof_object_branch(null);

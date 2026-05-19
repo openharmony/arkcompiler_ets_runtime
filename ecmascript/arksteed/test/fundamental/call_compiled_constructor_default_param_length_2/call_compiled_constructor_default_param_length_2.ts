@@ -29,11 +29,9 @@ function call_compiled_constructor_default_param_length_2(
         new CallCompiledConstructorDefaultParamLengthBox(x);
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorDefaultParamLengthBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_default_param_length_2);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorDefaultParamLengthBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_default_param_length_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let a = call_compiled_constructor_default_param_length_2();
 print(a.len);

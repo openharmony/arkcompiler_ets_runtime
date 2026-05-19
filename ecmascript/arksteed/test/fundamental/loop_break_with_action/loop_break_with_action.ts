@@ -29,10 +29,8 @@ function loop_break_with_action(n, breakVal)
     return sum + breakCount * 1000;
 }
 
-ArkTools.arkSteedCompileAsync(loop_break_with_action);
+ArkTools.arkSteedCompileSync(loop_break_with_action);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_break_with_action(10, 5));
 print(loop_break_with_action(10, 8));

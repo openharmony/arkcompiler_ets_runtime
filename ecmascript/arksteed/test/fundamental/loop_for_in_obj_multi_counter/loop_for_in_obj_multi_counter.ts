@@ -32,10 +32,8 @@ function loop_for_in_obj_multi_counter(obj: Record<string, number>): number {
     return sumVal * 10000 + sumKeyLen * 100 + countPos * 10 + countNeg;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_multi_counter);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_multi_counter);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_multi_counter({a: 1, bb: 2, ccc: -3}));
 print(loop_for_in_obj_multi_counter({x: 10, y: -20, z: 30}));

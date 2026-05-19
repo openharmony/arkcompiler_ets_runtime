@@ -29,10 +29,8 @@ function string_is_alpha(str: string): boolean {
     return true;
 }
 
-ArkTools.arkSteedCompileAsync(string_is_alpha);
+ArkTools.arkSteedCompileSync(string_is_alpha);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_is_alpha("hello") ? 1 : 0);
 print(string_is_alpha("Hello") ? 1 : 0);

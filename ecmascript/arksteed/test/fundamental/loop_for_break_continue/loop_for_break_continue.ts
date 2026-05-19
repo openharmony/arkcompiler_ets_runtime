@@ -34,10 +34,8 @@ function for_break_continue(n, p, q)
     return sum * 100 + breakCount * 10 + continueCount;
 }
 
-ArkTools.arkSteedCompileAsync(for_break_continue);
+ArkTools.arkSteedCompileSync(for_break_continue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(for_break_continue(5, 2, 3));
 print(for_break_continue(10, 3, 4));

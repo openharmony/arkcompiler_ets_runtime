@@ -16,10 +16,8 @@ function va_args_length(...args: number[]) {
     print(args.length);
 }
 
-ArkTools.arkSteedCompileAsync(va_args_length);
+ArkTools.arkSteedCompileSync(va_args_length);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 va_args_length();
 va_args_length(1);

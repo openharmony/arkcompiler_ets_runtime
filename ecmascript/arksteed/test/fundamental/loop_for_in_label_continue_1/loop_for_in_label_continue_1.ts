@@ -27,10 +27,8 @@ function loop_for_in_label_continue_1(obj: {[key: string]: number[]}, skipVal: n
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_label_continue_1);
+ArkTools.arkSteedCompileSync(loop_for_in_label_continue_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const obj1: {[key: string]: number[]} = {"a": [1, 2, 3], "b": [4, 5, 6]};
 const obj2: {[key: string]: number[]} = {"x": [10], "y": [20], "z": [30]};

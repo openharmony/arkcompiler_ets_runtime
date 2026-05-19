@@ -28,10 +28,8 @@ function switch_true_return_some(x, a, b, c, d)
     return result + 5;
 }
 
-ArkTools.arkSteedCompileAsync(switch_true_return_some);
+ArkTools.arkSteedCompileSync(switch_true_return_some);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_true_return_some(5, 10, 20, 30, 40));
 print(switch_true_return_some(15, 10, 20, 30, 40));

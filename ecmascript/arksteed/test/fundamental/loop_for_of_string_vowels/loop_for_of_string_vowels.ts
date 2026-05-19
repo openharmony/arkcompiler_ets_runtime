@@ -24,10 +24,8 @@ function loop_for_of_string_vowels(str: string): number {
     return count;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_vowels);
+ArkTools.arkSteedCompileSync(loop_for_of_string_vowels);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_vowels("hello"));
 print(loop_for_of_string_vowels("aeiou"));

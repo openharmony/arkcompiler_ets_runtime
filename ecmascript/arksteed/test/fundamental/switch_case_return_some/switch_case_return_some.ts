@@ -27,10 +27,8 @@ function switch_case_return_some(x, a, b, c, d)
     return result + d;
 }
 
-ArkTools.arkSteedCompileAsync(switch_case_return_some);
+ArkTools.arkSteedCompileSync(switch_case_return_some);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_case_return_some(1, 100, 200, 300, 400));
 print(switch_case_return_some(2, 100, 200, 300, 400));

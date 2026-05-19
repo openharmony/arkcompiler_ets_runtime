@@ -31,10 +31,8 @@ function string_contains_only(str: string, chars: string): boolean {
     return true;
 }
 
-ArkTools.arkSteedCompileAsync(string_contains_only);
+ArkTools.arkSteedCompileSync(string_contains_only);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_contains_only("abc", "abc") ? 1 : 0);
 print(string_contains_only("abc", "ab") ? 1 : 0);

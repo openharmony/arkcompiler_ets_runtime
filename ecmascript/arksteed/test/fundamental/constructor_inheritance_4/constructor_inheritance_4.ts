@@ -37,10 +37,8 @@ class Derived extends Base {
     }
 }
 
-ArkTools.arkSteedCompileAsync(Derived);
+ArkTools.arkSteedCompileSync(Derived);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const b = new Base(11);
 print(b.value());

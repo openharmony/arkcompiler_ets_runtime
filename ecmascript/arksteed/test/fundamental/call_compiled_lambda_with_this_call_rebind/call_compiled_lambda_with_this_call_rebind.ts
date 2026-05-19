@@ -24,9 +24,7 @@ class CallCompiledLambdaWithThisCallRebindBox {
     buildReader(): (offset: number) => number {
         const foo = (offset: number) => this.value + offset;
         if (!call_compiled_lambda_with_this_call_rebind_compiled) {
-            ArkTools.arkSteedCompileAsync(foo);
-            let time = Date.now();
-            for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+            ArkTools.arkSteedCompileSync(foo);
             call_compiled_lambda_with_this_call_rebind_compiled = true;
         }
         return foo;
@@ -40,9 +38,7 @@ function call_compiled_lambda_with_this_call_rebind(): void {
     print(reader.call({ value: 100 }, 3));
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_lambda_with_this_call_rebind);
-ArkTools.arkSteedCompileAsync(CallCompiledLambdaWithThisCallRebindBox.prototype.buildReader);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(call_compiled_lambda_with_this_call_rebind);
+ArkTools.arkSteedCompileSync(CallCompiledLambdaWithThisCallRebindBox.prototype.buildReader);
 
 call_compiled_lambda_with_this_call_rebind();

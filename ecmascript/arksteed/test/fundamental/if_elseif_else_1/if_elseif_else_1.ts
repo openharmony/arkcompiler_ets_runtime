@@ -27,13 +27,11 @@ function if_elseif_else_1(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_elseif_else_1);
+ArkTools.arkSteedCompileSync(if_elseif_else_1);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(if_elseif_else_1);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_elseif_else_1(5);
 print(output);

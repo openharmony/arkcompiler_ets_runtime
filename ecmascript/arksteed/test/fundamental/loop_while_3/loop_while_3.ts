@@ -31,9 +31,7 @@ function loop_while_3(n: number): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_while_3);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(loop_while_3);
 
 let ret = loop_while_3(20);
 print(ret);

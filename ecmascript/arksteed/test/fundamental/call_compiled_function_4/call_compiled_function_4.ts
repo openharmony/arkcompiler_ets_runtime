@@ -26,12 +26,10 @@ function call_compiled_function_4(x: number, y: number): number {
     return foo(x) + foo(y) + bar(x, y) + bar(y, x);
 }
 
-ArkTools.arkSteedCompileAsync(foo);
-ArkTools.arkSteedCompileAsync(bar);
-ArkTools.arkSteedCompileAsync(call_compiled_function_4);
+ArkTools.arkSteedCompileSync(foo);
+ArkTools.arkSteedCompileSync(bar);
+ArkTools.arkSteedCompileSync(call_compiled_function_4);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(call_compiled_function_4(-1.5, 1.75));
 print(call_compiled_function_4(2.5, -2.25));

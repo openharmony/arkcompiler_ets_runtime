@@ -26,10 +26,8 @@ function call_compiled_constructor_arguments_length_1(): void {
     print(new CallCompiledConstructorArgumentsLengthBox(4, 5).len);
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorArgumentsLengthBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_arguments_length_1);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorArgumentsLengthBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_arguments_length_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_arguments_length_1();

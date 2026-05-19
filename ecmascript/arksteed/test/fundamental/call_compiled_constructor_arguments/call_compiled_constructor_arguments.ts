@@ -33,11 +33,9 @@ function call_compiled_constructor_arguments(): void {
     print(b.sum());
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorArgumentsBox);
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorArgumentsBox.prototype.sum);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_arguments);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorArgumentsBox);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorArgumentsBox.prototype.sum);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_arguments);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_arguments();

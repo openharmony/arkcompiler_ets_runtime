@@ -23,7 +23,7 @@ for (let i = 0; i < 1; i++) {
     test(str, '4');
 }
 
-ArkTools.arkSteedCompileAsync(test);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(test);
+print(true);
 print(test(str, 4));
 print(test(str, '4'));

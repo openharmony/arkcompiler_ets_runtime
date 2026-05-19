@@ -26,10 +26,8 @@ class Person {
     }
 }
 
-ArkTools.arkSteedCompileAsync(Person);
+ArkTools.arkSteedCompileSync(Person);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let person = new Person("Alice", 30);
 print(person.name);

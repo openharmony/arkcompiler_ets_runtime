@@ -28,10 +28,8 @@ function loop_for_of_label_break_2(cube: number[][][], target: number): number {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_label_break_2);
+ArkTools.arkSteedCompileSync(loop_for_of_label_break_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const cube1: number[][][] = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
 const cube2: number[][][] = [[[1, 2, 3]], [[4, 5, 6]]];

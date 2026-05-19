@@ -32,10 +32,8 @@ function mixed_loop_nested(n, p)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(mixed_loop_nested);
+ArkTools.arkSteedCompileSync(mixed_loop_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(mixed_loop_nested(0, 1));
 print(mixed_loop_nested(4, 2));

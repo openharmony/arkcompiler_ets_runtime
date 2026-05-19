@@ -18,10 +18,8 @@ function string_index_compare(str: string, idx1: number, idx2: number): boolean 
     return str[idx1] == str[idx2];
 }
 
-ArkTools.arkSteedCompileAsync(string_index_compare);
+ArkTools.arkSteedCompileSync(string_index_compare);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_index_compare("hello", 0, 4) ? 1 : 0);
 print(string_index_compare("hello", 1, 2) ? 1 : 0);

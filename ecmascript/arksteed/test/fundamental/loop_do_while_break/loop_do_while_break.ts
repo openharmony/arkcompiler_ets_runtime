@@ -27,10 +27,8 @@ function do_while_break(n, p, q)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(do_while_break);
+ArkTools.arkSteedCompileSync(do_while_break);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(do_while_break(0, 3, 1));
 print(do_while_break(5, 7, 2));

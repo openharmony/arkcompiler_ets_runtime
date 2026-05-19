@@ -20,10 +20,8 @@ function spread_string_6(): number {
     return spread_string_helper(..."abc");
 }
 
-ArkTools.arkSteedCompileAsync(spread_string_helper);
-ArkTools.arkSteedCompileAsync(spread_string_6);
+ArkTools.arkSteedCompileSync(spread_string_helper);
+ArkTools.arkSteedCompileSync(spread_string_6);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_string_6());

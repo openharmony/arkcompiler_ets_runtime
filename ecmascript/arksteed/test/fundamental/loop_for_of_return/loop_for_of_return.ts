@@ -22,10 +22,8 @@ function loop_for_of_return(arr: (number | null | undefined)[], target: number):
     return -1;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_return);
+ArkTools.arkSteedCompileSync(loop_for_of_return);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_return([0, 1, 2, 3, 4], 3));
 print(loop_for_of_return([null, 1, 2, 3, 4], 3));

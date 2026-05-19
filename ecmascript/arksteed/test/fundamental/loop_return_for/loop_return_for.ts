@@ -25,10 +25,8 @@ function loop_return_for(n, target, offset)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_return_for);
+ArkTools.arkSteedCompileSync(loop_return_for);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_return_for(10, 3, 1));
 print(loop_return_for(8, 7, 2));

@@ -21,10 +21,8 @@ function if_return_both_branches(x)
     }
 }
 
-ArkTools.arkSteedCompileAsync(if_return_both_branches);
+ArkTools.arkSteedCompileSync(if_return_both_branches);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_return_both_branches(10);
 print(output);

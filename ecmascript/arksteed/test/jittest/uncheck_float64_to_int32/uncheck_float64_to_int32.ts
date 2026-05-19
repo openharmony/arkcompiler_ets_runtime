@@ -22,8 +22,8 @@ function f1(x) {
 }
 
 f1(1.1);
-ArkTools.arkSteedCompileAsync(f1);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(f1);
+print(true);
 f1(2.2);
 
 // Test scenario: No deopt check when performing logic shift on a float value.
@@ -35,8 +35,8 @@ function f2(x) {
 }
 
 f2(1.1);
-ArkTools.arkSteedCompileAsync(f2);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(f2);
+print(true);
 f2(2.2);
 
 // Test scenario: No deopt check when performing not on a float value.
@@ -47,8 +47,8 @@ function f3(x) {
 }
 
 f3(1.1);
-ArkTools.arkSteedCompileAsync(f3);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(f3);
+print(true);
 f3(2.2);
 
 // Test scenario: No deopt check when performing conversions between int32 and float64.
@@ -61,6 +61,6 @@ function f4(x) {
 
 f4(-200);
 f4(12345678912345);
-ArkTools.arkSteedCompileAsync(f4);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(f4);
+print(true);
 print(f4(-12345678912345) == -12345678912343);

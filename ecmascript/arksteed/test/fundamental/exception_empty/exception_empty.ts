@@ -20,9 +20,7 @@ function exception_empty() {
   } catch (e) {}
 }
 
-ArkTools.arkSteedCompileAsync(exception_empty);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(exception_empty);
 
 for (let j = 0; j < 10; j++) {
     exception_empty();

@@ -17,10 +17,8 @@ function arguments_index_basic() {
     print(arguments[1] === undefined ? 20 : arguments[1]);
 }
 
-ArkTools.arkSteedCompileAsync(arguments_index_basic);
+ArkTools.arkSteedCompileSync(arguments_index_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 arguments_index_basic();
 arguments_index_basic(7);

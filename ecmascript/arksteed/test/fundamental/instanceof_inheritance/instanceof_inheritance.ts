@@ -22,9 +22,7 @@ function instanceof_inheritance() {
     print(dog instanceof InstanceofInheritanceAnimal ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(instanceof_inheritance);
+ArkTools.arkSteedCompileSync(instanceof_inheritance);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 instanceof_inheritance();

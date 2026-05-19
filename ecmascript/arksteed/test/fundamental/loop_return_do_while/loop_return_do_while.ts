@@ -27,10 +27,8 @@ function loop_return_do_while(n, target, add)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_return_do_while);
+ArkTools.arkSteedCompileSync(loop_return_do_while);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_return_do_while(15, 5, 10));
 print(loop_return_do_while(8, 3, 7));

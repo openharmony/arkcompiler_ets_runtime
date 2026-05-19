@@ -41,10 +41,8 @@ function nested_continue_chain(n, p, q, r)
     return sum * 1000 + s1 * 100 + s2 * 10 + s3;
 }
 
-ArkTools.arkSteedCompileAsync(nested_continue_chain);
+ArkTools.arkSteedCompileSync(nested_continue_chain);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_continue_chain(0, 2, 3, 4));
 print(nested_continue_chain(3, 2, 3, 4));

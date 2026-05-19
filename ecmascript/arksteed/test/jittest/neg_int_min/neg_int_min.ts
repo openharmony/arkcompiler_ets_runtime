@@ -24,6 +24,6 @@ function NegValue(value1, value2) {
 }
 
 NegValue(-37905, -15590699);
-ArkTools.arkSteedCompileAsync(NegValue);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(NegValue);
+print(true);
 NegValue(-37906, -155906996);

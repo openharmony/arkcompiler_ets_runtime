@@ -31,12 +31,10 @@ function static_field_method(a: number, b: number, c: number): number {
     return Accumulator.get();
 }
 
-ArkTools.arkSteedCompileAsync(Accumulator);
-ArkTools.arkSteedCompileAsync(Accumulator.add);
-ArkTools.arkSteedCompileAsync(Accumulator.get);
-ArkTools.arkSteedCompileAsync(static_field_method);
+ArkTools.arkSteedCompileSync(Accumulator);
+ArkTools.arkSteedCompileSync(Accumulator.add);
+ArkTools.arkSteedCompileSync(Accumulator.get);
+ArkTools.arkSteedCompileSync(static_field_method);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(static_field_method(10, 20, 30));

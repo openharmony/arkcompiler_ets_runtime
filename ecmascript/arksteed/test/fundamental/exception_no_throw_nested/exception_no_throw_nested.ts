@@ -15,7 +15,7 @@
 declare function print(arg: number): string;
 
 declare class ArkTools {
-  static arkSteedCompileAsync<T extends Function>(func: T): T;
+  static arkSteedCompileSync<T extends Function>(func: T): T;
 }
 
 function exception_no_throw_nested(a: number, b: number, c: number): number {
@@ -43,10 +43,8 @@ function exception_no_throw_nested(a: number, b: number, c: number): number {
   }
 }
 
-ArkTools.arkSteedCompileAsync(exception_no_throw_nested);
+ArkTools.arkSteedCompileSync(exception_no_throw_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(exception_no_throw_nested(1, 2, 3));
 print(exception_no_throw_nested(10, 20, 30));

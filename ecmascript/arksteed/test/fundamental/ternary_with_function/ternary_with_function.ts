@@ -27,10 +27,8 @@ function processValue(x: number, useTriple: boolean): number {
     return useTriple ? triple(x) : double(x);
 }
 
-ArkTools.arkSteedCompileAsync(processValue);
+ArkTools.arkSteedCompileSync(processValue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(processValue(5, true));
 print(processValue(5, false));

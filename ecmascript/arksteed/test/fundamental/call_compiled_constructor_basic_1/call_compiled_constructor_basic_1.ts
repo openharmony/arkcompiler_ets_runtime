@@ -25,10 +25,8 @@ function call_compiled_constructor_basic_1(): void {
     print(a.m);
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorFieldsBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_basic_1);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorFieldsBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_basic_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_basic_1();

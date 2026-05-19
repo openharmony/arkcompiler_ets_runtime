@@ -24,10 +24,8 @@ function static_field_basic(): number {
     return r;
 }
 
-ArkTools.arkSteedCompileAsync(Config);
-ArkTools.arkSteedCompileAsync(static_field_basic);
+ArkTools.arkSteedCompileSync(Config);
+ArkTools.arkSteedCompileSync(static_field_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(static_field_basic());

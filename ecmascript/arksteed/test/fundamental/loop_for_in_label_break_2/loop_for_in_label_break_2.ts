@@ -30,10 +30,8 @@ function loop_for_in_label_break_2(obj, target) {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_label_break_2);
+ArkTools.arkSteedCompileSync(loop_for_in_label_break_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const obj1 = {
     "a": {"a1": [1, 2], "a2": [3, 4]},

@@ -28,10 +28,8 @@ class ArgumentsMethod {
     }
 }
 
-ArkTools.arkSteedCompileAsync(ArgumentsMethod);
+ArkTools.arkSteedCompileSync(ArgumentsMethod);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let worker = new ArgumentsMethod(2);
 print(worker.compute());

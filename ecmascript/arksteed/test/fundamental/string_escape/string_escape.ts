@@ -22,10 +22,8 @@ function string_escape(): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(string_escape);
+ArkTools.arkSteedCompileSync(string_escape);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_escape());
 print(string_escape());

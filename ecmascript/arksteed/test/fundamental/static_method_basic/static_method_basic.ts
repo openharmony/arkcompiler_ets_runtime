@@ -26,12 +26,10 @@ function static_method_basic(a: number, b: number): number {
     return MathUtil.add(a, b) + MathUtil.mul(a, b);
 }
 
-ArkTools.arkSteedCompileAsync(MathUtil);
-ArkTools.arkSteedCompileAsync(MathUtil.add);
-ArkTools.arkSteedCompileAsync(MathUtil.mul);
-ArkTools.arkSteedCompileAsync(static_method_basic);
+ArkTools.arkSteedCompileSync(MathUtil);
+ArkTools.arkSteedCompileSync(MathUtil.add);
+ArkTools.arkSteedCompileSync(MathUtil.mul);
+ArkTools.arkSteedCompileSync(static_method_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(static_method_basic(3, 4));

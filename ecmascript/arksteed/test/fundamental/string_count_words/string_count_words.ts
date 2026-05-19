@@ -28,10 +28,8 @@ function string_count_words(str: string): number {
     return count;
 }
 
-ArkTools.arkSteedCompileAsync(string_count_words);
+ArkTools.arkSteedCompileSync(string_count_words);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_count_words("hello world"));
 print(string_count_words("one two three four"));

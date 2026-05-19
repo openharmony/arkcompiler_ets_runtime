@@ -1,5 +1,0 @@
-Liveness of Basic Block:
-[ 0] UESet:   [a3, env]
-     KillSet: [v0, acc]
-     LiveIn:  [a3, env]
-     LiveOut: []

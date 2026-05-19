@@ -40,10 +40,8 @@ function loop_continue_break_chain(n)
     return sum * 10000 + cnt1 * 1000 + cnt2 * 100 + cnt3 * 10 + cnt4;
 }
 
-ArkTools.arkSteedCompileAsync(loop_continue_break_chain);
+ArkTools.arkSteedCompileSync(loop_continue_break_chain);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_continue_break_chain(25));
 print(loop_continue_break_chain(10));

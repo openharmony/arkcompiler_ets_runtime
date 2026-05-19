@@ -25,9 +25,7 @@ function array_read_write_mixed(arr: number[]): number
     return arr[0] + arr[1] + arr[2] + arr[3] + arr[4];
 }
 
-ArkTools.arkSteedCompileAsync(array_read_write_mixed);
+ArkTools.arkSteedCompileSync(array_read_write_mixed);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(array_read_write_mixed([1, 2, 3, 4, 5]));

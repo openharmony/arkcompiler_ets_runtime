@@ -25,10 +25,8 @@ function loop_for_of_basic(arr: number[]): number {
     return count * 1000 + sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_basic);
+ArkTools.arkSteedCompileSync(loop_for_of_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_basic([]));
 print(loop_for_of_basic([1, 2, 3]));

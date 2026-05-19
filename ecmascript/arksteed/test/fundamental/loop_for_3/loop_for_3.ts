@@ -27,13 +27,11 @@ function loop_for_3(arr, limit, p, q, r)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_3);
+ArkTools.arkSteedCompileSync(loop_for_3);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_for_3);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr = [1, 2, 3];
 print(loop_for_3(arr, 0, 3, 1, 5));

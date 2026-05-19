@@ -33,10 +33,8 @@ function deep_nested_cross_use(n, p, q)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(deep_nested_cross_use);
+ArkTools.arkSteedCompileSync(deep_nested_cross_use);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(deep_nested_cross_use(2, 3, 1));
 print(deep_nested_cross_use(3, 5, 2));

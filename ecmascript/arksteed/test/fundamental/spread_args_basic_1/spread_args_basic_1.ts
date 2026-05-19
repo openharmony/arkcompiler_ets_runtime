@@ -20,10 +20,8 @@ function spread_args_basic_1(arr: [number, number, number]): number {
     return spread_args_basic_helper(...arr);
 }
 
-ArkTools.arkSteedCompileAsync(spread_args_basic_helper);
-ArkTools.arkSteedCompileAsync(spread_args_basic_1);
+ArkTools.arkSteedCompileSync(spread_args_basic_helper);
+ArkTools.arkSteedCompileSync(spread_args_basic_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_args_basic_1([10, 20, 30]));

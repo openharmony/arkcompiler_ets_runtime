@@ -33,10 +33,8 @@ function string_is_numeric(str: string): boolean {
     return true;
 }
 
-ArkTools.arkSteedCompileAsync(string_is_numeric);
+ArkTools.arkSteedCompileSync(string_is_numeric);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_is_numeric("123") ? 1 : 0);
 print(string_is_numeric("12.34") ? 1 : 0);

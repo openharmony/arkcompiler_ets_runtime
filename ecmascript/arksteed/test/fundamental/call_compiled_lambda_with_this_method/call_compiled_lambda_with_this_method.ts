@@ -24,9 +24,7 @@ class CallCompiledLambdaWithThisMethodBox {
     buildAdder(delta: number): () => number {
         const foo = () => this.value + delta;
         if (!call_compiled_lambda_with_this_method_compiled) {
-            ArkTools.arkSteedCompileAsync(foo);
-            let time = Date.now();
-            for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+            ArkTools.arkSteedCompileSync(foo);
             call_compiled_lambda_with_this_method_compiled = true;
         }
         return foo;
@@ -40,9 +38,7 @@ function call_compiled_lambda_with_this_method(): void {
     print(box2.buildAdder(8)());
 }
 
-ArkTools.arkSteedCompileAsync(call_compiled_lambda_with_this_method);
-ArkTools.arkSteedCompileAsync(CallCompiledLambdaWithThisMethodBox.prototype.buildAdder);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
+ArkTools.arkSteedCompileSync(call_compiled_lambda_with_this_method);
+ArkTools.arkSteedCompileSync(CallCompiledLambdaWithThisMethodBox.prototype.buildAdder);
 
 call_compiled_lambda_with_this_method();

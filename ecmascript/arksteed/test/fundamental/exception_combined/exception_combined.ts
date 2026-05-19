@@ -22,8 +22,7 @@ function exception_combined() {
     }
 }
 
-ArkTools.arkSteedCompileAsync(exception_combined);
-(() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(exception_combined);
 
 exception_combined();
 print(i);

@@ -20,12 +20,10 @@ function this_3(a: number) {
     return a > 0 ? this + a * 100 : this - a * 100;
 }
 
-ArkTools.arkSteedCompileAsync(this_3);
+ArkTools.arkSteedCompileSync(this_3);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(this_3);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(this_3.call(1, 2));   // globalValue <- 3
 print(this_3.call(2, -4));  // globalValue <- 5

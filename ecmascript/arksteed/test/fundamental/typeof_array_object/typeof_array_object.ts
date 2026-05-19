@@ -18,9 +18,7 @@ function typeof_array_object() {
     print(Array.isArray(arr) ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_array_object);
+ArkTools.arkSteedCompileSync(typeof_array_object);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_array_object();

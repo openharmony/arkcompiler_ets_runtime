@@ -26,10 +26,8 @@ function default_param_undefined_return(a?: number, b?: number, c?: number): num
     return missing;
 }
 
-ArkTools.arkSteedCompileAsync(default_param_undefined_return);
+ArkTools.arkSteedCompileSync(default_param_undefined_return);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(default_param_undefined_return());
 print(default_param_undefined_return(1));

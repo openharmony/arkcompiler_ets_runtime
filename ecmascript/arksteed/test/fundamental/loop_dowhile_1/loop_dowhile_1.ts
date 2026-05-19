@@ -25,13 +25,11 @@ function loop_dowhile_1(limit, p, q)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_dowhile_1);
+ArkTools.arkSteedCompileSync(loop_dowhile_1);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_dowhile_1);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = loop_dowhile_1(0, 3, 1);
 print(output);

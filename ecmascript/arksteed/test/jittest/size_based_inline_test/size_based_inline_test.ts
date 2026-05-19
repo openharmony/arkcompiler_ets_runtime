@@ -837,44 +837,44 @@ print("=== Size-based Inline Testing ===");
 
 print("Tiny Functions Test:");
 TinyFuncTest();
-ArkTools.arkSteedCompileAsync(TinyFuncTest);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(TinyFuncTest);
+print(true);
 TinyFuncTest();
 
 print("Small Functions Test:");
 SmallFuncTest();
-ArkTools.arkSteedCompileAsync(SmallFuncTest);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(SmallFuncTest);
+print(true);
 SmallFuncTest();
 
 print("Medium Functions Test:");
 MediumFuncTest();
-ArkTools.arkSteedCompileAsync(MediumFuncTest);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(MediumFuncTest);
+print(true);
 MediumFuncTest();
 
 print("Large Functions Test:");
 LargeFuncTest();
-ArkTools.arkSteedCompileAsync(LargeFuncTest);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(LargeFuncTest);
+print(true);
 LargeFuncTest();
 
 print("Mixed Size Test:");
 MixedSizeTest();
-ArkTools.arkSteedCompileAsync(MixedSizeTest);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(MixedSizeTest);
+print(true);
 MixedSizeTest();
 
 print("Boundary Test:");
 BoundaryTest();
-ArkTools.arkSteedCompileAsync(BoundaryTest);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(BoundaryTest);
+print(true);
 BoundaryTest();
 
 print("Extended Tests:");
 ExecuteExtendedSizeTests();
-ArkTools.arkSteedCompileAsync(ExecuteExtendedSizeTests);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(ExecuteExtendedSizeTests);
+print(true);
 ExecuteExtendedSizeTests();
 
 print("Size-based inline testing completed");

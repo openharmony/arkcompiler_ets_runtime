@@ -30,13 +30,11 @@ function loop_for_of_break_2(arr: number[], r: number, s: number, t: number)
     }
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_break_2);
+ArkTools.arkSteedCompileSync(loop_for_of_break_2);
 
 // TODO: Replace the spin loop with:
 // let res = ArkTools.waitJitCompileFinish(loop_for_of_break_2);
 // print(res);
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 const arr: number[] = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512];
 

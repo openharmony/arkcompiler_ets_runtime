@@ -25,10 +25,8 @@ function loop_for_in_obj_2(obj: Record<string, number>): number {
     return sumLength + sumValue * 100;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_2);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_2({}));
 print(loop_for_in_obj_2({"first": 1, "second": 2}));

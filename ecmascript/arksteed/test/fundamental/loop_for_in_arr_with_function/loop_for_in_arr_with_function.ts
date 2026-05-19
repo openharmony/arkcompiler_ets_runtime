@@ -32,10 +32,8 @@ function loop_for_in_arr_with_function(arr: number[]): number {
     return sumSquares * 10 + countOdd;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_arr_with_function);
+ArkTools.arkSteedCompileSync(loop_for_in_arr_with_function);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_arr_with_function([1, 2, 3, 4]));
 print(loop_for_in_arr_with_function([5, 10, 15]));

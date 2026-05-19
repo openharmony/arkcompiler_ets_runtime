@@ -30,11 +30,9 @@ function call_compiled_bind_expression_with_args_6(run: (...args: number[]) => n
     return run(...args);
 }
 
-ArkTools.arkSteedCompileAsync(BoundClosureTarget.prototype.run);
-ArkTools.arkSteedCompileAsync(call_compiled_bind_expression_with_args_6);
+ArkTools.arkSteedCompileSync(BoundClosureTarget.prototype.run);
+ArkTools.arkSteedCompileSync(call_compiled_bind_expression_with_args_6);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(call_compiled_bind_expression_with_args_6(new BoundClosureTarget(), 1000, 100, 10, 4, 5, 6));
 print(call_compiled_bind_expression_with_args_6(new BoundClosureTarget(1000), 100, 10, 4, 5, 6));

@@ -28,10 +28,8 @@ function exception_try_catch_simple(should_throw)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(exception_try_catch_simple);
+ArkTools.arkSteedCompileSync(exception_try_catch_simple);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = exception_try_catch_simple(true);
 print(output);

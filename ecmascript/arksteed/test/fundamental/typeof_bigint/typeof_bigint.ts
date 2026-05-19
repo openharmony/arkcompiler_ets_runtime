@@ -17,9 +17,7 @@ function typeof_bigint() {
     print(typeof value === "bigint" ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(typeof_bigint);
+ArkTools.arkSteedCompileSync(typeof_bigint);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 typeof_bigint();

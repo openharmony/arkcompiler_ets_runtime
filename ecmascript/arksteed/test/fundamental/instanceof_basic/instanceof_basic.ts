@@ -25,9 +25,7 @@ function instanceof_basic() {
     print(point instanceof InstanceofBasicPoint ? 1 : 0);
 }
 
-ArkTools.arkSteedCompileAsync(instanceof_basic);
+ArkTools.arkSteedCompileSync(instanceof_basic);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 instanceof_basic();

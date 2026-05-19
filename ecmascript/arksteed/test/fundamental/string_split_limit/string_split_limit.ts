@@ -19,10 +19,8 @@ function string_split_limit(str: string, delim: string, limit: number): number {
     return parts.length;
 }
 
-ArkTools.arkSteedCompileAsync(string_split_limit);
+ArkTools.arkSteedCompileSync(string_split_limit);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_split_limit("a,b,c,d", ",", 3));
 print(string_split_limit("a,b,c,d", ",", 10));

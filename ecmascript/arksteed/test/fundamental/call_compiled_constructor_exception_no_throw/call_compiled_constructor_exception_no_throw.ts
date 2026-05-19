@@ -30,10 +30,8 @@ function call_compiled_constructor_exception_no_throw(): void {
     print(b.data);
 }
 
-ArkTools.arkSteedCompileAsync(ConstructorCallInitThrowBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_exception_no_throw);
+ArkTools.arkSteedCompileSync(ConstructorCallInitThrowBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_exception_no_throw);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_exception_no_throw();

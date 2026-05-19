@@ -24,10 +24,8 @@ function string_count_char(str: string, ch: string): number {
     return count;
 }
 
-ArkTools.arkSteedCompileAsync(string_count_char);
+ArkTools.arkSteedCompileSync(string_count_char);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_count_char("hello", "l"));
 print(string_count_char("banana", "a"));

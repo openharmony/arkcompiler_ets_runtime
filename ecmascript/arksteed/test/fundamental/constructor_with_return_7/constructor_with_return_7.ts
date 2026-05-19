@@ -38,13 +38,11 @@ function constructor_with_return_7() {
     return p(100, 10);
 }
 
-ArkTools.arkSteedCompileAsync(PointBase);
-ArkTools.arkSteedCompileAsync(PointBase.prototype.innerProduct);
-ArkTools.arkSteedCompileAsync(Point);
-ArkTools.arkSteedCompileAsync(Point.prototype.innerProductImpl);
-ArkTools.arkSteedCompileAsync(constructor_with_return_7);
+ArkTools.arkSteedCompileSync(PointBase);
+ArkTools.arkSteedCompileSync(PointBase.prototype.innerProduct);
+ArkTools.arkSteedCompileSync(Point);
+ArkTools.arkSteedCompileSync(Point.prototype.innerProductImpl);
+ArkTools.arkSteedCompileSync(constructor_with_return_7);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(constructor_with_return_7());

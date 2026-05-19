@@ -31,10 +31,8 @@ function nested_for_continue(n, p)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(nested_for_continue);
+ArkTools.arkSteedCompileSync(nested_for_continue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_for_continue(0, 5));
 print(nested_for_continue(3, 5));

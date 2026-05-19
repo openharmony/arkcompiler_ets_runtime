@@ -21,10 +21,8 @@ function if_return_one_branch(x)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(if_return_one_branch);
+ArkTools.arkSteedCompileSync(if_return_one_branch);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_return_one_branch(10);
 print(output);

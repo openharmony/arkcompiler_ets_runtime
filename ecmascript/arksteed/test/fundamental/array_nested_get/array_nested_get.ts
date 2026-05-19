@@ -17,10 +17,8 @@ function array_nested_get(arr: number[][], i: number, j: number): number
     return arr[i][j];
 }
 
-ArkTools.arkSteedCompileAsync(array_nested_get);
+ArkTools.arkSteedCompileSync(array_nested_get);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[][] = [[1, 2], [3, 4], [5, 6]];
 print(array_nested_get(arr, 0, 0));

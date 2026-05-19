@@ -23,10 +23,8 @@ function if_nested_return_inner_only(x, y, a, b, c)
     return c;
 }
 
-ArkTools.arkSteedCompileAsync(if_nested_return_inner_only);
+ArkTools.arkSteedCompileSync(if_nested_return_inner_only);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(if_nested_return_inner_only(10, 5, 100, 200, 300));
 print(if_nested_return_inner_only(10, -1, 100, 200, 300));

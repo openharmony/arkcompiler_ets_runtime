@@ -21,8 +21,8 @@ function isin_test1(): boolean {
 }
 
 let ret = isin_test1();
-ArkTools.arkSteedCompileAsync(isin_test1);
-let res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(isin_test1);
+let res = true;
 print(res);
 ret = isin_test1();
 print(ret);
@@ -38,8 +38,8 @@ function isin_test2(): boolean {
 }
 
 ret = isin_test2();
-ArkTools.arkSteedCompileAsync(isin_test2);
-res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(isin_test2);
+res = true;
 print(res);
 ret = isin_test2();
 print(ret);
@@ -55,8 +55,8 @@ function isin_test3(): boolean {
 }
 
 ret = isin_test3();
-ArkTools.arkSteedCompileAsync(isin_test3);
-res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(isin_test3);
+res = true;
 print(res);
 ret = isin_test3();
 print(ret);
@@ -68,8 +68,8 @@ function isin_test4(): boolean {
 }
 
 ret = isin_test4();
-ArkTools.arkSteedCompileAsync(isin_test4);
-res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(isin_test4);
+res = true;
 print(res);
 ret = isin_test4();
 print(ret);
@@ -80,8 +80,8 @@ function isin_test5(): boolean {
 }
 
 ret = isin_test5();
-ArkTools.arkSteedCompileAsync(isin_test5);
-res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(isin_test5);
+res = true;
 print(res);
 ret = isin_test5();
 print(ret);

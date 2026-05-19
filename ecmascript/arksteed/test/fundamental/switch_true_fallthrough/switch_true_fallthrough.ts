@@ -33,10 +33,8 @@ function switch_true_fallthrough(x, a, b, c, d)
     return count + b + c;
 }
 
-ArkTools.arkSteedCompileAsync(switch_true_fallthrough);
+ArkTools.arkSteedCompileSync(switch_true_fallthrough);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_true_fallthrough(5, 10, 20, 30, 40));
 print(switch_true_fallthrough(0, 10, 20, 30, 40));

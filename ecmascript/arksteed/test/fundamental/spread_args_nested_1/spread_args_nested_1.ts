@@ -23,10 +23,8 @@ function spread_args_nested_1(): number {
     return spread_args_nested_helper(5, ...outer, 6);
 }
 
-ArkTools.arkSteedCompileAsync(spread_args_nested_helper);
-ArkTools.arkSteedCompileAsync(spread_args_nested_1);
+ArkTools.arkSteedCompileSync(spread_args_nested_helper);
+ArkTools.arkSteedCompileSync(spread_args_nested_1);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(spread_args_nested_1());

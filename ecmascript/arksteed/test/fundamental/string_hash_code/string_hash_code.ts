@@ -24,10 +24,8 @@ function string_hash_code(str: string): number {
     return hash;
 }
 
-ArkTools.arkSteedCompileAsync(string_hash_code);
+ArkTools.arkSteedCompileSync(string_hash_code);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_hash_code("hello"));
 print(string_hash_code("world"));

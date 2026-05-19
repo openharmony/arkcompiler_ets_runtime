@@ -22,10 +22,8 @@ function string_replace_all(str: string, search: string, replacement: string): s
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(string_replace_all);
+ArkTools.arkSteedCompileSync(string_replace_all);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_replace_all("foo foo foo", "foo", "bar"));
 print(string_replace_all("aaa", "a", "b"));

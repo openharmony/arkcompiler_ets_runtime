@@ -24,10 +24,8 @@ function array_loop_product(arr: number[]): number
     return product;
 }
 
-ArkTools.arkSteedCompileAsync(array_loop_product);
+ArkTools.arkSteedCompileSync(array_loop_product);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[] = [1, 2, 3, 4, 5];
 print(array_loop_product(arr));

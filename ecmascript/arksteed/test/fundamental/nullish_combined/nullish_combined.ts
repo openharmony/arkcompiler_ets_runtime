@@ -23,10 +23,8 @@ function nullish_combined(a: number | null | undefined, b: number | null | undef
     return result + a + b;
 }
 
-ArkTools.arkSteedCompileAsync(nullish_combined);
+ArkTools.arkSteedCompileSync(nullish_combined);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nullish_combined(10, 20));
 print(nullish_combined(null, 20));

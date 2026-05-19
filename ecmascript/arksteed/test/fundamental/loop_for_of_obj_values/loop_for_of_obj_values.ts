@@ -25,10 +25,8 @@ function loop_for_of_obj_values(obj: Record<string, number>): number {
     return sum * 10 + count;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_obj_values);
+ArkTools.arkSteedCompileSync(loop_for_of_obj_values);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_obj_values({a: 1, b: 2}));
 print(loop_for_of_obj_values({x: 10, y: 20, z: 30}));

@@ -22,10 +22,8 @@ function loop_for_of_string_last(str: string): string {
     return last;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_last);
+ArkTools.arkSteedCompileSync(loop_for_of_string_last);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_last("hello"));
 print(loop_for_of_string_last("world"));

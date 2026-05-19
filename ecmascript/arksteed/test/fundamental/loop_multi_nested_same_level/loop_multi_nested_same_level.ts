@@ -43,10 +43,8 @@ function multi_nested_same_level(n)
     return sum1 + sum2 + sum3;
 }
 
-ArkTools.arkSteedCompileAsync(multi_nested_same_level);
+ArkTools.arkSteedCompileSync(multi_nested_same_level);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 for (let i = 0; i < 10; i++) {
     print(multi_nested_same_level(i))

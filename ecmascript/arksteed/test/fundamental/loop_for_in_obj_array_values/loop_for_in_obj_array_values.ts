@@ -28,10 +28,8 @@ function loop_for_in_obj_array_values(obj: Record<string, number[]>): number {
     return total * 10 + count;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_obj_array_values);
+ArkTools.arkSteedCompileSync(loop_for_in_obj_array_values);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_obj_array_values({a: [1, 2], b: [3, 4, 5]}));
 print(loop_for_in_obj_array_values({x: [10], y: [20], z: [30]}));

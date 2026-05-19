@@ -31,12 +31,10 @@ function modifyShared(multiplier: number): number {
     return sharedValue;
 }
 
-ArkTools.arkSteedCompileAsync(readShared);
-ArkTools.arkSteedCompileAsync(writeShared);
-ArkTools.arkSteedCompileAsync(modifyShared);
+ArkTools.arkSteedCompileSync(readShared);
+ArkTools.arkSteedCompileSync(writeShared);
+ArkTools.arkSteedCompileSync(modifyShared);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(readShared());
 print(writeShared(20));

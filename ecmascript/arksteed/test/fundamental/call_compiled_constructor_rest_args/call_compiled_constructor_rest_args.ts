@@ -31,10 +31,8 @@ function call_compiled_constructor_rest_args(): void {
     print(b.total);
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorRestArgsBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_rest_args);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorRestArgsBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_rest_args);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_rest_args();

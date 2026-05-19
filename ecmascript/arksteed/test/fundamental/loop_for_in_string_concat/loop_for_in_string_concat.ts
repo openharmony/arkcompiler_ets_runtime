@@ -25,10 +25,8 @@ function loop_for_in_string_concat(obj: Record<string, number>): number {
     return result.length;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_string_concat);
+ArkTools.arkSteedCompileSync(loop_for_in_string_concat);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_string_concat({a: 1, b: 2, c: -1}));
 print(loop_for_in_string_concat({x: -5, y: 10}));

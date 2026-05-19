@@ -40,6 +40,6 @@ function Test() {
 }
 
 Test()
-ArkTools.arkSteedCompileAsync(isByteLength);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(isByteLength);
+print(true);
 Test()

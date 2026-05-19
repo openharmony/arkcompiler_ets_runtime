@@ -41,10 +41,8 @@ function loop_label_3_cc_mid(limit, c_mid, c_inner) {
     return sum * 1000 + outerCount * 100 + midCount * 10 + innerCount;
 }
 
-ArkTools.arkSteedCompileAsync(loop_label_3_cc_mid);
+ArkTools.arkSteedCompileSync(loop_label_3_cc_mid);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_label_3_cc_mid(0, 3, 2));
 print(loop_label_3_cc_mid(2, 4, 3));

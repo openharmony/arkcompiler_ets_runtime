@@ -19,10 +19,8 @@ function nullish_nested(a: number | null | undefined, b: number | null | undefin
     return a ?? b ?? c ?? 0;
 }
 
-ArkTools.arkSteedCompileAsync(nullish_nested);
+ArkTools.arkSteedCompileSync(nullish_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nullish_nested(1, null, null));
 print(nullish_nested(null, 2, null));

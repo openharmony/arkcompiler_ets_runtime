@@ -29,10 +29,8 @@ function nested_for_break_2(n, p)
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(nested_for_break_2);
+ArkTools.arkSteedCompileSync(nested_for_break_2);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(nested_for_break_2(0, 2));
 print(nested_for_break_2(3, 2));

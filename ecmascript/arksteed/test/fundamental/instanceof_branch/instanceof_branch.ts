@@ -26,10 +26,8 @@ function instanceof_branch(value: Object) {
     }
 }
 
-ArkTools.arkSteedCompileAsync(instanceof_branch);
+ArkTools.arkSteedCompileSync(instanceof_branch);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 instanceof_branch(new InstanceofBranchCat());
 instanceof_branch(new InstanceofBranchBird());

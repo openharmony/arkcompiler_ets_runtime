@@ -33,10 +33,8 @@ function switch_true_nested(x, y, a, b, c, d)
     }
 }
 
-ArkTools.arkSteedCompileAsync(switch_true_nested);
+ArkTools.arkSteedCompileSync(switch_true_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_true_nested(5, 3, 10, 20, 30, 40));
 print(switch_true_nested(5, -3, 10, 20, 30, 40));

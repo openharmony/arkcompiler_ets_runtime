@@ -21,11 +21,9 @@ function call_compiled_function_1(x: number): number {
 }
 
 (async () => {
-    await ArkTools.arkSteedCompileAsync(foo);  // Callee is JIT-compiled as well
-    await ArkTools.arkSteedCompileAsync(call_compiled_function_1);
+    await ArkTools.arkSteedCompileSync(foo);  // Callee is JIT-compiled as well
+    await ArkTools.arkSteedCompileSync(call_compiled_function_1);
     // TODO: Remove this spin-loop
-    let time = Date.now();
-    for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 })().then(() => {
     print(call_compiled_function_1(-2.5));
     print(call_compiled_function_1(15));

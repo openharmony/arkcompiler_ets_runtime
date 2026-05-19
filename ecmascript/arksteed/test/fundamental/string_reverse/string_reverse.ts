@@ -22,10 +22,8 @@ function string_reverse(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(string_reverse);
+ArkTools.arkSteedCompileSync(string_reverse);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_reverse("hello"));
 print(string_reverse("abcd"));

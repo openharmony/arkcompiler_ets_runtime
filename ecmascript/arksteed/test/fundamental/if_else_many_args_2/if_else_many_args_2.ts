@@ -54,11 +54,9 @@ function if_else_many_args_2(x: number,
     return makeOutput(v1, v2, v3, v4, v5, v6);
 }
 
-ArkTools.arkSteedCompileAsync(if_else_many_args_2);
+ArkTools.arkSteedCompileSync(if_else_many_args_2);
 
 // Spin loop: A temporary approach to wait for ArkSteed JIT compiler
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let output = if_else_many_args_2(15, 1, 2, 3, 4, 5, 6);
 print(output);

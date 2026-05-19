@@ -40,12 +40,10 @@ function call_compiled_constructor_inheritance(): void {
     print(b.value());
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorInheritanceBase);
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorInheritanceDerived);
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorInheritanceDerived.prototype.value);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_inheritance);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorInheritanceBase);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorInheritanceDerived);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorInheritanceDerived.prototype.value);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_inheritance);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_inheritance();

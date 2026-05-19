@@ -24,10 +24,8 @@ function default_param_branch(score: number = 60, bonus: number = 5) {
     print(total);
 }
 
-ArkTools.arkSteedCompileAsync(default_param_branch);
+ArkTools.arkSteedCompileSync(default_param_branch);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 default_param_branch();
 default_param_branch(70);

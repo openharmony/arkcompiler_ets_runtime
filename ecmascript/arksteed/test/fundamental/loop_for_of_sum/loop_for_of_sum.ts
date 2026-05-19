@@ -23,10 +23,8 @@ function loop_for_of_sum(arr: number[]): number {
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_sum);
+ArkTools.arkSteedCompileSync(loop_for_of_sum);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_sum([1, 2, 3]));
 print(loop_for_of_sum([10, 20, 30]));

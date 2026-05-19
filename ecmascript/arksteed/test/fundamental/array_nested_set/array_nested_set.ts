@@ -17,10 +17,8 @@ function array_nested_set(arr: number[][], i: number, j: number, value: number):
     arr[i][j] = value;
 }
 
-ArkTools.arkSteedCompileAsync(array_nested_set);
+ArkTools.arkSteedCompileSync(array_nested_set);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr: number[][] = [[1, 2], [3, 4], [5, 6]];
 array_nested_set(arr, 0, 1, 20);

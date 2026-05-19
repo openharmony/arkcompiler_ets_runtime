@@ -28,10 +28,8 @@ function loop_for_of_continue(arr: number[]): number {
     return sum * 100 + count;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_continue);
+ArkTools.arkSteedCompileSync(loop_for_of_continue);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_continue([1, -2, 3, -4, 5]));
 print(loop_for_of_continue([10, 20, 30]));

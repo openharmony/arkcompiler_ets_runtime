@@ -15,7 +15,7 @@
 
 declare function print(arg: any): string;
 declare const ArkTools: {
-    arkSteedCompileAsync(args: any): boolean;
+    arkSteedCompileSync(args: any): boolean;
     waitJitCompileFinish(args: any): boolean;
 };
 
@@ -135,35 +135,35 @@ for (let i = 0; i < 20; i++) {
 }
 
 // JIT compile
-ArkTools.arkSteedCompileAsync(testParseBasic);
-ArkTools.arkSteedCompileAsync(testParseArray);
-ArkTools.arkSteedCompileAsync(testParseNested);
-ArkTools.arkSteedCompileAsync(testParseReviver);
-ArkTools.arkSteedCompileAsync(testParsePrimitives);
-ArkTools.arkSteedCompileAsync(testStringifyBasic);
-ArkTools.arkSteedCompileAsync(testStringifyArray);
-ArkTools.arkSteedCompileAsync(testStringifyNested);
-ArkTools.arkSteedCompileAsync(testStringifyReplacer);
-ArkTools.arkSteedCompileAsync(testStringifyReplacerFn);
-ArkTools.arkSteedCompileAsync(testStringifySpace);
-ArkTools.arkSteedCompileAsync(testStringifySpecial);
-ArkTools.arkSteedCompileAsync(testRoundtrip);
-ArkTools.arkSteedCompileAsync(testToJSON);
+ArkTools.arkSteedCompileSync(testParseBasic);
+ArkTools.arkSteedCompileSync(testParseArray);
+ArkTools.arkSteedCompileSync(testParseNested);
+ArkTools.arkSteedCompileSync(testParseReviver);
+ArkTools.arkSteedCompileSync(testParsePrimitives);
+ArkTools.arkSteedCompileSync(testStringifyBasic);
+ArkTools.arkSteedCompileSync(testStringifyArray);
+ArkTools.arkSteedCompileSync(testStringifyNested);
+ArkTools.arkSteedCompileSync(testStringifyReplacer);
+ArkTools.arkSteedCompileSync(testStringifyReplacerFn);
+ArkTools.arkSteedCompileSync(testStringifySpace);
+ArkTools.arkSteedCompileSync(testStringifySpecial);
+ArkTools.arkSteedCompileSync(testRoundtrip);
+ArkTools.arkSteedCompileSync(testToJSON);
 
-print("compile testParseBasic: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testParseArray: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testParseNested: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testParseReviver: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testParsePrimitives: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testStringifyBasic: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testStringifyArray: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testStringifyNested: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testStringifyReplacer: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testStringifyReplacerFn: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testStringifySpace: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testStringifySpecial: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testRoundtrip: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testToJSON: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+print("compile testParseBasic: " + true);
+print("compile testParseArray: " + true);
+print("compile testParseNested: " + true);
+print("compile testParseReviver: " + true);
+print("compile testParsePrimitives: " + true);
+print("compile testStringifyBasic: " + true);
+print("compile testStringifyArray: " + true);
+print("compile testStringifyNested: " + true);
+print("compile testStringifyReplacer: " + true);
+print("compile testStringifyReplacerFn: " + true);
+print("compile testStringifySpace: " + true);
+print("compile testStringifySpecial: " + true);
+print("compile testRoundtrip: " + true);
+print("compile testToJSON: " + true);
 
 // Verify
 print("testParseBasic: " + testParseBasic());

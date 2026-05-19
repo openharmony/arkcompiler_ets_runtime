@@ -34,12 +34,10 @@ function static_counter(n: number): number {
     return Counter.count;
 }
 
-ArkTools.arkSteedCompileAsync(Counter);
-ArkTools.arkSteedCompileAsync(Counter.inc);
-ArkTools.arkSteedCompileAsync(Counter.dec);
-ArkTools.arkSteedCompileAsync(static_counter);
+ArkTools.arkSteedCompileSync(Counter);
+ArkTools.arkSteedCompileSync(Counter.inc);
+ArkTools.arkSteedCompileSync(Counter.dec);
+ArkTools.arkSteedCompileSync(static_counter);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(static_counter(100));

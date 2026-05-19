@@ -21,10 +21,8 @@ function array_create_init(size: number): number[]
     return arr;
 }
 
-ArkTools.arkSteedCompileAsync(array_create_init);
+ArkTools.arkSteedCompileSync(array_create_init);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr = array_create_init(5);
 print(arr[0]);

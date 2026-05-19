@@ -24,10 +24,8 @@ function loop_for_of_string_filter(str: string): string {
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_of_string_filter);
+ArkTools.arkSteedCompileSync(loop_for_of_string_filter);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_of_string_filter("hello123"));
 print(loop_for_of_string_filter("abc"));

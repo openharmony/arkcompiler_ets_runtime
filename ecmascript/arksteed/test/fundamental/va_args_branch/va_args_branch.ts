@@ -22,10 +22,8 @@ function va_args_branch(...args: number[]) {
     }
 }
 
-ArkTools.arkSteedCompileAsync(va_args_branch);
+ArkTools.arkSteedCompileSync(va_args_branch);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 va_args_branch();
 va_args_branch(7);

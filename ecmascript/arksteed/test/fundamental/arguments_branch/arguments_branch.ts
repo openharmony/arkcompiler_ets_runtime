@@ -22,10 +22,8 @@ function arguments_branch() {
     }
 }
 
-ArkTools.arkSteedCompileAsync(arguments_branch);
+ArkTools.arkSteedCompileSync(arguments_branch);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 arguments_branch();
 arguments_branch(7);

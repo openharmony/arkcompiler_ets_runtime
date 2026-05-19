@@ -29,10 +29,8 @@ function switch_true_conditional_expr(x, a, b, c, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_true_conditional_expr);
+ArkTools.arkSteedCompileSync(switch_true_conditional_expr);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_true_conditional_expr(5, 10, 20, 30, 40));
 print(switch_true_conditional_expr(15, 10, 20, 30, 40));

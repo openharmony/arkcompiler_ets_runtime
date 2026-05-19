@@ -37,5 +37,5 @@ function Test() {
 }
 
 Test();
-ArkTools.arkSteedCompileAsync(DoubleCmp);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(DoubleCmp);
+print(true);

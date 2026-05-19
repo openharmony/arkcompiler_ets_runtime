@@ -41,10 +41,8 @@ function switch_true_chained_conditions(score, bonus, a, b, c, d)
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(switch_true_chained_conditions);
+ArkTools.arkSteedCompileSync(switch_true_chained_conditions);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_true_chained_conditions(95, 5, 100, 80, 60, 40));
 print(switch_true_chained_conditions(95, 0, 100, 80, 60, 40));

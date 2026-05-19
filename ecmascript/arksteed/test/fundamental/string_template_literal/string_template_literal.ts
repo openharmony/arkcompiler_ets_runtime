@@ -23,10 +23,8 @@ function string_template_literal(name: string, age: number): string {
     return result.concat(temp).concat(years);
 }
 
-ArkTools.arkSteedCompileAsync(string_template_literal);
+ArkTools.arkSteedCompileSync(string_template_literal);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(string_template_literal("Alice", 25));
 print(string_template_literal("Bob", 30));

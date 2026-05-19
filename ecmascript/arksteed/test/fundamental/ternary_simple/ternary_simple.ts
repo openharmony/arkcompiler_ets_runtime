@@ -19,10 +19,8 @@ function ternary_simple(x: number): number {
     return x > 0 ? x : -x;
 }
 
-ArkTools.arkSteedCompileAsync(ternary_simple);
+ArkTools.arkSteedCompileSync(ternary_simple);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(ternary_simple(5));
 print(ternary_simple(-3));

@@ -31,10 +31,9 @@ function printArgs(...rest:any)
 
 printArgs("aaa", 55555);
 
-ArkTools.arkSteedCompileAsync(f);
-ArkTools.arkSteedCompileAsync(printArgs);
-(() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
-let res = (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })();
+ArkTools.arkSteedCompileSync(f);
+ArkTools.arkSteedCompileSync(printArgs);
+let res = true;
 f(0, 1, 2)
 printArgs("aaa", 55555);
 print(res)

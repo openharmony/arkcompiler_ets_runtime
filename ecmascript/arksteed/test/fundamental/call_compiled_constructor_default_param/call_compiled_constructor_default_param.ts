@@ -29,10 +29,8 @@ function call_compiled_constructor_default_param(): void {
     print(c.data);
 }
 
-ArkTools.arkSteedCompileAsync(CallCompiledConstructorDefaultParamBox);
-ArkTools.arkSteedCompileAsync(call_compiled_constructor_default_param);
+ArkTools.arkSteedCompileSync(CallCompiledConstructorDefaultParamBox);
+ArkTools.arkSteedCompileSync(call_compiled_constructor_default_param);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 call_compiled_constructor_default_param();

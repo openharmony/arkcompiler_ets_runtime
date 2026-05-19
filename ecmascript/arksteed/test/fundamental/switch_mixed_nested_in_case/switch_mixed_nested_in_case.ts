@@ -54,10 +54,8 @@ function switch_mixed_nested_in_case(x, y, a, b, c, d)
     return result * 10;
 }
 
-ArkTools.arkSteedCompileAsync(switch_mixed_nested_in_case);
+ArkTools.arkSteedCompileSync(switch_mixed_nested_in_case);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(switch_mixed_nested_in_case(1, 1, 10, 5, 3, 7));
 print(switch_mixed_nested_in_case(1, 2, 10, 5, 3, 7));

@@ -65,8 +65,8 @@ const c = new C();
 // Initial call to test without changing the prototype's property.
 Test2(c, false);
 
-ArkTools.arkSteedCompileAsync(Test2);
-print((() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+ArkTools.arkSteedCompileSync(Test2);
+print(true);
 
 print("------------------------------------------------------");
 // Call test with the flag set to true to modify the prototype property, triggering lazy deoptimization.

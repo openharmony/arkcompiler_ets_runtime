@@ -21,10 +21,8 @@ function readGlobal(): number {
     return globalValue;
 }
 
-ArkTools.arkSteedCompileAsync(readGlobal);
+ArkTools.arkSteedCompileSync(readGlobal);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(readGlobal());
 print(readGlobal());

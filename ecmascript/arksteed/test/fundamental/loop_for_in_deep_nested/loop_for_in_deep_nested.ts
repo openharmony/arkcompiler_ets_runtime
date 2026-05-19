@@ -29,10 +29,8 @@ function loop_for_in_deep_nested(data: Record<string, Record<string, Record<stri
     return sum;
 }
 
-ArkTools.arkSteedCompileAsync(loop_for_in_deep_nested);
+ArkTools.arkSteedCompileSync(loop_for_in_deep_nested);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(loop_for_in_deep_nested({a: {x: {i: 1, j: 2}, y: {k: 3}}}));
 print(loop_for_in_deep_nested({a: {x: {i: 10}}}));

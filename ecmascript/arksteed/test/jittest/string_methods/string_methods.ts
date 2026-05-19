@@ -15,7 +15,7 @@
 
 declare function print(arg: any): string;
 declare const ArkTools: {
-    arkSteedCompileAsync(args: any): boolean;
+    arkSteedCompileSync(args: any): boolean;
     waitJitCompileFinish(args: any): boolean;
 };
 
@@ -191,57 +191,57 @@ for (let i = 0; i < 20; i++) {
 }
 
 // JIT compile
-ArkTools.arkSteedCompileAsync(testPadStart);
-ArkTools.arkSteedCompileAsync(testPadEnd);
-ArkTools.arkSteedCompileAsync(testTrim);
-ArkTools.arkSteedCompileAsync(testStartsWith);
-ArkTools.arkSteedCompileAsync(testEndsWith);
-ArkTools.arkSteedCompileAsync(testIncludes);
-ArkTools.arkSteedCompileAsync(testIndexOf);
-ArkTools.arkSteedCompileAsync(testLastIndexOf);
-ArkTools.arkSteedCompileAsync(testSearch);
-ArkTools.arkSteedCompileAsync(testAt);
-ArkTools.arkSteedCompileAsync(testRepeat);
-ArkTools.arkSteedCompileAsync(testReplace);
-ArkTools.arkSteedCompileAsync(testReplaceAll);
-ArkTools.arkSteedCompileAsync(testSplit);
-ArkTools.arkSteedCompileAsync(testSlice);
-ArkTools.arkSteedCompileAsync(testSubstring);
-ArkTools.arkSteedCompileAsync(testToCase);
-ArkTools.arkSteedCompileAsync(testConcat);
-ArkTools.arkSteedCompileAsync(testCharAt);
-ArkTools.arkSteedCompileAsync(testNormalize);
-ArkTools.arkSteedCompileAsync(testFromCharCode);
-ArkTools.arkSteedCompileAsync(testFromCodePoint);
-ArkTools.arkSteedCompileAsync(testLocaleCompare);
-ArkTools.arkSteedCompileAsync(testMatch);
-ArkTools.arkSteedCompileAsync(testMatchAll);
+ArkTools.arkSteedCompileSync(testPadStart);
+ArkTools.arkSteedCompileSync(testPadEnd);
+ArkTools.arkSteedCompileSync(testTrim);
+ArkTools.arkSteedCompileSync(testStartsWith);
+ArkTools.arkSteedCompileSync(testEndsWith);
+ArkTools.arkSteedCompileSync(testIncludes);
+ArkTools.arkSteedCompileSync(testIndexOf);
+ArkTools.arkSteedCompileSync(testLastIndexOf);
+ArkTools.arkSteedCompileSync(testSearch);
+ArkTools.arkSteedCompileSync(testAt);
+ArkTools.arkSteedCompileSync(testRepeat);
+ArkTools.arkSteedCompileSync(testReplace);
+ArkTools.arkSteedCompileSync(testReplaceAll);
+ArkTools.arkSteedCompileSync(testSplit);
+ArkTools.arkSteedCompileSync(testSlice);
+ArkTools.arkSteedCompileSync(testSubstring);
+ArkTools.arkSteedCompileSync(testToCase);
+ArkTools.arkSteedCompileSync(testConcat);
+ArkTools.arkSteedCompileSync(testCharAt);
+ArkTools.arkSteedCompileSync(testNormalize);
+ArkTools.arkSteedCompileSync(testFromCharCode);
+ArkTools.arkSteedCompileSync(testFromCodePoint);
+ArkTools.arkSteedCompileSync(testLocaleCompare);
+ArkTools.arkSteedCompileSync(testMatch);
+ArkTools.arkSteedCompileSync(testMatchAll);
 
-print("compile testPadStart: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testPadEnd: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testTrim: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testStartsWith: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testEndsWith: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testIncludes: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testIndexOf: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testLastIndexOf: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testSearch: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testAt: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testRepeat: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testReplace: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testReplaceAll: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testSplit: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testSlice: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testSubstring: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testToCase: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testConcat: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testCharAt: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testNormalize: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testFromCharCode: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testFromCodePoint: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testLocaleCompare: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testMatch: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
-print("compile testMatchAll: " + (() => { let time = Date.now(); for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}; return true; })());
+print("compile testPadStart: " + true);
+print("compile testPadEnd: " + true);
+print("compile testTrim: " + true);
+print("compile testStartsWith: " + true);
+print("compile testEndsWith: " + true);
+print("compile testIncludes: " + true);
+print("compile testIndexOf: " + true);
+print("compile testLastIndexOf: " + true);
+print("compile testSearch: " + true);
+print("compile testAt: " + true);
+print("compile testRepeat: " + true);
+print("compile testReplace: " + true);
+print("compile testReplaceAll: " + true);
+print("compile testSplit: " + true);
+print("compile testSlice: " + true);
+print("compile testSubstring: " + true);
+print("compile testToCase: " + true);
+print("compile testConcat: " + true);
+print("compile testCharAt: " + true);
+print("compile testNormalize: " + true);
+print("compile testFromCharCode: " + true);
+print("compile testFromCodePoint: " + true);
+print("compile testLocaleCompare: " + true);
+print("compile testMatch: " + true);
+print("compile testMatchAll: " + true);
 
 // Verify
 print("testPadStart: " + testPadStart());

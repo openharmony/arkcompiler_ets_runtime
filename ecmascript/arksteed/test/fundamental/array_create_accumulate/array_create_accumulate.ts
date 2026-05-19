@@ -24,10 +24,8 @@ function array_create_accumulate(src: number[]): number[]
     return result;
 }
 
-ArkTools.arkSteedCompileAsync(array_create_accumulate);
+ArkTools.arkSteedCompileSync(array_create_accumulate);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 let arr = array_create_accumulate([1, 2, 3, 4, 5]);
 print(arr[0]);

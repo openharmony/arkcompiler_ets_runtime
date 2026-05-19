@@ -15,7 +15,7 @@
 declare function print(arg: number): string;
 
 declare class ArkTools {
-  static arkSteedCompileAsync<T extends Function>(func: T): T;
+  static arkSteedCompileSync<T extends Function>(func: T): T;
 }
 
 function exception_no_throw_simple(a: number, b: number): number {
@@ -27,10 +27,8 @@ function exception_no_throw_simple(a: number, b: number): number {
   }
 }
 
-ArkTools.arkSteedCompileAsync(exception_no_throw_simple);
+ArkTools.arkSteedCompileSync(exception_no_throw_simple);
 
-let time = Date.now();
-for (let cur = Date.now(); cur - time < 1000; cur = Date.now()) {}
 
 print(exception_no_throw_simple(1, 2));
 print(exception_no_throw_simple(10, 20));
