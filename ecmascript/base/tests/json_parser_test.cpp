@@ -634,4 +634,36 @@ HWTEST_F_L0(JsonParserTest, Parser_015)
         EXPECT_TRUE(result->IsException());
     }
 }
+
+/**
+* @tc.name: Parser_016
+* @tc.desc: invalid escape sequences should fail
+* @tc.type: FUNC
+* @tc.require:
+*/
+HWTEST_F_L0(JsonParserTest, Parser_016)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    Utf8JsonParser parser(thread, TransformType::NORMAL);
+
+    // Construct a JSON string that contains more than 16 Chinese characters.
+    const char* longJson =
+        R"({"longKey": "\u8fd9\u662f\u4e00\u4e2a\u957f\u5ea6\u8d85\u8fc7\u5341)"
+        R"(\u516d\u5b57\u7b26\u7684\u6d4b\u8bd5\u5b57\u7b26\u4e32\uff0c\u5305\u542b)"
+        R"(\u4e2d\u6587"})";
+    JSHandle<JSTaggedValue> handleMsg(factory->NewFromASCII(longJson));
+    JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+    JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+    EXPECT_FALSE(result->IsException());
+
+    JSHandle<JSTaggedValue> keyStr(factory->NewFromASCII("longKey"));
+    JSHandle<JSTaggedValue> value = JSObject::GetProperty(thread, result, keyStr).GetValue();
+    JSHandle<EcmaString> valueStr(JSTaggedValue::ToString(thread, value));
+
+    EXPECT_GT(EcmaStringAccessor(valueStr).GetLength(), 16U);
+
+    // Verify content
+    std::string expected = "这是一个长度超过十六字符的测试字符串，包含中文";
+    EXPECT_STREQ(EcmaStringAccessor(valueStr).ToCString(thread).c_str(), expected.c_str());
+}
 } // namespace panda::test

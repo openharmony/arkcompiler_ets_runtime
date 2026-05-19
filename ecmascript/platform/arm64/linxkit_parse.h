@@ -587,7 +587,9 @@ void __attribute__((always_inline)) LinxkitCopyCharWithBackslashTo16(uint16_t *&
             "fmov       w4, s3\n"
             "cbnz       w4, 2f\n"
             "add        x8, x8, #16\n"
-            "st1        {v0.16b}, [x21], #16\n"
+            "uxtl       v4.8h, v0.8b\n"         // low 8 bytes -> 8 halfwords
+            "uxtl2      v5.8h, v0.16b\n"        // high 8 bytes -> 8 halfwords
+            "st1        {v4.16b, v5.16b}, [x21], #32\n" // store 16 halfwords (32 bytes)
             "subs       x10, x10, #16\n"
             "b.eq       16f\n"
             "b          1b\n"
@@ -699,7 +701,7 @@ void __attribute__((always_inline)) LinxkitCopyCharWithBackslashTo16(uint16_t *&
             : [dst_ptr] "+r"(p), [cur] "+r"(current_)
             : [end] "r"(end_)
             : "memory", "cc", "x8", "x9", "x10", "x11", "x21", "x22", "x23", "x24",
-            "v0", "v1", "v2", "v3", "x4"
+            "v0", "v1", "v2", "v3", "x4", "v4", "v5"
         );
     }
 }
